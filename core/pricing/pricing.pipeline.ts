@@ -17,6 +17,11 @@ export interface PricingPipelineResult {
   marginAllowed: boolean;
   floorPrice: number;
   violationAmount: number;
+  marginReason?: "ZERO_FINAL_PRICE_NOT_ALLOWED" | "BELOW_FLOOR";
+}
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 export function runPricingPipeline(
@@ -24,8 +29,9 @@ export function runPricingPipeline(
 ): PricingPipelineResult {
   const pricing = computeEffectiveBasePrice(input);
   const discount = resolveDiscounts(input.discounts, input.discountRules);
-  const finalPrice =
-    pricing.effectiveBasePrice * (1 - discount.totalPercentOff / 100);
+  const finalPrice = roundMoney(
+    pricing.effectiveBasePrice * (1 - discount.totalPercentOff / 100),
+  );
   const margin = validateMargin({
     productId: pricing.productId,
     segment: pricing.segment,
@@ -40,5 +46,6 @@ export function runPricingPipeline(
     marginAllowed: margin.allowed,
     floorPrice: margin.floorPrice,
     violationAmount: margin.violationAmount,
+    marginReason: margin.reason,
   };
 }

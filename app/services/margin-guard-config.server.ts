@@ -38,6 +38,7 @@ export async function getOrCreateMarginGuardConfig() {
 export async function updateGlobalMarginGuardConfig(input: {
   b2bTag: string;
   globalMinPricePercent: number;
+  allowZeroFinalPrice: boolean;
   allowStacking: boolean;
   maxCombinedPercentOff: number | null;
 }) {
@@ -47,6 +48,7 @@ export async function updateGlobalMarginGuardConfig(input: {
     update: {
       b2bTag: input.b2bTag,
       globalMinPricePercent: input.globalMinPricePercent,
+      allowZeroFinalPrice: input.allowZeroFinalPrice,
       allowStacking: input.allowStacking,
       maxCombinedPercentOff: input.maxCombinedPercentOff,
     },
@@ -54,6 +56,7 @@ export async function updateGlobalMarginGuardConfig(input: {
       id: DEFAULT_CONFIG_ID,
       b2bTag: input.b2bTag,
       globalMinPricePercent: input.globalMinPricePercent,
+      allowZeroFinalPrice: input.allowZeroFinalPrice,
       allowStacking: input.allowStacking,
       maxCombinedPercentOff: input.maxCombinedPercentOff,
     },
@@ -65,6 +68,7 @@ export async function upsertProductFloorRule(input: {
   productId: string;
   segment?: "B2B" | "B2C";
   minPercentOfBasePrice: number;
+  allowZeroFinalPrice: boolean | null;
 }) {
   const db = getMarginGuardPrismaOrThrow();
   const existing = await db.productFloorRule.findFirst({
@@ -78,7 +82,10 @@ export async function upsertProductFloorRule(input: {
   if (existing) {
     return db.productFloorRule.update({
       where: { id: existing.id },
-      data: { minPercentOfBasePrice: input.minPercentOfBasePrice },
+      data: {
+        minPercentOfBasePrice: input.minPercentOfBasePrice,
+        allowZeroFinalPrice: input.allowZeroFinalPrice,
+      },
     });
   }
 
@@ -88,6 +95,7 @@ export async function upsertProductFloorRule(input: {
       productId: input.productId,
       segment: input.segment,
       minPercentOfBasePrice: input.minPercentOfBasePrice,
+      allowZeroFinalPrice: input.allowZeroFinalPrice,
     },
   });
 }
@@ -135,15 +143,18 @@ export async function recordMarginViolation(input: {
 
 export function buildFloorRuleset(config: {
   globalMinPricePercent: number;
+  allowZeroFinalPrice: boolean;
   productFloors: Array<{
     productId: string;
     segment: string | null;
     minPercentOfBasePrice: number;
+    allowZeroFinalPrice: boolean | null;
   }>;
 }): FloorRuleset {
   return {
     global: {
       minPercentOfBasePrice: config.globalMinPricePercent,
+      allowZeroFinalPrice: config.allowZeroFinalPrice,
     },
     perProduct: config.productFloors.map((rule) => ({
       productId: rule.productId,
@@ -152,6 +163,7 @@ export function buildFloorRuleset(config: {
           ? rule.segment
           : undefined,
       minPercentOfBasePrice: rule.minPercentOfBasePrice,
+      allowZeroFinalPriceOverride: rule.allowZeroFinalPrice ?? undefined,
     })),
   };
 }

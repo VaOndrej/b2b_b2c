@@ -19,6 +19,7 @@ model MarginRule {
   productId             String?
   segment               String?
   minPercentOfBasePrice Float
+  allowZeroFinalPrice   Boolean?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

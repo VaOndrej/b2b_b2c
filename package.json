@@ -3,9 +3,12 @@
   "private": true,
   "scripts": {
     "build": "react-router build",
+    "guard:test": "node --test --experimental-strip-types tests/segment/segment-detection.test.ts tests/margin/global-floor-policy.test.ts",
+    "predev": "npm run guard:test",
     "dev": "shopify app dev",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",
+    "predeploy": "npm run guard:test",
     "deploy": "shopify app deploy",
     "config:use": "shopify app config use",
     "env": "shopify app env",

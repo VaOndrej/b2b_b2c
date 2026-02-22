@@ -37,6 +37,7 @@ model MarginGuardConfig {
   id                    String   @id @default("default")
   b2bTag                String   @default("b2b")
   globalMinPricePercent Float    @default(70)
+  allowZeroFinalPrice   Boolean  @default(false)
   allowStacking         Boolean  @default(false)
   maxCombinedPercentOff Float?
   createdAt             DateTime @default(now())
@@ -52,6 +53,7 @@ model ProductFloorRule {
   productId             String
   segment               String?
   minPercentOfBasePrice Float
+  allowZeroFinalPrice   Boolean?
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
