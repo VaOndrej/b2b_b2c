@@ -70,6 +70,8 @@ MVP_1 – MARGIN GUARD (Core Governance Foundation)
 
 MVP_1.5 – MARGIN GUARD 2.0 (Core Governance Foundation)
  ├─ Lepší UI při kontrole slev. Aktuálně to píše text, který rozhodně není pro produkci.
+ ├─ Tag na označení b2b zákazníka, nemusí být b2b, přidat do admina možnost si tohle změnit na jakýkoliv text
+    ├─ V kódu dynamicky vyčítat tenhle b2b označení
 
 Z MPV_1 se neimplementoval webhooks pro kompletní logování když se překročí maximální sleva, je na to potřeba přístup do Protected Customer Data. Nechá se na později.
 
