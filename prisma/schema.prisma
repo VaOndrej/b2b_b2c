@@ -40,6 +40,9 @@ model MarginGuardConfig {
   allowZeroFinalPrice   Boolean  @default(false)
   allowStacking         Boolean  @default(false)
   maxCombinedPercentOff Float?
+  cartValidationStatus  String   @default("UNKNOWN")
+  cartValidationLastError String?
+  cartValidationLastSyncAt DateTime?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   productFloors         ProductFloorRule[]

@@ -31,6 +31,12 @@ export default function AppDashboardRoute() {
             Discount stacking: {config.allowStacking ? "allowed" : "single-discount only"}
           </s-paragraph>
           <s-paragraph>Per-product floor rules: {config.productFloors.length}</s-paragraph>
+          <s-paragraph>
+            Cart validation function status: {config.cartValidationStatus}
+            {config.cartValidationLastSyncAt
+              ? ` (last sync ${new Date(config.cartValidationLastSyncAt).toLocaleString()})`
+              : ""}
+          </s-paragraph>
           <s-paragraph>Recent violations tracked: {recentViolationCount}</s-paragraph>
         </s-stack>
       </s-section>

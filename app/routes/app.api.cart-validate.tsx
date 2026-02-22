@@ -8,9 +8,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const body = await request.json();
   const config = await getOrCreateMarginGuardConfig();
+  const buyerHasB2BTag = Boolean(body.buyerHasB2BTag);
 
   const segment = resolveSegment({
-    customerTags: body.customerTags ?? [],
+    customerTags: buyerHasB2BTag ? [config.b2bTag] : [],
     b2bTag: config.b2bTag,
   });
 

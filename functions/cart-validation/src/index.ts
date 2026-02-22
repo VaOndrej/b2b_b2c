@@ -1,5 +1,5 @@
-import { runPricingPipeline } from "../../../core/pricing/pricing.pipeline";
-import type { PricingPipelineInput } from "../../../core/pricing/pricing.pipeline";
+import { runPricingPipeline } from "../../../core/pricing/pricing.pipeline.ts";
+import type { PricingPipelineInput } from "../../../core/pricing/pricing.pipeline.ts";
 
 export function validateCartLine(input: PricingPipelineInput) {
   const result = runPricingPipeline(input);

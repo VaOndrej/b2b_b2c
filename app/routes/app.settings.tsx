@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useNavigation } from "react-router";
 import { authenticate } from "../shopify.server";
+import { ensureCartValidationActive } from "../services/cart-validation-activation.server";
 import {
   deleteProductFloorRule,
   getOrCreateMarginGuardConfig,
@@ -14,13 +15,22 @@ function parseNumber(input: FormDataEntryValue | null, fallback = 0): number {
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  const config = await getOrCreateMarginGuardConfig();
-  return { config };
+  const { admin } = await authenticate.admin(request);
+  let config = await getOrCreateMarginGuardConfig();
+  let autoActivationMessage: string | null = null;
+  if (config.cartValidationStatus !== "ACTIVE") {
+    const activation = await ensureCartValidationActive(admin);
+    autoActivationMessage = activation.message;
+    config = await getOrCreateMarginGuardConfig();
+  }
+  const url = new URL(request.url);
+  const activation = url.searchParams.get("activation");
+  const message = url.searchParams.get("message");
+  return { config, activation, message, autoActivationMessage };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  await authenticate.admin(request);
+  const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "");
 
@@ -80,11 +90,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
+  if (
+    intent === "save-global" ||
+    intent === "save-product-floor" ||
+    intent === "delete-product-floor"
+  ) {
+    await ensureCartValidationActive(admin);
+  }
+
   return null;
 };
 
 export default function AppSettingsRoute() {
-  const { config } = useLoaderData<typeof loader>();
+  const { config, activation, message, autoActivationMessage } =
+    useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
@@ -215,6 +234,31 @@ export default function AppSettingsRoute() {
         <s-paragraph>
           Validation simulator was removed. Use automated guard tests with{" "}
           <code>npm run guard:test</code>.
+        </s-paragraph>
+      </s-section>
+
+      <s-section heading="Live Shopify Function activation">
+        <s-paragraph>
+          Cart validation function is automatically synced on save and when this
+          page opens.
+        </s-paragraph>
+        {autoActivationMessage && (
+          <s-paragraph>Auto-sync info: {autoActivationMessage}</s-paragraph>
+        )}
+        {activation === "success" && (
+          <s-paragraph>Activation status: SUCCESS. {message}</s-paragraph>
+        )}
+        {activation === "error" && (
+          <s-paragraph>Activation status: ERROR. {message}</s-paragraph>
+        )}
+        <s-paragraph>
+          Current status: {config.cartValidationStatus}
+          {config.cartValidationLastSyncAt
+            ? ` | last sync: ${new Date(config.cartValidationLastSyncAt).toLocaleString()}`
+            : ""}
+          {config.cartValidationLastError
+            ? ` | last error: ${config.cartValidationLastError}`
+            : ""}
         </s-paragraph>
       </s-section>
     </s-page>

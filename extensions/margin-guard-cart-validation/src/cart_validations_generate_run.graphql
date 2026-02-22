@@ -1,0 +1,37 @@
+query CartValidationsGenerateRunInput {
+  cart {
+    buyerIdentity {
+      customer {
+        hasAnyTag(tags: ["b2b"])
+      }
+    }
+    lines {
+      id
+      quantity
+      cost {
+        amountPerQuantity {
+          amount
+        }
+        subtotalAmount {
+          amount
+        }
+        totalAmount {
+          amount
+        }
+      }
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          product {
+            id
+          }
+        }
+      }
+    }
+  }
+  validation {
+    metafield(namespace: "$app:margin_guard", key: "config") {
+      jsonValue
+    }
+  }
+}

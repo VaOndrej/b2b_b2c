@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "react-router build",
-    "guard:test": "node --test --experimental-strip-types tests/segment/segment-detection.test.ts tests/margin/global-floor-policy.test.ts",
+    "guard:test": "node --test --experimental-strip-types tests/segment/segment-detection.test.ts tests/margin/global-floor-policy.test.ts tests/cart/cart-validation-blocking.test.ts tests/cart/cart-validation-function-extension.test.ts",
     "predev": "npm run guard:test",
     "dev": "shopify app dev",
     "config:link": "shopify app config link",

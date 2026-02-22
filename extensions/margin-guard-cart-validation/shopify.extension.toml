@@ -1,0 +1,17 @@
+api_version = "2025-07"
+
+[[extensions]]
+name = "t:name"
+handle = "margin-guard-cart-validation"
+type = "function"
+uid = "b63ac503-cae5-87c9-c058-3900ba3d6d2f7d79053a"
+description = "t:description"
+
+  [[extensions.targeting]]
+  target = "cart.validations.generate.run"
+  input_query = "src/cart_validations_generate_run.graphql"
+  export = "cart-validations-generate-run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"

@@ -167,3 +167,27 @@ export function buildFloorRuleset(config: {
     })),
   };
 }
+
+export function buildCartValidationFunctionConfig(config: {
+  globalMinPricePercent: number;
+  allowZeroFinalPrice: boolean;
+  productFloors: Array<{
+    productId: string;
+    minPercentOfBasePrice: number;
+    segment: string | null;
+  }>;
+}) {
+  const perProductFloorPercents: Record<string, number> = {};
+  for (const floor of config.productFloors) {
+    if (floor.segment == null || floor.segment === "B2C") {
+      perProductFloorPercents[floor.productId] = floor.minPercentOfBasePrice;
+    }
+  }
+
+  return {
+    globalMinPricePercent: config.globalMinPricePercent,
+    b2bGlobalMinPricePercent: config.globalMinPricePercent,
+    allowZeroFinalPrice: config.allowZeroFinalPrice,
+    perProductFloorPercents,
+  };
+}

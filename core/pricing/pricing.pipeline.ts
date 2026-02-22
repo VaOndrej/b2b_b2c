@@ -1,9 +1,9 @@
-import { resolveDiscounts } from "../discount/discount.orchestrator";
-import type { DiscountInput, DiscountRules } from "../discount/discount.rules";
-import { validateMargin } from "../margin/margin.guard";
-import type { FloorRuleset } from "../margin/floor.rules";
-import { computeEffectiveBasePrice } from "./pricing.engine";
-import type { PricingInput } from "./pricing.types";
+import { resolveDiscounts } from "../discount/discount.orchestrator.ts";
+import type { DiscountInput, DiscountRules } from "../discount/discount.rules.ts";
+import { validateMargin } from "../margin/margin.guard.ts";
+import type { FloorRuleset } from "../margin/floor.rules.ts";
+import { computeEffectiveBasePrice } from "./pricing.engine.ts";
+import type { PricingInput } from "./pricing.types.ts";
 
 export interface PricingPipelineInput extends PricingInput {
   discounts: DiscountInput[];
