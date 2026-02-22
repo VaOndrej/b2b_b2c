@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.sqlite"
+}
+
+model SegmentRule {
+  id        String   @id @default(cuid())
+  b2bTag    String   @default("b2b")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MarginRule {
+  id                    String   @id @default(cuid())
+  productId             String?
+  segment               String?
+  minPercentOfBasePrice Float
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model DiscountRule {
+  id                    String   @id @default(cuid())
+  allowStacking         Boolean
+  maxCombinedPercentOff Float?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
