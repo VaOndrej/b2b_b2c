@@ -69,8 +69,7 @@ MVP_1 – MARGIN GUARD (Core Governance Foundation)
  └─ Admin: Floor configuration + log porušení
 
 MVP_1.5 – MARGIN GUARD 2.0 (Core Governance Foundation)
- ├─ Lepší UI při kontrole slev
- ├─ Pokud mám povolené kombinování slev, a zákazník použije slevu 40% + slevu 10%, a mám price floor na 45%, tak ty slevy využít pouze jako 45% a neblokovat to
+ ├─ Lepší UI při kontrole slev. Aktuálně to píše text, který rozhodně není pro produkci.
 
 Z MPV_1 se neimplementoval webhooks pro kompletní logování když se překročí maximální sleva, je na to potřeba přístup do Protected Customer Data. Nechá se na později.
 
