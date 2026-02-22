@@ -4,8 +4,16 @@ export interface SegmentConfigMetafield {
   value: string;
 }
 
-export const segmentConfigMetafield: SegmentConfigMetafield = {
+export const segmentConfigMetafieldDefaults: SegmentConfigMetafield = {
   namespace: "margin_guard",
   key: "b2b_tag",
   value: "b2b",
 };
+
+export function resolveB2BTagFromMetafield(
+  value: string | null | undefined,
+  fallback = segmentConfigMetafieldDefaults.value,
+): string {
+  const resolved = (value ?? "").trim().toLowerCase();
+  return resolved || fallback;
+}

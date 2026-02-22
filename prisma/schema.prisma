@@ -32,3 +32,44 @@ model Session {
   refreshToken        String?
   refreshTokenExpires DateTime?
 }
+
+model MarginGuardConfig {
+  id                    String   @id @default("default")
+  b2bTag                String   @default("b2b")
+  globalMinPricePercent Float    @default(70)
+  allowStacking         Boolean  @default(false)
+  maxCombinedPercentOff Float?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  productFloors         ProductFloorRule[]
+  violations            MarginViolationLog[]
+}
+
+model ProductFloorRule {
+  id                    String            @id @default(cuid())
+  configId              String
+  config                MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  productId             String
+  segment               String?
+  minPercentOfBasePrice Float
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@unique([configId, productId, segment])
+}
+
+model MarginViolationLog {
+  id              String            @id @default(cuid())
+  configId        String
+  config          MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  shop            String
+  productId       String
+  customerId      String?
+  segment         String
+  basePrice       Float
+  finalPrice      Float
+  floorPrice      Float
+  violationAmount Float
+  source          String
+  createdAt       DateTime          @default(now())
+}
