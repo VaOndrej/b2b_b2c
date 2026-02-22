@@ -3,6 +3,10 @@ import { useLoaderData, useNavigation } from "react-router";
 import { authenticate } from "../shopify.server";
 import { ensureCartValidationActive } from "../services/cart-validation-activation.server";
 import {
+  deactivateDiscountFunction,
+  getDiscountFunctionStatus,
+} from "../services/discount-function-activation.server";
+import {
   deleteProductFloorRule,
   getOrCreateMarginGuardConfig,
   upsertProductFloorRule,
@@ -18,15 +22,29 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
   let config = await getOrCreateMarginGuardConfig();
   let autoActivationMessage: string | null = null;
+  let discountFunctionStatus: "ACTIVE" | "INACTIVE" | "ERROR" = "ERROR";
+  let discountFunctionMessage = "Discount status is unknown.";
   if (config.cartValidationStatus !== "ACTIVE") {
     const activation = await ensureCartValidationActive(admin);
     autoActivationMessage = activation.message;
     config = await getOrCreateMarginGuardConfig();
   }
+  const discountStatus = await getDiscountFunctionStatus(admin);
+  discountFunctionStatus = discountStatus.status;
+  discountFunctionMessage = discountStatus.message;
   const url = new URL(request.url);
   const activation = url.searchParams.get("activation");
   const message = url.searchParams.get("message");
-  return { config, activation, message, autoActivationMessage };
+  const discountActionMessage = url.searchParams.get("discountActionMessage");
+  return {
+    config,
+    activation,
+    message,
+    discountActionMessage,
+    autoActivationMessage,
+    discountFunctionStatus,
+    discountFunctionMessage,
+  };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -90,6 +108,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
+  if (intent === "deactivate-discount-function") {
+    const result = await deactivateDiscountFunction(admin);
+    const url = new URL(request.url);
+    url.searchParams.set("discountActionMessage", result.message);
+    return Response.redirect(url.toString(), 302);
+  }
+
   if (
     intent === "save-global" ||
     intent === "save-product-floor" ||
@@ -102,7 +127,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function AppSettingsRoute() {
-  const { config, activation, message, autoActivationMessage } =
+  const {
+    config,
+    activation,
+    message,
+    discountActionMessage,
+    autoActivationMessage,
+    discountFunctionStatus,
+    discountFunctionMessage,
+  } =
     useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -238,28 +271,71 @@ export default function AppSettingsRoute() {
       </s-section>
 
       <s-section heading="Live Shopify Function activation">
-        <s-paragraph>
-          Cart validation function is automatically synced on save and when this
-          page opens.
-        </s-paragraph>
-        {autoActivationMessage && (
-          <s-paragraph>Auto-sync info: {autoActivationMessage}</s-paragraph>
-        )}
-        {activation === "success" && (
-          <s-paragraph>Activation status: SUCCESS. {message}</s-paragraph>
-        )}
-        {activation === "error" && (
-          <s-paragraph>Activation status: ERROR. {message}</s-paragraph>
-        )}
-        <s-paragraph>
-          Current status: {config.cartValidationStatus}
-          {config.cartValidationLastSyncAt
-            ? ` | last sync: ${new Date(config.cartValidationLastSyncAt).toLocaleString()}`
-            : ""}
-          {config.cartValidationLastError
-            ? ` | last error: ${config.cartValidationLastError}`
-            : ""}
-        </s-paragraph>
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-stack direction="block" gap="small">
+            <s-paragraph>
+              Cart validation function is automatically synced on save and when
+              this page opens.
+            </s-paragraph>
+            {autoActivationMessage && (
+              <s-paragraph>Auto-sync info: {autoActivationMessage}</s-paragraph>
+            )}
+            {activation === "success" && (
+              <s-paragraph>Activation status: SUCCESS. {message}</s-paragraph>
+            )}
+            {activation === "error" && (
+              <s-paragraph>Activation status: ERROR. {message}</s-paragraph>
+            )}
+            <s-paragraph>
+              Cart validation:{" "}
+              <strong
+                style={{
+                  color:
+                    config.cartValidationStatus === "ACTIVE"
+                      ? "#0b6e4f"
+                      : "#b42318",
+                }}
+              >
+                {config.cartValidationStatus}
+              </strong>
+              {config.cartValidationLastSyncAt
+                ? ` | last sync: ${new Date(config.cartValidationLastSyncAt).toLocaleString()}`
+                : ""}
+              {config.cartValidationLastError
+                ? ` | last error: ${config.cartValidationLastError}`
+                : ""}
+            </s-paragraph>
+            <s-paragraph>
+              Discount function:{" "}
+              <strong
+                style={{
+                  color:
+                    discountFunctionStatus === "ACTIVE"
+                      ? "#0b6e4f"
+                      : discountFunctionStatus === "INACTIVE"
+                        ? "#6941c6"
+                        : "#b42318",
+                }}
+              >
+                {discountFunctionStatus}
+              </strong>{" "}
+              | {discountFunctionMessage}
+            </s-paragraph>
+            {discountActionMessage && (
+              <s-paragraph>{discountActionMessage}</s-paragraph>
+            )}
+            <form method="post">
+              <input
+                type="hidden"
+                name="intent"
+                value="deactivate-discount-function"
+              />
+              <button type="submit" disabled={isSubmitting}>
+                Deactivate Discount Function for MVP_1
+              </button>
+            </form>
+          </s-stack>
+        </s-box>
       </s-section>
     </s-page>
   );

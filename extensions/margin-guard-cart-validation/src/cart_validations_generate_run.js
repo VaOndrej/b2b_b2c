@@ -37,19 +37,62 @@ function clampPercent(value) {
  */
 function parseConfig(input) {
   const config = input?.validation?.metafield?.jsonValue ?? {};
-  const rawPerProductFloors =
-    config && typeof config.perProductFloorPercents === "object"
-      ? config.perProductFloorPercents
+  const rawPerProductFloorsB2C =
+    config && typeof config.perProductFloorPercentsB2C === "object"
+      ? config.perProductFloorPercentsB2C
+      : config && typeof config.perProductFloorPercents === "object"
+        ? config.perProductFloorPercents
+        : {};
+  const rawPerProductFloorsB2B =
+    config && typeof config.perProductFloorPercentsB2B === "object"
+      ? config.perProductFloorPercentsB2B
       : {};
   /** @type {Record<string, number>} */
-  const perProductFloorPercents = {};
-  for (const [productId, floorPercent] of Object.entries(rawPerProductFloors)) {
-    perProductFloorPercents[productId] = clampPercent(
+  const perProductFloorPercentsB2C = {};
+  /** @type {Record<string, number>} */
+  const perProductFloorPercentsB2B = {};
+  for (const [productId, floorPercent] of Object.entries(rawPerProductFloorsB2C)) {
+    perProductFloorPercentsB2C[productId] = clampPercent(
       toNumber(floorPercent, DEFAULT_GLOBAL_FLOOR_PERCENT),
     );
   }
+  for (const [productId, floorPercent] of Object.entries(rawPerProductFloorsB2B)) {
+    perProductFloorPercentsB2B[productId] = clampPercent(
+      toNumber(floorPercent, DEFAULT_B2B_FLOOR_PERCENT),
+    );
+  }
+
+  const rawPerProductAllowZeroFinalPriceB2C =
+    config && typeof config.perProductAllowZeroFinalPriceB2C === "object"
+      ? config.perProductAllowZeroFinalPriceB2C
+      : config && typeof config.perProductAllowZeroFinalPrice === "object"
+        ? config.perProductAllowZeroFinalPrice
+        : {};
+  const rawPerProductAllowZeroFinalPriceB2B =
+    config && typeof config.perProductAllowZeroFinalPriceB2B === "object"
+      ? config.perProductAllowZeroFinalPriceB2B
+      : {};
+  /** @type {Record<string, boolean>} */
+  const perProductAllowZeroFinalPriceB2C = {};
+  /** @type {Record<string, boolean>} */
+  const perProductAllowZeroFinalPriceB2B = {};
+  for (const [productId, allowZero] of Object.entries(
+    rawPerProductAllowZeroFinalPriceB2C,
+  )) {
+    if (typeof allowZero === "boolean") {
+      perProductAllowZeroFinalPriceB2C[productId] = allowZero;
+    }
+  }
+  for (const [productId, allowZero] of Object.entries(
+    rawPerProductAllowZeroFinalPriceB2B,
+  )) {
+    if (typeof allowZero === "boolean") {
+      perProductAllowZeroFinalPriceB2B[productId] = allowZero;
+    }
+  }
 
   return {
+    b2bTag: typeof config.b2bTag === "string" ? config.b2bTag : "b2b",
     globalMinPricePercent: clampPercent(
       toNumber(config.globalMinPricePercent, DEFAULT_GLOBAL_FLOOR_PERCENT),
     ),
@@ -60,7 +103,10 @@ function parseConfig(input) {
       typeof config.allowZeroFinalPrice === "boolean"
         ? config.allowZeroFinalPrice
         : DEFAULT_ALLOW_ZERO_FINAL_PRICE,
-    perProductFloorPercents,
+    perProductFloorPercentsB2C,
+    perProductFloorPercentsB2B,
+    perProductAllowZeroFinalPriceB2C,
+    perProductAllowZeroFinalPriceB2B,
   };
 }
 
@@ -105,15 +151,25 @@ export function cartValidationsGenerateRun(input) {
       line?.merchandise?.__typename === "ProductVariant"
         ? line.merchandise.product.id
         : null;
+    const perProductFloorPercents = isB2B
+      ? config.perProductFloorPercentsB2B
+      : config.perProductFloorPercentsB2C;
+    const perProductAllowZeroFinalPrice = isB2B
+      ? config.perProductAllowZeroFinalPriceB2B
+      : config.perProductAllowZeroFinalPriceB2C;
     const lineFloorPercent =
-      productId && config.perProductFloorPercents[productId] != null
-        ? config.perProductFloorPercents[productId]
+      productId && perProductFloorPercents[productId] != null
+        ? perProductFloorPercents[productId]
         : floorPercent;
+    const lineAllowZeroFinalPrice =
+      productId && perProductAllowZeroFinalPrice[productId] != null
+        ? perProductAllowZeroFinalPrice[productId]
+        : config.allowZeroFinalPrice;
     const baseUnitPrice = resolveBaseUnitPrice(line);
     const finalUnitPrice = resolveFinalUnitPrice(line);
     const floorUnitPrice = roundMoney(baseUnitPrice * (lineFloorPercent / 100));
 
-    if (finalUnitPrice <= 0 && !config.allowZeroFinalPrice) {
+    if (finalUnitPrice <= 0 && !lineAllowZeroFinalPrice) {
       errors.push({
         message:
           "Checkout blocked by Margin Guard: zero final price is not allowed for this cart line.",

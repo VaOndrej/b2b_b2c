@@ -1,0 +1,32 @@
+query CartInput {
+  cart {
+    buyerIdentity {
+      customer {
+        hasAnyTag(tags: ["b2b"])
+      }
+    }
+    lines {
+      id
+      quantity
+      cost {
+        subtotalAmount {
+          amount
+        }
+      }
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          product {
+            id
+          }
+        }
+      }
+    }
+  }
+  discount {
+    discountClasses
+    metafield(namespace: "$app:margin_guard", key: "config") {
+      jsonValue
+    }
+  }
+}

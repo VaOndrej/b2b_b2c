@@ -169,25 +169,66 @@ export function buildFloorRuleset(config: {
 }
 
 export function buildCartValidationFunctionConfig(config: {
+  b2bTag: string;
   globalMinPricePercent: number;
   allowZeroFinalPrice: boolean;
   productFloors: Array<{
     productId: string;
     minPercentOfBasePrice: number;
     segment: string | null;
+    allowZeroFinalPrice: boolean | null;
   }>;
 }) {
-  const perProductFloorPercents: Record<string, number> = {};
+  const perProductFloorPercentsB2C: Record<string, number> = {};
+  const perProductFloorPercentsB2B: Record<string, number> = {};
+  const perProductAllowZeroFinalPriceB2C: Record<string, boolean> = {};
+  const perProductAllowZeroFinalPriceB2B: Record<string, boolean> = {};
   for (const floor of config.productFloors) {
-    if (floor.segment == null || floor.segment === "B2C") {
-      perProductFloorPercents[floor.productId] = floor.minPercentOfBasePrice;
+    const appliesToB2C = floor.segment == null || floor.segment === "B2C";
+    const appliesToB2B = floor.segment == null || floor.segment === "B2B";
+
+    if (appliesToB2C) {
+      perProductFloorPercentsB2C[floor.productId] = floor.minPercentOfBasePrice;
+      if (floor.allowZeroFinalPrice != null) {
+        perProductAllowZeroFinalPriceB2C[floor.productId] =
+          floor.allowZeroFinalPrice;
+      }
+    }
+
+    if (appliesToB2B) {
+      perProductFloorPercentsB2B[floor.productId] = floor.minPercentOfBasePrice;
+      if (floor.allowZeroFinalPrice != null) {
+        perProductAllowZeroFinalPriceB2B[floor.productId] =
+          floor.allowZeroFinalPrice;
+      }
     }
   }
 
   return {
+    b2bTag: config.b2bTag,
     globalMinPricePercent: config.globalMinPricePercent,
     b2bGlobalMinPricePercent: config.globalMinPricePercent,
     allowZeroFinalPrice: config.allowZeroFinalPrice,
-    perProductFloorPercents,
+    perProductFloorPercentsB2C,
+    perProductFloorPercentsB2B,
+    perProductAllowZeroFinalPriceB2C,
+    perProductAllowZeroFinalPriceB2B,
+  };
+}
+
+export function buildDiscountFunctionConfig(config: {
+  b2bTag: string;
+  globalMinPricePercent: number;
+  allowZeroFinalPrice: boolean;
+  productFloors: Array<{
+    productId: string;
+    minPercentOfBasePrice: number;
+    segment: string | null;
+    allowZeroFinalPrice: boolean | null;
+  }>;
+}) {
+  return {
+    ...buildCartValidationFunctionConfig(config),
+    requestedPercentOff: 100,
   };
 }

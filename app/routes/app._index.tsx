@@ -5,40 +5,94 @@ import {
   getOrCreateMarginGuardConfig,
   listMarginViolationLogs,
 } from "../services/margin-guard-config.server";
+import { getDiscountFunctionStatus } from "../services/discount-function-activation.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  const { admin } = await authenticate.admin(request);
+  const discountFunction = await getDiscountFunctionStatus(admin);
   const [config, logs] = await Promise.all([
     getOrCreateMarginGuardConfig(),
     listMarginViolationLogs(10),
   ]);
+  const last24hCount = logs.filter((item: { createdAt: Date }) => {
+    const createdAt = new Date(item.createdAt).getTime();
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    return createdAt >= oneDayAgo;
+  }).length;
 
-  return { config, recentViolationCount: logs.length };
+  return {
+    config,
+    recentViolationCount: logs.length,
+    last24hViolationCount: last24hCount,
+    discountFunction,
+  };
 };
 
 export default function AppDashboardRoute() {
-  const { config, recentViolationCount } = useLoaderData<typeof loader>();
+  const {
+    config,
+    recentViolationCount,
+    last24hViolationCount,
+    discountFunction,
+  } =
+    useLoaderData<typeof loader>();
+  const cartValidationActive = config.cartValidationStatus === "ACTIVE";
 
   return (
     <s-page heading="Margin Guard Dashboard">
       <s-section heading="MVP_1 status">
-        <s-stack direction="block" gap="small">
-          <s-paragraph>Segment detection: enabled (tag: {config.b2bTag})</s-paragraph>
-          <s-paragraph>
-            Global floor: {config.globalMinPricePercent}% of effective base price
-          </s-paragraph>
-          <s-paragraph>
-            Discount stacking: {config.allowStacking ? "allowed" : "single-discount only"}
-          </s-paragraph>
-          <s-paragraph>Per-product floor rules: {config.productFloors.length}</s-paragraph>
-          <s-paragraph>
-            Cart validation function status: {config.cartValidationStatus}
-            {config.cartValidationLastSyncAt
-              ? ` (last sync ${new Date(config.cartValidationLastSyncAt).toLocaleString()})`
-              : ""}
-          </s-paragraph>
-          <s-paragraph>Recent violations tracked: {recentViolationCount}</s-paragraph>
-        </s-stack>
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-stack direction="block" gap="small">
+            <s-paragraph>
+              Segment detection: enabled (tag: <strong>{config.b2bTag}</strong>)
+            </s-paragraph>
+            <s-paragraph>
+              Global floor:{" "}
+              <strong>{config.globalMinPricePercent}%</strong> of effective base
+              price
+            </s-paragraph>
+            <s-paragraph>
+              Discount stacking:{" "}
+              <strong>
+                {config.allowStacking ? "allowed" : "single-discount only"}
+              </strong>
+            </s-paragraph>
+            <s-paragraph>
+              Per-product floor rules: <strong>{config.productFloors.length}</strong>
+            </s-paragraph>
+            <s-paragraph>
+              Cart validation function:{" "}
+              <strong
+                style={{ color: cartValidationActive ? "#0b6e4f" : "#b42318" }}
+              >
+                {config.cartValidationStatus}
+              </strong>
+              {config.cartValidationLastSyncAt
+                ? ` (last sync ${new Date(config.cartValidationLastSyncAt).toLocaleString()})`
+                : ""}
+            </s-paragraph>
+            <s-paragraph>
+              Discount function:{" "}
+              <strong
+                style={{
+                  color:
+                    discountFunction.status === "ACTIVE"
+                      ? "#0b6e4f"
+                      : discountFunction.status === "INACTIVE"
+                        ? "#6941c6"
+                        : "#b42318",
+                }}
+              >
+                {discountFunction.status}
+              </strong>{" "}
+              ({discountFunction.message})
+            </s-paragraph>
+            <s-paragraph>
+              Violations: <strong>{recentViolationCount}</strong> recent /{" "}
+              <strong>{last24hViolationCount}</strong> in last 24h
+            </s-paragraph>
+          </s-stack>
+        </s-box>
       </s-section>
 
       <s-section heading="Next actions">
