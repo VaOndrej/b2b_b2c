@@ -129,6 +129,62 @@ test("floor mapping contract stays consistent across B2B/B2C maps", () => {
   );
 });
 
+test("tier pricing mapping contract stays consistent across B2B/B2C maps", () => {
+  const config = buildCartValidationFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+    productTierPrices: [
+      {
+        productId: "gid://shopify/Product/ALL_SEGMENTS",
+        segment: null,
+        minQuantity: 5,
+        unitPrice: 95,
+      },
+      {
+        productId: "gid://shopify/Product/ALL_SEGMENTS",
+        segment: "B2B",
+        minQuantity: 5,
+        unitPrice: 90,
+      },
+      {
+        productId: "gid://shopify/Product/B2B_ONLY",
+        segment: "B2B",
+        minQuantity: 10,
+        unitPrice: 80,
+      },
+      {
+        productId: "gid://shopify/Product/B2C_ONLY",
+        segment: "B2C",
+        minQuantity: 3,
+        unitPrice: 70,
+      },
+    ],
+  });
+
+  assert.deepEqual(config.perProductTierPricesB2B["gid://shopify/Product/ALL_SEGMENTS"], [
+    { minQuantity: 5, unitPrice: 90 },
+  ]);
+  assert.deepEqual(config.perProductTierPricesB2C["gid://shopify/Product/ALL_SEGMENTS"], [
+    { minQuantity: 5, unitPrice: 95 },
+  ]);
+  assert.deepEqual(config.perProductTierPricesB2B["gid://shopify/Product/B2B_ONLY"], [
+    { minQuantity: 10, unitPrice: 80 },
+  ]);
+  assert.equal(
+    config.perProductTierPricesB2C["gid://shopify/Product/B2B_ONLY"],
+    undefined,
+  );
+  assert.deepEqual(config.perProductTierPricesB2C["gid://shopify/Product/B2C_ONLY"], [
+    { minQuantity: 3, unitPrice: 70 },
+  ]);
+  assert.equal(
+    config.perProductTierPricesB2B["gid://shopify/Product/B2C_ONLY"],
+    undefined,
+  );
+});
+
 test("cart validation extension maps input variables from metafield config", async () => {
   const toml = await readFile(CART_VALIDATION_TOML_PATH, "utf8");
   assert.match(

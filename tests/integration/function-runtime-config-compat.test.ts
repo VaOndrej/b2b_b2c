@@ -373,3 +373,220 @@ test("runtime integration: B2B floor is computed from B2B override base price", 
     "[B2B OVERRIDE FLOOR FAIL] Final 200 should fail because floor is 210.",
   );
 });
+
+test("runtime integration: quantity tier pricing is used for B2C floor and discount cap", () => {
+  const productId = "gid://shopify/Product/TIER_B2C_5_PLUS";
+  const sharedConfig = {
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [
+      {
+        productId,
+        segment: "B2C" as const,
+        minPercentOfBasePrice: 70,
+        allowZeroFinalPrice: null,
+      },
+    ],
+    productTierPrices: [
+      {
+        productId,
+        segment: "B2C" as const,
+        minQuantity: 5,
+        unitPrice: 80,
+      },
+    ],
+  };
+
+  const cartConfig = buildCartValidationFunctionConfig(sharedConfig);
+  const allowedAtTierFloor = cartValidationsGenerateRun({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-tier-b2c-allowed",
+          quantity: 5,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "500.00" },
+            totalAmount: { amount: "300.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+
+  assert.equal(
+    allowedAtTierFloor.operations.length,
+    0,
+    "[TIER B2C FAIL] quantity 5 should use tier base 80, floor 56, final 60 should pass.",
+  );
+
+  const blockedBelowTierFloor = cartValidationsGenerateRun({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-tier-b2c-blocked",
+          quantity: 5,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "500.00" },
+            totalAmount: { amount: "250.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+
+  assert.equal(
+    blockedBelowTierFloor.operations.length > 0,
+    true,
+    "[TIER B2C FAIL] quantity 5 should use tier base 80, floor 56, final 50 should fail.",
+  );
+
+  const discountConfig = buildDiscountFunctionConfig(sharedConfig);
+  const discountResult = cartLinesDiscountsGenerateRun({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-tier-discount-b2c",
+          quantity: 5,
+          cost: {
+            subtotalAmount: { amount: "500.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: { jsonValue: discountConfig },
+    },
+  });
+
+  const tierCandidate =
+    discountResult.operations[0]?.productDiscountsAdd?.candidates?.[0] ?? null;
+  assert.equal(
+    tierCandidate?.value?.percentage?.value,
+    44,
+    "[TIER B2C FAIL] Max percent should be 44% from tier floor line 280/500.",
+  );
+});
+
+test("runtime integration: tier pricing has precedence over B2B override for quantity break", () => {
+  const productId = "gid://shopify/Product/TIER_B2B_OVERRIDE_PRECEDENCE";
+  const sharedConfig = {
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [
+      {
+        productId,
+        segment: "B2B" as const,
+        minPercentOfBasePrice: 70,
+        allowZeroFinalPrice: null,
+        b2bOverridePrice: 300,
+      },
+    ],
+    productTierPrices: [
+      {
+        productId,
+        segment: "B2B" as const,
+        minQuantity: 10,
+        unitPrice: 250,
+      },
+    ],
+  };
+
+  const cartConfig = buildCartValidationFunctionConfig(sharedConfig);
+  const cartResult = cartValidationsGenerateRun({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: true },
+      },
+      lines: [
+        {
+          id: "line-tier-b2b-precedence",
+          quantity: 10,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "1000.00" },
+            subtotalAmount: { amount: "10000.00" },
+            totalAmount: { amount: "2000.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+
+  assert.equal(
+    cartResult.operations.length,
+    0,
+    "[TIER B2B PRECEDENCE FAIL] Tier base 250 should win over B2B override 300.",
+  );
+
+  const discountConfig = buildDiscountFunctionConfig(sharedConfig);
+  const discountResult = cartLinesDiscountsGenerateRun({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: true },
+      },
+      lines: [
+        {
+          id: "line-tier-discount-b2b-precedence",
+          quantity: 10,
+          cost: {
+            subtotalAmount: { amount: "10000.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: { jsonValue: discountConfig },
+    },
+  });
+
+  const candidate =
+    discountResult.operations[0]?.productDiscountsAdd?.candidates?.[0] ?? null;
+  assert.equal(
+    candidate?.value?.percentage?.value,
+    82.5,
+    "[TIER B2B PRECEDENCE FAIL] Max percent should come from tier base 250 floor.",
+  );
+});

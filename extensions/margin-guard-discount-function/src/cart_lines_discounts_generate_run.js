@@ -29,6 +29,60 @@ function roundMoney(value) {
 }
 
 /**
+ * @param {Record<string, unknown>} rawMap
+ */
+function normalizeTierPriceMap(rawMap) {
+  /** @type {Record<string, Array<{ minQuantity: number; unitPrice: number }>>} */
+  const normalized = {};
+  for (const [productId, rawTiers] of Object.entries(rawMap)) {
+    if (!Array.isArray(rawTiers)) {
+      continue;
+    }
+    const tiers = [];
+    for (const rawTier of rawTiers) {
+      const minQuantity = Math.floor(toNumber(rawTier?.minQuantity, NaN));
+      const unitPrice = toNumber(rawTier?.unitPrice, NaN);
+      if (
+        !Number.isFinite(minQuantity) ||
+        !Number.isFinite(unitPrice) ||
+        minQuantity < 1 ||
+        unitPrice < 0
+      ) {
+        continue;
+      }
+      tiers.push({
+        minQuantity,
+        unitPrice: roundMoney(unitPrice),
+      });
+    }
+    tiers.sort((a, b) => a.minQuantity - b.minQuantity);
+    if (tiers.length > 0) {
+      normalized[productId] = tiers;
+    }
+  }
+  return normalized;
+}
+
+/**
+ * @param {Record<string, Array<{ minQuantity: number; unitPrice: number }>>} tierMap
+ * @param {string} productId
+ * @param {number} quantity
+ */
+function resolveTierUnitPrice(tierMap, productId, quantity) {
+  const tiers = tierMap[productId] ?? [];
+  let selected = null;
+  for (const tier of tiers) {
+    if (quantity < tier.minQuantity) {
+      continue;
+    }
+    if (!selected || tier.minQuantity > selected.minQuantity) {
+      selected = tier;
+    }
+  }
+  return selected ? selected.unitPrice : null;
+}
+
+/**
  * @param {RunInput} input
  */
 function parseConfig(input) {
@@ -56,6 +110,14 @@ function parseConfig(input) {
   const rawPerProductB2BOverridePrices =
     config && typeof config.perProductB2BOverridePrices === "object"
       ? config.perProductB2BOverridePrices
+      : {};
+  const rawPerProductTierPricesB2C =
+    config && typeof config.perProductTierPricesB2C === "object"
+      ? config.perProductTierPricesB2C
+      : {};
+  const rawPerProductTierPricesB2B =
+    config && typeof config.perProductTierPricesB2B === "object"
+      ? config.perProductTierPricesB2B
       : {};
 
   /** @type {Record<string, number>} */
@@ -97,6 +159,12 @@ function parseConfig(input) {
       perProductB2BOverridePrices[productId] = roundMoney(parsed);
     }
   }
+  const perProductTierPricesB2C = normalizeTierPriceMap(
+    /** @type {Record<string, unknown>} */ (rawPerProductTierPricesB2C),
+  );
+  const perProductTierPricesB2B = normalizeTierPriceMap(
+    /** @type {Record<string, unknown>} */ (rawPerProductTierPricesB2B),
+  );
 
   return {
     globalMinPricePercent: clampPercent(
@@ -115,6 +183,8 @@ function parseConfig(input) {
     perProductAllowZeroFinalPriceB2C,
     perProductAllowZeroFinalPriceB2B,
     perProductB2BOverridePrices,
+    perProductTierPricesB2C,
+    perProductTierPricesB2B,
   };
 }
 
@@ -172,6 +242,9 @@ export function cartLinesDiscountsGenerateRun(input) {
   const allowZeroMap = isB2B
     ? config.perProductAllowZeroFinalPriceB2B
     : config.perProductAllowZeroFinalPriceB2C;
+  const tierMap = isB2B
+    ? config.perProductTierPricesB2B
+    : config.perProductTierPricesB2C;
 
   const candidates = [];
   for (const line of input.cart.lines) {
@@ -195,11 +268,14 @@ export function cartLinesDiscountsGenerateRun(input) {
     }
     const quantity = Math.max(1, toNumber(line?.quantity, 1));
     const baseUnitPrice = roundMoney(lineSubtotal / quantity);
-    const overrideBaseUnitPrice =
+    const baseUnitPriceWithOverride =
       isB2B && config.perProductB2BOverridePrices[productId] != null
         ? config.perProductB2BOverridePrices[productId]
         : baseUnitPrice;
-    const floorUnitPrice = roundMoney(overrideBaseUnitPrice * (floorPercent / 100));
+    const tierUnitPrice = resolveTierUnitPrice(tierMap, productId, quantity);
+    const effectiveBaseUnitPrice =
+      tierUnitPrice != null ? tierUnitPrice : baseUnitPriceWithOverride;
+    const floorUnitPrice = roundMoney(effectiveBaseUnitPrice * (floorPercent / 100));
     const floorLinePrice = roundMoney(floorUnitPrice * quantity);
     const maxPercentByFloor = clampPercent(
       ((lineSubtotal - floorLinePrice) / lineSubtotal) * 100,

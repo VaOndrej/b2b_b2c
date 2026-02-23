@@ -33,6 +33,63 @@ function clampPercent(value) {
 }
 
 /**
+ * @param {Record<string, unknown>} rawMap
+ */
+function normalizeTierPriceMap(rawMap) {
+  /** @type {Record<string, Array<{ minQuantity: number; unitPrice: number }>>} */
+  const normalized = {};
+  for (const [productId, rawTiers] of Object.entries(rawMap)) {
+    if (!Array.isArray(rawTiers)) {
+      continue;
+    }
+    const tiers = [];
+    for (const rawTier of rawTiers) {
+      const minQuantity = Math.floor(toNumber(rawTier?.minQuantity, NaN));
+      const unitPrice = toNumber(rawTier?.unitPrice, NaN);
+      if (
+        !Number.isFinite(minQuantity) ||
+        !Number.isFinite(unitPrice) ||
+        minQuantity < 1 ||
+        unitPrice < 0
+      ) {
+        continue;
+      }
+      tiers.push({
+        minQuantity,
+        unitPrice: roundMoney(unitPrice),
+      });
+    }
+    tiers.sort((a, b) => a.minQuantity - b.minQuantity);
+    if (tiers.length > 0) {
+      normalized[productId] = tiers;
+    }
+  }
+  return normalized;
+}
+
+/**
+ * @param {Record<string, Array<{ minQuantity: number; unitPrice: number }>>} tierMap
+ * @param {string | null} productId
+ * @param {number} quantity
+ */
+function resolveTierUnitPrice(tierMap, productId, quantity) {
+  if (!productId) {
+    return null;
+  }
+  const tiers = tierMap[productId] ?? [];
+  let selected = null;
+  for (const tier of tiers) {
+    if (quantity < tier.minQuantity) {
+      continue;
+    }
+    if (!selected || tier.minQuantity > selected.minQuantity) {
+      selected = tier;
+    }
+  }
+  return selected ? selected.unitPrice : null;
+}
+
+/**
  * @param {CartValidationsGenerateRunInput} input
  */
 function parseConfig(input) {
@@ -76,6 +133,14 @@ function parseConfig(input) {
     config && typeof config.perProductB2BOverridePrices === "object"
       ? config.perProductB2BOverridePrices
       : {};
+  const rawPerProductTierPricesB2C =
+    config && typeof config.perProductTierPricesB2C === "object"
+      ? config.perProductTierPricesB2C
+      : {};
+  const rawPerProductTierPricesB2B =
+    config && typeof config.perProductTierPricesB2B === "object"
+      ? config.perProductTierPricesB2B
+      : {};
   /** @type {Record<string, boolean>} */
   const perProductAllowZeroFinalPriceB2C = {};
   /** @type {Record<string, boolean>} */
@@ -104,6 +169,12 @@ function parseConfig(input) {
       perProductB2BOverridePrices[productId] = roundMoney(parsed);
     }
   }
+  const perProductTierPricesB2C = normalizeTierPriceMap(
+    /** @type {Record<string, unknown>} */ (rawPerProductTierPricesB2C),
+  );
+  const perProductTierPricesB2B = normalizeTierPriceMap(
+    /** @type {Record<string, unknown>} */ (rawPerProductTierPricesB2B),
+  );
 
   return {
     b2bTag: typeof config.b2bTag === "string" ? config.b2bTag : "b2b",
@@ -122,6 +193,8 @@ function parseConfig(input) {
     perProductAllowZeroFinalPriceB2C,
     perProductAllowZeroFinalPriceB2B,
     perProductB2BOverridePrices,
+    perProductTierPricesB2C,
+    perProductTierPricesB2B,
   };
 }
 
@@ -185,14 +258,21 @@ export function cartValidationsGenerateRun(input) {
       productId && perProductAllowZeroFinalPrice[productId] != null
         ? perProductAllowZeroFinalPrice[productId]
         : config.allowZeroFinalPrice;
+    const quantity = Math.max(1, toNumber(line?.quantity, 1));
     const baseUnitPrice = resolveBaseUnitPrice(line);
     const finalUnitPrice = resolveFinalUnitPrice(line);
     const b2bOverrideBaseUnitPrice =
       isB2B && productId && config.perProductB2BOverridePrices[productId] != null
         ? config.perProductB2BOverridePrices[productId]
         : null;
-    const effectiveBaseUnitPrice =
+    const baseUnitPriceWithOverride =
       b2bOverrideBaseUnitPrice != null ? b2bOverrideBaseUnitPrice : baseUnitPrice;
+    const tierMap = isB2B
+      ? config.perProductTierPricesB2B
+      : config.perProductTierPricesB2C;
+    const tierUnitPrice = resolveTierUnitPrice(tierMap, productId, quantity);
+    const effectiveBaseUnitPrice =
+      tierUnitPrice != null ? tierUnitPrice : baseUnitPriceWithOverride;
     const floorUnitPrice = roundMoney(
       effectiveBaseUnitPrice * (lineFloorPercent / 100),
     );

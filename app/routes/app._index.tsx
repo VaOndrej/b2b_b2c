@@ -63,6 +63,10 @@ export default function AppDashboardRoute() {
               Per-product floor rules: <strong>{config.productFloors.length}</strong>
             </s-paragraph>
             <s-paragraph>
+              Per-product tier pricing rules:{" "}
+              <strong>{config.productTierPrices.length}</strong>
+            </s-paragraph>
+            <s-paragraph>
               Cart validation function:{" "}
               <strong
                 style={{ color: cartValidationActive ? "#0b6e4f" : "#b42318" }}

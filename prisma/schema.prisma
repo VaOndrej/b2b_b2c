@@ -46,6 +46,7 @@ model MarginGuardConfig {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   productFloors         ProductFloorRule[]
+  productTierPrices     ProductTierPriceRule[]
   violations            MarginViolationLog[]
 }
 
@@ -62,6 +63,20 @@ model ProductFloorRule {
   updatedAt             DateTime          @updatedAt
 
   @@unique([configId, productId, segment])
+}
+
+model ProductTierPriceRule {
+  id         String            @id @default(cuid())
+  configId   String
+  config     MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  productId  String
+  segment    String?
+  minQuantity Int
+  unitPrice  Float
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([configId, productId, segment, minQuantity])
 }
 
 model MarginViolationLog {

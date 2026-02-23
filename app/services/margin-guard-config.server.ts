@@ -8,10 +8,11 @@ function getMarginGuardPrismaOrThrow() {
   if (
     !client.marginGuardConfig ||
     !client.productFloorRule ||
+    !client.productTierPriceRule ||
     !client.marginViolationLog
   ) {
     throw new Error(
-      "Prisma client is out of date for MVP_1 models. Run `npx prisma generate` and restart `shopify app dev`.",
+      "Prisma client is out of date for Margin Guard models. Run `npx prisma generate` and restart `shopify app dev`.",
     );
   }
 
@@ -22,7 +23,7 @@ export async function getOrCreateMarginGuardConfig() {
   const db = getMarginGuardPrismaOrThrow();
   const existing = await db.marginGuardConfig.findUnique({
     where: { id: DEFAULT_CONFIG_ID },
-    include: { productFloors: true },
+    include: { productFloors: true, productTierPrices: true },
   });
 
   if (existing) {
@@ -31,7 +32,7 @@ export async function getOrCreateMarginGuardConfig() {
 
   return db.marginGuardConfig.create({
     data: { id: DEFAULT_CONFIG_ID },
-    include: { productFloors: true },
+    include: { productFloors: true, productTierPrices: true },
   });
 }
 
@@ -60,7 +61,7 @@ export async function updateGlobalMarginGuardConfig(input: {
       allowStacking: input.allowStacking,
       maxCombinedPercentOff: input.maxCombinedPercentOff,
     },
-    include: { productFloors: true },
+    include: { productFloors: true, productTierPrices: true },
   });
 }
 
@@ -106,6 +107,48 @@ export async function upsertProductFloorRule(input: {
 export async function deleteProductFloorRule(id: string) {
   const db = getMarginGuardPrismaOrThrow();
   return db.productFloorRule.delete({ where: { id } });
+}
+
+export async function upsertProductTierPriceRule(input: {
+  productId: string;
+  segment?: "B2B" | "B2C";
+  minQuantity: number;
+  unitPrice: number;
+}) {
+  const db = getMarginGuardPrismaOrThrow();
+  const normalizedMinQuantity = Math.max(1, Math.floor(input.minQuantity));
+  const existing = await db.productTierPriceRule.findFirst({
+    where: {
+      configId: DEFAULT_CONFIG_ID,
+      productId: input.productId,
+      segment: input.segment ?? null,
+      minQuantity: normalizedMinQuantity,
+    },
+  });
+
+  if (existing) {
+    return db.productTierPriceRule.update({
+      where: { id: existing.id },
+      data: {
+        unitPrice: input.unitPrice,
+      },
+    });
+  }
+
+  return db.productTierPriceRule.create({
+    data: {
+      configId: DEFAULT_CONFIG_ID,
+      productId: input.productId,
+      segment: input.segment,
+      minQuantity: normalizedMinQuantity,
+      unitPrice: input.unitPrice,
+    },
+  });
+}
+
+export async function deleteProductTierPriceRule(id: string) {
+  const db = getMarginGuardPrismaOrThrow();
+  return db.productTierPriceRule.delete({ where: { id } });
 }
 
 export async function listMarginViolationLogs(limit = 100) {

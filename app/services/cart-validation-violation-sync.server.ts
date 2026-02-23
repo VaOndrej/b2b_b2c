@@ -44,6 +44,14 @@ interface FunctionRunLog {
             perProductAllowZeroFinalPriceB2C?: Record<string, boolean>;
             perProductAllowZeroFinalPriceB2B?: Record<string, boolean>;
             perProductB2BOverridePrices?: Record<string, number>;
+            perProductTierPricesB2C?: Record<
+              string,
+              Array<{ minQuantity?: number; unitPrice?: number }>
+            >;
+            perProductTierPricesB2B?: Record<
+              string,
+              Array<{ minQuantity?: number; unitPrice?: number }>
+            >;
           };
         } | null;
       };
@@ -81,6 +89,34 @@ function resolveFinalUnitPrice(line: FunctionRunLogLine): number {
     return roundMoney(total / quantity);
   }
   return roundMoney(toNumber(line.cost?.amountPerQuantity?.amount, 0));
+}
+
+function resolveTierUnitPrice(
+  tierMap: Record<string, Array<{ minQuantity?: number; unitPrice?: number }>>,
+  productId: string,
+  quantity: number,
+): number | null {
+  const tiers = Array.isArray(tierMap[productId]) ? tierMap[productId] : [];
+  let selected: { minQuantity: number; unitPrice: number } | null = null;
+
+  for (const tier of tiers) {
+    const minQuantity = Math.floor(toNumber(tier?.minQuantity, NaN));
+    const unitPrice = toNumber(tier?.unitPrice, NaN);
+    if (
+      !Number.isFinite(minQuantity) ||
+      !Number.isFinite(unitPrice) ||
+      minQuantity < 1 ||
+      unitPrice < 0 ||
+      quantity < minQuantity
+    ) {
+      continue;
+    }
+    if (!selected || minQuantity > selected.minQuantity) {
+      selected = { minQuantity, unitPrice };
+    }
+  }
+
+  return selected ? roundMoney(selected.unitPrice) : null;
 }
 
 function hasBlockingErrors(log: FunctionRunLog): boolean {
@@ -155,6 +191,9 @@ export async function syncLiveCheckoutViolationsFromFunctionLogs(
     const perProductB2BOverridePrices = isB2B
       ? (config.perProductB2BOverridePrices ?? {})
       : {};
+    const perProductTierPrices = isB2B
+      ? (config.perProductTierPricesB2B ?? {})
+      : (config.perProductTierPricesB2C ?? {});
     const globalAllowZero = Boolean(config.allowZeroFinalPrice);
     const segment = isB2B ? "B2B" : "B2C";
     const logTimestamp = parsed.logTimestamp ?? fileName;
@@ -176,16 +215,24 @@ export async function syncLiveCheckoutViolationsFromFunctionLogs(
         perProductAllowZero[productId] != null
           ? Boolean(perProductAllowZero[productId])
           : globalAllowZero;
+      const quantity = Math.max(1, toNumber(line.quantity, 1));
       const basePrice = resolveBaseUnitPrice(line);
       const finalPrice = resolveFinalUnitPrice(line);
       const overrideBasePrice =
         perProductB2BOverridePrices[productId] != null
           ? toNumber(perProductB2BOverridePrices[productId], basePrice)
           : basePrice;
-      const effectiveBasePrice =
+      const overrideOrBasePrice =
         Number.isFinite(overrideBasePrice) && overrideBasePrice >= 0
           ? overrideBasePrice
           : basePrice;
+      const tierUnitPrice = resolveTierUnitPrice(
+        perProductTierPrices,
+        productId,
+        quantity,
+      );
+      const effectiveBasePrice =
+        tierUnitPrice != null ? tierUnitPrice : overrideOrBasePrice;
       const floorPrice = roundMoney(effectiveBasePrice * (lineFloorPercent / 100));
 
       const violationAmount =

@@ -8,8 +8,10 @@ import {
 } from "../services/discount-function-activation.server";
 import {
   deleteProductFloorRule,
+  deleteProductTierPriceRule,
   getOrCreateMarginGuardConfig,
   upsertProductFloorRule,
+  upsertProductTierPriceRule,
   updateGlobalMarginGuardConfig,
 } from "../services/margin-guard-config.server";
 
@@ -114,6 +116,29 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
+  if (intent === "save-product-tier-price") {
+    const productId = String(formData.get("productId") ?? "").trim();
+    const segmentRaw = String(formData.get("segment") ?? "").trim();
+    const minQuantity = Math.max(1, Math.floor(parseNumber(formData.get("minQuantity"), 1)));
+    const unitPrice = parseNumber(formData.get("unitPrice"), NaN);
+
+    if (productId && Number.isFinite(unitPrice) && unitPrice >= 0) {
+      await upsertProductTierPriceRule({
+        productId,
+        segment: segmentRaw === "B2B" || segmentRaw === "B2C" ? segmentRaw : undefined,
+        minQuantity,
+        unitPrice,
+      });
+    }
+  }
+
+  if (intent === "delete-product-tier-price") {
+    const id = String(formData.get("id") ?? "");
+    if (id) {
+      await deleteProductTierPriceRule(id);
+    }
+  }
+
   if (intent === "deactivate-discount-function") {
     const result = await deactivateDiscountFunction(admin);
     const url = new URL(request.url);
@@ -124,7 +149,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (
     intent === "save-global" ||
     intent === "save-product-floor" ||
-    intent === "delete-product-floor"
+    intent === "delete-product-floor" ||
+    intent === "save-product-tier-price" ||
+    intent === "delete-product-tier-price"
   ) {
     await ensureCartValidationActive(admin);
   }
@@ -273,6 +300,75 @@ export default function AppSettingsRoute() {
                   </s-text>
                   <form method="post">
                     <input type="hidden" name="intent" value="delete-product-floor" />
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" disabled={isSubmitting}>
+                      Delete
+                    </button>
+                  </form>
+                </s-stack>
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+
+      <s-section heading="Per-product tier pricing rules">
+        <form method="post">
+          <input type="hidden" name="intent" value="save-product-tier-price" />
+          <s-stack direction="block" gap="base">
+            <label>
+              Product ID
+              <input name="productId" required />
+            </label>
+            <label>
+              Segment (optional)
+              <select name="segment" defaultValue="">
+                <option value="">All segments</option>
+                <option value="B2B">B2B</option>
+                <option value="B2C">B2C</option>
+              </select>
+            </label>
+            <label>
+              Minimum quantity (tier starts at)
+              <input
+                name="minQuantity"
+                type="number"
+                min={1}
+                step={1}
+                defaultValue={1}
+              />
+            </label>
+            <label>
+              Tier unit price
+              <input
+                name="unitPrice"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="e.g. 450.00"
+                required
+              />
+            </label>
+            <button type="submit" disabled={isSubmitting}>
+              Save tier pricing rule
+            </button>
+          </s-stack>
+        </form>
+
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Configured tier pricing rules</s-heading>
+          {config.productTierPrices.length === 0 ? (
+            <s-paragraph>No per-product tier pricing rules yet.</s-paragraph>
+          ) : (
+            <s-stack direction="block" gap="small">
+              {config.productTierPrices.map((rule: any) => (
+                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
+                  <s-text>
+                    {rule.productId} | {rule.segment ?? "ALL"} | qty {rule.minQuantity}
+                    + | unit price: {rule.unitPrice}
+                  </s-text>
+                  <form method="post">
+                    <input type="hidden" name="intent" value="delete-product-tier-price" />
                     <input type="hidden" name="id" value={rule.id} />
                     <button type="submit" disabled={isSubmitting}>
                       Delete
