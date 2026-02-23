@@ -82,6 +82,7 @@ MVP_2 – B2B Pricing Lite
  ├─ Tier pricing (quantity-based)
  ├─ Segment-based coupon validation
  └─ Basic product visibility (B2B-only flag)
+   └─ Nový app extension na product visibility
 
 
 MVP_3 – Quantity & Operational Rules
