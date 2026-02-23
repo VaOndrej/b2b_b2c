@@ -102,6 +102,10 @@ MVP_4 – Advanced Discount Orchestration
  ├─ Per-segment discount caps
  └─ Pricing simulator (admin preview)
 
+MVP_5_5
+├─ Po tomhle nesmí být žádný technický dluh
+├─ Vyřešit duplicitní log cart validation
+
 MVP_5 – Segmented Storefront (UX Layer)
  ├─ Segment-based content sections
  ├─ B2B-only collections
