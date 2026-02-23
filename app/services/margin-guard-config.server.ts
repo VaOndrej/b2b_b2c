@@ -9,6 +9,7 @@ function getMarginGuardPrismaOrThrow() {
     !client.marginGuardConfig ||
     !client.productFloorRule ||
     !client.productTierPriceRule ||
+    !client.productVisibilityRule ||
     !client.couponSegmentRule ||
     !client.marginViolationLog
   ) {
@@ -27,6 +28,7 @@ export async function getOrCreateMarginGuardConfig() {
     include: {
       productFloors: true,
       productTierPrices: true,
+      productVisibilityRules: true,
       couponSegmentRules: true,
     },
   });
@@ -40,6 +42,7 @@ export async function getOrCreateMarginGuardConfig() {
     include: {
       productFloors: true,
       productTierPrices: true,
+      productVisibilityRules: true,
       couponSegmentRules: true,
     },
   });
@@ -73,6 +76,7 @@ export async function updateGlobalMarginGuardConfig(input: {
     include: {
       productFloors: true,
       productTierPrices: true,
+      productVisibilityRules: true,
       couponSegmentRules: true,
     },
   });
@@ -162,6 +166,79 @@ export async function upsertProductTierPriceRule(input: {
 export async function deleteProductTierPriceRule(id: string) {
   const db = getMarginGuardPrismaOrThrow();
   return db.productTierPriceRule.delete({ where: { id } });
+}
+
+function normalizeVisibilityMode(
+  value: string,
+): "ALL" | "B2B_ONLY" | "B2C_ONLY" | "CUSTOMER_ONLY" {
+  if (value === "B2B_ONLY" || value === "B2C_ONLY" || value === "CUSTOMER_ONLY") {
+    return value;
+  }
+  return "ALL";
+}
+
+function normalizeCustomerId(value: string | null | undefined): string | null {
+  const normalized = String(value ?? "").trim();
+  return normalized || null;
+}
+
+export async function upsertProductVisibilityRule(input: {
+  productId: string;
+  visibilityMode: "ALL" | "B2B_ONLY" | "B2C_ONLY" | "CUSTOMER_ONLY";
+  customerId?: string | null;
+}) {
+  const db = getMarginGuardPrismaOrThrow();
+  const productId = input.productId.trim();
+  if (!productId) {
+    return null;
+  }
+
+  const visibilityMode = normalizeVisibilityMode(input.visibilityMode);
+  const customerId =
+    visibilityMode === "CUSTOMER_ONLY"
+      ? normalizeCustomerId(input.customerId)
+      : null;
+  const existing = await db.productVisibilityRule.findFirst({
+    where: {
+      configId: DEFAULT_CONFIG_ID,
+      productId,
+    },
+  });
+
+  if (visibilityMode === "ALL") {
+    if (existing) {
+      await db.productVisibilityRule.delete({ where: { id: existing.id } });
+    }
+    return null;
+  }
+
+  if (visibilityMode === "CUSTOMER_ONLY" && !customerId) {
+    return null;
+  }
+
+  if (existing) {
+    return db.productVisibilityRule.update({
+      where: { id: existing.id },
+      data: {
+        visibilityMode,
+        customerId,
+      },
+    });
+  }
+
+  return db.productVisibilityRule.create({
+    data: {
+      configId: DEFAULT_CONFIG_ID,
+      productId,
+      visibilityMode,
+      customerId,
+    },
+  });
+}
+
+export async function deleteProductVisibilityRule(id: string) {
+  const db = getMarginGuardPrismaOrThrow();
+  return db.productVisibilityRule.delete({ where: { id } });
 }
 
 function normalizeCouponCode(code: string): string {

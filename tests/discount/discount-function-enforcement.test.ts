@@ -1,9 +1,35 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cartLinesDiscountsGenerateRun } from "../../extensions/margin-guard-discount-function/src/cart_lines_discounts_generate_run.js";
+import { cartLinesDiscountsGenerateRun as cartLinesDiscountsGenerateRunRaw } from "../../extensions/margin-guard-discount-function/src/cart_lines_discounts_generate_run.js";
+
+function runDiscountFunction(input: any) {
+  const lines = Array.isArray(input?.cart?.lines) ? input.cart.lines : [];
+  const normalizedLines = lines.map((line: any) => ({
+    ...line,
+    cost: {
+      ...line?.cost,
+      totalAmount:
+        line?.cost?.totalAmount ??
+        line?.cost?.subtotalAmount ?? { amount: "0.00" },
+    },
+  }));
+
+  return cartLinesDiscountsGenerateRunRaw({
+    ...input,
+    cart: {
+      ...input?.cart,
+      lines: normalizedLines,
+    },
+    localization: input?.localization ?? {
+      language: {
+        isoCode: "EN",
+      },
+    },
+  } as any);
+}
 
 test("discount function caps discount by margin floor", () => {
-  const result = cartLinesDiscountsGenerateRun({
+  const result = runDiscountFunction({
     cart: {
       buyerIdentity: { customer: { hasAnyTag: false } },
       lines: [

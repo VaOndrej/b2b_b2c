@@ -19,6 +19,9 @@ query CartInput(
         subtotalAmount {
           amount
         }
+        totalAmount {
+          amount
+        }
       }
       merchandise {
         __typename
@@ -39,5 +42,10 @@ query CartInput(
   enteredDiscountCodes {
     code
     rejectable
+  }
+  localization {
+    language {
+      isoCode
+    }
   }
 }

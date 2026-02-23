@@ -2,18 +2,43 @@ import type { Segment } from "../segment/segment.types";
 
 export interface VisibilityRule {
   productId: string;
-  visibleFor: Segment[];
+  visibilityMode: "ALL" | "B2B_ONLY" | "B2C_ONLY" | "CUSTOMER_ONLY";
+  customerId?: string;
+}
+
+export interface ProductVisibilityInput {
+  productId: string;
+  segment: Segment;
+  customerId?: string;
+  rules: VisibilityRule[];
+}
+
+function normalizeCustomerId(value: string | undefined): string {
+  return String(value ?? "").trim();
 }
 
 export function isProductVisible(
-  productId: string,
-  segment: Segment,
-  rules: VisibilityRule[],
+  input: ProductVisibilityInput,
 ): boolean {
-  const rule = rules.find((item) => item.productId === productId);
+  const rule = input.rules.find((item) => item.productId === input.productId);
   if (!rule) {
     return true;
   }
 
-  return rule.visibleFor.includes(segment);
+  if (rule.visibilityMode === "ALL") {
+    return true;
+  }
+  if (rule.visibilityMode === "B2B_ONLY") {
+    return input.segment === "B2B";
+  }
+  if (rule.visibilityMode === "B2C_ONLY") {
+    return input.segment === "B2C";
+  }
+  if (rule.visibilityMode === "CUSTOMER_ONLY") {
+    const expectedCustomerId = normalizeCustomerId(rule.customerId);
+    const currentCustomerId = normalizeCustomerId(input.customerId);
+    return Boolean(expectedCustomerId) && expectedCustomerId === currentCustomerId;
+  }
+
+  return true;
 }

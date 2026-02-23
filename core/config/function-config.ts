@@ -13,6 +13,12 @@ interface ProductTierPriceInput {
   unitPrice: number;
 }
 
+interface ProductVisibilityRuleInput {
+  productId: string;
+  visibilityMode: string;
+  customerId?: string | null;
+}
+
 interface CouponSegmentRuleInput {
   code: string;
   allowedSegment: string;
@@ -22,8 +28,11 @@ interface MarginGuardFunctionConfigInput {
   b2bTag: string;
   globalMinPricePercent: number;
   allowZeroFinalPrice: boolean;
+  allowStacking?: boolean;
+  maxCombinedPercentOff?: number | null;
   productFloors: ProductFloorInput[];
   productTierPrices?: ProductTierPriceInput[];
+  productVisibilityRules?: ProductVisibilityRuleInput[];
   couponSegmentRules?: CouponSegmentRuleInput[];
 }
 
@@ -80,6 +89,34 @@ function normalizeAllowedSegment(value: string): "B2B" | "B2C" | "ALL" {
   return "ALL";
 }
 
+function normalizeVisibilityMode(
+  value: string,
+): "ALL" | "B2B_ONLY" | "B2C_ONLY" | "CUSTOMER_ONLY" {
+  if (value === "B2B_ONLY" || value === "B2C_ONLY" || value === "CUSTOMER_ONLY") {
+    return value;
+  }
+  return "ALL";
+}
+
+function normalizeCustomerId(customerId: string | null | undefined): string {
+  return String(customerId ?? "").trim();
+}
+
+function clampPercent(value: number): number {
+  return Math.min(100, Math.max(0, value));
+}
+
+function normalizePercentOrNull(value: unknown): number | null {
+  if (value == null) {
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return Math.round(clampPercent(parsed) * 100) / 100;
+}
+
 export function buildCartValidationFunctionConfig(
   config: MarginGuardFunctionConfigInput,
 ) {
@@ -90,10 +127,20 @@ export function buildCartValidationFunctionConfig(
   const perProductB2BOverridePrices: Record<string, number> = {};
   const perProductTierMapB2C: Record<string, Map<number, number>> = {};
   const perProductTierMapB2B: Record<string, Map<number, number>> = {};
+  const perProductVisibilityModes: Record<
+    string,
+    "B2B_ONLY" | "B2C_ONLY" | "CUSTOMER_ONLY"
+  > = {};
+  const perProductVisibilityCustomerIds: Record<string, string> = {};
   const couponSegmentRules: Record<string, "B2B" | "B2C" | "ALL"> = {};
   const normalizedB2BTag = config.b2bTag.trim() || "b2b";
   const productTierPrices = config.productTierPrices ?? [];
+  const productVisibilityRules = config.productVisibilityRules ?? [];
   const rawCouponSegmentRules = config.couponSegmentRules ?? [];
+  const allowStacking = config.allowStacking === true;
+  const maxCombinedPercentOff = normalizePercentOrNull(
+    config.maxCombinedPercentOff,
+  );
 
   for (const floor of config.productFloors) {
     const appliesToB2C = floor.segment == null || floor.segment === "B2C";
@@ -157,6 +204,30 @@ export function buildCartValidationFunctionConfig(
 
   const perProductTierPricesB2C = sortTierMap(perProductTierMapB2C);
   const perProductTierPricesB2B = sortTierMap(perProductTierMapB2B);
+  for (const rule of productVisibilityRules) {
+    const productId = rule.productId.trim();
+    if (!productId) {
+      continue;
+    }
+    const visibilityMode = normalizeVisibilityMode(rule.visibilityMode);
+    if (visibilityMode === "ALL") {
+      delete perProductVisibilityModes[productId];
+      delete perProductVisibilityCustomerIds[productId];
+      continue;
+    }
+    if (visibilityMode === "CUSTOMER_ONLY") {
+      const customerId = normalizeCustomerId(rule.customerId);
+      if (!customerId) {
+        continue;
+      }
+      perProductVisibilityModes[productId] = "CUSTOMER_ONLY";
+      perProductVisibilityCustomerIds[productId] = customerId;
+      continue;
+    }
+    perProductVisibilityModes[productId] = visibilityMode;
+    delete perProductVisibilityCustomerIds[productId];
+  }
+
   for (const rule of rawCouponSegmentRules) {
     const normalizedCode = normalizeCouponCode(rule.code);
     if (!normalizedCode) {
@@ -173,6 +244,8 @@ export function buildCartValidationFunctionConfig(
     globalMinPricePercent: config.globalMinPricePercent,
     b2bGlobalMinPricePercent: config.globalMinPricePercent,
     allowZeroFinalPrice: config.allowZeroFinalPrice,
+    allowStacking,
+    maxCombinedPercentOff,
     perProductFloorPercentsB2C,
     perProductFloorPercentsB2B,
     perProductAllowZeroFinalPriceB2C,
@@ -180,6 +253,8 @@ export function buildCartValidationFunctionConfig(
     perProductB2BOverridePrices,
     perProductTierPricesB2C,
     perProductTierPricesB2B,
+    perProductVisibilityModes,
+    perProductVisibilityCustomerIds,
     couponSegmentRules,
   };
 }

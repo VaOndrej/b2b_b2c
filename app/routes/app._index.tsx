@@ -67,6 +67,10 @@ export default function AppDashboardRoute() {
               <strong>{config.productTierPrices.length}</strong>
             </s-paragraph>
             <s-paragraph>
+              Product visibility rules:{" "}
+              <strong>{config.productVisibilityRules.length}</strong>
+            </s-paragraph>
+            <s-paragraph>
               Coupon segment rules: <strong>{config.couponSegmentRules.length}</strong>
             </s-paragraph>
             <s-paragraph>

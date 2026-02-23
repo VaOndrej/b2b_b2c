@@ -1,11 +1,46 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cartValidationsGenerateRun } from "../../extensions/margin-guard-cart-validation/src/cart_validations_generate_run.js";
-import { cartLinesDiscountsGenerateRun } from "../../extensions/margin-guard-discount-function/src/cart_lines_discounts_generate_run.js";
+import { cartValidationsGenerateRun as cartValidationsGenerateRunRaw } from "../../extensions/margin-guard-cart-validation/src/cart_validations_generate_run.js";
+import { cartLinesDiscountsGenerateRun as cartLinesDiscountsGenerateRunRaw } from "../../extensions/margin-guard-discount-function/src/cart_lines_discounts_generate_run.js";
 import {
   buildCartValidationFunctionConfig,
   buildDiscountFunctionConfig,
 } from "../../core/config/function-config.ts";
+
+const DEFAULT_LOCALIZATION = {
+  language: {
+    isoCode: "EN",
+  },
+};
+
+function runCartValidation(input: any) {
+  return cartValidationsGenerateRunRaw({
+    ...input,
+    localization: input?.localization ?? DEFAULT_LOCALIZATION,
+  } as any);
+}
+
+function runDiscountFunction(input: any) {
+  const lines = Array.isArray(input?.cart?.lines) ? input.cart.lines : [];
+  const normalizedLines = lines.map((line: any) => ({
+    ...line,
+    cost: {
+      ...line?.cost,
+      totalAmount:
+        line?.cost?.totalAmount ??
+        line?.cost?.subtotalAmount ?? { amount: "0.00" },
+    },
+  }));
+
+  return cartLinesDiscountsGenerateRunRaw({
+    ...input,
+    cart: {
+      ...input?.cart,
+      lines: normalizedLines,
+    },
+    localization: input?.localization ?? DEFAULT_LOCALIZATION,
+  } as any);
+}
 
 test("runtime integration: function inputs accept config payload from builders", () => {
   const sharedConfig = {
@@ -23,9 +58,11 @@ test("runtime integration: function inputs accept config payload from builders",
   };
 
   const cartConfig = buildCartValidationFunctionConfig(sharedConfig);
-  const cartValidationResult = cartValidationsGenerateRun({
+  const cartValidationResult = runCartValidation({
     cart: {
-      buyerIdentity: { customer: { hasAnyTag: false } },
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/1001", hasAnyTag: false },
+      },
       lines: [
         {
           id: "line-contract-1",
@@ -55,7 +92,7 @@ test("runtime integration: function inputs accept config payload from builders",
   assert.equal(cartValidationResult.operations.length > 0, true);
 
   const discountConfig = buildDiscountFunctionConfig(sharedConfig);
-  const discountResult = cartLinesDiscountsGenerateRun({
+  const discountResult = runDiscountFunction({
     cart: {
       buyerIdentity: { customer: { hasAnyTag: false } },
       lines: [
@@ -104,10 +141,10 @@ test("runtime integration: purchasing company is treated as B2B even without B2B
     perProductAllowZeroFinalPriceB2B: {},
   };
 
-  const cartAsB2C = cartValidationsGenerateRun({
+  const cartAsB2C = runCartValidation({
     cart: {
       buyerIdentity: {
-        customer: { hasAnyTag: false },
+        customer: { id: "gid://shopify/Customer/1002", hasAnyTag: false },
       },
       lines: [
         {
@@ -131,11 +168,11 @@ test("runtime integration: purchasing company is treated as B2B even without B2B
   });
   assert.equal(cartAsB2C.operations.length > 0, true);
 
-  const cartAsB2BByCompany = cartValidationsGenerateRun({
+  const cartAsB2BByCompany = runCartValidation({
     cart: {
       buyerIdentity: {
         purchasingCompany: { company: { id: "gid://shopify/Company/1" } },
-        customer: { hasAnyTag: false },
+        customer: { id: "gid://shopify/Customer/1003", hasAnyTag: false },
       },
       lines: [
         {
@@ -159,7 +196,7 @@ test("runtime integration: purchasing company is treated as B2B even without B2B
   });
   assert.equal(cartAsB2BByCompany.operations.length, 0);
 
-  const discountAsB2C = cartLinesDiscountsGenerateRun({
+  const discountAsB2C = runDiscountFunction({
     cart: {
       buyerIdentity: {
         customer: { hasAnyTag: false },
@@ -188,7 +225,7 @@ test("runtime integration: purchasing company is treated as B2B even without B2B
     discountAsB2C.operations[0]?.productDiscountsAdd?.candidates?.[0] ?? null;
   assert.equal(b2cCandidate?.value?.percentage?.value, 10);
 
-  const discountAsB2BByCompany = cartLinesDiscountsGenerateRun({
+  const discountAsB2BByCompany = runDiscountFunction({
     cart: {
       buyerIdentity: {
         purchasingCompany: { company: { id: "gid://shopify/Company/1" } },
@@ -238,10 +275,10 @@ test("runtime integration: per-product B2B override base price is enforced", () 
   };
 
   const cartConfig = buildCartValidationFunctionConfig(configWithB2BOverride);
-  const cartResult = cartValidationsGenerateRun({
+  const cartResult = runCartValidation({
     cart: {
       buyerIdentity: {
-        customer: { hasAnyTag: true },
+        customer: { id: "gid://shopify/Customer/1004", hasAnyTag: true },
       },
       lines: [
         {
@@ -266,7 +303,7 @@ test("runtime integration: per-product B2B override base price is enforced", () 
   assert.equal(cartResult.operations.length > 0, true);
 
   const discountConfig = buildDiscountFunctionConfig(configWithB2BOverride);
-  const discountResult = cartLinesDiscountsGenerateRun({
+  const discountResult = runDiscountFunction({
     cart: {
       buyerIdentity: {
         customer: { hasAnyTag: true },
@@ -313,10 +350,10 @@ test("runtime integration: B2B floor is computed from B2B override base price", 
     ],
   });
 
-  const allowedAtFloor = cartValidationsGenerateRun({
+  const allowedAtFloor = runCartValidation({
     cart: {
       buyerIdentity: {
-        customer: { hasAnyTag: true },
+        customer: { id: "gid://shopify/Customer/1005", hasAnyTag: true },
       },
       lines: [
         {
@@ -345,10 +382,10 @@ test("runtime integration: B2B floor is computed from B2B override base price", 
     "[B2B OVERRIDE FLOOR FAIL] Final 300 should pass because floor is 300 * 0.70 = 210.",
   );
 
-  const blockedBelowFloor = cartValidationsGenerateRun({
+  const blockedBelowFloor = runCartValidation({
     cart: {
       buyerIdentity: {
-        customer: { hasAnyTag: true },
+        customer: { id: "gid://shopify/Customer/1006", hasAnyTag: true },
       },
       lines: [
         {
@@ -403,10 +440,10 @@ test("runtime integration: quantity tier pricing is used for B2C floor and disco
   };
 
   const cartConfig = buildCartValidationFunctionConfig(sharedConfig);
-  const allowedAtTierFloor = cartValidationsGenerateRun({
+  const allowedAtTierFloor = runCartValidation({
     cart: {
       buyerIdentity: {
-        customer: { hasAnyTag: false },
+        customer: { id: "gid://shopify/Customer/1007", hasAnyTag: false },
       },
       lines: [
         {
@@ -435,10 +472,10 @@ test("runtime integration: quantity tier pricing is used for B2C floor and disco
     "[TIER B2C FAIL] quantity 5 should use tier base 80, floor 56, final 60 should pass.",
   );
 
-  const blockedBelowTierFloor = cartValidationsGenerateRun({
+  const blockedBelowTierFloor = runCartValidation({
     cart: {
       buyerIdentity: {
-        customer: { hasAnyTag: false },
+        customer: { id: "gid://shopify/Customer/1008", hasAnyTag: false },
       },
       lines: [
         {
@@ -468,7 +505,7 @@ test("runtime integration: quantity tier pricing is used for B2C floor and disco
   );
 
   const discountConfig = buildDiscountFunctionConfig(sharedConfig);
-  const discountResult = cartLinesDiscountsGenerateRun({
+  const discountResult = runDiscountFunction({
     cart: {
       buyerIdentity: {
         customer: { hasAnyTag: false },
@@ -529,10 +566,10 @@ test("runtime integration: tier pricing has precedence over B2B override for qua
   };
 
   const cartConfig = buildCartValidationFunctionConfig(sharedConfig);
-  const cartResult = cartValidationsGenerateRun({
+  const cartResult = runCartValidation({
     cart: {
       buyerIdentity: {
-        customer: { hasAnyTag: true },
+        customer: { id: "gid://shopify/Customer/1009", hasAnyTag: true },
       },
       lines: [
         {
@@ -562,7 +599,7 @@ test("runtime integration: tier pricing has precedence over B2B override for qua
   );
 
   const discountConfig = buildDiscountFunctionConfig(sharedConfig);
-  const discountResult = cartLinesDiscountsGenerateRun({
+  const discountResult = runDiscountFunction({
     cart: {
       buyerIdentity: {
         customer: { hasAnyTag: true },
@@ -607,7 +644,7 @@ test("runtime integration: coupon code is rejected when segment rule does not ma
     couponSegmentRules: [{ code: "VIP20", allowedSegment: "B2B" }],
   });
 
-  const b2cResult = cartLinesDiscountsGenerateRun({
+  const b2cResult = runDiscountFunction({
     cart: {
       buyerIdentity: {
         customer: { hasAnyTag: false },
@@ -640,7 +677,7 @@ test("runtime integration: coupon code is rejected when segment rule does not ma
     { code: "VIP20" },
   ]);
 
-  const b2bResult = cartLinesDiscountsGenerateRun({
+  const b2bResult = runDiscountFunction({
     cart: {
       buyerIdentity: {
         customer: { hasAnyTag: true },
@@ -673,5 +710,287 @@ test("runtime integration: coupon code is rejected when segment rule does not ma
     b2bRejectOperation,
     undefined,
     "[COUPON SEGMENT FAIL] B2B should not reject B2B-only coupon.",
+  );
+});
+
+test("runtime integration: allowStacking=false rejects extra entered discount codes", () => {
+  const productId = "gid://shopify/Product/STACKING_RULE";
+  const config = buildDiscountFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 0,
+    allowZeroFinalPrice: false,
+    allowStacking: false,
+    productFloors: [],
+  });
+
+  const result = runDiscountFunction({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-stacking",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: { jsonValue: config },
+    },
+    enteredDiscountCodes: [
+      { code: "first10", rejectable: true },
+      { code: "second5", rejectable: true },
+    ],
+    localization: {
+      language: { isoCode: "EN" as any },
+    },
+  } as any);
+
+  const rejectOperation = result.operations.find(
+    (operation) => operation?.enteredDiscountCodesReject != null,
+  );
+  assert.deepEqual(rejectOperation?.enteredDiscountCodesReject?.codes, [
+    { code: "SECOND5" },
+  ]);
+  assert.equal(
+    rejectOperation?.enteredDiscountCodesReject?.message.includes("Multiple discount codes"),
+    true,
+  );
+});
+
+test("runtime integration: maxCombinedPercentOff caps candidate by remaining percent", () => {
+  const productId = "gid://shopify/Product/COMBINED_CAP";
+  const config = buildDiscountFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 0,
+    allowZeroFinalPrice: false,
+    allowStacking: true,
+    maxCombinedPercentOff: 40,
+    productFloors: [],
+  });
+
+  const capped = runDiscountFunction({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-combined-cap-1",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "80.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: { jsonValue: config },
+    },
+    enteredDiscountCodes: [],
+  } as any);
+
+  const candidate =
+    capped.operations[0]?.productDiscountsAdd?.candidates?.[0] ?? null;
+  assert.equal(
+    candidate?.value?.percentage?.value,
+    20,
+    "[COMBINED CAP FAIL] Existing 20% discount should leave only 20% for this function.",
+  );
+
+  const fullyBlocked = runDiscountFunction({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-combined-cap-2",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "50.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: { jsonValue: config },
+    },
+    enteredDiscountCodes: [],
+  } as any);
+
+  const fullBlockCandidate =
+    fullyBlocked.operations[0]?.productDiscountsAdd?.candidates?.[0] ?? null;
+  assert.equal(
+    fullBlockCandidate,
+    null,
+    "[COMBINED CAP FAIL] Existing 50% discount should block new candidate when max cap is 40%.",
+  );
+});
+
+test("runtime integration: product visibility rules block disallowed segment and customer", () => {
+  const b2bOnlyProductId = "gid://shopify/Product/VISIBILITY_B2B_ONLY";
+  const customerOnlyProductId = "gid://shopify/Product/VISIBILITY_CUSTOMER_ONLY";
+  const allowedCustomerId = "gid://shopify/Customer/4242";
+  const cartConfig = buildCartValidationFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+    productVisibilityRules: [
+      {
+        productId: b2bOnlyProductId,
+        visibilityMode: "B2B_ONLY",
+      },
+      {
+        productId: customerOnlyProductId,
+        visibilityMode: "CUSTOMER_ONLY",
+        customerId: allowedCustomerId,
+      },
+    ],
+  });
+
+  const blockedB2C = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2001", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-visibility-b2c-blocked",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: b2bOnlyProductId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(blockedB2C.operations.length > 0, true);
+  assert.equal(
+    blockedB2C.operations[0]?.validationAdd?.errors?.[0]?.message.includes(
+      "not available",
+    ),
+    true,
+  );
+
+  const allowedB2B = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2002", hasAnyTag: true },
+      },
+      lines: [
+        {
+          id: "line-visibility-b2b-allowed",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: b2bOnlyProductId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(
+    allowedB2B.operations.length,
+    0,
+    "[VISIBILITY FAIL] B2B customer should be allowed for B2B-only product.",
+  );
+
+  const blockedCustomerMismatch = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/9999", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-visibility-customer-blocked",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: customerOnlyProductId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(blockedCustomerMismatch.operations.length > 0, true);
+
+  const allowedSpecificCustomer = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: allowedCustomerId, hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-visibility-customer-allowed",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: customerOnlyProductId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(
+    allowedSpecificCustomer.operations.length,
+    0,
+    "[VISIBILITY FAIL] Specific customer should be allowed for customer-only product.",
   );
 });

@@ -1,11 +1,26 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cartValidationsGenerateRun } from "../../extensions/margin-guard-cart-validation/src/cart_validations_generate_run.js";
+import { cartValidationsGenerateRun as cartValidationsGenerateRunRaw } from "../../extensions/margin-guard-cart-validation/src/cart_validations_generate_run.js";
+
+const DEFAULT_LOCALIZATION = {
+  language: {
+    isoCode: "EN",
+  },
+};
+
+function runCartValidation(input: any) {
+  return cartValidationsGenerateRunRaw({
+    ...input,
+    localization: input?.localization ?? DEFAULT_LOCALIZATION,
+  } as any);
+}
 
 test("shopify function uses totalAmount for discounted checkout validation", () => {
-  const blockedByDiscountedTotal = cartValidationsGenerateRun({
+  const blockedByDiscountedTotal = runCartValidation({
     cart: {
-      buyerIdentity: { customer: { hasAnyTag: false } },
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/3101", hasAnyTag: false },
+      },
       lines: [
         {
           id: "line-total-amount-1",
@@ -45,9 +60,11 @@ test("shopify function uses totalAmount for discounted checkout validation", () 
     true,
   );
 
-  const allowedWhenTotalAboveFloor = cartValidationsGenerateRun({
+  const allowedWhenTotalAboveFloor = runCartValidation({
     cart: {
-      buyerIdentity: { customer: { hasAnyTag: false } },
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/3102", hasAnyTag: false },
+      },
       lines: [
         {
           id: "line-total-amount-2",

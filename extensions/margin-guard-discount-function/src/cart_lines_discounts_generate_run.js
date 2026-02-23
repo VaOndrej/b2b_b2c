@@ -5,6 +5,27 @@
 
 const DEFAULT_GLOBAL_FLOOR_PERCENT = 70;
 
+const MESSAGES = {
+  EN: {
+    candidatePrefix: "Eligible discount",
+    rejectBySegment:
+      "One or more discount codes are not available for your customer segment. Next step: remove unavailable codes and try again.",
+    rejectByStacking:
+      "Multiple discount codes are not allowed by current settings. Next step: keep only one code and try again.",
+    rejectBySegmentAndStacking:
+      "Some discount codes were rejected by segment eligibility and stacking policy. Next step: keep one eligible code and try again.",
+  },
+  CS: {
+    candidatePrefix: "Povolena sleva",
+    rejectBySegment:
+      "Nektere slevove kody nejsou dostupne pro vas segment. Dalsi krok: odeberte neplatne kody a zkuste znovu.",
+    rejectByStacking:
+      "Vice slevovych kodu neni podle aktualniho nastaveni povoleno. Dalsi krok: nechte pouze jeden kod a zkuste znovu.",
+    rejectBySegmentAndStacking:
+      "Nektere kody byly odmitnuty kvuli segmentu i pravidlum kombinace. Dalsi krok: nechte jeden platny kod a zkuste znovu.",
+  },
+};
+
 /**
  * @param {unknown} value
  * @param {number} fallback
@@ -26,6 +47,31 @@ function clampPercent(value) {
  */
 function roundMoney(value) {
   return Math.round(value * 100) / 100;
+}
+
+/**
+ * @param {unknown} value
+ */
+function normalizePercentOrNull(value) {
+  if (value == null) {
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return roundMoney(clampPercent(parsed));
+}
+
+/**
+ * @param {RunInput} input
+ */
+function resolveMessages(input) {
+  const isoCode = String(input?.localization?.language?.isoCode ?? "EN").toUpperCase();
+  if (isoCode.startsWith("CS")) {
+    return MESSAGES.CS;
+  }
+  return MESSAGES.EN;
 }
 
 /**
@@ -103,33 +149,56 @@ function resolveTierUnitPrice(tierMap, productId, quantity) {
  * @param {RunInput["enteredDiscountCodes"]} enteredDiscountCodes
  * @param {Record<string, "B2B" | "B2C" | "ALL">} couponSegmentRules
  * @param {"B2B" | "B2C"} segment
+ * @param {boolean} allowStacking
  */
 function resolveRejectedDiscountCodes(
   enteredDiscountCodes,
   couponSegmentRules,
   segment,
+  allowStacking,
 ) {
   const rejectedCodes = [];
+  let rejectedBySegment = false;
+  let rejectedByStacking = false;
   const seen = new Set();
+  let acceptedRejectableCount = 0;
   for (const enteredCode of enteredDiscountCodes ?? []) {
     const normalizedCode = normalizeCouponCode(enteredCode?.code);
     if (!normalizedCode || seen.has(normalizedCode)) {
       continue;
     }
     seen.add(normalizedCode);
+    const rejectable = enteredCode?.rejectable !== false;
     const allowedSegment = couponSegmentRules[normalizedCode];
-    if (
-      !allowedSegment ||
-      allowedSegment === "ALL" ||
-      allowedSegment === segment ||
-      enteredCode?.rejectable === false
-    ) {
+    const segmentMismatch =
+      allowedSegment != null &&
+      allowedSegment !== "ALL" &&
+      allowedSegment !== segment;
+    if (segmentMismatch && rejectable) {
+      rejectedCodes.push({ code: normalizedCode });
+      rejectedBySegment = true;
       continue;
     }
-    rejectedCodes.push({ code: normalizedCode });
+    if (
+      !segmentMismatch &&
+      !allowStacking &&
+      rejectable &&
+      acceptedRejectableCount >= 1
+    ) {
+      rejectedCodes.push({ code: normalizedCode });
+      rejectedByStacking = true;
+      continue;
+    }
+    if (!segmentMismatch && rejectable) {
+      acceptedRejectableCount += 1;
+    }
   }
 
-  return rejectedCodes;
+  return {
+    rejectedCodes,
+    rejectedBySegment,
+    rejectedByStacking,
+  };
 }
 
 /**
@@ -240,6 +309,8 @@ function parseConfig(input) {
       typeof config.allowZeroFinalPrice === "boolean"
         ? config.allowZeroFinalPrice
         : false,
+    allowStacking: config.allowStacking === true,
+    maxCombinedPercentOff: normalizePercentOrNull(config.maxCombinedPercentOff),
     requestedPercentOff: clampPercent(toNumber(config.requestedPercentOff, 100)),
     perProductFloorPercentsB2C,
     perProductFloorPercentsB2B,
@@ -256,15 +327,21 @@ function parseConfig(input) {
  * @param {number} requestedPercentOff
  * @param {number} maxPercentByFloor
  * @param {boolean} allowZeroFinalPrice
+ * @param {number | null} maxRemainingCombinedPercent
  */
 function resolveAllowedPercent(
   requestedPercentOff,
   maxPercentByFloor,
   allowZeroFinalPrice,
+  maxRemainingCombinedPercent,
 ) {
   const maxByZeroPolicy = allowZeroFinalPrice ? 100 : 99.99;
+  const maxByCombined =
+    maxRemainingCombinedPercent == null
+      ? 100
+      : clampPercent(maxRemainingCombinedPercent);
   return clampPercent(
-    Math.min(requestedPercentOff, maxPercentByFloor, maxByZeroPolicy),
+    Math.min(requestedPercentOff, maxPercentByFloor, maxByZeroPolicy, maxByCombined),
   );
 }
 
@@ -273,6 +350,13 @@ function resolveAllowedPercent(
  */
 function resolveLineSubtotal(line) {
   return Math.max(0, toNumber(line?.cost?.subtotalAmount?.amount, 0));
+}
+
+/**
+ * @param {RunInput["cart"]["lines"][number]} line
+ */
+function resolveLineTotal(line) {
+  return Math.max(0, toNumber(line?.cost?.totalAmount?.amount, 0));
 }
 
 /**
@@ -292,6 +376,7 @@ export function cartLinesDiscountsGenerateRun(input) {
   }
 
   const config = parseConfig(input);
+  const messages = resolveMessages(input);
   const hasPurchasingCompany = Boolean(
     input?.cart?.buyerIdentity?.purchasingCompany?.company?.id,
   );
@@ -310,10 +395,11 @@ export function cartLinesDiscountsGenerateRun(input) {
   const tierMap = isB2B
     ? config.perProductTierPricesB2B
     : config.perProductTierPricesB2C;
-  const rejectedCodes = resolveRejectedDiscountCodes(
+  const rejectedCodeResult = resolveRejectedDiscountCodes(
     input?.enteredDiscountCodes,
     config.couponSegmentRules,
     segment,
+    config.allowStacking,
   );
 
   const candidates = [];
@@ -333,6 +419,7 @@ export function cartLinesDiscountsGenerateRun(input) {
         ? allowZeroMap[productId]
         : config.allowZeroFinalPrice;
     const lineSubtotal = resolveLineSubtotal(line);
+    const lineTotal = resolveLineTotal(line);
     if (lineSubtotal <= 0) {
       continue;
     }
@@ -350,17 +437,25 @@ export function cartLinesDiscountsGenerateRun(input) {
     const maxPercentByFloor = clampPercent(
       ((lineSubtotal - floorLinePrice) / lineSubtotal) * 100,
     );
+    const existingPercentOff = clampPercent(
+      ((lineSubtotal - lineTotal) / lineSubtotal) * 100,
+    );
+    const maxRemainingCombinedPercent =
+      config.maxCombinedPercentOff == null
+        ? null
+        : roundMoney(config.maxCombinedPercentOff - existingPercentOff);
     const allowedPercentOff = resolveAllowedPercent(
       config.requestedPercentOff,
       maxPercentByFloor,
       allowZeroFinalPrice,
+      maxRemainingCombinedPercent,
     );
     if (allowedPercentOff <= 0) {
       continue;
     }
 
     candidates.push({
-      message: `Eligible discount (${allowedPercentOff.toFixed(2)}% max)`,
+      message: `${messages.candidatePrefix} (${allowedPercentOff.toFixed(2)}% max)`,
       targets: [{ cartLine: { id: line.id } }],
       value: {
         percentage: {
@@ -370,17 +465,22 @@ export function cartLinesDiscountsGenerateRun(input) {
     });
   }
 
-  if (candidates.length === 0 && rejectedCodes.length === 0) {
+  if (candidates.length === 0 && rejectedCodeResult.rejectedCodes.length === 0) {
     return { operations: [] };
   }
 
   const operations = [];
-  if (rejectedCodes.length > 0) {
+  if (rejectedCodeResult.rejectedCodes.length > 0) {
+    let rejectionMessage = messages.rejectBySegment;
+    if (rejectedCodeResult.rejectedBySegment && rejectedCodeResult.rejectedByStacking) {
+      rejectionMessage = messages.rejectBySegmentAndStacking;
+    } else if (rejectedCodeResult.rejectedByStacking) {
+      rejectionMessage = messages.rejectByStacking;
+    }
     operations.push({
       enteredDiscountCodesReject: {
-        codes: rejectedCodes,
-        message:
-          "This discount code is not available for your customer segment.",
+        codes: rejectedCodeResult.rejectedCodes,
+        message: rejectionMessage,
       },
     });
   }

@@ -9,10 +9,12 @@ import {
 import {
   deleteCouponSegmentRule,
   deleteProductFloorRule,
+  deleteProductVisibilityRule,
   deleteProductTierPriceRule,
   getOrCreateMarginGuardConfig,
   upsertCouponSegmentRule,
   upsertProductFloorRule,
+  upsertProductVisibilityRule,
   upsertProductTierPriceRule,
   updateGlobalMarginGuardConfig,
 } from "../services/margin-guard-config.server";
@@ -141,6 +143,32 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
+  if (intent === "save-product-visibility-rule") {
+    const productId = String(formData.get("productId") ?? "").trim();
+    const visibilityModeRaw = String(formData.get("visibilityMode") ?? "ALL").trim();
+    const customerId = String(formData.get("customerId") ?? "").trim();
+
+    if (productId) {
+      await upsertProductVisibilityRule({
+        productId,
+        visibilityMode:
+          visibilityModeRaw === "B2B_ONLY" ||
+          visibilityModeRaw === "B2C_ONLY" ||
+          visibilityModeRaw === "CUSTOMER_ONLY"
+            ? visibilityModeRaw
+            : "ALL",
+        customerId,
+      });
+    }
+  }
+
+  if (intent === "delete-product-visibility-rule") {
+    const id = String(formData.get("id") ?? "");
+    if (id) {
+      await deleteProductVisibilityRule(id);
+    }
+  }
+
   if (intent === "save-coupon-segment-rule") {
     const code = String(formData.get("code") ?? "").trim();
     const allowedSegmentRaw = String(formData.get("allowedSegment") ?? "ALL").trim();
@@ -175,6 +203,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     intent === "delete-product-floor" ||
     intent === "save-product-tier-price" ||
     intent === "delete-product-tier-price" ||
+    intent === "save-product-visibility-rule" ||
+    intent === "delete-product-visibility-rule" ||
     intent === "save-coupon-segment-rule" ||
     intent === "delete-coupon-segment-rule"
   ) {
@@ -394,6 +424,69 @@ export default function AppSettingsRoute() {
                   </s-text>
                   <form method="post">
                     <input type="hidden" name="intent" value="delete-product-tier-price" />
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" disabled={isSubmitting}>
+                      Delete
+                    </button>
+                  </form>
+                </s-stack>
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+
+      <s-section heading="Basic product visibility rules">
+        <s-paragraph>
+          Storefront enforcement: include
+          {" "}
+          <code>/apps/margin-guard/visibility-script</code>
+          {" "}
+          in your theme to hide restricted products before checkout.
+        </s-paragraph>
+        <form method="post">
+          <input type="hidden" name="intent" value="save-product-visibility-rule" />
+          <s-stack direction="block" gap="base">
+            <label>
+              Product ID
+              <input name="productId" required />
+            </label>
+            <label>
+              Visibility mode
+              <select name="visibilityMode" defaultValue="B2B_ONLY">
+                <option value="B2B_ONLY">B2B only</option>
+                <option value="B2C_ONLY">B2C only</option>
+                <option value="CUSTOMER_ONLY">Specific customer only</option>
+                <option value="ALL">Visible for all (removes rule)</option>
+              </select>
+            </label>
+            <label>
+              Customer ID (required only for specific customer mode)
+              <input
+                name="customerId"
+                placeholder="gid://shopify/Customer/123456789"
+              />
+            </label>
+            <button type="submit" disabled={isSubmitting}>
+              Save visibility rule
+            </button>
+          </s-stack>
+        </form>
+
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Configured visibility rules</s-heading>
+          {config.productVisibilityRules.length === 0 ? (
+            <s-paragraph>No visibility rules yet.</s-paragraph>
+          ) : (
+            <s-stack direction="block" gap="small">
+              {config.productVisibilityRules.map((rule: any) => (
+                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
+                  <s-text>
+                    {rule.productId} | {rule.visibilityMode}
+                    {rule.customerId ? ` | customer: ${rule.customerId}` : ""}
+                  </s-text>
+                  <form method="post">
+                    <input type="hidden" name="intent" value="delete-product-visibility-rule" />
                     <input type="hidden" name="id" value={rule.id} />
                     <button type="submit" disabled={isSubmitting}>
                       Delete

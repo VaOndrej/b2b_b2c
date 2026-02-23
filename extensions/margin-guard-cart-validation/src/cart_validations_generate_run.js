@@ -9,6 +9,29 @@ const DEFAULT_GLOBAL_FLOOR_PERCENT = 70;
 const DEFAULT_B2B_FLOOR_PERCENT = 70;
 const DEFAULT_ALLOW_ZERO_FINAL_PRICE = false;
 
+const MESSAGES = {
+  EN: {
+    visibility:
+      "Some items are not available for your customer segment or account. Next step: remove restricted items or use an eligible account.",
+    belowFloor:
+      "A discount would push at least one item below the minimum allowed price. Next step: reduce discount level or remove discount codes and try again.",
+    zeroFinal:
+      "A free line item is not allowed for this checkout. Next step: remove the free line or adjust discount settings.",
+    combinedCap:
+      "Combined discount exceeds the configured maximum for this checkout. Next step: remove one or more discounts and try again.",
+  },
+  CS: {
+    visibility:
+      "Nektere polozky nejsou dostupne pro vas segment nebo ucet. Dalsi krok: odeberte omezenou polozku nebo pouzijte odpovidajici ucet.",
+    belowFloor:
+      "Sleva by stlacila alespon jednu polozku pod minimalni povolenou cenu. Dalsi krok: snizte slevu nebo odeberte slevovy kod a zkuste znovu.",
+    zeroFinal:
+      "Polozka zdarma neni pro tento checkout povolena. Dalsi krok: odeberte zdarma polozku nebo upravte slevu.",
+    combinedCap:
+      "Kombinovana sleva prekrocila nastaveny maximalni limit. Dalsi krok: odeberte jednu nebo vice slev a zkuste znovu.",
+  },
+};
+
 /**
  * @param {unknown} value
  * @param {number} fallback
@@ -30,6 +53,49 @@ function roundMoney(value) {
  */
 function clampPercent(value) {
   return Math.max(0, Math.min(100, value));
+}
+
+/**
+ * @param {unknown} value
+ */
+function normalizeVisibilityMode(value) {
+  if (value === "B2B_ONLY" || value === "B2C_ONLY" || value === "CUSTOMER_ONLY") {
+    return value;
+  }
+  return null;
+}
+
+/**
+ * @param {unknown} value
+ */
+function normalizeCustomerId(value) {
+  return String(value ?? "").trim();
+}
+
+/**
+ * @param {unknown} value
+ */
+function normalizePercentOrNull(value) {
+  if (value == null) {
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return roundMoney(clampPercent(parsed));
+}
+
+/**
+ * @param {CartValidationsGenerateRunInput} input
+ */
+function resolveMessages(input) {
+  const typedInput = /** @type {any} */ (input);
+  const isoCode = String(typedInput?.localization?.language?.isoCode ?? "EN").toUpperCase();
+  if (isoCode.startsWith("CS")) {
+    return MESSAGES.CS;
+  }
+  return MESSAGES.EN;
 }
 
 /**
@@ -141,12 +207,24 @@ function parseConfig(input) {
     config && typeof config.perProductTierPricesB2B === "object"
       ? config.perProductTierPricesB2B
       : {};
+  const rawPerProductVisibilityModes =
+    config && typeof config.perProductVisibilityModes === "object"
+      ? config.perProductVisibilityModes
+      : {};
+  const rawPerProductVisibilityCustomerIds =
+    config && typeof config.perProductVisibilityCustomerIds === "object"
+      ? config.perProductVisibilityCustomerIds
+      : {};
   /** @type {Record<string, boolean>} */
   const perProductAllowZeroFinalPriceB2C = {};
   /** @type {Record<string, boolean>} */
   const perProductAllowZeroFinalPriceB2B = {};
   /** @type {Record<string, number>} */
   const perProductB2BOverridePrices = {};
+  /** @type {Record<string, "B2B_ONLY" | "B2C_ONLY" | "CUSTOMER_ONLY">} */
+  const perProductVisibilityModes = {};
+  /** @type {Record<string, string>} */
+  const perProductVisibilityCustomerIds = {};
   for (const [productId, allowZero] of Object.entries(
     rawPerProductAllowZeroFinalPriceB2C,
   )) {
@@ -175,6 +253,32 @@ function parseConfig(input) {
   const perProductTierPricesB2B = normalizeTierPriceMap(
     /** @type {Record<string, unknown>} */ (rawPerProductTierPricesB2B),
   );
+  for (const [productId, visibilityMode] of Object.entries(
+    rawPerProductVisibilityModes,
+  )) {
+    const normalizedVisibilityMode = normalizeVisibilityMode(visibilityMode);
+    if (!normalizedVisibilityMode) {
+      continue;
+    }
+    if (normalizedVisibilityMode === "CUSTOMER_ONLY") {
+      const normalizedCustomerId = normalizeCustomerId(
+        rawPerProductVisibilityCustomerIds[productId],
+      );
+      if (!normalizedCustomerId) {
+        continue;
+      }
+    }
+    perProductVisibilityModes[productId] = normalizedVisibilityMode;
+  }
+  for (const [productId, customerId] of Object.entries(
+    rawPerProductVisibilityCustomerIds,
+  )) {
+    const normalizedCustomerId = normalizeCustomerId(customerId);
+    if (!normalizedCustomerId) {
+      continue;
+    }
+    perProductVisibilityCustomerIds[productId] = normalizedCustomerId;
+  }
 
   return {
     b2bTag: typeof config.b2bTag === "string" ? config.b2bTag : "b2b",
@@ -188,6 +292,8 @@ function parseConfig(input) {
       typeof config.allowZeroFinalPrice === "boolean"
         ? config.allowZeroFinalPrice
         : DEFAULT_ALLOW_ZERO_FINAL_PRICE,
+    allowStacking: config.allowStacking === true,
+    maxCombinedPercentOff: normalizePercentOrNull(config.maxCombinedPercentOff),
     perProductFloorPercentsB2C,
     perProductFloorPercentsB2B,
     perProductAllowZeroFinalPriceB2C,
@@ -195,6 +301,8 @@ function parseConfig(input) {
     perProductB2BOverridePrices,
     perProductTierPricesB2C,
     perProductTierPricesB2B,
+    perProductVisibilityModes,
+    perProductVisibilityCustomerIds,
   };
 }
 
@@ -228,22 +336,48 @@ function resolveFinalUnitPrice(line) {
  */
 export function cartValidationsGenerateRun(input) {
   const config = parseConfig(input);
+  const messages = resolveMessages(input);
   const hasPurchasingCompany = Boolean(
     input?.cart?.buyerIdentity?.purchasingCompany?.company?.id,
   );
   const hasB2BTag = Boolean(input?.cart?.buyerIdentity?.customer?.hasAnyTag);
+  const customerId = normalizeCustomerId(input?.cart?.buyerIdentity?.customer?.id);
   const isB2B = hasPurchasingCompany || hasB2BTag;
   const floorPercent = isB2B
     ? config.b2bGlobalMinPricePercent
     : config.globalMinPricePercent;
 
+  let hasVisibilityViolation = false;
   let hasZeroFinalPriceViolation = false;
   let hasBelowFloorViolation = false;
+  let hasCombinedDiscountCapViolation = false;
   for (const line of input?.cart?.lines ?? []) {
     const productId =
       line?.merchandise?.__typename === "ProductVariant"
         ? line.merchandise.product.id
         : null;
+    const productVisibilityMode =
+      productId && config.perProductVisibilityModes[productId]
+        ? config.perProductVisibilityModes[productId]
+        : null;
+    if (productVisibilityMode === "B2B_ONLY" && !isB2B) {
+      hasVisibilityViolation = true;
+      continue;
+    }
+    if (productVisibilityMode === "B2C_ONLY" && isB2B) {
+      hasVisibilityViolation = true;
+      continue;
+    }
+    if (productVisibilityMode === "CUSTOMER_ONLY") {
+      const requiredCustomerId =
+        productId && config.perProductVisibilityCustomerIds[productId]
+          ? config.perProductVisibilityCustomerIds[productId]
+          : "";
+      if (!customerId || !requiredCustomerId || customerId !== requiredCustomerId) {
+        hasVisibilityViolation = true;
+        continue;
+      }
+    }
     const perProductFloorPercents = isB2B
       ? config.perProductFloorPercentsB2B
       : config.perProductFloorPercentsB2C;
@@ -276,6 +410,15 @@ export function cartValidationsGenerateRun(input) {
     const floorUnitPrice = roundMoney(
       effectiveBaseUnitPrice * (lineFloorPercent / 100),
     );
+    if (config.maxCombinedPercentOff != null && baseUnitPrice > 0) {
+      const lineCombinedPercentOff = clampPercent(
+        ((baseUnitPrice - finalUnitPrice) / baseUnitPrice) * 100,
+      );
+      if (lineCombinedPercentOff - config.maxCombinedPercentOff > 0.0001) {
+        hasCombinedDiscountCapViolation = true;
+        continue;
+      }
+    }
 
     if (finalUnitPrice <= 0 && !lineAllowZeroFinalPrice) {
       hasZeroFinalPriceViolation = true;
@@ -288,17 +431,27 @@ export function cartValidationsGenerateRun(input) {
   }
 
   const errors = [];
+  if (hasCombinedDiscountCapViolation) {
+    errors.push({
+      message: messages.combinedCap,
+      target: "$.cart",
+    });
+  }
+  if (hasVisibilityViolation) {
+    errors.push({
+      message: messages.visibility,
+      target: "$.cart",
+    });
+  }
   if (hasBelowFloorViolation) {
     errors.push({
-      message:
-        "Some discounts can't be applied because at least one item would fall below the minimum allowed price. Review your cart and try again.",
+      message: messages.belowFloor,
       target: "$.cart",
     });
   }
   if (hasZeroFinalPriceViolation) {
     errors.push({
-      message:
-        "Some discounts can't be applied because a free line item is not allowed for this checkout.",
+      message: messages.zeroFinal,
       target: "$.cart",
     });
   }

@@ -31,11 +31,23 @@ test("cart validation query variable contract matches generated config payload",
     /buyerIdentity\s*\{[\s\S]*purchasingCompany\s*\{[\s\S]*company\s*\{[\s\S]*id/,
     "[CONTRACT FAIL] Cart validation query musi nacitat purchasingCompany pro B2B role precedence.",
   );
+  assert.match(
+    query,
+    /customer\s*\{[\s\S]*id[\s\S]*hasAnyTag/,
+    "[CONTRACT FAIL] Cart validation query musi nacitat customer.id pro customer-specific visibility rules.",
+  );
+  assert.match(
+    query,
+    /localization\s*\{[\s\S]*language\s*\{[\s\S]*isoCode/,
+    "[CONTRACT FAIL] Cart validation query musi nacitat localization.language.isoCode pro lokalizovane message.",
+  );
 
   const cartConfig = buildCartValidationFunctionConfig({
     b2bTag: " wholesale ",
     globalMinPricePercent: 65,
     allowZeroFinalPrice: false,
+    allowStacking: true,
+    maxCombinedPercentOff: 42.5,
     productFloors: [],
   });
 
@@ -43,6 +55,16 @@ test("cart validation query variable contract matches generated config payload",
     cartConfig.b2bTags,
     ["wholesale"],
     "[CONTRACT FAIL] Generated cart validation config musi vzdy obsahovat normalizovane b2bTags.",
+  );
+  assert.equal(
+    cartConfig.allowStacking,
+    true,
+    "[CONTRACT FAIL] Cart validation config musi prenaset allowStacking.",
+  );
+  assert.equal(
+    cartConfig.maxCombinedPercentOff,
+    42.5,
+    "[CONTRACT FAIL] Cart validation config musi prenaset maxCombinedPercentOff.",
   );
 });
 
@@ -69,11 +91,23 @@ test("discount query variable contract matches generated config payload", async 
     /enteredDiscountCodes\s*\{[\s\S]*code[\s\S]*rejectable/,
     "[CONTRACT FAIL] Discount query musi nacitat enteredDiscountCodes pro segment-based coupon validation.",
   );
+  assert.match(
+    query,
+    /cost\s*\{[\s\S]*subtotalAmount[\s\S]*totalAmount/,
+    "[CONTRACT FAIL] Discount query musi nacitat subtotalAmount i totalAmount pro combined-discount cap.",
+  );
+  assert.match(
+    query,
+    /localization\s*\{[\s\S]*language\s*\{[\s\S]*isoCode/,
+    "[CONTRACT FAIL] Discount query musi nacitat localization.language.isoCode pro lokalizovane message.",
+  );
 
   const discountConfig = buildDiscountFunctionConfig({
     b2bTag: " wholesale ",
     globalMinPricePercent: 65,
     allowZeroFinalPrice: false,
+    allowStacking: false,
+    maxCombinedPercentOff: 35,
     productFloors: [],
   });
 
@@ -81,6 +115,16 @@ test("discount query variable contract matches generated config payload", async 
     discountConfig.b2bTags,
     ["wholesale"],
     "[CONTRACT FAIL] Generated discount config musi vzdy obsahovat normalizovane b2bTags.",
+  );
+  assert.equal(
+    discountConfig.allowStacking,
+    false,
+    "[CONTRACT FAIL] Discount config musi prenaset allowStacking.",
+  );
+  assert.equal(
+    discountConfig.maxCombinedPercentOff,
+    35,
+    "[CONTRACT FAIL] Discount config musi prenaset maxCombinedPercentOff.",
   );
 });
 
@@ -188,6 +232,43 @@ test("tier pricing mapping contract stays consistent across B2B/B2C maps", () =>
     config.perProductTierPricesB2B["gid://shopify/Product/B2C_ONLY"],
     undefined,
   );
+});
+
+test("product visibility mapping contract normalizes restrictive visibility rules", () => {
+  const config = buildCartValidationFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+    productVisibilityRules: [
+      {
+        productId: "gid://shopify/Product/B2B_ONLY",
+        visibilityMode: "B2B_ONLY",
+      },
+      {
+        productId: "gid://shopify/Product/B2C_ONLY",
+        visibilityMode: "B2C_ONLY",
+      },
+      {
+        productId: "gid://shopify/Product/CUSTOMER_ONLY",
+        visibilityMode: "CUSTOMER_ONLY",
+        customerId: " gid://shopify/Customer/42 ",
+      },
+      {
+        productId: "gid://shopify/Product/INVALID",
+        visibilityMode: "UNKNOWN",
+      },
+    ],
+  });
+
+  assert.deepEqual(config.perProductVisibilityModes, {
+    "gid://shopify/Product/B2B_ONLY": "B2B_ONLY",
+    "gid://shopify/Product/B2C_ONLY": "B2C_ONLY",
+    "gid://shopify/Product/CUSTOMER_ONLY": "CUSTOMER_ONLY",
+  });
+  assert.deepEqual(config.perProductVisibilityCustomerIds, {
+    "gid://shopify/Product/CUSTOMER_ONLY": "gid://shopify/Customer/42",
+  });
 });
 
 test("coupon segment mapping contract normalizes codes and allowed segments", () => {

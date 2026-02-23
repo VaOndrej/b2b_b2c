@@ -9,6 +9,7 @@ query CartValidationsGenerateRunInput(
         }
       }
       customer {
+        id
         hasAnyTag(tags: $b2bTags)
       }
     }
@@ -39,6 +40,11 @@ query CartValidationsGenerateRunInput(
   validation {
     metafield(namespace: "$app:margin_guard", key: "config") {
       jsonValue
+    }
+  }
+  localization {
+    language {
+      isoCode
     }
   }
 }
