@@ -7,9 +7,11 @@ import {
   getDiscountFunctionStatusWithAutoDisable,
 } from "../services/discount-function-activation.server";
 import {
+  deleteCouponSegmentRule,
   deleteProductFloorRule,
   deleteProductTierPriceRule,
   getOrCreateMarginGuardConfig,
+  upsertCouponSegmentRule,
   upsertProductFloorRule,
   upsertProductTierPriceRule,
   updateGlobalMarginGuardConfig,
@@ -139,6 +141,27 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
+  if (intent === "save-coupon-segment-rule") {
+    const code = String(formData.get("code") ?? "").trim();
+    const allowedSegmentRaw = String(formData.get("allowedSegment") ?? "ALL").trim();
+    if (code) {
+      await upsertCouponSegmentRule({
+        code,
+        allowedSegment:
+          allowedSegmentRaw === "B2B" || allowedSegmentRaw === "B2C"
+            ? allowedSegmentRaw
+            : "ALL",
+      });
+    }
+  }
+
+  if (intent === "delete-coupon-segment-rule") {
+    const id = String(formData.get("id") ?? "");
+    if (id) {
+      await deleteCouponSegmentRule(id);
+    }
+  }
+
   if (intent === "deactivate-discount-function") {
     const result = await deactivateDiscountFunction(admin);
     const url = new URL(request.url);
@@ -151,7 +174,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     intent === "save-product-floor" ||
     intent === "delete-product-floor" ||
     intent === "save-product-tier-price" ||
-    intent === "delete-product-tier-price"
+    intent === "delete-product-tier-price" ||
+    intent === "save-coupon-segment-rule" ||
+    intent === "delete-coupon-segment-rule"
   ) {
     await ensureCartValidationActive(admin);
   }
@@ -369,6 +394,53 @@ export default function AppSettingsRoute() {
                   </s-text>
                   <form method="post">
                     <input type="hidden" name="intent" value="delete-product-tier-price" />
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" disabled={isSubmitting}>
+                      Delete
+                    </button>
+                  </form>
+                </s-stack>
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+
+      <s-section heading="Coupon segment validation rules">
+        <form method="post">
+          <input type="hidden" name="intent" value="save-coupon-segment-rule" />
+          <s-stack direction="block" gap="base">
+            <label>
+              Coupon code
+              <input name="code" required placeholder="VIP20" />
+            </label>
+            <label>
+              Allowed segment
+              <select name="allowedSegment" defaultValue="ALL">
+                <option value="ALL">All segments</option>
+                <option value="B2B">B2B only</option>
+                <option value="B2C">B2C only</option>
+              </select>
+            </label>
+            <button type="submit" disabled={isSubmitting}>
+              Save coupon rule
+            </button>
+          </s-stack>
+        </form>
+
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Configured coupon rules</s-heading>
+          {config.couponSegmentRules.length === 0 ? (
+            <s-paragraph>No coupon segment rules yet.</s-paragraph>
+          ) : (
+            <s-stack direction="block" gap="small">
+              {config.couponSegmentRules.map((rule: any) => (
+                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
+                  <s-text>
+                    {rule.code} | allowed: {rule.allowedSegment}
+                  </s-text>
+                  <form method="post">
+                    <input type="hidden" name="intent" value="delete-coupon-segment-rule" />
                     <input type="hidden" name="id" value={rule.id} />
                     <button type="submit" disabled={isSubmitting}>
                       Delete

@@ -64,6 +64,11 @@ test("discount query variable contract matches generated config payload", async 
     /buyerIdentity\s*\{[\s\S]*purchasingCompany\s*\{[\s\S]*company\s*\{[\s\S]*id/,
     "[CONTRACT FAIL] Discount query musi nacitat purchasingCompany pro B2B role precedence.",
   );
+  assert.match(
+    query,
+    /enteredDiscountCodes\s*\{[\s\S]*code[\s\S]*rejectable/,
+    "[CONTRACT FAIL] Discount query musi nacitat enteredDiscountCodes pro segment-based coupon validation.",
+  );
 
   const discountConfig = buildDiscountFunctionConfig({
     b2bTag: " wholesale ",
@@ -183,6 +188,28 @@ test("tier pricing mapping contract stays consistent across B2B/B2C maps", () =>
     config.perProductTierPricesB2B["gid://shopify/Product/B2C_ONLY"],
     undefined,
   );
+});
+
+test("coupon segment mapping contract normalizes codes and allowed segments", () => {
+  const config = buildDiscountFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+    couponSegmentRules: [
+      { code: " vip20 ", allowedSegment: "B2B" },
+      { code: "retail10", allowedSegment: "B2C" },
+      { code: "all5", allowedSegment: "ALL" },
+      { code: "fallback", allowedSegment: "ANY_UNKNOWN_VALUE" },
+    ],
+  });
+
+  assert.deepEqual(config.couponSegmentRules, {
+    VIP20: "B2B",
+    RETAIL10: "B2C",
+    ALL5: "ALL",
+    FALLBACK: "ALL",
+  });
 });
 
 test("cart validation extension maps input variables from metafield config", async () => {

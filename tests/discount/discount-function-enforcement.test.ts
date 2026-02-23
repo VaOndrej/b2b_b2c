@@ -37,6 +37,7 @@ test("discount function caps discount by margin floor", () => {
         },
       },
     },
+    enteredDiscountCodes: [],
   });
 
   assert.equal(result.operations.length > 0, true);

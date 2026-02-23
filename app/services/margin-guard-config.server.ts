@@ -9,6 +9,7 @@ function getMarginGuardPrismaOrThrow() {
     !client.marginGuardConfig ||
     !client.productFloorRule ||
     !client.productTierPriceRule ||
+    !client.couponSegmentRule ||
     !client.marginViolationLog
   ) {
     throw new Error(
@@ -23,7 +24,11 @@ export async function getOrCreateMarginGuardConfig() {
   const db = getMarginGuardPrismaOrThrow();
   const existing = await db.marginGuardConfig.findUnique({
     where: { id: DEFAULT_CONFIG_ID },
-    include: { productFloors: true, productTierPrices: true },
+    include: {
+      productFloors: true,
+      productTierPrices: true,
+      couponSegmentRules: true,
+    },
   });
 
   if (existing) {
@@ -32,7 +37,11 @@ export async function getOrCreateMarginGuardConfig() {
 
   return db.marginGuardConfig.create({
     data: { id: DEFAULT_CONFIG_ID },
-    include: { productFloors: true, productTierPrices: true },
+    include: {
+      productFloors: true,
+      productTierPrices: true,
+      couponSegmentRules: true,
+    },
   });
 }
 
@@ -61,7 +70,11 @@ export async function updateGlobalMarginGuardConfig(input: {
       allowStacking: input.allowStacking,
       maxCombinedPercentOff: input.maxCombinedPercentOff,
     },
-    include: { productFloors: true, productTierPrices: true },
+    include: {
+      productFloors: true,
+      productTierPrices: true,
+      couponSegmentRules: true,
+    },
   });
 }
 
@@ -149,6 +162,57 @@ export async function upsertProductTierPriceRule(input: {
 export async function deleteProductTierPriceRule(id: string) {
   const db = getMarginGuardPrismaOrThrow();
   return db.productTierPriceRule.delete({ where: { id } });
+}
+
+function normalizeCouponCode(code: string): string {
+  return code.trim().toUpperCase();
+}
+
+function normalizeAllowedSegment(value: string): "B2B" | "B2C" | "ALL" {
+  if (value === "B2B" || value === "B2C") {
+    return value;
+  }
+  return "ALL";
+}
+
+export async function upsertCouponSegmentRule(input: {
+  code: string;
+  allowedSegment: "B2B" | "B2C" | "ALL";
+}) {
+  const db = getMarginGuardPrismaOrThrow();
+  const normalizedCode = normalizeCouponCode(input.code);
+  if (!normalizedCode) {
+    return null;
+  }
+  const allowedSegment = normalizeAllowedSegment(input.allowedSegment);
+  const existing = await db.couponSegmentRule.findFirst({
+    where: {
+      configId: DEFAULT_CONFIG_ID,
+      code: normalizedCode,
+    },
+  });
+
+  if (existing) {
+    return db.couponSegmentRule.update({
+      where: { id: existing.id },
+      data: {
+        allowedSegment,
+      },
+    });
+  }
+
+  return db.couponSegmentRule.create({
+    data: {
+      configId: DEFAULT_CONFIG_ID,
+      code: normalizedCode,
+      allowedSegment,
+    },
+  });
+}
+
+export async function deleteCouponSegmentRule(id: string) {
+  const db = getMarginGuardPrismaOrThrow();
+  return db.couponSegmentRule.delete({ where: { id } });
 }
 
 export async function listMarginViolationLogs(limit = 100) {

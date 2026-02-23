@@ -80,6 +80,7 @@ test("runtime integration: function inputs accept config payload from builders",
         jsonValue: discountConfig,
       },
     },
+    enteredDiscountCodes: [],
   });
 
   assert.equal(Array.isArray(discountResult.operations), true);
@@ -181,6 +182,7 @@ test("runtime integration: purchasing company is treated as B2B even without B2B
       discountClasses: ["PRODUCT" as any],
       metafield: { jsonValue: segmentAwareConfig },
     },
+    enteredDiscountCodes: [],
   });
   const b2cCandidate =
     discountAsB2C.operations[0]?.productDiscountsAdd?.candidates?.[0] ?? null;
@@ -210,6 +212,7 @@ test("runtime integration: purchasing company is treated as B2B even without B2B
       discountClasses: ["PRODUCT" as any],
       metafield: { jsonValue: segmentAwareConfig },
     },
+    enteredDiscountCodes: [],
   });
   const b2bCandidate =
     discountAsB2BByCompany.operations[0]?.productDiscountsAdd?.candidates?.[0] ??
@@ -286,6 +289,7 @@ test("runtime integration: per-product B2B override base price is enforced", () 
       discountClasses: ["PRODUCT" as any],
       metafield: { jsonValue: discountConfig },
     },
+    enteredDiscountCodes: [],
   });
   const candidate =
     discountResult.operations[0]?.productDiscountsAdd?.candidates?.[0] ?? null;
@@ -487,6 +491,7 @@ test("runtime integration: quantity tier pricing is used for B2C floor and disco
       discountClasses: ["PRODUCT" as any],
       metafield: { jsonValue: discountConfig },
     },
+    enteredDiscountCodes: [],
   });
 
   const tierCandidate =
@@ -580,6 +585,7 @@ test("runtime integration: tier pricing has precedence over B2B override for qua
       discountClasses: ["PRODUCT" as any],
       metafield: { jsonValue: discountConfig },
     },
+    enteredDiscountCodes: [],
   });
 
   const candidate =
@@ -588,5 +594,84 @@ test("runtime integration: tier pricing has precedence over B2B override for qua
     candidate?.value?.percentage?.value,
     82.5,
     "[TIER B2B PRECEDENCE FAIL] Max percent should come from tier base 250 floor.",
+  );
+});
+
+test("runtime integration: coupon code is rejected when segment rule does not match", () => {
+  const productId = "gid://shopify/Product/COUPON_SEGMENT_RULE";
+  const config = buildDiscountFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+    couponSegmentRules: [{ code: "VIP20", allowedSegment: "B2B" }],
+  });
+
+  const b2cResult = cartLinesDiscountsGenerateRun({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-coupon-b2c",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "100.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: { jsonValue: config },
+    },
+    enteredDiscountCodes: [{ code: "vip20", rejectable: true }],
+  });
+
+  const rejectOperation = b2cResult.operations.find(
+    (operation) => operation?.enteredDiscountCodesReject != null,
+  );
+  assert.deepEqual(rejectOperation?.enteredDiscountCodesReject?.codes, [
+    { code: "VIP20" },
+  ]);
+
+  const b2bResult = cartLinesDiscountsGenerateRun({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: true },
+      },
+      lines: [
+        {
+          id: "line-coupon-b2b",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "100.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: { jsonValue: config },
+    },
+    enteredDiscountCodes: [{ code: "VIP20", rejectable: true }],
+  });
+
+  const b2bRejectOperation = b2bResult.operations.find(
+    (operation) => operation?.enteredDiscountCodesReject != null,
+  );
+  assert.equal(
+    b2bRejectOperation,
+    undefined,
+    "[COUPON SEGMENT FAIL] B2B should not reject B2B-only coupon.",
   );
 });

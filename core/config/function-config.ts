@@ -13,12 +13,18 @@ interface ProductTierPriceInput {
   unitPrice: number;
 }
 
+interface CouponSegmentRuleInput {
+  code: string;
+  allowedSegment: string;
+}
+
 interface MarginGuardFunctionConfigInput {
   b2bTag: string;
   globalMinPricePercent: number;
   allowZeroFinalPrice: boolean;
   productFloors: ProductFloorInput[];
   productTierPrices?: ProductTierPriceInput[];
+  couponSegmentRules?: CouponSegmentRuleInput[];
 }
 
 interface TierPriceEntry {
@@ -63,6 +69,17 @@ function sortTierMap(
   return result;
 }
 
+function normalizeCouponCode(code: string): string {
+  return code.trim().toUpperCase();
+}
+
+function normalizeAllowedSegment(value: string): "B2B" | "B2C" | "ALL" {
+  if (value === "B2B" || value === "B2C") {
+    return value;
+  }
+  return "ALL";
+}
+
 export function buildCartValidationFunctionConfig(
   config: MarginGuardFunctionConfigInput,
 ) {
@@ -73,8 +90,10 @@ export function buildCartValidationFunctionConfig(
   const perProductB2BOverridePrices: Record<string, number> = {};
   const perProductTierMapB2C: Record<string, Map<number, number>> = {};
   const perProductTierMapB2B: Record<string, Map<number, number>> = {};
+  const couponSegmentRules: Record<string, "B2B" | "B2C" | "ALL"> = {};
   const normalizedB2BTag = config.b2bTag.trim() || "b2b";
   const productTierPrices = config.productTierPrices ?? [];
+  const rawCouponSegmentRules = config.couponSegmentRules ?? [];
 
   for (const floor of config.productFloors) {
     const appliesToB2C = floor.segment == null || floor.segment === "B2C";
@@ -138,6 +157,15 @@ export function buildCartValidationFunctionConfig(
 
   const perProductTierPricesB2C = sortTierMap(perProductTierMapB2C);
   const perProductTierPricesB2B = sortTierMap(perProductTierMapB2B);
+  for (const rule of rawCouponSegmentRules) {
+    const normalizedCode = normalizeCouponCode(rule.code);
+    if (!normalizedCode) {
+      continue;
+    }
+    couponSegmentRules[normalizedCode] = normalizeAllowedSegment(
+      rule.allowedSegment,
+    );
+  }
 
   return {
     b2bTag: normalizedB2BTag,
@@ -152,6 +180,7 @@ export function buildCartValidationFunctionConfig(
     perProductB2BOverridePrices,
     perProductTierPricesB2C,
     perProductTierPricesB2B,
+    couponSegmentRules,
   };
 }
 

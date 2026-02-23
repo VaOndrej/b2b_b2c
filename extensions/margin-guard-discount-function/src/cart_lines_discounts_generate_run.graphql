@@ -36,4 +36,8 @@ query CartInput(
       jsonValue
     }
   }
+  enteredDiscountCodes {
+    code
+    rejectable
+  }
 }

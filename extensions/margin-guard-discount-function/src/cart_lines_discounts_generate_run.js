@@ -29,6 +29,23 @@ function roundMoney(value) {
 }
 
 /**
+ * @param {string} code
+ */
+function normalizeCouponCode(code) {
+  return String(code ?? "").trim().toUpperCase();
+}
+
+/**
+ * @param {unknown} value
+ */
+function normalizeAllowedSegment(value) {
+  if (value === "B2B" || value === "B2C") {
+    return value;
+  }
+  return "ALL";
+}
+
+/**
  * @param {Record<string, unknown>} rawMap
  */
 function normalizeTierPriceMap(rawMap) {
@@ -83,6 +100,39 @@ function resolveTierUnitPrice(tierMap, productId, quantity) {
 }
 
 /**
+ * @param {RunInput["enteredDiscountCodes"]} enteredDiscountCodes
+ * @param {Record<string, "B2B" | "B2C" | "ALL">} couponSegmentRules
+ * @param {"B2B" | "B2C"} segment
+ */
+function resolveRejectedDiscountCodes(
+  enteredDiscountCodes,
+  couponSegmentRules,
+  segment,
+) {
+  const rejectedCodes = [];
+  const seen = new Set();
+  for (const enteredCode of enteredDiscountCodes ?? []) {
+    const normalizedCode = normalizeCouponCode(enteredCode?.code);
+    if (!normalizedCode || seen.has(normalizedCode)) {
+      continue;
+    }
+    seen.add(normalizedCode);
+    const allowedSegment = couponSegmentRules[normalizedCode];
+    if (
+      !allowedSegment ||
+      allowedSegment === "ALL" ||
+      allowedSegment === segment ||
+      enteredCode?.rejectable === false
+    ) {
+      continue;
+    }
+    rejectedCodes.push({ code: normalizedCode });
+  }
+
+  return rejectedCodes;
+}
+
+/**
  * @param {RunInput} input
  */
 function parseConfig(input) {
@@ -119,6 +169,10 @@ function parseConfig(input) {
     config && typeof config.perProductTierPricesB2B === "object"
       ? config.perProductTierPricesB2B
       : {};
+  const rawCouponSegmentRules =
+    config && typeof config.couponSegmentRules === "object"
+      ? config.couponSegmentRules
+      : {};
 
   /** @type {Record<string, number>} */
   const perProductFloorPercentsB2C = {};
@@ -130,6 +184,8 @@ function parseConfig(input) {
   const perProductAllowZeroFinalPriceB2B = {};
   /** @type {Record<string, number>} */
   const perProductB2BOverridePrices = {};
+  /** @type {Record<string, "B2B" | "B2C" | "ALL">} */
+  const couponSegmentRules = {};
 
   for (const [productId, floorPercent] of Object.entries(rawB2CFloors)) {
     perProductFloorPercentsB2C[productId] = clampPercent(
@@ -165,6 +221,13 @@ function parseConfig(input) {
   const perProductTierPricesB2B = normalizeTierPriceMap(
     /** @type {Record<string, unknown>} */ (rawPerProductTierPricesB2B),
   );
+  for (const [rawCode, allowedSegment] of Object.entries(rawCouponSegmentRules)) {
+    const normalizedCode = normalizeCouponCode(rawCode);
+    if (!normalizedCode) {
+      continue;
+    }
+    couponSegmentRules[normalizedCode] = normalizeAllowedSegment(allowedSegment);
+  }
 
   return {
     globalMinPricePercent: clampPercent(
@@ -185,6 +248,7 @@ function parseConfig(input) {
     perProductB2BOverridePrices,
     perProductTierPricesB2C,
     perProductTierPricesB2B,
+    couponSegmentRules,
   };
 }
 
@@ -233,6 +297,7 @@ export function cartLinesDiscountsGenerateRun(input) {
   );
   const hasB2BTag = Boolean(input?.cart?.buyerIdentity?.customer?.hasAnyTag);
   const isB2B = hasPurchasingCompany || hasB2BTag;
+  const segment = isB2B ? "B2B" : "B2C";
   const globalFloorPercent = isB2B
     ? config.b2bGlobalMinPricePercent
     : config.globalMinPricePercent;
@@ -245,6 +310,11 @@ export function cartLinesDiscountsGenerateRun(input) {
   const tierMap = isB2B
     ? config.perProductTierPricesB2B
     : config.perProductTierPricesB2C;
+  const rejectedCodes = resolveRejectedDiscountCodes(
+    input?.enteredDiscountCodes,
+    config.couponSegmentRules,
+    segment,
+  );
 
   const candidates = [];
   for (const line of input.cart.lines) {
@@ -300,18 +370,30 @@ export function cartLinesDiscountsGenerateRun(input) {
     });
   }
 
-  if (candidates.length === 0) {
+  if (candidates.length === 0 && rejectedCodes.length === 0) {
     return { operations: [] };
   }
 
-  return {
-    operations: [
-      {
-        productDiscountsAdd: {
-          candidates,
-          selectionStrategy: "ALL",
-        },
+  const operations = [];
+  if (rejectedCodes.length > 0) {
+    operations.push({
+      enteredDiscountCodesReject: {
+        codes: rejectedCodes,
+        message:
+          "This discount code is not available for your customer segment.",
       },
-    ],
+    });
+  }
+  if (candidates.length > 0) {
+    operations.push({
+      productDiscountsAdd: {
+        candidates,
+        selectionStrategy: "ALL",
+      },
+    });
+  }
+
+  return {
+    operations,
   };
 }
