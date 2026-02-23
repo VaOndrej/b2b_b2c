@@ -31,6 +31,14 @@ function normalizeHandle(raw: string): string {
   return String(raw ?? "").trim().toLowerCase();
 }
 
+function escapeSearchValue(raw: string): string {
+  return String(raw ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function buildHandleSearchQuery(handle: string): string {
+  return `handle:'${escapeSearchValue(handle)}'`;
+}
+
 function normalizeCustomerId(value: string | null | undefined): string {
   return String(value ?? "").trim();
 }
@@ -65,7 +73,7 @@ async function fetchProductIdsByHandles(
   const chunkSize = 25;
   for (let index = 0; index < uniqueHandles.length; index += chunkSize) {
     const chunk = uniqueHandles.slice(index, index + chunkSize);
-    const queryString = chunk.map((handle) => `handle:${handle}`).join(" OR ");
+    const queryString = chunk.map(buildHandleSearchQuery).join(" OR ");
     const response = await admin.graphql(
       `#graphql
         query ProductsByHandle($query: String!, $first: Int!) {
@@ -93,6 +101,34 @@ async function fetchProductIdsByHandles(
       }
       result[handle] = id;
     }
+  }
+
+  const missingHandles = uniqueHandles.filter((handle) => !result[handle]);
+  for (const handle of missingHandles) {
+    const response = await admin.graphql(
+      `#graphql
+        query ProductBySingleHandle($query: String!) {
+          products(first: 1, query: $query) {
+            nodes {
+              id
+              handle
+            }
+          }
+        }`,
+      {
+        variables: {
+          query: buildHandleSearchQuery(handle),
+        },
+      },
+    );
+    const payload = await response.json();
+    const node = payload?.data?.products?.nodes?.[0];
+    const normalizedHandle = normalizeHandle(node?.handle);
+    const productId = String(node?.id ?? "").trim();
+    if (!normalizedHandle || !productId) {
+      continue;
+    }
+    result[normalizedHandle] = productId;
   }
 
   return result;

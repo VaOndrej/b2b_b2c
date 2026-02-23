@@ -1,29 +1,52 @@
 import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
-import { getOrCreateMarginGuardConfig } from "../services/margin-guard-config.server";
 
 function escapeForJsString(input: string): string {
   return JSON.stringify(String(input ?? ""));
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { liquid } = await authenticate.public.appProxy(request);
-  const config = await getOrCreateMarginGuardConfig();
-  const url = new URL(request.url);
-  const proxyPrefix = String(url.searchParams.get("path_prefix") ?? "/apps/margin-guard");
+  await authenticate.public.appProxy(request);
+  const defaultProxyPrefix = "/apps/margin-guard";
   const script = `
 (() => {
-  const PROXY_PREFIX = ${escapeForJsString(proxyPrefix)};
-  const VISIBILITY_ENDPOINT = PROXY_PREFIX + "/visibility";
-  const B2B_TAG = ${escapeForJsString(config.b2bTag.trim().toLowerCase() || "b2b")};
-  const LOCALE = String({{ localization.language.iso_code | json }} || "en").toLowerCase();
+  const DEFAULT_PROXY_PREFIX = ${escapeForJsString(defaultProxyPrefix)};
   const MESSAGES = {
     en: "This product is not available for your customer segment.",
     cs: "Tento produkt neni dostupny pro vas zakaznicky segment.",
   };
 
+  function resolveScriptElement() {
+    if (document.currentScript instanceof HTMLScriptElement) {
+      return document.currentScript;
+    }
+    return document.querySelector("script[data-margin-guard-visibility-script]");
+  }
+
+  function readProxyParam(name) {
+    const scriptEl = resolveScriptElement();
+    if (!(scriptEl instanceof HTMLScriptElement)) {
+      return "";
+    }
+    try {
+      const parsed = new URL(scriptEl.src, window.location.origin);
+      return String(parsed.searchParams.get(name) || "").trim();
+    } catch {
+      return "";
+    }
+  }
+
+  const proxyPrefix = readProxyParam("path_prefix") || DEFAULT_PROXY_PREFIX;
+  const visibilityEndpoint = proxyPrefix + "/visibility";
+  const loggedInCustomerId = readProxyParam("logged_in_customer_id");
+
   function messageForLocale() {
-    return LOCALE.startsWith("cs") ? MESSAGES.cs : MESSAGES.en;
+    const lang = String(
+      document.documentElement?.lang ||
+        navigator.language ||
+        "en",
+    ).toLowerCase();
+    return lang.startsWith("cs") ? MESSAGES.cs : MESSAGES.en;
   }
 
   function extractHandleFromPath(pathname) {
@@ -56,15 +79,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
     }
     return Array.from(handles);
-  }
-
-  function detectSegmentFromCustomerTags() {
-    const rawTags = String({{ customer.tags | join: "," | downcase | json }} || "");
-    const tags = rawTags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-    return tags.includes(B2B_TAG) ? "B2B" : "B2C";
   }
 
   function hideCardForHandle(handle) {
@@ -132,12 +146,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return;
     }
 
-    const segment = detectSegmentFromCustomerTags();
-    const params = new URLSearchParams({
-      handles: handles.join(","),
-      segment,
-    });
-    const response = await fetch(VISIBILITY_ENDPOINT + "?" + params.toString(), {
+    const params = new URLSearchParams({ handles: handles.join(",") });
+    if (loggedInCustomerId) {
+      params.set("logged_in_customer_id", loggedInCustomerId);
+    }
+    const response = await fetch(visibilityEndpoint + "?" + params.toString(), {
       credentials: "same-origin",
     });
     if (!response.ok) {
@@ -163,8 +176,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 })();
   `;
 
-  return liquid(script, {
-    layout: false,
+  return new Response(script, {
     headers: {
       "Cache-Control": "no-store",
       "Content-Type": "application/javascript; charset=utf-8",
