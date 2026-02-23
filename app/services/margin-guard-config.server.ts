@@ -183,6 +183,7 @@ export function buildCartValidationFunctionConfig(config: {
   const perProductFloorPercentsB2B: Record<string, number> = {};
   const perProductAllowZeroFinalPriceB2C: Record<string, boolean> = {};
   const perProductAllowZeroFinalPriceB2B: Record<string, boolean> = {};
+  const normalizedB2BTag = config.b2bTag.trim() || "b2b";
   for (const floor of config.productFloors) {
     const appliesToB2C = floor.segment == null || floor.segment === "B2C";
     const appliesToB2B = floor.segment == null || floor.segment === "B2B";
@@ -205,7 +206,8 @@ export function buildCartValidationFunctionConfig(config: {
   }
 
   return {
-    b2bTag: config.b2bTag,
+    b2bTag: normalizedB2BTag,
+    b2bTags: [normalizedB2BTag],
     globalMinPricePercent: config.globalMinPricePercent,
     b2bGlobalMinPricePercent: config.globalMinPricePercent,
     allowZeroFinalPrice: config.allowZeroFinalPrice,

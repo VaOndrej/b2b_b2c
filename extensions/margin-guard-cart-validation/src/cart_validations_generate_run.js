@@ -145,7 +145,8 @@ export function cartValidationsGenerateRun(input) {
     ? config.b2bGlobalMinPricePercent
     : config.globalMinPricePercent;
 
-  const errors = [];
+  let hasZeroFinalPriceViolation = false;
+  let hasBelowFloorViolation = false;
   for (const line of input?.cart?.lines ?? []) {
     const productId =
       line?.merchandise?.__typename === "ProductVariant"
@@ -170,20 +171,29 @@ export function cartValidationsGenerateRun(input) {
     const floorUnitPrice = roundMoney(baseUnitPrice * (lineFloorPercent / 100));
 
     if (finalUnitPrice <= 0 && !lineAllowZeroFinalPrice) {
-      errors.push({
-        message:
-          "Checkout blocked by Margin Guard: zero final price is not allowed for this cart line.",
-        target: "$.cart",
-      });
+      hasZeroFinalPriceViolation = true;
       continue;
     }
 
     if (finalUnitPrice < floorUnitPrice) {
-      errors.push({
-        message: `Checkout blocked by Margin Guard: line price ${finalUnitPrice.toFixed(2)} is below floor ${floorUnitPrice.toFixed(2)}.`,
-        target: "$.cart",
-      });
+      hasBelowFloorViolation = true;
     }
+  }
+
+  const errors = [];
+  if (hasBelowFloorViolation) {
+    errors.push({
+      message:
+        "Some discounts can't be applied because at least one item would fall below the minimum allowed price. Review your cart and try again.",
+      target: "$.cart",
+    });
+  }
+  if (hasZeroFinalPriceViolation) {
+    errors.push({
+      message:
+        "Some discounts can't be applied because a free line item is not allowed for this checkout.",
+      target: "$.cart",
+    });
   }
 
   if (errors.length === 0) {

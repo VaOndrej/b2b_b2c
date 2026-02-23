@@ -2,10 +2,12 @@ import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
 import { listMarginViolationLogs } from "../services/margin-guard-config.server";
+import { getDiscountFunctionStatusWithAutoDisable } from "../services/discount-function-activation.server";
 import { syncLiveCheckoutViolationsFromFunctionLogs } from "../services/cart-validation-violation-sync.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
+  await getDiscountFunctionStatusWithAutoDisable(admin);
   if (process.env.NODE_ENV !== "production") {
     await syncLiveCheckoutViolationsFromFunctionLogs(session.shop);
   }

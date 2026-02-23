@@ -4,7 +4,7 @@ import { authenticate } from "../shopify.server";
 import { ensureCartValidationActive } from "../services/cart-validation-activation.server";
 import {
   deactivateDiscountFunction,
-  getDiscountFunctionStatus,
+  getDiscountFunctionStatusWithAutoDisable,
 } from "../services/discount-function-activation.server";
 import {
   deleteProductFloorRule,
@@ -29,7 +29,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     autoActivationMessage = activation.message;
     config = await getOrCreateMarginGuardConfig();
   }
-  const discountStatus = await getDiscountFunctionStatus(admin);
+  const discountStatus = await getDiscountFunctionStatusWithAutoDisable(admin);
   discountFunctionStatus = discountStatus.status;
   discountFunctionMessage = discountStatus.message;
   const url = new URL(request.url);
@@ -147,9 +147,13 @@ export default function AppSettingsRoute() {
           <input type="hidden" name="intent" value="save-global" />
           <s-stack direction="block" gap="base">
             <label>
-              B2B customer tag
-              <input name="b2bTag" defaultValue={config.b2bTag} />
+              Customer segment tag treated as B2B pricing
+              <input name="b2bTag" defaultValue={config.b2bTag} placeholder="wholesale" />
             </label>
+            <s-paragraph>
+              Any customer with this exact tag is evaluated as the protected segment in
+              discount controls.
+            </s-paragraph>
             <label>
               Global minimum price percent
               <input
@@ -321,19 +325,13 @@ export default function AppSettingsRoute() {
               </strong>{" "}
               | {discountFunctionMessage}
             </s-paragraph>
+            <s-paragraph>
+              Discount function is automatically forced OFF for the current MVP
+              phase.
+            </s-paragraph>
             {discountActionMessage && (
               <s-paragraph>{discountActionMessage}</s-paragraph>
             )}
-            <form method="post">
-              <input
-                type="hidden"
-                name="intent"
-                value="deactivate-discount-function"
-              />
-              <button type="submit" disabled={isSubmitting}>
-                Deactivate Discount Function for MVP_1
-              </button>
-            </form>
           </s-stack>
         </s-box>
       </s-section>

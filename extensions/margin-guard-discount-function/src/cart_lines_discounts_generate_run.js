@@ -161,7 +161,7 @@ export function cartLinesDiscountsGenerateRun(input) {
     }
 
     candidates.push({
-      message: `Margin Guard discount (${allowedPercentOff.toFixed(2)}% max)`,
+      message: `Eligible discount (${allowedPercentOff.toFixed(2)}% max)`,
       targets: [{ cartLine: { id: line.id } }],
       value: {
         percentage: {

@@ -12,7 +12,7 @@ interface AdminGraphqlClient {
 
 export interface DiscountActivationResult {
   ok: boolean;
-  status: "ACTIVE" | "ERROR";
+  status: "ACTIVE" | "INACTIVE" | "ERROR";
   message: string;
 }
 
@@ -189,7 +189,7 @@ export async function deactivateDiscountFunction(
     if (ids.length === 0) {
       return {
         ok: true,
-        status: "ACTIVE",
+        status: "INACTIVE",
         message: "No Margin Guard discount function to deactivate.",
       };
     }
@@ -197,12 +197,8 @@ export async function deactivateDiscountFunction(
     for (const id of ids) {
       const response = await admin.graphql(
         `#graphql
-          mutation DeactivateDiscount($id: ID!, $endsAt: DateTime!) {
-            discountAutomaticDeactivate(id: $id, endsAt: $endsAt) {
-              automaticAppDiscount {
-                discountId
-                status
-              }
+          mutation DeactivateDiscount($id: ID!) {
+            discountAutomaticDeactivate(id: $id) {
               userErrors {
                 field
                 message
@@ -212,7 +208,6 @@ export async function deactivateDiscountFunction(
         {
           variables: {
             id,
-            endsAt: new Date().toISOString(),
           },
         },
       );
@@ -232,7 +227,7 @@ export async function deactivateDiscountFunction(
 
     return {
       ok: true,
-      status: "ACTIVE",
+      status: "INACTIVE",
       message: "Margin Guard discount function was deactivated.",
     };
   } catch (error) {
@@ -245,4 +240,27 @@ export async function deactivateDiscountFunction(
           : "Unexpected discount deactivation error",
     };
   }
+}
+
+export async function getDiscountFunctionStatusWithAutoDisable(
+  admin: AdminGraphqlClient,
+): Promise<DiscountFunctionStatusResult> {
+  const status = await getDiscountFunctionStatus(admin);
+  if (status.status !== "ACTIVE") {
+    return status;
+  }
+
+  const deactivation = await deactivateDiscountFunction(admin);
+  if (!deactivation.ok) {
+    return {
+      status: "ERROR",
+      message: `Auto-disable failed: ${deactivation.message}`,
+    };
+  }
+
+  return {
+    status: "INACTIVE",
+    message:
+      "Discount function was automatically disabled due to current MVP policy.",
+  };
 }

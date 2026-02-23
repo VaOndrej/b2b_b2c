@@ -5,11 +5,11 @@ import {
   getOrCreateMarginGuardConfig,
   listMarginViolationLogs,
 } from "../services/margin-guard-config.server";
-import { getDiscountFunctionStatus } from "../services/discount-function-activation.server";
+import { getDiscountFunctionStatusWithAutoDisable } from "../services/discount-function-activation.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
-  const discountFunction = await getDiscountFunctionStatus(admin);
+  const discountFunction = await getDiscountFunctionStatusWithAutoDisable(admin);
   const [config, logs] = await Promise.all([
     getOrCreateMarginGuardConfig(),
     listMarginViolationLogs(10),
@@ -40,11 +40,11 @@ export default function AppDashboardRoute() {
 
   return (
     <s-page heading="Margin Guard Dashboard">
-      <s-section heading="MVP_1 status">
+      <s-section heading="Governance status">
         <s-box padding="base" borderWidth="base" borderRadius="base">
           <s-stack direction="block" gap="small">
             <s-paragraph>
-              Segment detection: enabled (tag: <strong>{config.b2bTag}</strong>)
+              Protected segment tag: <strong>{config.b2bTag}</strong>
             </s-paragraph>
             <s-paragraph>
               Global floor:{" "}
