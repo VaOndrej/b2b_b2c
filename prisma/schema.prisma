@@ -57,6 +57,7 @@ model ProductFloorRule {
   segment               String?
   minPercentOfBasePrice Float
   allowZeroFinalPrice   Boolean?
+  b2bOverridePrice      Float?
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 

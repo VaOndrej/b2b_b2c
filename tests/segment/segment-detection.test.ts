@@ -2,22 +2,26 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { resolveSegment } from "../../core/segment/segment.engine.ts";
 
-test("segment detection for known shop customers", () => {
-  const customers = [
-    { customerName: "Karine Ruby", customerTags: ["b2b"], expected: "B2B" },
-    { customerName: "Ayumu Hirano", customerTags: ["retail"], expected: "B2C" },
-    { customerName: "Russel Winfield", customerTags: [], expected: "B2C" },
-  ] as const;
+test("segment detection uses company-role -> tag -> fallback precedence", () => {
+  const byCompany = resolveSegment({
+    customerTags: [],
+    b2bTag: "wholesale",
+    hasPurchasingCompany: true,
+  });
+  assert.equal(byCompany.segment, "B2B");
+  assert.equal(byCompany.source, "company_role");
 
-  for (const customer of customers) {
-    const result = resolveSegment({ customerTags: [...customer.customerTags] });
+  const byTag = resolveSegment({
+    customerTags: ["Wholesale", "vip"],
+    b2bTag: "wholesale",
+  });
+  assert.equal(byTag.segment, "B2B");
+  assert.equal(byTag.source, "customer_tag");
 
-    assert.equal(
-      result.segment,
-      customer.expected,
-      `[SEGMENT TEST FAIL] ${customer.customerName}: expected ${customer.expected}, got ${result.segment}. Zkontroluj v admin.shopify -> Zákazníci.`,
-    );
-  }
-
-  console.log("[SEGMENT TEST PASS] Segment detection pro Karine Ruby, Ayumu Hirano a Russel Winfield prošel.");
+  const byFallback = resolveSegment({
+    customerTags: ["retail"],
+    b2bTag: "wholesale",
+  });
+  assert.equal(byFallback.segment, "B2C");
+  assert.equal(byFallback.source, "fallback");
 });

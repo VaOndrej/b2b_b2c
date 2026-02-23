@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "react-router build",
-    "guard:test": "node --test --experimental-strip-types tests/segment/segment-detection.test.ts tests/margin/global-floor-policy.test.ts tests/margin/mvp1-readiness.test.ts tests/cart/cart-validation-blocking.test.ts tests/cart/cart-validation-function-extension.test.ts tests/cart/cart-validation-total-amount-integration.test.ts tests/discount/discount-function-enforcement.test.ts tests/contracts/shopify-function-config-contract.test.ts tests/integration/function-runtime-config-compat.test.ts",
+    "guard:test": "node --test --experimental-strip-types tests/segment/segment-detection.test.ts tests/pricing/b2b-override-pricing.test.ts tests/margin/global-floor-policy.test.ts tests/margin/mvp1-readiness.test.ts tests/cart/cart-validation-blocking.test.ts tests/cart/cart-validation-function-extension.test.ts tests/cart/cart-validation-total-amount-integration.test.ts tests/discount/discount-function-enforcement.test.ts tests/contracts/shopify-function-config-contract.test.ts tests/integration/function-runtime-config-compat.test.ts",
     "predev": "npm run guard:test",
     "dev": "shopify app dev",
     "config:link": "shopify app config link",

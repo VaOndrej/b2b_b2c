@@ -3,6 +3,7 @@ interface ProductFloorInput {
   minPercentOfBasePrice: number;
   segment: string | null;
   allowZeroFinalPrice: boolean | null;
+  b2bOverridePrice?: number | null;
 }
 
 interface MarginGuardFunctionConfigInput {
@@ -19,6 +20,7 @@ export function buildCartValidationFunctionConfig(
   const perProductFloorPercentsB2B: Record<string, number> = {};
   const perProductAllowZeroFinalPriceB2C: Record<string, boolean> = {};
   const perProductAllowZeroFinalPriceB2B: Record<string, boolean> = {};
+  const perProductB2BOverridePrices: Record<string, number> = {};
   const normalizedB2BTag = config.b2bTag.trim() || "b2b";
 
   for (const floor of config.productFloors) {
@@ -39,6 +41,13 @@ export function buildCartValidationFunctionConfig(
         perProductAllowZeroFinalPriceB2B[floor.productId] =
           floor.allowZeroFinalPrice;
       }
+      if (
+        floor.b2bOverridePrice != null &&
+        Number.isFinite(floor.b2bOverridePrice) &&
+        floor.b2bOverridePrice >= 0
+      ) {
+        perProductB2BOverridePrices[floor.productId] = floor.b2bOverridePrice;
+      }
     }
   }
 
@@ -52,6 +61,7 @@ export function buildCartValidationFunctionConfig(
     perProductFloorPercentsB2B,
     perProductAllowZeroFinalPriceB2C,
     perProductAllowZeroFinalPriceB2B,
+    perProductB2BOverridePrices,
   };
 }
 

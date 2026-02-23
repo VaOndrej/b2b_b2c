@@ -1,8 +1,15 @@
-query CartValidationsGenerateRunInput {
+query CartValidationsGenerateRunInput(
+  $b2bTags: [String!]! = ["b2b"]
+) {
   cart {
     buyerIdentity {
+      purchasingCompany {
+        company {
+          id
+        }
+      }
       customer {
-        hasAnyTag(tags: ["b2b"])
+        hasAnyTag(tags: $b2bTags)
       }
     }
     lines {

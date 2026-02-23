@@ -3,6 +3,11 @@ query CartInput(
 ) {
   cart {
     buyerIdentity {
+      purchasingCompany {
+        company {
+          id
+        }
+      }
       customer {
         hasAnyTag(tags: $b2bTags)
       }

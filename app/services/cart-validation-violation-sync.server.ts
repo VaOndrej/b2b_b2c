@@ -24,6 +24,9 @@ interface FunctionRunLog {
     input?: {
       cart?: {
         buyerIdentity?: {
+          purchasingCompany?: {
+            company?: { id?: string };
+          } | null;
           customer?: { hasAnyTag?: boolean } | null;
         } | null;
         lines?: FunctionRunLogLine[];
@@ -40,6 +43,7 @@ interface FunctionRunLog {
             perProductFloorPercentsB2B?: Record<string, number>;
             perProductAllowZeroFinalPriceB2C?: Record<string, boolean>;
             perProductAllowZeroFinalPriceB2B?: Record<string, boolean>;
+            perProductB2BOverridePrices?: Record<string, number>;
           };
         } | null;
       };
@@ -133,7 +137,10 @@ export async function syncLiveCheckoutViolationsFromFunctionLogs(
     const cart = parsed.payload?.input?.cart;
     const config = parsed.payload?.input?.validation?.metafield?.jsonValue ?? {};
     const lines = cart?.lines ?? [];
-    const isB2B = Boolean(cart?.buyerIdentity?.customer?.hasAnyTag);
+    const isB2B = Boolean(
+      cart?.buyerIdentity?.purchasingCompany?.company?.id ??
+        cart?.buyerIdentity?.customer?.hasAnyTag,
+    );
     const globalFloorPercent = isB2B
       ? toNumber(config.b2bGlobalMinPricePercent, 70)
       : toNumber(config.globalMinPricePercent, 70);
@@ -145,6 +152,9 @@ export async function syncLiveCheckoutViolationsFromFunctionLogs(
       : (config.perProductAllowZeroFinalPriceB2C ??
         config.perProductAllowZeroFinalPrice ??
         {});
+    const perProductB2BOverridePrices = isB2B
+      ? (config.perProductB2BOverridePrices ?? {})
+      : {};
     const globalAllowZero = Boolean(config.allowZeroFinalPrice);
     const segment = isB2B ? "B2B" : "B2C";
     const logTimestamp = parsed.logTimestamp ?? fileName;
@@ -168,7 +178,15 @@ export async function syncLiveCheckoutViolationsFromFunctionLogs(
           : globalAllowZero;
       const basePrice = resolveBaseUnitPrice(line);
       const finalPrice = resolveFinalUnitPrice(line);
-      const floorPrice = roundMoney(basePrice * (lineFloorPercent / 100));
+      const overrideBasePrice =
+        perProductB2BOverridePrices[productId] != null
+          ? toNumber(perProductB2BOverridePrices[productId], basePrice)
+          : basePrice;
+      const effectiveBasePrice =
+        Number.isFinite(overrideBasePrice) && overrideBasePrice >= 0
+          ? overrideBasePrice
+          : basePrice;
+      const floorPrice = roundMoney(effectiveBasePrice * (lineFloorPercent / 100));
 
       const violationAmount =
         finalPrice <= 0 && !lineAllowZero

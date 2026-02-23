@@ -12,6 +12,10 @@ description = "t:description"
   input_query = "src/cart_validations_generate_run.graphql"
   export = "cart-validations-generate-run"
 
+  [extensions.input.variables]
+  namespace = "$app:margin_guard"
+  key = "config"
+
   [extensions.build]
   command = ""
   path = "dist/function.wasm"

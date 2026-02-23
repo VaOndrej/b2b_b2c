@@ -9,10 +9,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const body = await request.json();
   const config = await getOrCreateMarginGuardConfig();
   const buyerHasB2BTag = Boolean(body.buyerHasB2BTag);
+  const buyerHasPurchasingCompany = Boolean(body.buyerHasPurchasingCompany);
 
   const segment = resolveSegment({
     customerTags: buyerHasB2BTag ? [config.b2bTag] : [],
     b2bTag: config.b2bTag,
+    hasPurchasingCompany: buyerHasPurchasingCompany,
   });
 
   const result = validateCartLine({

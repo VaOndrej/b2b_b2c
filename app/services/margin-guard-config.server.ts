@@ -69,6 +69,7 @@ export async function upsertProductFloorRule(input: {
   segment?: "B2B" | "B2C";
   minPercentOfBasePrice: number;
   allowZeroFinalPrice: boolean | null;
+  b2bOverridePrice: number | null;
 }) {
   const db = getMarginGuardPrismaOrThrow();
   const existing = await db.productFloorRule.findFirst({
@@ -85,6 +86,7 @@ export async function upsertProductFloorRule(input: {
       data: {
         minPercentOfBasePrice: input.minPercentOfBasePrice,
         allowZeroFinalPrice: input.allowZeroFinalPrice,
+        b2bOverridePrice: input.b2bOverridePrice,
       },
     });
   }
@@ -96,6 +98,7 @@ export async function upsertProductFloorRule(input: {
       segment: input.segment,
       minPercentOfBasePrice: input.minPercentOfBasePrice,
       allowZeroFinalPrice: input.allowZeroFinalPrice,
+      b2bOverridePrice: input.b2bOverridePrice,
     },
   });
 }
@@ -149,6 +152,7 @@ export function buildFloorRuleset(config: {
     segment: string | null;
     minPercentOfBasePrice: number;
     allowZeroFinalPrice: boolean | null;
+    b2bOverridePrice?: number | null;
   }>;
 }): FloorRuleset {
   return {

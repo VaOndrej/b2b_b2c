@@ -5,12 +5,14 @@ import {
   getOrCreateMarginGuardConfig,
   listMarginViolationLogs,
 } from "../services/margin-guard-config.server";
+import { ensureCartValidationActive } from "../services/cart-validation-activation.server";
 import { getDiscountFunctionStatusWithAutoDisable } from "../services/discount-function-activation.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
-  const discountFunction = await getDiscountFunctionStatusWithAutoDisable(admin);
-  const [config, logs] = await Promise.all([
+  await ensureCartValidationActive(admin);
+  const [discountFunction, config, logs] = await Promise.all([
+    getDiscountFunctionStatusWithAutoDisable(admin),
     getOrCreateMarginGuardConfig(),
     listMarginViolationLogs(10),
   ]);
@@ -44,7 +46,7 @@ export default function AppDashboardRoute() {
         <s-box padding="base" borderWidth="base" borderRadius="base">
           <s-stack direction="block" gap="small">
             <s-paragraph>
-              Protected segment tag: <strong>{config.b2bTag}</strong>
+              B2B segment tag: <strong>{config.b2bTag}</strong>
             </s-paragraph>
             <s-paragraph>
               Global floor:{" "}

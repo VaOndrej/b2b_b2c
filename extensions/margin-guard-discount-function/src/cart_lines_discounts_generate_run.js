@@ -22,6 +22,13 @@ function clampPercent(value) {
 }
 
 /**
+ * @param {number} value
+ */
+function roundMoney(value) {
+  return Math.round(value * 100) / 100;
+}
+
+/**
  * @param {RunInput} input
  */
 function parseConfig(input) {
@@ -46,6 +53,10 @@ function parseConfig(input) {
     config && typeof config.perProductAllowZeroFinalPriceB2B === "object"
       ? config.perProductAllowZeroFinalPriceB2B
       : {};
+  const rawPerProductB2BOverridePrices =
+    config && typeof config.perProductB2BOverridePrices === "object"
+      ? config.perProductB2BOverridePrices
+      : {};
 
   /** @type {Record<string, number>} */
   const perProductFloorPercentsB2C = {};
@@ -55,6 +66,8 @@ function parseConfig(input) {
   const perProductAllowZeroFinalPriceB2C = {};
   /** @type {Record<string, boolean>} */
   const perProductAllowZeroFinalPriceB2B = {};
+  /** @type {Record<string, number>} */
+  const perProductB2BOverridePrices = {};
 
   for (const [productId, floorPercent] of Object.entries(rawB2CFloors)) {
     perProductFloorPercentsB2C[productId] = clampPercent(
@@ -76,6 +89,14 @@ function parseConfig(input) {
       perProductAllowZeroFinalPriceB2B[productId] = allowZero;
     }
   }
+  for (const [productId, overridePrice] of Object.entries(
+    rawPerProductB2BOverridePrices,
+  )) {
+    const parsed = toNumber(overridePrice, NaN);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      perProductB2BOverridePrices[productId] = roundMoney(parsed);
+    }
+  }
 
   return {
     globalMinPricePercent: clampPercent(
@@ -93,18 +114,31 @@ function parseConfig(input) {
     perProductFloorPercentsB2B,
     perProductAllowZeroFinalPriceB2C,
     perProductAllowZeroFinalPriceB2B,
+    perProductB2BOverridePrices,
   };
 }
 
 /**
  * @param {number} requestedPercentOff
- * @param {number} floorPercent
+ * @param {number} maxPercentByFloor
  * @param {boolean} allowZeroFinalPrice
  */
-function resolveAllowedPercent(requestedPercentOff, floorPercent, allowZeroFinalPrice) {
-  const maxByFloor = clampPercent(100 - floorPercent);
+function resolveAllowedPercent(
+  requestedPercentOff,
+  maxPercentByFloor,
+  allowZeroFinalPrice,
+) {
   const maxByZeroPolicy = allowZeroFinalPrice ? 100 : 99.99;
-  return clampPercent(Math.min(requestedPercentOff, maxByFloor, maxByZeroPolicy));
+  return clampPercent(
+    Math.min(requestedPercentOff, maxPercentByFloor, maxByZeroPolicy),
+  );
+}
+
+/**
+ * @param {RunInput["cart"]["lines"][number]} line
+ */
+function resolveLineSubtotal(line) {
+  return Math.max(0, toNumber(line?.cost?.subtotalAmount?.amount, 0));
 }
 
 /**
@@ -124,7 +158,11 @@ export function cartLinesDiscountsGenerateRun(input) {
   }
 
   const config = parseConfig(input);
-  const isB2B = Boolean(input?.cart?.buyerIdentity?.customer?.hasAnyTag);
+  const hasPurchasingCompany = Boolean(
+    input?.cart?.buyerIdentity?.purchasingCompany?.company?.id,
+  );
+  const hasB2BTag = Boolean(input?.cart?.buyerIdentity?.customer?.hasAnyTag);
+  const isB2B = hasPurchasingCompany || hasB2BTag;
   const globalFloorPercent = isB2B
     ? config.b2bGlobalMinPricePercent
     : config.globalMinPricePercent;
@@ -151,9 +189,24 @@ export function cartLinesDiscountsGenerateRun(input) {
       allowZeroMap[productId] != null
         ? allowZeroMap[productId]
         : config.allowZeroFinalPrice;
+    const lineSubtotal = resolveLineSubtotal(line);
+    if (lineSubtotal <= 0) {
+      continue;
+    }
+    const quantity = Math.max(1, toNumber(line?.quantity, 1));
+    const baseUnitPrice = roundMoney(lineSubtotal / quantity);
+    const overrideBaseUnitPrice =
+      isB2B && config.perProductB2BOverridePrices[productId] != null
+        ? config.perProductB2BOverridePrices[productId]
+        : baseUnitPrice;
+    const floorUnitPrice = roundMoney(overrideBaseUnitPrice * (floorPercent / 100));
+    const floorLinePrice = roundMoney(floorUnitPrice * quantity);
+    const maxPercentByFloor = clampPercent(
+      ((lineSubtotal - floorLinePrice) / lineSubtotal) * 100,
+    );
     const allowedPercentOff = resolveAllowedPercent(
       config.requestedPercentOff,
-      floorPercent,
+      maxPercentByFloor,
       allowZeroFinalPrice,
     );
     if (allowedPercentOff <= 0) {

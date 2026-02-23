@@ -10,19 +10,39 @@ const CART_VALIDATION_QUERY_PATH =
   "extensions/margin-guard-cart-validation/src/cart_validations_generate_run.graphql";
 const DISCOUNT_QUERY_PATH =
   "extensions/margin-guard-discount-function/src/cart_lines_discounts_generate_run.graphql";
+const CART_VALIDATION_TOML_PATH =
+  "extensions/margin-guard-cart-validation/shopify.extension.toml";
 
-test("cart validation query contract is stable without nullable external variables", async () => {
+test("cart validation query variable contract matches generated config payload", async () => {
   const query = await readFile(CART_VALIDATION_QUERY_PATH, "utf8");
 
-  assert.equal(
-    query.includes("$b2bTags"),
-    false,
-    "[CONTRACT FAIL] Cart validation query nesmi vyzadovat nullable b2bTags variable.",
+  assert.match(
+    query,
+    /\$b2bTags:\s*\[String!\]!\s*=\s*\["b2b"\]/,
+    "[CONTRACT FAIL] Cart validation query musi deklarovat b2bTags variable s fallback default.",
   );
   assert.match(
     query,
-    /hasAnyTag\(tags:\s*\["b2b"\]\)/,
-    "[CONTRACT FAIL] Cart validation query musi mit stabilni fallback na b2b tag.",
+    /hasAnyTag\(tags:\s*\$b2bTags\)/,
+    "[CONTRACT FAIL] Cart validation query musi pouzivat b2bTags variable v hasAnyTag.",
+  );
+  assert.match(
+    query,
+    /buyerIdentity\s*\{[\s\S]*purchasingCompany\s*\{[\s\S]*company\s*\{[\s\S]*id/,
+    "[CONTRACT FAIL] Cart validation query musi nacitat purchasingCompany pro B2B role precedence.",
+  );
+
+  const cartConfig = buildCartValidationFunctionConfig({
+    b2bTag: " wholesale ",
+    globalMinPricePercent: 65,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+  });
+
+  assert.deepEqual(
+    cartConfig.b2bTags,
+    ["wholesale"],
+    "[CONTRACT FAIL] Generated cart validation config musi vzdy obsahovat normalizovane b2bTags.",
   );
 });
 
@@ -38,6 +58,11 @@ test("discount query variable contract matches generated config payload", async 
     query,
     /hasAnyTag\(tags:\s*\$b2bTags\)/,
     "[CONTRACT FAIL] Discount query musi pouzivat b2bTags variable v hasAnyTag.",
+  );
+  assert.match(
+    query,
+    /buyerIdentity\s*\{[\s\S]*purchasingCompany\s*\{[\s\S]*company\s*\{[\s\S]*id/,
+    "[CONTRACT FAIL] Discount query musi nacitat purchasingCompany pro B2B role precedence.",
   );
 
   const discountConfig = buildDiscountFunctionConfig({
@@ -65,18 +90,21 @@ test("floor mapping contract stays consistent across B2B/B2C maps", () => {
         minPercentOfBasePrice: 80,
         segment: null,
         allowZeroFinalPrice: null,
+        b2bOverridePrice: 90,
       },
       {
         productId: "gid://shopify/Product/B2B_ONLY",
         minPercentOfBasePrice: 60,
         segment: "B2B",
         allowZeroFinalPrice: true,
+        b2bOverridePrice: 55,
       },
       {
         productId: "gid://shopify/Product/B2C_ONLY",
         minPercentOfBasePrice: 90,
         segment: "B2C",
         allowZeroFinalPrice: false,
+        b2bOverridePrice: 40,
       },
     ],
   });
@@ -87,4 +115,25 @@ test("floor mapping contract stays consistent across B2B/B2C maps", () => {
   assert.equal(config.perProductFloorPercentsB2C["gid://shopify/Product/B2B_ONLY"], undefined);
   assert.equal(config.perProductFloorPercentsB2C["gid://shopify/Product/B2C_ONLY"], 90);
   assert.equal(config.perProductFloorPercentsB2B["gid://shopify/Product/B2C_ONLY"], undefined);
+  assert.equal(
+    config.perProductB2BOverridePrices["gid://shopify/Product/ALL_SEGMENTS"],
+    90,
+  );
+  assert.equal(
+    config.perProductB2BOverridePrices["gid://shopify/Product/B2B_ONLY"],
+    55,
+  );
+  assert.equal(
+    config.perProductB2BOverridePrices["gid://shopify/Product/B2C_ONLY"],
+    undefined,
+  );
+});
+
+test("cart validation extension maps input variables from metafield config", async () => {
+  const toml = await readFile(CART_VALIDATION_TOML_PATH, "utf8");
+  assert.match(
+    toml,
+    /\[extensions\.input\.variables\][\s\S]*namespace\s*=\s*"\$app:margin_guard"[\s\S]*key\s*=\s*"config"/,
+    "[CONTRACT FAIL] Cart validation extension musi mapovat input variables z app metafieldu.",
+  );
 });

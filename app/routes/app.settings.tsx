@@ -24,11 +24,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   let autoActivationMessage: string | null = null;
   let discountFunctionStatus: "ACTIVE" | "INACTIVE" | "ERROR" = "ERROR";
   let discountFunctionMessage = "Discount status is unknown.";
-  if (config.cartValidationStatus !== "ACTIVE") {
-    const activation = await ensureCartValidationActive(admin);
-    autoActivationMessage = activation.message;
-    config = await getOrCreateMarginGuardConfig();
-  }
+  const syncActivation = await ensureCartValidationActive(admin);
+  autoActivationMessage = syncActivation.message;
+  config = await getOrCreateMarginGuardConfig();
   const discountStatus = await getDiscountFunctionStatusWithAutoDisable(admin);
   discountFunctionStatus = discountStatus.status;
   discountFunctionMessage = discountStatus.message;
@@ -81,10 +79,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const allowZeroOverrideRaw = String(
       formData.get("allowZeroFinalPriceOverride") ?? "inherit",
     ).trim();
+    const b2bOverrideRaw = String(formData.get("b2bOverridePrice") ?? "").trim();
     const minPercentOfBasePrice = parseNumber(
       formData.get("minPercentOfBasePrice"),
       70,
     );
+    const b2bOverridePrice = b2bOverrideRaw ? Number(b2bOverrideRaw) : null;
 
     if (productId) {
       await upsertProductFloorRule({
@@ -97,6 +97,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             : allowZeroOverrideRaw === "deny"
               ? false
               : null,
+        b2bOverridePrice:
+          b2bOverridePrice != null &&
+          Number.isFinite(b2bOverridePrice) &&
+          b2bOverridePrice >= 0
+            ? b2bOverridePrice
+            : null,
       });
     }
   }
@@ -230,6 +236,16 @@ export default function AppSettingsRoute() {
                 defaultValue={70}
               />
             </label>
+            <label>
+              B2B override base price (optional)
+              <input
+                name="b2bOverridePrice"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="e.g. 499.00"
+              />
+            </label>
             <button type="submit" disabled={isSubmitting}>
               Save product floor
             </button>
@@ -251,7 +267,9 @@ export default function AppSettingsRoute() {
                       ? "inherit"
                       : rule.allowZeroFinalPrice
                         ? "allow"
-                        : "deny"}
+                        : "deny"}{" "}
+                    | b2b-base-override:{" "}
+                    {rule.b2bOverridePrice == null ? "none" : rule.b2bOverridePrice}
                   </s-text>
                   <form method="post">
                     <input type="hidden" name="intent" value="delete-product-floor" />

@@ -72,10 +72,16 @@ function parseConfig(input) {
     config && typeof config.perProductAllowZeroFinalPriceB2B === "object"
       ? config.perProductAllowZeroFinalPriceB2B
       : {};
+  const rawPerProductB2BOverridePrices =
+    config && typeof config.perProductB2BOverridePrices === "object"
+      ? config.perProductB2BOverridePrices
+      : {};
   /** @type {Record<string, boolean>} */
   const perProductAllowZeroFinalPriceB2C = {};
   /** @type {Record<string, boolean>} */
   const perProductAllowZeroFinalPriceB2B = {};
+  /** @type {Record<string, number>} */
+  const perProductB2BOverridePrices = {};
   for (const [productId, allowZero] of Object.entries(
     rawPerProductAllowZeroFinalPriceB2C,
   )) {
@@ -88,6 +94,14 @@ function parseConfig(input) {
   )) {
     if (typeof allowZero === "boolean") {
       perProductAllowZeroFinalPriceB2B[productId] = allowZero;
+    }
+  }
+  for (const [productId, overridePrice] of Object.entries(
+    rawPerProductB2BOverridePrices,
+  )) {
+    const parsed = toNumber(overridePrice, NaN);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      perProductB2BOverridePrices[productId] = roundMoney(parsed);
     }
   }
 
@@ -107,6 +121,7 @@ function parseConfig(input) {
     perProductFloorPercentsB2B,
     perProductAllowZeroFinalPriceB2C,
     perProductAllowZeroFinalPriceB2B,
+    perProductB2BOverridePrices,
   };
 }
 
@@ -140,7 +155,11 @@ function resolveFinalUnitPrice(line) {
  */
 export function cartValidationsGenerateRun(input) {
   const config = parseConfig(input);
-  const isB2B = Boolean(input?.cart?.buyerIdentity?.customer?.hasAnyTag);
+  const hasPurchasingCompany = Boolean(
+    input?.cart?.buyerIdentity?.purchasingCompany?.company?.id,
+  );
+  const hasB2BTag = Boolean(input?.cart?.buyerIdentity?.customer?.hasAnyTag);
+  const isB2B = hasPurchasingCompany || hasB2BTag;
   const floorPercent = isB2B
     ? config.b2bGlobalMinPricePercent
     : config.globalMinPricePercent;
@@ -168,7 +187,15 @@ export function cartValidationsGenerateRun(input) {
         : config.allowZeroFinalPrice;
     const baseUnitPrice = resolveBaseUnitPrice(line);
     const finalUnitPrice = resolveFinalUnitPrice(line);
-    const floorUnitPrice = roundMoney(baseUnitPrice * (lineFloorPercent / 100));
+    const b2bOverrideBaseUnitPrice =
+      isB2B && productId && config.perProductB2BOverridePrices[productId] != null
+        ? config.perProductB2BOverridePrices[productId]
+        : null;
+    const effectiveBaseUnitPrice =
+      b2bOverrideBaseUnitPrice != null ? b2bOverrideBaseUnitPrice : baseUnitPrice;
+    const floorUnitPrice = roundMoney(
+      effectiveBaseUnitPrice * (lineFloorPercent / 100),
+    );
 
     if (finalUnitPrice <= 0 && !lineAllowZeroFinalPrice) {
       hasZeroFinalPriceViolation = true;
