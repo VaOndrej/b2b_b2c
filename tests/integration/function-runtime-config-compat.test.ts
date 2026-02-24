@@ -634,6 +634,146 @@ test("runtime integration: tier pricing has precedence over B2B override for qua
   );
 });
 
+test("runtime integration: MOQ per segment blocks quantity below configured minimum", () => {
+  const productId = "gid://shopify/Product/MOQ_PER_SEGMENT";
+  const cartConfig = buildCartValidationFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 0,
+    allowZeroFinalPrice: true,
+    productFloors: [],
+    productQuantityRules: [
+      {
+        productId,
+        segment: null,
+        minimumOrderQuantity: 3,
+      },
+      {
+        productId,
+        segment: "B2B" as const,
+        minimumOrderQuantity: 5,
+      },
+    ],
+  });
+
+  const blockedB2C = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2010", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-moq-b2c-blocked",
+          quantity: 2,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "200.00" },
+            totalAmount: { amount: "200.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(blockedB2C.operations.length > 0, true);
+  assert.equal(
+    blockedB2C.operations[0]?.validationAdd?.errors?.[0]?.message.includes(
+      "minimum order quantity",
+    ),
+    true,
+  );
+
+  const allowedB2C = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2011", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-moq-b2c-allowed",
+          quantity: 3,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "300.00" },
+            totalAmount: { amount: "300.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(allowedB2C.operations.length, 0);
+
+  const blockedB2B = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2012", hasAnyTag: true },
+      },
+      lines: [
+        {
+          id: "line-moq-b2b-blocked",
+          quantity: 4,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "400.00" },
+            totalAmount: { amount: "400.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(blockedB2B.operations.length > 0, true);
+
+  const allowedB2B = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2013", hasAnyTag: true },
+      },
+      lines: [
+        {
+          id: "line-moq-b2b-allowed",
+          quantity: 5,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "500.00" },
+            totalAmount: { amount: "500.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(
+    allowedB2B.operations.length,
+    0,
+    "[MOQ FAIL] B2B quantity equal to MOQ should be allowed.",
+  );
+});
+
 test("runtime integration: coupon code is rejected when segment rule does not match", () => {
   const productId = "gid://shopify/Product/COUPON_SEGMENT_RULE";
   const config = buildDiscountFunctionConfig({

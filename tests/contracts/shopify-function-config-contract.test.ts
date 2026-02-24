@@ -234,6 +234,57 @@ test("tier pricing mapping contract stays consistent across B2B/B2C maps", () =>
   );
 });
 
+test("MOQ mapping contract stays consistent across B2B/B2C maps", () => {
+  const config = buildCartValidationFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+    productQuantityRules: [
+      {
+        productId: "gid://shopify/Product/ALL_SEGMENTS",
+        segment: null,
+        minimumOrderQuantity: 3,
+      },
+      {
+        productId: "gid://shopify/Product/B2B_ONLY",
+        segment: "B2B",
+        minimumOrderQuantity: 10,
+      },
+      {
+        productId: "gid://shopify/Product/B2C_ONLY",
+        segment: "B2C",
+        minimumOrderQuantity: 2,
+      },
+    ],
+  });
+
+  assert.equal(
+    config.perProductMinimumOrderQuantitiesB2B["gid://shopify/Product/ALL_SEGMENTS"],
+    3,
+  );
+  assert.equal(
+    config.perProductMinimumOrderQuantitiesB2C["gid://shopify/Product/ALL_SEGMENTS"],
+    3,
+  );
+  assert.equal(
+    config.perProductMinimumOrderQuantitiesB2B["gid://shopify/Product/B2B_ONLY"],
+    10,
+  );
+  assert.equal(
+    config.perProductMinimumOrderQuantitiesB2C["gid://shopify/Product/B2B_ONLY"],
+    undefined,
+  );
+  assert.equal(
+    config.perProductMinimumOrderQuantitiesB2C["gid://shopify/Product/B2C_ONLY"],
+    2,
+  );
+  assert.equal(
+    config.perProductMinimumOrderQuantitiesB2B["gid://shopify/Product/B2C_ONLY"],
+    undefined,
+  );
+});
+
 test("product visibility mapping contract normalizes restrictive visibility rules", () => {
   const config = buildCartValidationFunctionConfig({
     b2bTag: "b2b",

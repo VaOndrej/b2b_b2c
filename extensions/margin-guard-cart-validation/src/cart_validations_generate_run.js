@@ -19,6 +19,8 @@ const MESSAGES = {
       "A free line item is not allowed for this checkout. Next step: remove the free line or adjust discount settings.",
     combinedCap:
       "Combined discount exceeds the configured maximum for this checkout. Next step: remove one or more discounts and try again.",
+    minimumOrderQuantity:
+      "At least one line is below the minimum order quantity for this customer segment. Next step: increase quantity to meet the minimum.",
   },
   CS: {
     visibility:
@@ -29,6 +31,8 @@ const MESSAGES = {
       "Polozka zdarma neni pro tento checkout povolena. Dalsi krok: odeberte zdarma polozku nebo upravte slevu.",
     combinedCap:
       "Kombinovana sleva prekrocila nastaveny maximalni limit. Dalsi krok: odeberte jednu nebo vice slev a zkuste znovu.",
+    minimumOrderQuantity:
+      "Alespon jedna polozka je pod minimalnim objednacim mnozstvim pro vas segment. Dalsi krok: navyste mnozstvi na pozadovane minimum.",
   },
 };
 
@@ -134,6 +138,22 @@ function normalizeTierPriceMap(rawMap) {
 }
 
 /**
+ * @param {Record<string, unknown>} rawMap
+ */
+function normalizeMinimumOrderQuantityMap(rawMap) {
+  /** @type {Record<string, number>} */
+  const normalized = {};
+  for (const [productId, rawMinimumOrderQuantity] of Object.entries(rawMap)) {
+    const minimumOrderQuantity = Math.floor(toNumber(rawMinimumOrderQuantity, NaN));
+    if (!Number.isFinite(minimumOrderQuantity) || minimumOrderQuantity < 1) {
+      continue;
+    }
+    normalized[productId] = minimumOrderQuantity;
+  }
+  return normalized;
+}
+
+/**
  * @param {Record<string, Array<{ minQuantity: number; unitPrice: number }>>} tierMap
  * @param {string | null} productId
  * @param {number} quantity
@@ -207,6 +227,16 @@ function parseConfig(input) {
     config && typeof config.perProductTierPricesB2B === "object"
       ? config.perProductTierPricesB2B
       : {};
+  const rawPerProductMinimumOrderQuantitiesB2C =
+    config && typeof config.perProductMinimumOrderQuantitiesB2C === "object"
+      ? config.perProductMinimumOrderQuantitiesB2C
+      : config && typeof config.perProductMinimumOrderQuantities === "object"
+        ? config.perProductMinimumOrderQuantities
+        : {};
+  const rawPerProductMinimumOrderQuantitiesB2B =
+    config && typeof config.perProductMinimumOrderQuantitiesB2B === "object"
+      ? config.perProductMinimumOrderQuantitiesB2B
+      : {};
   const rawPerProductVisibilityModes =
     config && typeof config.perProductVisibilityModes === "object"
       ? config.perProductVisibilityModes
@@ -252,6 +282,12 @@ function parseConfig(input) {
   );
   const perProductTierPricesB2B = normalizeTierPriceMap(
     /** @type {Record<string, unknown>} */ (rawPerProductTierPricesB2B),
+  );
+  const perProductMinimumOrderQuantitiesB2C = normalizeMinimumOrderQuantityMap(
+    /** @type {Record<string, unknown>} */ (rawPerProductMinimumOrderQuantitiesB2C),
+  );
+  const perProductMinimumOrderQuantitiesB2B = normalizeMinimumOrderQuantityMap(
+    /** @type {Record<string, unknown>} */ (rawPerProductMinimumOrderQuantitiesB2B),
   );
   for (const [productId, visibilityMode] of Object.entries(
     rawPerProductVisibilityModes,
@@ -301,6 +337,8 @@ function parseConfig(input) {
     perProductB2BOverridePrices,
     perProductTierPricesB2C,
     perProductTierPricesB2B,
+    perProductMinimumOrderQuantitiesB2C,
+    perProductMinimumOrderQuantitiesB2B,
     perProductVisibilityModes,
     perProductVisibilityCustomerIds,
   };
@@ -351,6 +389,7 @@ export function cartValidationsGenerateRun(input) {
   let hasZeroFinalPriceViolation = false;
   let hasBelowFloorViolation = false;
   let hasCombinedDiscountCapViolation = false;
+  let hasMinimumOrderQuantityViolation = false;
   for (const line of input?.cart?.lines ?? []) {
     const productId =
       line?.merchandise?.__typename === "ProductVariant"
@@ -384,6 +423,9 @@ export function cartValidationsGenerateRun(input) {
     const perProductAllowZeroFinalPrice = isB2B
       ? config.perProductAllowZeroFinalPriceB2B
       : config.perProductAllowZeroFinalPriceB2C;
+    const perProductMinimumOrderQuantities = isB2B
+      ? config.perProductMinimumOrderQuantitiesB2B
+      : config.perProductMinimumOrderQuantitiesB2C;
     const lineFloorPercent =
       productId && perProductFloorPercents[productId] != null
         ? perProductFloorPercents[productId]
@@ -393,6 +435,14 @@ export function cartValidationsGenerateRun(input) {
         ? perProductAllowZeroFinalPrice[productId]
         : config.allowZeroFinalPrice;
     const quantity = Math.max(1, toNumber(line?.quantity, 1));
+    const minimumOrderQuantity =
+      productId && perProductMinimumOrderQuantities[productId] != null
+        ? perProductMinimumOrderQuantities[productId]
+        : 1;
+    if (quantity < minimumOrderQuantity) {
+      hasMinimumOrderQuantityViolation = true;
+      continue;
+    }
     const baseUnitPrice = resolveBaseUnitPrice(line);
     const finalUnitPrice = resolveFinalUnitPrice(line);
     const b2bOverrideBaseUnitPrice =
@@ -440,6 +490,12 @@ export function cartValidationsGenerateRun(input) {
   if (hasVisibilityViolation) {
     errors.push({
       message: messages.visibility,
+      target: "$.cart",
+    });
+  }
+  if (hasMinimumOrderQuantityViolation) {
+    errors.push({
+      message: messages.minimumOrderQuantity,
       target: "$.cart",
     });
   }

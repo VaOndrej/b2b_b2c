@@ -9,6 +9,7 @@ function getMarginGuardPrismaOrThrow() {
     !client.marginGuardConfig ||
     !client.productFloorRule ||
     !client.productTierPriceRule ||
+    !client.productQuantityRule ||
     !client.productVisibilityRule ||
     !client.couponSegmentRule ||
     !client.marginViolationLog
@@ -28,6 +29,7 @@ export async function getOrCreateMarginGuardConfig() {
     include: {
       productFloors: true,
       productTierPrices: true,
+      productQuantityRules: true,
       productVisibilityRules: true,
       couponSegmentRules: true,
     },
@@ -42,6 +44,7 @@ export async function getOrCreateMarginGuardConfig() {
     include: {
       productFloors: true,
       productTierPrices: true,
+      productQuantityRules: true,
       productVisibilityRules: true,
       couponSegmentRules: true,
     },
@@ -76,6 +79,7 @@ export async function updateGlobalMarginGuardConfig(input: {
     include: {
       productFloors: true,
       productTierPrices: true,
+      productQuantityRules: true,
       productVisibilityRules: true,
       couponSegmentRules: true,
     },
@@ -166,6 +170,48 @@ export async function upsertProductTierPriceRule(input: {
 export async function deleteProductTierPriceRule(id: string) {
   const db = getMarginGuardPrismaOrThrow();
   return db.productTierPriceRule.delete({ where: { id } });
+}
+
+export async function upsertProductQuantityRule(input: {
+  productId: string;
+  segment?: "B2B" | "B2C";
+  minimumOrderQuantity: number;
+}) {
+  const db = getMarginGuardPrismaOrThrow();
+  const normalizedMinimumOrderQuantity = Math.max(
+    1,
+    Math.floor(input.minimumOrderQuantity),
+  );
+  const existing = await db.productQuantityRule.findFirst({
+    where: {
+      configId: DEFAULT_CONFIG_ID,
+      productId: input.productId,
+      segment: input.segment ?? null,
+    },
+  });
+
+  if (existing) {
+    return db.productQuantityRule.update({
+      where: { id: existing.id },
+      data: {
+        minimumOrderQuantity: normalizedMinimumOrderQuantity,
+      },
+    });
+  }
+
+  return db.productQuantityRule.create({
+    data: {
+      configId: DEFAULT_CONFIG_ID,
+      productId: input.productId,
+      segment: input.segment,
+      minimumOrderQuantity: normalizedMinimumOrderQuantity,
+    },
+  });
+}
+
+export async function deleteProductQuantityRule(id: string) {
+  const db = getMarginGuardPrismaOrThrow();
+  return db.productQuantityRule.delete({ where: { id } });
 }
 
 function normalizeVisibilityMode(

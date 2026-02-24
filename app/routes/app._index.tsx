@@ -67,6 +67,10 @@ export default function AppDashboardRoute() {
               <strong>{config.productTierPrices.length}</strong>
             </s-paragraph>
             <s-paragraph>
+              Per-product MOQ rules:{" "}
+              <strong>{config.productQuantityRules.length}</strong>
+            </s-paragraph>
+            <s-paragraph>
               Product visibility rules:{" "}
               <strong>{config.productVisibilityRules.length}</strong>
             </s-paragraph>

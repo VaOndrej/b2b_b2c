@@ -13,6 +13,12 @@ interface ProductTierPriceInput {
   unitPrice: number;
 }
 
+interface ProductQuantityRuleInput {
+  productId: string;
+  segment: string | null;
+  minimumOrderQuantity: number;
+}
+
 interface ProductVisibilityRuleInput {
   productId: string;
   visibilityMode: string;
@@ -32,6 +38,7 @@ interface MarginGuardFunctionConfigInput {
   maxCombinedPercentOff?: number | null;
   productFloors: ProductFloorInput[];
   productTierPrices?: ProductTierPriceInput[];
+  productQuantityRules?: ProductQuantityRuleInput[];
   productVisibilityRules?: ProductVisibilityRuleInput[];
   couponSegmentRules?: CouponSegmentRuleInput[];
 }
@@ -117,6 +124,16 @@ function normalizePercentOrNull(value: unknown): number | null {
   return Math.round(clampPercent(parsed) * 100) / 100;
 }
 
+function normalizeMinimumOrderQuantity(
+  value: unknown,
+): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return null;
+  }
+  return Math.floor(parsed);
+}
+
 export function buildCartValidationFunctionConfig(
   config: MarginGuardFunctionConfigInput,
 ) {
@@ -127,6 +144,8 @@ export function buildCartValidationFunctionConfig(
   const perProductB2BOverridePrices: Record<string, number> = {};
   const perProductTierMapB2C: Record<string, Map<number, number>> = {};
   const perProductTierMapB2B: Record<string, Map<number, number>> = {};
+  const perProductMinimumOrderQuantitiesB2C: Record<string, number> = {};
+  const perProductMinimumOrderQuantitiesB2B: Record<string, number> = {};
   const perProductVisibilityModes: Record<
     string,
     "B2B_ONLY" | "B2C_ONLY" | "CUSTOMER_ONLY"
@@ -135,6 +154,7 @@ export function buildCartValidationFunctionConfig(
   const couponSegmentRules: Record<string, "B2B" | "B2C" | "ALL"> = {};
   const normalizedB2BTag = config.b2bTag.trim() || "b2b";
   const productTierPrices = config.productTierPrices ?? [];
+  const productQuantityRules = config.productQuantityRules ?? [];
   const productVisibilityRules = config.productVisibilityRules ?? [];
   const rawCouponSegmentRules = config.couponSegmentRules ?? [];
   const allowStacking = config.allowStacking === true;
@@ -204,6 +224,41 @@ export function buildCartValidationFunctionConfig(
 
   const perProductTierPricesB2C = sortTierMap(perProductTierMapB2C);
   const perProductTierPricesB2B = sortTierMap(perProductTierMapB2B);
+
+  for (const rule of productQuantityRules) {
+    if (rule.segment != null) {
+      continue;
+    }
+    const productId = rule.productId.trim();
+    const minimumOrderQuantity = normalizeMinimumOrderQuantity(
+      rule.minimumOrderQuantity,
+    );
+    if (!productId || minimumOrderQuantity == null) {
+      continue;
+    }
+    perProductMinimumOrderQuantitiesB2C[productId] = minimumOrderQuantity;
+    perProductMinimumOrderQuantitiesB2B[productId] = minimumOrderQuantity;
+  }
+
+  for (const rule of productQuantityRules) {
+    if (rule.segment == null) {
+      continue;
+    }
+    const productId = rule.productId.trim();
+    const minimumOrderQuantity = normalizeMinimumOrderQuantity(
+      rule.minimumOrderQuantity,
+    );
+    if (!productId || minimumOrderQuantity == null) {
+      continue;
+    }
+    if (rule.segment === "B2C") {
+      perProductMinimumOrderQuantitiesB2C[productId] = minimumOrderQuantity;
+    }
+    if (rule.segment === "B2B") {
+      perProductMinimumOrderQuantitiesB2B[productId] = minimumOrderQuantity;
+    }
+  }
+
   for (const rule of productVisibilityRules) {
     const productId = rule.productId.trim();
     if (!productId) {
@@ -253,6 +308,8 @@ export function buildCartValidationFunctionConfig(
     perProductB2BOverridePrices,
     perProductTierPricesB2C,
     perProductTierPricesB2B,
+    perProductMinimumOrderQuantitiesB2C,
+    perProductMinimumOrderQuantitiesB2B,
     perProductVisibilityModes,
     perProductVisibilityCustomerIds,
     couponSegmentRules,
