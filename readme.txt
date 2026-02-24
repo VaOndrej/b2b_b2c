@@ -94,6 +94,7 @@ MVP_3 – Quantity & Operational Rules
  ├─ Cart validation rozšíření
  └─ Admin rule builder
 
+MVP_3_5 - Zobrazit a schovat variantu produktu. Tedy varianta A je kusovka. Varianta B je kartón.
 
 MVP_4 – Advanced Discount Orchestration
  Plná kontrola kombinace slev (enterprise diferenciace).
