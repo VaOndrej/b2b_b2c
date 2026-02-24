@@ -21,6 +21,12 @@ const MESSAGES = {
       "Combined discount exceeds the configured maximum for this checkout. Next step: remove one or more discounts and try again.",
     minimumOrderQuantity:
       "At least one line is below the minimum order quantity for this customer segment. Next step: increase quantity to meet the minimum.",
+    stepQuantity:
+      "At least one line quantity does not match the required packaging multiple. Next step: adjust quantity to the required step.",
+    stepQuantitySinglePrefix: "This item must be purchased in steps of ",
+    stepQuantitySingleSuffix: ".",
+    stepQuantityMultiPrefix: "Items in your cart must follow step multiples: ",
+    stepQuantityMultiSuffix: ".",
   },
   CS: {
     visibility:
@@ -33,6 +39,12 @@ const MESSAGES = {
       "Kombinovana sleva prekrocila nastaveny maximalni limit. Dalsi krok: odeberte jednu nebo vice slev a zkuste znovu.",
     minimumOrderQuantity:
       "Alespon jedna polozka je pod minimalnim objednacim mnozstvim pro vas segment. Dalsi krok: navyste mnozstvi na pozadovane minimum.",
+    stepQuantity:
+      "Alespon jedna polozka nema pozadovany kartonovy nasobek. Dalsi krok: upravte mnozstvi na pozadovany krok.",
+    stepQuantitySinglePrefix: "Tato polozka se nakupuje v krocich po ",
+    stepQuantitySingleSuffix: ".",
+    stepQuantityMultiPrefix: "Polozky v kosiku maji tyto kroky nasobku: ",
+    stepQuantityMultiSuffix: ".",
   },
 };
 
@@ -103,6 +115,48 @@ function resolveMessages(input) {
 }
 
 /**
+ * @param {unknown[]} rawStepValues
+ */
+function normalizeStepViolationValues(rawStepValues) {
+  const values = new Set();
+  for (const rawStepValue of rawStepValues ?? []) {
+    const stepValue = Math.floor(toNumber(rawStepValue, NaN));
+    if (!Number.isFinite(stepValue) || stepValue <= 1) {
+      continue;
+    }
+    values.add(stepValue);
+  }
+  return Array.from(values).sort((a, b) => a - b);
+}
+
+/**
+ * @param {typeof MESSAGES.EN} messages
+ * @param {unknown[]} rawStepValues
+ */
+function buildStepQuantityViolationMessage(messages, rawStepValues) {
+  const stepValues = normalizeStepViolationValues(rawStepValues);
+  if (stepValues.length === 1) {
+    return (
+      messages.stepQuantity +
+      " " +
+      messages.stepQuantitySinglePrefix +
+      stepValues[0] +
+      messages.stepQuantitySingleSuffix
+    );
+  }
+  if (stepValues.length > 1) {
+    return (
+      messages.stepQuantity +
+      " " +
+      messages.stepQuantityMultiPrefix +
+      stepValues.join(", ") +
+      messages.stepQuantityMultiSuffix
+    );
+  }
+  return messages.stepQuantity;
+}
+
+/**
  * @param {Record<string, unknown>} rawMap
  */
 function normalizeTierPriceMap(rawMap) {
@@ -149,6 +203,22 @@ function normalizeMinimumOrderQuantityMap(rawMap) {
       continue;
     }
     normalized[productId] = minimumOrderQuantity;
+  }
+  return normalized;
+}
+
+/**
+ * @param {Record<string, unknown>} rawMap
+ */
+function normalizeStepQuantityMap(rawMap) {
+  /** @type {Record<string, number>} */
+  const normalized = {};
+  for (const [productId, rawStepQuantity] of Object.entries(rawMap)) {
+    const stepQuantity = Math.floor(toNumber(rawStepQuantity, NaN));
+    if (!Number.isFinite(stepQuantity) || stepQuantity <= 1) {
+      continue;
+    }
+    normalized[productId] = stepQuantity;
   }
   return normalized;
 }
@@ -237,6 +307,16 @@ function parseConfig(input) {
     config && typeof config.perProductMinimumOrderQuantitiesB2B === "object"
       ? config.perProductMinimumOrderQuantitiesB2B
       : {};
+  const rawPerProductStepQuantitiesB2C =
+    config && typeof config.perProductStepQuantitiesB2C === "object"
+      ? config.perProductStepQuantitiesB2C
+      : config && typeof config.perProductStepQuantities === "object"
+        ? config.perProductStepQuantities
+        : {};
+  const rawPerProductStepQuantitiesB2B =
+    config && typeof config.perProductStepQuantitiesB2B === "object"
+      ? config.perProductStepQuantitiesB2B
+      : {};
   const rawPerProductVisibilityModes =
     config && typeof config.perProductVisibilityModes === "object"
       ? config.perProductVisibilityModes
@@ -289,6 +369,12 @@ function parseConfig(input) {
   const perProductMinimumOrderQuantitiesB2B = normalizeMinimumOrderQuantityMap(
     /** @type {Record<string, unknown>} */ (rawPerProductMinimumOrderQuantitiesB2B),
   );
+  const perProductStepQuantitiesB2C = normalizeStepQuantityMap(
+    /** @type {Record<string, unknown>} */ (rawPerProductStepQuantitiesB2C),
+  );
+  const perProductStepQuantitiesB2B = normalizeStepQuantityMap(
+    /** @type {Record<string, unknown>} */ (rawPerProductStepQuantitiesB2B),
+  );
   for (const [productId, visibilityMode] of Object.entries(
     rawPerProductVisibilityModes,
   )) {
@@ -339,6 +425,8 @@ function parseConfig(input) {
     perProductTierPricesB2B,
     perProductMinimumOrderQuantitiesB2C,
     perProductMinimumOrderQuantitiesB2B,
+    perProductStepQuantitiesB2C,
+    perProductStepQuantitiesB2B,
     perProductVisibilityModes,
     perProductVisibilityCustomerIds,
   };
@@ -369,12 +457,35 @@ function resolveFinalUnitPrice(line) {
 }
 
 /**
+ * Rules are product-level, so MOQ/step must use aggregated quantity
+ * across all lines that point to the same product.
+ * @param {CartValidationsGenerateRunInput["cart"]["lines"]} lines
+ */
+function buildProductQuantityTotals(lines) {
+  /** @type {Record<string, number>} */
+  const totals = {};
+  for (const line of lines ?? []) {
+    const productId =
+      line?.merchandise?.__typename === "ProductVariant"
+        ? line.merchandise.product.id
+        : null;
+    if (!productId) {
+      continue;
+    }
+    const quantity = Math.max(1, Math.floor(toNumber(line?.quantity, 1)));
+    totals[productId] = (totals[productId] ?? 0) + quantity;
+  }
+  return totals;
+}
+
+/**
  * @param {CartValidationsGenerateRunInput} input
  * @returns {CartValidationsGenerateRunResult}
  */
 export function cartValidationsGenerateRun(input) {
   const config = parseConfig(input);
   const messages = resolveMessages(input);
+  const productQuantityTotals = buildProductQuantityTotals(input?.cart?.lines ?? []);
   const hasPurchasingCompany = Boolean(
     input?.cart?.buyerIdentity?.purchasingCompany?.company?.id,
   );
@@ -390,6 +501,9 @@ export function cartValidationsGenerateRun(input) {
   let hasBelowFloorViolation = false;
   let hasCombinedDiscountCapViolation = false;
   let hasMinimumOrderQuantityViolation = false;
+  let hasStepQuantityViolation = false;
+  /** @type {Set<number>} */
+  const stepViolationSteps = new Set();
   for (const line of input?.cart?.lines ?? []) {
     const productId =
       line?.merchandise?.__typename === "ProductVariant"
@@ -426,6 +540,9 @@ export function cartValidationsGenerateRun(input) {
     const perProductMinimumOrderQuantities = isB2B
       ? config.perProductMinimumOrderQuantitiesB2B
       : config.perProductMinimumOrderQuantitiesB2C;
+    const perProductStepQuantities = isB2B
+      ? config.perProductStepQuantitiesB2B
+      : config.perProductStepQuantitiesB2C;
     const lineFloorPercent =
       productId && perProductFloorPercents[productId] != null
         ? perProductFloorPercents[productId]
@@ -435,12 +552,29 @@ export function cartValidationsGenerateRun(input) {
         ? perProductAllowZeroFinalPrice[productId]
         : config.allowZeroFinalPrice;
     const quantity = Math.max(1, toNumber(line?.quantity, 1));
+    const productQuantity =
+      productId && productQuantityTotals[productId] != null
+        ? productQuantityTotals[productId]
+        : quantity;
     const minimumOrderQuantity =
       productId && perProductMinimumOrderQuantities[productId] != null
         ? perProductMinimumOrderQuantities[productId]
         : 1;
-    if (quantity < minimumOrderQuantity) {
+    const stepQuantity =
+      productId && perProductStepQuantities[productId] != null
+        ? perProductStepQuantities[productId]
+        : 1;
+    if (productQuantity < minimumOrderQuantity) {
       hasMinimumOrderQuantityViolation = true;
+    }
+    if (stepQuantity > 1 && productQuantity % stepQuantity !== 0) {
+      hasStepQuantityViolation = true;
+      stepViolationSteps.add(stepQuantity);
+    }
+    if (
+      productQuantity < minimumOrderQuantity ||
+      (stepQuantity > 1 && productQuantity % stepQuantity !== 0)
+    ) {
       continue;
     }
     const baseUnitPrice = resolveBaseUnitPrice(line);
@@ -496,6 +630,12 @@ export function cartValidationsGenerateRun(input) {
   if (hasMinimumOrderQuantityViolation) {
     errors.push({
       message: messages.minimumOrderQuantity,
+      target: "$.cart",
+    });
+  }
+  if (hasStepQuantityViolation) {
+    errors.push({
+      message: buildStepQuantityViolationMessage(messages, Array.from(stepViolationSteps)),
       target: "$.cart",
     });
   }

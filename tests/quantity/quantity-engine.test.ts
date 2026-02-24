@@ -109,3 +109,20 @@ test("quantity engine applies step quantity with segment precedence", () => {
     true,
   );
 });
+
+test("quantity engine treats step <= 1 as no restriction", () => {
+  assert.equal(
+    validateQuantity({
+      quantity: 5,
+      segment: "B2C",
+      productId: "gid://shopify/Product/STEP_DISABLED",
+      rules: [
+        {
+          productId: "gid://shopify/Product/STEP_DISABLED",
+          stepQuantity: 1,
+        },
+      ],
+    }),
+    true,
+  );
+});

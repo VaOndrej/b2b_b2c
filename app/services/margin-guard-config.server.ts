@@ -205,12 +205,106 @@ export async function upsertProductQuantityRule(input: {
       productId: input.productId,
       segment: input.segment,
       minimumOrderQuantity: normalizedMinimumOrderQuantity,
+      stepQuantity: null,
     },
   });
 }
 
 export async function deleteProductQuantityRule(id: string) {
   const db = getMarginGuardPrismaOrThrow();
+  const existing = await db.productQuantityRule.findUnique({
+    where: { id },
+  });
+  if (!existing) {
+    return null;
+  }
+
+  if (existing.stepQuantity != null && existing.stepQuantity > 1) {
+    return db.productQuantityRule.update({
+      where: { id },
+      data: {
+        minimumOrderQuantity: 1,
+      },
+    });
+  }
+
+  return db.productQuantityRule.delete({ where: { id } });
+}
+
+export async function upsertProductStepQuantityRule(input: {
+  productId: string;
+  segment?: "B2B" | "B2C";
+  stepQuantity: number;
+}) {
+  const db = getMarginGuardPrismaOrThrow();
+  const normalizedStepQuantity = Math.floor(input.stepQuantity);
+  const stepQuantity =
+    Number.isFinite(normalizedStepQuantity) && normalizedStepQuantity > 1
+      ? normalizedStepQuantity
+      : null;
+  const existing = await db.productQuantityRule.findFirst({
+    where: {
+      configId: DEFAULT_CONFIG_ID,
+      productId: input.productId,
+      segment: input.segment ?? null,
+    },
+  });
+
+  if (!stepQuantity) {
+    if (!existing) {
+      return null;
+    }
+    if (existing.minimumOrderQuantity > 1) {
+      return db.productQuantityRule.update({
+        where: { id: existing.id },
+        data: {
+          stepQuantity: null,
+        },
+      });
+    }
+    return db.productQuantityRule.delete({
+      where: { id: existing.id },
+    });
+  }
+
+  if (existing) {
+    return db.productQuantityRule.update({
+      where: { id: existing.id },
+      data: {
+        stepQuantity,
+      },
+    });
+  }
+
+  return db.productQuantityRule.create({
+    data: {
+      configId: DEFAULT_CONFIG_ID,
+      productId: input.productId,
+      segment: input.segment,
+      minimumOrderQuantity: 1,
+      stepQuantity,
+    },
+  });
+}
+
+export async function deleteProductStepQuantityRule(id: string) {
+  const db = getMarginGuardPrismaOrThrow();
+  const existing = await db.productQuantityRule.findUnique({
+    where: { id },
+  });
+  if (!existing) {
+    return null;
+  }
+
+  if (existing.minimumOrderQuantity > 1) {
+    return db.productQuantityRule.update({
+      where: { id },
+      data: {
+        stepQuantity: null,
+      },
+    });
+  }
+
   return db.productQuantityRule.delete({ where: { id } });
 }
 

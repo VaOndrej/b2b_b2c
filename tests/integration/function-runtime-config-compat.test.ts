@@ -774,6 +774,302 @@ test("runtime integration: MOQ per segment blocks quantity below configured mini
   );
 });
 
+test("runtime integration: step quantity blocks non-multiples and can combine with MOQ violation", () => {
+  const productId = "gid://shopify/Product/STEP_PER_SEGMENT";
+  const cartConfig = buildCartValidationFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 0,
+    allowZeroFinalPrice: true,
+    productFloors: [],
+    productQuantityRules: [
+      {
+        productId,
+        segment: null,
+        minimumOrderQuantity: 3,
+        stepQuantity: 6,
+      },
+      {
+        productId,
+        segment: "B2B" as const,
+        minimumOrderQuantity: 5,
+        stepQuantity: 4,
+      },
+    ],
+  });
+
+  const blockedB2CByStep = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2020", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-step-b2c-blocked",
+          quantity: 5,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "500.00" },
+            totalAmount: { amount: "500.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  const b2cMessages =
+    blockedB2CByStep.operations[0]?.validationAdd?.errors?.map(
+      (error: any) => error?.message ?? "",
+    ) ?? [];
+  assert.equal(blockedB2CByStep.operations.length > 0, true);
+  assert.equal(
+    b2cMessages.some((message: string) => message.includes("packaging multiple")),
+    true,
+  );
+
+  const allowedB2C = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2021", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-step-b2c-allowed",
+          quantity: 6,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "600.00" },
+            totalAmount: { amount: "600.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(allowedB2C.operations.length, 0);
+
+  const blockedB2BWithMoqAndStep = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2022", hasAnyTag: true },
+      },
+      lines: [
+        {
+          id: "line-step-b2b-both-blocked",
+          quantity: 3,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "300.00" },
+            totalAmount: { amount: "300.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  const b2bMessages =
+    blockedB2BWithMoqAndStep.operations[0]?.validationAdd?.errors?.map(
+      (error: any) => error?.message ?? "",
+    ) ?? [];
+  assert.equal(
+    b2bMessages.some((message: string) => message.includes("minimum order quantity")),
+    true,
+  );
+  assert.equal(
+    b2bMessages.some((message: string) => message.includes("packaging multiple")),
+    true,
+  );
+
+  const allowedB2B = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2023", hasAnyTag: true },
+      },
+      lines: [
+        {
+          id: "line-step-b2b-allowed",
+          quantity: 8,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "800.00" },
+            totalAmount: { amount: "800.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(
+    allowedB2B.operations.length,
+    0,
+    "[STEP FAIL] B2B quantity meeting MOQ and step should be allowed.",
+  );
+});
+
+test("runtime integration: MOQ and step use aggregated quantity for duplicate product lines", () => {
+  const productId = "gid://shopify/Product/STEP_AGGREGATED_LINES";
+  const cartConfig = buildCartValidationFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 0,
+    allowZeroFinalPrice: true,
+    productFloors: [],
+    productQuantityRules: [
+      {
+        productId,
+        segment: null,
+        minimumOrderQuantity: 2,
+        stepQuantity: 2,
+      },
+    ],
+  });
+
+  const blockedSingleLine = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2030", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-agg-single",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(blockedSingleLine.operations.length > 0, true);
+
+  const allowedSplitLines = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2031", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-agg-split-1",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+        },
+        {
+          id: "line-agg-split-2",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(
+    allowedSplitLines.operations.length,
+    0,
+    "[STEP AGG FAIL] Two lines with qty 1+1 should pass MOQ 2 and step 2.",
+  );
+
+  const blockedNonMultipleSplit = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2032", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-agg-split-3",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+        },
+        {
+          id: "line-agg-split-4",
+          quantity: 2,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "200.00" },
+            totalAmount: { amount: "200.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  const nonMultipleMessages =
+    blockedNonMultipleSplit.operations[0]?.validationAdd?.errors?.map(
+      (error: any) => error?.message ?? "",
+    ) ?? [];
+  assert.equal(blockedNonMultipleSplit.operations.length > 0, true);
+  assert.equal(
+    nonMultipleMessages.some((message: string) => message.includes("packaging multiple")),
+    true,
+  );
+  assert.equal(
+    nonMultipleMessages.some((message: string) => message.includes("steps of 2")),
+    true,
+  );
+});
+
 test("runtime integration: coupon code is rejected when segment rule does not match", () => {
   const productId = "gid://shopify/Product/COUPON_SEGMENT_RULE";
   const config = buildDiscountFunctionConfig({

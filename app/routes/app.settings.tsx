@@ -10,12 +10,14 @@ import {
   deleteCouponSegmentRule,
   deleteProductFloorRule,
   deleteProductQuantityRule,
+  deleteProductStepQuantityRule,
   deleteProductVisibilityRule,
   deleteProductTierPriceRule,
   getOrCreateMarginGuardConfig,
   upsertCouponSegmentRule,
   upsertProductFloorRule,
   upsertProductQuantityRule,
+  upsertProductStepQuantityRule,
   upsertProductVisibilityRule,
   upsertProductTierPriceRule,
   updateGlobalMarginGuardConfig,
@@ -169,6 +171,30 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
+  if (intent === "save-product-step-quantity-rule") {
+    const productId = String(formData.get("productId") ?? "").trim();
+    const segmentRaw = String(formData.get("segment") ?? "").trim();
+    const stepQuantity = Math.max(
+      1,
+      Math.floor(parseNumber(formData.get("stepQuantity"), 1)),
+    );
+
+    if (productId) {
+      await upsertProductStepQuantityRule({
+        productId,
+        segment: segmentRaw === "B2B" || segmentRaw === "B2C" ? segmentRaw : undefined,
+        stepQuantity,
+      });
+    }
+  }
+
+  if (intent === "delete-product-step-quantity-rule") {
+    const id = String(formData.get("id") ?? "");
+    if (id) {
+      await deleteProductStepQuantityRule(id);
+    }
+  }
+
   if (intent === "save-product-visibility-rule") {
     const productId = String(formData.get("productId") ?? "").trim();
     const visibilityModeRaw = String(formData.get("visibilityMode") ?? "ALL").trim();
@@ -231,6 +257,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     intent === "delete-product-tier-price" ||
     intent === "save-product-quantity-rule" ||
     intent === "delete-product-quantity-rule" ||
+    intent === "save-product-step-quantity-rule" ||
+    intent === "delete-product-step-quantity-rule" ||
     intent === "save-product-visibility-rule" ||
     intent === "delete-product-visibility-rule" ||
     intent === "save-coupon-segment-rule" ||
@@ -255,6 +283,12 @@ export default function AppSettingsRoute() {
     useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const productMoqRules = config.productQuantityRules.filter(
+    (rule: any) => Number(rule.minimumOrderQuantity) > 1,
+  );
+  const productStepRules = config.productQuantityRules.filter(
+    (rule: any) => Number(rule.stepQuantity ?? 0) > 1,
+  );
 
   return (
     <s-page heading="Margin Guard Settings">
@@ -498,17 +532,78 @@ export default function AppSettingsRoute() {
 
         <s-box padding="base" borderWidth="base" borderRadius="base">
           <s-heading>Configured MOQ rules</s-heading>
-          {config.productQuantityRules.length === 0 ? (
+          {productMoqRules.length === 0 ? (
             <s-paragraph>No per-product MOQ rules yet.</s-paragraph>
           ) : (
             <s-stack direction="block" gap="small">
-              {config.productQuantityRules.map((rule: any) => (
+              {productMoqRules.map((rule: any) => (
                 <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
                   <s-text>
                     {rule.productId} | {rule.segment ?? "ALL"} | MOQ {rule.minimumOrderQuantity}
                   </s-text>
                   <form method="post">
                     <input type="hidden" name="intent" value="delete-product-quantity-rule" />
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" disabled={isSubmitting}>
+                      Delete
+                    </button>
+                  </form>
+                </s-stack>
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+
+      <s-section heading="Per-product step quantity rules">
+        <form method="post">
+          <input type="hidden" name="intent" value="save-product-step-quantity-rule" />
+          <s-stack direction="block" gap="base">
+            <label>
+              Product ID
+              <input name="productId" required />
+            </label>
+            <label>
+              Segment (optional)
+              <select name="segment" defaultValue="">
+                <option value="">All segments</option>
+                <option value="B2B">B2B</option>
+                <option value="B2C">B2C</option>
+              </select>
+            </label>
+            <label>
+              Step quantity (carton multiple)
+              <input
+                name="stepQuantity"
+                type="number"
+                min={1}
+                step={1}
+                defaultValue={1}
+              />
+            </label>
+            <button type="submit" disabled={isSubmitting}>
+              Save step rule
+            </button>
+          </s-stack>
+        </form>
+
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Configured step rules</s-heading>
+          {productStepRules.length === 0 ? (
+            <s-paragraph>No per-product step quantity rules yet.</s-paragraph>
+          ) : (
+            <s-stack direction="block" gap="small">
+              {productStepRules.map((rule: any) => (
+                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
+                  <s-text>
+                    {rule.productId} | {rule.segment ?? "ALL"} | step {rule.stepQuantity}
+                  </s-text>
+                  <form method="post">
+                    <input
+                      type="hidden"
+                      name="intent"
+                      value="delete-product-step-quantity-rule"
+                    />
                     <input type="hidden" name="id" value={rule.id} />
                     <button type="submit" disabled={isSubmitting}>
                       Delete

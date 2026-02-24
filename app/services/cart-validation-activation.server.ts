@@ -11,6 +11,19 @@ interface AdminGraphqlClient {
   ) => Promise<{ json(): Promise<any> }>;
 }
 
+interface ValidationNode {
+  id: string;
+  title: string;
+  enabled: boolean;
+  blockOnFailure: boolean;
+  shopifyFunctionId: string | null;
+  shopifyFunctionTitle: string | null;
+}
+
+interface CreateValidationResult extends ActivationResult {
+  alreadyExists: boolean;
+}
+
 export interface ActivationResult {
   ok: boolean;
   message: string;
@@ -36,6 +49,47 @@ function normalizeGraphQLErrorMessage(errors: Array<{ message?: string }>): stri
 function isAlreadyExistsMessage(message: string): boolean {
   const normalized = message.toLowerCase();
   return normalized.includes("already") && normalized.includes("validation");
+}
+
+function parseValidationNumericId(id: string): number {
+  const match = String(id || "").match(/\/(\d+)$/);
+  if (!match) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  const parsed = Number(match[1]);
+  if (!Number.isFinite(parsed)) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  return parsed;
+}
+
+function compareValidationNodeByIdAsc(a: ValidationNode, b: ValidationNode): number {
+  const idDelta = parseValidationNumericId(a.id) - parseValidationNumericId(b.id);
+  if (idDelta !== 0) {
+    return idDelta;
+  }
+  return String(a.id).localeCompare(String(b.id));
+}
+
+function normalizeValidationNodes(rawNodes: unknown): ValidationNode[] {
+  const nodes = Array.isArray(rawNodes) ? rawNodes : [];
+  const normalized: ValidationNode[] = [];
+  for (const node of nodes) {
+    const id = String((node as any)?.id ?? "").trim();
+    if (!id) {
+      continue;
+    }
+    normalized.push({
+      id,
+      title: String((node as any)?.title ?? "").trim(),
+      enabled: Boolean((node as any)?.enabled),
+      blockOnFailure: Boolean((node as any)?.blockOnFailure),
+      shopifyFunctionId: String((node as any)?.shopifyFunction?.id ?? "").trim() || null,
+      shopifyFunctionTitle:
+        String((node as any)?.shopifyFunction?.title ?? "").trim() || null,
+    });
+  }
+  return normalized;
 }
 
 function buildValidationInput(
@@ -66,9 +120,9 @@ function buildValidationInput(
   return baseInput;
 }
 
-async function findExistingValidationIdsByTitle(
+async function listMatchingValidations(
   admin: AdminGraphqlClient,
-): Promise<string[]> {
+): Promise<ValidationNode[]> {
   const response = await admin.graphql(
     `#graphql
       query FindMarginGuardValidation($first: Int!) {
@@ -76,6 +130,12 @@ async function findExistingValidationIdsByTitle(
           nodes {
             id
             title
+            enabled
+            blockOnFailure
+            shopifyFunction {
+              id
+              title
+            }
           }
         }
       }`,
@@ -92,19 +152,21 @@ async function findExistingValidationIdsByTitle(
     );
   }
 
-  const nodes = payload?.data?.validations?.nodes ?? [];
+  const nodes = normalizeValidationNodes(payload?.data?.validations?.nodes);
   return nodes
-    .filter(
-      (node: { id?: string; title?: string }) => node?.title === VALIDATION_TITLE,
-    )
-    .map((node: { id?: string }) => node.id)
-    .filter((id: string | undefined): id is string => Boolean(id));
+    .filter((node) => {
+      if (node.shopifyFunctionTitle === VALIDATION_HANDLE) {
+        return true;
+      }
+      return node.title === VALIDATION_TITLE;
+    })
+    .sort(compareValidationNodeByIdAsc);
 }
 
 async function createValidation(
   admin: AdminGraphqlClient,
   functionConfig: ReturnType<typeof buildCartValidationFunctionConfig>,
-): Promise<ActivationResult> {
+): Promise<CreateValidationResult> {
   const response = await admin.graphql(
     `#graphql
       mutation ActivateValidation($validation: ValidationCreateInput!) {
@@ -133,6 +195,7 @@ async function createValidation(
   if (graphQLErrors.length > 0) {
     return {
       ok: false,
+      alreadyExists: false,
       message:
         normalizeGraphQLErrorMessage(graphQLErrors) ||
         "Unknown validation activation GraphQL error",
@@ -141,18 +204,25 @@ async function createValidation(
 
   const userErrors = payload?.data?.validationCreate?.userErrors ?? [];
   const rawMessage = normalizeErrorMessage(userErrors);
-  if (userErrors.length === 0 || isAlreadyExistsMessage(rawMessage)) {
+  if (userErrors.length === 0) {
     return {
       ok: true,
-      message:
-        userErrors.length === 0
-          ? "Cart validation function is active."
-          : "Cart validation already existed and is treated as active.",
+      alreadyExists: false,
+      message: "Cart validation function is active.",
+    };
+  }
+
+  if (isAlreadyExistsMessage(rawMessage)) {
+    return {
+      ok: true,
+      alreadyExists: true,
+      message: "Cart validation already existed and will be reconciled.",
     };
   }
 
   return {
     ok: false,
+    alreadyExists: false,
     message: rawMessage || "Unknown activation error",
   };
 }
@@ -211,17 +281,94 @@ async function updateValidation(
   };
 }
 
+async function deleteValidation(
+  admin: AdminGraphqlClient,
+  validationId: string,
+): Promise<ActivationResult> {
+  const response = await admin.graphql(
+    `#graphql
+      mutation DeleteValidation($id: ID!) {
+        validationDelete(id: $id) {
+          deletedId
+          userErrors {
+            field
+            message
+          }
+        }
+      }`,
+    {
+      variables: {
+        id: validationId,
+      },
+    },
+  );
+
+  const payload = await response.json();
+  const graphQLErrors = payload?.errors ?? [];
+  if (graphQLErrors.length > 0) {
+    return {
+      ok: false,
+      message:
+        normalizeGraphQLErrorMessage(graphQLErrors) ||
+        "Unknown validation delete GraphQL error",
+    };
+  }
+
+  const userErrors = payload?.data?.validationDelete?.userErrors ?? [];
+  if (userErrors.length === 0) {
+    return {
+      ok: true,
+      message: "Duplicate cart validation was removed.",
+    };
+  }
+
+  return {
+    ok: false,
+    message: normalizeErrorMessage(userErrors) || "Unknown validation delete error",
+  };
+}
+
+function splitPrimaryAndDuplicates(
+  validations: ValidationNode[],
+): { primary: ValidationNode | null; duplicates: ValidationNode[] } {
+  if (!validations.length) {
+    return {
+      primary: null,
+      duplicates: [],
+    };
+  }
+  const [primary, ...duplicates] = validations
+    .slice()
+    .sort(compareValidationNodeByIdAsc);
+  return {
+    primary,
+    duplicates,
+  };
+}
+
 async function updateExistingValidations(
   admin: AdminGraphqlClient,
-  validationIds: string[],
+  validations: ValidationNode[],
   functionConfig: ReturnType<typeof buildCartValidationFunctionConfig>,
 ): Promise<ActivationResult> {
-  const errors: string[] = [];
+  const { primary, duplicates } = splitPrimaryAndDuplicates(validations);
+  if (!primary) {
+    return {
+      ok: false,
+      message: "No existing cart validation found for reconciliation.",
+    };
+  }
 
-  for (const validationId of validationIds) {
-    const update = await updateValidation(admin, validationId, functionConfig);
-    if (!update.ok) {
-      errors.push(`ID ${validationId}: ${update.message}`);
+  const primaryUpdate = await updateValidation(admin, primary.id, functionConfig);
+  if (!primaryUpdate.ok) {
+    return primaryUpdate;
+  }
+
+  const errors: string[] = [];
+  for (const duplicate of duplicates) {
+    const deletion = await deleteValidation(admin, duplicate.id);
+    if (!deletion.ok) {
+      errors.push(`ID ${duplicate.id}: ${deletion.message}`);
     }
   }
 
@@ -229,7 +376,7 @@ async function updateExistingValidations(
     return {
       ok: false,
       message:
-        `Failed to update ${errors.length}/${validationIds.length} existing validations. ` +
+        `Primary validation updated, but failed to delete ${errors.length}/${duplicates.length} duplicates. ` +
         errors.join(" | "),
     };
   }
@@ -237,9 +384,9 @@ async function updateExistingValidations(
   return {
     ok: true,
     message:
-      validationIds.length === 1
+      duplicates.length === 0
         ? "Cart validation function is active and config was updated."
-        : `Cart validation function is active and ${validationIds.length} existing validations were updated.`,
+        : `Cart validation function is active; updated primary validation and removed ${duplicates.length} duplicates.`,
   };
 }
 
@@ -251,14 +398,36 @@ export async function ensureCartValidationActive(
   const functionConfig = buildCartValidationFunctionConfig(config);
 
   try {
-    const existingValidationIds = await findExistingValidationIdsByTitle(admin);
-    const result = existingValidationIds.length > 0
-      ? await updateExistingValidations(
-          admin,
-          existingValidationIds,
-          functionConfig,
-        )
-      : await createValidation(admin, functionConfig);
+    const existingValidations = await listMatchingValidations(admin);
+    let result: ActivationResult;
+    if (existingValidations.length > 0) {
+      result = await updateExistingValidations(
+        admin,
+        existingValidations,
+        functionConfig,
+      );
+    } else {
+      const creation = await createValidation(admin, functionConfig);
+      if (!creation.ok) {
+        result = creation;
+      } else if (!creation.alreadyExists) {
+        result = creation;
+      } else {
+        const reconciledValidations = await listMatchingValidations(admin);
+        result =
+          reconciledValidations.length > 0
+            ? await updateExistingValidations(
+                admin,
+                reconciledValidations,
+                functionConfig,
+              )
+            : {
+                ok: false,
+                message:
+                  "Cart validation reported as existing, but no matching validation could be listed.",
+              };
+      }
+    }
 
     await db.marginGuardConfig.update({
       where: { id: "default" },

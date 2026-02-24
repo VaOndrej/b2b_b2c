@@ -89,6 +89,7 @@ model ProductQuantityRule {
   productId            String
   segment              String?
   minimumOrderQuantity Int
+  stepQuantity         Int?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 

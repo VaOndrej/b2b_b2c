@@ -67,7 +67,7 @@ export default function AppDashboardRoute() {
               <strong>{config.productTierPrices.length}</strong>
             </s-paragraph>
             <s-paragraph>
-              Per-product MOQ rules:{" "}
+              Per-product quantity rules (MOQ/step):{" "}
               <strong>{config.productQuantityRules.length}</strong>
             </s-paragraph>
             <s-paragraph>

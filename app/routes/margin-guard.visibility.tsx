@@ -1,7 +1,11 @@
 import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import { getOrCreateMarginGuardConfig } from "../services/margin-guard-config.server";
-import { resolveStorefrontVisibilityByHandles } from "../services/storefront-visibility.server";
+import {
+  resolveStorefrontQuantityConstraintsByProductId,
+  resolveStorefrontQuantityConstraintsByHandle,
+  resolveStorefrontVisibilityByHandles,
+} from "../services/storefront-visibility.server";
 
 function parseHandles(value: string | null): string[] {
   return String(value ?? "")
@@ -15,6 +19,27 @@ function parseSegment(value: string | null): "B2B" | "B2C" | null {
     return value;
   }
   return null;
+}
+
+function normalizeProductId(value: string): string | null {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    return null;
+  }
+  if (normalized.startsWith("gid://shopify/Product/")) {
+    return normalized;
+  }
+  if (/^\d+$/.test(normalized)) {
+    return `gid://shopify/Product/${normalized}`;
+  }
+  return null;
+}
+
+function parseProductIds(value: string | null): string[] {
+  return String(value ?? "")
+    .split(",")
+    .map((raw) => normalizeProductId(raw))
+    .filter((value): value is string => Boolean(value));
 }
 
 function normalizeCustomerId(value: string | null): string | null {
@@ -83,6 +108,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.public.appProxy(request);
   const url = new URL(request.url);
   const handles = parseHandles(url.searchParams.get("handles"));
+  const productIds = parseProductIds(url.searchParams.get("product_ids"));
   const config = await getOrCreateMarginGuardConfig();
   const segment = await resolveSegment({
     admin: admin as AdminGraphqlClient | undefined,
@@ -104,12 +130,26 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     customerId,
     rules: config.productVisibilityRules,
   });
+  const quantityConstraintsByHandle = resolveStorefrontQuantityConstraintsByHandle({
+    handles,
+    productIdByHandle: visibility.productIdByHandle,
+    segment,
+    rules: config.productQuantityRules,
+  });
+  const quantityConstraintsByProductId = resolveStorefrontQuantityConstraintsByProductId({
+    productIds,
+    segment,
+    rules: config.productQuantityRules,
+  });
 
   return Response.json(
     {
       segment,
       customerId: customerId ?? null,
       b2bTag: config.b2bTag,
+      configUpdatedAt: config.updatedAt,
+      quantityConstraintsByHandle,
+      quantityConstraintsByProductId,
       ...visibility,
     },
     {

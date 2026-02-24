@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveStorefrontVisibilityByHandles } from "../../app/services/storefront-visibility.server.ts";
+import {
+  resolveStorefrontQuantityConstraintsByProductId,
+  resolveStorefrontQuantityConstraintsByHandle,
+  resolveStorefrontVisibilityByHandles,
+} from "../../app/services/storefront-visibility.server.ts";
 
 test("storefront visibility hides B2B_ONLY products for B2C visitors", async () => {
   const admin = {
@@ -38,6 +42,10 @@ test("storefront visibility hides B2B_ONLY products for B2C visitors", async () 
 
   assert.deepEqual(result.hiddenHandles, ["featured-product"]);
   assert.deepEqual(result.hiddenProductIds, ["gid://shopify/Product/8679309213867"]);
+  assert.equal(
+    result.productIdByHandle["featured-product"],
+    "gid://shopify/Product/8679309213867",
+  );
   assert.equal(result.visibilityByHandle["featured-product"], false);
 });
 
@@ -95,4 +103,64 @@ test("storefront visibility lookup quotes handles and falls back per handle", as
   assert.equal(calls[1]?.query, "handle:'my-featured-product'");
   assert.equal(result.visibilityByHandle["my-featured-product"], false);
   assert.deepEqual(result.hiddenHandles, ["my-featured-product"]);
+});
+
+test("storefront quantity constraints resolve step and MOQ per handle", () => {
+  const constraintsByHandle = resolveStorefrontQuantityConstraintsByHandle({
+    handles: ["my-featured-product"],
+    productIdByHandle: {
+      "my-featured-product": "gid://shopify/Product/8679309213867",
+    },
+    segment: "B2C",
+    rules: [
+      {
+        productId: "gid://shopify/Product/8679309213867",
+        minimumOrderQuantity: 1,
+        stepQuantity: 2,
+      },
+      {
+        productId: "gid://shopify/Product/8679309213867",
+        segment: "B2B",
+        minimumOrderQuantity: 5,
+        stepQuantity: 4,
+      },
+    ],
+  });
+
+  assert.deepEqual(constraintsByHandle, {
+    "my-featured-product": {
+      minimumOrderQuantity: 1,
+      stepQuantity: 2,
+    },
+  });
+});
+
+test("storefront quantity constraints resolve by product id without handle lookup", () => {
+  const constraintsByProductId = resolveStorefrontQuantityConstraintsByProductId({
+    productIds: ["8679308853419", "gid://shopify/Product/8679309213867"],
+    segment: "B2C",
+    rules: [
+      {
+        productId: "gid://shopify/Product/8679308853419",
+        minimumOrderQuantity: 1,
+        stepQuantity: 2,
+      },
+      {
+        productId: "gid://shopify/Product/8679309213867",
+        minimumOrderQuantity: 3,
+        stepQuantity: 1,
+      },
+    ],
+  });
+
+  assert.deepEqual(constraintsByProductId, {
+    "gid://shopify/Product/8679308853419": {
+      minimumOrderQuantity: 1,
+      stepQuantity: 2,
+    },
+    "gid://shopify/Product/8679309213867": {
+      minimumOrderQuantity: 3,
+      stepQuantity: 1,
+    },
+  });
 });

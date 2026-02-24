@@ -17,6 +17,7 @@ interface ProductQuantityRuleInput {
   productId: string;
   segment: string | null;
   minimumOrderQuantity: number;
+  stepQuantity?: number | null;
 }
 
 interface ProductVisibilityRuleInput {
@@ -134,6 +135,16 @@ function normalizeMinimumOrderQuantity(
   return Math.floor(parsed);
 }
 
+function normalizeStepQuantity(
+  value: unknown,
+): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 1) {
+    return null;
+  }
+  return Math.floor(parsed);
+}
+
 export function buildCartValidationFunctionConfig(
   config: MarginGuardFunctionConfigInput,
 ) {
@@ -146,6 +157,8 @@ export function buildCartValidationFunctionConfig(
   const perProductTierMapB2B: Record<string, Map<number, number>> = {};
   const perProductMinimumOrderQuantitiesB2C: Record<string, number> = {};
   const perProductMinimumOrderQuantitiesB2B: Record<string, number> = {};
+  const perProductStepQuantitiesB2C: Record<string, number> = {};
+  const perProductStepQuantitiesB2B: Record<string, number> = {};
   const perProductVisibilityModes: Record<
     string,
     "B2B_ONLY" | "B2C_ONLY" | "CUSTOMER_ONLY"
@@ -233,11 +246,18 @@ export function buildCartValidationFunctionConfig(
     const minimumOrderQuantity = normalizeMinimumOrderQuantity(
       rule.minimumOrderQuantity,
     );
-    if (!productId || minimumOrderQuantity == null) {
+    const stepQuantity = normalizeStepQuantity(rule.stepQuantity);
+    if (!productId || (minimumOrderQuantity == null && stepQuantity == null)) {
       continue;
     }
-    perProductMinimumOrderQuantitiesB2C[productId] = minimumOrderQuantity;
-    perProductMinimumOrderQuantitiesB2B[productId] = minimumOrderQuantity;
+    if (minimumOrderQuantity != null) {
+      perProductMinimumOrderQuantitiesB2C[productId] = minimumOrderQuantity;
+      perProductMinimumOrderQuantitiesB2B[productId] = minimumOrderQuantity;
+    }
+    if (stepQuantity != null) {
+      perProductStepQuantitiesB2C[productId] = stepQuantity;
+      perProductStepQuantitiesB2B[productId] = stepQuantity;
+    }
   }
 
   for (const rule of productQuantityRules) {
@@ -248,14 +268,25 @@ export function buildCartValidationFunctionConfig(
     const minimumOrderQuantity = normalizeMinimumOrderQuantity(
       rule.minimumOrderQuantity,
     );
-    if (!productId || minimumOrderQuantity == null) {
+    const stepQuantity = normalizeStepQuantity(rule.stepQuantity);
+    if (!productId || (minimumOrderQuantity == null && stepQuantity == null)) {
       continue;
     }
     if (rule.segment === "B2C") {
-      perProductMinimumOrderQuantitiesB2C[productId] = minimumOrderQuantity;
+      if (minimumOrderQuantity != null) {
+        perProductMinimumOrderQuantitiesB2C[productId] = minimumOrderQuantity;
+      }
+      if (stepQuantity != null) {
+        perProductStepQuantitiesB2C[productId] = stepQuantity;
+      }
     }
     if (rule.segment === "B2B") {
-      perProductMinimumOrderQuantitiesB2B[productId] = minimumOrderQuantity;
+      if (minimumOrderQuantity != null) {
+        perProductMinimumOrderQuantitiesB2B[productId] = minimumOrderQuantity;
+      }
+      if (stepQuantity != null) {
+        perProductStepQuantitiesB2B[productId] = stepQuantity;
+      }
     }
   }
 
@@ -310,6 +341,8 @@ export function buildCartValidationFunctionConfig(
     perProductTierPricesB2B,
     perProductMinimumOrderQuantitiesB2C,
     perProductMinimumOrderQuantitiesB2B,
+    perProductStepQuantitiesB2C,
+    perProductStepQuantitiesB2B,
     perProductVisibilityModes,
     perProductVisibilityCustomerIds,
     couponSegmentRules,
