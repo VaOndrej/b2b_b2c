@@ -89,9 +89,12 @@ MVP_3 – Quantity & Operational Rules
  ├─ MOQ per segment
  ├─ Step quantity (kartonové násobky)
  ├─ Collection-level MOQ
+ ├─ Collection-level slevy, na všechny produkty xx sleva 10%, minimální cena, atd.. je tohle mid step mezi
+ globální cenou a konkrétním produktem.
  ├─ Cart validation rozšíření
  └─ Admin rule builder
 
+MVP_3_5 - Zobrazit a schovat variantu produktu. Tedy varianta A je kusovka. Varianta B je kartón.
 
 MVP_4 – Advanced Discount Orchestration
  Plná kontrola kombinace slev (enterprise diferenciace).
@@ -120,7 +123,8 @@ MVP_6 – Data Import / ERP Light
  ├─ Validation report
  └─ Audit log
 
-
+MVP_7 – Doprava pro B2B
+ ├─ TODO?
 
 ------------------------------------------------------------------------------------ STRUKTURA REPOZITÁŘE -------------------------------------------------------------------------
 
