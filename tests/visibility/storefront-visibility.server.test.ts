@@ -213,3 +213,44 @@ test("storefront quantity constraints apply customer max override over segment m
     },
   });
 });
+
+test("storefront quantity constraints apply product max over collection max", () => {
+  const collectionId = "gid://shopify/Collection/MAX_COLLECTION";
+  const productCollectionOnly = "gid://shopify/Product/MAX_COLLECTION_ONLY";
+  const productOverride = "gid://shopify/Product/MAX_PRODUCT_OVERRIDE";
+  const constraintsByProductId = resolveStorefrontQuantityConstraintsByProductId({
+    productIds: [productCollectionOnly, productOverride],
+    segment: "B2C",
+    rules: [
+      {
+        productId: productOverride,
+        minimumOrderQuantity: 1,
+        maxOrderQuantity: 40,
+      },
+    ],
+    collectionRules: [
+      {
+        collectionId,
+        segment: null,
+        maxOrderQuantity: 10,
+      },
+    ],
+    productCollectionIdsByProductId: {
+      [productCollectionOnly]: [collectionId],
+      [productOverride]: [collectionId],
+    },
+  });
+
+  assert.deepEqual(constraintsByProductId, {
+    [productCollectionOnly]: {
+      minimumOrderQuantity: 1,
+      stepQuantity: 1,
+      maxOrderQuantity: 10,
+    },
+    [productOverride]: {
+      minimumOrderQuantity: 1,
+      stepQuantity: 1,
+      maxOrderQuantity: 40,
+    },
+  });
+});

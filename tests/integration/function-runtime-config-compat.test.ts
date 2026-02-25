@@ -1213,6 +1213,158 @@ test("runtime integration: maximum quantity uses customer override over segment 
   );
 });
 
+test("runtime integration: per-product maximum quantity has precedence over per-collection maximum", () => {
+  const collectionId = "gid://shopify/Collection/BULK_TOOLS";
+  const productWithCollectionOnly = "gid://shopify/Product/MAX_COLLECTION_ONLY";
+  const productWithProductOverride = "gid://shopify/Product/MAX_PRODUCT_OVERRIDE";
+  const cartConfig = buildCartValidationFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 0,
+    allowZeroFinalPrice: true,
+    productFloors: [],
+    collectionQuantityRules: [
+      {
+        collectionId,
+        segment: null,
+        maxOrderQuantity: 10,
+      },
+    ],
+    productQuantityRules: [
+      {
+        productId: productWithProductOverride,
+        segment: null,
+        minimumOrderQuantity: 1,
+        maxOrderQuantity: 40,
+      },
+    ],
+  });
+
+  const blockedByCollectionMaximum = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2042", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-max-collection-only-blocked",
+          quantity: 11,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: productWithCollectionOnly,
+              title: "Collection Limited Item",
+              inCollections: [{ collectionId, isMember: true }],
+            },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "1100.00" },
+            totalAmount: { amount: "1100.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  const collectionMessages =
+    blockedByCollectionMaximum.operations[0]?.validationAdd?.errors?.map(
+      (error: any) => error?.message ?? "",
+    ) ?? [];
+  assert.equal(blockedByCollectionMaximum.operations.length > 0, true);
+  assert.equal(
+    collectionMessages.some((message: string) => message.includes("Maximum allowed quantity")),
+    true,
+  );
+  assert.equal(
+    collectionMessages.some((message: string) => message.includes("10")),
+    true,
+  );
+  assert.equal(
+    collectionMessages.some((message: string) => message.includes("Collection Limited Item")),
+    true,
+  );
+
+  const allowedByProductOverride = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2043", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-max-product-override-allowed",
+          quantity: 30,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: productWithProductOverride,
+              title: "Product Override Item",
+              inCollections: [{ collectionId, isMember: true }],
+            },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "3000.00" },
+            totalAmount: { amount: "3000.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(
+    allowedByProductOverride.operations.length,
+    0,
+    "[MAX COLLECTION FAIL] Product-level max must have higher priority than collection max.",
+  );
+
+  const blockedAboveProductOverride = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2044", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-max-product-override-blocked",
+          quantity: 41,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: productWithProductOverride,
+              title: "Product Override Item",
+              inCollections: [{ collectionId, isMember: true }],
+            },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "4100.00" },
+            totalAmount: { amount: "4100.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  const productOverrideMessages =
+    blockedAboveProductOverride.operations[0]?.validationAdd?.errors?.map(
+      (error: any) => error?.message ?? "",
+    ) ?? [];
+  assert.equal(blockedAboveProductOverride.operations.length > 0, true);
+  assert.equal(
+    productOverrideMessages.some((message: string) => message.includes("40")),
+    true,
+  );
+  assert.equal(
+    productOverrideMessages.some((message: string) => message.includes("Product Override Item")),
+    true,
+  );
+});
+
 test("runtime integration: zero-final message lists all violating product names", () => {
   const cartConfig = buildCartValidationFunctionConfig({
     b2bTag: "b2b",

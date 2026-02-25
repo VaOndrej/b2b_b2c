@@ -2,6 +2,7 @@ import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import { getOrCreateMarginGuardConfig } from "../services/margin-guard-config.server";
 import {
+  fetchProductCollectionIdsByProductIds,
   resolveStorefrontQuantityConstraintsByProductId,
   resolveStorefrontQuantityConstraintsByHandle,
   resolveStorefrontVisibilityByHandles,
@@ -130,11 +131,27 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     customerId,
     rules: config.productVisibilityRules,
   });
+  const collectionQuantityRules = Array.isArray((config as any).collectionQuantityRules)
+    ? (config as any).collectionQuantityRules
+    : [];
+  const allRelevantProductIds = Array.from(
+    new Set([
+      ...productIds,
+      ...Object.values(visibility.productIdByHandle).map((value) => String(value ?? "")),
+    ]),
+  ).filter(Boolean);
+  const productCollectionIdsByProductId = await fetchProductCollectionIdsByProductIds({
+    admin,
+    productIds: allRelevantProductIds,
+    collectionIds: collectionQuantityRules.map((rule: any) => String(rule.collectionId ?? "")),
+  });
   const quantityConstraintsByHandle = resolveStorefrontQuantityConstraintsByHandle({
     handles,
     productIdByHandle: visibility.productIdByHandle,
     segment,
     rules: config.productQuantityRules,
+    collectionRules: collectionQuantityRules,
+    productCollectionIdsByProductId,
     customerId,
     customerMaxRules: config.productCustomerQuantityRules,
   });
@@ -142,6 +159,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     productIds,
     segment,
     rules: config.productQuantityRules,
+    collectionRules: collectionQuantityRules,
+    productCollectionIdsByProductId,
     customerId,
     customerMaxRules: config.productCustomerQuantityRules,
   });

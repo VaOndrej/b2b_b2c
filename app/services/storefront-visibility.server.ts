@@ -26,6 +26,12 @@ interface ProductQuantityRuleRecord {
   maxOrderQuantity?: number | null;
 }
 
+interface CollectionQuantityRuleRecord {
+  collectionId: string;
+  segment?: string | null;
+  maxOrderQuantity?: number | null;
+}
+
 interface ProductCustomerQuantityRuleRecord {
   productId: string;
   customerId: string;
@@ -52,6 +58,8 @@ interface StorefrontQuantityConstraintsInput {
   productIdByHandle: Record<string, string>;
   segment: Segment;
   rules: ProductQuantityRuleRecord[];
+  collectionRules?: CollectionQuantityRuleRecord[];
+  productCollectionIdsByProductId?: Record<string, string[]>;
   customerId?: string | null;
   customerMaxRules?: ProductCustomerQuantityRuleRecord[];
 }
@@ -66,6 +74,8 @@ interface StorefrontQuantityConstraintsByProductInput {
   productIds: string[];
   segment: Segment;
   rules: ProductQuantityRuleRecord[];
+  collectionRules?: CollectionQuantityRuleRecord[];
+  productCollectionIdsByProductId?: Record<string, string[]>;
   customerId?: string | null;
   customerMaxRules?: ProductCustomerQuantityRuleRecord[];
 }
@@ -115,7 +125,35 @@ function normalizeProductId(value: string | null | undefined): string {
   return "";
 }
 
-function buildQuantityRules(rules: ProductQuantityRuleRecord[]): QuantityRule[] {
+function normalizeCollectionId(value: string | null | undefined): string {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    return "";
+  }
+  if (normalized.startsWith("gid://shopify/Collection/")) {
+    return normalized;
+  }
+  if (/^\d+$/.test(normalized)) {
+    return `gid://shopify/Collection/${normalized}`;
+  }
+  return "";
+}
+
+function normalizeCollectionIds(values: Array<string | null | undefined>): string[] {
+  const ids = new Set<string>();
+  for (const value of values) {
+    const normalized = normalizeCollectionId(value);
+    if (normalized) {
+      ids.add(normalized);
+    }
+  }
+  return Array.from(ids);
+}
+
+function buildQuantityRules(
+  rules: ProductQuantityRuleRecord[],
+  collectionRules: CollectionQuantityRuleRecord[],
+): QuantityRule[] {
   const normalizedRules: QuantityRule[] = [];
   for (const rule of rules) {
     const productId = String(rule.productId ?? "").trim();
@@ -135,6 +173,18 @@ function buildQuantityRules(rules: ProductQuantityRuleRecord[]): QuantityRule[] 
       segment: normalizeSegment(rule.segment),
       minimumOrderQuantity,
       stepQuantity,
+      maxOrderQuantity,
+    });
+  }
+  for (const rule of collectionRules) {
+    const collectionId = normalizeCollectionId(rule.collectionId);
+    const maxOrderQuantity = normalizeQuantityValue(rule.maxOrderQuantity);
+    if (!collectionId || maxOrderQuantity == null) {
+      continue;
+    }
+    normalizedRules.push({
+      collectionId,
+      segment: normalizeSegment(rule.segment),
       maxOrderQuantity,
     });
   }
@@ -282,6 +332,75 @@ async function fetchProductIdsByHandles(
   return result;
 }
 
+export async function fetchProductCollectionIdsByProductIds(input: {
+  admin: AdminGraphqlClient | undefined;
+  productIds: string[];
+  collectionIds: string[];
+}): Promise<Record<string, string[]>> {
+  const admin = input.admin;
+  if (!admin) {
+    return {};
+  }
+  const normalizedProductIds = Array.from(
+    new Set(input.productIds.map((productId) => normalizeProductId(productId)).filter(Boolean)),
+  );
+  const normalizedCollectionIds = normalizeCollectionIds(input.collectionIds);
+  if (normalizedProductIds.length === 0 || normalizedCollectionIds.length === 0) {
+    return {};
+  }
+
+  const result: Record<string, string[]> = {};
+  const chunkSize = 100;
+  for (let index = 0; index < normalizedProductIds.length; index += chunkSize) {
+    const chunk = normalizedProductIds.slice(index, index + chunkSize);
+    const response = await admin.graphql(
+      `#graphql
+        query ProductCollectionMemberships($productIds: [ID!]!, $collectionIds: [ID!]!) {
+          nodes(ids: $productIds) {
+            ... on Product {
+              id
+              inCollections(ids: $collectionIds) {
+                collectionId
+                isMember
+              }
+            }
+          }
+        }`,
+      {
+        variables: {
+          productIds: chunk,
+          collectionIds: normalizedCollectionIds,
+        },
+      },
+    );
+    const payload = await response.json();
+    const nodes = Array.isArray(payload?.data?.nodes) ? payload.data.nodes : [];
+    for (const node of nodes) {
+      const productId = normalizeProductId(node?.id);
+      if (!productId) {
+        continue;
+      }
+      const memberships = Array.isArray(node?.inCollections) ? node.inCollections : [];
+      const memberCollectionIds: string[] = [];
+      for (const membership of memberships) {
+        if (!membership?.isMember) {
+          continue;
+        }
+        const collectionId = normalizeCollectionId(membership?.collectionId);
+        if (!collectionId) {
+          continue;
+        }
+        memberCollectionIds.push(collectionId);
+      }
+      if (memberCollectionIds.length > 0) {
+        result[productId] = normalizeCollectionIds(memberCollectionIds);
+      }
+    }
+  }
+
+  return result;
+}
+
 export function resolveStorefrontQuantityConstraintsByHandle(
   input: StorefrontQuantityConstraintsInput,
 ): Record<string, StorefrontQuantityConstraints> {
@@ -292,7 +411,7 @@ export function resolveStorefrontQuantityConstraintsByHandle(
     return {};
   }
 
-  const rules = buildQuantityRules(input.rules);
+  const rules = buildQuantityRules(input.rules, input.collectionRules ?? []);
   const customerMaxByCustomerId = buildCustomerMaximumQuantityMap(
     input.customerMaxRules ?? [],
   );
@@ -312,6 +431,9 @@ export function resolveStorefrontQuantityConstraintsByHandle(
     const constraints = resolveQuantityConstraints({
       quantity: 1,
       productId,
+      collectionIds: normalizeCollectionIds(
+        input.productCollectionIdsByProductId?.[productId] ?? [],
+      ),
       segment: input.segment,
       rules,
     } satisfies QuantityValidationInput);
@@ -353,7 +475,7 @@ export function resolveStorefrontQuantityConstraintsByProductId(
     return {};
   }
 
-  const rules = buildQuantityRules(input.rules);
+  const rules = buildQuantityRules(input.rules, input.collectionRules ?? []);
   const customerMaxByCustomerId = buildCustomerMaximumQuantityMap(
     input.customerMaxRules ?? [],
   );
@@ -369,6 +491,9 @@ export function resolveStorefrontQuantityConstraintsByProductId(
     const constraints = resolveQuantityConstraints({
       quantity: 1,
       productId,
+      collectionIds: normalizeCollectionIds(
+        input.productCollectionIdsByProductId?.[productId] ?? [],
+      ),
       segment: input.segment,
       rules,
     } satisfies QuantityValidationInput);

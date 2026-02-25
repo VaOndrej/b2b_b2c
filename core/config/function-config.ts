@@ -21,6 +21,12 @@ interface ProductQuantityRuleInput {
   maxOrderQuantity?: number | null;
 }
 
+interface CollectionQuantityRuleInput {
+  collectionId: string;
+  segment: string | null;
+  maxOrderQuantity?: number | null;
+}
+
 interface ProductCustomerQuantityRuleInput {
   productId: string;
   customerId: string;
@@ -47,6 +53,7 @@ interface MarginGuardFunctionConfigInput {
   productFloors: ProductFloorInput[];
   productTierPrices?: ProductTierPriceInput[];
   productQuantityRules?: ProductQuantityRuleInput[];
+  collectionQuantityRules?: CollectionQuantityRuleInput[];
   productCustomerQuantityRules?: ProductCustomerQuantityRuleInput[];
   productVisibilityRules?: ProductVisibilityRuleInput[];
   couponSegmentRules?: CouponSegmentRuleInput[];
@@ -118,6 +125,20 @@ function normalizeCustomerId(customerId: string | null | undefined): string {
   return String(customerId ?? "").trim();
 }
 
+function normalizeCollectionId(collectionId: string | null | undefined): string | null {
+  const normalized = String(collectionId ?? "").trim();
+  if (!normalized) {
+    return null;
+  }
+  if (normalized.startsWith("gid://shopify/Collection/")) {
+    return normalized;
+  }
+  if (/^\d+$/.test(normalized)) {
+    return `gid://shopify/Collection/${normalized}`;
+  }
+  return null;
+}
+
 function clampPercent(value: number): number {
   return Math.min(100, Math.max(0, value));
 }
@@ -177,6 +198,8 @@ export function buildCartValidationFunctionConfig(
   const perProductStepQuantitiesB2B: Record<string, number> = {};
   const perProductMaximumOrderQuantitiesB2C: Record<string, number> = {};
   const perProductMaximumOrderQuantitiesB2B: Record<string, number> = {};
+  const perCollectionMaximumOrderQuantitiesB2C: Record<string, number> = {};
+  const perCollectionMaximumOrderQuantitiesB2B: Record<string, number> = {};
   const perCustomerProductMaximumOrderQuantities: Record<
     string,
     Record<string, number>
@@ -190,6 +213,7 @@ export function buildCartValidationFunctionConfig(
   const normalizedB2BTag = config.b2bTag.trim() || "b2b";
   const productTierPrices = config.productTierPrices ?? [];
   const productQuantityRules = config.productQuantityRules ?? [];
+  const collectionQuantityRules = config.collectionQuantityRules ?? [];
   const productCustomerQuantityRules = config.productCustomerQuantityRules ?? [];
   const productVisibilityRules = config.productVisibilityRules ?? [];
   const rawCouponSegmentRules = config.couponSegmentRules ?? [];
@@ -335,6 +359,36 @@ export function buildCartValidationFunctionConfig(
     }
   }
 
+  for (const rule of collectionQuantityRules) {
+    if (rule.segment != null) {
+      continue;
+    }
+    const collectionId = normalizeCollectionId(rule.collectionId);
+    const maxOrderQuantity = normalizeMaximumOrderQuantity(rule.maxOrderQuantity);
+    if (collectionId == null || maxOrderQuantity == null) {
+      continue;
+    }
+    perCollectionMaximumOrderQuantitiesB2C[collectionId] = maxOrderQuantity;
+    perCollectionMaximumOrderQuantitiesB2B[collectionId] = maxOrderQuantity;
+  }
+
+  for (const rule of collectionQuantityRules) {
+    if (rule.segment == null) {
+      continue;
+    }
+    const collectionId = normalizeCollectionId(rule.collectionId);
+    const maxOrderQuantity = normalizeMaximumOrderQuantity(rule.maxOrderQuantity);
+    if (collectionId == null || maxOrderQuantity == null) {
+      continue;
+    }
+    if (rule.segment === "B2C") {
+      perCollectionMaximumOrderQuantitiesB2C[collectionId] = maxOrderQuantity;
+    }
+    if (rule.segment === "B2B") {
+      perCollectionMaximumOrderQuantitiesB2B[collectionId] = maxOrderQuantity;
+    }
+  }
+
   for (const rule of productCustomerQuantityRules) {
     const productId = rule.productId.trim();
     const customerId = normalizeCustomerId(rule.customerId);
@@ -380,9 +434,17 @@ export function buildCartValidationFunctionConfig(
     );
   }
 
+  const collectionIds = Array.from(
+    new Set([
+      ...Object.keys(perCollectionMaximumOrderQuantitiesB2C),
+      ...Object.keys(perCollectionMaximumOrderQuantitiesB2B),
+    ]),
+  ).sort();
+
   return {
     b2bTag: normalizedB2BTag,
     b2bTags: [normalizedB2BTag],
+    collectionIds,
     globalMinPricePercent: config.globalMinPricePercent,
     b2bGlobalMinPricePercent: config.globalMinPricePercent,
     allowZeroFinalPrice: config.allowZeroFinalPrice,
@@ -401,6 +463,8 @@ export function buildCartValidationFunctionConfig(
     perProductStepQuantitiesB2B,
     perProductMaximumOrderQuantitiesB2C,
     perProductMaximumOrderQuantitiesB2B,
+    perCollectionMaximumOrderQuantitiesB2C,
+    perCollectionMaximumOrderQuantitiesB2B,
     perCustomerProductMaximumOrderQuantities,
     perProductVisibilityModes,
     perProductVisibilityCustomerIds,

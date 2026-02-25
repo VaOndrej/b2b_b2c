@@ -10,6 +10,7 @@ function getMarginGuardPrismaOrThrow() {
     !client.productFloorRule ||
     !client.productTierPriceRule ||
     !client.productQuantityRule ||
+    !client.collectionQuantityRule ||
     !client.productCustomerQuantityRule ||
     !client.productVisibilityRule ||
     !client.couponSegmentRule ||
@@ -31,6 +32,7 @@ export async function getOrCreateMarginGuardConfig() {
       productFloors: true,
       productTierPrices: true,
       productQuantityRules: true,
+      collectionQuantityRules: true,
       productCustomerQuantityRules: true,
       productVisibilityRules: true,
       couponSegmentRules: true,
@@ -47,6 +49,7 @@ export async function getOrCreateMarginGuardConfig() {
       productFloors: true,
       productTierPrices: true,
       productQuantityRules: true,
+      collectionQuantityRules: true,
       productCustomerQuantityRules: true,
       productVisibilityRules: true,
       couponSegmentRules: true,
@@ -86,6 +89,7 @@ export async function updateGlobalMarginGuardConfig(input: {
       productFloors: true,
       productTierPrices: true,
       productQuantityRules: true,
+      collectionQuantityRules: true,
       productCustomerQuantityRules: true,
       productVisibilityRules: true,
       couponSegmentRules: true,
@@ -411,6 +415,55 @@ export async function deleteProductMaximumQuantityRule(id: string) {
   return db.productQuantityRule.delete({ where: { id } });
 }
 
+export async function upsertCollectionMaximumQuantityRule(input: {
+  collectionId: string;
+  segment?: "B2B" | "B2C";
+  maxOrderQuantity: number;
+}) {
+  const db = getMarginGuardPrismaOrThrow();
+  const collectionId = normalizeCollectionId(input.collectionId);
+  const normalizedMaximumOrderQuantity = Math.floor(input.maxOrderQuantity);
+  const maxOrderQuantity =
+    Number.isFinite(normalizedMaximumOrderQuantity) &&
+    normalizedMaximumOrderQuantity > 0
+      ? normalizedMaximumOrderQuantity
+      : null;
+  if (!collectionId || !maxOrderQuantity) {
+    return null;
+  }
+
+  const existing = await db.collectionQuantityRule.findFirst({
+    where: {
+      configId: DEFAULT_CONFIG_ID,
+      collectionId,
+      segment: input.segment ?? null,
+    },
+  });
+
+  if (existing) {
+    return db.collectionQuantityRule.update({
+      where: { id: existing.id },
+      data: {
+        maxOrderQuantity,
+      },
+    });
+  }
+
+  return db.collectionQuantityRule.create({
+    data: {
+      configId: DEFAULT_CONFIG_ID,
+      collectionId,
+      segment: input.segment,
+      maxOrderQuantity,
+    },
+  });
+}
+
+export async function deleteCollectionMaximumQuantityRule(id: string) {
+  const db = getMarginGuardPrismaOrThrow();
+  return db.collectionQuantityRule.delete({ where: { id } });
+}
+
 function normalizeVisibilityMode(
   value: string,
 ): "ALL" | "B2B_ONLY" | "B2C_ONLY" | "CUSTOMER_ONLY" {
@@ -423,6 +476,20 @@ function normalizeVisibilityMode(
 function normalizeCustomerId(value: string | null | undefined): string | null {
   const normalized = String(value ?? "").trim();
   return normalized || null;
+}
+
+function normalizeCollectionId(value: string | null | undefined): string | null {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    return null;
+  }
+  if (normalized.startsWith("gid://shopify/Collection/")) {
+    return normalized;
+  }
+  if (/^\d+$/.test(normalized)) {
+    return `gid://shopify/Collection/${normalized}`;
+  }
+  return null;
 }
 
 export async function upsertProductCustomerMaximumQuantityRule(input: {

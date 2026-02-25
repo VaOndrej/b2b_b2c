@@ -1,5 +1,6 @@
 query CartValidationsGenerateRunInput(
   $b2bTags: [String!]! = ["b2b"]
+  $collectionIds: [ID!]
 ) {
   cart {
     buyerIdentity {
@@ -33,6 +34,10 @@ query CartValidationsGenerateRunInput(
           product {
             id
             title
+            inCollections(ids: $collectionIds) {
+              collectionId
+              isMember
+            }
           }
         }
       }

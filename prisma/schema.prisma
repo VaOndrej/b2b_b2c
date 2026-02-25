@@ -49,6 +49,7 @@ model MarginGuardConfig {
   productFloors         ProductFloorRule[]
   productTierPrices     ProductTierPriceRule[]
   productQuantityRules  ProductQuantityRule[]
+  collectionQuantityRules CollectionQuantityRule[]
   productCustomerQuantityRules ProductCustomerQuantityRule[]
   productVisibilityRules ProductVisibilityRule[]
   couponSegmentRules    CouponSegmentRule[]
@@ -110,6 +111,19 @@ model ProductCustomerQuantityRule {
   updatedAt        DateTime          @updatedAt
 
   @@unique([configId, productId, customerId])
+}
+
+model CollectionQuantityRule {
+  id               String            @id @default(cuid())
+  configId         String
+  config           MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  collectionId     String
+  segment          String?
+  maxOrderQuantity Int
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([configId, collectionId, segment])
 }
 
 model ProductVisibilityRule {

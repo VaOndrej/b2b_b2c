@@ -7,6 +7,7 @@ import {
   getDiscountFunctionStatusWithAutoDisable,
 } from "../services/discount-function-activation.server";
 import {
+  deleteCollectionMaximumQuantityRule,
   deleteCouponSegmentRule,
   deleteProductCustomerMaximumQuantityRule,
   deleteProductFloorRule,
@@ -16,6 +17,7 @@ import {
   deleteProductVisibilityRule,
   deleteProductTierPriceRule,
   getOrCreateMarginGuardConfig,
+  upsertCollectionMaximumQuantityRule,
   upsertCouponSegmentRule,
   upsertProductCustomerMaximumQuantityRule,
   upsertProductFloorRule,
@@ -226,6 +228,30 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
+  if (intent === "save-collection-max-quantity-rule") {
+    const collectionId = String(formData.get("collectionId") ?? "").trim();
+    const segmentRaw = String(formData.get("segment") ?? "").trim();
+    const maxOrderQuantity = Math.max(
+      1,
+      Math.floor(parseNumber(formData.get("maxOrderQuantity"), 1)),
+    );
+
+    if (collectionId) {
+      await upsertCollectionMaximumQuantityRule({
+        collectionId,
+        segment: segmentRaw === "B2B" || segmentRaw === "B2C" ? segmentRaw : undefined,
+        maxOrderQuantity,
+      });
+    }
+  }
+
+  if (intent === "delete-collection-max-quantity-rule") {
+    const id = String(formData.get("id") ?? "");
+    if (id) {
+      await deleteCollectionMaximumQuantityRule(id);
+    }
+  }
+
   if (intent === "save-product-customer-max-quantity-rule") {
     const productId = String(formData.get("productId") ?? "").trim();
     const customerId = String(formData.get("customerId") ?? "").trim();
@@ -315,6 +341,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     intent === "delete-product-step-quantity-rule" ||
     intent === "save-product-max-quantity-rule" ||
     intent === "delete-product-max-quantity-rule" ||
+    intent === "save-collection-max-quantity-rule" ||
+    intent === "delete-collection-max-quantity-rule" ||
     intent === "save-product-customer-max-quantity-rule" ||
     intent === "delete-product-customer-max-quantity-rule" ||
     intent === "save-product-visibility-rule" ||
@@ -350,6 +378,11 @@ export default function AppSettingsRoute() {
   const productMaxRules = config.productQuantityRules.filter(
     (rule: any) => Number(rule.maxOrderQuantity ?? 0) > 0,
   );
+  const collectionMaxRules = Array.isArray((config as any).collectionQuantityRules)
+    ? (config as any).collectionQuantityRules.filter(
+        (rule: any) => Number(rule.maxOrderQuantity ?? 0) > 0,
+      )
+    : [];
   const productCustomerMaxRules = Array.isArray(config.productCustomerQuantityRules)
     ? config.productCustomerQuantityRules.filter(
         (rule: any) => Number(rule.maxOrderQuantity ?? 0) > 0,
@@ -740,6 +773,75 @@ export default function AppSettingsRoute() {
                       type="hidden"
                       name="intent"
                       value="delete-product-max-quantity-rule"
+                    />
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" disabled={isSubmitting}>
+                      Delete
+                    </button>
+                  </form>
+                </s-stack>
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+
+      <s-section heading="Per-collection maximum quantity rules">
+        <form method="post">
+          <input
+            type="hidden"
+            name="intent"
+            value="save-collection-max-quantity-rule"
+          />
+          <s-stack direction="block" gap="base">
+            <label>
+              Collection ID
+              <input
+                name="collectionId"
+                placeholder="gid://shopify/Collection/123456789"
+                required
+              />
+            </label>
+            <label>
+              Segment (optional)
+              <select name="segment" defaultValue="">
+                <option value="">All segments</option>
+                <option value="B2B">B2B</option>
+                <option value="B2C">B2C</option>
+              </select>
+            </label>
+            <label>
+              Maximum order quantity
+              <input
+                name="maxOrderQuantity"
+                type="number"
+                min={1}
+                step={1}
+                defaultValue={1}
+              />
+            </label>
+            <button type="submit" disabled={isSubmitting}>
+              Save collection maximum quantity rule
+            </button>
+          </s-stack>
+        </form>
+
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Configured collection max quantity rules</s-heading>
+          {collectionMaxRules.length === 0 ? (
+            <s-paragraph>No per-collection max quantity rules yet.</s-paragraph>
+          ) : (
+            <s-stack direction="block" gap="small">
+              {collectionMaxRules.map((rule: any) => (
+                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
+                  <s-text>
+                    {rule.collectionId} | {rule.segment ?? "ALL"} | max {rule.maxOrderQuantity}
+                  </s-text>
+                  <form method="post">
+                    <input
+                      type="hidden"
+                      name="intent"
+                      value="delete-collection-max-quantity-rule"
                     />
                     <input type="hidden" name="id" value={rule.id} />
                     <button type="submit" disabled={isSubmitting}>

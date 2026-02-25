@@ -367,6 +367,43 @@ function normalizeMaximumOrderQuantityMap(rawMap) {
 }
 
 /**
+ * @param {unknown[]} memberships
+ * @param {Record<string, number>} perCollectionMaximumOrderQuantities
+ */
+function resolveCollectionMaximumOrderQuantity(
+  memberships,
+  perCollectionMaximumOrderQuantities,
+) {
+  let resolvedMaximumOrderQuantity = null;
+  for (const rawMembership of memberships ?? []) {
+    const membership = /** @type {{ isMember?: boolean; collectionId?: string } | null | undefined} */ (
+      rawMembership
+    );
+    if (!membership?.isMember) {
+      continue;
+    }
+    const collectionId = String(membership?.collectionId ?? "").trim();
+    if (!collectionId) {
+      continue;
+    }
+    const configuredMaximumOrderQuantity = Math.floor(
+      toNumber(perCollectionMaximumOrderQuantities[collectionId], NaN),
+    );
+    if (
+      !Number.isFinite(configuredMaximumOrderQuantity) ||
+      configuredMaximumOrderQuantity < 1
+    ) {
+      continue;
+    }
+    resolvedMaximumOrderQuantity =
+      resolvedMaximumOrderQuantity == null
+        ? configuredMaximumOrderQuantity
+        : Math.min(resolvedMaximumOrderQuantity, configuredMaximumOrderQuantity);
+  }
+  return resolvedMaximumOrderQuantity;
+}
+
+/**
  * @param {Record<string, unknown>} rawMap
  */
 function normalizePerCustomerProductMaximumOrderQuantities(rawMap) {
@@ -492,6 +529,14 @@ function parseConfig(input) {
     config && typeof config.perProductMaximumOrderQuantitiesB2B === "object"
       ? config.perProductMaximumOrderQuantitiesB2B
       : {};
+  const rawPerCollectionMaximumOrderQuantitiesB2C =
+    config && typeof config.perCollectionMaximumOrderQuantitiesB2C === "object"
+      ? config.perCollectionMaximumOrderQuantitiesB2C
+      : {};
+  const rawPerCollectionMaximumOrderQuantitiesB2B =
+    config && typeof config.perCollectionMaximumOrderQuantitiesB2B === "object"
+      ? config.perCollectionMaximumOrderQuantitiesB2B
+      : {};
   const rawPerCustomerProductMaximumOrderQuantities =
     config && typeof config.perCustomerProductMaximumOrderQuantities === "object"
       ? config.perCustomerProductMaximumOrderQuantities
@@ -560,6 +605,12 @@ function parseConfig(input) {
   const perProductMaximumOrderQuantitiesB2B = normalizeMaximumOrderQuantityMap(
     /** @type {Record<string, unknown>} */ (rawPerProductMaximumOrderQuantitiesB2B),
   );
+  const perCollectionMaximumOrderQuantitiesB2C = normalizeMaximumOrderQuantityMap(
+    /** @type {Record<string, unknown>} */ (rawPerCollectionMaximumOrderQuantitiesB2C),
+  );
+  const perCollectionMaximumOrderQuantitiesB2B = normalizeMaximumOrderQuantityMap(
+    /** @type {Record<string, unknown>} */ (rawPerCollectionMaximumOrderQuantitiesB2B),
+  );
   const perCustomerProductMaximumOrderQuantities =
     normalizePerCustomerProductMaximumOrderQuantities(
       /** @type {Record<string, unknown>} */ (rawPerCustomerProductMaximumOrderQuantities),
@@ -618,6 +669,8 @@ function parseConfig(input) {
     perProductStepQuantitiesB2B,
     perProductMaximumOrderQuantitiesB2C,
     perProductMaximumOrderQuantitiesB2B,
+    perCollectionMaximumOrderQuantitiesB2C,
+    perCollectionMaximumOrderQuantitiesB2B,
     perCustomerProductMaximumOrderQuantities,
     perProductVisibilityModes,
     perProductVisibilityCustomerIds,
@@ -702,6 +755,9 @@ export function cartValidationsGenerateRun(input) {
   const perProductMaximumOrderQuantities = isB2B
     ? config.perProductMaximumOrderQuantitiesB2B
     : config.perProductMaximumOrderQuantitiesB2C;
+  const perCollectionMaximumOrderQuantities = isB2B
+    ? config.perCollectionMaximumOrderQuantitiesB2B
+    : config.perCollectionMaximumOrderQuantitiesB2C;
   const perCustomerProductMaximumOrderQuantities =
     customerId && config.perCustomerProductMaximumOrderQuantities[customerId]
       ? config.perCustomerProductMaximumOrderQuantities[customerId]
@@ -784,10 +840,17 @@ export function cartValidationsGenerateRun(input) {
       productId && perProductStepQuantities[productId] != null
         ? perProductStepQuantities[productId]
         : 1;
+    const collectionMaximumOrderQuantity =
+      line?.merchandise?.__typename === "ProductVariant"
+        ? resolveCollectionMaximumOrderQuantity(
+            line?.merchandise?.product?.inCollections,
+            perCollectionMaximumOrderQuantities,
+          )
+        : null;
     const segmentMaximumOrderQuantity =
       productId && perProductMaximumOrderQuantities[productId] != null
         ? perProductMaximumOrderQuantities[productId]
-        : null;
+        : collectionMaximumOrderQuantity;
     const customerMaximumOrderQuantity =
       productId &&
       perCustomerProductMaximumOrderQuantities &&
