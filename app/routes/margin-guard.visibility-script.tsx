@@ -22,6 +22,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       cartMaxSuffix: ". Quantity was adjusted automatically.",
       cartMaxProductPrefix: " Product: ",
       cartMaxProductSuffix: ".",
+      moqRemoveBlockedPrefix: "Minimum order quantity is ",
+      moqRemoveBlockedSuffix:
+        ". If you wish to delete the product, press the trash icon.",
     },
     cs: {
       visibility: "Tento produkt neni dostupny pro vas zakaznicky segment.",
@@ -33,6 +36,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       cartMaxSuffix: ". Mnozstvi bylo automaticky upraveno.",
       cartMaxProductPrefix: " Produkt: ",
       cartMaxProductSuffix: ".",
+      moqRemoveBlockedPrefix: "Minimalni odebrane mnozstvi je ",
+      moqRemoveBlockedSuffix:
+        ". Pokud chcete produkt odebrat, pouzijte ikonu popelnice.",
     },
   };
   const state = {
@@ -51,6 +57,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     cartLineQuantityByVariantId: {},
     rulesConfigVersion: null,
     currentProductId: null,
+    allowRemoveAtMinimumOrderQuantity: true,
   };
   const RULES_CACHE_KEY = "marginGuardRulesCache_v1";
   const RULES_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -130,6 +137,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           normalizedTitle +
           messageForLocale("cartMaxProductSuffix")
         : "")
+    );
+  }
+
+  function messageForMoqRemoveBlocked(minimumOrderQuantity) {
+    return (
+      messageForLocale("moqRemoveBlockedPrefix") +
+      String(minimumOrderQuantity) +
+      messageForLocale("moqRemoveBlockedSuffix")
     );
   }
 
@@ -446,6 +461,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return;
     }
     const payload = await response.json();
+    state.allowRemoveAtMinimumOrderQuantity =
+      payload?.allowRemoveAtMinimumOrderQuantity !== false;
     const responseConfigVersion =
       String(payload?.configUpdatedAt || "").trim() || null;
     if (
@@ -718,6 +735,31 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     );
   }
 
+  function maybeShowMoqRemovalBlockedNotice(
+    rawRequestedQuantity,
+    normalizedQuantity,
+    currentQuantity,
+    minimumOrderQuantity,
+  ) {
+    if (state.allowRemoveAtMinimumOrderQuantity !== false) {
+      return;
+    }
+    const minimum = parsePositiveInt(minimumOrderQuantity, 1);
+    const current = Math.max(0, parseInteger(currentQuantity, 0));
+    const requested = parseInteger(rawRequestedQuantity, current);
+    const normalized = Math.max(0, parseInteger(normalizedQuantity, 0));
+    if (current > minimum) {
+      return;
+    }
+    if (requested >= minimum) {
+      return;
+    }
+    if (normalized !== minimum) {
+      return;
+    }
+    showCartQuantityNotice(messageForMoqRemoveBlocked(minimum));
+  }
+
   function parsePositiveInt(value, fallback) {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed < 1) {
@@ -894,6 +936,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
       return {
         configVersion: String(parsed.configVersion || "").trim() || null,
+        allowRemoveAtMinimumOrderQuantity:
+          parsed.allowRemoveAtMinimumOrderQuantity !== false,
         quantityConstraintsByHandle:
           parsed.quantityConstraintsByHandle &&
           typeof parsed.quantityConstraintsByHandle === "object"
@@ -924,6 +968,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           customerScope: String(loggedInCustomerId || ""),
           fetchedAt: Date.now(),
           configVersion: input.configVersion || null,
+          allowRemoveAtMinimumOrderQuantity:
+            input.allowRemoveAtMinimumOrderQuantity !== false,
           quantityConstraintsByHandle: input.quantityConstraintsByHandle || {},
           quantityConstraintsByProductId: input.quantityConstraintsByProductId || {},
           hiddenHandles: Array.isArray(input.hiddenHandles) ? input.hiddenHandles : [],
@@ -949,6 +995,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     );
     writeRulesCache({
       configVersion: state.rulesConfigVersion,
+      allowRemoveAtMinimumOrderQuantity: state.allowRemoveAtMinimumOrderQuantity,
       quantityConstraintsByHandle: state.quantityConstraintsByHandle,
       quantityConstraintsByProductId: state.quantityConstraintsByProductId,
       hiddenHandles: mergedHiddenHandles,
@@ -962,6 +1009,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return;
     }
     state.rulesConfigVersion = cached.configVersion;
+    state.allowRemoveAtMinimumOrderQuantity =
+      cached.allowRemoveAtMinimumOrderQuantity !== false;
     state.quantityConstraintsByHandle = normalizeQuantityRules(
       cached.quantityConstraintsByHandle,
       normalizeHandle,
@@ -1184,6 +1233,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     options,
   ) {
     const maxQuantity = parseOptionalPositiveInt(options && options.maxQuantity);
+    const allowRemoveAtMinimumOrderQuantity =
+      options && typeof options.allowRemoveAtMinimumOrderQuantity === "boolean"
+        ? options.allowRemoveAtMinimumOrderQuantity
+        : true;
     const requestedQuantity = parseInteger(
       rawRequestedQuantity,
       parsePositiveInt(currentQuantity, 1),
@@ -1196,10 +1249,24 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return Math.min(value, maxQuantity);
     };
     if (requestedQuantity <= 0) {
+      if (
+        !allowRemoveAtMinimumOrderQuantity &&
+        current > 0 &&
+        current <= rule.minimumOrderQuantity
+      ) {
+        return rule.minimumOrderQuantity;
+      }
       return 0;
     }
     if (rule.stepQuantity <= 1) {
       if (requestedQuantity < rule.minimumOrderQuantity && current > requestedQuantity) {
+        if (
+          !allowRemoveAtMinimumOrderQuantity &&
+          current > 0 &&
+          current <= rule.minimumOrderQuantity
+        ) {
+          return rule.minimumOrderQuantity;
+        }
         return 0;
       }
       return applyMax(Math.max(requestedQuantity, rule.minimumOrderQuantity));
@@ -1207,9 +1274,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     const isDecreasing = current > 0 && requestedQuantity < current;
     if (isDecreasing) {
+      if (requestedQuantity < rule.minimumOrderQuantity && current <= rule.minimumOrderQuantity) {
+        if (!allowRemoveAtMinimumOrderQuantity) {
+          return rule.minimumOrderQuantity;
+        }
+        return 0;
+      }
       const flooredToStep =
         Math.floor(requestedQuantity / rule.stepQuantity) * rule.stepQuantity;
       if (flooredToStep <= 0) {
+        if (
+          !allowRemoveAtMinimumOrderQuantity &&
+          current > 0 &&
+          current <= rule.minimumOrderQuantity
+        ) {
+          return rule.minimumOrderQuantity;
+        }
         return 0;
       }
       return applyMax(Math.max(flooredToStep, rule.minimumOrderQuantity));
@@ -1786,6 +1866,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
             rule,
             {
               maxQuantity: effectiveMax,
+              allowRemoveAtMinimumOrderQuantity:
+                state.allowRemoveAtMinimumOrderQuantity !== false,
             },
           );
     maybeShowMaximumQuantityAdjustmentNotice(
@@ -1793,6 +1875,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       normalizedQuantity,
       effectiveMax,
       resolveProductTitleFromElement(input),
+    );
+    maybeShowMoqRemovalBlockedNotice(
+      requestedQuantity,
+      normalizedQuantity,
+      currentValue,
+      rule.minimumOrderQuantity,
     );
     if (normalizedQuantity === currentValue) {
       return {
@@ -2169,6 +2257,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         context.rule,
         {
           maxQuantity,
+          allowRemoveAtMinimumOrderQuantity:
+            state.allowRemoveAtMinimumOrderQuantity !== false,
         },
       );
       maybeShowMaximumQuantityAdjustmentNotice(
@@ -2176,6 +2266,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         normalizedQuantity,
         maxQuantity,
         resolveProductTitleForCartContext(context),
+      );
+      maybeShowMoqRemovalBlockedNotice(
+        rawRequestedQuantity,
+        normalizedQuantity,
+        context.currentQuantity,
+        context.rule.minimumOrderQuantity,
       );
       if (String(rawRequestedQuantity) !== String(normalizedQuantity)) {
         changed = true;
@@ -2213,6 +2309,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         context.rule,
         {
           maxQuantity,
+          allowRemoveAtMinimumOrderQuantity:
+            state.allowRemoveAtMinimumOrderQuantity !== false,
         },
       );
       maybeShowMaximumQuantityAdjustmentNotice(
@@ -2220,6 +2318,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         normalizedQuantity,
         maxQuantity,
         resolveProductTitleForCartContext(context),
+      );
+      maybeShowMoqRemovalBlockedNotice(
+        entry.quantity,
+        normalizedQuantity,
+        context.currentQuantity,
+        context.rule.minimumOrderQuantity,
       );
       if (String(entry.quantity) !== String(normalizedQuantity)) {
         changed = true;
@@ -2339,6 +2443,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       context.rule,
       {
         maxQuantity,
+        allowRemoveAtMinimumOrderQuantity:
+          state.allowRemoveAtMinimumOrderQuantity !== false,
       },
     );
     maybeShowMaximumQuantityAdjustmentNotice(
@@ -2346,6 +2452,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       normalizedQuantity,
       maxQuantity,
       resolveProductTitleForCartContext(context),
+    );
+    maybeShowMoqRemovalBlockedNotice(
+      requestedQuantityRaw,
+      normalizedQuantity,
+      context.currentQuantity,
+      context.rule.minimumOrderQuantity,
     );
     setValue("quantity", String(normalizedQuantity));
     applyNormalizedCartLineQuantity(context, normalizedQuantity);
@@ -2407,6 +2519,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         context.rule,
         {
           maxQuantity,
+          allowRemoveAtMinimumOrderQuantity:
+            state.allowRemoveAtMinimumOrderQuantity !== false,
         },
       );
       maybeShowMaximumQuantityAdjustmentNotice(
@@ -2414,6 +2528,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         normalizedQuantity,
         maxQuantity,
         resolveProductTitleForCartContext(context),
+      );
+      maybeShowMoqRemovalBlockedNotice(
+        rawRequestedQuantity,
+        normalizedQuantity,
+        context.currentQuantity,
+        context.rule.minimumOrderQuantity,
       );
       if (String(rawRequestedQuantity) !== String(normalizedQuantity)) {
         changed = true;

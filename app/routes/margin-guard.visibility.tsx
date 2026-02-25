@@ -151,6 +151,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       segment,
       customerId: customerId ?? null,
       b2bTag: config.b2bTag,
+      allowRemoveAtMinimumOrderQuantity:
+        (config as any).allowRemoveAtMinimumOrderQuantity !== false,
       configUpdatedAt: config.updatedAt,
       quantityConstraintsByHandle,
       quantityConstraintsByProductId,

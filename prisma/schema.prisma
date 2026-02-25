@@ -38,6 +38,7 @@ model MarginGuardConfig {
   b2bTag                String   @default("b2b")
   globalMinPricePercent Float    @default(70)
   allowZeroFinalPrice   Boolean  @default(false)
+  allowRemoveAtMinimumOrderQuantity Boolean @default(true)
   allowStacking         Boolean  @default(false)
   maxCombinedPercentOff Float?
   cartValidationStatus  String   @default("UNKNOWN")

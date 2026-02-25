@@ -58,6 +58,7 @@ export async function updateGlobalMarginGuardConfig(input: {
   b2bTag: string;
   globalMinPricePercent: number;
   allowZeroFinalPrice: boolean;
+  allowRemoveAtMinimumOrderQuantity: boolean;
   allowStacking: boolean;
   maxCombinedPercentOff: number | null;
 }) {
@@ -68,6 +69,7 @@ export async function updateGlobalMarginGuardConfig(input: {
       b2bTag: input.b2bTag,
       globalMinPricePercent: input.globalMinPricePercent,
       allowZeroFinalPrice: input.allowZeroFinalPrice,
+      allowRemoveAtMinimumOrderQuantity: input.allowRemoveAtMinimumOrderQuantity,
       allowStacking: input.allowStacking,
       maxCombinedPercentOff: input.maxCombinedPercentOff,
     },
@@ -76,6 +78,7 @@ export async function updateGlobalMarginGuardConfig(input: {
       b2bTag: input.b2bTag,
       globalMinPricePercent: input.globalMinPricePercent,
       allowZeroFinalPrice: input.allowZeroFinalPrice,
+      allowRemoveAtMinimumOrderQuantity: input.allowRemoveAtMinimumOrderQuantity,
       allowStacking: input.allowStacking,
       maxCombinedPercentOff: input.maxCombinedPercentOff,
     },

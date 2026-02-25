@@ -71,6 +71,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       70,
     );
     const allowZeroFinalPrice = formData.get("allowZeroFinalPrice") === "on";
+    const allowRemoveAtMinimumOrderQuantity =
+      formData.get("allowRemoveAtMinimumOrderQuantity") === "on";
     const allowStacking = formData.get("allowStacking") === "on";
     const maxCombinedRaw = String(formData.get("maxCombinedPercentOff") ?? "").trim();
     const maxCombinedPercentOff = maxCombinedRaw ? Number(maxCombinedRaw) : null;
@@ -79,6 +81,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       b2bTag,
       globalMinPricePercent,
       allowZeroFinalPrice,
+      allowRemoveAtMinimumOrderQuantity,
       allowStacking,
       maxCombinedPercentOff:
         maxCombinedPercentOff != null && Number.isFinite(maxCombinedPercentOff)
@@ -385,6 +388,16 @@ export default function AppSettingsRoute() {
                 defaultChecked={config.allowZeroFinalPrice}
               />
               Allow zero final price globally
+            </label>
+            <label>
+              <input
+                name="allowRemoveAtMinimumOrderQuantity"
+                type="checkbox"
+                defaultChecked={
+                  (config as any).allowRemoveAtMinimumOrderQuantity !== false
+                }
+              />
+              Allow removing a cart line when customer decreases from MOQ
             </label>
             <label>
               <input name="allowStacking" type="checkbox" defaultChecked={config.allowStacking} />
