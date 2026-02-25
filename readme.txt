@@ -88,26 +88,27 @@ MVP_2 – B2B Pricing Lite
 MVP_3 – Quantity & Operational Rules
  ├─ MOQ per segment
  ├─ Step quantity (kartonové násobky)
+ ├─ Per produkt maximum quantity limitation + hláška o tom problému
+ ├─ Per collection maximum quantity limitation
  ├─ Collection-level MOQ
- ├─ Collection-level slevy, na všechny produkty xx sleva 10%, minimální cena, atd.. je tohle mid step mezi
- globální cenou a konkrétním produktem.
  ├─ Cart validation rozšíření
  └─ Admin rule builder
 
-MVP_3_5 - Zobrazit a schovat variantu produktu. Tedy varianta A je kusovka. Varianta B je kartón.
+MVP_3_5 Quantity rules per collection
+ ├─ Zobrazit a schovat variantu produktu. Tedy varianta A je kusovka. Varianta B je kartón.
+ ├─ Když vyskočí nějaká hláška o porušení například maximum quantity, nebo překročení slevy, tak musí vyskočit hláška (to už se děje), ale navíc k tomu přidat tlačítko "rozumím", kterým to uživatel musí potvrdit a pak se teprve ta hláška zmizí. Takhle mizí moc rychle
+
 
 MVP_4 – Advanced Discount Orchestration
  Plná kontrola kombinace slev (enterprise diferenciace).
  ├─ Discount priority matrix
+ ├─ Collection-level slevy, na všechny produkty xx sleva 10%, minimální cena, atd.. je tohle mid step mezi
+ globální cenou a konkrétním produktem.
  ├─ Stackability rules
  ├─ Blacklist kombinací
  ├─ Max total discount cap
  ├─ Per-segment discount caps
  └─ Pricing simulator (admin preview)
-
-MVP_5_5
-├─ Po tomhle nesmí být žádný technický dluh
-├─ Vyřešit duplicitní log cart validation
 
 MVP_5 – Segmented Storefront (UX Layer)
  ├─ Segment-based content sections
@@ -115,6 +116,10 @@ MVP_5 – Segmented Storefront (UX Layer)
  ├─ B2C-only collections
  ├─ Conditional PDP blocks
  └─ Dynamic messaging engine
+
+MVP_5_5
+├─ Po tomhle nesmí být žádný technický dluh
+├─ Vyřešit duplicitní log cart validation
 
 MVP_6 – Data Import / ERP Light
  ├─ CSV import cen
