@@ -2257,8 +2257,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         context.rule,
         {
           maxQuantity,
-          allowRemoveAtMinimumOrderQuantity:
-            state.allowRemoveAtMinimumOrderQuantity !== false,
         },
       );
       maybeShowMaximumQuantityAdjustmentNotice(
@@ -2309,8 +2307,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         context.rule,
         {
           maxQuantity,
-          allowRemoveAtMinimumOrderQuantity:
-            state.allowRemoveAtMinimumOrderQuantity !== false,
         },
       );
       maybeShowMaximumQuantityAdjustmentNotice(
@@ -2443,8 +2439,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       context.rule,
       {
         maxQuantity,
-        allowRemoveAtMinimumOrderQuantity:
-          state.allowRemoveAtMinimumOrderQuantity !== false,
       },
     );
     maybeShowMaximumQuantityAdjustmentNotice(
@@ -2519,8 +2513,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         context.rule,
         {
           maxQuantity,
-          allowRemoveAtMinimumOrderQuantity:
-            state.allowRemoveAtMinimumOrderQuantity !== false,
         },
       );
       maybeShowMaximumQuantityAdjustmentNotice(
