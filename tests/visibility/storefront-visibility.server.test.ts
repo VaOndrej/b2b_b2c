@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  fetchProductCollectionIdsByProductIds,
   resolveStorefrontQuantityConstraintsByProductId,
   resolveStorefrontQuantityConstraintsByHandle,
   resolveStorefrontVisibilityByHandles,
@@ -253,4 +254,64 @@ test("storefront quantity constraints apply product max over collection max", ()
       maxOrderQuantity: 40,
     },
   });
+});
+
+test("storefront collection membership fetch uses Product.collections and filters to configured ids", async () => {
+  const expectedCollectionId = "gid://shopify/Collection/100";
+  const ignoredCollectionId = "gid://shopify/Collection/999";
+  const productId = "gid://shopify/Product/555";
+  const calls: Array<{ query: string; variables?: Record<string, unknown> }> = [];
+  const admin = {
+    async graphql(query: string, options?: { variables?: Record<string, unknown> }) {
+      calls.push({ query, variables: options?.variables });
+      return {
+        async json() {
+          return {
+            data: {
+              nodes: [
+                {
+                  id: productId,
+                  collections: {
+                    nodes: [{ id: expectedCollectionId }, { id: ignoredCollectionId }],
+                  },
+                },
+              ],
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const memberships = await fetchProductCollectionIdsByProductIds({
+    admin,
+    productIds: [productId],
+    collectionIds: [expectedCollectionId],
+  });
+
+  assert.deepEqual(memberships, {
+    [productId]: [expectedCollectionId],
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]?.query.includes("collections(first: 250)"), true);
+  assert.equal(calls[0]?.query.includes("inCollections("), false);
+  assert.deepEqual(calls[0]?.variables, {
+    productIds: [productId],
+  });
+});
+
+test("storefront collection membership fetch does not crash when admin query fails", async () => {
+  const admin = {
+    async graphql() {
+      throw new Error("Admin GraphQL unavailable");
+    },
+  };
+
+  const memberships = await fetchProductCollectionIdsByProductIds({
+    admin,
+    productIds: ["gid://shopify/Product/555"],
+    collectionIds: ["gid://shopify/Collection/100"],
+  });
+
+  assert.deepEqual(memberships, {});
 });

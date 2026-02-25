@@ -350,51 +350,55 @@ export async function fetchProductCollectionIdsByProductIds(input: {
   }
 
   const result: Record<string, string[]> = {};
+  const allowedCollectionIds = new Set(normalizedCollectionIds);
   const chunkSize = 100;
   for (let index = 0; index < normalizedProductIds.length; index += chunkSize) {
     const chunk = normalizedProductIds.slice(index, index + chunkSize);
-    const response = await admin.graphql(
-      `#graphql
-        query ProductCollectionMemberships($productIds: [ID!]!, $collectionIds: [ID!]!) {
-          nodes(ids: $productIds) {
-            ... on Product {
-              id
-              inCollections(ids: $collectionIds) {
-                collectionId
-                isMember
+    try {
+      const response = await admin.graphql(
+        `#graphql
+          query ProductCollectionMemberships($productIds: [ID!]!) {
+            nodes(ids: $productIds) {
+              ... on Product {
+                id
+                collections(first: 250) {
+                  nodes {
+                    id
+                  }
+                }
               }
             }
-          }
-        }`,
-      {
-        variables: {
-          productIds: chunk,
-          collectionIds: normalizedCollectionIds,
+          }`,
+        {
+          variables: {
+            productIds: chunk,
+          },
         },
-      },
-    );
-    const payload = await response.json();
-    const nodes = Array.isArray(payload?.data?.nodes) ? payload.data.nodes : [];
-    for (const node of nodes) {
-      const productId = normalizeProductId(node?.id);
-      if (!productId) {
-        continue;
-      }
-      const memberships = Array.isArray(node?.inCollections) ? node.inCollections : [];
-      const memberCollectionIds: string[] = [];
-      for (const membership of memberships) {
-        if (!membership?.isMember) {
+      );
+      const payload = await response.json();
+      const nodes = Array.isArray(payload?.data?.nodes) ? payload.data.nodes : [];
+      for (const node of nodes) {
+        const productId = normalizeProductId(node?.id);
+        if (!productId) {
           continue;
         }
-        const collectionId = normalizeCollectionId(membership?.collectionId);
-        if (!collectionId) {
-          continue;
+        const collections = Array.isArray(node?.collections?.nodes)
+          ? node.collections.nodes
+          : [];
+        const memberCollectionIds: string[] = [];
+        for (const collection of collections) {
+          const collectionId = normalizeCollectionId(collection?.id);
+          if (!collectionId || !allowedCollectionIds.has(collectionId)) {
+            continue;
+          }
+          memberCollectionIds.push(collectionId);
         }
-        memberCollectionIds.push(collectionId);
+        if (memberCollectionIds.length > 0) {
+          result[productId] = normalizeCollectionIds(memberCollectionIds);
+        }
       }
-      if (memberCollectionIds.length > 0) {
-        result[productId] = normalizeCollectionIds(memberCollectionIds);
-      }
+    } catch {
+      continue;
     }
   }
 
