@@ -23,10 +23,21 @@ const MESSAGES = {
       "At least one line is below the minimum order quantity for this customer segment. Next step: increase quantity to meet the minimum.",
     stepQuantity:
       "At least one line quantity does not match the required packaging multiple. Next step: adjust quantity to the required step.",
+    maximumOrderQuantity:
+      "At least one line exceeds the maximum quantity allowed for this customer or segment. Next step: reduce quantity to the allowed maximum.",
     stepQuantitySinglePrefix: "This item must be purchased in steps of ",
     stepQuantitySingleSuffix: ".",
     stepQuantityMultiPrefix: "Items in your cart must follow step multiples: ",
     stepQuantityMultiSuffix: ".",
+    maximumOrderQuantitySinglePrefix: "Maximum allowed quantity for this item is ",
+    maximumOrderQuantitySingleSuffix: ".",
+    maximumOrderQuantityMultiPrefix: "Maximum allowed quantities in your cart: ",
+    maximumOrderQuantityMultiSuffix: ".",
+    affectedProductSinglePrefix: "Affected product: ",
+    affectedProductSingleSuffix: ".",
+    affectedProductMultiPrefix: "Affected products: ",
+    affectedProductMultiSuffix: ".",
+    unknownProductLabel: "Unknown product",
   },
   CS: {
     visibility:
@@ -41,10 +52,22 @@ const MESSAGES = {
       "Alespon jedna polozka je pod minimalnim objednacim mnozstvim pro vas segment. Dalsi krok: navyste mnozstvi na pozadovane minimum.",
     stepQuantity:
       "Alespon jedna polozka nema pozadovany kartonovy nasobek. Dalsi krok: upravte mnozstvi na pozadovany krok.",
+    maximumOrderQuantity:
+      "Alespon jedna polozka prekrocila maximalni mnozstvi pro vas segment nebo ucet. Dalsi krok: snizte mnozstvi na povolene maximum.",
     stepQuantitySinglePrefix: "Tato polozka se nakupuje v krocich po ",
     stepQuantitySingleSuffix: ".",
     stepQuantityMultiPrefix: "Polozky v kosiku maji tyto kroky nasobku: ",
     stepQuantityMultiSuffix: ".",
+    maximumOrderQuantitySinglePrefix:
+      "Maximalni povolene mnozstvi pro tuto polozku je ",
+    maximumOrderQuantitySingleSuffix: ".",
+    maximumOrderQuantityMultiPrefix: "Maximalni povolena mnozstvi v kosiku: ",
+    maximumOrderQuantityMultiSuffix: ".",
+    affectedProductSinglePrefix: "Dotceny produkt: ",
+    affectedProductSingleSuffix: ".",
+    affectedProductMultiPrefix: "Dotcene produkty: ",
+    affectedProductMultiSuffix: ".",
+    unknownProductLabel: "Neznamy produkt",
   },
 };
 
@@ -157,6 +180,110 @@ function buildStepQuantityViolationMessage(messages, rawStepValues) {
 }
 
 /**
+ * @param {unknown[]} rawMaximumValues
+ */
+function normalizeMaximumViolationValues(rawMaximumValues) {
+  const values = new Set();
+  for (const rawMaximumValue of rawMaximumValues ?? []) {
+    const maximumValue = Math.floor(toNumber(rawMaximumValue, NaN));
+    if (!Number.isFinite(maximumValue) || maximumValue < 1) {
+      continue;
+    }
+    values.add(maximumValue);
+  }
+  return Array.from(values).sort((a, b) => a - b);
+}
+
+/**
+ * @param {typeof MESSAGES.EN} messages
+ * @param {unknown[]} rawMaximumValues
+ */
+function buildMaximumOrderQuantityViolationMessage(messages, rawMaximumValues) {
+  const maximumValues = normalizeMaximumViolationValues(rawMaximumValues);
+  if (maximumValues.length === 1) {
+    return (
+      messages.maximumOrderQuantity +
+      " " +
+      messages.maximumOrderQuantitySinglePrefix +
+      maximumValues[0] +
+      messages.maximumOrderQuantitySingleSuffix
+    );
+  }
+  if (maximumValues.length > 1) {
+    return (
+      messages.maximumOrderQuantity +
+      " " +
+      messages.maximumOrderQuantityMultiPrefix +
+      maximumValues.join(", ") +
+      messages.maximumOrderQuantityMultiSuffix
+    );
+  }
+  return messages.maximumOrderQuantity;
+}
+
+/**
+ * @param {unknown[]} rawProductNames
+ */
+function normalizeViolationProductNames(rawProductNames) {
+  const values = new Set();
+  for (const rawProductName of rawProductNames ?? []) {
+    const productName = String(rawProductName ?? "").trim();
+    if (!productName) {
+      continue;
+    }
+    values.add(productName);
+  }
+  return Array.from(values);
+}
+
+/**
+ * @param {string} message
+ * @param {typeof MESSAGES.EN} messages
+ * @param {unknown[]} rawProductNames
+ */
+function buildViolationMessageWithProducts(message, messages, rawProductNames) {
+  const productNames = normalizeViolationProductNames(rawProductNames);
+  if (productNames.length === 0) {
+    return message;
+  }
+  if (productNames.length === 1) {
+    return (
+      message +
+      " " +
+      messages.affectedProductSinglePrefix +
+      productNames[0] +
+      messages.affectedProductSingleSuffix
+    );
+  }
+  return (
+    message +
+    " " +
+    messages.affectedProductMultiPrefix +
+    productNames.join(", ") +
+    messages.affectedProductMultiSuffix
+  );
+}
+
+/**
+ * @param {CartValidationsGenerateRunInput["cart"]["lines"][number]} line
+ * @param {typeof MESSAGES.EN} messages
+ */
+function resolveProductDisplayName(line, messages) {
+  if (line?.merchandise?.__typename !== "ProductVariant") {
+    return messages.unknownProductLabel;
+  }
+  const title = String(line?.merchandise?.product?.title ?? "").trim();
+  if (title) {
+    return title;
+  }
+  const productId = String(line?.merchandise?.product?.id ?? "").trim();
+  if (productId) {
+    return productId;
+  }
+  return messages.unknownProductLabel;
+}
+
+/**
  * @param {Record<string, unknown>} rawMap
  */
 function normalizeTierPriceMap(rawMap) {
@@ -219,6 +346,44 @@ function normalizeStepQuantityMap(rawMap) {
       continue;
     }
     normalized[productId] = stepQuantity;
+  }
+  return normalized;
+}
+
+/**
+ * @param {Record<string, unknown>} rawMap
+ */
+function normalizeMaximumOrderQuantityMap(rawMap) {
+  /** @type {Record<string, number>} */
+  const normalized = {};
+  for (const [productId, rawMaximumOrderQuantity] of Object.entries(rawMap)) {
+    const maximumOrderQuantity = Math.floor(toNumber(rawMaximumOrderQuantity, NaN));
+    if (!Number.isFinite(maximumOrderQuantity) || maximumOrderQuantity < 1) {
+      continue;
+    }
+    normalized[productId] = maximumOrderQuantity;
+  }
+  return normalized;
+}
+
+/**
+ * @param {Record<string, unknown>} rawMap
+ */
+function normalizePerCustomerProductMaximumOrderQuantities(rawMap) {
+  /** @type {Record<string, Record<string, number>>} */
+  const normalized = {};
+  for (const [rawCustomerId, rawPerProductMaximums] of Object.entries(rawMap)) {
+    const customerId = normalizeCustomerId(rawCustomerId);
+    if (!customerId || !rawPerProductMaximums || typeof rawPerProductMaximums !== "object") {
+      continue;
+    }
+    const perProductMaximums = normalizeMaximumOrderQuantityMap(
+      /** @type {Record<string, unknown>} */ (rawPerProductMaximums),
+    );
+    if (Object.keys(perProductMaximums).length === 0) {
+      continue;
+    }
+    normalized[customerId] = perProductMaximums;
   }
   return normalized;
 }
@@ -317,6 +482,20 @@ function parseConfig(input) {
     config && typeof config.perProductStepQuantitiesB2B === "object"
       ? config.perProductStepQuantitiesB2B
       : {};
+  const rawPerProductMaximumOrderQuantitiesB2C =
+    config && typeof config.perProductMaximumOrderQuantitiesB2C === "object"
+      ? config.perProductMaximumOrderQuantitiesB2C
+      : config && typeof config.perProductMaximumOrderQuantities === "object"
+        ? config.perProductMaximumOrderQuantities
+        : {};
+  const rawPerProductMaximumOrderQuantitiesB2B =
+    config && typeof config.perProductMaximumOrderQuantitiesB2B === "object"
+      ? config.perProductMaximumOrderQuantitiesB2B
+      : {};
+  const rawPerCustomerProductMaximumOrderQuantities =
+    config && typeof config.perCustomerProductMaximumOrderQuantities === "object"
+      ? config.perCustomerProductMaximumOrderQuantities
+      : {};
   const rawPerProductVisibilityModes =
     config && typeof config.perProductVisibilityModes === "object"
       ? config.perProductVisibilityModes
@@ -375,6 +554,16 @@ function parseConfig(input) {
   const perProductStepQuantitiesB2B = normalizeStepQuantityMap(
     /** @type {Record<string, unknown>} */ (rawPerProductStepQuantitiesB2B),
   );
+  const perProductMaximumOrderQuantitiesB2C = normalizeMaximumOrderQuantityMap(
+    /** @type {Record<string, unknown>} */ (rawPerProductMaximumOrderQuantitiesB2C),
+  );
+  const perProductMaximumOrderQuantitiesB2B = normalizeMaximumOrderQuantityMap(
+    /** @type {Record<string, unknown>} */ (rawPerProductMaximumOrderQuantitiesB2B),
+  );
+  const perCustomerProductMaximumOrderQuantities =
+    normalizePerCustomerProductMaximumOrderQuantities(
+      /** @type {Record<string, unknown>} */ (rawPerCustomerProductMaximumOrderQuantities),
+    );
   for (const [productId, visibilityMode] of Object.entries(
     rawPerProductVisibilityModes,
   )) {
@@ -427,6 +616,9 @@ function parseConfig(input) {
     perProductMinimumOrderQuantitiesB2B,
     perProductStepQuantitiesB2C,
     perProductStepQuantitiesB2B,
+    perProductMaximumOrderQuantitiesB2C,
+    perProductMaximumOrderQuantitiesB2B,
+    perCustomerProductMaximumOrderQuantities,
     perProductVisibilityModes,
     perProductVisibilityCustomerIds,
   };
@@ -495,6 +687,25 @@ export function cartValidationsGenerateRun(input) {
   const floorPercent = isB2B
     ? config.b2bGlobalMinPricePercent
     : config.globalMinPricePercent;
+  const perProductFloorPercents = isB2B
+    ? config.perProductFloorPercentsB2B
+    : config.perProductFloorPercentsB2C;
+  const perProductAllowZeroFinalPrice = isB2B
+    ? config.perProductAllowZeroFinalPriceB2B
+    : config.perProductAllowZeroFinalPriceB2C;
+  const perProductMinimumOrderQuantities = isB2B
+    ? config.perProductMinimumOrderQuantitiesB2B
+    : config.perProductMinimumOrderQuantitiesB2C;
+  const perProductStepQuantities = isB2B
+    ? config.perProductStepQuantitiesB2B
+    : config.perProductStepQuantitiesB2C;
+  const perProductMaximumOrderQuantities = isB2B
+    ? config.perProductMaximumOrderQuantitiesB2B
+    : config.perProductMaximumOrderQuantitiesB2C;
+  const perCustomerProductMaximumOrderQuantities =
+    customerId && config.perCustomerProductMaximumOrderQuantities[customerId]
+      ? config.perCustomerProductMaximumOrderQuantities[customerId]
+      : null;
 
   let hasVisibilityViolation = false;
   let hasZeroFinalPriceViolation = false;
@@ -502,8 +713,25 @@ export function cartValidationsGenerateRun(input) {
   let hasCombinedDiscountCapViolation = false;
   let hasMinimumOrderQuantityViolation = false;
   let hasStepQuantityViolation = false;
+  let hasMaximumOrderQuantityViolation = false;
+  /** @type {Set<string>} */
+  const visibilityViolationProducts = new Set();
+  /** @type {Set<string>} */
+  const minimumOrderQuantityViolationProducts = new Set();
+  /** @type {Set<string>} */
+  const stepViolationProducts = new Set();
+  /** @type {Set<string>} */
+  const maximumViolationProducts = new Set();
+  /** @type {Set<string>} */
+  const combinedCapViolationProducts = new Set();
+  /** @type {Set<string>} */
+  const zeroFinalPriceViolationProducts = new Set();
+  /** @type {Set<string>} */
+  const belowFloorViolationProducts = new Set();
   /** @type {Set<number>} */
   const stepViolationSteps = new Set();
+  /** @type {Set<number>} */
+  const maximumViolationMaximums = new Set();
   for (const line of input?.cart?.lines ?? []) {
     const productId =
       line?.merchandise?.__typename === "ProductVariant"
@@ -513,12 +741,15 @@ export function cartValidationsGenerateRun(input) {
       productId && config.perProductVisibilityModes[productId]
         ? config.perProductVisibilityModes[productId]
         : null;
+    const productDisplayName = resolveProductDisplayName(line, messages);
     if (productVisibilityMode === "B2B_ONLY" && !isB2B) {
       hasVisibilityViolation = true;
+      visibilityViolationProducts.add(productDisplayName);
       continue;
     }
     if (productVisibilityMode === "B2C_ONLY" && isB2B) {
       hasVisibilityViolation = true;
+      visibilityViolationProducts.add(productDisplayName);
       continue;
     }
     if (productVisibilityMode === "CUSTOMER_ONLY") {
@@ -528,21 +759,10 @@ export function cartValidationsGenerateRun(input) {
           : "";
       if (!customerId || !requiredCustomerId || customerId !== requiredCustomerId) {
         hasVisibilityViolation = true;
+        visibilityViolationProducts.add(productDisplayName);
         continue;
       }
     }
-    const perProductFloorPercents = isB2B
-      ? config.perProductFloorPercentsB2B
-      : config.perProductFloorPercentsB2C;
-    const perProductAllowZeroFinalPrice = isB2B
-      ? config.perProductAllowZeroFinalPriceB2B
-      : config.perProductAllowZeroFinalPriceB2C;
-    const perProductMinimumOrderQuantities = isB2B
-      ? config.perProductMinimumOrderQuantitiesB2B
-      : config.perProductMinimumOrderQuantitiesB2C;
-    const perProductStepQuantities = isB2B
-      ? config.perProductStepQuantitiesB2B
-      : config.perProductStepQuantitiesB2C;
     const lineFloorPercent =
       productId && perProductFloorPercents[productId] != null
         ? perProductFloorPercents[productId]
@@ -564,16 +784,38 @@ export function cartValidationsGenerateRun(input) {
       productId && perProductStepQuantities[productId] != null
         ? perProductStepQuantities[productId]
         : 1;
+    const segmentMaximumOrderQuantity =
+      productId && perProductMaximumOrderQuantities[productId] != null
+        ? perProductMaximumOrderQuantities[productId]
+        : null;
+    const customerMaximumOrderQuantity =
+      productId &&
+      perCustomerProductMaximumOrderQuantities &&
+      perCustomerProductMaximumOrderQuantities[productId] != null
+        ? perCustomerProductMaximumOrderQuantities[productId]
+        : null;
+    const maximumOrderQuantity =
+      customerMaximumOrderQuantity != null
+        ? customerMaximumOrderQuantity
+        : segmentMaximumOrderQuantity;
     if (productQuantity < minimumOrderQuantity) {
       hasMinimumOrderQuantityViolation = true;
+      minimumOrderQuantityViolationProducts.add(productDisplayName);
     }
     if (stepQuantity > 1 && productQuantity % stepQuantity !== 0) {
       hasStepQuantityViolation = true;
       stepViolationSteps.add(stepQuantity);
+      stepViolationProducts.add(productDisplayName);
+    }
+    if (maximumOrderQuantity != null && productQuantity > maximumOrderQuantity) {
+      hasMaximumOrderQuantityViolation = true;
+      maximumViolationMaximums.add(maximumOrderQuantity);
+      maximumViolationProducts.add(productDisplayName);
     }
     if (
       productQuantity < minimumOrderQuantity ||
-      (stepQuantity > 1 && productQuantity % stepQuantity !== 0)
+      (stepQuantity > 1 && productQuantity % stepQuantity !== 0) ||
+      (maximumOrderQuantity != null && productQuantity > maximumOrderQuantity)
     ) {
       continue;
     }
@@ -600,54 +842,94 @@ export function cartValidationsGenerateRun(input) {
       );
       if (lineCombinedPercentOff - config.maxCombinedPercentOff > 0.0001) {
         hasCombinedDiscountCapViolation = true;
+        combinedCapViolationProducts.add(productDisplayName);
         continue;
       }
     }
 
     if (finalUnitPrice <= 0 && !lineAllowZeroFinalPrice) {
       hasZeroFinalPriceViolation = true;
+      zeroFinalPriceViolationProducts.add(productDisplayName);
       continue;
     }
 
     if (finalUnitPrice < floorUnitPrice) {
       hasBelowFloorViolation = true;
+      belowFloorViolationProducts.add(productDisplayName);
     }
   }
 
   const errors = [];
   if (hasCombinedDiscountCapViolation) {
     errors.push({
-      message: messages.combinedCap,
+      message: buildViolationMessageWithProducts(
+        messages.combinedCap,
+        messages,
+        Array.from(combinedCapViolationProducts),
+      ),
       target: "$.cart",
     });
   }
   if (hasVisibilityViolation) {
     errors.push({
-      message: messages.visibility,
+      message: buildViolationMessageWithProducts(
+        messages.visibility,
+        messages,
+        Array.from(visibilityViolationProducts),
+      ),
       target: "$.cart",
     });
   }
   if (hasMinimumOrderQuantityViolation) {
     errors.push({
-      message: messages.minimumOrderQuantity,
+      message: buildViolationMessageWithProducts(
+        messages.minimumOrderQuantity,
+        messages,
+        Array.from(minimumOrderQuantityViolationProducts),
+      ),
       target: "$.cart",
     });
   }
   if (hasStepQuantityViolation) {
     errors.push({
-      message: buildStepQuantityViolationMessage(messages, Array.from(stepViolationSteps)),
+      message: buildViolationMessageWithProducts(
+        buildStepQuantityViolationMessage(messages, Array.from(stepViolationSteps)),
+        messages,
+        Array.from(stepViolationProducts),
+      ),
+      target: "$.cart",
+    });
+  }
+  if (hasMaximumOrderQuantityViolation) {
+    errors.push({
+      message: buildViolationMessageWithProducts(
+        buildMaximumOrderQuantityViolationMessage(
+          messages,
+          Array.from(maximumViolationMaximums),
+        ),
+        messages,
+        Array.from(maximumViolationProducts),
+      ),
       target: "$.cart",
     });
   }
   if (hasBelowFloorViolation) {
     errors.push({
-      message: messages.belowFloor,
+      message: buildViolationMessageWithProducts(
+        messages.belowFloor,
+        messages,
+        Array.from(belowFloorViolationProducts),
+      ),
       target: "$.cart",
     });
   }
   if (hasZeroFinalPriceViolation) {
     errors.push({
-      message: messages.zeroFinal,
+      message: buildViolationMessageWithProducts(
+        messages.zeroFinal,
+        messages,
+        Array.from(zeroFinalPriceViolationProducts),
+      ),
       target: "$.cart",
     });
   }

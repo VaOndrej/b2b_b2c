@@ -38,6 +38,11 @@ test("cart validation query variable contract matches generated config payload",
   );
   assert.match(
     query,
+    /product\s*\{[\s\S]*id[\s\S]*title/,
+    "[CONTRACT FAIL] Cart validation query musi nacitat product.title pro konkretni product names v hlaskach.",
+  );
+  assert.match(
+    query,
     /localization\s*\{[\s\S]*language\s*\{[\s\S]*isoCode/,
     "[CONTRACT FAIL] Cart validation query musi nacitat localization.language.isoCode pro lokalizovane message.",
   );
@@ -337,6 +342,80 @@ test("step quantity mapping contract stays consistent across B2B/B2C maps", () =
     config.perProductStepQuantitiesB2B["gid://shopify/Product/B2C_ONLY"],
     undefined,
   );
+});
+
+test("maximum quantity mapping contract supports segment and customer overrides", () => {
+  const config = buildCartValidationFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+    productQuantityRules: [
+      {
+        productId: "gid://shopify/Product/ALL_SEGMENTS",
+        segment: null,
+        minimumOrderQuantity: 1,
+        maxOrderQuantity: 10,
+      },
+      {
+        productId: "gid://shopify/Product/B2B_ONLY",
+        segment: "B2B",
+        minimumOrderQuantity: 1,
+        maxOrderQuantity: 20,
+      },
+      {
+        productId: "gid://shopify/Product/B2C_ONLY",
+        segment: "B2C",
+        minimumOrderQuantity: 1,
+        maxOrderQuantity: 8,
+      },
+    ],
+    productCustomerQuantityRules: [
+      {
+        productId: "gid://shopify/Product/ALL_SEGMENTS",
+        customerId: " gid://shopify/Customer/42 ",
+        maxOrderQuantity: 40,
+      },
+      {
+        productId: "gid://shopify/Product/B2C_ONLY",
+        customerId: "gid://shopify/Customer/84",
+        maxOrderQuantity: 12,
+      },
+    ],
+  });
+
+  assert.equal(
+    config.perProductMaximumOrderQuantitiesB2B["gid://shopify/Product/ALL_SEGMENTS"],
+    10,
+  );
+  assert.equal(
+    config.perProductMaximumOrderQuantitiesB2C["gid://shopify/Product/ALL_SEGMENTS"],
+    10,
+  );
+  assert.equal(
+    config.perProductMaximumOrderQuantitiesB2B["gid://shopify/Product/B2B_ONLY"],
+    20,
+  );
+  assert.equal(
+    config.perProductMaximumOrderQuantitiesB2C["gid://shopify/Product/B2B_ONLY"],
+    undefined,
+  );
+  assert.equal(
+    config.perProductMaximumOrderQuantitiesB2C["gid://shopify/Product/B2C_ONLY"],
+    8,
+  );
+  assert.equal(
+    config.perProductMaximumOrderQuantitiesB2B["gid://shopify/Product/B2C_ONLY"],
+    undefined,
+  );
+  assert.deepEqual(config.perCustomerProductMaximumOrderQuantities, {
+    "gid://shopify/Customer/42": {
+      "gid://shopify/Product/ALL_SEGMENTS": 40,
+    },
+    "gid://shopify/Customer/84": {
+      "gid://shopify/Product/B2C_ONLY": 12,
+    },
+  });
 });
 
 test("product visibility mapping contract normalizes restrictive visibility rules", () => {

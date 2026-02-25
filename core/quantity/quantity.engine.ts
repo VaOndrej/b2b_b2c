@@ -11,6 +11,7 @@ export interface QuantityValidationInput {
 interface ResolvedQuantityConstraints {
   minimumOrderQuantity: number;
   stepQuantity: number;
+  maxOrderQuantity: number | null;
 }
 
 function normalizeQuantity(value: number | undefined): number {
@@ -99,6 +100,49 @@ function resolveConstraintValue(
   return selectedValue;
 }
 
+function resolveMaximumConstraintValue(
+  input: QuantityValidationInput,
+): number | null {
+  let selectedValue: number | null = null;
+  let selectedTargetPriority = -1;
+  let selectedSegmentPriority = -1;
+
+  for (const rule of input.rules) {
+    const value = rule.maxOrderQuantity;
+    if (value == null || !Number.isFinite(value) || value < 1) {
+      continue;
+    }
+    if (!matchesSegment(rule.segment, input.segment) || !matchesTarget(rule, input)) {
+      continue;
+    }
+
+    const normalizedValue = Math.floor(value);
+    const currentTargetPriority = targetPriority(rule);
+    const currentSegmentPriority = segmentPriority(rule);
+    const isHigherPriority =
+      currentTargetPriority > selectedTargetPriority ||
+      (currentTargetPriority === selectedTargetPriority &&
+        currentSegmentPriority > selectedSegmentPriority);
+
+    if (isHigherPriority) {
+      selectedValue = normalizedValue;
+      selectedTargetPriority = currentTargetPriority;
+      selectedSegmentPriority = currentSegmentPriority;
+      continue;
+    }
+
+    if (
+      currentTargetPriority === selectedTargetPriority &&
+      currentSegmentPriority === selectedSegmentPriority
+    ) {
+      selectedValue =
+        selectedValue == null ? normalizedValue : Math.min(selectedValue, normalizedValue);
+    }
+  }
+
+  return selectedValue;
+}
+
 export function resolveQuantityConstraints(
   input: QuantityValidationInput,
 ): ResolvedQuantityConstraints {
@@ -109,6 +153,7 @@ export function resolveQuantityConstraints(
       1,
     ),
     stepQuantity: resolveConstraintValue(input, (rule) => rule.stepQuantity, 1),
+    maxOrderQuantity: resolveMaximumConstraintValue(input),
   };
 }
 
@@ -120,6 +165,12 @@ export function validateQuantity(input: QuantityValidationInput): boolean {
   }
 
   if (constraints.stepQuantity > 1 && quantity % constraints.stepQuantity !== 0) {
+    return false;
+  }
+  if (
+    constraints.maxOrderQuantity != null &&
+    quantity > constraints.maxOrderQuantity
+  ) {
     return false;
   }
 

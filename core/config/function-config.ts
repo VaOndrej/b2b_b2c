@@ -18,6 +18,13 @@ interface ProductQuantityRuleInput {
   segment: string | null;
   minimumOrderQuantity: number;
   stepQuantity?: number | null;
+  maxOrderQuantity?: number | null;
+}
+
+interface ProductCustomerQuantityRuleInput {
+  productId: string;
+  customerId: string;
+  maxOrderQuantity: number;
 }
 
 interface ProductVisibilityRuleInput {
@@ -40,6 +47,7 @@ interface MarginGuardFunctionConfigInput {
   productFloors: ProductFloorInput[];
   productTierPrices?: ProductTierPriceInput[];
   productQuantityRules?: ProductQuantityRuleInput[];
+  productCustomerQuantityRules?: ProductCustomerQuantityRuleInput[];
   productVisibilityRules?: ProductVisibilityRuleInput[];
   couponSegmentRules?: CouponSegmentRuleInput[];
 }
@@ -145,6 +153,14 @@ function normalizeStepQuantity(
   return Math.floor(parsed);
 }
 
+function normalizeMaximumOrderQuantity(value: unknown): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return null;
+  }
+  return Math.floor(parsed);
+}
+
 export function buildCartValidationFunctionConfig(
   config: MarginGuardFunctionConfigInput,
 ) {
@@ -159,6 +175,12 @@ export function buildCartValidationFunctionConfig(
   const perProductMinimumOrderQuantitiesB2B: Record<string, number> = {};
   const perProductStepQuantitiesB2C: Record<string, number> = {};
   const perProductStepQuantitiesB2B: Record<string, number> = {};
+  const perProductMaximumOrderQuantitiesB2C: Record<string, number> = {};
+  const perProductMaximumOrderQuantitiesB2B: Record<string, number> = {};
+  const perCustomerProductMaximumOrderQuantities: Record<
+    string,
+    Record<string, number>
+  > = {};
   const perProductVisibilityModes: Record<
     string,
     "B2B_ONLY" | "B2C_ONLY" | "CUSTOMER_ONLY"
@@ -168,6 +190,7 @@ export function buildCartValidationFunctionConfig(
   const normalizedB2BTag = config.b2bTag.trim() || "b2b";
   const productTierPrices = config.productTierPrices ?? [];
   const productQuantityRules = config.productQuantityRules ?? [];
+  const productCustomerQuantityRules = config.productCustomerQuantityRules ?? [];
   const productVisibilityRules = config.productVisibilityRules ?? [];
   const rawCouponSegmentRules = config.couponSegmentRules ?? [];
   const allowStacking = config.allowStacking === true;
@@ -247,7 +270,13 @@ export function buildCartValidationFunctionConfig(
       rule.minimumOrderQuantity,
     );
     const stepQuantity = normalizeStepQuantity(rule.stepQuantity);
-    if (!productId || (minimumOrderQuantity == null && stepQuantity == null)) {
+    const maxOrderQuantity = normalizeMaximumOrderQuantity(rule.maxOrderQuantity);
+    if (
+      !productId ||
+      (minimumOrderQuantity == null &&
+        stepQuantity == null &&
+        maxOrderQuantity == null)
+    ) {
       continue;
     }
     if (minimumOrderQuantity != null) {
@@ -257,6 +286,10 @@ export function buildCartValidationFunctionConfig(
     if (stepQuantity != null) {
       perProductStepQuantitiesB2C[productId] = stepQuantity;
       perProductStepQuantitiesB2B[productId] = stepQuantity;
+    }
+    if (maxOrderQuantity != null) {
+      perProductMaximumOrderQuantitiesB2C[productId] = maxOrderQuantity;
+      perProductMaximumOrderQuantitiesB2B[productId] = maxOrderQuantity;
     }
   }
 
@@ -269,7 +302,13 @@ export function buildCartValidationFunctionConfig(
       rule.minimumOrderQuantity,
     );
     const stepQuantity = normalizeStepQuantity(rule.stepQuantity);
-    if (!productId || (minimumOrderQuantity == null && stepQuantity == null)) {
+    const maxOrderQuantity = normalizeMaximumOrderQuantity(rule.maxOrderQuantity);
+    if (
+      !productId ||
+      (minimumOrderQuantity == null &&
+        stepQuantity == null &&
+        maxOrderQuantity == null)
+    ) {
       continue;
     }
     if (rule.segment === "B2C") {
@@ -279,6 +318,9 @@ export function buildCartValidationFunctionConfig(
       if (stepQuantity != null) {
         perProductStepQuantitiesB2C[productId] = stepQuantity;
       }
+      if (maxOrderQuantity != null) {
+        perProductMaximumOrderQuantitiesB2C[productId] = maxOrderQuantity;
+      }
     }
     if (rule.segment === "B2B") {
       if (minimumOrderQuantity != null) {
@@ -287,7 +329,21 @@ export function buildCartValidationFunctionConfig(
       if (stepQuantity != null) {
         perProductStepQuantitiesB2B[productId] = stepQuantity;
       }
+      if (maxOrderQuantity != null) {
+        perProductMaximumOrderQuantitiesB2B[productId] = maxOrderQuantity;
+      }
     }
+  }
+
+  for (const rule of productCustomerQuantityRules) {
+    const productId = rule.productId.trim();
+    const customerId = normalizeCustomerId(rule.customerId);
+    const maxOrderQuantity = normalizeMaximumOrderQuantity(rule.maxOrderQuantity);
+    if (!productId || !customerId || maxOrderQuantity == null) {
+      continue;
+    }
+    perCustomerProductMaximumOrderQuantities[customerId] ??= {};
+    perCustomerProductMaximumOrderQuantities[customerId][productId] = maxOrderQuantity;
   }
 
   for (const rule of productVisibilityRules) {
@@ -343,6 +399,9 @@ export function buildCartValidationFunctionConfig(
     perProductMinimumOrderQuantitiesB2B,
     perProductStepQuantitiesB2C,
     perProductStepQuantitiesB2B,
+    perProductMaximumOrderQuantitiesB2C,
+    perProductMaximumOrderQuantitiesB2B,
+    perCustomerProductMaximumOrderQuantities,
     perProductVisibilityModes,
     perProductVisibilityCustomerIds,
     couponSegmentRules,

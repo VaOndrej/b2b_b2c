@@ -23,6 +23,13 @@ interface ProductQuantityRuleRecord {
   segment?: string | null;
   minimumOrderQuantity?: number | null;
   stepQuantity?: number | null;
+  maxOrderQuantity?: number | null;
+}
+
+interface ProductCustomerQuantityRuleRecord {
+  productId: string;
+  customerId: string;
+  maxOrderQuantity: number;
 }
 
 export interface StorefrontVisibilityInput {
@@ -45,17 +52,22 @@ interface StorefrontQuantityConstraintsInput {
   productIdByHandle: Record<string, string>;
   segment: Segment;
   rules: ProductQuantityRuleRecord[];
+  customerId?: string | null;
+  customerMaxRules?: ProductCustomerQuantityRuleRecord[];
 }
 
 interface StorefrontQuantityConstraints {
   minimumOrderQuantity: number;
   stepQuantity: number;
+  maxOrderQuantity?: number;
 }
 
 interface StorefrontQuantityConstraintsByProductInput {
   productIds: string[];
   segment: Segment;
   rules: ProductQuantityRuleRecord[];
+  customerId?: string | null;
+  customerMaxRules?: ProductCustomerQuantityRuleRecord[];
 }
 
 function normalizeHandle(raw: string): string {
@@ -109,7 +121,13 @@ function buildQuantityRules(rules: ProductQuantityRuleRecord[]): QuantityRule[] 
     const productId = String(rule.productId ?? "").trim();
     const minimumOrderQuantity = normalizeQuantityValue(rule.minimumOrderQuantity);
     const stepQuantity = normalizeQuantityValue(rule.stepQuantity);
-    if (!productId || (minimumOrderQuantity == null && stepQuantity == null)) {
+    const maxOrderQuantity = normalizeQuantityValue(rule.maxOrderQuantity);
+    if (
+      !productId ||
+      (minimumOrderQuantity == null &&
+        stepQuantity == null &&
+        maxOrderQuantity == null)
+    ) {
       continue;
     }
     normalizedRules.push({
@@ -117,9 +135,60 @@ function buildQuantityRules(rules: ProductQuantityRuleRecord[]): QuantityRule[] 
       segment: normalizeSegment(rule.segment),
       minimumOrderQuantity,
       stepQuantity,
+      maxOrderQuantity,
     });
   }
   return normalizedRules;
+}
+
+function buildCustomerMaximumQuantityMap(
+  rules: ProductCustomerQuantityRuleRecord[],
+): Record<string, Record<string, number>> {
+  const normalized: Record<string, Record<string, number>> = {};
+  for (const rule of rules) {
+    const productId = normalizeProductId(rule.productId);
+    const customerId = normalizeCustomerId(rule.customerId);
+    const maxOrderQuantity = normalizeQuantityValue(rule.maxOrderQuantity);
+    if (!productId || !customerId || maxOrderQuantity == null) {
+      continue;
+    }
+    normalized[customerId] ??= {};
+    normalized[customerId][productId] = maxOrderQuantity;
+  }
+  return normalized;
+}
+
+function resolveCustomerMaximumOrderQuantity(input: {
+  customerId?: string | null;
+  productId: string;
+  customerMaxByCustomerId: Record<string, Record<string, number>>;
+}): number | null {
+  const customerId = normalizeCustomerId(input.customerId);
+  if (!customerId) {
+    return null;
+  }
+  const productMaxMap = input.customerMaxByCustomerId[customerId];
+  if (!productMaxMap) {
+    return null;
+  }
+  const maxOrderQuantity = normalizeQuantityValue(productMaxMap[input.productId]);
+  return maxOrderQuantity ?? null;
+}
+
+function toStorefrontQuantityConstraints(
+  constraints: ReturnType<typeof resolveQuantityConstraints>,
+): StorefrontQuantityConstraints {
+  if (constraints.maxOrderQuantity != null) {
+    return {
+      minimumOrderQuantity: constraints.minimumOrderQuantity,
+      stepQuantity: constraints.stepQuantity,
+      maxOrderQuantity: constraints.maxOrderQuantity,
+    };
+  }
+  return {
+    minimumOrderQuantity: constraints.minimumOrderQuantity,
+    stepQuantity: constraints.stepQuantity,
+  };
 }
 
 function isVisibleForContext(input: {
@@ -224,8 +293,14 @@ export function resolveStorefrontQuantityConstraintsByHandle(
   }
 
   const rules = buildQuantityRules(input.rules);
+  const customerMaxByCustomerId = buildCustomerMaximumQuantityMap(
+    input.customerMaxRules ?? [],
+  );
   if (rules.length === 0) {
-    return {};
+    const hasCustomerOverrides = Object.keys(customerMaxByCustomerId).length > 0;
+    if (!hasCustomerOverrides) {
+      return {};
+    }
   }
 
   const result: Record<string, StorefrontQuantityConstraints> = {};
@@ -240,8 +315,24 @@ export function resolveStorefrontQuantityConstraintsByHandle(
       segment: input.segment,
       rules,
     } satisfies QuantityValidationInput);
-    if (constraints.minimumOrderQuantity > 1 || constraints.stepQuantity > 1) {
-      result[handle] = constraints;
+    const customerMaxOrderQuantity = resolveCustomerMaximumOrderQuantity({
+      customerId: input.customerId,
+      productId,
+      customerMaxByCustomerId,
+    });
+    const effectiveConstraints = {
+      ...constraints,
+      maxOrderQuantity:
+        customerMaxOrderQuantity != null
+          ? customerMaxOrderQuantity
+          : constraints.maxOrderQuantity,
+    };
+    if (
+      effectiveConstraints.minimumOrderQuantity > 1 ||
+      effectiveConstraints.stepQuantity > 1 ||
+      effectiveConstraints.maxOrderQuantity != null
+    ) {
+      result[handle] = toStorefrontQuantityConstraints(effectiveConstraints);
     }
   }
 
@@ -263,8 +354,14 @@ export function resolveStorefrontQuantityConstraintsByProductId(
   }
 
   const rules = buildQuantityRules(input.rules);
+  const customerMaxByCustomerId = buildCustomerMaximumQuantityMap(
+    input.customerMaxRules ?? [],
+  );
   if (rules.length === 0) {
-    return {};
+    const hasCustomerOverrides = Object.keys(customerMaxByCustomerId).length > 0;
+    if (!hasCustomerOverrides) {
+      return {};
+    }
   }
 
   const result: Record<string, StorefrontQuantityConstraints> = {};
@@ -275,8 +372,24 @@ export function resolveStorefrontQuantityConstraintsByProductId(
       segment: input.segment,
       rules,
     } satisfies QuantityValidationInput);
-    if (constraints.minimumOrderQuantity > 1 || constraints.stepQuantity > 1) {
-      result[productId] = constraints;
+    const customerMaxOrderQuantity = resolveCustomerMaximumOrderQuantity({
+      customerId: input.customerId,
+      productId,
+      customerMaxByCustomerId,
+    });
+    const effectiveConstraints = {
+      ...constraints,
+      maxOrderQuantity:
+        customerMaxOrderQuantity != null
+          ? customerMaxOrderQuantity
+          : constraints.maxOrderQuantity,
+    };
+    if (
+      effectiveConstraints.minimumOrderQuantity > 1 ||
+      effectiveConstraints.stepQuantity > 1 ||
+      effectiveConstraints.maxOrderQuantity != null
+    ) {
+      result[productId] = toStorefrontQuantityConstraints(effectiveConstraints);
     }
   }
 

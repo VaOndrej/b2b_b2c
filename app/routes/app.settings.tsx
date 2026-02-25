@@ -8,14 +8,18 @@ import {
 } from "../services/discount-function-activation.server";
 import {
   deleteCouponSegmentRule,
+  deleteProductCustomerMaximumQuantityRule,
   deleteProductFloorRule,
+  deleteProductMaximumQuantityRule,
   deleteProductQuantityRule,
   deleteProductStepQuantityRule,
   deleteProductVisibilityRule,
   deleteProductTierPriceRule,
   getOrCreateMarginGuardConfig,
   upsertCouponSegmentRule,
+  upsertProductCustomerMaximumQuantityRule,
   upsertProductFloorRule,
+  upsertProductMaximumQuantityRule,
   upsertProductQuantityRule,
   upsertProductStepQuantityRule,
   upsertProductVisibilityRule,
@@ -195,6 +199,53 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
+  if (intent === "save-product-max-quantity-rule") {
+    const productId = String(formData.get("productId") ?? "").trim();
+    const segmentRaw = String(formData.get("segment") ?? "").trim();
+    const maxOrderQuantity = Math.max(
+      1,
+      Math.floor(parseNumber(formData.get("maxOrderQuantity"), 1)),
+    );
+
+    if (productId) {
+      await upsertProductMaximumQuantityRule({
+        productId,
+        segment: segmentRaw === "B2B" || segmentRaw === "B2C" ? segmentRaw : undefined,
+        maxOrderQuantity,
+      });
+    }
+  }
+
+  if (intent === "delete-product-max-quantity-rule") {
+    const id = String(formData.get("id") ?? "");
+    if (id) {
+      await deleteProductMaximumQuantityRule(id);
+    }
+  }
+
+  if (intent === "save-product-customer-max-quantity-rule") {
+    const productId = String(formData.get("productId") ?? "").trim();
+    const customerId = String(formData.get("customerId") ?? "").trim();
+    const maxOrderQuantity = Math.max(
+      1,
+      Math.floor(parseNumber(formData.get("maxOrderQuantity"), 1)),
+    );
+    if (productId && customerId) {
+      await upsertProductCustomerMaximumQuantityRule({
+        productId,
+        customerId,
+        maxOrderQuantity,
+      });
+    }
+  }
+
+  if (intent === "delete-product-customer-max-quantity-rule") {
+    const id = String(formData.get("id") ?? "");
+    if (id) {
+      await deleteProductCustomerMaximumQuantityRule(id);
+    }
+  }
+
   if (intent === "save-product-visibility-rule") {
     const productId = String(formData.get("productId") ?? "").trim();
     const visibilityModeRaw = String(formData.get("visibilityMode") ?? "ALL").trim();
@@ -259,6 +310,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     intent === "delete-product-quantity-rule" ||
     intent === "save-product-step-quantity-rule" ||
     intent === "delete-product-step-quantity-rule" ||
+    intent === "save-product-max-quantity-rule" ||
+    intent === "delete-product-max-quantity-rule" ||
+    intent === "save-product-customer-max-quantity-rule" ||
+    intent === "delete-product-customer-max-quantity-rule" ||
     intent === "save-product-visibility-rule" ||
     intent === "delete-product-visibility-rule" ||
     intent === "save-coupon-segment-rule" ||
@@ -289,6 +344,14 @@ export default function AppSettingsRoute() {
   const productStepRules = config.productQuantityRules.filter(
     (rule: any) => Number(rule.stepQuantity ?? 0) > 1,
   );
+  const productMaxRules = config.productQuantityRules.filter(
+    (rule: any) => Number(rule.maxOrderQuantity ?? 0) > 0,
+  );
+  const productCustomerMaxRules = Array.isArray(config.productCustomerQuantityRules)
+    ? config.productCustomerQuantityRules.filter(
+        (rule: any) => Number(rule.maxOrderQuantity ?? 0) > 0,
+      )
+    : [];
 
   return (
     <s-page heading="Margin Guard Settings">
@@ -603,6 +666,132 @@ export default function AppSettingsRoute() {
                       type="hidden"
                       name="intent"
                       value="delete-product-step-quantity-rule"
+                    />
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" disabled={isSubmitting}>
+                      Delete
+                    </button>
+                  </form>
+                </s-stack>
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+
+      <s-section heading="Per-product maximum quantity rules">
+        <form method="post">
+          <input type="hidden" name="intent" value="save-product-max-quantity-rule" />
+          <s-stack direction="block" gap="base">
+            <label>
+              Product ID
+              <input name="productId" required />
+            </label>
+            <label>
+              Segment (optional)
+              <select name="segment" defaultValue="">
+                <option value="">All segments</option>
+                <option value="B2B">B2B</option>
+                <option value="B2C">B2C</option>
+              </select>
+            </label>
+            <label>
+              Maximum order quantity
+              <input
+                name="maxOrderQuantity"
+                type="number"
+                min={1}
+                step={1}
+                defaultValue={1}
+              />
+            </label>
+            <button type="submit" disabled={isSubmitting}>
+              Save maximum quantity rule
+            </button>
+          </s-stack>
+        </form>
+
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Configured max quantity rules</s-heading>
+          {productMaxRules.length === 0 ? (
+            <s-paragraph>No per-product max quantity rules yet.</s-paragraph>
+          ) : (
+            <s-stack direction="block" gap="small">
+              {productMaxRules.map((rule: any) => (
+                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
+                  <s-text>
+                    {rule.productId} | {rule.segment ?? "ALL"} | max {rule.maxOrderQuantity}
+                  </s-text>
+                  <form method="post">
+                    <input
+                      type="hidden"
+                      name="intent"
+                      value="delete-product-max-quantity-rule"
+                    />
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" disabled={isSubmitting}>
+                      Delete
+                    </button>
+                  </form>
+                </s-stack>
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+
+      <s-section heading="Per-customer max quantity overrides">
+        <form method="post">
+          <input
+            type="hidden"
+            name="intent"
+            value="save-product-customer-max-quantity-rule"
+          />
+          <s-stack direction="block" gap="base">
+            <label>
+              Product ID
+              <input name="productId" required />
+            </label>
+            <label>
+              Customer ID
+              <input
+                name="customerId"
+                placeholder="gid://shopify/Customer/123456789"
+                required
+              />
+            </label>
+            <label>
+              Maximum order quantity for this customer
+              <input
+                name="maxOrderQuantity"
+                type="number"
+                min={1}
+                step={1}
+                defaultValue={1}
+              />
+            </label>
+            <button type="submit" disabled={isSubmitting}>
+              Save customer max override
+            </button>
+          </s-stack>
+        </form>
+
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Configured customer max overrides</s-heading>
+          {productCustomerMaxRules.length === 0 ? (
+            <s-paragraph>No customer max overrides yet.</s-paragraph>
+          ) : (
+            <s-stack direction="block" gap="small">
+              {productCustomerMaxRules.map((rule: any) => (
+                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
+                  <s-text>
+                    {rule.productId} | customer {rule.customerId} | max {rule.maxOrderQuantity}
+                  </s-text>
+                  <form method="post">
+                    <input
+                      type="hidden"
+                      name="intent"
+                      value="delete-product-customer-max-quantity-rule"
                     />
                     <input type="hidden" name="id" value={rule.id} />
                     <button type="submit" disabled={isSubmitting}>

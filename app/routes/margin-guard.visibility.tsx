@@ -135,11 +135,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     productIdByHandle: visibility.productIdByHandle,
     segment,
     rules: config.productQuantityRules,
+    customerId,
+    customerMaxRules: config.productCustomerQuantityRules,
   });
   const quantityConstraintsByProductId = resolveStorefrontQuantityConstraintsByProductId({
     productIds,
     segment,
     rules: config.productQuantityRules,
+    customerId,
+    customerMaxRules: config.productCustomerQuantityRules,
   });
 
   return Response.json(

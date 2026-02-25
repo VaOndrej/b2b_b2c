@@ -4,4 +4,5 @@ export interface QuantityRule {
   segment?: "B2B" | "B2C";
   minimumOrderQuantity?: number;
   stepQuantity?: number;
+  maxOrderQuantity?: number;
 }

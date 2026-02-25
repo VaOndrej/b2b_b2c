@@ -1070,6 +1070,236 @@ test("runtime integration: MOQ and step use aggregated quantity for duplicate pr
   );
 });
 
+test("runtime integration: maximum quantity uses customer override over segment maximum", () => {
+  const productId = "gid://shopify/Product/MAX_PER_SEGMENT_AND_CUSTOMER";
+  const customerOverrideId = "gid://shopify/Customer/2040";
+  const cartConfig = buildCartValidationFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 0,
+    allowZeroFinalPrice: true,
+    productFloors: [],
+    productQuantityRules: [
+      {
+        productId,
+        segment: null,
+        minimumOrderQuantity: 1,
+        maxOrderQuantity: 10,
+      },
+    ],
+    productCustomerQuantityRules: [
+      {
+        productId,
+        customerId: customerOverrideId,
+        maxOrderQuantity: 40,
+      },
+    ],
+  });
+
+  const blockedBySegmentMax = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2039", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-max-segment-blocked",
+          quantity: 11,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId, title: "Bulk Screw" },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "1100.00" },
+            totalAmount: { amount: "1100.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  const segmentMessages =
+    blockedBySegmentMax.operations[0]?.validationAdd?.errors?.map(
+      (error: any) => error?.message ?? "",
+    ) ?? [];
+  assert.equal(blockedBySegmentMax.operations.length > 0, true);
+  assert.equal(
+    segmentMessages.some((message: string) => message.includes("Maximum allowed quantity")),
+    true,
+  );
+  assert.equal(
+    segmentMessages.some((message: string) => message.includes("10")),
+    true,
+  );
+  assert.equal(
+    segmentMessages.some((message: string) => message.includes("Bulk Screw")),
+    true,
+  );
+
+  const allowedForCustomerOverride = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: customerOverrideId, hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-max-customer-allowed",
+          quantity: 40,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId, title: "Bulk Screw" },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "4000.00" },
+            totalAmount: { amount: "4000.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  assert.equal(
+    allowedForCustomerOverride.operations.length,
+    0,
+    "[MAX FAIL] Customer-specific override max should allow quantity 40.",
+  );
+
+  const blockedAboveCustomerOverride = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: customerOverrideId, hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-max-customer-blocked",
+          quantity: 41,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: productId, title: "Bulk Screw" },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "4100.00" },
+            totalAmount: { amount: "4100.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+  const customerMessages =
+    blockedAboveCustomerOverride.operations[0]?.validationAdd?.errors?.map(
+      (error: any) => error?.message ?? "",
+    ) ?? [];
+  assert.equal(blockedAboveCustomerOverride.operations.length > 0, true);
+  assert.equal(
+    customerMessages.some((message: string) => message.includes("Maximum allowed quantity")),
+    true,
+  );
+  assert.equal(
+    customerMessages.some((message: string) => message.includes("40")),
+    true,
+  );
+  assert.equal(
+    customerMessages.some((message: string) => message.includes("Bulk Screw")),
+    true,
+  );
+});
+
+test("runtime integration: zero-final message lists all violating product names", () => {
+  const cartConfig = buildCartValidationFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+  });
+
+  const result = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/2041", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-zero-1",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: "gid://shopify/Product/ZERO_1", title: "Alpha Board" },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "0.00" },
+          },
+        },
+        {
+          id: "line-zero-2",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: "gid://shopify/Product/ZERO_2", title: "Beta Boots" },
+          },
+          cost: {
+            amountPerQuantity: { amount: "120.00" },
+            subtotalAmount: { amount: "120.00" },
+            totalAmount: { amount: "0.00" },
+          },
+        },
+        {
+          id: "line-zero-3",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: "gid://shopify/Product/ZERO_3", title: "Gamma Helmet" },
+          },
+          cost: {
+            amountPerQuantity: { amount: "90.00" },
+            subtotalAmount: { amount: "90.00" },
+            totalAmount: { amount: "0.00" },
+          },
+        },
+        {
+          id: "line-zero-4",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: "gid://shopify/Product/ZERO_4", title: "Delta Goggles" },
+          },
+          cost: {
+            amountPerQuantity: { amount: "80.00" },
+            subtotalAmount: { amount: "80.00" },
+            totalAmount: { amount: "0.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: { jsonValue: cartConfig },
+    },
+  });
+
+  const messages =
+    result.operations[0]?.validationAdd?.errors?.map((error: any) => error?.message ?? "") ??
+    [];
+  assert.equal(result.operations.length > 0, true);
+  const zeroFinalMessage = messages.find((message: string) =>
+    message.includes("free line item"),
+  );
+  assert.equal(Boolean(zeroFinalMessage), true);
+  assert.equal(zeroFinalMessage?.includes("Alpha Board"), true);
+  assert.equal(zeroFinalMessage?.includes("Beta Boots"), true);
+  assert.equal(zeroFinalMessage?.includes("Gamma Helmet"), true);
+  assert.equal(zeroFinalMessage?.includes("Delta Goggles"), true);
+});
+
 test("runtime integration: coupon code is rejected when segment rule does not match", () => {
   const productId = "gid://shopify/Product/COUPON_SEGMENT_RULE";
   const config = buildDiscountFunctionConfig({

@@ -16,11 +16,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       visibility: "This product is not available for your customer segment.",
       pdpStepPrefix: "This product is sold in multiples of ",
       pdpStepSuffix: ".",
+      pdpMoqPrefix: "Minimum order quantity: ",
+      pdpMoqSuffix: ".",
+      cartMaxPrefix: "Maximum allowed quantity for your account is ",
+      cartMaxSuffix: ". Quantity was adjusted automatically.",
+      cartMaxProductPrefix: " Product: ",
+      cartMaxProductSuffix: ".",
     },
     cs: {
       visibility: "Tento produkt neni dostupny pro vas zakaznicky segment.",
       pdpStepPrefix: "Tento produkt se prodava v nasobcich ",
       pdpStepSuffix: ".",
+      pdpMoqPrefix: "Minimalni odebrane mnozstvi: ",
+      pdpMoqSuffix: ".",
+      cartMaxPrefix: "Maximalni povolene mnozstvi pro vas ucet je ",
+      cartMaxSuffix: ". Mnozstvi bylo automaticky upraveno.",
+      cartMaxProductPrefix: " Produkt: ",
+      cartMaxProductSuffix: ".",
     },
   };
   const state = {
@@ -48,6 +60,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   let initialRulesBootstrapCompleted = false;
   let cartSnapshotRefreshPromise = null;
   let lastCartSnapshotRefreshAt = 0;
+  let cartQuantityNoticeTimeout = null;
+  let lastCartQuantityNotice = "";
+  let lastCartQuantityNoticeAt = 0;
 
   function resolveScriptElement() {
     if (document.currentScript instanceof HTMLScriptElement) {
@@ -93,6 +108,28 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       messageForLocale("pdpStepPrefix") +
       String(stepQuantity) +
       messageForLocale("pdpStepSuffix")
+    );
+  }
+
+  function messageForPdpMinimumOrderQuantity(minimumOrderQuantity) {
+    return (
+      messageForLocale("pdpMoqPrefix") +
+      String(minimumOrderQuantity) +
+      messageForLocale("pdpMoqSuffix")
+    );
+  }
+
+  function messageForCartMaximumQuantity(maximumOrderQuantity, productTitle) {
+    const normalizedTitle = String(productTitle || "").trim();
+    return (
+      messageForLocale("cartMaxPrefix") +
+      String(maximumOrderQuantity) +
+      messageForLocale("cartMaxSuffix") +
+      (normalizedTitle
+        ? messageForLocale("cartMaxProductPrefix") +
+          normalizedTitle +
+          messageForLocale("cartMaxProductSuffix")
+        : "")
     );
   }
 
@@ -510,6 +547,177 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     target?.prepend(banner);
   }
 
+  function resolveCartQuantityNoticeHost() {
+    const selectors = [
+      "#CartDrawer .drawer__inner",
+      "#CartDrawer .drawer__contents",
+      "cart-drawer .drawer__inner",
+      ".cart-drawer .drawer__inner",
+      "cart-items",
+      ".cart__items",
+      "form[action*='/cart']",
+    ];
+    for (const selector of selectors) {
+      const host = document.querySelector(selector);
+      if (host instanceof HTMLElement) {
+        return host;
+      }
+    }
+    return document.querySelector("main") || document.body;
+  }
+
+  function normalizeProductTitle(rawTitle) {
+    const normalizedTitle = String(rawTitle || "").replace(/\s+/g, " ").trim();
+    return normalizedTitle || null;
+  }
+
+  function resolveProductTitleFromElement(element) {
+    if (!(element instanceof Element)) {
+      return null;
+    }
+    const containers = [
+      element.closest("[data-cart-item]"),
+      element.closest(".cart-item"),
+      element.closest(".cart-drawer__item"),
+      element.closest(".drawer__cart-item"),
+      element.closest("li"),
+      element.closest("tr"),
+      element.closest("form"),
+    ];
+    const selectors = [
+      "[data-cart-item-title]",
+      "[data-product-title]",
+      ".cart-item__name",
+      ".cart-item__title",
+      ".product-title",
+      ".cart__product-title",
+      ".cart__product-name",
+      "a[href*='/products/']",
+    ];
+    for (const container of containers) {
+      if (!(container instanceof Element)) {
+        continue;
+      }
+      for (const selector of selectors) {
+        const titleElement = container.querySelector(selector);
+        if (!(titleElement instanceof HTMLElement)) {
+          continue;
+        }
+        const title =
+          normalizeProductTitle(
+            titleElement.getAttribute("data-cart-item-title") ||
+              titleElement.getAttribute("data-product-title") ||
+              titleElement.textContent,
+          ) || null;
+        if (title) {
+          return title;
+        }
+      }
+    }
+    return null;
+  }
+
+  function resolveCurrentProductTitleFromDom() {
+    if (
+      window.meta &&
+      window.meta.product &&
+      typeof window.meta.product.title === "string"
+    ) {
+      const metaTitle = normalizeProductTitle(window.meta.product.title);
+      if (metaTitle) {
+        return metaTitle;
+      }
+    }
+    const selectors = [
+      "[data-product-title]",
+      ".product__title",
+      ".product-single__title",
+      "main h1",
+      "h1",
+    ];
+    for (const selector of selectors) {
+      const titleElement = document.querySelector(selector);
+      if (!(titleElement instanceof HTMLElement)) {
+        continue;
+      }
+      const title = normalizeProductTitle(
+        titleElement.getAttribute("data-product-title") || titleElement.textContent,
+      );
+      if (title) {
+        return title;
+      }
+    }
+    return null;
+  }
+
+  function showCartQuantityNotice(message) {
+    const normalizedMessage = String(message || "").trim();
+    if (!normalizedMessage) {
+      return;
+    }
+    const now = Date.now();
+    if (
+      normalizedMessage === lastCartQuantityNotice &&
+      now - lastCartQuantityNoticeAt < 1200
+    ) {
+      return;
+    }
+    lastCartQuantityNotice = normalizedMessage;
+    lastCartQuantityNoticeAt = now;
+    const host = resolveCartQuantityNoticeHost();
+    if (!(host instanceof HTMLElement)) {
+      return;
+    }
+    let notice = document.getElementById("margin-guard-cart-quantity-notice");
+    if (!(notice instanceof HTMLElement)) {
+      notice = document.createElement("div");
+      notice.id = "margin-guard-cart-quantity-notice";
+      notice.setAttribute("data-margin-guard-cart-quantity-notice", "1");
+      notice.style.padding = "10px 12px";
+      notice.style.margin = "0 0 12px";
+      notice.style.border = "1px solid #f04438";
+      notice.style.borderRadius = "6px";
+      notice.style.background = "#fef3f2";
+      notice.style.color = "#7a271a";
+      notice.style.fontSize = "13px";
+      notice.style.lineHeight = "1.4";
+    }
+    notice.textContent = normalizedMessage;
+    host.prepend(notice);
+    if (cartQuantityNoticeTimeout != null) {
+      clearTimeout(cartQuantityNoticeTimeout);
+    }
+    cartQuantityNoticeTimeout = window.setTimeout(() => {
+      cartQuantityNoticeTimeout = null;
+      if (notice && notice.parentElement) {
+        notice.parentElement.removeChild(notice);
+      }
+    }, 4500);
+  }
+
+  function maybeShowMaximumQuantityAdjustmentNotice(
+    rawRequestedQuantity,
+    normalizedQuantity,
+    maximumOrderQuantity,
+    productTitle,
+  ) {
+    const maxQuantity = parseOptionalPositiveInt(maximumOrderQuantity);
+    if (maxQuantity == null) {
+      return;
+    }
+    const requestedQuantity = parseInteger(rawRequestedQuantity, maxQuantity);
+    const normalized = parseInteger(normalizedQuantity, maxQuantity);
+    if (requestedQuantity <= maxQuantity) {
+      return;
+    }
+    if (normalized > maxQuantity) {
+      return;
+    }
+    showCartQuantityNotice(
+      messageForCartMaximumQuantity(maxQuantity, productTitle),
+    );
+  }
+
   function parsePositiveInt(value, fallback) {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed < 1) {
@@ -578,15 +786,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   function resolveEffectiveMaxForRule(rule, stockMaxQuantity) {
+    const configuredMax = parseOptionalPositiveInt(rule.maxOrderQuantity);
     const stockMax = parseOptionalPositiveInt(stockMaxQuantity);
-    if (stockMax == null) {
+    const combinedMax =
+      configuredMax != null && stockMax != null
+        ? Math.min(configuredMax, stockMax)
+        : configuredMax != null
+          ? configuredMax
+          : stockMax;
+    if (combinedMax == null) {
       return null;
     }
     if (rule.stepQuantity <= 1) {
-      return stockMax;
+      return combinedMax;
     }
     const steppedMax =
-      Math.floor(stockMax / rule.stepQuantity) * rule.stepQuantity;
+      Math.floor(combinedMax / rule.stepQuantity) * rule.stepQuantity;
     if (steppedMax < 1) {
       return null;
     }
@@ -604,12 +819,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const minimumOrderQuantity = parsePositiveInt(rule.minimumOrderQuantity, 1);
     const rawStep = parsePositiveInt(rule.stepQuantity, 1);
     const stepQuantity = rawStep > 1 ? rawStep : 1;
-    if (minimumOrderQuantity <= 1 && stepQuantity <= 1) {
+    const maxOrderQuantity = parseOptionalPositiveInt(rule.maxOrderQuantity);
+    if (
+      minimumOrderQuantity <= 1 &&
+      stepQuantity <= 1 &&
+      maxOrderQuantity == null
+    ) {
       return null;
     }
     return {
       minimumOrderQuantity,
       stepQuantity,
+      maxOrderQuantity,
     };
   }
 
@@ -1125,6 +1346,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   function syncQuantityInputForRule(input, rule, options) {
     const allowZero = Boolean(options && options.allowZero);
+    const notifyOnMaxClamp = Boolean(options && options.notifyOnMaxClamp);
     const rawValue = String(input.value || "");
     const stockMax = resolveInputStockMax(input);
     const effectiveMax = resolveEffectiveMaxForRule(rule, stockMax);
@@ -1132,6 +1354,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       allowZero,
       maxQuantity: effectiveMax,
     });
+    if (notifyOnMaxClamp) {
+      maybeShowMaximumQuantityAdjustmentNotice(
+        rawValue,
+        normalizedQuantity,
+        effectiveMax,
+        resolveProductTitleFromElement(input),
+      );
+    }
     input.value = String(normalizedQuantity);
     input.setAttribute("min", String(allowZero ? 0 : rule.minimumOrderQuantity));
     if (rule.stepQuantity > 1) {
@@ -1165,9 +1395,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const selectors = [
       "[data-margin-guard-pdp-step='1']",
       "[data-margin-guard-step-notice='1']",
+      "[data-margin-guard-pdp-moq='1']",
+      "[data-margin-guard-pdp-quantity-notice='1']",
       "[data-margin-guard-step='1']",
       ".margin-guard-pdp-step-notice",
+      ".margin-guard-pdp-moq-notice",
+      ".margin-guard-pdp-quantity-notice",
       "#margin-guard-pdp-step-notice",
+      "#margin-guard-pdp-quantity-notice",
     ];
     for (const node of document.querySelectorAll(selectors.join(","))) {
       if (node instanceof HTMLElement) {
@@ -1309,7 +1544,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   function upsertCurrentProductStepNoticeForPdp(rule) {
-    if (!rule || rule.stepQuantity <= 1) {
+    if (
+      !rule ||
+      (rule.stepQuantity <= 1 && rule.minimumOrderQuantity <= 1)
+    ) {
       return;
     }
 
@@ -1320,24 +1558,52 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return;
     }
 
-    const notice = document.createElement("p");
-    notice.id = "margin-guard-pdp-step-notice";
-    notice.className = "margin-guard-pdp-step-notice";
-    notice.setAttribute("data-margin-guard-pdp-step", "1");
-    notice.setAttribute("data-margin-guard-step-notice", "1");
-    notice.style.margin = "8px 0";
-    notice.style.fontSize = "13px";
-    notice.style.lineHeight = "1.35";
-    notice.style.color = "#344054";
-    notice.textContent = messageForPdpStepQuantity(rule.stepQuantity);
+    const noticeContainer = document.createElement("div");
+    noticeContainer.id = "margin-guard-pdp-quantity-notice";
+    noticeContainer.className = "margin-guard-pdp-quantity-notice";
+    noticeContainer.setAttribute("data-margin-guard-pdp-quantity-notice", "1");
+    noticeContainer.style.margin = "8px 0";
+
+    if (rule.minimumOrderQuantity > 1) {
+      const moqNotice = document.createElement("p");
+      moqNotice.className = "margin-guard-pdp-moq-notice";
+      moqNotice.setAttribute("data-margin-guard-pdp-moq", "1");
+      moqNotice.setAttribute("data-margin-guard-step-notice", "1");
+      moqNotice.style.margin = "0 0 6px";
+      moqNotice.style.fontSize = "13px";
+      moqNotice.style.lineHeight = "1.35";
+      moqNotice.style.color = "#344054";
+      moqNotice.textContent = messageForPdpMinimumOrderQuantity(
+        rule.minimumOrderQuantity,
+      );
+      noticeContainer.appendChild(moqNotice);
+    }
+
+    if (rule.stepQuantity > 1) {
+      const stepNotice = document.createElement("p");
+      stepNotice.id = "margin-guard-pdp-step-notice";
+      stepNotice.className = "margin-guard-pdp-step-notice";
+      stepNotice.setAttribute("data-margin-guard-pdp-step", "1");
+      stepNotice.setAttribute("data-margin-guard-step-notice", "1");
+      stepNotice.style.margin = "0";
+      stepNotice.style.fontSize = "13px";
+      stepNotice.style.lineHeight = "1.35";
+      stepNotice.style.color = "#344054";
+      stepNotice.textContent = messageForPdpStepQuantity(rule.stepQuantity);
+      noticeContainer.appendChild(stepNotice);
+    }
+
+    if (!noticeContainer.childElementCount) {
+      return;
+    }
 
     if (priceElement.parentElement) {
-      priceElement.parentElement.insertBefore(notice, priceElement);
+      priceElement.parentElement.insertBefore(noticeContainer, priceElement);
       return;
     }
     const fallbackParent = resolvePrimaryAddToCartForm();
     if (fallbackParent instanceof HTMLElement) {
-      fallbackParent.prepend(notice);
+      fallbackParent.prepend(noticeContainer);
     }
   }
 
@@ -1348,7 +1614,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return;
     }
     removeCurrentProductStepNotices();
-    if (!rule || rule.stepQuantity <= 1) {
+    if (
+      !rule ||
+      (rule.stepQuantity <= 1 && rule.minimumOrderQuantity <= 1)
+    ) {
       return;
     }
     upsertCurrentProductStepNoticeForPdp(rule);
@@ -1493,6 +1762,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       currentValue >= effectiveMax
     ) {
       input.value = String(effectiveMax);
+      showCartQuantityNotice(
+        messageForCartMaximumQuantity(
+          effectiveMax,
+          resolveProductTitleFromElement(input),
+        ),
+      );
       return {
         maxBlocked: true,
       };
@@ -1513,6 +1788,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
               maxQuantity: effectiveMax,
             },
           );
+    maybeShowMaximumQuantityAdjustmentNotice(
+      requestedQuantity,
+      normalizedQuantity,
+      effectiveMax,
+      resolveProductTitleFromElement(input),
+    );
     if (normalizedQuantity === currentValue) {
       return {
         maxBlocked: false,
@@ -1536,6 +1817,69 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return null;
     }
     return state.quantityConstraintsByHandle[currentHandle] || null;
+  }
+
+  function resolveCurrentCartQuantityForProduct(productId) {
+    const normalizedProductId = normalizeProductId(productId);
+    if (!normalizedProductId) {
+      return 0;
+    }
+    let totalQuantity = 0;
+    const productIdByIndex = state.cartLineProductIdByIndex || {};
+    const quantityByIndex = state.cartLineQuantityByIndex || {};
+    for (const [rawLineIndex, mappedProductId] of Object.entries(productIdByIndex)) {
+      if (normalizeProductId(mappedProductId) !== normalizedProductId) {
+        continue;
+      }
+      const lineIndex = parsePositiveInt(rawLineIndex, 0);
+      if (lineIndex < 1) {
+        continue;
+      }
+      const lineQuantity = Math.max(0, parseInteger(quantityByIndex[lineIndex], 0));
+      totalQuantity += lineQuantity;
+    }
+    return totalQuantity;
+  }
+
+  function normalizeAddRequestedQuantity(
+    rawRequestedQuantity,
+    currentProductQuantity,
+    rule,
+    options,
+  ) {
+    const maxQuantity = parseOptionalPositiveInt(options && options.maxQuantity);
+    const baseRequestedQuantity = parsePositiveInt(rawRequestedQuantity, 1);
+    if (currentProductQuantity <= 0) {
+      return normalizeQuantityForRule(baseRequestedQuantity, rule, {
+        allowZero: false,
+        maxQuantity,
+      });
+    }
+
+    // PDP forms are usually prefilled with the first valid quantity (MOQ/step).
+    // Once the product is already in cart, a plain add-to-cart click should mean one step up.
+    const initialValidAddQuantity = normalizeQuantityForRule(1, rule, {
+      allowZero: false,
+      maxQuantity: null,
+    });
+    const requestedDelta =
+      baseRequestedQuantity === initialValidAddQuantity ? 1 : baseRequestedQuantity;
+    const normalizedTargetTotal = normalizeQuantityForRule(
+      currentProductQuantity + requestedDelta,
+      rule,
+      {
+        allowZero: false,
+        maxQuantity,
+      },
+    );
+    const normalizedDelta = normalizedTargetTotal - currentProductQuantity;
+    if (normalizedDelta > 0) {
+      return normalizedDelta;
+    }
+    return normalizeQuantityForRule(baseRequestedQuantity, rule, {
+      allowZero: false,
+      maxQuantity,
+    });
   }
 
   function resolveQuantityInputForAddRequest(productId) {
@@ -1651,6 +1995,52 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return null;
   }
 
+  function resolveProductTitleForProductId(productId) {
+    const normalizedProductId = normalizeProductId(productId);
+    if (!normalizedProductId) {
+      return null;
+    }
+    for (const [rawLineIndex, mappedProductId] of Object.entries(
+      state.cartLineProductIdByIndex || {},
+    )) {
+      if (normalizeProductId(mappedProductId) !== normalizedProductId) {
+        continue;
+      }
+      const lineIndex = parsePositiveInt(rawLineIndex, 0);
+      if (lineIndex < 1) {
+        continue;
+      }
+      const input = resolveCartQuantityInputByLineIndex(lineIndex);
+      const title = resolveProductTitleFromElement(input);
+      if (title) {
+        return title;
+      }
+    }
+    if (normalizedProductId === normalizeProductId(state.currentProductId)) {
+      const currentTitle = resolveCurrentProductTitleFromDom();
+      if (currentTitle) {
+        return currentTitle;
+      }
+    }
+    return null;
+  }
+
+  function resolveProductTitleForCartContext(context) {
+    if (!context || typeof context !== "object") {
+      return null;
+    }
+    const input = resolveCartQuantityInputForContext(context);
+    const titleFromInput = resolveProductTitleFromElement(input);
+    if (titleFromInput) {
+      return titleFromInput;
+    }
+    const titleFromProductId = resolveProductTitleForProductId(context.productId);
+    if (titleFromProductId) {
+      return titleFromProductId;
+    }
+    return null;
+  }
+
   function resolveEffectiveMaxForCartContext(context) {
     const input = resolveCartQuantityInputForContext(context);
     if (!(input instanceof HTMLInputElement)) {
@@ -1687,6 +2077,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       lineIndex: normalizedLineIndex,
       lineKey: normalizeLineKey(state.cartLineKeyByIndex[normalizedLineIndex]),
       variantId: normalizeVariantId(state.cartLineVariantIdByIndex[normalizedLineIndex]),
+      productId: normalizeProductId(state.cartLineProductIdByIndex[normalizedLineIndex]),
     };
   }
 
@@ -1709,6 +2100,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           lineIndex: 0,
           lineKey: lineIdentifier,
           variantId: null,
+          productId: productIdByKey,
         };
       }
     }
@@ -1745,6 +2137,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       lineIndex: 0,
       lineKey: null,
       variantId: normalizedVariantId,
+      productId: productIdByVariant,
     };
   }
 
@@ -1777,6 +2170,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         {
           maxQuantity,
         },
+      );
+      maybeShowMaximumQuantityAdjustmentNotice(
+        rawRequestedQuantity,
+        normalizedQuantity,
+        maxQuantity,
+        resolveProductTitleForCartContext(context),
       );
       if (String(rawRequestedQuantity) !== String(normalizedQuantity)) {
         changed = true;
@@ -1815,6 +2214,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         {
           maxQuantity,
         },
+      );
+      maybeShowMaximumQuantityAdjustmentNotice(
+        entry.quantity,
+        normalizedQuantity,
+        maxQuantity,
+        resolveProductTitleForCartContext(context),
       );
       if (String(entry.quantity) !== String(normalizedQuantity)) {
         changed = true;
@@ -1895,14 +2300,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const maxQuantity = addQuantityInput
       ? resolveEffectiveMaxForInput(addQuantityInput, rule)
       : null;
+    const currentProductQuantity = resolveCurrentCartQuantityForProduct(productId);
     const requestedQuantityRaw = getValue("quantity") || "1";
-    const normalizedQuantity = normalizeQuantityForRule(
+    const normalizedQuantity = normalizeAddRequestedQuantity(
       requestedQuantityRaw,
+      currentProductQuantity,
       rule,
-      {
-        allowZero: false,
-        maxQuantity,
-      },
+      { maxQuantity },
+    );
+    maybeShowMaximumQuantityAdjustmentNotice(
+      requestedQuantityRaw,
+      normalizedQuantity,
+      maxQuantity,
+      resolveProductTitleFromElement(addQuantityInput) ||
+        resolveProductTitleForProductId(productId) ||
+        resolveCurrentProductTitleFromDom(),
     );
     setValue("quantity", String(normalizedQuantity));
     if (addQuantityInput) {
@@ -1928,6 +2340,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       {
         maxQuantity,
       },
+    );
+    maybeShowMaximumQuantityAdjustmentNotice(
+      requestedQuantityRaw,
+      normalizedQuantity,
+      maxQuantity,
+      resolveProductTitleForCartContext(context),
     );
     setValue("quantity", String(normalizedQuantity));
     applyNormalizedCartLineQuantity(context, normalizedQuantity);
@@ -1991,6 +2409,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           maxQuantity,
         },
       );
+      maybeShowMaximumQuantityAdjustmentNotice(
+        rawRequestedQuantity,
+        normalizedQuantity,
+        maxQuantity,
+        resolveProductTitleForCartContext(context),
+      );
       if (String(rawRequestedQuantity) !== String(normalizedQuantity)) {
         changed = true;
       }
@@ -2001,7 +2425,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   async function normalizeCartRequestBodyForKind(kind, body, contentType) {
-    if (kind === "change" || kind === "update") {
+    if (kind === "add" || kind === "change" || kind === "update") {
       await refreshCartLineStateFromSnapshot();
     }
 
@@ -2401,6 +2825,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         }
         syncQuantityInputForRule(target, rule, {
           allowZero: isCartQuantityInput(target),
+          notifyOnMaxClamp: true,
         });
       },
       true,
@@ -2425,6 +2850,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         if (rule) {
           syncQuantityInputForRule(target, rule, {
             allowZero: true,
+            notifyOnMaxClamp: true,
           });
         }
         target.dispatchEvent(
@@ -2456,6 +2882,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           }
           syncQuantityInputForRule(input, rule, {
             allowZero: isCartQuantityInput(input),
+            notifyOnMaxClamp: true,
           });
         }
       },

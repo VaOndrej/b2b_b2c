@@ -126,3 +126,51 @@ test("quantity engine treats step <= 1 as no restriction", () => {
     true,
   );
 });
+
+test("quantity engine resolves max quantity with segment precedence", () => {
+  const rules = [
+    {
+      productId: "gid://shopify/Product/MAX",
+      maxOrderQuantity: 10,
+    },
+    {
+      productId: "gid://shopify/Product/MAX",
+      segment: "B2B" as const,
+      maxOrderQuantity: 40,
+    },
+  ];
+
+  const b2cConstraints = resolveQuantityConstraints({
+    quantity: 1,
+    segment: "B2C",
+    productId: "gid://shopify/Product/MAX",
+    rules,
+  });
+  assert.equal(b2cConstraints.maxOrderQuantity, 10);
+  assert.equal(
+    validateQuantity({
+      quantity: 11,
+      segment: "B2C",
+      productId: "gid://shopify/Product/MAX",
+      rules,
+    }),
+    false,
+  );
+
+  const b2bConstraints = resolveQuantityConstraints({
+    quantity: 1,
+    segment: "B2B",
+    productId: "gid://shopify/Product/MAX",
+    rules,
+  });
+  assert.equal(b2bConstraints.maxOrderQuantity, 40);
+  assert.equal(
+    validateQuantity({
+      quantity: 39,
+      segment: "B2B",
+      productId: "gid://shopify/Product/MAX",
+      rules,
+    }),
+    true,
+  );
+});

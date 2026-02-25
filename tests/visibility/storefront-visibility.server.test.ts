@@ -164,3 +164,52 @@ test("storefront quantity constraints resolve by product id without handle looku
     },
   });
 });
+
+test("storefront quantity constraints apply customer max override over segment max", () => {
+  const productId = "gid://shopify/Product/MAX_OVERRIDE";
+  const baseRules = [
+    {
+      productId,
+      minimumOrderQuantity: 1,
+      stepQuantity: 2,
+      maxOrderQuantity: 10,
+    },
+  ];
+  const customerRules = [
+    {
+      productId,
+      customerId: "gid://shopify/Customer/42",
+      maxOrderQuantity: 40,
+    },
+  ];
+
+  const overridden = resolveStorefrontQuantityConstraintsByProductId({
+    productIds: [productId],
+    segment: "B2C",
+    customerId: "gid://shopify/Customer/42",
+    rules: baseRules,
+    customerMaxRules: customerRules,
+  });
+  assert.deepEqual(overridden, {
+    [productId]: {
+      minimumOrderQuantity: 1,
+      stepQuantity: 2,
+      maxOrderQuantity: 40,
+    },
+  });
+
+  const withoutOverride = resolveStorefrontQuantityConstraintsByProductId({
+    productIds: [productId],
+    segment: "B2C",
+    customerId: "gid://shopify/Customer/999",
+    rules: baseRules,
+    customerMaxRules: customerRules,
+  });
+  assert.deepEqual(withoutOverride, {
+    [productId]: {
+      minimumOrderQuantity: 1,
+      stepQuantity: 2,
+      maxOrderQuantity: 10,
+    },
+  });
+});
