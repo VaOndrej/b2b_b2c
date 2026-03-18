@@ -148,6 +148,11 @@ export function AdminCatalogPicker(props: AdminCatalogPickerProps) {
               setQuery(nextValue);
             });
           }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+            }
+          }}
           aria-controls={resultsId}
           autoComplete="off"
         />
