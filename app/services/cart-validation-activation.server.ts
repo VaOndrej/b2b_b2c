@@ -1,8 +1,8 @@
-import prisma from "../db.server";
+import prisma from "../db.server.ts";
 import {
   buildCartValidationFunctionConfig,
   getOrCreateMarginGuardConfig,
-} from "./margin-guard-config.server";
+} from "./margin-guard-config.server.ts";
 
 interface AdminGraphqlClient {
   graphql: (
@@ -22,6 +22,7 @@ interface ValidationNode {
 
 interface CreateValidationResult extends ActivationResult {
   alreadyExists: boolean;
+  validationId?: string;
 }
 
 export interface ActivationResult {
@@ -46,9 +47,36 @@ function normalizeGraphQLErrorMessage(errors: Array<{ message?: string }>): stri
     .join(" | ");
 }
 
-function isAlreadyExistsMessage(message: string): boolean {
+export function isAlreadyExistsMessage(message: string): boolean {
   const normalized = message.toLowerCase();
+  if (normalized.includes("not validation")) {
+    return false;
+  }
   return normalized.includes("already") && normalized.includes("validation");
+}
+
+function normalizeB2BTag(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase() || "b2b";
+}
+
+export function hasExpectedB2BTags(
+  functionConfig: ReturnType<typeof buildCartValidationFunctionConfig>,
+  expectedTag: string,
+): boolean {
+  const normalizedExpected = normalizeB2BTag(expectedTag);
+  const tags = Array.isArray(functionConfig.b2bTags) ? functionConfig.b2bTags : [];
+  if (tags.length === 0) {
+    return false;
+  }
+  return tags.some((tag) => normalizeB2BTag(tag) === normalizedExpected);
+}
+
+function extractMetafieldB2BTags(payload: unknown): string[] {
+  const jsonValue = (payload as any)?.data?.validation?.metafield?.jsonValue;
+  const rawTags = Array.isArray(jsonValue?.b2bTags) ? jsonValue.b2bTags : [];
+  return rawTags
+    .map((tag: unknown) => String(tag ?? "").trim())
+    .filter(Boolean);
 }
 
 function parseValidationNumericId(id: string): number {
@@ -208,6 +236,7 @@ async function createValidation(
     return {
       ok: true,
       alreadyExists: false,
+      validationId: String(payload?.data?.validationCreate?.validation?.id ?? "") || undefined,
       message: "Cart validation function is active.",
     };
   }
@@ -225,6 +254,34 @@ async function createValidation(
     alreadyExists: false,
     message: rawMessage || "Unknown activation error",
   };
+}
+
+async function readValidationConfigB2BTags(
+  admin: AdminGraphqlClient,
+  validationId: string,
+): Promise<string[] | null> {
+  const response = await admin.graphql(
+    `#graphql
+      query ReadValidationConfig($id: ID!) {
+        validation(id: $id) {
+          id
+          metafield(namespace: "$app:margin_guard", key: "config") {
+            jsonValue
+          }
+        }
+      }`,
+    {
+      variables: {
+        id: validationId,
+      },
+    },
+  );
+  const payload = await response.json();
+  const graphQLErrors = payload?.errors ?? [];
+  if (graphQLErrors.length > 0) {
+    return null;
+  }
+  return extractMetafieldB2BTags(payload);
 }
 
 async function updateValidation(
@@ -393,9 +450,25 @@ async function updateExistingValidations(
 export async function ensureCartValidationActive(
   admin: AdminGraphqlClient,
 ): Promise<ActivationResult> {
-  const db = prisma as any;
+  const db = prisma;
   const config = await getOrCreateMarginGuardConfig();
   const functionConfig = buildCartValidationFunctionConfig(config);
+  if (!hasExpectedB2BTags(functionConfig, config.b2bTag)) {
+    const message =
+      "Cart validation config is missing expected b2bTags value; aborting activation to avoid stale B2B tag propagation.";
+    await db.marginGuardConfig.update({
+      where: { id: "default" },
+      data: {
+        cartValidationStatus: "ERROR",
+        cartValidationLastError: message,
+        cartValidationLastSyncAt: new Date(),
+      },
+    });
+    return {
+      ok: false,
+      message,
+    };
+  }
 
   try {
     const existingValidations = await listMatchingValidations(admin);
@@ -426,6 +499,41 @@ export async function ensureCartValidationActive(
                 message:
                   "Cart validation reported as existing, but no matching validation could be listed.",
               };
+      }
+    }
+
+    if (result.ok) {
+      const reconciledValidations = await listMatchingValidations(admin);
+      const { primary } = splitPrimaryAndDuplicates(reconciledValidations);
+      if (!primary) {
+        result = {
+          ok: false,
+          message:
+            "Cart validation is active, but no primary validation was found during post-sync verification.",
+        };
+      } else {
+        const metafieldB2BTags = await readValidationConfigB2BTags(
+          admin,
+          primary.id,
+        );
+        const expectedTag = normalizeB2BTag(config.b2bTag);
+        if (!metafieldB2BTags) {
+          result = {
+            ok: false,
+            message:
+              "Cart validation metafield verification failed (unable to read config jsonValue).",
+          };
+        } else if (
+          !metafieldB2BTags.some(
+            (tag) => normalizeB2BTag(tag) === expectedTag,
+          )
+        ) {
+          result = {
+            ok: false,
+            message:
+              `Cart validation metafield verification failed: expected b2bTags to include "${expectedTag}".`,
+          };
+        }
       }
     }
 

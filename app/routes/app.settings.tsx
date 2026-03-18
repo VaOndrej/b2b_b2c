@@ -1,5 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useNavigation } from "react-router";
+import { AdminCatalogPicker } from "../components/admin-catalog-picker";
 import { authenticate } from "../shopify.server";
 import { ensureCartValidationActive } from "../services/cart-validation-activation.server";
 import {
@@ -72,6 +73,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       formData.get("globalMinPricePercent"),
       70,
     );
+    const b2bGlobalMinPricePercent = parseNumber(
+      formData.get("b2bGlobalMinPricePercent"),
+      globalMinPricePercent,
+    );
     const allowZeroFinalPrice = formData.get("allowZeroFinalPrice") === "on";
     const allowRemoveAtMinimumOrderQuantity =
       formData.get("allowRemoveAtMinimumOrderQuantity") === "on";
@@ -82,6 +87,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     await updateGlobalMarginGuardConfig({
       b2bTag,
       globalMinPricePercent,
+      b2bGlobalMinPricePercent,
       allowZeroFinalPrice,
       allowRemoveAtMinimumOrderQuantity,
       allowStacking,
@@ -415,6 +421,19 @@ export default function AppSettingsRoute() {
               />
             </label>
             <label>
+              B2B global minimum price percent
+              <input
+                name="b2bGlobalMinPricePercent"
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                defaultValue={
+                  (config as any).b2bGlobalMinPricePercent ?? config.globalMinPricePercent
+                }
+              />
+            </label>
+            <label>
               <input
                 name="allowZeroFinalPrice"
                 type="checkbox"
@@ -458,10 +477,12 @@ export default function AppSettingsRoute() {
         <form method="post">
           <input type="hidden" name="intent" value="save-product-floor" />
           <s-stack direction="block" gap="base">
-            <label>
-              Product ID
-              <input name="productId" required />
-            </label>
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
             <label>
               Segment (optional)
               <select name="segment" defaultValue="">
@@ -542,10 +563,12 @@ export default function AppSettingsRoute() {
         <form method="post">
           <input type="hidden" name="intent" value="save-product-tier-price" />
           <s-stack direction="block" gap="base">
-            <label>
-              Product ID
-              <input name="productId" required />
-            </label>
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
             <label>
               Segment (optional)
               <select name="segment" defaultValue="">
@@ -611,10 +634,12 @@ export default function AppSettingsRoute() {
         <form method="post">
           <input type="hidden" name="intent" value="save-product-quantity-rule" />
           <s-stack direction="block" gap="base">
-            <label>
-              Product ID
-              <input name="productId" required />
-            </label>
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
             <label>
               Segment (optional)
               <select name="segment" defaultValue="">
@@ -668,10 +693,12 @@ export default function AppSettingsRoute() {
         <form method="post">
           <input type="hidden" name="intent" value="save-product-step-quantity-rule" />
           <s-stack direction="block" gap="base">
-            <label>
-              Product ID
-              <input name="productId" required />
-            </label>
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
             <label>
               Segment (optional)
               <select name="segment" defaultValue="">
@@ -729,10 +756,12 @@ export default function AppSettingsRoute() {
         <form method="post">
           <input type="hidden" name="intent" value="save-product-max-quantity-rule" />
           <s-stack direction="block" gap="base">
-            <label>
-              Product ID
-              <input name="productId" required />
-            </label>
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
             <label>
               Segment (optional)
               <select name="segment" defaultValue="">
@@ -794,14 +823,12 @@ export default function AppSettingsRoute() {
             value="save-collection-max-quantity-rule"
           />
           <s-stack direction="block" gap="base">
-            <label>
-              Collection ID
-              <input
-                name="collectionId"
-                placeholder="gid://shopify/Collection/123456789"
-                required
-              />
-            </label>
+            <AdminCatalogPicker
+              name="collectionId"
+              label="Collection"
+              resourceType="collection"
+              required
+            />
             <label>
               Segment (optional)
               <select name="segment" defaultValue="">
@@ -863,10 +890,12 @@ export default function AppSettingsRoute() {
             value="save-product-customer-max-quantity-rule"
           />
           <s-stack direction="block" gap="base">
-            <label>
-              Product ID
-              <input name="productId" required />
-            </label>
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
             <label>
               Customer ID
               <input
@@ -931,10 +960,12 @@ export default function AppSettingsRoute() {
         <form method="post">
           <input type="hidden" name="intent" value="save-product-visibility-rule" />
           <s-stack direction="block" gap="base">
-            <label>
-              Product ID
-              <input name="productId" required />
-            </label>
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
             <label>
               Visibility mode
               <select name="visibilityMode" defaultValue="B2B_ONLY">

@@ -1,10 +1,21 @@
-import prisma from "../db.server";
-import type { FloorRuleset } from "../../core/margin/floor.rules";
+import prisma from "../db.server.ts";
+import type { FloorRuleset } from "../../core/margin/floor.rules.ts";
 
 const DEFAULT_CONFIG_ID = "default";
 
+export function buildQuantityRuleUpdateData(
+  existing: { stepQuantity: number | null; maxOrderQuantity: number | null },
+  minimumOrderQuantity: number,
+) {
+  return {
+    minimumOrderQuantity,
+    stepQuantity: existing.stepQuantity,
+    maxOrderQuantity: existing.maxOrderQuantity,
+  };
+}
+
 function getMarginGuardPrismaOrThrow() {
-  const client = prisma as any;
+  const client = prisma;
   if (
     !client.marginGuardConfig ||
     !client.productFloorRule ||
@@ -17,7 +28,7 @@ function getMarginGuardPrismaOrThrow() {
     !client.marginViolationLog
   ) {
     throw new Error(
-      "Prisma client is out of date for Margin Guard models. Run `npx prisma generate` and restart `shopify app dev`.",
+      "Prisma client is out of date for Margin Guard models. Run `npm run prisma:generate` and restart `shopify app dev`.",
     );
   }
 
@@ -60,6 +71,7 @@ export async function getOrCreateMarginGuardConfig() {
 export async function updateGlobalMarginGuardConfig(input: {
   b2bTag: string;
   globalMinPricePercent: number;
+  b2bGlobalMinPricePercent: number;
   allowZeroFinalPrice: boolean;
   allowRemoveAtMinimumOrderQuantity: boolean;
   allowStacking: boolean;
@@ -71,6 +83,7 @@ export async function updateGlobalMarginGuardConfig(input: {
     update: {
       b2bTag: input.b2bTag,
       globalMinPricePercent: input.globalMinPricePercent,
+      b2bGlobalMinPricePercent: input.b2bGlobalMinPricePercent,
       allowZeroFinalPrice: input.allowZeroFinalPrice,
       allowRemoveAtMinimumOrderQuantity: input.allowRemoveAtMinimumOrderQuantity,
       allowStacking: input.allowStacking,
@@ -80,6 +93,7 @@ export async function updateGlobalMarginGuardConfig(input: {
       id: DEFAULT_CONFIG_ID,
       b2bTag: input.b2bTag,
       globalMinPricePercent: input.globalMinPricePercent,
+      b2bGlobalMinPricePercent: input.b2bGlobalMinPricePercent,
       allowZeroFinalPrice: input.allowZeroFinalPrice,
       allowRemoveAtMinimumOrderQuantity: input.allowRemoveAtMinimumOrderQuantity,
       allowStacking: input.allowStacking,
@@ -204,9 +218,7 @@ export async function upsertProductQuantityRule(input: {
   if (existing) {
     return db.productQuantityRule.update({
       where: { id: existing.id },
-      data: {
-        minimumOrderQuantity: normalizedMinimumOrderQuantity,
-      },
+      data: buildQuantityRuleUpdateData(existing, normalizedMinimumOrderQuantity),
     });
   }
 
@@ -690,6 +702,7 @@ export async function recordMarginViolation(input: {
 
 export function buildFloorRuleset(config: {
   globalMinPricePercent: number;
+  b2bGlobalMinPricePercent?: number;
   allowZeroFinalPrice: boolean;
   productFloors: Array<{
     productId: string;
@@ -702,6 +715,8 @@ export function buildFloorRuleset(config: {
   return {
     global: {
       minPercentOfBasePrice: config.globalMinPricePercent,
+      b2bMinPercentOfBasePrice:
+        config.b2bGlobalMinPricePercent ?? config.globalMinPricePercent,
       allowZeroFinalPrice: config.allowZeroFinalPrice,
     },
     perProduct: config.productFloors.map((rule) => ({

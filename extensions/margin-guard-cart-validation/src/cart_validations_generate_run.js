@@ -19,6 +19,12 @@ const MESSAGES = {
       "A free line item is not allowed for this checkout. Next step: remove the free line or adjust discount settings.",
     combinedCap:
       "Combined discount exceeds the configured maximum for this checkout. Next step: remove one or more discounts and try again.",
+    couponSegment:
+      "One or more discount codes are not available for your customer segment. Next step: remove unavailable codes and try again.",
+    couponStacking:
+      "Multiple discount codes are not allowed by current settings. Next step: keep only one code and try again.",
+    couponSegmentAndStacking:
+      "Some discount codes were rejected by segment eligibility and stacking policy. Next step: keep one eligible code and try again.",
     minimumOrderQuantity:
       "At least one line is below the minimum order quantity for this customer segment. Next step: increase quantity to meet the minimum.",
     stepQuantity:
@@ -48,6 +54,12 @@ const MESSAGES = {
       "Polozka zdarma neni pro tento checkout povolena. Dalsi krok: odeberte zdarma polozku nebo upravte slevu.",
     combinedCap:
       "Kombinovana sleva prekrocila nastaveny maximalni limit. Dalsi krok: odeberte jednu nebo vice slev a zkuste znovu.",
+    couponSegment:
+      "Nektere slevove kody nejsou dostupne pro vas segment. Dalsi krok: odeberte neplatne kody a zkuste znovu.",
+    couponStacking:
+      "Vice slevovych kodu neni podle aktualniho nastaveni povoleno. Dalsi krok: nechte pouze jeden kod a zkuste znovu.",
+    couponSegmentAndStacking:
+      "Nektere kody byly odmitnuty kvuli segmentu i pravidlum kombinace. Dalsi krok: nechte jeden platny kod a zkuste znovu.",
     minimumOrderQuantity:
       "Alespon jedna polozka je pod minimalnim objednacim mnozstvim pro vas segment. Dalsi krok: navyste mnozstvi na pozadovane minimum.",
     stepQuantity:
@@ -123,6 +135,134 @@ function normalizePercentOrNull(value) {
     return null;
   }
   return roundMoney(clampPercent(parsed));
+}
+
+/**
+ * @param {string} code
+ */
+function normalizeCouponCode(code) {
+  return String(code ?? "").trim().toUpperCase();
+}
+
+/**
+ * @param {unknown} value
+ */
+function normalizeAllowedSegment(value) {
+  if (value === "B2B" || value === "B2C") {
+    return value;
+  }
+  return "ALL";
+}
+
+/**
+ * @param {string} value
+ */
+function parseCouponCodesCsv(value) {
+  return value
+    .split(/[,\s]+/)
+    .map((part) => normalizeCouponCode(part))
+    .filter(Boolean);
+}
+
+/**
+ * @param {CartValidationsGenerateRunInput} input
+ */
+function collectEnteredDiscountCodes(input) {
+  const typedInput = /** @type {any} */ (input);
+  /** @type {Array<{ code: string; rejectable: boolean }>} */
+  const enteredCodes = [];
+  const rawEnteredCodes = Array.isArray(typedInput?.cart?.enteredDiscountCodes)
+    ? typedInput.cart.enteredDiscountCodes
+    : [];
+  for (const rawEnteredCode of rawEnteredCodes) {
+    const code = normalizeCouponCode(rawEnteredCode?.code);
+    if (!code) {
+      continue;
+    }
+    enteredCodes.push({
+      code,
+      rejectable: rawEnteredCode?.rejectable !== false,
+    });
+  }
+
+  const csvSources = [
+    typedInput?.cart?.marginGuardDiscountCodes?.value,
+    typedInput?.cart?.discountCodes?.value,
+  ];
+  for (const rawSource of csvSources) {
+    if (typeof rawSource !== "string" || !rawSource.trim()) {
+      continue;
+    }
+    for (const code of parseCouponCodesCsv(rawSource)) {
+      enteredCodes.push({ code, rejectable: true });
+    }
+  }
+
+  /** @type {Array<{ code: string; rejectable: boolean }>} */
+  const deduped = [];
+  const seen = new Map();
+  for (const enteredCode of enteredCodes) {
+    if (!seen.has(enteredCode.code)) {
+      seen.set(enteredCode.code, enteredCode.rejectable);
+      continue;
+    }
+    seen.set(enteredCode.code, seen.get(enteredCode.code) || enteredCode.rejectable);
+  }
+  for (const [code, rejectable] of seen.entries()) {
+    deduped.push({ code, rejectable });
+  }
+  return deduped;
+}
+
+/**
+ * @param {Array<{ code: string; rejectable: boolean }>} enteredDiscountCodes
+ * @param {Record<string, "B2B" | "B2C" | "ALL">} couponSegmentRules
+ * @param {"B2B" | "B2C"} segment
+ * @param {boolean} allowStacking
+ */
+function resolveRejectedDiscountCodes(
+  enteredDiscountCodes,
+  couponSegmentRules,
+  segment,
+  allowStacking,
+) {
+  const rejectedCodes = [];
+  let rejectedBySegment = false;
+  let rejectedByStacking = false;
+  let acceptedRejectableCount = 0;
+  for (const enteredCode of enteredDiscountCodes) {
+    const code = enteredCode.code;
+    const rejectable = enteredCode.rejectable !== false;
+    const allowedSegment = couponSegmentRules[code];
+    const segmentMismatch =
+      allowedSegment != null &&
+      allowedSegment !== "ALL" &&
+      allowedSegment !== segment;
+    if (segmentMismatch && rejectable) {
+      rejectedCodes.push({ code });
+      rejectedBySegment = true;
+      continue;
+    }
+    if (
+      !segmentMismatch &&
+      !allowStacking &&
+      rejectable &&
+      acceptedRejectableCount >= 1
+    ) {
+      rejectedCodes.push({ code });
+      rejectedByStacking = true;
+      continue;
+    }
+    if (!segmentMismatch && rejectable) {
+      acceptedRejectableCount += 1;
+    }
+  }
+
+  return {
+    rejectedCodes,
+    rejectedBySegment,
+    rejectedByStacking,
+  };
 }
 
 /**
@@ -448,6 +588,23 @@ function resolveTierUnitPrice(tierMap, productId, quantity) {
 }
 
 /**
+ * Cart Validation schema exposes only buyerIdentity.purchasingCompany.company.id.
+ * We also probe compatibility fallbacks to avoid drift with webhook payload shapes.
+ * @param {CartValidationsGenerateRunInput} input
+ */
+function resolveHasPurchasingCompany(input) {
+  const typedInput = /** @type {any} */ (input);
+  return Boolean(
+    typedInput?.cart?.buyerIdentity?.purchasingCompany?.company?.id ??
+      typedInput?.cart?.buyerIdentity?.purchasingCompany?.id ??
+      typedInput?.cart?.purchasingCompany?.company?.id ??
+      typedInput?.cart?.purchasing_company?.company?.id ??
+      typedInput?.cart?.customer?.purchasingCompany?.company?.id ??
+      typedInput?.cart?.customer?.purchasing_company?.company?.id,
+  );
+}
+
+/**
  * @param {CartValidationsGenerateRunInput} input
  */
 function parseConfig(input) {
@@ -549,6 +706,10 @@ function parseConfig(input) {
     config && typeof config.perProductVisibilityCustomerIds === "object"
       ? config.perProductVisibilityCustomerIds
       : {};
+  const rawCouponSegmentRules =
+    config && typeof config.couponSegmentRules === "object"
+      ? config.couponSegmentRules
+      : {};
   /** @type {Record<string, boolean>} */
   const perProductAllowZeroFinalPriceB2C = {};
   /** @type {Record<string, boolean>} */
@@ -559,6 +720,8 @@ function parseConfig(input) {
   const perProductVisibilityModes = {};
   /** @type {Record<string, string>} */
   const perProductVisibilityCustomerIds = {};
+  /** @type {Record<string, "B2B" | "B2C" | "ALL">} */
+  const couponSegmentRules = {};
   for (const [productId, allowZero] of Object.entries(
     rawPerProductAllowZeroFinalPriceB2C,
   )) {
@@ -641,6 +804,13 @@ function parseConfig(input) {
     }
     perProductVisibilityCustomerIds[productId] = normalizedCustomerId;
   }
+  for (const [rawCode, allowedSegment] of Object.entries(rawCouponSegmentRules)) {
+    const normalizedCode = normalizeCouponCode(rawCode);
+    if (!normalizedCode) {
+      continue;
+    }
+    couponSegmentRules[normalizedCode] = normalizeAllowedSegment(allowedSegment);
+  }
 
   return {
     b2bTag: typeof config.b2bTag === "string" ? config.b2bTag : "b2b",
@@ -674,6 +844,7 @@ function parseConfig(input) {
     perCustomerProductMaximumOrderQuantities,
     perProductVisibilityModes,
     perProductVisibilityCustomerIds,
+    couponSegmentRules,
   };
 }
 
@@ -731,12 +902,17 @@ export function cartValidationsGenerateRun(input) {
   const config = parseConfig(input);
   const messages = resolveMessages(input);
   const productQuantityTotals = buildProductQuantityTotals(input?.cart?.lines ?? []);
-  const hasPurchasingCompany = Boolean(
-    input?.cart?.buyerIdentity?.purchasingCompany?.company?.id,
-  );
+  const hasPurchasingCompany = resolveHasPurchasingCompany(input);
   const hasB2BTag = Boolean(input?.cart?.buyerIdentity?.customer?.hasAnyTag);
   const customerId = normalizeCustomerId(input?.cart?.buyerIdentity?.customer?.id);
   const isB2B = hasPurchasingCompany || hasB2BTag;
+  const segment = isB2B ? "B2B" : "B2C";
+  const rejectedCodeResult = resolveRejectedDiscountCodes(
+    collectEnteredDiscountCodes(input),
+    config.couponSegmentRules,
+    segment,
+    config.allowStacking,
+  );
   const floorPercent = isB2B
     ? config.b2bGlobalMinPricePercent
     : config.globalMinPricePercent;
@@ -764,6 +940,8 @@ export function cartValidationsGenerateRun(input) {
       : null;
 
   let hasVisibilityViolation = false;
+  let hasCouponSegmentViolation = false;
+  let hasCouponStackingViolation = false;
   let hasZeroFinalPriceViolation = false;
   let hasBelowFloorViolation = false;
   let hasCombinedDiscountCapViolation = false;
@@ -788,6 +966,12 @@ export function cartValidationsGenerateRun(input) {
   const stepViolationSteps = new Set();
   /** @type {Set<number>} */
   const maximumViolationMaximums = new Set();
+  if (rejectedCodeResult.rejectedBySegment) {
+    hasCouponSegmentViolation = true;
+  }
+  if (rejectedCodeResult.rejectedByStacking) {
+    hasCouponStackingViolation = true;
+  }
   for (const line of input?.cart?.lines ?? []) {
     const productId =
       line?.merchandise?.__typename === "ProductVariant"
@@ -923,6 +1107,18 @@ export function cartValidationsGenerateRun(input) {
   }
 
   const errors = [];
+  if (hasCouponSegmentViolation || hasCouponStackingViolation) {
+    let couponMessage = messages.couponSegment;
+    if (hasCouponSegmentViolation && hasCouponStackingViolation) {
+      couponMessage = messages.couponSegmentAndStacking;
+    } else if (hasCouponStackingViolation) {
+      couponMessage = messages.couponStacking;
+    }
+    errors.push({
+      message: couponMessage,
+      target: "$.cart",
+    });
+  }
   if (hasCombinedDiscountCapViolation) {
     errors.push({
       message: buildViolationMessageWithProducts(

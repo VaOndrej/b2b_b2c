@@ -1,57 +1,32 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "da6707bd2f2226f7a6efbd670c1e6192"
-name = "b2b_companion"
+client_id = "d56f5ebac6c13f2137172deb4e61a800"
+name = "B2Bcommerce"
 application_url = "https://example.com"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
-include_config_on_deploy = true
-
-[app_proxy]
-url = "https://example.com/margin-guard"
-subpath = "margin-guard"
-prefix = "apps"
 
 [webhooks]
-api_version = "2026-04"
-
-  [[webhooks.subscriptions]]
-  topics = [ "app/uninstalled" ]
-  uri = "/webhooks/app/uninstalled"
+api_version = "2026-01"
 
   [[webhooks.subscriptions]]
   topics = [ "app/scopes_update" ]
   uri = "/webhooks/app/scopes_update"
 
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_discounts,write_metaobject_definitions,write_metaobjects,write_products,write_validations"
+scopes = "read_customers,write_discounts,write_metaobject_definitions,write_metaobjects,write_products,write_validations"
 
 [auth]
 redirect_urls = [ "https://example.com/api/auth" ]
 
-[product.metafields.app.demo_info]
-type = "single_line_text_field"
-name = "Demo Source Info"
-description = "Tracks products created by the Shopify app template for development"
-
-  [product.metafields.app.demo_info.access]
-  admin = "merchant_read_write"
-
-[metaobjects.app.example]
-name = "Example"
-description = "An example metaobject definition created by this template"
-
-  [metaobjects.app.example.access]
-  admin = "merchant_read_write"
-
-[metaobjects.app.example.fields.title]
-name = "Title"
-type = "single_line_text_field"
-required = true
-
-[metaobjects.app.example.fields.description]
-name = "Description"
-type = "multi_line_text_field"
+[app_proxy]
+url = "https://example.com/margin-guard"
+subpath = "margin-guard"
+prefix = "apps"

@@ -1,7 +1,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import prisma from "../db.server";
-import { recordMarginViolation } from "./margin-guard-config.server";
+import prisma from "../db.server.ts";
+import { recordMarginViolation } from "./margin-guard-config.server.ts";
+import { validateMargin } from "../../core/margin/margin.guard.ts";
 
 interface FunctionRunLogLine {
   id?: string;
@@ -130,13 +131,33 @@ function resolveSource(logTimestamp: string, lineId: string, productId: string):
   return `shopify_function_checkout:${logTimestamp}:${lineId}:${productId}`;
 }
 
+export function evaluateViolationFromSharedMarginGuard(input: {
+  productId: string;
+  segment: "B2B" | "B2C";
+  effectiveBasePrice: number;
+  finalPrice: number;
+  floorPercent: number;
+  allowZeroFinalPrice: boolean;
+}) {
+  return validateMargin({
+    productId: input.productId,
+    segment: input.segment,
+    effectiveBasePrice: input.effectiveBasePrice,
+    finalPrice: input.finalPrice,
+    ruleset: {
+      global: {
+        minPercentOfBasePrice: input.floorPercent,
+        allowZeroFinalPrice: input.allowZeroFinalPrice,
+      },
+      perProduct: [],
+    },
+  });
+}
+
 export async function syncLiveCheckoutViolationsFromFunctionLogs(
   shop: string,
 ): Promise<number> {
-  const db = prisma as any;
-  if (!db.marginViolationLog) {
-    return 0;
-  }
+  const db = prisma;
 
   const logsDir = path.resolve(process.cwd(), ".shopify", "logs");
   let files: string[] = [];
@@ -233,12 +254,16 @@ export async function syncLiveCheckoutViolationsFromFunctionLogs(
       );
       const effectiveBasePrice =
         tierUnitPrice != null ? tierUnitPrice : overrideOrBasePrice;
-      const floorPrice = roundMoney(effectiveBasePrice * (lineFloorPercent / 100));
-
-      const violationAmount =
-        finalPrice <= 0 && !lineAllowZero
-          ? roundMoney(Math.max(0, floorPrice - finalPrice))
-          : roundMoney(Math.max(0, floorPrice - finalPrice));
+      const margin = evaluateViolationFromSharedMarginGuard({
+        productId,
+        segment,
+        effectiveBasePrice,
+        finalPrice,
+        floorPercent: lineFloorPercent,
+        allowZeroFinalPrice: lineAllowZero,
+      });
+      const floorPrice = margin.floorPrice;
+      const violationAmount = margin.violationAmount;
 
       if (violationAmount <= 0) {
         continue;

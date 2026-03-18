@@ -3,6 +3,12 @@ query CartValidationsGenerateRunInput(
   $collectionIds: [ID!]
 ) {
   cart {
+    marginGuardDiscountCodes: attribute(key: "margin_guard_discount_codes") {
+      value
+    }
+    discountCodes: attribute(key: "discount_codes") {
+      value
+    }
     buyerIdentity {
       purchasingCompany {
         company {

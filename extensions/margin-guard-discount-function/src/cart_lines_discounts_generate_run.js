@@ -4,6 +4,7 @@
  */
 
 const DEFAULT_GLOBAL_FLOOR_PERCENT = 70;
+const DEFAULT_B2B_FLOOR_PERCENT = 70;
 
 const MESSAGES = {
   EN: {
@@ -263,7 +264,7 @@ function parseConfig(input) {
   }
   for (const [productId, floorPercent] of Object.entries(rawB2BFloors)) {
     perProductFloorPercentsB2B[productId] = clampPercent(
-      toNumber(floorPercent, DEFAULT_GLOBAL_FLOOR_PERCENT),
+      toNumber(floorPercent, DEFAULT_B2B_FLOOR_PERCENT),
     );
   }
   for (const [productId, allowZero] of Object.entries(rawB2CAllowZero)) {
@@ -303,7 +304,7 @@ function parseConfig(input) {
       toNumber(config.globalMinPricePercent, DEFAULT_GLOBAL_FLOOR_PERCENT),
     ),
     b2bGlobalMinPricePercent: clampPercent(
-      toNumber(config.b2bGlobalMinPricePercent, DEFAULT_GLOBAL_FLOOR_PERCENT),
+      toNumber(config.b2bGlobalMinPricePercent, DEFAULT_B2B_FLOOR_PERCENT),
     ),
     allowZeroFinalPrice:
       typeof config.allowZeroFinalPrice === "boolean"

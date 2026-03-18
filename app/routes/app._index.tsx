@@ -6,13 +6,13 @@ import {
   listMarginViolationLogs,
 } from "../services/margin-guard-config.server";
 import { ensureCartValidationActive } from "../services/cart-validation-activation.server";
-import { getDiscountFunctionStatusWithAutoDisable } from "../services/discount-function-activation.server";
+import { getDiscountFunctionStatus } from "../services/discount-function-activation.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
   await ensureCartValidationActive(admin);
   const [discountFunction, config, logs] = await Promise.all([
-    getDiscountFunctionStatusWithAutoDisable(admin),
+    getDiscountFunctionStatus(admin),
     getOrCreateMarginGuardConfig(),
     listMarginViolationLogs(10),
   ]);

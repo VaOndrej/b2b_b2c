@@ -115,3 +115,25 @@ test("global floor policy scenarios", () => {
     "[MARGIN TEST PASS] Global floor policy scénáře (1-5) prošly.",
   );
 });
+
+test("B2B global floor overrides B2C global floor when no product-specific rule exists", () => {
+  const result = validateMargin({
+    productId: "prod-b2b-global-floor",
+    segment: "B2B",
+    effectiveBasePrice: 100,
+    finalPrice: 70,
+    ruleset: {
+      global: {
+        minPercentOfBasePrice: 60,
+        b2bMinPercentOfBasePrice: 75,
+        allowZeroFinalPrice: false,
+      },
+      perProduct: [],
+    },
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.floorPrice, 75);
+  assert.equal(result.violationAmount, 5);
+  assert.equal(result.reason, "BELOW_FLOOR");
+});

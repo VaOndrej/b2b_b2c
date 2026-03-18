@@ -95,12 +95,17 @@ MVP_3 – Quantity & Operational Rules
  └─ Admin rule builder
 
 MVP_3_5 Quantity rules per collection
+ ├─ Produkt/Collection/Customer picker z menu a search funkcionalitou
  ├─ Zobrazit a schovat variantu produktu. Tedy varianta A je kusovka. Varianta B je kartón.
  ├─ Když vyskočí nějaká hláška o porušení například maximum quantity, nebo překročení slevy, tak musí vyskočit hláška (to už se děje), ale navíc k tomu přidat tlačítko "rozumím", kterým to uživatel musí potvrdit a pak se teprve ta hláška zmizí. Takhle mizí moc rychle
 
+MVP_3_9 All previous MVP testing all features must be working
+ ├─ Všechny předchozí MVPs musí fungovat, být otestované jak v kódu tak i v rámci eshopu
+ ├─ Vytvořit databázi s produkty, vypsat jak je jaký produkt limitovaný a to vše otestovat v rámci eshopu
+
 
 MVP_4 – Advanced Discount Orchestration
- Plná kontrola kombinace slev (enterprise diferenciace).
+ Plná kontrola kombinace slev
  ├─ Discount priority matrix
  ├─ Collection-level slevy, na všechny produkty xx sleva 10%, minimální cena, atd.. je tohle mid step mezi
  globální cenou a konkrétním produktem.

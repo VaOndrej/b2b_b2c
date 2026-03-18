@@ -2,6 +2,7 @@ import type { Segment } from "../segment/segment.types";
 
 export interface GlobalFloorRule {
   minPercentOfBasePrice: number;
+  b2bMinPercentOfBasePrice?: number;
   allowZeroFinalPrice: boolean;
 }
 

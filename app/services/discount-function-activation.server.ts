@@ -2,6 +2,7 @@ import {
   buildDiscountFunctionConfig,
   getOrCreateMarginGuardConfig,
 } from "./margin-guard-config.server";
+import { discountFunctionPolicy } from "../../config/feature-flags";
 
 interface AdminGraphqlClient {
   graphql: (
@@ -245,6 +246,10 @@ export async function deactivateDiscountFunction(
 export async function getDiscountFunctionStatusWithAutoDisable(
   admin: AdminGraphqlClient,
 ): Promise<DiscountFunctionStatusResult> {
+  if (discountFunctionPolicy.allowDiscountFunction) {
+    return getDiscountFunctionStatus(admin);
+  }
+
   const status = await getDiscountFunctionStatus(admin);
   if (status.status !== "ACTIVE") {
     return status;
@@ -261,6 +266,6 @@ export async function getDiscountFunctionStatusWithAutoDisable(
   return {
     status: "INACTIVE",
     message:
-      "Discount function was automatically disabled due to current MVP policy.",
+      "Discount function was automatically disabled because MVP_2 discount rollout is disabled by policy.",
   };
 }

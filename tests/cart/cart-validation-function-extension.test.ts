@@ -325,3 +325,166 @@ test("shopify function enforces max combined discount cap with localized message
 
   assert.equal(allowed.operations.length, 0);
 });
+
+test("shopify function uses b2bOverridePrice when quantity is below tier threshold", () => {
+  const result = runCartValidation({
+    cart: {
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/3101", hasAnyTag: true },
+      },
+      lines: [
+        {
+          id: "line-tier-fallback",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: "gid://shopify/Product/200",
+            },
+          },
+          cost: {
+            amountPerQuantity: { amount: "70.00" },
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "70.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: {
+        jsonValue: {
+          globalMinPricePercent: 70,
+          b2bGlobalMinPricePercent: 70,
+          allowZeroFinalPrice: false,
+          perProductFloorPercentsB2C: {},
+          perProductFloorPercentsB2B: {},
+          perProductAllowZeroFinalPriceB2C: {},
+          perProductAllowZeroFinalPriceB2B: {},
+          perProductB2BOverridePrices: {
+            "gid://shopify/Product/200": 80,
+          },
+          perProductTierPricesB2B: {
+            "gid://shopify/Product/200": [
+              { minQuantity: 2, unitPrice: 50 },
+            ],
+          },
+        },
+      },
+    },
+  });
+
+  assert.equal(
+    result.operations.length,
+    0,
+    "Quantity pod tier threshold musi fallbacknout na B2B override, ne na base price.",
+  );
+});
+
+test("shopify function blocks segment-mismatched coupon codes from cart inputs", () => {
+  const result = runCartValidation({
+    cart: {
+      enteredDiscountCodes: [
+        { code: "retail10", rejectable: true },
+      ],
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/3201", hasAnyTag: true },
+      },
+      lines: [
+        {
+          id: "line-coupon-segment",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: "gid://shopify/Product/201",
+            },
+          },
+          cost: {
+            amountPerQuantity: { amount: "100.00" },
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: {
+        jsonValue: {
+          globalMinPricePercent: 0,
+          b2bGlobalMinPricePercent: 0,
+          allowZeroFinalPrice: true,
+          allowStacking: true,
+          couponSegmentRules: {
+            RETAIL10: "B2C",
+          },
+          perProductFloorPercentsB2C: {},
+          perProductFloorPercentsB2B: {},
+          perProductAllowZeroFinalPriceB2C: {},
+          perProductAllowZeroFinalPriceB2B: {},
+        },
+      },
+    },
+  });
+
+  const message = result.operations[0]?.validationAdd?.errors?.[0]?.message ?? "";
+  assert.equal(result.operations.length > 0, true);
+  assert.equal(
+    message.includes("not available for your customer segment"),
+    true,
+  );
+});
+
+test("shopify function resolves B2B from defensive purchasingCompany fallback path", () => {
+  const result = runCartValidation({
+    cart: {
+      purchasingCompany: {
+        company: {
+          id: "gid://shopify/Company/501",
+        },
+      },
+      buyerIdentity: {
+        customer: { id: "gid://shopify/Customer/3301", hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-purchasing-company-fallback",
+          quantity: 1,
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: "gid://shopify/Product/202",
+            },
+          },
+          cost: {
+            amountPerQuantity: { amount: "50.00" },
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "50.00" },
+          },
+        },
+      ],
+    },
+    validation: {
+      metafield: {
+        jsonValue: {
+          globalMinPricePercent: 0,
+          b2bGlobalMinPricePercent: 0,
+          allowZeroFinalPrice: false,
+          perProductFloorPercentsB2C: {
+            "gid://shopify/Product/202": 10,
+          },
+          perProductFloorPercentsB2B: {
+            "gid://shopify/Product/202": 90,
+          },
+          perProductAllowZeroFinalPriceB2C: {},
+          perProductAllowZeroFinalPriceB2B: {},
+        },
+      },
+    },
+  } as any);
+
+  assert.equal(
+    result.operations.length > 0,
+    true,
+    "Defenzivni purchasingCompany fallback musi vest na B2B vetvi.",
+  );
+});

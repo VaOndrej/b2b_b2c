@@ -24,12 +24,20 @@ function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function resolveAllowZeroFinalPrice(input: MarginValidationInput): boolean {
-  const productRule = input.ruleset.perProduct.find(
-    (rule) =>
-      rule.productId === input.productId &&
-      (rule.segment == null || rule.segment === input.segment),
+function resolveProductRule(input: MarginValidationInput) {
+  return (
+    input.ruleset.perProduct.find(
+      (rule) =>
+        rule.productId === input.productId && rule.segment === input.segment,
+    ) ??
+    input.ruleset.perProduct.find(
+      (rule) => rule.productId === input.productId && rule.segment == null,
+    )
   );
+}
+
+function resolveAllowZeroFinalPrice(input: MarginValidationInput): boolean {
+  const productRule = resolveProductRule(input);
 
   if (productRule?.allowZeroFinalPriceOverride != null) {
     return productRule.allowZeroFinalPriceOverride;
@@ -39,16 +47,14 @@ function resolveAllowZeroFinalPrice(input: MarginValidationInput): boolean {
 }
 
 function resolveFloorPercent(input: MarginValidationInput): number {
-  const productRule = input.ruleset.perProduct.find(
-    (rule) =>
-      rule.productId === input.productId &&
-      (rule.segment == null || rule.segment === input.segment),
-  );
+  const productRule = resolveProductRule(input);
+  const globalFloorPercent =
+    input.segment === "B2B" &&
+    input.ruleset.global.b2bMinPercentOfBasePrice != null
+      ? input.ruleset.global.b2bMinPercentOfBasePrice
+      : input.ruleset.global.minPercentOfBasePrice;
 
-  return clampPercent(
-    productRule?.minPercentOfBasePrice ??
-      input.ruleset.global.minPercentOfBasePrice,
-  );
+  return clampPercent(productRule?.minPercentOfBasePrice ?? globalFloorPercent);
 }
 
 export function validateMargin(input: MarginValidationInput): MarginValidationResult {

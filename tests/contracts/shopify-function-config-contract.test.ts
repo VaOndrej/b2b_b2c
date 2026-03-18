@@ -502,6 +502,7 @@ test("product visibility mapping contract normalizes restrictive visibility rule
   const config = buildCartValidationFunctionConfig({
     b2bTag: "b2b",
     globalMinPricePercent: 70,
+    b2bGlobalMinPricePercent: 62,
     allowZeroFinalPrice: false,
     productFloors: [],
     productVisibilityRules: [
@@ -533,6 +534,25 @@ test("product visibility mapping contract normalizes restrictive visibility rule
   assert.deepEqual(config.perProductVisibilityCustomerIds, {
     "gid://shopify/Product/CUSTOMER_ONLY": "gid://shopify/Customer/42",
   });
+});
+
+test("function config builder preserves distinct B2B global floor", () => {
+  const config = buildCartValidationFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 75,
+    b2bGlobalMinPricePercent: 62,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+    productTierPrices: [],
+    productQuantityRules: [],
+    collectionQuantityRules: [],
+    productCustomerQuantityRules: [],
+    productVisibilityRules: [],
+    couponSegmentRules: [],
+  });
+
+  assert.equal(config.globalMinPricePercent, 75);
+  assert.equal(config.b2bGlobalMinPricePercent, 62);
 });
 
 test("coupon segment mapping contract normalizes codes and allowed segments", () => {

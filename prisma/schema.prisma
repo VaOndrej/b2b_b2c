@@ -10,7 +10,7 @@ generator client {
 // See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
   provider = "sqlite"
-  url      = "file:dev.sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model Session {
@@ -37,6 +37,7 @@ model MarginGuardConfig {
   id                    String   @id @default("default")
   b2bTag                String   @default("b2b")
   globalMinPricePercent Float    @default(70)
+  b2bGlobalMinPricePercent Float  @default(70)
   allowZeroFinalPrice   Boolean  @default(false)
   allowRemoveAtMinimumOrderQuantity Boolean @default(true)
   allowStacking         Boolean  @default(false)

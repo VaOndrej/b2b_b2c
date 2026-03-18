@@ -47,6 +47,7 @@ interface CouponSegmentRuleInput {
 interface MarginGuardFunctionConfigInput {
   b2bTag: string;
   globalMinPricePercent: number;
+  b2bGlobalMinPricePercent?: number;
   allowZeroFinalPrice: boolean;
   allowStacking?: boolean;
   maxCombinedPercentOff?: number | null;
@@ -440,13 +441,17 @@ export function buildCartValidationFunctionConfig(
       ...Object.keys(perCollectionMaximumOrderQuantitiesB2B),
     ]),
   ).sort();
+  const b2bGlobalMinPricePercent =
+    config.b2bGlobalMinPricePercent != null
+      ? config.b2bGlobalMinPricePercent
+      : config.globalMinPricePercent;
 
   return {
     b2bTag: normalizedB2BTag,
     b2bTags: [normalizedB2BTag],
     collectionIds,
     globalMinPricePercent: config.globalMinPricePercent,
-    b2bGlobalMinPricePercent: config.globalMinPricePercent,
+    b2bGlobalMinPricePercent,
     allowZeroFinalPrice: config.allowZeroFinalPrice,
     allowStacking,
     maxCombinedPercentOff,
