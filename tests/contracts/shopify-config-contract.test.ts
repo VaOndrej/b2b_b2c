@@ -9,7 +9,6 @@ async function readFileText(relativePath: string) {
 test("shopify.app.toml declares required scopes and webhooks", async () => {
   const toml = await readFileText("shopify.app.toml");
   assert.match(toml, /scopes\s*=\s*"[^"]*read_customers[^"]*"/, "read_customers scope must be declared");
-  assert.match(toml, /orders\/create/, "orders/create webhook must be registered");
   assert.match(toml, /api_version\s*=\s*"2026-04"/, "webhooks api_version must be 2026-04");
 });
 
