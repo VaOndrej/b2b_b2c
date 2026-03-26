@@ -1065,14 +1065,12 @@ export default function AppSettingsRoute() {
               resourceType="product"
               required
             />
-            <label>
-              Variant ID
-              <input
-                name="variantId"
-                placeholder="gid://shopify/ProductVariant/123456789 or 123456789"
-                required
-              />
-            </label>
+            <AdminCatalogPicker
+              name="variantId"
+              label="Variant"
+              resourceType="variant"
+              required
+            />
             <label>
               Visibility mode
               <select name="visibilityMode" defaultValue="B2B_ONLY">

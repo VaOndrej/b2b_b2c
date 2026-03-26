@@ -293,6 +293,99 @@ test("storefront variant visibility resolves hidden variants by product id", () 
   });
 });
 
+test("storefront variant visibility returns empty map when product id is not in request", () => {
+  const result = resolveStorefrontVariantVisibilityByProductId({
+    productIds: ["gid://shopify/Product/OTHER"],
+    segment: "B2C",
+    rules: [
+      {
+        productId: "gid://shopify/Product/VARIANT_VIS_MISS",
+        variantId: "gid://shopify/ProductVariant/100",
+        visibilityMode: "B2B_ONLY",
+      },
+    ],
+  });
+
+  assert.deepEqual(result, {});
+});
+
+test("storefront variant visibility returns empty map when no rules match", () => {
+  const productId = "gid://shopify/Product/NO_HIDDEN";
+  const result = resolveStorefrontVariantVisibilityByProductId({
+    productIds: [productId],
+    segment: "B2B",
+    rules: [
+      {
+        productId,
+        variantId: "gid://shopify/ProductVariant/100",
+        visibilityMode: "B2B_ONLY",
+      },
+    ],
+  });
+
+  assert.deepEqual(result, {});
+});
+
+test("storefront variant visibility hides B2C_ONLY variant for B2B visitor", () => {
+  const productId = "gid://shopify/Product/SEGMENT_FLIP";
+  const result = resolveStorefrontVariantVisibilityByProductId({
+    productIds: [productId],
+    segment: "B2B",
+    rules: [
+      {
+        productId,
+        variantId: "gid://shopify/ProductVariant/500",
+        visibilityMode: "B2C_ONLY",
+      },
+    ],
+  });
+
+  assert.deepEqual(result, {
+    [productId]: {
+      hiddenVariantIds: ["gid://shopify/ProductVariant/500"],
+    },
+  });
+});
+
+test("storefront variant visibility shows CUSTOMER_ONLY variant to matching customer", () => {
+  const productId = "gid://shopify/Product/CUST_MATCH";
+  const result = resolveStorefrontVariantVisibilityByProductId({
+    productIds: [productId],
+    segment: "B2C",
+    customerId: "gid://shopify/Customer/42",
+    rules: [
+      {
+        productId,
+        variantId: "gid://shopify/ProductVariant/600",
+        visibilityMode: "CUSTOMER_ONLY",
+        customerId: "gid://shopify/Customer/42",
+      },
+    ],
+  });
+
+  assert.deepEqual(result, {});
+});
+
+test("storefront variant visibility normalizes numeric product and variant ids", () => {
+  const result = resolveStorefrontVariantVisibilityByProductId({
+    productIds: ["12345"],
+    segment: "B2C",
+    rules: [
+      {
+        productId: "gid://shopify/Product/12345",
+        variantId: "gid://shopify/ProductVariant/999",
+        visibilityMode: "B2B_ONLY",
+      },
+    ],
+  });
+
+  assert.deepEqual(result, {
+    "gid://shopify/Product/12345": {
+      hiddenVariantIds: ["gid://shopify/ProductVariant/999"],
+    },
+  });
+});
+
 test("storefront collection membership fetch uses Product.collections and filters to configured ids", async () => {
   const expectedCollectionId = "gid://shopify/Collection/100";
   const ignoredCollectionId = "gid://shopify/Collection/999";

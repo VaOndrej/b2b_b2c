@@ -76,6 +76,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   let currentProductJsonPromise = null;
   let currentProductJsonHandle = "";
   let currentProductVariantVisibilitySyncPromise = null;
+  let currentProductHiddenVariantIds = new Set();
+  let currentProductVisibleVariants = [];
+  let variantUrlMonitoringBound = false;
   let currentProductPresentationSyncTimeout = null;
   let lastCartSnapshotRefreshAt = 0;
   let cartQuantityNoticeTimeout = null;
@@ -417,6 +420,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     if (state.currentProductId) {
       productIds.add(state.currentProductId);
     }
+    return Array.from(productIds);
+  }
+
+  async function collectCurrentProductIdsForVisibility() {
+    const productIds = new Set(collectCurrentProductIds());
+    if (productIds.size > 0) {
+      return Array.from(productIds);
+    }
+    const currentProductData = normalizeCurrentProductVariantPayload(
+      await fetchCurrentProductJson(),
+    );
+    if (!currentProductData || !currentProductData.productId) {
+      return [];
+    }
+    state.currentProductId = currentProductData.productId;
+    productIds.add(currentProductData.productId);
     return Array.from(productIds);
   }
 
@@ -1897,6 +1916,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     )) {
       restoreVariantManagedDisabledState(element);
     }
+    for (const element of document.querySelectorAll(
+      "[data-margin-guard-variant-force-hidden='1']",
+    )) {
+      if (element instanceof HTMLElement) {
+        element.style.removeProperty("text-decoration");
+        element.style.removeProperty("opacity");
+        element.style.removeProperty("pointer-events");
+        element.style.removeProperty("cursor");
+        if ("disabled" in element) {
+          element.disabled = element.dataset.marginGuardVariantOriginalDisabledForce === "1";
+          delete element.dataset.marginGuardVariantOriginalDisabledForce;
+        }
+        element.removeEventListener("click", blockVariantClick, true);
+        delete element.dataset.marginGuardVariantForceHidden;
+      }
+    }
     const banner = document.getElementById("margin-guard-variant-visibility-banner");
     if (banner && banner.parentElement) {
       banner.parentElement.removeChild(banner);
@@ -2284,15 +2319,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return;
     }
 
+    const currentProductData = normalizeCurrentProductVariantPayload(
+      await fetchCurrentProductJson(),
+    );
+    if (currentProductData && currentProductData.productId) {
+      state.currentProductId = currentProductData.productId;
+    }
     const variantRule = resolveCurrentProductVariantVisibilityRule();
     if (!variantRule) {
       setCurrentProductVariantAvailability(true);
       return;
     }
-
-    const currentProductData = normalizeCurrentProductVariantPayload(
-      await fetchCurrentProductJson(),
-    );
     if (!currentProductData) {
       setCurrentProductVariantAvailability(true);
       return;
@@ -2311,6 +2348,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       visibleVariants.map((variant) => normalizeVariantId(variant.id)).filter(Boolean),
     );
     setCurrentProductVariantAvailability(visibleVariants.length > 0);
+
+    currentProductHiddenVariantIds = hiddenVariantIds;
+    currentProductVisibleVariants = visibleVariants;
+
+    hideHiddenVariantOptionElements(
+      hiddenVariantIds,
+      currentProductData.variants,
+    );
 
     const optionCount = Math.max(
       0,
@@ -2349,6 +2394,210 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
       syncVariantIdControlsForForm(form, visibleVariantIds, preferredVariant);
     }
+
+    enforceVariantVisibilityByUrl();
+    bindVariantUrlMonitoring();
+  }
+
+  function computeHiddenOptionValues(hiddenVariantIds, allVariants) {
+    var optionCount = Math.max(
+      0,
+      ...allVariants.map(function (v) {
+        return v.optionValues.length;
+      }),
+    );
+    var result = [];
+    for (var i = 0; i < optionCount; i += 1) {
+      var hidden = new Set();
+      var visible = new Set();
+      for (var vi = 0; vi < allVariants.length; vi += 1) {
+        var val = normalizeVariantOptionValue(allVariants[vi].optionValues[i]);
+        if (!val) {
+          continue;
+        }
+        if (hiddenVariantIds.has(allVariants[vi].id)) {
+          hidden.add(val);
+        } else {
+          visible.add(val);
+        }
+      }
+      var toHide = new Set();
+      for (var hiddenVal of hidden) {
+        if (!visible.has(hiddenVal)) {
+          toHide.add(hiddenVal);
+        }
+      }
+      result.push(toHide);
+    }
+    return result;
+  }
+
+  function resolveElementOptionValue(el) {
+    var dataVal =
+      el.getAttribute("data-value") ||
+      el.getAttribute("data-option-value") ||
+      el.getAttribute("data-variant-option-value");
+    if (dataVal) {
+      return normalizeVariantOptionValue(dataVal);
+    }
+    if (el instanceof HTMLInputElement) {
+      return normalizeVariantOptionValue(el.value);
+    }
+    if (el instanceof HTMLOptionElement) {
+      return normalizeVariantOptionValue(el.value);
+    }
+    var text = String(el.textContent || "").trim();
+    if (text && text.length < 60 && !text.includes("\\n")) {
+      return normalizeVariantOptionValue(text);
+    }
+    return "";
+  }
+
+  function blockVariantClick(event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return false;
+  }
+
+  function hideVariantOptionElement(el) {
+    if (!(el instanceof HTMLElement)) {
+      return;
+    }
+    if (el.dataset.marginGuardVariantForceHidden === "1") {
+      return;
+    }
+    el.style.setProperty("text-decoration", "line-through", "important");
+    el.style.setProperty("opacity", "0.4", "important");
+    el.style.setProperty("pointer-events", "none", "important");
+    el.style.setProperty("cursor", "not-allowed", "important");
+    if ("disabled" in el) {
+      el.dataset.marginGuardVariantOriginalDisabledForce = el.disabled ? "1" : "0";
+      el.disabled = true;
+    }
+    el.addEventListener("click", blockVariantClick, true);
+    el.dataset.marginGuardVariantForceHidden = "1";
+  }
+
+  function hideHiddenVariantOptionElements(hiddenVariantIds, allVariants) {
+    var hiddenOptionValues = computeHiddenOptionValues(
+      hiddenVariantIds,
+      allVariants,
+    );
+    var allHiddenValues = new Set();
+    for (var group of hiddenOptionValues) {
+      for (var val of group) {
+        allHiddenValues.add(val);
+      }
+    }
+    if (allHiddenValues.size === 0) {
+      return;
+    }
+
+    var scope =
+      document.querySelector("main") ||
+      document.querySelector("#MainContent") ||
+      document.body;
+
+    var candidateSelectors = [
+      "select option",
+      "input[type='radio']",
+      "button",
+      "[role='option']",
+      "[role='radio']",
+      "[data-value]",
+      "[data-option-value]",
+      "[data-variant-option-value]",
+      ".swatch",
+      ".swatch-element",
+    ];
+
+    var processed = new Set();
+    for (var selector of candidateSelectors) {
+      for (var el of scope.querySelectorAll(selector)) {
+        if (processed.has(el)) {
+          continue;
+        }
+        processed.add(el);
+        var matchValue = resolveElementOptionValue(el);
+        if (matchValue && allHiddenValues.has(matchValue)) {
+          hideVariantOptionElement(el);
+        }
+      }
+    }
+  }
+
+  function getVariantIdFromUrl() {
+    var params = new URLSearchParams(window.location.search);
+    var raw = params.get("variant");
+    return raw ? normalizeVariantId(raw) : null;
+  }
+
+  function enforceVariantVisibilityByUrl() {
+    if (currentProductHiddenVariantIds.size === 0) {
+      return;
+    }
+    var urlVariantId = getVariantIdFromUrl();
+    if (!urlVariantId) {
+      return;
+    }
+    var isHidden = currentProductHiddenVariantIds.has(urlVariantId);
+
+    var productBlocked = Boolean(
+      document.getElementById("margin-guard-visibility-banner"),
+    );
+
+    for (var form of document.querySelectorAll("form[action]")) {
+      if (!(form instanceof HTMLFormElement) || !isCartAddForm(form)) {
+        continue;
+      }
+      for (var button of form.querySelectorAll("button, input[type='submit']")) {
+        if (!(button instanceof HTMLButtonElement || button instanceof HTMLInputElement)) {
+          continue;
+        }
+        if (isDynamicCheckoutButton(button)) {
+          continue;
+        }
+        if (isHidden) {
+          setVariantManagedDisabledState(button, false);
+        } else if (!productBlocked) {
+          setVariantManagedDisabledState(button, true);
+        }
+      }
+    }
+
+    var existingBanner = document.getElementById(
+      "margin-guard-variant-visibility-banner",
+    );
+    if (isHidden) {
+      if (!existingBanner) {
+        setCurrentProductVariantAvailability(false);
+      }
+    } else {
+      if (existingBanner && existingBanner.parentElement) {
+        existingBanner.parentElement.removeChild(existingBanner);
+      }
+    }
+  }
+
+  function bindVariantUrlMonitoring() {
+    if (variantUrlMonitoringBound) {
+      return;
+    }
+    variantUrlMonitoringBound = true;
+
+    var origPushState = history.pushState;
+    var origReplaceState = history.replaceState;
+    history.pushState = function() {
+      origPushState.apply(this, arguments);
+      enforceVariantVisibilityByUrl();
+    };
+    history.replaceState = function() {
+      origReplaceState.apply(this, arguments);
+      enforceVariantVisibilityByUrl();
+    };
+    window.addEventListener("popstate", function() {
+      enforceVariantVisibilityByUrl();
+    });
   }
 
   function scheduleCurrentProductVariantVisibilitySync() {
@@ -3903,7 +4152,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   async function run() {
     const initialHandles = collectHandles();
-    const initialProductIds = collectCurrentProductIds();
+    const initialProductIds = await collectCurrentProductIdsForVisibility();
     if (!initialHandles.length && !initialProductIds.length) {
       return;
     }

@@ -1,4 +1,8 @@
-export type AdminCatalogSearchType = "product" | "collection" | "customer";
+export type AdminCatalogSearchType =
+  | "product"
+  | "collection"
+  | "customer"
+  | "variant";
 
 export interface AdminCatalogSearchItem {
   id: string;
@@ -47,7 +51,8 @@ function parseType(rawType: string | null): AdminCatalogSearchType | null {
   if (
     rawType === "product" ||
     rawType === "collection" ||
-    rawType === "customer"
+    rawType === "customer" ||
+    rawType === "variant"
   ) {
     return rawType;
   }
@@ -84,6 +89,9 @@ function buildShopifySearchQuery(
   const escaped = escapeShopifySearchTerm(normalized);
   if (type === "customer") {
     return `email:*${escaped}* OR first_name:*${escaped}* OR last_name:*${escaped}*`;
+  }
+  if (type === "variant") {
+    return `sku:*${escaped}* OR title:*${escaped}* OR product_title:*${escaped}*`;
   }
   return `title:*${escaped}* OR handle:*${escaped}*`;
 }
@@ -132,6 +140,61 @@ function mapCollectionNodes(nodes: unknown[]): AdminCatalogSearchItem[] {
       ...baseNode,
       type: "collection",
       secondaryLabel: baseNode.handle ? `Handle: ${baseNode.handle}` : null,
+    });
+  }
+  return mapped;
+}
+
+function buildVariantTitle(node: unknown): string {
+  const productTitle = String((node as any)?.product?.title ?? "").trim();
+  const variantTitle = String((node as any)?.title ?? "").trim();
+  if (
+    productTitle &&
+    variantTitle &&
+    variantTitle.toLowerCase() !== "default title"
+  ) {
+    return `${productTitle} - ${variantTitle}`;
+  }
+  return productTitle || variantTitle;
+}
+
+function buildVariantSecondaryLabel(node: unknown): string | null {
+  const sku = String((node as any)?.sku ?? "").trim();
+  if (sku) {
+    return `SKU: ${sku}`;
+  }
+  const selectedOptions = Array.isArray((node as any)?.selectedOptions)
+    ? (node as any).selectedOptions
+    : [];
+  const optionSummary = selectedOptions
+    .map((option: any) => {
+      const name = String(option?.name ?? "").trim();
+      const value = String(option?.value ?? "").trim();
+      if (!name || !value) {
+        return "";
+      }
+      return `${name}: ${value}`;
+    })
+    .filter(Boolean)
+    .join(", ");
+  return optionSummary || null;
+}
+
+function mapVariantNodes(nodes: unknown[]): AdminCatalogSearchItem[] {
+  const mapped: AdminCatalogSearchItem[] = [];
+  for (const rawNode of nodes) {
+    const id = String((rawNode as any)?.id ?? "").trim();
+    const title = buildVariantTitle(rawNode);
+    const handle = String((rawNode as any)?.product?.handle ?? "").trim();
+    if (!id || !title) {
+      continue;
+    }
+    mapped.push({
+      id,
+      type: "variant",
+      title,
+      handle: handle || null,
+      secondaryLabel: buildVariantSecondaryLabel(rawNode),
     });
   }
   return mapped;
@@ -264,6 +327,44 @@ async function searchCustomers(input: {
   return mapCustomerNodes(nodes);
 }
 
+async function searchVariants(input: {
+  admin: AdminGraphqlClient;
+  query: string;
+  limit: number;
+}): Promise<AdminCatalogSearchItem[]> {
+  const response = await input.admin.graphql(
+    `#graphql
+      query AdminCatalogSearchVariants($query: String!, $first: Int!) {
+        productVariants(first: $first, query: $query) {
+          nodes {
+            id
+            title
+            sku
+            product {
+              title
+              handle
+            }
+            selectedOptions {
+              name
+              value
+            }
+          }
+        }
+      }`,
+    {
+      variables: {
+        query: input.query,
+        first: input.limit,
+      },
+    },
+  );
+  const payload = await response.json();
+  const nodes = Array.isArray(payload?.data?.productVariants?.nodes)
+    ? payload.data.productVariants.nodes
+    : [];
+  return mapVariantNodes(nodes);
+}
+
 export async function searchAdminCatalog(input: {
   admin: AdminGraphqlClient;
   type: AdminCatalogSearchType;
@@ -283,6 +384,13 @@ export async function searchAdminCatalog(input: {
   }
   if (input.type === "customer") {
     return searchCustomers({
+      admin: input.admin,
+      query: searchQuery,
+      limit: input.limit,
+    });
+  }
+  if (input.type === "variant") {
+    return searchVariants({
       admin: input.admin,
       query: searchQuery,
       limit: input.limit,
@@ -314,7 +422,7 @@ export function createCatalogSearchLoader(deps: CatalogSearchDeps) {
     const type = parseType(rawType || null);
     if (!type) {
       return badRequest(
-        "Invalid required query param: type=product|collection|customer.",
+        "Invalid required query param: type=product|collection|customer|variant.",
       );
     }
 

@@ -201,3 +201,95 @@ test("searchAdminCatalog maps customer nodes with email secondary label", async 
     },
   ]);
 });
+
+test("searchAdminCatalog maps variant nodes with product context and SKU label", async () => {
+  const calls: Array<{ query: string; variables: Record<string, unknown> }> = [];
+  const admin = {
+    async graphql(
+      query: string,
+      options?: { variables?: Record<string, unknown> },
+    ) {
+      calls.push({
+        query,
+        variables: options?.variables ?? {},
+      });
+      return {
+        async json() {
+          return {
+            data: {
+              productVariants: {
+                nodes: [
+                  {
+                    id: "gid://shopify/ProductVariant/401",
+                    title: "Carton",
+                    sku: "CARTON-12",
+                    product: {
+                      title: "Alpha Drill",
+                      handle: "alpha-drill",
+                    },
+                    selectedOptions: [
+                      { name: "Pack", value: "Carton" },
+                    ],
+                  },
+                  {
+                    id: "gid://shopify/ProductVariant/402",
+                    title: "Default Title",
+                    sku: "",
+                    product: {
+                      title: "Bravo Saw",
+                      handle: "",
+                    },
+                    selectedOptions: [
+                      { name: "Title", value: "Default Title" },
+                    ],
+                  },
+                  {
+                    id: "",
+                    title: "Broken",
+                    sku: "BROKEN-1",
+                    product: {
+                      title: "Broken Product",
+                      handle: "broken-product",
+                    },
+                    selectedOptions: [],
+                  },
+                ],
+              },
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const items = await searchAdminCatalog({
+    admin,
+    type: "variant",
+    query: "carton",
+    limit: 6,
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]?.query.includes("query AdminCatalogSearchVariants"), true);
+  assert.equal(calls[0]?.variables.first, 6);
+  assert.equal(
+    calls[0]?.variables.query,
+    "sku:*carton* OR title:*carton* OR product_title:*carton*",
+  );
+  assert.deepEqual(items, [
+    {
+      id: "gid://shopify/ProductVariant/401",
+      type: "variant",
+      title: "Alpha Drill - Carton",
+      handle: "alpha-drill",
+      secondaryLabel: "SKU: CARTON-12",
+    },
+    {
+      id: "gid://shopify/ProductVariant/402",
+      type: "variant",
+      title: "Bravo Saw",
+      handle: null,
+      secondaryLabel: "Title: Default Title",
+    },
+  ]);
+});

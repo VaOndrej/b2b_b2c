@@ -78,13 +78,13 @@ test("AdminCatalogPicker keeps the original field name on the visible manual GID
   );
 });
 
-test("customer picker placeholders are available in shared helpers", async () => {
+test("customer and variant picker placeholders are available in shared helpers", async () => {
   const source = await readFile(PICKER_COMPONENT_PATH, "utf8");
 
   assert.match(source, /resourceType: CatalogResourceType/, "Picker must support typed resource variants.");
   assert.match(
     source,
     /Selected \{props\.resourceType\}/,
-    "Picker should render the selected resource label generically, including customer.",
+    "Picker should render the selected resource label generically, including customer and variant.",
   );
 });

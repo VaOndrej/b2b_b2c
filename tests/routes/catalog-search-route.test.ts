@@ -76,7 +76,7 @@ test("catalog search route validates query params and returns mapped success pay
   assert.equal(payload.items[0]?.id, "gid://shopify/Product/300");
 });
 
-test("catalog search route accepts customer type and returns 400 for other invalid types", async () => {
+test("catalog search route accepts customer and variant types and returns 400 for other invalid types", async () => {
   const loader = createCatalogSearchLoader({
     authenticateAdmin: async () => ({
       admin: {
@@ -88,13 +88,18 @@ test("catalog search route accepts customer type and returns 400 for other inval
       },
     }),
     searchCatalog: (async (input: Record<string, unknown>) => {
+      const type = String(input.type ?? "");
       return [
         {
-          id: "gid://shopify/Customer/500",
+          id:
+            type === "variant"
+              ? "gid://shopify/ProductVariant/700"
+              : "gid://shopify/Customer/500",
           type: input.type,
-          title: "Customer Result",
+          title: type === "variant" ? "Variant Result" : "Customer Result",
           handle: null,
-          secondaryLabel: "customer@example.com",
+          secondaryLabel:
+            type === "variant" ? "SKU: CARTON-12" : "customer@example.com",
         },
       ];
     }) as any,
@@ -109,6 +114,16 @@ test("catalog search route accepts customer type and returns 400 for other inval
   const customerPayload = await customerResponse.json();
   assert.equal(customerPayload.type, "customer");
   assert.equal(customerPayload.items[0]?.id, "gid://shopify/Customer/500");
+
+  const variantResponse = await loader({
+    request: buildRequest(
+      "https://example.test/app/api/catalog-search?type=variant&q=carton",
+    ),
+  });
+  assert.equal(variantResponse.status, 200);
+  const variantPayload = await variantResponse.json();
+  assert.equal(variantPayload.type, "variant");
+  assert.equal(variantPayload.items[0]?.id, "gid://shopify/ProductVariant/700");
 
   const badTypeResponse = await loader({
     request: buildRequest(
