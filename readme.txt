@@ -113,7 +113,11 @@ MVP_4 – Advanced Discount Orchestration
  ├─ Blacklist kombinací
  ├─ Max total discount cap
  ├─ Per-segment discount caps
- └─ Pricing simulator (admin preview)
+
+MVP_4_5:
+ Hezké UI
+ Rozdělení v cestě: Settings -> tady potom bude víc možností jako Globální Nastavení, Produktové nastavení, Kolekce, Slevové kupóny, atd.. A po zakliku tady v tom menu se mi už objeví relevantní pole.
+ Všechna funkcionalita musí zůstat tak jak je, pouze chci změnit jak se mi to mění v admin UI.
 
 MVP_5 – Segmented Storefront (UX Layer)
  ├─ Segment-based content sections

@@ -1,8 +1,8 @@
 import {
   buildDiscountFunctionConfig,
   getOrCreateMarginGuardConfig,
-} from "./margin-guard-config.server";
-import { discountFunctionPolicy } from "../../config/feature-flags";
+} from "./margin-guard-config.server.ts";
+import { discountFunctionPolicy } from "../../config/feature-flags.ts";
 
 interface AdminGraphqlClient {
   graphql: (
@@ -15,11 +15,22 @@ export interface DiscountActivationResult {
   ok: boolean;
   status: "ACTIVE" | "INACTIVE" | "ERROR";
   message: string;
+  lastSyncAt?: Date;
 }
 
 export interface DiscountFunctionStatusResult {
   status: "ACTIVE" | "INACTIVE" | "ERROR";
   message: string;
+  lastSyncAt?: Date;
+}
+
+interface DiscountFunctionStatusDependencies {
+  ensureDiscountFunctionActive: (
+    admin: AdminGraphqlClient,
+  ) => Promise<DiscountActivationResult>;
+  getDiscountFunctionStatusWithAutoDisable: (
+    admin: AdminGraphqlClient,
+  ) => Promise<DiscountFunctionStatusResult>;
 }
 
 function normalizeUserErrors(userErrors: Array<{ message?: string }>): string {
@@ -75,6 +86,7 @@ export async function ensureDiscountFunctionActive(
         ok: true,
         status: "ACTIVE",
         message: "Discount function already exists and is active.",
+        lastSyncAt: new Date(),
       };
     }
 
@@ -128,6 +140,7 @@ export async function ensureDiscountFunctionActive(
         ok: true,
         status: "ACTIVE",
         message: "Discount function is active.",
+        lastSyncAt: new Date(),
       };
     }
 
@@ -161,12 +174,13 @@ export async function getDiscountFunctionStatus(
       return {
         status: "ACTIVE",
         message: "Discount function exists and is active.",
+        lastSyncAt: new Date(),
       };
     }
 
     return {
       status: "INACTIVE",
-      message: "Discount function is not active for MVP_1.",
+      message: "Discount function is not active yet.",
     };
   } catch (error) {
     return {
@@ -177,6 +191,25 @@ export async function getDiscountFunctionStatus(
           : "Unexpected discount status check error",
     };
   }
+}
+
+export async function reconcileDiscountFunctionStatus(
+  admin: AdminGraphqlClient,
+  deps: DiscountFunctionStatusDependencies = {
+    ensureDiscountFunctionActive,
+    getDiscountFunctionStatusWithAutoDisable,
+  },
+): Promise<DiscountFunctionStatusResult> {
+  if (discountFunctionPolicy.allowDiscountFunction) {
+    const activation = await deps.ensureDiscountFunctionActive(admin);
+    return {
+      status: activation.status,
+      message: activation.message,
+      lastSyncAt: activation.lastSyncAt,
+    };
+  }
+
+  return deps.getDiscountFunctionStatusWithAutoDisable(admin);
 }
 
 export async function deactivateDiscountFunction(

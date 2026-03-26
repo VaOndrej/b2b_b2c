@@ -1,14 +1,14 @@
 export const featureFlags = {
   // Margin guard core remains enabled.
   enableMVP1: true,
-  // Discount function stays disabled by current rollout policy.
+  // Advanced discount orchestration is now part of the active rollout.
   enableMVP2: false,
   enableMVP3: false,
-  enableMVP4: false,
+  enableMVP4: true,
   enableMVP5: false,
   enableMVP6: false,
 } as const;
 
 export const discountFunctionPolicy = {
-  allowDiscountFunction: featureFlags.enableMVP2,
+  allowDiscountFunction: featureFlags.enableMVP4,
 } as const;

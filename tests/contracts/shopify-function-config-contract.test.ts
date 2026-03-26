@@ -118,6 +118,16 @@ test("discount query variable contract matches generated config payload", async 
   );
   assert.match(
     query,
+    /\$collectionIds:\s*\[ID!\]/,
+    "[CONTRACT FAIL] Discount query musi deklarovat collectionIds variable.",
+  );
+  assert.match(
+    query,
+    /inCollections\(ids:\s*\$collectionIds\)/,
+    "[CONTRACT FAIL] Discount query musi nacitat product.inCollections pro collection-level discount rules.",
+  );
+  assert.match(
+    query,
     /localization\s*\{[\s\S]*language\s*\{[\s\S]*isoCode/,
     "[CONTRACT FAIL] Discount query musi nacitat localization.language.isoCode pro lokalizovane message.",
   );
@@ -145,6 +155,118 @@ test("discount query variable contract matches generated config payload", async 
     discountConfig.maxCombinedPercentOff,
     35,
     "[CONTRACT FAIL] Discount config musi prenaset maxCombinedPercentOff.",
+  );
+  assert.equal(
+    discountConfig.requestedPercentOff,
+    100,
+    "[CONTRACT FAIL] Discount config musi zachovat requestedPercentOff default.",
+  );
+});
+
+test("discount orchestration config contract normalizes rules, blacklist combinations and segment caps", () => {
+  const config = buildDiscountFunctionConfig({
+    b2bTag: " wholesale ",
+    globalMinPricePercent: 65,
+    allowZeroFinalPrice: false,
+    allowStacking: true,
+    maxCombinedPercentOff: 35,
+    productFloors: [],
+    discountRules: [
+      {
+        id: "collection-rule",
+        scope: "COLLECTION",
+        targetId: " gid://shopify/Collection/ADV_1 ",
+        code: null,
+        segment: "B2B",
+        percentOff: 15.5,
+        priority: 10,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: 70,
+      },
+      {
+        id: "coupon-rule",
+        scope: "COUPON",
+        targetId: null,
+        code: " vip20 ",
+        segment: null,
+        percentOff: 20,
+        priority: 20,
+        stackMode: "EXCLUSIVE",
+        minPricePercentOfBasePrice: null,
+      },
+    ],
+    discountCombinationBlacklistRules: [
+      {
+        leftType: "COUPON_CODE",
+        leftValue: " vip20 ",
+        rightType: "COUPON_CODE",
+        rightValue: " extra10 ",
+        segment: "ALL",
+      },
+    ],
+    discountSegmentCaps: [
+      {
+        segment: "B2B",
+        maxCombinedPercentOff: 22,
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    config.collectionIds,
+    ["gid://shopify/Collection/ADV_1"],
+    "[CONTRACT FAIL] Discount config musi exportovat collectionIds i pro collection-level discount rules.",
+  );
+  assert.deepEqual(
+    config.discountRules,
+    [
+      {
+        id: "collection-rule",
+        scope: "COLLECTION",
+        targetId: "gid://shopify/Collection/ADV_1",
+        code: null,
+        segment: "B2B",
+        percentOff: 15.5,
+        priority: 10,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: 70,
+      },
+      {
+        id: "coupon-rule",
+        scope: "COUPON",
+        targetId: null,
+        code: "VIP20",
+        segment: null,
+        percentOff: 20,
+        priority: 20,
+        stackMode: "EXCLUSIVE",
+        minPricePercentOfBasePrice: null,
+      },
+    ],
+    "[CONTRACT FAIL] Discount config musi normalizovat discountRules payload.",
+  );
+  assert.deepEqual(
+    config.discountCombinationBlacklistRules,
+    [
+      {
+        leftType: "COUPON_CODE",
+        leftValue: "VIP20",
+        rightType: "COUPON_CODE",
+        rightValue: "EXTRA10",
+        segment: "ALL",
+      },
+    ],
+    "[CONTRACT FAIL] Discount config musi normalizovat blacklist combinations.",
+  );
+  assert.deepEqual(
+    config.discountSegmentCaps,
+    [
+      {
+        segment: "B2B",
+        maxCombinedPercentOff: 22,
+      },
+    ],
+    "[CONTRACT FAIL] Discount config musi prenest per-segment caps.",
   );
 });
 

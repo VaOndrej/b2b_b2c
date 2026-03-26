@@ -1,5 +1,6 @@
 query CartInput(
   $b2bTags: [String!]! = ["b2b"]
+  $collectionIds: [ID!]
 ) {
   cart {
     buyerIdentity {
@@ -28,6 +29,10 @@ query CartInput(
         ... on ProductVariant {
           product {
             id
+            inCollections(ids: $collectionIds) {
+              collectionId
+              isMember
+            }
           }
         }
       }

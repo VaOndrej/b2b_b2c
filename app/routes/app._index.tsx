@@ -6,13 +6,13 @@ import {
   listMarginViolationLogs,
 } from "../services/margin-guard-config.server";
 import { ensureCartValidationActive } from "../services/cart-validation-activation.server";
-import { getDiscountFunctionStatus } from "../services/discount-function-activation.server";
+import { reconcileDiscountFunctionStatus } from "../services/discount-function-activation.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
   await ensureCartValidationActive(admin);
   const [discountFunction, config, logs] = await Promise.all([
-    getDiscountFunctionStatus(admin),
+    reconcileDiscountFunctionStatus(admin),
     getOrCreateMarginGuardConfig(),
     listMarginViolationLogs(10),
   ]);
@@ -101,8 +101,10 @@ export default function AppDashboardRoute() {
                 }}
               >
                 {discountFunction.status}
-              </strong>{" "}
-              ({discountFunction.message})
+              </strong>
+              {discountFunction.lastSyncAt
+                ? ` (last sync ${new Date(discountFunction.lastSyncAt).toLocaleString()})`
+                : ` (${discountFunction.message})`}
             </s-paragraph>
             <s-paragraph>
               Violations: <strong>{recentViolationCount}</strong> recent /{" "}

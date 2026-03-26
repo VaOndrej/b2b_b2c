@@ -57,6 +57,9 @@ Jsi test agent pro tento projekt. Tvým cílem je zajistit, aby testy chránily 
 - Neměň produkční kód jen proto, aby prošel slabý test, pokud feature kontrakt neukazuje na skutečný bug.
 
 ## Co preferovat
+- Nezapomeň ještě na Playwright, když jde nějaký test pokrýt i playwright, tak to chceme mít všechno pokryté
+
+## Co preferovat
 
 - Testy veřejného chování před testy interních helperů, pokud není helper sám source of truth.
 - Jednoznačné assertiony s jasným důvodem selhání.

@@ -1,7 +1,38 @@
 import prisma from "../db.server.ts";
+import type {
+  ConfiguredDiscountRule,
+  DiscountBlacklistRule,
+  DiscountRules,
+  DiscountSegmentCap,
+  DiscountStackMode,
+} from "../../core/discount/discount.rules.ts";
+import {
+  buildDiscountRuleLookupKey,
+  canonicalizeDiscountBlacklistPair,
+} from "../../core/discount/discount.identity.ts";
 import type { FloorRuleset } from "../../core/margin/floor.rules.ts";
 
 const DEFAULT_CONFIG_ID = "default";
+
+function orderByCreatedAtAndId() {
+  return [{ createdAt: "asc" as const }, { id: "asc" as const }];
+}
+
+const MARGIN_GUARD_CONFIG_INCLUDE = {
+  productFloors: { orderBy: orderByCreatedAtAndId() },
+  productTierPrices: { orderBy: orderByCreatedAtAndId() },
+  productQuantityRules: { orderBy: orderByCreatedAtAndId() },
+  collectionQuantityRules: { orderBy: orderByCreatedAtAndId() },
+  productCustomerQuantityRules: { orderBy: orderByCreatedAtAndId() },
+  productVisibilityRules: { orderBy: orderByCreatedAtAndId() },
+  productVariantVisibilityRules: { orderBy: orderByCreatedAtAndId() },
+  couponSegmentRules: { orderBy: orderByCreatedAtAndId() },
+  discountRules: { orderBy: orderByCreatedAtAndId() },
+  discountCombinationBlacklistRules: {
+    orderBy: orderByCreatedAtAndId(),
+  },
+  discountSegmentCaps: { orderBy: orderByCreatedAtAndId() },
+};
 
 export function buildQuantityRuleUpdateData(
   existing: { stepQuantity: number | null; maxOrderQuantity: number | null },
@@ -26,6 +57,9 @@ function getMarginGuardPrismaOrThrow() {
     !client.productVisibilityRule ||
     !client.productVariantVisibilityRule ||
     !client.couponSegmentRule ||
+    !client.discountRule ||
+    !client.discountCombinationBlacklistRule ||
+    !client.discountSegmentCap ||
     !client.marginViolationLog
   ) {
     throw new Error(
@@ -40,16 +74,7 @@ export async function getOrCreateMarginGuardConfig() {
   const db = getMarginGuardPrismaOrThrow();
   const existing = await db.marginGuardConfig.findUnique({
     where: { id: DEFAULT_CONFIG_ID },
-    include: {
-      productFloors: true,
-      productTierPrices: true,
-      productQuantityRules: true,
-      collectionQuantityRules: true,
-      productCustomerQuantityRules: true,
-      productVisibilityRules: true,
-      productVariantVisibilityRules: true,
-      couponSegmentRules: true,
-    },
+    include: MARGIN_GUARD_CONFIG_INCLUDE,
   });
 
   if (existing) {
@@ -58,16 +83,7 @@ export async function getOrCreateMarginGuardConfig() {
 
   return db.marginGuardConfig.create({
     data: { id: DEFAULT_CONFIG_ID },
-    include: {
-      productFloors: true,
-      productTierPrices: true,
-      productQuantityRules: true,
-      collectionQuantityRules: true,
-      productCustomerQuantityRules: true,
-      productVisibilityRules: true,
-      productVariantVisibilityRules: true,
-      couponSegmentRules: true,
-    },
+    include: MARGIN_GUARD_CONFIG_INCLUDE,
   });
 }
 
@@ -102,16 +118,7 @@ export async function updateGlobalMarginGuardConfig(input: {
       allowStacking: input.allowStacking,
       maxCombinedPercentOff: input.maxCombinedPercentOff,
     },
-    include: {
-      productFloors: true,
-      productTierPrices: true,
-      productQuantityRules: true,
-      collectionQuantityRules: true,
-      productCustomerQuantityRules: true,
-      productVisibilityRules: true,
-      productVariantVisibilityRules: true,
-      couponSegmentRules: true,
-    },
+    include: MARGIN_GUARD_CONFIG_INCLUDE,
   });
 }
 
@@ -706,6 +713,92 @@ function normalizeAllowedSegment(value: string): "B2B" | "B2C" | "ALL" {
   return "ALL";
 }
 
+function normalizeDiscountRuleScope(
+  value: string,
+): "GLOBAL" | "COLLECTION" | "PRODUCT" | "COUPON" {
+  if (
+    value === "GLOBAL" ||
+    value === "COLLECTION" ||
+    value === "PRODUCT" ||
+    value === "COUPON"
+  ) {
+    return value;
+  }
+  return "GLOBAL";
+}
+
+function normalizeDiscountStackMode(value: string): DiscountStackMode {
+  if (
+    value === "STACKABLE" ||
+    value === "EXCLUSIVE" ||
+    value === "NEVER_WITH_COUPONS"
+  ) {
+    return value;
+  }
+  return "STACKABLE";
+}
+
+function normalizeDiscountReferenceType(
+  value: string,
+): "RULE_ID" | "COUPON_CODE" | "SCOPE" {
+  if (value === "RULE_ID" || value === "COUPON_CODE" || value === "SCOPE") {
+    return value;
+  }
+  return "COUPON_CODE";
+}
+
+function normalizePercentOrNull(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(value)) {
+    return null;
+  }
+  return Math.round(Math.max(0, Math.min(100, value)) * 100) / 100;
+}
+
+export function buildDiscountRuleCanonicalKey(input: {
+  scope: "GLOBAL" | "COLLECTION" | "PRODUCT" | "COUPON";
+  segment?: string | null;
+  targetId?: string | null;
+  code?: string | null;
+}) {
+  let targetId = String(input.targetId ?? "").trim() || null;
+  let code = input.code ?? null;
+
+  if (input.scope === "COLLECTION") {
+    targetId = normalizeCollectionId(targetId);
+    if (!targetId) {
+      return null;
+    }
+  }
+
+  if (input.scope === "PRODUCT" && !targetId) {
+    return null;
+  }
+
+  if (input.scope === "COUPON") {
+    code = normalizeCouponCode(String(input.code ?? input.targetId ?? ""));
+    if (!code) {
+      return null;
+    }
+  }
+
+  return buildDiscountRuleLookupKey({
+    scope: input.scope,
+    targetId,
+    code,
+    segment: input.segment,
+  });
+}
+
+export function buildDiscountCombinationBlacklistCanonicalPairKey(input: {
+  leftType: "RULE_ID" | "COUPON_CODE" | "SCOPE";
+  leftValue: string;
+  rightType: "RULE_ID" | "COUPON_CODE" | "SCOPE";
+  rightValue: string;
+  segment?: string | null;
+}) {
+  return canonicalizeDiscountBlacklistPair(input).pairKey;
+}
+
 export async function upsertCouponSegmentRule(input: {
   code: string;
   allowedSegment: "B2B" | "B2C" | "ALL";
@@ -716,24 +809,17 @@ export async function upsertCouponSegmentRule(input: {
     return null;
   }
   const allowedSegment = normalizeAllowedSegment(input.allowedSegment);
-  const existing = await db.couponSegmentRule.findFirst({
+  return db.couponSegmentRule.upsert({
     where: {
-      configId: DEFAULT_CONFIG_ID,
-      code: normalizedCode,
-    },
-  });
-
-  if (existing) {
-    return db.couponSegmentRule.update({
-      where: { id: existing.id },
-      data: {
-        allowedSegment,
+      configId_code: {
+        configId: DEFAULT_CONFIG_ID,
+        code: normalizedCode,
       },
-    });
-  }
-
-  return db.couponSegmentRule.create({
-    data: {
+    },
+    update: {
+      allowedSegment,
+    },
+    create: {
       configId: DEFAULT_CONFIG_ID,
       code: normalizedCode,
       allowedSegment,
@@ -744,6 +830,202 @@ export async function upsertCouponSegmentRule(input: {
 export async function deleteCouponSegmentRule(id: string) {
   const db = getMarginGuardPrismaOrThrow();
   return db.couponSegmentRule.delete({ where: { id } });
+}
+
+export async function upsertDiscountRule(input: {
+  scope: "GLOBAL" | "COLLECTION" | "PRODUCT" | "COUPON";
+  targetId?: string | null;
+  code?: string | null;
+  segment?: "B2B" | "B2C";
+  percentOff: number;
+  priority: number;
+  stackMode: DiscountStackMode;
+  minPricePercentOfBasePrice?: number | null;
+}) {
+  const db = getMarginGuardPrismaOrThrow();
+  const scope = normalizeDiscountRuleScope(input.scope);
+  const segment = input.segment ?? null;
+  const percentOff = normalizePercentOrNull(input.percentOff);
+  const minPricePercentOfBasePrice = normalizePercentOrNull(
+    input.minPricePercentOfBasePrice ?? null,
+  );
+  const priority = Number.isFinite(input.priority)
+    ? Math.max(0, Math.floor(input.priority))
+    : 100;
+  const stackMode = normalizeDiscountStackMode(input.stackMode);
+
+  let targetId: string | null = null;
+  let code: string | null = null;
+  if (scope === "COLLECTION") {
+    targetId = normalizeCollectionId(input.targetId);
+  } else if (scope === "PRODUCT") {
+    targetId = String(input.targetId ?? "").trim() || null;
+  } else if (scope === "COUPON") {
+    code = normalizeCouponCode(String(input.code ?? input.targetId ?? ""));
+  }
+
+  if (percentOff == null || percentOff <= 0) {
+    return null;
+  }
+  const canonicalKey = buildDiscountRuleCanonicalKey({
+    scope,
+    segment,
+    targetId,
+    code,
+  });
+  if (!canonicalKey) {
+    return null;
+  }
+
+  return db.discountRule.upsert({
+    where: {
+      configId_canonicalKey: {
+        configId: DEFAULT_CONFIG_ID,
+        canonicalKey,
+      },
+    },
+    update: {
+      percentOff,
+      priority,
+      stackMode,
+      minPricePercentOfBasePrice,
+      scope,
+      targetId,
+      code,
+      segment,
+      canonicalKey,
+    },
+    create: {
+      configId: DEFAULT_CONFIG_ID,
+      scope,
+      targetId,
+      code,
+      segment,
+      canonicalKey,
+      percentOff,
+      priority,
+      stackMode,
+      minPricePercentOfBasePrice,
+    },
+  });
+}
+
+export async function deleteDiscountRule(id: string) {
+  const db = getMarginGuardPrismaOrThrow();
+  return db.discountRule.delete({ where: { id } });
+}
+
+function normalizeDiscountReferenceValue(
+  type: "RULE_ID" | "COUPON_CODE" | "SCOPE",
+  value: string,
+): string | null {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (type === "COUPON_CODE") {
+    return normalizeCouponCode(trimmed);
+  }
+  if (type === "SCOPE") {
+    return normalizeDiscountRuleScope(trimmed);
+  }
+  return trimmed;
+}
+
+export async function upsertDiscountCombinationBlacklistRule(input: {
+  leftType: "RULE_ID" | "COUPON_CODE" | "SCOPE";
+  leftValue: string;
+  rightType: "RULE_ID" | "COUPON_CODE" | "SCOPE";
+  rightValue: string;
+  segment?: "ALL" | "B2B" | "B2C";
+}) {
+  const db = getMarginGuardPrismaOrThrow();
+  const leftType = normalizeDiscountReferenceType(input.leftType);
+  const rightType = normalizeDiscountReferenceType(input.rightType);
+  const leftValue = normalizeDiscountReferenceValue(leftType, input.leftValue);
+  const rightValue = normalizeDiscountReferenceValue(rightType, input.rightValue);
+  const segment =
+    input.segment === "B2B" || input.segment === "B2C" || input.segment === "ALL"
+      ? input.segment
+      : null;
+  if (!leftValue || !rightValue) {
+    return null;
+  }
+
+  const canonicalPair = canonicalizeDiscountBlacklistPair({
+    leftType,
+    leftValue,
+    rightType,
+    rightValue,
+    segment,
+  });
+  const canonicalPairKey = canonicalPair.pairKey;
+
+  return db.discountCombinationBlacklistRule.upsert({
+    where: {
+      configId_canonicalPairKey: {
+        configId: DEFAULT_CONFIG_ID,
+        canonicalPairKey,
+      },
+    },
+    update: {
+      leftType: canonicalPair.leftType,
+      leftValue: canonicalPair.leftValue,
+      rightType: canonicalPair.rightType,
+      rightValue: canonicalPair.rightValue,
+      segment,
+      canonicalPairKey,
+    },
+    create: {
+      configId: DEFAULT_CONFIG_ID,
+      canonicalPairKey,
+      leftType: canonicalPair.leftType,
+      leftValue: canonicalPair.leftValue,
+      rightType: canonicalPair.rightType,
+      rightValue: canonicalPair.rightValue,
+      segment,
+    },
+  });
+}
+
+export async function deleteDiscountCombinationBlacklistRule(id: string) {
+  const db = getMarginGuardPrismaOrThrow();
+  return db.discountCombinationBlacklistRule.delete({ where: { id } });
+}
+
+export async function upsertDiscountSegmentCap(input: {
+  segment: "ALL" | "B2B" | "B2C";
+  maxCombinedPercentOff: number;
+}) {
+  const db = getMarginGuardPrismaOrThrow();
+  const segment =
+    input.segment === "B2B" || input.segment === "B2C" ? input.segment : "ALL";
+  const maxCombinedPercentOff = normalizePercentOrNull(input.maxCombinedPercentOff);
+  if (maxCombinedPercentOff == null) {
+    return null;
+  }
+
+  return db.discountSegmentCap.upsert({
+    where: {
+      configId_segment: {
+        configId: DEFAULT_CONFIG_ID,
+        segment,
+      },
+    },
+    update: {
+      maxCombinedPercentOff,
+    },
+    create: {
+      configId: DEFAULT_CONFIG_ID,
+      segment,
+      maxCombinedPercentOff,
+    },
+  });
+}
+
+export async function deleteDiscountSegmentCap(id: string) {
+  const db = getMarginGuardPrismaOrThrow();
+  return db.discountSegmentCap.delete({ where: { id } });
 }
 
 export async function listMarginViolationLogs(limit = 100) {
@@ -810,6 +1092,96 @@ export function buildFloorRuleset(config: {
       minPercentOfBasePrice: rule.minPercentOfBasePrice,
       allowZeroFinalPriceOverride: rule.allowZeroFinalPrice ?? undefined,
     })),
+  };
+}
+
+export function buildDiscountRuleset(config: {
+  allowStacking: boolean;
+  maxCombinedPercentOff?: number | null;
+  discountRules?: Array<{
+    id: string;
+    scope: string;
+    targetId: string | null;
+    code: string | null;
+    segment: string | null;
+    percentOff: number;
+    priority: number;
+    stackMode: string;
+    minPricePercentOfBasePrice: number | null;
+  }>;
+  discountCombinationBlacklistRules?: Array<{
+    leftType: string;
+    leftValue: string;
+    rightType: string;
+    rightValue: string;
+    segment: string | null;
+  }>;
+  discountSegmentCaps?: Array<{
+    segment: string;
+    maxCombinedPercentOff: number;
+  }>;
+}): DiscountRules {
+  const rules: ConfiguredDiscountRule[] = [];
+  const blacklists: DiscountBlacklistRule[] = [];
+  const segmentCaps: DiscountSegmentCap[] = [];
+
+  for (const rule of config.discountRules ?? []) {
+    const scope = normalizeDiscountRuleScope(rule.scope);
+    const normalizedSegment =
+      rule.segment === "B2B" || rule.segment === "B2C" ? rule.segment : undefined;
+    const percentOff = normalizePercentOrNull(rule.percentOff);
+    if (percentOff == null || percentOff <= 0) {
+      continue;
+    }
+    rules.push({
+      id: rule.id,
+      scope,
+      targetId: rule.targetId ?? undefined,
+      code: rule.code ?? undefined,
+      segment: normalizedSegment,
+      percentOff,
+      priority: Number.isFinite(rule.priority) ? Math.floor(rule.priority) : 100,
+      stackMode: normalizeDiscountStackMode(rule.stackMode),
+      minPricePercentOfBasePrice:
+        normalizePercentOrNull(rule.minPricePercentOfBasePrice ?? null) ?? undefined,
+    });
+  }
+
+  for (const blacklistRule of config.discountCombinationBlacklistRules ?? []) {
+    blacklists.push({
+      leftType: normalizeDiscountReferenceType(blacklistRule.leftType),
+      leftValue: blacklistRule.leftValue,
+      rightType: normalizeDiscountReferenceType(blacklistRule.rightType),
+      rightValue: blacklistRule.rightValue,
+      segment:
+        blacklistRule.segment === "B2B" ||
+        blacklistRule.segment === "B2C" ||
+        blacklistRule.segment === "ALL"
+          ? blacklistRule.segment
+          : undefined,
+    });
+  }
+
+  for (const cap of config.discountSegmentCaps ?? []) {
+    const segment =
+      cap.segment === "B2B" || cap.segment === "B2C" ? cap.segment : "ALL";
+    const maxCombinedPercentOff = normalizePercentOrNull(cap.maxCombinedPercentOff);
+    if (maxCombinedPercentOff == null) {
+      continue;
+    }
+    segmentCaps.push({
+      segment,
+      maxCombinedPercentOff,
+    });
+  }
+
+  return {
+    allowStacking: config.allowStacking,
+    maxCombinedPercentOff:
+      normalizePercentOrNull(config.maxCombinedPercentOff ?? null) ?? undefined,
+    rules,
+    blacklists,
+    segmentCaps,
   };
 }
 

@@ -1,15 +1,18 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { useLoaderData, useNavigation } from "react-router";
+import { useActionData, useLoaderData, useNavigation } from "react-router";
 import { AdminCatalogPicker } from "../components/admin-catalog-picker";
 import { authenticate } from "../shopify.server";
 import { ensureCartValidationActive } from "../services/cart-validation-activation.server";
 import {
   deactivateDiscountFunction,
-  getDiscountFunctionStatusWithAutoDisable,
+  reconcileDiscountFunctionStatus,
 } from "../services/discount-function-activation.server";
 import {
   deleteCollectionMaximumQuantityRule,
   deleteCouponSegmentRule,
+  deleteDiscountCombinationBlacklistRule,
+  deleteDiscountRule,
+  deleteDiscountSegmentCap,
   deleteProductCustomerMaximumQuantityRule,
   deleteProductFloorRule,
   deleteProductMaximumQuantityRule,
@@ -21,6 +24,9 @@ import {
   getOrCreateMarginGuardConfig,
   upsertCollectionMaximumQuantityRule,
   upsertCouponSegmentRule,
+  upsertDiscountCombinationBlacklistRule,
+  upsertDiscountRule,
+  upsertDiscountSegmentCap,
   upsertProductCustomerMaximumQuantityRule,
   upsertProductFloorRule,
   upsertProductMaximumQuantityRule,
@@ -31,10 +37,36 @@ import {
   upsertProductTierPriceRule,
   updateGlobalMarginGuardConfig,
 } from "../services/margin-guard-config.server";
+import { resolvePricingSimulationInput } from "../services/pricing-preview.server.ts";
+import { resolveSegment } from "../../core/segment/segment.engine";
+import { applyDiscountFunction } from "../../functions/discount-function/src/index.ts";
 
 function parseNumber(input: FormDataEntryValue | null, fallback = 0): number {
   const value = Number(input);
   return Number.isFinite(value) ? value : fallback;
+}
+
+function parseCsvValues(input: FormDataEntryValue | null): string[] {
+  return String(input ?? "")
+    .split(/[\n,]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function parseSimulationDiscounts(input: FormDataEntryValue | null) {
+  return parseCsvValues(input)
+    .map((entry) => {
+      const [rawCode, rawPercent] = entry.split(":");
+      const percentOff = Number(rawPercent);
+      if (!rawCode || !Number.isFinite(percentOff)) {
+        return null;
+      }
+      return {
+        code: rawCode.trim().toUpperCase(),
+        percentOff,
+      };
+    })
+    .filter((value): value is { code: string; percentOff: number } => Boolean(value));
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -43,12 +75,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   let autoActivationMessage: string | null = null;
   let discountFunctionStatus: "ACTIVE" | "INACTIVE" | "ERROR" = "ERROR";
   let discountFunctionMessage = "Discount status is unknown.";
+  let discountFunctionLastSyncAt: string | Date | null = null;
   const syncActivation = await ensureCartValidationActive(admin);
   autoActivationMessage = syncActivation.message;
   config = await getOrCreateMarginGuardConfig();
-  const discountStatus = await getDiscountFunctionStatusWithAutoDisable(admin);
+  const discountStatus = await reconcileDiscountFunctionStatus(admin);
   discountFunctionStatus = discountStatus.status;
   discountFunctionMessage = discountStatus.message;
+  discountFunctionLastSyncAt = discountStatus.lastSyncAt ?? null;
   const url = new URL(request.url);
   const activation = url.searchParams.get("activation");
   const message = url.searchParams.get("message");
@@ -61,6 +95,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     autoActivationMessage,
     discountFunctionStatus,
     discountFunctionMessage,
+    discountFunctionLastSyncAt,
   };
 };
 
@@ -358,6 +393,154 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
+  if (intent === "save-discount-rule") {
+    const scopeRaw = String(formData.get("scope") ?? "GLOBAL").trim();
+    const segmentRaw = String(formData.get("segment") ?? "").trim();
+    const targetId =
+      scopeRaw === "PRODUCT"
+        ? String(formData.get("productId") ?? "").trim()
+        : scopeRaw === "COLLECTION"
+          ? String(formData.get("collectionId") ?? "").trim()
+          : undefined;
+    const code = String(formData.get("code") ?? "").trim();
+    const percentOff = parseNumber(formData.get("percentOff"), NaN);
+    const priority = Math.floor(parseNumber(formData.get("priority"), 100));
+    const minPricePercentOfBasePriceRaw = String(
+      formData.get("minPricePercentOfBasePrice") ?? "",
+    ).trim();
+    const minPricePercentOfBasePrice = minPricePercentOfBasePriceRaw
+      ? Number(minPricePercentOfBasePriceRaw)
+      : null;
+    await upsertDiscountRule({
+      scope:
+        scopeRaw === "COLLECTION" ||
+        scopeRaw === "PRODUCT" ||
+        scopeRaw === "COUPON"
+          ? scopeRaw
+          : "GLOBAL",
+      targetId,
+      code,
+      segment: segmentRaw === "B2B" || segmentRaw === "B2C" ? segmentRaw : undefined,
+      percentOff,
+      priority,
+      stackMode:
+        String(formData.get("stackMode") ?? "STACKABLE").trim() === "EXCLUSIVE"
+          ? "EXCLUSIVE"
+          : String(formData.get("stackMode") ?? "STACKABLE").trim() ===
+              "NEVER_WITH_COUPONS"
+            ? "NEVER_WITH_COUPONS"
+            : "STACKABLE",
+      minPricePercentOfBasePrice:
+        minPricePercentOfBasePrice != null &&
+        Number.isFinite(minPricePercentOfBasePrice)
+          ? minPricePercentOfBasePrice
+          : null,
+    });
+  }
+
+  if (intent === "delete-discount-rule") {
+    const id = String(formData.get("id") ?? "");
+    if (id) {
+      await deleteDiscountRule(id);
+    }
+  }
+
+  if (intent === "save-discount-blacklist-rule") {
+    await upsertDiscountCombinationBlacklistRule({
+      leftType:
+        String(formData.get("leftType") ?? "COUPON_CODE").trim() === "RULE_ID"
+          ? "RULE_ID"
+          : String(formData.get("leftType") ?? "COUPON_CODE").trim() === "SCOPE"
+            ? "SCOPE"
+            : "COUPON_CODE",
+      leftValue: String(formData.get("leftValue") ?? "").trim(),
+      rightType:
+        String(formData.get("rightType") ?? "COUPON_CODE").trim() === "RULE_ID"
+          ? "RULE_ID"
+          : String(formData.get("rightType") ?? "COUPON_CODE").trim() === "SCOPE"
+            ? "SCOPE"
+            : "COUPON_CODE",
+      rightValue: String(formData.get("rightValue") ?? "").trim(),
+      segment:
+        String(formData.get("segment") ?? "").trim() === "B2B"
+          ? "B2B"
+          : String(formData.get("segment") ?? "").trim() === "B2C"
+            ? "B2C"
+            : "ALL",
+    });
+  }
+
+  if (intent === "delete-discount-blacklist-rule") {
+    const id = String(formData.get("id") ?? "");
+    if (id) {
+      await deleteDiscountCombinationBlacklistRule(id);
+    }
+  }
+
+  if (intent === "save-discount-segment-cap") {
+    await upsertDiscountSegmentCap({
+      segment:
+        String(formData.get("segment") ?? "").trim() === "B2B"
+          ? "B2B"
+          : String(formData.get("segment") ?? "").trim() === "B2C"
+            ? "B2C"
+            : "ALL",
+      maxCombinedPercentOff: parseNumber(
+        formData.get("maxCombinedPercentOff"),
+        NaN,
+      ),
+    });
+  }
+
+  if (intent === "delete-discount-segment-cap") {
+    const id = String(formData.get("id") ?? "");
+    if (id) {
+      await deleteDiscountSegmentCap(id);
+    }
+  }
+
+  if (intent === "simulate-pricing") {
+    const config = await getOrCreateMarginGuardConfig();
+    const buyerHasB2BTag = formData.get("buyerHasB2BTag") === "on";
+    const buyerHasPurchasingCompany =
+      formData.get("buyerHasPurchasingCompany") === "on";
+    const segment = resolveSegment({
+      customerTags: buyerHasB2BTag ? [config.b2bTag] : [],
+      b2bTag: config.b2bTag,
+      hasPurchasingCompany: buyerHasPurchasingCompany,
+    });
+    const result = applyDiscountFunction({
+      ...resolvePricingSimulationInput(config, {
+        productId: String(formData.get("productId") ?? "").trim(),
+        variantId: String(formData.get("variantId") ?? "").trim() || undefined,
+        segment: segment.segment,
+        basePrice: parseNumber(formData.get("basePrice"), 0),
+        b2bOverridePrice: (() => {
+          const raw = String(formData.get("b2bOverridePrice") ?? "").trim();
+          if (!raw) {
+            return undefined;
+          }
+          const parsed = Number(raw);
+          return Number.isFinite(parsed) ? parsed : undefined;
+        })(),
+        quantity: Math.max(1, Math.floor(parseNumber(formData.get("quantity"), 1))),
+        collectionIds: parseCsvValues(formData.get("collectionIds")),
+        enteredDiscountCodes: parseCsvValues(formData.get("enteredDiscountCodes")).map(
+          (code) => code.toUpperCase(),
+        ),
+        discounts: parseSimulationDiscounts(formData.get("discounts")),
+      }),
+    });
+
+    return {
+      simulationResult: {
+        segment: segment.segment,
+        source: segment.source,
+        result,
+      },
+    };
+  }
+
   if (intent === "deactivate-discount-function") {
     const result = await deactivateDiscountFunction(admin);
     const url = new URL(request.url);
@@ -386,7 +569,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     intent === "save-product-variant-visibility-rule" ||
     intent === "delete-product-variant-visibility-rule" ||
     intent === "save-coupon-segment-rule" ||
-    intent === "delete-coupon-segment-rule"
+    intent === "delete-coupon-segment-rule" ||
+    intent === "save-discount-rule" ||
+    intent === "delete-discount-rule" ||
+    intent === "save-discount-blacklist-rule" ||
+    intent === "delete-discount-blacklist-rule" ||
+    intent === "save-discount-segment-cap" ||
+    intent === "delete-discount-segment-cap"
   ) {
     await ensureCartValidationActive(admin);
   }
@@ -395,6 +584,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function AppSettingsRoute() {
+  const actionData = useActionData() as
+    | {
+        simulationResult?: {
+          segment: "B2B" | "B2C";
+          source: string;
+          result: ReturnType<typeof applyDiscountFunction>;
+        };
+      }
+    | undefined;
   const {
     config,
     activation,
@@ -403,6 +601,7 @@ export default function AppSettingsRoute() {
     autoActivationMessage,
     discountFunctionStatus,
     discountFunctionMessage,
+    discountFunctionLastSyncAt,
   } =
     useLoaderData<typeof loader>();
   const navigation = useNavigation();
@@ -430,6 +629,17 @@ export default function AppSettingsRoute() {
     (config as any).productVariantVisibilityRules,
   )
     ? (config as any).productVariantVisibilityRules
+    : [];
+  const advancedDiscountRules = Array.isArray((config as any).discountRules)
+    ? (config as any).discountRules
+    : [];
+  const discountBlacklistRules = Array.isArray(
+    (config as any).discountCombinationBlacklistRules,
+  )
+    ? (config as any).discountCombinationBlacklistRules
+    : [];
+  const discountSegmentCaps = Array.isArray((config as any).discountSegmentCaps)
+    ? (config as any).discountSegmentCaps
     : [];
 
   return (
@@ -1168,11 +1378,355 @@ export default function AppSettingsRoute() {
         </s-box>
       </s-section>
 
+      <s-section heading="Advanced discount orchestration rules">
+        <form method="post">
+          <input type="hidden" name="intent" value="save-discount-rule" />
+          <s-stack direction="block" gap="base">
+            <label>
+              Scope
+              <select name="scope" defaultValue="GLOBAL">
+                <option value="GLOBAL">Global</option>
+                <option value="COLLECTION">Collection</option>
+                <option value="PRODUCT">Product</option>
+                <option value="COUPON">Coupon</option>
+              </select>
+            </label>
+            <AdminCatalogPicker
+              name="productId"
+              label="Product (for product scope)"
+              resourceType="product"
+            />
+            <AdminCatalogPicker
+              name="collectionId"
+              label="Collection (for collection scope)"
+              resourceType="collection"
+            />
+            <label>
+              Coupon code (for coupon scope)
+              <input name="code" placeholder="VIP20" />
+            </label>
+            <label>
+              Segment (optional)
+              <select name="segment" defaultValue="">
+                <option value="">All segments</option>
+                <option value="B2B">B2B</option>
+                <option value="B2C">B2C</option>
+              </select>
+            </label>
+            <label>
+              Percent off
+              <input
+                name="percentOff"
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                defaultValue={10}
+                required
+              />
+            </label>
+            <label>
+              Priority
+              <input name="priority" type="number" step={1} defaultValue={100} />
+            </label>
+            <label>
+              Stack mode
+              <select name="stackMode" defaultValue="STACKABLE">
+                <option value="STACKABLE">Stackable</option>
+                <option value="EXCLUSIVE">Exclusive</option>
+                <option value="NEVER_WITH_COUPONS">Never with coupons</option>
+              </select>
+            </label>
+            <label>
+              Minimum price percent of base price (optional)
+              <input
+                name="minPricePercentOfBasePrice"
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                placeholder="e.g. 75"
+              />
+            </label>
+            <button type="submit" disabled={isSubmitting}>
+              Save advanced discount rule
+            </button>
+          </s-stack>
+        </form>
+
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Configured advanced discount rules</s-heading>
+          {advancedDiscountRules.length === 0 ? (
+            <s-paragraph>No advanced discount rules yet.</s-paragraph>
+          ) : (
+            <s-stack direction="block" gap="small">
+              {advancedDiscountRules.map((rule: any) => (
+                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
+                  <s-text>
+                    {rule.scope}
+                    {rule.targetId ? ` | ${rule.targetId}` : ""}
+                    {rule.code ? ` | ${rule.code}` : ""}
+                    {" | "}
+                    {rule.segment ?? "ALL"} | {rule.percentOff}% | priority {rule.priority}
+                    {" | "}
+                    {rule.stackMode}
+                    {" | "}
+                    min-price:{" "}
+                    {rule.minPricePercentOfBasePrice == null
+                      ? "inherit"
+                      : `${rule.minPricePercentOfBasePrice}%`}
+                  </s-text>
+                  <form method="post">
+                    <input type="hidden" name="intent" value="delete-discount-rule" />
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" disabled={isSubmitting}>
+                      Delete
+                    </button>
+                  </form>
+                </s-stack>
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+
+      <s-section heading="Discount blacklist combinations">
+        <form method="post">
+          <input type="hidden" name="intent" value="save-discount-blacklist-rule" />
+          <s-stack direction="block" gap="base">
+            <label>
+              Left type
+              <select name="leftType" defaultValue="COUPON_CODE">
+                <option value="COUPON_CODE">Coupon code</option>
+                <option value="SCOPE">Rule scope</option>
+                <option value="RULE_ID">Rule ID</option>
+              </select>
+            </label>
+            <label>
+              Left value
+              <input name="leftValue" placeholder="VIP20 or GLOBAL" required />
+            </label>
+            <label>
+              Right type
+              <select name="rightType" defaultValue="COUPON_CODE">
+                <option value="COUPON_CODE">Coupon code</option>
+                <option value="SCOPE">Rule scope</option>
+                <option value="RULE_ID">Rule ID</option>
+              </select>
+            </label>
+            <label>
+              Right value
+              <input name="rightValue" placeholder="SPRING10 or COLLECTION" required />
+            </label>
+            <label>
+              Segment
+              <select name="segment" defaultValue="ALL">
+                <option value="ALL">All segments</option>
+                <option value="B2B">B2B only</option>
+                <option value="B2C">B2C only</option>
+              </select>
+            </label>
+            <button type="submit" disabled={isSubmitting}>
+              Save blacklist rule
+            </button>
+          </s-stack>
+        </form>
+
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Configured blacklist rules</s-heading>
+          {discountBlacklistRules.length === 0 ? (
+            <s-paragraph>No blacklist rules yet.</s-paragraph>
+          ) : (
+            <s-stack direction="block" gap="small">
+              {discountBlacklistRules.map((rule: any) => (
+                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
+                  <s-text>
+                    {rule.leftType}:{rule.leftValue} x {rule.rightType}:{rule.rightValue} |{" "}
+                    {rule.segment ?? "ALL"}
+                  </s-text>
+                  <form method="post">
+                    <input
+                      type="hidden"
+                      name="intent"
+                      value="delete-discount-blacklist-rule"
+                    />
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" disabled={isSubmitting}>
+                      Delete
+                    </button>
+                  </form>
+                </s-stack>
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+
+      <s-section heading="Per-segment discount caps">
+        <form method="post">
+          <input type="hidden" name="intent" value="save-discount-segment-cap" />
+          <s-stack direction="block" gap="base">
+            <label>
+              Segment
+              <select name="segment" defaultValue="ALL">
+                <option value="ALL">All segments</option>
+                <option value="B2B">B2B only</option>
+                <option value="B2C">B2C only</option>
+              </select>
+            </label>
+            <label>
+              Max combined discount percent
+              <input
+                name="maxCombinedPercentOff"
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                defaultValue={40}
+                required
+              />
+            </label>
+            <button type="submit" disabled={isSubmitting}>
+              Save segment cap
+            </button>
+          </s-stack>
+        </form>
+
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Configured segment caps</s-heading>
+          {discountSegmentCaps.length === 0 ? (
+            <s-paragraph>No segment caps yet.</s-paragraph>
+          ) : (
+            <s-stack direction="block" gap="small">
+              {discountSegmentCaps.map((cap: any) => (
+                <s-stack key={cap.id} direction="inline" gap="base" alignItems="center">
+                  <s-text>
+                    {cap.segment} | max combined {cap.maxCombinedPercentOff}%
+                  </s-text>
+                  <form method="post">
+                    <input
+                      type="hidden"
+                      name="intent"
+                      value="delete-discount-segment-cap"
+                    />
+                    <input type="hidden" name="id" value={cap.id} />
+                    <button type="submit" disabled={isSubmitting}>
+                      Delete
+                    </button>
+                  </form>
+                </s-stack>
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+
       <s-section heading="Testing">
-        <s-paragraph>
-          Validation simulator was removed. Use automated guard tests with{" "}
-          <code>npm run guard:test</code>.
-        </s-paragraph>
+        <form method="post">
+          <input type="hidden" name="intent" value="simulate-pricing" />
+          <s-stack direction="block" gap="base">
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
+            <AdminCatalogPicker
+              name="variantId"
+              label="Variant (optional)"
+              resourceType="variant"
+            />
+            <label>
+              Collection IDs for this preview (comma or newline separated)
+              <textarea
+                name="collectionIds"
+                rows={3}
+                placeholder="gid://shopify/Collection/1, gid://shopify/Collection/2"
+              />
+            </label>
+            <label>
+              Base price
+              <input
+                name="basePrice"
+                type="number"
+                min={0}
+                step="0.01"
+                defaultValue={100}
+                required
+              />
+            </label>
+            <label>
+              B2B override price (optional)
+              <input name="b2bOverridePrice" type="number" min={0} step="0.01" />
+            </label>
+            <label>
+              Quantity
+              <input name="quantity" type="number" min={1} step={1} defaultValue={1} />
+            </label>
+            <label>
+              Entered discount codes (comma or newline separated)
+              <textarea name="enteredDiscountCodes" rows={2} placeholder="VIP20, EXTRA10" />
+            </label>
+            <label>
+              Existing/manual discounts as CODE:PERCENT (comma or newline separated)
+              <textarea name="discounts" rows={2} placeholder="LEGACY10:10, EXTRA5:5" />
+            </label>
+            <label>
+              <input name="buyerHasB2BTag" type="checkbox" />
+              Buyer has B2B tag
+            </label>
+            <label>
+              <input name="buyerHasPurchasingCompany" type="checkbox" />
+              Buyer has purchasing company
+            </label>
+            <button type="submit" disabled={isSubmitting}>
+              Run pricing simulator
+            </button>
+          </s-stack>
+        </form>
+
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Latest simulator result</s-heading>
+          {actionData?.simulationResult ? (
+            <s-stack direction="block" gap="small">
+              <s-text>
+                Segment: {actionData.simulationResult.segment} | source:{" "}
+                {actionData.simulationResult.source}
+              </s-text>
+              <s-text>
+                Action: {actionData.simulationResult.result.action}
+              </s-text>
+              <s-text>
+                Final price: {actionData.simulationResult.result.result.finalPrice} | floor:{" "}
+                {actionData.simulationResult.result.result.floorPrice} | total off:{" "}
+                {actionData.simulationResult.result.result.totalPercentOff}%
+              </s-text>
+              <s-text>
+                Applied discounts:{" "}
+                {actionData.simulationResult.result.result.appliedDiscounts.length}
+                {" | "}
+                Rejected discounts:{" "}
+                {actionData.simulationResult.result.result.rejectedDiscounts.length}
+              </s-text>
+              <pre
+                style={{
+                  whiteSpace: "pre-wrap",
+                  background: "#f8fafc",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  overflowX: "auto",
+                }}
+              >
+                {JSON.stringify(actionData.simulationResult.result, null, 2)}
+              </pre>
+            </s-stack>
+          ) : (
+            <s-paragraph>
+              Run a scenario to preview priority resolution, blacklist handling, caps,
+              and final price.
+            </s-paragraph>
+          )}
+        </s-box>
       </s-section>
 
       <s-section heading="Live Shopify Function activation">
@@ -1223,12 +1777,10 @@ export default function AppSettingsRoute() {
                 }}
               >
                 {discountFunctionStatus}
-              </strong>{" "}
-              | {discountFunctionMessage}
-            </s-paragraph>
-            <s-paragraph>
-              Discount function is automatically forced OFF for the current MVP
-              phase.
+              </strong>
+              {discountFunctionLastSyncAt
+                ? ` | last sync: ${new Date(discountFunctionLastSyncAt).toLocaleString()}`
+                : ` | ${discountFunctionMessage}`}
             </s-paragraph>
             {discountActionMessage && (
               <s-paragraph>{discountActionMessage}</s-paragraph>

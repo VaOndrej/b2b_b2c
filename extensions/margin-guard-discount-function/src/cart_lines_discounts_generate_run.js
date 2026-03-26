@@ -13,8 +13,16 @@ const MESSAGES = {
       "One or more discount codes are not available for your customer segment. Next step: remove unavailable codes and try again.",
     rejectByStacking:
       "Multiple discount codes are not allowed by current settings. Next step: keep only one code and try again.",
+    rejectByBlacklist:
+      "Some discount codes cannot be combined. Next step: remove conflicting codes and try again.",
     rejectBySegmentAndStacking:
       "Some discount codes were rejected by segment eligibility and stacking policy. Next step: keep one eligible code and try again.",
+    rejectBySegmentAndBlacklist:
+      "Some discount codes were rejected by segment eligibility and blacklist rules. Next step: remove unavailable or conflicting codes and try again.",
+    rejectByStackingAndBlacklist:
+      "Some discount codes were rejected by stacking policy and blacklist rules. Next step: keep only compatible codes and try again.",
+    rejectBySegmentStackingAndBlacklist:
+      "Some discount codes were rejected by segment eligibility, stacking policy, and blacklist rules. Next step: keep only compatible eligible codes and try again.",
   },
   CS: {
     candidatePrefix: "Povolena sleva",
@@ -22,8 +30,16 @@ const MESSAGES = {
       "Nektere slevove kody nejsou dostupne pro vas segment. Dalsi krok: odeberte neplatne kody a zkuste znovu.",
     rejectByStacking:
       "Vice slevovych kodu neni podle aktualniho nastaveni povoleno. Dalsi krok: nechte pouze jeden kod a zkuste znovu.",
+    rejectByBlacklist:
+      "Nektere slevove kody nelze kombinovat. Dalsi krok: odeberte konfliktni kody a zkuste znovu.",
     rejectBySegmentAndStacking:
       "Nektere kody byly odmitnuty kvuli segmentu i pravidlum kombinace. Dalsi krok: nechte jeden platny kod a zkuste znovu.",
+    rejectBySegmentAndBlacklist:
+      "Nektere kody byly odmitnuty kvuli segmentu i blacklist pravidlum. Dalsi krok: odeberte neplatne nebo konfliktni kody a zkuste znovu.",
+    rejectByStackingAndBlacklist:
+      "Nektere kody byly odmitnuty kvuli pravidlum kombinace i blacklistu. Dalsi krok: nechte pouze kompatibilni kody a zkuste znovu.",
+    rejectBySegmentStackingAndBlacklist:
+      "Nektere kody byly odmitnuty kvuli segmentu, pravidlum kombinace i blacklistu. Dalsi krok: nechte pouze kompatibilni platne kody a zkuste znovu.",
   },
 };
 
@@ -51,6 +67,13 @@ function roundMoney(value) {
 }
 
 /**
+ * @param {number} value
+ */
+function roundPercent(value) {
+  return Math.round(clampPercent(value) * 100) / 100;
+}
+
+/**
  * @param {unknown} value
  */
 function normalizePercentOrNull(value) {
@@ -61,7 +84,7 @@ function normalizePercentOrNull(value) {
   if (!Number.isFinite(parsed)) {
     return null;
   }
-  return roundMoney(clampPercent(parsed));
+  return roundPercent(parsed);
 }
 
 /**
@@ -90,6 +113,45 @@ function normalizeAllowedSegment(value) {
     return value;
   }
   return "ALL";
+}
+
+/**
+ * @param {unknown} value
+ */
+function normalizeDiscountRuleScope(value) {
+  if (
+    value === "GLOBAL" ||
+    value === "COLLECTION" ||
+    value === "PRODUCT" ||
+    value === "COUPON"
+  ) {
+    return value;
+  }
+  return "GLOBAL";
+}
+
+/**
+ * @param {unknown} value
+ */
+function normalizeDiscountStackMode(value) {
+  if (
+    value === "STACKABLE" ||
+    value === "EXCLUSIVE" ||
+    value === "NEVER_WITH_COUPONS"
+  ) {
+    return value;
+  }
+  return "STACKABLE";
+}
+
+/**
+ * @param {unknown} value
+ */
+function normalizeDiscountReferenceType(value) {
+  if (value === "RULE_ID" || value === "COUPON_CODE" || value === "SCOPE") {
+    return value;
+  }
+  return "COUPON_CODE";
 }
 
 /**
@@ -147,22 +209,220 @@ function resolveTierUnitPrice(tierMap, productId, quantity) {
 }
 
 /**
+ * @param {RunInput["cart"]["lines"][number]} line
+ */
+function resolveLineSubtotal(line) {
+  return Math.max(0, toNumber(line?.cost?.subtotalAmount?.amount, 0));
+}
+
+/**
+ * @param {RunInput["cart"]["lines"][number]} line
+ */
+function resolveLineTotal(line) {
+  return Math.max(0, toNumber(line?.cost?.totalAmount?.amount, 0));
+}
+
+/**
+ * @param {number} requestedPercentOff
+ * @param {number} maxPercentByFloor
+ * @param {boolean} allowZeroFinalPrice
+ * @param {number | null} maxRemainingCombinedPercent
+ */
+function resolveAllowedPercent(
+  requestedPercentOff,
+  maxPercentByFloor,
+  allowZeroFinalPrice,
+  maxRemainingCombinedPercent,
+) {
+  const maxByZeroPolicy = allowZeroFinalPrice ? 100 : 99.99;
+  const maxByCombined =
+    maxRemainingCombinedPercent == null
+      ? 100
+      : clampPercent(maxRemainingCombinedPercent);
+  return roundPercent(
+    Math.min(requestedPercentOff, maxPercentByFloor, maxByZeroPolicy, maxByCombined),
+  );
+}
+
+/**
+ * @param {RunInput["cart"]["lines"][number]} line
+ */
+function resolveLineCollectionIds(line) {
+  const memberships = line?.merchandise?.product?.inCollections ?? [];
+  return memberships
+    .filter((membership) => membership?.isMember && membership?.collectionId)
+    .map((membership) => String(membership.collectionId));
+}
+
+/**
+ * @param {Array<{
+ *   id: string,
+ *   scope: string,
+ *   code?: string | null,
+ *   percentOff?: number,
+ *   appliedPercentOff?: number,
+ *   priority: number,
+ *   stackMode: string,
+ *   sequence?: number
+ * }>} candidates
+ */
+function sortCandidates(candidates) {
+  const scopeWeight = {
+    PRODUCT: 400,
+    COUPON: 300,
+    COLLECTION: 200,
+    GLOBAL: 100,
+    LEGACY: 50,
+  };
+  return [...candidates].sort((left, right) => {
+    if (left.priority !== right.priority) {
+      return right.priority - left.priority;
+    }
+    const leftScopeWeight = scopeWeight[left.scope] ?? 0;
+    const rightScopeWeight = scopeWeight[right.scope] ?? 0;
+    if (leftScopeWeight !== rightScopeWeight) {
+      return rightScopeWeight - leftScopeWeight;
+    }
+    const leftPercent =
+      Number.isFinite(left.appliedPercentOff) && left.appliedPercentOff != null
+        ? left.appliedPercentOff
+        : Number.isFinite(left.percentOff) && left.percentOff != null
+          ? left.percentOff
+          : 0;
+    const rightPercent =
+      Number.isFinite(right.appliedPercentOff) && right.appliedPercentOff != null
+        ? right.appliedPercentOff
+        : Number.isFinite(right.percentOff) && right.percentOff != null
+          ? right.percentOff
+          : 0;
+    if (leftPercent !== rightPercent) {
+      return rightPercent - leftPercent;
+    }
+    if (left.sequence != null && right.sequence != null && left.sequence !== right.sequence) {
+      return left.sequence - right.sequence;
+    }
+    return String(left.id).localeCompare(String(right.id));
+  });
+}
+
+/**
+ * @param {{ id: string, scope: string, code?: string | null }} candidate
+ */
+function buildCandidateKeys(candidate) {
+  const keys = [`RULE_ID:${candidate.id}`, `SCOPE:${candidate.scope}`];
+  const normalizedCode = normalizeCouponCode(candidate.code ?? "");
+  if (normalizedCode) {
+    keys.push(`COUPON_CODE:${normalizedCode}`);
+  }
+  return keys;
+}
+
+/**
+ * @param {{ id: string, scope: string, code?: string | null }} left
+ * @param {{ id: string, scope: string, code?: string | null }} right
+ * @param {{ leftType: string, leftValue: string, rightType: string, rightValue: string, segment?: string | null }} rule
+ */
+function matchesBlacklistRule(left, right, rule) {
+  const leftKeys = buildCandidateKeys(left);
+  const rightKeys = buildCandidateKeys(right);
+  const directLeft = `${rule.leftType}:${rule.leftValue}`;
+  const directRight = `${rule.rightType}:${rule.rightValue}`;
+  const reverseLeft = `${rule.rightType}:${rule.rightValue}`;
+  const reverseRight = `${rule.leftType}:${rule.leftValue}`;
+  return (
+    (leftKeys.includes(directLeft) && rightKeys.includes(directRight)) ||
+    (leftKeys.includes(reverseLeft) && rightKeys.includes(reverseRight))
+  );
+}
+
+/**
+ * @param {Array<{ leftType: string, leftValue: string, rightType: string, rightValue: string, segment?: string | null }>} rules
+ * @param {{ id: string, scope: string, code?: string | null }} candidate
+ * @param {Array<{ id: string, scope: string, code?: string | null }>} selected
+ * @param {"B2B" | "B2C"} segment
+ */
+function findBlacklistConflict(rules, candidate, selected, segment) {
+  for (const selectedCandidate of selected) {
+    for (const rule of rules) {
+      if (rule.segment && rule.segment !== "ALL" && rule.segment !== segment) {
+        continue;
+      }
+      if (matchesBlacklistRule(candidate, selectedCandidate, rule)) {
+        return selectedCandidate;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * @param {{ scope: string, code?: string | null, stackMode: string }} candidate
+ */
+function isCouponCandidate(candidate) {
+  return candidate.scope === "COUPON" || Boolean(candidate.code);
+}
+
+/**
+ * @param {{ scope: string, code?: string | null, stackMode: string }} candidate
+ * @param {Array<{ scope: string, code?: string | null, stackMode: string }>} selected
+ */
+function findCouponStackingConflict(candidate, selected) {
+  const candidateIsCoupon = isCouponCandidate(candidate);
+  for (const selectedCandidate of selected) {
+    const selectedIsCoupon = isCouponCandidate(selectedCandidate);
+    if (
+      candidateIsCoupon &&
+      selectedCandidate.stackMode === "NEVER_WITH_COUPONS"
+    ) {
+      return selectedCandidate;
+    }
+    if (
+      candidate.stackMode === "NEVER_WITH_COUPONS" &&
+      selectedIsCoupon
+    ) {
+      return selectedCandidate;
+    }
+  }
+  return null;
+}
+
+/**
+ * @param {Array<{ segment: string, maxCombinedPercentOff: number }>} segmentCaps
+ * @param {"B2B" | "B2C"} segment
+ */
+function resolveSegmentCap(segmentCaps, segment) {
+  const exact = segmentCaps.find((cap) => cap.segment === segment);
+  if (exact) {
+    return exact.maxCombinedPercentOff;
+  }
+  const fallback = segmentCaps.find((cap) => cap.segment === "ALL");
+  return fallback ? fallback.maxCombinedPercentOff : null;
+}
+
+/**
  * @param {RunInput["enteredDiscountCodes"]} enteredDiscountCodes
  * @param {Record<string, "B2B" | "B2C" | "ALL">} couponSegmentRules
+ * @param {Array<{ leftType: string, leftValue: string, rightType: string, rightValue: string, segment?: string | null }>} blacklistRules
  * @param {"B2B" | "B2C"} segment
  * @param {boolean} allowStacking
  */
 function resolveRejectedDiscountCodes(
   enteredDiscountCodes,
   couponSegmentRules,
+  discountRules,
+  blacklistRules,
   segment,
   allowStacking,
 ) {
   const rejectedCodes = [];
   let rejectedBySegment = false;
   let rejectedByStacking = false;
+  let rejectedByBlacklist = false;
   const seen = new Set();
+  const acceptedCodes = [];
   let acceptedRejectableCount = 0;
+  const enteredCandidates = [];
+
   for (const enteredCode of enteredDiscountCodes ?? []) {
     const normalizedCode = normalizeCouponCode(enteredCode?.code);
     if (!normalizedCode || seen.has(normalizedCode)) {
@@ -175,22 +435,80 @@ function resolveRejectedDiscountCodes(
       allowedSegment != null &&
       allowedSegment !== "ALL" &&
       allowedSegment !== segment;
-    if (segmentMismatch && rejectable) {
-      rejectedCodes.push({ code: normalizedCode });
+    const matchingRule = (discountRules ?? []).find((rule) => {
+      if (rule?.scope !== "COUPON") {
+        return false;
+      }
+      const ruleCode = normalizeCouponCode(rule?.code ?? rule?.targetId ?? "");
+      return ruleCode === normalizedCode;
+    });
+    const normalizedPercentOff = normalizePercentOrNull(matchingRule?.percentOff);
+    enteredCandidates.push({
+      id: matchingRule?.id ?? `coupon-${normalizedCode}`,
+      scope: "COUPON",
+      code: normalizedCode,
+      priority:
+        matchingRule != null && Number.isFinite(matchingRule.priority)
+          ? Math.floor(matchingRule.priority)
+          : 0,
+      percentOff: normalizedPercentOff != null ? normalizedPercentOff : 0,
+      appliedPercentOff: normalizedPercentOff != null ? normalizedPercentOff : 0,
+      stackMode: normalizeDiscountStackMode(matchingRule?.stackMode),
+      rejectable,
+      segmentMismatch,
+      sequence:
+        matchingRule != null && Number.isFinite(matchingRule.sequence)
+          ? Math.floor(matchingRule.sequence)
+          : undefined,
+    });
+  }
+
+  for (const candidate of sortCandidates(enteredCandidates)) {
+    if (candidate.segmentMismatch && candidate.rejectable) {
+      rejectedCodes.push({ code: candidate.code });
       rejectedBySegment = true;
       continue;
     }
+
+    const blacklistConflict = acceptedCodes.some((acceptedCode) =>
+      blacklistRules.some((rule) => {
+        if (rule.segment && rule.segment !== "ALL" && rule.segment !== segment) {
+          return false;
+        }
+        return matchesBlacklistRule(
+          {
+            id: candidate.id,
+            scope: candidate.scope,
+            code: candidate.code,
+          },
+          acceptedCode,
+          rule,
+        );
+      }),
+    );
+    if (blacklistConflict && candidate.rejectable) {
+      rejectedCodes.push({ code: candidate.code });
+      rejectedByBlacklist = true;
+      continue;
+    }
+
     if (
-      !segmentMismatch &&
+      !candidate.segmentMismatch &&
       !allowStacking &&
-      rejectable &&
+      candidate.rejectable &&
       acceptedRejectableCount >= 1
     ) {
-      rejectedCodes.push({ code: normalizedCode });
+      rejectedCodes.push({ code: candidate.code });
       rejectedByStacking = true;
       continue;
     }
-    if (!segmentMismatch && rejectable) {
+
+    acceptedCodes.push({
+      id: candidate.id,
+      scope: candidate.scope,
+      code: candidate.code,
+    });
+    if (!candidate.segmentMismatch && candidate.rejectable) {
       acceptedRejectableCount += 1;
     }
   }
@@ -199,6 +517,7 @@ function resolveRejectedDiscountCodes(
     rejectedCodes,
     rejectedBySegment,
     rejectedByStacking,
+    rejectedByBlacklist,
   };
 }
 
@@ -243,6 +562,17 @@ function parseConfig(input) {
     config && typeof config.couponSegmentRules === "object"
       ? config.couponSegmentRules
       : {};
+  const rawDiscountRules = Array.isArray(config?.discountRules)
+    ? config.discountRules
+    : [];
+  const rawDiscountCombinationBlacklistRules = Array.isArray(
+    config?.discountCombinationBlacklistRules,
+  )
+    ? config.discountCombinationBlacklistRules
+    : [];
+  const rawDiscountSegmentCaps = Array.isArray(config?.discountSegmentCaps)
+    ? config.discountSegmentCaps
+    : [];
 
   /** @type {Record<string, number>} */
   const perProductFloorPercentsB2C = {};
@@ -256,6 +586,9 @@ function parseConfig(input) {
   const perProductB2BOverridePrices = {};
   /** @type {Record<string, "B2B" | "B2C" | "ALL">} */
   const couponSegmentRules = {};
+  const discountRules = [];
+  const discountCombinationBlacklistRules = [];
+  const discountSegmentCaps = [];
 
   for (const [productId, floorPercent] of Object.entries(rawB2CFloors)) {
     perProductFloorPercentsB2C[productId] = clampPercent(
@@ -299,6 +632,77 @@ function parseConfig(input) {
     couponSegmentRules[normalizedCode] = normalizeAllowedSegment(allowedSegment);
   }
 
+  for (const [sequence, rule] of rawDiscountRules.entries()) {
+    const scope = normalizeDiscountRuleScope(rule?.scope);
+    const percentOff = normalizePercentOrNull(rule?.percentOff);
+    if (percentOff == null || percentOff <= 0) {
+      continue;
+    }
+    let targetId = String(rule?.targetId ?? "").trim();
+    let code = normalizeCouponCode(String(rule?.code ?? ""));
+    if (scope === "COLLECTION" && !targetId) {
+      continue;
+    }
+    if (scope === "PRODUCT" && !targetId) {
+      continue;
+    }
+    if (scope === "COUPON") {
+      code = normalizeCouponCode(String(rule?.code ?? rule?.targetId ?? ""));
+      targetId = "";
+      if (!code) {
+        continue;
+      }
+    }
+    discountRules.push({
+      id: String(rule?.id ?? `${scope}-${discountRules.length + 1}`),
+      scope,
+      targetId: targetId || null,
+      code: code || null,
+      segment:
+        rule?.segment === "B2B" || rule?.segment === "B2C" ? rule.segment : null,
+      percentOff,
+      priority: Number.isFinite(rule?.priority) ? Math.floor(rule.priority) : 100,
+      stackMode: normalizeDiscountStackMode(rule?.stackMode),
+      minPricePercentOfBasePrice: normalizePercentOrNull(
+        rule?.minPricePercentOfBasePrice,
+      ),
+      sequence,
+    });
+  }
+
+  for (const rule of rawDiscountCombinationBlacklistRules) {
+    const leftType = normalizeDiscountReferenceType(rule?.leftType);
+    const rightType = normalizeDiscountReferenceType(rule?.rightType);
+    const leftValue = String(rule?.leftValue ?? "").trim();
+    const rightValue = String(rule?.rightValue ?? "").trim();
+    if (!leftValue || !rightValue) {
+      continue;
+    }
+    discountCombinationBlacklistRules.push({
+      leftType,
+      leftValue: leftType === "COUPON_CODE" ? normalizeCouponCode(leftValue) : leftValue,
+      rightType,
+      rightValue:
+        rightType === "COUPON_CODE" ? normalizeCouponCode(rightValue) : rightValue,
+      segment:
+        rule?.segment === "B2B" || rule?.segment === "B2C" || rule?.segment === "ALL"
+          ? rule.segment
+          : null,
+    });
+  }
+
+  for (const cap of rawDiscountSegmentCaps) {
+    const maxCombinedPercentOff = normalizePercentOrNull(cap?.maxCombinedPercentOff);
+    if (maxCombinedPercentOff == null) {
+      continue;
+    }
+    discountSegmentCaps.push({
+      segment:
+        cap?.segment === "B2B" || cap?.segment === "B2C" ? cap.segment : "ALL",
+      maxCombinedPercentOff,
+    });
+  }
+
   return {
     globalMinPricePercent: clampPercent(
       toNumber(config.globalMinPricePercent, DEFAULT_GLOBAL_FLOOR_PERCENT),
@@ -321,43 +725,81 @@ function parseConfig(input) {
     perProductTierPricesB2C,
     perProductTierPricesB2B,
     couponSegmentRules,
+    discountRules,
+    discountCombinationBlacklistRules,
+    discountSegmentCaps,
   };
 }
 
 /**
- * @param {number} requestedPercentOff
- * @param {number} maxPercentByFloor
- * @param {boolean} allowZeroFinalPrice
- * @param {number | null} maxRemainingCombinedPercent
+ * @param {Array<{ id: string, scope: string, code?: string | null, percentOff: number, priority: number, stackMode: string }>} candidates
+ * @param {Array<{ leftType: string, leftValue: string, rightType: string, rightValue: string, segment?: string | null }>} blacklistRules
+ * @param {"B2B" | "B2C"} segment
+ * @param {boolean} allowStacking
+ * @param {number | null} remainingCap
  */
-function resolveAllowedPercent(
-  requestedPercentOff,
-  maxPercentByFloor,
-  allowZeroFinalPrice,
-  maxRemainingCombinedPercent,
+function resolveSelectedCandidates(
+  candidates,
+  blacklistRules,
+  segment,
+  allowStacking,
+  remainingCap,
 ) {
-  const maxByZeroPolicy = allowZeroFinalPrice ? 100 : 99.99;
-  const maxByCombined =
-    maxRemainingCombinedPercent == null
-      ? 100
-      : clampPercent(maxRemainingCombinedPercent);
-  return clampPercent(
-    Math.min(requestedPercentOff, maxPercentByFloor, maxByZeroPolicy, maxByCombined),
-  );
-}
+  const selected = [];
+  const sorted = sortCandidates(candidates);
 
-/**
- * @param {RunInput["cart"]["lines"][number]} line
- */
-function resolveLineSubtotal(line) {
-  return Math.max(0, toNumber(line?.cost?.subtotalAmount?.amount, 0));
-}
+  for (const candidate of sorted) {
+    const blacklistConflict = findBlacklistConflict(
+      blacklistRules,
+      candidate,
+      selected,
+      segment,
+    );
+    if (blacklistConflict) {
+      continue;
+    }
+    if (!allowStacking && selected.length > 0) {
+      continue;
+    }
+    const exclusiveConflict = selected.find(
+      (selectedCandidate) =>
+        selectedCandidate.stackMode === "EXCLUSIVE" ||
+        candidate.stackMode === "EXCLUSIVE",
+    );
+    if (exclusiveConflict) {
+      continue;
+    }
+    const couponConflict = findCouponStackingConflict(candidate, selected);
+    if (couponConflict) {
+      continue;
+    }
+    selected.push({ ...candidate });
+  }
 
-/**
- * @param {RunInput["cart"]["lines"][number]} line
- */
-function resolveLineTotal(line) {
-  return Math.max(0, toNumber(line?.cost?.totalAmount?.amount, 0));
+  if (remainingCap != null) {
+    let total = roundPercent(selected.reduce((sum, item) => sum + item.percentOff, 0));
+    if (total > remainingCap) {
+      const byLowestPriority = sortCandidates(selected).reverse();
+      let remainingExcess = roundPercent(total - remainingCap);
+      for (const candidate of byLowestPriority) {
+        if (remainingExcess <= 0) {
+          break;
+        }
+        const original = candidate.percentOff;
+        const reduced = roundPercent(Math.max(0, original - remainingExcess));
+        remainingExcess = roundPercent(Math.max(0, remainingExcess - original));
+        candidate.percentOff = reduced;
+      }
+      total = roundPercent(selected.reduce((sum, item) => sum + item.percentOff, 0));
+      if (total > remainingCap && selected.length > 0) {
+        selected[selected.length - 1].percentOff = roundPercent(
+          Math.max(0, selected[selected.length - 1].percentOff - (total - remainingCap)),
+        );
+      }
+    }
+  }
+
+  return sortCandidates(selected).filter((candidate) => candidate.percentOff > 0);
 }
 
 /**
@@ -369,9 +811,7 @@ export function cartLinesDiscountsGenerateRun(input) {
     return { operations: [] };
   }
 
-  const hasProductDiscountClass = input.discount.discountClasses.includes(
-    "PRODUCT",
-  );
+  const hasProductDiscountClass = input.discount.discountClasses.includes("PRODUCT");
   if (!hasProductDiscountClass) {
     return { operations: [] };
   }
@@ -384,6 +824,17 @@ export function cartLinesDiscountsGenerateRun(input) {
   const hasB2BTag = Boolean(input?.cart?.buyerIdentity?.customer?.hasAnyTag);
   const isB2B = hasPurchasingCompany || hasB2BTag;
   const segment = isB2B ? "B2B" : "B2C";
+  const enteredCodes = (input?.enteredDiscountCodes ?? [])
+    .map((enteredCode) => normalizeCouponCode(enteredCode?.code))
+    .filter(Boolean);
+  const rejectedCodeResult = resolveRejectedDiscountCodes(
+    input?.enteredDiscountCodes,
+    config.couponSegmentRules,
+    config.discountRules,
+    config.discountCombinationBlacklistRules,
+    segment,
+    config.allowStacking,
+  );
   const globalFloorPercent = isB2B
     ? config.b2bGlobalMinPricePercent
     : config.globalMinPricePercent;
@@ -396,12 +847,7 @@ export function cartLinesDiscountsGenerateRun(input) {
   const tierMap = isB2B
     ? config.perProductTierPricesB2B
     : config.perProductTierPricesB2C;
-  const rejectedCodeResult = resolveRejectedDiscountCodes(
-    input?.enteredDiscountCodes,
-    config.couponSegmentRules,
-    segment,
-    config.allowStacking,
-  );
+  const segmentCap = resolveSegmentCap(config.discountSegmentCaps, segment);
 
   const candidates = [];
   for (const line of input.cart.lines) {
@@ -441,29 +887,116 @@ export function cartLinesDiscountsGenerateRun(input) {
     const existingPercentOff = clampPercent(
       ((lineSubtotal - lineTotal) / lineSubtotal) * 100,
     );
-    const maxRemainingCombinedPercent =
+    const remainingGlobalCap =
       config.maxCombinedPercentOff == null
         ? null
-        : roundMoney(config.maxCombinedPercentOff - existingPercentOff);
-    const allowedPercentOff = resolveAllowedPercent(
-      config.requestedPercentOff,
-      maxPercentByFloor,
-      allowZeroFinalPrice,
-      maxRemainingCombinedPercent,
-    );
-    if (allowedPercentOff <= 0) {
-      continue;
+        : roundPercent(config.maxCombinedPercentOff - existingPercentOff);
+    const remainingSegmentCap =
+      segmentCap == null ? null : roundPercent(segmentCap - existingPercentOff);
+    let remainingCap = null;
+    if (remainingGlobalCap != null && remainingSegmentCap != null) {
+      remainingCap = Math.min(remainingGlobalCap, remainingSegmentCap);
+    } else if (remainingSegmentCap != null) {
+      remainingCap = remainingSegmentCap;
+    } else {
+      remainingCap = remainingGlobalCap;
     }
 
-    candidates.push({
-      message: `${messages.candidatePrefix} (${allowedPercentOff.toFixed(2)}% max)`,
-      targets: [{ cartLine: { id: line.id } }],
-      value: {
-        percentage: {
-          value: allowedPercentOff,
+    const eligibleCandidates = [];
+    const lineCollectionIds = resolveLineCollectionIds(line);
+    for (const rule of config.discountRules) {
+      if (rule.segment && rule.segment !== segment) {
+        continue;
+      }
+      if (rule.scope === "PRODUCT" && rule.targetId !== productId) {
+        continue;
+      }
+      if (
+        rule.scope === "COLLECTION" &&
+        (!rule.targetId || !lineCollectionIds.includes(rule.targetId))
+      ) {
+        continue;
+      }
+      if (rule.scope === "COUPON") {
+        const ruleCode = normalizeCouponCode(rule.code ?? "");
+        if (!ruleCode || !enteredCodes.includes(ruleCode)) {
+          continue;
+        }
+      }
+
+      const ruleFloorPercent =
+        rule.minPricePercentOfBasePrice == null
+          ? maxPercentByFloor
+          : Math.min(maxPercentByFloor, clampPercent(100 - rule.minPricePercentOfBasePrice));
+      const allowedPercentOff = resolveAllowedPercent(
+        rule.percentOff,
+        ruleFloorPercent,
+        allowZeroFinalPrice,
+        remainingCap,
+      );
+      if (allowedPercentOff <= 0) {
+        continue;
+      }
+      eligibleCandidates.push({
+        id: rule.id,
+        code: rule.code,
+        scope: rule.scope,
+        percentOff: allowedPercentOff,
+        appliedPercentOff: allowedPercentOff,
+        priority: rule.priority,
+        stackMode: rule.stackMode,
+        sequence: Number.isFinite(rule.sequence) ? Math.floor(rule.sequence) : undefined,
+        label:
+          rule.scope === "COUPON"
+            ? `coupon ${rule.code}`
+            : rule.scope === "COLLECTION"
+              ? `collection rule`
+              : rule.scope === "PRODUCT"
+                ? `product rule`
+                : `global rule`,
+      });
+    }
+
+    if (eligibleCandidates.length === 0) {
+      const allowedPercentOff = resolveAllowedPercent(
+        config.requestedPercentOff,
+        maxPercentByFloor,
+        allowZeroFinalPrice,
+        remainingCap,
+      );
+      if (allowedPercentOff > 0) {
+        eligibleCandidates.push({
+          id: `legacy-${line.id}`,
+          code: null,
+          scope: "GLOBAL",
+          percentOff: allowedPercentOff,
+          priority: 0,
+          stackMode: config.allowStacking ? "STACKABLE" : "EXCLUSIVE",
+          sequence: Number.MAX_SAFE_INTEGER,
+          label: "margin guard",
+        });
+      }
+    }
+
+    const selectedCandidates = resolveSelectedCandidates(
+      eligibleCandidates,
+      config.discountCombinationBlacklistRules,
+      segment,
+      config.allowStacking,
+      remainingCap,
+    );
+
+    for (const selectedCandidate of selectedCandidates) {
+      candidates.push({
+        message: `${messages.candidatePrefix} ${selectedCandidate.label} (${selectedCandidate.percentOff.toFixed(2)}% max)`,
+        targets: [{ cartLine: { id: line.id } }],
+        value: {
+          percentage: {
+            value: selectedCandidate.percentOff,
+          },
         },
-      },
-    });
+      });
+    }
   }
 
   if (candidates.length === 0 && rejectedCodeResult.rejectedCodes.length === 0) {
@@ -473,8 +1006,29 @@ export function cartLinesDiscountsGenerateRun(input) {
   const operations = [];
   if (rejectedCodeResult.rejectedCodes.length > 0) {
     let rejectionMessage = messages.rejectBySegment;
-    if (rejectedCodeResult.rejectedBySegment && rejectedCodeResult.rejectedByStacking) {
+    if (
+      rejectedCodeResult.rejectedBySegment &&
+      rejectedCodeResult.rejectedByStacking &&
+      rejectedCodeResult.rejectedByBlacklist
+    ) {
+      rejectionMessage = messages.rejectBySegmentStackingAndBlacklist;
+    } else if (
+      rejectedCodeResult.rejectedBySegment &&
+      rejectedCodeResult.rejectedByStacking
+    ) {
       rejectionMessage = messages.rejectBySegmentAndStacking;
+    } else if (
+      rejectedCodeResult.rejectedBySegment &&
+      rejectedCodeResult.rejectedByBlacklist
+    ) {
+      rejectionMessage = messages.rejectBySegmentAndBlacklist;
+    } else if (
+      rejectedCodeResult.rejectedByStacking &&
+      rejectedCodeResult.rejectedByBlacklist
+    ) {
+      rejectionMessage = messages.rejectByStackingAndBlacklist;
+    } else if (rejectedCodeResult.rejectedByBlacklist) {
+      rejectionMessage = messages.rejectByBlacklist;
     } else if (rejectedCodeResult.rejectedByStacking) {
       rejectionMessage = messages.rejectByStacking;
     }

@@ -124,6 +124,190 @@ test("runtime integration: function inputs accept config payload from builders",
   assert.equal(discountResult.operations.length > 0, true);
 });
 
+test("runtime integration: config order resolves equally ranked coupon rules before blacklist rejection", () => {
+  const productId = "gid://shopify/Product/TIE_BREAK_RUNTIME";
+  const config = buildDiscountFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 0,
+    allowZeroFinalPrice: true,
+    allowStacking: true,
+    productFloors: [],
+    discountRules: [
+      {
+        id: "beta-rule",
+        scope: "COUPON",
+        targetId: null,
+        code: "BETA10",
+        segment: null,
+        percentOff: 10,
+        priority: 100,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: null,
+      },
+      {
+        id: "alpha-rule",
+        scope: "COUPON",
+        targetId: null,
+        code: "ALPHA10",
+        segment: null,
+        percentOff: 10,
+        priority: 100,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: null,
+      },
+    ],
+    discountCombinationBlacklistRules: [
+      {
+        leftType: "COUPON_CODE",
+        leftValue: "BETA10",
+        rightType: "COUPON_CODE",
+        rightValue: "ALPHA10",
+        segment: "ALL",
+      },
+    ],
+  });
+
+  assert.equal(Array.isArray(config.discountRules), true);
+  assert.deepEqual(
+    config.discountRules.map((rule: any) => rule.id),
+    ["beta-rule", "alpha-rule"],
+  );
+
+  const result = runDiscountFunction({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-tie-break-runtime",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "100.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: productId,
+              inCollections: [],
+            },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: { jsonValue: config },
+    },
+    enteredDiscountCodes: [
+      { code: "ALPHA10", rejectable: true },
+      { code: "BETA10", rejectable: true },
+    ],
+  } as any);
+
+  const rejectOperation = result.operations.find(
+    (operation: any) => operation?.enteredDiscountCodesReject != null,
+  );
+  assert.deepEqual(rejectOperation?.enteredDiscountCodesReject?.codes, [
+    { code: "ALPHA10" },
+  ]);
+});
+
+test("runtime integration: collection-aware discount rules respect product, collection, and global precedence with segment caps", () => {
+  const productId = "gid://shopify/Product/ADV_RUNTIME_PRODUCT";
+  const collectionId = "gid://shopify/Collection/ADV_RUNTIME_COLLECTION";
+  const config = buildDiscountFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 0,
+    allowZeroFinalPrice: false,
+    allowStacking: true,
+    maxCombinedPercentOff: null,
+    productFloors: [],
+    discountRules: [
+      {
+        id: "global-rule",
+        scope: "GLOBAL",
+        targetId: null,
+        code: null,
+        segment: null,
+        percentOff: 10,
+        priority: 100,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: null,
+      },
+      {
+        id: "collection-rule",
+        scope: "COLLECTION",
+        targetId: collectionId,
+        code: null,
+        segment: null,
+        percentOff: 20,
+        priority: 100,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: null,
+      },
+      {
+        id: "product-rule",
+        scope: "PRODUCT",
+        targetId: productId,
+        code: null,
+        segment: null,
+        percentOff: 30,
+        priority: 100,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: null,
+      },
+    ],
+    discountSegmentCaps: [
+      {
+        segment: "B2C",
+        maxCombinedPercentOff: 35,
+      },
+    ],
+  });
+
+  assert.deepEqual(config.collectionIds, [collectionId]);
+
+  const result = runDiscountFunction({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-collection-runtime",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "100.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: productId,
+              inCollections: [{ collectionId, isMember: true }],
+            },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: { jsonValue: config },
+    },
+    enteredDiscountCodes: [],
+  });
+
+  const candidates =
+    result.operations[0]?.productDiscountsAdd?.candidates ?? [];
+  assert.equal(candidates.length, 2);
+  assert.equal(candidates[0]?.value?.percentage?.value, 30);
+  assert.equal(candidates[1]?.value?.percentage?.value, 5);
+  assert.equal(
+    candidates[0]?.message?.includes("Eligible discount") ?? false,
+    true,
+  );
+});
+
 test("runtime integration: purchasing company is treated as B2B even without B2B tag", () => {
   const productId = "gid://shopify/Product/SEGMENT_PRECEDENCE";
   const segmentAwareConfig = {
@@ -1810,5 +1994,258 @@ test("runtime integration: product visibility rules block disallowed segment and
     allowedSpecificCustomer.operations.length,
     0,
     "[VISIBILITY FAIL] Specific customer should be allowed for customer-only product.",
+  );
+});
+
+test("runtime integration: product rule beats collection and global rule when stacking is disabled", () => {
+  const config = buildDiscountFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 0,
+    allowZeroFinalPrice: false,
+    allowStacking: false,
+    productFloors: [],
+    discountRules: [
+      {
+        id: "global-5",
+        scope: "GLOBAL",
+        targetId: null,
+        code: null,
+        segment: null,
+        percentOff: 5,
+        priority: 100,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: null,
+      },
+      {
+        id: "collection-10",
+        scope: "COLLECTION",
+        targetId: "gid://shopify/Collection/PROMO",
+        code: null,
+        segment: null,
+        percentOff: 10,
+        priority: 100,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: null,
+      },
+      {
+        id: "product-15",
+        scope: "PRODUCT",
+        targetId: "gid://shopify/Product/ADVANCED",
+        code: null,
+        segment: null,
+        percentOff: 15,
+        priority: 100,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: null,
+      },
+    ],
+  });
+
+  const result = runDiscountFunction({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-advanced-priority",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: "gid://shopify/Product/ADVANCED",
+              inCollections: [
+                {
+                  collectionId: "gid://shopify/Collection/PROMO",
+                  isMember: true,
+                },
+              ],
+            },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: { jsonValue: config },
+    },
+    enteredDiscountCodes: [],
+  } as any);
+
+  const candidates = result.operations[0]?.productDiscountsAdd?.candidates ?? [];
+  assert.equal(candidates.length, 1);
+  assert.equal(
+    candidates[0]?.value?.percentage?.value,
+    15,
+    "[ADVANCED PRIORITY FAIL] Product-level rule must win over collection and global rules when stacking is off.",
+  );
+});
+
+test("runtime integration: blacklist rejects conflicting entered discount code pair", () => {
+  const config = buildDiscountFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 0,
+    allowZeroFinalPrice: false,
+    allowStacking: true,
+    productFloors: [],
+    discountRules: [
+      {
+        id: "vip-rule",
+        scope: "COUPON",
+        targetId: null,
+        code: "VIP20",
+        segment: null,
+        percentOff: 20,
+        priority: 200,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: null,
+      },
+      {
+        id: "extra-rule",
+        scope: "COUPON",
+        targetId: null,
+        code: "EXTRA10",
+        segment: null,
+        percentOff: 10,
+        priority: 100,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: null,
+      },
+    ],
+    discountCombinationBlacklistRules: [
+      {
+        leftType: "COUPON_CODE",
+        leftValue: "VIP20",
+        rightType: "COUPON_CODE",
+        rightValue: "EXTRA10",
+        segment: "ALL",
+      },
+    ],
+  });
+
+  const result = runDiscountFunction({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false },
+      },
+      lines: [
+        {
+          id: "line-blacklist-codes",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: "gid://shopify/Product/CODE_BLACKLIST",
+              inCollections: [],
+            },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: { jsonValue: config },
+    },
+    enteredDiscountCodes: [
+      { code: "VIP20", rejectable: true },
+      { code: "EXTRA10", rejectable: true },
+    ],
+  } as any);
+
+  const rejectOperation = result.operations.find(
+    (operation) => operation?.enteredDiscountCodesReject != null,
+  );
+  assert.deepEqual(rejectOperation?.enteredDiscountCodesReject?.codes, [
+    { code: "EXTRA10" },
+  ]);
+});
+
+test("runtime integration: segment cap trims lower priority stacked rule first", () => {
+  const config = buildDiscountFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 0,
+    allowZeroFinalPrice: false,
+    allowStacking: true,
+    productFloors: [],
+    discountRules: [
+      {
+        id: "product-30",
+        scope: "PRODUCT",
+        targetId: "gid://shopify/Product/CAPPED",
+        code: null,
+        segment: "B2B",
+        percentOff: 30,
+        priority: 200,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: null,
+      },
+      {
+        id: "collection-20",
+        scope: "COLLECTION",
+        targetId: "gid://shopify/Collection/CAPPED",
+        code: null,
+        segment: "B2B",
+        percentOff: 20,
+        priority: 100,
+        stackMode: "STACKABLE",
+        minPricePercentOfBasePrice: null,
+      },
+    ],
+    discountSegmentCaps: [
+      {
+        segment: "B2B",
+        maxCombinedPercentOff: 40,
+      },
+    ],
+  });
+
+  const result = runDiscountFunction({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: true },
+      },
+      lines: [
+        {
+          id: "line-segment-cap",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: "gid://shopify/Product/CAPPED",
+              inCollections: [
+                {
+                  collectionId: "gid://shopify/Collection/CAPPED",
+                  isMember: true,
+                },
+              ],
+            },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: { jsonValue: config },
+    },
+    enteredDiscountCodes: [],
+  } as any);
+
+  const candidates = result.operations[0]?.productDiscountsAdd?.candidates ?? [];
+  assert.deepEqual(
+    candidates.map((candidate: any) => candidate.value?.percentage?.value),
+    [30, 10],
+    "[SEGMENT CAP FAIL] Lower-priority candidate must be trimmed first to satisfy the segment cap.",
   );
 });

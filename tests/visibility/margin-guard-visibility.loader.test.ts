@@ -28,6 +28,9 @@ function stubConfig(): MarginGuardConfig {
     productVisibilityRules: [],
     productVariantVisibilityRules: [],
     couponSegmentRules: [],
+    discountRules: [],
+    discountCombinationBlacklistRules: [],
+    discountSegmentCaps: [],
   };
 }
 

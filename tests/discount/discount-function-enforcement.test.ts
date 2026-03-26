@@ -104,6 +104,30 @@ test("discount function prefers segment mismatch rejection before stacking and s
           allowZeroFinalPrice: true,
           allowStacking: false,
           requestedPercentOff: 5,
+          discountRules: [
+            {
+              id: "wholesale-rule",
+              scope: "COUPON",
+              targetId: null,
+              code: "WHOLESALE10",
+              segment: "B2B",
+              percentOff: 10,
+              priority: 200,
+              stackMode: "STACKABLE",
+              minPricePercentOfBasePrice: null,
+            },
+            {
+              id: "extra-rule",
+              scope: "COUPON",
+              targetId: null,
+              code: "EXTRA10",
+              segment: null,
+              percentOff: 5,
+              priority: 100,
+              stackMode: "STACKABLE",
+              minPricePercentOfBasePrice: null,
+            },
+          ],
           couponSegmentRules: {
             RETAIL_ONLY: "B2C",
             WHOLESALE10: "B2B",
@@ -134,7 +158,7 @@ test("discount function prefers segment mismatch rejection before stacking and s
   const rejectPayload = rejectOperation.enteredDiscountCodesReject;
   assert.deepEqual(
     rejectPayload.codes,
-    [{ code: "RETAIL_ONLY" }, { code: "EXTRA10" }],
+    [{ code: "EXTRA10" }, { code: "RETAIL_ONLY" }],
   );
   assert.equal(
     rejectPayload.message.includes(
@@ -142,4 +166,182 @@ test("discount function prefers segment mismatch rejection before stacking and s
     ),
     true,
   );
+});
+
+test("discount function rejects blacklisted coupon combinations and still applies eligible discount rules", () => {
+  const result = runDiscountFunction({
+    cart: {
+      buyerIdentity: { customer: { hasAnyTag: false } },
+      lines: [
+        {
+          id: "line-blacklist-1",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: "gid://shopify/Product/BLACKLIST",
+            },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: {
+        jsonValue: {
+          globalMinPricePercent: 0,
+          b2bGlobalMinPricePercent: 0,
+          allowZeroFinalPrice: true,
+          allowStacking: true,
+          discountRules: [
+            {
+              id: "vip-rule",
+              scope: "COUPON",
+              targetId: null,
+              code: "VIP20",
+              segment: null,
+              percentOff: 20,
+              priority: 200,
+              stackMode: "STACKABLE",
+              minPricePercentOfBasePrice: null,
+            },
+            {
+              id: "extra-rule",
+              scope: "COUPON",
+              targetId: null,
+              code: "EXTRA10",
+              segment: null,
+              percentOff: 10,
+              priority: 100,
+              stackMode: "STACKABLE",
+              minPricePercentOfBasePrice: null,
+            },
+          ],
+          discountCombinationBlacklistRules: [
+            {
+              leftType: "COUPON_CODE",
+              leftValue: "VIP20",
+              rightType: "COUPON_CODE",
+              rightValue: "EXTRA10",
+              segment: "ALL",
+            },
+          ],
+          perProductFloorPercentsB2C: {},
+          perProductFloorPercentsB2B: {},
+          perProductAllowZeroFinalPriceB2C: {},
+          perProductAllowZeroFinalPriceB2B: {},
+        },
+      },
+    },
+    enteredDiscountCodes: [
+      { code: "VIP20", rejectable: true },
+      { code: "EXTRA10", rejectable: true },
+    ],
+  });
+
+  const rejectOperation = result.operations.find(
+    (operation: any) => operation?.enteredDiscountCodesReject,
+  );
+  assert.equal(Boolean(rejectOperation?.enteredDiscountCodesReject), true);
+  assert.deepEqual(rejectOperation?.enteredDiscountCodesReject?.codes, [
+    { code: "EXTRA10" },
+  ]);
+  const candidates =
+    result.operations.find((operation: any) => operation?.productDiscountsAdd)
+      ?.productDiscountsAdd?.candidates ?? [];
+  assert.deepEqual(
+    candidates.map((candidate: any) => candidate?.value?.percentage?.value),
+    [20],
+  );
+});
+
+test("discount function resolves blacklisted coupon codes by configured precedence, not entered order", () => {
+  const result = runDiscountFunction({
+    cart: {
+      buyerIdentity: { customer: { hasAnyTag: false } },
+      lines: [
+        {
+          id: "line-precedence-1",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "100.00" },
+            totalAmount: { amount: "100.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: {
+              id: "gid://shopify/Product/PRECEDENCE",
+            },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT" as any],
+      metafield: {
+        jsonValue: {
+          globalMinPricePercent: 0,
+          b2bGlobalMinPricePercent: 0,
+          allowZeroFinalPrice: true,
+          allowStacking: true,
+          discountRules: [
+            {
+              id: "vip-rule",
+              scope: "COUPON",
+              targetId: null,
+              code: "VIP20",
+              segment: null,
+              percentOff: 20,
+              priority: 200,
+              stackMode: "STACKABLE",
+              minPricePercentOfBasePrice: null,
+            },
+            {
+              id: "extra-rule",
+              scope: "COUPON",
+              targetId: null,
+              code: "EXTRA10",
+              segment: null,
+              percentOff: 10,
+              priority: 100,
+              stackMode: "STACKABLE",
+              minPricePercentOfBasePrice: null,
+            },
+          ],
+          discountCombinationBlacklistRules: [
+            {
+              leftType: "COUPON_CODE",
+              leftValue: "VIP20",
+              rightType: "COUPON_CODE",
+              rightValue: "EXTRA10",
+              segment: "ALL",
+            },
+          ],
+          perProductFloorPercentsB2C: {},
+          perProductFloorPercentsB2B: {},
+          perProductAllowZeroFinalPriceB2C: {},
+          perProductAllowZeroFinalPriceB2B: {},
+        },
+      },
+    },
+    enteredDiscountCodes: [
+      { code: "EXTRA10", rejectable: true },
+      { code: "VIP20", rejectable: true },
+    ],
+  });
+
+  const rejectOperation = result.operations.find(
+    (operation: any) => operation?.enteredDiscountCodesReject,
+  );
+  assert.deepEqual(rejectOperation?.enteredDiscountCodesReject?.codes, [
+    { code: "EXTRA10" },
+  ]);
+  const candidate =
+    result.operations.find((operation: any) => operation?.productDiscountsAdd)
+      ?.productDiscountsAdd?.candidates?.[0] ?? null;
+  assert.equal(candidate?.value?.percentage?.value, 20);
 });

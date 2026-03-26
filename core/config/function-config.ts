@@ -44,6 +44,31 @@ interface CouponSegmentRuleInput {
   allowedSegment: string;
 }
 
+interface DiscountRuleInput {
+  id: string;
+  scope: string;
+  targetId?: string | null;
+  code?: string | null;
+  segment: string | null;
+  percentOff: number;
+  priority: number;
+  stackMode: string;
+  minPricePercentOfBasePrice?: number | null;
+}
+
+interface DiscountCombinationBlacklistRuleInput {
+  leftType: string;
+  leftValue: string;
+  rightType: string;
+  rightValue: string;
+  segment?: string | null;
+}
+
+interface DiscountSegmentCapInput {
+  segment: string;
+  maxCombinedPercentOff: number;
+}
+
 interface MarginGuardFunctionConfigInput {
   b2bTag: string;
   globalMinPricePercent: number;
@@ -58,6 +83,9 @@ interface MarginGuardFunctionConfigInput {
   productCustomerQuantityRules?: ProductCustomerQuantityRuleInput[];
   productVisibilityRules?: ProductVisibilityRuleInput[];
   couponSegmentRules?: CouponSegmentRuleInput[];
+  discountRules?: DiscountRuleInput[];
+  discountCombinationBlacklistRules?: DiscountCombinationBlacklistRuleInput[];
+  discountSegmentCaps?: DiscountSegmentCapInput[];
 }
 
 interface TierPriceEntry {
@@ -120,6 +148,42 @@ function normalizeVisibilityMode(
     return value;
   }
   return "ALL";
+}
+
+function normalizeDiscountRuleScope(
+  value: string,
+): "GLOBAL" | "COLLECTION" | "PRODUCT" | "COUPON" {
+  if (
+    value === "GLOBAL" ||
+    value === "COLLECTION" ||
+    value === "PRODUCT" ||
+    value === "COUPON"
+  ) {
+    return value;
+  }
+  return "GLOBAL";
+}
+
+function normalizeDiscountStackMode(
+  value: string,
+): "STACKABLE" | "EXCLUSIVE" | "NEVER_WITH_COUPONS" {
+  if (
+    value === "STACKABLE" ||
+    value === "EXCLUSIVE" ||
+    value === "NEVER_WITH_COUPONS"
+  ) {
+    return value;
+  }
+  return "STACKABLE";
+}
+
+function normalizeDiscountReferenceType(
+  value: string,
+): "RULE_ID" | "COUPON_CODE" | "SCOPE" {
+  if (value === "RULE_ID" || value === "COUPON_CODE" || value === "SCOPE") {
+    return value;
+  }
+  return "COUPON_CODE";
 }
 
 function normalizeCustomerId(customerId: string | null | undefined): string {
@@ -218,10 +282,17 @@ export function buildCartValidationFunctionConfig(
   const productCustomerQuantityRules = config.productCustomerQuantityRules ?? [];
   const productVisibilityRules = config.productVisibilityRules ?? [];
   const rawCouponSegmentRules = config.couponSegmentRules ?? [];
+  const rawDiscountRules = config.discountRules ?? [];
+  const rawDiscountCombinationBlacklistRules =
+    config.discountCombinationBlacklistRules ?? [];
+  const rawDiscountSegmentCaps = config.discountSegmentCaps ?? [];
   const allowStacking = config.allowStacking === true;
   const maxCombinedPercentOff = normalizePercentOrNull(
     config.maxCombinedPercentOff,
   );
+  const discountRules = [];
+  const discountCombinationBlacklistRules = [];
+  const discountSegmentCaps = [];
 
   for (const floor of config.productFloors) {
     const appliesToB2C = floor.segment == null || floor.segment === "B2C";
@@ -435,10 +506,89 @@ export function buildCartValidationFunctionConfig(
     );
   }
 
+  for (const rule of rawDiscountRules) {
+    const scope = normalizeDiscountRuleScope(rule.scope);
+    const segment =
+      rule.segment === "B2B" || rule.segment === "B2C" ? rule.segment : null;
+    const percentOff = normalizePercentOrNull(rule.percentOff);
+    const minPricePercentOfBasePrice = normalizePercentOrNull(
+      rule.minPricePercentOfBasePrice,
+    );
+    if (percentOff == null || percentOff <= 0) {
+      continue;
+    }
+    let targetId = rule.targetId ? String(rule.targetId).trim() : null;
+    let code = rule.code ? normalizeCouponCode(rule.code) : null;
+    if (scope === "COLLECTION") {
+      targetId = normalizeCollectionId(targetId);
+    }
+    if (scope === "GLOBAL") {
+      targetId = null;
+      code = null;
+    }
+    if (scope === "COUPON") {
+      code = normalizeCouponCode(String(rule.code ?? rule.targetId ?? ""));
+      targetId = null;
+      if (!code) {
+        continue;
+      }
+    }
+    if ((scope === "PRODUCT" || scope === "COLLECTION") && !targetId) {
+      continue;
+    }
+    discountRules.push({
+      id: String(rule.id ?? "").trim(),
+      scope,
+      targetId,
+      code,
+      segment,
+      percentOff,
+      priority: Number.isFinite(rule.priority) ? Math.floor(rule.priority) : 100,
+      stackMode: normalizeDiscountStackMode(rule.stackMode),
+      minPricePercentOfBasePrice,
+    });
+  }
+
+  for (const rule of rawDiscountCombinationBlacklistRules) {
+    const leftType = normalizeDiscountReferenceType(rule.leftType);
+    const rightType = normalizeDiscountReferenceType(rule.rightType);
+    const leftValue = String(rule.leftValue ?? "").trim();
+    const rightValue = String(rule.rightValue ?? "").trim();
+    if (!leftValue || !rightValue) {
+      continue;
+    }
+    discountCombinationBlacklistRules.push({
+      leftType,
+      leftValue: leftType === "COUPON_CODE" ? normalizeCouponCode(leftValue) : leftValue,
+      rightType,
+      rightValue:
+        rightType === "COUPON_CODE" ? normalizeCouponCode(rightValue) : rightValue,
+      segment:
+        rule.segment === "B2B" || rule.segment === "B2C" || rule.segment === "ALL"
+          ? rule.segment
+          : null,
+    });
+  }
+
+  for (const cap of rawDiscountSegmentCaps) {
+    const maxPercent = normalizePercentOrNull(cap.maxCombinedPercentOff);
+    if (maxPercent == null) {
+      continue;
+    }
+    discountSegmentCaps.push({
+      segment:
+        cap.segment === "B2B" || cap.segment === "B2C" ? cap.segment : "ALL",
+      maxCombinedPercentOff: maxPercent,
+    });
+  }
+
   const collectionIds = Array.from(
     new Set([
       ...Object.keys(perCollectionMaximumOrderQuantitiesB2C),
       ...Object.keys(perCollectionMaximumOrderQuantitiesB2B),
+      ...discountRules
+        .filter((rule) => rule.scope === "COLLECTION" && rule.targetId)
+        .map((rule) => rule.targetId),
     ]),
   ).sort();
   const b2bGlobalMinPricePercent =
@@ -474,6 +624,9 @@ export function buildCartValidationFunctionConfig(
     perProductVisibilityModes,
     perProductVisibilityCustomerIds,
     couponSegmentRules,
+    discountRules,
+    discountCombinationBlacklistRules,
+    discountSegmentCaps,
   };
 }
 

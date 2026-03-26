@@ -9,6 +9,8 @@ export interface PricingInput extends ProductContext {
   segment: Segment;
   basePrice: number;
   b2bOverridePrice?: number;
+  collectionIds?: string[];
+  enteredDiscountCodes?: string[];
   quantity?: number;
   tierPrices?: TierPrice[];
 }

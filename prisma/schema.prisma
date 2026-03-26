@@ -55,6 +55,9 @@ model MarginGuardConfig {
   productVisibilityRules ProductVisibilityRule[]
   productVariantVisibilityRules ProductVariantVisibilityRule[]
   couponSegmentRules    CouponSegmentRule[]
+  discountRules         DiscountRule[]
+  discountCombinationBlacklistRules DiscountCombinationBlacklistRule[]
+  discountSegmentCaps   DiscountSegmentCap[]
   violations            MarginViolationLog[]
 }
 
@@ -165,6 +168,53 @@ model CouponSegmentRule {
   updatedAt      DateTime          @updatedAt
 
   @@unique([configId, code])
+}
+
+model DiscountRule {
+  id                       String            @id @default(cuid())
+  configId                 String
+  config                   MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  scope                    String
+  canonicalKey             String
+  targetId                 String?
+  code                     String?
+  segment                  String?
+  percentOff               Float
+  priority                 Int               @default(100)
+  stackMode                String            @default("STACKABLE")
+  minPricePercentOfBasePrice Float?
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+
+  @@unique([configId, canonicalKey])
+}
+
+model DiscountCombinationBlacklistRule {
+  id         String            @id @default(cuid())
+  configId   String
+  config     MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  canonicalPairKey String
+  leftType   String
+  leftValue  String
+  rightType  String
+  rightValue String
+  segment    String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([configId, canonicalPairKey])
+}
+
+model DiscountSegmentCap {
+  id                    String            @id @default(cuid())
+  configId              String
+  config                MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  segment               String
+  maxCombinedPercentOff Float
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@unique([configId, segment])
 }
 
 model MarginViolationLog {
