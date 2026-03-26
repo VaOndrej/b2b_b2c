@@ -127,6 +127,59 @@ test("quantity engine treats step <= 1 as no restriction", () => {
   );
 });
 
+test("quantity engine resolves collection max quantity but product rule wins when both apply", () => {
+  const constraints = resolveQuantityConstraints({
+    quantity: 1,
+    productId: "gid://shopify/Product/COMBO",
+    collectionIds: ["gid://shopify/Collection/99"],
+    segment: "B2C",
+    rules: [
+      {
+        collectionId: "gid://shopify/Collection/99",
+        minimumOrderQuantity: 6,
+        maxOrderQuantity: 20,
+      },
+      {
+        productId: "gid://shopify/Product/COMBO",
+        minimumOrderQuantity: 3,
+        maxOrderQuantity: 10,
+      },
+    ],
+  });
+
+  assert.equal(
+    constraints.minimumOrderQuantity,
+    3,
+    "product MOQ (3) must win over collection MOQ (6) because product has higher target priority",
+  );
+  assert.equal(
+    constraints.maxOrderQuantity,
+    10,
+    "product max (10) must win over collection max (20) because product has higher target priority",
+  );
+
+  assert.equal(
+    validateQuantity({
+      quantity: 15,
+      productId: "gid://shopify/Product/COMBO",
+      collectionIds: ["gid://shopify/Collection/99"],
+      segment: "B2C",
+      rules: [
+        {
+          collectionId: "gid://shopify/Collection/99",
+          maxOrderQuantity: 20,
+        },
+        {
+          productId: "gid://shopify/Product/COMBO",
+          maxOrderQuantity: 10,
+        },
+      ],
+    }),
+    false,
+    "quantity 15 must be rejected by product max 10 even though collection allows 20",
+  );
+});
+
 test("quantity engine resolves max quantity with segment precedence", () => {
   const rules = [
     {

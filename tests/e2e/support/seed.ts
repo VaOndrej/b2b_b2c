@@ -1,8 +1,10 @@
 import prisma from "../../../app/db.server.ts";
 import {
   updateGlobalMarginGuardConfig,
+  upsertProductMaximumQuantityRule,
   upsertProductQuantityRule,
   upsertProductStepQuantityRule,
+  upsertProductVariantVisibilityRule,
   upsertProductVisibilityRule,
 } from "../../../app/services/margin-guard-config.server.ts";
 
@@ -297,6 +299,29 @@ export async function seedQuantityConstraintScenario(input: {
   await upsertProductStepQuantityRule({
     productId: input.productId,
     stepQuantity: input.stepQuantity,
+  });
+}
+
+export async function seedVariantVisibilityScenario(input: {
+  productId: string;
+  variantId: string;
+}) {
+  await resetMarginGuardConfigForStorefrontE2E();
+  await upsertProductVariantVisibilityRule({
+    productId: input.productId,
+    variantId: input.variantId,
+    visibilityMode: "B2B_ONLY",
+  });
+}
+
+export async function seedMaxOrderQuantityScenario(input: {
+  productId: string;
+  maxOrderQuantity: number;
+}) {
+  await resetMarginGuardConfigForStorefrontE2E();
+  await upsertProductMaximumQuantityRule({
+    productId: input.productId,
+    maxOrderQuantity: input.maxOrderQuantity,
   });
 }
 
