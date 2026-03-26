@@ -19,7 +19,7 @@ import type {
 } from "./admin-catalog-picker.shared.ts";
 
 export interface AdminCatalogPickerProps {
-  name: "productId" | "collectionId";
+  name: string;
   label: string;
   resourceType: CatalogResourceType;
   required?: boolean;

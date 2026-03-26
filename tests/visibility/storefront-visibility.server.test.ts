@@ -4,6 +4,7 @@ import {
   fetchProductCollectionIdsByProductIds,
   resolveStorefrontQuantityConstraintsByProductId,
   resolveStorefrontQuantityConstraintsByHandle,
+  resolveStorefrontVariantVisibilityByProductId,
   resolveStorefrontVisibilityByHandles,
 } from "../../app/services/storefront-visibility.server.ts";
 
@@ -252,6 +253,42 @@ test("storefront quantity constraints apply product max over collection max", ()
       minimumOrderQuantity: 1,
       stepQuantity: 1,
       maxOrderQuantity: 40,
+    },
+  });
+});
+
+test("storefront variant visibility resolves hidden variants by product id", () => {
+  const productId = "gid://shopify/Product/VARIANT_VISIBILITY";
+  const result = resolveStorefrontVariantVisibilityByProductId({
+    productIds: [productId],
+    segment: "B2C",
+    customerId: "gid://shopify/Customer/9",
+    rules: [
+      {
+        productId,
+        variantId: "gid://shopify/ProductVariant/100",
+        visibilityMode: "B2B_ONLY",
+      },
+      {
+        productId,
+        variantId: "gid://shopify/ProductVariant/200",
+        visibilityMode: "CUSTOMER_ONLY",
+        customerId: "gid://shopify/Customer/42",
+      },
+      {
+        productId,
+        variantId: "gid://shopify/ProductVariant/300",
+        visibilityMode: "B2C_ONLY",
+      },
+    ],
+  });
+
+  assert.deepEqual(result, {
+    [productId]: {
+      hiddenVariantIds: [
+        "gid://shopify/ProductVariant/100",
+        "gid://shopify/ProductVariant/200",
+      ],
     },
   });
 });

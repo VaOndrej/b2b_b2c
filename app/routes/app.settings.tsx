@@ -16,6 +16,7 @@ import {
   deleteProductQuantityRule,
   deleteProductStepQuantityRule,
   deleteProductVisibilityRule,
+  deleteProductVariantVisibilityRule,
   deleteProductTierPriceRule,
   getOrCreateMarginGuardConfig,
   upsertCollectionMaximumQuantityRule,
@@ -26,6 +27,7 @@ import {
   upsertProductQuantityRule,
   upsertProductStepQuantityRule,
   upsertProductVisibilityRule,
+  upsertProductVariantVisibilityRule,
   upsertProductTierPriceRule,
   updateGlobalMarginGuardConfig,
 } from "../services/margin-guard-config.server";
@@ -307,6 +309,34 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
+  if (intent === "save-product-variant-visibility-rule") {
+    const productId = String(formData.get("productId") ?? "").trim();
+    const variantId = String(formData.get("variantId") ?? "").trim();
+    const visibilityModeRaw = String(formData.get("visibilityMode") ?? "ALL").trim();
+    const customerId = String(formData.get("customerId") ?? "").trim();
+
+    if (productId && variantId) {
+      await upsertProductVariantVisibilityRule({
+        productId,
+        variantId,
+        visibilityMode:
+          visibilityModeRaw === "B2B_ONLY" ||
+          visibilityModeRaw === "B2C_ONLY" ||
+          visibilityModeRaw === "CUSTOMER_ONLY"
+            ? visibilityModeRaw
+            : "ALL",
+        customerId,
+      });
+    }
+  }
+
+  if (intent === "delete-product-variant-visibility-rule") {
+    const id = String(formData.get("id") ?? "");
+    if (id) {
+      await deleteProductVariantVisibilityRule(id);
+    }
+  }
+
   if (intent === "save-coupon-segment-rule") {
     const code = String(formData.get("code") ?? "").trim();
     const allowedSegmentRaw = String(formData.get("allowedSegment") ?? "ALL").trim();
@@ -353,6 +383,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     intent === "delete-product-customer-max-quantity-rule" ||
     intent === "save-product-visibility-rule" ||
     intent === "delete-product-visibility-rule" ||
+    intent === "save-product-variant-visibility-rule" ||
+    intent === "delete-product-variant-visibility-rule" ||
     intent === "save-coupon-segment-rule" ||
     intent === "delete-coupon-segment-rule"
   ) {
@@ -393,6 +425,11 @@ export default function AppSettingsRoute() {
     ? config.productCustomerQuantityRules.filter(
         (rule: any) => Number(rule.maxOrderQuantity ?? 0) > 0,
       )
+    : [];
+  const productVariantVisibilityRules = Array.isArray(
+    (config as any).productVariantVisibilityRules,
+  )
+    ? (config as any).productVariantVisibilityRules
     : [];
 
   return (
@@ -896,14 +933,12 @@ export default function AppSettingsRoute() {
               resourceType="product"
               required
             />
-            <label>
-              Customer ID
-              <input
-                name="customerId"
-                placeholder="gid://shopify/Customer/123456789"
-                required
-              />
-            </label>
+            <AdminCatalogPicker
+              name="customerId"
+              label="Customer"
+              resourceType="customer"
+              required
+            />
             <label>
               Maximum order quantity for this customer
               <input
@@ -975,13 +1010,11 @@ export default function AppSettingsRoute() {
                 <option value="ALL">Visible for all (removes rule)</option>
               </select>
             </label>
-            <label>
-              Customer ID (required only for specific customer mode)
-              <input
-                name="customerId"
-                placeholder="gid://shopify/Customer/123456789"
-              />
-            </label>
+            <AdminCatalogPicker
+              name="customerId"
+              label="Customer (only for specific customer mode)"
+              resourceType="customer"
+            />
             <button type="submit" disabled={isSubmitting}>
               Save visibility rule
             </button>
@@ -1002,6 +1035,82 @@ export default function AppSettingsRoute() {
                   </s-text>
                   <form method="post">
                     <input type="hidden" name="intent" value="delete-product-visibility-rule" />
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" disabled={isSubmitting}>
+                      Delete
+                    </button>
+                  </form>
+                </s-stack>
+              ))}
+            </s-stack>
+          )}
+        </s-box>
+      </s-section>
+
+      <s-section heading="Per-variant visibility rules">
+        <s-paragraph>
+          Hide a specific variant for B2B, B2C, or a selected customer. This is useful
+          for unit-vs-carton variants on the same product page.
+        </s-paragraph>
+        <form method="post">
+          <input
+            type="hidden"
+            name="intent"
+            value="save-product-variant-visibility-rule"
+          />
+          <s-stack direction="block" gap="base">
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
+            <label>
+              Variant ID
+              <input
+                name="variantId"
+                placeholder="gid://shopify/ProductVariant/123456789 or 123456789"
+                required
+              />
+            </label>
+            <label>
+              Visibility mode
+              <select name="visibilityMode" defaultValue="B2B_ONLY">
+                <option value="B2B_ONLY">B2B only</option>
+                <option value="B2C_ONLY">B2C only</option>
+                <option value="CUSTOMER_ONLY">Specific customer only</option>
+                <option value="ALL">Visible for all (removes rule)</option>
+              </select>
+            </label>
+            <AdminCatalogPicker
+              name="customerId"
+              label="Customer (only for specific customer mode)"
+              resourceType="customer"
+            />
+            <button type="submit" disabled={isSubmitting}>
+              Save variant visibility rule
+            </button>
+          </s-stack>
+        </form>
+
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Configured variant visibility rules</s-heading>
+          {productVariantVisibilityRules.length === 0 ? (
+            <s-paragraph>No variant visibility rules yet.</s-paragraph>
+          ) : (
+            <s-stack direction="block" gap="small">
+              {productVariantVisibilityRules.map((rule: any) => (
+                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
+                  <s-text>
+                    {rule.productId} | variant {rule.variantId} | {rule.visibilityMode}
+                    {rule.customerId ? ` | customer: ${rule.customerId}` : ""}
+                  </s-text>
+                  <form method="post">
+                    <input
+                      type="hidden"
+                      name="intent"
+                      value="delete-product-variant-visibility-rule"
+                    />
                     <input type="hidden" name="id" value={rule.id} />
                     <button type="submit" disabled={isSubmitting}>
                       Delete

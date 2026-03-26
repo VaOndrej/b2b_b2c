@@ -1,4 +1,4 @@
-export type AdminCatalogSearchType = "product" | "collection";
+export type AdminCatalogSearchType = "product" | "collection" | "customer";
 
 export interface AdminCatalogSearchItem {
   id: string;
@@ -44,7 +44,11 @@ function badRequest(message: string, details?: Record<string, unknown>) {
 }
 
 function parseType(rawType: string | null): AdminCatalogSearchType | null {
-  if (rawType === "product" || rawType === "collection") {
+  if (
+    rawType === "product" ||
+    rawType === "collection" ||
+    rawType === "customer"
+  ) {
     return rawType;
   }
   return null;
@@ -69,12 +73,18 @@ function escapeShopifySearchTerm(term: string): string {
   return term.replace(/["\\]/g, "\\$&");
 }
 
-function buildShopifySearchQuery(rawQuery: string): string {
+function buildShopifySearchQuery(
+  rawQuery: string,
+  type: AdminCatalogSearchType,
+): string {
   const normalized = String(rawQuery ?? "").trim();
   if (!normalized) {
     return "";
   }
   const escaped = escapeShopifySearchTerm(normalized);
+  if (type === "customer") {
+    return `email:*${escaped}* OR first_name:*${escaped}* OR last_name:*${escaped}*`;
+  }
   return `title:*${escaped}* OR handle:*${escaped}*`;
 }
 
@@ -188,18 +198,91 @@ async function searchCollections(input: {
   return mapCollectionNodes(nodes);
 }
 
+function buildCustomerTitle(node: unknown): string {
+  const displayName = String((node as any)?.displayName ?? "").trim();
+  if (displayName) {
+    return displayName;
+  }
+  const firstName = String((node as any)?.firstName ?? "").trim();
+  const lastName = String((node as any)?.lastName ?? "").trim();
+  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+  if (fullName) {
+    return fullName;
+  }
+  return String((node as any)?.email ?? "").trim();
+}
+
+function mapCustomerNodes(nodes: unknown[]): AdminCatalogSearchItem[] {
+  const mapped: AdminCatalogSearchItem[] = [];
+  for (const rawNode of nodes) {
+    const id = String((rawNode as any)?.id ?? "").trim();
+    const title = buildCustomerTitle(rawNode);
+    const email = String((rawNode as any)?.email ?? "").trim();
+    if (!id || !title) {
+      continue;
+    }
+    mapped.push({
+      id,
+      type: "customer",
+      title,
+      handle: null,
+      secondaryLabel: email && email !== title ? email : null,
+    });
+  }
+  return mapped;
+}
+
+async function searchCustomers(input: {
+  admin: AdminGraphqlClient;
+  query: string;
+  limit: number;
+}): Promise<AdminCatalogSearchItem[]> {
+  const response = await input.admin.graphql(
+    `#graphql
+      query AdminCatalogSearchCustomers($query: String!, $first: Int!) {
+        customers(first: $first, query: $query) {
+          nodes {
+            id
+            displayName
+            firstName
+            lastName
+            email
+          }
+        }
+      }`,
+    {
+      variables: {
+        query: input.query,
+        first: input.limit,
+      },
+    },
+  );
+  const payload = await response.json();
+  const nodes = Array.isArray(payload?.data?.customers?.nodes)
+    ? payload.data.customers.nodes
+    : [];
+  return mapCustomerNodes(nodes);
+}
+
 export async function searchAdminCatalog(input: {
   admin: AdminGraphqlClient;
   type: AdminCatalogSearchType;
   query: string;
   limit: number;
 }): Promise<AdminCatalogSearchItem[]> {
-  const searchQuery = buildShopifySearchQuery(input.query);
+  const searchQuery = buildShopifySearchQuery(input.query, input.type);
   if (!searchQuery) {
     return [];
   }
   if (input.type === "product") {
     return searchProducts({
+      admin: input.admin,
+      query: searchQuery,
+      limit: input.limit,
+    });
+  }
+  if (input.type === "customer") {
+    return searchCustomers({
       admin: input.admin,
       query: searchQuery,
       limit: input.limit,
@@ -230,7 +313,9 @@ export function createCatalogSearchLoader(deps: CatalogSearchDeps) {
     const rawType = String(url.searchParams.get("type") ?? "").trim();
     const type = parseType(rawType || null);
     if (!type) {
-      return badRequest("Invalid required query param: type=product|collection.");
+      return badRequest(
+        "Invalid required query param: type=product|collection|customer.",
+      );
     }
 
     const query = String(url.searchParams.get("q") ?? "").trim();

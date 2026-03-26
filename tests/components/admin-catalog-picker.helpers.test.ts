@@ -26,7 +26,12 @@ test("normalizeCatalogSearchItems accepts supported payload shapes and filters i
   const payload = {
     data: {
       items: [
-        { id: "gid://shopify/Product/1", title: "Alpha", handle: "alpha" },
+        {
+          id: "gid://shopify/Product/1",
+          title: "Alpha",
+          handle: "alpha",
+          secondaryLabel: "Handle: alpha",
+        },
         { id: "", title: "Missing ID" },
         { id: "gid://shopify/Product/2", title: "" },
       ],
@@ -38,6 +43,7 @@ test("normalizeCatalogSearchItems accepts supported payload shapes and filters i
       id: "gid://shopify/Product/1",
       title: "Alpha",
       handle: "alpha",
+      secondaryLabel: "Handle: alpha",
     },
   ]);
 });
@@ -53,7 +59,7 @@ test("AdminCatalogPicker keeps the original field name on the visible manual GID
   assert.match(
     source,
     /name=\{props\.name\}/,
-    "Picker must submit through the original productId or collectionId field name.",
+    "Picker must submit through the original productId, collectionId, or customerId field name.",
   );
   assert.match(
     source,
@@ -69,5 +75,16 @@ test("AdminCatalogPicker keeps the original field name on the visible manual GID
     source,
     /setManualValue\(option\.id\)/,
     "Picking a catalog search result must populate the canonical GID input.",
+  );
+});
+
+test("customer picker placeholders are available in shared helpers", async () => {
+  const source = await readFile(PICKER_COMPONENT_PATH, "utf8");
+
+  assert.match(source, /resourceType: CatalogResourceType/, "Picker must support typed resource variants.");
+  assert.match(
+    source,
+    /Selected \{props\.resourceType\}/,
+    "Picker should render the selected resource label generically, including customer.",
   );
 });

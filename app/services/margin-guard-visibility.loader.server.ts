@@ -4,6 +4,7 @@ import type {
   fetchProductCollectionIdsByProductIds,
   resolveStorefrontQuantityConstraintsByProductId,
   resolveStorefrontQuantityConstraintsByHandle,
+  resolveStorefrontVariantVisibilityByProductId,
   resolveStorefrontVisibilityByHandles,
 } from "./storefront-visibility.server.ts";
 
@@ -67,6 +68,7 @@ type VisibilityDependencies = {
   fetchProductCollectionIdsByProductIds: typeof fetchProductCollectionIdsByProductIds;
   resolveStorefrontQuantityConstraintsByHandle: typeof resolveStorefrontQuantityConstraintsByHandle;
   resolveStorefrontQuantityConstraintsByProductId: typeof resolveStorefrontQuantityConstraintsByProductId;
+  resolveStorefrontVariantVisibilityByProductId: typeof resolveStorefrontVariantVisibilityByProductId;
 };
 
 async function resolveVisibilitySegment(input: {
@@ -159,6 +161,15 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
       customerId,
       customerMaxRules: config.productCustomerQuantityRules,
     });
+    const variantVisibilityByProductId =
+      deps.resolveStorefrontVariantVisibilityByProductId({
+        productIds: allRelevantProductIds,
+        segment,
+        customerId,
+        rules: Array.isArray((config as any).productVariantVisibilityRules)
+          ? (config as any).productVariantVisibilityRules
+          : [],
+      });
 
     return Response.json(
       {
@@ -170,6 +181,7 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
         configUpdatedAt: config.updatedAt,
         quantityConstraintsByHandle,
         quantityConstraintsByProductId,
+        variantVisibilityByProductId,
         ...visibility,
       },
       {

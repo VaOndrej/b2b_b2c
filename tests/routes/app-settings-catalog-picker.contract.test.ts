@@ -9,9 +9,9 @@ test("settings route uses AdminCatalogPicker for product and collection forms", 
 
   const pickerUsages = Array.from(source.matchAll(/<AdminCatalogPicker/g));
   assert.equal(
-    pickerUsages.length >= 8,
+    pickerUsages.length >= 11,
     true,
-    "Settings route must reuse AdminCatalogPicker across product and collection forms.",
+    "Settings route must reuse AdminCatalogPicker across product, collection, and customer forms.",
   );
   assert.match(
     source,
@@ -22,6 +22,11 @@ test("settings route uses AdminCatalogPicker for product and collection forms", 
     source,
     /resourceType="collection"/,
     "Settings route must wire collection picker usage.",
+  );
+  assert.match(
+    source,
+    /resourceType="customer"/,
+    "Settings route must wire customer picker usage.",
   );
 });
 

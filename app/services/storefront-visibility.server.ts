@@ -18,6 +18,13 @@ interface ProductVisibilityRuleRecord {
   customerId?: string | null;
 }
 
+interface ProductVariantVisibilityRuleRecord {
+  productId: string;
+  variantId: string;
+  visibilityMode: string;
+  customerId?: string | null;
+}
+
 interface ProductQuantityRuleRecord {
   productId: string;
   segment?: string | null;
@@ -68,6 +75,10 @@ interface StorefrontQuantityConstraints {
   minimumOrderQuantity: number;
   stepQuantity: number;
   maxOrderQuantity?: number;
+}
+
+interface StorefrontVariantVisibilityRule {
+  hiddenVariantIds: string[];
 }
 
 interface StorefrontQuantityConstraintsByProductInput {
@@ -148,6 +159,20 @@ function normalizeCollectionIds(values: Array<string | null | undefined>): strin
     }
   }
   return Array.from(ids);
+}
+
+function normalizeVariantId(value: string | null | undefined): string {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    return "";
+  }
+  if (normalized.startsWith("gid://shopify/ProductVariant/")) {
+    return normalized;
+  }
+  if (/^\d+$/.test(normalized)) {
+    return `gid://shopify/ProductVariant/${normalized}`;
+  }
+  return "";
 }
 
 function buildQuantityRules(
@@ -244,7 +269,7 @@ function toStorefrontQuantityConstraints(
 function isVisibleForContext(input: {
   segment: Segment;
   customerId: string;
-  rule: ProductVisibilityRuleRecord;
+  rule: { visibilityMode: string; customerId?: string | null };
 }): boolean {
   if (input.rule.visibilityMode === "B2B_ONLY") {
     return input.segment === "B2B";
@@ -256,6 +281,60 @@ function isVisibleForContext(input: {
     return Boolean(input.customerId) && input.customerId === normalizeCustomerId(input.rule.customerId);
   }
   return true;
+}
+
+export function resolveStorefrontVariantVisibilityByProductId(input: {
+  productIds: string[];
+  segment: Segment;
+  customerId?: string | null;
+  rules: ProductVariantVisibilityRuleRecord[];
+}): Record<string, StorefrontVariantVisibilityRule> {
+  const normalizedProductIds = Array.from(
+    new Set(
+      input.productIds
+        .map((productId) => normalizeProductId(productId))
+        .filter(Boolean),
+    ),
+  );
+  if (normalizedProductIds.length === 0) {
+    return {};
+  }
+
+  const allowedProductIds = new Set(normalizedProductIds);
+  const customerId = normalizeCustomerId(input.customerId);
+  const hiddenVariantIdsByProductId = new Map<string, Set<string>>();
+
+  for (const rawRule of input.rules) {
+    const productId = normalizeProductId(rawRule.productId);
+    const variantId = normalizeVariantId(rawRule.variantId);
+    if (!productId || !variantId || !allowedProductIds.has(productId)) {
+      continue;
+    }
+    const visible = isVisibleForContext({
+      segment: input.segment,
+      customerId,
+      rule: rawRule,
+    });
+    if (visible) {
+      continue;
+    }
+    hiddenVariantIdsByProductId.set(
+      productId,
+      hiddenVariantIdsByProductId.get(productId) ?? new Set<string>(),
+    );
+    hiddenVariantIdsByProductId.get(productId)?.add(variantId);
+  }
+
+  const result: Record<string, StorefrontVariantVisibilityRule> = {};
+  for (const [productId, hiddenVariantIds] of hiddenVariantIdsByProductId.entries()) {
+    if (hiddenVariantIds.size === 0) {
+      continue;
+    }
+    result[productId] = {
+      hiddenVariantIds: Array.from(hiddenVariantIds),
+    };
+  }
+  return result;
 }
 
 async function fetchProductIdsByHandles(

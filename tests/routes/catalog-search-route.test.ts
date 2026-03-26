@@ -76,7 +76,7 @@ test("catalog search route validates query params and returns mapped success pay
   assert.equal(payload.items[0]?.id, "gid://shopify/Product/300");
 });
 
-test("catalog search route returns 400 for invalid type and limit", async () => {
+test("catalog search route accepts customer type and returns 400 for other invalid types", async () => {
   const loader = createCatalogSearchLoader({
     authenticateAdmin: async () => ({
       admin: {
@@ -87,12 +87,32 @@ test("catalog search route returns 400 for invalid type and limit", async () => 
         }),
       },
     }),
-    searchCatalog: (async () => []) as any,
+    searchCatalog: (async (input: Record<string, unknown>) => {
+      return [
+        {
+          id: "gid://shopify/Customer/500",
+          type: input.type,
+          title: "Customer Result",
+          handle: null,
+          secondaryLabel: "customer@example.com",
+        },
+      ];
+    }) as any,
   });
+
+  const customerResponse = await loader({
+    request: buildRequest(
+      "https://example.test/app/api/catalog-search?type=customer&q=alpha",
+    ),
+  });
+  assert.equal(customerResponse.status, 200);
+  const customerPayload = await customerResponse.json();
+  assert.equal(customerPayload.type, "customer");
+  assert.equal(customerPayload.items[0]?.id, "gid://shopify/Customer/500");
 
   const badTypeResponse = await loader({
     request: buildRequest(
-      "https://example.test/app/api/catalog-search?type=customer&q=alpha",
+      "https://example.test/app/api/catalog-search?type=order&q=alpha",
     ),
   });
   assert.equal(badTypeResponse.status, 400);

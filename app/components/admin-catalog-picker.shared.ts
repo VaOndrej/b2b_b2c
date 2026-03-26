@@ -1,9 +1,10 @@
-export type CatalogResourceType = "product" | "collection";
+export type CatalogResourceType = "product" | "collection" | "customer";
 
 export interface CatalogSearchItem {
   id: string;
   title: string;
   handle: string | null;
+  secondaryLabel?: string | null;
 }
 
 function normalizeString(value: unknown): string {
@@ -39,6 +40,7 @@ export function normalizeCatalogSearchItems(payload: unknown): CatalogSearchItem
     const id = normalizeString((rawItem as any)?.id);
     const title = normalizeString((rawItem as any)?.title);
     const handle = normalizeString((rawItem as any)?.handle);
+    const secondaryLabel = normalizeString((rawItem as any)?.secondaryLabel);
     if (!id || !title) {
       continue;
     }
@@ -46,6 +48,7 @@ export function normalizeCatalogSearchItems(payload: unknown): CatalogSearchItem
       id,
       title,
       handle: handle || null,
+      secondaryLabel: secondaryLabel || null,
     });
   }
 
@@ -53,19 +56,33 @@ export function normalizeCatalogSearchItems(payload: unknown): CatalogSearchItem
 }
 
 export function describeCatalogItem(item: CatalogSearchItem): string {
-  return item.handle ? `${item.title} (${item.handle})` : item.title;
+  if (item.handle) {
+    return `${item.title} (${item.handle})`;
+  }
+  if (item.secondaryLabel) {
+    return `${item.title} (${item.secondaryLabel})`;
+  }
+  return item.title;
 }
 
 export function defaultSearchPlaceholder(resourceType: CatalogResourceType): string {
-  return resourceType === "product"
-    ? "Search product by title or handle"
-    : "Search collection by title or handle";
+  if (resourceType === "product") {
+    return "Search product by title or handle";
+  }
+  if (resourceType === "collection") {
+    return "Search collection by title or handle";
+  }
+  return "Search customer by name or email";
 }
 
 export function defaultManualPlaceholder(resourceType: CatalogResourceType): string {
-  return resourceType === "product"
-    ? "gid://shopify/Product/123456789"
-    : "gid://shopify/Collection/123456789";
+  if (resourceType === "product") {
+    return "gid://shopify/Product/123456789";
+  }
+  if (resourceType === "collection") {
+    return "gid://shopify/Collection/123456789";
+  }
+  return "gid://shopify/Customer/123456789";
 }
 
 export function normalizeCatalogPickerValue(value: unknown): string {

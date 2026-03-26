@@ -53,6 +53,7 @@ model MarginGuardConfig {
   collectionQuantityRules CollectionQuantityRule[]
   productCustomerQuantityRules ProductCustomerQuantityRule[]
   productVisibilityRules ProductVisibilityRule[]
+  productVariantVisibilityRules ProductVariantVisibilityRule[]
   couponSegmentRules    CouponSegmentRule[]
   violations            MarginViolationLog[]
 }
@@ -138,6 +139,20 @@ model ProductVisibilityRule {
   updatedAt      DateTime          @updatedAt
 
   @@unique([configId, productId])
+}
+
+model ProductVariantVisibilityRule {
+  id             String            @id @default(cuid())
+  configId       String
+  config         MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  productId      String
+  variantId      String
+  visibilityMode String
+  customerId     String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([configId, variantId])
 }
 
 model CouponSegmentRule {

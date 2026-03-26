@@ -26,6 +26,7 @@ function stubConfig(): MarginGuardConfig {
     collectionQuantityRules: [],
     productCustomerQuantityRules: [],
     productVisibilityRules: [],
+    productVariantVisibilityRules: [],
     couponSegmentRules: [],
   };
 }
@@ -41,6 +42,7 @@ function baseDeps() {
     fetchProductCollectionIdsByProductIds: async () => ({}),
     resolveStorefrontQuantityConstraintsByHandle: () => ({}),
     resolveStorefrontQuantityConstraintsByProductId: () => ({}),
+    resolveStorefrontVariantVisibilityByProductId: () => ({}),
   };
 }
 
@@ -90,4 +92,53 @@ test("visibility loader trusts logged_in_customer_id and ignores spoofed custome
 
   assert.equal(payload.segment, "B2B");
   assert.equal(adminCalls[0]?.id, "gid://shopify/Customer/REAL");
+});
+
+test("visibility loader returns variant visibility payload alongside quantity rules", async () => {
+  const loader = createVisibilityLoader({
+    async authenticatePublicAppProxy() {
+      return { admin: undefined };
+    },
+    getOrCreateMarginGuardConfig: async () => ({
+      ...stubConfig(),
+      productVariantVisibilityRules: [
+        {
+          id: "rule_1",
+          configId: "default",
+          productId: "gid://shopify/Product/500",
+          variantId: "gid://shopify/ProductVariant/900",
+          visibilityMode: "B2B_ONLY",
+          customerId: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+    }),
+    resolveStorefrontVisibilityByHandles: async () => ({
+      productIdByHandle: {},
+      hiddenHandles: [],
+      hiddenProductIds: [],
+      visibilityByHandle: {},
+    }),
+    fetchProductCollectionIdsByProductIds: async () => ({}),
+    resolveStorefrontQuantityConstraintsByHandle: () => ({}),
+    resolveStorefrontQuantityConstraintsByProductId: () => ({}),
+    resolveStorefrontVariantVisibilityByProductId: () => ({
+      "gid://shopify/Product/500": {
+        hiddenVariantIds: ["gid://shopify/ProductVariant/900"],
+      },
+    }),
+  });
+
+  const request = new Request(
+    "https://example.com/apps/margin-guard/visibility?product_ids=gid://shopify/Product/500",
+  );
+  const response = await loader({ request });
+  const payload = await response.json();
+
+  assert.deepEqual(payload.variantVisibilityByProductId, {
+    "gid://shopify/Product/500": {
+      hiddenVariantIds: ["gid://shopify/ProductVariant/900"],
+    },
+  });
 });

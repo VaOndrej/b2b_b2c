@@ -81,6 +81,8 @@ test("searchAdminCatalog maps collection nodes and skips graphql for empty query
       query: string,
       _options?: { variables?: Record<string, unknown> },
     ) {
+      void query;
+      void _options;
       graphqlCallCount += 1;
       return {
         async json() {
@@ -125,6 +127,77 @@ test("searchAdminCatalog maps collection nodes and skips graphql for empty query
       title: "Spring Deals",
       handle: "spring-deals",
       secondaryLabel: "Handle: spring-deals",
+    },
+  ]);
+});
+
+test("searchAdminCatalog maps customer nodes with email secondary label", async () => {
+  const calls: Array<{ query: string; variables: Record<string, unknown> }> = [];
+  const admin = {
+    async graphql(
+      query: string,
+      options?: { variables?: Record<string, unknown> },
+    ) {
+      calls.push({
+        query,
+        variables: options?.variables ?? {},
+      });
+      return {
+        async json() {
+          return {
+            data: {
+              customers: {
+                nodes: [
+                  {
+                    id: "gid://shopify/Customer/301",
+                    displayName: "Alice Alpha",
+                    firstName: "Alice",
+                    lastName: "Alpha",
+                    email: "alice@example.com",
+                  },
+                  {
+                    id: "gid://shopify/Customer/302",
+                    displayName: "",
+                    firstName: "",
+                    lastName: "",
+                    email: "fallback@example.com",
+                  },
+                ],
+              },
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const items = await searchAdminCatalog({
+    admin,
+    type: "customer",
+    query: "alice",
+    limit: 4,
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]?.query.includes("query AdminCatalogSearchCustomers"), true);
+  assert.equal(
+    calls[0]?.variables.query,
+    "email:*alice* OR first_name:*alice* OR last_name:*alice*",
+  );
+  assert.deepEqual(items, [
+    {
+      id: "gid://shopify/Customer/301",
+      type: "customer",
+      title: "Alice Alpha",
+      handle: null,
+      secondaryLabel: "alice@example.com",
+    },
+    {
+      id: "gid://shopify/Customer/302",
+      type: "customer",
+      title: "fallback@example.com",
+      handle: null,
+      secondaryLabel: null,
     },
   ]);
 });

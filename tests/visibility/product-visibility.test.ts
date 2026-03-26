@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isProductVisible } from "../../core/visibility/visibility.engine.ts";
+import {
+  isProductVisible,
+  isVariantVisible,
+} from "../../core/visibility/visibility.engine.ts";
 
 test("product visibility rules apply segment and customer restrictions", () => {
   const rules = [
@@ -77,6 +80,55 @@ test("product visibility defaults to visible when no rule exists", () => {
       productId: "gid://shopify/Product/NO_RULE",
       segment: "B2C",
       rules: [],
+    }),
+    true,
+  );
+});
+
+test("variant visibility rules apply segment and customer restrictions", () => {
+  const rules = [
+    {
+      variantId: "gid://shopify/ProductVariant/B2B_ONLY",
+      visibilityMode: "B2B_ONLY" as const,
+    },
+    {
+      variantId: "gid://shopify/ProductVariant/CUSTOMER_ONLY",
+      visibilityMode: "CUSTOMER_ONLY" as const,
+      customerId: "gid://shopify/Customer/42",
+    },
+  ];
+
+  assert.equal(
+    isVariantVisible({
+      variantId: "gid://shopify/ProductVariant/B2B_ONLY",
+      segment: "B2C",
+      rules,
+    }),
+    false,
+  );
+  assert.equal(
+    isVariantVisible({
+      variantId: "gid://shopify/ProductVariant/B2B_ONLY",
+      segment: "B2B",
+      rules,
+    }),
+    true,
+  );
+  assert.equal(
+    isVariantVisible({
+      variantId: "gid://shopify/ProductVariant/CUSTOMER_ONLY",
+      segment: "B2C",
+      customerId: "gid://shopify/Customer/99",
+      rules,
+    }),
+    false,
+  );
+  assert.equal(
+    isVariantVisible({
+      variantId: "gid://shopify/ProductVariant/CUSTOMER_ONLY",
+      segment: "B2C",
+      customerId: "gid://shopify/Customer/42",
+      rules,
     }),
     true,
   );

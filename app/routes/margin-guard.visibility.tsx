@@ -5,6 +5,7 @@ import {
   fetchProductCollectionIdsByProductIds,
   resolveStorefrontQuantityConstraintsByProductId,
   resolveStorefrontQuantityConstraintsByHandle,
+  resolveStorefrontVariantVisibilityByProductId,
   resolveStorefrontVisibilityByHandles,
 } from "../services/storefront-visibility.server";
 
@@ -15,4 +16,5 @@ export const loader = createVisibilityLoader({
   fetchProductCollectionIdsByProductIds,
   resolveStorefrontQuantityConstraintsByHandle,
   resolveStorefrontQuantityConstraintsByProductId,
+  resolveStorefrontVariantVisibilityByProductId,
 });

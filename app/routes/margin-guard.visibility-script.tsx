@@ -14,6 +14,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const MESSAGES = {
     en: {
       visibility: "This product is not available for your customer segment.",
+      variantVisibility:
+        "This product variant is not available for your customer segment.",
       pdpStepPrefix: "This product is sold in multiples of ",
       pdpStepSuffix: ".",
       pdpMoqPrefix: "Minimum order quantity: ",
@@ -22,12 +24,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       cartMaxSuffix: ". Quantity was adjusted automatically.",
       cartMaxProductPrefix: " Product: ",
       cartMaxProductSuffix: ".",
+      noticeAcknowledge: "I understand",
       moqRemoveBlockedPrefix: "Minimum order quantity is ",
       moqRemoveBlockedSuffix:
         ". If you wish to delete the product, press the trash icon.",
     },
     cs: {
       visibility: "Tento produkt neni dostupny pro vas zakaznicky segment.",
+      variantVisibility:
+        "Tato varianta produktu neni dostupna pro vas zakaznicky segment.",
       pdpStepPrefix: "Tento produkt se prodava v nasobcich ",
       pdpStepSuffix: ".",
       pdpMoqPrefix: "Minimalni odebrane mnozstvi: ",
@@ -36,6 +41,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       cartMaxSuffix: ". Mnozstvi bylo automaticky upraveno.",
       cartMaxProductPrefix: " Produkt: ",
       cartMaxProductSuffix: ".",
+      noticeAcknowledge: "Rozumim",
       moqRemoveBlockedPrefix: "Minimalni odebrane mnozstvi je ",
       moqRemoveBlockedSuffix:
         ". Pokud chcete produkt odebrat, pouzijte ikonu popelnice.",
@@ -44,6 +50,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const state = {
     quantityConstraintsByHandle: {},
     quantityConstraintsByProductId: {},
+    variantVisibilityByProductId: {},
     cartLineHandleByIndex: {},
     cartLineProductIdByIndex: {},
     cartLineQuantityByIndex: {},
@@ -66,6 +73,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   let initialRulesBootstrapPromise = null;
   let initialRulesBootstrapCompleted = false;
   let cartSnapshotRefreshPromise = null;
+  let currentProductJsonPromise = null;
+  let currentProductJsonHandle = "";
+  let currentProductVariantVisibilitySyncPromise = null;
+  let currentProductPresentationSyncTimeout = null;
   let lastCartSnapshotRefreshAt = 0;
   let cartQuantityNoticeTimeout = null;
   let lastCartQuantityNotice = "";
@@ -204,7 +215,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   function normalizeVariantId(raw) {
-    const parsed = Number(raw);
+    const normalized = String(raw || "").trim();
+    const gidMatch = normalized.match(/^gid:\\/\\/shopify\\/ProductVariant\\/(\\d+)$/);
+    if (gidMatch && gidMatch[1]) {
+      return gidMatch[1];
+    }
+    const parsed = Number(normalized);
     if (!Number.isFinite(parsed) || parsed <= 0) {
       return null;
     }
@@ -472,6 +488,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     ) {
       state.quantityConstraintsByHandle = {};
       state.quantityConstraintsByProductId = {};
+      state.variantVisibilityByProductId = {};
     }
     if (responseConfigVersion) {
       state.rulesConfigVersion = responseConfigVersion;
@@ -485,6 +502,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       payload?.quantityConstraintsByProductId,
       normalizeProductId,
     );
+    const responseVariantVisibilityByProductId = normalizeVariantVisibilityRules(
+      payload?.variantVisibilityByProductId,
+    );
     state.quantityConstraintsByHandle = {
       ...state.quantityConstraintsByHandle,
       ...responseQuantityConstraintsByHandle,
@@ -492,6 +512,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     state.quantityConstraintsByProductId = {
       ...state.quantityConstraintsByProductId,
       ...responseQuantityConstraintsByProductId,
+    };
+    state.variantVisibilityByProductId = {
+      ...state.variantVisibilityByProductId,
+      ...responseVariantVisibilityByProductId,
     };
     const hiddenHandles = Array.isArray(payload?.hiddenHandles)
       ? payload.hiddenHandles.map((value) => String(value).toLowerCase())
@@ -501,8 +525,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       hideCardForHandle(handle);
       blockCurrentProductPage(handle);
     }
-    enforceCurrentProductQuantityRule(state.quantityConstraintsByHandle);
+    enforceCurrentProductQuantityRule();
     syncCartQuantityInputs(state.quantityConstraintsByHandle);
+    scheduleCurrentProductVariantVisibilitySync();
   }
 
   function hideCardForHandle(handle) {
@@ -584,7 +609,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   function normalizeProductTitle(rawTitle) {
-    const normalizedTitle = String(rawTitle || "").replace(/\s+/g, " ").trim();
+    const normalizedTitle = String(rawTitle || "").replace(/\\s+/g, " ").trim();
     return normalizedTitle || null;
   }
 
@@ -685,6 +710,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     if (!(host instanceof HTMLElement)) {
       return;
     }
+    const dismissNotice = () => {
+      if (cartQuantityNoticeTimeout != null) {
+        clearTimeout(cartQuantityNoticeTimeout);
+        cartQuantityNoticeTimeout = null;
+      }
+      const existingNotice = document.getElementById(
+        "margin-guard-cart-quantity-notice",
+      );
+      if (existingNotice instanceof HTMLElement && existingNotice.parentElement) {
+        existingNotice.parentElement.removeChild(existingNotice);
+      }
+    };
     let notice = document.getElementById("margin-guard-cart-quantity-notice");
     if (!(notice instanceof HTMLElement)) {
       notice = document.createElement("div");
@@ -698,18 +735,49 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       notice.style.color = "#7a271a";
       notice.style.fontSize = "13px";
       notice.style.lineHeight = "1.4";
+      const content = document.createElement("div");
+      content.style.display = "flex";
+      content.style.alignItems = "center";
+      content.style.justifyContent = "space-between";
+      content.style.gap = "12px";
+      const text = document.createElement("div");
+      text.setAttribute("data-margin-guard-cart-quantity-notice-text", "1");
+      text.style.flex = "1 1 auto";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.setAttribute("data-margin-guard-cart-quantity-notice-dismiss", "1");
+      button.style.flex = "0 0 auto";
+      button.style.padding = "6px 10px";
+      button.style.border = "1px solid #f04438";
+      button.style.borderRadius = "6px";
+      button.style.background = "#ffffff";
+      button.style.color = "#7a271a";
+      button.style.fontSize = "12px";
+      button.style.fontWeight = "600";
+      button.style.cursor = "pointer";
+      button.textContent = messageForLocale("noticeAcknowledge");
+      button.addEventListener("click", dismissNotice);
+      content.appendChild(text);
+      content.appendChild(button);
+      notice.appendChild(content);
     }
-    notice.textContent = normalizedMessage;
+    const text = notice.querySelector(
+      "[data-margin-guard-cart-quantity-notice-text='1']",
+    );
+    if (text instanceof HTMLElement) {
+      text.textContent = normalizedMessage;
+    }
+    const button = notice.querySelector(
+      "[data-margin-guard-cart-quantity-notice-dismiss='1']",
+    );
+    if (button instanceof HTMLButtonElement) {
+      button.textContent = messageForLocale("noticeAcknowledge");
+    }
     host.prepend(notice);
     if (cartQuantityNoticeTimeout != null) {
       clearTimeout(cartQuantityNoticeTimeout);
     }
-    cartQuantityNoticeTimeout = window.setTimeout(() => {
-      cartQuantityNoticeTimeout = null;
-      if (notice && notice.parentElement) {
-        notice.parentElement.removeChild(notice);
-      }
-    }, 4500);
+    cartQuantityNoticeTimeout = null;
   }
 
   function maybeShowMaximumQuantityAdjustmentNotice(
@@ -892,6 +960,39 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return result;
   }
 
+  function normalizeVariantVisibilityRule(rule) {
+    if (!rule || typeof rule !== "object") {
+      return null;
+    }
+    const hiddenVariantIds = Array.isArray(rule.hiddenVariantIds)
+      ? Array.from(
+          new Set(rule.hiddenVariantIds.map((value) => normalizeVariantId(value)).filter(Boolean)),
+        )
+      : [];
+    if (hiddenVariantIds.length === 0) {
+      return null;
+    }
+    return {
+      hiddenVariantIds,
+    };
+  }
+
+  function normalizeVariantVisibilityRules(rawValue) {
+    const result = {};
+    if (!rawValue || typeof rawValue !== "object") {
+      return result;
+    }
+    for (const [rawProductId, rawRule] of Object.entries(rawValue)) {
+      const productId = normalizeProductId(rawProductId);
+      const normalizedRule = normalizeVariantVisibilityRule(rawRule);
+      if (!productId || !normalizedRule) {
+        continue;
+      }
+      result[productId] = normalizedRule;
+    }
+    return result;
+  }
+
   function mergeUniqueStringArrays(firstValues, secondValues) {
     const values = new Set();
     const appendValues = (sourceValues) => {
@@ -948,6 +1049,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           typeof parsed.quantityConstraintsByProductId === "object"
             ? parsed.quantityConstraintsByProductId
             : {},
+        variantVisibilityByProductId:
+          parsed.variantVisibilityByProductId &&
+          typeof parsed.variantVisibilityByProductId === "object"
+            ? parsed.variantVisibilityByProductId
+            : {},
         hiddenHandles: Array.isArray(parsed.hiddenHandles)
           ? parsed.hiddenHandles
           : [],
@@ -972,6 +1078,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
             input.allowRemoveAtMinimumOrderQuantity !== false,
           quantityConstraintsByHandle: input.quantityConstraintsByHandle || {},
           quantityConstraintsByProductId: input.quantityConstraintsByProductId || {},
+          variantVisibilityByProductId: input.variantVisibilityByProductId || {},
           hiddenHandles: Array.isArray(input.hiddenHandles) ? input.hiddenHandles : [],
         }),
       );
@@ -998,6 +1105,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       allowRemoveAtMinimumOrderQuantity: state.allowRemoveAtMinimumOrderQuantity,
       quantityConstraintsByHandle: state.quantityConstraintsByHandle,
       quantityConstraintsByProductId: state.quantityConstraintsByProductId,
+      variantVisibilityByProductId: state.variantVisibilityByProductId,
       hiddenHandles: mergedHiddenHandles,
     });
     return mergedHiddenHandles;
@@ -1019,13 +1127,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       cached.quantityConstraintsByProductId,
       normalizeProductId,
     );
+    state.variantVisibilityByProductId = normalizeVariantVisibilityRules(
+      cached.variantVisibilityByProductId,
+    );
     const hiddenHandles = mergeUniqueStringArrays(cached.hiddenHandles, []);
     for (const handle of hiddenHandles) {
       hideCardForHandle(handle);
       blockCurrentProductPage(handle);
     }
-    enforceCurrentProductQuantityRule(state.quantityConstraintsByHandle);
+    enforceCurrentProductQuantityRule();
     syncCartQuantityInputs(state.quantityConstraintsByHandle);
+    scheduleCurrentProductVariantVisibilitySync();
   }
 
   function normalizeQuantityForRule(rawQuantity, rule, options) {
@@ -1224,6 +1336,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return null;
     }
     return state.quantityConstraintsByProductId[normalizedProductId] || null;
+  }
+
+  function resolveCurrentProductQuantityRule() {
+    const domProductId = normalizeProductId(resolveCurrentProductIdFromDom());
+    state.currentProductId = domProductId || normalizeProductId(state.currentProductId);
+    const currentProductId = normalizeProductId(state.currentProductId);
+    const productRule = resolveQuantityRuleForProductId(currentProductId);
+    if (productRule) {
+      return normalizeQuantityRule(productRule);
+    }
+    const currentHandle = extractHandleFromPath(window.location.pathname);
+    if (!currentHandle) {
+      return null;
+    }
+    return normalizeQuantityRule(state.quantityConstraintsByHandle[currentHandle]);
   }
 
   function normalizeCartRequestedQuantity(
@@ -1569,6 +1696,686 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return fallbackForm || forms[0] || null;
   }
 
+  function normalizeVariantOptionValue(rawValue) {
+    return String(rawValue || "").trim();
+  }
+
+  async function fetchCurrentProductJson() {
+    const currentHandle = extractHandleFromPath(window.location.pathname);
+    if (!currentHandle) {
+      return null;
+    }
+    if (
+      currentProductJsonPromise &&
+      currentProductJsonHandle === currentHandle
+    ) {
+      return currentProductJsonPromise;
+    }
+    currentProductJsonHandle = currentHandle;
+    const root = resolveShopifyRoot();
+    currentProductJsonPromise = (async () => {
+      try {
+        const response = await fetch(
+          root + "products/" + encodeURIComponent(currentHandle) + ".js",
+          {
+            credentials: "same-origin",
+          },
+        );
+        if (!response.ok) {
+          return null;
+        }
+        return response.json();
+      } catch {
+        return null;
+      }
+    })();
+    return currentProductJsonPromise;
+  }
+
+  function normalizeCurrentProductVariantPayload(productData) {
+    if (!productData || typeof productData !== "object") {
+      return null;
+    }
+    const variants = [];
+    const rawVariants = Array.isArray(productData.variants) ? productData.variants : [];
+    for (const rawVariant of rawVariants) {
+      const id = normalizeVariantId(rawVariant && rawVariant.id);
+      if (!id) {
+        continue;
+      }
+      const optionValues = [];
+      for (let index = 1; index <= 3; index += 1) {
+        const rawOptionValue =
+          rawVariant && rawVariant["option" + String(index)];
+        if (rawOptionValue == null) {
+          continue;
+        }
+        optionValues.push(normalizeVariantOptionValue(rawOptionValue));
+      }
+      variants.push({
+        id,
+        optionValues,
+      });
+    }
+    const productId =
+      normalizeProductId(
+        productData.admin_graphql_api_id != null
+          ? productData.admin_graphql_api_id
+          : productData.id,
+      ) ||
+      normalizeProductId(state.currentProductId) ||
+      normalizeProductId(resolveCurrentProductIdFromDom());
+    if (!productId || variants.length === 0) {
+      return null;
+    }
+    return {
+      productId,
+      variants,
+    };
+  }
+
+  function resolveCurrentProductVariantVisibilityRule() {
+    const domProductId = normalizeProductId(resolveCurrentProductIdFromDom());
+    state.currentProductId = domProductId || normalizeProductId(state.currentProductId);
+    const currentProductId = normalizeProductId(state.currentProductId);
+    if (!currentProductId) {
+      return null;
+    }
+    return state.variantVisibilityByProductId[currentProductId] || null;
+  }
+
+  function setVariantManagedDisabledState(element, enabled) {
+    if (
+      !(
+        element instanceof HTMLButtonElement ||
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLSelectElement
+      )
+    ) {
+      return;
+    }
+    if (element.dataset.marginGuardVariantOriginalDisabled == null) {
+      element.dataset.marginGuardVariantOriginalDisabled = element.disabled ? "1" : "0";
+    }
+    element.disabled = enabled
+      ? element.dataset.marginGuardVariantOriginalDisabled === "1"
+      : true;
+    element.dataset.marginGuardVariantDisabledManaged = "1";
+  }
+
+  function restoreVariantManagedDisabledState(element) {
+    if (
+      !(
+        element instanceof HTMLButtonElement ||
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLSelectElement
+      )
+    ) {
+      return;
+    }
+    element.disabled = element.dataset.marginGuardVariantOriginalDisabled === "1";
+    delete element.dataset.marginGuardVariantOriginalDisabled;
+    delete element.dataset.marginGuardVariantDisabledManaged;
+  }
+
+  function setVariantManagedDisplayState(element, visible) {
+    if (!(element instanceof HTMLElement)) {
+      return;
+    }
+    if (element.dataset.marginGuardVariantOriginalDisplay == null) {
+      element.dataset.marginGuardVariantOriginalDisplay = element.style.display || "";
+    }
+    element.style.display = visible
+      ? String(element.dataset.marginGuardVariantOriginalDisplay || "")
+      : "none";
+    element.dataset.marginGuardVariantDisplayManaged = "1";
+  }
+
+  function restoreVariantManagedDisplayState(element) {
+    if (!(element instanceof HTMLElement)) {
+      return;
+    }
+    element.style.display = String(element.dataset.marginGuardVariantOriginalDisplay || "");
+    delete element.dataset.marginGuardVariantOriginalDisplay;
+    delete element.dataset.marginGuardVariantDisplayManaged;
+  }
+
+  function setVariantManagedOptionState(option, visible) {
+    if (!(option instanceof HTMLOptionElement)) {
+      return;
+    }
+    if (option.dataset.marginGuardVariantOriginalHidden == null) {
+      option.dataset.marginGuardVariantOriginalHidden = option.hidden ? "1" : "0";
+    }
+    if (option.dataset.marginGuardVariantOriginalDisabled == null) {
+      option.dataset.marginGuardVariantOriginalDisabled = option.disabled ? "1" : "0";
+    }
+    option.hidden = visible
+      ? option.dataset.marginGuardVariantOriginalHidden === "1"
+      : true;
+    option.disabled = visible
+      ? option.dataset.marginGuardVariantOriginalDisabled === "1"
+      : true;
+    option.dataset.marginGuardVariantOptionManaged = "1";
+  }
+
+  function restoreVariantManagedOptionState(option) {
+    if (!(option instanceof HTMLOptionElement)) {
+      return;
+    }
+    option.hidden = option.dataset.marginGuardVariantOriginalHidden === "1";
+    option.disabled = option.dataset.marginGuardVariantOriginalDisabled === "1";
+    delete option.dataset.marginGuardVariantOriginalHidden;
+    delete option.dataset.marginGuardVariantOriginalDisabled;
+    delete option.dataset.marginGuardVariantOptionManaged;
+  }
+
+  function resolveVariantChoiceContainer(input) {
+    if (!(input instanceof HTMLElement)) {
+      return null;
+    }
+    return (
+      input.closest("label") ||
+      input.closest("[data-variant-option-value]") ||
+      input.parentElement
+    );
+  }
+
+  function restoreCurrentProductVariantControls() {
+    for (const option of document.querySelectorAll(
+      "option[data-margin-guard-variant-option-managed='1']",
+    )) {
+      restoreVariantManagedOptionState(option);
+    }
+    for (const element of document.querySelectorAll(
+      "[data-margin-guard-variant-display-managed='1']",
+    )) {
+      restoreVariantManagedDisplayState(element);
+    }
+    for (const element of document.querySelectorAll(
+      "[data-margin-guard-variant-disabled-managed='1']",
+    )) {
+      restoreVariantManagedDisabledState(element);
+    }
+    const banner = document.getElementById("margin-guard-variant-visibility-banner");
+    if (banner && banner.parentElement) {
+      banner.parentElement.removeChild(banner);
+    }
+  }
+
+  function setCurrentProductVariantAvailability(hasVisibleVariants) {
+    const productBlocked = Boolean(
+      document.getElementById("margin-guard-visibility-banner"),
+    );
+    for (const form of document.querySelectorAll("form[action*='/cart/add']")) {
+      if (!(form instanceof HTMLFormElement)) {
+        continue;
+      }
+      for (const button of form.querySelectorAll("button, input[type='submit']")) {
+        if (!(button instanceof HTMLButtonElement || button instanceof HTMLInputElement)) {
+          continue;
+        }
+        if (isDynamicCheckoutButton(button)) {
+          continue;
+        }
+        if (hasVisibleVariants) {
+          if (!productBlocked) {
+            setVariantManagedDisabledState(button, true);
+          }
+          continue;
+        }
+        setVariantManagedDisabledState(button, false);
+      }
+    }
+
+    const existingBanner = document.getElementById(
+      "margin-guard-variant-visibility-banner",
+    );
+    if (hasVisibleVariants) {
+      if (existingBanner && existingBanner.parentElement) {
+        existingBanner.parentElement.removeChild(existingBanner);
+      }
+      return;
+    }
+    if (existingBanner instanceof HTMLElement) {
+      return;
+    }
+    const banner = document.createElement("div");
+    banner.id = "margin-guard-variant-visibility-banner";
+    banner.style.padding = "12px";
+    banner.style.margin = "12px 0";
+    banner.style.border = "1px solid #b42318";
+    banner.style.background = "#fef3f2";
+    banner.style.color = "#7a271a";
+    banner.style.fontSize = "14px";
+    banner.textContent = messageForLocale("variantVisibility");
+    const target =
+      document.querySelector("main") ||
+      document.querySelector("#MainContent") ||
+      document.body;
+    target?.prepend(banner);
+  }
+
+  function dispatchVariantControlChange(element) {
+    if (!(element instanceof HTMLElement)) {
+      return;
+    }
+    element.dispatchEvent(
+      new Event("input", {
+        bubbles: true,
+      }),
+    );
+    element.dispatchEvent(
+      new Event("change", {
+        bubbles: true,
+      }),
+    );
+  }
+
+  function variantMatchesOptionSelections(variant, selectedValues, limit) {
+    for (let index = 0; index < limit; index += 1) {
+      const selectedValue = normalizeVariantOptionValue(selectedValues[index]);
+      if (!selectedValue) {
+        continue;
+      }
+      if (
+        normalizeVariantOptionValue(variant.optionValues[index]) !== selectedValue
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function isVariantOptionSelect(select) {
+    if (!(select instanceof HTMLSelectElement)) {
+      return false;
+    }
+    const normalizedName = String(select.name || "").trim().toLowerCase();
+    if (normalizedName === "id" || normalizedName === "quantity") {
+      return false;
+    }
+    return Boolean(
+      normalizedName.startsWith("options[") ||
+        normalizedName.startsWith("option") ||
+        select.closest("variant-selects") ||
+        select.closest("[data-variant-option]") ||
+        select.closest("[data-product-option]"),
+    );
+  }
+
+  function isVariantOptionRadio(input) {
+    if (!(input instanceof HTMLInputElement) || input.type !== "radio") {
+      return false;
+    }
+    const normalizedName = String(input.name || "").trim().toLowerCase();
+    if (!normalizedName || normalizedName === "id") {
+      return false;
+    }
+    return Boolean(
+      normalizedName.startsWith("options[") ||
+        normalizedName.startsWith("option") ||
+        input.closest("variant-radios") ||
+        input.closest("[data-variant-option]") ||
+        input.closest("[data-product-option]"),
+    );
+  }
+
+  function collectVariantOptionGroups(form, optionCount) {
+    if (!(form instanceof HTMLFormElement) || optionCount < 1) {
+      return [];
+    }
+    const groups = [];
+    const radioGroupsByName = new Map();
+    for (const field of form.querySelectorAll("select, input[type='radio']")) {
+      if (field instanceof HTMLSelectElement && isVariantOptionSelect(field)) {
+        groups.push({
+          type: "select",
+          select: field,
+        });
+        continue;
+      }
+      if (!(field instanceof HTMLInputElement) || !isVariantOptionRadio(field)) {
+        continue;
+      }
+      const groupName = String(field.name || "").trim();
+      if (!groupName) {
+        continue;
+      }
+      let group = radioGroupsByName.get(groupName);
+      if (!group) {
+        group = {
+          type: "radio",
+          name: groupName,
+          inputs: [],
+        };
+        radioGroupsByName.set(groupName, group);
+        groups.push(group);
+      }
+      group.inputs.push(field);
+    }
+    return groups.slice(0, optionCount);
+  }
+
+  function resolveVariantGroupValue(group) {
+    if (!group || typeof group !== "object") {
+      return "";
+    }
+    if (group.type === "select" && group.select instanceof HTMLSelectElement) {
+      return normalizeVariantOptionValue(group.select.value);
+    }
+    if (group.type === "radio" && Array.isArray(group.inputs)) {
+      const selectedInput = group.inputs.find((input) => input.checked);
+      return normalizeVariantOptionValue(selectedInput && selectedInput.value);
+    }
+    return "";
+  }
+
+  function setVariantGroupValue(group, value) {
+    const normalizedValue = normalizeVariantOptionValue(value);
+    if (!normalizedValue || !group || typeof group !== "object") {
+      return;
+    }
+    if (group.type === "select" && group.select instanceof HTMLSelectElement) {
+      if (normalizeVariantOptionValue(group.select.value) === normalizedValue) {
+        return;
+      }
+      const matchingOption = Array.from(group.select.options).find(
+        (option) => normalizeVariantOptionValue(option.value) === normalizedValue,
+      );
+      if (!matchingOption) {
+        return;
+      }
+      group.select.value = matchingOption.value;
+      dispatchVariantControlChange(group.select);
+      return;
+    }
+    if (group.type === "radio" && Array.isArray(group.inputs)) {
+      const matchingInput = group.inputs.find(
+        (input) => normalizeVariantOptionValue(input.value) === normalizedValue,
+      );
+      if (!matchingInput || matchingInput.checked) {
+        return;
+      }
+      matchingInput.checked = true;
+      dispatchVariantControlChange(matchingInput);
+    }
+  }
+
+  function applyVariantGroupChoiceVisibility(group, visibleValues) {
+    if (!group || typeof group !== "object") {
+      return;
+    }
+    if (!(visibleValues instanceof Set)) {
+      return;
+    }
+    if (group.type === "select" && group.select instanceof HTMLSelectElement) {
+      for (const option of Array.from(group.select.options)) {
+        const optionValue = normalizeVariantOptionValue(option.value);
+        if (!optionValue) {
+          setVariantManagedOptionState(option, true);
+          continue;
+        }
+        setVariantManagedOptionState(option, visibleValues.has(optionValue));
+      }
+      return;
+    }
+    if (group.type !== "radio" || !Array.isArray(group.inputs)) {
+      return;
+    }
+    for (const input of group.inputs) {
+      const inputValue = normalizeVariantOptionValue(input.value);
+      const isVisible = visibleValues.has(inputValue);
+      setVariantManagedDisabledState(input, isVisible);
+      const container = resolveVariantChoiceContainer(input);
+      if (container instanceof HTMLElement) {
+        setVariantManagedDisplayState(container, isVisible);
+      }
+      if (!isVisible && input.checked) {
+        input.checked = false;
+      }
+    }
+  }
+
+  function findVisibleValuesForVariantGroup(visibleVariants, selectedValues, groupIndex) {
+    const values = new Set();
+    for (const variant of visibleVariants) {
+      if (!variantMatchesOptionSelections(variant, selectedValues, groupIndex)) {
+        continue;
+      }
+      const optionValue = normalizeVariantOptionValue(variant.optionValues[groupIndex]);
+      if (optionValue) {
+        values.add(optionValue);
+      }
+    }
+    return values;
+  }
+
+  function findVariantById(variants, variantId) {
+    const normalizedVariantId = normalizeVariantId(variantId);
+    if (!normalizedVariantId) {
+      return null;
+    }
+    return (
+      variants.find((variant) => normalizeVariantId(variant.id) === normalizedVariantId) ||
+      null
+    );
+  }
+
+  function findVariantByOptionValues(variants, optionValues) {
+    return (
+      variants.find((variant) =>
+        variantMatchesOptionSelections(variant, optionValues, optionValues.length),
+      ) || null
+    );
+  }
+
+  function resolveSelectedVariantIdForForm(form, groups, variants) {
+    if (!(form instanceof HTMLFormElement)) {
+      return null;
+    }
+    const selectedVariantIdInput =
+      form.querySelector("select[name='id']") ||
+      form.querySelector("input[type='radio'][name='id']:checked") ||
+      form.querySelector("input[name='id']");
+    if (
+      selectedVariantIdInput instanceof HTMLSelectElement ||
+      selectedVariantIdInput instanceof HTMLInputElement
+    ) {
+      const variantId = normalizeVariantId(selectedVariantIdInput.value);
+      if (variantId) {
+        return variantId;
+      }
+    }
+    if (!Array.isArray(groups) || groups.length === 0) {
+      return null;
+    }
+    const selectedValues = groups.map((group) => resolveVariantGroupValue(group));
+    const selectedVariant = findVariantByOptionValues(variants, selectedValues);
+    return selectedVariant ? selectedVariant.id : null;
+  }
+
+  function isVariantSelectionControl(element) {
+    if (isVariantOptionSelect(element) || isVariantOptionRadio(element)) {
+      return true;
+    }
+    if (!(element instanceof HTMLInputElement || element instanceof HTMLSelectElement)) {
+      return false;
+    }
+    if (!element.closest("form[action*='/cart/add']")) {
+      return false;
+    }
+    const normalizedName = String(element.name || "").trim().toLowerCase();
+    return normalizedName === "id";
+  }
+
+  function syncVariantIdControlsForForm(form, visibleVariantIds, preferredVariant) {
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const preferredVariantId = preferredVariant ? preferredVariant.id : null;
+    const hasVisibleVariants = visibleVariantIds.size > 0;
+
+    for (const select of form.querySelectorAll("select[name='id']")) {
+      if (!(select instanceof HTMLSelectElement)) {
+        continue;
+      }
+      setVariantManagedDisabledState(select, hasVisibleVariants);
+      for (const option of Array.from(select.options)) {
+        const optionVariantId = normalizeVariantId(option.value);
+        if (!optionVariantId) {
+          setVariantManagedOptionState(option, true);
+          continue;
+        }
+        setVariantManagedOptionState(option, visibleVariantIds.has(optionVariantId));
+      }
+      if (
+        preferredVariantId &&
+        !visibleVariantIds.has(normalizeVariantId(select.value))
+      ) {
+        select.value = preferredVariantId;
+        dispatchVariantControlChange(select);
+      }
+    }
+
+    const variantIdRadios = Array.from(
+      form.querySelectorAll("input[type='radio'][name='id']"),
+    ).filter((input) => input instanceof HTMLInputElement);
+    for (const input of variantIdRadios) {
+      const variantId = normalizeVariantId(input.value);
+      const isVisible = Boolean(variantId) && visibleVariantIds.has(variantId);
+      setVariantManagedDisabledState(input, isVisible);
+      const container = resolveVariantChoiceContainer(input);
+      if (container instanceof HTMLElement) {
+        setVariantManagedDisplayState(container, isVisible);
+      }
+      if (!isVisible && input.checked) {
+        input.checked = false;
+      }
+    }
+    if (preferredVariantId) {
+      const preferredRadio = variantIdRadios.find(
+        (input) => normalizeVariantId(input.value) === preferredVariantId,
+      );
+      if (preferredRadio && !preferredRadio.checked) {
+        preferredRadio.checked = true;
+        dispatchVariantControlChange(preferredRadio);
+      }
+    }
+
+    for (const input of form.querySelectorAll("input[name='id']")) {
+      if (!(input instanceof HTMLInputElement) || input.type === "radio") {
+        continue;
+      }
+      if (
+        preferredVariantId &&
+        !visibleVariantIds.has(normalizeVariantId(input.value))
+      ) {
+        input.value = preferredVariantId;
+        dispatchVariantControlChange(input);
+      }
+    }
+  }
+
+  async function syncCurrentProductVariantVisibility() {
+    restoreCurrentProductVariantControls();
+    const currentHandle = extractHandleFromPath(window.location.pathname);
+    if (!currentHandle) {
+      return;
+    }
+
+    const variantRule = resolveCurrentProductVariantVisibilityRule();
+    if (!variantRule) {
+      setCurrentProductVariantAvailability(true);
+      return;
+    }
+
+    const currentProductData = normalizeCurrentProductVariantPayload(
+      await fetchCurrentProductJson(),
+    );
+    if (!currentProductData) {
+      setCurrentProductVariantAvailability(true);
+      return;
+    }
+    state.currentProductId = currentProductData.productId;
+
+    const hiddenVariantIds = new Set(
+      variantRule.hiddenVariantIds.map((variantId) => normalizeVariantId(variantId)).filter(
+        Boolean,
+      ),
+    );
+    const visibleVariants = currentProductData.variants.filter(
+      (variant) => !hiddenVariantIds.has(variant.id),
+    );
+    const visibleVariantIds = new Set(
+      visibleVariants.map((variant) => normalizeVariantId(variant.id)).filter(Boolean),
+    );
+    setCurrentProductVariantAvailability(visibleVariants.length > 0);
+
+    const optionCount = Math.max(
+      0,
+      ...currentProductData.variants.map((variant) => variant.optionValues.length),
+    );
+    for (const form of document.querySelectorAll("form[action]")) {
+      if (!(form instanceof HTMLFormElement) || !isCartAddForm(form)) {
+        continue;
+      }
+      const groups = collectVariantOptionGroups(form, optionCount);
+      let selectedValues = groups.map((group) => resolveVariantGroupValue(group));
+      for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
+        applyVariantGroupChoiceVisibility(
+          groups[groupIndex],
+          findVisibleValuesForVariantGroup(visibleVariants, selectedValues, groupIndex),
+        );
+      }
+      const selectedVariantId = resolveSelectedVariantIdForForm(
+        form,
+        groups,
+        currentProductData.variants,
+      );
+      const preferredVariant =
+        findVariantById(visibleVariants, selectedVariantId) || visibleVariants[0] || null;
+      if (preferredVariant) {
+        for (let index = 0; index < groups.length; index += 1) {
+          setVariantGroupValue(groups[index], preferredVariant.optionValues[index]);
+        }
+        selectedValues = groups.map((group) => resolveVariantGroupValue(group));
+        for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
+          applyVariantGroupChoiceVisibility(
+            groups[groupIndex],
+            findVisibleValuesForVariantGroup(visibleVariants, selectedValues, groupIndex),
+          );
+        }
+      }
+      syncVariantIdControlsForForm(form, visibleVariantIds, preferredVariant);
+    }
+  }
+
+  function scheduleCurrentProductVariantVisibilitySync() {
+    if (currentProductVariantVisibilitySyncPromise) {
+      return currentProductVariantVisibilitySyncPromise;
+    }
+    currentProductVariantVisibilitySyncPromise = Promise.resolve()
+      .then(() => syncCurrentProductVariantVisibility())
+      .catch(() => {})
+      .finally(() => {
+        currentProductVariantVisibilitySyncPromise = null;
+      });
+    return currentProductVariantVisibilitySyncPromise;
+  }
+
+  function scheduleCurrentProductPresentationSync(delayMs) {
+    const normalizedDelayMs = Math.max(0, parseInteger(delayMs, 0));
+    if (currentProductPresentationSyncTimeout != null) {
+      clearTimeout(currentProductPresentationSyncTimeout);
+    }
+    currentProductPresentationSyncTimeout = window.setTimeout(() => {
+      currentProductPresentationSyncTimeout = null;
+      enforceCurrentProductQuantityRule();
+      scheduleCurrentProductVariantVisibilitySync();
+    }, normalizedDelayMs);
+  }
+
   function resolvePdpNoticeScope() {
     const primaryForm = resolvePrimaryAddToCartForm();
     if (primaryForm instanceof HTMLFormElement) {
@@ -1749,22 +2556,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     );
   }
 
-  function enforceCurrentProductQuantityRule(quantityConstraintsByHandle) {
+  function enforceCurrentProductQuantityRule() {
     const currentHandle = extractHandleFromPath(window.location.pathname);
     if (!currentHandle) {
       syncCurrentProductStepNotices(null);
       return;
     }
-    if (
-      !quantityConstraintsByHandle ||
-      typeof quantityConstraintsByHandle !== "object"
-    ) {
-      syncCurrentProductStepNotices(null);
-      return;
-    }
-    const normalizedRule = normalizeQuantityRule(
-      quantityConstraintsByHandle[currentHandle],
-    );
+    const normalizedRule = resolveCurrentProductQuantityRule();
     if (!normalizedRule) {
       syncCurrentProductStepNotices(null);
       return;
@@ -2925,6 +3723,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       "change",
       (event) => {
         const target = event.target;
+        if (isVariantSelectionControl(target)) {
+          scheduleCurrentProductPresentationSync(120);
+        }
         if (!isQuantityInput(target)) {
           return;
         }
@@ -2939,6 +3740,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           allowZero: isCartQuantityInput(target),
           notifyOnMaxClamp: true,
         });
+      },
+      true,
+    );
+
+    document.addEventListener(
+      "input",
+      (event) => {
+        const target = event.target;
+        if (!isVariantSelectionControl(target)) {
+          return;
+        }
+        scheduleCurrentProductPresentationSync(120);
       },
       true,
     );
@@ -3017,6 +3830,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       let shouldSync = false;
       let shouldRefreshRules = false;
       for (const mutation of mutations) {
+        if (mutation.type === "characterData") {
+          const parentElement = mutation.target.parentElement;
+          if (
+            parentElement instanceof Element &&
+            parentElement.closest(
+              ".price, [data-price], [data-product-price], .product__price, .product-single__price",
+            )
+          ) {
+            shouldSync = true;
+            break;
+          }
+        }
         for (const node of mutation.addedNodes) {
           if (!(node instanceof Element)) {
             continue;
@@ -3032,6 +3857,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           if (
             node.matches("input, form, a[href*='/products/']") ||
             node.querySelector("input, form, a[href*='/products/']")
+          ) {
+            shouldSync = true;
+            break;
+          }
+          if (
+            node.matches(
+              ".price, [data-price], [data-product-price], .product__price, .product-single__price, variant-selects, variant-radios, [data-variant-option], [data-product-option], select[name='id'], input[name='id']",
+            ) ||
+            node.querySelector(
+              ".price, [data-price], [data-product-price], .product__price, .product-single__price, variant-selects, variant-radios, [data-variant-option], [data-product-option], select[name='id'], input[name='id']",
+            )
           ) {
             shouldSync = true;
             break;
@@ -3054,16 +3890,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           return;
         }
         syncCartQuantityInputs(state.quantityConstraintsByHandle);
-        const currentHandle = extractHandleFromPath(window.location.pathname);
-        const currentRule = currentHandle
-          ? normalizeQuantityRule(state.quantityConstraintsByHandle[currentHandle])
-          : null;
-        syncCurrentProductStepNotices(currentRule);
+        scheduleCurrentProductPresentationSync(0);
       }, 100);
     });
 
     observer.observe(document.documentElement || document.body, {
       childList: true,
+      characterData: true,
       subtree: true,
     });
   }
