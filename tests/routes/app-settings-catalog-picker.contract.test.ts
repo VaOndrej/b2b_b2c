@@ -54,3 +54,73 @@ test("settings route no longer exposes raw productId/collectionId/variantId text
     "Variant ID fields should be replaced by AdminCatalogPicker where picker UX is expected.",
   );
 });
+
+test("settings route groups admin forms into MVP_4_5 navigation sections", async () => {
+  const source = await readFile(SETTINGS_ROUTE_PATH, "utf8");
+
+  assert.match(
+    source,
+    /SETTINGS_SECTION_OPTIONS/,
+    "Settings route must define explicit navigation sections for the grouped MVP_4_5 admin UI.",
+  );
+  assert.match(
+    source,
+    /Global Settings/,
+    "Settings route must expose a Global Settings navigation entry.",
+  );
+  assert.match(
+    source,
+    /Discount Orchestration/,
+    "Settings route must expose a Discount Orchestration navigation entry.",
+  );
+  assert.match(
+    source,
+    /Functions/,
+    "Settings route must expose a Functions navigation entry.",
+  );
+  assert.match(
+    source,
+    /useNavigate/,
+    "Settings route must use router navigation for grouped section switching.",
+  );
+  assert.match(
+    source,
+    /preventScrollReset:\s*true/,
+    "Settings route must preserve scroll position when switching grouped settings sections.",
+  );
+  assert.match(
+    source,
+    /navigate\(`\/app\/settings\?section=\$\{section\}`,\s*\{\s*preventScrollReset:\s*true/,
+    "Settings route must keep deep-linkable query params while preventing scroll reset.",
+  );
+  assert.match(
+    source,
+    /position:\s*"sticky"/,
+    "Settings route must keep the navigation panel sticky for console-style browsing.",
+  );
+  assert.match(
+    source,
+    /display:\s*"flex"/,
+    "Settings route must use a split layout so the navigation can live in a left sidebar.",
+  );
+});
+
+test("settings route no longer renders pricing simulator admin preview", async () => {
+  const source = await readFile(SETTINGS_ROUTE_PATH, "utf8");
+
+  assert.doesNotMatch(
+    source,
+    /simulate-pricing/,
+    "Settings route must not keep the old simulate-pricing intent once admin preview is removed.",
+  );
+  assert.doesNotMatch(
+    source,
+    /Run pricing simulator/,
+    "Settings route must not render the removed pricing simulator form.",
+  );
+  assert.doesNotMatch(
+    source,
+    /Latest simulator result/,
+    "Settings route must not render simulator result output after admin preview removal.",
+  );
+});

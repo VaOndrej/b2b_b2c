@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { useActionData, useLoaderData, useNavigation } from "react-router";
+import { useLoaderData, useNavigate, useNavigation, useSearchParams } from "react-router";
 import { AdminCatalogPicker } from "../components/admin-catalog-picker";
 import { authenticate } from "../shopify.server";
 import { ensureCartValidationActive } from "../services/cart-validation-activation.server";
@@ -37,37 +37,77 @@ import {
   upsertProductTierPriceRule,
   updateGlobalMarginGuardConfig,
 } from "../services/margin-guard-config.server";
-import { resolvePricingSimulationInput } from "../services/pricing-preview.server.ts";
-import { resolveSegment } from "../../core/segment/segment.engine";
-import { applyDiscountFunction } from "../../functions/discount-function/src/index.ts";
 
 function parseNumber(input: FormDataEntryValue | null, fallback = 0): number {
   const value = Number(input);
   return Number.isFinite(value) ? value : fallback;
 }
 
-function parseCsvValues(input: FormDataEntryValue | null): string[] {
-  return String(input ?? "")
-    .split(/[\n,]/)
-    .map((value) => value.trim())
-    .filter(Boolean);
+const SETTINGS_SECTIONS = [
+  "global",
+  "products",
+  "collections",
+  "quantity",
+  "visibility",
+  "discount-coupons",
+  "discount-orchestration",
+  "functions",
+] as const;
+
+type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
+function normalizeSettingsSection(value: string | null): SettingsSection {
+  return SETTINGS_SECTIONS.includes(value as SettingsSection)
+    ? (value as SettingsSection)
+    : "global";
 }
 
-function parseSimulationDiscounts(input: FormDataEntryValue | null) {
-  return parseCsvValues(input)
-    .map((entry) => {
-      const [rawCode, rawPercent] = entry.split(":");
-      const percentOff = Number(rawPercent);
-      if (!rawCode || !Number.isFinite(percentOff)) {
-        return null;
-      }
-      return {
-        code: rawCode.trim().toUpperCase(),
-        percentOff,
-      };
-    })
-    .filter((value): value is { code: string; percentOff: number } => Boolean(value));
-}
+const SETTINGS_SECTION_OPTIONS: Array<{
+  id: SettingsSection;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: "global",
+    label: "Global Settings",
+    description: "Core governance, floors, stacking, and B2B tag configuration.",
+  },
+  {
+    id: "products",
+    label: "Products",
+    description: "Per-product floors, tier pricing, and product-level overrides.",
+  },
+  {
+    id: "collections",
+    label: "Collections",
+    description: "Collection quantity governance and collection-specific rules.",
+  },
+  {
+    id: "quantity",
+    label: "Quantity",
+    description: "MOQ, step quantity, and maximum quantity controls.",
+  },
+  {
+    id: "visibility",
+    label: "Visibility",
+    description: "Product and variant storefront visibility by segment or customer.",
+  },
+  {
+    id: "discount-coupons",
+    label: "Discount Coupons",
+    description: "Coupon segment validation and coupon-specific controls.",
+  },
+  {
+    id: "discount-orchestration",
+    label: "Discount Orchestration",
+    description: "Advanced discount rules, blacklists, and segment caps.",
+  },
+  {
+    id: "functions",
+    label: "Functions",
+    description: "Live Shopify Function activation and runtime status.",
+  },
+];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
@@ -499,48 +539,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
-  if (intent === "simulate-pricing") {
-    const config = await getOrCreateMarginGuardConfig();
-    const buyerHasB2BTag = formData.get("buyerHasB2BTag") === "on";
-    const buyerHasPurchasingCompany =
-      formData.get("buyerHasPurchasingCompany") === "on";
-    const segment = resolveSegment({
-      customerTags: buyerHasB2BTag ? [config.b2bTag] : [],
-      b2bTag: config.b2bTag,
-      hasPurchasingCompany: buyerHasPurchasingCompany,
-    });
-    const result = applyDiscountFunction({
-      ...resolvePricingSimulationInput(config, {
-        productId: String(formData.get("productId") ?? "").trim(),
-        variantId: String(formData.get("variantId") ?? "").trim() || undefined,
-        segment: segment.segment,
-        basePrice: parseNumber(formData.get("basePrice"), 0),
-        b2bOverridePrice: (() => {
-          const raw = String(formData.get("b2bOverridePrice") ?? "").trim();
-          if (!raw) {
-            return undefined;
-          }
-          const parsed = Number(raw);
-          return Number.isFinite(parsed) ? parsed : undefined;
-        })(),
-        quantity: Math.max(1, Math.floor(parseNumber(formData.get("quantity"), 1))),
-        collectionIds: parseCsvValues(formData.get("collectionIds")),
-        enteredDiscountCodes: parseCsvValues(formData.get("enteredDiscountCodes")).map(
-          (code) => code.toUpperCase(),
-        ),
-        discounts: parseSimulationDiscounts(formData.get("discounts")),
-      }),
-    });
-
-    return {
-      simulationResult: {
-        segment: segment.segment,
-        source: segment.source,
-        result,
-      },
-    };
-  }
-
   if (intent === "deactivate-discount-function") {
     const result = await deactivateDiscountFunction(admin);
     const url = new URL(request.url);
@@ -584,15 +582,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function AppSettingsRoute() {
-  const actionData = useActionData() as
-    | {
-        simulationResult?: {
-          segment: "B2B" | "B2C";
-          source: string;
-          result: ReturnType<typeof applyDiscountFunction>;
-        };
-      }
-    | undefined;
   const {
     config,
     activation,
@@ -604,6 +593,9 @@ export default function AppSettingsRoute() {
     discountFunctionLastSyncAt,
   } =
     useLoaderData<typeof loader>();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const activeSection = normalizeSettingsSection(searchParams.get("section"));
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const productMoqRules = config.productQuantityRules.filter(
@@ -641,9 +633,134 @@ export default function AppSettingsRoute() {
   const discountSegmentCaps = Array.isArray((config as any).discountSegmentCaps)
     ? (config as any).discountSegmentCaps
     : [];
+  const isGlobalSection = activeSection === "global";
+  const isProductsSection = activeSection === "products";
+  const isCollectionsSection = activeSection === "collections";
+  const isQuantitySection = activeSection === "quantity";
+  const isVisibilitySection = activeSection === "visibility";
+  const isDiscountCouponsSection = activeSection === "discount-coupons";
+  const isDiscountOrchestrationSection = activeSection === "discount-orchestration";
+  const isFunctionsSection = activeSection === "functions";
+  const activeSectionOption =
+    SETTINGS_SECTION_OPTIONS.find((section) => section.id === activeSection) ??
+    SETTINGS_SECTION_OPTIONS[0];
+  function handleSectionSelect(section: SettingsSection) {
+    navigate(`/app/settings?section=${section}`, {
+      preventScrollReset: true,
+    });
+  }
 
   return (
     <s-page heading="Margin Guard Settings">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "12px",
+          width: "100%",
+        }}
+      >
+        <div
+          style={{
+            width: "184px",
+            minWidth: "184px",
+            flexShrink: 0,
+            position: "sticky",
+            top: "12px",
+            zIndex: 1,
+            marginLeft: "-12px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "4px",
+              paddingTop: "6px",
+            }}
+          >
+            {SETTINGS_SECTION_OPTIONS.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                onClick={() => handleSectionSelect(section.id)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  borderLeft:
+                    section.id === activeSection
+                      ? "3px solid #07213a"
+                      : "3px solid transparent",
+                  color: section.id === activeSection ? "#07213a" : "#51606f",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: section.id === activeSection ? 700 : 500,
+                  padding: "10px 8px 10px 12px",
+                  textAlign: "left",
+                }}
+              >
+                {section.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div
+          style={{
+            minWidth: 0,
+            flex: 1,
+            width: "calc(100% - 196px)",
+          }}
+        >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+          paddingTop: "6px",
+        }}
+      >
+      <div
+        style={{
+          padding: "4px 0 8px 0",
+          borderBottom: "1px solid rgba(7,33,58,0.08)",
+          marginBottom: "4px",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "12px",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#6b7280",
+            marginBottom: "6px",
+          }}
+        >
+          Settings workspace
+        </div>
+        <div
+          style={{
+            fontSize: "28px",
+            fontWeight: 700,
+            color: "#07213a",
+            lineHeight: 1.15,
+            marginBottom: "6px",
+          }}
+        >
+          {activeSectionOption.label}
+        </div>
+        <div
+          style={{
+            fontSize: "14px",
+            color: "#51606f",
+            maxWidth: "760px",
+            lineHeight: 1.5,
+          }}
+        >
+          {activeSectionOption.description}
+        </div>
+      </div>
+      {isGlobalSection && (
       <s-section heading="Global configuration">
         <form method="post">
           <input type="hidden" name="intent" value="save-global" />
@@ -719,7 +836,10 @@ export default function AppSettingsRoute() {
           </s-stack>
         </form>
       </s-section>
+      )}
 
+      {isProductsSection && (
+      <>
       <s-section heading="Per-product floor rules">
         <form method="post">
           <input type="hidden" name="intent" value="save-product-floor" />
@@ -876,7 +996,11 @@ export default function AppSettingsRoute() {
           )}
         </s-box>
       </s-section>
+      </>
+      )}
 
+      {isQuantitySection && (
+      <>
       <s-section heading="Per-product MOQ rules">
         <form method="post">
           <input type="hidden" name="intent" value="save-product-quantity-rule" />
@@ -1061,7 +1185,10 @@ export default function AppSettingsRoute() {
           )}
         </s-box>
       </s-section>
+      </>
+      )}
 
+      {isCollectionsSection && (
       <s-section heading="Per-collection maximum quantity rules">
         <form method="post">
           <input
@@ -1128,7 +1255,9 @@ export default function AppSettingsRoute() {
           )}
         </s-box>
       </s-section>
+      )}
 
+      {isProductsSection && (
       <s-section heading="Per-customer max quantity overrides">
         <form method="post">
           <input
@@ -1193,7 +1322,10 @@ export default function AppSettingsRoute() {
           )}
         </s-box>
       </s-section>
+      )}
 
+      {isVisibilitySection && (
+      <>
       <s-section heading="Basic product visibility rules">
         <s-paragraph>
           Storefront enforcement: include
@@ -1330,7 +1462,10 @@ export default function AppSettingsRoute() {
           )}
         </s-box>
       </s-section>
+      </>
+      )}
 
+      {isDiscountCouponsSection && (
       <s-section heading="Coupon segment validation rules">
         <form method="post">
           <input type="hidden" name="intent" value="save-coupon-segment-rule" />
@@ -1377,7 +1512,10 @@ export default function AppSettingsRoute() {
           )}
         </s-box>
       </s-section>
+      )}
 
+      {isDiscountOrchestrationSection && (
+      <>
       <s-section heading="Advanced discount orchestration rules">
         <form method="post">
           <input type="hidden" name="intent" value="save-discount-rule" />
@@ -1620,115 +1758,10 @@ export default function AppSettingsRoute() {
           )}
         </s-box>
       </s-section>
+      </>
+      )}
 
-      <s-section heading="Testing">
-        <form method="post">
-          <input type="hidden" name="intent" value="simulate-pricing" />
-          <s-stack direction="block" gap="base">
-            <AdminCatalogPicker
-              name="productId"
-              label="Product"
-              resourceType="product"
-              required
-            />
-            <AdminCatalogPicker
-              name="variantId"
-              label="Variant (optional)"
-              resourceType="variant"
-            />
-            <label>
-              Collection IDs for this preview (comma or newline separated)
-              <textarea
-                name="collectionIds"
-                rows={3}
-                placeholder="gid://shopify/Collection/1, gid://shopify/Collection/2"
-              />
-            </label>
-            <label>
-              Base price
-              <input
-                name="basePrice"
-                type="number"
-                min={0}
-                step="0.01"
-                defaultValue={100}
-                required
-              />
-            </label>
-            <label>
-              B2B override price (optional)
-              <input name="b2bOverridePrice" type="number" min={0} step="0.01" />
-            </label>
-            <label>
-              Quantity
-              <input name="quantity" type="number" min={1} step={1} defaultValue={1} />
-            </label>
-            <label>
-              Entered discount codes (comma or newline separated)
-              <textarea name="enteredDiscountCodes" rows={2} placeholder="VIP20, EXTRA10" />
-            </label>
-            <label>
-              Existing/manual discounts as CODE:PERCENT (comma or newline separated)
-              <textarea name="discounts" rows={2} placeholder="LEGACY10:10, EXTRA5:5" />
-            </label>
-            <label>
-              <input name="buyerHasB2BTag" type="checkbox" />
-              Buyer has B2B tag
-            </label>
-            <label>
-              <input name="buyerHasPurchasingCompany" type="checkbox" />
-              Buyer has purchasing company
-            </label>
-            <button type="submit" disabled={isSubmitting}>
-              Run pricing simulator
-            </button>
-          </s-stack>
-        </form>
-
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-heading>Latest simulator result</s-heading>
-          {actionData?.simulationResult ? (
-            <s-stack direction="block" gap="small">
-              <s-text>
-                Segment: {actionData.simulationResult.segment} | source:{" "}
-                {actionData.simulationResult.source}
-              </s-text>
-              <s-text>
-                Action: {actionData.simulationResult.result.action}
-              </s-text>
-              <s-text>
-                Final price: {actionData.simulationResult.result.result.finalPrice} | floor:{" "}
-                {actionData.simulationResult.result.result.floorPrice} | total off:{" "}
-                {actionData.simulationResult.result.result.totalPercentOff}%
-              </s-text>
-              <s-text>
-                Applied discounts:{" "}
-                {actionData.simulationResult.result.result.appliedDiscounts.length}
-                {" | "}
-                Rejected discounts:{" "}
-                {actionData.simulationResult.result.result.rejectedDiscounts.length}
-              </s-text>
-              <pre
-                style={{
-                  whiteSpace: "pre-wrap",
-                  background: "#f8fafc",
-                  padding: "12px",
-                  borderRadius: "8px",
-                  overflowX: "auto",
-                }}
-              >
-                {JSON.stringify(actionData.simulationResult.result, null, 2)}
-              </pre>
-            </s-stack>
-          ) : (
-            <s-paragraph>
-              Run a scenario to preview priority resolution, blacklist handling, caps,
-              and final price.
-            </s-paragraph>
-          )}
-        </s-box>
-      </s-section>
-
+      {isFunctionsSection && (
       <s-section heading="Live Shopify Function activation">
         <s-box padding="base" borderWidth="base" borderRadius="base">
           <s-stack direction="block" gap="small">
@@ -1788,6 +1821,10 @@ export default function AppSettingsRoute() {
           </s-stack>
         </s-box>
       </s-section>
+      )}
+      </div>
+        </div>
+      </div>
     </s-page>
   );
 }

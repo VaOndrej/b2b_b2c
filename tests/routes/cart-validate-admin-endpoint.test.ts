@@ -142,7 +142,7 @@ test("cart-validate admin endpoint records violation for invalid line", async ()
   assert.deepEqual(captured.tierPrices, [{ minQuantity: 5, unitPrice: 82 }]);
 });
 
-test("pricing simulator hydrates persisted tier prices and B2B override before previewing", () => {
+test("pricing input resolution hydrates persisted tier prices and B2B override", () => {
   const productId = "gid://shopify/Product/PREVIEW_HYDRATION";
   const config: PricingPreviewConfig = {
     globalMinPricePercent: 70,
