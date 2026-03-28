@@ -71,28 +71,15 @@ export function describeCatalogItem(item: CatalogSearchItem): string {
 
 export function defaultSearchPlaceholder(resourceType: CatalogResourceType): string {
   if (resourceType === "product") {
-    return "Search product by title or handle";
+    return "Select or search imported product";
   }
   if (resourceType === "collection") {
     return "Search collection by title or handle";
   }
   if (resourceType === "variant") {
-    return "Search variant by product, variant title, or SKU";
+    return "Select or search imported variant";
   }
   return "Search customer by name or email";
-}
-
-export function defaultManualPlaceholder(resourceType: CatalogResourceType): string {
-  if (resourceType === "product") {
-    return "gid://shopify/Product/123456789";
-  }
-  if (resourceType === "collection") {
-    return "gid://shopify/Collection/123456789";
-  }
-  if (resourceType === "variant") {
-    return "gid://shopify/ProductVariant/123456789";
-  }
-  return "gid://shopify/Customer/123456789";
 }
 
 export function normalizeCatalogPickerValue(value: unknown): string {

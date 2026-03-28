@@ -118,6 +118,14 @@ MVP_4_5:
  Hezké UI
  Rozdělení v cestě: Settings -> tady potom bude víc možností jako Globální Nastavení, Produktové nastavení, Kolekce, Slevové kupóny, atd.. A po zakliku tady v tom menu se mi už objeví relevantní pole.
  Všechna funkcionalita musí zůstat tak jak je, pouze chci změnit jak se mi to mění v admin UI.
+ Automatický import produktů z shopify kategorie produkty - tohle přidat do globálního nastavení. 
+    Po téhle změně se musí taky upravit úplně všechny výběry produktu. Už nikde nechci mít že můžu dát celé to gid://shopify.... atd.. 
+        chci si tam vybírat z těch produktů co mám načtené z shopify produktů/ tady to rovnou připravit i na MVP6, tedy budoucí načítání z ERP, CSV, atd..
+    Jakmile mám nastavené nějaké pravidlo pro produkt, tak chci aby se mi lépe zobrazovala ta informace o tom produktu. Chci tam mít jeho název, a pak co jsem si nastavil, tedy například snowboard, visibility only for bold(B2B)
+Aktuálně se nějak nastavené parametry k produktům zobrazují vždy pod daným pravidlem, chci tohle přesunout na začátek toho pravého sloupce dané kategorie,
+    a chci tam mít tím pádem kompletní a hezky UI zpracovaný seznam produktů na které jsou tahle aktuální pravidla aplikovaná. Implementuj to zobrazování modulárně, protože to samé budu později chtít i do samotné složky, kde se mají zobrazovat všechny produkty co mám tahle nastavené.
+
+
 
 MVP_5 – Segmented Storefront (UX Layer)
  ├─ Segment-based content sections
@@ -125,6 +133,24 @@ MVP_5 – Segmented Storefront (UX Layer)
  ├─ B2C-only collections
  ├─ Conditional PDP blocks
  └─ Dynamic messaging engine
+
+
+MVP_5_1:
+ ├─Search hledání nefunguje - pokud nemám naimportované žádné kolekce nebo produkty - přidat warning, pokud tohle není udělané.
+ ├─ Návrh jak rozdělit aplikaci do jednotlivých shippable produktů.
+ ├─ A rozdělení aplikace do logických co nejvíc odizolovaných celků
+ ├─ V hlavním menu aplikace budu chtít mít:
+    ├─ Globální nastavení
+        ├─ Nastavuje segment b2b zákazníka, discount stacking, atd.. a hlavně import dat produktů + kolekci
+    ├─ <Vymysli jméno> záložky, která bude groupovat nastavení okolo produktů, tedy MOQ, step quantity, visibility, atd..
+    ├─ Storefront UX, to už existuje
+    ├─ Případně nějaké další, tak aby to dávalo smysl z pohledu co nejlepšího rozdělení aplikace do více izolovaných celků + pohled pro zákazníka, aby to bylo co nejintiutivnější
+
+
+MVP_5_2:
+ ├─ Slevy pro věrné zákazníky
+ ├─ Slevy na všechno? Co dalšího nás napadá?
+
 
 MVP_5_5
 ├─ Po tomhle nesmí být žádný technický dluh

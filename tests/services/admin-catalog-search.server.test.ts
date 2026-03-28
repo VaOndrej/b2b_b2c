@@ -2,79 +2,129 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { searchAdminCatalog } from "../../app/services/admin-catalog-search.server.ts";
 
-test("searchAdminCatalog maps product nodes and forwards normalized query/limit", async () => {
-  const calls: Array<{ query: string; variables: Record<string, unknown> }> = [];
-  const admin = {
-    async graphql(
-      query: string,
-      options?: { variables?: Record<string, unknown> },
-    ) {
-      calls.push({
-        query,
-        variables: options?.variables ?? {},
-      });
-      return {
-        async json() {
-          return {
-            data: {
-              products: {
-                nodes: [
-                  {
-                    id: "gid://shopify/Product/101",
-                    title: "Alpha Drill",
-                    handle: "alpha-drill",
-                    status: "ACTIVE",
-                  },
-                  {
-                    id: "gid://shopify/Product/102",
-                    title: "Bravo Saw",
-                    handle: "",
-                    status: "DRAFT",
-                  },
-                  {
-                    id: "",
-                    title: "Broken",
-                    handle: "broken",
-                  },
-                ],
-              },
-            },
-          };
-        },
-      };
+test("searchAdminCatalog uses imported product catalog search for product lookups", async () => {
+  const productSearchCalls: Array<{ query: string; limit: number }> = [];
+  const items = await searchAdminCatalog(
+    {
+      admin: {
+        graphql: async () => ({
+          async json() {
+            return {};
+          },
+        }),
+      },
+      type: "product",
+      query: "drill",
+      limit: 7,
     },
-  };
+    {
+      searchImportedProducts: async (query, limit) => {
+        productSearchCalls.push({ query, limit });
+        return [
+          {
+            id: "gid://shopify/Product/101",
+            type: "product",
+            title: "Alpha Drill",
+            handle: "alpha-drill",
+            secondaryLabel: "Status: ACTIVE",
+          },
+        ];
+      },
+    },
+  );
 
-  const items = await searchAdminCatalog({
-    admin,
-    type: "product",
-    query: "drill",
-    limit: 7,
-  });
-
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0]?.query.includes("query AdminCatalogSearchProducts"), true);
-  assert.equal(calls[0]?.variables.first, 7);
-  assert.equal(calls[0]?.variables.query, "title:*drill* OR handle:*drill*");
+  assert.deepEqual(productSearchCalls, [{ query: "drill", limit: 7 }]);
   assert.deepEqual(items, [
     {
       id: "gid://shopify/Product/101",
       type: "product",
       title: "Alpha Drill",
       handle: "alpha-drill",
-      secondaryLabel: "Handle: alpha-drill",
-    },
-    {
-      id: "gid://shopify/Product/102",
-      type: "product",
-      title: "Bravo Saw",
-      handle: null,
-      secondaryLabel: "DRAFT",
+      secondaryLabel: "Status: ACTIVE",
     },
   ]);
 });
 
-test("searchAdminCatalog maps collection nodes and skips graphql for empty query", async () => {
+test("searchAdminCatalog allows empty-query product browse for dropdown pickers", async () => {
+  const productSearchCalls: Array<{ query: string; limit: number }> = [];
+
+  const items = await searchAdminCatalog(
+    {
+      admin: {
+        graphql: async () => ({
+          async json() {
+            return {};
+          },
+        }),
+      },
+      type: "product",
+      query: "",
+      limit: 8,
+    },
+    {
+      searchImportedProducts: async (query, limit) => {
+        productSearchCalls.push({ query, limit });
+        return [
+          {
+            id: "gid://shopify/Product/201",
+            type: "product",
+            title: "Snowboard",
+            handle: "snowboard",
+            secondaryLabel: "Status: ACTIVE",
+          },
+        ];
+      },
+    },
+  );
+
+  assert.deepEqual(productSearchCalls, [{ query: "", limit: 8 }]);
+  assert.equal(items[0]?.title, "Snowboard");
+});
+
+test("searchAdminCatalog uses imported variant catalog search for variant lookups", async () => {
+  const variantSearchCalls: Array<{ query: string; limit: number }> = [];
+  const items = await searchAdminCatalog(
+    {
+      admin: {
+        graphql: async () => ({
+          async json() {
+            return {};
+          },
+        }),
+      },
+      type: "variant",
+      query: "carton",
+      limit: 6,
+    },
+    {
+      searchImportedVariants: async (query, limit) => {
+        variantSearchCalls.push({ query, limit });
+        return [
+          {
+            id: "gid://shopify/ProductVariant/401",
+            type: "variant",
+            title: "Alpha Drill - Carton",
+            handle: "alpha-drill",
+            secondaryLabel: "SKU: CARTON-12",
+          },
+        ];
+      },
+    },
+  );
+
+  assert.deepEqual(variantSearchCalls, [{ query: "carton", limit: 6 }]);
+  assert.deepEqual(items, [
+    {
+      id: "gid://shopify/ProductVariant/401",
+      type: "variant",
+      title: "Alpha Drill - Carton",
+      handle: "alpha-drill",
+      secondaryLabel: "SKU: CARTON-12",
+    },
+  ]);
+});
+
+test("searchAdminCatalog uses imported collection catalog search for collection lookups", async () => {
   let graphqlCallCount = 0;
   const admin = {
     async graphql(
@@ -84,43 +134,48 @@ test("searchAdminCatalog maps collection nodes and skips graphql for empty query
       void query;
       void _options;
       graphqlCallCount += 1;
-      return {
-        async json() {
-          return {
-            data: {
-              collections: {
-                nodes: [
-                  {
-                    id: "gid://shopify/Collection/201",
-                    title: "Spring Deals",
-                    handle: "spring-deals",
-                  },
-                ],
-              },
-            },
-          };
-        },
-      };
+      return { async json() { return { data: {} }; } };
     },
   };
 
-  const emptyResult = await searchAdminCatalog({
-    admin,
-    type: "collection",
-    query: "  ",
-    limit: 10,
-  });
-  assert.deepEqual(emptyResult, []);
+  const mockSearchCollections = async (query: string, limit: number) => {
+    if (!query.trim()) {
+      return [
+        {
+          id: "gid://shopify/Collection/201",
+          type: "collection" as const,
+          title: "Spring Deals",
+          handle: "spring-deals",
+          secondaryLabel: "Handle: spring-deals",
+        },
+      ];
+    }
+    return [
+      {
+        id: "gid://shopify/Collection/201",
+        type: "collection" as const,
+        title: "Spring Deals",
+        handle: "spring-deals",
+        secondaryLabel: "Handle: spring-deals",
+      },
+    ].filter((item) =>
+      item.title.toLowerCase().includes(query.toLowerCase()),
+    ).slice(0, limit);
+  };
+
+  const browseResult = await searchAdminCatalog(
+    { admin, type: "collection", query: "", limit: 10 },
+    { searchImportedCollections: mockSearchCollections },
+  );
+  assert.equal(browseResult.length, 1);
   assert.equal(graphqlCallCount, 0);
 
-  const collectionResult = await searchAdminCatalog({
-    admin,
-    type: "collection",
-    query: "spring",
-    limit: 5,
-  });
-  assert.equal(graphqlCallCount, 1);
-  assert.deepEqual(collectionResult, [
+  const searchResult = await searchAdminCatalog(
+    { admin, type: "collection", query: "spring", limit: 5 },
+    { searchImportedCollections: mockSearchCollections },
+  );
+  assert.equal(graphqlCallCount, 0);
+  assert.deepEqual(searchResult, [
     {
       id: "gid://shopify/Collection/201",
       type: "collection",
@@ -198,98 +253,6 @@ test("searchAdminCatalog maps customer nodes with email secondary label", async 
       title: "fallback@example.com",
       handle: null,
       secondaryLabel: null,
-    },
-  ]);
-});
-
-test("searchAdminCatalog maps variant nodes with product context and SKU label", async () => {
-  const calls: Array<{ query: string; variables: Record<string, unknown> }> = [];
-  const admin = {
-    async graphql(
-      query: string,
-      options?: { variables?: Record<string, unknown> },
-    ) {
-      calls.push({
-        query,
-        variables: options?.variables ?? {},
-      });
-      return {
-        async json() {
-          return {
-            data: {
-              productVariants: {
-                nodes: [
-                  {
-                    id: "gid://shopify/ProductVariant/401",
-                    title: "Carton",
-                    sku: "CARTON-12",
-                    product: {
-                      title: "Alpha Drill",
-                      handle: "alpha-drill",
-                    },
-                    selectedOptions: [
-                      { name: "Pack", value: "Carton" },
-                    ],
-                  },
-                  {
-                    id: "gid://shopify/ProductVariant/402",
-                    title: "Default Title",
-                    sku: "",
-                    product: {
-                      title: "Bravo Saw",
-                      handle: "",
-                    },
-                    selectedOptions: [
-                      { name: "Title", value: "Default Title" },
-                    ],
-                  },
-                  {
-                    id: "",
-                    title: "Broken",
-                    sku: "BROKEN-1",
-                    product: {
-                      title: "Broken Product",
-                      handle: "broken-product",
-                    },
-                    selectedOptions: [],
-                  },
-                ],
-              },
-            },
-          };
-        },
-      };
-    },
-  };
-
-  const items = await searchAdminCatalog({
-    admin,
-    type: "variant",
-    query: "carton",
-    limit: 6,
-  });
-
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0]?.query.includes("query AdminCatalogSearchVariants"), true);
-  assert.equal(calls[0]?.variables.first, 6);
-  assert.equal(
-    calls[0]?.variables.query,
-    "sku:*carton* OR title:*carton* OR product_title:*carton*",
-  );
-  assert.deepEqual(items, [
-    {
-      id: "gid://shopify/ProductVariant/401",
-      type: "variant",
-      title: "Alpha Drill - Carton",
-      handle: "alpha-drill",
-      secondaryLabel: "SKU: CARTON-12",
-    },
-    {
-      id: "gid://shopify/ProductVariant/402",
-      type: "variant",
-      title: "Bravo Saw",
-      handle: null,
-      secondaryLabel: "Title: Default Title",
     },
   ]);
 });

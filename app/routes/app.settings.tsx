@@ -21,7 +21,6 @@ import {
   deleteProductVisibilityRule,
   deleteProductVariantVisibilityRule,
   deleteProductTierPriceRule,
-  getOrCreateMarginGuardConfig,
   upsertCollectionMaximumQuantityRule,
   upsertCouponSegmentRule,
   upsertDiscountCombinationBlacklistRule,
@@ -37,10 +36,49 @@ import {
   upsertProductTierPriceRule,
   updateGlobalMarginGuardConfig,
 } from "../services/margin-guard-config.server";
+import { loadMarginGuardSettingsView } from "../services/margin-guard-settings-view.server";
+import {
+  countActiveCatalogCollections,
+  countActiveCatalogProducts,
+  recordProductCatalogSyncError,
+  shouldAutoSyncProductCatalog,
+  syncShopifyCollectionCatalog,
+  syncShopifyProductCatalog,
+} from "../services/product-catalog.server";
 
 function parseNumber(input: FormDataEntryValue | null, fallback = 0): number {
   const value = Number(input);
   return Number.isFinite(value) ? value : fallback;
+}
+
+function formatTimestamp(value: Date | string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("cs-CZ", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}
+
+function formatCatalogSourceLabel(sourceType: string | null | undefined): string {
+  if (String(sourceType ?? "").trim() === "ERP") {
+    return "ERP";
+  }
+  if (String(sourceType ?? "").trim() === "CSV") {
+    return "CSV";
+  }
+  return "Shopify";
 }
 
 const SETTINGS_SECTIONS = [
@@ -111,14 +149,29 @@ const SETTINGS_SECTION_OPTIONS: Array<{
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
-  let config = await getOrCreateMarginGuardConfig();
+  let settingsView = await loadMarginGuardSettingsView();
   let autoActivationMessage: string | null = null;
+  let productCatalogSyncMessage: string | null = null;
   let discountFunctionStatus: "ACTIVE" | "INACTIVE" | "ERROR" = "ERROR";
   let discountFunctionMessage = "Discount status is unknown.";
   let discountFunctionLastSyncAt: string | Date | null = null;
   const syncActivation = await ensureCartValidationActive(admin);
   autoActivationMessage = syncActivation.message;
-  config = await getOrCreateMarginGuardConfig();
+  if (await shouldAutoSyncProductCatalog(settingsView.config)) {
+    try {
+      const syncResult = await syncShopifyProductCatalog(admin);
+      settingsView = await loadMarginGuardSettingsView();
+      productCatalogSyncMessage = `Imported ${syncResult.productCount} products and ${syncResult.variantCount} variants from Shopify.`;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Product catalog import failed.";
+      await recordProductCatalogSyncError(message);
+      settingsView = await loadMarginGuardSettingsView();
+      productCatalogSyncMessage = `Product catalog import failed: ${message}`;
+    }
+  } else {
+    settingsView = await loadMarginGuardSettingsView();
+  }
   const discountStatus = await reconcileDiscountFunctionStatus(admin);
   discountFunctionStatus = discountStatus.status;
   discountFunctionMessage = discountStatus.message;
@@ -127,10 +180,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const activation = url.searchParams.get("activation");
   const message = url.searchParams.get("message");
   const discountActionMessage = url.searchParams.get("discountActionMessage");
+  const catalogMessage = url.searchParams.get("catalogMessage");
+  const collectionCatalogMessage = url.searchParams.get("collectionCatalogMessage");
+  const catalogProductCount = await countActiveCatalogProducts();
+  const catalogCollectionCount = await countActiveCatalogCollections();
   return {
-    config,
+    config: settingsView.config,
+    catalogProductsById: settingsView.catalogProductsById,
+    catalogVariantsById: settingsView.catalogVariantsById,
+    catalogProductCount,
+    catalogCollectionCount,
     activation,
     message,
+    catalogMessage,
+    productCatalogSyncMessage,
+    collectionCatalogMessage,
     discountActionMessage,
     autoActivationMessage,
     discountFunctionStatus,
@@ -157,6 +221,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const allowZeroFinalPrice = formData.get("allowZeroFinalPrice") === "on";
     const allowRemoveAtMinimumOrderQuantity =
       formData.get("allowRemoveAtMinimumOrderQuantity") === "on";
+    const productCatalogSourceType =
+      String(formData.get("productCatalogSourceType") ?? "SHOPIFY").trim() || "SHOPIFY";
+    const productCatalogAutoImportEnabled =
+      formData.get("productCatalogAutoImportEnabled") === "on";
     const allowStacking = formData.get("allowStacking") === "on";
     const maxCombinedRaw = String(formData.get("maxCombinedPercentOff") ?? "").trim();
     const maxCombinedPercentOff = maxCombinedRaw ? Number(maxCombinedRaw) : null;
@@ -165,6 +233,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       b2bTag,
       globalMinPricePercent,
       b2bGlobalMinPricePercent,
+      productCatalogSourceType,
+      productCatalogAutoImportEnabled,
       allowZeroFinalPrice,
       allowRemoveAtMinimumOrderQuantity,
       allowStacking,
@@ -173,6 +243,44 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           ? maxCombinedPercentOff
           : null,
     });
+  }
+
+  if (intent === "sync-product-catalog") {
+    const url = new URL(request.url);
+    url.searchParams.set("section", "global");
+    try {
+      const result = await syncShopifyProductCatalog(admin);
+      url.searchParams.set(
+        "catalogMessage",
+        `Imported ${result.productCount} products and ${result.variantCount} variants from Shopify.`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Product catalog import failed.";
+      await recordProductCatalogSyncError(message);
+      url.searchParams.set("catalogMessage", `Product catalog import failed: ${message}`);
+    }
+    return Response.redirect(url.toString(), 302);
+  }
+
+  if (intent === "sync-collection-catalog") {
+    const url = new URL(request.url);
+    url.searchParams.set("section", "global");
+    try {
+      const result = await syncShopifyCollectionCatalog(admin);
+      url.searchParams.set(
+        "collectionCatalogMessage",
+        `Imported ${result.collectionCount} collections from Shopify.`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Collection catalog import failed.";
+      url.searchParams.set(
+        "collectionCatalogMessage",
+        `Collection catalog import failed: ${message}`,
+      );
+    }
+    return Response.redirect(url.toString(), 302);
   }
 
   if (intent === "save-product-floor") {
@@ -584,8 +692,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function AppSettingsRoute() {
   const {
     config,
+    catalogProductsById,
+    catalogVariantsById,
+    catalogProductCount,
+    catalogCollectionCount,
     activation,
     message,
+    catalogMessage,
+    productCatalogSyncMessage,
+    collectionCatalogMessage,
     discountActionMessage,
     autoActivationMessage,
     discountFunctionStatus,
@@ -644,10 +759,157 @@ export default function AppSettingsRoute() {
   const activeSectionOption =
     SETTINGS_SECTION_OPTIONS.find((section) => section.id === activeSection) ??
     SETTINGS_SECTION_OPTIONS[0];
+  const productCatalogLastSyncLabel = formatTimestamp(
+    (config as any).productCatalogLastSyncAt,
+  );
+  const productCatalogSourceLabel = formatCatalogSourceLabel(
+    (config as any).productCatalogSourceType,
+  );
+
+  function describeProduct(productId: string | null | undefined): string {
+    const normalized = String(productId ?? "").trim();
+    if (!normalized) {
+      return "Unknown product";
+    }
+    const product = (catalogProductsById as Record<
+      string,
+      { title: string; handle: string | null }
+    >)[normalized];
+    if (!product) {
+      return normalized;
+    }
+    return product.handle ? `${product.title} (${product.handle})` : product.title;
+  }
+
+  function describeVariant(variantId: string | null | undefined): string {
+    const normalized = String(variantId ?? "").trim();
+    if (!normalized) {
+      return "Unknown variant";
+    }
+    const variant = (catalogVariantsById as Record<
+      string,
+      { title: string; handle: string | null }
+    >)[normalized];
+    if (!variant) {
+      return normalized;
+    }
+    return variant.handle ? `${variant.title} (${variant.handle})` : variant.title;
+  }
+
+  function formatSegment(segment: string | null | undefined): string {
+    return String(segment ?? "").trim() || "ALL";
+  }
+
+  function formatVisibilityMode(mode: string | null | undefined): string {
+    if (mode === "B2B_ONLY") {
+      return "visibility only for B2B";
+    }
+    if (mode === "B2C_ONLY") {
+      return "visibility only for B2C";
+    }
+    if (mode === "CUSTOMER_ONLY") {
+      return "visibility only for selected customer";
+    }
+    return "visible for all";
+  }
+
+  function buildProductRuleSummary() {
+    const groups = new Map<string, { productId: string; title: string; details: string[] }>();
+    const pushDetail = (productId: string | null | undefined, detail: string) => {
+      const normalized = String(productId ?? "").trim();
+      if (!normalized) {
+        return;
+      }
+      const existing = groups.get(normalized);
+      if (existing) {
+        existing.details.push(detail);
+        return;
+      }
+      groups.set(normalized, {
+        productId: normalized,
+        title: describeProduct(normalized),
+        details: [detail],
+      });
+    };
+
+    if (isProductsSection) {
+      for (const rule of config.productFloors) {
+        pushDetail(
+          rule.productId,
+          `floor ${formatSegment(rule.segment)} at ${rule.minPercentOfBasePrice}%${rule.b2bOverridePrice == null ? "" : `, B2B base ${rule.b2bOverridePrice}`}`,
+        );
+      }
+      for (const rule of config.productTierPrices) {
+        pushDetail(
+          rule.productId,
+          `tier ${formatSegment(rule.segment)} from qty ${rule.minQuantity} at ${rule.unitPrice}`,
+        );
+      }
+      for (const rule of productCustomerMaxRules) {
+        pushDetail(
+          rule.productId,
+          `customer-specific max ${rule.maxOrderQuantity} for ${rule.customerId}`,
+        );
+      }
+    }
+
+    if (isQuantitySection) {
+      for (const rule of productMoqRules) {
+        pushDetail(
+          rule.productId,
+          `MOQ ${rule.minimumOrderQuantity} for ${formatSegment(rule.segment)}`,
+        );
+      }
+      for (const rule of productStepRules) {
+        pushDetail(
+          rule.productId,
+          `step quantity ${rule.stepQuantity} for ${formatSegment(rule.segment)}`,
+        );
+      }
+      for (const rule of productMaxRules) {
+        pushDetail(
+          rule.productId,
+          `maximum ${rule.maxOrderQuantity} for ${formatSegment(rule.segment)}`,
+        );
+      }
+    }
+
+    if (isVisibilitySection) {
+      for (const rule of config.productVisibilityRules) {
+        pushDetail(
+          rule.productId,
+          `${formatVisibilityMode(rule.visibilityMode)}${rule.customerId ? ` (${rule.customerId})` : ""}`,
+        );
+      }
+      for (const rule of productVariantVisibilityRules) {
+        pushDetail(
+          rule.productId,
+          `${describeVariant(rule.variantId)}: ${formatVisibilityMode(rule.visibilityMode)}${rule.customerId ? ` (${rule.customerId})` : ""}`,
+        );
+      }
+    }
+
+    if (isDiscountOrchestrationSection) {
+      for (const rule of advancedDiscountRules) {
+        if (String(rule.scope ?? "") !== "PRODUCT") {
+          continue;
+        }
+        pushDetail(
+          rule.targetId,
+          `${rule.percentOff}% off for ${formatSegment(rule.segment)}, priority ${rule.priority}, ${String(rule.stackMode ?? "").toLowerCase()}`,
+        );
+      }
+    }
+
+    return Array.from(groups.values()).sort((left, right) =>
+      left.title.localeCompare(right.title),
+    );
+  }
+
+  const sectionProductRuleSummary = buildProductRuleSummary();
   function handleSectionSelect(section: SettingsSection) {
-    navigate(`/app/settings?section=${section}`, {
-      preventScrollReset: true,
-    });
+    navigate(`/app/settings?section=${section}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   return (
@@ -705,12 +967,191 @@ export default function AppSettingsRoute() {
           </div>
         </div>
         <div
+          className="settings-workspace"
           style={{
             minWidth: 0,
             flex: 1,
             width: "calc(100% - 196px)",
           }}
         >
+      <style>{`
+        .settings-workspace {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+
+        .settings-workspace > s-section {
+          display: block;
+          margin: 0;
+        }
+
+        .settings-workspace > s-section > form {
+          display: block;
+          background: linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%);
+          border: 1px solid rgba(7, 33, 58, 0.10);
+          border-radius: 18px;
+          padding: 22px;
+          box-shadow: 0 1px 2px rgba(7, 33, 58, 0.04);
+          margin-bottom: 14px;
+        }
+
+        .settings-workspace > s-section > s-box {
+          display: block;
+          background: #ffffff;
+          border: 1px solid rgba(7, 33, 58, 0.10);
+          border-radius: 18px;
+          padding: 18px;
+          box-shadow: 0 1px 2px rgba(7, 33, 58, 0.04);
+        }
+
+        .settings-workspace > s-section > s-paragraph {
+          display: block;
+          margin: 0 0 14px 0;
+          padding: 12px 14px;
+          background: rgba(7, 33, 58, 0.03);
+          border: 1px solid rgba(7, 33, 58, 0.08);
+          border-radius: 14px;
+          color: #475467;
+        }
+
+        .settings-workspace form label {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #344054;
+        }
+
+        .settings-workspace form input,
+        .settings-workspace form select,
+        .settings-workspace form textarea {
+          border: 1px solid #d0d5dd;
+          border-radius: 10px;
+          background: #ffffff;
+          color: #101828;
+          font-size: 14px;
+          line-height: 1.4;
+          min-height: 40px;
+          padding: 8px 12px;
+          box-sizing: border-box;
+          width: 100%;
+        }
+
+        .settings-workspace form textarea {
+          min-height: 88px;
+          resize: vertical;
+        }
+
+        .settings-workspace form button,
+        .settings-workspace s-box form button {
+          border: 1px solid #07213a;
+          border-radius: 10px;
+          background: #07213a;
+          color: #ffffff;
+          min-height: 38px;
+          padding: 0 14px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .settings-workspace s-box form button {
+          border-color: #d0d5dd;
+          background: #ffffff;
+          color: #344054;
+        }
+
+        .settings-workspace s-box > s-heading {
+          display: block;
+          margin-bottom: 12px;
+        }
+
+        .settings-workspace s-box > s-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .settings-workspace s-box s-stack[direction="inline"] {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 14px;
+          padding: 12px 14px;
+          border: 1px solid rgba(7, 33, 58, 0.08);
+          border-radius: 12px;
+          background: #fbfcfd;
+        }
+
+        .settings-workspace s-box s-stack[direction="inline"] form {
+          margin: 0;
+          padding: 0;
+          border: none;
+          background: transparent;
+          box-shadow: none;
+        }
+
+        .settings-workspace s-text {
+          color: #344054;
+          line-height: 1.5;
+        }
+
+        .catalog-source-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 12px;
+        }
+
+        .catalog-source-card {
+          border: 1px solid rgba(7, 33, 58, 0.10);
+          border-radius: 16px;
+          padding: 16px;
+          background: #ffffff;
+        }
+
+        .catalog-source-card.is-active {
+          border-color: rgba(7, 33, 58, 0.22);
+          box-shadow: 0 1px 2px rgba(7, 33, 58, 0.06);
+          background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+        }
+
+        .catalog-source-card.is-disabled {
+          background: #f8fafc;
+          color: #98a2b3;
+        }
+
+        .catalog-source-kicker {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          margin-bottom: 8px;
+          color: #667085;
+        }
+
+        .catalog-source-title {
+          font-size: 16px;
+          font-weight: 700;
+          color: #07213a;
+          margin-bottom: 8px;
+        }
+
+        .catalog-source-card.is-disabled .catalog-source-title {
+          color: #98a2b3;
+        }
+
+        .catalog-source-meta {
+          font-size: 13px;
+          line-height: 1.5;
+          color: #51606f;
+        }
+
+        .catalog-source-card.is-disabled .catalog-source-meta {
+          color: #98a2b3;
+        }
+      `}</style>
       <div
         style={{
           display: "flex",
@@ -760,8 +1201,236 @@ export default function AppSettingsRoute() {
           {activeSectionOption.description}
         </div>
       </div>
+      {(catalogMessage || productCatalogSyncMessage || collectionCatalogMessage) && (
+        <div
+          style={{
+            padding: "12px 14px",
+            borderRadius: "14px",
+            border: "1px solid rgba(10, 132, 255, 0.18)",
+            background: "rgba(10, 132, 255, 0.06)",
+            color: "#0b4f8a",
+            fontSize: "14px",
+            lineHeight: 1.5,
+          }}
+        >
+          {catalogMessage ?? productCatalogSyncMessage ?? collectionCatalogMessage}
+        </div>
+      )}
+      {(isProductsSection ||
+        isQuantitySection ||
+        isVisibilitySection ||
+        isDiscountOrchestrationSection) && (
+        <div
+          style={{
+            background: "#ffffff",
+            border: "1px solid rgba(7, 33, 58, 0.10)",
+            borderRadius: "18px",
+            padding: "18px",
+            boxShadow: "0 1px 2px rgba(7, 33, 58, 0.04)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "12px",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "#667085",
+              marginBottom: "8px",
+            }}
+          >
+            Applied products
+          </div>
+          <div
+            style={{
+              fontSize: "18px",
+              fontWeight: 700,
+              color: "#07213a",
+              marginBottom: "12px",
+            }}
+          >
+            Products affected in this section
+          </div>
+          {sectionProductRuleSummary.length === 0 ? (
+            <div style={{ color: "#51606f", fontSize: "14px" }}>
+              No product rules are configured in this section yet.
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: "12px",
+              }}
+            >
+              {sectionProductRuleSummary.map((group) => (
+                <div
+                  key={group.productId}
+                  style={{
+                    border: "1px solid rgba(7, 33, 58, 0.08)",
+                    borderRadius: "14px",
+                    padding: "14px",
+                    background: "#fbfcfd",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: 700,
+                      color: "#07213a",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    {group.title}
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: "18px", color: "#475467" }}>
+                    {group.details.map((detail, index) => (
+                      <li key={`${group.productId}-${index}`}>{detail}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {isGlobalSection && (
       <s-section heading="Global configuration">
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Product catalog foundation</s-heading>
+          <div
+            style={{
+              marginBottom: "14px",
+              fontSize: "14px",
+              color: "#51606f",
+              lineHeight: 1.5,
+            }}
+          >
+            Importing products is the first admin setup step. Product, variant, and
+            rule pickers use this catalog as the source of truth across the entire
+            settings workspace.
+          </div>
+          <div className="catalog-source-grid">
+            <div className="catalog-source-card is-active">
+              <div className="catalog-source-kicker">Available now</div>
+              <div className="catalog-source-title">Shopify Catalog</div>
+              <div className="catalog-source-meta">
+                Active products: {catalogProductCount}
+                <br />
+                Last sync: {productCatalogLastSyncLabel ?? "never"}
+                <br />
+                Auto import:{" "}
+                {(config as any).productCatalogAutoImportEnabled !== false
+                  ? "enabled"
+                  : "disabled"}
+              </div>
+            </div>
+            <div className="catalog-source-card is-disabled" aria-disabled="true">
+              <div className="catalog-source-kicker">Planned</div>
+              <div className="catalog-source-title">CSV / JSON Import</div>
+              <div className="catalog-source-meta">
+                Reserved for MVP_6 data import flows. This source will later support
+                price, MOQ, and catalog feeds from flat files.
+              </div>
+            </div>
+            <div className="catalog-source-card is-disabled" aria-disabled="true">
+              <div className="catalog-source-kicker">Planned</div>
+              <div className="catalog-source-title">ERP Integration</div>
+              <div className="catalog-source-meta">
+                Reserved for future ERP sync. The admin UI is prepared for this path,
+                but activation will come in a later delivery.
+              </div>
+            </div>
+          </div>
+          <div
+            style={{
+              marginTop: "14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+            }}
+          >
+            <s-text>
+              Current source: {productCatalogSourceLabel}
+              {(config as any).productCatalogLastSyncError
+                ? ` | last error: ${(config as any).productCatalogLastSyncError}`
+                : ""}
+            </s-text>
+            <form method="post">
+              <input type="hidden" name="intent" value="sync-product-catalog" />
+              <button
+                type="submit"
+                disabled={
+                  isSubmitting ||
+                  String((config as any).productCatalogSourceType ?? "SHOPIFY") !== "SHOPIFY"
+                }
+              >
+                Import products now
+              </button>
+            </form>
+          </div>
+        </s-box>
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-heading>Collection catalog foundation</s-heading>
+          <div
+            style={{
+              marginBottom: "14px",
+              fontSize: "14px",
+              color: "#51606f",
+              lineHeight: 1.5,
+            }}
+          >
+            Collection imports will become the source layer for collection rules,
+            collection-driven discount orchestration, and future non-Shopify feeds.
+            The UI is prepared now so this foundation matches the product catalog
+            model.
+          </div>
+          <div className="catalog-source-grid">
+            <div className="catalog-source-card is-active">
+              <div className="catalog-source-kicker">Available now</div>
+              <div className="catalog-source-title">Shopify Collections</div>
+              <div className="catalog-source-meta">
+                Active collections: {catalogCollectionCount}
+                <br />
+                Stored locally for collection rules and collection-based governance.
+              </div>
+            </div>
+            <div className="catalog-source-card is-disabled" aria-disabled="true">
+              <div className="catalog-source-kicker">Planned</div>
+              <div className="catalog-source-title">CSV / JSON Import</div>
+              <div className="catalog-source-meta">
+                Reserved for MVP_6 collection imports from flat-file feeds and
+                external data export pipelines.
+              </div>
+            </div>
+            <div className="catalog-source-card is-disabled" aria-disabled="true">
+              <div className="catalog-source-kicker">Planned</div>
+              <div className="catalog-source-title">ERP Integration</div>
+              <div className="catalog-source-meta">
+                Reserved for future ERP-backed collection synchronization and mapping
+                into admin governance rules.
+              </div>
+            </div>
+          </div>
+          <div
+            style={{
+              marginTop: "14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+            }}
+          >
+            <s-text>
+              Collection source: Shopify
+            </s-text>
+            <form method="post">
+              <input type="hidden" name="intent" value="sync-collection-catalog" />
+              <button type="submit" disabled={isSubmitting}>
+                Import collections now
+              </button>
+            </form>
+          </div>
+        </s-box>
         <form method="post">
           <input type="hidden" name="intent" value="save-global" />
           <s-stack direction="block" gap="base">
@@ -796,6 +1465,19 @@ export default function AppSettingsRoute() {
                   (config as any).b2bGlobalMinPricePercent ?? config.globalMinPricePercent
                 }
               />
+            </label>
+            <input
+              type="hidden"
+              name="productCatalogSourceType"
+              value={(config as any).productCatalogSourceType ?? "SHOPIFY"}
+            />
+            <label>
+              <input
+                name="productCatalogAutoImportEnabled"
+                type="checkbox"
+                defaultChecked={(config as any).productCatalogAutoImportEnabled !== false}
+              />
+              Automatically sync product catalog from the selected source
             </label>
             <label>
               <input
@@ -902,8 +1584,8 @@ export default function AppSettingsRoute() {
               {config.productFloors.map((rule: any) => (
                 <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
                   <s-text>
-                    {rule.productId} | {rule.segment ?? "ALL"} | {rule.minPercentOfBasePrice}% |
-                    zero-final:{" "}
+                    {describeProduct(rule.productId)} | {rule.segment ?? "ALL"} |{" "}
+                    {rule.minPercentOfBasePrice}% | zero-final:{" "}
                     {rule.allowZeroFinalPrice == null
                       ? "inherit"
                       : rule.allowZeroFinalPrice
@@ -980,8 +1662,8 @@ export default function AppSettingsRoute() {
               {config.productTierPrices.map((rule: any) => (
                 <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
                   <s-text>
-                    {rule.productId} | {rule.segment ?? "ALL"} | qty {rule.minQuantity}
-                    + | unit price: {rule.unitPrice}
+                    {describeProduct(rule.productId)} | {rule.segment ?? "ALL"} | qty{" "}
+                    {rule.minQuantity}+ | unit price: {rule.unitPrice}
                   </s-text>
                   <form method="post">
                     <input type="hidden" name="intent" value="delete-product-tier-price" />
@@ -1044,7 +1726,8 @@ export default function AppSettingsRoute() {
               {productMoqRules.map((rule: any) => (
                 <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
                   <s-text>
-                    {rule.productId} | {rule.segment ?? "ALL"} | MOQ {rule.minimumOrderQuantity}
+                    {describeProduct(rule.productId)} | {rule.segment ?? "ALL"} | MOQ{" "}
+                    {rule.minimumOrderQuantity}
                   </s-text>
                   <form method="post">
                     <input type="hidden" name="intent" value="delete-product-quantity-rule" />
@@ -1103,7 +1786,8 @@ export default function AppSettingsRoute() {
               {productStepRules.map((rule: any) => (
                 <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
                   <s-text>
-                    {rule.productId} | {rule.segment ?? "ALL"} | step {rule.stepQuantity}
+                    {describeProduct(rule.productId)} | {rule.segment ?? "ALL"} | step{" "}
+                    {rule.stepQuantity}
                   </s-text>
                   <form method="post">
                     <input
@@ -1166,7 +1850,8 @@ export default function AppSettingsRoute() {
               {productMaxRules.map((rule: any) => (
                 <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
                   <s-text>
-                    {rule.productId} | {rule.segment ?? "ALL"} | max {rule.maxOrderQuantity}
+                    {describeProduct(rule.productId)} | {rule.segment ?? "ALL"} | max{" "}
+                    {rule.maxOrderQuantity}
                   </s-text>
                   <form method="post">
                     <input
@@ -1303,7 +1988,8 @@ export default function AppSettingsRoute() {
               {productCustomerMaxRules.map((rule: any) => (
                 <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
                   <s-text>
-                    {rule.productId} | customer {rule.customerId} | max {rule.maxOrderQuantity}
+                    {describeProduct(rule.productId)} | customer {rule.customerId} | max{" "}
+                    {rule.maxOrderQuantity}
                   </s-text>
                   <form method="post">
                     <input
@@ -1372,7 +2058,7 @@ export default function AppSettingsRoute() {
               {config.productVisibilityRules.map((rule: any) => (
                 <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
                   <s-text>
-                    {rule.productId} | {rule.visibilityMode}
+                    {describeProduct(rule.productId)} | {rule.visibilityMode}
                     {rule.customerId ? ` | customer: ${rule.customerId}` : ""}
                   </s-text>
                   <form method="post">
@@ -1442,7 +2128,9 @@ export default function AppSettingsRoute() {
               {productVariantVisibilityRules.map((rule: any) => (
                 <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
                   <s-text>
-                    {rule.productId} | variant {rule.variantId} | {rule.visibilityMode}
+                    {describeProduct(rule.productId)} | variant {describeVariant(rule.variantId)}
+                    {" | "}
+                    {rule.visibilityMode}
                     {rule.customerId ? ` | customer: ${rule.customerId}` : ""}
                   </s-text>
                   <form method="post">
@@ -1602,7 +2290,13 @@ export default function AppSettingsRoute() {
                 <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
                   <s-text>
                     {rule.scope}
-                    {rule.targetId ? ` | ${rule.targetId}` : ""}
+                    {rule.targetId
+                      ? ` | ${
+                          rule.scope === "PRODUCT"
+                            ? describeProduct(rule.targetId)
+                            : rule.targetId
+                        }`
+                      : ""}
                     {rule.code ? ` | ${rule.code}` : ""}
                     {" | "}
                     {rule.segment ?? "ALL"} | {rule.percentOff}% | priority {rule.priority}

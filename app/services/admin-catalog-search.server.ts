@@ -1,3 +1,9 @@
+import {
+  searchImportedCatalogProducts,
+  searchImportedCatalogVariants,
+  searchImportedCatalogCollections,
+} from "./product-catalog.server.ts";
+
 export type AdminCatalogSearchType =
   | "product"
   | "collection"
@@ -11,6 +17,12 @@ export interface AdminCatalogSearchItem {
   handle: string | null;
   secondaryLabel: string | null;
 }
+
+type SearchAdminCatalogDeps = {
+  searchImportedProducts?: typeof searchImportedCatalogProducts;
+  searchImportedVariants?: typeof searchImportedCatalogVariants;
+  searchImportedCollections?: typeof searchImportedCatalogCollections;
+};
 
 interface AdminGraphqlClient {
   graphql: (
@@ -370,33 +382,29 @@ export async function searchAdminCatalog(input: {
   type: AdminCatalogSearchType;
   query: string;
   limit: number;
-}): Promise<AdminCatalogSearchItem[]> {
+}, deps: SearchAdminCatalogDeps = {}): Promise<AdminCatalogSearchItem[]> {
+  const searchImportedProducts =
+    deps.searchImportedProducts ?? searchImportedCatalogProducts;
+  const searchImportedVariants =
+    deps.searchImportedVariants ?? searchImportedCatalogVariants;
+  const searchImportedCollections =
+    deps.searchImportedCollections ?? searchImportedCatalogCollections;
+  if (input.type === "product") {
+    return searchImportedProducts(input.query, input.limit);
+  }
+  if (input.type === "variant") {
+    return searchImportedVariants(input.query, input.limit);
+  }
+  if (input.type === "collection") {
+    return searchImportedCollections(input.query, input.limit);
+  }
+
   const searchQuery = buildShopifySearchQuery(input.query, input.type);
   if (!searchQuery) {
     return [];
   }
-  if (input.type === "product") {
-    return searchProducts({
-      admin: input.admin,
-      query: searchQuery,
-      limit: input.limit,
-    });
-  }
-  if (input.type === "customer") {
-    return searchCustomers({
-      admin: input.admin,
-      query: searchQuery,
-      limit: input.limit,
-    });
-  }
-  if (input.type === "variant") {
-    return searchVariants({
-      admin: input.admin,
-      query: searchQuery,
-      limit: input.limit,
-    });
-  }
-  return searchCollections({
+
+  return searchCustomers({
     admin: input.admin,
     query: searchQuery,
     limit: input.limit,

@@ -4175,11 +4175,280 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     );
   }
 
+  // ─── MVP_5: Storefront Content Engine ───────────────────────────
+
+  const CONTENT_CACHE_KEY = "marginGuardContentCache_v1";
+  const contentEndpoint = proxyPrefix + "/storefront-content";
+  let contentRulesApplied = false;
+
+  function detectPageType() {
+    const path = window.location.pathname;
+    if (path === "/" || path === "") return "HOME";
+    if (path.match(/\\/products\\//i)) return "PRODUCT";
+    if (path.match(/\\/collections\\//i)) return "COLLECTION";
+    if (path.match(/\\/cart/i)) return "CART";
+    return "PAGE";
+  }
+
+  function detectCurrentHandle() {
+    const path = window.location.pathname;
+    const productMatch = path.match(/\\/products\\/([^/?#]+)/i);
+    if (productMatch) return decodeURIComponent(productMatch[1]).toLowerCase();
+    const collectionMatch = path.match(/\\/collections\\/([^/?#]+)/i);
+    if (collectionMatch) return decodeURIComponent(collectionMatch[1]).toLowerCase();
+    return null;
+  }
+
+  function readContentCache() {
+    try {
+      const raw = sessionStorage.getItem(CONTENT_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !parsed.timestamp) return null;
+      if (Date.now() - parsed.timestamp > RULES_CACHE_TTL_MS) {
+        sessionStorage.removeItem(CONTENT_CACHE_KEY);
+        return null;
+      }
+      return parsed.data;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeContentCache(data) {
+    try {
+      sessionStorage.setItem(
+        CONTENT_CACHE_KEY,
+        JSON.stringify({ data: data, timestamp: Date.now() }),
+      );
+    } catch {}
+  }
+
+  async function fetchContentRules() {
+    const cached = readContentCache();
+    if (cached) return cached;
+
+    const pageType = detectPageType();
+    const handle = detectCurrentHandle();
+    const productId = state.currentProductId || "";
+    const lang = String(
+      document.documentElement?.lang || navigator.language || "en"
+    ).toLowerCase();
+    const locale = lang.startsWith("cs") ? "cs" : "en";
+
+    const params = new URLSearchParams();
+    params.set("page_type", pageType);
+    if (loggedInCustomerId) params.set("logged_in_customer_id", loggedInCustomerId);
+    if (handle) params.set("handle", handle);
+    if (productId) params.set("product_id", productId);
+    params.set("locale", locale);
+
+    try {
+      const response = await fetch(contentEndpoint + "?" + params.toString());
+      if (!response.ok) return null;
+      const data = await response.json();
+      writeContentCache(data);
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function resolveSemanticTarget(position) {
+    if (position === "TOP_BANNER") {
+      return document.querySelector("main, #main, #MainContent, [role='main'], #shopify-section-header");
+    }
+    if (position === "BOTTOM_BANNER") {
+      return document.querySelector("footer, #footer, [role='contentinfo'], #shopify-section-footer");
+    }
+    if (position === "ABOVE_TITLE" || position === "BELOW_TITLE") {
+      return document.querySelector(
+        ".product__title, .product-single__title, [data-product-title], h1"
+      );
+    }
+    if (position === "ABOVE_ADD_TO_CART" || position === "BELOW_ADD_TO_CART") {
+      return document.querySelector(
+        "form[action*='/cart/add'], .product-form, [data-product-form]"
+      );
+    }
+    return null;
+  }
+
+  function applyContentRule(rule) {
+    var elements;
+
+    if (rule.targetType === "CSS_SELECTOR" && rule.targetSelector) {
+      try {
+        elements = Array.from(document.querySelectorAll(rule.targetSelector));
+      } catch {
+        return;
+      }
+    } else if (rule.targetType === "SEMANTIC_POSITION" && rule.targetPosition) {
+      const anchor = resolveSemanticTarget(rule.targetPosition);
+      if (!anchor) return;
+
+      if (rule.action === "SWAP_HTML" || rule.action === "SWAP_TEXT") {
+        const wrapper = document.createElement("div");
+        wrapper.className = "mg-storefront-content";
+        wrapper.setAttribute("data-mg-position", rule.targetPosition);
+        if (rule.action === "SWAP_HTML") {
+          wrapper.innerHTML = rule.value || "";
+        } else {
+          wrapper.textContent = rule.value || "";
+        }
+
+        const isBeforePosition =
+          rule.targetPosition === "TOP_BANNER" ||
+          rule.targetPosition === "ABOVE_TITLE" ||
+          rule.targetPosition === "ABOVE_ADD_TO_CART";
+
+        if (rule.targetPosition === "TOP_BANNER") {
+          anchor.prepend(wrapper);
+        } else if (rule.targetPosition === "BOTTOM_BANNER") {
+          anchor.before(wrapper);
+        } else if (isBeforePosition) {
+          anchor.parentNode && anchor.parentNode.insertBefore(wrapper, anchor);
+        } else {
+          anchor.parentNode && anchor.parentNode.insertBefore(wrapper, anchor.nextSibling);
+        }
+        return;
+      }
+
+      elements = [anchor];
+    } else {
+      return;
+    }
+
+    if (!elements || elements.length === 0) return;
+
+    for (var i = 0; i < elements.length; i++) {
+      var el = elements[i];
+      switch (rule.action) {
+        case "SWAP_IMAGE":
+          if (el.tagName === "IMG") {
+            el.setAttribute("src", rule.value || "");
+            el.removeAttribute("srcset");
+          } else {
+            var img = el.querySelector("img");
+            if (img) {
+              img.setAttribute("src", rule.value || "");
+              img.removeAttribute("srcset");
+            }
+          }
+          break;
+        case "SWAP_TEXT":
+          el.textContent = rule.value || "";
+          break;
+        case "SWAP_HTML":
+          el.innerHTML = rule.value || "";
+          break;
+        case "SWAP_HREF":
+          el.setAttribute("href", rule.value || "");
+          break;
+        case "HIDE":
+          el.style.display = "none";
+          break;
+        case "SHOW":
+          el.style.display = "";
+          break;
+        case "ADD_CLASS":
+          if (rule.value) {
+            rule.value.split(" ").forEach(function(cls) {
+              if (cls) el.classList.add(cls);
+            });
+          }
+          break;
+        case "REMOVE_CLASS":
+          if (rule.value) {
+            rule.value.split(" ").forEach(function(cls) {
+              if (cls) el.classList.remove(cls);
+            });
+          }
+          break;
+      }
+    }
+  }
+
+  function hideCollectionCardForHandle(handle) {
+    var selector = "a[href*='/collections/" + handle + "']";
+    var anchors = document.querySelectorAll(selector);
+    for (var i = 0; i < anchors.length; i++) {
+      var anchor = anchors[i];
+      var card =
+        anchor.closest("[data-collection-card]") ||
+        anchor.closest(".collection-card") ||
+        anchor.closest(".collection-list__item") ||
+        anchor.closest("[data-product-card]") ||
+        anchor.closest(".product-card") ||
+        anchor.closest(".card") ||
+        anchor.closest(".grid__item") ||
+        anchor.closest("article") ||
+        anchor.closest("li") ||
+        anchor;
+      if (card instanceof HTMLElement) {
+        card.style.display = "none";
+      }
+    }
+  }
+
+  function applyCollectionHiding(hiddenCollections, redirectMessage) {
+    if (!hiddenCollections || hiddenCollections.length === 0) return;
+
+    // Hide collection cards and nav links (same pattern as product hiding)
+    for (var j = 0; j < hiddenCollections.length; j++) {
+      hideCollectionCardForHandle(hiddenCollections[j]);
+    }
+
+    // If currently on a hidden collection page, show redirect message
+    var currentHandle = detectCurrentHandle();
+    var pageType = detectPageType();
+    if (pageType === "COLLECTION" && currentHandle && hiddenCollections.indexOf(currentHandle) !== -1) {
+      var main = document.querySelector("main, #main, #MainContent, [role='main']");
+      if (main) {
+        var msgDiv = document.createElement("div");
+        msgDiv.className = "mg-collection-blocked";
+        msgDiv.style.cssText = "text-align:center;padding:40px 20px;font-size:18px;color:#666;";
+        msgDiv.textContent = redirectMessage || "This collection is not available.";
+        // Hide original content
+        for (var c = 0; c < main.children.length; c++) {
+          main.children[c].style.display = "none";
+        }
+        main.prepend(msgDiv);
+      }
+    }
+  }
+
+  async function runContentEngine() {
+    if (contentRulesApplied) return;
+    contentRulesApplied = true;
+
+    var data = await fetchContentRules();
+    if (!data) return;
+
+    // Apply content rules sorted by priority
+    var rules = data.contentRules || [];
+    for (var i = 0; i < rules.length; i++) {
+      applyContentRule(rules[i]);
+    }
+
+    // Apply collection hiding
+    applyCollectionHiding(data.hiddenCollections, data.collectionRedirectMessage);
+  }
+
+  // ─── End MVP_5 ───────────────────────────────────────────────
+
   bindCartRequestNormalization();
   bindQuantityRuleInteractions();
   bindDomMutationResync();
   hydrateRulesFromCache();
   startInitialRulesBootstrap();
+
+  // MVP_5: Run content engine after DOM is ready
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function() { runContentEngine(); });
+  } else {
+    runContentEngine();
+  }
 })();
   `;
 

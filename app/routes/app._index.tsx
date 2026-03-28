@@ -113,13 +113,6 @@ export default function AppDashboardRoute() {
           </s-stack>
         </s-box>
       </s-section>
-
-      <s-section heading="Next actions">
-        <s-stack direction="inline" gap="base">
-          <s-link href="/app/settings">Configure floors and rules</s-link>
-          <s-link href="/app/violations">Open violation log</s-link>
-        </s-stack>
-      </s-section>
     </s-page>
   );
 }

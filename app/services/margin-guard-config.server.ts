@@ -49,6 +49,8 @@ function getMarginGuardPrismaOrThrow() {
   const client = prisma;
   if (
     !client.marginGuardConfig ||
+    !client.catalogProduct ||
+    !client.catalogVariant ||
     !client.productFloorRule ||
     !client.productTierPriceRule ||
     !client.productQuantityRule ||
@@ -91,18 +93,25 @@ export async function updateGlobalMarginGuardConfig(input: {
   b2bTag: string;
   globalMinPricePercent: number;
   b2bGlobalMinPricePercent: number;
+  productCatalogSourceType?: string;
+  productCatalogAutoImportEnabled?: boolean;
   allowZeroFinalPrice: boolean;
   allowRemoveAtMinimumOrderQuantity: boolean;
   allowStacking: boolean;
   maxCombinedPercentOff: number | null;
 }) {
   const db = getMarginGuardPrismaOrThrow();
+  const productCatalogSourceType = input.productCatalogSourceType ?? "SHOPIFY";
+  const productCatalogAutoImportEnabled =
+    input.productCatalogAutoImportEnabled ?? true;
   return db.marginGuardConfig.upsert({
     where: { id: DEFAULT_CONFIG_ID },
     update: {
       b2bTag: input.b2bTag,
       globalMinPricePercent: input.globalMinPricePercent,
       b2bGlobalMinPricePercent: input.b2bGlobalMinPricePercent,
+      productCatalogSourceType,
+      productCatalogAutoImportEnabled,
       allowZeroFinalPrice: input.allowZeroFinalPrice,
       allowRemoveAtMinimumOrderQuantity: input.allowRemoveAtMinimumOrderQuantity,
       allowStacking: input.allowStacking,
@@ -113,6 +122,8 @@ export async function updateGlobalMarginGuardConfig(input: {
       b2bTag: input.b2bTag,
       globalMinPricePercent: input.globalMinPricePercent,
       b2bGlobalMinPricePercent: input.b2bGlobalMinPricePercent,
+      productCatalogSourceType,
+      productCatalogAutoImportEnabled,
       allowZeroFinalPrice: input.allowZeroFinalPrice,
       allowRemoveAtMinimumOrderQuantity: input.allowRemoveAtMinimumOrderQuantity,
       allowStacking: input.allowStacking,

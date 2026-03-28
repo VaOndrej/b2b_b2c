@@ -48,40 +48,84 @@ test("normalizeCatalogSearchItems accepts supported payload shapes and filters i
   ]);
 });
 
-test("AdminCatalogPicker keeps the original field name on the visible manual GID input", async () => {
+test("AdminCatalogPicker submits the canonical field through a hidden input without manual GID fallback UI", async () => {
   const source = await readFile(PICKER_COMPONENT_PATH, "utf8");
 
   assert.match(
     source,
-    /Selected or manual \{props\.resourceType\} GID/,
-    "Picker must keep manual GID fallback visible.",
+    /type="hidden"/,
+    "Picker must submit the selected catalog id through a hidden input.",
   );
   assert.match(
     source,
     /name=\{props\.name\}/,
-    "Picker must submit through the original productId, collectionId, or customerId field name.",
+    "Picker must keep the original form field name for productId, collectionId, customerId, or variantId.",
   );
   assert.match(
     source,
-    /required=\{props\.required\}/,
-    "Picker must preserve required validation on the canonical submit field.",
+    /value=\{selectedId\}/,
+    "Picker must bind the canonical submit field to the selected catalog item id.",
   );
   assert.match(
     source,
-    /value=\{manualValue\}/,
-    "Picker must bind the canonical submit field to the selected or manual GID value.",
+    /setSelectedId\(option\.id\)/,
+    "Picking a catalog result must populate the canonical submit field.",
+  );
+  assert.doesNotMatch(
+    source,
+    /Selected or manual \{props\.resourceType\} GID/,
+    "Picker must no longer expose a manual GID fallback in the admin UI.",
+  );
+  assert.doesNotMatch(
+    source,
+    /manualValue/,
+    "Picker must not keep parallel manual GID state once imported catalog selection is the only path.",
   );
   assert.match(
     source,
-    /setManualValue\(option\.id\)/,
-    "Picking a catalog search result must populate the canonical GID input.",
+    /supportsBrowseDropdown/,
+    "Picker must support browse-style dropdown mode for imported products and variants.",
+  );
+  assert.match(
+    source,
+    /onFocus=\{\(\) => \{\s*setIsOpen\(true\)/,
+    "Picker must open its dropdown when the field receives focus.",
+  );
+  assert.match(
+    source,
+    /onMouseDown=\{\(event\) => \{/,
+    "Picker option selection must be handled before blur so dropdown picks remain reliable.",
+  );
+  assert.match(
+    source,
+    /color:\s*"#101828"/,
+    "Picker dropdown options must force readable text color instead of inheriting the primary form button theme.",
+  );
+  assert.match(
+    source,
+    /!isLoading && !errorMessage && isOpen && options.length > 0/,
+    "Picker must render the dropdown list while focused, even before a search term is entered.",
+  );
+  assert.match(
+    source,
+    /maxHeight:\s*"280px"/,
+    "Picker dropdown must cap its height so long result sets stay scrollable.",
+  );
+  assert.match(
+    source,
+    /overflowY:\s*"auto"/,
+    "Picker dropdown must allow vertical scrolling for long result sets.",
   );
 });
 
 test("customer and variant picker placeholders are available in shared helpers", async () => {
   const source = await readFile(PICKER_COMPONENT_PATH, "utf8");
 
-  assert.match(source, /resourceType: CatalogResourceType/, "Picker must support typed resource variants.");
+  assert.match(
+    source,
+    /resourceType: CatalogResourceType/,
+    "Picker must support typed resource variants.",
+  );
   assert.match(
     source,
     /Selected \{props\.resourceType\}/,

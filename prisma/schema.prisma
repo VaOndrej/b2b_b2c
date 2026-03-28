@@ -38,6 +38,10 @@ model MarginGuardConfig {
   b2bTag                String   @default("b2b")
   globalMinPricePercent Float    @default(70)
   b2bGlobalMinPricePercent Float  @default(70)
+  productCatalogSourceType String @default("SHOPIFY")
+  productCatalogAutoImportEnabled Boolean @default(true)
+  productCatalogLastSyncAt DateTime?
+  productCatalogLastSyncError String?
   allowZeroFinalPrice   Boolean  @default(false)
   allowRemoveAtMinimumOrderQuantity Boolean @default(true)
   allowStacking         Boolean  @default(false)
@@ -59,6 +63,61 @@ model MarginGuardConfig {
   discountCombinationBlacklistRules DiscountCombinationBlacklistRule[]
   discountSegmentCaps   DiscountSegmentCap[]
   violations            MarginViolationLog[]
+  storefrontContentRules StorefrontContentRule[]
+  collectionVisibilityRules CollectionVisibilityRule[]
+}
+
+model CatalogProduct {
+  id              String   @id @default(cuid())
+  sourceType      String
+  externalKey     String
+  shopifyProductId String? @unique
+  title           String
+  handle          String?
+  status          String?
+  vendor          String?
+  productType     String?
+  imageUrl        String?
+  isActive        Boolean  @default(true)
+  syncedAt        DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([sourceType, externalKey])
+}
+
+model CatalogCollection {
+  id                  String   @id @default(cuid())
+  sourceType          String
+  externalKey         String
+  shopifyCollectionId String?  @unique
+  title               String
+  handle              String?
+  isActive            Boolean  @default(true)
+  syncedAt            DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([sourceType, externalKey])
+}
+
+model CatalogVariant {
+  id               String   @id @default(cuid())
+  sourceType       String
+  externalKey      String
+  shopifyVariantId String?  @unique
+  shopifyProductId String?
+  title            String
+  productTitle     String
+  productHandle    String?
+  sku              String?
+  optionSummary    String?
+  isActive         Boolean  @default(true)
+  syncedAt         DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([sourceType, externalKey])
 }
 
 model ProductFloorRule {
@@ -231,4 +290,41 @@ model MarginViolationLog {
   violationAmount Float
   source          String
   createdAt       DateTime          @default(now())
+}
+
+model StorefrontContentRule {
+  id              String            @id @default(cuid())
+  configId        String
+  config          MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  name            String
+  active          Boolean           @default(true)
+  priority        Int               @default(100)
+  segment         String
+  pageType        String            @default("ALL")
+  productId       String?
+  collectionId    String?
+  targetType      String
+  targetSelector  String?
+  targetPosition  String?
+  action          String
+  value           String?
+  valueCsLocale   String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([configId, name])
+}
+
+model CollectionVisibilityRule {
+  id               String            @id @default(cuid())
+  configId         String
+  config           MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  collectionId     String
+  collectionHandle String
+  collectionTitle  String?
+  visibilityMode   String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([configId, collectionId])
 }
