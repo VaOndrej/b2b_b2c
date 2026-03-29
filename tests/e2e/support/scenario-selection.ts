@@ -23,7 +23,8 @@ export interface AutoScenarioProductIdsInput {
 
 export interface AutoScenarioProductIds {
   visibility: string | null;
-  quantity: string | null;
+  step: string | null;
+  max: string | null;
   variant: string | null;
 }
 
@@ -37,12 +38,12 @@ function isRestrictiveVisibilityMode(value: string | null | undefined): boolean 
   return Boolean(normalized) && normalized !== "ALL";
 }
 
-function hasInterestingQuantityConstraint(rule: QuantityRuleCandidate): boolean {
-  return (
-    rule.minimumOrderQuantity > 1 ||
-    Number(rule.stepQuantity ?? 0) > 1 ||
-    Number(rule.maxOrderQuantity ?? 0) > 0
-  );
+function hasStepQuantityConstraint(rule: QuantityRuleCandidate): boolean {
+  return Number(rule.stepQuantity ?? 0) > 1;
+}
+
+function hasMaximumQuantityConstraint(rule: QuantityRuleCandidate): boolean {
+  return Number(rule.maxOrderQuantity ?? 0) > 0;
 }
 
 export function selectAutoScenarioProductIds(
@@ -53,9 +54,11 @@ export function selectAutoScenarioProductIds(
       isRestrictiveVisibilityMode(rule.visibilityMode),
     )?.productId ?? null;
 
-  const quantity =
-    input.quantityRules.find((rule) => hasInterestingQuantityConstraint(rule))
-      ?.productId ?? null;
+  const step =
+    input.quantityRules.find((rule) => hasStepQuantityConstraint(rule))?.productId ?? null;
+
+  const max =
+    input.quantityRules.find((rule) => hasMaximumQuantityConstraint(rule))?.productId ?? null;
 
   const variant =
     input.variantVisibilityRules.find((rule) =>
@@ -64,7 +67,8 @@ export function selectAutoScenarioProductIds(
 
   return {
     visibility: normalizeProductId(visibility),
-    quantity: normalizeProductId(quantity),
+    step: normalizeProductId(step),
+    max: normalizeProductId(max),
     variant: normalizeProductId(variant),
   };
 }

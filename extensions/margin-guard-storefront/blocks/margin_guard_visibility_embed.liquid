@@ -1,14 +1,88 @@
+{% assign hidden_handles_meta = shop.metafields["margin_guard"]["hidden_handles"].value %}
+{% if hidden_handles_meta %}
+  {% assign hidden_handles_for_context = hidden_handles_meta.b2b %}
+  {% assign current_b2b_tag = hidden_handles_meta.b2bTag | default: 'b2b' | strip | downcase %}
+  {% assign customer_is_custom_b2b = false %}
+  {% if customer and customer.tags contains current_b2b_tag %}
+    {% assign customer_is_custom_b2b = true %}
+  {% endif %}
+  {% if customer and customer.b2b? or customer_is_custom_b2b %}
+    {% assign hidden_handles_for_context = hidden_handles_meta.b2c %}
+  {% endif %}
+  {% if hidden_handles_for_context.size > 0 %}
+    <style id="margin-guard-segment-default-hide">
+      {% for handle in hidden_handles_for_context %}
+        {% assign normalized_handle = handle | strip | downcase %}
+        {% if normalized_handle != blank %}
+          [data-product-card]:has(a[href*='/products/{{ normalized_handle }}']),
+          .product-card:has(a[href*='/products/{{ normalized_handle }}']),
+          .card:has(a[href*='/products/{{ normalized_handle }}']),
+          .grid__item:has(a[href*='/products/{{ normalized_handle }}']),
+          .product-item:has(a[href*='/products/{{ normalized_handle }}']),
+          article:has(a[href*='/products/{{ normalized_handle }}']),
+          li:has(a[href*='/products/{{ normalized_handle }}']) {
+            display: none !important;
+          }
+        {% endif %}
+      {% endfor %}
+    </style>
+  {% endif %}
+{% endif %}
+<script>
+(function(){
+  try {
+    console.log("[MarginGuard] embed bootstrap", {
+      customerId: {% if customer %}{{ customer.id | json }}{% else %}null{% endif %},
+      customerTags: {% if customer %}{{ customer.tags | json }}{% else %}[]{% endif %},
+      currentB2bTag: {{ current_b2b_tag | default: 'b2b' | json }},
+      customerIsCustomB2B: {{ customer_is_custom_b2b | json }},
+      usesNativeB2B: {% if customer and customer.b2b? %}true{% else %}false{% endif %},
+      hiddenHandlesForContext: {{ hidden_handles_for_context | default: empty | json }},
+      hiddenHandlesMeta: {{ hidden_handles_meta | default: empty | json }}
+    });
+    var raw = sessionStorage.getItem("marginGuardRulesCache_v1");
+    if (!raw) return;
+    var parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return;
+    var fetchedAt = Number(parsed.fetchedAt);
+    if (!isFinite(fetchedAt) || Date.now() - fetchedAt > 300000) return;
+    var handles = parsed.hiddenHandles;
+    if (!Array.isArray(handles) || !handles.length) return;
+    var css = "";
+    for (var i = 0; i < handles.length; i++) {
+      var h = handles[i];
+      if (!h) continue;
+      css += "[data-product-card]:has(a[href*='/products/" + h + "']),"
+        + ".product-card:has(a[href*='/products/" + h + "']),"
+        + ".card:has(a[href*='/products/" + h + "']),"
+        + ".grid__item:has(a[href*='/products/" + h + "']),"
+        + ".product-item:has(a[href*='/products/" + h + "']),"
+        + "article:has(a[href*='/products/" + h + "']),"
+        + "li:has(a[href*='/products/" + h + "'])"
+        + "{ display: none !important; }\n";
+    }
+    if (css) {
+      var style = document.createElement("style");
+      style.id = "margin-guard-early-hide";
+      style.textContent = css;
+      document.head.appendChild(style);
+      console.log("[MarginGuard] early-hide cache applied", {
+        hiddenHandles: handles,
+        styleId: "margin-guard-early-hide"
+      });
+    }
+  } catch(e) {}
+})();
+</script>
 <script
-  src="/apps/margin-guard/visibility-script"
-  defer
+  src="/apps/margin-guard/visibility-script{% if customer %}?logged_in_customer_id={{ customer.id }}&logged_in_customer_tags={{ customer.tags | json | url_encode }}{% endif %}"
   data-margin-guard-visibility-script
 ></script>
 
 {% schema %}
 {
   "name": "Margin Guard Visibility",
-  "target": "body",
+  "target": "head",
   "settings": []
 }
 {% endschema %}
-

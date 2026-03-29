@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const SETTINGS_ROUTE_PATH = "app/routes/app.settings.tsx";
+const STOREFRONT_UX_ROUTE_PATH = "app/routes/app.storefront-ux.tsx";
 
 test("settings route uses AdminCatalogPicker for product, collection, customer, and variant forms", async () => {
   const source = await readFile(SETTINGS_ROUTE_PATH, "utf8");
@@ -135,7 +136,7 @@ test("settings route wires global Shopify product import controls for MVP_4_5 ca
   );
 });
 
-test("settings route groups admin forms into MVP_4_5 navigation sections", async () => {
+test("settings route supports area-filtered workspaces for global settings, catalog rules, and discounts", async () => {
   const source = await readFile(SETTINGS_ROUTE_PATH, "utf8");
 
   assert.match(
@@ -145,18 +146,28 @@ test("settings route groups admin forms into MVP_4_5 navigation sections", async
   );
   assert.match(
     source,
-    /Global Settings/,
-    "Settings route must expose a Global Settings navigation entry.",
+    /SETTINGS_AREAS/,
+    "Settings route must define top-level workspace areas for the new admin split.",
   );
   assert.match(
     source,
-    /Discount Orchestration/,
-    "Settings route must expose a Discount Orchestration navigation entry.",
+    /catalog-rules/,
+    "Settings route must expose a Catalog Rules workspace area.",
   );
   assert.match(
     source,
-    /Functions/,
-    "Settings route must expose a Functions navigation entry.",
+    /discounts/,
+    "Settings route must expose a Discounts workspace area.",
+  );
+  assert.match(
+    source,
+    /buildSettingsWorkspaceUrl/,
+    "Settings route must centralize deep-link generation so area-filtered workspaces stay linkable.",
+  );
+  assert.match(
+    source,
+    /view\?: ProductRuleView \| null/,
+    "Settings route must support a nested product-rule deep link parameter for compact sub-navigation.",
   );
   assert.match(
     source,
@@ -170,8 +181,23 @@ test("settings route groups admin forms into MVP_4_5 navigation sections", async
   );
   assert.match(
     source,
-    /navigate\(`\/app\/settings\?section=\$\{section\}`\)/,
-    "Settings route must keep deep-linkable query params when switching grouped settings sections.",
+    /navigate\(\s*buildSettingsWorkspaceUrl\(\{\s*area:\s*nextArea,\s*section,\s*view:/,
+    "Settings route must keep area-aware deep links when switching grouped settings sections.",
+  );
+  assert.match(
+    source,
+    /section:\s*"products",\s*view,/,
+    "Settings route must keep area-aware deep links when switching nested product rule views.",
+  );
+  assert.match(
+    source,
+    /PRODUCT_RULE_VIEWS/,
+    "Catalog Rules -> Products must define a dedicated nested menu model for floor, MOQ, visibility, and related product rule views.",
+  );
+  assert.match(
+    source,
+    /activeProductRuleView/,
+    "Settings route must resolve the active nested product workspace from the URL.",
   );
   assert.match(
     source,
@@ -182,6 +208,37 @@ test("settings route groups admin forms into MVP_4_5 navigation sections", async
     source,
     /display:\s*"flex"/,
     "Settings route must use a split layout so the navigation can live in a left sidebar.",
+  );
+});
+
+test("settings route moves collection visibility into catalog rules visibility workspace", async () => {
+  const settingsSource = await readFile(SETTINGS_ROUTE_PATH, "utf8");
+  const storefrontSource = await readFile(STOREFRONT_UX_ROUTE_PATH, "utf8");
+
+  assert.match(
+    settingsSource,
+    /save-collection-visibility-rule/,
+    "Settings route must own collection visibility saves under Catalog Rules.",
+  );
+  assert.match(
+    settingsSource,
+    /delete-collection-visibility-rule/,
+    "Settings route must own collection visibility deletes under Catalog Rules.",
+  );
+  assert.match(
+    settingsSource,
+    /activeProductRuleView === "collection-visibility"/,
+    "Catalog Rules product workspace must expose collection visibility as a nested subview.",
+  );
+  assert.match(
+    storefrontSource,
+    /Collection visibility moved into/,
+    "Storefront UX must point legacy collection-visibility deep links toward Catalog Rules.",
+  );
+  assert.match(
+    storefrontSource,
+    /section=products&view=collection-visibility/,
+    "Storefront UX must deep-link directly into the compact product sub-navigation for collection visibility.",
   );
 });
 
@@ -220,7 +277,17 @@ test("settings route renders configured product rules with imported product and 
   );
   assert.match(
     source,
+    /function describeCollection/,
+    "Settings route must resolve configured collection ids to imported catalog names before rendering collection rule rows.",
+  );
+  assert.match(
+    source,
     /Products affected in this section/,
     "Each product-related section must surface a summary of affected products at the top of the workspace.",
+  );
+  assert.match(
+    source,
+    /CompactRulePanel/,
+    "Product governance forms must share a global compact rule panel component instead of duplicating the layout per rule type.",
   );
 });

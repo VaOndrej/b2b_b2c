@@ -145,3 +145,50 @@ test("catalog search route accepts customer and variant types and returns 400 fo
   assert.equal(badLimitPayload.ok, false);
   assert.equal(badLimitPayload.contract, "INTERNAL_ADMIN_ENDPOINT");
 });
+
+test("catalog search route returns explicit import warning when imported catalog is missing", async () => {
+  let searchCalled = false;
+  const loader = createCatalogSearchLoader({
+    authenticateAdmin: async () => ({
+      admin: {
+        graphql: async () => ({
+          async json() {
+            return {};
+          },
+        }),
+      },
+    }),
+    ensureCatalogReady: async (type) => {
+      if (type !== "product") {
+        return null;
+      }
+      return {
+        ok: false,
+        error:
+          "Product catalog is not imported yet. Open Global Settings and run Import products now.",
+        contract: "INTERNAL_ADMIN_ENDPOINT",
+        details: {
+          catalogImportRequired: true,
+          type: "product",
+        },
+      };
+    },
+    searchCatalog: (async () => {
+      searchCalled = true;
+      return [];
+    }) as any,
+  });
+
+  const response = await loader({
+    request: buildRequest(
+      "https://example.test/app/api/catalog-search?type=product&q=alpha",
+    ),
+  });
+
+  assert.equal(response.status, 409);
+  assert.equal(searchCalled, false);
+  const payload = await response.json();
+  assert.equal(payload.ok, false);
+  assert.equal(payload.details?.catalogImportRequired, true);
+  assert.equal(payload.details?.type, "product");
+});

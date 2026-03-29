@@ -31,6 +31,7 @@ function stubConfig(): MarginGuardConfig {
     productCustomerQuantityRules: [],
     productVisibilityRules: [],
     productVariantVisibilityRules: [],
+    collectionVisibilityRules: [],
     couponSegmentRules: [],
     discountRules: [],
     discountCombinationBlacklistRules: [],
@@ -99,6 +100,32 @@ test("visibility loader trusts logged_in_customer_id and ignores spoofed custome
 
   assert.equal(payload.segment, "B2B");
   assert.equal(adminCalls[0]?.id, "gid://shopify/Customer/REAL");
+});
+
+test("visibility loader prefers logged_in_customer_tags hint for B2B detection", async () => {
+  const loader = createVisibilityLoader({
+    async authenticatePublicAppProxy() {
+      return {
+        admin: {
+          async graphql() {
+            throw new Error("admin lookup should not be required when tags hint is present");
+          },
+        },
+      };
+    },
+    getOrCreateMarginGuardConfig: async () => stubConfig(),
+    ...baseDeps(),
+  });
+
+  const request = new Request(
+    `https://example.com/apps/margin-guard/visibility?logged_in_customer_id=gid://shopify/Customer/REAL&logged_in_customer_tags=${encodeURIComponent(JSON.stringify(["b2b", "vip"]))}`,
+  );
+  const response = await loader({ request });
+  const payload = await response.json();
+
+  assert.equal(payload.segment, "B2B");
+  assert.equal(payload.segmentDebug.source, "hint_tags");
+  assert.deepEqual(payload.segmentDebug.normalizedTags, ["b2b", "vip"]);
 });
 
 test("visibility loader returns variant visibility payload alongside quantity rules", async () => {

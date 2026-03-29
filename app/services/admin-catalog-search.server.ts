@@ -36,6 +36,16 @@ const MAX_QUERY_LENGTH = 120;
 const MAX_LIMIT = 25;
 const DEFAULT_LIMIT = 10;
 
+export interface CatalogImportReadinessDetails {
+  ok: false;
+  error: string;
+  contract: typeof CONTRACT_NAME;
+  details: {
+    catalogImportRequired: true;
+    type: "product" | "collection" | "variant";
+  };
+}
+
 function methodNotAllowed() {
   return Response.json(
     {
@@ -416,6 +426,9 @@ type CatalogSearchDeps = {
     request: Request,
   ) => Promise<{ admin: AdminGraphqlClient }>;
   searchCatalog: typeof searchAdminCatalog;
+  ensureCatalogReady?: (
+    type: AdminCatalogSearchType,
+  ) => Promise<CatalogImportReadinessDetails | null>;
 };
 
 export function createCatalogSearchLoader(deps: CatalogSearchDeps) {
@@ -442,6 +455,11 @@ export function createCatalogSearchLoader(deps: CatalogSearchDeps) {
     const limit = parseLimit(url.searchParams.get("limit"));
     if (limit == null) {
       return badRequest(`Invalid query param: limit must be integer 1..${MAX_LIMIT}.`);
+    }
+
+    const readiness = await deps.ensureCatalogReady?.(type);
+    if (readiness) {
+      return Response.json(readiness, { status: 409 });
     }
 
     const items = await deps.searchCatalog({

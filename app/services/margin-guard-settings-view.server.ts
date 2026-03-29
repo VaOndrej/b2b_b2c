@@ -1,5 +1,6 @@
 import { getOrCreateMarginGuardConfig } from "./margin-guard-config.server.ts";
 import {
+  getCatalogCollectionMapByIds,
   getCatalogProductMapByIds,
   getCatalogVariantMapByIds,
 } from "./product-catalog.server.ts";
@@ -7,6 +8,7 @@ import {
 function collectRuleIds(config: Awaited<ReturnType<typeof getOrCreateMarginGuardConfig>>) {
   const productIds = new Set<string>();
   const variantIds = new Set<string>();
+  const collectionIds = new Set<string>();
 
   for (const rule of config.productFloors) {
     productIds.add(String(rule.productId ?? ""));
@@ -31,25 +33,37 @@ function collectRuleIds(config: Awaited<ReturnType<typeof getOrCreateMarginGuard
     if (String(rule.scope ?? "") === "PRODUCT") {
       productIds.add(String(rule.targetId ?? ""));
     }
+    if (String(rule.scope ?? "") === "COLLECTION") {
+      collectionIds.add(String(rule.targetId ?? ""));
+    }
+  }
+  for (const rule of config.collectionQuantityRules) {
+    collectionIds.add(String(rule.collectionId ?? ""));
+  }
+  for (const rule of config.collectionVisibilityRules) {
+    collectionIds.add(String(rule.collectionId ?? ""));
   }
 
   return {
     productIds: Array.from(productIds).filter(Boolean),
     variantIds: Array.from(variantIds).filter(Boolean),
+    collectionIds: Array.from(collectionIds).filter(Boolean),
   };
 }
 
 export async function loadMarginGuardSettingsView() {
   const config = await getOrCreateMarginGuardConfig();
-  const { productIds, variantIds } = collectRuleIds(config);
-  const [catalogProductsById, catalogVariantsById] = await Promise.all([
+  const { productIds, variantIds, collectionIds } = collectRuleIds(config);
+  const [catalogProductsById, catalogVariantsById, catalogCollectionsById] = await Promise.all([
     getCatalogProductMapByIds(productIds),
     getCatalogVariantMapByIds(variantIds),
+    getCatalogCollectionMapByIds(collectionIds),
   ]);
 
   return {
     config,
     catalogProductsById,
     catalogVariantsById,
+    catalogCollectionsById,
   };
 }

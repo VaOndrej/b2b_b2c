@@ -1,6 +1,8 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useNavigate, useNavigation, useSearchParams } from "react-router";
 import { AdminCatalogPicker } from "../components/admin-catalog-picker";
+import type { CatalogRuleItem } from "../components/catalog-rule-section";
+import { CompactRulePanel } from "../components/compact-rule-panel";
 import { authenticate } from "../shopify.server";
 import { ensureCartValidationActive } from "../services/cart-validation-activation.server";
 import {
@@ -35,16 +37,22 @@ import {
   upsertProductVariantVisibilityRule,
   upsertProductTierPriceRule,
   updateGlobalMarginGuardConfig,
+  syncVisibilityHandlesMetafield,
 } from "../services/margin-guard-config.server";
 import { loadMarginGuardSettingsView } from "../services/margin-guard-settings-view.server";
 import {
   countActiveCatalogCollections,
   countActiveCatalogProducts,
+  getCatalogCollectionMapByIds,
   recordProductCatalogSyncError,
   shouldAutoSyncProductCatalog,
   syncShopifyCollectionCatalog,
   syncShopifyProductCatalog,
 } from "../services/product-catalog.server";
+import {
+  deleteCollectionVisibilityRule,
+  upsertCollectionVisibilityRule,
+} from "../services/storefront-content.server";
 
 function parseNumber(input: FormDataEntryValue | null, fallback = 0): number {
   const value = Number(input);
@@ -100,6 +108,21 @@ function normalizeSettingsSection(value: string | null): SettingsSection {
     : "global";
 }
 
+const SETTINGS_AREAS = [
+  "all",
+  "global",
+  "catalog-rules",
+  "discounts",
+] as const;
+
+type SettingsArea = (typeof SETTINGS_AREAS)[number];
+
+function normalizeSettingsArea(value: string | null): SettingsArea {
+  return SETTINGS_AREAS.includes(value as SettingsArea)
+    ? (value as SettingsArea)
+    : "all";
+}
+
 const SETTINGS_SECTION_OPTIONS: Array<{
   id: SettingsSection;
   label: string;
@@ -113,22 +136,12 @@ const SETTINGS_SECTION_OPTIONS: Array<{
   {
     id: "products",
     label: "Products",
-    description: "Per-product floors, tier pricing, and product-level overrides.",
+    description: "Per-product pricing, quantity governance, customer overrides, and visibility controls.",
   },
   {
     id: "collections",
     label: "Collections",
-    description: "Collection quantity governance and collection-specific rules.",
-  },
-  {
-    id: "quantity",
-    label: "Quantity",
-    description: "MOQ, step quantity, and maximum quantity controls.",
-  },
-  {
-    id: "visibility",
-    label: "Visibility",
-    description: "Product and variant storefront visibility by segment or customer.",
+    description: "Collection-specific catalog governance and collection maximum quantity rules.",
   },
   {
     id: "discount-coupons",
@@ -147,7 +160,164 @@ const SETTINGS_SECTION_OPTIONS: Array<{
   },
 ];
 
+const SETTINGS_AREA_OPTIONS: Record<
+  SettingsArea,
+  { heading: string; description: string }
+> = {
+  all: {
+    heading: "Margin Guard Settings",
+    description: "Legacy all-in-one workspace across governance, catalog rules, discounts, and function runtime.",
+  },
+  global: {
+    heading: "Global Settings",
+    description: "Core governance, B2B segment defaults, and product or collection import foundations.",
+  },
+  "catalog-rules": {
+    heading: "Catalog Rules",
+    description: "Pricing, quantity, visibility, and collection-level catalog governance in one isolated workspace.",
+  },
+  discounts: {
+    heading: "Discounts",
+    description: "Coupon eligibility, discount orchestration, stacking, blacklist combinations, and caps.",
+  },
+};
+
+const SETTINGS_AREA_SECTION_IDS: Record<SettingsArea, SettingsSection[]> = {
+  all: [...SETTINGS_SECTIONS],
+  global: ["global"],
+  "catalog-rules": ["products", "collections", "quantity", "visibility"],
+  discounts: ["discount-coupons", "discount-orchestration"],
+};
+
+const SIDEBAR_SECTION_IDS: Record<SettingsArea, SettingsSection[]> = {
+  all: [
+    "global",
+    "products",
+    "collections",
+    "discount-coupons",
+    "discount-orchestration",
+    "functions",
+  ],
+  global: ["global"],
+  "catalog-rules": ["products", "collections"],
+  discounts: ["discount-coupons", "discount-orchestration"],
+};
+
+const PRODUCT_RULE_VIEWS = [
+  {
+    id: "floor-rules",
+    label: "Floor rules",
+    description: "Per-product minimum margin floors and B2B override pricing.",
+  },
+  {
+    id: "tier-pricing",
+    label: "Tier pricing",
+    description: "Quantity break pricing per product and segment.",
+  },
+  {
+    id: "moq",
+    label: "MOQ",
+    description: "Minimum order quantity rules per product.",
+  },
+  {
+    id: "step-quantity",
+    label: "Step quantity",
+    description: "Carton multiple and increment controls.",
+  },
+  {
+    id: "max-quantity",
+    label: "Max quantity",
+    description: "Per-product maximum order quantity limits.",
+  },
+  {
+    id: "customer-overrides",
+    label: "Customer overrides",
+    description: "Customer-specific maximum quantity exceptions.",
+  },
+  {
+    id: "product-visibility",
+    label: "Product visibility",
+    description: "Segment and customer visibility rules for products.",
+  },
+  {
+    id: "variant-visibility",
+    label: "Variant visibility",
+    description: "Hide or expose specific variants by segment or customer.",
+  },
+  {
+    id: "collection-visibility",
+    label: "Collection visibility",
+    description: "Collection-level storefront access rules managed with product governance.",
+  },
+] as const;
+
+type ProductRuleView = (typeof PRODUCT_RULE_VIEWS)[number]["id"];
+
+function normalizeProductRuleView(
+  section: SettingsSection,
+  value: string | null,
+): ProductRuleView {
+  if (value && PRODUCT_RULE_VIEWS.some((view) => view.id === value)) {
+    return value as ProductRuleView;
+  }
+  if (section === "quantity") {
+    return "moq";
+  }
+  if (section === "visibility") {
+    return "product-visibility";
+  }
+  return "floor-rules";
+}
+
+function getCanonicalSection(section: SettingsSection): SettingsSection {
+  if (section === "quantity" || section === "visibility") {
+    return "products";
+  }
+  return section;
+}
+
+function normalizeSettingsSectionForArea(
+  area: SettingsArea,
+  value: string | null,
+): SettingsSection {
+  const normalizedSection = normalizeSettingsSection(value);
+  const allowedSections = SETTINGS_AREA_SECTION_IDS[area];
+  return allowedSections.includes(normalizedSection)
+    ? normalizedSection
+    : allowedSections[0];
+}
+
+function findSettingsAreaForSection(section: SettingsSection): SettingsArea {
+  if (section === "global") {
+    return "global";
+  }
+  if (section === "discount-coupons" || section === "discount-orchestration") {
+    return "discounts";
+  }
+  if (section === "products" || section === "collections" || section === "quantity" || section === "visibility") {
+    return "catalog-rules";
+  }
+  return "all";
+}
+
+function buildSettingsWorkspaceUrl(input: {
+  area: SettingsArea;
+  section: SettingsSection;
+  view?: ProductRuleView | null;
+}) {
+  const params = new URLSearchParams();
+  if (input.area !== "all") {
+    params.set("area", input.area);
+  }
+  params.set("section", input.section);
+  if (input.view) {
+    params.set("view", input.view);
+  }
+  return `/app/settings?${params.toString()}`;
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  console.log(">>> APP.SETTINGS LOADER HIT:", new Date().toISOString());
   const { admin } = await authenticate.admin(request);
   let settingsView = await loadMarginGuardSettingsView();
   let autoActivationMessage: string | null = null;
@@ -176,6 +346,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   discountFunctionStatus = discountStatus.status;
   discountFunctionMessage = discountStatus.message;
   discountFunctionLastSyncAt = discountStatus.lastSyncAt ?? null;
+  console.log(">>> SETTINGS LOADER: about to call syncVisibilityHandlesMetafield");
+  syncVisibilityHandlesMetafield(admin).then(() => {
+    console.log(">>> SETTINGS LOADER: sync completed successfully");
+  }).catch((err) => {
+    console.error(">>> SETTINGS LOADER: sync failed:", err);
+  });
   const url = new URL(request.url);
   const activation = url.searchParams.get("activation");
   const message = url.searchParams.get("message");
@@ -188,6 +364,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     config: settingsView.config,
     catalogProductsById: settingsView.catalogProductsById,
     catalogVariantsById: settingsView.catalogVariantsById,
+    catalogCollectionsById: settingsView.catalogCollectionsById,
     catalogProductCount,
     catalogCollectionCount,
     activation,
@@ -242,6 +419,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         maxCombinedPercentOff != null && Number.isFinite(maxCombinedPercentOff)
           ? maxCombinedPercentOff
           : null,
+    });
+    await syncVisibilityHandlesMetafield(admin).catch((err) => {
+      console.error("[syncVisibilityHandlesMetafield] global sync failed:", err);
     });
   }
 
@@ -482,6 +662,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             : "ALL",
         customerId,
       });
+      await syncVisibilityHandlesMetafield(admin).catch((err) => {
+        console.error("[syncVisibilityHandlesMetafield] action sync failed:", err);
+      });
     }
   }
 
@@ -489,6 +672,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const id = String(formData.get("id") ?? "");
     if (id) {
       await deleteProductVisibilityRule(id);
+      await syncVisibilityHandlesMetafield(admin).catch((err) => {
+        console.error("[syncVisibilityHandlesMetafield] action sync failed:", err);
+      });
     }
   }
 
@@ -517,6 +703,33 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const id = String(formData.get("id") ?? "");
     if (id) {
       await deleteProductVariantVisibilityRule(id);
+    }
+  }
+
+  if (intent === "save-collection-visibility-rule") {
+    const collectionId = String(formData.get("collectionId") ?? "").trim();
+    const visibilityModeRaw = String(formData.get("visibilityMode") ?? "B2B_ONLY").trim();
+
+    if (collectionId) {
+      const collectionMap = await getCatalogCollectionMapByIds([collectionId]);
+      const collection = collectionMap[collectionId];
+      await upsertCollectionVisibilityRule({
+        id: String(formData.get("ruleId") ?? "").trim() || undefined,
+        collectionId,
+        collectionHandle: collection?.handle ?? "",
+        collectionTitle: collection?.title ?? null,
+        visibilityMode:
+          visibilityModeRaw === "B2C_ONLY"
+            ? "B2C_ONLY"
+            : "B2B_ONLY",
+      });
+    }
+  }
+
+  if (intent === "delete-collection-visibility-rule") {
+    const id = String(formData.get("ruleId") ?? formData.get("id") ?? "").trim();
+    if (id) {
+      await deleteCollectionVisibilityRule(id);
     }
   }
 
@@ -694,6 +907,7 @@ export default function AppSettingsRoute() {
     config,
     catalogProductsById,
     catalogVariantsById,
+    catalogCollectionsById,
     catalogProductCount,
     catalogCollectionCount,
     activation,
@@ -710,9 +924,20 @@ export default function AppSettingsRoute() {
     useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const activeSection = normalizeSettingsSection(searchParams.get("section"));
+  const area = normalizeSettingsArea(searchParams.get("area"));
+  const requestedSection = normalizeSettingsSectionForArea(
+    area,
+    searchParams.get("section"),
+  );
+  const activeSection = getCanonicalSection(requestedSection);
+  const visibleSections = SIDEBAR_SECTION_IDS[area];
+  const activeProductRuleView = normalizeProductRuleView(
+    requestedSection,
+    searchParams.get("view"),
+  );
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const showSectionSidebar = area === "all" || visibleSections.length > 1;
   const productMoqRules = config.productQuantityRules.filter(
     (rule: any) => Number(rule.minimumOrderQuantity) > 1,
   );
@@ -737,6 +962,11 @@ export default function AppSettingsRoute() {
   )
     ? (config as any).productVariantVisibilityRules
     : [];
+  const collectionVisibilityRules = Array.isArray(
+    (config as any).collectionVisibilityRules,
+  )
+    ? (config as any).collectionVisibilityRules
+    : [];
   const advancedDiscountRules = Array.isArray((config as any).discountRules)
     ? (config as any).discountRules
     : [];
@@ -751,14 +981,18 @@ export default function AppSettingsRoute() {
   const isGlobalSection = activeSection === "global";
   const isProductsSection = activeSection === "products";
   const isCollectionsSection = activeSection === "collections";
-  const isQuantitySection = activeSection === "quantity";
-  const isVisibilitySection = activeSection === "visibility";
   const isDiscountCouponsSection = activeSection === "discount-coupons";
   const isDiscountOrchestrationSection = activeSection === "discount-orchestration";
   const isFunctionsSection = activeSection === "functions";
+  const productCatalogImportRequired = catalogProductCount === 0;
+  const collectionCatalogImportRequired = catalogCollectionCount === 0;
   const activeSectionOption =
     SETTINGS_SECTION_OPTIONS.find((section) => section.id === activeSection) ??
     SETTINGS_SECTION_OPTIONS[0];
+  const activeAreaOption = SETTINGS_AREA_OPTIONS[area];
+  const activeProductRuleViewOption =
+    PRODUCT_RULE_VIEWS.find((view) => view.id === activeProductRuleView) ??
+    PRODUCT_RULE_VIEWS[0];
   const productCatalogLastSyncLabel = formatTimestamp(
     (config as any).productCatalogLastSyncAt,
   );
@@ -796,6 +1030,23 @@ export default function AppSettingsRoute() {
     return variant.handle ? `${variant.title} (${variant.handle})` : variant.title;
   }
 
+  function describeCollection(collectionId: string | null | undefined): string {
+    const normalized = String(collectionId ?? "").trim();
+    if (!normalized) {
+      return "Unknown collection";
+    }
+    const collection = (catalogCollectionsById as Record<
+      string,
+      { title: string; handle: string | null }
+    >)[normalized];
+    if (!collection) {
+      return normalized;
+    }
+    return collection.handle
+      ? `${collection.title} (${collection.handle})`
+      : collection.title;
+  }
+
   function formatSegment(segment: string | null | undefined): string {
     return String(segment ?? "").trim() || "ALL";
   }
@@ -812,6 +1063,175 @@ export default function AppSettingsRoute() {
     }
     return "visible for all";
   }
+
+  function formatCollectionVisibilityMode(mode: string | null | undefined): string {
+    if (mode === "B2B_ONLY") {
+      return "visible only for B2B";
+    }
+    if (mode === "B2C_ONLY") {
+      return "visible only for B2C";
+    }
+    return "visibility restricted";
+  }
+
+  function getSectionLockReason(section: SettingsSection): string | null {
+    const canonicalSection = getCanonicalSection(section);
+    if (canonicalSection === "products" || canonicalSection === "collections") {
+      return null;
+    }
+    return null;
+  }
+
+  const activeSectionLockReason =
+    isProductsSection && activeProductRuleView === "collection-visibility"
+      ? collectionCatalogImportRequired
+        ? "Collection catalog is not imported yet. Open Global Settings and run Import collections now."
+        : null
+      : isProductsSection
+        ? productCatalogImportRequired
+          ? "Product catalog is not imported yet. Open Global Settings and run Import products now."
+          : null
+        : isCollectionsSection
+          ? collectionCatalogImportRequired
+            ? "Collection catalog is not imported yet. Open Global Settings and run Import collections now."
+            : null
+          : getSectionLockReason(activeSection);
+  const collectionVisibilityItems: CatalogRuleItem[] = collectionVisibilityRules.map(
+    (rule: any) => ({
+      id: rule.id,
+      label: describeCollection(rule.collectionId),
+      badges: [
+        {
+          text: rule.visibilityMode === "B2B_ONLY" ? "B2B only" : "B2C only",
+          variant: (rule.visibilityMode === "B2B_ONLY" ? "info" : "warning") as
+            | "info"
+            | "warning",
+        },
+      ],
+      detail: rule.collectionHandle
+        ? `Handle: ${rule.collectionHandle} | ${formatCollectionVisibilityMode(rule.visibilityMode)}`
+        : formatCollectionVisibilityMode(rule.visibilityMode),
+    }),
+  );
+  const productFloorItems: CatalogRuleItem[] = config.productFloors.map((rule: any) => ({
+    id: rule.id,
+    label: describeProduct(rule.productId),
+    badges: [
+      { text: formatSegment(rule.segment), variant: "neutral" },
+      { text: `${rule.minPercentOfBasePrice}% floor`, variant: "info" },
+    ],
+    detail: `Zero final: ${
+      rule.allowZeroFinalPrice == null
+        ? "inherit"
+        : rule.allowZeroFinalPrice
+          ? "allow"
+          : "deny"
+    }${rule.b2bOverridePrice == null ? "" : ` | B2B base override ${rule.b2bOverridePrice}`}`,
+  }));
+  const productTierPriceItems: CatalogRuleItem[] = config.productTierPrices.map((rule: any) => ({
+    id: rule.id,
+    label: describeProduct(rule.productId),
+    badges: [
+      { text: formatSegment(rule.segment), variant: "neutral" },
+      { text: `Qty ${rule.minQuantity}+`, variant: "info" },
+    ],
+    detail: `Tier unit price ${rule.unitPrice}`,
+  }));
+  const productMoqItems: CatalogRuleItem[] = productMoqRules.map((rule: any) => ({
+    id: rule.id,
+    label: describeProduct(rule.productId),
+    badges: [
+      { text: formatSegment(rule.segment), variant: "neutral" },
+      { text: `MOQ ${rule.minimumOrderQuantity}`, variant: "warning" },
+    ],
+  }));
+  const productStepItems: CatalogRuleItem[] = productStepRules.map((rule: any) => ({
+    id: rule.id,
+    label: describeProduct(rule.productId),
+    badges: [
+      { text: formatSegment(rule.segment), variant: "neutral" },
+      { text: `Step ${rule.stepQuantity}`, variant: "warning" },
+    ],
+    detail: "Cart quantity must follow this increment.",
+  }));
+  const productMaxItems: CatalogRuleItem[] = productMaxRules.map((rule: any) => ({
+    id: rule.id,
+    label: describeProduct(rule.productId),
+    badges: [
+      { text: formatSegment(rule.segment), variant: "neutral" },
+      { text: `Max ${rule.maxOrderQuantity}`, variant: "warning" },
+    ],
+  }));
+  const productCustomerMaxItems: CatalogRuleItem[] = productCustomerMaxRules.map(
+    (rule: any) => ({
+      id: rule.id,
+      label: describeProduct(rule.productId),
+      badges: [{ text: `Customer ${rule.customerId}`, variant: "success" }],
+      detail: `Max quantity ${rule.maxOrderQuantity}`,
+    }),
+  );
+  const productVisibilityItems: CatalogRuleItem[] = config.productVisibilityRules.map(
+    (rule: any) => ({
+      id: rule.id,
+      label: describeProduct(rule.productId),
+      badges: [
+        {
+          text:
+            rule.visibilityMode === "CUSTOMER_ONLY"
+              ? "Customer only"
+              : rule.visibilityMode === "B2B_ONLY"
+                ? "B2B only"
+                : rule.visibilityMode === "B2C_ONLY"
+                  ? "B2C only"
+                  : "Visible for all",
+          variant:
+            rule.visibilityMode === "B2B_ONLY"
+              ? "info"
+              : rule.visibilityMode === "B2C_ONLY"
+                ? "warning"
+                : rule.visibilityMode === "CUSTOMER_ONLY"
+                  ? "success"
+                  : "neutral",
+        },
+      ],
+      detail: rule.customerId ? `Customer ${rule.customerId}` : formatVisibilityMode(rule.visibilityMode),
+    }),
+  );
+  const productVariantVisibilityItems: CatalogRuleItem[] = productVariantVisibilityRules.map(
+    (rule: any) => ({
+      id: rule.id,
+      label: `${describeProduct(rule.productId)} / ${describeVariant(rule.variantId)}`,
+      badges: [
+        {
+          text:
+            rule.visibilityMode === "CUSTOMER_ONLY"
+              ? "Customer only"
+              : rule.visibilityMode === "B2B_ONLY"
+                ? "B2B only"
+                : rule.visibilityMode === "B2C_ONLY"
+                  ? "B2C only"
+                  : "Visible for all",
+          variant:
+            rule.visibilityMode === "B2B_ONLY"
+              ? "info"
+              : rule.visibilityMode === "B2C_ONLY"
+                ? "warning"
+                : rule.visibilityMode === "CUSTOMER_ONLY"
+                  ? "success"
+                  : "neutral",
+        },
+      ],
+      detail: rule.customerId ? `Customer ${rule.customerId}` : formatVisibilityMode(rule.visibilityMode),
+    }),
+  );
+  const collectionMaxItems: CatalogRuleItem[] = collectionMaxRules.map((rule: any) => ({
+    id: rule.id,
+    label: describeCollection(rule.collectionId),
+    badges: [
+      { text: formatSegment(rule.segment), variant: "neutral" },
+      { text: `Max ${rule.maxOrderQuantity}`, variant: "warning" },
+    ],
+  }));
 
   function buildProductRuleSummary() {
     const groups = new Map<string, { productId: string; title: string; details: string[] }>();
@@ -851,9 +1271,6 @@ export default function AppSettingsRoute() {
           `customer-specific max ${rule.maxOrderQuantity} for ${rule.customerId}`,
         );
       }
-    }
-
-    if (isQuantitySection) {
       for (const rule of productMoqRules) {
         pushDetail(
           rule.productId,
@@ -872,9 +1289,6 @@ export default function AppSettingsRoute() {
           `maximum ${rule.maxOrderQuantity} for ${formatSegment(rule.segment)}`,
         );
       }
-    }
-
-    if (isVisibilitySection) {
       for (const rule of config.productVisibilityRules) {
         pushDetail(
           rule.productId,
@@ -908,12 +1322,48 @@ export default function AppSettingsRoute() {
 
   const sectionProductRuleSummary = buildProductRuleSummary();
   function handleSectionSelect(section: SettingsSection) {
-    navigate(`/app/settings?section=${section}`);
+    const nextArea = visibleSections.includes(section)
+      ? area
+      : findSettingsAreaForSection(section);
+    navigate(
+      buildSettingsWorkspaceUrl({
+        area: nextArea,
+        section,
+        view:
+          section === "products"
+            ? "floor-rules"
+            : null,
+      }),
+    );
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function handleProductViewSelect(view: ProductRuleView) {
+    navigate(
+      buildSettingsWorkspaceUrl({
+        area,
+        section: "products",
+        view,
+      }),
+    );
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  const workspaceTitle =
+    isProductsSection && area !== "all"
+      ? activeProductRuleViewOption.label
+      : area === "all"
+        ? activeSectionOption.label
+        : activeAreaOption.heading;
+  const workspaceDescription =
+    isProductsSection && area !== "all"
+      ? activeProductRuleViewOption.description
+      : area === "all"
+        ? activeSectionOption.description
+        : activeAreaOption.description;
+
   return (
-    <s-page heading="Margin Guard Settings">
+    <s-page heading={activeAreaOption.heading}>
       <div
         style={{
           display: "flex",
@@ -922,56 +1372,127 @@ export default function AppSettingsRoute() {
           width: "100%",
         }}
       >
-        <div
-          style={{
-            width: "184px",
-            minWidth: "184px",
-            flexShrink: 0,
-            position: "sticky",
-            top: "12px",
-            zIndex: 1,
-            marginLeft: "-12px",
-          }}
-        >
+        {showSectionSidebar && (
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "4px",
-              paddingTop: "6px",
+              width: "184px",
+              minWidth: "184px",
+              flexShrink: 0,
+              position: "sticky",
+              top: "12px",
+              zIndex: 1,
+              marginLeft: "-12px",
             }}
           >
-            {SETTINGS_SECTION_OPTIONS.map((section) => (
-              <button
-                key={section.id}
-                type="button"
-                onClick={() => handleSectionSelect(section.id)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  borderLeft:
-                    section.id === activeSection
-                      ? "3px solid #07213a"
-                      : "3px solid transparent",
-                  color: section.id === activeSection ? "#07213a" : "#51606f",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  fontWeight: section.id === activeSection ? 700 : 500,
-                  padding: "10px 8px 10px 12px",
-                  textAlign: "left",
-                }}
-              >
-                {section.label}
-              </button>
-            ))}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+                paddingTop: "6px",
+              }}
+            >
+              {visibleSections.map((sectionId) => {
+                const section = SETTINGS_SECTION_OPTIONS.find(
+                  (option) => option.id === getCanonicalSection(sectionId),
+                );
+                if (!section) {
+                  return null;
+                }
+                const lockReason = getSectionLockReason(section.id);
+                const isLocked = lockReason != null;
+                const isActiveSection = section.id === activeSection;
+                return (
+                  <div
+                    key={section.id}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      disabled={isLocked}
+                      onClick={() => {
+                        if (!isLocked) handleSectionSelect(section.id);
+                      }}
+                      title={lockReason ?? undefined}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        borderLeft: isActiveSection
+                          ? "3px solid #07213a"
+                          : "3px solid transparent",
+                        color: isLocked
+                          ? "#b5bec9"
+                          : isActiveSection
+                            ? "#07213a"
+                            : "#51606f",
+                        cursor: isLocked ? "not-allowed" : "pointer",
+                        fontSize: "14px",
+                        fontWeight: isActiveSection ? 700 : 500,
+                        padding: "10px 8px 10px 12px",
+                        textAlign: "left",
+                        opacity: isLocked ? 0.6 : 1,
+                      }}
+                    >
+                      {section.label}
+                      {isLocked && " 🔒"}
+                    </button>
+                    {isActiveSection && section.id === "products" && (
+                      <div
+                        style={{
+                          marginLeft: "16px",
+                          paddingLeft: "10px",
+                          borderLeft: "1px solid rgba(7, 33, 58, 0.10)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "2px",
+                        }}
+                      >
+                        {PRODUCT_RULE_VIEWS.map((view) => (
+                          <button
+                            key={view.id}
+                            type="button"
+                            onClick={() => handleProductViewSelect(view.id)}
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              color:
+                                activeProductRuleView === view.id
+                                  ? "#07213a"
+                                  : "#667085",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              fontWeight:
+                                activeProductRuleView === view.id ? 700 : 500,
+                              padding: "6px 8px 6px 10px",
+                              textAlign: "left",
+                              borderRadius: "10px",
+                              backgroundColor:
+                                activeProductRuleView === view.id
+                                  ? "rgba(7, 33, 58, 0.06)"
+                                  : "transparent",
+                            }}
+                          >
+                            {view.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
         <div
           className="settings-workspace"
           style={{
             minWidth: 0,
             flex: 1,
-            width: "calc(100% - 196px)",
+            width: showSectionSidebar ? "calc(100% - 196px)" : "100%",
           }}
         >
       <style>{`
@@ -1177,7 +1698,7 @@ export default function AppSettingsRoute() {
             marginBottom: "6px",
           }}
         >
-          Settings workspace
+          {area === "all" ? "Settings workspace" : `${activeAreaOption.heading} workspace`}
         </div>
         <div
           style={{
@@ -1188,7 +1709,7 @@ export default function AppSettingsRoute() {
             marginBottom: "6px",
           }}
         >
-          {activeSectionOption.label}
+          {workspaceTitle}
         </div>
         <div
           style={{
@@ -1198,9 +1719,41 @@ export default function AppSettingsRoute() {
             lineHeight: 1.5,
           }}
         >
-          {activeSectionOption.description}
+          {workspaceDescription}
         </div>
       </div>
+      {activeSectionLockReason && (
+        <div
+          style={{
+            padding: "14px 16px",
+            borderRadius: "14px",
+            border: "1px solid rgba(183, 121, 0, 0.25)",
+            background: "rgba(255, 236, 213, 0.5)",
+            color: "#7a4f01",
+            fontSize: "14px",
+            lineHeight: 1.5,
+          }}
+        >
+          <strong>Catalog import required.</strong> {activeSectionLockReason} Go to{" "}
+          <button
+            type="button"
+            onClick={() => handleSectionSelect("global")}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#005bd3",
+              cursor: "pointer",
+              textDecoration: "underline",
+              padding: 0,
+              fontSize: "inherit",
+              fontWeight: 600,
+            }}
+          >
+            Global Settings
+          </button>{" "}
+          and continue there.
+        </div>
+      )}
       {(catalogMessage || productCatalogSyncMessage || collectionCatalogMessage) && (
         <div
           style={{
@@ -1216,10 +1769,7 @@ export default function AppSettingsRoute() {
           {catalogMessage ?? productCatalogSyncMessage ?? collectionCatalogMessage}
         </div>
       )}
-      {(isProductsSection ||
-        isQuantitySection ||
-        isVisibilitySection ||
-        isDiscountOrchestrationSection) && (
+      {(isProductsSection || isDiscountOrchestrationSection) && (
         <div
           style={{
             background: "#ffffff",
@@ -1520,637 +2070,435 @@ export default function AppSettingsRoute() {
       </s-section>
       )}
 
-      {isProductsSection && (
-      <>
-      <s-section heading="Per-product floor rules">
-        <form method="post">
-          <input type="hidden" name="intent" value="save-product-floor" />
-          <s-stack direction="block" gap="base">
+      {isProductsSection && activeProductRuleView === "floor-rules" && (
+        <CompactRulePanel
+          heading="Floor rules"
+          description="Protect margin per product with compact pricing controls and optional B2B base-price override."
+          saveIntent="save-product-floor"
+          submitLabel="Save floor rule"
+          deleteIntent="delete-product-floor"
+          rulesHeading="Configured floor rules"
+          emptyMessage="No per-product floor rules yet."
+          isSubmitting={isSubmitting || productCatalogImportRequired}
+          items={productFloorItems}
+        >
+          <div style={{ gridColumn: "1 / -1" }}>
             <AdminCatalogPicker
               name="productId"
               label="Product"
               resourceType="product"
               required
             />
-            <label>
-              Segment (optional)
-              <select name="segment" defaultValue="">
-                <option value="">All segments</option>
-                <option value="B2B">B2B</option>
-                <option value="B2C">B2C</option>
-              </select>
-            </label>
-            <label>
-              Allow zero final price override
-              <select name="allowZeroFinalPriceOverride" defaultValue="inherit">
-                <option value="inherit">Inherit global</option>
-                <option value="allow">Allow free final price</option>
-                <option value="deny">Disallow free final price</option>
-              </select>
-            </label>
-            <label>
-              Minimum price percent
-              <input
-                name="minPercentOfBasePrice"
-                type="number"
-                min={0}
-                max={100}
-                step="0.01"
-                defaultValue={70}
-              />
-            </label>
-            <label>
-              B2B override base price (optional)
-              <input
-                name="b2bOverridePrice"
-                type="number"
-                min={0}
-                step="0.01"
-                placeholder="e.g. 499.00"
-              />
-            </label>
-            <button type="submit" disabled={isSubmitting}>
-              Save product floor
-            </button>
-          </s-stack>
-        </form>
-
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-heading>Configured product floors</s-heading>
-          {config.productFloors.length === 0 ? (
-            <s-paragraph>No per-product floor rules yet.</s-paragraph>
-          ) : (
-            <s-stack direction="block" gap="small">
-              {config.productFloors.map((rule: any) => (
-                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
-                  <s-text>
-                    {describeProduct(rule.productId)} | {rule.segment ?? "ALL"} |{" "}
-                    {rule.minPercentOfBasePrice}% | zero-final:{" "}
-                    {rule.allowZeroFinalPrice == null
-                      ? "inherit"
-                      : rule.allowZeroFinalPrice
-                        ? "allow"
-                        : "deny"}{" "}
-                    | b2b-base-override:{" "}
-                    {rule.b2bOverridePrice == null ? "none" : rule.b2bOverridePrice}
-                  </s-text>
-                  <form method="post">
-                    <input type="hidden" name="intent" value="delete-product-floor" />
-                    <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" disabled={isSubmitting}>
-                      Delete
-                    </button>
-                  </form>
-                </s-stack>
-              ))}
-            </s-stack>
-          )}
-        </s-box>
-      </s-section>
-
-      <s-section heading="Per-product tier pricing rules">
-        <form method="post">
-          <input type="hidden" name="intent" value="save-product-tier-price" />
-          <s-stack direction="block" gap="base">
-            <AdminCatalogPicker
-              name="productId"
-              label="Product"
-              resourceType="product"
-              required
+          </div>
+          <label>
+            Segment
+            <select name="segment" defaultValue="">
+              <option value="">All segments</option>
+              <option value="B2B">B2B</option>
+              <option value="B2C">B2C</option>
+            </select>
+          </label>
+          <label>
+            Zero final price
+            <select name="allowZeroFinalPriceOverride" defaultValue="inherit">
+              <option value="inherit">Inherit global</option>
+              <option value="allow">Allow free final price</option>
+              <option value="deny">Disallow free final price</option>
+            </select>
+          </label>
+          <label>
+            Minimum price percent
+            <input
+              name="minPercentOfBasePrice"
+              type="number"
+              min={0}
+              max={100}
+              step="0.01"
+              defaultValue={70}
             />
-            <label>
-              Segment (optional)
-              <select name="segment" defaultValue="">
-                <option value="">All segments</option>
-                <option value="B2B">B2B</option>
-                <option value="B2C">B2C</option>
-              </select>
-            </label>
-            <label>
-              Minimum quantity (tier starts at)
-              <input
-                name="minQuantity"
-                type="number"
-                min={1}
-                step={1}
-                defaultValue={1}
-              />
-            </label>
-            <label>
-              Tier unit price
-              <input
-                name="unitPrice"
-                type="number"
-                min={0}
-                step="0.01"
-                placeholder="e.g. 450.00"
-                required
-              />
-            </label>
-            <button type="submit" disabled={isSubmitting}>
-              Save tier pricing rule
-            </button>
-          </s-stack>
-        </form>
-
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-heading>Configured tier pricing rules</s-heading>
-          {config.productTierPrices.length === 0 ? (
-            <s-paragraph>No per-product tier pricing rules yet.</s-paragraph>
-          ) : (
-            <s-stack direction="block" gap="small">
-              {config.productTierPrices.map((rule: any) => (
-                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
-                  <s-text>
-                    {describeProduct(rule.productId)} | {rule.segment ?? "ALL"} | qty{" "}
-                    {rule.minQuantity}+ | unit price: {rule.unitPrice}
-                  </s-text>
-                  <form method="post">
-                    <input type="hidden" name="intent" value="delete-product-tier-price" />
-                    <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" disabled={isSubmitting}>
-                      Delete
-                    </button>
-                  </form>
-                </s-stack>
-              ))}
-            </s-stack>
-          )}
-        </s-box>
-      </s-section>
-      </>
+          </label>
+          <label>
+            B2B override base price
+            <input
+              name="b2bOverridePrice"
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="e.g. 499.00"
+            />
+          </label>
+        </CompactRulePanel>
       )}
 
-      {isQuantitySection && (
-      <>
-      <s-section heading="Per-product MOQ rules">
-        <form method="post">
-          <input type="hidden" name="intent" value="save-product-quantity-rule" />
-          <s-stack direction="block" gap="base">
+      {isProductsSection && activeProductRuleView === "tier-pricing" && (
+        <CompactRulePanel
+          heading="Tier pricing"
+          description="Define volume-based unit prices for a product and keep the configuration compact."
+          saveIntent="save-product-tier-price"
+          submitLabel="Save tier pricing rule"
+          deleteIntent="delete-product-tier-price"
+          rulesHeading="Configured tier pricing"
+          emptyMessage="No per-product tier pricing rules yet."
+          isSubmitting={isSubmitting || productCatalogImportRequired}
+          items={productTierPriceItems}
+        >
+          <div style={{ gridColumn: "1 / -1" }}>
             <AdminCatalogPicker
               name="productId"
               label="Product"
               resourceType="product"
               required
             />
-            <label>
-              Segment (optional)
-              <select name="segment" defaultValue="">
-                <option value="">All segments</option>
-                <option value="B2B">B2B</option>
-                <option value="B2C">B2C</option>
-              </select>
-            </label>
-            <label>
-              Minimum order quantity (MOQ)
-              <input
-                name="minimumOrderQuantity"
-                type="number"
-                min={1}
-                step={1}
-                defaultValue={1}
-              />
-            </label>
-            <button type="submit" disabled={isSubmitting}>
-              Save MOQ rule
-            </button>
-          </s-stack>
-        </form>
-
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-heading>Configured MOQ rules</s-heading>
-          {productMoqRules.length === 0 ? (
-            <s-paragraph>No per-product MOQ rules yet.</s-paragraph>
-          ) : (
-            <s-stack direction="block" gap="small">
-              {productMoqRules.map((rule: any) => (
-                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
-                  <s-text>
-                    {describeProduct(rule.productId)} | {rule.segment ?? "ALL"} | MOQ{" "}
-                    {rule.minimumOrderQuantity}
-                  </s-text>
-                  <form method="post">
-                    <input type="hidden" name="intent" value="delete-product-quantity-rule" />
-                    <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" disabled={isSubmitting}>
-                      Delete
-                    </button>
-                  </form>
-                </s-stack>
-              ))}
-            </s-stack>
-          )}
-        </s-box>
-      </s-section>
-
-      <s-section heading="Per-product step quantity rules">
-        <form method="post">
-          <input type="hidden" name="intent" value="save-product-step-quantity-rule" />
-          <s-stack direction="block" gap="base">
-            <AdminCatalogPicker
-              name="productId"
-              label="Product"
-              resourceType="product"
+          </div>
+          <label>
+            Segment
+            <select name="segment" defaultValue="">
+              <option value="">All segments</option>
+              <option value="B2B">B2B</option>
+              <option value="B2C">B2C</option>
+            </select>
+          </label>
+          <label>
+            Minimum quantity
+            <input name="minQuantity" type="number" min={1} step={1} defaultValue={1} />
+          </label>
+          <label>
+            Tier unit price
+            <input
+              name="unitPrice"
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="e.g. 450.00"
               required
             />
-            <label>
-              Segment (optional)
-              <select name="segment" defaultValue="">
-                <option value="">All segments</option>
-                <option value="B2B">B2B</option>
-                <option value="B2C">B2C</option>
-              </select>
-            </label>
-            <label>
-              Step quantity (carton multiple)
-              <input
-                name="stepQuantity"
-                type="number"
-                min={1}
-                step={1}
-                defaultValue={1}
-              />
-            </label>
-            <button type="submit" disabled={isSubmitting}>
-              Save step rule
-            </button>
-          </s-stack>
-        </form>
-
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-heading>Configured step rules</s-heading>
-          {productStepRules.length === 0 ? (
-            <s-paragraph>No per-product step quantity rules yet.</s-paragraph>
-          ) : (
-            <s-stack direction="block" gap="small">
-              {productStepRules.map((rule: any) => (
-                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
-                  <s-text>
-                    {describeProduct(rule.productId)} | {rule.segment ?? "ALL"} | step{" "}
-                    {rule.stepQuantity}
-                  </s-text>
-                  <form method="post">
-                    <input
-                      type="hidden"
-                      name="intent"
-                      value="delete-product-step-quantity-rule"
-                    />
-                    <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" disabled={isSubmitting}>
-                      Delete
-                    </button>
-                  </form>
-                </s-stack>
-              ))}
-            </s-stack>
-          )}
-        </s-box>
-      </s-section>
-
-      <s-section heading="Per-product maximum quantity rules">
-        <form method="post">
-          <input type="hidden" name="intent" value="save-product-max-quantity-rule" />
-          <s-stack direction="block" gap="base">
-            <AdminCatalogPicker
-              name="productId"
-              label="Product"
-              resourceType="product"
-              required
-            />
-            <label>
-              Segment (optional)
-              <select name="segment" defaultValue="">
-                <option value="">All segments</option>
-                <option value="B2B">B2B</option>
-                <option value="B2C">B2C</option>
-              </select>
-            </label>
-            <label>
-              Maximum order quantity
-              <input
-                name="maxOrderQuantity"
-                type="number"
-                min={1}
-                step={1}
-                defaultValue={1}
-              />
-            </label>
-            <button type="submit" disabled={isSubmitting}>
-              Save maximum quantity rule
-            </button>
-          </s-stack>
-        </form>
-
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-heading>Configured max quantity rules</s-heading>
-          {productMaxRules.length === 0 ? (
-            <s-paragraph>No per-product max quantity rules yet.</s-paragraph>
-          ) : (
-            <s-stack direction="block" gap="small">
-              {productMaxRules.map((rule: any) => (
-                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
-                  <s-text>
-                    {describeProduct(rule.productId)} | {rule.segment ?? "ALL"} | max{" "}
-                    {rule.maxOrderQuantity}
-                  </s-text>
-                  <form method="post">
-                    <input
-                      type="hidden"
-                      name="intent"
-                      value="delete-product-max-quantity-rule"
-                    />
-                    <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" disabled={isSubmitting}>
-                      Delete
-                    </button>
-                  </form>
-                </s-stack>
-              ))}
-            </s-stack>
-          )}
-        </s-box>
-      </s-section>
-      </>
+          </label>
+        </CompactRulePanel>
       )}
 
-      {isCollectionsSection && (
-      <s-section heading="Per-collection maximum quantity rules">
-        <form method="post">
-          <input
-            type="hidden"
-            name="intent"
-            value="save-collection-max-quantity-rule"
+      {isProductsSection && activeProductRuleView === "moq" && (
+        <CompactRulePanel
+          heading="MOQ"
+          description="Configure minimum order quantity per product and segment from the compact product governance panel."
+          saveIntent="save-product-quantity-rule"
+          submitLabel="Save MOQ rule"
+          deleteIntent="delete-product-quantity-rule"
+          rulesHeading="Configured MOQ rules"
+          emptyMessage="No per-product MOQ rules yet."
+          isSubmitting={isSubmitting || productCatalogImportRequired}
+          items={productMoqItems}
+        >
+          <div style={{ gridColumn: "1 / -1" }}>
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
+          </div>
+          <label>
+            Segment
+            <select name="segment" defaultValue="">
+              <option value="">All segments</option>
+              <option value="B2B">B2B</option>
+              <option value="B2C">B2C</option>
+            </select>
+          </label>
+          <label>
+            Minimum order quantity
+            <input
+              name="minimumOrderQuantity"
+              type="number"
+              min={1}
+              step={1}
+              defaultValue={1}
+            />
+          </label>
+        </CompactRulePanel>
+      )}
+
+      {isProductsSection && activeProductRuleView === "step-quantity" && (
+        <CompactRulePanel
+          heading="Step quantity"
+          description="Use carton multiple controls when orders must move in fixed increments."
+          saveIntent="save-product-step-quantity-rule"
+          submitLabel="Save step rule"
+          deleteIntent="delete-product-step-quantity-rule"
+          rulesHeading="Configured step rules"
+          emptyMessage="No per-product step quantity rules yet."
+          isSubmitting={isSubmitting || productCatalogImportRequired}
+          items={productStepItems}
+        >
+          <div style={{ gridColumn: "1 / -1" }}>
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
+          </div>
+          <label>
+            Segment
+            <select name="segment" defaultValue="">
+              <option value="">All segments</option>
+              <option value="B2B">B2B</option>
+              <option value="B2C">B2C</option>
+            </select>
+          </label>
+          <label>
+            Step quantity
+            <input name="stepQuantity" type="number" min={1} step={1} defaultValue={1} />
+          </label>
+        </CompactRulePanel>
+      )}
+
+      {isProductsSection && activeProductRuleView === "max-quantity" && (
+        <CompactRulePanel
+          heading="Max quantity"
+          description="Set per-product order ceilings without leaving the product governance workspace."
+          saveIntent="save-product-max-quantity-rule"
+          submitLabel="Save maximum quantity rule"
+          deleteIntent="delete-product-max-quantity-rule"
+          rulesHeading="Configured max quantity rules"
+          emptyMessage="No per-product max quantity rules yet."
+          isSubmitting={isSubmitting || productCatalogImportRequired}
+          items={productMaxItems}
+        >
+          <div style={{ gridColumn: "1 / -1" }}>
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
+          </div>
+          <label>
+            Segment
+            <select name="segment" defaultValue="">
+              <option value="">All segments</option>
+              <option value="B2B">B2B</option>
+              <option value="B2C">B2C</option>
+            </select>
+          </label>
+          <label>
+            Maximum order quantity
+            <input
+              name="maxOrderQuantity"
+              type="number"
+              min={1}
+              step={1}
+              defaultValue={1}
+            />
+          </label>
+        </CompactRulePanel>
+      )}
+
+      {isProductsSection && activeProductRuleView === "customer-overrides" && (
+        <CompactRulePanel
+          heading="Customer overrides"
+          description="Keep customer-specific exceptions close to the product rule they override."
+          saveIntent="save-product-customer-max-quantity-rule"
+          submitLabel="Save customer override"
+          deleteIntent="delete-product-customer-max-quantity-rule"
+          rulesHeading="Configured customer overrides"
+          emptyMessage="No customer max overrides yet."
+          isSubmitting={isSubmitting || productCatalogImportRequired}
+          items={productCustomerMaxItems}
+        >
+          <AdminCatalogPicker
+            name="productId"
+            label="Product"
+            resourceType="product"
+            required
           />
-          <s-stack direction="block" gap="base">
+          <AdminCatalogPicker
+            name="customerId"
+            label="Customer"
+            resourceType="customer"
+            required
+          />
+          <label>
+            Maximum order quantity
+            <input
+              name="maxOrderQuantity"
+              type="number"
+              min={1}
+              step={1}
+              defaultValue={1}
+            />
+          </label>
+        </CompactRulePanel>
+      )}
+
+      {isProductsSection && activeProductRuleView === "product-visibility" && (
+        <CompactRulePanel
+          heading="Product visibility"
+          description={
+            <>
+              Storefront enforcement uses <code>/apps/margin-guard/visibility-script</code> to
+              hide restricted products before checkout.
+            </>
+          }
+          saveIntent="save-product-visibility-rule"
+          submitLabel="Save visibility rule"
+          deleteIntent="delete-product-visibility-rule"
+          rulesHeading="Configured product visibility"
+          emptyMessage="No visibility rules yet."
+          isSubmitting={isSubmitting || productCatalogImportRequired}
+          items={productVisibilityItems}
+        >
+          <div style={{ gridColumn: "1 / -1" }}>
+            <AdminCatalogPicker
+              name="productId"
+              label="Product"
+              resourceType="product"
+              required
+            />
+          </div>
+          <label>
+            Visibility mode
+            <select name="visibilityMode" defaultValue="B2B_ONLY">
+              <option value="B2B_ONLY">B2B only</option>
+              <option value="B2C_ONLY">B2C only</option>
+              <option value="CUSTOMER_ONLY">Specific customer only</option>
+              <option value="ALL">Visible for all</option>
+            </select>
+          </label>
+          <AdminCatalogPicker
+            name="customerId"
+            label="Customer"
+            resourceType="customer"
+          />
+        </CompactRulePanel>
+      )}
+
+      {isProductsSection && activeProductRuleView === "variant-visibility" && (
+        <CompactRulePanel
+          heading="Variant visibility"
+          description="Hide a specific variant for B2B, B2C, or a selected customer on the same product page."
+          saveIntent="save-product-variant-visibility-rule"
+          submitLabel="Save variant visibility"
+          deleteIntent="delete-product-variant-visibility-rule"
+          rulesHeading="Configured variant visibility"
+          emptyMessage="No variant visibility rules yet."
+          isSubmitting={isSubmitting || productCatalogImportRequired}
+          items={productVariantVisibilityItems}
+        >
+          <AdminCatalogPicker
+            name="productId"
+            label="Product"
+            resourceType="product"
+            required
+          />
+          <AdminCatalogPicker
+            name="variantId"
+            label="Variant"
+            resourceType="variant"
+            required
+          />
+          <label>
+            Visibility mode
+            <select name="visibilityMode" defaultValue="B2B_ONLY">
+              <option value="B2B_ONLY">B2B only</option>
+              <option value="B2C_ONLY">B2C only</option>
+              <option value="CUSTOMER_ONLY">Specific customer only</option>
+              <option value="ALL">Visible for all</option>
+            </select>
+          </label>
+          <AdminCatalogPicker
+            name="customerId"
+            label="Customer"
+            resourceType="customer"
+          />
+        </CompactRulePanel>
+      )}
+
+      {isProductsSection && activeProductRuleView === "collection-visibility" && (
+        <CompactRulePanel
+          heading="Collection visibility"
+          description="Keep collection access rules close to product governance so storefront catalog restrictions stay in one admin workspace."
+          saveIntent="save-collection-visibility-rule"
+          submitLabel="Save collection visibility"
+          deleteIntent="delete-collection-visibility-rule"
+          rulesHeading="Configured collection visibility"
+          emptyMessage="No collection visibility rules yet."
+          isSubmitting={isSubmitting || collectionCatalogImportRequired}
+          items={collectionVisibilityItems}
+        >
+          {collectionCatalogImportRequired ? (
+            <div
+              style={{
+                gridColumn: "1 / -1",
+                padding: "12px 14px",
+                borderRadius: "12px",
+                background: "rgba(255, 236, 213, 0.55)",
+                border: "1px solid rgba(185, 92, 0, 0.14)",
+                color: "#9a4600",
+                fontSize: "13px",
+                lineHeight: 1.5,
+              }}
+            >
+              Collection visibility needs imported collections. Open Global Settings
+              and run Import collections now first.
+            </div>
+          ) : null}
+          <div style={{ gridColumn: "1 / -1" }}>
             <AdminCatalogPicker
               name="collectionId"
               label="Collection"
               resourceType="collection"
               required
             />
-            <label>
-              Segment (optional)
-              <select name="segment" defaultValue="">
-                <option value="">All segments</option>
-                <option value="B2B">B2B</option>
-                <option value="B2C">B2C</option>
-              </select>
-            </label>
-            <label>
-              Maximum order quantity
-              <input
-                name="maxOrderQuantity"
-                type="number"
-                min={1}
-                step={1}
-                defaultValue={1}
-              />
-            </label>
-            <button type="submit" disabled={isSubmitting}>
-              Save collection maximum quantity rule
-            </button>
-          </s-stack>
-        </form>
-
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-heading>Configured collection max quantity rules</s-heading>
-          {collectionMaxRules.length === 0 ? (
-            <s-paragraph>No per-collection max quantity rules yet.</s-paragraph>
-          ) : (
-            <s-stack direction="block" gap="small">
-              {collectionMaxRules.map((rule: any) => (
-                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
-                  <s-text>
-                    {rule.collectionId} | {rule.segment ?? "ALL"} | max {rule.maxOrderQuantity}
-                  </s-text>
-                  <form method="post">
-                    <input
-                      type="hidden"
-                      name="intent"
-                      value="delete-collection-max-quantity-rule"
-                    />
-                    <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" disabled={isSubmitting}>
-                      Delete
-                    </button>
-                  </form>
-                </s-stack>
-              ))}
-            </s-stack>
-          )}
-        </s-box>
-      </s-section>
+          </div>
+          <label>
+            Visibility mode
+            <select name="visibilityMode" defaultValue="B2B_ONLY">
+              <option value="B2B_ONLY">B2B only</option>
+              <option value="B2C_ONLY">B2C only</option>
+            </select>
+          </label>
+        </CompactRulePanel>
       )}
 
-      {isProductsSection && (
-      <s-section heading="Per-customer max quantity overrides">
-        <form method="post">
-          <input
-            type="hidden"
-            name="intent"
-            value="save-product-customer-max-quantity-rule"
-          />
-          <s-stack direction="block" gap="base">
+      {isCollectionsSection && (
+        <CompactRulePanel
+          heading="Collection maximum quantity"
+          description="Collection-level ceilings stay isolated here, while product-specific overrides remain under Products."
+          saveIntent="save-collection-max-quantity-rule"
+          submitLabel="Save collection maximum quantity"
+          deleteIntent="delete-collection-max-quantity-rule"
+          rulesHeading="Configured collection max quantity"
+          emptyMessage="No per-collection max quantity rules yet."
+          isSubmitting={isSubmitting || collectionCatalogImportRequired}
+          items={collectionMaxItems}
+        >
+          <div style={{ gridColumn: "1 / -1" }}>
             <AdminCatalogPicker
-              name="productId"
-              label="Product"
-              resourceType="product"
+              name="collectionId"
+              label="Collection"
+              resourceType="collection"
               required
             />
-            <AdminCatalogPicker
-              name="customerId"
-              label="Customer"
-              resourceType="customer"
-              required
+          </div>
+          <label>
+            Segment
+            <select name="segment" defaultValue="">
+              <option value="">All segments</option>
+              <option value="B2B">B2B</option>
+              <option value="B2C">B2C</option>
+            </select>
+          </label>
+          <label>
+            Maximum order quantity
+            <input
+              name="maxOrderQuantity"
+              type="number"
+              min={1}
+              step={1}
+              defaultValue={1}
             />
-            <label>
-              Maximum order quantity for this customer
-              <input
-                name="maxOrderQuantity"
-                type="number"
-                min={1}
-                step={1}
-                defaultValue={1}
-              />
-            </label>
-            <button type="submit" disabled={isSubmitting}>
-              Save customer max override
-            </button>
-          </s-stack>
-        </form>
-
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-heading>Configured customer max overrides</s-heading>
-          {productCustomerMaxRules.length === 0 ? (
-            <s-paragraph>No customer max overrides yet.</s-paragraph>
-          ) : (
-            <s-stack direction="block" gap="small">
-              {productCustomerMaxRules.map((rule: any) => (
-                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
-                  <s-text>
-                    {describeProduct(rule.productId)} | customer {rule.customerId} | max{" "}
-                    {rule.maxOrderQuantity}
-                  </s-text>
-                  <form method="post">
-                    <input
-                      type="hidden"
-                      name="intent"
-                      value="delete-product-customer-max-quantity-rule"
-                    />
-                    <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" disabled={isSubmitting}>
-                      Delete
-                    </button>
-                  </form>
-                </s-stack>
-              ))}
-            </s-stack>
-          )}
-        </s-box>
-      </s-section>
-      )}
-
-      {isVisibilitySection && (
-      <>
-      <s-section heading="Basic product visibility rules">
-        <s-paragraph>
-          Storefront enforcement: include
-          {" "}
-          <code>/apps/margin-guard/visibility-script</code>
-          {" "}
-          in your theme to hide restricted products before checkout.
-        </s-paragraph>
-        <form method="post">
-          <input type="hidden" name="intent" value="save-product-visibility-rule" />
-          <s-stack direction="block" gap="base">
-            <AdminCatalogPicker
-              name="productId"
-              label="Product"
-              resourceType="product"
-              required
-            />
-            <label>
-              Visibility mode
-              <select name="visibilityMode" defaultValue="B2B_ONLY">
-                <option value="B2B_ONLY">B2B only</option>
-                <option value="B2C_ONLY">B2C only</option>
-                <option value="CUSTOMER_ONLY">Specific customer only</option>
-                <option value="ALL">Visible for all (removes rule)</option>
-              </select>
-            </label>
-            <AdminCatalogPicker
-              name="customerId"
-              label="Customer (only for specific customer mode)"
-              resourceType="customer"
-            />
-            <button type="submit" disabled={isSubmitting}>
-              Save visibility rule
-            </button>
-          </s-stack>
-        </form>
-
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-heading>Configured visibility rules</s-heading>
-          {config.productVisibilityRules.length === 0 ? (
-            <s-paragraph>No visibility rules yet.</s-paragraph>
-          ) : (
-            <s-stack direction="block" gap="small">
-              {config.productVisibilityRules.map((rule: any) => (
-                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
-                  <s-text>
-                    {describeProduct(rule.productId)} | {rule.visibilityMode}
-                    {rule.customerId ? ` | customer: ${rule.customerId}` : ""}
-                  </s-text>
-                  <form method="post">
-                    <input type="hidden" name="intent" value="delete-product-visibility-rule" />
-                    <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" disabled={isSubmitting}>
-                      Delete
-                    </button>
-                  </form>
-                </s-stack>
-              ))}
-            </s-stack>
-          )}
-        </s-box>
-      </s-section>
-
-      <s-section heading="Per-variant visibility rules">
-        <s-paragraph>
-          Hide a specific variant for B2B, B2C, or a selected customer. This is useful
-          for unit-vs-carton variants on the same product page.
-        </s-paragraph>
-        <form method="post">
-          <input
-            type="hidden"
-            name="intent"
-            value="save-product-variant-visibility-rule"
-          />
-          <s-stack direction="block" gap="base">
-            <AdminCatalogPicker
-              name="productId"
-              label="Product"
-              resourceType="product"
-              required
-            />
-            <AdminCatalogPicker
-              name="variantId"
-              label="Variant"
-              resourceType="variant"
-              required
-            />
-            <label>
-              Visibility mode
-              <select name="visibilityMode" defaultValue="B2B_ONLY">
-                <option value="B2B_ONLY">B2B only</option>
-                <option value="B2C_ONLY">B2C only</option>
-                <option value="CUSTOMER_ONLY">Specific customer only</option>
-                <option value="ALL">Visible for all (removes rule)</option>
-              </select>
-            </label>
-            <AdminCatalogPicker
-              name="customerId"
-              label="Customer (only for specific customer mode)"
-              resourceType="customer"
-            />
-            <button type="submit" disabled={isSubmitting}>
-              Save variant visibility rule
-            </button>
-          </s-stack>
-        </form>
-
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-heading>Configured variant visibility rules</s-heading>
-          {productVariantVisibilityRules.length === 0 ? (
-            <s-paragraph>No variant visibility rules yet.</s-paragraph>
-          ) : (
-            <s-stack direction="block" gap="small">
-              {productVariantVisibilityRules.map((rule: any) => (
-                <s-stack key={rule.id} direction="inline" gap="base" alignItems="center">
-                  <s-text>
-                    {describeProduct(rule.productId)} | variant {describeVariant(rule.variantId)}
-                    {" | "}
-                    {rule.visibilityMode}
-                    {rule.customerId ? ` | customer: ${rule.customerId}` : ""}
-                  </s-text>
-                  <form method="post">
-                    <input
-                      type="hidden"
-                      name="intent"
-                      value="delete-product-variant-visibility-rule"
-                    />
-                    <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" disabled={isSubmitting}>
-                      Delete
-                    </button>
-                  </form>
-                </s-stack>
-              ))}
-            </s-stack>
-          )}
-        </s-box>
-      </s-section>
-      </>
+          </label>
+        </CompactRulePanel>
       )}
 
       {isDiscountCouponsSection && (
@@ -2294,7 +2642,9 @@ export default function AppSettingsRoute() {
                       ? ` | ${
                           rule.scope === "PRODUCT"
                             ? describeProduct(rule.targetId)
-                            : rule.targetId
+                            : rule.scope === "COLLECTION"
+                              ? describeCollection(rule.targetId)
+                              : rule.targetId
                         }`
                       : ""}
                     {rule.code ? ` | ${rule.code}` : ""}

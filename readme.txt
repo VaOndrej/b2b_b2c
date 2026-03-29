@@ -134,6 +134,9 @@ MVP_5 – Segmented Storefront (UX Layer)
  ├─ Conditional PDP blocks
  └─ Dynamic messaging engine
 
+MVP_5_0_1:
+    Nefunguje správné schovváání produktů, je tam krátky flash po otevření stránky.
+
 
 MVP_5_1:
  ├─Search hledání nefunguje - pokud nemám naimportované žádné kolekce nebo produkty - přidat warning, pokud tohle není udělané.

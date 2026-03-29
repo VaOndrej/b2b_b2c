@@ -1,24 +1,21 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useNavigation, useSearchParams, useNavigate } from "react-router";
 import { useState } from "react";
-import { CatalogRuleSection } from "../components/catalog-rule-section";
-import type { CatalogRuleItem } from "../components/catalog-rule-section";
 import { authenticate } from "../shopify.server";
 import {
   getStorefrontContentRules,
-  getCollectionVisibilityRules,
   upsertStorefrontContentRule,
   deleteStorefrontContentRule,
-  upsertCollectionVisibilityRule,
-  deleteCollectionVisibilityRule,
 } from "../services/storefront-content.server";
-import prisma from "../db.server";
+import {
+  countActiveCatalogProducts,
+  countActiveCatalogCollections,
+} from "../services/product-catalog.server";
 
-type Section = "content-rules" | "collection-visibility";
+type Section = "content-rules";
 
 const SECTION_OPTIONS: { id: Section; label: string }[] = [
   { id: "content-rules", label: "Content Rules" },
-  { id: "collection-visibility", label: "Collection Visibility" },
 ];
 
 const PAGE_TYPE_OPTIONS = [
@@ -60,11 +57,6 @@ const SEGMENT_OPTIONS = [
   { value: "B2C", label: "B2C" },
 ];
 
-const VISIBILITY_MODE_OPTIONS = [
-  { value: "B2B_ONLY", label: "B2B only" },
-  { value: "B2C_ONLY", label: "B2C only" },
-];
-
 function parseString(input: FormDataEntryValue | null): string {
   return String(input ?? "").trim();
 }
@@ -77,12 +69,13 @@ function parseNumber(input: FormDataEntryValue | null, fallback = 0): number {
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
 
-  const [contentRules, collectionVisibilityRules] = await Promise.all([
+  const [contentRules, catalogProductCount, catalogCollectionCount] = await Promise.all([
     getStorefrontContentRules(),
-    getCollectionVisibilityRules(),
+    countActiveCatalogProducts(),
+    countActiveCatalogCollections(),
   ]);
 
-  return { contentRules, collectionVisibilityRules };
+  return { contentRules, catalogProductCount, catalogCollectionCount };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -117,44 +110,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         await deleteStorefrontContentRule(id);
       }
       return { ok: true, message: "Content rule deleted." };
-    }
-
-    if (intent === "upsert-collection-visibility") {
-      const collectionId = parseString(formData.get("collectionId"));
-      let collectionHandle = parseString(formData.get("collectionHandle"));
-      let collectionTitle = parseString(formData.get("collectionTitle")) || null;
-
-      if (collectionId && (!collectionHandle || !collectionTitle)) {
-        const catalogEntry = await prisma.catalogCollection.findFirst({
-          where: {
-            OR: [
-              { shopifyCollectionId: collectionId },
-              { externalKey: collectionId },
-            ],
-          },
-        });
-        if (catalogEntry) {
-          if (!collectionHandle) collectionHandle = catalogEntry.handle ?? "";
-          if (!collectionTitle) collectionTitle = catalogEntry.title;
-        }
-      }
-
-      await upsertCollectionVisibilityRule({
-        id: parseString(formData.get("ruleId")) || undefined,
-        collectionId,
-        collectionHandle,
-        collectionTitle,
-        visibilityMode: parseString(formData.get("visibilityMode")),
-      });
-      return { ok: true, message: "Collection visibility saved." };
-    }
-
-    if (intent === "delete-collection-visibility") {
-      const id = parseString(formData.get("ruleId"));
-      if (id) {
-        await deleteCollectionVisibilityRule(id);
-      }
-      return { ok: true, message: "Collection visibility rule deleted." };
     }
 
     return { ok: false, message: `Unknown intent: ${intent}` };
@@ -393,30 +348,19 @@ const cardStyle: React.CSSProperties = {
 };
 
 export default function StorefrontUxRoute() {
-  const { contentRules, collectionVisibilityRules } = useLoaderData<typeof loader>();
+  const { contentRules, catalogProductCount, catalogCollectionCount } =
+    useLoaderData<typeof loader>();
+  const catalogImportRequired = catalogProductCount === 0 && catalogCollectionCount === 0;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const activeSection: Section =
-    (searchParams.get("section") as Section) || "content-rules";
+  const requestedSection = String(searchParams.get("section") ?? "").trim();
+  const showLegacyCollectionVisibilityNotice =
+    requestedSection === "collection-visibility";
+  const activeSection: Section = "content-rules";
   const [showContentForm, setShowContentForm] = useState(false);
   const [editingContentRule, setEditingContentRule] = useState<any>(null);
-  const collectionVisibilityItems: CatalogRuleItem[] = (
-    collectionVisibilityRules as any[]
-  ).map((rule: any) => ({
-    id: rule.id,
-    label: rule.collectionTitle || rule.collectionHandle,
-    badges: [
-      {
-        text: rule.visibilityMode === "B2B_ONLY" ? "B2B only" : "B2C only",
-        variant: (rule.visibilityMode === "B2B_ONLY" ? "info" : "warning") as
-          | "info"
-          | "warning",
-      },
-    ],
-    detail: `Handle: ${rule.collectionHandle}`,
-  }));
 
   function handleSectionSelect(section: Section) {
     navigate(`/app/storefront-ux?section=${section}`);
@@ -468,7 +412,62 @@ export default function StorefrontUxRoute() {
 
         {/* Main content */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {activeSection === "content-rules" && (
+          {catalogImportRequired && (
+            <div
+              style={{
+                padding: "14px 16px",
+                borderRadius: "14px",
+                border: "1px solid rgba(183, 121, 0, 0.25)",
+                background: "rgba(255, 236, 213, 0.5)",
+                color: "#7a4f01",
+                fontSize: "14px",
+                lineHeight: 1.5,
+                marginBottom: "16px",
+              }}
+            >
+              <strong>Product catalog not imported.</strong> Collection pickers
+              and content rules require imported products and collections. Go to{" "}
+              <a
+                href="/app/settings?area=global&section=global"
+                style={{
+                  color: "#005bd3",
+                  fontWeight: 600,
+                  textDecoration: "underline",
+                }}
+              >
+                Settings &rarr; Global Settings
+              </a>{" "}
+              and run a Shopify catalog import first.
+            </div>
+          )}
+          {showLegacyCollectionVisibilityNotice && (
+            <div
+              style={{
+                padding: "14px 16px",
+                borderRadius: "14px",
+                border: "1px solid rgba(10, 132, 255, 0.18)",
+                background: "rgba(10, 132, 255, 0.06)",
+                color: "#0b4f8a",
+                fontSize: "14px",
+                lineHeight: 1.5,
+                marginBottom: "16px",
+              }}
+            >
+              Collection visibility moved into{" "}
+              <a
+                href="/app/settings?area=catalog-rules&section=products&view=collection-visibility"
+                style={{
+                  color: "#005bd3",
+                  fontWeight: 600,
+                  textDecoration: "underline",
+                }}
+              >
+                Catalog Rules &rarr; Products &rarr; Collection visibility
+              </a>
+              , so Storefront UX stays focused on content and messaging.
+            </div>
+          )}
+          {!catalogImportRequired && activeSection === "content-rules" && (
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                 <div>
@@ -579,32 +578,6 @@ export default function StorefrontUxRoute() {
                 ))
               )}
             </div>
-          )}
-
-          {activeSection === "collection-visibility" && (
-            <CatalogRuleSection
-              heading="Collection Visibility"
-              description="Hide entire collections from specific customer segments."
-              resourceType="collection"
-              pickerLabel="Collection"
-              pickerName="collectionId"
-              saveIntent="upsert-collection-visibility"
-              deleteIntent="delete-collection-visibility"
-              submitLabel="Save collection visibility"
-              emptyMessage="No collection visibility rules yet."
-              rulesHeading="Configured collection visibility"
-              isSubmitting={isSubmitting}
-              items={collectionVisibilityItems}
-            >
-              <label>
-                Visibility mode
-                <select name="visibilityMode" defaultValue="B2B_ONLY">
-                  {VISIBILITY_MODE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </label>
-            </CatalogRuleSection>
           )}
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   disconnectE2EPrisma,
   ensureOriginalMarginGuardSnapshot,
@@ -18,6 +18,12 @@ import {
 import { resolveShopifyE2ERuntime } from "./support/runtime.ts";
 
 const runtime = await resolveShopifyE2ERuntime();
+
+function getVisibleQuantityInput(page: Page) {
+  return page
+    .locator("form[action*='/cart/add'] input[name='quantity']:not([type='hidden'])")
+    .first();
+}
 
 test.describe.configure({ mode: "serial" });
 
@@ -83,11 +89,11 @@ test("theme app embed injects MOQ and step notices on the PDP and normalizes the
 
   const scenarioHandles = runtime.scenarioHandles;
 
-  await page.goto(`/products/${scenarioHandles.quantity}`, {
+  await page.goto(`/products/${scenarioHandles.step}`, {
     waitUntil: "domcontentloaded",
   });
   await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(`/products/${scenarioHandles.quantity}`, {
+  await page.goto(`/products/${scenarioHandles.step}`, {
     waitUntil: "domcontentloaded",
   });
   product = await resolveCurrentProductFixtureFromPage(page);
@@ -102,7 +108,7 @@ test("theme app embed injects MOQ and step notices on the PDP and normalizes the
   await waitForMarginGuardBootstrap(page);
 
   const quantityInput = page
-    .locator("form[action*='/cart/add'] input[name='quantity']")
+    .locator("form[action*='/cart/add'] input[name='quantity']:not([type='hidden'])")
     .first();
   await expect(quantityInput).toHaveValue("6");
   await expect(quantityInput).toHaveAttribute("min", "6");
@@ -188,11 +194,11 @@ test("acknowledgment button is required to dismiss cart quantity notice", async 
 
   const scenarioHandles = runtime.scenarioHandles;
 
-  await page.goto(`/products/${scenarioHandles.quantity}`, {
+  await page.goto(`/products/${scenarioHandles.max}`, {
     waitUntil: "domcontentloaded",
   });
   await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(`/products/${scenarioHandles.quantity}`, {
+  await page.goto(`/products/${scenarioHandles.max}`, {
     waitUntil: "domcontentloaded",
   });
   product = await resolveCurrentProductFixtureFromPage(page);
@@ -205,9 +211,7 @@ test("acknowledgment button is required to dismiss cart quantity notice", async 
   await page.reload({ waitUntil: "domcontentloaded" });
   await waitForMarginGuardBootstrap(page);
 
-  const quantityInput = page
-    .locator("form[action*='/cart/add'] input[name='quantity']")
-    .first();
+  const quantityInput = getVisibleQuantityInput(page);
   if ((await quantityInput.count()) === 0) {
     test.skip(true, "No quantity input found on PDP — cannot test acknowledgment flow.");
     return;
@@ -252,11 +256,11 @@ test("theme app embed enforces max order quantity notice on PDP", async ({ page 
 
   const scenarioHandles = runtime.scenarioHandles;
 
-  await page.goto(`/products/${scenarioHandles.quantity}`, {
+  await page.goto(`/products/${scenarioHandles.max}`, {
     waitUntil: "domcontentloaded",
   });
   await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(`/products/${scenarioHandles.quantity}`, {
+  await page.goto(`/products/${scenarioHandles.max}`, {
     waitUntil: "domcontentloaded",
   });
   product = await resolveCurrentProductFixtureFromPage(page);
@@ -277,9 +281,7 @@ test("theme app embed enforces max order quantity notice on PDP", async ({ page 
     "Expected visibility payload to include maxOrderQuantity=3 for the product.",
   ).toBe(true);
 
-  const quantityInput = page
-    .locator("form[action*='/cart/add'] input[name='quantity']")
-    .first();
+  const quantityInput = getVisibleQuantityInput(page);
   if ((await quantityInput.count()) > 0) {
     await expect(quantityInput).toHaveAttribute("max", "3");
   }

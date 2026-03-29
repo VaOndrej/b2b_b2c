@@ -67,6 +67,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     allowRemoveAtMinimumOrderQuantity: true,
   };
   const RULES_CACHE_KEY = "marginGuardRulesCache_v1";
+  const RULES_CACHE_VERSION = 2;
   const RULES_CACHE_TTL_MS = 5 * 60 * 1000;
   const MAX_RULES_READY_WAIT_MS = 300;
   const MIN_CART_SNAPSHOT_REFRESH_INTERVAL_MS = 180;
@@ -108,6 +109,47 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const proxyPrefix = readProxyParam("path_prefix") || DEFAULT_PROXY_PREFIX;
   const visibilityEndpoint = proxyPrefix + "/visibility";
   const loggedInCustomerId = readProxyParam("logged_in_customer_id");
+  const loggedInCustomerTagsRaw = readProxyParam("logged_in_customer_tags");
+
+  function parseCustomerTagsScope(rawValue) {
+    const normalized = String(rawValue || "").trim();
+    if (!normalized) {
+      return "";
+    }
+    try {
+      const parsed = JSON.parse(normalized);
+      if (!Array.isArray(parsed)) {
+        return normalized.toLowerCase();
+      }
+      return parsed
+        .map((tag) => String(tag || "").trim().toLowerCase())
+        .filter(Boolean)
+        .sort()
+        .join("|");
+    } catch {
+      return normalized.toLowerCase();
+    }
+  }
+
+  const loggedInCustomerTagsScope = parseCustomerTagsScope(loggedInCustomerTagsRaw);
+
+  function debugLog(label, payload) {
+    try {
+      if (payload === undefined) {
+        console.log("[MarginGuard]", label);
+      } else {
+        console.log("[MarginGuard]", label, payload);
+      }
+    } catch {}
+  }
+
+  debugLog("bootstrap", {
+    proxyPrefix,
+    visibilityEndpoint,
+    loggedInCustomerId: loggedInCustomerId || null,
+    loggedInCustomerTagsScope: loggedInCustomerTagsScope || null,
+    currentPath: window.location.pathname,
+  });
 
   function resolveLocaleMessages() {
     const lang = String(
@@ -477,6 +519,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   async function fetchAndApplyVisibilityPayload(handles, productIds) {
     if (!handles.length && !productIds.length) {
+      debugLog("visibility fetch skipped: no handles or productIds");
       return;
     }
     const params = new URLSearchParams();
@@ -489,13 +532,35 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     if (loggedInCustomerId) {
       params.set("logged_in_customer_id", loggedInCustomerId);
     }
+    if (loggedInCustomerTagsRaw) {
+      params.set("logged_in_customer_tags", loggedInCustomerTagsRaw);
+    }
+    debugLog("visibility request", {
+      url: visibilityEndpoint + "?" + params.toString(),
+      handles,
+      productIds,
+      loggedInCustomerId: loggedInCustomerId || null,
+      loggedInCustomerTagsScope: loggedInCustomerTagsScope || null,
+    });
     const response = await fetch(visibilityEndpoint + "?" + params.toString(), {
       credentials: "same-origin",
     });
     if (!response.ok) {
+      debugLog("visibility request failed", {
+        status: response.status,
+        statusText: response.statusText,
+      });
       return;
     }
     const payload = await response.json();
+    debugLog("visibility response", {
+      segment: payload?.segment ?? null,
+      customerId: payload?.customerId ?? null,
+      b2bTag: payload?.b2bTag ?? null,
+      segmentDebug: payload?.segmentDebug ?? null,
+      hiddenHandles: Array.isArray(payload?.hiddenHandles) ? payload.hiddenHandles : [],
+      productIdByHandle: payload?.productIdByHandle ?? {},
+    });
     state.allowRemoveAtMinimumOrderQuantity =
       payload?.allowRemoveAtMinimumOrderQuantity !== false;
     const responseConfigVersion =
@@ -540,16 +605,55 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       ? payload.hiddenHandles.map((value) => String(value).toLowerCase())
       : [];
     const mergedHiddenHandles = persistRulesCache(hiddenHandles);
-    for (const handle of mergedHiddenHandles) {
-      hideCardForHandle(handle);
-      blockCurrentProductPage(handle);
-    }
+    applyHiddenHandlesToDom(mergedHiddenHandles);
     enforceCurrentProductQuantityRule();
     syncCartQuantityInputs(state.quantityConstraintsByHandle);
     scheduleCurrentProductVariantVisibilitySync();
   }
 
+  function removeEarlyHideStyle() {
+    const earlyStyle = document.getElementById("margin-guard-early-hide");
+    if (earlyStyle) {
+      debugLog("removing style", { id: "margin-guard-early-hide" });
+      earlyStyle.remove();
+    }
+    const segmentDefaultStyle = document.getElementById("margin-guard-segment-default-hide");
+    if (segmentDefaultStyle) {
+      debugLog("removing style", { id: "margin-guard-segment-default-hide" });
+      segmentDefaultStyle.remove();
+    }
+  }
+
+  function applyHiddenHandlesToDom(hiddenHandles) {
+    const normalizedHiddenHandles = mergeUniqueStringArrays(hiddenHandles, []);
+    debugLog("applyHiddenHandlesToDom", {
+      hiddenHandles: normalizedHiddenHandles,
+      currentPath: window.location.pathname,
+    });
+    for (const handle of normalizedHiddenHandles) {
+      hideCardForHandle(handle);
+      blockCurrentProductPage(handle);
+    }
+    removeEarlyHideStyle();
+  }
+
+  function applyHiddenHandlesWhenDomReady(hiddenHandles) {
+    const normalizedHiddenHandles = mergeUniqueStringArrays(hiddenHandles, []);
+    if (document.readyState !== "loading") {
+      applyHiddenHandlesToDom(normalizedHiddenHandles);
+      return;
+    }
+    document.addEventListener(
+      "DOMContentLoaded",
+      () => {
+        applyHiddenHandlesToDom(normalizedHiddenHandles);
+      },
+      { once: true },
+    );
+  }
+
   function hideCardForHandle(handle) {
+    const removedCards = [];
     for (const anchor of document.querySelectorAll("a[href*='/products/']")) {
       const anchorHandle = extractHandleFromUrl(anchor.getAttribute("href") || "");
       if (anchorHandle !== handle) {
@@ -565,9 +669,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         anchor.closest("li") ||
         anchor;
       if (card instanceof HTMLElement) {
-        card.style.display = "none";
+        removedCards.push(card);
+        card.remove();
       }
     }
+    if (removedCards.length) {
+      debugLog("card(s) removed for hidden handle", {
+        handle,
+        removedCards: removedCards.length,
+      });
+      try { window.dispatchEvent(new Event("resize")); } catch {}
+      return;
+    }
+    debugLog("no matching product cards found for hidden handle", { handle });
   }
 
   function blockCurrentProductPage(handle) {
@@ -606,6 +720,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       document.querySelector("#MainContent") ||
       document.body;
     target?.prepend(banner);
+    debugLog("blocked current product page", {
+      handle,
+      currentHandle,
+      bannerInserted: true,
+    });
   }
 
   function resolveCartQuantityNoticeHost() {
@@ -1043,6 +1162,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       if (!parsed || typeof parsed !== "object") {
         return null;
       }
+      if (Number(parsed.cacheVersion) !== RULES_CACHE_VERSION) {
+        return null;
+      }
       const fetchedAt = Number(parsed.fetchedAt);
       if (
         !Number.isFinite(fetchedAt) ||
@@ -1052,6 +1174,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
       const customerScope = String(parsed.customerScope || "");
       if (customerScope !== String(loggedInCustomerId || "")) {
+        return null;
+      }
+      const customerTagsScope = String(parsed.customerTagsScope || "");
+      if (customerTagsScope !== loggedInCustomerTagsScope) {
         return null;
       }
       return {
@@ -1090,7 +1216,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       window.sessionStorage.setItem(
         RULES_CACHE_KEY,
         JSON.stringify({
+          cacheVersion: RULES_CACHE_VERSION,
           customerScope: String(loggedInCustomerId || ""),
+          customerTagsScope: loggedInCustomerTagsScope,
           fetchedAt: Date.now(),
           configVersion: input.configVersion || null,
           allowRemoveAtMinimumOrderQuantity:
@@ -1105,29 +1233,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   function persistRulesCache(hiddenHandles) {
-    const cached = readRulesCache();
-    const canReuseCachedHiddenHandles =
-      !cached ||
-      !cached.configVersion ||
-      !state.rulesConfigVersion ||
-      cached.configVersion === state.rulesConfigVersion;
-    const mergedHiddenHandles = mergeUniqueStringArrays(
-      canReuseCachedHiddenHandles &&
-        cached &&
-        Array.isArray(cached.hiddenHandles)
-        ? cached.hiddenHandles
-        : [],
-      hiddenHandles,
-    );
+    const normalizedHiddenHandles = mergeUniqueStringArrays(hiddenHandles, []);
     writeRulesCache({
       configVersion: state.rulesConfigVersion,
       allowRemoveAtMinimumOrderQuantity: state.allowRemoveAtMinimumOrderQuantity,
       quantityConstraintsByHandle: state.quantityConstraintsByHandle,
       quantityConstraintsByProductId: state.quantityConstraintsByProductId,
       variantVisibilityByProductId: state.variantVisibilityByProductId,
-      hiddenHandles: mergedHiddenHandles,
+      hiddenHandles: normalizedHiddenHandles,
     });
-    return mergedHiddenHandles;
+    return normalizedHiddenHandles;
   }
 
   function hydrateRulesFromCache() {
@@ -1150,10 +1265,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       cached.variantVisibilityByProductId,
     );
     const hiddenHandles = mergeUniqueStringArrays(cached.hiddenHandles, []);
-    for (const handle of hiddenHandles) {
-      hideCardForHandle(handle);
-      blockCurrentProductPage(handle);
-    }
+    applyHiddenHandlesWhenDomReady(hiddenHandles);
     enforceCurrentProductQuantityRule();
     syncCartQuantityInputs(state.quantityConstraintsByHandle);
     scheduleCurrentProductVariantVisibilitySync();
@@ -4372,6 +4484,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   function hideCollectionCardForHandle(handle) {
     var selector = "a[href*='/collections/" + handle + "']";
     var anchors = document.querySelectorAll(selector);
+    var removed = false;
     for (var i = 0; i < anchors.length; i++) {
       var anchor = anchors[i];
       var card =
@@ -4386,8 +4499,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         anchor.closest("li") ||
         anchor;
       if (card instanceof HTMLElement) {
-        card.style.display = "none";
+        card.remove();
+        removed = true;
       }
+    }
+    if (removed) {
+      try { window.dispatchEvent(new Event("resize")); } catch {}
     }
   }
 

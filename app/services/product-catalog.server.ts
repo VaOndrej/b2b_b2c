@@ -614,6 +614,32 @@ export async function getCatalogVariantMapByIds(ids: string[]) {
   );
 }
 
+export async function getCatalogCollectionMapByIds(ids: string[]) {
+  const normalized = Array.from(new Set(ids.map((id) => normalizeString(id)).filter(Boolean)));
+  if (normalized.length === 0) {
+    return {} as Record<string, { title: string; handle: string | null }>;
+  }
+
+  const collections = await db().catalogCollection.findMany({
+    where: {
+      OR: [
+        { shopifyCollectionId: { in: normalized } },
+        { externalKey: { in: normalized } },
+      ],
+    },
+  });
+
+  return Object.fromEntries(
+    collections.map((collection) => [
+      collection.shopifyCollectionId ?? collection.externalKey,
+      {
+        title: collection.title,
+        handle: collection.handle,
+      },
+    ]),
+  );
+}
+
 export async function searchImportedCatalogCollections(query: string, limit: number) {
   const normalized = normalizeString(query).toLowerCase();
   const collections = await db().catalogCollection.findMany({

@@ -4,6 +4,12 @@ import prisma from "../../../app/db.server.ts";
 import { selectAutoScenarioProductIds } from "./scenario-selection.ts";
 
 const DEFAULT_STOREFRONT_BASE_URL = "https://b2b-b2c-store-development.myshopify.com";
+const DEFAULT_SCENARIO_FALLBACK_HANDLES = {
+  visibility: null,
+  step: null,
+  max: null,
+  variant: "the-complete-snowboard",
+} as const;
 
 function parseDotenv(content: string): Record<string, string> {
   const values: Record<string, string> = {};
@@ -62,7 +68,8 @@ export type ShopifyE2ERuntime =
       storefrontBaseUrl: string;
       scenarioHandles: {
         visibility: string;
-        quantity: string;
+        step: string;
+        max: string;
         variant: string | null;
       };
       storefrontPassword: string | null;
@@ -79,7 +86,8 @@ interface ShopifyE2ERuntimeConfig {
   storefrontPassword: string | null;
   handleOverrides: {
     visibility: string | null;
-    quantity: string | null;
+    step: string | null;
+    max: string | null;
     variant: string | null;
   };
 }
@@ -89,6 +97,25 @@ interface ShopifyAdminProductNode {
   handle: string;
 }
 
+interface StorefrontProductJsonPayload {
+  handle?: unknown;
+  variants?: Array<{ id?: unknown }> | null;
+}
+
+export interface StorefrontHandlePreflightInput {
+  storefrontBaseUrl: string;
+  storefrontPassword: string | null;
+  handle: string | null;
+  requireVariants?: boolean;
+}
+
+export interface StorefrontHandlePreflightResult {
+  ok: boolean;
+  normalizedHandle: string | null;
+  variantCount: number;
+  reason: string | null;
+}
+
 export function resolveShopifyE2ERuntimeConfig(): ShopifyE2ERuntimeConfig {
   return {
     storefrontBaseUrl: normalizeBaseUrl(
@@ -96,7 +123,8 @@ export function resolveShopifyE2ERuntimeConfig(): ShopifyE2ERuntimeConfig {
     ),
     handleOverrides: {
       visibility: readEnvValue("SHOPIFY_E2E_PRODUCT_HANDLE_VISIBILITY") || null,
-      quantity: readEnvValue("SHOPIFY_E2E_PRODUCT_HANDLE_QUANTITY") || null,
+      step: readEnvValue("SHOPIFY_E2E_PRODUCT_HANDLE_STEP") || null,
+      max: readEnvValue("SHOPIFY_E2E_PRODUCT_HANDLE_MAX") || null,
       variant: readEnvValue("SHOPIFY_E2E_PRODUCT_HANDLE_VARIANT") || null,
     },
     storefrontPassword: readEnvValue("SHOPIFY_E2E_STOREFRONT_PASSWORD") || null,
@@ -106,6 +134,139 @@ export function resolveShopifyE2ERuntimeConfig(): ShopifyE2ERuntimeConfig {
 function normalizeHandle(rawValue: string | null | undefined): string | null {
   const normalized = String(rawValue ?? "").trim().toLowerCase();
   return normalized || null;
+}
+
+function splitSetCookieHeader(value: string | null): string[] {
+  if (!value) {
+    return [];
+  }
+  return value
+    .split(/,(?=[^;,=\s]+=[^;,]+)/u)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function buildStorefrontUrl(baseUrl: string, path: string): string {
+  return new URL(path, `${baseUrl.replace(/\/+$/u, "")}/`).toString();
+}
+
+async function resolveStorefrontPreflightCookieHeader(
+  baseUrl: string,
+  password: string | null,
+): Promise<string | null> {
+  const normalizedPassword = String(password ?? "").trim();
+  if (!normalizedPassword) {
+    return null;
+  }
+
+  const response = await fetch(buildStorefrontUrl(baseUrl, "/password"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    redirect: "manual",
+    body: new URLSearchParams({
+      form_type: "storefront_password",
+      utf8: "✓",
+      password: normalizedPassword,
+    }).toString(),
+  });
+
+  const headerBag = response.headers as Headers & {
+    getSetCookie?: () => string[];
+  };
+  const rawCookies =
+    typeof headerBag.getSetCookie === "function"
+      ? headerBag.getSetCookie()
+      : splitSetCookieHeader(response.headers.get("set-cookie"));
+
+  const cookieHeader = rawCookies
+    .map((cookie) => String(cookie).split(";", 1)[0]?.trim() ?? "")
+    .filter(Boolean)
+    .join("; ");
+
+  return cookieHeader || null;
+}
+
+export async function preflightStorefrontHandle(
+  input: StorefrontHandlePreflightInput,
+): Promise<StorefrontHandlePreflightResult> {
+  const normalizedHandle = normalizeHandle(input.handle);
+  if (!normalizedHandle) {
+    return {
+      ok: false,
+      normalizedHandle: null,
+      variantCount: 0,
+      reason: "Missing storefront handle.",
+    };
+  }
+
+  try {
+    const cookieHeader = await resolveStorefrontPreflightCookieHeader(
+      input.storefrontBaseUrl,
+      input.storefrontPassword,
+    );
+    const headers = cookieHeader ? { Cookie: cookieHeader } : undefined;
+    const response = await fetch(
+      buildStorefrontUrl(
+        input.storefrontBaseUrl,
+        `/products/${encodeURIComponent(normalizedHandle)}.js`,
+      ),
+      {
+        headers,
+        redirect: "follow",
+      },
+    );
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        normalizedHandle,
+        variantCount: 0,
+        reason: `Storefront product.js returned HTTP ${response.status}.`,
+      };
+    }
+
+    const payload = (await response.json()) as StorefrontProductJsonPayload | null;
+    const payloadHandle =
+      typeof payload?.handle === "string" ? normalizeHandle(payload.handle) : null;
+    const variants = Array.isArray(payload?.variants) ? payload.variants : [];
+
+    if (payloadHandle && payloadHandle !== normalizedHandle) {
+      return {
+        ok: false,
+        normalizedHandle,
+        variantCount: variants.length,
+        reason: `Storefront resolved handle ${payloadHandle} instead of ${normalizedHandle}.`,
+      };
+    }
+
+    if (input.requireVariants && variants.length === 0) {
+      return {
+        ok: false,
+        normalizedHandle,
+        variantCount: 0,
+        reason: "Storefront product does not expose variants.",
+      };
+    }
+
+    return {
+      ok: true,
+      normalizedHandle,
+      variantCount: variants.length,
+      reason: null,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      normalizedHandle,
+      variantCount: 0,
+      reason:
+        error instanceof Error
+          ? error.message
+          : "Unknown storefront preflight failure.",
+    };
+  }
 }
 
 function buildAdminApiUrl(shop: string): string {
@@ -176,7 +337,8 @@ async function fetchAdminProductHandlesById(input: {
 
 async function resolveAutoScenarioHandles(config: ShopifyE2ERuntimeConfig): Promise<{
   visibility: string | null;
-  quantity: string | null;
+  step: string | null;
+  max: string | null;
   variant: string | null;
 }> {
   const visibilityRules = await prisma.productVisibilityRule.findMany({
@@ -230,7 +392,8 @@ async function resolveAutoScenarioHandles(config: ShopifyE2ERuntimeConfig): Prom
     new Set(
       [
         config.handleOverrides.visibility ? null : selectedProductIds.visibility,
-        config.handleOverrides.quantity ? null : selectedProductIds.quantity,
+        config.handleOverrides.step ? null : selectedProductIds.step,
+        config.handleOverrides.max ? null : selectedProductIds.max,
         config.handleOverrides.variant ? null : selectedProductIds.variant,
       ].filter((value): value is string => Boolean(value)),
     ),
@@ -239,7 +402,8 @@ async function resolveAutoScenarioHandles(config: ShopifyE2ERuntimeConfig): Prom
   if (productIdsToResolve.length === 0) {
     return {
       visibility: config.handleOverrides.visibility,
-      quantity: config.handleOverrides.quantity,
+      step: config.handleOverrides.step,
+      max: config.handleOverrides.max,
       variant: config.handleOverrides.variant,
     };
   }
@@ -271,22 +435,85 @@ async function resolveAutoScenarioHandles(config: ShopifyE2ERuntimeConfig): Prom
     productIds: productIdsToResolve,
   });
 
-  return {
+  const resolvedHandles = {
     visibility:
       config.handleOverrides.visibility ??
       (selectedProductIds.visibility
         ? normalizeHandle(handlesByProductId[selectedProductIds.visibility])
         : null),
-    quantity:
-      config.handleOverrides.quantity ??
-      (selectedProductIds.quantity
-        ? normalizeHandle(handlesByProductId[selectedProductIds.quantity])
+    step:
+      config.handleOverrides.step ??
+      (selectedProductIds.step
+        ? normalizeHandle(handlesByProductId[selectedProductIds.step])
+        : null),
+    max:
+      config.handleOverrides.max ??
+      (selectedProductIds.max
+        ? normalizeHandle(handlesByProductId[selectedProductIds.max])
         : null),
     variant:
       config.handleOverrides.variant ??
       (selectedProductIds.variant
         ? normalizeHandle(handlesByProductId[selectedProductIds.variant])
         : null),
+  };
+
+  async function resolveHandleWithFallback(input: {
+    preferredHandle: string | null;
+    fallbackHandle: string | null;
+    requireVariants?: boolean;
+    preserveExplicitOverride: boolean;
+  }): Promise<string | null> {
+    if (input.preserveExplicitOverride) {
+      return input.preferredHandle;
+    }
+
+    const preferred = await preflightStorefrontHandle({
+      storefrontBaseUrl: config.storefrontBaseUrl,
+      storefrontPassword: config.storefrontPassword,
+      handle: input.preferredHandle,
+      requireVariants: input.requireVariants,
+    });
+    if (preferred.ok) {
+      return preferred.normalizedHandle;
+    }
+
+    const normalizedFallback = normalizeHandle(input.fallbackHandle);
+    if (!normalizedFallback || normalizedFallback === preferred.normalizedHandle) {
+      return null;
+    }
+
+    const fallback = await preflightStorefrontHandle({
+      storefrontBaseUrl: config.storefrontBaseUrl,
+      storefrontPassword: config.storefrontPassword,
+      handle: normalizedFallback,
+      requireVariants: input.requireVariants,
+    });
+    return fallback.ok ? fallback.normalizedHandle : null;
+  }
+
+  return {
+    visibility: await resolveHandleWithFallback({
+      preferredHandle: resolvedHandles.visibility,
+      fallbackHandle: DEFAULT_SCENARIO_FALLBACK_HANDLES.visibility,
+      preserveExplicitOverride: Boolean(config.handleOverrides.visibility),
+    }),
+    step: await resolveHandleWithFallback({
+      preferredHandle: resolvedHandles.step,
+      fallbackHandle: DEFAULT_SCENARIO_FALLBACK_HANDLES.step,
+      preserveExplicitOverride: Boolean(config.handleOverrides.step),
+    }),
+    max: await resolveHandleWithFallback({
+      preferredHandle: resolvedHandles.max,
+      fallbackHandle: DEFAULT_SCENARIO_FALLBACK_HANDLES.max,
+      preserveExplicitOverride: Boolean(config.handleOverrides.max),
+    }),
+    variant: await resolveHandleWithFallback({
+      preferredHandle: resolvedHandles.variant,
+      fallbackHandle: DEFAULT_SCENARIO_FALLBACK_HANDLES.variant,
+      requireVariants: true,
+      preserveExplicitOverride: Boolean(config.handleOverrides.variant),
+    }),
   };
 }
 
@@ -297,7 +524,8 @@ export async function resolveShopifyE2ERuntime(): Promise<ShopifyE2ERuntime> {
     const scenarioHandles = await resolveAutoScenarioHandles(config);
     const missingScenarioNames = [
       !scenarioHandles.visibility ? "visibility" : null,
-      !scenarioHandles.quantity ? "quantity" : null,
+      !scenarioHandles.step ? "step" : null,
+      !scenarioHandles.max ? "max" : null,
     ].filter((value): value is string => Boolean(value));
 
     if (missingScenarioNames.length > 0) {
@@ -312,7 +540,8 @@ export async function resolveShopifyE2ERuntime(): Promise<ShopifyE2ERuntime> {
     }
 
     const visibilityHandle = scenarioHandles.visibility!;
-    const quantityHandle = scenarioHandles.quantity!;
+    const stepHandle = scenarioHandles.step!;
+    const maxHandle = scenarioHandles.max!;
 
     return {
       enabled: true,
@@ -320,7 +549,8 @@ export async function resolveShopifyE2ERuntime(): Promise<ShopifyE2ERuntime> {
       storefrontPassword: config.storefrontPassword,
       scenarioHandles: {
         visibility: visibilityHandle,
-        quantity: quantityHandle,
+        step: stepHandle,
+        max: maxHandle,
         variant: scenarioHandles.variant,
       },
     };

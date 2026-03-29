@@ -26,6 +26,7 @@ const MARGIN_GUARD_CONFIG_INCLUDE = {
   productCustomerQuantityRules: { orderBy: orderByCreatedAtAndId() },
   productVisibilityRules: { orderBy: orderByCreatedAtAndId() },
   productVariantVisibilityRules: { orderBy: orderByCreatedAtAndId() },
+  collectionVisibilityRules: { orderBy: orderByCreatedAtAndId() },
   couponSegmentRules: { orderBy: orderByCreatedAtAndId() },
   discountRules: { orderBy: orderByCreatedAtAndId() },
   discountCombinationBlacklistRules: {
@@ -647,6 +648,153 @@ export async function upsertProductVisibilityRule(input: {
 export async function deleteProductVisibilityRule(id: string) {
   const db = getMarginGuardPrismaOrThrow();
   return db.productVisibilityRule.delete({ where: { id } });
+}
+
+export async function syncVisibilityHandlesMetafield(admin: {
+  graphql: (
+    query: string,
+    options?: { variables?: Record<string, unknown> },
+  ) => Promise<{ json(): Promise<any> }>;
+}) {
+  console.log("[syncVisibilityHandlesMetafield] called");
+  const db = getMarginGuardPrismaOrThrow();
+  const config = await db.marginGuardConfig.findUnique({
+    where: { id: DEFAULT_CONFIG_ID },
+    select: { b2bTag: true },
+  });
+  const rules = await db.productVisibilityRule.findMany({
+    where: { configId: DEFAULT_CONFIG_ID },
+  });
+  console.log("[syncVisibilityHandlesMetafield] found", rules.length, "visibility rules:", JSON.stringify(rules.map(r => ({ id: r.id, productId: r.productId, mode: r.visibilityMode }))));
+
+  const b2bOnlyProductIds = rules
+    .filter((r) => r.visibilityMode === "B2B_ONLY")
+    .map((r) => r.productId.trim())
+    .filter(Boolean);
+  const b2cOnlyProductIds = rules
+    .filter((r) => r.visibilityMode === "B2C_ONLY")
+    .map((r) => r.productId.trim())
+    .filter(Boolean);
+  console.log("[syncVisibilityHandlesMetafield] b2bOnlyProductIds:", b2bOnlyProductIds, "b2cOnlyProductIds:", b2cOnlyProductIds);
+
+  const resolveHandles = async (productIds: string[]): Promise<string[]> => {
+    if (!productIds.length) return [];
+    const handles: string[] = [];
+    const chunkSize = 25;
+    for (let i = 0; i < productIds.length; i += chunkSize) {
+      const chunk = productIds.slice(i, i + chunkSize);
+      const queryParts = chunk.map((id) => {
+        const numericId = id.replace(/^gid:\/\/shopify\/Product\//, "");
+        return `(id:${numericId})`;
+      }).join(" OR ");
+      console.log("[syncVisibilityHandlesMetafield] GraphQL query:", queryParts);
+      try {
+        const response = await admin.graphql(
+          `#graphql
+            query ProductHandlesByIds($query: String!, $first: Int!) {
+              products(first: $first, query: $query) {
+                nodes { handle }
+              }
+            }`,
+          { variables: { first: chunk.length, query: queryParts } },
+        );
+        const payload = await response.json();
+        console.log("[syncVisibilityHandlesMetafield] GraphQL response:", JSON.stringify(payload?.data?.products));
+        for (const node of payload?.data?.products?.nodes ?? []) {
+          const handle = String(node?.handle ?? "").trim().toLowerCase();
+          if (handle) handles.push(handle);
+        }
+      } catch (err) {
+        console.error("[syncVisibilityHandlesMetafield] GraphQL error:", err);
+      }
+    }
+    return handles;
+  };
+
+  const [b2bHandles, b2cHandles] = await Promise.all([
+    resolveHandles(b2bOnlyProductIds),
+    resolveHandles(b2cOnlyProductIds),
+  ]);
+
+  const metafieldValue = JSON.stringify({
+    b2b: [...new Set(b2bHandles)],
+    b2c: [...new Set(b2cHandles)],
+    b2bTag: String(config?.b2bTag ?? "b2b").trim().toLowerCase() || "b2b",
+  });
+
+  const shopResponse = await admin.graphql(
+    `#graphql
+      query ShopId {
+        shop { id }
+      }`,
+  );
+  const shopPayload = await shopResponse.json();
+  const shopId = shopPayload?.data?.shop?.id;
+  if (!shopId) return;
+
+  // Ensure metafield definition exists with storefront access so Liquid can read it
+  try {
+    const defResponse = await admin.graphql(
+      `#graphql
+        mutation MetafieldDefinitionCreate($definition: MetafieldDefinitionInput!) {
+          metafieldDefinitionCreate(definition: $definition) {
+            createdDefinition { id }
+            userErrors { field message code }
+          }
+        }`,
+      {
+        variables: {
+          definition: {
+            name: "Hidden Handles",
+            namespace: "margin_guard",
+            key: "hidden_handles",
+            type: "json",
+            ownerType: "SHOP",
+            access: {
+              storefront: "PUBLIC_READ",
+            },
+          },
+        },
+      },
+    );
+    const defResult = await defResponse.json();
+    const defErrors = defResult?.data?.metafieldDefinitionCreate?.userErrors ?? [];
+    if (defErrors.length > 0 && defErrors[0]?.code !== "TAKEN") {
+      console.error("[syncVisibilityHandlesMetafield] definition error:", JSON.stringify(defErrors));
+    }
+  } catch (e) {
+    console.error("[syncVisibilityHandlesMetafield] metafield definition error:", e);
+  }
+
+  const metafieldResponse = await admin.graphql(
+    `#graphql
+      mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          metafields { id namespace key }
+          userErrors { field, message }
+        }
+      }`,
+    {
+      variables: {
+        metafields: [
+          {
+            namespace: "margin_guard",
+            key: "hidden_handles",
+            ownerId: shopId,
+            type: "json",
+            value: metafieldValue,
+          },
+        ],
+      },
+    },
+  );
+  const metafieldResult = await metafieldResponse.json();
+  const userErrors = metafieldResult?.data?.metafieldsSet?.userErrors ?? [];
+  if (userErrors.length > 0) {
+    console.error("[syncVisibilityHandlesMetafield] userErrors:", JSON.stringify(userErrors));
+  } else {
+    console.log("[syncVisibilityHandlesMetafield] synced:", metafieldValue);
+  }
 }
 
 export async function upsertProductVariantVisibilityRule(input: {

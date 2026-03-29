@@ -50,6 +50,29 @@ function normalizeCustomerId(value: string | null): string | null {
   return normalized;
 }
 
+function normalizeTag(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function parseLoggedInCustomerTags(value: string | null): string[] {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(normalized);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.map(normalizeTag).filter(Boolean);
+  } catch {
+    return normalized
+      .split(",")
+      .map(normalizeTag)
+      .filter(Boolean);
+  }
+}
+
 interface AdminGraphqlClient {
   graphql: (
     query: string,
@@ -75,9 +98,39 @@ async function resolveVisibilitySegment(input: {
   admin: AdminGraphqlClient | undefined;
   customerId: string | null;
   b2bTag: string;
-}): Promise<Segment> {
+  customerTagsHint: string[];
+}): Promise<{
+  segment: Segment;
+  source: "hint_tags" | "admin_tags" | "missing_customer" | "missing_admin" | "fallback";
+  expectedTag: string;
+  normalizedTags: string[];
+}> {
+  const expectedTag = normalizeTag(input.b2bTag || "b2b") || "b2b";
+
   if (!input.customerId || !input.admin) {
-    return "B2C";
+    if (input.customerTagsHint.includes(expectedTag)) {
+      return {
+        segment: "B2B",
+        source: "hint_tags",
+        expectedTag,
+        normalizedTags: input.customerTagsHint,
+      };
+    }
+    return {
+      segment: "B2C",
+      source: input.customerId ? "missing_admin" : "missing_customer",
+      expectedTag,
+      normalizedTags: input.customerTagsHint,
+    };
+  }
+
+  if (input.customerTagsHint.includes(expectedTag)) {
+    return {
+      segment: "B2B",
+      source: "hint_tags",
+      expectedTag,
+      normalizedTags: input.customerTagsHint,
+    };
   }
 
   try {
@@ -98,13 +151,20 @@ async function resolveVisibilitySegment(input: {
     const tags = Array.isArray(payload?.data?.customer?.tags)
       ? payload.data.customer.tags
       : [];
-    const expectedTag = input.b2bTag.trim().toLowerCase() || "b2b";
-    const normalizedTags = tags.map((tag: unknown) =>
-      String(tag ?? "").trim().toLowerCase(),
-    );
-    return normalizedTags.includes(expectedTag) ? "B2B" : "B2C";
+    const normalizedTags = tags.map(normalizeTag).filter(Boolean);
+    return {
+      segment: normalizedTags.includes(expectedTag) ? "B2B" : "B2C",
+      source: "admin_tags",
+      expectedTag,
+      normalizedTags,
+    };
   } catch {
-    return "B2C";
+    return {
+      segment: "B2C",
+      source: "fallback",
+      expectedTag,
+      normalizedTags: input.customerTagsHint,
+    };
   }
 }
 
@@ -116,11 +176,16 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
     const productIds = parseProductIds(url.searchParams.get("product_ids"));
     const config = await deps.getOrCreateMarginGuardConfig();
     const customerId = normalizeCustomerId(url.searchParams.get("logged_in_customer_id"));
-    const segment = await resolveVisibilitySegment({
+    const customerTagsHint = parseLoggedInCustomerTags(
+      url.searchParams.get("logged_in_customer_tags"),
+    );
+    const segmentResolution = await resolveVisibilitySegment({
       admin,
       customerId,
       b2bTag: config.b2bTag,
+      customerTagsHint,
     });
+    const segment = segmentResolution.segment;
     const visibility = await deps.resolveStorefrontVisibilityByHandles({
       admin,
       handles,
@@ -176,6 +241,13 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
         segment,
         customerId: customerId ?? null,
         b2bTag: config.b2bTag,
+        segmentDebug: {
+          source: segmentResolution.source,
+          expectedTag: segmentResolution.expectedTag,
+          normalizedTags: segmentResolution.normalizedTags,
+          customerTagsHint,
+          hasAdminClient: Boolean(admin),
+        },
         allowRemoveAtMinimumOrderQuantity:
           config.allowRemoveAtMinimumOrderQuantity !== false,
         configUpdatedAt: config.updatedAt,
