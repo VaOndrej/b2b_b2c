@@ -428,7 +428,7 @@ export default function StorefrontUxRoute() {
               <strong>Product catalog not imported.</strong> Collection pickers
               and content rules require imported products and collections. Go to{" "}
               <a
-                href="/app/settings?area=global&section=global"
+                href="/app/settings/global?section=global"
                 style={{
                   color: "#005bd3",
                   fontWeight: 600,
@@ -455,7 +455,7 @@ export default function StorefrontUxRoute() {
             >
               Collection visibility moved into{" "}
               <a
-                href="/app/settings?area=catalog-rules&section=products&view=collection-visibility"
+                href="/app/settings/catalog-rules?section=products&view=collection-visibility"
                 style={{
                   color: "#005bd3",
                   fontWeight: 600,
@@ -491,10 +491,9 @@ export default function StorefrontUxRoute() {
               {showContentForm && (
                 <div style={{ ...cardStyle, borderColor: "#07213a" }}>
                   <h3 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: 600 }}>
-                    {editingContentRule ? "Edit rule" : "New content rule"}
+                    New content rule
                   </h3>
                   <ContentRuleForm
-                    rule={editingContentRule}
                     isSubmitting={isSubmitting}
                     onCancel={() => {
                       setShowContentForm(false);
@@ -559,11 +558,11 @@ export default function StorefrontUxRoute() {
                           type="button"
                           onClick={() => {
                             setEditingContentRule(rule);
-                            setShowContentForm(true);
+                            setShowContentForm(false);
                           }}
                           style={secondaryButtonStyle}
                         >
-                          Edit
+                          Modify
                         </button>
                         <form method="post" style={{ margin: 0 }}>
                           <input type="hidden" name="intent" value="delete-content-rule" />
@@ -574,6 +573,20 @@ export default function StorefrontUxRoute() {
                         </form>
                       </div>
                     </div>
+                    {editingContentRule?.id === rule.id && (
+                      <div style={{ ...cardStyle, marginTop: "12px", borderColor: "#005bd3", background: "#f8fbff" }}>
+                        <h3 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: 600 }}>
+                          Modify {rule.name}
+                        </h3>
+                        <ContentRuleForm
+                          rule={editingContentRule}
+                          isSubmitting={isSubmitting}
+                          onCancel={() => {
+                            setEditingContentRule(null);
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 ))
               )}

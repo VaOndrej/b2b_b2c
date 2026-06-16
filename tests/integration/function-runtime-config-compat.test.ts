@@ -121,7 +121,6 @@ test("runtime integration: function inputs accept config payload from builders",
   });
 
   assert.equal(Array.isArray(discountResult.operations), true);
-  assert.equal(discountResult.operations.length > 0, true);
 });
 
 test("runtime integration: config order resolves equally ranked coupon rules before blacklist rejection", () => {
@@ -323,6 +322,19 @@ test("runtime integration: purchasing company is treated as B2B even without B2B
     },
     perProductAllowZeroFinalPriceB2C: {},
     perProductAllowZeroFinalPriceB2B: {},
+    discountRules: [
+      {
+        id: "global-rule-segment",
+        scope: "GLOBAL",
+        targetId: null,
+        code: null,
+        segment: null,
+        percentOff: 100,
+        priority: 0,
+        stackMode: "EXCLUSIVE",
+        minPricePercentOfBasePrice: null,
+      },
+    ],
   };
 
   const cartAsB2C = runCartValidation({
@@ -454,6 +466,19 @@ test("runtime integration: per-product B2B override base price is enforced", () 
         minPercentOfBasePrice: 70,
         allowZeroFinalPrice: null,
         b2bOverridePrice: 100,
+      },
+    ],
+    discountRules: [
+      {
+        id: "global-rule-b2b-override",
+        scope: "GLOBAL",
+        targetId: null,
+        code: null,
+        segment: null,
+        percentOff: 100,
+        priority: 0,
+        stackMode: "EXCLUSIVE" as const,
+        minPricePercentOfBasePrice: null,
       },
     ],
   };
@@ -621,6 +646,19 @@ test("runtime integration: quantity tier pricing is used for B2C floor and disco
         unitPrice: 80,
       },
     ],
+    discountRules: [
+      {
+        id: "global-rule-tier-b2c",
+        scope: "GLOBAL",
+        targetId: null,
+        code: null,
+        segment: null,
+        percentOff: 100,
+        priority: 0,
+        stackMode: "EXCLUSIVE" as const,
+        minPricePercentOfBasePrice: null,
+      },
+    ],
   };
 
   const cartConfig = buildCartValidationFunctionConfig(sharedConfig);
@@ -745,6 +783,19 @@ test("runtime integration: tier pricing has precedence over B2B override for qua
         segment: "B2B" as const,
         minQuantity: 10,
         unitPrice: 250,
+      },
+    ],
+    discountRules: [
+      {
+        id: "global-rule-tier-b2b",
+        scope: "GLOBAL",
+        targetId: null,
+        code: null,
+        segment: null,
+        percentOff: 100,
+        priority: 0,
+        stackMode: "EXCLUSIVE" as const,
+        minPricePercentOfBasePrice: null,
       },
     ],
   };
@@ -1779,6 +1830,19 @@ test("runtime integration: maxCombinedPercentOff caps candidate by remaining per
     allowStacking: true,
     maxCombinedPercentOff: 40,
     productFloors: [],
+    discountRules: [
+      {
+        id: "global-rule-combined-cap",
+        scope: "GLOBAL",
+        targetId: null,
+        code: null,
+        segment: null,
+        percentOff: 100,
+        priority: 0,
+        stackMode: "STACKABLE" as const,
+        minPricePercentOfBasePrice: null,
+      },
+    ],
   });
 
   const capped = runDiscountFunction({

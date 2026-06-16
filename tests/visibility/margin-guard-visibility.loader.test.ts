@@ -19,6 +19,7 @@ function stubConfig(): MarginGuardConfig {
     allowRemoveAtMinimumOrderQuantity: true,
     allowStacking: false,
     maxCombinedPercentOff: null,
+    marginGuardEnabled: true,
     cartValidationStatus: "UNKNOWN",
     cartValidationLastError: null,
     cartValidationLastSyncAt: null,

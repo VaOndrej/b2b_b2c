@@ -137,6 +137,19 @@ MVP_5 – Segmented Storefront (UX Layer)
 MVP_5_0_1:
     Nefunguje správné schovváání produktů, je tam krátky flash po otevření stránky.
 
+MVP_5_0_2:
+    Produkt z carouselu zmizí správně tak jak má, pokud mám nastavené visibility pravidlo, ale 
+    Globální metafields pro všechno co jde, aby nedocházelo nikde k problikávání
+    Konkrétně: projektovat segmentově bezpečná storefront pravidla do shop metafieldu margin_guard.storefront_projection,
+    aby je Liquid embed mohl použít hned při renderu theme. Do metafieldu patří B2B/B2C product visibility,
+    collection visibility, product quantity pravidla, variant visibility, B2B tag a bootstrap metadata.
+    Runtime-only zůstává všechno, co je customer-specific nebo potřebuje kontext, který nejde bezpečně předpočítat.
+    Technický dluh a zbývající ověření: viz MVP_5_0_2_TECHNICAL_DEBT.md
+
+---- ROZPRACOVANO ------
+MVP_5_0_3:
+    Když vím, že nějaký produkt má automatickou slevu na něco, a vím, že v margin guardu má taky slevu, a v checkoutu by to spolu neprošlo, tak na to rovnou upozornit už v adminovi
+    Přeci jenom, pokud si takový produkt přidám do košíku a sleva je aktivní, tak to chci v tom košíku znázornit
 
 MVP_5_1:
  ├─Search hledání nefunguje - pokud nemám naimportované žádné kolekce nebo produkty - přidat warning, pokud tohle není udělané.

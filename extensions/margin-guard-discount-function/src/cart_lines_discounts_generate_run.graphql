@@ -3,6 +3,17 @@ query CartInput(
   $collectionIds: [ID!]
 ) {
   cart {
+    cost {
+      subtotalAmount {
+        amount
+      }
+      totalAmount {
+        amount
+      }
+      totalTaxAmount {
+        amount
+      }
+    }
     buyerIdentity {
       purchasingCompany {
         company {

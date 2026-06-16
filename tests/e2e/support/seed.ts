@@ -7,6 +7,73 @@ import {
   upsertProductVariantVisibilityRule,
   upsertProductVisibilityRule,
 } from "../../../app/services/margin-guard-config.server.ts";
+import { upsertCollectionVisibilityRule } from "../../../app/services/storefront-content.server.ts";
+import { syncStorefrontProjectionMetafields } from "../../../app/services/storefront-projection.server.ts";
+
+const E2E_ADMIN_API_VERSION = "2026-04";
+
+interface OfflineAdminClient {
+  graphql: (
+    query: string,
+    options?: { variables?: Record<string, unknown> },
+  ) => Promise<{ json(): Promise<unknown> }>;
+}
+
+/**
+ * Builds an Admin GraphQL client from the offline Shopify session stored in
+ * Prisma. Collection visibility is projected ONLY through the
+ * `margin_guard.storefront_projection` shop metafield (the runtime app-proxy
+ * payload does not carry hidden collections), so storefront E2E for collection
+ * hiding must push that metafield to the live shop before asserting. Returns
+ * null when no offline session is available, letting the caller skip.
+ */
+async function buildOfflineAdminClient(): Promise<OfflineAdminClient | null> {
+  const session = await prisma.session.findFirst({
+    where: { isOnline: false },
+    orderBy: { id: "asc" },
+    select: { shop: true, accessToken: true },
+  });
+
+  if (!session?.shop || !session?.accessToken) {
+    return null;
+  }
+
+  const endpoint = `https://${session.shop}/admin/api/${E2E_ADMIN_API_VERSION}/graphql.json`;
+  return {
+    graphql: async (query, options) => {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": session.accessToken,
+        },
+        body: JSON.stringify({
+          query,
+          variables: options?.variables ?? {},
+        }),
+      });
+      return { json: () => response.json() };
+    },
+  };
+}
+
+/**
+ * Re-projects the current Prisma config into the live shop's storefront
+ * projection metafield. Call after restoring the config snapshot so the dev
+ * shop metafield matches the original DB state again.
+ */
+export async function resyncStorefrontProjectionForE2E(): Promise<boolean> {
+  const admin = await buildOfflineAdminClient();
+  if (!admin) {
+    return false;
+  }
+  try {
+    await syncStorefrontProjectionMetafields(admin);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 interface MarginGuardConfigSnapshot {
   globalConfig: {
@@ -50,6 +117,12 @@ interface MarginGuardConfigSnapshot {
     code: string;
     allowedSegment: string;
   }>;
+  collectionVisibilityRules: Array<{
+    collectionId: string;
+    collectionHandle: string;
+    collectionTitle: string | null;
+    visibilityMode: string;
+  }>;
 }
 
 let originalSnapshotPromise: Promise<MarginGuardConfigSnapshot> | null = null;
@@ -66,6 +139,7 @@ async function captureMarginGuardConfigSnapshot(): Promise<MarginGuardConfigSnap
       productVisibilityRules: true,
       productVariantVisibilityRules: true,
       couponSegmentRules: true,
+      collectionVisibilityRules: true,
     },
   });
 
@@ -96,6 +170,7 @@ async function captureMarginGuardConfigSnapshot(): Promise<MarginGuardConfigSnap
       productVisibilityRules: [],
       productVariantVisibilityRules: [],
       couponSegmentRules: [],
+      collectionVisibilityRules: [],
     };
   }
 
@@ -141,6 +216,12 @@ async function captureMarginGuardConfigSnapshot(): Promise<MarginGuardConfigSnap
       code: rule.code,
       allowedSegment: rule.allowedSegment,
     })),
+    collectionVisibilityRules: config.collectionVisibilityRules.map((rule) => ({
+      collectionId: rule.collectionId,
+      collectionHandle: rule.collectionHandle,
+      collectionTitle: rule.collectionTitle,
+      visibilityMode: rule.visibilityMode,
+    })),
   };
 }
 
@@ -181,6 +262,9 @@ export async function resetMarginGuardConfigForStorefrontE2E() {
   await prisma.couponSegmentRule.deleteMany({
     where: { configId: "default" },
   });
+  await prisma.collectionVisibilityRule.deleteMany({
+    where: { configId: "default" },
+  });
 }
 
 export async function restoreOriginalMarginGuardSnapshot() {
@@ -204,6 +288,9 @@ export async function restoreOriginalMarginGuardSnapshot() {
     where: { configId: "default" },
   });
   await prisma.couponSegmentRule.deleteMany({
+    where: { configId: "default" },
+  });
+  await prisma.collectionVisibilityRule.deleteMany({
     where: { configId: "default" },
   });
 
@@ -274,6 +361,18 @@ export async function restoreOriginalMarginGuardSnapshot() {
       },
     });
   }
+
+  for (const rule of snapshot.collectionVisibilityRules) {
+    await prisma.collectionVisibilityRule.create({
+      data: {
+        configId: "default",
+        collectionId: rule.collectionId,
+        collectionHandle: rule.collectionHandle,
+        collectionTitle: rule.collectionTitle,
+        visibilityMode: rule.visibilityMode,
+      },
+    });
+  }
 }
 
 export async function seedB2BOnlyVisibilityScenario(input: {
@@ -323,6 +422,59 @@ export async function seedMaxOrderQuantityScenario(input: {
     productId: input.productId,
     maxOrderQuantity: input.maxOrderQuantity,
   });
+}
+
+export async function seedCollectionVisibilityScenario(input: {
+  collectionHandle: string;
+}): Promise<{ seeded: boolean; collectionId: string | null }> {
+  const normalizedHandle = input.collectionHandle.trim().toLowerCase();
+  const snapshot = await ensureOriginalMarginGuardSnapshot();
+
+  const snapshotMatch = snapshot.collectionVisibilityRules.find(
+    (rule) => rule.collectionHandle.trim().toLowerCase() === normalizedHandle,
+  );
+
+  let collectionId = snapshotMatch?.collectionId ?? null;
+  let collectionTitle = snapshotMatch?.collectionTitle ?? null;
+
+  if (!collectionId) {
+    const catalogCollections = await prisma.catalogCollection.findMany({
+      select: { shopifyCollectionId: true, handle: true, title: true },
+    });
+    const catalogMatch = catalogCollections.find(
+      (collection) =>
+        String(collection.handle ?? "").trim().toLowerCase() === normalizedHandle,
+    );
+    collectionId = catalogMatch?.shopifyCollectionId ?? null;
+    collectionTitle = catalogMatch?.title ?? collectionTitle;
+  }
+
+  if (!collectionId) {
+    return { seeded: false, collectionId: null };
+  }
+
+  const admin = await buildOfflineAdminClient();
+  if (!admin) {
+    return { seeded: false, collectionId };
+  }
+
+  await resetMarginGuardConfigForStorefrontE2E();
+  await upsertCollectionVisibilityRule({
+    collectionId,
+    collectionHandle: normalizedHandle,
+    collectionTitle,
+    visibilityMode: "B2B_ONLY",
+  });
+
+  // Collection hiding is driven exclusively by the storefront_projection
+  // metafield (inline CSS), so push the projection to the live shop.
+  try {
+    await syncStorefrontProjectionMetafields(admin);
+  } catch {
+    return { seeded: false, collectionId };
+  }
+
+  return { seeded: true, collectionId };
 }
 
 export async function disconnectE2EPrisma() {

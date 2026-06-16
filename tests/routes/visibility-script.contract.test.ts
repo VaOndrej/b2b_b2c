@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 const VISIBILITY_SCRIPT_ROUTE_PATH = "app/routes/margin-guard.visibility-script.tsx";
 const LIQUID_EMBED_PATH = "extensions/margin-guard-storefront/blocks/margin_guard_visibility_embed.liquid";
 const CONFIG_SERVER_PATH = "app/services/margin-guard-config.server.ts";
+const STOREFRONT_PROJECTION_SERVER_PATH = "app/services/storefront-projection.server.ts";
 const SETTINGS_ACTION_PATH = "app/routes/app.settings.tsx";
 
 test("visibility script falls back to product.js productId for variant visibility payload bootstrap", async () => {
@@ -189,6 +190,36 @@ test("visibility script removes early-hide style after applying rules", async ()
   );
 });
 
+test("visibility script hydrates projected storefront rules before runtime fetch", async () => {
+  const source = await readFile(VISIBILITY_SCRIPT_ROUTE_PATH, "utf8");
+
+  assert.match(
+    source,
+    /function readStorefrontProjectionBootstrap\(\)/,
+    "Visibility script must define a reader for the inline storefront projection bootstrap payload.",
+  );
+  assert.match(
+    source,
+    /margin-guard-storefront-bootstrap/,
+    "Visibility script must reference the storefront bootstrap element ID.",
+  );
+  assert.match(
+    source,
+    /function hydrateRulesFromProjection\(\)/,
+    "Visibility script must hydrate projected storefront rules before runtime reconciliation.",
+  );
+  assert.match(
+    source,
+    /hydrateRulesFromProjection\(\);\s*hydrateRulesFromCache\(\);/,
+    "Projected storefront rules must hydrate before session cache rules during bootstrap.",
+  );
+  assert.match(
+    source,
+    /function applyCollectionHidingWhenDomReady\(/,
+    "Visibility script must support deferred application of projected collection hiding.",
+  );
+});
+
 // ─── Liquid embed regression tests ──────────────────────────────────
 
 test("liquid embed includes inline early-hide script reading sessionStorage cache", async () => {
@@ -300,6 +331,36 @@ test("syncVisibilityHandlesMetafield is exported from config server", async () =
   );
 });
 
+test("storefront projection sync service writes a public shop metafield snapshot", async () => {
+  const source = await readFile(STOREFRONT_PROJECTION_SERVER_PATH, "utf8");
+
+  assert.match(
+    source,
+    /export async function syncStorefrontProjectionMetafields\(/,
+    "Storefront projection service must export syncStorefrontProjectionMetafields.",
+  );
+  assert.match(
+    source,
+    /storefront_projection/,
+    "Storefront projection service must use the storefront_projection metafield key.",
+  );
+  assert.match(
+    source,
+    /PUBLIC_READ/,
+    "Storefront projection metafield definition must be storefront-readable.",
+  );
+  assert.match(
+    source,
+    /pricingPreview:\s*\{\s*mode:\s*"RESERVED"/,
+    "Projection payload must reserve a pricingPreview section for future loyalty pricing.",
+  );
+  assert.match(
+    source,
+    /collectionQuantityRules:\s*"RUNTIME_ONLY"/,
+    "Projection payload must explicitly mark collection quantity rules as runtime-only coverage to keep the snapshot lean.",
+  );
+});
+
 test("settings action calls syncVisibilityHandlesMetafield after visibility rule changes", async () => {
   const source = await readFile(SETTINGS_ACTION_PATH, "utf8");
 
@@ -325,6 +386,36 @@ test("settings action calls syncVisibilityHandlesMetafield after visibility rule
   assert.ok(
     afterSaveGlobal !== -1,
     "syncVisibilityHandlesMetafield must be called after saving global settings so storefront B2B tag changes stay in sync.",
+  );
+});
+
+test("settings action calls storefront projection sync after projected storefront rule changes", async () => {
+  const source = await readFile(SETTINGS_ACTION_PATH, "utf8");
+
+  assert.match(
+    source,
+    /syncStorefrontProjectionMetafields/,
+    "Settings action must import and call syncStorefrontProjectionMetafields.",
+  );
+  assert.match(
+    source,
+    /intent === "save-product-step-quantity-rule"[\s\S]*?syncStorefrontProjectionMetafields/,
+    "Projected product step quantity changes must trigger storefront projection sync.",
+  );
+  assert.match(
+    source,
+    /intent === "save-product-visibility-rule"[\s\S]*?syncStorefrontProjectionMetafields/,
+    "Projected product visibility changes must trigger storefront projection sync.",
+  );
+  assert.match(
+    source,
+    /intent === "save-collection-visibility-rule"[\s\S]*?syncStorefrontProjectionMetafields/,
+    "Projected collection visibility changes must trigger storefront projection sync.",
+  );
+  assert.match(
+    source,
+    /intent === "save-global"[\s\S]*?syncStorefrontProjectionMetafields/,
+    "Projected global config changes must trigger storefront projection sync.",
   );
 });
 
@@ -376,6 +467,21 @@ test("liquid embed reads app metafield for segment-default-hide CSS", async () =
     /createElement\(["']style["']\)[\s\S]*margin-guard-segment-default-hide/,
     "Embed must not create the segment-default-hide style via JavaScript because that causes first-paint flicker.",
   );
+  assert.match(
+    source,
+    /shop\.metafields.*margin_guard.*storefront_projection/,
+    "Embed must read the shop metafield margin_guard.storefront_projection for projected storefront bootstrap data.",
+  );
+  assert.match(
+    source,
+    /margin-guard-storefront-bootstrap/,
+    "Embed must render an inline bootstrap script for the projected storefront snapshot.",
+  );
+  assert.match(
+    source,
+    /margin-guard-collection-default-hide/,
+    "Embed must render an inline collection default-hide style for projected hidden collections.",
+  );
 });
 
 test("liquid embed targets head for zero-flash rendering", async () => {
@@ -406,7 +512,7 @@ test("removeEarlyHideStyle cleans up both early-hide and segment-default-hide st
 
   assert.match(
     source,
-    /function removeEarlyHideStyle\(\)[\s\S]*?margin-guard-early-hide[\s\S]*?margin-guard-segment-default-hide/,
-    "removeEarlyHideStyle must remove both the early-hide and segment-default-hide style elements.",
+    /function removeEarlyHideStyle\(\)[\s\S]*?margin-guard-early-hide[\s\S]*?margin-guard-segment-default-hide[\s\S]*?margin-guard-collection-default-hide/,
+    "removeEarlyHideStyle must remove the early-hide, segment-default-hide, and collection-default-hide style elements.",
   );
 });

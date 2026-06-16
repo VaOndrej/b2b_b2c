@@ -36,9 +36,9 @@ test("violations route documents dev and production sync modes explicitly", asyn
 test("app shell navigation exposes global settings, catalog rules, discounts, storefront UX, and app health", async () => {
   const source = await readFile(APP_SHELL_ROUTE_PATH, "utf8");
 
-  assert.match(source, /Global Settings/);
-  assert.match(source, /Catalog Rules/);
-  assert.match(source, /Discounts/);
+  assert.match(source, /href="\/app\/settings\/global\?section=global">Global Settings/);
+  assert.match(source, /href="\/app\/settings\/catalog-rules\?section=products">Catalog Rules/);
+  assert.match(source, /href="\/app\/settings\/discounts\?section=discount-coupons">Discounts/);
   assert.match(source, /Storefront UX/);
   assert.match(source, /App Health/);
 });

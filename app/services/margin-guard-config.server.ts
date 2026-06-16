@@ -100,6 +100,7 @@ export async function updateGlobalMarginGuardConfig(input: {
   allowRemoveAtMinimumOrderQuantity: boolean;
   allowStacking: boolean;
   maxCombinedPercentOff: number | null;
+  marginGuardEnabled?: boolean;
 }) {
   const db = getMarginGuardPrismaOrThrow();
   const productCatalogSourceType = input.productCatalogSourceType ?? "SHOPIFY";
@@ -117,6 +118,7 @@ export async function updateGlobalMarginGuardConfig(input: {
       allowRemoveAtMinimumOrderQuantity: input.allowRemoveAtMinimumOrderQuantity,
       allowStacking: input.allowStacking,
       maxCombinedPercentOff: input.maxCombinedPercentOff,
+      marginGuardEnabled: input.marginGuardEnabled !== false,
     },
     create: {
       id: DEFAULT_CONFIG_ID,
@@ -129,6 +131,7 @@ export async function updateGlobalMarginGuardConfig(input: {
       allowRemoveAtMinimumOrderQuantity: input.allowRemoveAtMinimumOrderQuantity,
       allowStacking: input.allowStacking,
       maxCombinedPercentOff: input.maxCombinedPercentOff,
+      marginGuardEnabled: input.marginGuardEnabled !== false,
     },
     include: MARGIN_GUARD_CONFIG_INCLUDE,
   });

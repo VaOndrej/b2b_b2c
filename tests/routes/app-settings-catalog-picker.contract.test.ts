@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const SETTINGS_ROUTE_PATH = "app/routes/app.settings.tsx";
+const COMPACT_RULE_PANEL_PATH = "app/components/compact-rule-panel.tsx";
+const ADMIN_CATALOG_PICKER_PATH = "app/components/admin-catalog-picker.tsx";
 const STOREFRONT_UX_ROUTE_PATH = "app/routes/app.storefront-ux.tsx";
 
 test("settings route uses AdminCatalogPicker for product, collection, customer, and variant forms", async () => {
@@ -166,6 +168,11 @@ test("settings route supports area-filtered workspaces for global settings, cata
   );
   assert.match(
     source,
+    /inferSettingsAreaFromPathname/,
+    "Settings route must infer top-level workspaces from unique Shopify nav paths.",
+  );
+  assert.match(
+    source,
     /view\?: ProductRuleView \| null/,
     "Settings route must support a nested product-rule deep link parameter for compact sub-navigation.",
   );
@@ -289,5 +296,94 @@ test("settings route renders configured product rules with imported product and 
     source,
     /CompactRulePanel/,
     "Product governance forms must share a global compact rule panel component instead of duplicating the layout per rule type.",
+  );
+});
+
+test("configured rule lists expose modify and red delete actions", async () => {
+  const [settingsSource, panelSource, pickerSource] = await Promise.all([
+    readFile(SETTINGS_ROUTE_PATH, "utf8"),
+    readFile(COMPACT_RULE_PANEL_PATH, "utf8"),
+    readFile(ADMIN_CATALOG_PICKER_PATH, "utf8"),
+  ]);
+
+  assert.match(
+    panelSource,
+    /Modify/,
+    "Compact catalog rule lists must expose a Modify action beside saved rules.",
+  );
+  assert.match(
+    panelSource,
+    /openAddForm/,
+    "Compact catalog rule forms must stay hidden until the Add action opens them.",
+  );
+  assert.match(
+    panelSource,
+    /editingItemId === item\.id/,
+    "Compact catalog rule modification must expand an inline edit panel below the selected saved rule.",
+  );
+  assert.match(
+    panelSource,
+    /#b42318/,
+    "Compact catalog rule delete buttons must use the red destructive style.",
+  );
+  assert.match(
+    settingsSource,
+    /openManualAddForm/,
+    "Manual rule forms must also stay hidden until an Add action opens them.",
+  );
+  assert.match(
+    settingsSource,
+    /openManualModifyForm/,
+    "Manual discount rule lists must be able to open and populate their forms for modification.",
+  );
+  assert.match(
+    settingsSource,
+    /style=\{deleteRuleButtonStyle\}/,
+    "Manual rule delete buttons must use the red destructive style.",
+  );
+  assert.match(
+    pickerSource,
+    /selectedDescription \?\? query/,
+    "Catalog pickers must show the selected resource name in the closed input when modifying a saved rule.",
+  );
+});
+
+test("settings route save-global action parses and persists marginGuardEnabled toggle", async () => {
+  const source = await readFile(SETTINGS_ROUTE_PATH, "utf8");
+
+  assert.match(
+    source,
+    /formData\.get\("marginGuardEnabled"\)\s*===\s*"on"/,
+    "[CONTRACT FAIL] save-global action musi parsovat marginGuardEnabled z formu jako checkbox 'on'.",
+  );
+  assert.match(
+    source,
+    /marginGuardEnabled/,
+    "[CONTRACT FAIL] save-global action musi predat marginGuardEnabled do updateGlobalMarginGuardConfig.",
+  );
+  assert.match(
+    source,
+    /name="marginGuardEnabled"/,
+    "[CONTRACT FAIL] Settings UI musi renderovat checkbox s name='marginGuardEnabled'.",
+  );
+});
+
+test("storefront content rules keep add hidden and modify inline", async () => {
+  const source = await readFile(STOREFRONT_UX_ROUTE_PATH, "utf8");
+
+  assert.match(
+    source,
+    /showContentForm &&/,
+    "Storefront content rule creation must stay hidden behind the Add rule action.",
+  );
+  assert.match(
+    source,
+    /Modify \{rule\.name\}/,
+    "Storefront content rule modification must expand an inline form below the selected saved rule.",
+  );
+  assert.doesNotMatch(
+    source,
+    />\s*Edit\s*</,
+    "Storefront content rules should use Modify terminology instead of Edit.",
   );
 });

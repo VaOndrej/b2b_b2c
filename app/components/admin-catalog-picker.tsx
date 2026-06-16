@@ -3,6 +3,8 @@ import {
   useDeferredValue,
   useEffect,
   useId,
+  useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import {
@@ -37,6 +39,7 @@ export function AdminCatalogPicker(props: AdminCatalogPickerProps) {
     props.resourceType === "product" || props.resourceType === "variant" || props.resourceType === "collection";
   const inputId = useId();
   const resultsId = useId();
+  const hiddenInputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -47,6 +50,52 @@ export function AdminCatalogPicker(props: AdminCatalogPickerProps) {
   const [selectedDescription, setSelectedDescription] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
+  const displayQuery = isOpen ? query : selectedDescription ?? query;
+
+  useLayoutEffect(() => {
+    function onSetValue(event: Event) {
+      const detail = (event as CustomEvent<{
+        formId?: string;
+        name?: string;
+        value?: string;
+        description?: string;
+      }>).detail;
+      if (!detail) {
+        return;
+      }
+      if (detail.name === "*") {
+        const form = hiddenInputRef.current?.form;
+        if (detail.formId && form?.dataset.rulePanelFormId !== detail.formId) {
+          return;
+        }
+        setSelectedId("");
+        setSelectedDescription(null);
+        setQuery("");
+        setOptions([]);
+        setIsOpen(false);
+        setErrorMessage(null);
+        return;
+      }
+      if (detail.name !== props.name) {
+        return;
+      }
+      const form = hiddenInputRef.current?.form;
+      if (detail.formId && form?.dataset.rulePanelFormId !== detail.formId) {
+        return;
+      }
+      setSelectedId(normalizeCatalogPickerValue(detail.value));
+      setSelectedDescription(detail.description || null);
+      setQuery("");
+      setOptions([]);
+      setIsOpen(false);
+      setErrorMessage(null);
+    }
+
+    window.addEventListener("admin-catalog-picker:set-value", onSetValue);
+    return () => {
+      window.removeEventListener("admin-catalog-picker:set-value", onSetValue);
+    };
+  }, [props.name]);
 
   useEffect(() => {
     const normalizedQuery = deferredQuery.trim();
@@ -140,12 +189,13 @@ export function AdminCatalogPicker(props: AdminCatalogPickerProps) {
         <input
           id={inputId}
           type="search"
-          value={query}
+          value={displayQuery}
           placeholder={
             props.searchPlaceholder ?? defaultSearchPlaceholder(props.resourceType)
           }
           onFocus={() => {
             setIsOpen(true);
+            setQuery("");
           }}
           onBlur={() => {
             window.setTimeout(() => {
@@ -173,6 +223,7 @@ export function AdminCatalogPicker(props: AdminCatalogPickerProps) {
         <code>{selectedDescription ?? "none yet"}</code>
       </s-text>
       <input
+        ref={hiddenInputRef}
         type="hidden"
         name={props.name}
         required={props.required}

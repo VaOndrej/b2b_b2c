@@ -1,5 +1,12 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { useLoaderData, useNavigate, useNavigation, useSearchParams } from "react-router";
+import { useState } from "react";
+import {
+  useLoaderData,
+  useLocation,
+  useNavigate,
+  useNavigation,
+  useSearchParams,
+} from "react-router";
 import { AdminCatalogPicker } from "../components/admin-catalog-picker";
 import type { CatalogRuleItem } from "../components/catalog-rule-section";
 import { CompactRulePanel } from "../components/compact-rule-panel";
@@ -53,6 +60,7 @@ import {
   deleteCollectionVisibilityRule,
   upsertCollectionVisibilityRule,
 } from "../services/storefront-content.server";
+import { syncStorefrontProjectionMetafields } from "../services/storefront-projection.server";
 
 function parseNumber(input: FormDataEntryValue | null, fallback = 0): number {
   const value = Number(input);
@@ -121,6 +129,19 @@ function normalizeSettingsArea(value: string | null): SettingsArea {
   return SETTINGS_AREAS.includes(value as SettingsArea)
     ? (value as SettingsArea)
     : "all";
+}
+
+function inferSettingsAreaFromPathname(pathname: string): SettingsArea {
+  if (pathname.endsWith("/settings/global")) {
+    return "global";
+  }
+  if (pathname.endsWith("/settings/catalog-rules")) {
+    return "catalog-rules";
+  }
+  if (pathname.endsWith("/settings/discounts")) {
+    return "discounts";
+  }
+  return "all";
 }
 
 const SETTINGS_SECTION_OPTIONS: Array<{
@@ -305,15 +326,14 @@ function buildSettingsWorkspaceUrl(input: {
   section: SettingsSection;
   view?: ProductRuleView | null;
 }) {
+  const pathname =
+    input.area === "all" ? "/app/settings" : `/app/settings/${input.area}`;
   const params = new URLSearchParams();
-  if (input.area !== "all") {
-    params.set("area", input.area);
-  }
   params.set("section", input.section);
   if (input.view) {
     params.set("view", input.view);
   }
-  return `/app/settings?${params.toString()}`;
+  return `${pathname}?${params.toString()}`;
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -346,8 +366,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   discountFunctionStatus = discountStatus.status;
   discountFunctionMessage = discountStatus.message;
   discountFunctionLastSyncAt = discountStatus.lastSyncAt ?? null;
-  console.log(">>> SETTINGS LOADER: about to call syncVisibilityHandlesMetafield");
-  syncVisibilityHandlesMetafield(admin).then(() => {
+  console.log(">>> SETTINGS LOADER: about to call storefront projection sync");
+  Promise.all([
+    syncVisibilityHandlesMetafield(admin),
+    syncStorefrontProjectionMetafields(admin),
+  ]).then(() => {
     console.log(">>> SETTINGS LOADER: sync completed successfully");
   }).catch((err) => {
     console.error(">>> SETTINGS LOADER: sync failed:", err);
@@ -405,6 +428,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const allowStacking = formData.get("allowStacking") === "on";
     const maxCombinedRaw = String(formData.get("maxCombinedPercentOff") ?? "").trim();
     const maxCombinedPercentOff = maxCombinedRaw ? Number(maxCombinedRaw) : null;
+    const marginGuardEnabled = formData.get("marginGuardEnabled") === "on";
 
     await updateGlobalMarginGuardConfig({
       b2bTag,
@@ -415,6 +439,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       allowZeroFinalPrice,
       allowRemoveAtMinimumOrderQuantity,
       allowStacking,
+      marginGuardEnabled,
       maxCombinedPercentOff:
         maxCombinedPercentOff != null && Number.isFinite(maxCombinedPercentOff)
           ? maxCombinedPercentOff
@@ -430,6 +455,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     url.searchParams.set("section", "global");
     try {
       const result = await syncShopifyProductCatalog(admin);
+      await Promise.all([
+        syncVisibilityHandlesMetafield(admin),
+        syncStorefrontProjectionMetafields(admin),
+      ]).catch((err) => {
+        console.error("[storefrontProjectionSync] catalog sync follow-up failed:", err);
+      });
       url.searchParams.set(
         "catalogMessage",
         `Imported ${result.productCount} products and ${result.variantCount} variants from Shopify.`,
@@ -448,6 +479,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     url.searchParams.set("section", "global");
     try {
       const result = await syncShopifyCollectionCatalog(admin);
+      await syncStorefrontProjectionMetafields(admin).catch((err) => {
+        console.error("[storefrontProjectionSync] collection catalog follow-up failed:", err);
+      });
       url.searchParams.set(
         "collectionCatalogMessage",
         `Imported ${result.collectionCount} collections from Shopify.`,
@@ -869,6 +903,26 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (
     intent === "save-global" ||
+    intent === "save-product-quantity-rule" ||
+    intent === "delete-product-quantity-rule" ||
+    intent === "save-product-step-quantity-rule" ||
+    intent === "delete-product-step-quantity-rule" ||
+    intent === "save-product-max-quantity-rule" ||
+    intent === "delete-product-max-quantity-rule" ||
+    intent === "save-product-visibility-rule" ||
+    intent === "delete-product-visibility-rule" ||
+    intent === "save-product-variant-visibility-rule" ||
+    intent === "delete-product-variant-visibility-rule" ||
+    intent === "save-collection-visibility-rule" ||
+    intent === "delete-collection-visibility-rule"
+  ) {
+    await syncStorefrontProjectionMetafields(admin).catch((err) => {
+      console.error("[syncStorefrontProjectionMetafields] action sync failed:", err);
+    });
+  }
+
+  if (
+    intent === "save-global" ||
     intent === "save-product-floor" ||
     intent === "delete-product-floor" ||
     intent === "save-product-tier-price" ||
@@ -923,8 +977,11 @@ export default function AppSettingsRoute() {
   } =
     useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const area = normalizeSettingsArea(searchParams.get("area"));
+  const area = normalizeSettingsArea(
+    searchParams.get("area") ?? inferSettingsAreaFromPathname(location.pathname),
+  );
   const requestedSection = normalizeSettingsSectionForArea(
     area,
     searchParams.get("section"),
@@ -1111,6 +1168,13 @@ export default function AppSettingsRoute() {
       detail: rule.collectionHandle
         ? `Handle: ${rule.collectionHandle} | ${formatCollectionVisibilityMode(rule.visibilityMode)}`
         : formatCollectionVisibilityMode(rule.visibilityMode),
+      formValues: {
+        collectionId: rule.collectionId,
+        visibilityMode: rule.visibilityMode,
+      },
+      formDescriptions: {
+        collectionId: describeCollection(rule.collectionId),
+      },
     }),
   );
   const productFloorItems: CatalogRuleItem[] = config.productFloors.map((rule: any) => ({
@@ -1127,6 +1191,21 @@ export default function AppSettingsRoute() {
           ? "allow"
           : "deny"
     }${rule.b2bOverridePrice == null ? "" : ` | B2B base override ${rule.b2bOverridePrice}`}`,
+    formValues: {
+      productId: rule.productId,
+      segment: rule.segment ?? "",
+      allowZeroFinalPriceOverride:
+        rule.allowZeroFinalPrice == null
+          ? "inherit"
+          : rule.allowZeroFinalPrice
+            ? "allow"
+            : "deny",
+      minPercentOfBasePrice: rule.minPercentOfBasePrice,
+      b2bOverridePrice: rule.b2bOverridePrice ?? "",
+    },
+    formDescriptions: {
+      productId: describeProduct(rule.productId),
+    },
   }));
   const productTierPriceItems: CatalogRuleItem[] = config.productTierPrices.map((rule: any) => ({
     id: rule.id,
@@ -1136,6 +1215,15 @@ export default function AppSettingsRoute() {
       { text: `Qty ${rule.minQuantity}+`, variant: "info" },
     ],
     detail: `Tier unit price ${rule.unitPrice}`,
+    formValues: {
+      productId: rule.productId,
+      segment: rule.segment ?? "",
+      minQuantity: rule.minQuantity,
+      unitPrice: rule.unitPrice,
+    },
+    formDescriptions: {
+      productId: describeProduct(rule.productId),
+    },
   }));
   const productMoqItems: CatalogRuleItem[] = productMoqRules.map((rule: any) => ({
     id: rule.id,
@@ -1144,6 +1232,14 @@ export default function AppSettingsRoute() {
       { text: formatSegment(rule.segment), variant: "neutral" },
       { text: `MOQ ${rule.minimumOrderQuantity}`, variant: "warning" },
     ],
+    formValues: {
+      productId: rule.productId,
+      segment: rule.segment ?? "",
+      minimumOrderQuantity: rule.minimumOrderQuantity,
+    },
+    formDescriptions: {
+      productId: describeProduct(rule.productId),
+    },
   }));
   const productStepItems: CatalogRuleItem[] = productStepRules.map((rule: any) => ({
     id: rule.id,
@@ -1153,6 +1249,14 @@ export default function AppSettingsRoute() {
       { text: `Step ${rule.stepQuantity}`, variant: "warning" },
     ],
     detail: "Cart quantity must follow this increment.",
+    formValues: {
+      productId: rule.productId,
+      segment: rule.segment ?? "",
+      stepQuantity: rule.stepQuantity,
+    },
+    formDescriptions: {
+      productId: describeProduct(rule.productId),
+    },
   }));
   const productMaxItems: CatalogRuleItem[] = productMaxRules.map((rule: any) => ({
     id: rule.id,
@@ -1161,6 +1265,14 @@ export default function AppSettingsRoute() {
       { text: formatSegment(rule.segment), variant: "neutral" },
       { text: `Max ${rule.maxOrderQuantity}`, variant: "warning" },
     ],
+    formValues: {
+      productId: rule.productId,
+      segment: rule.segment ?? "",
+      maxOrderQuantity: rule.maxOrderQuantity,
+    },
+    formDescriptions: {
+      productId: describeProduct(rule.productId),
+    },
   }));
   const productCustomerMaxItems: CatalogRuleItem[] = productCustomerMaxRules.map(
     (rule: any) => ({
@@ -1168,6 +1280,15 @@ export default function AppSettingsRoute() {
       label: describeProduct(rule.productId),
       badges: [{ text: `Customer ${rule.customerId}`, variant: "success" }],
       detail: `Max quantity ${rule.maxOrderQuantity}`,
+      formValues: {
+        productId: rule.productId,
+        customerId: rule.customerId,
+        maxOrderQuantity: rule.maxOrderQuantity,
+      },
+      formDescriptions: {
+        productId: describeProduct(rule.productId),
+        customerId: `Customer ${rule.customerId}`,
+      },
     }),
   );
   const productVisibilityItems: CatalogRuleItem[] = config.productVisibilityRules.map(
@@ -1195,6 +1316,15 @@ export default function AppSettingsRoute() {
         },
       ],
       detail: rule.customerId ? `Customer ${rule.customerId}` : formatVisibilityMode(rule.visibilityMode),
+      formValues: {
+        productId: rule.productId,
+        visibilityMode: rule.visibilityMode,
+        customerId: rule.customerId ?? "",
+      },
+      formDescriptions: {
+        productId: describeProduct(rule.productId),
+        customerId: rule.customerId ? `Customer ${rule.customerId}` : "",
+      },
     }),
   );
   const productVariantVisibilityItems: CatalogRuleItem[] = productVariantVisibilityRules.map(
@@ -1222,6 +1352,17 @@ export default function AppSettingsRoute() {
         },
       ],
       detail: rule.customerId ? `Customer ${rule.customerId}` : formatVisibilityMode(rule.visibilityMode),
+      formValues: {
+        productId: rule.productId,
+        variantId: rule.variantId,
+        visibilityMode: rule.visibilityMode,
+        customerId: rule.customerId ?? "",
+      },
+      formDescriptions: {
+        productId: describeProduct(rule.productId),
+        variantId: describeVariant(rule.variantId),
+        customerId: rule.customerId ? `Customer ${rule.customerId}` : "",
+      },
     }),
   );
   const collectionMaxItems: CatalogRuleItem[] = collectionMaxRules.map((rule: any) => ({
@@ -1231,6 +1372,14 @@ export default function AppSettingsRoute() {
       { text: formatSegment(rule.segment), variant: "neutral" },
       { text: `Max ${rule.maxOrderQuantity}`, variant: "warning" },
     ],
+    formValues: {
+      collectionId: rule.collectionId,
+      segment: rule.segment ?? "",
+      maxOrderQuantity: rule.maxOrderQuantity,
+    },
+    formDescriptions: {
+      collectionId: describeCollection(rule.collectionId),
+    },
   }));
 
   function buildProductRuleSummary() {
@@ -1347,6 +1496,86 @@ export default function AppSettingsRoute() {
       }),
     );
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  const modifyRuleButtonStyle = {
+    border: "1px solid rgba(0, 91, 211, 0.24)",
+    background: "#f0f7ff",
+    color: "#005bd3",
+    borderRadius: "8px",
+    fontSize: "12px",
+    fontWeight: 700,
+    padding: "7px 10px",
+    cursor: "pointer",
+  } as const;
+  const [openManualRuleForm, setOpenManualRuleForm] = useState<string | null>(null);
+
+  function openManualAddForm(formId: string) {
+    setOpenManualRuleForm(formId);
+    window.requestAnimationFrame(() => {
+      const form = document.getElementById(formId);
+      if (form instanceof HTMLFormElement) {
+        form.reset();
+        form.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  }
+  const deleteRuleButtonStyle = {
+    border: "1px solid rgba(180, 35, 24, 0.24)",
+    background: "#fff4f2",
+    color: "#b42318",
+    borderRadius: "8px",
+    fontSize: "12px",
+    fontWeight: 700,
+    padding: "7px 10px",
+    cursor: "pointer",
+  } as const;
+
+  function applyRuleValuesToForm(
+    formId: string,
+    values: Record<string, string | number | null | undefined>,
+    descriptions: Record<string, string> = {},
+  ) {
+    const form = document.getElementById(formId);
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+
+    for (const [name, rawValue] of Object.entries(values)) {
+      const value = rawValue == null ? "" : String(rawValue);
+      const field = form.elements.namedItem(name);
+      if (
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLSelectElement ||
+        field instanceof HTMLTextAreaElement
+      ) {
+        field.value = value;
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      window.dispatchEvent(
+        new CustomEvent("admin-catalog-picker:set-value", {
+          detail: {
+            formId,
+            name,
+            value,
+            description: descriptions[name] ?? value,
+          },
+        }),
+      );
+    }
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function openManualModifyForm(
+    formId: string,
+    values: Record<string, string | number | null | undefined>,
+    descriptions: Record<string, string> = {},
+  ) {
+    setOpenManualRuleForm(formId);
+    window.requestAnimationFrame(() => {
+      applyRuleValuesToForm(formId, values, descriptions);
+    });
   }
 
   const workspaceTitle =
@@ -1985,6 +2214,19 @@ export default function AppSettingsRoute() {
           <input type="hidden" name="intent" value="save-global" />
           <s-stack direction="block" gap="base">
             <label>
+              <input
+                name="marginGuardEnabled"
+                type="checkbox"
+                defaultChecked={(config as any).marginGuardEnabled !== false}
+              />
+              Margin Guard enforcement active
+            </label>
+            <s-paragraph>
+              When enabled, Margin Guard enforces the margin floor on all discounts.
+              When disabled, all discounts pass through without floor enforcement.
+              Note: only product-level discount codes (Amount off products) are intercepted. Order-level codes (Amount off order) bypass per-line floor checks.
+            </s-paragraph>
+            <label>
               Customer segment tag treated as B2B pricing
               <input name="b2bTag" defaultValue={config.b2bTag} placeholder="wholesale" />
             </label>
@@ -2420,6 +2662,7 @@ export default function AppSettingsRoute() {
           saveIntent="save-collection-visibility-rule"
           submitLabel="Save collection visibility"
           deleteIntent="delete-collection-visibility-rule"
+          deleteFieldName="ruleId"
           rulesHeading="Configured collection visibility"
           emptyMessage="No collection visibility rules yet."
           isSubmitting={isSubmitting || collectionCatalogImportRequired}
@@ -2503,26 +2746,48 @@ export default function AppSettingsRoute() {
 
       {isDiscountCouponsSection && (
       <s-section heading="Coupon segment validation rules">
-        <form method="post">
-          <input type="hidden" name="intent" value="save-coupon-segment-rule" />
-          <s-stack direction="block" gap="base">
-            <label>
-              Coupon code
-              <input name="code" required placeholder="VIP20" />
-            </label>
-            <label>
-              Allowed segment
-              <select name="allowedSegment" defaultValue="ALL">
-                <option value="ALL">All segments</option>
-                <option value="B2B">B2B only</option>
-                <option value="B2C">B2C only</option>
-              </select>
-            </label>
-            <button type="submit" disabled={isSubmitting}>
-              Save coupon rule
-            </button>
-          </s-stack>
-        </form>
+        <button
+          type="button"
+          style={modifyRuleButtonStyle}
+          onClick={() => openManualAddForm("coupon-segment-rule-form")}
+        >
+          Add coupon rule
+        </button>
+        {openManualRuleForm === "coupon-segment-rule-form" ? (
+          <form
+            id="coupon-segment-rule-form"
+            data-rule-panel-form-id="coupon-segment-rule-form"
+            method="post"
+          >
+            <input type="hidden" name="intent" value="save-coupon-segment-rule" />
+            <s-stack direction="block" gap="base">
+              <label>
+                Coupon code
+                <input name="code" required placeholder="VIP20" />
+              </label>
+              <label>
+                Allowed segment
+                <select name="allowedSegment" defaultValue="ALL">
+                  <option value="ALL">All segments</option>
+                  <option value="B2B">B2B only</option>
+                  <option value="B2C">B2C only</option>
+                </select>
+              </label>
+              <s-stack direction="inline" gap="small">
+                <button
+                  type="button"
+                  onClick={() => setOpenManualRuleForm(null)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={isSubmitting}>
+                  Save coupon rule
+                </button>
+              </s-stack>
+            </s-stack>
+          </form>
+        ) : null}
 
         <s-box padding="base" borderWidth="base" borderRadius="base">
           <s-heading>Configured coupon rules</s-heading>
@@ -2535,10 +2800,26 @@ export default function AppSettingsRoute() {
                   <s-text>
                     {rule.code} | allowed: {rule.allowedSegment}
                   </s-text>
+                  <button
+                    type="button"
+                    style={modifyRuleButtonStyle}
+                    onClick={() =>
+                      openManualModifyForm("coupon-segment-rule-form", {
+                        code: rule.code,
+                        allowedSegment: rule.allowedSegment,
+                      })
+                    }
+                  >
+                    Modify
+                  </button>
                   <form method="post">
                     <input type="hidden" name="intent" value="delete-coupon-segment-rule" />
                     <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" disabled={isSubmitting}>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      style={deleteRuleButtonStyle}
+                    >
                       Delete
                     </button>
                   </form>
@@ -2553,80 +2834,102 @@ export default function AppSettingsRoute() {
       {isDiscountOrchestrationSection && (
       <>
       <s-section heading="Advanced discount orchestration rules">
-        <form method="post">
-          <input type="hidden" name="intent" value="save-discount-rule" />
-          <s-stack direction="block" gap="base">
-            <label>
-              Scope
-              <select name="scope" defaultValue="GLOBAL">
-                <option value="GLOBAL">Global</option>
-                <option value="COLLECTION">Collection</option>
-                <option value="PRODUCT">Product</option>
-                <option value="COUPON">Coupon</option>
-              </select>
-            </label>
-            <AdminCatalogPicker
-              name="productId"
-              label="Product (for product scope)"
-              resourceType="product"
-            />
-            <AdminCatalogPicker
-              name="collectionId"
-              label="Collection (for collection scope)"
-              resourceType="collection"
-            />
-            <label>
-              Coupon code (for coupon scope)
-              <input name="code" placeholder="VIP20" />
-            </label>
-            <label>
-              Segment (optional)
-              <select name="segment" defaultValue="">
-                <option value="">All segments</option>
-                <option value="B2B">B2B</option>
-                <option value="B2C">B2C</option>
-              </select>
-            </label>
-            <label>
-              Percent off
-              <input
-                name="percentOff"
-                type="number"
-                min={0}
-                max={100}
-                step="0.01"
-                defaultValue={10}
-                required
+        <button
+          type="button"
+          style={modifyRuleButtonStyle}
+          onClick={() => openManualAddForm("advanced-discount-rule-form")}
+        >
+          Add advanced discount rule
+        </button>
+        {openManualRuleForm === "advanced-discount-rule-form" ? (
+          <form
+            id="advanced-discount-rule-form"
+            data-rule-panel-form-id="advanced-discount-rule-form"
+            method="post"
+          >
+            <input type="hidden" name="intent" value="save-discount-rule" />
+            <s-stack direction="block" gap="base">
+              <label>
+                Scope
+                <select name="scope" defaultValue="GLOBAL">
+                  <option value="GLOBAL">Global</option>
+                  <option value="COLLECTION">Collection</option>
+                  <option value="PRODUCT">Product</option>
+                  <option value="COUPON">Coupon</option>
+                </select>
+              </label>
+              <AdminCatalogPicker
+                name="productId"
+                label="Product (for product scope)"
+                resourceType="product"
               />
-            </label>
-            <label>
-              Priority
-              <input name="priority" type="number" step={1} defaultValue={100} />
-            </label>
-            <label>
-              Stack mode
-              <select name="stackMode" defaultValue="STACKABLE">
-                <option value="STACKABLE">Stackable</option>
-                <option value="EXCLUSIVE">Exclusive</option>
-                <option value="NEVER_WITH_COUPONS">Never with coupons</option>
-              </select>
-            </label>
-            <label>
-              Minimum price percent of base price (optional)
-              <input
-                name="minPricePercentOfBasePrice"
-                type="number"
-                min={0}
-                max={100}
-                step="0.01"
-                placeholder="e.g. 75"
+              <AdminCatalogPicker
+                name="collectionId"
+                label="Collection (for collection scope)"
+                resourceType="collection"
               />
-            </label>
-            <button type="submit" disabled={isSubmitting}>
-              Save advanced discount rule
-            </button>
-          </s-stack>
-        </form>
+              <label>
+                Coupon code (for coupon scope)
+                <input name="code" placeholder="VIP20" />
+              </label>
+              <label>
+                Segment (optional)
+                <select name="segment" defaultValue="">
+                  <option value="">All segments</option>
+                  <option value="B2B">B2B</option>
+                  <option value="B2C">B2C</option>
+                </select>
+              </label>
+              <label>
+                Percent off
+                <input
+                  name="percentOff"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  defaultValue={10}
+                  required
+                />
+              </label>
+              <label>
+                Priority
+                <input name="priority" type="number" step={1} defaultValue={100} />
+              </label>
+              <label>
+                Stack mode
+                <select name="stackMode" defaultValue="STACKABLE">
+                  <option value="STACKABLE">Stackable</option>
+                  <option value="EXCLUSIVE">Exclusive</option>
+                  <option value="NEVER_WITH_COUPONS">Never with coupons</option>
+                </select>
+              </label>
+              <label>
+                Minimum price percent of base price (optional)
+                <input
+                  name="minPricePercentOfBasePrice"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  placeholder="e.g. 75"
+                />
+              </label>
+              <s-stack direction="inline" gap="small">
+                <button
+                  type="button"
+                  onClick={() => setOpenManualRuleForm(null)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={isSubmitting}>
+                  Save advanced discount rule
+                </button>
+              </s-stack>
+            </s-stack>
+          </form>
+        ) : null}
 
         <s-box padding="base" borderWidth="base" borderRadius="base">
           <s-heading>Configured advanced discount rules</s-heading>
@@ -2658,10 +2961,48 @@ export default function AppSettingsRoute() {
                       ? "inherit"
                       : `${rule.minPricePercentOfBasePrice}%`}
                   </s-text>
+                  <button
+                    type="button"
+                    style={modifyRuleButtonStyle}
+                    onClick={() =>
+                      openManualModifyForm(
+                        "advanced-discount-rule-form",
+                        {
+                          scope: rule.scope,
+                          productId: rule.scope === "PRODUCT" ? rule.targetId : "",
+                          collectionId:
+                            rule.scope === "COLLECTION" ? rule.targetId : "",
+                          code: rule.code ?? "",
+                          segment: rule.segment ?? "",
+                          percentOff: rule.percentOff,
+                          priority: rule.priority,
+                          stackMode: rule.stackMode,
+                          minPricePercentOfBasePrice:
+                            rule.minPricePercentOfBasePrice ?? "",
+                        },
+                        {
+                          productId:
+                            rule.scope === "PRODUCT"
+                              ? describeProduct(rule.targetId)
+                              : "",
+                          collectionId:
+                            rule.scope === "COLLECTION"
+                              ? describeCollection(rule.targetId)
+                              : "",
+                        },
+                      )
+                    }
+                  >
+                    Modify
+                  </button>
                   <form method="post">
                     <input type="hidden" name="intent" value="delete-discount-rule" />
                     <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" disabled={isSubmitting}>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      style={deleteRuleButtonStyle}
+                    >
                       Delete
                     </button>
                   </form>
@@ -2673,46 +3014,68 @@ export default function AppSettingsRoute() {
       </s-section>
 
       <s-section heading="Discount blacklist combinations">
-        <form method="post">
-          <input type="hidden" name="intent" value="save-discount-blacklist-rule" />
-          <s-stack direction="block" gap="base">
-            <label>
-              Left type
-              <select name="leftType" defaultValue="COUPON_CODE">
-                <option value="COUPON_CODE">Coupon code</option>
-                <option value="SCOPE">Rule scope</option>
-                <option value="RULE_ID">Rule ID</option>
-              </select>
-            </label>
-            <label>
-              Left value
-              <input name="leftValue" placeholder="VIP20 or GLOBAL" required />
-            </label>
-            <label>
-              Right type
-              <select name="rightType" defaultValue="COUPON_CODE">
-                <option value="COUPON_CODE">Coupon code</option>
-                <option value="SCOPE">Rule scope</option>
-                <option value="RULE_ID">Rule ID</option>
-              </select>
-            </label>
-            <label>
-              Right value
-              <input name="rightValue" placeholder="SPRING10 or COLLECTION" required />
-            </label>
-            <label>
-              Segment
-              <select name="segment" defaultValue="ALL">
-                <option value="ALL">All segments</option>
-                <option value="B2B">B2B only</option>
-                <option value="B2C">B2C only</option>
-              </select>
-            </label>
-            <button type="submit" disabled={isSubmitting}>
-              Save blacklist rule
-            </button>
-          </s-stack>
-        </form>
+        <button
+          type="button"
+          style={modifyRuleButtonStyle}
+          onClick={() => openManualAddForm("discount-blacklist-rule-form")}
+        >
+          Add blacklist rule
+        </button>
+        {openManualRuleForm === "discount-blacklist-rule-form" ? (
+          <form
+            id="discount-blacklist-rule-form"
+            data-rule-panel-form-id="discount-blacklist-rule-form"
+            method="post"
+          >
+            <input type="hidden" name="intent" value="save-discount-blacklist-rule" />
+            <s-stack direction="block" gap="base">
+              <label>
+                Left type
+                <select name="leftType" defaultValue="COUPON_CODE">
+                  <option value="COUPON_CODE">Coupon code</option>
+                  <option value="SCOPE">Rule scope</option>
+                  <option value="RULE_ID">Rule ID</option>
+                </select>
+              </label>
+              <label>
+                Left value
+                <input name="leftValue" placeholder="VIP20 or GLOBAL" required />
+              </label>
+              <label>
+                Right type
+                <select name="rightType" defaultValue="COUPON_CODE">
+                  <option value="COUPON_CODE">Coupon code</option>
+                  <option value="SCOPE">Rule scope</option>
+                  <option value="RULE_ID">Rule ID</option>
+                </select>
+              </label>
+              <label>
+                Right value
+                <input name="rightValue" placeholder="SPRING10 or COLLECTION" required />
+              </label>
+              <label>
+                Segment
+                <select name="segment" defaultValue="ALL">
+                  <option value="ALL">All segments</option>
+                  <option value="B2B">B2B only</option>
+                  <option value="B2C">B2C only</option>
+                </select>
+              </label>
+              <s-stack direction="inline" gap="small">
+                <button
+                  type="button"
+                  onClick={() => setOpenManualRuleForm(null)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={isSubmitting}>
+                  Save blacklist rule
+                </button>
+              </s-stack>
+            </s-stack>
+          </form>
+        ) : null}
 
         <s-box padding="base" borderWidth="base" borderRadius="base">
           <s-heading>Configured blacklist rules</s-heading>
@@ -2726,6 +3089,21 @@ export default function AppSettingsRoute() {
                     {rule.leftType}:{rule.leftValue} x {rule.rightType}:{rule.rightValue} |{" "}
                     {rule.segment ?? "ALL"}
                   </s-text>
+                  <button
+                    type="button"
+                    style={modifyRuleButtonStyle}
+                    onClick={() =>
+                      openManualModifyForm("discount-blacklist-rule-form", {
+                        leftType: rule.leftType,
+                        leftValue: rule.leftValue,
+                        rightType: rule.rightType,
+                        rightValue: rule.rightValue,
+                        segment: rule.segment ?? "ALL",
+                      })
+                    }
+                  >
+                    Modify
+                  </button>
                   <form method="post">
                     <input
                       type="hidden"
@@ -2733,7 +3111,11 @@ export default function AppSettingsRoute() {
                       value="delete-discount-blacklist-rule"
                     />
                     <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" disabled={isSubmitting}>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      style={deleteRuleButtonStyle}
+                    >
                       Delete
                     </button>
                   </form>
@@ -2745,34 +3127,56 @@ export default function AppSettingsRoute() {
       </s-section>
 
       <s-section heading="Per-segment discount caps">
-        <form method="post">
-          <input type="hidden" name="intent" value="save-discount-segment-cap" />
-          <s-stack direction="block" gap="base">
-            <label>
-              Segment
-              <select name="segment" defaultValue="ALL">
-                <option value="ALL">All segments</option>
-                <option value="B2B">B2B only</option>
-                <option value="B2C">B2C only</option>
-              </select>
-            </label>
-            <label>
-              Max combined discount percent
-              <input
-                name="maxCombinedPercentOff"
-                type="number"
-                min={0}
-                max={100}
-                step="0.01"
-                defaultValue={40}
-                required
-              />
-            </label>
-            <button type="submit" disabled={isSubmitting}>
-              Save segment cap
-            </button>
-          </s-stack>
-        </form>
+        <button
+          type="button"
+          style={modifyRuleButtonStyle}
+          onClick={() => openManualAddForm("discount-segment-cap-form")}
+        >
+          Add segment cap
+        </button>
+        {openManualRuleForm === "discount-segment-cap-form" ? (
+          <form
+            id="discount-segment-cap-form"
+            data-rule-panel-form-id="discount-segment-cap-form"
+            method="post"
+          >
+            <input type="hidden" name="intent" value="save-discount-segment-cap" />
+            <s-stack direction="block" gap="base">
+              <label>
+                Segment
+                <select name="segment" defaultValue="ALL">
+                  <option value="ALL">All segments</option>
+                  <option value="B2B">B2B only</option>
+                  <option value="B2C">B2C only</option>
+                </select>
+              </label>
+              <label>
+                Max combined discount percent
+                <input
+                  name="maxCombinedPercentOff"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  defaultValue={40}
+                  required
+                />
+              </label>
+              <s-stack direction="inline" gap="small">
+                <button
+                  type="button"
+                  onClick={() => setOpenManualRuleForm(null)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={isSubmitting}>
+                  Save segment cap
+                </button>
+              </s-stack>
+            </s-stack>
+          </form>
+        ) : null}
 
         <s-box padding="base" borderWidth="base" borderRadius="base">
           <s-heading>Configured segment caps</s-heading>
@@ -2785,6 +3189,18 @@ export default function AppSettingsRoute() {
                   <s-text>
                     {cap.segment} | max combined {cap.maxCombinedPercentOff}%
                   </s-text>
+                  <button
+                    type="button"
+                    style={modifyRuleButtonStyle}
+                    onClick={() =>
+                      openManualModifyForm("discount-segment-cap-form", {
+                        segment: cap.segment,
+                        maxCombinedPercentOff: cap.maxCombinedPercentOff,
+                      })
+                    }
+                  >
+                    Modify
+                  </button>
                   <form method="post">
                     <input
                       type="hidden"
@@ -2792,7 +3208,11 @@ export default function AppSettingsRoute() {
                       value="delete-discount-segment-cap"
                     />
                     <input type="hidden" name="id" value={cap.id} />
-                    <button type="submit" disabled={isSubmitting}>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      style={deleteRuleButtonStyle}
+                    >
                       Delete
                     </button>
                   </form>

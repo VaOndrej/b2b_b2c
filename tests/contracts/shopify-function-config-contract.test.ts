@@ -118,6 +118,11 @@ test("discount query variable contract matches generated config payload", async 
   );
   assert.match(
     query,
+    /cart\s*\{[\s\S]*cost\s*\{[\s\S]*subtotalAmount[\s\S]*totalAmount[\s\S]*totalTaxAmount/,
+    "[CONTRACT FAIL] Discount query musi nacitat cart.cost s totalTaxAmount pro detekci order-level floor violation.",
+  );
+  assert.match(
+    query,
     /\$collectionIds:\s*\[ID!\]/,
     "[CONTRACT FAIL] Discount query musi deklarovat collectionIds variable.",
   );
@@ -160,6 +165,51 @@ test("discount query variable contract matches generated config payload", async 
     discountConfig.requestedPercentOff,
     100,
     "[CONTRACT FAIL] Discount config musi zachovat requestedPercentOff default.",
+  );
+  assert.equal(
+    discountConfig.marginGuardEnabled,
+    true,
+    "[CONTRACT FAIL] Discount config musi mit marginGuardEnabled true kdyz neni explicitne false.",
+  );
+});
+
+test("discount config contract propagates marginGuardEnabled flag", () => {
+  const enabledConfig = buildDiscountFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+    marginGuardEnabled: true,
+  });
+  assert.equal(
+    enabledConfig.marginGuardEnabled,
+    true,
+    "[CONTRACT FAIL] marginGuardEnabled: true musi byt preneseno do config.",
+  );
+
+  const disabledConfig = buildDiscountFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+    marginGuardEnabled: false,
+  });
+  assert.equal(
+    disabledConfig.marginGuardEnabled,
+    false,
+    "[CONTRACT FAIL] marginGuardEnabled: false musi byt preneseno do config.",
+  );
+
+  const defaultConfig = buildDiscountFunctionConfig({
+    b2bTag: "b2b",
+    globalMinPricePercent: 70,
+    allowZeroFinalPrice: false,
+    productFloors: [],
+  });
+  assert.equal(
+    defaultConfig.marginGuardEnabled,
+    true,
+    "[CONTRACT FAIL] marginGuardEnabled musi byt true kdyz neni predano (default).",
   );
 });
 

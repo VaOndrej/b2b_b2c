@@ -76,6 +76,7 @@ interface MarginGuardFunctionConfigInput {
   allowZeroFinalPrice: boolean;
   allowStacking?: boolean;
   maxCombinedPercentOff?: number | null;
+  marginGuardEnabled?: boolean;
   productFloors: ProductFloorInput[];
   productTierPrices?: ProductTierPriceInput[];
   productQuantityRules?: ProductQuantityRuleInput[];
@@ -636,5 +637,6 @@ export function buildDiscountFunctionConfig(
   return {
     ...buildCartValidationFunctionConfig(config),
     requestedPercentOff: 100,
+    marginGuardEnabled: config.marginGuardEnabled !== false,
   };
 }

@@ -1,32 +1,88 @@
 {% assign hidden_handles_meta = shop.metafields["margin_guard"]["hidden_handles"].value %}
+{% assign storefront_projection_meta = shop.metafields["margin_guard"]["storefront_projection"].value %}
+{% assign current_b2b_tag = 'b2b' %}
+{% if hidden_handles_meta and hidden_handles_meta.b2bTag %}
+  {% assign current_b2b_tag = hidden_handles_meta.b2bTag | strip | downcase %}
+{% elsif storefront_projection_meta and storefront_projection_meta.b2bTag %}
+  {% assign current_b2b_tag = storefront_projection_meta.b2bTag | strip | downcase %}
+{% endif %}
+{% assign customer_is_custom_b2b = false %}
+{% if customer and customer.tags contains current_b2b_tag %}
+  {% assign customer_is_custom_b2b = true %}
+{% endif %}
+{% assign current_segment_key = 'b2c' %}
+{% if customer and customer.b2b? or customer_is_custom_b2b %}
+  {% assign current_segment_key = 'b2b' %}
+{% endif %}
+{% assign hidden_handles_for_context = empty %}
 {% if hidden_handles_meta %}
   {% assign hidden_handles_for_context = hidden_handles_meta.b2b %}
-  {% assign current_b2b_tag = hidden_handles_meta.b2bTag | default: 'b2b' | strip | downcase %}
-  {% assign customer_is_custom_b2b = false %}
-  {% if customer and customer.tags contains current_b2b_tag %}
-    {% assign customer_is_custom_b2b = true %}
-  {% endif %}
-  {% if customer and customer.b2b? or customer_is_custom_b2b %}
+  {% if current_segment_key == 'b2b' %}
     {% assign hidden_handles_for_context = hidden_handles_meta.b2c %}
   {% endif %}
-  {% if hidden_handles_for_context.size > 0 %}
-    <style id="margin-guard-segment-default-hide">
-      {% for handle in hidden_handles_for_context %}
-        {% assign normalized_handle = handle | strip | downcase %}
-        {% if normalized_handle != blank %}
-          [data-product-card]:has(a[href*='/products/{{ normalized_handle }}']),
-          .product-card:has(a[href*='/products/{{ normalized_handle }}']),
-          .card:has(a[href*='/products/{{ normalized_handle }}']),
-          .grid__item:has(a[href*='/products/{{ normalized_handle }}']),
-          .product-item:has(a[href*='/products/{{ normalized_handle }}']),
-          article:has(a[href*='/products/{{ normalized_handle }}']),
-          li:has(a[href*='/products/{{ normalized_handle }}']) {
-            display: none !important;
-          }
-        {% endif %}
-      {% endfor %}
-    </style>
+{% endif %}
+{% assign projection_segment_snapshot = empty %}
+{% assign hidden_collections_for_context = empty %}
+{% if storefront_projection_meta and storefront_projection_meta.segments %}
+  {% assign projection_segment_snapshot = storefront_projection_meta.segments.b2c %}
+  {% if current_segment_key == 'b2b' %}
+    {% assign projection_segment_snapshot = storefront_projection_meta.segments.b2b %}
   {% endif %}
+  {% if projection_segment_snapshot and projection_segment_snapshot.hiddenCollectionHandles %}
+    {% assign hidden_collections_for_context = projection_segment_snapshot.hiddenCollectionHandles %}
+  {% endif %}
+{% endif %}
+{% if hidden_handles_for_context.size > 0 %}
+  <style id="margin-guard-segment-default-hide">
+    {% for handle in hidden_handles_for_context %}
+      {% assign normalized_handle = handle | strip | downcase %}
+      {% if normalized_handle != blank %}
+        [data-product-card]:has(a[href*='/products/{{ normalized_handle }}']),
+        .product-card:has(a[href*='/products/{{ normalized_handle }}']),
+        .card:has(a[href*='/products/{{ normalized_handle }}']),
+        .grid__item:has(a[href*='/products/{{ normalized_handle }}']),
+        .product-item:has(a[href*='/products/{{ normalized_handle }}']),
+        article:has(a[href*='/products/{{ normalized_handle }}']),
+        li:has(a[href*='/products/{{ normalized_handle }}']) {
+          display: none !important;
+        }
+      {% endif %}
+    {% endfor %}
+  </style>
+{% endif %}
+{% if hidden_collections_for_context.size > 0 %}
+  <style id="margin-guard-collection-default-hide">
+    {% for handle in hidden_collections_for_context %}
+      {% assign normalized_collection_handle = handle | strip | downcase %}
+      {% if normalized_collection_handle != blank %}
+        [data-collection-card]:has(a[href*='/collections/{{ normalized_collection_handle }}']),
+        .collection-card:has(a[href*='/collections/{{ normalized_collection_handle }}']),
+        .collection-list__item:has(a[href*='/collections/{{ normalized_collection_handle }}']),
+        .card:has(a[href*='/collections/{{ normalized_collection_handle }}']),
+        .grid__item:has(a[href*='/collections/{{ normalized_collection_handle }}']),
+        article:has(a[href*='/collections/{{ normalized_collection_handle }}']),
+        li:has(a[href*='/collections/{{ normalized_collection_handle }}']) {
+          display: none !important;
+        }
+      {% endif %}
+    {% endfor %}
+  </style>
+{% endif %}
+{% if storefront_projection_meta %}
+  <script id="margin-guard-storefront-bootstrap" type="application/json">
+    {
+      "schemaVersion": {{ storefront_projection_meta.schemaVersion | default: 0 | json }},
+      "configUpdatedAt": {{ storefront_projection_meta.configUpdatedAt | json }},
+      "generatedAt": {{ storefront_projection_meta.generatedAt | json }},
+      "b2bTag": {{ storefront_projection_meta.b2bTag | default: current_b2b_tag | json }},
+      "allowRemoveAtMinimumOrderQuantity": {{ storefront_projection_meta.allowRemoveAtMinimumOrderQuantity | default: true | json }},
+      "coverage": {{ storefront_projection_meta.coverage | default: empty | json }},
+      "messages": {{ storefront_projection_meta.messages | default: empty | json }},
+      "pricingPreview": {{ storefront_projection_meta.pricingPreview | default: empty | json }},
+      "segment": {{ current_segment_key | upcase | json }},
+      "snapshot": {{ projection_segment_snapshot | default: empty | json }}
+    }
+  </script>
 {% endif %}
 <script>
 (function(){
@@ -35,10 +91,13 @@
       customerId: {% if customer %}{{ customer.id | json }}{% else %}null{% endif %},
       customerTags: {% if customer %}{{ customer.tags | json }}{% else %}[]{% endif %},
       currentB2bTag: {{ current_b2b_tag | default: 'b2b' | json }},
+      currentSegment: {{ current_segment_key | upcase | json }},
       customerIsCustomB2B: {{ customer_is_custom_b2b | json }},
       usesNativeB2B: {% if customer and customer.b2b? %}true{% else %}false{% endif %},
       hiddenHandlesForContext: {{ hidden_handles_for_context | default: empty | json }},
-      hiddenHandlesMeta: {{ hidden_handles_meta | default: empty | json }}
+      hiddenCollectionHandlesForContext: {{ hidden_collections_for_context | default: empty | json }},
+      hiddenHandlesMeta: {{ hidden_handles_meta | default: empty | json }},
+      storefrontProjectionMeta: {{ storefront_projection_meta | default: empty | json }}
     });
     var raw = sessionStorage.getItem("marginGuardRulesCache_v1");
     if (!raw) return;

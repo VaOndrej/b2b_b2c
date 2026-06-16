@@ -46,6 +46,7 @@ model MarginGuardConfig {
   allowRemoveAtMinimumOrderQuantity Boolean @default(true)
   allowStacking         Boolean  @default(false)
   maxCombinedPercentOff Float?
+  marginGuardEnabled    Boolean  @default(true)
   cartValidationStatus  String   @default("UNKNOWN")
   cartValidationLastError String?
   cartValidationLastSyncAt DateTime?

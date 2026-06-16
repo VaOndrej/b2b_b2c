@@ -71,6 +71,7 @@ export type ShopifyE2ERuntime =
         step: string;
         max: string;
         variant: string | null;
+        collection: string | null;
       };
       storefrontPassword: string | null;
     }
@@ -89,6 +90,7 @@ interface ShopifyE2ERuntimeConfig {
     step: string | null;
     max: string | null;
     variant: string | null;
+    collection: string | null;
   };
 }
 
@@ -126,6 +128,7 @@ export function resolveShopifyE2ERuntimeConfig(): ShopifyE2ERuntimeConfig {
       step: readEnvValue("SHOPIFY_E2E_PRODUCT_HANDLE_STEP") || null,
       max: readEnvValue("SHOPIFY_E2E_PRODUCT_HANDLE_MAX") || null,
       variant: readEnvValue("SHOPIFY_E2E_PRODUCT_HANDLE_VARIANT") || null,
+      collection: readEnvValue("SHOPIFY_E2E_COLLECTION_HANDLE") || null,
     },
     storefrontPassword: readEnvValue("SHOPIFY_E2E_STOREFRONT_PASSWORD") || null,
   };
@@ -408,24 +411,43 @@ async function resolveAutoScenarioHandles(config: ShopifyE2ERuntimeConfig): Prom
     };
   }
 
+  // The storefront base URL may be a local `shopify theme dev` origin
+  // (e.g. http://127.0.0.1:9292) that does not match the offline session shop.
+  // Resolve the Admin API shop from SHOPIFY_E2E_SHOP_DOMAIN, then the base URL
+  // host, then fall back to any stored offline session.
   const storefrontHost = new URL(config.storefrontBaseUrl).hostname;
-  const offlineSession = await prisma.session.findFirst({
-    where: {
-      shop: storefrontHost,
-      isOnline: false,
-    },
-    orderBy: {
-      id: "asc",
-    },
-    select: {
-      shop: true,
-      accessToken: true,
-    },
-  });
+  const configuredShopDomain = readEnvValue("SHOPIFY_E2E_SHOP_DOMAIN");
+  const preferredShop = configuredShopDomain || storefrontHost;
+  const offlineSession =
+    (await prisma.session.findFirst({
+      where: {
+        shop: preferredShop,
+        isOnline: false,
+      },
+      orderBy: {
+        id: "asc",
+      },
+      select: {
+        shop: true,
+        accessToken: true,
+      },
+    })) ??
+    (await prisma.session.findFirst({
+      where: {
+        isOnline: false,
+      },
+      orderBy: {
+        id: "asc",
+      },
+      select: {
+        shop: true,
+        accessToken: true,
+      },
+    }));
 
   if (!offlineSession) {
     throw new Error(
-      `No offline Shopify session found in Prisma for ${storefrontHost}. Install or re-auth the app before running storefront E2E.`,
+      `No offline Shopify session found in Prisma (looked for ${preferredShop}, then any offline session). Install or re-auth the app before running storefront E2E.`,
     );
   }
 
@@ -517,11 +539,40 @@ async function resolveAutoScenarioHandles(config: ShopifyE2ERuntimeConfig): Prom
   };
 }
 
+async function resolveCollectionScenarioHandle(
+  config: ShopifyE2ERuntimeConfig,
+): Promise<string | null> {
+  if (config.handleOverrides.collection) {
+    return normalizeHandle(config.handleOverrides.collection);
+  }
+
+  const collectionRules = await prisma.collectionVisibilityRule.findMany({
+    where: {
+      configId: "default",
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+    select: {
+      collectionHandle: true,
+      visibilityMode: true,
+    },
+  });
+
+  const restrictiveRule = collectionRules.find((rule) => {
+    const mode = String(rule.visibilityMode ?? "").trim();
+    return Boolean(mode) && mode !== "ALL";
+  });
+
+  return normalizeHandle(restrictiveRule?.collectionHandle ?? null);
+}
+
 export async function resolveShopifyE2ERuntime(): Promise<ShopifyE2ERuntime> {
   const config = resolveShopifyE2ERuntimeConfig();
 
   try {
     const scenarioHandles = await resolveAutoScenarioHandles(config);
+    const collectionHandle = await resolveCollectionScenarioHandle(config);
     const missingScenarioNames = [
       !scenarioHandles.visibility ? "visibility" : null,
       !scenarioHandles.step ? "step" : null,
@@ -552,6 +603,7 @@ export async function resolveShopifyE2ERuntime(): Promise<ShopifyE2ERuntime> {
         step: stepHandle,
         max: maxHandle,
         variant: scenarioHandles.variant,
+        collection: collectionHandle,
       },
     };
   } catch (error) {

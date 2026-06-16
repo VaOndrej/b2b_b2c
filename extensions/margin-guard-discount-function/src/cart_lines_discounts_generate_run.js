@@ -9,6 +9,8 @@ const DEFAULT_B2B_FLOOR_PERCENT = 70;
 const MESSAGES = {
   EN: {
     candidatePrefix: "Eligible discount",
+    rejectByFloor:
+      "This discount code cannot be applied because it would reduce the price below the minimum allowed. Next step: remove the discount code and try again.",
     rejectBySegment:
       "One or more discount codes are not available for your customer segment. Next step: remove unavailable codes and try again.",
     rejectByStacking:
@@ -26,6 +28,8 @@ const MESSAGES = {
   },
   CS: {
     candidatePrefix: "Povolena sleva",
+    rejectByFloor:
+      "Tento slevovy kod nelze pouzit, protoze by snizil cenu pod povolene minimum. Dalsi krok: odeberte slevovy kod a zkuste znovu.",
     rejectBySegment:
       "Nektere slevove kody nejsou dostupne pro vas segment. Dalsi krok: odeberte neplatne kody a zkuste znovu.",
     rejectByStacking:
@@ -717,6 +721,7 @@ function parseConfig(input) {
     allowStacking: config.allowStacking === true,
     maxCombinedPercentOff: normalizePercentOrNull(config.maxCombinedPercentOff),
     requestedPercentOff: clampPercent(toNumber(config.requestedPercentOff, 100)),
+    marginGuardEnabled: config.marginGuardEnabled !== false,
     perProductFloorPercentsB2C,
     perProductFloorPercentsB2B,
     perProductAllowZeroFinalPriceB2C,
@@ -817,6 +822,9 @@ export function cartLinesDiscountsGenerateRun(input) {
   }
 
   const config = parseConfig(input);
+  if (config.marginGuardEnabled === false) {
+    return { operations: [] };
+  }
   const messages = resolveMessages(input);
   const hasPurchasingCompany = Boolean(
     input?.cart?.buyerIdentity?.purchasingCompany?.company?.id,
@@ -849,7 +857,26 @@ export function cartLinesDiscountsGenerateRun(input) {
     : config.perProductTierPricesB2C;
   const segmentCap = resolveSegmentCap(config.discountSegmentCaps, segment);
 
+  const cartSubtotal = Math.max(
+    0,
+    toNumber(input?.cart?.cost?.subtotalAmount?.amount, 0),
+  );
+  const cartTotal = Math.max(
+    0,
+    toNumber(input?.cart?.cost?.totalAmount?.amount, 0),
+  );
+  const cartTax = Math.max(
+    0,
+    toNumber(input?.cart?.cost?.totalTaxAmount?.amount, 0),
+  );
+  const cartTotalAfterDiscountsBeforeTax = Math.max(0, cartTotal - cartTax);
+  const orderDiscountFactor =
+    cartSubtotal > 0
+      ? Math.max(0, Math.min(1, cartTotalAfterDiscountsBeforeTax / cartSubtotal))
+      : 1;
+
   const candidates = [];
+  let floorViolationByExternalDiscount = false;
   for (const line of input.cart.lines) {
     const productId =
       line.merchandise?.__typename === "ProductVariant"
@@ -887,6 +914,14 @@ export function cartLinesDiscountsGenerateRun(input) {
     const existingPercentOff = clampPercent(
       ((lineSubtotal - lineTotal) / lineSubtotal) * 100,
     );
+    const effectiveLineTotal = roundMoney(lineSubtotal * orderDiscountFactor);
+    if (
+      !allowZeroFinalPrice &&
+      (lineTotal < floorLinePrice - 0.005 ||
+        effectiveLineTotal < floorLinePrice - 0.005)
+    ) {
+      floorViolationByExternalDiscount = true;
+    }
     const remainingGlobalCap =
       config.maxCombinedPercentOff == null
         ? null
@@ -957,26 +992,6 @@ export function cartLinesDiscountsGenerateRun(input) {
       });
     }
 
-    if (eligibleCandidates.length === 0) {
-      const allowedPercentOff = resolveAllowedPercent(
-        config.requestedPercentOff,
-        maxPercentByFloor,
-        allowZeroFinalPrice,
-        remainingCap,
-      );
-      if (allowedPercentOff > 0) {
-        eligibleCandidates.push({
-          id: `legacy-${line.id}`,
-          code: null,
-          scope: "GLOBAL",
-          percentOff: allowedPercentOff,
-          priority: 0,
-          stackMode: config.allowStacking ? "STACKABLE" : "EXCLUSIVE",
-          sequence: Number.MAX_SAFE_INTEGER,
-          label: "margin guard",
-        });
-      }
-    }
 
     const selectedCandidates = resolveSelectedCandidates(
       eligibleCandidates,
@@ -999,7 +1014,21 @@ export function cartLinesDiscountsGenerateRun(input) {
     }
   }
 
-  if (candidates.length === 0 && rejectedCodeResult.rejectedCodes.length === 0) {
+  const alreadyRejectedCodes = new Set(
+    rejectedCodeResult.rejectedCodes.map((c) => c.code),
+  );
+  const floorRejectedCodes =
+    floorViolationByExternalDiscount
+      ? (input?.enteredDiscountCodes ?? [])
+          .filter((c) => c?.rejectable !== false && !alreadyRejectedCodes.has(c?.code))
+          .map((c) => ({ code: c.code }))
+      : [];
+
+  if (
+    candidates.length === 0 &&
+    rejectedCodeResult.rejectedCodes.length === 0 &&
+    floorRejectedCodes.length === 0
+  ) {
     return { operations: [] };
   }
 
@@ -1036,6 +1065,14 @@ export function cartLinesDiscountsGenerateRun(input) {
       enteredDiscountCodesReject: {
         codes: rejectedCodeResult.rejectedCodes,
         message: rejectionMessage,
+      },
+    });
+  }
+  if (floorRejectedCodes.length > 0) {
+    operations.push({
+      enteredDiscountCodesReject: {
+        codes: floorRejectedCodes,
+        message: messages.rejectByFloor,
       },
     });
   }

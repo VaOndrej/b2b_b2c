@@ -55,11 +55,20 @@ test("discount function caps discount by margin floor", () => {
           globalMinPricePercent: 70,
           b2bGlobalMinPricePercent: 70,
           allowZeroFinalPrice: false,
-          requestedPercentOff: 100,
-          perProductFloorPercentsB2C: {},
-          perProductFloorPercentsB2B: {},
-          perProductAllowZeroFinalPriceB2C: {},
-          perProductAllowZeroFinalPriceB2B: {},
+          marginGuardEnabled: true,
+          discountRules: [
+            {
+              id: "global-rule",
+              scope: "GLOBAL",
+              targetId: null,
+              code: null,
+              segment: null,
+              percentOff: 50,
+              priority: 0,
+              stackMode: "EXCLUSIVE",
+              minPricePercentOfBasePrice: null,
+            },
+          ],
         },
       },
     },
@@ -344,4 +353,181 @@ test("discount function resolves blacklisted coupon codes by configured preceden
     result.operations.find((operation: any) => operation?.productDiscountsAdd)
       ?.productDiscountsAdd?.candidates?.[0] ?? null;
   assert.equal(candidate?.value?.percentage?.value, 20);
+});
+
+test("discount function returns no operations when marginGuardEnabled is false", () => {
+  const result = runDiscountFunction({
+    cart: {
+      buyerIdentity: { customer: { hasAnyTag: false } },
+      lines: [
+        {
+          id: "line-1",
+          quantity: 1,
+          cost: { subtotalAmount: { amount: "100.00" } },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: "gid://shopify/Product/1" },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT"],
+      metafield: {
+        jsonValue: {
+          globalMinPricePercent: 70,
+          marginGuardEnabled: false,
+          discountRules: [
+            {
+              id: "global-rule",
+              scope: "GLOBAL",
+              targetId: null,
+              code: null,
+              segment: null,
+              percentOff: 30,
+              priority: 0,
+              stackMode: "EXCLUSIVE",
+              minPricePercentOfBasePrice: null,
+            },
+          ],
+        },
+      },
+    },
+    enteredDiscountCodes: [],
+  });
+
+  assert.deepEqual(
+    result.operations,
+    [],
+    "Kdyz je marginGuardEnabled false, funkce musi vratit prazdne operations (pass-through).",
+  );
+});
+
+test("discount function does not generate discount for product without rules (fallback removed)", () => {
+  const result = runDiscountFunction({
+    cart: {
+      buyerIdentity: { customer: { hasAnyTag: false } },
+      lines: [
+        {
+          id: "line-1",
+          quantity: 1,
+          cost: { subtotalAmount: { amount: "600.00" } },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: "gid://shopify/Product/999" },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT"],
+      metafield: {
+        jsonValue: {
+          globalMinPricePercent: 70,
+          marginGuardEnabled: true,
+        },
+      },
+    },
+    enteredDiscountCodes: [],
+  });
+
+  const discountOp = result.operations.find(
+    (op: any) => op?.productDiscountsAdd,
+  );
+  assert.equal(
+    discountOp ?? null,
+    null,
+    "Produkt bez discount rules nesmí dostat žádnou slevu (fallback byl odstraněn).",
+  );
+});
+
+test("discount function rejects entered code when order-level discount pushes price below floor", () => {
+  const result = runDiscountFunction({
+    cart: {
+      cost: {
+        subtotalAmount: { amount: "600.00" },
+        totalAmount: { amount: "120.00" },
+        totalTaxAmount: { amount: "0.00" },
+      },
+      buyerIdentity: { customer: { hasAnyTag: false } },
+      lines: [
+        {
+          id: "line-1",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "600.00" },
+            totalAmount: { amount: "600.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: "gid://shopify/Product/1" },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT"],
+      metafield: {
+        jsonValue: {
+          globalMinPricePercent: 70,
+          marginGuardEnabled: true,
+        },
+      },
+    },
+    enteredDiscountCodes: [{ code: "TEST100", rejectable: true }],
+  });
+
+  const rejectOp = result.operations.find(
+    (op: any) => op?.enteredDiscountCodesReject,
+  );
+  assert.ok(
+    rejectOp?.enteredDiscountCodesReject?.codes?.some((c: any) => c.code === "TEST100"),
+    "Kód TEST100 musí být odmítnut — order discount 80% by snížil cenu na 120, floor je 420 (70% z 600).",
+  );
+});
+
+test("discount function does not reject entered code when order-level discount stays above floor", () => {
+  const result = runDiscountFunction({
+    cart: {
+      cost: {
+        subtotalAmount: { amount: "600.00" },
+        totalAmount: { amount: "420.00" },
+        totalTaxAmount: { amount: "0.00" },
+      },
+      buyerIdentity: { customer: { hasAnyTag: false } },
+      lines: [
+        {
+          id: "line-1",
+          quantity: 1,
+          cost: {
+            subtotalAmount: { amount: "600.00" },
+            totalAmount: { amount: "600.00" },
+          },
+          merchandise: {
+            __typename: "ProductVariant",
+            product: { id: "gid://shopify/Product/1" },
+          },
+        },
+      ],
+    },
+    discount: {
+      discountClasses: ["PRODUCT"],
+      metafield: {
+        jsonValue: {
+          globalMinPricePercent: 70,
+          marginGuardEnabled: true,
+        },
+      },
+    },
+    enteredDiscountCodes: [{ code: "SAFE30", rejectable: true }],
+  });
+
+  const rejectOp = result.operations.find(
+    (op: any) => op?.enteredDiscountCodesReject,
+  );
+  assert.equal(
+    rejectOp ?? null,
+    null,
+    "Kód SAFE30 s 30% slevou (výsledek přesně na flooru 70%) nesmí být odmítnut.",
+  );
 });

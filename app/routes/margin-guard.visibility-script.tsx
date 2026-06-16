@@ -143,11 +143,30 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     } catch {}
   }
 
+  function readStorefrontProjectionBootstrap() {
+    const bootstrapEl = document.getElementById("margin-guard-storefront-bootstrap");
+    if (!(bootstrapEl instanceof HTMLScriptElement)) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(bootstrapEl.textContent || "null");
+      if (!parsed || typeof parsed !== "object") {
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  const storefrontProjectionBootstrap = readStorefrontProjectionBootstrap();
+
   debugLog("bootstrap", {
     proxyPrefix,
     visibilityEndpoint,
     loggedInCustomerId: loggedInCustomerId || null,
     loggedInCustomerTagsScope: loggedInCustomerTagsScope || null,
+    storefrontProjectionAvailable: Boolean(storefrontProjectionBootstrap),
     currentPath: window.location.pathname,
   });
 
@@ -621,6 +640,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     if (segmentDefaultStyle) {
       debugLog("removing style", { id: "margin-guard-segment-default-hide" });
       segmentDefaultStyle.remove();
+    }
+    const collectionDefaultStyle = document.getElementById("margin-guard-collection-default-hide");
+    if (collectionDefaultStyle) {
+      debugLog("removing style", { id: "margin-guard-collection-default-hide" });
+      collectionDefaultStyle.remove();
     }
   }
 
@@ -1269,6 +1293,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     enforceCurrentProductQuantityRule();
     syncCartQuantityInputs(state.quantityConstraintsByHandle);
     scheduleCurrentProductVariantVisibilitySync();
+  }
+
+  function resolveProjectedCollectionRedirectMessage() {
+    const messages =
+      storefrontProjectionBootstrap &&
+      storefrontProjectionBootstrap.messages &&
+      storefrontProjectionBootstrap.messages.collectionRedirect &&
+      typeof storefrontProjectionBootstrap.messages.collectionRedirect === "object"
+        ? storefrontProjectionBootstrap.messages.collectionRedirect
+        : null;
+    if (!messages) {
+      return "This collection is not available.";
+    }
+    const localeMessages = resolveLocaleMessages();
+    return localeMessages === MESSAGES.cs
+      ? String(messages.cs || messages.en || "This collection is not available.")
+      : String(messages.en || messages.cs || "This collection is not available.");
   }
 
   function normalizeQuantityForRule(rawQuantity, rule, options) {
@@ -4535,6 +4576,90 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
   }
 
+  function applyCollectionHidingWhenDomReady(hiddenCollections, redirectMessage) {
+    const normalizedHiddenCollections = mergeUniqueStringArrays(hiddenCollections, []);
+    if (normalizedHiddenCollections.length === 0) {
+      return;
+    }
+    if (document.readyState !== "loading") {
+      applyCollectionHiding(normalizedHiddenCollections, redirectMessage);
+      removeEarlyHideStyle();
+      return;
+    }
+    document.addEventListener(
+      "DOMContentLoaded",
+      function() {
+        applyCollectionHiding(normalizedHiddenCollections, redirectMessage);
+        removeEarlyHideStyle();
+      },
+      { once: true },
+    );
+  }
+
+  function hydrateRulesFromProjection() {
+    if (!storefrontProjectionBootstrap || typeof storefrontProjectionBootstrap !== "object") {
+      return;
+    }
+    const snapshot =
+      storefrontProjectionBootstrap.snapshot &&
+      typeof storefrontProjectionBootstrap.snapshot === "object"
+        ? storefrontProjectionBootstrap.snapshot
+        : null;
+    if (!snapshot) {
+      return;
+    }
+
+    const projectedConfigVersion =
+      String(storefrontProjectionBootstrap.configUpdatedAt || "").trim() || null;
+    state.rulesConfigVersion = projectedConfigVersion;
+    state.allowRemoveAtMinimumOrderQuantity =
+      storefrontProjectionBootstrap.allowRemoveAtMinimumOrderQuantity !== false;
+    state.quantityConstraintsByHandle = normalizeQuantityRules(
+      snapshot.quantityConstraintsByHandle,
+      normalizeHandle,
+    );
+    state.quantityConstraintsByProductId = normalizeQuantityRules(
+      snapshot.quantityConstraintsByProductId,
+      normalizeProductId,
+    );
+    state.variantVisibilityByProductId = normalizeVariantVisibilityRules(
+      snapshot.variantVisibilityByProductId,
+    );
+
+    const projectedHiddenHandles = Array.isArray(snapshot.hiddenProductHandles)
+      ? snapshot.hiddenProductHandles
+      : [];
+    const projectedHiddenCollections = Array.isArray(snapshot.hiddenCollectionHandles)
+      ? snapshot.hiddenCollectionHandles
+      : [];
+
+    debugLog("hydrating storefront projection", {
+      segment: storefrontProjectionBootstrap.segment || null,
+      coverage: storefrontProjectionBootstrap.coverage || null,
+      hiddenHandles: projectedHiddenHandles,
+      hiddenCollections: projectedHiddenCollections,
+      quantityHandles: Object.keys(state.quantityConstraintsByHandle || {}),
+    });
+
+    writeRulesCache({
+      configVersion: state.rulesConfigVersion,
+      allowRemoveAtMinimumOrderQuantity: state.allowRemoveAtMinimumOrderQuantity,
+      quantityConstraintsByHandle: state.quantityConstraintsByHandle,
+      quantityConstraintsByProductId: state.quantityConstraintsByProductId,
+      variantVisibilityByProductId: state.variantVisibilityByProductId,
+      hiddenHandles: projectedHiddenHandles,
+    });
+
+    applyHiddenHandlesWhenDomReady(projectedHiddenHandles);
+    applyCollectionHidingWhenDomReady(
+      projectedHiddenCollections,
+      resolveProjectedCollectionRedirectMessage(),
+    );
+    enforceCurrentProductQuantityRule();
+    syncCartQuantityInputs(state.quantityConstraintsByHandle);
+    scheduleCurrentProductVariantVisibilitySync();
+  }
+
   async function runContentEngine() {
     if (contentRulesApplied) return;
     contentRulesApplied = true;
@@ -4557,6 +4682,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   bindCartRequestNormalization();
   bindQuantityRuleInteractions();
   bindDomMutationResync();
+  hydrateRulesFromProjection();
   hydrateRulesFromCache();
   startInitialRulesBootstrap();
 
