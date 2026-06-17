@@ -18,10 +18,6 @@ import {
 } from "../services/discount-function-activation.server";
 import {
   deleteCollectionMaximumQuantityRule,
-  deleteCouponSegmentRule,
-  deleteDiscountCombinationBlacklistRule,
-  deleteDiscountRule,
-  deleteDiscountSegmentCap,
   deleteProductCustomerMaximumQuantityRule,
   deleteProductFloorRule,
   deleteProductMaximumQuantityRule,
@@ -31,10 +27,6 @@ import {
   deleteProductVariantVisibilityRule,
   deleteProductTierPriceRule,
   upsertCollectionMaximumQuantityRule,
-  upsertCouponSegmentRule,
-  upsertDiscountCombinationBlacklistRule,
-  upsertDiscountRule,
-  upsertDiscountSegmentCap,
   upsertProductCustomerMaximumQuantityRule,
   upsertProductFloorRule,
   upsertProductMaximumQuantityRule,
@@ -47,6 +39,7 @@ import {
   syncVisibilityHandlesMetafield,
 } from "../services/margin-guard-config.server";
 import { loadMarginGuardSettingsView } from "../services/margin-guard-settings-view.server";
+import { handleDiscountSettingsAction } from "../services/discount-settings.server";
 import {
   countActiveCatalogCollections,
   countActiveCatalogProducts,
@@ -799,132 +792,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
-  if (intent === "save-coupon-segment-rule") {
-    const code = String(formData.get("code") ?? "").trim();
-    const allowedSegmentRaw = String(formData.get("allowedSegment") ?? "ALL").trim();
-    if (code) {
-      await upsertCouponSegmentRule({
-        code,
-        allowedSegment:
-          allowedSegmentRaw === "B2B" || allowedSegmentRaw === "B2C"
-            ? allowedSegmentRaw
-            : "ALL",
-      });
-    }
-  }
-
-  if (intent === "delete-coupon-segment-rule") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteCouponSegmentRule(id);
-    }
-  }
-
-  if (intent === "save-discount-rule") {
-    const scopeRaw = String(formData.get("scope") ?? "GLOBAL").trim();
-    const segmentRaw = String(formData.get("segment") ?? "").trim();
-    const targetId =
-      scopeRaw === "PRODUCT"
-        ? String(formData.get("productId") ?? "").trim()
-        : scopeRaw === "COLLECTION"
-          ? String(formData.get("collectionId") ?? "").trim()
-          : undefined;
-    const code = String(formData.get("code") ?? "").trim();
-    const percentOff = parseNumber(formData.get("percentOff"), NaN);
-    const priority = Math.floor(parseNumber(formData.get("priority"), 100));
-    const minPricePercentOfBasePriceRaw = String(
-      formData.get("minPricePercentOfBasePrice") ?? "",
-    ).trim();
-    const minPricePercentOfBasePrice = minPricePercentOfBasePriceRaw
-      ? Number(minPricePercentOfBasePriceRaw)
-      : null;
-    await upsertDiscountRule({
-      scope:
-        scopeRaw === "COLLECTION" ||
-        scopeRaw === "PRODUCT" ||
-        scopeRaw === "COUPON"
-          ? scopeRaw
-          : "GLOBAL",
-      targetId,
-      code,
-      segment: segmentRaw === "B2B" || segmentRaw === "B2C" ? segmentRaw : undefined,
-      percentOff,
-      priority,
-      stackMode:
-        String(formData.get("stackMode") ?? "STACKABLE").trim() === "EXCLUSIVE"
-          ? "EXCLUSIVE"
-          : String(formData.get("stackMode") ?? "STACKABLE").trim() ===
-              "NEVER_WITH_COUPONS"
-            ? "NEVER_WITH_COUPONS"
-            : "STACKABLE",
-      minPricePercentOfBasePrice:
-        minPricePercentOfBasePrice != null &&
-        Number.isFinite(minPricePercentOfBasePrice)
-          ? minPricePercentOfBasePrice
-          : null,
-    });
-  }
-
-  if (intent === "delete-discount-rule") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteDiscountRule(id);
-    }
-  }
-
-  if (intent === "save-discount-blacklist-rule") {
-    await upsertDiscountCombinationBlacklistRule({
-      leftType:
-        String(formData.get("leftType") ?? "COUPON_CODE").trim() === "RULE_ID"
-          ? "RULE_ID"
-          : String(formData.get("leftType") ?? "COUPON_CODE").trim() === "SCOPE"
-            ? "SCOPE"
-            : "COUPON_CODE",
-      leftValue: String(formData.get("leftValue") ?? "").trim(),
-      rightType:
-        String(formData.get("rightType") ?? "COUPON_CODE").trim() === "RULE_ID"
-          ? "RULE_ID"
-          : String(formData.get("rightType") ?? "COUPON_CODE").trim() === "SCOPE"
-            ? "SCOPE"
-            : "COUPON_CODE",
-      rightValue: String(formData.get("rightValue") ?? "").trim(),
-      segment:
-        String(formData.get("segment") ?? "").trim() === "B2B"
-          ? "B2B"
-          : String(formData.get("segment") ?? "").trim() === "B2C"
-            ? "B2C"
-            : "ALL",
-    });
-  }
-
-  if (intent === "delete-discount-blacklist-rule") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteDiscountCombinationBlacklistRule(id);
-    }
-  }
-
-  if (intent === "save-discount-segment-cap") {
-    await upsertDiscountSegmentCap({
-      segment:
-        String(formData.get("segment") ?? "").trim() === "B2B"
-          ? "B2B"
-          : String(formData.get("segment") ?? "").trim() === "B2C"
-            ? "B2C"
-            : "ALL",
-      maxCombinedPercentOff: parseNumber(
-        formData.get("maxCombinedPercentOff"),
-        NaN,
-      ),
-    });
-  }
-
-  if (intent === "delete-discount-segment-cap") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteDiscountSegmentCap(id);
-    }
-  }
+  // MVP_5_1 (move-not-copy): discount-area writes are owned by the shared
+  // discount-settings module; the standalone app.settings.discounts route uses
+  // the same handler. The cart-validation activation tail below still runs for
+  // these intents.
+  await handleDiscountSettingsAction(formData);
 
   if (intent === "deactivate-discount-function") {
     const result = await deactivateDiscountFunction(admin);
