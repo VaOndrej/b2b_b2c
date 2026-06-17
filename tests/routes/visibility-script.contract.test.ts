@@ -7,6 +7,7 @@ const LIQUID_EMBED_PATH = "extensions/margin-guard-storefront/blocks/margin_guar
 const CONFIG_SERVER_PATH = "app/services/margin-guard-config.server.ts";
 const STOREFRONT_PROJECTION_SERVER_PATH = "app/services/storefront-projection.server.ts";
 const SETTINGS_ACTION_PATH = "app/routes/app.settings.tsx";
+const CATALOG_RULES_SERVER_PATH = "app/services/catalog-rules-settings.server.ts";
 
 test("visibility script falls back to product.js productId for variant visibility payload bootstrap", async () => {
   const source = await readFile(VISIBILITY_SCRIPT_ROUTE_PATH, "utf8");
@@ -387,27 +388,33 @@ test("storefront projection sync service writes a public shop metafield snapshot
 });
 
 test("settings action calls syncVisibilityHandlesMetafield after visibility rule changes", async () => {
-  const source = await readFile(SETTINGS_ACTION_PATH, "utf8");
+  // MVP_5_1 (move-not-copy): per-product/variant visibility writes (and their
+  // handle-metafield sync) live in the shared catalog-rules module; the
+  // save-global handle sync stays in the route action.
+  const [actionSource, catalogRulesSource] = await Promise.all([
+    readFile(SETTINGS_ACTION_PATH, "utf8"),
+    readFile(CATALOG_RULES_SERVER_PATH, "utf8"),
+  ]);
 
   assert.match(
-    source,
+    catalogRulesSource,
     /syncVisibilityHandlesMetafield/,
-    "Settings action must import and call syncVisibilityHandlesMetafield.",
+    "Catalog-rules module must import and call syncVisibilityHandlesMetafield.",
   );
 
-  const saveRuleIndex = source.indexOf('intent === "save-product-visibility-rule"');
-  const deleteRuleIndex = source.indexOf('intent === "delete-product-visibility-rule"');
+  const saveRuleIndex = catalogRulesSource.indexOf('intent === "save-product-visibility-rule"');
+  const deleteRuleIndex = catalogRulesSource.indexOf('intent === "delete-product-visibility-rule"');
   assert.ok(saveRuleIndex !== -1, "save-product-visibility-rule intent must exist.");
   assert.ok(deleteRuleIndex !== -1, "delete-product-visibility-rule intent must exist.");
 
-  const afterSave = source.indexOf("syncVisibilityHandlesMetafield", saveRuleIndex);
-  const afterDelete = source.indexOf("syncVisibilityHandlesMetafield", deleteRuleIndex);
+  const afterSave = catalogRulesSource.indexOf("syncVisibilityHandlesMetafield", saveRuleIndex);
+  const afterDelete = catalogRulesSource.indexOf("syncVisibilityHandlesMetafield", deleteRuleIndex);
   assert.ok(afterSave !== -1, "syncVisibilityHandlesMetafield must be called after saving a visibility rule.");
   assert.ok(afterDelete !== -1, "syncVisibilityHandlesMetafield must be called after deleting a visibility rule.");
 
-  const saveGlobalIndex = source.indexOf('intent === "save-global"');
+  const saveGlobalIndex = actionSource.indexOf('intent === "save-global"');
   assert.ok(saveGlobalIndex !== -1, "save-global intent must exist.");
-  const afterSaveGlobal = source.indexOf("syncVisibilityHandlesMetafield", saveGlobalIndex);
+  const afterSaveGlobal = actionSource.indexOf("syncVisibilityHandlesMetafield", saveGlobalIndex);
   assert.ok(
     afterSaveGlobal !== -1,
     "syncVisibilityHandlesMetafield must be called after saving global settings so storefront B2B tag changes stay in sync.",

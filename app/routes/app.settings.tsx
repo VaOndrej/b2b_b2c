@@ -17,45 +17,23 @@ import {
   reconcileDiscountFunctionStatus,
 } from "../services/discount-function-activation.server";
 import {
-  deleteCollectionMaximumQuantityRule,
-  deleteProductCustomerMaximumQuantityRule,
-  deleteProductFloorRule,
-  deleteProductMaximumQuantityRule,
-  deleteProductQuantityRule,
-  deleteProductStepQuantityRule,
-  deleteProductVisibilityRule,
-  deleteProductVariantVisibilityRule,
-  deleteProductTierPriceRule,
-  upsertCollectionMaximumQuantityRule,
-  upsertProductCustomerMaximumQuantityRule,
-  upsertProductFloorRule,
-  upsertProductMaximumQuantityRule,
-  upsertProductQuantityRule,
-  upsertProductStepQuantityRule,
-  upsertProductVisibilityRule,
-  upsertProductVariantVisibilityRule,
-  upsertProductTierPriceRule,
   updateGlobalMarginGuardConfig,
   syncVisibilityHandlesMetafield,
 } from "../services/margin-guard-config.server";
 import { loadMarginGuardSettingsView } from "../services/margin-guard-settings-view.server";
 import { handleDiscountSettingsAction } from "../services/discount-settings.server";
+import { handleCatalogRulesSettingsAction } from "../services/catalog-rules-settings.server";
 import { makeCatalogDescribers } from "../components/catalog-describers";
 import { useManualRuleForm } from "../components/use-manual-rule-form";
 import { DiscountSettingsView } from "../components/discount-settings-view";
 import {
   countActiveCatalogCollections,
   countActiveCatalogProducts,
-  getCatalogCollectionMapByIds,
   recordProductCatalogSyncError,
   shouldAutoSyncProductCatalog,
   syncShopifyCollectionCatalog,
   syncShopifyProductCatalog,
 } from "../services/product-catalog.server";
-import {
-  deleteCollectionVisibilityRule,
-  upsertCollectionVisibilityRule,
-} from "../services/storefront-content.server";
 import { syncStorefrontProjectionMetafields } from "../services/storefront-projection.server";
 import { storefrontProjection } from "../../config/feature-flags.ts";
 import {
@@ -525,275 +503,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return Response.redirect(url.toString(), 302);
   }
 
-  if (intent === "save-product-floor") {
-    const productId = String(formData.get("productId") ?? "").trim();
-    const segmentRaw = String(formData.get("segment") ?? "").trim();
-    const allowZeroOverrideRaw = String(
-      formData.get("allowZeroFinalPriceOverride") ?? "inherit",
-    ).trim();
-    const b2bOverrideRaw = String(formData.get("b2bOverridePrice") ?? "").trim();
-    const minPercentOfBasePrice = parseNumber(
-      formData.get("minPercentOfBasePrice"),
-      70,
-    );
-    const b2bOverridePrice = b2bOverrideRaw ? Number(b2bOverrideRaw) : null;
-
-    if (productId) {
-      await upsertProductFloorRule({
-        productId,
-        segment: segmentRaw === "B2B" || segmentRaw === "B2C" ? segmentRaw : undefined,
-        minPercentOfBasePrice,
-        allowZeroFinalPrice:
-          allowZeroOverrideRaw === "allow"
-            ? true
-            : allowZeroOverrideRaw === "deny"
-              ? false
-              : null,
-        b2bOverridePrice:
-          b2bOverridePrice != null &&
-          Number.isFinite(b2bOverridePrice) &&
-          b2bOverridePrice >= 0
-            ? b2bOverridePrice
-            : null,
-      });
-    }
-  }
-
-  if (intent === "delete-product-floor") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteProductFloorRule(id);
-    }
-  }
-
-  if (intent === "save-product-tier-price") {
-    const productId = String(formData.get("productId") ?? "").trim();
-    const segmentRaw = String(formData.get("segment") ?? "").trim();
-    const minQuantity = Math.max(1, Math.floor(parseNumber(formData.get("minQuantity"), 1)));
-    const unitPrice = parseNumber(formData.get("unitPrice"), NaN);
-
-    if (productId && Number.isFinite(unitPrice) && unitPrice >= 0) {
-      await upsertProductTierPriceRule({
-        productId,
-        segment: segmentRaw === "B2B" || segmentRaw === "B2C" ? segmentRaw : undefined,
-        minQuantity,
-        unitPrice,
-      });
-    }
-  }
-
-  if (intent === "delete-product-tier-price") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteProductTierPriceRule(id);
-    }
-  }
-
-  if (intent === "save-product-quantity-rule") {
-    const productId = String(formData.get("productId") ?? "").trim();
-    const segmentRaw = String(formData.get("segment") ?? "").trim();
-    const minimumOrderQuantity = Math.max(
-      1,
-      Math.floor(parseNumber(formData.get("minimumOrderQuantity"), 1)),
-    );
-
-    if (productId) {
-      await upsertProductQuantityRule({
-        productId,
-        segment: segmentRaw === "B2B" || segmentRaw === "B2C" ? segmentRaw : undefined,
-        minimumOrderQuantity,
-      });
-    }
-  }
-
-  if (intent === "delete-product-quantity-rule") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteProductQuantityRule(id);
-    }
-  }
-
-  if (intent === "save-product-step-quantity-rule") {
-    const productId = String(formData.get("productId") ?? "").trim();
-    const segmentRaw = String(formData.get("segment") ?? "").trim();
-    const stepQuantity = Math.max(
-      1,
-      Math.floor(parseNumber(formData.get("stepQuantity"), 1)),
-    );
-
-    if (productId) {
-      await upsertProductStepQuantityRule({
-        productId,
-        segment: segmentRaw === "B2B" || segmentRaw === "B2C" ? segmentRaw : undefined,
-        stepQuantity,
-      });
-    }
-  }
-
-  if (intent === "delete-product-step-quantity-rule") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteProductStepQuantityRule(id);
-    }
-  }
-
-  if (intent === "save-product-max-quantity-rule") {
-    const productId = String(formData.get("productId") ?? "").trim();
-    const segmentRaw = String(formData.get("segment") ?? "").trim();
-    const maxOrderQuantity = Math.max(
-      1,
-      Math.floor(parseNumber(formData.get("maxOrderQuantity"), 1)),
-    );
-
-    if (productId) {
-      await upsertProductMaximumQuantityRule({
-        productId,
-        segment: segmentRaw === "B2B" || segmentRaw === "B2C" ? segmentRaw : undefined,
-        maxOrderQuantity,
-      });
-    }
-  }
-
-  if (intent === "delete-product-max-quantity-rule") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteProductMaximumQuantityRule(id);
-    }
-  }
-
-  if (intent === "save-collection-max-quantity-rule") {
-    const collectionId = String(formData.get("collectionId") ?? "").trim();
-    const segmentRaw = String(formData.get("segment") ?? "").trim();
-    const maxOrderQuantity = Math.max(
-      1,
-      Math.floor(parseNumber(formData.get("maxOrderQuantity"), 1)),
-    );
-
-    if (collectionId) {
-      await upsertCollectionMaximumQuantityRule({
-        collectionId,
-        segment: segmentRaw === "B2B" || segmentRaw === "B2C" ? segmentRaw : undefined,
-        maxOrderQuantity,
-      });
-    }
-  }
-
-  if (intent === "delete-collection-max-quantity-rule") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteCollectionMaximumQuantityRule(id);
-    }
-  }
-
-  if (intent === "save-product-customer-max-quantity-rule") {
-    const productId = String(formData.get("productId") ?? "").trim();
-    const customerId = String(formData.get("customerId") ?? "").trim();
-    const maxOrderQuantity = Math.max(
-      1,
-      Math.floor(parseNumber(formData.get("maxOrderQuantity"), 1)),
-    );
-    if (productId && customerId) {
-      await upsertProductCustomerMaximumQuantityRule({
-        productId,
-        customerId,
-        maxOrderQuantity,
-      });
-    }
-  }
-
-  if (intent === "delete-product-customer-max-quantity-rule") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteProductCustomerMaximumQuantityRule(id);
-    }
-  }
-
-  if (intent === "save-product-visibility-rule") {
-    const productId = String(formData.get("productId") ?? "").trim();
-    const visibilityModeRaw = String(formData.get("visibilityMode") ?? "ALL").trim();
-    const customerId = String(formData.get("customerId") ?? "").trim();
-
-    if (productId) {
-      await upsertProductVisibilityRule({
-        productId,
-        visibilityMode:
-          visibilityModeRaw === "B2B_ONLY" ||
-          visibilityModeRaw === "B2C_ONLY" ||
-          visibilityModeRaw === "CUSTOMER_ONLY"
-            ? visibilityModeRaw
-            : "ALL",
-        customerId,
-      });
-      await syncVisibilityHandlesMetafield(admin).catch((err) => {
-        console.error("[syncVisibilityHandlesMetafield] action sync failed:", err);
-      });
-    }
-  }
-
-  if (intent === "delete-product-visibility-rule") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteProductVisibilityRule(id);
-      await syncVisibilityHandlesMetafield(admin).catch((err) => {
-        console.error("[syncVisibilityHandlesMetafield] action sync failed:", err);
-      });
-    }
-  }
-
-  if (intent === "save-product-variant-visibility-rule") {
-    const productId = String(formData.get("productId") ?? "").trim();
-    const variantId = String(formData.get("variantId") ?? "").trim();
-    const visibilityModeRaw = String(formData.get("visibilityMode") ?? "ALL").trim();
-    const customerId = String(formData.get("customerId") ?? "").trim();
-
-    if (productId && variantId) {
-      await upsertProductVariantVisibilityRule({
-        productId,
-        variantId,
-        visibilityMode:
-          visibilityModeRaw === "B2B_ONLY" ||
-          visibilityModeRaw === "B2C_ONLY" ||
-          visibilityModeRaw === "CUSTOMER_ONLY"
-            ? visibilityModeRaw
-            : "ALL",
-        customerId,
-      });
-    }
-  }
-
-  if (intent === "delete-product-variant-visibility-rule") {
-    const id = String(formData.get("id") ?? "");
-    if (id) {
-      await deleteProductVariantVisibilityRule(id);
-    }
-  }
-
-  if (intent === "save-collection-visibility-rule") {
-    const collectionId = String(formData.get("collectionId") ?? "").trim();
-    const visibilityModeRaw = String(formData.get("visibilityMode") ?? "B2B_ONLY").trim();
-
-    if (collectionId) {
-      const collectionMap = await getCatalogCollectionMapByIds([collectionId]);
-      const collection = collectionMap[collectionId];
-      await upsertCollectionVisibilityRule({
-        id: String(formData.get("ruleId") ?? "").trim() || undefined,
-        collectionId,
-        collectionHandle: collection?.handle ?? "",
-        collectionTitle: collection?.title ?? null,
-        visibilityMode:
-          visibilityModeRaw === "B2C_ONLY"
-            ? "B2C_ONLY"
-            : "B2B_ONLY",
-      });
-    }
-  }
-
-  if (intent === "delete-collection-visibility-rule") {
-    const id = String(formData.get("ruleId") ?? formData.get("id") ?? "").trim();
-    if (id) {
-      await deleteCollectionVisibilityRule(id);
-    }
-  }
+  // MVP_5_1 (move-not-copy): catalog-rules writes (per-product floor/tier/MOQ/
+  // step/max/customer-max, collection max, product/variant/collection visibility)
+  // are owned by the shared catalog-rules-settings module; the standalone
+  // app.settings.catalog-rules route uses the same handler. The shared
+  // projection + cart-validation tail below still runs for these intents.
+  await handleCatalogRulesSettingsAction({ admin, formData });
 
   // MVP_5_1 (move-not-copy): discount-area writes are owned by the shared
   // discount-settings module; the standalone app.settings.discounts route uses
