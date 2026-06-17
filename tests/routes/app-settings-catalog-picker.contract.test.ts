@@ -6,6 +6,7 @@ const SETTINGS_ROUTE_PATH = "app/routes/app.settings.tsx";
 const COMPACT_RULE_PANEL_PATH = "app/components/compact-rule-panel.tsx";
 const ADMIN_CATALOG_PICKER_PATH = "app/components/admin-catalog-picker.tsx";
 const STOREFRONT_UX_ROUTE_PATH = "app/routes/app.storefront-ux.tsx";
+const DISCOUNT_SETTINGS_VIEW_PATH = "app/components/discount-settings-view.tsx";
 
 test("settings route uses AdminCatalogPicker for product, collection, customer, and variant forms", async () => {
   const source = await readFile(SETTINGS_ROUTE_PATH, "utf8");
@@ -305,10 +306,10 @@ test("settings route renders configured product rules with imported product and 
 });
 
 test("configured rule lists expose modify and red delete actions", async () => {
-  const [settingsSource, panelSource, pickerSource] = await Promise.all([
-    readFile(SETTINGS_ROUTE_PATH, "utf8"),
+  const [panelSource, pickerSource, discountViewSource] = await Promise.all([
     readFile(COMPACT_RULE_PANEL_PATH, "utf8"),
     readFile(ADMIN_CATALOG_PICKER_PATH, "utf8"),
+    readFile(DISCOUNT_SETTINGS_VIEW_PATH, "utf8"),
   ]);
 
   assert.match(
@@ -331,20 +332,22 @@ test("configured rule lists expose modify and red delete actions", async () => {
     /#b42318/,
     "Compact catalog rule delete buttons must use the red destructive style.",
   );
+  // MVP_5_1: the manual discount rule forms now live in the extracted
+  // DiscountSettingsView component (shared by the standalone route + monolith).
   assert.match(
-    settingsSource,
+    discountViewSource,
     /openManualAddForm/,
-    "Manual rule forms must also stay hidden until an Add action opens them.",
+    "Manual discount rule forms must stay hidden until an Add action opens them.",
   );
   assert.match(
-    settingsSource,
+    discountViewSource,
     /openManualModifyForm/,
     "Manual discount rule lists must be able to open and populate their forms for modification.",
   );
   assert.match(
-    settingsSource,
+    discountViewSource,
     /style=\{deleteRuleButtonStyle\}/,
-    "Manual rule delete buttons must use the red destructive style.",
+    "Manual discount rule delete buttons must use the red destructive style.",
   );
   assert.match(
     pickerSource,
