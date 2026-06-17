@@ -165,7 +165,7 @@ MVP_5_0_3: HOTOVO
 
 ---- ROZPRACOVANO ------
 
-MVP_5_1: ROZPRACOVANO
+MVP_5_1: HOTOVO (dekompozice dokončena 2026-06-17)
  ├─Search hledání nefunguje - pokud nemám naimportované žádné kolekce nebo produkty - přidat warning, pokud tohle není udělané.
  ├─ Návrh jak rozdělit aplikaci do jednotlivých shippable produktů.
  ├─ A rozdělení aplikace do logických co nejvíc odizolovaných celků
@@ -184,19 +184,76 @@ MVP_5_1: ROZPRACOVANO
       - Menu = HYBRID: nav = 1 záložka na modul + cross-cutting "Products" panel (vše o jednom produktu pohromadě, navazuje na MVP_4_5).
         Záložka pro per-produkt pravidla zůstává pojmenovaná "Catalog Rules".
       - HOTOVO 1. reálná extrakce (vzor): Global Settings je samostatná route (app.settings.global.tsx: vlastní loader/action/component,
-        už nere-exportuje monolit). Test app-settings-global-route.contract.test.ts. Suite 242 zelená, tsc čistý.
-      - POZN. strangler: app.settings.tsx zatím drží ekvivalentní global blok pro legacy ?area=all (dočasná duplicita).
-        Další extrakce (catalog-rules, discounts) stejným vzorem; plná de-duplikace/modularizace blíž k MVP_5_5.
+        už nere-exportuje monolit). Test app-settings-global-route.contract.test.ts.
+      - HOTOVO Discounts: standalone route + sdílené discount-settings-view.tsx + discount-settings.server.ts (move-not-copy).
+      - HOTOVO Catalog Rules (Stage 3): sdílený components/catalog-rules-view.tsx (per-produkt floor/tier/MOQ/step/max/customer +
+        product/variant/collection visibility + collection-max + "Products affected" souhrn + sub-nav), standalone route
+        app.settings.catalog-rules.tsx (vlastní loader/action, sdílí handler catalog-rules-settings.server). Test contract.
+      - HOTOVO de-duplikace strangleru: sdílený components/global-settings-view.tsx; monolit app.settings.tsx je teď ČISTÝ
+        AGREGÁTOR (renderuje 3 sdílené view + Functions panel + workspace chrome, deleguje všechny zápisy). /app/settings ("all")
+        už není v menu (jen přímou URL); Functions runtime status žije jen tam.
+      - HOTOVO cross-cutting Product Rules view (hybrid menu): components/product-rules-panel.tsx + read-only route
+        /app/product-rules (vyber produkt → všechna jeho pravidla napříč moduly). Nová nav záložka "Product Rules".
+      - STAV: guard:test:core = 256 zelená, tsc --noEmit = 0 chyb. MVP_5_1 dekompozice HOTOVA.
+        Zbytkový tech-dluh (monolitní workspace chrome + Functions bez vlastní standalone route) → MVP_5_5.
 
 
-MVP_5_2:
- ├─ Slevy pro věrné zákazníky
- ├─ Slevy na všechno? Co dalšího nás napadá?
+MVP_5_2 – Věrnostní slevy + dokončení governance nad slevami
 
+ Produktová filozofie (potvrzeno uživatelem 2026-06-17):
+  Slevy si merchant tvoří NATIVNĚ v Shopify adminu. Naše appka je nestaví znovu — dělá
+  dvě věci, které native (zvlášť na non-Plus) neumí:
+   (1) GOVERNANCE nad nativními i vlastními slevami: margin floor, stacking/blacklist,
+       capy, segment-gating kupónů, conflict detection.
+   (2) TVORBA jen těch slev, co jsou segmentově/množstevně/věrnostně diferencované
+       (B2B/B2C, tier/volume, loyalty) a vázané na floor.
+  NON-GOAL: appka netvoří nativně dostupné typy (fixed amount na objednávku, BXGY,
+  bundle, free shipping creation, usage limity, min-purchase podmínky, scheduling).
+  To je native; my to jen GOVERNUJEME.
+  Klíčový fakt (ověřeno v kódu): enforcement backstop (cart-validation funkce) je
+  VALUE-BASED a SOURCE-AGNOSTIC — porovnává finalUnitPrice (= cost.amountPerQuantity,
+  cena po VŠECH slevách, nativních i našich) vs floor → pod floor je checkout blokovaný
+  už dnes, bez ohledu na původ slevy. Díra je jen v PROAKTIVNÍM varování (viz níže).
+
+ ├─ Slevy pro věrné zákazníky (loyalty) — věrnost ovlivňuje JEN slevy, ne ceny/viditelnost/množství
+ │   A) SPOTŘEBA (patří do 5_2, levné): věrnostní tier = tag (např. loyalty-gold).
+ │      Engine matchuje rule podle tagu, funkce vynutí přes customer.hasAnyTag, floor +
+ │      capy platí automaticky (je to běžná rule). Jede po stejné koleji jako segment.
+ │   B) PŘIŘAZENÍ tieru z obratu (MIMO 5_2): "10k ročně → 10%" potřebuje akumulaci obratu
+ │      (webhook orders/paid), klouzavé 12měsíční okno + tagovací job a naráží na
+ │      Protected Customer Data gate (viz pozn. u MVP_1). V 5_2 přiřazení tagu ruční /
+ │      přes Shopify Flow / nativní customer segment (POZOR: native = lifetime obrat, ne
+ │      klouzavý roční). Auto spend-based přiřazení až ~MVP_6 (stavová data / ERP).
+ │
+ ├─ Audit úplnosti typů slev — co aktuálně CHYBÍ:
+ │   Vlastní engine (DiscountRule + funkce):
+ │     - Jen procenta (percentOff). Chybí pevná částka / fixní cena.
+ │     - Žádná časová osa (startsAt/endsAt) → žádné naplánované akce/kampaně.
+ │     - Žádný práh hodnoty košíku ("utrať X → Y") — data ve funkci jsou, logika ne.
+ │     - Žádné limity čerpání (počet / per-zákazník / rozpočet).
+ │     - Chybí VARIANT scope; BXGY, bundle, free shipping (delivery funkce je STUB) → vědomě native.
+ │     - Tier/volume sleva existuje JEN jako tier pricing (pricing engine + ProductTierPriceRule)
+ │       → revize existujícího, ne nová stavba.
+ │   Governance (conflict detector) — PRIORITA:
+ │     - Conflict detector je PERCENT-ONLY → nevidí nativní fixed-amount/BXGY slevy.
+ │       Merchant je tak dostane zablokované až u pokladny místo varování v adminovi.
+ │       Zhodnotit na VALUE-AWARE = priorita č. 1 (celá filozofie stojí na důvěře k native).
+ │
+ ├─ Doporučený reálný scope 5_2:
+ │   1) Věrnostní tier jako eligibilita slevy (tag-driven, část A výše).
+ │   2) Conflict detector value-aware (proaktivně vidí nativní fixed-amount/BXGY vs floor).
+ │   Kandidáti dle kapacity: pevná částka ve vlastních slevách, scheduling, práh košíku.
+ │   Loyalty = součást modulu B2B Pricing (segment-tvorba), NE nový modul.
+
+MVP_5_3:
+ ├─ Simulovat shopify native katalogy. Od dubna 2026 umí i non-plus plány mít maximálně 3 katalogy. 
+ ├─ V aplikaci jich musíme podpořit "nekonečně" mnoho.
+ ├─ Tyhle katalogy musí být připravené na import dle MVP 6.
 
 MVP_5_5
 ├─ Po tomhle nesmí být žádný technický dluh
 ├─ Vyřešit duplicitní log cart validation
+├─ Tohle je takové optimalizační MVP
 
 MVP_6 – Data Import / ERP Light
  ├─ CSV import cen
