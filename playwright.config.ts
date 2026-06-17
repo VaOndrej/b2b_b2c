@@ -2,7 +2,10 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testMatch: "*.spec.ts",
+  // Serial, mutate-per-test suite only. The parallel read-only matrix suite has
+  // its own config (playwright.matrix.config.ts) so the two never race on the
+  // shared MarginGuardConfig row / storefront_projection metafield.
+  testMatch: /storefront\.(smoke|listing|cart-enforcement)\.spec\.ts$/,
   fullyParallel: false,
   workers: 1,
   timeout: 45_000,

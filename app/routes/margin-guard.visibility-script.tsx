@@ -106,10 +106,25 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
   }
 
+  function readPageParam(name) {
+    try {
+      const parsed = new URL(window.location.href);
+      return String(parsed.searchParams.get(name) || "").trim();
+    } catch {
+      return "";
+    }
+  }
+
   const proxyPrefix = readProxyParam("path_prefix") || DEFAULT_PROXY_PREFIX;
   const visibilityEndpoint = proxyPrefix + "/visibility";
   const loggedInCustomerId = readProxyParam("logged_in_customer_id");
   const loggedInCustomerTagsRaw = readProxyParam("logged_in_customer_tags");
+  // Gated E2E forced-segment param. Read from the PAGE URL (the way preview_theme_id
+  // rides the storefront URL), then forwarded to the app-proxy visibility fetch so
+  // the loader can resolve the forced segment. The app ignores it unless the
+  // runner-owned MARGIN_GUARD_E2E_OVERRIDE flag is armed; without the param the
+  // proxy call is unchanged.
+  const e2eSegmentOverride = readPageParam("mg_e2e_segment");
 
   function parseCustomerTagsScope(rawValue) {
     const normalized = String(rawValue || "").trim();
@@ -553,6 +568,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
     if (loggedInCustomerTagsRaw) {
       params.set("logged_in_customer_tags", loggedInCustomerTagsRaw);
+    }
+    if (e2eSegmentOverride) {
+      params.set("mg_e2e_segment", e2eSegmentOverride);
     }
     debugLog("visibility request", {
       url: visibilityEndpoint + "?" + params.toString(),
@@ -4395,6 +4413,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     if (handle) params.set("handle", handle);
     if (productId) params.set("product_id", productId);
     params.set("locale", locale);
+    if (e2eSegmentOverride) params.set("mg_e2e_segment", e2eSegmentOverride);
 
     try {
       const response = await fetch(contentEndpoint + "?" + params.toString());

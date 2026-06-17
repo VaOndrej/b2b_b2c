@@ -6,6 +6,7 @@ import {
   resolveSegmentForStorefront,
   getB2bTag,
 } from "../services/storefront-content.server";
+import { E2E_SEGMENT_OVERRIDE_PARAM } from "../services/storefront-segment-override.server";
 import { resolveStorefrontContent } from "../../core/storefront/storefront-content.engine";
 import type { PageType } from "../../core/storefront/storefront-content.types";
 
@@ -62,6 +63,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     admin,
     loggedInCustomerId,
     b2bTag,
+    e2eSegmentParam: url.searchParams.get(E2E_SEGMENT_OVERRIDE_PARAM),
   });
 
   const result = resolveStorefrontContent({

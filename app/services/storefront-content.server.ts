@@ -1,6 +1,7 @@
 import prisma from "../db.server.ts";
 import type { Segment } from "../../core/segment/segment.types";
 import { resolveSegment } from "../../core/segment/segment.engine.ts";
+import { resolveStorefrontSegmentOverride } from "./storefront-segment-override.server.ts";
 
 const DEFAULT_CONFIG_ID = "default";
 
@@ -115,7 +116,19 @@ export async function resolveSegmentForStorefront(input: {
   admin: AdminGraphqlClient | undefined;
   loggedInCustomerId: string | null;
   b2bTag: string;
+  /**
+   * Raw `mg_e2e_segment` query param. Honored ONLY behind the gated, prod-safe
+   * E2E override (see resolveStorefrontSegmentOverride); ignored otherwise.
+   */
+  e2eSegmentParam?: string | null;
 }): Promise<Segment> {
+  // Gated E2E escape hatch: when armed, force the segment and skip the customer
+  // lookup entirely. Inert in production / without the runner-owned flag.
+  const overrideSegment = resolveStorefrontSegmentOverride(input.e2eSegmentParam);
+  if (overrideSegment) {
+    return overrideSegment;
+  }
+
   if (!input.loggedInCustomerId || !input.admin) {
     return "B2C";
   }

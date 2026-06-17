@@ -9,13 +9,18 @@ import {
   seedCollectionVisibilityScenario,
 } from "./support/seed.ts";
 import {
+  decorateStorefrontPath,
   maybeUnlockStorefront,
   resolveCurrentProductFixtureFromPage,
   waitForMarginGuardBootstrap,
 } from "./support/storefront.ts";
-import { resolveShopifyE2ERuntime } from "./support/runtime.ts";
+import { resolveShopifyE2ERuntime, type ShopifyE2ERuntime } from "./support/runtime.ts";
+import { warmStorefrontTunnel } from "./support/warmup.ts";
 
-const runtime = await resolveShopifyE2ERuntime();
+// Resolved in beforeAll (NOT at module top-level) — see storefront.smoke.spec.ts
+// for why: avoids a cold dev tunnel/route between collection and the first
+// navigation.
+let runtime: ShopifyE2ERuntime;
 
 const PRODUCT_LISTING_PATH = "/collections/all";
 const COLLECTION_LISTING_PATH = "/collections";
@@ -48,7 +53,14 @@ async function ensureEmbedLoaded(page: Page) {
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async () => {
+  // See storefront.smoke.spec.ts — give the hook room to absorb the dev-tunnel
+  // cold-start once so the tests navigate against a warm route.
+  test.setTimeout(150_000);
   await ensureOriginalMarginGuardSnapshot();
+  runtime = await resolveShopifyE2ERuntime();
+  if (runtime.enabled) {
+    await warmStorefrontTunnel(runtime.scenarioHandles.visibility);
+  }
 });
 
 test.beforeEach(async () => {
@@ -75,17 +87,17 @@ test("theme app embed removes a B2B-only product card from the product listing f
   const scenarioHandles = runtime.scenarioHandles;
 
   // Resolve the product id from its PDP first (the listing page does not expose it reliably).
-  await page.goto(`/products/${scenarioHandles.visibility}`, {
+  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.visibility}`), {
     waitUntil: "domcontentloaded",
   });
   await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(`/products/${scenarioHandles.visibility}`, {
+  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.visibility}`), {
     waitUntil: "domcontentloaded",
   });
   const product = await resolveCurrentProductFixtureFromPage(page);
 
   // Baseline: with no visibility rule the product card is visible on the listing.
-  await page.goto(PRODUCT_LISTING_PATH, { waitUntil: "domcontentloaded" });
+  await page.goto(decorateStorefrontPath(PRODUCT_LISTING_PATH), { waitUntil: "domcontentloaded" });
   await waitForMarginGuardBootstrap(page);
   if ((await productCardLinks(page, product.handle).count()) === 0) {
     test.skip(true, `Product ${product.handle} is not present on ${PRODUCT_LISTING_PATH}.`);
@@ -96,7 +108,7 @@ test("theme app embed removes a B2B-only product card from the product listing f
     productId: product.productId,
   });
 
-  await page.goto(PRODUCT_LISTING_PATH, { waitUntil: "domcontentloaded" });
+  await page.goto(decorateStorefrontPath(PRODUCT_LISTING_PATH), { waitUntil: "domcontentloaded" });
   await waitForMarginGuardBootstrap(page);
 
   // After the rule is applied the card must be gone (removed from DOM / hidden),
@@ -127,9 +139,9 @@ test("theme app embed hides a B2B-only collection card from the collection listi
     return;
   }
 
-  await page.goto(COLLECTION_LISTING_PATH, { waitUntil: "domcontentloaded" });
+  await page.goto(decorateStorefrontPath(COLLECTION_LISTING_PATH), { waitUntil: "domcontentloaded" });
   await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(COLLECTION_LISTING_PATH, { waitUntil: "domcontentloaded" });
+  await page.goto(decorateStorefrontPath(COLLECTION_LISTING_PATH), { waitUntil: "domcontentloaded" });
   await ensureEmbedLoaded(page);
 
   if ((await collectionCardLinks(page, collectionHandle).count()) === 0) {
@@ -149,7 +161,7 @@ test("theme app embed hides a B2B-only collection card from the collection listi
     return;
   }
 
-  await page.goto(COLLECTION_LISTING_PATH, { waitUntil: "domcontentloaded" });
+  await page.goto(decorateStorefrontPath(COLLECTION_LISTING_PATH), { waitUntil: "domcontentloaded" });
   await ensureEmbedLoaded(page);
 
   // The hide is driven by the server-rendered storefront_projection metafield.

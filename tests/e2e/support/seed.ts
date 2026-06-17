@@ -1,3 +1,5 @@
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import prisma from "../../../app/db.server.ts";
 import {
   updateGlobalMarginGuardConfig,
@@ -9,6 +11,14 @@ import {
 } from "../../../app/services/margin-guard-config.server.ts";
 import { upsertCollectionVisibilityRule } from "../../../app/services/storefront-content.server.ts";
 import { syncStorefrontProjectionMetafields } from "../../../app/services/storefront-projection.server.ts";
+import type { E2EMatrix } from "./matrix.ts";
+
+const SNAPSHOT_FILE = path.resolve(
+  process.cwd(),
+  "tests",
+  "e2e",
+  ".matrix-snapshot.json",
+);
 
 const E2E_ADMIN_API_VERSION = "2026-04";
 
@@ -269,7 +279,17 @@ export async function resetMarginGuardConfigForStorefrontE2E() {
 
 export async function restoreOriginalMarginGuardSnapshot() {
   const snapshot = await ensureOriginalMarginGuardSnapshot();
+  await applyMarginGuardConfigSnapshot(snapshot);
+}
 
+/**
+ * Applies a captured snapshot back onto the live config: resets global fields
+ * and rebuilds every child rule table from the snapshot. Shared by the
+ * in-memory restore and the cross-process file restore.
+ */
+async function applyMarginGuardConfigSnapshot(
+  snapshot: MarginGuardConfigSnapshot,
+) {
   await updateGlobalMarginGuardConfig(snapshot.globalConfig);
 
   await prisma.productVariantVisibilityRule.deleteMany({
@@ -375,6 +395,45 @@ export async function restoreOriginalMarginGuardSnapshot() {
   }
 }
 
+/**
+ * Captures the current config to a file so a separate-process teardown can
+ * restore it. Used by the parallel matrix globalSetup/globalTeardown, which run
+ * in different processes and therefore cannot share the in-memory snapshot.
+ * Captures only once (won't overwrite an existing snapshot of the pre-seed state).
+ */
+export async function captureSnapshotToFile(): Promise<void> {
+  if (existsSync(SNAPSHOT_FILE)) {
+    return;
+  }
+  const snapshot = await captureMarginGuardConfigSnapshot();
+  writeFileSync(SNAPSHOT_FILE, JSON.stringify(snapshot, null, 2), "utf8");
+}
+
+/**
+ * Restores the config from the file captured by `captureSnapshotToFile` and
+ * removes the file. No-op when no snapshot file exists.
+ */
+export async function restoreSnapshotFromFile(): Promise<boolean> {
+  if (!existsSync(SNAPSHOT_FILE)) {
+    return false;
+  }
+  let snapshot: MarginGuardConfigSnapshot;
+  try {
+    snapshot = JSON.parse(
+      readFileSync(SNAPSHOT_FILE, "utf8"),
+    ) as MarginGuardConfigSnapshot;
+  } catch {
+    return false;
+  }
+  await applyMarginGuardConfigSnapshot(snapshot);
+  try {
+    unlinkSync(SNAPSHOT_FILE);
+  } catch {
+    /* best effort */
+  }
+  return true;
+}
+
 export async function seedB2BOnlyVisibilityScenario(input: {
   productId: string;
 }) {
@@ -475,6 +534,124 @@ export async function seedCollectionVisibilityScenario(input: {
   }
 
   return { seeded: true, collectionId };
+}
+
+/**
+ * Seeds the entire deterministic E2E matrix in one shot, then pushes the
+ * storefront projection once. After this runs the live shop holds every
+ * archetype's rule simultaneously (each on a distinct product/collection), so
+ * the matrix specs can assert purely read-only and run fully in parallel.
+ *
+ * Returns `seeded: false` with a reason when no offline session is available to
+ * project collection visibility, letting the setup project skip gracefully.
+ */
+export async function seedE2EMatrix(
+  matrix: E2EMatrix,
+): Promise<{ seeded: boolean; reason: string | null }> {
+  await ensureOriginalMarginGuardSnapshot();
+  await resetMarginGuardConfigForStorefrontE2E();
+
+  for (const fixture of matrix.products) {
+    switch (fixture.archetype) {
+      case "VISIBILITY_B2B_ONLY":
+        await upsertProductVisibilityRule({
+          productId: fixture.productId,
+          visibilityMode: "B2B_ONLY",
+        });
+        break;
+      case "VISIBILITY_B2C_ONLY":
+        await upsertProductVisibilityRule({
+          productId: fixture.productId,
+          visibilityMode: "B2C_ONLY",
+        });
+        break;
+      case "VARIANT_B2B_ONLY":
+        if (fixture.variantId) {
+          await upsertProductVariantVisibilityRule({
+            productId: fixture.productId,
+            variantId: fixture.variantId,
+            visibilityMode: "B2B_ONLY",
+          });
+        }
+        break;
+      case "QUANTITY_MOQ_STEP":
+        if (fixture.minimumOrderQuantity != null) {
+          await upsertProductQuantityRule({
+            productId: fixture.productId,
+            minimumOrderQuantity: fixture.minimumOrderQuantity,
+          });
+        }
+        if (fixture.stepQuantity != null) {
+          await upsertProductStepQuantityRule({
+            productId: fixture.productId,
+            stepQuantity: fixture.stepQuantity,
+          });
+        }
+        break;
+      case "QUANTITY_MAX":
+        if (fixture.maxOrderQuantity != null) {
+          await upsertProductMaximumQuantityRule({
+            productId: fixture.productId,
+            maxOrderQuantity: fixture.maxOrderQuantity,
+          });
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  const admin = await buildOfflineAdminClient();
+  if (!admin) {
+    return {
+      seeded: matrix.collections.length === 0,
+      reason:
+        matrix.collections.length === 0
+          ? null
+          : "No offline Shopify session available to project collection visibility metafield.",
+    };
+  }
+
+  for (const fixture of matrix.collections) {
+    if (fixture.archetype === "COLLECTION_B2B_ONLY") {
+      await upsertCollectionVisibilityRule({
+        collectionId: fixture.collectionId,
+        collectionHandle: fixture.collectionHandle,
+        collectionTitle: fixture.collectionTitle,
+        visibilityMode: "B2B_ONLY",
+      });
+    } else if (fixture.archetype === "COLLECTION_B2C_ONLY") {
+      await upsertCollectionVisibilityRule({
+        collectionId: fixture.collectionId,
+        collectionHandle: fixture.collectionHandle,
+        collectionTitle: fixture.collectionTitle,
+        visibilityMode: "B2C_ONLY",
+      });
+    }
+  }
+
+  try {
+    await syncStorefrontProjectionMetafields(admin);
+  } catch (error) {
+    return {
+      seeded: false,
+      reason:
+        error instanceof Error
+          ? `Storefront projection sync failed: ${error.message}`
+          : "Storefront projection sync failed.",
+    };
+  }
+
+  return { seeded: true, reason: null };
+}
+
+/**
+ * Exposes the offline-session Admin GraphQL client for E2E specs that need to
+ * activate Shopify Functions (discount / cart validation) before asserting
+ * checkout-level enforcement. Returns null when no offline session exists.
+ */
+export async function getOfflineAdminClientForE2E() {
+  return buildOfflineAdminClient();
 }
 
 export async function disconnectE2EPrisma() {

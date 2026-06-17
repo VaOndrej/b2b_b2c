@@ -6,6 +6,25 @@ export interface StorefrontProductFixture {
   productUrlPath: string;
 }
 
+/**
+ * Appends `?mg_e2e_segment=B2C` to a storefront path so serial-tier navigations
+ * hit the SAME Shopify edge full-page-cache entry the parallel matrix warms
+ * (the matrix always navigates decorated URLs). Bare `/products/X` URLs map to a
+ * SEPARATE, cold cache entry whose app-proxy `<head>` embed script can block
+ * `domcontentloaded` and time out the navigation.
+ *
+ * For the serial tier the param is a pure cache-key aligner: the override flag
+ * is NOT injected there, so the app ignores `mg_e2e_segment` and still resolves
+ * the anonymous B2C segment — identical behavior to a bare URL, minus the hang.
+ */
+export function decorateStorefrontPath(path: string): string {
+  const url = new URL(path, "https://placeholder.local");
+  if (!url.searchParams.has("mg_e2e_segment")) {
+    url.searchParams.set("mg_e2e_segment", "B2C");
+  }
+  return `${url.pathname}${url.search}`;
+}
+
 function toProductGid(value: unknown): string {
   const numericId = Number(value);
   if (!Number.isInteger(numericId) || numericId <= 0) {

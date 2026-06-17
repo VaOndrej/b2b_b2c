@@ -1,4 +1,8 @@
 import type { Segment } from "../../core/segment/segment.types";
+import {
+  E2E_SEGMENT_OVERRIDE_PARAM,
+  resolveStorefrontSegmentOverride,
+} from "./storefront-segment-override.server.ts";
 import type { getOrCreateMarginGuardConfig } from "./margin-guard-config.server.ts";
 import type {
   fetchProductCollectionIdsByProductIds,
@@ -179,12 +183,25 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
     const customerTagsHint = parseLoggedInCustomerTags(
       url.searchParams.get("logged_in_customer_tags"),
     );
-    const segmentResolution = await resolveVisibilitySegment({
-      admin,
-      customerId,
-      b2bTag: config.b2bTag,
-      customerTagsHint,
-    });
+    // Gated E2E escape hatch: when armed, force the segment from `mg_e2e_segment`
+    // and skip the customer tag lookup entirely. Inert in production / without the
+    // runner-owned flag — see resolveStorefrontSegmentOverride.
+    const overrideSegment = resolveStorefrontSegmentOverride(
+      url.searchParams.get(E2E_SEGMENT_OVERRIDE_PARAM),
+    );
+    const segmentResolution = overrideSegment
+      ? {
+          segment: overrideSegment,
+          source: "e2e_override" as const,
+          expectedTag: normalizeTag(config.b2bTag || "b2b") || "b2b",
+          normalizedTags: [] as string[],
+        }
+      : await resolveVisibilitySegment({
+          admin,
+          customerId,
+          b2bTag: config.b2bTag,
+          customerTagsHint,
+        });
     const segment = segmentResolution.segment;
     const visibility = await deps.resolveStorefrontVisibilityByHandles({
       admin,

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import prisma from "../../../app/db.server.ts";
 import { selectAutoScenarioProductIds } from "./scenario-selection.ts";
+import { readMatrixFile } from "./matrix.ts";
 
 const DEFAULT_STOREFRONT_BASE_URL = "https://b2b-b2c-store-development.myshopify.com";
 const DEFAULT_SCENARIO_FALLBACK_HANDLES = {
@@ -567,16 +568,88 @@ async function resolveCollectionScenarioHandle(
   return normalizeHandle(restrictiveRule?.collectionHandle ?? null);
 }
 
+/**
+ * Maps the seeded E2E matrix manifest (`.matrix.json`) to serial-tier scenario
+ * handles. These products are the SAME ones the parallel matrix navigates
+ * successfully, so they are guaranteed published + browser-loadable — unlike the
+ * legacy DB-rule auto-resolution, which can resolve to an unpublished product
+ * whose PDP never reaches `domcontentloaded` (the serial smoke/listing hang).
+ *
+ * Returns all-null when no matrix manifest exists (e.g. serial run without a
+ * preceding matrix run / seed), letting the caller fall back to auto-resolution.
+ */
+function resolveManifestScenarioHandles(): {
+  visibility: string | null;
+  step: string | null;
+  max: string | null;
+  variant: string | null;
+  collection: string | null;
+} {
+  const empty = {
+    visibility: null,
+    step: null,
+    max: null,
+    variant: null,
+    collection: null,
+  };
+  const matrix = readMatrixFile();
+  if (!matrix) {
+    return empty;
+  }
+  const product = (archetype: string): string | null =>
+    matrix.products.find((fixture) => fixture.archetype === archetype)?.handle ?? null;
+  const collection = (archetype: string): string | null =>
+    matrix.collections.find((fixture) => fixture.archetype === archetype)
+      ?.collectionHandle ?? null;
+
+  return {
+    // The seeded visibility scenario only needs a published, loadable product —
+    // the test seeds its own B2B_ONLY rule on it.
+    visibility: product("VISIBILITY_B2B_ONLY") ?? product("VISIBILITY_B2C_ONLY"),
+    step: product("QUANTITY_MOQ_STEP"),
+    max: product("QUANTITY_MAX"),
+    variant: product("VARIANT_B2B_ONLY"),
+    collection:
+      collection("COLLECTION_B2B_ONLY") ??
+      matrix.collections[0]?.collectionHandle ??
+      null,
+  };
+}
+
 export async function resolveShopifyE2ERuntime(): Promise<ShopifyE2ERuntime> {
   const config = resolveShopifyE2ERuntimeConfig();
 
   try {
-    const scenarioHandles = await resolveAutoScenarioHandles(config);
-    const collectionHandle = await resolveCollectionScenarioHandle(config);
+    // Resolution precedence per scenario: explicit env override > seeded matrix
+    // manifest (known-published, browser-loadable) > legacy DB-rule
+    // auto-resolution. Preferring the manifest both fixes the serial PDP-hang
+    // (bad auto-picked product) AND keeps resolution fast (no Admin API calls)
+    // whenever the matrix has been seeded.
+    const manifest = resolveManifestScenarioHandles();
+    const overrides = config.handleOverrides;
+
+    const requiredCovered =
+      Boolean(overrides.visibility ?? manifest.visibility) &&
+      Boolean(overrides.step ?? manifest.step) &&
+      Boolean(overrides.max ?? manifest.max);
+
+    const auto = requiredCovered
+      ? { visibility: null, step: null, max: null, variant: null }
+      : await resolveAutoScenarioHandles(config);
+
+    const visibility = overrides.visibility ?? manifest.visibility ?? auto.visibility;
+    const step = overrides.step ?? manifest.step ?? auto.step;
+    const max = overrides.max ?? manifest.max ?? auto.max;
+    const variant = overrides.variant ?? manifest.variant ?? auto.variant;
+    const collection =
+      overrides.collection ??
+      manifest.collection ??
+      (await resolveCollectionScenarioHandle(config));
+
     const missingScenarioNames = [
-      !scenarioHandles.visibility ? "visibility" : null,
-      !scenarioHandles.step ? "step" : null,
-      !scenarioHandles.max ? "max" : null,
+      !visibility ? "visibility" : null,
+      !step ? "step" : null,
+      !max ? "max" : null,
     ].filter((value): value is string => Boolean(value));
 
     if (missingScenarioNames.length > 0) {
@@ -585,25 +658,24 @@ export async function resolveShopifyE2ERuntime(): Promise<ShopifyE2ERuntime> {
         storefrontBaseUrl: config.storefrontBaseUrl,
         storefrontPassword: config.storefrontPassword,
         skipReason:
-          "Unable to auto-resolve required storefront E2E products for scenarios: " +
-          missingScenarioNames.join(", "),
+          "Unable to resolve required storefront E2E products for scenarios: " +
+          missingScenarioNames.join(", ") +
+          " (seed the matrix via `npm run e2e:seed-catalog` or set SHOPIFY_E2E_PRODUCT_HANDLE_*).",
       };
     }
-
-    const visibilityHandle = scenarioHandles.visibility!;
-    const stepHandle = scenarioHandles.step!;
-    const maxHandle = scenarioHandles.max!;
 
     return {
       enabled: true,
       storefrontBaseUrl: config.storefrontBaseUrl,
       storefrontPassword: config.storefrontPassword,
       scenarioHandles: {
-        visibility: visibilityHandle,
-        step: stepHandle,
-        max: maxHandle,
-        variant: scenarioHandles.variant,
-        collection: collectionHandle,
+        // Non-null asserted: the missing-scenario guard above returns early when
+        // any required handle is null.
+        visibility: visibility!,
+        step: step!,
+        max: max!,
+        variant,
+        collection,
       },
     };
   } catch (error) {

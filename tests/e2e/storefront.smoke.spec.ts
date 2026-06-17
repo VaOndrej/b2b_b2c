@@ -10,14 +10,22 @@ import {
   seedVariantVisibilityScenario,
 } from "./support/seed.ts";
 import {
+  decorateStorefrontPath,
   maybeUnlockStorefront,
   resolveCurrentProductFixtureFromPage,
   waitForMarginGuardBootstrap,
   type StorefrontProductFixture,
 } from "./support/storefront.ts";
-import { resolveShopifyE2ERuntime } from "./support/runtime.ts";
+import { resolveShopifyE2ERuntime, type ShopifyE2ERuntime } from "./support/runtime.ts";
+import { warmStorefrontTunnel } from "./support/warmup.ts";
 
-const runtime = await resolveShopifyE2ERuntime();
+// Resolved in beforeAll (NOT at module top-level): the Admin scenario-resolution
+// calls are slow, and running them during Playwright's collection phase opens a
+// gap between any global warm-up and the first navigation in which the dev
+// tunnel/route goes cold — making the first page.goto pay the cold-start of the
+// no-defer <head> embed script and time out. Resolving + warming in beforeAll
+// keeps the route warm immediately before the specs navigate.
+let runtime: ShopifyE2ERuntime;
 
 function getVisibleQuantityInput(page: Page) {
   return page
@@ -30,7 +38,15 @@ test.describe.configure({ mode: "serial" });
 let product: StorefrontProductFixture;
 
 test.beforeAll(async () => {
+  // The dev-tunnel cold-start of the no-defer <head> embed script can exceed the
+  // 45s per-test budget, so give this hook room to fully absorb it once via the
+  // warm-up below; the tests then navigate against a warm route.
+  test.setTimeout(150_000);
   await ensureOriginalMarginGuardSnapshot();
+  runtime = await resolveShopifyE2ERuntime();
+  if (runtime.enabled) {
+    await warmStorefrontTunnel(runtime.scenarioHandles.visibility);
+  }
 });
 
 test.beforeEach(async () => {
@@ -53,11 +69,11 @@ test("theme app embed blocks a B2B-only product for anonymous storefront visitor
 
   const scenarioHandles = runtime.scenarioHandles;
 
-  await page.goto(`/products/${scenarioHandles.visibility}`, {
+  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.visibility}`), {
     waitUntil: "domcontentloaded",
   });
   await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(`/products/${scenarioHandles.visibility}`, {
+  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.visibility}`), {
     waitUntil: "domcontentloaded",
   });
   product = await resolveCurrentProductFixtureFromPage(page);
@@ -89,11 +105,11 @@ test("theme app embed injects MOQ and step notices on the PDP and normalizes the
 
   const scenarioHandles = runtime.scenarioHandles;
 
-  await page.goto(`/products/${scenarioHandles.step}`, {
+  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.step}`), {
     waitUntil: "domcontentloaded",
   });
   await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(`/products/${scenarioHandles.step}`, {
+  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.step}`), {
     waitUntil: "domcontentloaded",
   });
   product = await resolveCurrentProductFixtureFromPage(page);
@@ -139,11 +155,11 @@ test("theme app embed shows variant visibility banner for B2B-only variant on an
     return;
   }
 
-  await page.goto(`/products/${scenarioHandles.variant}`, {
+  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.variant}`), {
     waitUntil: "domcontentloaded",
   });
   await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(`/products/${scenarioHandles.variant}`, {
+  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.variant}`), {
     waitUntil: "domcontentloaded",
   });
   product = await resolveCurrentProductFixtureFromPage(page);
@@ -202,11 +218,11 @@ test("acknowledgment button is required to dismiss cart quantity notice", async 
 
   const scenarioHandles = runtime.scenarioHandles;
 
-  await page.goto(`/products/${scenarioHandles.max}`, {
+  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.max}`), {
     waitUntil: "domcontentloaded",
   });
   await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(`/products/${scenarioHandles.max}`, {
+  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.max}`), {
     waitUntil: "domcontentloaded",
   });
   product = await resolveCurrentProductFixtureFromPage(page);
@@ -264,11 +280,11 @@ test("theme app embed enforces max order quantity notice on PDP", async ({ page 
 
   const scenarioHandles = runtime.scenarioHandles;
 
-  await page.goto(`/products/${scenarioHandles.max}`, {
+  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.max}`), {
     waitUntil: "domcontentloaded",
   });
   await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(`/products/${scenarioHandles.max}`, {
+  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.max}`), {
     waitUntil: "domcontentloaded",
   });
   product = await resolveCurrentProductFixtureFromPage(page);
