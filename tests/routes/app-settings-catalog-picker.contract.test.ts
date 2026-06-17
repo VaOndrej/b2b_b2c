@@ -274,17 +274,22 @@ test("settings route renders configured product rules with imported product and 
 
   assert.match(
     source,
-    /function describeProduct/,
+    /makeCatalogDescribers/,
+    "Settings route must build catalog describers (shared module) to resolve configured ids to imported catalog names.",
+  );
+  assert.match(
+    source,
+    /describeProduct/,
     "Settings route must resolve configured product ids to imported catalog names before rendering rule rows.",
   );
   assert.match(
     source,
-    /function describeVariant/,
+    /describeVariant/,
     "Settings route must resolve configured variant ids to imported catalog names before rendering variant rule rows.",
   );
   assert.match(
     source,
-    /function describeCollection/,
+    /describeCollection/,
     "Settings route must resolve configured collection ids to imported catalog names before rendering collection rule rows.",
   );
   assert.match(

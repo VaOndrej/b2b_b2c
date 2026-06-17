@@ -40,6 +40,12 @@ import {
 } from "../services/margin-guard-config.server";
 import { loadMarginGuardSettingsView } from "../services/margin-guard-settings-view.server";
 import { handleDiscountSettingsAction } from "../services/discount-settings.server";
+import { makeCatalogDescribers } from "../components/catalog-describers";
+import {
+  useManualRuleForm,
+  modifyRuleButtonStyle,
+  deleteRuleButtonStyle,
+} from "../components/use-manual-rule-form";
 import {
   countActiveCatalogCollections,
   countActiveCatalogProducts,
@@ -963,52 +969,21 @@ export default function AppSettingsRoute() {
     (config as any).productCatalogSourceType,
   );
 
-  function describeProduct(productId: string | null | undefined): string {
-    const normalized = String(productId ?? "").trim();
-    if (!normalized) {
-      return "Unknown product";
-    }
-    const product = (catalogProductsById as Record<
-      string,
-      { title: string; handle: string | null }
-    >)[normalized];
-    if (!product) {
-      return normalized;
-    }
-    return product.handle ? `${product.title} (${product.handle})` : product.title;
-  }
-
-  function describeVariant(variantId: string | null | undefined): string {
-    const normalized = String(variantId ?? "").trim();
-    if (!normalized) {
-      return "Unknown variant";
-    }
-    const variant = (catalogVariantsById as Record<
-      string,
-      { title: string; handle: string | null }
-    >)[normalized];
-    if (!variant) {
-      return normalized;
-    }
-    return variant.handle ? `${variant.title} (${variant.handle})` : variant.title;
-  }
-
-  function describeCollection(collectionId: string | null | undefined): string {
-    const normalized = String(collectionId ?? "").trim();
-    if (!normalized) {
-      return "Unknown collection";
-    }
-    const collection = (catalogCollectionsById as Record<
-      string,
-      { title: string; handle: string | null }
-    >)[normalized];
-    if (!collection) {
-      return normalized;
-    }
-    return collection.handle
-      ? `${collection.title} (${collection.handle})`
-      : collection.title;
-  }
+  const { describeProduct, describeVariant, describeCollection } =
+    makeCatalogDescribers({
+      products: catalogProductsById as Record<
+        string,
+        { title: string; handle: string | null }
+      >,
+      variants: catalogVariantsById as Record<
+        string,
+        { title: string; handle: string | null }
+      >,
+      collections: catalogCollectionsById as Record<
+        string,
+        { title: string; handle: string | null }
+      >,
+    });
 
   function formatSegment(segment: string | null | undefined): string {
     return String(segment ?? "").trim() || "ALL";
@@ -1404,85 +1379,12 @@ export default function AppSettingsRoute() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const modifyRuleButtonStyle = {
-    border: "1px solid rgba(0, 91, 211, 0.24)",
-    background: "#f0f7ff",
-    color: "#005bd3",
-    borderRadius: "8px",
-    fontSize: "12px",
-    fontWeight: 700,
-    padding: "7px 10px",
-    cursor: "pointer",
-  } as const;
-  const [openManualRuleForm, setOpenManualRuleForm] = useState<string | null>(null);
-
-  function openManualAddForm(formId: string) {
-    setOpenManualRuleForm(formId);
-    window.requestAnimationFrame(() => {
-      const form = document.getElementById(formId);
-      if (form instanceof HTMLFormElement) {
-        form.reset();
-        form.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    });
-  }
-  const deleteRuleButtonStyle = {
-    border: "1px solid rgba(180, 35, 24, 0.24)",
-    background: "#fff4f2",
-    color: "#b42318",
-    borderRadius: "8px",
-    fontSize: "12px",
-    fontWeight: 700,
-    padding: "7px 10px",
-    cursor: "pointer",
-  } as const;
-
-  function applyRuleValuesToForm(
-    formId: string,
-    values: Record<string, string | number | null | undefined>,
-    descriptions: Record<string, string> = {},
-  ) {
-    const form = document.getElementById(formId);
-    if (!(form instanceof HTMLFormElement)) {
-      return;
-    }
-
-    for (const [name, rawValue] of Object.entries(values)) {
-      const value = rawValue == null ? "" : String(rawValue);
-      const field = form.elements.namedItem(name);
-      if (
-        field instanceof HTMLInputElement ||
-        field instanceof HTMLSelectElement ||
-        field instanceof HTMLTextAreaElement
-      ) {
-        field.value = value;
-        field.dispatchEvent(new Event("input", { bubbles: true }));
-        field.dispatchEvent(new Event("change", { bubbles: true }));
-      }
-      window.dispatchEvent(
-        new CustomEvent("admin-catalog-picker:set-value", {
-          detail: {
-            formId,
-            name,
-            value,
-            description: descriptions[name] ?? value,
-          },
-        }),
-      );
-    }
-    form.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  function openManualModifyForm(
-    formId: string,
-    values: Record<string, string | number | null | undefined>,
-    descriptions: Record<string, string> = {},
-  ) {
-    setOpenManualRuleForm(formId);
-    window.requestAnimationFrame(() => {
-      applyRuleValuesToForm(formId, values, descriptions);
-    });
-  }
+  const {
+    openManualRuleForm,
+    setOpenManualRuleForm,
+    openManualAddForm,
+    openManualModifyForm,
+  } = useManualRuleForm();
 
   const workspaceTitle =
     isProductsSection && area !== "all"
