@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 export interface StorefrontProductFixture {
   handle: string;
@@ -36,6 +36,14 @@ function toProductGid(value: unknown): string {
 export async function maybeUnlockStorefront(page: Page, storefrontPassword: string | null) {
   await page.waitForLoadState("domcontentloaded");
 
+  if (await isStorefrontVerificationChallenge(page)) {
+    test.skip(
+      true,
+      "Storefront served a bot/connection-verification challenge to the headless browser (environmental, not unlockable by the harness).",
+    );
+    return;
+  }
+
   const passwordInput = page
     .locator("input[type='password'], input[name='password']")
     .first();
@@ -60,6 +68,21 @@ export async function maybeUnlockStorefront(page: Page, storefrontPassword: stri
     page.waitForLoadState("networkidle").catch(() => {}),
     submitButton.click(),
   ]);
+}
+
+/**
+ * Detects a Shopify/Cloudflare bot/connection-verification interstitial
+ * ("Your connection needs to be verified before you can proceed") that the dev
+ * storefront can serve to a headless browser. It is NOT unlockable by the
+ * harness (unlike the storefront password page), so callers should skip-with-
+ * reason rather than false-fail — consistent with the suite's environmental
+ * skip philosophy.
+ */
+export async function isStorefrontVerificationChallenge(page: Page): Promise<boolean> {
+  const challenge = page
+    .getByText(/connection needs to be verified|needs to be verified before you can proceed/i)
+    .first();
+  return (await challenge.count()) > 0;
 }
 
 function extractHandleFromPathname(pathname: string): string | null {
