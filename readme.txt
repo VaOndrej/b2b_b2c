@@ -155,8 +155,13 @@ MVP_5_0_3: HOTOVO
       - app/services/discount-conflict.server.ts — admin report (buildDiscountConflictReport) + živý cart resolver (resolveCartDiscountConflictsByHandle)
       - Admin warning banner v sekci Discounts (app.settings.tsx, jen při otevřené discount sekci)
       - Cart UI: /visibility loader vrací discountConflictsByHandle, visibility-script renderuje persistentní cart banner
-      - Testy: conflict-detector, automatic-discounts-normalize, loader, visibility-script contract (v guard:test:core)
-      - Zbývá manuální e2e ověření na živém shopu (založit automatickou slevu pod floor a zkontrolovat admin banner + cart banner)
+      - Testy dle TESTING_POLICY (všechny vrstvy):
+          unit: conflict-detector
+          contract: automatic-discounts-normalize, visibility-script.contract (cart banner), loader response shape
+          runtime integration: discount-conflict-resolver.integration (resolver s fake adminem)
+          storefront e2e: storefront.discount-conflict.spec.ts (cart banner, graceful-skip bez živého shopu)
+        (node testy jsou v guard:test:core; e2e v playwright.config testMatch)
+      - Pozn.: e2e na živém shopu vyžaduje aktivní GLOBAL automatickou slevu + běžící app/tunnel; jinak se skipne (skip != fail)
 
 ---- ROZPRACOVANO ------
 

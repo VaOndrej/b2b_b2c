@@ -5,7 +5,7 @@ export default defineConfig({
   // Serial, mutate-per-test suite only. The parallel read-only matrix suite has
   // its own config (playwright.matrix.config.ts) so the two never race on the
   // shared MarginGuardConfig row / storefront_projection metafield.
-  testMatch: /storefront\.(smoke|listing|cart-enforcement)\.spec\.ts$/,
+  testMatch: /storefront\.(smoke|listing|cart-enforcement|discount-conflict)\.spec\.ts$/,
   fullyParallel: false,
   workers: 1,
   timeout: 45_000,
