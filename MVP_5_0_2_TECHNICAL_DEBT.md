@@ -31,13 +31,13 @@ Zbyva:
 
 ## Cleanup
 
-- Rozhodnout, jestli ma `app.settings` loader pri kazdem nacteni settings spoustet async storefront projection sync, nebo jestli sync zustane jen po zmenach pravidel a catalog syncu.
-- Odstranit nebo schovat za debug flag docasne `console.log(">>> SETTINGS LOADER...")` logy.
-- Zkontrolovat verbose storefront debug payloady v Liquid embed a visibility scriptu.
-- Zkontrolovat, ze Liquid fallbacky pro prazdny `storefront_projection` nevygeneruji nevalidni JSON.
-- Zkontrolovat velikost metafieldu pri vetsim katalogu a rozhodnout, jestli bude potreba limitovani/chunkovani.
-- Zkontrolovat, jestli collection quantity rules zustavaji spravne oznacene jako `RUNTIME_ONLY`.
-- Zkontrolovat, jestli customer-specific pravidla zustavaji mimo projection payload.
+- [x] Rozhodnuto: `app.settings` loader uz pri kazdem nacteni projection sync nespousti. Sync zustava po zmenach pravidel a catalog syncu (action handlery). Loader sync je gated za `storefrontProjection.syncOnSettingsLoad` (env `MARGIN_GUARD_PROJECTION_SYNC_ON_LOAD=1`), default vypnuto — viz `config/feature-flags.ts`.
+- [x] Docasne `console.log(">>> SETTINGS LOADER...")` logy odstraneny.
+- [x] Verbose storefront debug payloady (Liquid embed `embed bootstrap` / `early-hide cache applied`, visibility script `debugLog`) jsou gated. Server flag `MARGIN_GUARD_STOREFRONT_DEBUG=1` se promita do `projection.debug` + do generovaneho scriptu; per-session lze zapnout `?mg_debug=1` na storefront URL.
+- [x] Liquid fallbacky pro prazdny `storefront_projection`: `buildStorefrontProjection` vraci pro prazdny config plne vyplneny payload (prazdne pole/objekty, nikdy null/undefined). Pokryto testem "produces a valid, fully-formed payload for an empty config".
+- [x] Velikost metafieldu: `measureProjectionSize` + warning na 80 % a error nad 64 KB limitem v `syncStorefrontProjectionMetafields`. Chunkovani odlozeno (souvisi s vetsim katalogem / MVP_6).
+- [x] `collectionQuantityRules` zustavaji `RUNTIME_ONLY` — pokryto testem invariantu.
+- [x] Customer-specific pravidla (CUSTOMER_ONLY visibility, customer quantity rules) zustavaji mimo projection payload — pokryto testem invariantu.
 
 ## Poznamky k pristupu
 

@@ -8,6 +8,7 @@ import {
   resolveStorefrontVariantVisibilityByProductId,
   resolveStorefrontVisibilityByHandles,
 } from "../services/storefront-visibility.server";
+import { resolveCartDiscountConflictsByHandle } from "../services/discount-conflict.server";
 
 export const loader = createVisibilityLoader({
   authenticatePublicAppProxy: authenticate.public.appProxy,
@@ -17,4 +18,5 @@ export const loader = createVisibilityLoader({
   resolveStorefrontQuantityConstraintsByHandle,
   resolveStorefrontQuantityConstraintsByProductId,
   resolveStorefrontVariantVisibilityByProductId,
+  resolveCartDiscountConflictsByHandle,
 });

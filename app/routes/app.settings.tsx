@@ -61,6 +61,11 @@ import {
   upsertCollectionVisibilityRule,
 } from "../services/storefront-content.server";
 import { syncStorefrontProjectionMetafields } from "../services/storefront-projection.server";
+import { storefrontProjection } from "../../config/feature-flags.ts";
+import {
+  buildDiscountConflictReport,
+  type DiscountConflictView,
+} from "../services/discount-conflict.server";
 
 function parseNumber(input: FormDataEntryValue | null, fallback = 0): number {
   const value = Number(input);
@@ -337,7 +342,6 @@ function buildSettingsWorkspaceUrl(input: {
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  console.log(">>> APP.SETTINGS LOADER HIT:", new Date().toISOString());
   const { admin } = await authenticate.admin(request);
   let settingsView = await loadMarginGuardSettingsView();
   let autoActivationMessage: string | null = null;
@@ -366,15 +370,20 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   discountFunctionStatus = discountStatus.status;
   discountFunctionMessage = discountStatus.message;
   discountFunctionLastSyncAt = discountStatus.lastSyncAt ?? null;
-  console.log(">>> SETTINGS LOADER: about to call storefront projection sync");
-  Promise.all([
-    syncVisibilityHandlesMetafield(admin),
-    syncStorefrontProjectionMetafields(admin),
-  ]).then(() => {
-    console.log(">>> SETTINGS LOADER: sync completed successfully");
-  }).catch((err) => {
-    console.error(">>> SETTINGS LOADER: sync failed:", err);
-  });
+  // The storefront projection + visibility handles metafields are kept fresh by
+  // the rule-change and catalog-sync action handlers below. Refreshing them on
+  // every settings load is redundant GraphQL traffic, so it is gated behind a
+  // flag (default off) and only used as an opt-in fallback.
+  if (storefrontProjection.syncOnSettingsLoad) {
+    Promise.all([
+      syncVisibilityHandlesMetafield(admin),
+      syncStorefrontProjectionMetafields(admin),
+    ]).catch((err) => {
+      if (storefrontProjection.debug) {
+        console.error("[settings loader] storefront projection sync failed:", err);
+      }
+    });
+  }
   const url = new URL(request.url);
   const activation = url.searchParams.get("activation");
   const message = url.searchParams.get("message");
@@ -383,6 +392,27 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const collectionCatalogMessage = url.searchParams.get("collectionCatalogMessage");
   const catalogProductCount = await countActiveCatalogProducts();
   const catalogCollectionCount = await countActiveCatalogCollections();
+
+  // MVP_5_0_3: only compute automatic-discount/floor conflicts when a discount
+  // section is open — it queries Shopify discounts and should not slow other tabs.
+  const requestedSectionParam = url.searchParams.get("section");
+  let discountConflicts: DiscountConflictView[] = [];
+  let automaticDiscountCount = 0;
+  if (
+    requestedSectionParam === "discount-orchestration" ||
+    requestedSectionParam === "discount-coupons"
+  ) {
+    try {
+      const conflictReport = await buildDiscountConflictReport(admin);
+      discountConflicts = conflictReport.conflicts;
+      automaticDiscountCount = conflictReport.automaticDiscountCount;
+    } catch (error) {
+      if (storefrontProjection.debug) {
+        console.error("[settings loader] discount conflict report failed:", error);
+      }
+    }
+  }
+
   return {
     config: settingsView.config,
     catalogProductsById: settingsView.catalogProductsById,
@@ -400,6 +430,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     discountFunctionStatus,
     discountFunctionMessage,
     discountFunctionLastSyncAt,
+    discountConflicts,
+    automaticDiscountCount,
   };
 };
 
@@ -974,6 +1006,8 @@ export default function AppSettingsRoute() {
     discountFunctionStatus,
     discountFunctionMessage,
     discountFunctionLastSyncAt,
+    discountConflicts,
+    automaticDiscountCount,
   } =
     useLoaderData<typeof loader>();
   const navigate = useNavigate();
@@ -2831,6 +2865,46 @@ export default function AppSettingsRoute() {
       </s-section>
       )}
 
+      {(isDiscountOrchestrationSection || isDiscountCouponsSection) &&
+        discountConflicts &&
+        discountConflicts.length > 0 && (
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: "14px",
+              border: "1px solid rgba(189, 27, 27, 0.28)",
+              background: "rgba(255, 226, 226, 0.55)",
+              color: "#7a1414",
+              fontSize: "14px",
+              lineHeight: 1.5,
+            }}
+          >
+            <strong>
+              Automatic discount conflicts with your margin floor (
+              {discountConflicts.length})
+            </strong>
+            <s-paragraph>
+              These active automatic Shopify discounts, combined with your
+              margin-guard rules, would push the price below the configured floor
+              and get blocked (or clipped) at checkout. Lower the discount, raise
+              the floor, or exclude the products.
+            </s-paragraph>
+            <s-stack direction="block" gap="small">
+              {discountConflicts.map((conflict, index) => (
+                <s-text key={`${conflict.discount.id}-${conflict.targetKind}-${conflict.targetId ?? "all"}-${conflict.segment}-${index}`}>
+                  <strong>{conflict.discount.title}</strong> (
+                  {conflict.discount.percentOff}% off) on{" "}
+                  <strong>{conflict.targetLabel}</strong> · {conflict.segment} ·
+                  floor {conflict.floorPercent}% · total {conflict.totalPercentOff}
+                  % off
+                  {conflict.reason === "ZERO_FINAL_PRICE_NOT_ALLOWED"
+                    ? " · final price would be zero"
+                    : " · below floor"}
+                </s-text>
+              ))}
+            </s-stack>
+          </div>
+        )}
       {isDiscountOrchestrationSection && (
       <>
       <s-section heading="Advanced discount orchestration rules">

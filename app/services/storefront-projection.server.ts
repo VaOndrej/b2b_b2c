@@ -1,3 +1,4 @@
+import { storefrontProjection } from "../../config/feature-flags.ts";
 import type { Segment } from "../../core/segment/segment.types";
 import type { CollectionVisibilityRule } from "../../core/storefront/storefront-content.types.ts";
 import {
@@ -16,6 +17,25 @@ import {
 const STOREFRONT_PROJECTION_SCHEMA_VERSION = 1;
 const STOREFRONT_PROJECTION_NAMESPACE = "margin_guard";
 const STOREFRONT_PROJECTION_KEY = "storefront_projection";
+
+// Shopify rejects a JSON metafield value larger than 64 KB. We warn well before
+// that so a growing catalog surfaces in logs before writes start failing; the
+// remediation (chunking / trimming low-value segments) is tracked for a later MVP.
+const STOREFRONT_PROJECTION_MAX_BYTES = 64 * 1024;
+const STOREFRONT_PROJECTION_WARN_BYTES = Math.floor(STOREFRONT_PROJECTION_MAX_BYTES * 0.8);
+
+export function measureProjectionSize(value: string): {
+  byteSize: number;
+  withinHardLimit: boolean;
+  nearLimit: boolean;
+} {
+  const byteSize = Buffer.byteLength(value, "utf8");
+  return {
+    byteSize,
+    withinHardLimit: byteSize <= STOREFRONT_PROJECTION_MAX_BYTES,
+    nearLimit: byteSize >= STOREFRONT_PROJECTION_WARN_BYTES,
+  };
+}
 
 type MarginGuardConfig = Awaited<ReturnType<typeof getOrCreateMarginGuardConfig>>;
 
@@ -59,6 +79,7 @@ export interface StorefrontProjectionPayload {
   schemaVersion: number;
   generatedAt: string;
   configUpdatedAt: string | null;
+  debug: boolean;
   b2bTag: string;
   allowRemoveAtMinimumOrderQuantity: boolean;
   coverage: {
@@ -217,6 +238,7 @@ export function buildStorefrontProjection(input: {
     configUpdatedAt: input.config.updatedAt
       ? new Date(input.config.updatedAt).toISOString()
       : null,
+    debug: storefrontProjection.debug,
     b2bTag: String(input.config.b2bTag ?? "b2b").trim() || "b2b",
     allowRemoveAtMinimumOrderQuantity:
       input.config.allowRemoveAtMinimumOrderQuantity !== false,
@@ -398,6 +420,18 @@ export async function syncStorefrontProjectionMetafields(admin: AdminGraphqlClie
 
   await ensureProjectionMetafieldDefinition(admin);
 
+  const serializedProjection = JSON.stringify(projection);
+  const size = measureProjectionSize(serializedProjection);
+  if (!size.withinHardLimit) {
+    console.error(
+      `[syncStorefrontProjectionMetafields] projection is ${size.byteSize} bytes, over the ${STOREFRONT_PROJECTION_MAX_BYTES} byte metafield limit; the write will be rejected. Catalog has likely outgrown a single metafield (chunking required).`,
+    );
+  } else if (size.nearLimit) {
+    console.warn(
+      `[syncStorefrontProjectionMetafields] projection is ${size.byteSize} bytes, approaching the ${STOREFRONT_PROJECTION_MAX_BYTES} byte metafield limit.`,
+    );
+  }
+
   const response = await admin.graphql(
     `#graphql
       mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {
@@ -414,7 +448,7 @@ export async function syncStorefrontProjectionMetafields(admin: AdminGraphqlClie
             key: STOREFRONT_PROJECTION_KEY,
             ownerId: shopId,
             type: "json",
-            value: JSON.stringify(projection),
+            value: serializedProjection,
           },
         ],
       },
@@ -424,7 +458,7 @@ export async function syncStorefrontProjectionMetafields(admin: AdminGraphqlClie
   const userErrors = payload?.data?.metafieldsSet?.userErrors ?? [];
   if (userErrors.length > 0) {
     console.error("[syncStorefrontProjectionMetafields] userErrors:", JSON.stringify(userErrors));
-  } else {
+  } else if (storefrontProjection.debug) {
     console.log("[syncStorefrontProjectionMetafields] synced");
   }
 }

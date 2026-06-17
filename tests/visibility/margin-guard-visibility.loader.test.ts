@@ -357,6 +357,52 @@ test("override: param is IGNORED when the flag is not armed (anonymous stays B2C
   });
 });
 
+test("visibility loader returns an empty discountConflictsByHandle by default", async () => {
+  const loader = createVisibilityLoader({
+    async authenticatePublicAppProxy() {
+      return { admin: undefined };
+    },
+    getOrCreateMarginGuardConfig: async () => stubConfig(),
+    ...baseDeps(),
+  });
+
+  const request = new Request(
+    "https://example.com/apps/margin-guard/visibility?handles=widget",
+  );
+  const payload = await (await loader({ request })).json();
+
+  assert.deepEqual(payload.discountConflictsByHandle, {});
+});
+
+test("visibility loader surfaces injected cart discount conflicts in the response", async () => {
+  const loader = createVisibilityLoader({
+    async authenticatePublicAppProxy() {
+      return { admin: undefined };
+    },
+    getOrCreateMarginGuardConfig: async () => stubConfig(),
+    ...baseDeps(),
+    resolveCartDiscountConflictsByHandle: async (input: { segment: string; handles: string[] }) => ({
+      widget: [
+        {
+          discountTitle: "Spring Sale",
+          percentOff: 40,
+          floorPercent: 70,
+          totalPercentOff: 40,
+          reason: "BELOW_FLOOR" as const,
+        },
+      ],
+    }),
+  });
+
+  const request = new Request(
+    "https://example.com/apps/margin-guard/visibility?handles=widget",
+  );
+  const payload = await (await loader({ request })).json();
+
+  assert.equal(payload.discountConflictsByHandle.widget[0].discountTitle, "Spring Sale");
+  assert.equal(payload.discountConflictsByHandle.widget[0].reason, "BELOW_FLOOR");
+});
+
 test("integration: anonymous B2C visitor does NOT get the B2B-only rules", async () => {
   const loader = createVisibilityLoader({
     async authenticatePublicAppProxy() {

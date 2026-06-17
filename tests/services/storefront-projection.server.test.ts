@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildStorefrontProjection } from "../../app/services/storefront-projection.server.ts";
+import {
+  buildStorefrontProjection,
+  measureProjectionSize,
+} from "../../app/services/storefront-projection.server.ts";
 import type { getOrCreateMarginGuardConfig } from "../../app/services/margin-guard-config.server.ts";
 
 type MarginGuardConfig = Awaited<ReturnType<typeof getOrCreateMarginGuardConfig>>;
@@ -186,4 +189,93 @@ test("buildStorefrontProjection projects the current storefront rules and reserv
     projection.segments.b2c.variantVisibilityByProductId["gid://shopify/Product/100"],
     undefined,
   );
+});
+
+test("buildStorefrontProjection keeps customer-specific rules out of the projected payload", () => {
+  const projection = buildStorefrontProjection({
+    config: makeConfig(),
+    collectionVisibilityRules: [],
+    productHandleRecords: [
+      { productId: "gid://shopify/Product/100", handle: "b2b-carton" },
+      { productId: "gid://shopify/Product/200", handle: "all-segments-pack" },
+    ],
+  });
+
+  // CUSTOMER_ONLY visibility (product 200) must never leak into segment-level
+  // hidden handles — it is runtime-only because it depends on the logged-in customer.
+  for (const segment of ["b2b", "b2c"] as const) {
+    assert.ok(
+      !projection.segments[segment].hiddenProductHandles.includes("all-segments-pack"),
+      `${segment} hidden handles must not include the CUSTOMER_ONLY product handle`,
+    );
+    // Customer-scoped variant visibility (product 200) must not be projected.
+    assert.equal(
+      projection.segments[segment].variantVisibilityByProductId["gid://shopify/Product/200"],
+      undefined,
+      `${segment} variant visibility must exclude the CUSTOMER_ONLY variant rule`,
+    );
+  }
+});
+
+test("buildStorefrontProjection marks collection quantity and customer quantity rules as runtime-only", () => {
+  const projection = buildStorefrontProjection({
+    config: makeConfig(),
+    collectionVisibilityRules: [],
+    productHandleRecords: [
+      { productId: "gid://shopify/Product/200", handle: "all-segments-pack" },
+    ],
+  });
+
+  assert.equal(projection.coverage.collectionQuantityRules, "RUNTIME_ONLY");
+  assert.equal(projection.coverage.customerSpecificQuantityRules, "RUNTIME_ONLY");
+
+  // The projected product 200 quantity must come from its product-scoped rule
+  // (min 4 / step 4 / max 20), never from the customer-specific max of 3.
+  const b2c = projection.segments.b2c.quantityConstraintsByHandle["all-segments-pack"];
+  assert.equal(b2c?.maxOrderQuantity, 20);
+});
+
+test("buildStorefrontProjection produces a valid, fully-formed payload for an empty config", () => {
+  const emptyConfig = {
+    ...makeConfig(),
+    productQuantityRules: [],
+    collectionQuantityRules: [],
+    productCustomerQuantityRules: [],
+    productVisibilityRules: [],
+    productVariantVisibilityRules: [],
+  } as ReturnType<typeof makeConfig>;
+
+  const projection = buildStorefrontProjection({
+    config: emptyConfig,
+    collectionVisibilityRules: [],
+    productHandleRecords: [],
+  });
+
+  // Each segment snapshot must still be present with empty (never null/undefined)
+  // collections so the Liquid bootstrap fallback never serializes invalid JSON.
+  for (const segment of ["b2b", "b2c"] as const) {
+    const snapshot = projection.segments[segment];
+    assert.deepEqual(snapshot.hiddenProductHandles, []);
+    assert.deepEqual(snapshot.hiddenCollectionHandles, []);
+    assert.deepEqual(snapshot.quantityConstraintsByHandle, {});
+    assert.deepEqual(snapshot.quantityConstraintsByProductId, {});
+    assert.deepEqual(snapshot.variantVisibilityByProductId, {});
+  }
+
+  const serialized = JSON.stringify(projection);
+  assert.doesNotThrow(() => JSON.parse(serialized));
+});
+
+test("measureProjectionSize flags payloads near and over the metafield limit", () => {
+  const small = measureProjectionSize("{}");
+  assert.equal(small.withinHardLimit, true);
+  assert.equal(small.nearLimit, false);
+
+  const near = measureProjectionSize("a".repeat(60 * 1024));
+  assert.equal(near.withinHardLimit, true);
+  assert.equal(near.nearLimit, true);
+
+  const over = measureProjectionSize("a".repeat(70 * 1024));
+  assert.equal(over.withinHardLimit, false);
+  assert.equal(over.nearLimit, true);
 });

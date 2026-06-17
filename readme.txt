@@ -146,10 +146,19 @@ MVP_5_0_2:
     Runtime-only zůstává všechno, co je customer-specific nebo potřebuje kontext, který nejde bezpečně předpočítat.
     Technický dluh a zbývající ověření: viz MVP_5_0_2_TECHNICAL_DEBT.md
 
----- ROZPRACOVANO ------
-MVP_5_0_3:
+MVP_5_0_3: HOTOVO
     Když vím, že nějaký produkt má automatickou slevu na něco, a vím, že v margin guardu má taky slevu, a v checkoutu by to spolu neprošlo, tak na to rovnou upozornit už v adminovi
     Přeci jenom, pokud si takový produkt přidám do košíku a sleva je aktivní, tak to chci v tom košíku znázornit
+    Implementace:
+      - core/discount/conflict.detector.ts — čistá detekce (automatická sleva + margin-guard pravidla vs floor), cenově nezávislá (procenta)
+      - app/services/automatic-discounts.server.ts — čte aktivní automatické Shopify slevy (discountNodes, status:active method:automatic)
+      - app/services/discount-conflict.server.ts — admin report (buildDiscountConflictReport) + živý cart resolver (resolveCartDiscountConflictsByHandle)
+      - Admin warning banner v sekci Discounts (app.settings.tsx, jen při otevřené discount sekci)
+      - Cart UI: /visibility loader vrací discountConflictsByHandle, visibility-script renderuje persistentní cart banner
+      - Testy: conflict-detector, automatic-discounts-normalize, loader, visibility-script contract (v guard:test:core)
+      - Zbývá manuální e2e ověření na živém shopu (založit automatickou slevu pod floor a zkontrolovat admin banner + cart banner)
+
+---- ROZPRACOVANO ------
 
 MVP_5_1:
  ├─Search hledání nefunguje - pokud nemám naimportované žádné kolekce nebo produkty - přidat warning, pokud tohle není udělané.

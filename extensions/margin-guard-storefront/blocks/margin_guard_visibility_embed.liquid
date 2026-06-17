@@ -87,6 +87,7 @@
 <script>
 (function(){
   try {
+    {% if storefront_projection_meta.debug %}
     console.log("[MarginGuard] embed bootstrap", {
       customerId: {% if customer %}{{ customer.id | json }}{% else %}null{% endif %},
       customerTags: {% if customer %}{{ customer.tags | json }}{% else %}[]{% endif %},
@@ -99,6 +100,7 @@
       hiddenHandlesMeta: {{ hidden_handles_meta | default: empty | json }},
       storefrontProjectionMeta: {{ storefront_projection_meta | default: empty | json }}
     });
+    {% endif %}
     var raw = sessionStorage.getItem("marginGuardRulesCache_v1");
     if (!raw) return;
     var parsed = JSON.parse(raw);
@@ -125,10 +127,12 @@
       style.id = "margin-guard-early-hide";
       style.textContent = css;
       document.head.appendChild(style);
+      {% if storefront_projection_meta.debug %}
       console.log("[MarginGuard] early-hide cache applied", {
         hiddenHandles: handles,
         styleId: "margin-guard-early-hide"
       });
+      {% endif %}
     }
   } catch(e) {}
 })();

@@ -1,5 +1,6 @@
 import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
+import { storefrontProjection } from "../../config/feature-flags.ts";
 
 function escapeForJsString(input: string): string {
   return JSON.stringify(String(input ?? ""));
@@ -8,9 +9,11 @@ function escapeForJsString(input: string): string {
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.public.appProxy(request);
   const defaultProxyPrefix = "/apps/margin-guard";
+  const debugEnabled = storefrontProjection.debug;
   const script = `
 (() => {
   const DEFAULT_PROXY_PREFIX = ${escapeForJsString(defaultProxyPrefix)};
+  const MARGIN_GUARD_DEBUG_DEFAULT = ${debugEnabled ? "true" : "false"};
   const MESSAGES = {
     en: {
       visibility: "This product is not available for your customer segment.",
@@ -28,6 +31,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       moqRemoveBlockedPrefix: "Minimum order quantity is ",
       moqRemoveBlockedSuffix:
         ". If you wish to delete the product, press the trash icon.",
+      discountConflictTitle: "Some discounts can't be fully applied",
+      discountConflictBelowFloor:
+        " — this discount is limited at checkout to protect the minimum price.",
+      discountConflictZeroPrice:
+        " — this discount can't be applied at checkout because it would bring the price to zero.",
     },
     cs: {
       visibility: "Tento produkt neni dostupny pro vas zakaznicky segment.",
@@ -45,12 +53,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       moqRemoveBlockedPrefix: "Minimalni odebrane mnozstvi je ",
       moqRemoveBlockedSuffix:
         ". Pokud chcete produkt odebrat, pouzijte ikonu popelnice.",
+      discountConflictTitle: "Nektere slevy nelze plne uplatnit",
+      discountConflictBelowFloor:
+        " — tato sleva je u pokladny omezena, aby byla dodrzena minimalni cena.",
+      discountConflictZeroPrice:
+        " — tuto slevu nelze u pokladny uplatnit, protoze by cenu snizila na nulu.",
     },
   };
   const state = {
     quantityConstraintsByHandle: {},
     quantityConstraintsByProductId: {},
     variantVisibilityByProductId: {},
+    discountConflictsByHandle: {},
     cartLineHandleByIndex: {},
     cartLineProductIdByIndex: {},
     cartLineQuantityByIndex: {},
@@ -148,7 +162,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   const loggedInCustomerTagsScope = parseCustomerTagsScope(loggedInCustomerTagsRaw);
 
+  // Verbose logging is off in production. It can be enabled server-side via the
+  // MARGIN_GUARD_STOREFRONT_DEBUG env flag, or per-session for support by adding
+  // ?mg_debug=1 to the storefront URL.
+  const MARGIN_GUARD_DEBUG =
+    MARGIN_GUARD_DEBUG_DEFAULT || readPageParam("mg_debug") === "1";
+
   function debugLog(label, payload) {
+    if (!MARGIN_GUARD_DEBUG) {
+      return;
+    }
     try {
       if (payload === undefined) {
         console.log("[MarginGuard]", label);
@@ -472,6 +495,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     state.cartLineProductIdByVariantId = cartContext.lineProductIdByVariantId || {};
     state.cartLineQuantityByKey = cartContext.lineQuantityByKey || {};
     state.cartLineQuantityByVariantId = cartContext.lineQuantityByVariantId || {};
+    renderCartDiscountConflictBanner();
   }
 
   function resetCartLineContext() {
@@ -638,6 +662,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       ...state.variantVisibilityByProductId,
       ...responseVariantVisibilityByProductId,
     };
+    if (payload && typeof payload.discountConflictsByHandle === "object" && payload.discountConflictsByHandle) {
+      const normalizedConflicts = {};
+      for (const rawHandle of Object.keys(payload.discountConflictsByHandle)) {
+        const handle = normalizeHandle(rawHandle);
+        const notices = payload.discountConflictsByHandle[rawHandle];
+        if (handle && Array.isArray(notices) && notices.length) {
+          normalizedConflicts[handle] = notices;
+        }
+      }
+      state.discountConflictsByHandle = normalizedConflicts;
+    }
     const hiddenHandles = Array.isArray(payload?.hiddenHandles)
       ? payload.hiddenHandles.map((value) => String(value).toLowerCase())
       : [];
@@ -646,6 +681,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     enforceCurrentProductQuantityRule();
     syncCartQuantityInputs(state.quantityConstraintsByHandle);
     scheduleCurrentProductVariantVisibilitySync();
+    renderCartDiscountConflictBanner();
   }
 
   function removeEarlyHideStyle() {
@@ -958,6 +994,89 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       clearTimeout(cartQuantityNoticeTimeout);
     }
     cartQuantityNoticeTimeout = null;
+  }
+
+  function collectCartHandlesWithDiscountConflicts() {
+    const conflicts = state.discountConflictsByHandle || {};
+    const seen = {};
+    const results = [];
+    const lineHandles = state.cartLineHandleByIndex || {};
+    for (const index of Object.keys(lineHandles)) {
+      const handle = normalizeHandle(lineHandles[index]);
+      if (!handle || seen[handle]) {
+        continue;
+      }
+      const notices = conflicts[handle];
+      if (Array.isArray(notices) && notices.length) {
+        seen[handle] = true;
+        results.push({ handle, notices });
+      }
+    }
+    return results;
+  }
+
+  function removeCartDiscountConflictBanner() {
+    const existing = document.getElementById("margin-guard-cart-discount-conflict-notice");
+    if (existing instanceof HTMLElement && existing.parentElement) {
+      existing.parentElement.removeChild(existing);
+    }
+  }
+
+  // MVP_5_0_3: persistent (non-dismissing) cart banner that mirrors the admin
+  // warning — it lists cart products whose active automatic discount will be
+  // clipped or blocked at checkout by the margin floor.
+  function renderCartDiscountConflictBanner() {
+    const affected = collectCartHandlesWithDiscountConflicts();
+    if (!affected.length) {
+      removeCartDiscountConflictBanner();
+      return;
+    }
+    const host = resolveCartQuantityNoticeHost();
+    if (!(host instanceof HTMLElement)) {
+      return;
+    }
+
+    let notice = document.getElementById("margin-guard-cart-discount-conflict-notice");
+    if (!(notice instanceof HTMLElement)) {
+      notice = document.createElement("div");
+      notice.id = "margin-guard-cart-discount-conflict-notice";
+      notice.setAttribute("data-margin-guard-cart-discount-conflict-notice", "1");
+      notice.style.padding = "10px 12px";
+      notice.style.margin = "0 0 12px";
+      notice.style.border = "1px solid #f79009";
+      notice.style.borderRadius = "6px";
+      notice.style.background = "#fffaeb";
+      notice.style.color = "#7a4f01";
+      notice.style.fontSize = "13px";
+      notice.style.lineHeight = "1.4";
+    }
+    notice.textContent = "";
+
+    const title = document.createElement("div");
+    title.style.fontWeight = "600";
+    title.style.marginBottom = "6px";
+    title.textContent = messageForLocale("discountConflictTitle");
+    notice.appendChild(title);
+
+    const list = document.createElement("ul");
+    list.style.margin = "0";
+    list.style.padding = "0 0 0 18px";
+    for (const entry of affected) {
+      for (const rawNotice of entry.notices) {
+        const item = document.createElement("li");
+        const discountTitle = String(rawNotice && rawNotice.discountTitle ? rawNotice.discountTitle : "");
+        const percentOff = Number(rawNotice && rawNotice.percentOff);
+        const reasonSuffix =
+          rawNotice && rawNotice.reason === "ZERO_FINAL_PRICE_NOT_ALLOWED"
+            ? messageForLocale("discountConflictZeroPrice")
+            : messageForLocale("discountConflictBelowFloor");
+        const percentLabel = isFinite(percentOff) && percentOff > 0 ? " (" + percentOff + "%)" : "";
+        item.textContent = discountTitle + percentLabel + reasonSuffix;
+        list.appendChild(item);
+      }
+    }
+    notice.appendChild(list);
+    host.prepend(notice);
   }
 
   function maybeShowMaximumQuantityAdjustmentNotice(

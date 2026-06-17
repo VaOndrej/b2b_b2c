@@ -220,6 +220,31 @@ test("visibility script hydrates projected storefront rules before runtime fetch
   );
 });
 
+test("visibility script renders a persistent cart discount-conflict banner from the loader payload", async () => {
+  const source = await readFile(VISIBILITY_SCRIPT_ROUTE_PATH, "utf8");
+
+  assert.match(
+    source,
+    /function renderCartDiscountConflictBanner\(\)/,
+    "Script must define renderCartDiscountConflictBanner to surface automatic-discount/floor conflicts in the cart.",
+  );
+  assert.match(
+    source,
+    /margin-guard-cart-discount-conflict-notice/,
+    "Cart conflict banner must use a stable element id.",
+  );
+  assert.match(
+    source,
+    /state\.discountConflictsByHandle/,
+    "Script must track discount conflicts keyed by handle from the visibility payload.",
+  );
+  assert.match(
+    source,
+    /payload\.discountConflictsByHandle/,
+    "Script must read discountConflictsByHandle from the visibility loader response.",
+  );
+});
+
 // ─── Liquid embed regression tests ──────────────────────────────────
 
 test("liquid embed includes inline early-hide script reading sessionStorage cache", async () => {

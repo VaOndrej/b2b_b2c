@@ -86,6 +86,8 @@ interface AdminGraphqlClient {
   }>;
 }
 
+import type { resolveCartDiscountConflictsByHandle } from "./discount-conflict.server.ts";
+
 type VisibilityDependencies = {
   authenticatePublicAppProxy: (
     request: Request,
@@ -96,6 +98,9 @@ type VisibilityDependencies = {
   resolveStorefrontQuantityConstraintsByHandle: typeof resolveStorefrontQuantityConstraintsByHandle;
   resolveStorefrontQuantityConstraintsByProductId: typeof resolveStorefrontQuantityConstraintsByProductId;
   resolveStorefrontVariantVisibilityByProductId: typeof resolveStorefrontVariantVisibilityByProductId;
+  // MVP_5_0_3: optional so existing callers/tests that don't need cart conflict
+  // notices keep working unchanged.
+  resolveCartDiscountConflictsByHandle?: typeof resolveCartDiscountConflictsByHandle;
 };
 
 async function resolveVisibilitySegment(input: {
@@ -253,11 +258,25 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
           : [],
       });
 
+    const discountConflictsByHandle = deps.resolveCartDiscountConflictsByHandle
+      ? await deps
+          .resolveCartDiscountConflictsByHandle({
+            admin,
+            config,
+            segment,
+            handles,
+            productIdByHandle: visibility.productIdByHandle,
+            productCollectionIdsByProductId,
+          })
+          .catch(() => ({}))
+      : {};
+
     return Response.json(
       {
         segment,
         customerId: customerId ?? null,
         b2bTag: config.b2bTag,
+        discountConflictsByHandle,
         segmentDebug: {
           source: segmentResolution.source,
           expectedTag: segmentResolution.expectedTag,
