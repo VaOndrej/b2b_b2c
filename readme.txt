@@ -165,7 +165,7 @@ MVP_5_0_3: HOTOVO
 
 ---- ROZPRACOVANO ------
 
-MVP_5_1:
+MVP_5_1: ROZPRACOVANO
  ├─Search hledání nefunguje - pokud nemám naimportované žádné kolekce nebo produkty - přidat warning, pokud tohle není udělané.
  ├─ Návrh jak rozdělit aplikaci do jednotlivých shippable produktů.
  ├─ A rozdělení aplikace do logických co nejvíc odizolovaných celků
@@ -175,6 +175,18 @@ MVP_5_1:
     ├─ <Vymysli jméno> záložky, která bude groupovat nastavení okolo produktů, tedy MOQ, step quantity, visibility, atd..
     ├─ Storefront UX, to už existuje
     ├─ Případně nějaké další, tak aby to dávalo smysl z pohledu co nejlepšího rozdělení aplikace do více izolovaných celků + pohled pro zákazníka, aby to bylo co nejintiutivnější
+
+    Stav / rozhodnutí (potvrzeno uživatelem):
+      - HOTOVO Search warning: catalog picker ukáže jasné "import first" varování (čte 409 catalogImportRequired) místo "Search error";
+        Dashboard má top-level catalog-import banner; Catalog Rules měl banner už dřív.
+      - HOTOVO Návrh shippable modulů (1 platforma "Foundation" + 4 prodejné: Margin Guard / B2B Pricing /
+        Quantity Rules / Segmented Storefront + budoucí Data Import/ERP). Hranice = core/ engines + MVP roadmapa.
+      - Menu = HYBRID: nav = 1 záložka na modul + cross-cutting "Products" panel (vše o jednom produktu pohromadě, navazuje na MVP_4_5).
+        Záložka pro per-produkt pravidla zůstává pojmenovaná "Catalog Rules".
+      - HOTOVO 1. reálná extrakce (vzor): Global Settings je samostatná route (app.settings.global.tsx: vlastní loader/action/component,
+        už nere-exportuje monolit). Test app-settings-global-route.contract.test.ts. Suite 242 zelená, tsc čistý.
+      - POZN. strangler: app.settings.tsx zatím drží ekvivalentní global blok pro legacy ?area=all (dočasná duplicita).
+        Další extrakce (catalog-rules, discounts) stejným vzorem; plná de-duplikace/modularizace blíž k MVP_5_5.
 
 
 MVP_5_2:
