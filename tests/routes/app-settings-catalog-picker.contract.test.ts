@@ -7,35 +7,40 @@ const COMPACT_RULE_PANEL_PATH = "app/components/compact-rule-panel.tsx";
 const ADMIN_CATALOG_PICKER_PATH = "app/components/admin-catalog-picker.tsx";
 const STOREFRONT_UX_ROUTE_PATH = "app/routes/app.storefront-ux.tsx";
 const DISCOUNT_SETTINGS_VIEW_PATH = "app/components/discount-settings-view.tsx";
+// MVP_5_1 (move-not-copy): the catalog-rules forms (and their AdminCatalogPicker /
+// CompactRulePanel usage + describer-driven labels + "Products affected" summary)
+// now live in the shared CatalogRulesView, rendered identically by the monolith
+// and the standalone app.settings.catalog-rules route.
+const CATALOG_RULES_VIEW_PATH = "app/components/catalog-rules-view.tsx";
 
-test("settings route uses AdminCatalogPicker for product, collection, customer, and variant forms", async () => {
-  const source = await readFile(SETTINGS_ROUTE_PATH, "utf8");
+test("catalog rules view uses AdminCatalogPicker for product, collection, customer, and variant forms", async () => {
+  const source = await readFile(CATALOG_RULES_VIEW_PATH, "utf8");
 
   const pickerUsages = Array.from(source.matchAll(/<AdminCatalogPicker/g));
   assert.equal(
     pickerUsages.length >= 12,
     true,
-    "Settings route must reuse AdminCatalogPicker across product, collection, customer, and variant forms.",
+    "Catalog rules view must reuse AdminCatalogPicker across product, collection, customer, and variant forms.",
   );
   assert.match(
     source,
     /resourceType="product"/,
-    "Settings route must wire product picker usage.",
+    "Catalog rules view must wire product picker usage.",
   );
   assert.match(
     source,
     /resourceType="collection"/,
-    "Settings route must wire collection picker usage.",
+    "Catalog rules view must wire collection picker usage.",
   );
   assert.match(
     source,
     /resourceType="customer"/,
-    "Settings route must wire customer picker usage.",
+    "Catalog rules view must wire customer picker usage.",
   );
   assert.match(
     source,
     /resourceType="variant"/,
-    "Settings route must wire variant picker usage.",
+    "Catalog rules view must wire variant picker usage.",
   );
 });
 
@@ -221,6 +226,7 @@ test("settings route supports area-filtered workspaces for global settings, cata
 
 test("settings route moves collection visibility into catalog rules visibility workspace", async () => {
   const settingsSource = await readFile(SETTINGS_ROUTE_PATH, "utf8");
+  const catalogRulesViewSource = await readFile(CATALOG_RULES_VIEW_PATH, "utf8");
   const storefrontSource = await readFile(STOREFRONT_UX_ROUTE_PATH, "utf8");
 
   assert.match(
@@ -234,7 +240,7 @@ test("settings route moves collection visibility into catalog rules visibility w
     "Settings route must own collection visibility deletes under Catalog Rules.",
   );
   assert.match(
-    settingsSource,
+    catalogRulesViewSource,
     /activeProductRuleView === "collection-visibility"/,
     "Catalog Rules product workspace must expose collection visibility as a nested subview.",
   );
@@ -270,28 +276,28 @@ test("settings route no longer renders pricing simulator admin preview", async (
   );
 });
 
-test("settings route renders configured product rules with imported product and variant labels", async () => {
-  const source = await readFile(SETTINGS_ROUTE_PATH, "utf8");
+test("catalog rules view renders configured product rules with imported product and variant labels", async () => {
+  const source = await readFile(CATALOG_RULES_VIEW_PATH, "utf8");
 
   assert.match(
     source,
     /makeCatalogDescribers/,
-    "Settings route must build catalog describers (shared module) to resolve configured ids to imported catalog names.",
+    "Catalog rules view must build catalog describers (shared module) to resolve configured ids to imported catalog names.",
   );
   assert.match(
     source,
     /describeProduct/,
-    "Settings route must resolve configured product ids to imported catalog names before rendering rule rows.",
+    "Catalog rules view must resolve configured product ids to imported catalog names before rendering rule rows.",
   );
   assert.match(
     source,
     /describeVariant/,
-    "Settings route must resolve configured variant ids to imported catalog names before rendering variant rule rows.",
+    "Catalog rules view must resolve configured variant ids to imported catalog names before rendering variant rule rows.",
   );
   assert.match(
     source,
     /describeCollection/,
-    "Settings route must resolve configured collection ids to imported catalog names before rendering collection rule rows.",
+    "Catalog rules view must resolve configured collection ids to imported catalog names before rendering collection rule rows.",
   );
   assert.match(
     source,
