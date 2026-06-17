@@ -12,6 +12,10 @@ const DISCOUNT_SETTINGS_VIEW_PATH = "app/components/discount-settings-view.tsx";
 // now live in the shared CatalogRulesView, rendered identically by the monolith
 // and the standalone app.settings.catalog-rules route.
 const CATALOG_RULES_VIEW_PATH = "app/components/catalog-rules-view.tsx";
+// MVP_5_1 (move-not-copy): the Global Settings configuration UI (catalog import
+// foundations + save-global form) now lives in the shared GlobalSettingsView,
+// rendered identically by the monolith and the standalone app.settings.global route.
+const GLOBAL_SETTINGS_VIEW_PATH = "app/components/global-settings-view.tsx";
 
 test("catalog rules view uses AdminCatalogPicker for product, collection, customer, and variant forms", async () => {
   const source = await readFile(CATALOG_RULES_VIEW_PATH, "utf8");
@@ -66,7 +70,9 @@ test("settings route no longer exposes raw productId/collectionId/variantId text
 
 test("settings route wires global Shopify product import controls for MVP_4_5 catalog sync", async () => {
   const source = await readFile(SETTINGS_ROUTE_PATH, "utf8");
+  const globalViewSource = await readFile(GLOBAL_SETTINGS_VIEW_PATH, "utf8");
 
+  // Loader/action wiring stays in the route; the foundation UI lives in the shared view.
   assert.match(
     source,
     /loadMarginGuardSettingsView/,
@@ -78,67 +84,67 @@ test("settings route wires global Shopify product import controls for MVP_4_5 ca
     "Settings route must support Shopify catalog import from the Global Settings area.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /intent"\s+value="sync-product-catalog"/,
-    "Settings route must expose an explicit sync-product-catalog action.",
+    "Global Settings view must expose an explicit sync-product-catalog action.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /Product catalog foundation/,
     "Global Settings must surface product import as a first-step foundation card.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /Shopify Catalog/,
     "Global Settings must show the live Shopify catalog source card.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /CSV \/ JSON Import/,
     "Global Settings must reserve a disabled source card for future CSV and JSON imports.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /ERP Integration/,
     "Global Settings must reserve a disabled source card for future ERP sync.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /Collection catalog foundation/,
     "Global Settings must also reserve a collection import foundation panel.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /Shopify Collections/,
     "Collection catalog foundation must surface Shopify as the prepared source path.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /intent"\s+value="sync-collection-catalog"/,
     "Global Settings must expose an explicit sync-collection-catalog action.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /Import collections now/,
     "Collection catalog foundation must expose a manual collection import trigger.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /name="productCatalogAutoImportEnabled"/,
     "Global Settings must include an auto import toggle for the product catalog.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /Import products now/,
     "Global Settings must expose a manual product import trigger.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /type="hidden"\s+name="productCatalogSourceType"/,
     "Global Settings must persist the active product catalog source without exposing the old source select control.",
   );
   assert.doesNotMatch(
-    source,
+    globalViewSource,
     /<select\s+name="productCatalogSourceType"/,
     "Global Settings must no longer expose the old productCatalogSourceType select once source cards are the primary UI.",
   );
@@ -364,6 +370,7 @@ test("configured rule lists expose modify and red delete actions", async () => {
 
 test("settings route save-global action parses and persists marginGuardEnabled toggle", async () => {
   const source = await readFile(SETTINGS_ROUTE_PATH, "utf8");
+  const globalViewSource = await readFile(GLOBAL_SETTINGS_VIEW_PATH, "utf8");
 
   assert.match(
     source,
@@ -376,9 +383,9 @@ test("settings route save-global action parses and persists marginGuardEnabled t
     "[CONTRACT FAIL] save-global action musi predat marginGuardEnabled do updateGlobalMarginGuardConfig.",
   );
   assert.match(
-    source,
+    globalViewSource,
     /name="marginGuardEnabled"/,
-    "[CONTRACT FAIL] Settings UI musi renderovat checkbox s name='marginGuardEnabled'.",
+    "[CONTRACT FAIL] Global Settings UI musi renderovat checkbox s name='marginGuardEnabled'.",
   );
 });
 

@@ -8,6 +8,9 @@ import { readFile } from "node:fs/promises";
 // MVP_4_5 catalog-foundation UI + save-global behavior the monolith guaranteed.
 
 const GLOBAL_ROUTE_PATH = "app/routes/app.settings.global.tsx";
+// MVP_5_1 (move-not-copy): the Global Settings configuration UI (catalog import
+// foundations + save-global form) is shared with the monolith via GlobalSettingsView.
+const GLOBAL_SETTINGS_VIEW_PATH = "app/components/global-settings-view.tsx";
 
 test("global settings route is standalone, not a re-export of the settings monolith", async () => {
   const source = await readFile(GLOBAL_ROUTE_PATH, "utf8");
@@ -35,7 +38,7 @@ test("global settings route is standalone, not a re-export of the settings monol
 });
 
 test("global settings route exposes the catalog import foundation controls", async () => {
-  const source = await readFile(GLOBAL_ROUTE_PATH, "utf8");
+  const source = await readFile(GLOBAL_SETTINGS_VIEW_PATH, "utf8");
 
   assert.match(source, /Product catalog foundation/);
   assert.match(source, /Collection catalog foundation/);
@@ -90,8 +93,9 @@ test("global settings route persists save-global with the marginGuardEnabled tog
     /updateGlobalMarginGuardConfig\(\{[\s\S]*marginGuardEnabled[\s\S]*\}\)/,
     "save-global must persist marginGuardEnabled via updateGlobalMarginGuardConfig.",
   );
+  const globalViewSource = await readFile(GLOBAL_SETTINGS_VIEW_PATH, "utf8");
   assert.match(
-    source,
+    globalViewSource,
     /name="marginGuardEnabled"/,
     "Global Settings UI must render the marginGuardEnabled checkbox.",
   );
