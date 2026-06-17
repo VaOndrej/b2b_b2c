@@ -7,15 +7,22 @@ import {
 } from "../services/margin-guard-config.server";
 import { ensureCartValidationActive } from "../services/cart-validation-activation.server";
 import { reconcileDiscountFunctionStatus } from "../services/discount-function-activation.server";
+import {
+  countActiveCatalogCollections,
+  countActiveCatalogProducts,
+} from "../services/product-catalog.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
   await ensureCartValidationActive(admin);
-  const [discountFunction, config, logs] = await Promise.all([
-    reconcileDiscountFunctionStatus(admin),
-    getOrCreateMarginGuardConfig(),
-    listMarginViolationLogs(10),
-  ]);
+  const [discountFunction, config, logs, catalogProductCount, catalogCollectionCount] =
+    await Promise.all([
+      reconcileDiscountFunctionStatus(admin),
+      getOrCreateMarginGuardConfig(),
+      listMarginViolationLogs(10),
+      countActiveCatalogProducts(),
+      countActiveCatalogCollections(),
+    ]);
   const last24hCount = logs.filter((item: { createdAt: Date }) => {
     const createdAt = new Date(item.createdAt).getTime();
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
@@ -27,6 +34,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     recentViolationCount: logs.length,
     last24hViolationCount: last24hCount,
     discountFunction,
+    catalogProductCount,
+    catalogCollectionCount,
   };
 };
 
@@ -36,12 +45,51 @@ export default function AppDashboardRoute() {
     recentViolationCount,
     last24hViolationCount,
     discountFunction,
+    catalogProductCount,
+    catalogCollectionCount,
   } =
     useLoaderData<typeof loader>();
   const cartValidationActive = config.cartValidationStatus === "ACTIVE";
+  const productCatalogImportRequired = catalogProductCount === 0;
+  const collectionCatalogImportRequired = catalogCollectionCount === 0;
+  const catalogImportRequired =
+    productCatalogImportRequired || collectionCatalogImportRequired;
+  const missingCatalogLabel =
+    productCatalogImportRequired && collectionCatalogImportRequired
+      ? "products and collections"
+      : productCatalogImportRequired
+        ? "products"
+        : "collections";
 
   return (
     <s-page heading="Margin Guard Dashboard">
+      {catalogImportRequired && (
+        <s-section>
+          <div
+            role="status"
+            style={{
+              padding: "14px 16px",
+              borderRadius: "14px",
+              border: "1px solid rgba(183, 121, 0, 0.25)",
+              background: "rgba(255, 236, 213, 0.5)",
+              color: "#7a4f01",
+              fontSize: "14px",
+              lineHeight: 1.5,
+            }}
+          >
+            <strong>Catalog import required.</strong> No {missingCatalogLabel} are
+            imported yet, so rule search and product/collection pickers stay empty.
+            Open{" "}
+            <a
+              href="/app/settings/global?section=global"
+              style={{ color: "#005bd3", fontWeight: 600 }}
+            >
+              Global Settings
+            </a>{" "}
+            and run the catalog import first.
+          </div>
+        </s-section>
+      )}
       <s-section heading="Governance status">
         <s-box padding="base" borderWidth="base" borderRadius="base">
           <s-stack direction="block" gap="small">

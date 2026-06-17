@@ -49,6 +49,7 @@ export function AdminCatalogPicker(props: AdminCatalogPickerProps) {
   );
   const [selectedDescription, setSelectedDescription] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [catalogNotice, setCatalogNotice] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
   const displayQuery = isOpen ? query : selectedDescription ?? query;
 
@@ -108,6 +109,7 @@ export function AdminCatalogPicker(props: AdminCatalogPickerProps) {
       setIsLoading(false);
       setOptions([]);
       setErrorMessage(null);
+      setCatalogNotice(null);
       return;
     }
 
@@ -117,6 +119,7 @@ export function AdminCatalogPicker(props: AdminCatalogPickerProps) {
     async function runSearch() {
       setIsLoading(true);
       setErrorMessage(null);
+      setCatalogNotice(null);
       try {
         const url = buildCatalogSearchUrl({
           endpoint,
@@ -133,6 +136,14 @@ export function AdminCatalogPicker(props: AdminCatalogPickerProps) {
         });
         const payload = await response.json();
         if (cancelled || controller.signal.aborted) {
+          return;
+        }
+        if ((payload as any)?.details?.catalogImportRequired === true) {
+          setOptions([]);
+          setCatalogNotice(
+            normalizeCatalogPickerValue((payload as any)?.error) ||
+              "Catalog is not imported yet. Open Global Settings and run the import first.",
+          );
           return;
         }
         if (!response.ok) {
@@ -229,6 +240,23 @@ export function AdminCatalogPicker(props: AdminCatalogPickerProps) {
         required={props.required}
         value={selectedId}
       />
+      {catalogNotice && (
+        <div
+          role="status"
+          style={{
+            padding: "8px 10px",
+            border: "1px solid #f5c66b",
+            borderRadius: "8px",
+            background: "#fffaeb",
+            color: "#b54708",
+            fontSize: "13px",
+            fontWeight: 500,
+            lineHeight: 1.4,
+          }}
+        >
+          {catalogNotice}
+        </div>
+      )}
       {isLoading && <s-paragraph>Searching {props.resourceType}s...</s-paragraph>}
       {errorMessage && (
         <s-paragraph>Search error: {errorMessage}</s-paragraph>
