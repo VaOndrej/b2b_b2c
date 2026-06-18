@@ -32,6 +32,4 @@ test-results
 
 # E2E matrix suite generated state (per-run, not source)
 /tests/e2e/.matrix.json
-/tests/e2e/.matrix-snapshot.json
-/tests/e2e/.manifest.json
 /playwright-report

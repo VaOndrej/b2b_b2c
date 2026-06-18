@@ -1,40 +1,32 @@
 import { expect, test, type Page } from "@playwright/test";
+import { disconnectE2EPrisma } from "./support/seed.ts";
 import {
-  disconnectE2EPrisma,
-  ensureOriginalMarginGuardSnapshot,
-  getOfflineAdminClientForE2E,
-  resetMarginGuardConfigForStorefrontE2E,
-  restoreOriginalMarginGuardSnapshot,
-} from "./support/seed.ts";
-import { decorateStorefrontPath, maybeUnlockStorefront } from "./support/storefront.ts";
-import { resolveShopifyE2ERuntimeConfig } from "./support/runtime.ts";
+  seedCatalogDiscountFloorConflict,
+  setupE2ECatalog,
+  teardownE2ECatalog,
+} from "./support/catalog-e2e.ts";
+import {
+  decorateStorefrontPath,
+  gotoStorefrontOrSkip,
+  resolveCurrentProductFixtureFromPage,
+} from "./support/storefront.ts";
+import { resolveShopifyE2ERuntime, type ShopifyE2ERuntime } from "./support/runtime.ts";
 import { warmStorefrontTunnel } from "./support/warmup.ts";
-import { readMatrixFile } from "./support/matrix.ts";
-import { updateGlobalMarginGuardConfig } from "../../app/services/margin-guard-config.server.ts";
-import { fetchAutomaticDiscounts } from "../../app/services/automatic-discounts.server.ts";
 
 /**
- * MVP_5_0_3 cart conflict banner (Tier 3 storefront). When a product has an
- * active automatic Shopify discount that, combined with the margin floor, would
- * be clipped/blocked at checkout, the storefront cart must show a persistent
- * margin-guard banner.
+ * Cart discount-conflict banner (serial storefront tier). When the resolved
+ * catalog has a discount that, combined with the margin floor, would be
+ * clipped/blocked, the storefront cart shows a persistent margin-guard banner.
  *
- * Best-effort + SERIAL: it mutates the shared config and needs (a) the app
- * running so the App Proxy serves the visibility script, and (b) at least one
- * active GLOBAL automatic discount on the store. Missing preconditions SKIP
- * (not fail) — the exhaustive logic lives in the unit/contract/integration suite.
+ * Catalog-native (MVP_5_4): seeds a GLOBAL discount + a breaching product floor
+ * onto a fresh dedicated e2e catalog and forces it via the gated `mg_e2e_audience`
+ * override — self-contained (no real Shopify automatic discount, no global-config
+ * edit) and zero blast radius. The banner is driven by the app-proxy `/visibility`
+ * payload (`discountConflictsByHandle`) for the forced catalog.
  */
 
-const config = resolveShopifyE2ERuntimeConfig();
-
-function resolveCartProductHandle(): string | null {
-  const override = String(process.env.SHOPIFY_E2E_PRODUCT_HANDLE_CART ?? "").trim();
-  if (override) {
-    return override.toLowerCase();
-  }
-  const matrix = readMatrixFile();
-  return matrix?.products[0]?.handle ?? null;
-}
+let runtime: ShopifyE2ERuntime;
+let catalogId: string;
 
 async function readFirstVariantId(page: Page, handle: string): Promise<number | null> {
   return page.evaluate(async (currentHandle) => {
@@ -56,60 +48,46 @@ test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async () => {
   test.setTimeout(150_000);
-  await ensureOriginalMarginGuardSnapshot();
-  await warmStorefrontTunnel(resolveCartProductHandle() ?? undefined);
+  runtime = await resolveShopifyE2ERuntime();
+  if (runtime.enabled) {
+    await warmStorefrontTunnel(runtime.scenarioHandles.visibility);
+  }
+});
+
+test.beforeEach(async () => {
+  if (!runtime.enabled) {
+    return;
+  }
+  ({ catalogId } = await setupE2ECatalog());
 });
 
 test.afterAll(async () => {
-  await restoreOriginalMarginGuardSnapshot();
+  await teardownE2ECatalog();
   await disconnectE2EPrisma();
 });
 
-test("cart shows a margin-guard banner when an automatic discount conflicts with the floor", async ({
+test("cart shows a margin-guard banner when a catalog discount conflicts with the floor", async ({
   page,
 }) => {
-  const handle = resolveCartProductHandle();
-  if (!handle) {
-    test.skip(true, "No cart product handle resolved (set SHOPIFY_E2E_PRODUCT_HANDLE_CART or seed the matrix).");
+  if (!runtime.enabled) {
+    test.skip(true, runtime.skipReason);
     return;
   }
 
-  const admin = await getOfflineAdminClientForE2E();
-  if (!admin) {
-    test.skip(true, "No offline Shopify session to read automatic discounts.");
+  const handle = runtime.scenarioHandles.visibility;
+
+  if (!(await gotoStorefrontOrSkip(page, decorateStorefrontPath(`/products/${handle}`), runtime.storefrontPassword))) {
     return;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const automaticDiscounts = await fetchAutomaticDiscounts(admin as any);
-  const globalDiscount = automaticDiscounts
-    .filter((discount) => discount.scope === "GLOBAL" && discount.percentOff > 0)
-    .sort((a, b) => b.percentOff - a.percentOff)[0];
-  if (!globalDiscount) {
-    test.skip(
-      true,
-      "No active GLOBAL automatic discount on the store to conflict with the floor.",
-    );
-    return;
-  }
+  const product = await resolveCurrentProductFixtureFromPage(page);
 
-  // Pick a floor strict enough that the discount necessarily breaches it:
-  // conflict ⇔ (100 − floorPercent) < discountPercent ⇔ floorPercent > 100 − discountPercent.
-  const floorPercent = Math.min(95, Math.round(100 - globalDiscount.percentOff + 5));
-  await resetMarginGuardConfigForStorefrontE2E();
-  await updateGlobalMarginGuardConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: floorPercent,
-    b2bGlobalMinPricePercent: floorPercent,
-    allowZeroFinalPrice: false,
-    allowRemoveAtMinimumOrderQuantity: true,
-    allowStacking: true,
-    maxCombinedPercentOff: null,
+  // A 50% GLOBAL discount necessarily breaches an 80% floor (final 50% < 80%),
+  // so the conflict detector flags it for the forced catalog.
+  await seedCatalogDiscountFloorConflict(catalogId, product.productId, {
+    percentOff: 50,
+    floorPercent: 80,
   });
-
-  await page.goto(decorateStorefrontPath(`/products/${handle}`), { waitUntil: "domcontentloaded" });
-  await maybeUnlockStorefront(page, config.storefrontPassword);
-  await page.goto(decorateStorefrontPath(`/products/${handle}`), { waitUntil: "domcontentloaded" });
 
   const variantId = await readFirstVariantId(page, handle);
   if (!variantId) {
@@ -133,7 +111,7 @@ test("cart shows a margin-guard banner when an automatic discount conflicts with
   }
 
   // Land on the cart page so the visibility script discovers the cart line and
-  // fetches the (live) discount conflicts for the current segment.
+  // fetches the (live) discount conflicts for the forced catalog.
   await page.goto(decorateStorefrontPath("/cart"), { waitUntil: "domcontentloaded" });
 
   const banner = page.locator("#margin-guard-cart-discount-conflict-notice");

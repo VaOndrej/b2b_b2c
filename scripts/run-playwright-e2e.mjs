@@ -71,13 +71,12 @@ if (!String(mergedEnv.SHOPIFY_E2E_STOREFRONT_BASE_URL ?? "").trim()) {
 delete mergedEnv[E2E_OVERRIDE_FLAG];
 
 // Order = the target "pusť všechny testy" UX:
-//   1) parallel read-only theme×segment matrix — Playwright project dependencies
-//      run ALL B2C (Horizon+Dawn) before B2B (Horizon+Dawn). Forced-segment, so
-//      the override flag is injected here only.
-//   2) the serial shop-level tier (checkout + global toggles) — segment-
-//      independent, runs once, WITHOUT the override flag.
-// Separate configs keep the parallel matrix from racing the serial config/
-// metafield mutations.
+//   1) parallel read-only theme×context matrix (base vs forced e2e catalog).
+//   2) the serial, mutate-per-test tier (DOM banners / notices / cart conflict).
+// Catalog-native (MVP_5_4): BOTH tiers force the dedicated e2e catalog via the
+// gated `mg_e2e_audience` override, so the runner-owned flag is injected for both.
+// Separate configs keep the parallel matrix from racing the serial tier on the
+// shared e2e catalog.
 const runs = [
   {
     config: "playwright.matrix.config.ts",
@@ -85,7 +84,7 @@ const runs = [
   },
   {
     config: "playwright.config.ts",
-    env: mergedEnv,
+    env: { ...mergedEnv, [E2E_OVERRIDE_FLAG]: "1" },
   },
 ];
 

@@ -144,6 +144,106 @@ test("honours discount segment restriction", () => {
   assert.equal(conflicts[0]?.segment, "B2B");
 });
 
+test("flags a per-unit fixed-amount discount that breaches the floor", () => {
+  const conflicts = detectDiscountFloorConflicts({
+    products: [
+      { productId: "gid://shopify/Product/1", effectiveBasePrice: 100 },
+    ],
+    automaticDiscounts: [
+      {
+        id: "amount-1",
+        title: "$40 off each",
+        scope: "GLOBAL",
+        valueType: "FIXED_AMOUNT",
+        amount: 40,
+        amountScope: "PER_UNIT",
+      },
+    ],
+    configuredDiscountRules: NO_CONFIGURED_RULES,
+    floorRuleset: floorRuleset(),
+  });
+
+  // $40 off a $100 base = 60 final vs 70 floor → conflict, 40% equivalent.
+  assert.equal(conflicts.length, 2);
+  const b2c = conflicts.find((c) => c.segment === "B2C");
+  assert.equal(b2c?.reason, "BELOW_FLOOR");
+  assert.equal(b2c?.projectedFinalPrice, 60);
+  assert.equal(b2c?.offendingDiscount.valueType, "FIXED_AMOUNT");
+  assert.equal(b2c?.offendingDiscount.percentOff, 40);
+  assert.equal(b2c?.offendingDiscount.amount, 40);
+});
+
+test("does not flag a per-unit fixed-amount discount that stays above the floor", () => {
+  const conflicts = detectDiscountFloorConflicts({
+    products: [
+      { productId: "gid://shopify/Product/1", effectiveBasePrice: 100 },
+    ],
+    automaticDiscounts: [
+      {
+        id: "amount-1",
+        scope: "GLOBAL",
+        valueType: "FIXED_AMOUNT",
+        amount: 20,
+        amountScope: "PER_UNIT",
+      },
+    ],
+    configuredDiscountRules: NO_CONFIGURED_RULES,
+    floorRuleset: floorRuleset(),
+  });
+
+  // $20 off → 80 final, above 70 floor.
+  assert.deepEqual(conflicts, []);
+});
+
+test("flags per-order fixed-amount discounts as unverifiable", () => {
+  const conflicts = detectDiscountFloorConflicts({
+    products: [
+      { productId: "gid://shopify/Product/1", effectiveBasePrice: 100 },
+    ],
+    automaticDiscounts: [
+      {
+        id: "order-amount",
+        title: "$10 off order",
+        scope: "GLOBAL",
+        valueType: "FIXED_AMOUNT",
+        amount: 10,
+        amountScope: "PER_ORDER",
+      },
+    ],
+    configuredDiscountRules: NO_CONFIGURED_RULES,
+    floorRuleset: floorRuleset(),
+  });
+
+  assert.equal(conflicts.length, 2);
+  assert.ok(conflicts.every((c) => c.reason === "UNVERIFIABLE_AGAINST_FLOOR"));
+  assert.equal(conflicts[0]?.offendingDiscount.valueType, "FIXED_AMOUNT");
+  assert.equal(conflicts[0]?.totalPercentOff, 0);
+});
+
+test("flags unsupported (BXGY) discounts as unverifiable instead of ignoring them", () => {
+  const conflicts = detectDiscountFloorConflicts({
+    products: [
+      { productId: "gid://shopify/Product/1", effectiveBasePrice: 100 },
+    ],
+    automaticDiscounts: [
+      {
+        id: "bxgy",
+        title: "Buy 2 get 1",
+        scope: "GLOBAL",
+        valueType: "UNSUPPORTED",
+        unsupportedKind: "Buy X Get Y",
+      },
+    ],
+    configuredDiscountRules: NO_CONFIGURED_RULES,
+    floorRuleset: floorRuleset(),
+  });
+
+  assert.equal(conflicts.length, 2);
+  assert.ok(conflicts.every((c) => c.reason === "UNVERIFIABLE_AGAINST_FLOOR"));
+  assert.equal(conflicts[0]?.offendingDiscount.valueType, "UNSUPPORTED");
+  assert.equal(conflicts[0]?.offendingDiscount.unsupportedKind, "Buy X Get Y");
+});
+
 test("ignores products with non-positive price or zero-percent discounts", () => {
   const conflicts = detectDiscountFloorConflicts({
     products: [

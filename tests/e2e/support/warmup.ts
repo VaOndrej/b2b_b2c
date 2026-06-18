@@ -1,6 +1,7 @@
 import { chromium, type Browser } from "@playwright/test";
 import { maybeUnlockStorefront } from "./storefront.ts";
 import { resolveShopifyE2ERuntimeConfig } from "./runtime.ts";
+import { E2E_CATALOG_AUDIENCE_TAG } from "./catalog-context.ts";
 
 /**
  * Primes the dev tunnel / app proxy with ONE real browser navigation per theme
@@ -34,12 +35,15 @@ export async function warmStorefrontTunnel(productHandle?: string): Promise<void
         .catch(() => {});
     };
 
-    await prime(`/products/${handle}?mg_e2e_segment=B2C`);
+    const audience = `mg_e2e_audience=${E2E_CATALOG_AUDIENCE_TAG}`;
+    await prime(`/products/${handle}?${audience}`);
     await maybeUnlockStorefront(page, config.storefrontPassword).catch(() => {});
-    await prime(`/products/${handle}?mg_e2e_segment=B2C`);
+    await prime(`/products/${handle}?${audience}`);
+    // Also warm the base context (no override) the `base` matrix projects use.
+    await prime(`/products/${handle}`);
     if (previewThemeId) {
       await prime(
-        `/products/${handle}?preview_theme_id=${previewThemeId}&mg_e2e_segment=B2C`,
+        `/products/${handle}?preview_theme_id=${previewThemeId}&${audience}`,
       );
     }
     // Let the no-defer head embed script actually fetch the proxy script so the

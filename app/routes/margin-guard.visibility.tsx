@@ -9,6 +9,11 @@ import {
   resolveStorefrontVisibilityByHandles,
 } from "../services/storefront-visibility.server";
 import { resolveCartDiscountConflictsByHandle } from "../services/discount-conflict.server";
+import {
+  resolveStorefrontCatalogVariantVisibility,
+  resolveStorefrontCatalogProductVisibility,
+} from "../services/price-catalog.server";
+import { loadStorefrontCatalogQuantity } from "../services/catalog-ruleset.server";
 
 export const loader = createVisibilityLoader({
   authenticatePublicAppProxy: authenticate.public.appProxy,
@@ -19,4 +24,14 @@ export const loader = createVisibilityLoader({
   resolveStorefrontQuantityConstraintsByProductId,
   resolveStorefrontVariantVisibilityByProductId,
   resolveCartDiscountConflictsByHandle,
+  resolveStorefrontCatalogVariantVisibility: (customerTags) =>
+    resolveStorefrontCatalogVariantVisibility(customerTags).catch(() => ({})),
+  resolveStorefrontCatalogProductVisibility: (customerTags) =>
+    resolveStorefrontCatalogProductVisibility(customerTags).catch(() => []),
+  loadStorefrontCatalogQuantity: (input) =>
+    loadStorefrontCatalogQuantity(input).catch(() => ({
+      productQuantityRules: [],
+      collectionQuantityRules: [],
+      customerQuantityRules: [],
+    })),
 });

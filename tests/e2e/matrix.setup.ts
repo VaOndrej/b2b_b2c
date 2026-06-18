@@ -1,67 +1,58 @@
 import {
-  captureSnapshotToFile,
+  seedE2ECatalogRules,
+  setupE2ECatalog,
+} from "./support/catalog-e2e.ts";
+import {
   disconnectE2EPrisma,
   resyncStorefrontProjectionForE2E,
-  seedE2EMatrix,
 } from "./support/seed.ts";
-import {
-  buildE2EMatrix,
-  readManifestMatrix,
-  writeMatrixFile,
-} from "./support/matrix.ts";
+import { buildE2EMatrix, writeMatrixFile } from "./support/matrix.ts";
 import { warmStorefrontTunnel } from "./support/warmup.ts";
 
 /**
  * Playwright globalSetup for the parallel matrix suite. Runs ONCE before test
  * discovery so the `.matrix.json` file exists when the data-driven specs are
- * collected. Captures the original config, then seeds every archetype rule
- * across distinct catalog products/collections and syncs the projection.
+ * collected.
  *
- * Because all rules are seeded here (not per-test), the matrix specs never
- * mutate shared state and are safe to run fully in parallel.
+ * Catalog-native (MVP_5_4): creates the dedicated, disposable e2e price catalog,
+ * derives the deterministic matrix from the synced catalog products, and seeds
+ * each archetype's rule onto the e2e catalog (one rule per product). All e2e
+ * rules live on that one catalog — the user's default/b2b config is never touched
+ * (globalTeardown deletes it). Because every rule is seeded here, the matrix
+ * specs are read-only and safe to run fully in parallel.
  */
 export default async function globalSetup() {
-  const matrix = await buildE2EMatrix();
-  writeMatrixFile(matrix);
-
+  let firstHandle: string | undefined;
   try {
-    // Manifest mode: the comprehensive seeder (scripts/seed-e2e-catalog.ts) owns
-    // the data ADDITIVELY. Do NOT reset/snapshot — just ensure the storefront
-    // projection is current and leave the seeded state in place.
-    if (readManifestMatrix()) {
-      await resyncStorefrontProjectionForE2E();
-    } else {
-      // Legacy mode (no manifest): capture the pre-seed config so the
-      // separate-process teardown can restore it, then seed archetypes from the
-      // synced catalog.
-      await captureSnapshotToFile();
+    const { catalogId, audienceTag } = await setupE2ECatalog();
+    const matrix = await buildE2EMatrix(audienceTag);
+    writeMatrixFile(matrix);
+    firstHandle = matrix.products[0]?.handle;
 
-      if (matrix.products.length === 0 && matrix.collections.length === 0) {
+    if (matrix.products.length === 0) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[matrix.globalSetup] Empty catalog — no products to seed. Notes:\n" +
+          matrix.notes.map((note) => `  - ${note}`).join("\n"),
+      );
+    } else {
+      await seedE2ECatalogRules(catalogId, matrix);
+      if (matrix.notes.length > 0) {
         // eslint-disable-next-line no-console
         console.warn(
-          "[matrix.globalSetup] Empty catalog — no products/collections to seed. Notes:\n" +
+          "[matrix.globalSetup] Coverage gaps:\n" +
             matrix.notes.map((note) => `  - ${note}`).join("\n"),
         );
-      } else {
-        const result = await seedE2EMatrix(matrix);
-        if (!result.seeded && result.reason) {
-          // eslint-disable-next-line no-console
-          console.warn(`[matrix.globalSetup] Partial seed: ${result.reason}`);
-        }
-
-        if (matrix.notes.length > 0) {
-          // eslint-disable-next-line no-console
-          console.warn(
-            "[matrix.globalSetup] Coverage gaps:\n" +
-              matrix.notes.map((note) => `  - ${note}`).join("\n"),
-          );
-        }
       }
     }
+
+    // Keep the live shop metafield consistent with the post-seed DB state. The
+    // e2e catalog has no segment, so this does not change the b2b/b2c snapshots.
+    await resyncStorefrontProjectionForE2E();
   } finally {
     await disconnectE2EPrisma();
   }
 
   // Absorb the dev-tunnel cold-start once so the parallel matrix runs warm.
-  await warmStorefrontTunnel(matrix.products[0]?.handle);
+  await warmStorefrontTunnel(firstHandle);
 }

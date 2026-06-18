@@ -531,3 +531,69 @@ test("discount function does not reject entered code when order-level discount s
     "Kód SAFE30 s 30% slevou (výsledek přesně na flooru 70%) nesmí být odmítnut.",
   );
 });
+
+test("discount function gates a loyalty-tag rule on customer.hasTags (MVP_5_2)", () => {
+  const metafield = {
+    jsonValue: {
+      globalMinPricePercent: 70,
+      b2bGlobalMinPricePercent: 70,
+      allowZeroFinalPrice: false,
+      marginGuardEnabled: true,
+      discountRules: [
+        {
+          id: "loyalty-rule",
+          scope: "GLOBAL",
+          targetId: null,
+          code: null,
+          segment: null,
+          percentOff: 10,
+          priority: 0,
+          stackMode: "STACKABLE",
+          minPricePercentOfBasePrice: null,
+          requiredCustomerTag: "loyalty-gold",
+        },
+      ],
+    },
+  };
+  const line = {
+    id: "line-1",
+    quantity: 1,
+    cost: { subtotalAmount: { amount: "100.00" } },
+    merchandise: {
+      __typename: "ProductVariant",
+      product: { id: "gid://shopify/Product/1" },
+    },
+  };
+
+  // Customer WITHOUT the loyalty tag → no discount applied.
+  const without = runDiscountFunction({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false, hasTags: [{ tag: "loyalty-gold", hasTag: false }] },
+      },
+      lines: [line],
+    },
+    discount: { discountClasses: ["PRODUCT" as any], metafield },
+    enteredDiscountCodes: [],
+  });
+  assert.equal(
+    without.operations.some((op: any) => op.productDiscountsAdd),
+    false,
+  );
+
+  // Customer WITH the loyalty tag (case-insensitive) → 10% applied.
+  const withTag = runDiscountFunction({
+    cart: {
+      buyerIdentity: {
+        customer: { hasAnyTag: false, hasTags: [{ tag: "Loyalty-Gold", hasTag: true }] },
+      },
+      lines: [line],
+    },
+    discount: { discountClasses: ["PRODUCT" as any], metafield },
+    enteredDiscountCodes: [],
+  });
+  const candidate =
+    withTag.operations[0]?.productDiscountsAdd?.candidates?.[0] ?? null;
+  assert.equal(candidate?.value?.percentage?.value, 10);
+  console.log("[DISCOUNT FUNCTION PASS] Loyalty tag gating funguje (hasTags).");
+});

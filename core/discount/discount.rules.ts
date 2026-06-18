@@ -32,6 +32,12 @@ export interface ConfiguredDiscountRule {
   priority?: number;
   stackMode?: DiscountStackMode;
   minPricePercentOfBasePrice?: number;
+  /**
+   * MVP_5_2 — loyalty eligibility. When set, the rule only matches when the
+   * customer carries this tag (case-insensitive). Loyalty is an independent
+   * eligibility layer on top of the binary B2B/B2C segment; it is NOT a segment.
+   */
+  requiredCustomerTag?: string;
 }
 
 export interface DiscountBlacklistRule {
@@ -53,6 +59,8 @@ export interface DiscountResolutionContext {
   segment?: Segment;
   collectionIds?: string[];
   enteredDiscountCodes?: string[];
+  /** MVP_5_2 — customer loyalty tags used to gate loyalty discount rules. */
+  customerTags?: string[];
 }
 
 export interface DiscountRules {

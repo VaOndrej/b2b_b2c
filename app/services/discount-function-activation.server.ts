@@ -1,7 +1,6 @@
-import {
-  buildDiscountFunctionConfig,
-  getOrCreateMarginGuardConfig,
-} from "./margin-guard-config.server.ts";
+import { getOrCreateMarginGuardConfig } from "./margin-guard-config.server.ts";
+import { buildCatalogConfigFromCatalogs } from "../../core/config/function-config.ts";
+import { loadAllCatalogsForConfig } from "./price-catalog.server.ts";
 import { discountFunctionPolicy } from "../../config/feature-flags.ts";
 
 interface AdminGraphqlClient {
@@ -77,7 +76,19 @@ export async function ensureDiscountFunctionActive(
 ): Promise<DiscountActivationResult> {
   try {
     const config = await getOrCreateMarginGuardConfig();
-    const functionConfig = buildDiscountFunctionConfig(config);
+    // MVP_5_3 #2.2 — discount config assembled from catalog tables only.
+    const allCatalogs = await loadAllCatalogsForConfig().catch(() => []);
+    const functionConfig = buildCatalogConfigFromCatalogs(
+      {
+        b2bTag: config.b2bTag,
+        globalMinPricePercent: config.globalMinPricePercent,
+        allowZeroFinalPrice: config.allowZeroFinalPrice,
+        allowStacking: config.allowStacking,
+        maxCombinedPercentOff: config.maxCombinedPercentOff,
+        marginGuardEnabled: config.marginGuardEnabled,
+      },
+      allCatalogs,
+    );
     const title = "Margin Guard Discount Function";
 
     const alreadyExists = await findExistingDiscountByTitle(admin, title);

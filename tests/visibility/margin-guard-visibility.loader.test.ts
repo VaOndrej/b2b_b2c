@@ -29,18 +29,6 @@ function stubConfig(): MarginGuardConfig {
     cartValidationLastSyncAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
-    productFloors: [],
-    productTierPrices: [],
-    productQuantityRules: [],
-    collectionQuantityRules: [],
-    productCustomerQuantityRules: [],
-    productVisibilityRules: [],
-    productVariantVisibilityRules: [],
-    collectionVisibilityRules: [],
-    couponSegmentRules: [],
-    discountRules: [],
-    discountCombinationBlacklistRules: [],
-    discountSegmentCaps: [],
   };
 }
 
@@ -138,21 +126,8 @@ test("visibility loader returns variant visibility payload alongside quantity ru
     async authenticatePublicAppProxy() {
       return { admin: undefined };
     },
-    getOrCreateMarginGuardConfig: async () => ({
-      ...stubConfig(),
-      productVariantVisibilityRules: [
-        {
-          id: "rule_1",
-          configId: "default",
-          productId: "gid://shopify/Product/500",
-          variantId: "gid://shopify/ProductVariant/900",
-          visibilityMode: "B2B_ONLY",
-          customerId: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ],
-    }),
+    getOrCreateMarginGuardConfig: async () => stubConfig(),
+    // Variant visibility is provided by the (catalog-backed) resolver below.
     resolveStorefrontVisibilityByHandles: async () => ({
       productIdByHandle: {},
       hiddenHandles: [],
@@ -192,35 +167,10 @@ test("visibility loader returns variant visibility payload alongside quantity ru
 const B2B_PRODUCT_ID = "gid://shopify/Product/700";
 const B2B_ONLY_HIDDEN_VARIANT = "gid://shopify/ProductVariant/950";
 
+// MVP_5_3 #2.3c — the B2B scenario's quantity + variant visibility now come from
+// the resolved catalog (see segmentScenarioDeps), not config children.
 function segmentScenarioConfig(): MarginGuardConfig {
-  return {
-    ...stubConfig(),
-    productQuantityRules: [
-      {
-        id: "q_b2b",
-        configId: "default",
-        productId: B2B_PRODUCT_ID,
-        segment: "B2B",
-        minimumOrderQuantity: 6,
-        stepQuantity: null,
-        maxOrderQuantity: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ],
-    productVariantVisibilityRules: [
-      {
-        id: "v_b2c_only",
-        configId: "default",
-        productId: B2B_PRODUCT_ID,
-        variantId: B2B_ONLY_HIDDEN_VARIANT,
-        visibilityMode: "B2C_ONLY",
-        customerId: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ],
-  };
+  return stubConfig();
 }
 
 function segmentScenarioDeps() {
@@ -237,8 +187,96 @@ function segmentScenarioDeps() {
     // Use the REAL resolvers so the B2B branch is genuinely exercised.
     resolveStorefrontQuantityConstraintsByProductId,
     resolveStorefrontVariantVisibilityByProductId,
+    // MVP_5_3 #2.3c — quantity + variant visibility now come from the customer's
+    // resolved catalog (b2b catalog when the b2b tag is present).
+    loadStorefrontCatalogQuantity: async (input: { matchedTags: string[] }) =>
+      input.matchedTags.includes("b2b")
+        ? {
+            productQuantityRules: [
+              {
+                productId: B2B_PRODUCT_ID,
+                segment: null as null,
+                minimumOrderQuantity: 6,
+                stepQuantity: null,
+                maxOrderQuantity: null,
+              },
+            ],
+            collectionQuantityRules: [],
+            customerQuantityRules: [],
+          }
+        : {
+            productQuantityRules: [],
+            collectionQuantityRules: [],
+            customerQuantityRules: [],
+          },
+    resolveStorefrontCatalogVariantVisibility: async (
+      customerTags: string[],
+    ): Promise<Record<string, string[]>> =>
+      customerTags.includes("b2b")
+        ? { [B2B_PRODUCT_ID]: [B2B_ONLY_HIDDEN_VARIANT] }
+        : {},
   };
 }
+
+test("visibility loader merges per-catalog hidden variants from the resolved custom catalog", async () => {
+  const tagsSeen: string[][] = [];
+  const loader = createVisibilityLoader({
+    async authenticatePublicAppProxy() {
+      return { admin: undefined };
+    },
+    getOrCreateMarginGuardConfig: async () => stubConfig(),
+    ...baseDeps(),
+    resolveStorefrontVariantVisibilityByProductId: () => ({
+      "gid://shopify/Product/1": { hiddenVariantIds: ["gid://shopify/ProductVariant/seg"] },
+    }),
+    resolveStorefrontCatalogVariantVisibility: async (tags: string[]) => {
+      tagsSeen.push(tags);
+      return { "gid://shopify/Product/1": ["gid://shopify/ProductVariant/cat"] };
+    },
+  });
+
+  const request = new Request(
+    `https://example.com/apps/margin-guard/visibility?logged_in_customer_tags=${encodeURIComponent(
+      JSON.stringify(["gold"]),
+    )}`,
+  );
+  const response = await loader({ request });
+  const payload = await response.json();
+
+  assert.deepEqual(tagsSeen[0], ["gold"]);
+  assert.deepEqual(
+    payload.variantVisibilityByProductId["gid://shopify/Product/1"].hiddenVariantIds.sort(),
+    ["gid://shopify/ProductVariant/cat", "gid://shopify/ProductVariant/seg"],
+  );
+});
+
+test("visibility loader hides whole products for the resolved custom catalog", async () => {
+  const loader = createVisibilityLoader({
+    async authenticatePublicAppProxy() {
+      return { admin: undefined };
+    },
+    getOrCreateMarginGuardConfig: async () => stubConfig(),
+    ...baseDeps(),
+    resolveStorefrontVisibilityByHandles: async () => ({
+      productIdByHandle: { alpha: "gid://shopify/Product/9", beta: "gid://shopify/Product/10" },
+      hiddenHandles: [],
+      hiddenProductIds: [],
+      visibilityByHandle: {},
+    }),
+    resolveStorefrontCatalogProductVisibility: async () => ["gid://shopify/Product/9"],
+  });
+
+  const request = new Request(
+    `https://example.com/apps/margin-guard/visibility?handles=alpha,beta&logged_in_customer_tags=${encodeURIComponent(
+      JSON.stringify(["gold"]),
+    )}`,
+  );
+  const response = await loader({ request });
+  const payload = await response.json();
+
+  assert.deepEqual(payload.hiddenHandles, ["alpha"]);
+  assert.deepEqual(payload.hiddenProductIds, ["gid://shopify/Product/9"]);
+});
 
 test("integration: B2B customer (tag b2b via admin) gets B2B visibility + quantity rules applied", async () => {
   const loader = createVisibilityLoader({
@@ -276,11 +314,12 @@ test("integration: B2B customer (tag b2b via admin) gets B2B visibility + quanti
   );
 });
 
-// --- Gated E2E segment override (mg_e2e_segment) at the loader boundary ------
-// The override is the mechanism that lets the Playwright matrix render B2B
-// EFFECTS without a real login. These tests pin both halves of the gate at the
-// /visibility loader: armed → forces the segment and SKIPS the admin tag lookup;
-// unarmed → the param is completely ignored.
+// --- Gated E2E audience override (mg_e2e_audience) at the loader boundary -----
+// The override is the mechanism that lets the Playwright matrix render
+// catalog-specific EFFECTS without a real login. These tests pin both halves of
+// the gate at the /visibility loader: armed → injects the forced audience tags
+// (resolving the matching catalog) and SKIPS the admin tag lookup; unarmed → the
+// param is completely ignored.
 
 async function withOverrideEnv<T>(
   patch: { flag?: string | undefined; nodeEnv?: string },
@@ -306,7 +345,7 @@ async function withOverrideEnv<T>(
   }
 }
 
-test("override: armed mg_e2e_segment=B2B forces B2B and SKIPS the admin tag lookup", async () => {
+test("override: armed mg_e2e_audience=b2b injects the b2b tag and SKIPS the admin tag lookup", async () => {
   await withOverrideEnv({ flag: "1", nodeEnv: "test" }, async () => {
     let adminCalled = false;
     const loader = createVisibilityLoader({
@@ -324,13 +363,13 @@ test("override: armed mg_e2e_segment=B2B forces B2B and SKIPS the admin tag look
     });
 
     const request = new Request(
-      `https://example.com/apps/margin-guard/visibility?product_ids=${encodeURIComponent(B2B_PRODUCT_ID)}&mg_e2e_segment=B2B`,
+      `https://example.com/apps/margin-guard/visibility?product_ids=${encodeURIComponent(B2B_PRODUCT_ID)}&mg_e2e_audience=b2b`,
     );
     const payload = await (await loader({ request })).json();
 
     assert.equal(payload.segment, "B2B");
     assert.equal(adminCalled, false);
-    // The forced B2B segment must drive the REAL rule resolution (B2B MOQ applies).
+    // The forced audience tag must drive the REAL catalog resolution (b2b MOQ applies).
     assert.equal(
       payload.quantityConstraintsByProductId[B2B_PRODUCT_ID]?.minimumOrderQuantity,
       6,
@@ -338,7 +377,7 @@ test("override: armed mg_e2e_segment=B2B forces B2B and SKIPS the admin tag look
   });
 });
 
-test("override: param is IGNORED when the flag is not armed (anonymous stays B2C)", async () => {
+test("override: param is IGNORED when the flag is not armed (anonymous stays base/B2C)", async () => {
   await withOverrideEnv({ flag: undefined, nodeEnv: "test" }, async () => {
     const loader = createVisibilityLoader({
       async authenticatePublicAppProxy() {
@@ -348,7 +387,7 @@ test("override: param is IGNORED when the flag is not armed (anonymous stays B2C
     });
 
     const request = new Request(
-      `https://example.com/apps/margin-guard/visibility?product_ids=${encodeURIComponent(B2B_PRODUCT_ID)}&mg_e2e_segment=B2B`,
+      `https://example.com/apps/margin-guard/visibility?product_ids=${encodeURIComponent(B2B_PRODUCT_ID)}&mg_e2e_audience=b2b`,
     );
     const payload = await (await loader({ request })).json();
 
@@ -381,10 +420,11 @@ test("visibility loader surfaces injected cart discount conflicts in the respons
     },
     getOrCreateMarginGuardConfig: async () => stubConfig(),
     ...baseDeps(),
-    resolveCartDiscountConflictsByHandle: async (input: { segment: string; handles: string[] }) => ({
+    resolveCartDiscountConflictsByHandle: async (input: { matchedTags?: string[]; handles: string[] }) => ({
       widget: [
         {
           discountTitle: "Spring Sale",
+          valueType: "PERCENTAGE" as const,
           percentOff: 40,
           floorPercent: 70,
           totalPercentOff: 40,

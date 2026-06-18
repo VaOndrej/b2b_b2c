@@ -6,8 +6,6 @@ const VISIBILITY_SCRIPT_ROUTE_PATH = "app/routes/margin-guard.visibility-script.
 const LIQUID_EMBED_PATH = "extensions/margin-guard-storefront/blocks/margin_guard_visibility_embed.liquid";
 const CONFIG_SERVER_PATH = "app/services/margin-guard-config.server.ts";
 const STOREFRONT_PROJECTION_SERVER_PATH = "app/services/storefront-projection.server.ts";
-const SETTINGS_ACTION_PATH = "app/routes/app.settings.tsx";
-const CATALOG_RULES_SERVER_PATH = "app/services/catalog-rules-settings.server.ts";
 
 test("visibility script falls back to product.js productId for variant visibility payload bootstrap", async () => {
   const source = await readFile(VISIBILITY_SCRIPT_ROUTE_PATH, "utf8");
@@ -273,17 +271,20 @@ test("liquid embed includes inline early-hide script reading sessionStorage cach
   );
 });
 
-test("liquid embed does not use defer on the main visibility script tag", async () => {
+test("liquid embed defers the main visibility script (anti-flash is the inline style/script)", async () => {
   const source = await readFile(LIQUID_EMBED_PATH, "utf8");
 
   const mainScriptMatch = source.match(
     /<script[\s\S]*?src=["'][\s\S]*?visibility-script[\s\S]*?["'][^>]*>/,
   );
   assert.ok(mainScriptMatch, "Liquid embed must include the main visibility script tag.");
-  assert.doesNotMatch(
+  // First-paint anti-flash is the inline <style> (from metafields) + the inline
+  // early-hide <script>; the remote app-proxy script only does live refinement,
+  // so it must be deferred (theme-check ParserBlockingScript) and not block parse.
+  assert.match(
     mainScriptMatch[0],
     /defer/,
-    "Main visibility script tag must NOT use defer — it must execute as soon as possible to minimize flash of hidden content.",
+    "Main visibility script tag must use defer — it must not block the parser; anti-flash is handled inline above it.",
   );
 });
 
@@ -325,15 +326,23 @@ test("syncVisibilityHandlesMetafield is exported from config server", async () =
     /export async function syncVisibilityHandlesMetafield\(/,
     "Config server must export syncVisibilityHandlesMetafield for metafield sync.",
   );
+  // MVP_5_3 #2.3c — hidden handles are now sourced from catalog product
+  // visibility (default catalog → b2c, B2B catalog → b2b), not the legacy
+  // segment-keyed ProductVisibilityRule children.
   assert.match(
     source,
-    /visibilityMode === "B2B_ONLY"/,
-    "syncVisibilityHandlesMetafield must filter rules for B2B_ONLY mode.",
+    /loadCatalogProductVisibility/,
+    "syncVisibilityHandlesMetafield must source hidden products from catalog tables.",
   );
   assert.match(
     source,
-    /visibilityMode === "B2C_ONLY"/,
-    "syncVisibilityHandlesMetafield must filter rules for B2C_ONLY mode.",
+    /b2b:\s*\[\.\.\.new Set\(b2bHandles\)\]/,
+    "syncVisibilityHandlesMetafield must still emit the b2b hidden-handle list.",
+  );
+  assert.match(
+    source,
+    /b2c:\s*\[\.\.\.new Set\(b2cHandles\)\]/,
+    "syncVisibilityHandlesMetafield must still emit the b2c hidden-handle list.",
   );
   assert.match(
     source,
@@ -387,69 +396,9 @@ test("storefront projection sync service writes a public shop metafield snapshot
   );
 });
 
-test("settings action calls syncVisibilityHandlesMetafield after visibility rule changes", async () => {
-  // MVP_5_1 (move-not-copy): per-product/variant visibility writes (and their
-  // handle-metafield sync) live in the shared catalog-rules module; the
-  // save-global handle sync stays in the route action.
-  const [actionSource, catalogRulesSource] = await Promise.all([
-    readFile(SETTINGS_ACTION_PATH, "utf8"),
-    readFile(CATALOG_RULES_SERVER_PATH, "utf8"),
-  ]);
-
-  assert.match(
-    catalogRulesSource,
-    /syncVisibilityHandlesMetafield/,
-    "Catalog-rules module must import and call syncVisibilityHandlesMetafield.",
-  );
-
-  const saveRuleIndex = catalogRulesSource.indexOf('intent === "save-product-visibility-rule"');
-  const deleteRuleIndex = catalogRulesSource.indexOf('intent === "delete-product-visibility-rule"');
-  assert.ok(saveRuleIndex !== -1, "save-product-visibility-rule intent must exist.");
-  assert.ok(deleteRuleIndex !== -1, "delete-product-visibility-rule intent must exist.");
-
-  const afterSave = catalogRulesSource.indexOf("syncVisibilityHandlesMetafield", saveRuleIndex);
-  const afterDelete = catalogRulesSource.indexOf("syncVisibilityHandlesMetafield", deleteRuleIndex);
-  assert.ok(afterSave !== -1, "syncVisibilityHandlesMetafield must be called after saving a visibility rule.");
-  assert.ok(afterDelete !== -1, "syncVisibilityHandlesMetafield must be called after deleting a visibility rule.");
-
-  const saveGlobalIndex = actionSource.indexOf('intent === "save-global"');
-  assert.ok(saveGlobalIndex !== -1, "save-global intent must exist.");
-  const afterSaveGlobal = actionSource.indexOf("syncVisibilityHandlesMetafield", saveGlobalIndex);
-  assert.ok(
-    afterSaveGlobal !== -1,
-    "syncVisibilityHandlesMetafield must be called after saving global settings so storefront B2B tag changes stay in sync.",
-  );
-});
-
-test("settings action calls storefront projection sync after projected storefront rule changes", async () => {
-  const source = await readFile(SETTINGS_ACTION_PATH, "utf8");
-
-  assert.match(
-    source,
-    /syncStorefrontProjectionMetafields/,
-    "Settings action must import and call syncStorefrontProjectionMetafields.",
-  );
-  assert.match(
-    source,
-    /intent === "save-product-step-quantity-rule"[\s\S]*?syncStorefrontProjectionMetafields/,
-    "Projected product step quantity changes must trigger storefront projection sync.",
-  );
-  assert.match(
-    source,
-    /intent === "save-product-visibility-rule"[\s\S]*?syncStorefrontProjectionMetafields/,
-    "Projected product visibility changes must trigger storefront projection sync.",
-  );
-  assert.match(
-    source,
-    /intent === "save-collection-visibility-rule"[\s\S]*?syncStorefrontProjectionMetafields/,
-    "Projected collection visibility changes must trigger storefront projection sync.",
-  );
-  assert.match(
-    source,
-    /intent === "save-global"[\s\S]*?syncStorefrontProjectionMetafields/,
-    "Projected global config changes must trigger storefront projection sync.",
-  );
-});
+// MVP_5_3 #2.3 — the legacy settings/catalog-rules action republish wiring was
+// deleted; catalog edits now republish via republishCatalogRuntime (covered by
+// the catalog route contract tests).
 
 test("liquid embed reads app metafield for segment-default-hide CSS", async () => {
   const source = await readFile(LIQUID_EMBED_PATH, "utf8");

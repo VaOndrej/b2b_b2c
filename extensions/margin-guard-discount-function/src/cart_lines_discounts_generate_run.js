@@ -110,6 +110,14 @@ function normalizeCouponCode(code) {
 }
 
 /**
+ * MVP_5_2 — loyalty tags are compared case-insensitively, mirroring the TS core.
+ * @param {unknown} value
+ */
+function normalizeLoyaltyTag(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+/**
  * @param {unknown} value
  */
 function normalizeAllowedSegment(value) {
@@ -117,6 +125,44 @@ function normalizeAllowedSegment(value) {
     return value;
   }
   return "ALL";
+}
+
+/**
+ * MVP_5_3 #2.0b — code → catalog ids the coupon is allowed for.
+ * @param {any} raw
+ */
+function normalizeCouponCatalogRules(raw) {
+  /** @type {Record<string, string[]>} */
+  const out = {};
+  if (!raw || typeof raw !== "object") {
+    return out;
+  }
+  for (const [code, ids] of Object.entries(raw)) {
+    const normalizedCode = normalizeCouponCode(code);
+    if (normalizedCode && Array.isArray(ids)) {
+      out[normalizedCode] = ids.map((value) => String(value));
+    }
+  }
+  return out;
+}
+
+/**
+ * MVP_5_3 #2.0d — catalog id → max combined discount cap.
+ * @param {any} raw
+ */
+function normalizeDiscountCatalogCaps(raw) {
+  /** @type {Record<string, number>} */
+  const out = {};
+  if (!raw || typeof raw !== "object") {
+    return out;
+  }
+  for (const [catalogId, max] of Object.entries(raw)) {
+    const normalized = normalizePercentOrNull(max);
+    if (normalized != null) {
+      out[String(catalogId)] = normalized;
+    }
+  }
+  return out;
 }
 
 /**
@@ -345,10 +391,13 @@ function matchesBlacklistRule(left, right, rule) {
  * @param {Array<{ id: string, scope: string, code?: string | null }>} selected
  * @param {"B2B" | "B2C"} segment
  */
-function findBlacklistConflict(rules, candidate, selected, segment) {
+function findBlacklistConflict(rules, candidate, selected, segment, catalogId) {
   for (const selectedCandidate of selected) {
     for (const rule of rules) {
       if (rule.segment && rule.segment !== "ALL" && rule.segment !== segment) {
+        continue;
+      }
+      if (rule.catalogId && rule.catalogId !== catalogId) {
         continue;
       }
       if (matchesBlacklistRule(candidate, selectedCandidate, rule)) {
@@ -413,6 +462,8 @@ function resolveSegmentCap(segmentCaps, segment) {
 function resolveRejectedDiscountCodes(
   enteredDiscountCodes,
   couponSegmentRules,
+  couponCatalogRules,
+  catalogId,
   discountRules,
   blacklistRules,
   segment,
@@ -435,10 +486,17 @@ function resolveRejectedDiscountCodes(
     seen.add(normalizedCode);
     const rejectable = enteredCode?.rejectable !== false;
     const allowedSegment = couponSegmentRules[normalizedCode];
-    const segmentMismatch =
+    const segmentMismatchRaw =
       allowedSegment != null &&
       allowedSegment !== "ALL" &&
       allowedSegment !== segment;
+    // MVP_5_3 #2.0b — coupon restricted to catalog(s) → mismatch outside them.
+    const allowedCatalogs = couponCatalogRules ? couponCatalogRules[normalizedCode] : null;
+    const catalogMismatch =
+      Array.isArray(allowedCatalogs) &&
+      allowedCatalogs.length > 0 &&
+      !allowedCatalogs.includes(catalogId);
+    const segmentMismatch = segmentMismatchRaw || catalogMismatch;
     const matchingRule = (discountRules ?? []).find((rule) => {
       if (rule?.scope !== "COUPON") {
         return false;
@@ -477,6 +535,9 @@ function resolveRejectedDiscountCodes(
     const blacklistConflict = acceptedCodes.some((acceptedCode) =>
       blacklistRules.some((rule) => {
         if (rule.segment && rule.segment !== "ALL" && rule.segment !== segment) {
+          return false;
+        }
+        if (rule.catalogId && rule.catalogId !== catalogId) {
           return false;
         }
         return matchesBlacklistRule(
@@ -670,6 +731,8 @@ function parseConfig(input) {
       minPricePercentOfBasePrice: normalizePercentOrNull(
         rule?.minPricePercentOfBasePrice,
       ),
+      requiredCustomerTag: normalizeLoyaltyTag(rule?.requiredCustomerTag) || null,
+      catalogId: rule?.catalogId ? String(rule.catalogId) : null,
       sequence,
     });
   }
@@ -692,6 +755,7 @@ function parseConfig(input) {
         rule?.segment === "B2B" || rule?.segment === "B2C" || rule?.segment === "ALL"
           ? rule.segment
           : null,
+      catalogId: rule?.catalogId ? String(rule.catalogId) : null,
     });
   }
 
@@ -730,6 +794,8 @@ function parseConfig(input) {
     perProductTierPricesB2C,
     perProductTierPricesB2B,
     couponSegmentRules,
+    couponCatalogRules: normalizeCouponCatalogRules(config.couponCatalogRules),
+    discountCatalogCaps: normalizeDiscountCatalogCaps(config.discountCatalogCaps),
     discountRules,
     discountCombinationBlacklistRules,
     discountSegmentCaps,
@@ -749,6 +815,7 @@ function resolveSelectedCandidates(
   segment,
   allowStacking,
   remainingCap,
+  catalogId,
 ) {
   const selected = [];
   const sorted = sortCandidates(candidates);
@@ -759,6 +826,7 @@ function resolveSelectedCandidates(
       candidate,
       selected,
       segment,
+      catalogId,
     );
     if (blacklistConflict) {
       continue;
@@ -808,6 +876,327 @@ function resolveSelectedCandidates(
 }
 
 /**
+ * MVP_5_3 — merge a catalog delta onto the base layer (mirrors
+ * core/catalog/catalog.merge.ts). Record maps merge per-key; scalars override.
+ * @param {any} base
+ * @param {any} delta
+ */
+function mergeLayerJS(base, delta) {
+  const safeBase = base && typeof base === "object" ? base : {};
+  const safeDelta = delta && typeof delta === "object" ? delta : {};
+  const recordKeys = [
+    "perProductPricePercents",
+    "perCollectionPricePercents",
+    "perVariantOverrideBasePrices",
+    "perVariantPricePercents",
+    "perVariantFloorPercents",
+    "perVariantTierPrices",
+    "perProductFloorPercents",
+    "perProductAllowZeroFinalPrice",
+    "perProductOverrideBasePrices",
+    "perProductTierPrices",
+    "perProductMinimumOrderQuantities",
+    "perProductStepQuantities",
+    "perProductMaximumOrderQuantities",
+    "perCollectionMaximumOrderQuantities",
+  ];
+  /** @type {any} */
+  const merged = {
+    globalMinPricePercent:
+      safeDelta.globalMinPricePercent != null
+        ? safeDelta.globalMinPricePercent
+        : safeBase.globalMinPricePercent != null
+          ? safeBase.globalMinPricePercent
+          : DEFAULT_GLOBAL_FLOOR_PERCENT,
+    allowZeroFinalPrice:
+      safeDelta.allowZeroFinalPrice != null
+        ? safeDelta.allowZeroFinalPrice
+        : safeBase.allowZeroFinalPrice === true,
+    pricePercent:
+      safeDelta.pricePercent != null
+        ? safeDelta.pricePercent
+        : safeBase.pricePercent != null
+          ? safeBase.pricePercent
+          : null,
+  };
+  for (const key of recordKeys) {
+    merged[key] = { ...(safeBase[key] || {}), ...(safeDelta[key] || {}) };
+  }
+  return merged;
+}
+
+/**
+ * @param {any} filter
+ * @param {any} context
+ */
+function marketFilterMatchesJS(filter, context) {
+  if (!filter || typeof filter !== "object") {
+    return true;
+  }
+  for (const field of ["countryCode", "currencyCode", "languageCode"]) {
+    const expected = filter[field];
+    if (expected == null || expected === "") {
+      continue;
+    }
+    const actual = context ? context[field] : null;
+    if (
+      String(actual ?? "").trim().toUpperCase() !==
+      String(expected).trim().toUpperCase()
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * MVP_5_3 — resolve the catalog a customer falls into (mirrors
+ * core/catalog/catalog.resolver.ts).
+ * @param {any} catalogResolution
+ * @param {string} defaultCatalogId
+ * @param {{ matchedTags?: string[], hasPurchasingCompany?: boolean, marketContext?: any }} ctx
+ */
+function resolveCatalogIdJS(catalogResolution, defaultCatalogId, ctx) {
+  const entries = Array.isArray(catalogResolution) ? catalogResolution : [];
+  const tagSet = new Set(
+    (ctx.matchedTags || [])
+      .map((tag) => String(tag).trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const hasCompany = ctx.hasPurchasingCompany === true;
+  const marketContext = ctx.marketContext || null;
+  const defaultEntry = entries.find((entry) => entry && entry.isDefault) || null;
+  const matching = entries
+    .filter((entry) => entry && !entry.isDefault)
+    .filter((entry) => marketFilterMatchesJS(entry.marketFilter, marketContext))
+    .filter((entry) => {
+      if (entry.matchCompany && hasCompany) {
+        return true;
+      }
+      return (
+        Array.isArray(entry.audienceTags) &&
+        entry.audienceTags.some((/** @type {string} */ tag) =>
+          tagSet.has(String(tag).trim().toLowerCase()),
+        )
+      );
+    });
+  if (matching.length > 0) {
+    matching.sort(
+      (left, right) =>
+        right.priority - left.priority ||
+        String(left.id).localeCompare(String(right.id)),
+    );
+    return String(matching[0].id);
+  }
+  return defaultEntry ? String(defaultEntry.id) : defaultCatalogId;
+}
+
+/**
+ * @param {any} rawMap
+ */
+function normalizeFloorMap(rawMap) {
+  /** @type {Record<string, number>} */
+  const normalized = {};
+  for (const [productId, floorPercent] of Object.entries(rawMap || {})) {
+    normalized[productId] = clampPercent(
+      toNumber(floorPercent, DEFAULT_GLOBAL_FLOOR_PERCENT),
+    );
+  }
+  return normalized;
+}
+
+/**
+ * @param {any} rawMap
+ */
+function normalizePricePercentMap(rawMap) {
+  /** @type {Record<string, number>} */
+  const normalized = {};
+  for (const [productId, percent] of Object.entries(rawMap || {})) {
+    const parsed = toNumber(percent, NaN);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      normalized[productId] = parsed;
+    }
+  }
+  return normalized;
+}
+
+/**
+ * @param {any} rawMap
+ */
+function normalizeBoolMap(rawMap) {
+  /** @type {Record<string, boolean>} */
+  const normalized = {};
+  for (const [key, value] of Object.entries(rawMap || {})) {
+    if (typeof value === "boolean") {
+      normalized[key] = value;
+    }
+  }
+  return normalized;
+}
+
+/**
+ * @param {any} rawMap
+ */
+function normalizeOverrideMap(rawMap) {
+  /** @type {Record<string, number>} */
+  const normalized = {};
+  for (const [key, value] of Object.entries(rawMap || {})) {
+    const parsed = toNumber(value, NaN);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      normalized[key] = roundMoney(parsed);
+    }
+  }
+  return normalized;
+}
+
+/**
+ * @param {any} input
+ */
+function resolveMarketContext(input) {
+  const localization = input && input.localization ? input.localization : null;
+  if (!localization) {
+    return null;
+  }
+  return {
+    countryCode: localization.country ? localization.country.isoCode : null,
+    currencyCode: localization.presentmentCurrency
+      ? localization.presentmentCurrency.isoCode
+      : localization.currency
+        ? localization.currency.isoCode
+        : null,
+    languageCode: localization.language ? localization.language.isoCode : null,
+  };
+}
+
+/**
+ * MVP_5_3 — resolve the effective pricing layer for this customer. Catalog-
+ * format config → resolveCatalogId + merge(base, delta); legacy B2C/B2B config
+ * → the existing isB2B branch (behavior-identical).
+ * @param {any} rawConfig
+ * @param {any} parsedConfig
+ * @param {{ hasPurchasingCompany?: boolean, hasB2BTag?: boolean, matchedTags?: string[], marketContext?: any }} ctx
+ */
+function resolveEffectiveLayer(rawConfig, parsedConfig, ctx) {
+  const isCatalogFormat =
+    rawConfig &&
+    Array.isArray(rawConfig.catalogResolution) &&
+    rawConfig.base &&
+    typeof rawConfig.base === "object" &&
+    rawConfig.catalogs &&
+    typeof rawConfig.catalogs === "object";
+  if (isCatalogFormat) {
+    const defaultId = String(rawConfig.defaultCatalogId || "default");
+    const catalogId = resolveCatalogIdJS(rawConfig.catalogResolution, defaultId, ctx);
+    const entry = (rawConfig.catalogResolution || []).find(
+      (/** @type {any} */ e) => e && e.id === catalogId,
+    );
+    const segment = entry && entry.segment === "B2B" ? "B2B" : "B2C";
+    const eff = mergeLayerJS(rawConfig.base, rawConfig.catalogs[catalogId]);
+    return {
+      catalogId,
+      segment,
+      isB2B: segment === "B2B",
+      globalFloorPercent: clampPercent(
+        toNumber(eff.globalMinPricePercent, DEFAULT_GLOBAL_FLOOR_PERCENT),
+      ),
+      allowZeroFinalPrice: eff.allowZeroFinalPrice === true,
+      pricePercent: eff.pricePercent != null ? Math.max(0, toNumber(eff.pricePercent, 0)) : null,
+      pricePercentMap: normalizePricePercentMap(eff.perProductPricePercents),
+      collectionPricePercentMap: normalizePricePercentMap(eff.perCollectionPricePercents),
+      variantOverrideMap: normalizeOverrideMap(eff.perVariantOverrideBasePrices),
+      variantPricePercentMap: normalizePricePercentMap(eff.perVariantPricePercents),
+      variantFloorMap: normalizeFloorMap(eff.perVariantFloorPercents),
+      variantTierMap: normalizeTierPriceMap(eff.perVariantTierPrices || {}),
+      floorMap: normalizeFloorMap(eff.perProductFloorPercents),
+      allowZeroMap: normalizeBoolMap(eff.perProductAllowZeroFinalPrice),
+      overrideMap: normalizeOverrideMap(eff.perProductOverrideBasePrices),
+      tierMap: normalizeTierPriceMap(eff.perProductTierPrices || {}),
+    };
+  }
+  const isB2B = ctx.hasPurchasingCompany || ctx.hasB2BTag;
+  return {
+    catalogId: isB2B ? "b2b" : "default",
+    segment: isB2B ? "B2B" : "B2C",
+    isB2B,
+    globalFloorPercent: isB2B
+      ? parsedConfig.b2bGlobalMinPricePercent
+      : parsedConfig.globalMinPricePercent,
+    allowZeroFinalPrice: parsedConfig.allowZeroFinalPrice,
+    pricePercent: null,
+    pricePercentMap: {},
+    collectionPricePercentMap: {},
+    variantOverrideMap: {},
+    variantPricePercentMap: {},
+    variantFloorMap: /** @type {Record<string, number>} */ ({}),
+    variantTierMap: {},
+    floorMap: isB2B
+      ? parsedConfig.perProductFloorPercentsB2B
+      : parsedConfig.perProductFloorPercentsB2C,
+    allowZeroMap: isB2B
+      ? parsedConfig.perProductAllowZeroFinalPriceB2B
+      : parsedConfig.perProductAllowZeroFinalPriceB2C,
+    overrideMap: isB2B ? parsedConfig.perProductB2BOverridePrices : {},
+    tierMap: isB2B
+      ? parsedConfig.perProductTierPricesB2B
+      : parsedConfig.perProductTierPricesB2C,
+  };
+}
+
+/**
+ * Most aggressive (lowest) per-collection % among the line's collections.
+ * @param {Record<string, number>|undefined} map
+ * @param {string[]|undefined} collectionIds
+ */
+function resolveCollectionPricePercent(map, collectionIds) {
+  if (!map || !Array.isArray(collectionIds) || collectionIds.length === 0) {
+    return null;
+  }
+  let lowest = null;
+  for (const collectionId of collectionIds) {
+    const value = map[collectionId];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      lowest = lowest == null ? value : Math.min(lowest, value);
+    }
+  }
+  return lowest;
+}
+
+/**
+ * Pre-tier catalog base unit price (mirrors core/pricing/price-list.engine.ts):
+ * variant FIXED > product FIXED > variant % > product % > collection % > catalog % > base.
+ * @param {number} baseUnitPrice
+ * @param {string|null} productId
+ * @param {string|null} variantId
+ * @param {any} layer
+ * @param {string[]} [collectionIds]
+ */
+function resolvePriceListUnitPrice(baseUnitPrice, productId, variantId, layer, collectionIds) {
+  if (variantId && layer.variantOverrideMap && layer.variantOverrideMap[variantId] != null) {
+    return layer.variantOverrideMap[variantId];
+  }
+  if (productId && layer.overrideMap[productId] != null) {
+    return layer.overrideMap[productId];
+  }
+  if (variantId && layer.variantPricePercentMap && layer.variantPricePercentMap[variantId] != null) {
+    return roundMoney(baseUnitPrice * (layer.variantPricePercentMap[variantId] / 100));
+  }
+  if (productId && layer.pricePercentMap && layer.pricePercentMap[productId] != null) {
+    return roundMoney(baseUnitPrice * (layer.pricePercentMap[productId] / 100));
+  }
+  const collectionPercent = resolveCollectionPricePercent(
+    layer.collectionPricePercentMap,
+    collectionIds,
+  );
+  if (collectionPercent != null) {
+    return roundMoney(baseUnitPrice * (collectionPercent / 100));
+  }
+  if (layer.pricePercent != null) {
+    return roundMoney(baseUnitPrice * (layer.pricePercent / 100));
+  }
+  return baseUnitPrice;
+}
+
+/**
  * @param {RunInput} input
  * @returns {CartLinesDiscountsGenerateRunResult}
  */
@@ -821,6 +1210,7 @@ export function cartLinesDiscountsGenerateRun(input) {
     return { operations: [] };
   }
 
+  const rawConfig = input?.discount?.metafield?.jsonValue ?? {};
   const config = parseConfig(input);
   if (config.marginGuardEnabled === false) {
     return { operations: [] };
@@ -830,31 +1220,52 @@ export function cartLinesDiscountsGenerateRun(input) {
     input?.cart?.buyerIdentity?.purchasingCompany?.company?.id,
   );
   const hasB2BTag = Boolean(input?.cart?.buyerIdentity?.customer?.hasAnyTag);
-  const isB2B = hasPurchasingCompany || hasB2BTag;
-  const segment = isB2B ? "B2B" : "B2C";
+  const matchedTags = [];
+  if (hasB2BTag) {
+    matchedTags.push(String(rawConfig?.b2bTag ?? "b2b"));
+  }
+  for (const flag of input?.cart?.buyerIdentity?.customer?.hasTags ?? []) {
+    if (flag && flag.hasTag) matchedTags.push(String(flag.tag));
+  }
+  const layer = resolveEffectiveLayer(rawConfig, config, {
+    hasPurchasingCompany,
+    hasB2BTag,
+    matchedTags,
+    marketContext: resolveMarketContext(input),
+  });
+  const isB2B = layer.isB2B;
+  const segment = /** @type {"B2B" | "B2C"} */ (layer.segment);
+  const resolvedCatalogId = layer.catalogId;
+  // MVP_5_2 — loyalty eligibility: collect the tags the customer actually
+  // carries (hasTags returns per-tag booleans for the configured loyaltyTags).
+  const customerLoyaltyTags = new Set(
+    (input?.cart?.buyerIdentity?.customer?.hasTags ?? [])
+      .filter((entry) => entry?.hasTag)
+      .map((entry) => normalizeLoyaltyTag(entry?.tag))
+      .filter(Boolean),
+  );
   const enteredCodes = (input?.enteredDiscountCodes ?? [])
     .map((enteredCode) => normalizeCouponCode(enteredCode?.code))
     .filter(Boolean);
   const rejectedCodeResult = resolveRejectedDiscountCodes(
     input?.enteredDiscountCodes,
     config.couponSegmentRules,
+    config.couponCatalogRules,
+    resolvedCatalogId,
     config.discountRules,
     config.discountCombinationBlacklistRules,
     segment,
     config.allowStacking,
   );
-  const globalFloorPercent = isB2B
-    ? config.b2bGlobalMinPricePercent
-    : config.globalMinPricePercent;
-  const floorMap = isB2B
-    ? config.perProductFloorPercentsB2B
-    : config.perProductFloorPercentsB2C;
-  const allowZeroMap = isB2B
-    ? config.perProductAllowZeroFinalPriceB2B
-    : config.perProductAllowZeroFinalPriceB2C;
-  const tierMap = isB2B
-    ? config.perProductTierPricesB2B
-    : config.perProductTierPricesB2C;
+  // MVP_5_3 #2.0d — resolved catalog's cap (if any) overrides the segment/shop cap.
+  const catalogCapPercent =
+    config.discountCatalogCaps && config.discountCatalogCaps[resolvedCatalogId] != null
+      ? config.discountCatalogCaps[resolvedCatalogId]
+      : null;
+  const globalFloorPercent = layer.globalFloorPercent;
+  const floorMap = layer.floorMap;
+  const allowZeroMap = layer.allowZeroMap;
+  const tierMap = layer.tierMap;
   const segmentCap = resolveSegmentCap(config.discountSegmentCaps, segment);
 
   const cartSubtotal = Math.max(
@@ -885,13 +1296,21 @@ export function cartLinesDiscountsGenerateRun(input) {
     if (!productId) {
       continue;
     }
+    const variantId =
+      line.merchandise?.__typename === "ProductVariant"
+        ? line.merchandise.id ?? null
+        : null;
 
     const floorPercent =
-      floorMap[productId] != null ? floorMap[productId] : globalFloorPercent;
+      variantId && layer.variantFloorMap[variantId] != null
+        ? layer.variantFloorMap[variantId]
+        : floorMap[productId] != null
+          ? floorMap[productId]
+          : globalFloorPercent;
     const allowZeroFinalPrice =
       allowZeroMap[productId] != null
         ? allowZeroMap[productId]
-        : config.allowZeroFinalPrice;
+        : layer.allowZeroFinalPrice;
     const lineSubtotal = resolveLineSubtotal(line);
     const lineTotal = resolveLineTotal(line);
     if (lineSubtotal <= 0) {
@@ -899,11 +1318,20 @@ export function cartLinesDiscountsGenerateRun(input) {
     }
     const quantity = Math.max(1, toNumber(line?.quantity, 1));
     const baseUnitPrice = roundMoney(lineSubtotal / quantity);
-    const baseUnitPriceWithOverride =
-      isB2B && config.perProductB2BOverridePrices[productId] != null
-        ? config.perProductB2BOverridePrices[productId]
-        : baseUnitPrice;
-    const tierUnitPrice = resolveTierUnitPrice(tierMap, productId, quantity);
+    const baseUnitPriceWithOverride = resolvePriceListUnitPrice(
+      baseUnitPrice,
+      productId,
+      variantId,
+      layer,
+      resolveLineCollectionIds(line),
+    );
+    const variantTierUnitPrice = variantId
+      ? resolveTierUnitPrice(layer.variantTierMap, variantId, quantity)
+      : null;
+    const tierUnitPrice =
+      variantTierUnitPrice != null
+        ? variantTierUnitPrice
+        : resolveTierUnitPrice(tierMap, productId, quantity);
     const effectiveBaseUnitPrice =
       tierUnitPrice != null ? tierUnitPrice : baseUnitPriceWithOverride;
     const floorUnitPrice = roundMoney(effectiveBaseUnitPrice * (floorPercent / 100));
@@ -928,19 +1356,30 @@ export function cartLinesDiscountsGenerateRun(input) {
         : roundPercent(config.maxCombinedPercentOff - existingPercentOff);
     const remainingSegmentCap =
       segmentCap == null ? null : roundPercent(segmentCap - existingPercentOff);
-    let remainingCap = null;
-    if (remainingGlobalCap != null && remainingSegmentCap != null) {
-      remainingCap = Math.min(remainingGlobalCap, remainingSegmentCap);
-    } else if (remainingSegmentCap != null) {
-      remainingCap = remainingSegmentCap;
-    } else {
-      remainingCap = remainingGlobalCap;
-    }
+    const remainingCatalogCap =
+      catalogCapPercent == null ? null : roundPercent(catalogCapPercent - existingPercentOff);
+    const remainingCapCandidates = [
+      remainingGlobalCap,
+      remainingSegmentCap,
+      remainingCatalogCap,
+    ].filter((value) => value != null);
+    const remainingCap =
+      remainingCapCandidates.length > 0 ? Math.min(...remainingCapCandidates) : null;
 
     const eligibleCandidates = [];
     const lineCollectionIds = resolveLineCollectionIds(line);
     for (const rule of config.discountRules) {
       if (rule.segment && rule.segment !== segment) {
+        continue;
+      }
+      // MVP_5_3 — catalog-scoped discount only applies in its catalog; rules
+      // without a catalogId stay shop-wide (legacy / segment-scoped).
+      if (rule.catalogId && rule.catalogId !== resolvedCatalogId) {
+        continue;
+      }
+      // MVP_5_2 — tag-gated loyalty rule only matches when the customer carries
+      // the required tag (mirrors matchesRule in the TS core).
+      if (rule.requiredCustomerTag && !customerLoyaltyTags.has(rule.requiredCustomerTag)) {
         continue;
       }
       if (rule.scope === "PRODUCT" && rule.targetId !== productId) {
@@ -999,6 +1438,7 @@ export function cartLinesDiscountsGenerateRun(input) {
       segment,
       config.allowStacking,
       remainingCap,
+      resolvedCatalogId,
     );
 
     for (const selectedCandidate of selectedCandidates) {

@@ -3,8 +3,61 @@ import assert from "node:assert/strict";
 import { applyDiscountFunction } from "../../functions/discount-function/src/index.ts";
 import { createCartValidateAdminAction } from "../../functions/cart-validation/src/admin-cart-validate-endpoint.ts";
 import { resolvePricingSimulationInput } from "../../app/services/pricing-preview.server.ts";
-import type { PricingPreviewConfig } from "../../app/services/pricing-preview.server.ts";
 import type { PricingPipelineInput } from "../../core/pricing/pricing.pipeline.ts";
+import type {
+  CatalogProductFloorInput,
+  CatalogProductTierPriceInput,
+  CatalogRuleset,
+} from "../../core/catalog/catalog.ruleset.ts";
+
+// MVP_5_3 #2.3c — the preview/endpoint now simulate against a resolved catalog
+// ruleset (sourced from catalog tables). This factory builds a minimal one.
+function makeCatalogRuleset(input: {
+  catalogId?: string;
+  isDefault?: boolean;
+  segment?: "B2B" | "B2C";
+  audienceTags?: string[];
+  priority?: number;
+  globalMinPricePercent?: number;
+  b2bGlobalMinPricePercent?: number;
+  productFloors?: CatalogProductFloorInput[];
+  productTierPrices?: CatalogProductTierPriceInput[];
+  allowStacking?: boolean;
+  maxCombinedPercentOff?: number;
+}): CatalogRuleset {
+  const min = input.globalMinPricePercent ?? 70;
+  return {
+    catalogId: input.catalogId ?? "default",
+    isDefault: input.isDefault ?? true,
+    segment: input.segment ?? "B2C",
+    audienceTags: input.audienceTags ?? [],
+    priority: input.priority ?? 0,
+    matchCompany: false,
+    marketFilters: [],
+    effectiveLayer: {} as any,
+    floorRuleset: {
+      global: {
+        minPercentOfBasePrice: min,
+        b2bMinPercentOfBasePrice: input.b2bGlobalMinPricePercent ?? min,
+        allowZeroFinalPrice: false,
+      },
+      perProduct: (input.productFloors ?? []).map((floor) => ({
+        productId: floor.productId,
+        minPercentOfBasePrice: floor.minPercentOfBasePrice,
+        allowZeroFinalPriceOverride: floor.allowZeroFinalPrice ?? undefined,
+      })),
+    },
+    discountRuleset: {
+      allowStacking: input.allowStacking ?? true,
+      maxCombinedPercentOff: input.maxCombinedPercentOff,
+      rules: [],
+      blacklists: [],
+      segmentCaps: [],
+    },
+    productFloors: input.productFloors ?? [],
+    productTierPrices: input.productTierPrices ?? [],
+  };
+}
 
 type CapturedValidateInput = {
   productId: string;
@@ -29,16 +82,8 @@ function buildRequest(body: unknown, options?: { contentType?: string; method?: 
 test("cart-validate admin endpoint rejects non-json requests with explicit contract", async () => {
   const action = createCartValidateAdminAction({
     authenticateAdmin: async () => ({ session: { shop: "shop-a.myshopify.com" } }),
-    getConfig: async () =>
-      ({
-        b2bTag: "b2b",
-        globalMinPricePercent: 70,
-        b2bGlobalMinPricePercent: 70,
-        allowZeroFinalPrice: false,
-        allowStacking: true,
-        maxCombinedPercentOff: null,
-        productFloors: [],
-      }) as unknown as never,
+    getB2bTag: async () => "b2b",
+    loadCatalogRulesets: async () => [makeCatalogRuleset({})],
     validate: (() => {
       throw new Error("validate must not be called for invalid requests");
     }) as unknown as never,
@@ -63,17 +108,21 @@ test("cart-validate admin endpoint records violation for invalid line", async ()
   let capturedValidateInput: CapturedValidateInput | null = null;
   const action = createCartValidateAdminAction({
     authenticateAdmin: async () => ({ session: { shop: "shop-b.myshopify.com" } }),
-    getConfig: async () =>
-      ({
-        b2bTag: "wholesale",
+    getB2bTag: async () => "wholesale",
+    loadCatalogRulesets: async () => [
+      makeCatalogRuleset({
+        catalogId: "wholesale",
+        isDefault: false,
+        segment: "B2B",
+        audienceTags: ["wholesale"],
+        priority: 90,
         globalMinPricePercent: 70,
         b2bGlobalMinPricePercent: 60,
-        allowZeroFinalPrice: false,
         allowStacking: false,
         maxCombinedPercentOff: 10,
-        productFloors: [],
-        productTierPrices: [],
-      }) as unknown as never,
+      }),
+      makeCatalogRuleset({}),
+    ],
     validate: ((input: PricingPipelineInput) => {
       capturedValidateInput = {
         productId: input.productId,
@@ -144,38 +193,36 @@ test("cart-validate admin endpoint records violation for invalid line", async ()
 
 test("pricing input resolution hydrates persisted tier prices and B2B override", () => {
   const productId = "gid://shopify/Product/PREVIEW_HYDRATION";
-  const config: PricingPreviewConfig = {
+  // A B2B catalog (override + B2B tier) and the default catalog (B2C tier). Each
+  // catalog is a single audience, so the segment split now lives across catalogs.
+  const b2bRuleset = makeCatalogRuleset({
+    catalogId: "b2b",
+    isDefault: false,
+    segment: "B2B",
+    audienceTags: ["b2b"],
+    priority: 90,
     globalMinPricePercent: 70,
     b2bGlobalMinPricePercent: 60,
-    allowZeroFinalPrice: false,
-    allowStacking: true,
-    maxCombinedPercentOff: null,
     productFloors: [
       {
         productId,
-        segment: "B2B" as const,
+        segment: null,
         minPercentOfBasePrice: 70,
         allowZeroFinalPrice: null,
         b2bOverridePrice: 80,
       },
     ],
     productTierPrices: [
-      {
-        productId,
-        segment: "B2B" as const,
-        minQuantity: 5,
-        unitPrice: 75,
-      },
-      {
-        productId,
-        segment: "B2C" as const,
-        minQuantity: 3,
-        unitPrice: 90,
-      },
+      { productId, segment: null, minQuantity: 5, unitPrice: 75 },
     ],
-  };
+  });
+  const defaultRuleset = makeCatalogRuleset({
+    productTierPrices: [
+      { productId, segment: null, minQuantity: 3, unitPrice: 90 },
+    ],
+  });
 
-  const b2bQtyOne = resolvePricingSimulationInput(config, {
+  const b2bQtyOne = resolvePricingSimulationInput(b2bRuleset, {
     productId,
     segment: "B2B",
     basePrice: 100,
@@ -184,7 +231,7 @@ test("pricing input resolution hydrates persisted tier prices and B2B override",
     enteredDiscountCodes: [],
     discounts: [],
   });
-  const b2bQtyFive = resolvePricingSimulationInput(config, {
+  const b2bQtyFive = resolvePricingSimulationInput(b2bRuleset, {
     productId,
     segment: "B2B",
     basePrice: 100,
@@ -194,7 +241,7 @@ test("pricing input resolution hydrates persisted tier prices and B2B override",
     enteredDiscountCodes: [],
     discounts: [],
   });
-  const b2cQtyThree = resolvePricingSimulationInput(config, {
+  const b2cQtyThree = resolvePricingSimulationInput(defaultRuleset, {
     productId,
     segment: "B2C",
     basePrice: 100,
@@ -203,7 +250,7 @@ test("pricing input resolution hydrates persisted tier prices and B2B override",
     enteredDiscountCodes: [],
     discounts: [],
   });
-  const explicitTierPreview = resolvePricingSimulationInput(config, {
+  const explicitTierPreview = resolvePricingSimulationInput(b2bRuleset, {
     productId,
     segment: "B2B",
     basePrice: 100,

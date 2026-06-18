@@ -175,6 +175,10 @@ function buildInputCandidate(
   };
 }
 
+function normalizeTag(value: string | undefined | null): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
 function matchesRule(
   rule: ConfiguredDiscountRule,
   context: DiscountResolutionContext,
@@ -182,6 +186,16 @@ function matchesRule(
 ): boolean {
   if (rule.segment && rule.segment !== context.segment) {
     return false;
+  }
+
+  // MVP_5_2 — loyalty eligibility: a tag-gated rule only matches when the
+  // customer carries the required tag (independent of the B2B/B2C segment).
+  const requiredTag = normalizeTag(rule.requiredCustomerTag);
+  if (requiredTag) {
+    const customerTags = (context.customerTags ?? []).map(normalizeTag);
+    if (!customerTags.includes(requiredTag)) {
+      return false;
+    }
   }
 
   switch (rule.scope) {

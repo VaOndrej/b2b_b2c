@@ -1,8 +1,11 @@
 import prisma from "../db.server.ts";
-import {
-  buildCartValidationFunctionConfig,
-  getOrCreateMarginGuardConfig,
-} from "./margin-guard-config.server.ts";
+import { getOrCreateMarginGuardConfig } from "./margin-guard-config.server.ts";
+import { buildCatalogConfigFromCatalogs } from "../../core/config/function-config.ts";
+import { loadAllCatalogsForConfig } from "./price-catalog.server.ts";
+
+// The published cart-validation config is now catalog-shaped; helpers only need
+// b2bTags + to JSON-serialize it.
+type PublishedCartValidationConfig = { b2bTags: string[]; [key: string]: unknown };
 
 interface AdminGraphqlClient {
   graphql: (
@@ -60,7 +63,7 @@ function normalizeB2BTag(value: unknown): string {
 }
 
 export function hasExpectedB2BTags(
-  functionConfig: ReturnType<typeof buildCartValidationFunctionConfig>,
+  functionConfig: PublishedCartValidationConfig,
   expectedTag: string,
 ): boolean {
   const normalizedExpected = normalizeB2BTag(expectedTag);
@@ -121,7 +124,7 @@ function normalizeValidationNodes(rawNodes: unknown): ValidationNode[] {
 }
 
 function buildValidationInput(
-  functionConfig: ReturnType<typeof buildCartValidationFunctionConfig>,
+  functionConfig: PublishedCartValidationConfig,
   options: { includeFunctionHandle: boolean },
 ) {
   const baseInput = {
@@ -193,7 +196,7 @@ async function listMatchingValidations(
 
 async function createValidation(
   admin: AdminGraphqlClient,
-  functionConfig: ReturnType<typeof buildCartValidationFunctionConfig>,
+  functionConfig: PublishedCartValidationConfig,
 ): Promise<CreateValidationResult> {
   const response = await admin.graphql(
     `#graphql
@@ -287,7 +290,7 @@ async function readValidationConfigB2BTags(
 async function updateValidation(
   admin: AdminGraphqlClient,
   validationId: string,
-  functionConfig: ReturnType<typeof buildCartValidationFunctionConfig>,
+  functionConfig: PublishedCartValidationConfig,
 ): Promise<ActivationResult> {
   const response = await admin.graphql(
     `#graphql
@@ -406,7 +409,7 @@ function splitPrimaryAndDuplicates(
 async function updateExistingValidations(
   admin: AdminGraphqlClient,
   validations: ValidationNode[],
-  functionConfig: ReturnType<typeof buildCartValidationFunctionConfig>,
+  functionConfig: PublishedCartValidationConfig,
 ): Promise<ActivationResult> {
   const { primary, duplicates } = splitPrimaryAndDuplicates(validations);
   if (!primary) {
@@ -452,7 +455,21 @@ export async function ensureCartValidationActive(
 ): Promise<ActivationResult> {
   const db = prisma;
   const config = await getOrCreateMarginGuardConfig();
-  const functionConfig = buildCartValidationFunctionConfig(config);
+  // MVP_5_3 #2.2 — the published config is assembled from catalog tables only
+  // (default catalog = base; b2b/custom inherit). MarginGuardConfig contributes
+  // shop-wide scalars only.
+  const allCatalogs = await loadAllCatalogsForConfig().catch(() => []);
+  const functionConfig = buildCatalogConfigFromCatalogs(
+    {
+      b2bTag: config.b2bTag,
+      globalMinPricePercent: config.globalMinPricePercent,
+      allowZeroFinalPrice: config.allowZeroFinalPrice,
+      allowStacking: config.allowStacking,
+      maxCombinedPercentOff: config.maxCombinedPercentOff,
+      marginGuardEnabled: config.marginGuardEnabled,
+    },
+    allCatalogs,
+  ) as unknown as PublishedCartValidationConfig;
   if (!hasExpectedB2BTags(functionConfig, config.b2bTag)) {
     const message =
       "Cart validation config is missing expected b2bTags value; aborting activation to avoid stale B2B tag propagation.";

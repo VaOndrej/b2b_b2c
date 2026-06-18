@@ -1,17 +1,23 @@
 import { storefrontProjection } from "../../config/feature-flags.ts";
-import type { Segment } from "../../core/segment/segment.types";
-import type { CollectionVisibilityRule } from "../../core/storefront/storefront-content.types.ts";
+import { resolveCollectionRedirectMessage } from "../../core/storefront/storefront-content.engine.ts";
+import type { EffectiveCatalogPricingLayer } from "../../core/catalog/catalog.types.ts";
 import {
-  resolveCollectionRedirectMessage,
-  resolveHiddenCollections,
-} from "../../core/storefront/storefront-content.engine.ts";
+  buildCatalogRulesets,
+  type CatalogRuleset,
+  type CatalogRulesetConfig,
+} from "../../core/catalog/catalog.ruleset.ts";
 import { getOrCreateMarginGuardConfig } from "./margin-guard-config.server.ts";
+import { buildCatalogConfigFromCatalogs } from "../../core/config/function-config.ts";
 import { getCatalogProductMapByIds } from "./product-catalog.server.ts";
-import { getCollectionVisibilityRules } from "./storefront-content.server.ts";
+import {
+  loadAllCatalogsForConfig,
+  loadCatalogVariantVisibility,
+  loadCatalogCollectionVisibility,
+  loadCatalogProductVisibility,
+} from "./price-catalog.server.ts";
 import {
   resolveStorefrontQuantityConstraintsByHandle,
   resolveStorefrontQuantityConstraintsByProductId,
-  resolveStorefrontVariantVisibilityByProductId,
 } from "./storefront-visibility.server.ts";
 
 const STOREFRONT_PROJECTION_SCHEMA_VERSION = 1;
@@ -75,12 +81,42 @@ interface ProjectionSegmentSnapshot {
   variantVisibilityByProductId: ProjectionVariantVisibility;
 }
 
+// MVP_5_3 Phase 3c — catalog resolution metadata so the storefront can resolve
+// the customer's catalog client-side (from tags + company + market), mirroring
+// the Shopify Functions. The legacy segment snapshots stay as the source of
+// truth for visibility/quantity (anti-flash preserved); per-catalog visibility
+// projection layers on top once the per-catalog visibility model lands.
+interface ProjectionCatalogResolutionEntry {
+  id: string;
+  priority: number;
+  isDefault: boolean;
+  audienceTags: string[];
+  matchCompany: boolean;
+  marketFilters: Array<{
+    countryCode: string | null;
+    currencyCode: string | null;
+    languageCode: string | null;
+  }>;
+  segment: string;
+}
+
 export interface StorefrontProjectionPayload {
   schemaVersion: number;
   generatedAt: string;
   configUpdatedAt: string | null;
   debug: boolean;
   b2bTag: string;
+  defaultCatalogId: string;
+  catalogTags: string[];
+  catalogResolution: ProjectionCatalogResolutionEntry[];
+  catalogVariantVisibility: Array<{
+    catalogId: string;
+    hiddenVariantsByProductId: Record<string, string[]>;
+  }>;
+  catalogCollectionVisibility: Array<{
+    catalogId: string;
+    hiddenCollectionHandles: string[];
+  }>;
   allowRemoveAtMinimumOrderQuantity: boolean;
   coverage: {
     productVisibility: "PROJECTED";
@@ -131,61 +167,37 @@ function buildProductIdByHandle(records: ProductHandleRecord[]): Record<string, 
   return Object.fromEntries(records.map((record) => [record.handle, record.productId]));
 }
 
-function getProjectedProductVisibilityRules(config: MarginGuardConfig) {
-  return config.productVisibilityRules.filter(
-    (rule) => rule.visibilityMode === "B2B_ONLY" || rule.visibilityMode === "B2C_ONLY",
-  );
+// MVP_5_3 #2.3c — the b2b/b2c projection snapshots (consumed by the storefront
+// Liquid block for anti-flash) are now regenerated from catalog tables: the
+// default catalog feeds the b2c snapshot, the B2B catalog feeds the b2b one. The
+// payload shape is unchanged so no Liquid/script edit is needed.
+interface CatalogSnapshotSources {
+  effectiveLayer: EffectiveCatalogPricingLayer | null;
+  hiddenProductIds: string[];
+  hiddenVariantsByProductId: Record<string, string[]>;
+  hiddenCollectionHandles: string[];
 }
 
-function getProjectedVariantVisibilityRules(config: MarginGuardConfig) {
-  return config.productVariantVisibilityRules.filter(
-    (rule) => rule.visibilityMode === "B2B_ONLY" || rule.visibilityMode === "B2C_ONLY",
-  );
-}
-
-function resolveHiddenProductHandlesForSegment(input: {
-  segment: Segment;
-  rules: ReturnType<typeof getProjectedProductVisibilityRules>;
-  handleByProductId: Record<string, string>;
-}): string[] {
-  const hiddenHandles = new Set<string>();
-  for (const rule of input.rules) {
-    const productId = normalizeProductId(rule.productId);
-    const handle = normalizeHandle(input.handleByProductId[productId]);
-    if (!productId || !handle) {
-      continue;
-    }
-    if (rule.visibilityMode === "B2B_ONLY" && input.segment !== "B2B") {
-      hiddenHandles.add(handle);
-    }
-    if (rule.visibilityMode === "B2C_ONLY" && input.segment !== "B2C") {
-      hiddenHandles.add(handle);
-    }
+function buildQuantityRulesFromLayer(layer: EffectiveCatalogPricingLayer | null) {
+  if (!layer) {
+    return [];
   }
-  return Array.from(hiddenHandles).sort();
-}
-
-function normalizeCollectionVisibilityRules(
-  rules: Awaited<ReturnType<typeof getCollectionVisibilityRules>>,
-): CollectionVisibilityRule[] {
-  return rules
-    .filter(
-      (rule): rule is typeof rule & { visibilityMode: "B2B_ONLY" | "B2C_ONLY" } =>
-        rule.visibilityMode === "B2B_ONLY" || rule.visibilityMode === "B2C_ONLY",
-    )
-    .map((rule) => ({
-      id: rule.id,
-      collectionId: rule.collectionId,
-      collectionHandle: rule.collectionHandle,
-      collectionTitle: rule.collectionTitle ?? null,
-      visibilityMode: rule.visibilityMode,
-    }));
+  const productIds = new Set<string>([
+    ...Object.keys(layer.perProductMinimumOrderQuantities),
+    ...Object.keys(layer.perProductStepQuantities),
+    ...Object.keys(layer.perProductMaximumOrderQuantities),
+  ]);
+  return Array.from(productIds).map((productId) => ({
+    productId,
+    segment: null as string | null,
+    minimumOrderQuantity: layer.perProductMinimumOrderQuantities[productId] ?? null,
+    stepQuantity: layer.perProductStepQuantities[productId] ?? null,
+    maxOrderQuantity: layer.perProductMaximumOrderQuantities[productId] ?? null,
+  }));
 }
 
 function buildProjectionSegmentSnapshot(input: {
-  segment: Segment;
-  config: MarginGuardConfig;
-  collectionVisibilityRules: Awaited<ReturnType<typeof getCollectionVisibilityRules>>;
+  sources: CatalogSnapshotSources;
   productHandleRecords: ProductHandleRecord[];
 }): ProjectionSegmentSnapshot {
   const handles = input.productHandleRecords.map((record) => record.handle);
@@ -194,44 +206,101 @@ function buildProjectionSegmentSnapshot(input: {
   const handleByProductId = Object.fromEntries(
     input.productHandleRecords.map((record) => [record.productId, record.handle]),
   );
-  const normalizedCollectionVisibilityRules = normalizeCollectionVisibilityRules(
-    input.collectionVisibilityRules,
-  );
+  const quantityRules = buildQuantityRulesFromLayer(input.sources.effectiveLayer);
+
+  const hiddenProductHandles = Array.from(
+    new Set(
+      input.sources.hiddenProductIds
+        .map((productId) =>
+          normalizeHandle(handleByProductId[normalizeProductId(productId)]),
+        )
+        .filter(Boolean),
+    ),
+  ).sort();
+
+  const variantVisibilityByProductId: ProjectionVariantVisibility = {};
+  for (const [productId, variantIds] of Object.entries(
+    input.sources.hiddenVariantsByProductId,
+  )) {
+    const ids = Array.from(new Set(variantIds.map(String).filter(Boolean)));
+    if (ids.length > 0) {
+      variantVisibilityByProductId[productId] = { hiddenVariantIds: ids };
+    }
+  }
 
   return {
-    hiddenProductHandles: resolveHiddenProductHandlesForSegment({
-      segment: input.segment,
-      rules: getProjectedProductVisibilityRules(input.config),
-      handleByProductId,
-    }),
-    hiddenCollectionHandles: resolveHiddenCollections(
-      input.segment,
-      normalizedCollectionVisibilityRules,
+    hiddenProductHandles,
+    hiddenCollectionHandles: Array.from(
+      new Set(
+        input.sources.hiddenCollectionHandles.map(normalizeHandle).filter(Boolean),
+      ),
     ).sort(),
     quantityConstraintsByHandle: resolveStorefrontQuantityConstraintsByHandle({
       handles,
       productIdByHandle,
-      segment: input.segment,
-      rules: input.config.productQuantityRules,
+      segment: "B2C",
+      rules: quantityRules,
     }),
     quantityConstraintsByProductId: resolveStorefrontQuantityConstraintsByProductId({
       productIds,
-      segment: input.segment,
-      rules: input.config.productQuantityRules,
+      segment: "B2C",
+      rules: quantityRules,
     }),
-    variantVisibilityByProductId: resolveStorefrontVariantVisibilityByProductId({
-      productIds,
-      segment: input.segment,
-      rules: getProjectedVariantVisibilityRules(input.config),
-    }),
+    variantVisibilityByProductId,
   };
 }
 
 export function buildStorefrontProjection(input: {
   config: MarginGuardConfig;
-  collectionVisibilityRules: Awaited<ReturnType<typeof getCollectionVisibilityRules>>;
   productHandleRecords: ProductHandleRecord[];
+  catalogResolution?: ProjectionCatalogResolutionEntry[];
+  catalogTags?: string[];
+  defaultCatalogId?: string;
+  catalogRulesets?: CatalogRuleset[];
+  catalogProductVisibility?: Array<{
+    catalogId: string;
+    hiddenProductIds: string[];
+  }>;
+  catalogVariantVisibility?: Array<{
+    catalogId: string;
+    hiddenVariantsByProductId: Record<string, string[]>;
+  }>;
+  catalogCollectionVisibility?: Array<{
+    catalogId: string;
+    hiddenCollectionHandles: string[];
+  }>;
 }): StorefrontProjectionPayload {
+  const defaultId =
+    input.defaultCatalogId ??
+    (input.catalogRulesets ?? []).find((ruleset) => ruleset.isDefault)?.catalogId ??
+    "default";
+  // The b2b snapshot is fed by the (non-default) catalog mapped to the B2B
+  // audience; falls back to the conventional "b2b" id when no catalog metadata
+  // is available (back-compat / empty shop).
+  const b2bCatalogId =
+    (input.catalogRulesets ?? []).find(
+      (ruleset) => !ruleset.isDefault && ruleset.segment === "B2B",
+    )?.catalogId ??
+    (input.catalogResolution ?? []).find(
+      (entry) => !entry.isDefault && entry.segment === "B2B",
+    )?.id ??
+    "b2b";
+
+  const sourcesForCatalog = (catalogId: string): CatalogSnapshotSources => ({
+    effectiveLayer:
+      (input.catalogRulesets ?? []).find((r) => r.catalogId === catalogId)
+        ?.effectiveLayer ?? null,
+    hiddenProductIds:
+      (input.catalogProductVisibility ?? []).find((e) => e.catalogId === catalogId)
+        ?.hiddenProductIds ?? [],
+    hiddenVariantsByProductId:
+      (input.catalogVariantVisibility ?? []).find((e) => e.catalogId === catalogId)
+        ?.hiddenVariantsByProductId ?? {},
+    hiddenCollectionHandles:
+      (input.catalogCollectionVisibility ?? []).find((e) => e.catalogId === catalogId)
+        ?.hiddenCollectionHandles ?? [],
+  });
+
   return {
     schemaVersion: STOREFRONT_PROJECTION_SCHEMA_VERSION,
     generatedAt: new Date().toISOString(),
@@ -240,6 +309,11 @@ export function buildStorefrontProjection(input: {
       : null,
     debug: storefrontProjection.debug,
     b2bTag: String(input.config.b2bTag ?? "b2b").trim() || "b2b",
+    defaultCatalogId: input.defaultCatalogId ?? "default",
+    catalogTags: input.catalogTags ?? [],
+    catalogResolution: input.catalogResolution ?? [],
+    catalogVariantVisibility: input.catalogVariantVisibility ?? [],
+    catalogCollectionVisibility: input.catalogCollectionVisibility ?? [],
     allowRemoveAtMinimumOrderQuantity:
       input.config.allowRemoveAtMinimumOrderQuantity !== false,
     coverage: {
@@ -265,15 +339,11 @@ export function buildStorefrontProjection(input: {
     },
     segments: {
       b2b: buildProjectionSegmentSnapshot({
-        segment: "B2B",
-        config: input.config,
-        collectionVisibilityRules: input.collectionVisibilityRules,
+        sources: sourcesForCatalog(b2bCatalogId),
         productHandleRecords: input.productHandleRecords,
       }),
       b2c: buildProjectionSegmentSnapshot({
-        segment: "B2C",
-        config: input.config,
-        collectionVisibilityRules: input.collectionVisibilityRules,
+        sources: sourcesForCatalog(defaultId),
         productHandleRecords: input.productHandleRecords,
       }),
     },
@@ -379,17 +449,47 @@ async function ensureProjectionMetafieldDefinition(admin: AdminGraphqlClient) {
 }
 
 export async function syncStorefrontProjectionMetafields(admin: AdminGraphqlClient) {
-  const [config, collectionVisibilityRules] = await Promise.all([
-    getOrCreateMarginGuardConfig(),
-    getCollectionVisibilityRules(),
-  ]);
+  const config = await getOrCreateMarginGuardConfig();
 
+  // MVP_5_3 #2.3c — the projection (incl. the b2b/b2c anti-flash snapshots) is
+  // sourced entirely from catalog tables. Resilient to missing catalog tables
+  // (falls back to default/b2b only).
+  const allCatalogs = await loadAllCatalogsForConfig().catch(() => []);
+  const catalogConfig = buildCatalogConfigFromCatalogs(
+    {
+      b2bTag: config.b2bTag,
+      globalMinPricePercent: config.globalMinPricePercent,
+      allowZeroFinalPrice: config.allowZeroFinalPrice,
+      allowStacking: config.allowStacking,
+      maxCombinedPercentOff: config.maxCombinedPercentOff,
+      marginGuardEnabled: config.marginGuardEnabled,
+    },
+    allCatalogs,
+  );
+  const catalogRulesets = buildCatalogRulesets(
+    catalogConfig as unknown as CatalogRulesetConfig,
+  );
+  const [catalogVariantVisibility, catalogCollectionVisibility, catalogProductVisibility] =
+    await Promise.all([
+      loadCatalogVariantVisibility().catch(() => []),
+      loadCatalogCollectionVisibility().catch(() => []),
+      loadCatalogProductVisibility().catch(() => []),
+    ]);
+
+  // Resolve handles for every product referenced by a catalog snapshot source
+  // (quantity rule, hidden product, or hidden variant).
   const productIds = Array.from(
     new Set(
       [
-        ...config.productQuantityRules.map((rule) => rule.productId),
-        ...getProjectedProductVisibilityRules(config).map((rule) => rule.productId),
-        ...getProjectedVariantVisibilityRules(config).map((rule) => rule.productId),
+        ...catalogRulesets.flatMap((ruleset) => [
+          ...Object.keys(ruleset.effectiveLayer.perProductMinimumOrderQuantities),
+          ...Object.keys(ruleset.effectiveLayer.perProductStepQuantities),
+          ...Object.keys(ruleset.effectiveLayer.perProductMaximumOrderQuantities),
+        ]),
+        ...catalogProductVisibility.flatMap((entry) => entry.hiddenProductIds),
+        ...catalogVariantVisibility.flatMap((entry) =>
+          Object.keys(entry.hiddenVariantsByProductId),
+        ),
       ]
         .map((productId) => normalizeProductId(productId))
         .filter(Boolean),
@@ -402,8 +502,15 @@ export async function syncStorefrontProjectionMetafields(admin: AdminGraphqlClie
   });
   const projection = buildStorefrontProjection({
     config,
-    collectionVisibilityRules,
     productHandleRecords,
+    catalogResolution:
+      catalogConfig.catalogResolution as unknown as ProjectionCatalogResolutionEntry[],
+    catalogTags: catalogConfig.catalogTags,
+    defaultCatalogId: catalogConfig.defaultCatalogId,
+    catalogRulesets,
+    catalogProductVisibility,
+    catalogVariantVisibility,
+    catalogCollectionVisibility,
   });
 
   const shopResponse = await admin.graphql(

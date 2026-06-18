@@ -1,93 +1,3 @@
-interface ProductFloorInput {
-  productId: string;
-  minPercentOfBasePrice: number;
-  segment: string | null;
-  allowZeroFinalPrice: boolean | null;
-  b2bOverridePrice?: number | null;
-}
-
-interface ProductTierPriceInput {
-  productId: string;
-  segment: string | null;
-  minQuantity: number;
-  unitPrice: number;
-}
-
-interface ProductQuantityRuleInput {
-  productId: string;
-  segment: string | null;
-  minimumOrderQuantity: number;
-  stepQuantity?: number | null;
-  maxOrderQuantity?: number | null;
-}
-
-interface CollectionQuantityRuleInput {
-  collectionId: string;
-  segment: string | null;
-  maxOrderQuantity?: number | null;
-}
-
-interface ProductCustomerQuantityRuleInput {
-  productId: string;
-  customerId: string;
-  maxOrderQuantity: number;
-}
-
-interface ProductVisibilityRuleInput {
-  productId: string;
-  visibilityMode: string;
-  customerId?: string | null;
-}
-
-interface CouponSegmentRuleInput {
-  code: string;
-  allowedSegment: string;
-}
-
-interface DiscountRuleInput {
-  id: string;
-  scope: string;
-  targetId?: string | null;
-  code?: string | null;
-  segment: string | null;
-  percentOff: number;
-  priority: number;
-  stackMode: string;
-  minPricePercentOfBasePrice?: number | null;
-}
-
-interface DiscountCombinationBlacklistRuleInput {
-  leftType: string;
-  leftValue: string;
-  rightType: string;
-  rightValue: string;
-  segment?: string | null;
-}
-
-interface DiscountSegmentCapInput {
-  segment: string;
-  maxCombinedPercentOff: number;
-}
-
-interface MarginGuardFunctionConfigInput {
-  b2bTag: string;
-  globalMinPricePercent: number;
-  b2bGlobalMinPricePercent?: number;
-  allowZeroFinalPrice: boolean;
-  allowStacking?: boolean;
-  maxCombinedPercentOff?: number | null;
-  marginGuardEnabled?: boolean;
-  productFloors: ProductFloorInput[];
-  productTierPrices?: ProductTierPriceInput[];
-  productQuantityRules?: ProductQuantityRuleInput[];
-  collectionQuantityRules?: CollectionQuantityRuleInput[];
-  productCustomerQuantityRules?: ProductCustomerQuantityRuleInput[];
-  productVisibilityRules?: ProductVisibilityRuleInput[];
-  couponSegmentRules?: CouponSegmentRuleInput[];
-  discountRules?: DiscountRuleInput[];
-  discountCombinationBlacklistRules?: DiscountCombinationBlacklistRuleInput[];
-  discountSegmentCaps?: DiscountSegmentCapInput[];
-}
 
 interface TierPriceEntry {
   minQuantity: number;
@@ -191,6 +101,11 @@ function normalizeCustomerId(customerId: string | null | undefined): string {
   return String(customerId ?? "").trim();
 }
 
+function normalizeLoyaltyTag(value: string | null | undefined): string | null {
+  const normalized = String(value ?? "").trim();
+  return normalized || null;
+}
+
 function normalizeCollectionId(collectionId: string | null | undefined): string | null {
   const normalized = String(collectionId ?? "").trim();
   if (!normalized) {
@@ -248,281 +163,195 @@ function normalizeMaximumOrderQuantity(value: unknown): number | null {
   return Math.floor(parsed);
 }
 
-export function buildCartValidationFunctionConfig(
-  config: MarginGuardFunctionConfigInput,
-) {
-  const perProductFloorPercentsB2C: Record<string, number> = {};
-  const perProductFloorPercentsB2B: Record<string, number> = {};
-  const perProductAllowZeroFinalPriceB2C: Record<string, boolean> = {};
-  const perProductAllowZeroFinalPriceB2B: Record<string, boolean> = {};
-  const perProductB2BOverridePrices: Record<string, number> = {};
-  const perProductTierMapB2C: Record<string, Map<number, number>> = {};
-  const perProductTierMapB2B: Record<string, Map<number, number>> = {};
-  const perProductMinimumOrderQuantitiesB2C: Record<string, number> = {};
-  const perProductMinimumOrderQuantitiesB2B: Record<string, number> = {};
-  const perProductStepQuantitiesB2C: Record<string, number> = {};
-  const perProductStepQuantitiesB2B: Record<string, number> = {};
-  const perProductMaximumOrderQuantitiesB2C: Record<string, number> = {};
-  const perProductMaximumOrderQuantitiesB2B: Record<string, number> = {};
-  const perCollectionMaximumOrderQuantitiesB2C: Record<string, number> = {};
-  const perCollectionMaximumOrderQuantitiesB2B: Record<string, number> = {};
-  const perCustomerProductMaximumOrderQuantities: Record<
-    string,
-    Record<string, number>
-  > = {};
-  const perProductVisibilityModes: Record<
-    string,
-    "B2B_ONLY" | "B2C_ONLY" | "CUSTOMER_ONLY"
-  > = {};
-  const perProductVisibilityCustomerIds: Record<string, string> = {};
-  const couponSegmentRules: Record<string, "B2B" | "B2C" | "ALL"> = {};
-  const normalizedB2BTag = config.b2bTag.trim() || "b2b";
-  const productTierPrices = config.productTierPrices ?? [];
-  const productQuantityRules = config.productQuantityRules ?? [];
-  const collectionQuantityRules = config.collectionQuantityRules ?? [];
-  const productCustomerQuantityRules = config.productCustomerQuantityRules ?? [];
-  const productVisibilityRules = config.productVisibilityRules ?? [];
-  const rawCouponSegmentRules = config.couponSegmentRules ?? [];
-  const rawDiscountRules = config.discountRules ?? [];
-  const rawDiscountCombinationBlacklistRules =
-    config.discountCombinationBlacklistRules ?? [];
-  const rawDiscountSegmentCaps = config.discountSegmentCaps ?? [];
-  const allowStacking = config.allowStacking === true;
-  const maxCombinedPercentOff = normalizePercentOrNull(
-    config.maxCombinedPercentOff,
-  );
-  const discountRules = [];
-  const discountCombinationBlacklistRules = [];
-  const discountSegmentCaps = [];
+const DEFAULT_CATALOG_ID = "default";
 
-  for (const floor of config.productFloors) {
-    const appliesToB2C = floor.segment == null || floor.segment === "B2C";
-    const appliesToB2B = floor.segment == null || floor.segment === "B2B";
+export interface CustomCatalogPriceRuleInput {
+  scope: string;
+  targetId?: string | null;
+  mode: string;
+  value: number;
+}
 
-    if (appliesToB2C) {
-      perProductFloorPercentsB2C[floor.productId] = floor.minPercentOfBasePrice;
-      if (floor.allowZeroFinalPrice != null) {
-        perProductAllowZeroFinalPriceB2C[floor.productId] =
-          floor.allowZeroFinalPrice;
-      }
-    }
+export interface CustomCatalogInput {
+  id: string;
+  priority: number;
+  matchCompany?: boolean;
+  segment?: "B2B" | "B2C";
+  audienceTags?: string[];
+  marketFilters?: Array<{
+    countryCode?: string | null;
+    currencyCode?: string | null;
+    languageCode?: string | null;
+  }>;
+  floorDefaultPercent?: number | null;
+  floorDefaultAllowZero?: boolean | null;
+  perProductFloors?: Array<{
+    productId: string;
+    minPercentOfBasePrice: number;
+    allowZeroFinalPrice?: boolean | null;
+  }>;
+  perVariantFloors?: Array<{
+    variantId: string;
+    minPercentOfBasePrice: number;
+    allowZeroFinalPrice?: boolean | null;
+  }>;
+  priceRules?: CustomCatalogPriceRuleInput[];
+  tierPrices?: Array<{ productId: string; minQuantity: number; unitPrice: number }>;
+  variantTierPrices?: Array<{ variantId: string; minQuantity: number; unitPrice: number }>;
+  quantityRules?: Array<{
+    productId?: string | null;
+    collectionId?: string | null;
+    moq?: number | null;
+    step?: number | null;
+    max?: number | null;
+  }>;
+  discountRules?: Array<{
+    scope: string;
+    targetId?: string | null;
+    code?: string | null;
+    percentOff: number;
+    priority?: number;
+    stackMode?: string;
+    minPricePercentOfBasePrice?: number | null;
+  }>;
+  // Cross-cutting policy (MVP_5_3 #2.0b–e), catalog-native.
+  coupons?: string[];
+  discountCapPercent?: number | null;
+  blacklist?: Array<{
+    leftType: string;
+    leftValue: string;
+    rightType: string;
+    rightValue: string;
+  }>;
+  customerQuantity?: Array<{
+    customerId: string;
+    productId: string;
+    maxOrderQuantity: number;
+  }>;
+}
 
-    if (appliesToB2B) {
-      perProductFloorPercentsB2B[floor.productId] = floor.minPercentOfBasePrice;
-      if (floor.allowZeroFinalPrice != null) {
-        perProductAllowZeroFinalPriceB2B[floor.productId] =
-          floor.allowZeroFinalPrice;
-      }
-      if (
-        floor.b2bOverridePrice != null &&
-        Number.isFinite(floor.b2bOverridePrice) &&
-        floor.b2bOverridePrice >= 0
-      ) {
-        perProductB2BOverridePrices[floor.productId] = floor.b2bOverridePrice;
-      }
+function customCatalogToDelta(catalog: CustomCatalogInput): Record<string, unknown> {
+  const delta: Record<string, unknown> = {};
+  if (catalog.floorDefaultPercent != null) {
+    delta.globalMinPricePercent = clampPercent(catalog.floorDefaultPercent);
+  }
+  if (catalog.floorDefaultAllowZero != null) {
+    delta.allowZeroFinalPrice = catalog.floorDefaultAllowZero;
+  }
+
+  const perProductFloorPercents: Record<string, number> = {};
+  const perProductAllowZeroFinalPrice: Record<string, boolean> = {};
+  for (const floor of catalog.perProductFloors ?? []) {
+    const productId = String(floor.productId ?? "").trim();
+    if (!productId) continue;
+    perProductFloorPercents[productId] = clampPercent(floor.minPercentOfBasePrice);
+    if (floor.allowZeroFinalPrice != null) {
+      perProductAllowZeroFinalPrice[productId] = floor.allowZeroFinalPrice;
     }
   }
 
-  for (const tier of productTierPrices) {
-    if (tier.segment != null) {
-      continue;
+  const perProductOverrideBasePrices: Record<string, number> = {};
+  const perProductPricePercents: Record<string, number> = {};
+  const perCollectionPricePercents: Record<string, number> = {};
+  const perVariantOverrideBasePrices: Record<string, number> = {};
+  const perVariantPricePercents: Record<string, number> = {};
+  for (const rule of catalog.priceRules ?? []) {
+    const value = Number(rule.value);
+    if (!Number.isFinite(value) || value < 0) continue;
+    const targetId = String(rule.targetId ?? "").trim();
+    if (rule.mode === "FIXED" && rule.scope === "VARIANT" && targetId) {
+      perVariantOverrideBasePrices[targetId] = Math.round(value * 100) / 100;
+    } else if (rule.mode === "PERCENT" && rule.scope === "VARIANT" && targetId) {
+      perVariantPricePercents[targetId] = value;
+    } else if (rule.mode === "FIXED" && rule.scope === "PRODUCT" && targetId) {
+      perProductOverrideBasePrices[targetId] = Math.round(value * 100) / 100;
+    } else if (rule.mode === "PERCENT" && rule.scope === "PRODUCT" && targetId) {
+      perProductPricePercents[targetId] = value;
+    } else if (rule.mode === "PERCENT" && rule.scope === "COLLECTION") {
+      const collectionId = normalizeCollectionId(targetId);
+      if (collectionId) perCollectionPricePercents[collectionId] = value;
+    } else if (rule.mode === "PERCENT" && rule.scope === "CATALOG") {
+      delta.pricePercent = value;
     }
+  }
+
+  const perVariantFloorPercents: Record<string, number> = {};
+  for (const floor of catalog.perVariantFloors ?? []) {
+    const variantId = String(floor.variantId ?? "").trim();
+    if (!variantId) continue;
+    perVariantFloorPercents[variantId] = clampPercent(floor.minPercentOfBasePrice);
+  }
+
+  const variantTierMap: Record<string, Map<number, number>> = {};
+  for (const tier of catalog.variantTierPrices ?? []) {
+    const variantId = String(tier.variantId ?? "").trim();
     const entry = normalizeTierEntry(tier.minQuantity, tier.unitPrice);
-    if (!entry) {
-      continue;
-    }
-    perProductTierMapB2C[tier.productId] ??= new Map();
-    perProductTierMapB2B[tier.productId] ??= new Map();
-    perProductTierMapB2C[tier.productId].set(entry.minQuantity, entry.unitPrice);
-    perProductTierMapB2B[tier.productId].set(entry.minQuantity, entry.unitPrice);
+    if (!variantId || !entry) continue;
+    variantTierMap[variantId] ??= new Map();
+    variantTierMap[variantId].set(entry.minQuantity, entry.unitPrice);
   }
+  const perVariantTierPrices = sortTierMap(variantTierMap);
 
-  for (const tier of productTierPrices) {
-    if (tier.segment == null) {
-      continue;
-    }
+  const tierMap: Record<string, Map<number, number>> = {};
+  for (const tier of catalog.tierPrices ?? []) {
+    const productId = String(tier.productId ?? "").trim();
     const entry = normalizeTierEntry(tier.minQuantity, tier.unitPrice);
-    if (!entry) {
-      continue;
-    }
-    if (tier.segment === "B2C") {
-      perProductTierMapB2C[tier.productId] ??= new Map();
-      perProductTierMapB2C[tier.productId].set(entry.minQuantity, entry.unitPrice);
-    }
-    if (tier.segment === "B2B") {
-      perProductTierMapB2B[tier.productId] ??= new Map();
-      perProductTierMapB2B[tier.productId].set(entry.minQuantity, entry.unitPrice);
-    }
+    if (!productId || !entry) continue;
+    tierMap[productId] ??= new Map();
+    tierMap[productId].set(entry.minQuantity, entry.unitPrice);
   }
+  const perProductTierPrices = sortTierMap(tierMap);
 
-  const perProductTierPricesB2C = sortTierMap(perProductTierMapB2C);
-  const perProductTierPricesB2B = sortTierMap(perProductTierMapB2B);
-
-  for (const rule of productQuantityRules) {
-    if (rule.segment != null) {
-      continue;
-    }
-    const productId = rule.productId.trim();
-    const minimumOrderQuantity = normalizeMinimumOrderQuantity(
-      rule.minimumOrderQuantity,
-    );
-    const stepQuantity = normalizeStepQuantity(rule.stepQuantity);
-    const maxOrderQuantity = normalizeMaximumOrderQuantity(rule.maxOrderQuantity);
-    if (
-      !productId ||
-      (minimumOrderQuantity == null &&
-        stepQuantity == null &&
-        maxOrderQuantity == null)
-    ) {
-      continue;
-    }
-    if (minimumOrderQuantity != null) {
-      perProductMinimumOrderQuantitiesB2C[productId] = minimumOrderQuantity;
-      perProductMinimumOrderQuantitiesB2B[productId] = minimumOrderQuantity;
-    }
-    if (stepQuantity != null) {
-      perProductStepQuantitiesB2C[productId] = stepQuantity;
-      perProductStepQuantitiesB2B[productId] = stepQuantity;
-    }
-    if (maxOrderQuantity != null) {
-      perProductMaximumOrderQuantitiesB2C[productId] = maxOrderQuantity;
-      perProductMaximumOrderQuantitiesB2B[productId] = maxOrderQuantity;
-    }
-  }
-
-  for (const rule of productQuantityRules) {
-    if (rule.segment == null) {
-      continue;
-    }
-    const productId = rule.productId.trim();
-    const minimumOrderQuantity = normalizeMinimumOrderQuantity(
-      rule.minimumOrderQuantity,
-    );
-    const stepQuantity = normalizeStepQuantity(rule.stepQuantity);
-    const maxOrderQuantity = normalizeMaximumOrderQuantity(rule.maxOrderQuantity);
-    if (
-      !productId ||
-      (minimumOrderQuantity == null &&
-        stepQuantity == null &&
-        maxOrderQuantity == null)
-    ) {
-      continue;
-    }
-    if (rule.segment === "B2C") {
-      if (minimumOrderQuantity != null) {
-        perProductMinimumOrderQuantitiesB2C[productId] = minimumOrderQuantity;
-      }
-      if (stepQuantity != null) {
-        perProductStepQuantitiesB2C[productId] = stepQuantity;
-      }
-      if (maxOrderQuantity != null) {
-        perProductMaximumOrderQuantitiesB2C[productId] = maxOrderQuantity;
-      }
-    }
-    if (rule.segment === "B2B") {
-      if (minimumOrderQuantity != null) {
-        perProductMinimumOrderQuantitiesB2B[productId] = minimumOrderQuantity;
-      }
-      if (stepQuantity != null) {
-        perProductStepQuantitiesB2B[productId] = stepQuantity;
-      }
-      if (maxOrderQuantity != null) {
-        perProductMaximumOrderQuantitiesB2B[productId] = maxOrderQuantity;
-      }
-    }
-  }
-
-  for (const rule of collectionQuantityRules) {
-    if (rule.segment != null) {
-      continue;
-    }
+  const perProductMinimumOrderQuantities: Record<string, number> = {};
+  const perProductStepQuantities: Record<string, number> = {};
+  const perProductMaximumOrderQuantities: Record<string, number> = {};
+  const perCollectionMaximumOrderQuantities: Record<string, number> = {};
+  for (const rule of catalog.quantityRules ?? []) {
+    const productId = String(rule.productId ?? "").trim();
     const collectionId = normalizeCollectionId(rule.collectionId);
-    const maxOrderQuantity = normalizeMaximumOrderQuantity(rule.maxOrderQuantity);
-    if (collectionId == null || maxOrderQuantity == null) {
-      continue;
-    }
-    perCollectionMaximumOrderQuantitiesB2C[collectionId] = maxOrderQuantity;
-    perCollectionMaximumOrderQuantitiesB2B[collectionId] = maxOrderQuantity;
-  }
-
-  for (const rule of collectionQuantityRules) {
-    if (rule.segment == null) {
-      continue;
-    }
-    const collectionId = normalizeCollectionId(rule.collectionId);
-    const maxOrderQuantity = normalizeMaximumOrderQuantity(rule.maxOrderQuantity);
-    if (collectionId == null || maxOrderQuantity == null) {
-      continue;
-    }
-    if (rule.segment === "B2C") {
-      perCollectionMaximumOrderQuantitiesB2C[collectionId] = maxOrderQuantity;
-    }
-    if (rule.segment === "B2B") {
-      perCollectionMaximumOrderQuantitiesB2B[collectionId] = maxOrderQuantity;
+    const moq = normalizeMinimumOrderQuantity(rule.moq);
+    const step = normalizeStepQuantity(rule.step);
+    const max = normalizeMaximumOrderQuantity(rule.max);
+    if (productId) {
+      if (moq != null) perProductMinimumOrderQuantities[productId] = moq;
+      if (step != null) perProductStepQuantities[productId] = step;
+      if (max != null) perProductMaximumOrderQuantities[productId] = max;
+    } else if (collectionId && max != null) {
+      perCollectionMaximumOrderQuantities[collectionId] = max;
     }
   }
 
-  for (const rule of productCustomerQuantityRules) {
-    const productId = rule.productId.trim();
-    const customerId = normalizeCustomerId(rule.customerId);
-    const maxOrderQuantity = normalizeMaximumOrderQuantity(rule.maxOrderQuantity);
-    if (!productId || !customerId || maxOrderQuantity == null) {
-      continue;
-    }
-    perCustomerProductMaximumOrderQuantities[customerId] ??= {};
-    perCustomerProductMaximumOrderQuantities[customerId][productId] = maxOrderQuantity;
-  }
+  const assignIfAny = (key: string, map: Record<string, unknown>) => {
+    if (Object.keys(map).length > 0) delta[key] = map;
+  };
+  assignIfAny("perProductFloorPercents", perProductFloorPercents);
+  assignIfAny("perProductAllowZeroFinalPrice", perProductAllowZeroFinalPrice);
+  assignIfAny("perProductOverrideBasePrices", perProductOverrideBasePrices);
+  assignIfAny("perProductPricePercents", perProductPricePercents);
+  assignIfAny("perCollectionPricePercents", perCollectionPricePercents);
+  assignIfAny("perVariantOverrideBasePrices", perVariantOverrideBasePrices);
+  assignIfAny("perVariantPricePercents", perVariantPricePercents);
+  assignIfAny("perVariantFloorPercents", perVariantFloorPercents);
+  assignIfAny("perVariantTierPrices", perVariantTierPrices);
+  assignIfAny("perProductTierPrices", perProductTierPrices);
+  assignIfAny("perProductMinimumOrderQuantities", perProductMinimumOrderQuantities);
+  assignIfAny("perProductStepQuantities", perProductStepQuantities);
+  assignIfAny("perProductMaximumOrderQuantities", perProductMaximumOrderQuantities);
+  assignIfAny("perCollectionMaximumOrderQuantities", perCollectionMaximumOrderQuantities);
 
-  for (const rule of productVisibilityRules) {
-    const productId = rule.productId.trim();
-    if (!productId) {
-      continue;
-    }
-    const visibilityMode = normalizeVisibilityMode(rule.visibilityMode);
-    if (visibilityMode === "ALL") {
-      delete perProductVisibilityModes[productId];
-      delete perProductVisibilityCustomerIds[productId];
-      continue;
-    }
-    if (visibilityMode === "CUSTOMER_ONLY") {
-      const customerId = normalizeCustomerId(rule.customerId);
-      if (!customerId) {
-        continue;
-      }
-      perProductVisibilityModes[productId] = "CUSTOMER_ONLY";
-      perProductVisibilityCustomerIds[productId] = customerId;
-      continue;
-    }
-    perProductVisibilityModes[productId] = visibilityMode;
-    delete perProductVisibilityCustomerIds[productId];
-  }
+  return delta;
+}
 
-  for (const rule of rawCouponSegmentRules) {
-    const normalizedCode = normalizeCouponCode(rule.code);
-    if (!normalizedCode) {
-      continue;
-    }
-    couponSegmentRules[normalizedCode] = normalizeAllowedSegment(
-      rule.allowedSegment,
-    );
-  }
-
-  for (const rule of rawDiscountRules) {
+function customCatalogDiscountRules(catalog: CustomCatalogInput) {
+  const rules = [];
+  let index = 0;
+  for (const rule of catalog.discountRules ?? []) {
     const scope = normalizeDiscountRuleScope(rule.scope);
-    const segment =
-      rule.segment === "B2B" || rule.segment === "B2C" ? rule.segment : null;
     const percentOff = normalizePercentOrNull(rule.percentOff);
-    const minPricePercentOfBasePrice = normalizePercentOrNull(
-      rule.minPricePercentOfBasePrice,
-    );
-    if (percentOff == null || percentOff <= 0) {
-      continue;
-    }
+    if (percentOff == null || percentOff <= 0) continue;
     let targetId = rule.targetId ? String(rule.targetId).trim() : null;
     let code = rule.code ? normalizeCouponCode(rule.code) : null;
-    if (scope === "COLLECTION") {
-      targetId = normalizeCollectionId(targetId);
-    }
+    if (scope === "COLLECTION") targetId = normalizeCollectionId(targetId);
     if (scope === "GLOBAL") {
       targetId = null;
       code = null;
@@ -530,113 +359,187 @@ export function buildCartValidationFunctionConfig(
     if (scope === "COUPON") {
       code = normalizeCouponCode(String(rule.code ?? rule.targetId ?? ""));
       targetId = null;
-      if (!code) {
-        continue;
-      }
+      if (!code) continue;
     }
-    if ((scope === "PRODUCT" || scope === "COLLECTION") && !targetId) {
-      continue;
-    }
-    discountRules.push({
-      id: String(rule.id ?? "").trim(),
+    if ((scope === "PRODUCT" || scope === "COLLECTION") && !targetId) continue;
+    rules.push({
+      id: `${catalog.id}-disc-${index++}`,
       scope,
       targetId,
       code,
-      segment,
+      segment: null as string | null,
       percentOff,
-      priority: Number.isFinite(rule.priority) ? Math.floor(rule.priority) : 100,
-      stackMode: normalizeDiscountStackMode(rule.stackMode),
-      minPricePercentOfBasePrice,
+      priority: Number.isFinite(rule.priority) ? Math.floor(Number(rule.priority)) : 100,
+      stackMode: normalizeDiscountStackMode(rule.stackMode ?? "STACKABLE"),
+      minPricePercentOfBasePrice: normalizePercentOrNull(rule.minPricePercentOfBasePrice),
+      requiredCustomerTag: null as string | null,
+      catalogId: catalog.id,
     });
   }
-
-  for (const rule of rawDiscountCombinationBlacklistRules) {
-    const leftType = normalizeDiscountReferenceType(rule.leftType);
-    const rightType = normalizeDiscountReferenceType(rule.rightType);
-    const leftValue = String(rule.leftValue ?? "").trim();
-    const rightValue = String(rule.rightValue ?? "").trim();
-    if (!leftValue || !rightValue) {
-      continue;
-    }
-    discountCombinationBlacklistRules.push({
-      leftType,
-      leftValue: leftType === "COUPON_CODE" ? normalizeCouponCode(leftValue) : leftValue,
-      rightType,
-      rightValue:
-        rightType === "COUPON_CODE" ? normalizeCouponCode(rightValue) : rightValue,
-      segment:
-        rule.segment === "B2B" || rule.segment === "B2C" || rule.segment === "ALL"
-          ? rule.segment
-          : null,
-    });
-  }
-
-  for (const cap of rawDiscountSegmentCaps) {
-    const maxPercent = normalizePercentOrNull(cap.maxCombinedPercentOff);
-    if (maxPercent == null) {
-      continue;
-    }
-    discountSegmentCaps.push({
-      segment:
-        cap.segment === "B2B" || cap.segment === "B2C" ? cap.segment : "ALL",
-      maxCombinedPercentOff: maxPercent,
-    });
-  }
-
-  const collectionIds = Array.from(
-    new Set([
-      ...Object.keys(perCollectionMaximumOrderQuantitiesB2C),
-      ...Object.keys(perCollectionMaximumOrderQuantitiesB2B),
-      ...discountRules
-        .filter((rule) => rule.scope === "COLLECTION" && rule.targetId)
-        .map((rule) => rule.targetId),
-    ]),
-  ).sort();
-  const b2bGlobalMinPricePercent =
-    config.b2bGlobalMinPricePercent != null
-      ? config.b2bGlobalMinPricePercent
-      : config.globalMinPricePercent;
-
-  return {
-    b2bTag: normalizedB2BTag,
-    b2bTags: [normalizedB2BTag],
-    collectionIds,
-    globalMinPricePercent: config.globalMinPricePercent,
-    b2bGlobalMinPricePercent,
-    allowZeroFinalPrice: config.allowZeroFinalPrice,
-    allowStacking,
-    maxCombinedPercentOff,
-    perProductFloorPercentsB2C,
-    perProductFloorPercentsB2B,
-    perProductAllowZeroFinalPriceB2C,
-    perProductAllowZeroFinalPriceB2B,
-    perProductB2BOverridePrices,
-    perProductTierPricesB2C,
-    perProductTierPricesB2B,
-    perProductMinimumOrderQuantitiesB2C,
-    perProductMinimumOrderQuantitiesB2B,
-    perProductStepQuantitiesB2C,
-    perProductStepQuantitiesB2B,
-    perProductMaximumOrderQuantitiesB2C,
-    perProductMaximumOrderQuantitiesB2B,
-    perCollectionMaximumOrderQuantitiesB2C,
-    perCollectionMaximumOrderQuantitiesB2B,
-    perCustomerProductMaximumOrderQuantities,
-    perProductVisibilityModes,
-    perProductVisibilityCustomerIds,
-    couponSegmentRules,
-    discountRules,
-    discountCombinationBlacklistRules,
-    discountSegmentCaps,
-  };
+  return rules;
 }
 
-export function buildDiscountFunctionConfig(
-  config: MarginGuardFunctionConfigInput,
+
+// ---------------------------------------------------------------------------
+// MVP_5_3 #2.2 — catalog-native builder: the config is assembled from catalog
+// table rows ONLY (default catalog = base; b2b/custom inherit). The legacy
+// MarginGuardConfig contributes only shop-wide scalars. Produces the same shape
+// the functions already consume, so no runtime change is needed.
+// ---------------------------------------------------------------------------
+
+export interface CatalogTableInput extends CustomCatalogInput {
+  isDefault?: boolean;
+}
+
+export interface CatalogShopScalars {
+  b2bTag: string;
+  globalMinPricePercent: number;
+  allowZeroFinalPrice: boolean;
+  allowStacking?: boolean;
+  maxCombinedPercentOff?: number | null;
+  marginGuardEnabled?: boolean;
+}
+
+export function buildCatalogConfigFromCatalogs(
+  shop: CatalogShopScalars,
+  catalogs: CatalogTableInput[],
 ) {
+  const b2bTag = String(shop.b2bTag ?? "b2b").trim() || "b2b";
+  const defaultCatalog = catalogs.find((catalog) => catalog.isDefault) ?? null;
+  const defaultId = defaultCatalog ? defaultCatalog.id : DEFAULT_CATALOG_ID;
+
+  const defaultDelta = defaultCatalog ? customCatalogToDelta(defaultCatalog) : {};
+  const base: Record<string, unknown> = {
+    ...defaultDelta,
+    globalMinPricePercent:
+      (defaultDelta.globalMinPricePercent as number | undefined) ??
+      shop.globalMinPricePercent ??
+      70,
+    allowZeroFinalPrice:
+      (defaultDelta.allowZeroFinalPrice as boolean | undefined) ??
+      shop.allowZeroFinalPrice === true,
+  };
+
+  const catalogsOut: Record<string, Record<string, unknown>> = { [defaultId]: {} };
+  const resolution: Array<Record<string, unknown>> = [
+    {
+      id: defaultId,
+      priority: defaultCatalog?.priority ?? 0,
+      isDefault: true,
+      audienceTags: [] as string[],
+      matchCompany: defaultCatalog?.matchCompany === true,
+      marketFilters: [] as Array<Record<string, unknown>>,
+      segment: "B2C",
+    },
+  ];
+  const catalogTags: string[] = [];
+  const couponCatalogRules: Record<string, string[]> = {};
+  const discountCatalogCaps: Record<string, number> = {};
+  const blacklistOut: Array<Record<string, unknown>> = [];
+  const discountRulesOut: Array<Record<string, unknown>> = [];
+  const customerQuantity: Record<string, Record<string, number>> = {};
+  const collectionIds = new Set<string>();
+  let shopCap: number | null = shop.maxCombinedPercentOff ?? null;
+
+  const applyCrossCutting = (catalog: CatalogTableInput, isDefaultCatalog: boolean) => {
+    for (const rawCode of catalog.coupons ?? []) {
+      const code = normalizeCouponCode(rawCode);
+      // Default-catalog coupons are shop-wide (no restriction); only non-default
+      // catalogs restrict a coupon to themselves.
+      if (code && !isDefaultCatalog) (couponCatalogRules[code] ??= []).push(catalog.id);
+    }
+    const cap = normalizePercentOrNull(catalog.discountCapPercent);
+    if (cap != null) {
+      if (isDefaultCatalog) shopCap = cap;
+      else discountCatalogCaps[catalog.id] = cap;
+    }
+    for (const rule of catalog.blacklist ?? []) {
+      const leftValue = String(rule.leftValue ?? "").trim();
+      const rightValue = String(rule.rightValue ?? "").trim();
+      if (!leftValue || !rightValue) continue;
+      blacklistOut.push({
+        leftType: rule.leftType,
+        leftValue: rule.leftType === "COUPON_CODE" ? normalizeCouponCode(leftValue) : leftValue,
+        rightType: rule.rightType,
+        rightValue: rule.rightType === "COUPON_CODE" ? normalizeCouponCode(rightValue) : rightValue,
+        segment: null as string | null,
+        catalogId: isDefaultCatalog ? null : catalog.id,
+      });
+    }
+    for (const rule of catalog.customerQuantity ?? []) {
+      const customerId = String(rule.customerId ?? "").trim();
+      const productId = String(rule.productId ?? "").trim();
+      const max = normalizeMaximumOrderQuantity(rule.maxOrderQuantity);
+      if (!customerId || !productId || max == null) continue;
+      (customerQuantity[customerId] ??= {})[productId] = max;
+    }
+    for (const rule of customCatalogDiscountRules(catalog)) {
+      discountRulesOut.push({ ...rule, catalogId: isDefaultCatalog ? null : catalog.id });
+      if (rule.scope === "COLLECTION" && rule.targetId) collectionIds.add(String(rule.targetId));
+    }
+    for (const rule of catalog.priceRules ?? []) {
+      if (rule.scope === "COLLECTION" && rule.targetId) {
+        const normalized = normalizeCollectionId(rule.targetId);
+        if (normalized) collectionIds.add(normalized);
+      }
+    }
+    for (const rule of catalog.quantityRules ?? []) {
+      const normalized = normalizeCollectionId(rule.collectionId);
+      if (normalized) collectionIds.add(normalized);
+    }
+  };
+
+  if (defaultCatalog) applyCrossCutting(defaultCatalog, true);
+
+  for (const catalog of catalogs) {
+    if (catalog.isDefault) continue;
+    catalogsOut[catalog.id] = customCatalogToDelta(catalog);
+    const audienceTags = Array.from(
+      new Set(
+        (catalog.audienceTags ?? [])
+          .map((tag) => String(tag).trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    );
+    resolution.push({
+      id: catalog.id,
+      priority: Number.isFinite(catalog.priority) ? Math.floor(catalog.priority) : 0,
+      isDefault: false,
+      audienceTags,
+      matchCompany: catalog.matchCompany === true,
+      marketFilters: (catalog.marketFilters ?? []).map((filter) => ({
+        countryCode: filter.countryCode ?? null,
+        currencyCode: filter.currencyCode ?? null,
+        languageCode: filter.languageCode ?? null,
+      })),
+      segment: catalog.segment === "B2B" ? "B2B" : "B2C",
+    });
+    for (const tag of audienceTags) catalogTags.push(tag);
+    applyCrossCutting(catalog, false);
+  }
+
   return {
-    ...buildCartValidationFunctionConfig(config),
+    defaultCatalogId: defaultId,
+    catalogResolution: resolution,
+    catalogTags: Array.from(new Set([b2bTag, ...catalogTags])),
+    base,
+    catalogs: catalogsOut,
+    b2bTag,
+    b2bTags: [b2bTag],
+    loyaltyTags: [] as string[],
+    collectionIds: Array.from(collectionIds).sort(),
+    allowStacking: shop.allowStacking === true,
+    maxCombinedPercentOff: shopCap,
+    perCustomerProductMaximumOrderQuantities: customerQuantity,
+    perProductVisibilityModes: {} as Record<string, unknown>,
+    perProductVisibilityCustomerIds: {} as Record<string, string>,
+    couponSegmentRules: {} as Record<string, string>,
+    couponCatalogRules,
+    discountCatalogCaps,
+    discountRules: discountRulesOut,
+    discountCombinationBlacklistRules: blacklistOut,
+    discountSegmentCaps: [] as Array<Record<string, unknown>>,
     requestedPercentOff: 100,
-    marginGuardEnabled: config.marginGuardEnabled !== false,
+    marginGuardEnabled: shop.marginGuardEnabled !== false,
   };
 }

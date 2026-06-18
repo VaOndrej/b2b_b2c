@@ -11,23 +11,46 @@ import {
   countActiveCatalogCollections,
   countActiveCatalogProducts,
 } from "../services/product-catalog.server";
+import { loadAllCatalogsForConfig } from "../services/price-catalog.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
   await ensureCartValidationActive(admin);
-  const [discountFunction, config, logs, catalogProductCount, catalogCollectionCount] =
-    await Promise.all([
-      reconcileDiscountFunctionStatus(admin),
-      getOrCreateMarginGuardConfig(),
-      listMarginViolationLogs(10),
-      countActiveCatalogProducts(),
-      countActiveCatalogCollections(),
-    ]);
+  const [
+    discountFunction,
+    config,
+    logs,
+    catalogProductCount,
+    catalogCollectionCount,
+    allCatalogs,
+  ] = await Promise.all([
+    reconcileDiscountFunctionStatus(admin),
+    getOrCreateMarginGuardConfig(),
+    listMarginViolationLogs(10),
+    countActiveCatalogProducts(),
+    countActiveCatalogCollections(),
+    loadAllCatalogsForConfig().catch(() => []),
+  ]);
   const last24hCount = logs.filter((item: { createdAt: Date }) => {
     const createdAt = new Date(item.createdAt).getTime();
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
     return createdAt >= oneDayAgo;
   }).length;
+
+  // MVP_5_3 #2.3c — dashboard rule counts come from catalog tables, not the
+  // legacy MarginGuardConfig children.
+  const sum = (pick: (catalog: (typeof allCatalogs)[number]) => number) =>
+    allCatalogs.reduce((total, catalog) => total + pick(catalog), 0);
+  const catalogStats = {
+    catalogCount: allCatalogs.length,
+    floorRuleCount: sum(
+      (c) => (c.perProductFloors?.length ?? 0) + (c.perVariantFloors?.length ?? 0),
+    ),
+    tierRuleCount: sum((c) => c.tierPrices?.length ?? 0),
+    quantityRuleCount: sum((c) => c.quantityRules?.length ?? 0),
+    discountRuleCount: sum((c) => c.discountRules?.length ?? 0),
+    couponRuleCount: sum((c) => c.coupons?.length ?? 0),
+  };
 
   return {
     config,
@@ -36,6 +59,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     discountFunction,
     catalogProductCount,
     catalogCollectionCount,
+    catalogStats,
   };
 };
 
@@ -47,6 +71,7 @@ export default function AppDashboardRoute() {
     discountFunction,
     catalogProductCount,
     catalogCollectionCount,
+    catalogStats,
   } =
     useLoaderData<typeof loader>();
   const cartValidationActive = config.cartValidationStatus === "ACTIVE";
@@ -108,22 +133,25 @@ export default function AppDashboardRoute() {
               </strong>
             </s-paragraph>
             <s-paragraph>
-              Per-product floor rules: <strong>{config.productFloors.length}</strong>
+              Active price catalogs: <strong>{catalogStats.catalogCount}</strong>
             </s-paragraph>
             <s-paragraph>
-              Per-product tier pricing rules:{" "}
-              <strong>{config.productTierPrices.length}</strong>
+              Catalog floor rules (product + variant):{" "}
+              <strong>{catalogStats.floorRuleCount}</strong>
             </s-paragraph>
             <s-paragraph>
-              Per-product quantity rules (MOQ/step):{" "}
-              <strong>{config.productQuantityRules.length}</strong>
+              Catalog tier pricing rules:{" "}
+              <strong>{catalogStats.tierRuleCount}</strong>
             </s-paragraph>
             <s-paragraph>
-              Product visibility rules:{" "}
-              <strong>{config.productVisibilityRules.length}</strong>
+              Catalog quantity rules (MOQ/step/max):{" "}
+              <strong>{catalogStats.quantityRuleCount}</strong>
             </s-paragraph>
             <s-paragraph>
-              Coupon segment rules: <strong>{config.couponSegmentRules.length}</strong>
+              Catalog discount rules: <strong>{catalogStats.discountRuleCount}</strong>
+            </s-paragraph>
+            <s-paragraph>
+              Catalog coupon rules: <strong>{catalogStats.couponRuleCount}</strong>
             </s-paragraph>
             <s-paragraph>
               Cart validation function:{" "}

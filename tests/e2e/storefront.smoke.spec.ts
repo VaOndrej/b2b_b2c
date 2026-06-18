@@ -1,17 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
+import { disconnectE2EPrisma } from "./support/seed.ts";
 import {
-  disconnectE2EPrisma,
-  ensureOriginalMarginGuardSnapshot,
-  resetMarginGuardConfigForStorefrontE2E,
-  restoreOriginalMarginGuardSnapshot,
-  seedB2BOnlyVisibilityScenario,
-  seedMaxOrderQuantityScenario,
-  seedQuantityConstraintScenario,
-  seedVariantVisibilityScenario,
-} from "./support/seed.ts";
+  seedCatalogProductHidden,
+  seedCatalogQuantity,
+  seedCatalogVariantHidden,
+  setupE2ECatalog,
+  teardownE2ECatalog,
+} from "./support/catalog-e2e.ts";
 import {
   decorateStorefrontPath,
-  maybeUnlockStorefront,
+  gotoStorefrontOrSkip,
   resolveCurrentProductFixtureFromPage,
   waitForMarginGuardBootstrap,
   type StorefrontProductFixture,
@@ -19,13 +17,18 @@ import {
 import { resolveShopifyE2ERuntime, type ShopifyE2ERuntime } from "./support/runtime.ts";
 import { warmStorefrontTunnel } from "./support/warmup.ts";
 
-// Resolved in beforeAll (NOT at module top-level): the Admin scenario-resolution
-// calls are slow, and running them during Playwright's collection phase opens a
-// gap between any global warm-up and the first navigation in which the dev
-// tunnel/route goes cold — making the first page.goto pay the cold-start of the
-// no-defer <head> embed script and time out. Resolving + warming in beforeAll
-// keeps the route warm immediately before the specs navigate.
+/**
+ * Serial (mutate-per-test) storefront tier. Asserts the DOM-rendered app-proxy
+ * effects (banners / notices / input normalization) that the read-only parallel
+ * matrix does not cover. Catalog-native (MVP_5_4): each test gets a FRESH,
+ * dedicated e2e catalog (setupE2ECatalog), seeds exactly its rule onto it, and
+ * navigates with the gated `mg_e2e_audience` override forcing that catalog — so
+ * nothing is ever written to the user's default/b2b config. The real Shopify
+ * Functions (checkout) stay covered by the integration/contract suite.
+ */
+
 let runtime: ShopifyE2ERuntime;
+let catalogId: string;
 
 function getVisibleQuantityInput(page: Page) {
   return page
@@ -39,10 +42,9 @@ let product: StorefrontProductFixture;
 
 test.beforeAll(async () => {
   // The dev-tunnel cold-start of the no-defer <head> embed script can exceed the
-  // 45s per-test budget, so give this hook room to fully absorb it once via the
-  // warm-up below; the tests then navigate against a warm route.
+  // 45s per-test budget, so give this hook room to absorb it once via the warm-up
+  // below; the tests then navigate against a warm route.
   test.setTimeout(150_000);
-  await ensureOriginalMarginGuardSnapshot();
   runtime = await resolveShopifyE2ERuntime();
   if (runtime.enabled) {
     await warmStorefrontTunnel(runtime.scenarioHandles.visibility);
@@ -53,15 +55,17 @@ test.beforeEach(async () => {
   if (!runtime.enabled) {
     return;
   }
-  await resetMarginGuardConfigForStorefrontE2E();
+  // Fresh, empty e2e catalog per test (delete-then-create) → deterministic
+  // isolation; the test seeds the one rule it asserts.
+  ({ catalogId } = await setupE2ECatalog());
 });
 
 test.afterAll(async () => {
-  await restoreOriginalMarginGuardSnapshot();
+  await teardownE2ECatalog();
   await disconnectE2EPrisma();
 });
 
-test("theme app embed blocks a B2B-only product for anonymous storefront visitors", async ({ page }) => {
+test("theme app embed blocks a catalog-hidden product for the forced catalog", async ({ page }) => {
   if (!runtime.enabled) {
     test.skip(true, runtime.skipReason);
     return;
@@ -69,18 +73,12 @@ test("theme app embed blocks a B2B-only product for anonymous storefront visitor
 
   const scenarioHandles = runtime.scenarioHandles;
 
-  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.visibility}`), {
-    waitUntil: "domcontentloaded",
-  });
-  await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.visibility}`), {
-    waitUntil: "domcontentloaded",
-  });
+  if (!(await gotoStorefrontOrSkip(page, decorateStorefrontPath(`/products/${scenarioHandles.visibility}`), runtime.storefrontPassword))) {
+    return;
+  }
   product = await resolveCurrentProductFixtureFromPage(page);
 
-  await seedB2BOnlyVisibilityScenario({
-    productId: product.productId,
-  });
+  await seedCatalogProductHidden(catalogId, product.productId);
 
   await page.reload({ waitUntil: "domcontentloaded" });
   const visibilityResponse = await waitForMarginGuardBootstrap(page);
@@ -105,19 +103,14 @@ test("theme app embed injects MOQ and step notices on the PDP and normalizes the
 
   const scenarioHandles = runtime.scenarioHandles;
 
-  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.step}`), {
-    waitUntil: "domcontentloaded",
-  });
-  await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.step}`), {
-    waitUntil: "domcontentloaded",
-  });
+  if (!(await gotoStorefrontOrSkip(page, decorateStorefrontPath(`/products/${scenarioHandles.step}`), runtime.storefrontPassword))) {
+    return;
+  }
   product = await resolveCurrentProductFixtureFromPage(page);
 
-  await seedQuantityConstraintScenario({
-    productId: product.productId,
-    minimumOrderQuantity: 6,
-    stepQuantity: 3,
+  await seedCatalogQuantity(catalogId, product.productId, {
+    moq: 6,
+    step: 3,
   });
 
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -131,9 +124,7 @@ test("theme app embed injects MOQ and step notices on the PDP and normalizes the
   // Quantity-input normalization can only be verified when the theme renders a
   // visible quantity input on the PDP. Some themes (e.g. minimal/generated ones)
   // omit it entirely — skip the input assertions there rather than false-fail.
-  const quantityInput = page
-    .locator("form[action*='/cart/add'] input[name='quantity']:not([type='hidden'])")
-    .first();
+  const quantityInput = getVisibleQuantityInput(page);
   if ((await quantityInput.count()) === 0) {
     test.skip(true, "Theme has no visible PDP quantity input — cannot verify MOQ/step input normalization (notice asserted above).");
     return;
@@ -143,7 +134,7 @@ test("theme app embed injects MOQ and step notices on the PDP and normalizes the
   await expect(quantityInput).toHaveAttribute("step", "3");
 });
 
-test("theme app embed shows variant visibility banner for B2B-only variant on anonymous storefront", async ({ page }) => {
+test("theme app embed shows variant visibility banner for a catalog-hidden variant", async ({ page }) => {
   if (!runtime.enabled) {
     test.skip(true, runtime.skipReason);
     return;
@@ -155,13 +146,9 @@ test("theme app embed shows variant visibility banner for B2B-only variant on an
     return;
   }
 
-  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.variant}`), {
-    waitUntil: "domcontentloaded",
-  });
-  await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.variant}`), {
-    waitUntil: "domcontentloaded",
-  });
+  if (!(await gotoStorefrontOrSkip(page, decorateStorefrontPath(`/products/${scenarioHandles.variant}`), runtime.storefrontPassword))) {
+    return;
+  }
   product = await resolveCurrentProductFixtureFromPage(page);
 
   const variantIds = await page.evaluate(async (handle) => {
@@ -182,10 +169,7 @@ test("theme app embed shows variant visibility banner for B2B-only variant on an
 
   const targetVariantId = `gid://shopify/ProductVariant/${variantIds[0]}`;
 
-  await seedVariantVisibilityScenario({
-    productId: product.productId,
-    variantId: targetVariantId,
-  });
+  await seedCatalogVariantHidden(catalogId, product.productId, targetVariantId);
 
   await page.reload({ waitUntil: "domcontentloaded" });
   const visibilityResponse = await waitForMarginGuardBootstrap(page);
@@ -218,19 +202,12 @@ test("acknowledgment button is required to dismiss cart quantity notice", async 
 
   const scenarioHandles = runtime.scenarioHandles;
 
-  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.max}`), {
-    waitUntil: "domcontentloaded",
-  });
-  await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.max}`), {
-    waitUntil: "domcontentloaded",
-  });
+  if (!(await gotoStorefrontOrSkip(page, decorateStorefrontPath(`/products/${scenarioHandles.max}`), runtime.storefrontPassword))) {
+    return;
+  }
   product = await resolveCurrentProductFixtureFromPage(page);
 
-  await seedMaxOrderQuantityScenario({
-    productId: product.productId,
-    maxOrderQuantity: 2,
-  });
+  await seedCatalogQuantity(catalogId, product.productId, { max: 2 });
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await waitForMarginGuardBootstrap(page);
@@ -251,7 +228,7 @@ test("acknowledgment button is required to dismiss cart quantity notice", async 
     await addToCartButton.click().catch(() => {});
   }
 
-  await page.goto("/cart", { waitUntil: "domcontentloaded" });
+  await page.goto(decorateStorefrontPath("/cart"), { waitUntil: "domcontentloaded" });
   await waitForMarginGuardBootstrap(page);
 
   const notice = page.locator("[data-margin-guard-cart-quantity-notice='1']");
@@ -280,19 +257,12 @@ test("theme app embed enforces max order quantity notice on PDP", async ({ page 
 
   const scenarioHandles = runtime.scenarioHandles;
 
-  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.max}`), {
-    waitUntil: "domcontentloaded",
-  });
-  await maybeUnlockStorefront(page, runtime.storefrontPassword);
-  await page.goto(decorateStorefrontPath(`/products/${scenarioHandles.max}`), {
-    waitUntil: "domcontentloaded",
-  });
+  if (!(await gotoStorefrontOrSkip(page, decorateStorefrontPath(`/products/${scenarioHandles.max}`), runtime.storefrontPassword))) {
+    return;
+  }
   product = await resolveCurrentProductFixtureFromPage(page);
 
-  await seedMaxOrderQuantityScenario({
-    productId: product.productId,
-    maxOrderQuantity: 3,
-  });
+  await seedCatalogQuantity(catalogId, product.productId, { max: 3 });
 
   await page.reload({ waitUntil: "domcontentloaded" });
   const visibilityResponse = await waitForMarginGuardBootstrap(page);

@@ -345,46 +345,40 @@ async function resolveAutoScenarioHandles(config: ShopifyE2ERuntimeConfig): Prom
   max: string | null;
   variant: string | null;
 }> {
-  const visibilityRules = await prisma.productVisibilityRule.findMany({
-    where: {
-      configId: "default",
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    select: {
-      productId: true,
-      visibilityMode: true,
-    },
+  // MVP_5_3 #2.3c — auto-scenario selection now reads catalog tables (the legacy
+  // per-segment MarginGuardConfig children were dropped). A catalog HIDDEN rule is
+  // a restrictive visibility for selection purposes.
+  const catalogVisibility = await prisma.catalogVisibilityRule.findMany({
+    where: { scope: "PRODUCT", visibilityMode: "HIDDEN" },
+    orderBy: { updatedAt: "desc" },
+    select: { targetId: true },
   });
+  const visibilityRules = catalogVisibility.map((rule) => ({
+    productId: rule.targetId,
+    visibilityMode: "HIDDEN",
+  }));
 
-  const quantityRules = await prisma.productQuantityRule.findMany({
-    where: {
-      configId: "default",
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    select: {
-      productId: true,
-      minimumOrderQuantity: true,
-      stepQuantity: true,
-      maxOrderQuantity: true,
-    },
+  const catalogQuantity = await prisma.catalogQuantityRule.findMany({
+    where: { productId: { not: null } },
+    orderBy: { updatedAt: "desc" },
+    select: { productId: true, moq: true, step: true, max: true },
   });
+  const quantityRules = catalogQuantity.map((rule) => ({
+    productId: rule.productId ?? "",
+    minimumOrderQuantity: rule.moq ?? 0,
+    stepQuantity: rule.step,
+    maxOrderQuantity: rule.max,
+  }));
 
-  const variantVisibilityRules = await prisma.productVariantVisibilityRule.findMany({
-    where: {
-      configId: "default",
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    select: {
-      productId: true,
-      visibilityMode: true,
-    },
+  const catalogVariantVisibility = await prisma.catalogVariantVisibilityRule.findMany({
+    where: { visibilityMode: "HIDDEN" },
+    orderBy: { updatedAt: "desc" },
+    select: { productId: true },
   });
+  const variantVisibilityRules = catalogVariantVisibility.map((rule) => ({
+    productId: rule.productId,
+    visibilityMode: "HIDDEN",
+  }));
 
   const selectedProductIds = selectAutoScenarioProductIds({
     visibilityRules,
@@ -569,16 +563,18 @@ async function resolveCollectionScenarioHandle(
 }
 
 /**
- * Maps the seeded E2E matrix manifest (`.matrix.json`) to serial-tier scenario
- * handles. These products are the SAME ones the parallel matrix navigates
- * successfully, so they are guaranteed published + browser-loadable — unlike the
- * legacy DB-rule auto-resolution, which can resolve to an unpublished product
- * whose PDP never reaches `domcontentloaded` (the serial smoke/listing hang).
+ * Maps the seeded E2E matrix (`.matrix.json`) to serial-tier scenario handles.
+ * These products are the SAME ones the parallel matrix navigates successfully, so
+ * they are guaranteed published + browser-loadable — unlike DB-rule
+ * auto-resolution, which can resolve to an unpublished product whose PDP never
+ * reaches `domcontentloaded` (the serial smoke/listing hang).
  *
- * Returns all-null when no matrix manifest exists (e.g. serial run without a
- * preceding matrix run / seed), letting the caller fall back to auto-resolution.
+ * Returns all-null when no matrix file exists (e.g. serial run without a preceding
+ * matrix run / seed), letting the caller fall back to auto-resolution. Collections
+ * are not part of the catalog-native matrix (collection visibility is a documented
+ * residual), so `collection` resolves via the DB / env override only.
  */
-function resolveManifestScenarioHandles(): {
+function resolveMatrixScenarioHandles(): {
   visibility: string | null;
   step: string | null;
   max: string | null;
@@ -598,21 +594,13 @@ function resolveManifestScenarioHandles(): {
   }
   const product = (archetype: string): string | null =>
     matrix.products.find((fixture) => fixture.archetype === archetype)?.handle ?? null;
-  const collection = (archetype: string): string | null =>
-    matrix.collections.find((fixture) => fixture.archetype === archetype)
-      ?.collectionHandle ?? null;
 
   return {
-    // The seeded visibility scenario only needs a published, loadable product —
-    // the test seeds its own B2B_ONLY rule on it.
-    visibility: product("VISIBILITY_B2B_ONLY") ?? product("VISIBILITY_B2C_ONLY"),
+    visibility: product("HIDDEN"),
     step: product("QUANTITY_MOQ_STEP"),
     max: product("QUANTITY_MAX"),
-    variant: product("VARIANT_B2B_ONLY"),
-    collection:
-      collection("COLLECTION_B2B_ONLY") ??
-      matrix.collections[0]?.collectionHandle ??
-      null,
+    variant: product("VARIANT_HIDDEN"),
+    collection: null,
   };
 }
 
@@ -621,11 +609,11 @@ export async function resolveShopifyE2ERuntime(): Promise<ShopifyE2ERuntime> {
 
   try {
     // Resolution precedence per scenario: explicit env override > seeded matrix
-    // manifest (known-published, browser-loadable) > legacy DB-rule
-    // auto-resolution. Preferring the manifest both fixes the serial PDP-hang
-    // (bad auto-picked product) AND keeps resolution fast (no Admin API calls)
-    // whenever the matrix has been seeded.
-    const manifest = resolveManifestScenarioHandles();
+    // file (known-published, browser-loadable) > DB-rule auto-resolution.
+    // Preferring the matrix both fixes the serial PDP-hang (bad auto-picked
+    // product) AND keeps resolution fast (no Admin API calls) whenever the matrix
+    // has been seeded.
+    const manifest = resolveMatrixScenarioHandles();
     const overrides = config.handleOverrides;
 
     const requiredCovered =
@@ -660,7 +648,7 @@ export async function resolveShopifyE2ERuntime(): Promise<ShopifyE2ERuntime> {
         skipReason:
           "Unable to resolve required storefront E2E products for scenarios: " +
           missingScenarioNames.join(", ") +
-          " (seed the matrix via `npm run e2e:seed-catalog` or set SHOPIFY_E2E_PRODUCT_HANDLE_*).",
+          " (run the matrix setup to seed `.matrix.json`, or set SHOPIFY_E2E_PRODUCT_HANDLE_*).",
       };
     }
 

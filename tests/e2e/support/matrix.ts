@@ -4,13 +4,16 @@ import prisma from "../../../app/db.server.ts";
 
 /**
  * The matrix is the single source of truth shared between the seeding setup
- * (which writes Margin Guard rules) and the read-only storefront specs (which
- * assert their effect). It is computed deterministically from the synced
- * `CatalogProduct/Collection/Variant` tables so that, once seeded, every spec
+ * (which writes rules onto the dedicated e2e price catalog) and the read-only
+ * storefront specs (which assert their effect). It is computed deterministically
+ * from the synced `CatalogProduct/Variant` tables so that, once seeded, every spec
  * is purely read-only and therefore safe to run fully in parallel.
  *
- * Adding a new MVP feature = add an archetype here + a matching assertion block
- * in `buildMatrixTests`. No per-feature spec file needs to be hand-written.
+ * Catalog-native model (MVP_5_4): the matrix runs as theme × CONTEXT, where
+ * `context` is either `base` (no override → default catalog → unrestricted) or
+ * `catalog` (the gated `mg_e2e_audience` override injects the e2e catalog's tag →
+ * the seeded restrictive rule applies). Each archetype's rule lives on a DISTINCT
+ * product so storefront resolution never overlaps between scenarios.
  */
 
 export const MATRIX_FILE = path.resolve(
@@ -20,23 +23,11 @@ export const MATRIX_FILE = path.resolve(
   ".matrix.json",
 );
 
-export const MANIFEST_FILE = path.resolve(
-  process.cwd(),
-  "tests",
-  "e2e",
-  ".manifest.json",
-);
-
 export type ProductArchetype =
-  | "VISIBILITY_B2B_ONLY"
-  | "VISIBILITY_B2C_ONLY"
-  | "VARIANT_B2B_ONLY"
+  | "HIDDEN"
+  | "VARIANT_HIDDEN"
   | "QUANTITY_MOQ_STEP"
   | "QUANTITY_MAX";
-
-export type CollectionArchetype =
-  | "COLLECTION_B2B_ONLY"
-  | "COLLECTION_B2C_ONLY";
 
 export interface ProductMatrixFixture {
   archetype: ProductArchetype;
@@ -49,31 +40,19 @@ export interface ProductMatrixFixture {
   maxOrderQuantity?: number;
 }
 
-export interface CollectionMatrixFixture {
-  archetype: CollectionArchetype;
-  collectionId: string;
-  collectionHandle: string;
-  collectionTitle: string | null;
-}
-
 export interface E2EMatrix {
   generatedAt: string;
+  /** Audience tag of the dedicated e2e catalog (the `catalog` context forces it). */
+  audienceTag: string;
   products: ProductMatrixFixture[];
-  collections: CollectionMatrixFixture[];
   notes: string[];
 }
 
 const PRODUCT_ARCHETYPE_ORDER: ProductArchetype[] = [
-  "VISIBILITY_B2B_ONLY",
-  "VISIBILITY_B2C_ONLY",
+  "HIDDEN",
   "QUANTITY_MOQ_STEP",
   "QUANTITY_MAX",
-  "VARIANT_B2B_ONLY",
-];
-
-const COLLECTION_ARCHETYPE_ORDER: CollectionArchetype[] = [
-  "COLLECTION_B2B_ONLY",
-  "COLLECTION_B2C_ONLY",
+  "VARIANT_HIDDEN",
 ];
 
 function normalizeHandle(value: string | null | undefined): string | null {
@@ -106,112 +85,15 @@ interface CatalogVariantRow {
   shopifyProductId: string | null;
 }
 
-interface CatalogCollectionRow {
-  shopifyCollectionId: string | null;
-  handle: string | null;
-  title: string;
-}
-
 /**
- * Builds the deterministic E2E matrix from the synced catalog. Distinct
- * products are assigned distinct archetypes round-robin, so seeded rules never
- * overlap on the same product and each spec can assert only its own product.
+ * Builds the deterministic E2E matrix from the synced catalog. Distinct products
+ * are assigned distinct archetypes round-robin, so seeded rules never overlap on
+ * the same product and each spec can assert only its own product.
  *
- * Returns an empty matrix (with explanatory notes) when the catalog has not
- * been synced yet — the setup project then skips with that reason instead of
- * failing.
+ * Returns an empty matrix (with explanatory notes) when the catalog has not been
+ * synced yet — the setup project then skips with that reason instead of failing.
  */
-const PRODUCT_ARCHETYPES = new Set<ProductArchetype>(PRODUCT_ARCHETYPE_ORDER);
-const COLLECTION_ARCHETYPES = new Set<CollectionArchetype>(
-  COLLECTION_ARCHETYPE_ORDER,
-);
-
-interface ManifestShape {
-  matrix?: {
-    products?: unknown[];
-    collections?: unknown[];
-  };
-}
-
-/**
- * When the comprehensive seeder (`scripts/seed-e2e-catalog.mts`) has run it owns
- * the data additively and writes `.manifest.json` with the exact Tier-1 fixtures
- * to assert. Prefer it over catalog round-robin so the matrix matches what was
- * provisioned. Returns null when no (valid) manifest exists.
- */
-export function readManifestMatrix(): E2EMatrix | null {
-  if (!existsSync(MANIFEST_FILE)) {
-    return null;
-  }
-  let manifest: ManifestShape;
-  try {
-    manifest = JSON.parse(readFileSync(MANIFEST_FILE, "utf8")) as ManifestShape;
-  } catch {
-    return null;
-  }
-  const rawProducts = Array.isArray(manifest.matrix?.products)
-    ? manifest.matrix!.products!
-    : [];
-  const rawCollections = Array.isArray(manifest.matrix?.collections)
-    ? manifest.matrix!.collections!
-    : [];
-
-  const products: ProductMatrixFixture[] = [];
-  for (const raw of rawProducts as Array<Record<string, unknown>>) {
-    const archetype = String(raw.archetype ?? "") as ProductArchetype;
-    const productId = normalizeProductGid(String(raw.productId ?? ""));
-    const handle = normalizeHandle(String(raw.handle ?? ""));
-    if (!PRODUCT_ARCHETYPES.has(archetype) || !productId || !handle) {
-      continue;
-    }
-    products.push({
-      archetype,
-      productId,
-      handle,
-      title: String(raw.title ?? handle),
-      variantId: raw.variantId ? String(raw.variantId) : undefined,
-      minimumOrderQuantity:
-        typeof raw.minimumOrderQuantity === "number" ? raw.minimumOrderQuantity : undefined,
-      stepQuantity: typeof raw.stepQuantity === "number" ? raw.stepQuantity : undefined,
-      maxOrderQuantity:
-        typeof raw.maxOrderQuantity === "number" ? raw.maxOrderQuantity : undefined,
-    });
-  }
-
-  const collections: CollectionMatrixFixture[] = [];
-  for (const raw of rawCollections as Array<Record<string, unknown>>) {
-    const archetype = String(raw.archetype ?? "") as CollectionArchetype;
-    const collectionId = String(raw.collectionId ?? "").trim();
-    const collectionHandle = normalizeHandle(String(raw.collectionHandle ?? ""));
-    if (!COLLECTION_ARCHETYPES.has(archetype) || !collectionId || !collectionHandle) {
-      continue;
-    }
-    collections.push({
-      archetype,
-      collectionId,
-      collectionHandle,
-      collectionTitle:
-        raw.collectionTitle == null ? null : String(raw.collectionTitle),
-    });
-  }
-
-  if (products.length === 0 && collections.length === 0) {
-    return null;
-  }
-  return {
-    generatedAt: new Date().toISOString(),
-    products,
-    collections,
-    notes: ["Matrix sourced from .manifest.json (seed-e2e-catalog)."],
-  };
-}
-
-export async function buildE2EMatrix(): Promise<E2EMatrix> {
-  const fromManifest = readManifestMatrix();
-  if (fromManifest) {
-    return fromManifest;
-  }
-
+export async function buildE2EMatrix(audienceTag: string): Promise<E2EMatrix> {
   const notes: string[] = [];
 
   const products = (await prisma.catalogProduct.findMany({
@@ -224,12 +106,6 @@ export async function buildE2EMatrix(): Promise<E2EMatrix> {
     where: { isActive: true },
     select: { shopifyVariantId: true, shopifyProductId: true },
   })) as CatalogVariantRow[];
-
-  const collections = (await prisma.catalogCollection.findMany({
-    where: { isActive: true },
-    orderBy: { updatedAt: "desc" },
-    select: { shopifyCollectionId: true, handle: true, title: true },
-  })) as CatalogCollectionRow[];
 
   const firstVariantByProductId = new Map<string, string>();
   for (const variant of variants) {
@@ -260,7 +136,7 @@ export async function buildE2EMatrix(): Promise<E2EMatrix> {
     }
     const archetype = PRODUCT_ARCHETYPE_ORDER[archetypeIndex];
 
-    if (archetype === "VARIANT_B2B_ONLY") {
+    if (archetype === "VARIANT_HIDDEN") {
       const variantId = firstVariantByProductId.get(product.productId);
       if (!variantId) {
         // Skip this product for the variant archetype; try it on the next one.
@@ -297,49 +173,15 @@ export async function buildE2EMatrix(): Promise<E2EMatrix> {
   for (const archetype of PRODUCT_ARCHETYPE_ORDER) {
     if (!productFixtures.some((fixture) => fixture.archetype === archetype)) {
       notes.push(
-        `No catalog product available for archetype ${archetype} (need ${PRODUCT_ARCHETYPE_ORDER.length} distinct products${archetype === "VARIANT_B2B_ONLY" ? ", one with variants" : ""}).`,
+        `No catalog product available for archetype ${archetype} (need ${PRODUCT_ARCHETYPE_ORDER.length} distinct products${archetype === "VARIANT_HIDDEN" ? ", one with variants" : ""}).`,
       );
     }
   }
 
-  const usableCollections = collections
-    .map((row) => ({
-      collectionId: String(row.shopifyCollectionId ?? "").trim(),
-      collectionHandle: normalizeHandle(row.handle),
-      collectionTitle: row.title,
-    }))
-    .filter(
-      (
-        row,
-      ): row is {
-        collectionId: string;
-        collectionHandle: string;
-        collectionTitle: string;
-      } => Boolean(row.collectionId && row.collectionHandle),
-    );
-
-  const collectionFixtures: CollectionMatrixFixture[] = [];
-  usableCollections.slice(0, COLLECTION_ARCHETYPE_ORDER.length).forEach(
-    (collection, index) => {
-      collectionFixtures.push({
-        archetype: COLLECTION_ARCHETYPE_ORDER[index],
-        collectionId: collection.collectionId,
-        collectionHandle: collection.collectionHandle,
-        collectionTitle: collection.collectionTitle,
-      });
-    },
-  );
-
-  if (collectionFixtures.length === 0) {
-    notes.push(
-      "No catalog collections available — collection visibility archetypes skipped.",
-    );
-  }
-
   return {
     generatedAt: new Date().toISOString(),
+    audienceTag,
     products: productFixtures,
-    collections: collectionFixtures,
     notes,
   };
 }
@@ -354,7 +196,7 @@ export function readMatrixFile(): E2EMatrix | null {
   }
   try {
     const parsed = JSON.parse(readFileSync(MATRIX_FILE, "utf8")) as E2EMatrix;
-    if (!Array.isArray(parsed.products) || !Array.isArray(parsed.collections)) {
+    if (!Array.isArray(parsed.products)) {
       return null;
     }
     return parsed;
@@ -365,12 +207,10 @@ export function readMatrixFile(): E2EMatrix | null {
 
 export function describeProductArchetype(archetype: ProductArchetype): string {
   switch (archetype) {
-    case "VISIBILITY_B2B_ONLY":
-      return "product visible to B2B only";
-    case "VISIBILITY_B2C_ONLY":
-      return "product visible to B2C only";
-    case "VARIANT_B2B_ONLY":
-      return "variant visible to B2B only";
+    case "HIDDEN":
+      return "product hidden in the e2e catalog";
+    case "VARIANT_HIDDEN":
+      return "variant hidden in the e2e catalog";
     case "QUANTITY_MOQ_STEP":
       return "MOQ + step quantity";
     case "QUANTITY_MAX":

@@ -177,3 +177,59 @@ test("advanced orchestration trims lower priority discount first when segment ca
   assert.equal(result.capAdjustments.length, 1);
   assert.equal(result.capAdjustments[0]?.id, "collection-20");
 });
+
+test("loyalty-gated rule only matches when the customer carries the required tag", () => {
+  const rules = {
+    allowStacking: true,
+    rules: [
+      {
+        id: "loyalty-gold-10",
+        scope: "GLOBAL" as const,
+        percentOff: 10,
+        priority: 100,
+        requiredCustomerTag: "loyalty-gold",
+      },
+    ],
+  };
+
+  // Customer without the tag → rule does not match.
+  const without = resolveDiscounts([], rules, {
+    productId: "gid://shopify/Product/1",
+    segment: "B2C",
+    customerTags: ["newsletter"],
+  });
+  assert.equal(without.totalPercentOff, 0);
+
+  // Customer with the tag (case-insensitive) → rule applies.
+  const withTag = resolveDiscounts([], rules, {
+    productId: "gid://shopify/Product/1",
+    segment: "B2C",
+    customerTags: ["Loyalty-Gold"],
+  });
+  assert.equal(withTag.totalPercentOff, 10);
+});
+
+test("loyalty rule still respects its own min-price floor", () => {
+  const result = resolveDiscounts(
+    [],
+    {
+      allowStacking: true,
+      rules: [
+        {
+          id: "loyalty-deep",
+          scope: "GLOBAL" as const,
+          percentOff: 50,
+          priority: 100,
+          requiredCustomerTag: "loyalty-gold",
+          minPricePercentOfBasePrice: 70, // floor caps discount at 30%
+        },
+      ],
+    },
+    {
+      productId: "gid://shopify/Product/1",
+      segment: "B2C",
+      customerTags: ["loyalty-gold"],
+    },
+  );
+  assert.equal(result.totalPercentOff, 30);
+});

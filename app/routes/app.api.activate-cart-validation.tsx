@@ -5,7 +5,7 @@ import { ensureCartValidationActive } from "../services/cart-validation-activati
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
   const url = new URL(request.url);
-  const settingsUrl = new URL("/app/settings", `${url.protocol}//${url.host}`);
+  const settingsUrl = new URL("/app/settings/global", `${url.protocol}//${url.host}`);
   const result = await ensureCartValidationActive(admin);
   if (!result.ok) {
     settingsUrl.searchParams.set("activation", "error");

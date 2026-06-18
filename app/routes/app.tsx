@@ -20,9 +20,7 @@ export default function App() {
       <ui-nav-menu>
         <a href="/app">Dashboard</a>
         <a href="/app/settings/global?section=global">Global Settings</a>
-        <a href="/app/settings/catalog-rules?section=products">Catalog Rules</a>
-        <a href="/app/settings/discounts?section=discount-coupons">Discounts</a>
-        <a href="/app/product-rules">Product Rules</a>
+        <a href="/app/catalogs">Catalogs</a>
         <a href="/app/storefront-ux">Storefront UX</a>
         <a href="/app/health">App Health</a>
       </ui-nav-menu>

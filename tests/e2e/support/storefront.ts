@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { E2E_CATALOG_AUDIENCE_TAG } from "./catalog-context.ts";
 
 export interface StorefrontProductFixture {
   handle: string;
@@ -7,20 +8,17 @@ export interface StorefrontProductFixture {
 }
 
 /**
- * Appends `?mg_e2e_segment=B2C` to a storefront path so serial-tier navigations
- * hit the SAME Shopify edge full-page-cache entry the parallel matrix warms
- * (the matrix always navigates decorated URLs). Bare `/products/X` URLs map to a
- * SEPARATE, cold cache entry whose app-proxy `<head>` embed script can block
- * `domcontentloaded` and time out the navigation.
- *
- * For the serial tier the param is a pure cache-key aligner: the override flag
- * is NOT injected there, so the app ignores `mg_e2e_segment` and still resolves
- * the anonymous B2C segment — identical behavior to a bare URL, minus the hang.
+ * Appends `?mg_e2e_audience=<e2e catalog tag>` to a serial-tier storefront path.
+ * The serial run arms the gated override (see scripts/run-playwright-e2e.mjs), so
+ * this forces the dedicated e2e catalog — the SAME catalog the serial specs seed
+ * their per-test rules onto, with zero blast radius on default/b2b. It also keeps
+ * navigations on a single Shopify edge cache entry (bare `/products/X` URLs map
+ * to a separate cold entry whose `<head>` embed can block `domcontentloaded`).
  */
 export function decorateStorefrontPath(path: string): string {
   const url = new URL(path, "https://placeholder.local");
-  if (!url.searchParams.has("mg_e2e_segment")) {
-    url.searchParams.set("mg_e2e_segment", "B2C");
+  if (!url.searchParams.has("mg_e2e_audience")) {
+    url.searchParams.set("mg_e2e_audience", E2E_CATALOG_AUDIENCE_TAG);
   }
   return `${url.pathname}${url.search}`;
 }
@@ -31,6 +29,45 @@ function toProductGid(value: unknown): string {
     throw new Error(`Storefront product payload did not contain a valid numeric id: ${value}`);
   }
   return `gid://shopify/Product/${numericId}`;
+}
+
+const BOT_CHALLENGE_SKIP =
+  "Storefront served a bot/connection-verification challenge to the headless browser (environmental, not unlockable by the harness).";
+
+/**
+ * Navigates to a storefront path with the goto1 → unlock → goto2 pattern (params
+ * must survive the password unlock), but RESILIENT to the intermittent Shopify/
+ * Cloudflare bot/connection-verification interstitial: each goto is time-bounded
+ * and, if it stalls or the challenge page is detected, the test SKIPS (the
+ * documented environmental behavior) instead of hanging to a hard timeout.
+ *
+ * Returns false when it skipped — callers should `return` on false.
+ */
+export async function gotoStorefrontOrSkip(
+  page: Page,
+  path: string,
+  storefrontPassword: string | null,
+): Promise<boolean> {
+  for (let pass = 0; pass < 2; pass++) {
+    try {
+      await page.goto(path, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    } catch {
+      // Navigation stalled — most often the bot challenge holding the response.
+      // Fall through to the challenge check below.
+    }
+    if (await isStorefrontVerificationChallenge(page)) {
+      test.skip(true, BOT_CHALLENGE_SKIP);
+      return false;
+    }
+    if (pass === 0) {
+      await maybeUnlockStorefront(page, storefrontPassword);
+      if (await isStorefrontVerificationChallenge(page)) {
+        test.skip(true, BOT_CHALLENGE_SKIP);
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 export async function maybeUnlockStorefront(page: Page, storefrontPassword: string | null) {

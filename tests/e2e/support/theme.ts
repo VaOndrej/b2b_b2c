@@ -1,5 +1,5 @@
 import { type Page } from "@playwright/test";
-import type { Segment } from "../../../core/segment/segment.types.ts";
+import type { TestContext } from "./catalog-context.ts";
 
 /**
  * Per-theme abstraction so the SAME Tier-1 storefront specs run unchanged on
@@ -8,11 +8,13 @@ import type { Segment } from "../../../core/segment/segment.types.ts";
  * markers (`#margin-guard-*`) are app-injected and theme-independent, so they
  * stay as shared constants in the specs.
  *
- * Both the theme AND the forced segment are chosen by the Playwright PROJECT
- * (`use: { theme, segment }`), never by the spec — see playwright.matrix.config.ts.
- * The segment rides every navigation as `?mg_e2e_segment=` (alongside the Dawn
- * `preview_theme_id`), which the gated app-proxy override turns into a forced
- * segment so B2B effects render without a real browser login.
+ * Both the theme AND the test context are chosen by the Playwright PROJECT
+ * (`use: { theme, context, audience }`), never by the spec — see
+ * playwright.matrix.config.ts. For the `catalog` context the forced audience tag
+ * rides every navigation as `?mg_e2e_audience=` (alongside the Dawn
+ * `preview_theme_id`), which the gated app-proxy override turns into the matched
+ * catalog so its effects render without a real browser login. The `base` context
+ * sends no override and resolves to the default catalog.
  */
 
 export type ThemeName = "horizon" | "dawn";
@@ -67,14 +69,16 @@ interface ShopifyThemeGlobal {
 
 export interface ThemeContext {
   name: ThemeName;
-  /** Forced storefront segment for this project (via the gated proxy override). */
-  segment: Segment;
+  /** Test context for this project: `base` (default catalog) or `catalog` (forced). */
+  context: TestContext;
+  /** Audience tag forced via mg_e2e_audience for the `catalog` context (else null). */
+  audience: string | null;
   previewThemeId: string | null;
   expectedThemeName: string | null;
   selectors: ThemeSelectors;
   /**
-   * Builds a storefront path carrying the Dawn `preview_theme_id` (when set) and
-   * the `mg_e2e_segment` forced-segment param for this project.
+   * Builds a storefront path carrying the Dawn `preview_theme_id` (when set) and,
+   * for the `catalog` context, the `mg_e2e_audience` forced-audience param.
    */
   decoratePath: (path: string) => string;
   /** Navigates to a storefront path under this theme and verifies it once. */
@@ -94,7 +98,8 @@ const verifiedPages = new WeakSet<Page>();
 
 export function resolveThemeContext(
   name: ThemeName,
-  segment: Segment,
+  context: TestContext,
+  audience: string | null,
 ): ThemeContext | null {
   const previewThemeId =
     name === "dawn" ? readEnv("SHOPIFY_E2E_PREVIEW_THEME_ID") : null;
@@ -116,10 +121,12 @@ export function resolveThemeContext(
     if (previewThemeId) {
       url.searchParams.set("preview_theme_id", previewThemeId);
     }
-    // Forced segment for the gated app-proxy override. Harmless when the override
-    // flag is not armed (the app simply ignores it). B2C is the natural anonymous
-    // result, but we set it explicitly so every project is symmetric.
-    url.searchParams.set("mg_e2e_segment", segment);
+    // Forced audience for the gated app-proxy override (catalog context only).
+    // Harmless when the override flag is not armed (the app simply ignores it).
+    // The base context sends nothing: anonymous → default catalog naturally.
+    if (context === "catalog" && audience) {
+      url.searchParams.set("mg_e2e_audience", audience);
+    }
     return `${url.pathname}${url.search}`;
   };
 
@@ -178,7 +185,8 @@ export function resolveThemeContext(
 
   return {
     name,
-    segment,
+    context,
+    audience,
     previewThemeId,
     expectedThemeName,
     selectors,

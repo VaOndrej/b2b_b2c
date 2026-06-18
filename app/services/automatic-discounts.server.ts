@@ -22,6 +22,10 @@ const AUTOMATIC_DISCOUNTS_QUERY = `#graphql
               value {
                 __typename
                 ... on DiscountPercentage { percentage }
+                ... on DiscountAmount {
+                  appliesOnEachItem
+                  amount { amount }
+                }
               }
               items {
                 __typename
@@ -34,6 +38,10 @@ const AUTOMATIC_DISCOUNTS_QUERY = `#graphql
                 }
               }
             }
+          }
+          ... on DiscountAutomaticBxgy {
+            title
+            status
           }
         }
       }
@@ -48,37 +56,85 @@ function roundPercent(value: number): number {
 }
 
 /**
- * Normalize a single DiscountAutomaticBasic node into zero or more
- * AutomaticDiscount entries — one per entitled product/collection, or a single
- * GLOBAL entry when the discount applies to all items. Only percentage-value
- * automatic discounts are relevant to the margin floor; everything else is skipped.
+ * Resolve the value-shape of a DiscountAutomaticBasic.customerGets.value into the
+ * value-aware fields the conflict detector understands. Returns null when the
+ * value carries no effect (e.g. zero percentage/amount).
+ */
+function resolveBasicValue(
+  value: any,
+):
+  | Pick<AutomaticDiscount, "valueType" | "percentOff">
+  | Pick<AutomaticDiscount, "valueType" | "amount" | "amountScope">
+  | { valueType: "UNSUPPORTED"; unsupportedKind: string }
+  | null {
+  if (value?.__typename === "DiscountPercentage") {
+    // Shopify returns the percentage as a 0..1 decimal (0.4 === 40%).
+    const percentOff = roundPercent(Number(value.percentage ?? 0) * 100);
+    if (percentOff <= 0) {
+      return null;
+    }
+    return { valueType: "PERCENTAGE", percentOff };
+  }
+
+  if (value?.__typename === "DiscountAmount") {
+    const amount = Math.round(Number(value.amount?.amount ?? 0) * 100) / 100;
+    if (!(amount > 0)) {
+      return null;
+    }
+    return {
+      valueType: "FIXED_AMOUNT",
+      amount,
+      amountScope: value.appliesOnEachItem === true ? "PER_UNIT" : "PER_ORDER",
+    };
+  }
+
+  // DiscountOnQuantity and any other value shapes can't be converted to an
+  // effective unit price reliably → flag for manual review.
+  if (value?.__typename) {
+    return { valueType: "UNSUPPORTED", unsupportedKind: String(value.__typename) };
+  }
+  return null;
+}
+
+/**
+ * Normalize a single automatic discount node into zero or more AutomaticDiscount
+ * entries — one per entitled product/collection, or a single GLOBAL entry when
+ * the discount applies to all items. MVP_5_2: percentage AND fixed-amount values
+ * are converted; BXGY and other value shapes are flagged UNSUPPORTED rather than
+ * silently dropped. Free-shipping automatic discounts do not affect the product
+ * floor and are skipped.
  */
 function normalizeDiscountNode(node: any): AutomaticDiscount[] {
   const discount = node?.discount;
-  if (!discount || discount.__typename !== "DiscountAutomaticBasic") {
+  if (!discount) {
     return [];
   }
   if (String(discount.status ?? "").toUpperCase() !== "ACTIVE") {
     return [];
   }
 
-  const value = discount.customerGets?.value;
-  if (value?.__typename !== "DiscountPercentage") {
-    return [];
+  const id = String(node.id ?? "");
+  const title = discount.title ? String(discount.title) : undefined;
+
+  // Buy X Get Y is a native type we cannot convert to an effective price.
+  if (discount.__typename === "DiscountAutomaticBxgy") {
+    return [{ id, title, scope: "GLOBAL", valueType: "UNSUPPORTED", unsupportedKind: "Buy X Get Y" }];
   }
-  // Shopify returns the percentage as a 0..1 decimal (0.4 === 40%).
-  const percentOff = roundPercent(Number(value.percentage ?? 0) * 100);
-  if (percentOff <= 0) {
+
+  if (discount.__typename !== "DiscountAutomaticBasic") {
     return [];
   }
 
-  const id = String(node.id ?? "");
-  const title = discount.title ? String(discount.title) : undefined;
+  const valueFields = resolveBasicValue(discount.customerGets?.value);
+  if (!valueFields) {
+    return [];
+  }
+
   const items = discount.customerGets?.items;
   const itemsType = items?.__typename;
 
   if (itemsType === "AllDiscountItems") {
-    return [{ id, title, percentOff, scope: "GLOBAL" }];
+    return [{ id, title, scope: "GLOBAL", ...valueFields }];
   }
 
   if (itemsType === "DiscountProducts") {
@@ -89,9 +145,9 @@ function normalizeDiscountNode(node: any): AutomaticDiscount[] {
       .map((targetId: string) => ({
         id,
         title,
-        percentOff,
         scope: "PRODUCT" as const,
         targetId,
+        ...valueFields,
       }));
   }
 
@@ -105,9 +161,9 @@ function normalizeDiscountNode(node: any): AutomaticDiscount[] {
       .map((targetId: string) => ({
         id,
         title,
-        percentOff,
         scope: "COLLECTION" as const,
         targetId,
+        ...valueFields,
       }));
   }
 

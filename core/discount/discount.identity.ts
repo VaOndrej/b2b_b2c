@@ -8,6 +8,8 @@ interface DiscountRuleIdentityInput {
   targetId?: string | null;
   code?: string | null;
   segment?: string | null;
+  /** MVP_5_2 — loyalty tag making an otherwise-identical rule distinct. */
+  requiredCustomerTag?: string | null;
 }
 
 interface DiscountReferenceIdentity {
@@ -66,16 +68,21 @@ export function buildDiscountRuleLookupKey(
   const segmentKey =
     input.segment === "B2B" || input.segment === "B2C" ? input.segment : "ALL";
 
+  let base: string;
   if (input.scope === "COLLECTION") {
-    return `${input.scope}|${segmentKey}|COLLECTION:${targetKey}`;
+    base = `${input.scope}|${segmentKey}|COLLECTION:${targetKey}`;
+  } else if (input.scope === "PRODUCT") {
+    base = `${input.scope}|${segmentKey}|PRODUCT:${targetKey}`;
+  } else if (input.scope === "COUPON") {
+    base = `${input.scope}|${segmentKey}|COUPON:${codeKey}`;
+  } else {
+    base = `${input.scope}|${segmentKey}|GLOBAL`;
   }
-  if (input.scope === "PRODUCT") {
-    return `${input.scope}|${segmentKey}|PRODUCT:${targetKey}`;
-  }
-  if (input.scope === "COUPON") {
-    return `${input.scope}|${segmentKey}|COUPON:${codeKey}`;
-  }
-  return `${input.scope}|${segmentKey}|GLOBAL`;
+
+  // MVP_5_2 — append the loyalty tag only when present so non-loyalty rules
+  // keep an identical (backward-compatible) canonical key.
+  const loyaltyTag = String(input.requiredCustomerTag ?? "").trim().toLowerCase();
+  return loyaltyTag ? `${base}|TAG:${loyaltyTag}` : base;
 }
 
 export function canonicalizeDiscountBlacklistPair(

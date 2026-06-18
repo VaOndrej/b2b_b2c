@@ -1,5 +1,6 @@
 import { authenticate } from "../shopify.server";
 import { getOrCreateMarginGuardConfig, recordMarginViolation } from "../services/margin-guard-config.server";
+import { loadCatalogRulesets } from "../services/catalog-ruleset.server";
 import { validateCartLine } from "../../functions/cart-validation/src";
 import {
   createCartValidateAdminAction,
@@ -13,7 +14,8 @@ import {
 // function module by its test.
 export const action = createCartValidateAdminAction({
   authenticateAdmin: (request) => authenticate.admin(request),
-  getConfig: getOrCreateMarginGuardConfig,
+  getB2bTag: async () => (await getOrCreateMarginGuardConfig()).b2bTag,
+  loadCatalogRulesets,
   validate: validateCartLine,
   recordViolation: recordMarginViolation,
 });

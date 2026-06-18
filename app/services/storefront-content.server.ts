@@ -1,7 +1,7 @@
 import prisma from "../db.server.ts";
 import type { Segment } from "../../core/segment/segment.types";
 import { resolveSegment } from "../../core/segment/segment.engine.ts";
-import { resolveStorefrontSegmentOverride } from "./storefront-segment-override.server.ts";
+import { resolveStorefrontAudienceOverride } from "./storefront-catalog-override.server.ts";
 
 const DEFAULT_CONFIG_ID = "default";
 
@@ -117,16 +117,19 @@ export async function resolveSegmentForStorefront(input: {
   loggedInCustomerId: string | null;
   b2bTag: string;
   /**
-   * Raw `mg_e2e_segment` query param. Honored ONLY behind the gated, prod-safe
-   * E2E override (see resolveStorefrontSegmentOverride); ignored otherwise.
+   * Raw `mg_e2e_audience` query param. Honored ONLY behind the gated, prod-safe
+   * E2E override (see resolveStorefrontAudienceOverride); ignored otherwise.
    */
-  e2eSegmentParam?: string | null;
+  e2eAudienceParam?: string | null;
 }): Promise<Segment> {
-  // Gated E2E escape hatch: when armed, force the segment and skip the customer
-  // lookup entirely. Inert in production / without the runner-owned flag.
-  const overrideSegment = resolveStorefrontSegmentOverride(input.e2eSegmentParam);
-  if (overrideSegment) {
-    return overrideSegment;
+  // Gated E2E escape hatch: when armed, force the segment from the injected
+  // audience tags and skip the customer lookup entirely. Inert in production /
+  // without the runner-owned flag. Storefront content is still segment-keyed, so
+  // the forced tags map to B2B when they carry the b2b tag, else B2C.
+  const overrideTags = resolveStorefrontAudienceOverride(input.e2eAudienceParam);
+  if (overrideTags) {
+    const expectedTag = String(input.b2bTag || "b2b").trim().toLowerCase() || "b2b";
+    return overrideTags.includes(expectedTag) ? "B2B" : "B2C";
   }
 
   if (!input.loggedInCustomerId || !input.admin) {

@@ -33,12 +33,15 @@ test("violations route documents dev and production sync modes explicitly", asyn
   );
 });
 
-test("app shell navigation exposes global settings, catalog rules, discounts, storefront UX, and app health", async () => {
+test("app shell navigation exposes global settings, catalogs, storefront UX, and app health", async () => {
   const source = await readFile(APP_SHELL_ROUTE_PATH, "utf8");
 
   assert.match(source, /href="\/app\/settings\/global\?section=global">Global Settings/);
-  assert.match(source, /href="\/app\/settings\/catalog-rules\?section=products">Catalog Rules/);
-  assert.match(source, /href="\/app\/settings\/discounts\?section=discount-coupons">Discounts/);
+  // MVP_5_3 #2.3 — Catalog Rules + Discounts + Product Rules dissolved into the
+  // single Catalogs editor; legacy nav links removed.
+  assert.match(source, /href="\/app\/catalogs">Catalogs/);
+  assert.doesNotMatch(source, /Catalog Rules/);
+  assert.doesNotMatch(source, /href="\/app\/product-rules"/);
   assert.match(source, /Storefront UX/);
   assert.match(source, /App Health/);
 });

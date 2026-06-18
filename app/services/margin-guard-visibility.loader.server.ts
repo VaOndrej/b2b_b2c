@@ -1,8 +1,8 @@
 import type { Segment } from "../../core/segment/segment.types";
 import {
-  E2E_SEGMENT_OVERRIDE_PARAM,
-  resolveStorefrontSegmentOverride,
-} from "./storefront-segment-override.server.ts";
+  E2E_AUDIENCE_OVERRIDE_PARAM,
+  resolveStorefrontAudienceOverride,
+} from "./storefront-catalog-override.server.ts";
 import type { getOrCreateMarginGuardConfig } from "./margin-guard-config.server.ts";
 import type {
   fetchProductCollectionIdsByProductIds,
@@ -87,6 +87,13 @@ interface AdminGraphqlClient {
 }
 
 import type { resolveCartDiscountConflictsByHandle } from "./discount-conflict.server.ts";
+import type { StorefrontCatalogQuantity } from "./catalog-ruleset.server.ts";
+
+const EMPTY_CATALOG_QUANTITY: StorefrontCatalogQuantity = {
+  productQuantityRules: [],
+  collectionQuantityRules: [],
+  customerQuantityRules: [],
+};
 
 type VisibilityDependencies = {
   authenticatePublicAppProxy: (
@@ -101,6 +108,25 @@ type VisibilityDependencies = {
   // MVP_5_0_3: optional so existing callers/tests that don't need cart conflict
   // notices keep working unchanged.
   resolveCartDiscountConflictsByHandle?: typeof resolveCartDiscountConflictsByHandle;
+  // MVP_5_3 #3: optional per-catalog variant visibility — hides variants for the
+  // custom catalog the customer's tags resolve into. Optional so existing
+  // tests/callers are unaffected.
+  resolveStorefrontCatalogVariantVisibility?: (
+    customerTags: string[],
+  ) => Promise<Record<string, string[]>>;
+  // MVP_5_3 #2.0a: optional per-catalog PRODUCT visibility — hidden product ids
+  // for the resolved custom catalog (mapped to handles here).
+  resolveStorefrontCatalogProductVisibility?: (
+    customerTags: string[],
+  ) => Promise<string[]>;
+  // MVP_5_3 #2.3c: catalog-sourced quantity hints (MOQ/step/max, collection max,
+  // customer-specific max) for the resolved catalog. Replaces the legacy
+  // MarginGuardConfig quantity children.
+  loadStorefrontCatalogQuantity?: (input: {
+    matchedTags: string[];
+    hasPurchasingCompany?: boolean;
+    customerId?: string | null;
+  }) => Promise<StorefrontCatalogQuantity>;
 };
 
 async function resolveVisibilitySegment(input: {
@@ -188,18 +214,26 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
     const customerTagsHint = parseLoggedInCustomerTags(
       url.searchParams.get("logged_in_customer_tags"),
     );
-    // Gated E2E escape hatch: when armed, force the segment from `mg_e2e_segment`
-    // and skip the customer tag lookup entirely. Inert in production / without the
-    // runner-owned flag — see resolveStorefrontSegmentOverride.
-    const overrideSegment = resolveStorefrontSegmentOverride(
-      url.searchParams.get(E2E_SEGMENT_OVERRIDE_PARAM),
+    // Gated E2E escape hatch: when armed, force the matched audience tags from
+    // `mg_e2e_audience` and skip the customer tag lookup entirely. Inert in
+    // production / without the runner-owned flag — see
+    // resolveStorefrontAudienceOverride. Catalog resolution is tag-based, so the
+    // injected tags drive which catalog resolves (e.g. a dedicated e2e catalog);
+    // an empty list forces the base/default context.
+    const overrideTags = resolveStorefrontAudienceOverride(
+      url.searchParams.get(E2E_AUDIENCE_OVERRIDE_PARAM),
     );
-    const segmentResolution = overrideSegment
+    const overrideExpectedTag = normalizeTag(config.b2bTag || "b2b") || "b2b";
+    const segmentResolution = overrideTags
       ? {
-          segment: overrideSegment,
+          // The segment field stays informational; catalog resolution below uses
+          // normalizedTags. A forced list carrying the B2B tag still reports B2B.
+          segment: overrideTags.includes(overrideExpectedTag)
+            ? ("B2B" as const)
+            : ("B2C" as const),
           source: "e2e_override" as const,
-          expectedTag: normalizeTag(config.b2bTag || "b2b") || "b2b",
-          normalizedTags: [] as string[],
+          expectedTag: overrideExpectedTag,
+          normalizedTags: overrideTags,
         }
       : await resolveVisibilitySegment({
           admin,
@@ -208,16 +242,30 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
           customerTagsHint,
         });
     const segment = segmentResolution.segment;
+
+    // MVP_5_3 #2.3c — quantity hints come from the customer's resolved catalog
+    // (catalog tables), not the legacy MarginGuardConfig quantity children.
+    const catalogQuantity = deps.loadStorefrontCatalogQuantity
+      ? await deps
+          .loadStorefrontCatalogQuantity({
+            matchedTags: segmentResolution.normalizedTags,
+            customerId,
+          })
+          .catch(() => EMPTY_CATALOG_QUANTITY)
+      : EMPTY_CATALOG_QUANTITY;
+
+    // Product/variant visibility now flow solely from per-catalog visibility
+    // (merged below); the segment-keyed children are no longer read, so pass no
+    // legacy rules — resolveStorefrontVisibilityByHandles still resolves the
+    // handle→productId map the rest of the loader needs.
     const visibility = await deps.resolveStorefrontVisibilityByHandles({
       admin,
       handles,
       segment,
       customerId,
-      rules: config.productVisibilityRules,
+      rules: [],
     });
-    const collectionQuantityRules = Array.isArray(config.collectionQuantityRules)
-      ? config.collectionQuantityRules
-      : [];
+    const collectionQuantityRules = catalogQuantity.collectionQuantityRules;
     const allRelevantProductIds = Array.from(
       new Set([
         ...productIds,
@@ -233,37 +281,91 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
       handles,
       productIdByHandle: visibility.productIdByHandle,
       segment,
-      rules: config.productQuantityRules,
+      rules: catalogQuantity.productQuantityRules,
       collectionRules: collectionQuantityRules,
       productCollectionIdsByProductId,
       customerId,
-      customerMaxRules: config.productCustomerQuantityRules,
+      customerMaxRules: catalogQuantity.customerQuantityRules,
     });
     const quantityConstraintsByProductId = deps.resolveStorefrontQuantityConstraintsByProductId({
       productIds,
       segment,
-      rules: config.productQuantityRules,
+      rules: catalogQuantity.productQuantityRules,
       collectionRules: collectionQuantityRules,
       productCollectionIdsByProductId,
       customerId,
-      customerMaxRules: config.productCustomerQuantityRules,
+      customerMaxRules: catalogQuantity.customerQuantityRules,
     });
+    // Variant visibility flows solely from per-catalog variant visibility
+    // (merged below); no legacy segment-keyed variant rules are read.
     const variantVisibilityByProductId =
       deps.resolveStorefrontVariantVisibilityByProductId({
         productIds: allRelevantProductIds,
         segment,
         customerId,
-        rules: Array.isArray((config as any).productVariantVisibilityRules)
-          ? (config as any).productVariantVisibilityRules
-          : [],
+        rules: [],
       });
+
+    // MVP_5_3 #3 — merge per-catalog hidden variants (custom catalog resolved
+    // from the customer's tags) on top of the segment-based variant visibility.
+    let mergedVariantVisibilityByProductId = variantVisibilityByProductId;
+    if (deps.resolveStorefrontCatalogVariantVisibility) {
+      const catalogHiddenVariants = await deps
+        .resolveStorefrontCatalogVariantVisibility(segmentResolution.normalizedTags)
+        .catch(() => ({}) as Record<string, string[]>);
+      if (Object.keys(catalogHiddenVariants).length > 0) {
+        mergedVariantVisibilityByProductId = { ...variantVisibilityByProductId };
+        for (const [productId, variantIds] of Object.entries(catalogHiddenVariants)) {
+          const existing =
+            mergedVariantVisibilityByProductId[productId]?.hiddenVariantIds ?? [];
+          mergedVariantVisibilityByProductId[productId] = {
+            hiddenVariantIds: Array.from(new Set([...existing, ...variantIds])),
+          };
+        }
+      }
+    }
+
+    // MVP_5_3 #2.0a — hide whole products for the resolved custom catalog by
+    // mapping its hidden product ids onto the requested handles.
+    let mergedVisibility = visibility;
+    if (deps.resolveStorefrontCatalogProductVisibility) {
+      const catalogHiddenProductIds = new Set(
+        (
+          await deps
+            .resolveStorefrontCatalogProductVisibility(segmentResolution.normalizedTags)
+            .catch(() => [] as string[])
+        ).map((value) => String(value)),
+      );
+      if (catalogHiddenProductIds.size > 0) {
+        const extraHiddenHandles: string[] = [];
+        const extraHiddenProductIds: string[] = [];
+        for (const [handle, productId] of Object.entries(
+          visibility.productIdByHandle ?? {},
+        )) {
+          if (catalogHiddenProductIds.has(String(productId))) {
+            extraHiddenHandles.push(handle);
+            extraHiddenProductIds.push(String(productId));
+          }
+        }
+        if (extraHiddenHandles.length > 0) {
+          mergedVisibility = {
+            ...visibility,
+            hiddenHandles: Array.from(
+              new Set([...(visibility.hiddenHandles ?? []), ...extraHiddenHandles]),
+            ),
+            hiddenProductIds: Array.from(
+              new Set([...(visibility.hiddenProductIds ?? []), ...extraHiddenProductIds]),
+            ),
+          };
+        }
+      }
+    }
 
     const discountConflictsByHandle = deps.resolveCartDiscountConflictsByHandle
       ? await deps
           .resolveCartDiscountConflictsByHandle({
             admin,
-            config,
-            segment,
+            matchedTags: segmentResolution.normalizedTags,
             handles,
             productIdByHandle: visibility.productIdByHandle,
             productCollectionIdsByProductId,
@@ -289,8 +391,8 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
         configUpdatedAt: config.updatedAt,
         quantityConstraintsByHandle,
         quantityConstraintsByProductId,
-        variantVisibilityByProductId,
-        ...visibility,
+        variantVisibilityByProductId: mergedVariantVisibilityByProductId,
+        ...mergedVisibility,
       },
       {
         headers: {

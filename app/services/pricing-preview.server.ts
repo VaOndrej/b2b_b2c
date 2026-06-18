@@ -3,63 +3,11 @@ import { resolveConfiguredPricing } from "../../core/pricing/pricing.config.ts";
 import type { TierPrice } from "../../core/pricing/pricing.types.ts";
 import type { PricingPipelineInput } from "../../core/pricing/pricing.pipeline.ts";
 import type { Segment } from "../../core/segment/segment.types.ts";
-import {
-  buildDiscountRuleset,
-  buildFloorRuleset,
-} from "./margin-guard-config.server.ts";
+import type { CatalogRuleset } from "../../core/catalog/catalog.ruleset.ts";
 
-interface ProductFloorLike {
-  productId: string;
-  segment: string | null;
-  minPercentOfBasePrice: number;
-  allowZeroFinalPrice: boolean | null;
-  b2bOverridePrice?: number | null;
-}
-
-interface ProductTierPriceLike {
-  productId: string;
-  segment: string | null;
-  minQuantity: number;
-  unitPrice: number;
-}
-
-interface DiscountRuleLike {
-  id: string;
-  scope: string;
-  targetId: string | null;
-  code: string | null;
-  segment: string | null;
-  percentOff: number;
-  priority: number;
-  stackMode: string;
-  minPricePercentOfBasePrice: number | null;
-}
-
-interface DiscountBlacklistRuleLike {
-  leftType: string;
-  leftValue: string;
-  rightType: string;
-  rightValue: string;
-  segment: string | null;
-}
-
-interface DiscountSegmentCapLike {
-  segment: string;
-  maxCombinedPercentOff: number;
-}
-
-export interface PricingPreviewConfig {
-  allowStacking: boolean;
-  maxCombinedPercentOff?: number | null;
-  globalMinPricePercent: number;
-  b2bGlobalMinPricePercent?: number;
-  allowZeroFinalPrice: boolean;
-  productFloors: ProductFloorLike[];
-  productTierPrices?: ProductTierPriceLike[];
-  discountRules?: DiscountRuleLike[];
-  discountCombinationBlacklistRules?: DiscountBlacklistRuleLike[];
-  discountSegmentCaps?: DiscountSegmentCapLike[];
-}
+// MVP_5_3 #2.3c — the admin pricing preview simulates against the customer's
+// resolved price catalog (the same per-catalog ruleset the cart validation /
+// discount functions enforce), not the legacy MarginGuardConfig children.
 
 export interface PricingPreviewInput {
   productId: string;
@@ -93,14 +41,20 @@ function normalizeEnteredCodes(values: string[] | undefined): string[] {
 }
 
 export function resolvePricingSimulationInput(
-  config: PricingPreviewConfig,
+  ruleset: CatalogRuleset,
   input: PricingPreviewInput,
 ): PricingPipelineInput {
   const quantity = normalizeQuantity(input.quantity);
-  const configuredPricing = resolveConfiguredPricing(config, {
-    productId: input.productId,
-    segment: input.segment,
-  });
+  const configuredPricing = resolveConfiguredPricing(
+    {
+      productFloors: ruleset.productFloors,
+      productTierPrices: ruleset.productTierPrices,
+    },
+    {
+      productId: input.productId,
+      segment: input.segment,
+    },
+  );
 
   return {
     productId: input.productId,
@@ -114,7 +68,7 @@ export function resolvePricingSimulationInput(
     collectionIds: normalizeStringList(input.collectionIds),
     enteredDiscountCodes: normalizeEnteredCodes(input.enteredDiscountCodes),
     discounts: input.discounts,
-    discountRules: buildDiscountRuleset(config),
-    floorRuleset: buildFloorRuleset(config),
+    discountRules: ruleset.discountRuleset,
+    floorRuleset: ruleset.floorRuleset,
   };
 }

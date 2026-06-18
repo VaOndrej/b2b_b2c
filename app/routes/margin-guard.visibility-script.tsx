@@ -36,6 +36,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         " — this discount is limited at checkout to protect the minimum price.",
       discountConflictZeroPrice:
         " — this discount can't be applied at checkout because it would bring the price to zero.",
+      discountConflictUnverifiable:
+        " — we can't verify this discount against the minimum price; please review it manually.",
     },
     cs: {
       visibility: "Tento produkt neni dostupny pro vas zakaznicky segment.",
@@ -58,6 +60,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         " — tato sleva je u pokladny omezena, aby byla dodrzena minimalni cena.",
       discountConflictZeroPrice:
         " — tuto slevu nelze u pokladny uplatnit, protoze by cenu snizila na nulu.",
+      discountConflictUnverifiable:
+        " — tuto slevu neumime overit proti minimalni cene; zkontrolujte ji prosim rucne.",
     },
   };
   const state = {
@@ -133,12 +137,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const visibilityEndpoint = proxyPrefix + "/visibility";
   const loggedInCustomerId = readProxyParam("logged_in_customer_id");
   const loggedInCustomerTagsRaw = readProxyParam("logged_in_customer_tags");
-  // Gated E2E forced-segment param. Read from the PAGE URL (the way preview_theme_id
+  // Gated E2E forced-audience param. Read from the PAGE URL (the way preview_theme_id
   // rides the storefront URL), then forwarded to the app-proxy visibility fetch so
-  // the loader can resolve the forced segment. The app ignores it unless the
-  // runner-owned MARGIN_GUARD_E2E_OVERRIDE flag is armed; without the param the
-  // proxy call is unchanged.
-  const e2eSegmentOverride = readPageParam("mg_e2e_segment");
+  // the loader can resolve the forced catalog from the injected audience tags. The
+  // app ignores it unless the runner-owned MARGIN_GUARD_E2E_OVERRIDE flag is armed;
+  // without the param the proxy call is unchanged.
+  const e2eAudienceOverride = readPageParam("mg_e2e_audience");
 
   function parseCustomerTagsScope(rawValue) {
     const normalized = String(rawValue || "").trim();
@@ -593,8 +597,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     if (loggedInCustomerTagsRaw) {
       params.set("logged_in_customer_tags", loggedInCustomerTagsRaw);
     }
-    if (e2eSegmentOverride) {
-      params.set("mg_e2e_segment", e2eSegmentOverride);
+    if (e2eAudienceOverride) {
+      params.set("mg_e2e_audience", e2eAudienceOverride);
     }
     debugLog("visibility request", {
       url: visibilityEndpoint + "?" + params.toString(),
@@ -1069,7 +1073,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         const reasonSuffix =
           rawNotice && rawNotice.reason === "ZERO_FINAL_PRICE_NOT_ALLOWED"
             ? messageForLocale("discountConflictZeroPrice")
-            : messageForLocale("discountConflictBelowFloor");
+            : rawNotice && rawNotice.reason === "UNVERIFIABLE_AGAINST_FLOOR"
+              ? messageForLocale("discountConflictUnverifiable")
+              : messageForLocale("discountConflictBelowFloor");
         const percentLabel = isFinite(percentOff) && percentOff > 0 ? " (" + percentOff + "%)" : "";
         item.textContent = discountTitle + percentLabel + reasonSuffix;
         list.appendChild(item);
@@ -4532,7 +4538,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     if (handle) params.set("handle", handle);
     if (productId) params.set("product_id", productId);
     params.set("locale", locale);
-    if (e2eSegmentOverride) params.set("mg_e2e_segment", e2eSegmentOverride);
+    if (e2eAudienceOverride) params.set("mg_e2e_audience", e2eAudienceOverride);
 
     try {
       const response = await fetch(contentEndpoint + "?" + params.toString());

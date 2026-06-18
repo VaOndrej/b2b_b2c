@@ -1,24 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildCartValidationFunctionConfig } from "../../core/config/function-config.ts";
+import { buildCatalogConfigFromCatalogs } from "../../core/config/function-config.ts";
 import { hasExpectedB2BTags } from "../../app/services/cart-validation-activation.server.ts";
 
 test("custom b2bTag propagates into cart validation config b2bTags", () => {
-  const config = buildCartValidationFunctionConfig({
-    b2bTag: " wholesale ",
-    globalMinPricePercent: 70,
-    b2bGlobalMinPricePercent: 65,
-    allowZeroFinalPrice: false,
-    allowStacking: false,
-    maxCombinedPercentOff: null,
-    productFloors: [],
-    productTierPrices: [],
-    productQuantityRules: [],
-    collectionQuantityRules: [],
-    productCustomerQuantityRules: [],
-    productVisibilityRules: [],
-    couponSegmentRules: [],
-  });
+  const config = buildCatalogConfigFromCatalogs(
+    {
+      b2bTag: " wholesale ",
+      globalMinPricePercent: 70,
+      allowZeroFinalPrice: false,
+      allowStacking: false,
+      maxCombinedPercentOff: null,
+    },
+    [],
+  );
 
   assert.deepEqual(config.b2bTags, ["wholesale"]);
   assert.equal(

@@ -4,6 +4,7 @@ import { computeEffectiveBasePrice } from "../../core/pricing/pricing.engine.ts"
 import type { TierPrice } from "../../core/pricing/pricing.types.ts";
 import type { Segment } from "../../core/segment/segment.types.ts";
 import { buildFloorRuleset } from "./margin-guard-config.server.ts";
+import type { CatalogRuleset } from "./catalog-ruleset.server.ts";
 
 interface ProductFloorConfig {
   productId: string;
@@ -116,6 +117,45 @@ export function resolveOrderSegment(input: {
     b2bTag: input.b2bTag,
     hasPurchasingCompany,
   }).segment;
+}
+
+// MVP_5_3 #2.3c — resolve the catalog audience an order falls into (customer
+// tags + purchasing company), so violation logging uses the same catalog that
+// priced the cart instead of the legacy MarginGuardConfig children.
+export function resolveOrderCatalogContext(payload: OrdersCreatePayload): {
+  matchedTags: string[];
+  hasPurchasingCompany: boolean;
+} {
+  const matchedTags = parseTags(payload?.customer?.tags).map((tag) =>
+    tag.trim().toLowerCase(),
+  );
+  const hasPurchasingCompany = Boolean(
+    payload?.buyer_identity?.customer?.purchasing_company?.company?.id ??
+      payload?.buyer_identity?.purchasing_company?.company?.id ??
+      payload?.customer?.purchasing_company?.company?.id ??
+      payload?.purchasing_company?.company?.id,
+  );
+  return { matchedTags, hasPurchasingCompany };
+}
+
+// Map a resolved catalog ruleset into the (segment-shaped) OrderMarginConfig the
+// pure evaluateOrderLine consumes. Floor + tiers + override base prices come from
+// the catalog's effective layer; evaluateOrderLine is invoked with the catalog's
+// mapped audience.
+export function buildOrderMarginConfig(input: {
+  ruleset: CatalogRuleset;
+  b2bTag: string;
+}): OrderMarginConfig {
+  const floor = input.ruleset.floorRuleset.global;
+  return {
+    b2bTag: input.b2bTag,
+    globalMinPricePercent: floor.minPercentOfBasePrice,
+    b2bGlobalMinPricePercent:
+      floor.b2bMinPercentOfBasePrice ?? floor.minPercentOfBasePrice,
+    allowZeroFinalPrice: floor.allowZeroFinalPrice,
+    productFloors: input.ruleset.productFloors,
+    productTierPrices: input.ruleset.productTierPrices,
+  };
 }
 
 function findB2BOverridePrice(input: {

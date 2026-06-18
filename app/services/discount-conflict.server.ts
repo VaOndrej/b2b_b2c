@@ -1,20 +1,16 @@
 import {
   detectDiscountFloorConflicts,
   type AutomaticDiscount,
+  type AutomaticDiscountValueType,
   type ConflictDetectionProduct,
   type DiscountFloorConflict,
 } from "../../core/discount/conflict.detector.ts";
-import type { Segment } from "../../core/segment/segment.types.ts";
 import {
-  buildDiscountRuleset,
-  buildFloorRuleset,
-  getOrCreateMarginGuardConfig,
-} from "./margin-guard-config.server.ts";
+  loadCatalogRulesets,
+  resolveCatalogRuleset,
+  type CatalogRuleset,
+} from "./catalog-ruleset.server.ts";
 import { fetchAutomaticDiscounts } from "./automatic-discounts.server.ts";
-import {
-  getCatalogCollectionMapByIds,
-  getCatalogProductMapByIds,
-} from "./product-catalog.server.ts";
 import { fetchProductCollectionIdsByProductIds } from "./storefront-visibility.server.ts";
 
 interface AdminGraphqlClient {
@@ -28,68 +24,84 @@ interface AdminGraphqlClient {
 // price, so a conflict is price-independent. A nominal base lets us evaluate
 // every product/scope without fetching real prices.
 const NOMINAL_BASE_PRICE = 100;
-const STOREWIDE_PROBE_ID = "__margin_guard_storewide_probe__";
-
-export type ConflictTargetKind = "STOREWIDE" | "PRODUCT" | "COLLECTION";
-
-export interface DiscountConflictView {
-  targetKind: ConflictTargetKind;
-  targetId: string | null;
-  targetLabel: string;
-  segment: Segment;
-  floorPercent: number;
-  totalPercentOff: number;
-  reason: DiscountFloorConflict["reason"];
-  discount: {
-    id: string;
-    title: string;
-    percentOff: number;
-  };
-}
-
-export interface DiscountConflictReport {
-  conflicts: DiscountConflictView[];
-  automaticDiscountCount: number;
-}
-
-type MarginGuardConfig = Awaited<ReturnType<typeof getOrCreateMarginGuardConfig>>;
 
 export interface CartConflictNotice {
   discountTitle: string;
+  valueType: AutomaticDiscountValueType;
   percentOff: number;
+  amount?: number;
+  unsupportedKind?: string;
   floorPercent: number;
   totalPercentOff: number;
   reason: DiscountFloorConflict["reason"];
 }
 
-function buildFloorRulesetFromConfig(config: MarginGuardConfig) {
-  return buildFloorRuleset({
-    globalMinPricePercent: config.globalMinPricePercent,
-    b2bGlobalMinPricePercent: config.b2bGlobalMinPricePercent,
-    allowZeroFinalPrice: config.allowZeroFinalPrice,
-    productFloors: config.productFloors.map((rule) => ({
-      productId: rule.productId,
-      segment: rule.segment,
-      minPercentOfBasePrice: rule.minPercentOfBasePrice,
-      allowZeroFinalPrice: rule.allowZeroFinalPrice ?? null,
-      b2bOverridePrice: rule.b2bOverridePrice ?? null,
-    })),
-  });
+const PRODUCT_UNIT_PRICES_QUERY = `#graphql
+  query MarginGuardProductUnitPrices($ids: [ID!]!) {
+    nodes(ids: $ids) {
+      __typename
+      ... on Product {
+        id
+        priceRangeV2 { minVariantPrice { amount } }
+      }
+    }
+  }`;
+
+/**
+ * Fetch a reference unit price (minimum variant price) for the given products.
+ * Fixed-amount conflict detection needs a real base price; percentage discounts
+ * do not. Returns an empty map on failure so callers degrade gracefully.
+ */
+async function fetchProductUnitPrices(
+  admin: AdminGraphqlClient,
+  productIds: string[],
+): Promise<Record<string, number>> {
+  const ids = Array.from(new Set(productIds.filter(Boolean)));
+  if (ids.length === 0) {
+    return {};
+  }
+  const prices: Record<string, number> = {};
+  try {
+    const response = await admin.graphql(PRODUCT_UNIT_PRICES_QUERY, {
+      variables: { ids },
+    });
+    const payload = await response.json();
+    const nodes = Array.isArray(payload?.data?.nodes) ? payload.data.nodes : [];
+    for (const node of nodes) {
+      if (node?.__typename !== "Product" || !node?.id) {
+        continue;
+      }
+      const amount = Number(node.priceRangeV2?.minVariantPrice?.amount ?? 0);
+      if (Number.isFinite(amount) && amount > 0) {
+        prices[String(node.id)] = Math.round(amount * 100) / 100;
+      }
+    }
+  } catch (error) {
+    console.error("[fetchProductUnitPrices] failed:", error);
+    return {};
+  }
+  return prices;
 }
 
 /**
- * Live, segment-specific conflict lookup for the storefront cart. Given the cart
+ * Live, catalog-specific conflict lookup for the storefront cart. Given the cart
  * line handles (already mapped to product ids + collections by the visibility
- * loader), returns the automatic-discount/floor conflicts per handle so the cart
- * can warn shoppers that a discount will be clipped or blocked at checkout.
+ * loader) and the customer's tags, resolves the customer's price catalog and
+ * returns the automatic-discount/floor conflicts per handle so the cart can warn
+ * shoppers that a discount will be clipped or blocked at checkout.
+ *
+ * MVP_5_3 #2.3c — sources the floor + configured discount rules from catalog
+ * tables (per-catalog ruleset), not the legacy MarginGuardConfig children.
  */
 export async function resolveCartDiscountConflictsByHandle(input: {
   admin: AdminGraphqlClient | undefined;
-  config: MarginGuardConfig;
-  segment: Segment;
+  matchedTags?: string[];
+  hasPurchasingCompany?: boolean;
   handles: string[];
   productIdByHandle: Record<string, string>;
   productCollectionIdsByProductId: Record<string, string[]>;
+  // Injectable for tests; defaults to loading from catalog tables.
+  catalogRulesets?: CatalogRuleset[];
 }): Promise<Record<string, CartConflictNotice[]>> {
   if (!input.admin || input.handles.length === 0) {
     return {};
@@ -97,6 +109,16 @@ export async function resolveCartDiscountConflictsByHandle(input: {
 
   const automaticDiscounts = await fetchAutomaticDiscounts(input.admin);
   if (automaticDiscounts.length === 0) {
+    return {};
+  }
+
+  const rulesets =
+    input.catalogRulesets ?? (await loadCatalogRulesets().catch(() => []));
+  const ruleset = resolveCatalogRuleset(rulesets, {
+    matchedTags: input.matchedTags,
+    hasPurchasingCompany: input.hasPurchasingCompany,
+  });
+  if (!ruleset) {
     return {};
   }
 
@@ -129,6 +151,15 @@ export async function resolveCartDiscountConflictsByHandle(input: {
     }
   }
 
+  // In the cart we know the real price of every line, so fixed-amount discounts
+  // can be verified directly (no downgrade needed) when any are present.
+  const hasFixedAmount = automaticDiscounts.some(
+    (discount) => discount.valueType === "FIXED_AMOUNT",
+  );
+  const priceByProductId = hasFixedAmount
+    ? await fetchProductUnitPrices(input.admin, cartProductIds)
+    : {};
+
   const handleByProductId = new Map<string, string>();
   const products: ConflictDetectionProduct[] = [];
   for (const handle of input.handles) {
@@ -140,7 +171,7 @@ export async function resolveCartDiscountConflictsByHandle(input: {
     products.push({
       productId,
       handle,
-      effectiveBasePrice: NOMINAL_BASE_PRICE,
+      effectiveBasePrice: priceByProductId[productId] ?? NOMINAL_BASE_PRICE,
       collectionIds: collectionMembership[productId] ?? [],
     });
   }
@@ -151,9 +182,9 @@ export async function resolveCartDiscountConflictsByHandle(input: {
   const conflicts = detectDiscountFloorConflicts({
     products,
     automaticDiscounts,
-    configuredDiscountRules: buildDiscountRuleset(input.config),
-    floorRuleset: buildFloorRulesetFromConfig(input.config),
-    segments: [input.segment],
+    configuredDiscountRules: ruleset.discountRuleset,
+    floorRuleset: ruleset.floorRuleset,
+    segments: [ruleset.segment],
   });
 
   const byHandle: Record<string, CartConflictNotice[]> = {};
@@ -164,139 +195,21 @@ export async function resolveCartDiscountConflictsByHandle(input: {
     }
     (byHandle[handle] ??= []).push({
       discountTitle: conflict.offendingDiscount.title ?? "Automatic discount",
+      valueType: conflict.offendingDiscount.valueType,
       percentOff: conflict.offendingDiscount.percentOff,
-      floorPercent: Math.round((conflict.floorPrice / NOMINAL_BASE_PRICE) * 100),
+      ...(conflict.offendingDiscount.amount != null
+        ? { amount: conflict.offendingDiscount.amount }
+        : {}),
+      ...(conflict.offendingDiscount.unsupportedKind != null
+        ? { unsupportedKind: conflict.offendingDiscount.unsupportedKind }
+        : {}),
+      floorPercent:
+        conflict.effectiveBasePrice > 0
+          ? Math.round((conflict.floorPrice / conflict.effectiveBasePrice) * 100)
+          : 0,
       totalPercentOff: conflict.totalPercentOff,
       reason: conflict.reason,
     });
   }
   return byHandle;
-}
-
-function collectProbeProductIds(
-  config: MarginGuardConfig,
-  automaticDiscounts: AutomaticDiscount[],
-): Set<string> {
-  const productIds = new Set<string>();
-  for (const rule of config.productFloors) {
-    if (rule.productId) {
-      productIds.add(rule.productId);
-    }
-  }
-  for (const rule of config.discountRules) {
-    if (rule.scope === "PRODUCT" && rule.targetId) {
-      productIds.add(rule.targetId);
-    }
-  }
-  for (const discount of automaticDiscounts) {
-    if (discount.scope === "PRODUCT" && discount.targetId) {
-      productIds.add(discount.targetId);
-    }
-  }
-  return productIds;
-}
-
-function collectProbeCollectionIds(automaticDiscounts: AutomaticDiscount[]): Set<string> {
-  const collectionIds = new Set<string>();
-  for (const discount of automaticDiscounts) {
-    if (discount.scope === "COLLECTION" && discount.targetId) {
-      collectionIds.add(discount.targetId);
-    }
-  }
-  return collectionIds;
-}
-
-/**
- * Compute admin-facing discount/floor conflicts: active automatic Shopify
- * discounts that, combined with the configured margin-guard rules, would push a
- * product below the margin floor and get blocked at checkout.
- */
-export async function buildDiscountConflictReport(
-  admin: AdminGraphqlClient,
-): Promise<DiscountConflictReport> {
-  const config = await getOrCreateMarginGuardConfig();
-  const automaticDiscounts = await fetchAutomaticDiscounts(admin);
-
-  if (automaticDiscounts.length === 0) {
-    return { conflicts: [], automaticDiscountCount: 0 };
-  }
-
-  const floorRuleset = buildFloorRulesetFromConfig(config);
-  const discountRuleset = buildDiscountRuleset(config);
-
-  const probeProductIds = collectProbeProductIds(config, automaticDiscounts);
-  const probeCollectionIds = collectProbeCollectionIds(automaticDiscounts);
-
-  const [productMap, collectionMap] = await Promise.all([
-    probeProductIds.size > 0
-      ? getCatalogProductMapByIds(Array.from(probeProductIds))
-      : Promise.resolve({} as Record<string, { title?: string; handle?: string | null }>),
-    probeCollectionIds.size > 0
-      ? getCatalogCollectionMapByIds(Array.from(probeCollectionIds))
-      : Promise.resolve({} as Record<string, { title?: string; handle?: string | null }>),
-  ]);
-
-  const probes: ConflictDetectionProduct[] = [
-    { productId: STOREWIDE_PROBE_ID, effectiveBasePrice: NOMINAL_BASE_PRICE, collectionIds: [] },
-  ];
-  for (const productId of probeProductIds) {
-    probes.push({
-      productId,
-      title: productMap[productId]?.title,
-      handle: productMap[productId]?.handle ?? undefined,
-      effectiveBasePrice: NOMINAL_BASE_PRICE,
-      collectionIds: [],
-    });
-  }
-  for (const collectionId of probeCollectionIds) {
-    probes.push({
-      productId: `__collection_probe__:${collectionId}`,
-      title: collectionMap[collectionId]?.title,
-      effectiveBasePrice: NOMINAL_BASE_PRICE,
-      collectionIds: [collectionId],
-    });
-  }
-
-  const rawConflicts = detectDiscountFloorConflicts({
-    products: probes,
-    automaticDiscounts,
-    configuredDiscountRules: discountRuleset,
-    floorRuleset,
-  });
-
-  const conflicts = rawConflicts.map((conflict): DiscountConflictView => {
-    const floorPercent = Math.round((conflict.floorPrice / NOMINAL_BASE_PRICE) * 100);
-    const base = {
-      segment: conflict.segment,
-      floorPercent,
-      totalPercentOff: conflict.totalPercentOff,
-      reason: conflict.reason,
-      discount: {
-        id: conflict.offendingDiscount.id,
-        title: conflict.offendingDiscount.title ?? "Automatic discount",
-        percentOff: conflict.offendingDiscount.percentOff,
-      },
-    };
-
-    if (conflict.productId === STOREWIDE_PROBE_ID) {
-      return { ...base, targetKind: "STOREWIDE", targetId: null, targetLabel: "All products" };
-    }
-    if (conflict.productId.startsWith("__collection_probe__:")) {
-      const collectionId = conflict.productId.slice("__collection_probe__:".length);
-      return {
-        ...base,
-        targetKind: "COLLECTION",
-        targetId: collectionId,
-        targetLabel: conflict.title ?? "Collection",
-      };
-    }
-    return {
-      ...base,
-      targetKind: "PRODUCT",
-      targetId: conflict.productId,
-      targetLabel: conflict.title ?? conflict.productId,
-    };
-  });
-
-  return { conflicts, automaticDiscountCount: automaticDiscounts.length };
 }

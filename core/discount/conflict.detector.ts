@@ -17,10 +17,30 @@ import type { DiscountInput, DiscountRules } from "./discount.rules.ts";
  * and margin guard so the warning reflects exactly what enforcement will do.
  */
 
+/**
+ * MVP_5_2 — the conflict detector is value-aware. Native Shopify discounts come
+ * in several value shapes; we convert what we can to an effective price and
+ * compare against the floor, and explicitly flag what we cannot verify so the
+ * merchant is warned in the admin instead of silently ignored.
+ */
+export type AutomaticDiscountValueType =
+  | "PERCENTAGE"
+  | "FIXED_AMOUNT"
+  | "UNSUPPORTED";
+
 export interface AutomaticDiscount {
   id: string;
   title?: string;
-  percentOff: number;
+  /** Defaults to PERCENTAGE when omitted (backward compatible). */
+  valueType?: AutomaticDiscountValueType;
+  /** For PERCENTAGE — percent off (0..100). */
+  percentOff?: number;
+  /** For FIXED_AMOUNT — money amount off. */
+  amount?: number;
+  /** For FIXED_AMOUNT — whether the amount applies per unit or once per order. */
+  amountScope?: "PER_UNIT" | "PER_ORDER";
+  /** For UNSUPPORTED — human label of the native kind (e.g. "Buy X get Y"). */
+  unsupportedKind?: string;
   scope: "GLOBAL" | "COLLECTION" | "PRODUCT";
   /** Product or collection gid for PRODUCT/COLLECTION scope. */
   targetId?: string;
@@ -46,11 +66,21 @@ export interface DiscountFloorConflict {
   projectedFinalPrice: number;
   totalPercentOff: number;
   violationAmount: number;
-  reason: "BELOW_FLOOR" | "ZERO_FINAL_PRICE_NOT_ALLOWED";
+  reason:
+    | "BELOW_FLOOR"
+    | "ZERO_FINAL_PRICE_NOT_ALLOWED"
+    /** MVP_5_2 — native discount we cannot convert to an effective price. */
+    | "UNVERIFIABLE_AGAINST_FLOOR";
   offendingDiscount: {
     id: string;
     title?: string;
+    valueType: AutomaticDiscountValueType;
+    /** Derived/equivalent percent off; 0 for unverifiable discounts. */
     percentOff: number;
+    /** Present for FIXED_AMOUNT discounts. */
+    amount?: number;
+    /** Present for UNSUPPORTED discounts. */
+    unsupportedKind?: string;
   };
 }
 
@@ -60,14 +90,50 @@ function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+function clampPercent(value: number): number {
+  return Math.min(100, Math.max(0, value));
+}
+
+/**
+ * Convert a native automatic discount into the percent-off the orchestrator
+ * understands, given a product's effective base price. Returns null when the
+ * discount has no effect (skip), or `{ unverifiable: true }` when the discount
+ * cannot be reliably converted to an effective price (flag for manual review).
+ */
+function resolveDiscountEffect(
+  discount: AutomaticDiscount,
+  effectiveBasePrice: number,
+): { percentOff: number } | { unverifiable: true } | null {
+  const valueType = discount.valueType ?? "PERCENTAGE";
+
+  if (valueType === "PERCENTAGE") {
+    const percentOff = Number(discount.percentOff ?? 0);
+    return percentOff > 0 ? { percentOff: clampPercent(percentOff) } : null;
+  }
+
+  if (valueType === "FIXED_AMOUNT") {
+    const amount = Number(discount.amount ?? 0);
+    if (!(amount > 0)) {
+      return null;
+    }
+    // A per-order fixed amount is spread across the whole cart at checkout; we
+    // cannot attribute it to a single line's floor reliably → flag it.
+    if (discount.amountScope === "PER_ORDER") {
+      return { unverifiable: true };
+    }
+    // Per-unit fixed amount → exact percent equivalent against the base price.
+    return { percentOff: clampPercent((amount / effectiveBasePrice) * 100) };
+  }
+
+  // UNSUPPORTED (BXGY, bundle, etc.) — cannot be converted to an effective price.
+  return { unverifiable: true };
+}
+
 function isAutomaticDiscountApplicable(
   discount: AutomaticDiscount,
   product: ConflictDetectionProduct,
   segment: Segment,
 ): boolean {
-  if (discount.percentOff <= 0) {
-    return false;
-  }
   if (discount.segment && discount.segment !== segment) {
     return false;
   }
@@ -115,9 +181,52 @@ export function detectDiscountFloorConflicts(input: {
       }
 
       for (const discount of applicable) {
+        const valueType = discount.valueType ?? "PERCENTAGE";
+        const effect = resolveDiscountEffect(discount, product.effectiveBasePrice);
+        if (effect == null) {
+          continue;
+        }
+
+        const offendingDiscount = {
+          id: discount.id,
+          title: discount.title,
+          valueType,
+          percentOff: "percentOff" in effect ? roundMoney(effect.percentOff) : 0,
+          ...(discount.amount != null ? { amount: roundMoney(discount.amount) } : {}),
+          ...(discount.unsupportedKind != null
+            ? { unsupportedKind: discount.unsupportedKind }
+            : {}),
+        };
+
+        // Discounts we cannot convert to an effective price: surface them so the
+        // merchant can check them manually rather than ignoring them silently.
+        if ("unverifiable" in effect) {
+          const margin = validateMargin({
+            productId: product.productId,
+            segment,
+            effectiveBasePrice: product.effectiveBasePrice,
+            finalPrice: product.effectiveBasePrice,
+            ruleset: input.floorRuleset,
+          });
+          conflicts.push({
+            productId: product.productId,
+            title: product.title,
+            handle: product.handle,
+            segment,
+            effectiveBasePrice: roundMoney(product.effectiveBasePrice),
+            floorPrice: margin.floorPrice,
+            projectedFinalPrice: roundMoney(product.effectiveBasePrice),
+            totalPercentOff: 0,
+            violationAmount: 0,
+            reason: "UNVERIFIABLE_AGAINST_FLOOR",
+            offendingDiscount,
+          });
+          continue;
+        }
+
         const discountInput: DiscountInput = {
           sourceId: discount.id,
-          percentOff: discount.percentOff,
+          percentOff: effect.percentOff,
           // Automatic Shopify discounts win priority at checkout; mark high so the
           // orchestrator keeps them when stacked with configured rules.
           priority: 1000,
@@ -159,11 +268,7 @@ export function detectDiscountFloorConflicts(input: {
           totalPercentOff: resolution.totalPercentOff,
           violationAmount: margin.violationAmount,
           reason: margin.reason,
-          offendingDiscount: {
-            id: discount.id,
-            title: discount.title,
-            percentOff: discount.percentOff,
-          },
+          offendingDiscount,
         });
       }
     }

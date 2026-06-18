@@ -52,17 +52,9 @@ model MarginGuardConfig {
   cartValidationLastSyncAt DateTime?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-  productFloors         ProductFloorRule[]
-  productTierPrices     ProductTierPriceRule[]
-  productQuantityRules  ProductQuantityRule[]
-  collectionQuantityRules CollectionQuantityRule[]
-  productCustomerQuantityRules ProductCustomerQuantityRule[]
-  productVisibilityRules ProductVisibilityRule[]
-  productVariantVisibilityRules ProductVariantVisibilityRule[]
-  couponSegmentRules    CouponSegmentRule[]
-  discountRules         DiscountRule[]
-  discountCombinationBlacklistRules DiscountCombinationBlacklistRule[]
-  discountSegmentCaps   DiscountSegmentCap[]
+  // MVP_5_3 #2.3c — the per-segment pricing/discount/quantity/visibility children
+  // were dropped; price catalogs are now the single source of truth. Only
+  // shop-wide scalars + violations + the separate storefront-content rules remain.
   violations            MarginViolationLog[]
   storefrontContentRules StorefrontContentRule[]
   collectionVisibilityRules CollectionVisibilityRule[]
@@ -121,162 +113,6 @@ model CatalogVariant {
   @@unique([sourceType, externalKey])
 }
 
-model ProductFloorRule {
-  id                    String            @id @default(cuid())
-  configId              String
-  config                MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  productId             String
-  segment               String?
-  minPercentOfBasePrice Float
-  allowZeroFinalPrice   Boolean?
-  b2bOverridePrice      Float?
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-
-  @@unique([configId, productId, segment])
-}
-
-model ProductTierPriceRule {
-  id         String            @id @default(cuid())
-  configId   String
-  config     MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  productId  String
-  segment    String?
-  minQuantity Int
-  unitPrice  Float
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
-
-  @@unique([configId, productId, segment, minQuantity])
-}
-
-model ProductQuantityRule {
-  id                   String            @id @default(cuid())
-  configId             String
-  config               MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  productId            String
-  segment              String?
-  minimumOrderQuantity Int
-  stepQuantity         Int?
-  maxOrderQuantity     Int?
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
-
-  @@unique([configId, productId, segment])
-}
-
-model ProductCustomerQuantityRule {
-  id               String            @id @default(cuid())
-  configId         String
-  config           MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  productId        String
-  customerId       String
-  maxOrderQuantity Int
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-
-  @@unique([configId, productId, customerId])
-}
-
-model CollectionQuantityRule {
-  id               String            @id @default(cuid())
-  configId         String
-  config           MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  collectionId     String
-  segment          String?
-  maxOrderQuantity Int
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-
-  @@unique([configId, collectionId, segment])
-}
-
-model ProductVisibilityRule {
-  id             String            @id @default(cuid())
-  configId       String
-  config         MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  productId      String
-  visibilityMode String
-  customerId     String?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-
-  @@unique([configId, productId])
-}
-
-model ProductVariantVisibilityRule {
-  id             String            @id @default(cuid())
-  configId       String
-  config         MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  productId      String
-  variantId      String
-  visibilityMode String
-  customerId     String?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-
-  @@unique([configId, variantId])
-}
-
-model CouponSegmentRule {
-  id             String            @id @default(cuid())
-  configId       String
-  config         MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  code           String
-  allowedSegment String
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-
-  @@unique([configId, code])
-}
-
-model DiscountRule {
-  id                       String            @id @default(cuid())
-  configId                 String
-  config                   MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  scope                    String
-  canonicalKey             String
-  targetId                 String?
-  code                     String?
-  segment                  String?
-  percentOff               Float
-  priority                 Int               @default(100)
-  stackMode                String            @default("STACKABLE")
-  minPricePercentOfBasePrice Float?
-  createdAt                DateTime          @default(now())
-  updatedAt                DateTime          @updatedAt
-
-  @@unique([configId, canonicalKey])
-}
-
-model DiscountCombinationBlacklistRule {
-  id         String            @id @default(cuid())
-  configId   String
-  config     MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  canonicalPairKey String
-  leftType   String
-  leftValue  String
-  rightType  String
-  rightValue String
-  segment    String?
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
-
-  @@unique([configId, canonicalPairKey])
-}
-
-model DiscountSegmentCap {
-  id                    String            @id @default(cuid())
-  configId              String
-  config                MarginGuardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  segment               String
-  maxCombinedPercentOff Float
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-
-  @@unique([configId, segment])
-}
-
 model MarginViolationLog {
   id              String            @id @default(cuid())
   configId        String
@@ -328,4 +164,237 @@ model CollectionVisibilityRule {
   updatedAt        DateTime          @updatedAt
 
   @@unique([configId, collectionId])
+}
+
+// ---------------------------------------------------------------------------
+// MVP_5_3 — Simulated price catalogs. A catalog generalizes the binary B2B/B2C
+// segment into a universal scoping key (audience + membership + price list +
+// floor + discounts + quantity + optional market). The default (base) catalog
+// is the global baseline / anonymous-B2C fallback; other catalogs are deltas.
+//
+// NOTE: the existing CatalogProduct/CatalogCollection/CatalogVariant models are
+// the import master-list ("Products / Source"), NOT price catalogs — left as-is.
+//
+// Phase 1 is additive: these tables are created and seeded with the two system
+// catalogs (default + b2b) so behavior is unchanged. The destructive
+// segment→catalogId remap + reader switch is sequenced into Phase 2, where the
+// admin and config builder actually consume these tables.
+// ---------------------------------------------------------------------------
+
+model PriceCatalog {
+  id             String   @id @default(cuid())
+  name           String
+  priority       Int      @default(0)
+  status         String   @default("ACTIVE")
+  isDefault      Boolean  @default(false)
+  isSystem       Boolean  @default(false)
+  matchCompany   Boolean  @default(false)
+  membershipMode String   @default("INHERIT_ALL")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  audienceTags  CatalogAudienceTag[]
+  marketFilters CatalogMarketFilter[]
+  memberships   CatalogMembership[]
+  priceRules    CatalogPriceRule[]
+  tierPrices    CatalogTierPriceRule[]
+  floorRules    CatalogFloorRule[]
+  quantityRules CatalogQuantityRule[]
+  discountRules CatalogDiscountRule[]
+  variantVisibilityRules CatalogVariantVisibilityRule[]
+  visibilityRules CatalogVisibilityRule[]
+  couponRules   CatalogCouponRule[]
+  discountCaps  CatalogDiscountCap[]
+  blacklistRules CatalogDiscountBlacklistRule[]
+  customerQuantityRules CatalogCustomerQuantityRule[]
+}
+
+model CatalogAudienceTag {
+  id        String       @id @default(cuid())
+  catalogId String
+  catalog   PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  tag       String
+
+  @@unique([catalogId, tag])
+}
+
+model CatalogMarketFilter {
+  id           String       @id @default(cuid())
+  catalogId    String
+  catalog      PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  countryCode  String?
+  currencyCode String?
+  languageCode String?
+}
+
+model CatalogMembership {
+  id        String       @id @default(cuid())
+  catalogId String
+  catalog   PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  productId String
+
+  @@unique([catalogId, productId])
+}
+
+model CatalogPriceRule {
+  id        String       @id @default(cuid())
+  catalogId String
+  catalog   PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  scope     String // CATALOG | COLLECTION | PRODUCT | VARIANT
+  targetId  String?
+  mode      String // FIXED | PERCENT
+  value     Float
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([catalogId, scope, targetId])
+}
+
+model CatalogTierPriceRule {
+  id          String       @id @default(cuid())
+  catalogId   String
+  catalog     PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  productId   String
+  variantId   String?
+  minQuantity Int
+  unitPrice   Float
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([catalogId, productId, variantId, minQuantity])
+}
+
+model CatalogFloorRule {
+  id                    String       @id @default(cuid())
+  catalogId             String
+  catalog               PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  productId             String? // null = catalog-level default
+  variantId             String?
+  minPercentOfBasePrice Float
+  allowZeroFinalPrice   Boolean?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@unique([catalogId, productId, variantId])
+}
+
+model CatalogQuantityRule {
+  id           String       @id @default(cuid())
+  catalogId    String
+  catalog      PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  productId    String?
+  variantId    String?
+  collectionId String?
+  moq          Int?
+  step         Int?
+  max          Int?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([catalogId, productId, variantId, collectionId])
+}
+
+model CatalogDiscountRule {
+  id                         String       @id @default(cuid())
+  catalogId                  String
+  catalog                    PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  scope                      String
+  targetId                   String?
+  code                       String?
+  percentOff                 Float
+  priority                   Int          @default(100)
+  stackMode                  String       @default("STACKABLE")
+  minPricePercentOfBasePrice Float?
+  createdAt                  DateTime     @default(now())
+  updatedAt                  DateTime     @updatedAt
+}
+
+// MVP_5_3 #1 — per-catalog VARIANT visibility (e.g. a carton variant visible
+// only in the wholesale catalog). visibilityMode "HIDDEN" hides the variant for
+// customers resolved into this catalog. Projected to the storefront per catalog.
+model CatalogVariantVisibilityRule {
+  id             String       @id @default(cuid())
+  catalogId      String
+  catalog        PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  productId      String
+  variantId      String
+  visibilityMode String       @default("HIDDEN")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([catalogId, variantId])
+}
+
+// MVP_5_3 #2.0a — per-catalog PRODUCT / COLLECTION visibility (catalog-native
+// replacement for the legacy segment-based ProductVisibilityRule /
+// CollectionVisibilityRule). visibilityMode "HIDDEN" hides the target for
+// customers resolved into this catalog. `handle` caches the storefront handle
+// (collections are hidden by handle; product handles are resolved at projection).
+model CatalogVisibilityRule {
+  id             String       @id @default(cuid())
+  catalogId      String
+  catalog        PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  scope          String // "PRODUCT" | "COLLECTION"
+  targetId       String
+  handle         String?
+  visibilityMode String       @default("HIDDEN")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([catalogId, scope, targetId])
+}
+
+// MVP_5_3 #2.0b — a coupon code is allowed for this catalog's audience
+// (catalog-native replacement for CouponSegmentRule). A code with any catalog
+// rule is restricted to those catalogs.
+model CatalogCouponRule {
+  id        String       @id @default(cuid())
+  catalogId String
+  catalog   PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  code      String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([catalogId, code])
+}
+
+// MVP_5_3 #2.0d — per-catalog max combined discount cap (replaces
+// DiscountSegmentCap). One cap per catalog.
+model CatalogDiscountCap {
+  id                    String       @id @default(cuid())
+  catalogId             String       @unique
+  catalog               PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  maxCombinedPercentOff Float
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+}
+
+// MVP_5_3 #2.0c — discount combination blacklist as catalog/shop policy
+// (replaces DiscountCombinationBlacklistRule). Put shop-wide pairs on the
+// default catalog; per-catalog pairs on the catalog.
+model CatalogDiscountBlacklistRule {
+  id         String       @id @default(cuid())
+  catalogId  String
+  catalog    PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  leftType   String
+  leftValue  String
+  rightType  String
+  rightValue String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
+
+// MVP_5_3 #2.0e — per-catalog customer-specific max order quantity (replaces
+// ProductCustomerQuantityRule).
+model CatalogCustomerQuantityRule {
+  id               String       @id @default(cuid())
+  catalogId        String
+  catalog          PriceCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  customerId       String
+  productId        String
+  maxOrderQuantity Int
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@unique([catalogId, customerId, productId])
 }

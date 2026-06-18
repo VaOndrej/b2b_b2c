@@ -24,8 +24,9 @@ test("normalizes a global percentage automatic discount", () => {
     {
       id: "gid://shopify/DiscountAutomaticNode/1",
       title: "Spring Sale",
-      percentOff: 40,
       scope: "GLOBAL",
+      valueType: "PERCENTAGE",
+      percentOff: 40,
     },
   ]);
 });
@@ -69,26 +70,86 @@ test("expands collection-scoped discount into one entry per collection", () => {
     {
       id: "gid://shopify/DiscountAutomaticNode/1",
       title: "Spring Sale",
-      percentOff: 50,
       scope: "COLLECTION",
       targetId: "gid://shopify/Collection/9",
+      valueType: "PERCENTAGE",
+      percentOff: 50,
     },
   ]);
 });
 
-test("skips inactive, non-percentage, and non-automatic discounts", () => {
-  assert.deepEqual(normalizeDiscountNode(basicNode({ status: "EXPIRED" })), []);
-  assert.deepEqual(
-    normalizeDiscountNode(
-      basicNode({
-        customerGets: {
-          value: { __typename: "DiscountAmount", amount: { amount: "5.0" } },
-          items: { __typename: "AllDiscountItems", allItems: true },
-        },
-      }),
-    ),
-    [],
+test("normalizes a per-order fixed-amount automatic discount", () => {
+  const result = normalizeDiscountNode(
+    basicNode({
+      customerGets: {
+        value: { __typename: "DiscountAmount", amount: { amount: "5.0" } },
+        items: { __typename: "AllDiscountItems", allItems: true },
+      },
+    }),
   );
+  assert.deepEqual(result, [
+    {
+      id: "gid://shopify/DiscountAutomaticNode/1",
+      title: "Spring Sale",
+      scope: "GLOBAL",
+      valueType: "FIXED_AMOUNT",
+      amount: 5,
+      amountScope: "PER_ORDER",
+    },
+  ]);
+});
+
+test("normalizes a per-unit fixed-amount automatic discount", () => {
+  const result = normalizeDiscountNode(
+    basicNode({
+      customerGets: {
+        value: {
+          __typename: "DiscountAmount",
+          appliesOnEachItem: true,
+          amount: { amount: "3" },
+        },
+        items: {
+          __typename: "DiscountProducts",
+          products: { nodes: [{ id: "gid://shopify/Product/7" }] },
+        },
+      },
+    }),
+  );
+  assert.deepEqual(result, [
+    {
+      id: "gid://shopify/DiscountAutomaticNode/1",
+      title: "Spring Sale",
+      scope: "PRODUCT",
+      targetId: "gid://shopify/Product/7",
+      valueType: "FIXED_AMOUNT",
+      amount: 3,
+      amountScope: "PER_UNIT",
+    },
+  ]);
+});
+
+test("flags BXGY automatic discounts as unsupported instead of dropping them", () => {
+  const result = normalizeDiscountNode({
+    id: "gid://shopify/DiscountAutomaticNode/9",
+    discount: {
+      __typename: "DiscountAutomaticBxgy",
+      title: "Buy 2 get 1",
+      status: "ACTIVE",
+    },
+  });
+  assert.deepEqual(result, [
+    {
+      id: "gid://shopify/DiscountAutomaticNode/9",
+      title: "Buy 2 get 1",
+      scope: "GLOBAL",
+      valueType: "UNSUPPORTED",
+      unsupportedKind: "Buy X Get Y",
+    },
+  ]);
+});
+
+test("skips inactive and non-automatic discounts", () => {
+  assert.deepEqual(normalizeDiscountNode(basicNode({ status: "EXPIRED" })), []);
   assert.deepEqual(
     normalizeDiscountNode({ id: "x", discount: { __typename: "DiscountCodeBasic" } }),
     [],

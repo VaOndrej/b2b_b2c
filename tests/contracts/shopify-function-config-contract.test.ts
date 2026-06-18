@@ -2,9 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
-  buildCartValidationFunctionConfig,
-  buildDiscountFunctionConfig,
+  buildCatalogConfigFromCatalogs,
+  type CatalogTableInput,
 } from "../../core/config/function-config.ts";
+
+// MVP_5_3 #2.3 — the legacy *B2C/*B2B builders were deleted; per-facet mapping is
+// now covered by catalog-from-tables + catalog-custom-runtime. This file keeps
+// the contract between the Shopify Function input queries / extension toml and
+// the catalog-native config payload.
 
 const CART_VALIDATION_QUERY_PATH =
   "extensions/margin-guard-cart-validation/src/cart_validations_generate_run.graphql";
@@ -13,747 +18,70 @@ const DISCOUNT_QUERY_PATH =
 const CART_VALIDATION_TOML_PATH =
   "extensions/margin-guard-cart-validation/shopify.extension.toml";
 
-test("cart validation query variable contract matches generated config payload", async () => {
-  const query = await readFile(CART_VALIDATION_QUERY_PATH, "utf8");
-
-  assert.match(
-    query,
-    /\$b2bTags:\s*\[String!\]!\s*=\s*\["b2b"\]/,
-    "[CONTRACT FAIL] Cart validation query musi deklarovat b2bTags variable s fallback default.",
-  );
-  assert.match(
-    query,
-    /\$collectionIds:\s*\[ID!\]/,
-    "[CONTRACT FAIL] Cart validation query musi deklarovat collectionIds variable.",
-  );
-  assert.match(
-    query,
-    /hasAnyTag\(tags:\s*\$b2bTags\)/,
-    "[CONTRACT FAIL] Cart validation query musi pouzivat b2bTags variable v hasAnyTag.",
-  );
-  assert.match(
-    query,
-    /inCollections\(ids:\s*\$collectionIds\)/,
-    "[CONTRACT FAIL] Cart validation query musi nacitat product.inCollections pro collection quantity limity.",
-  );
-  assert.match(
-    query,
-    /buyerIdentity\s*\{[\s\S]*purchasingCompany\s*\{[\s\S]*company\s*\{[\s\S]*id/,
-    "[CONTRACT FAIL] Cart validation query musi nacitat purchasingCompany pro B2B role precedence.",
-  );
-  assert.match(
-    query,
-    /customer\s*\{[\s\S]*id[\s\S]*hasAnyTag/,
-    "[CONTRACT FAIL] Cart validation query musi nacitat customer.id pro customer-specific visibility rules.",
-  );
-  assert.match(
-    query,
-    /product\s*\{[\s\S]*id[\s\S]*title/,
-    "[CONTRACT FAIL] Cart validation query musi nacitat product.title pro konkretni product names v hlaskach.",
-  );
-  assert.match(
-    query,
-    /localization\s*\{[\s\S]*language\s*\{[\s\S]*isoCode/,
-    "[CONTRACT FAIL] Cart validation query musi nacitat localization.language.isoCode pro lokalizovane message.",
-  );
-
-  const cartConfig = buildCartValidationFunctionConfig({
-    b2bTag: " wholesale ",
-    globalMinPricePercent: 65,
-    allowZeroFinalPrice: false,
-    allowStacking: true,
-    maxCombinedPercentOff: 42.5,
-    productFloors: [],
-  });
-
-  assert.deepEqual(
-    cartConfig.b2bTags,
-    ["wholesale"],
-    "[CONTRACT FAIL] Generated cart validation config musi vzdy obsahovat normalizovane b2bTags.",
-  );
-  assert.deepEqual(
-    cartConfig.collectionIds,
-    [],
-    "[CONTRACT FAIL] Generated cart validation config musi obsahovat collectionIds pole i kdyz je prazdne.",
-  );
-  assert.equal(
-    cartConfig.allowStacking,
-    true,
-    "[CONTRACT FAIL] Cart validation config musi prenaset allowStacking.",
-  );
-  assert.equal(
-    cartConfig.maxCombinedPercentOff,
-    42.5,
-    "[CONTRACT FAIL] Cart validation config musi prenaset maxCombinedPercentOff.",
-  );
+test("both function queries declare b2bTags + catalogTags + collectionIds with fallbacks", async () => {
+  const [cartQuery, discountQuery] = await Promise.all([
+    readFile(CART_VALIDATION_QUERY_PATH, "utf8"),
+    readFile(DISCOUNT_QUERY_PATH, "utf8"),
+  ]);
+  for (const [name, query] of [
+    ["cart validation", cartQuery],
+    ["discount", discountQuery],
+  ] as const) {
+    assert.match(query, /\$b2bTags:\s*\[String!\]!\s*=\s*\["b2b"\]/, `[${name}] $b2bTags fallback`);
+    assert.match(query, /hasAnyTag\(tags:\s*\$b2bTags\)/, `[${name}] hasAnyTag($b2bTags)`);
+    assert.match(query, /\$catalogTags:\s*\[String!\]!\s*=\s*\[\]/, `[${name}] $catalogTags`);
+    assert.match(query, /hasTags\(tags:\s*\$catalogTags\)/, `[${name}] hasTags($catalogTags)`);
+    assert.match(query, /\$collectionIds:\s*\[ID!\]/, `[${name}] $collectionIds`);
+    assert.match(query, /inCollections\(ids:\s*\$collectionIds\)/, `[${name}] inCollections`);
+    assert.match(
+      query,
+      /purchasingCompany\s*\{[\s\S]*company\s*\{[\s\S]*id/,
+      `[${name}] purchasingCompany for B2B role precedence`,
+    );
+    assert.match(
+      query,
+      /\.\.\.\s*on ProductVariant\s*\{[\s\S]*id/,
+      `[${name}] merchandise variant id for variant-level rules`,
+    );
+    assert.match(
+      query,
+      /localization\s*\{[\s\S]*language\s*\{[\s\S]*isoCode/,
+      `[${name}] localization.language.isoCode`,
+    );
+    assert.match(
+      query,
+      /country\s*\{[\s\S]*isoCode/,
+      `[${name}] localization.country.isoCode for market-scoped catalogs`,
+    );
+  }
 });
 
-test("discount query variable contract matches generated config payload", async () => {
+test("discount query reads entered codes + cart cost (incl. tax) for combined-cap detection", async () => {
   const query = await readFile(DISCOUNT_QUERY_PATH, "utf8");
-
-  assert.match(
-    query,
-    /\$b2bTags:\s*\[String!\]!\s*=\s*\["b2b"\]/,
-    "[CONTRACT FAIL] Discount query musi deklarovat b2bTags variable s fallback default.",
-  );
-  assert.match(
-    query,
-    /hasAnyTag\(tags:\s*\$b2bTags\)/,
-    "[CONTRACT FAIL] Discount query musi pouzivat b2bTags variable v hasAnyTag.",
-  );
-  assert.match(
-    query,
-    /buyerIdentity\s*\{[\s\S]*purchasingCompany\s*\{[\s\S]*company\s*\{[\s\S]*id/,
-    "[CONTRACT FAIL] Discount query musi nacitat purchasingCompany pro B2B role precedence.",
-  );
-  assert.match(
-    query,
-    /enteredDiscountCodes\s*\{[\s\S]*code[\s\S]*rejectable/,
-    "[CONTRACT FAIL] Discount query musi nacitat enteredDiscountCodes pro segment-based coupon validation.",
-  );
-  assert.match(
-    query,
-    /cost\s*\{[\s\S]*subtotalAmount[\s\S]*totalAmount/,
-    "[CONTRACT FAIL] Discount query musi nacitat subtotalAmount i totalAmount pro combined-discount cap.",
-  );
+  assert.match(query, /enteredDiscountCodes\s*\{[\s\S]*code[\s\S]*rejectable/);
   assert.match(
     query,
     /cart\s*\{[\s\S]*cost\s*\{[\s\S]*subtotalAmount[\s\S]*totalAmount[\s\S]*totalTaxAmount/,
-    "[CONTRACT FAIL] Discount query musi nacitat cart.cost s totalTaxAmount pro detekci order-level floor violation.",
-  );
-  assert.match(
-    query,
-    /\$collectionIds:\s*\[ID!\]/,
-    "[CONTRACT FAIL] Discount query musi deklarovat collectionIds variable.",
-  );
-  assert.match(
-    query,
-    /inCollections\(ids:\s*\$collectionIds\)/,
-    "[CONTRACT FAIL] Discount query musi nacitat product.inCollections pro collection-level discount rules.",
-  );
-  assert.match(
-    query,
-    /localization\s*\{[\s\S]*language\s*\{[\s\S]*isoCode/,
-    "[CONTRACT FAIL] Discount query musi nacitat localization.language.isoCode pro lokalizovane message.",
-  );
-
-  const discountConfig = buildDiscountFunctionConfig({
-    b2bTag: " wholesale ",
-    globalMinPricePercent: 65,
-    allowZeroFinalPrice: false,
-    allowStacking: false,
-    maxCombinedPercentOff: 35,
-    productFloors: [],
-  });
-
-  assert.deepEqual(
-    discountConfig.b2bTags,
-    ["wholesale"],
-    "[CONTRACT FAIL] Generated discount config musi vzdy obsahovat normalizovane b2bTags.",
-  );
-  assert.equal(
-    discountConfig.allowStacking,
-    false,
-    "[CONTRACT FAIL] Discount config musi prenaset allowStacking.",
-  );
-  assert.equal(
-    discountConfig.maxCombinedPercentOff,
-    35,
-    "[CONTRACT FAIL] Discount config musi prenaset maxCombinedPercentOff.",
-  );
-  assert.equal(
-    discountConfig.requestedPercentOff,
-    100,
-    "[CONTRACT FAIL] Discount config musi zachovat requestedPercentOff default.",
-  );
-  assert.equal(
-    discountConfig.marginGuardEnabled,
-    true,
-    "[CONTRACT FAIL] Discount config musi mit marginGuardEnabled true kdyz neni explicitne false.",
   );
 });
 
-test("discount config contract propagates marginGuardEnabled flag", () => {
-  const enabledConfig = buildDiscountFunctionConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: 70,
-    allowZeroFinalPrice: false,
-    productFloors: [],
-    marginGuardEnabled: true,
-  });
-  assert.equal(
-    enabledConfig.marginGuardEnabled,
-    true,
-    "[CONTRACT FAIL] marginGuardEnabled: true musi byt preneseno do config.",
-  );
-
-  const disabledConfig = buildDiscountFunctionConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: 70,
-    allowZeroFinalPrice: false,
-    productFloors: [],
-    marginGuardEnabled: false,
-  });
-  assert.equal(
-    disabledConfig.marginGuardEnabled,
-    false,
-    "[CONTRACT FAIL] marginGuardEnabled: false musi byt preneseno do config.",
-  );
-
-  const defaultConfig = buildDiscountFunctionConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: 70,
-    allowZeroFinalPrice: false,
-    productFloors: [],
-  });
-  assert.equal(
-    defaultConfig.marginGuardEnabled,
-    true,
-    "[CONTRACT FAIL] marginGuardEnabled musi byt true kdyz neni predano (default).",
-  );
-});
-
-test("discount orchestration config contract normalizes rules, blacklist combinations and segment caps", () => {
-  const config = buildDiscountFunctionConfig({
-    b2bTag: " wholesale ",
-    globalMinPricePercent: 65,
-    allowZeroFinalPrice: false,
-    allowStacking: true,
-    maxCombinedPercentOff: 35,
-    productFloors: [],
-    discountRules: [
-      {
-        id: "collection-rule",
-        scope: "COLLECTION",
-        targetId: " gid://shopify/Collection/ADV_1 ",
-        code: null,
-        segment: "B2B",
-        percentOff: 15.5,
-        priority: 10,
-        stackMode: "STACKABLE",
-        minPricePercentOfBasePrice: 70,
-      },
-      {
-        id: "coupon-rule",
-        scope: "COUPON",
-        targetId: null,
-        code: " vip20 ",
-        segment: null,
-        percentOff: 20,
-        priority: 20,
-        stackMode: "EXCLUSIVE",
-        minPricePercentOfBasePrice: null,
-      },
-    ],
-    discountCombinationBlacklistRules: [
-      {
-        leftType: "COUPON_CODE",
-        leftValue: " vip20 ",
-        rightType: "COUPON_CODE",
-        rightValue: " extra10 ",
-        segment: "ALL",
-      },
-    ],
-    discountSegmentCaps: [
-      {
-        segment: "B2B",
-        maxCombinedPercentOff: 22,
-      },
-    ],
-  });
-
-  assert.deepEqual(
-    config.collectionIds,
-    ["gid://shopify/Collection/ADV_1"],
-    "[CONTRACT FAIL] Discount config musi exportovat collectionIds i pro collection-level discount rules.",
-  );
-  assert.deepEqual(
-    config.discountRules,
-    [
-      {
-        id: "collection-rule",
-        scope: "COLLECTION",
-        targetId: "gid://shopify/Collection/ADV_1",
-        code: null,
-        segment: "B2B",
-        percentOff: 15.5,
-        priority: 10,
-        stackMode: "STACKABLE",
-        minPricePercentOfBasePrice: 70,
-      },
-      {
-        id: "coupon-rule",
-        scope: "COUPON",
-        targetId: null,
-        code: "VIP20",
-        segment: null,
-        percentOff: 20,
-        priority: 20,
-        stackMode: "EXCLUSIVE",
-        minPricePercentOfBasePrice: null,
-      },
-    ],
-    "[CONTRACT FAIL] Discount config musi normalizovat discountRules payload.",
-  );
-  assert.deepEqual(
-    config.discountCombinationBlacklistRules,
-    [
-      {
-        leftType: "COUPON_CODE",
-        leftValue: "VIP20",
-        rightType: "COUPON_CODE",
-        rightValue: "EXTRA10",
-        segment: "ALL",
-      },
-    ],
-    "[CONTRACT FAIL] Discount config musi normalizovat blacklist combinations.",
-  );
-  assert.deepEqual(
-    config.discountSegmentCaps,
-    [
-      {
-        segment: "B2B",
-        maxCombinedPercentOff: 22,
-      },
-    ],
-    "[CONTRACT FAIL] Discount config musi prenest per-segment caps.",
-  );
-});
-
-test("floor mapping contract stays consistent across B2B/B2C maps", () => {
-  const config = buildCartValidationFunctionConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: 70,
-    allowZeroFinalPrice: false,
-    productFloors: [
-      {
-        productId: "gid://shopify/Product/ALL_SEGMENTS",
-        minPercentOfBasePrice: 80,
-        segment: null,
-        allowZeroFinalPrice: null,
-        b2bOverridePrice: 90,
-      },
-      {
-        productId: "gid://shopify/Product/B2B_ONLY",
-        minPercentOfBasePrice: 60,
-        segment: "B2B",
-        allowZeroFinalPrice: true,
-        b2bOverridePrice: 55,
-      },
-      {
-        productId: "gid://shopify/Product/B2C_ONLY",
-        minPercentOfBasePrice: 90,
-        segment: "B2C",
-        allowZeroFinalPrice: false,
-        b2bOverridePrice: 40,
-      },
-    ],
-  });
-
-  assert.equal(config.perProductFloorPercentsB2B["gid://shopify/Product/ALL_SEGMENTS"], 80);
-  assert.equal(config.perProductFloorPercentsB2C["gid://shopify/Product/ALL_SEGMENTS"], 80);
-  assert.equal(config.perProductFloorPercentsB2B["gid://shopify/Product/B2B_ONLY"], 60);
-  assert.equal(config.perProductFloorPercentsB2C["gid://shopify/Product/B2B_ONLY"], undefined);
-  assert.equal(config.perProductFloorPercentsB2C["gid://shopify/Product/B2C_ONLY"], 90);
-  assert.equal(config.perProductFloorPercentsB2B["gid://shopify/Product/B2C_ONLY"], undefined);
-  assert.equal(
-    config.perProductB2BOverridePrices["gid://shopify/Product/ALL_SEGMENTS"],
-    90,
-  );
-  assert.equal(
-    config.perProductB2BOverridePrices["gid://shopify/Product/B2B_ONLY"],
-    55,
-  );
-  assert.equal(
-    config.perProductB2BOverridePrices["gid://shopify/Product/B2C_ONLY"],
-    undefined,
-  );
-});
-
-test("tier pricing mapping contract stays consistent across B2B/B2C maps", () => {
-  const config = buildCartValidationFunctionConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: 70,
-    allowZeroFinalPrice: false,
-    productFloors: [],
-    productTierPrices: [
-      {
-        productId: "gid://shopify/Product/ALL_SEGMENTS",
-        segment: null,
-        minQuantity: 5,
-        unitPrice: 95,
-      },
-      {
-        productId: "gid://shopify/Product/ALL_SEGMENTS",
-        segment: "B2B",
-        minQuantity: 5,
-        unitPrice: 90,
-      },
-      {
-        productId: "gid://shopify/Product/B2B_ONLY",
-        segment: "B2B",
-        minQuantity: 10,
-        unitPrice: 80,
-      },
-      {
-        productId: "gid://shopify/Product/B2C_ONLY",
-        segment: "B2C",
-        minQuantity: 3,
-        unitPrice: 70,
-      },
-    ],
-  });
-
-  assert.deepEqual(config.perProductTierPricesB2B["gid://shopify/Product/ALL_SEGMENTS"], [
-    { minQuantity: 5, unitPrice: 90 },
-  ]);
-  assert.deepEqual(config.perProductTierPricesB2C["gid://shopify/Product/ALL_SEGMENTS"], [
-    { minQuantity: 5, unitPrice: 95 },
-  ]);
-  assert.deepEqual(config.perProductTierPricesB2B["gid://shopify/Product/B2B_ONLY"], [
-    { minQuantity: 10, unitPrice: 80 },
-  ]);
-  assert.equal(
-    config.perProductTierPricesB2C["gid://shopify/Product/B2B_ONLY"],
-    undefined,
-  );
-  assert.deepEqual(config.perProductTierPricesB2C["gid://shopify/Product/B2C_ONLY"], [
-    { minQuantity: 3, unitPrice: 70 },
-  ]);
-  assert.equal(
-    config.perProductTierPricesB2B["gid://shopify/Product/B2C_ONLY"],
-    undefined,
-  );
-});
-
-test("MOQ mapping contract stays consistent across B2B/B2C maps", () => {
-  const config = buildCartValidationFunctionConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: 70,
-    allowZeroFinalPrice: false,
-    productFloors: [],
-    productQuantityRules: [
-      {
-        productId: "gid://shopify/Product/ALL_SEGMENTS",
-        segment: null,
-        minimumOrderQuantity: 3,
-      },
-      {
-        productId: "gid://shopify/Product/B2B_ONLY",
-        segment: "B2B",
-        minimumOrderQuantity: 10,
-      },
-      {
-        productId: "gid://shopify/Product/B2C_ONLY",
-        segment: "B2C",
-        minimumOrderQuantity: 2,
-      },
-    ],
-  });
-
-  assert.equal(
-    config.perProductMinimumOrderQuantitiesB2B["gid://shopify/Product/ALL_SEGMENTS"],
-    3,
-  );
-  assert.equal(
-    config.perProductMinimumOrderQuantitiesB2C["gid://shopify/Product/ALL_SEGMENTS"],
-    3,
-  );
-  assert.equal(
-    config.perProductMinimumOrderQuantitiesB2B["gid://shopify/Product/B2B_ONLY"],
-    10,
-  );
-  assert.equal(
-    config.perProductMinimumOrderQuantitiesB2C["gid://shopify/Product/B2B_ONLY"],
-    undefined,
-  );
-  assert.equal(
-    config.perProductMinimumOrderQuantitiesB2C["gid://shopify/Product/B2C_ONLY"],
-    2,
-  );
-  assert.equal(
-    config.perProductMinimumOrderQuantitiesB2B["gid://shopify/Product/B2C_ONLY"],
-    undefined,
-  );
-});
-
-test("step quantity mapping contract stays consistent across B2B/B2C maps", () => {
-  const config = buildCartValidationFunctionConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: 70,
-    allowZeroFinalPrice: false,
-    productFloors: [],
-    productQuantityRules: [
-      {
-        productId: "gid://shopify/Product/ALL_SEGMENTS",
-        segment: null,
-        minimumOrderQuantity: 1,
-        stepQuantity: 12,
-      },
-      {
-        productId: "gid://shopify/Product/B2B_ONLY",
-        segment: "B2B",
-        minimumOrderQuantity: 1,
-        stepQuantity: 6,
-      },
-      {
-        productId: "gid://shopify/Product/B2C_ONLY",
-        segment: "B2C",
-        minimumOrderQuantity: 1,
-        stepQuantity: 4,
-      },
-    ],
-  });
-
-  assert.equal(
-    config.perProductStepQuantitiesB2B["gid://shopify/Product/ALL_SEGMENTS"],
-    12,
-  );
-  assert.equal(
-    config.perProductStepQuantitiesB2C["gid://shopify/Product/ALL_SEGMENTS"],
-    12,
-  );
-  assert.equal(
-    config.perProductStepQuantitiesB2B["gid://shopify/Product/B2B_ONLY"],
-    6,
-  );
-  assert.equal(
-    config.perProductStepQuantitiesB2C["gid://shopify/Product/B2B_ONLY"],
-    undefined,
-  );
-  assert.equal(
-    config.perProductStepQuantitiesB2C["gid://shopify/Product/B2C_ONLY"],
-    4,
-  );
-  assert.equal(
-    config.perProductStepQuantitiesB2B["gid://shopify/Product/B2C_ONLY"],
-    undefined,
-  );
-});
-
-test("maximum quantity mapping contract supports segment and customer overrides", () => {
-  const config = buildCartValidationFunctionConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: 70,
-    allowZeroFinalPrice: false,
-    productFloors: [],
-    productQuantityRules: [
-      {
-        productId: "gid://shopify/Product/ALL_SEGMENTS",
-        segment: null,
-        minimumOrderQuantity: 1,
-        maxOrderQuantity: 10,
-      },
-      {
-        productId: "gid://shopify/Product/B2B_ONLY",
-        segment: "B2B",
-        minimumOrderQuantity: 1,
-        maxOrderQuantity: 20,
-      },
-      {
-        productId: "gid://shopify/Product/B2C_ONLY",
-        segment: "B2C",
-        minimumOrderQuantity: 1,
-        maxOrderQuantity: 8,
-      },
-    ],
-    productCustomerQuantityRules: [
-      {
-        productId: "gid://shopify/Product/ALL_SEGMENTS",
-        customerId: " gid://shopify/Customer/42 ",
-        maxOrderQuantity: 40,
-      },
-      {
-        productId: "gid://shopify/Product/B2C_ONLY",
-        customerId: "gid://shopify/Customer/84",
-        maxOrderQuantity: 12,
-      },
-    ],
-  });
-
-  assert.equal(
-    config.perProductMaximumOrderQuantitiesB2B["gid://shopify/Product/ALL_SEGMENTS"],
-    10,
-  );
-  assert.equal(
-    config.perProductMaximumOrderQuantitiesB2C["gid://shopify/Product/ALL_SEGMENTS"],
-    10,
-  );
-  assert.equal(
-    config.perProductMaximumOrderQuantitiesB2B["gid://shopify/Product/B2B_ONLY"],
-    20,
-  );
-  assert.equal(
-    config.perProductMaximumOrderQuantitiesB2C["gid://shopify/Product/B2B_ONLY"],
-    undefined,
-  );
-  assert.equal(
-    config.perProductMaximumOrderQuantitiesB2C["gid://shopify/Product/B2C_ONLY"],
-    8,
-  );
-  assert.equal(
-    config.perProductMaximumOrderQuantitiesB2B["gid://shopify/Product/B2C_ONLY"],
-    undefined,
-  );
-  assert.deepEqual(config.perCustomerProductMaximumOrderQuantities, {
-    "gid://shopify/Customer/42": {
-      "gid://shopify/Product/ALL_SEGMENTS": 40,
-    },
-    "gid://shopify/Customer/84": {
-      "gid://shopify/Product/B2C_ONLY": 12,
-    },
-  });
-});
-
-test("collection maximum mapping contract supports segment overrides and collectionIds export", () => {
-  const config = buildCartValidationFunctionConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: 70,
-    allowZeroFinalPrice: false,
-    productFloors: [],
-    collectionQuantityRules: [
-      {
-        collectionId: "gid://shopify/Collection/ALL_SEGMENTS",
-        segment: null,
-        maxOrderQuantity: 10,
-      },
-      {
-        collectionId: "gid://shopify/Collection/B2B_ONLY",
-        segment: "B2B",
-        maxOrderQuantity: 25,
-      },
-      {
-        collectionId: "gid://shopify/Collection/B2C_ONLY",
-        segment: "B2C",
-        maxOrderQuantity: 8,
-      },
-      {
-        collectionId: "gid://shopify/Collection/ALL_SEGMENTS",
-        segment: "B2B",
-        maxOrderQuantity: 12,
-      },
-    ],
-  });
-
-  assert.equal(
-    config.perCollectionMaximumOrderQuantitiesB2B[
-      "gid://shopify/Collection/ALL_SEGMENTS"
-    ],
-    12,
-  );
-  assert.equal(
-    config.perCollectionMaximumOrderQuantitiesB2C[
-      "gid://shopify/Collection/ALL_SEGMENTS"
-    ],
-    10,
-  );
-  assert.equal(
-    config.perCollectionMaximumOrderQuantitiesB2B["gid://shopify/Collection/B2B_ONLY"],
-    25,
-  );
-  assert.equal(
-    config.perCollectionMaximumOrderQuantitiesB2C["gid://shopify/Collection/B2B_ONLY"],
-    undefined,
-  );
-  assert.equal(
-    config.perCollectionMaximumOrderQuantitiesB2C["gid://shopify/Collection/B2C_ONLY"],
-    8,
-  );
-  assert.equal(
-    config.perCollectionMaximumOrderQuantitiesB2B["gid://shopify/Collection/B2C_ONLY"],
-    undefined,
-  );
-  assert.deepEqual(config.collectionIds, [
-    "gid://shopify/Collection/ALL_SEGMENTS",
-    "gid://shopify/Collection/B2B_ONLY",
-    "gid://shopify/Collection/B2C_ONLY",
-  ]);
-});
-
-test("product visibility mapping contract normalizes restrictive visibility rules", () => {
-  const config = buildCartValidationFunctionConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: 70,
-    b2bGlobalMinPricePercent: 62,
-    allowZeroFinalPrice: false,
-    productFloors: [],
-    productVisibilityRules: [
-      {
-        productId: "gid://shopify/Product/B2B_ONLY",
-        visibilityMode: "B2B_ONLY",
-      },
-      {
-        productId: "gid://shopify/Product/B2C_ONLY",
-        visibilityMode: "B2C_ONLY",
-      },
-      {
-        productId: "gid://shopify/Product/CUSTOMER_ONLY",
-        visibilityMode: "CUSTOMER_ONLY",
-        customerId: " gid://shopify/Customer/42 ",
-      },
-      {
-        productId: "gid://shopify/Product/INVALID",
-        visibilityMode: "UNKNOWN",
-      },
-    ],
-  });
-
-  assert.deepEqual(config.perProductVisibilityModes, {
-    "gid://shopify/Product/B2B_ONLY": "B2B_ONLY",
-    "gid://shopify/Product/B2C_ONLY": "B2C_ONLY",
-    "gid://shopify/Product/CUSTOMER_ONLY": "CUSTOMER_ONLY",
-  });
-  assert.deepEqual(config.perProductVisibilityCustomerIds, {
-    "gid://shopify/Product/CUSTOMER_ONLY": "gid://shopify/Customer/42",
-  });
-});
-
-test("function config builder preserves distinct B2B global floor", () => {
-  const config = buildCartValidationFunctionConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: 75,
-    b2bGlobalMinPricePercent: 62,
-    allowZeroFinalPrice: false,
-    productFloors: [],
-    productTierPrices: [],
-    productQuantityRules: [],
-    collectionQuantityRules: [],
-    productCustomerQuantityRules: [],
-    productVisibilityRules: [],
-    couponSegmentRules: [],
-  });
-
-  assert.equal(config.globalMinPricePercent, 75);
-  assert.equal(config.b2bGlobalMinPricePercent, 62);
-});
-
-test("coupon segment mapping contract normalizes codes and allowed segments", () => {
-  const config = buildDiscountFunctionConfig({
-    b2bTag: "b2b",
-    globalMinPricePercent: 70,
-    allowZeroFinalPrice: false,
-    productFloors: [],
-    couponSegmentRules: [
-      { code: " vip20 ", allowedSegment: "B2B" },
-      { code: "retail10", allowedSegment: "B2C" },
-      { code: "all5", allowedSegment: "ALL" },
-      { code: "fallback", allowedSegment: "ANY_UNKNOWN_VALUE" },
-    ],
-  });
-
-  assert.deepEqual(config.couponSegmentRules, {
-    VIP20: "B2B",
-    RETAIL10: "B2C",
-    ALL5: "ALL",
-    FALLBACK: "ALL",
-  });
-});
-
-test("cart validation extension maps input variables from metafield config", async () => {
+test("cart validation extension maps input variables from the metafield config", async () => {
   const toml = await readFile(CART_VALIDATION_TOML_PATH, "utf8");
   assert.match(
     toml,
     /\[extensions\.input\.variables\][\s\S]*namespace\s*=\s*"\$app:margin_guard"[\s\S]*key\s*=\s*"config"/,
-    "[CONTRACT FAIL] Cart validation extension musi mapovat input variables z app metafieldu.",
   );
+});
+
+test("catalog config exports b2bTags + catalogTags (b2b + custom audience tags)", () => {
+  const catalogs: CatalogTableInput[] = [
+    { id: "default", isDefault: true, priority: 0 },
+    { id: "gold", priority: 90, audienceTags: ["gold"], discountRules: [{ scope: "GLOBAL", percentOff: 10 }] },
+  ];
+  const config = buildCatalogConfigFromCatalogs(
+    { b2bTag: " wholesale ", globalMinPricePercent: 70, allowZeroFinalPrice: false },
+    catalogs,
+  );
+  assert.deepEqual(config.b2bTags, ["wholesale"]);
+  assert.deepEqual(config.catalogTags.sort(), ["gold", "wholesale"]);
 });

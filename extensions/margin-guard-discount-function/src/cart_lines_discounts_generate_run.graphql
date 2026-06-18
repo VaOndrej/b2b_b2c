@@ -1,5 +1,6 @@
 query CartInput(
   $b2bTags: [String!]! = ["b2b"]
+  $catalogTags: [String!]! = []
   $collectionIds: [ID!]
 ) {
   cart {
@@ -22,6 +23,10 @@ query CartInput(
       }
       customer {
         hasAnyTag(tags: $b2bTags)
+        hasTags(tags: $catalogTags) {
+          tag
+          hasTag
+        }
       }
     }
     lines {
@@ -38,6 +43,7 @@ query CartInput(
       merchandise {
         __typename
         ... on ProductVariant {
+          id
           product {
             id
             inCollections(ids: $collectionIds) {
@@ -61,6 +67,9 @@ query CartInput(
   }
   localization {
     language {
+      isoCode
+    }
+    country {
       isoCode
     }
   }

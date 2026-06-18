@@ -137,10 +137,21 @@
   } catch(e) {}
 })();
 </script>
+{% # theme-check-disable RemoteAsset %}
+{%- comment -%}
+  The visibility script is a dynamic, per-customer app-proxy endpoint (it passes
+  the logged-in customer id + tags), so it cannot be served via an asset_url
+  filter (those are for static theme assets) — RemoteAsset is intentional here.
+  `defer` keeps it from blocking the parser: first-paint anti-flash is handled by
+  the inline <style>/<script> above (from the shop metafields), and this script
+  only does the live, customer-specific refinement once the DOM is parsed.
+{%- endcomment -%}
 <script
   src="/apps/margin-guard/visibility-script{% if customer %}?logged_in_customer_id={{ customer.id }}&logged_in_customer_tags={{ customer.tags | json | url_encode }}{% endif %}"
   data-margin-guard-visibility-script
+  defer
 ></script>
+{% # theme-check-enable RemoteAsset %}
 
 {% schema %}
 {

@@ -455,14 +455,14 @@ export default function StorefrontUxRoute() {
             >
               Collection visibility moved into{" "}
               <a
-                href="/app/settings/catalog-rules?section=products&view=collection-visibility"
+                href="/app/catalogs"
                 style={{
                   color: "#005bd3",
                   fontWeight: 600,
                   textDecoration: "underline",
                 }}
               >
-                Catalog Rules &rarr; Products &rarr; Collection visibility
+                Catalogs &rarr; Visibility
               </a>
               , so Storefront UX stays focused on content and messaging.
             </div>

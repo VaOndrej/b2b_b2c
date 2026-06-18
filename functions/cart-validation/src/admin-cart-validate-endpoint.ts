@@ -1,8 +1,11 @@
 import { resolvePricingSimulationInput } from "../../../app/services/pricing-preview.server.ts";
 import type { PricingPipelineInput } from "../../../core/pricing/pricing.pipeline.ts";
 import type { TierPrice } from "../../../core/pricing/pricing.types.ts";
-import { resolveSegment } from "../../../core/segment/segment.engine.ts";
 import type { DiscountInput } from "../../../core/discount/discount.rules.ts";
+import {
+  resolveCatalogRuleset,
+  type CatalogRuleset,
+} from "../../../core/catalog/catalog.ruleset.ts";
 
 interface CartValidateRequestBody {
   productId: string;
@@ -206,50 +209,6 @@ async function parseRequestBody(
   };
 }
 
-type ConfigShape = {
-  b2bTag: string;
-  allowStacking: boolean;
-  maxCombinedPercentOff: number | null;
-  globalMinPricePercent: number;
-  b2bGlobalMinPricePercent?: number;
-  allowZeroFinalPrice: boolean;
-  productFloors: Array<{
-    productId: string;
-    segment: string | null;
-    minPercentOfBasePrice: number;
-    allowZeroFinalPrice: boolean | null;
-    b2bOverridePrice?: number | null;
-  }>;
-  productTierPrices?: Array<{
-    productId: string;
-    segment: string | null;
-    minQuantity: number;
-    unitPrice: number;
-  }>;
-  discountRules?: Array<{
-    id: string;
-    scope: string;
-    targetId: string | null;
-    code: string | null;
-    segment: string | null;
-    percentOff: number;
-    priority: number;
-    stackMode: string;
-    minPricePercentOfBasePrice: number | null;
-  }>;
-  discountCombinationBlacklistRules?: Array<{
-    leftType: string;
-    leftValue: string;
-    rightType: string;
-    rightValue: string;
-    segment: string | null;
-  }>;
-  discountSegmentCaps?: Array<{
-    segment: string;
-    maxCombinedPercentOff: number;
-  }>;
-};
-
 type ValidationResult = {
   valid: boolean;
   result: {
@@ -261,7 +220,8 @@ type ValidationResult = {
 
 type ActionDeps = {
   authenticateAdmin: (request: Request) => Promise<{ session: { shop: string } }>;
-  getConfig: () => Promise<ConfigShape>;
+  getB2bTag: () => Promise<string>;
+  loadCatalogRulesets: () => Promise<CatalogRuleset[]>;
   validate: (input: PricingPipelineInput) => ValidationResult;
   recordViolation: (input: {
     shop: string;
@@ -284,26 +244,32 @@ export function createCartValidateAdminAction(deps: ActionDeps) {
     }
     const body = parsed.body;
     const { session } = await deps.authenticateAdmin(request);
-    const config = await deps.getConfig();
+    const b2bTag = await deps.getB2bTag();
 
-    const segment = resolveSegment({
-      customerTags: body.buyerHasB2BTag ? [config.b2bTag] : [],
-      b2bTag: config.b2bTag,
+    // Resolve the customer's catalog (audience tags + purchasing company) and
+    // simulate against that catalog's ruleset — exactly what enforcement uses.
+    const rulesets = await deps.loadCatalogRulesets();
+    const ruleset = resolveCatalogRuleset(rulesets, {
+      matchedTags: body.buyerHasB2BTag ? [b2bTag] : [],
       hasPurchasingCompany: body.buyerHasPurchasingCompany,
     });
+    if (!ruleset) {
+      return badRequest("No price catalog is configured for this shop.");
+    }
+    const segment = ruleset.segment;
 
     const result = deps.validate(
-      resolvePricingSimulationInput(config, {
+      resolvePricingSimulationInput(ruleset, {
         productId: body.productId,
         variantId: body.variantId,
-        segment: segment.segment,
+        segment,
         basePrice: body.basePrice,
-      b2bOverridePrice: body.b2bOverridePrice,
-      quantity: body.quantity,
-      tierPrices: body.tierPrices,
-      collectionIds: body.collectionIds,
-      enteredDiscountCodes: body.enteredDiscountCodes,
-      discounts: body.discounts,
+        b2bOverridePrice: body.b2bOverridePrice,
+        quantity: body.quantity,
+        tierPrices: body.tierPrices,
+        collectionIds: body.collectionIds,
+        enteredDiscountCodes: body.enteredDiscountCodes,
+        discounts: body.discounts,
       }),
     );
 
@@ -312,7 +278,7 @@ export function createCartValidateAdminAction(deps: ActionDeps) {
         shop: session.shop,
         productId: body.productId,
         customerId: body.customerId,
-        segment: segment.segment,
+        segment,
         basePrice: body.basePrice,
         finalPrice: result.result.finalPrice,
         floorPrice: result.result.floorPrice,
