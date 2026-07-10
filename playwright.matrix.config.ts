@@ -33,6 +33,53 @@ const storefrontBaseUrl =
   process.env.SHOPIFY_E2E_STOREFRONT_BASE_URL ||
   "https://b2b-b2c-store-development.myshopify.com";
 
+type MatrixProject = { name: string; testMatch: RegExp; use: ThemeOptions };
+
+// Remote run: the full theme × context matrix (Horizon live + Dawn via preview_theme_id).
+const REMOTE_PROJECTS = [
+  {
+    name: "tier1-horizon-base",
+    testMatch: MATRIX_SPEC,
+    use: { theme: "horizon", testContext: "base", audience: null },
+  },
+  {
+    name: "tier1-dawn-base",
+    testMatch: MATRIX_SPEC,
+    use: { theme: "dawn", testContext: "base", audience: null },
+  },
+  {
+    name: "tier1-horizon-catalog",
+    testMatch: MATRIX_SPEC,
+    use: { theme: "horizon", testContext: "catalog", audience: E2E_CATALOG_AUDIENCE_TAG },
+  },
+  {
+    name: "tier1-dawn-catalog",
+    testMatch: MATRIX_SPEC,
+    use: { theme: "dawn", testContext: "catalog", audience: E2E_CATALOG_AUDIENCE_TAG },
+  },
+] satisfies MatrixProject[];
+
+// Local `shopify theme dev` run (SHOPIFY_E2E_THEME_DEV, set by test-e2e-local.mjs):
+// the origin serves ONE theme and the suite is theme-agnostic, so collapse to the
+// context dimension only (base vs forced e2e catalog) against whatever is served.
+// `theme` here is just a label — its guard/selectors are theme-neutral in theme-dev mode.
+const THEME_DEV_PROJECTS = [
+  {
+    name: "local-base",
+    testMatch: MATRIX_SPEC,
+    use: { theme: "horizon", testContext: "base", audience: null },
+  },
+  {
+    name: "local-catalog",
+    testMatch: MATRIX_SPEC,
+    use: { theme: "horizon", testContext: "catalog", audience: E2E_CATALOG_AUDIENCE_TAG },
+  },
+] satisfies MatrixProject[];
+
+const projects = process.env.SHOPIFY_E2E_THEME_DEV
+  ? THEME_DEV_PROJECTS
+  : REMOTE_PROJECTS;
+
 export default defineConfig<ThemeOptions>({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -41,7 +88,13 @@ export default defineConfig<ThemeOptions>({
     : undefined,
   timeout: 45_000,
   expect: { timeout: 12_000 },
-  retries: process.env.CI ? 1 : 0,
+  // Opt-in local retries (PLAYWRIGHT_RETRIES=2) help ride out the intermittent
+  // Cloudflare bot challenge on the PUBLIC storefront; a theme-dev origin needs none.
+  retries: process.env.PLAYWRIGHT_RETRIES
+    ? Number(process.env.PLAYWRIGHT_RETRIES)
+    : process.env.CI
+      ? 1
+      : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   globalSetup: "./tests/e2e/matrix.setup.ts",
   globalTeardown: "./tests/e2e/matrix.teardown.ts",
@@ -68,26 +121,5 @@ export default defineConfig<ThemeOptions>({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
-  projects: [
-    {
-      name: "tier1-horizon-base",
-      testMatch: MATRIX_SPEC,
-      use: { theme: "horizon", testContext: "base", audience: null },
-    },
-    {
-      name: "tier1-dawn-base",
-      testMatch: MATRIX_SPEC,
-      use: { theme: "dawn", testContext: "base", audience: null },
-    },
-    {
-      name: "tier1-horizon-catalog",
-      testMatch: MATRIX_SPEC,
-      use: { theme: "horizon", testContext: "catalog", audience: E2E_CATALOG_AUDIENCE_TAG },
-    },
-    {
-      name: "tier1-dawn-catalog",
-      testMatch: MATRIX_SPEC,
-      use: { theme: "dawn", testContext: "catalog", audience: E2E_CATALOG_AUDIENCE_TAG },
-    },
-  ],
+  projects,
 });

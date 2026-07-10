@@ -1,35 +1,62 @@
 {% assign hidden_handles_meta = shop.metafields["margin_guard"]["hidden_handles"].value %}
 {% assign storefront_projection_meta = shop.metafields["margin_guard"]["storefront_projection"].value %}
+{% comment %}
+  MVP_5_4_9 — the storefront resolves the customer's CATALOG client-side (from
+  audience tags + native B2B), then reads that catalog's anti-flash snapshot. No
+  more binary B2B/B2C: catalogResolution maps tags→catalog and the snapshots /
+  hidden handles are keyed by catalogId.
+{% endcomment %}
 {% assign current_b2b_tag = 'b2b' %}
 {% if hidden_handles_meta and hidden_handles_meta.b2bTag %}
   {% assign current_b2b_tag = hidden_handles_meta.b2bTag | strip | downcase %}
 {% elsif storefront_projection_meta and storefront_projection_meta.b2bTag %}
   {% assign current_b2b_tag = storefront_projection_meta.b2bTag | strip | downcase %}
 {% endif %}
-{% assign customer_is_custom_b2b = false %}
-{% if customer and customer.tags contains current_b2b_tag %}
-  {% assign customer_is_custom_b2b = true %}
+
+{% comment %} Resolve the customer's catalog id (highest-priority audience match; default fallback). {% endcomment %}
+{% assign current_catalog_id = 'default' %}
+{% if storefront_projection_meta and storefront_projection_meta.defaultCatalogId %}
+  {% assign current_catalog_id = storefront_projection_meta.defaultCatalogId %}
+{% elsif hidden_handles_meta and hidden_handles_meta.defaultCatalogId %}
+  {% assign current_catalog_id = hidden_handles_meta.defaultCatalogId %}
 {% endif %}
-{% assign current_segment_key = 'b2c' %}
-{% if customer and customer.b2b? or customer_is_custom_b2b %}
-  {% assign current_segment_key = 'b2b' %}
+{% assign mg_best_priority = -999999 %}
+{% if storefront_projection_meta and storefront_projection_meta.catalogResolution %}
+  {% for entry in storefront_projection_meta.catalogResolution %}
+    {% unless entry.isDefault %}
+      {% assign entry_matches = false %}
+      {% if entry.matchCompany and customer and customer.b2b? %}
+        {% assign entry_matches = true %}
+      {% endif %}
+      {% if customer and entry.audienceTags %}
+        {% for audience_tag in entry.audienceTags %}
+          {% assign normalized_audience_tag = audience_tag | strip | downcase %}
+          {% if normalized_audience_tag != blank and customer.tags contains normalized_audience_tag %}
+            {% assign entry_matches = true %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      {% if entry_matches %}
+        {% assign entry_priority = entry.priority | default: 0 %}
+        {% if entry_priority >= mg_best_priority %}
+          {% assign mg_best_priority = entry_priority %}
+          {% assign current_catalog_id = entry.id %}
+        {% endif %}
+      {% endif %}
+    {% endunless %}
+  {% endfor %}
 {% endif %}
+
 {% assign hidden_handles_for_context = empty %}
-{% if hidden_handles_meta %}
-  {% assign hidden_handles_for_context = hidden_handles_meta.b2b %}
-  {% if current_segment_key == 'b2b' %}
-    {% assign hidden_handles_for_context = hidden_handles_meta.b2c %}
-  {% endif %}
+{% if hidden_handles_meta and hidden_handles_meta.catalogs %}
+  {% assign hidden_handles_for_context = hidden_handles_meta.catalogs[current_catalog_id] %}
 {% endif %}
-{% assign projection_segment_snapshot = empty %}
+{% assign projection_catalog_snapshot = empty %}
 {% assign hidden_collections_for_context = empty %}
-{% if storefront_projection_meta and storefront_projection_meta.segments %}
-  {% assign projection_segment_snapshot = storefront_projection_meta.segments.b2c %}
-  {% if current_segment_key == 'b2b' %}
-    {% assign projection_segment_snapshot = storefront_projection_meta.segments.b2b %}
-  {% endif %}
-  {% if projection_segment_snapshot and projection_segment_snapshot.hiddenCollectionHandles %}
-    {% assign hidden_collections_for_context = projection_segment_snapshot.hiddenCollectionHandles %}
+{% if storefront_projection_meta and storefront_projection_meta.catalogSnapshots %}
+  {% assign projection_catalog_snapshot = storefront_projection_meta.catalogSnapshots[current_catalog_id] %}
+  {% if projection_catalog_snapshot and projection_catalog_snapshot.hiddenCollectionHandles %}
+    {% assign hidden_collections_for_context = projection_catalog_snapshot.hiddenCollectionHandles %}
   {% endif %}
 {% endif %}
 {% if hidden_handles_for_context.size > 0 %}
@@ -79,8 +106,8 @@
       "coverage": {{ storefront_projection_meta.coverage | default: empty | json }},
       "messages": {{ storefront_projection_meta.messages | default: empty | json }},
       "pricingPreview": {{ storefront_projection_meta.pricingPreview | default: empty | json }},
-      "segment": {{ current_segment_key | upcase | json }},
-      "snapshot": {{ projection_segment_snapshot | default: empty | json }}
+      "catalogId": {{ current_catalog_id | json }},
+      "snapshot": {{ projection_catalog_snapshot | default: empty | json }}
     }
   </script>
 {% endif %}
@@ -92,8 +119,7 @@
       customerId: {% if customer %}{{ customer.id | json }}{% else %}null{% endif %},
       customerTags: {% if customer %}{{ customer.tags | json }}{% else %}[]{% endif %},
       currentB2bTag: {{ current_b2b_tag | default: 'b2b' | json }},
-      currentSegment: {{ current_segment_key | upcase | json }},
-      customerIsCustomB2B: {{ customer_is_custom_b2b | json }},
+      currentCatalogId: {{ current_catalog_id | json }},
       usesNativeB2B: {% if customer and customer.b2b? %}true{% else %}false{% endif %},
       hiddenHandlesForContext: {{ hidden_handles_for_context | default: empty | json }},
       hiddenCollectionHandlesForContext: {{ hidden_collections_for_context | default: empty | json }},

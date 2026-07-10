@@ -326,9 +326,9 @@ test("syncVisibilityHandlesMetafield is exported from config server", async () =
     /export async function syncVisibilityHandlesMetafield\(/,
     "Config server must export syncVisibilityHandlesMetafield for metafield sync.",
   );
-  // MVP_5_3 #2.3c — hidden handles are now sourced from catalog product
-  // visibility (default catalog → b2c, B2B catalog → b2b), not the legacy
-  // segment-keyed ProductVisibilityRule children.
+  // MVP_5_4_9 — hidden handles are sourced from catalog product visibility and
+  // emitted keyed by catalogId ({ catalogs: { [id]: handles }, defaultCatalogId }),
+  // not the legacy binary b2b/b2c lists.
   assert.match(
     source,
     /loadCatalogProductVisibility/,
@@ -336,13 +336,13 @@ test("syncVisibilityHandlesMetafield is exported from config server", async () =
   );
   assert.match(
     source,
-    /b2b:\s*\[\.\.\.new Set\(b2bHandles\)\]/,
-    "syncVisibilityHandlesMetafield must still emit the b2b hidden-handle list.",
+    /catalogs\[catalogId\] = \[\.\.\.new Set\(/,
+    "syncVisibilityHandlesMetafield must emit per-catalog hidden-handle lists keyed by catalogId.",
   );
   assert.match(
     source,
-    /b2c:\s*\[\.\.\.new Set\(b2cHandles\)\]/,
-    "syncVisibilityHandlesMetafield must still emit the b2c hidden-handle list.",
+    /defaultCatalogId:\s*String\(defaultId\)/,
+    "syncVisibilityHandlesMetafield must include defaultCatalogId so Liquid can resolve the anonymous fallback.",
   );
   assert.match(
     source,
@@ -418,25 +418,27 @@ test("liquid embed reads app metafield for segment-default-hide CSS", async () =
     /hidden_handles_for_context/,
     "Embed must derive hidden handles for the current storefront context.",
   );
+  // MVP_5_4_9 — the embed resolves the customer's CATALOG (audience tags + native
+  // B2B), not a binary B2B/B2C segment.
   assert.match(
     source,
-    /customer_is_custom_b2b/,
-    "Embed must derive a helper flag for custom-tagged B2B customers.",
+    /current_catalog_id/,
+    "Embed must resolve the customer's catalog id client-side.",
   );
   assert.match(
     source,
-    /customer and customer\.tags contains current_b2b_tag/,
-    "Embed must detect custom-tagged B2B customers from customer tags.",
+    /customer\.tags contains normalized_audience_tag/,
+    "Embed must match the customer's tags against each catalog's audience tags.",
   );
   assert.match(
     source,
-    /customer and customer\.b2b\? or customer_is_custom_b2b/,
-    "Embed must switch hidden handles for both native Shopify B2B customers and custom-tagged B2B customers.",
+    /entry\.matchCompany and customer and customer\.b2b\?/,
+    "Embed must map native Shopify B2B customers onto a matchCompany catalog.",
   );
   assert.match(
     source,
-    /hidden_handles_meta\.b2c/,
-    "Embed must support the B2B customer path by hiding B2C-only handles on first render.",
+    /hidden_handles_meta\.catalogs\[current_catalog_id\]/,
+    "Embed must read per-catalog hidden handles keyed by the resolved catalog id.",
   );
   assert.match(
     source,

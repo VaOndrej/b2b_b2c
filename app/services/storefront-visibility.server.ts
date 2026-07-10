@@ -48,7 +48,9 @@ interface ProductCustomerQuantityRuleRecord {
 export interface StorefrontVisibilityInput {
   admin: AdminGraphqlClient | undefined;
   handles: string[];
-  segment: Segment;
+  // MVP_5_4_9 — optional: the storefront resolves catalogs, not B2B/B2C. Segment
+  // only narrows segment-keyed rules, which the catalog path never passes.
+  segment?: Segment;
   customerId?: string | null;
   rules: ProductVisibilityRuleRecord[];
 }
@@ -63,7 +65,7 @@ export interface StorefrontVisibilityResult {
 interface StorefrontQuantityConstraintsInput {
   handles: string[];
   productIdByHandle: Record<string, string>;
-  segment: Segment;
+  segment?: Segment;
   rules: ProductQuantityRuleRecord[];
   collectionRules?: CollectionQuantityRuleRecord[];
   productCollectionIdsByProductId?: Record<string, string[]>;
@@ -83,7 +85,7 @@ interface StorefrontVariantVisibilityRule {
 
 interface StorefrontQuantityConstraintsByProductInput {
   productIds: string[];
-  segment: Segment;
+  segment?: Segment;
   rules: ProductQuantityRuleRecord[];
   collectionRules?: CollectionQuantityRuleRecord[];
   productCollectionIdsByProductId?: Record<string, string[]>;
@@ -267,7 +269,7 @@ function toStorefrontQuantityConstraints(
 }
 
 function isVisibleForContext(input: {
-  segment: Segment;
+  segment?: Segment;
   customerId: string;
   rule: { visibilityMode: string; customerId?: string | null };
 }): boolean {
@@ -285,7 +287,7 @@ function isVisibleForContext(input: {
 
 export function resolveStorefrontVariantVisibilityByProductId(input: {
   productIds: string[];
-  segment: Segment;
+  segment?: Segment;
   customerId?: string | null;
   rules: ProductVariantVisibilityRuleRecord[];
 }): Record<string, StorefrontVariantVisibilityRule> {

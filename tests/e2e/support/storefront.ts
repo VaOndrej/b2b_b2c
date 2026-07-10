@@ -71,7 +71,11 @@ export async function gotoStorefrontOrSkip(
 }
 
 export async function maybeUnlockStorefront(page: Page, storefrontPassword: string | null) {
-  await page.waitForLoadState("domcontentloaded");
+  // Bounded + tolerant: when the page is stuck on the Cloudflare bot challenge it
+  // may never reach domcontentloaded — don't hang here (the challenge check below
+  // skips). Public-storefront headless runs are the only place this matters; a
+  // theme-dev local origin never serves the challenge.
+  await page.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => {});
 
   if (await isStorefrontVerificationChallenge(page)) {
     test.skip(

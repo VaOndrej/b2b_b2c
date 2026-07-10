@@ -155,10 +155,11 @@ export function buildDiscountCombinationBlacklistCanonicalPairKey(input: {
   return canonicalizeDiscountBlacklistPair(input).pairKey;
 }
 
-// MVP_5_3 #2.3c — the legacy `margin_guard/hidden_handles` metafield (consumed by
-// the storefront Liquid block for anti-flash) is now sourced from catalog product
-// visibility: the default catalog feeds the b2c list, the B2B catalog the b2b
-// list — mirroring the storefront projection snapshots.
+// MVP_5_4_9 — the `margin_guard/hidden_handles` metafield (consumed by the
+// storefront Liquid block for anti-flash) carries hidden product handles keyed by
+// catalogId: { catalogs: { [catalogId]: handles[] }, defaultCatalogId, b2bTag }.
+// The Liquid embed resolves the customer's catalog client-side and reads its list
+// — no B2B/B2C branching on the storefront.
 export async function syncVisibilityHandlesMetafield(admin: {
   graphql: (
     query: string,
@@ -182,16 +183,24 @@ export async function syncVisibilityHandlesMetafield(admin: {
     allCatalogs,
   );
   const defaultId = catalogConfig.defaultCatalogId;
-  const b2bCatalogId =
-    (catalogConfig.catalogResolution as Array<Record<string, unknown>>).find(
-      (entry) => entry.isDefault !== true && entry.segment === "B2B",
-    )?.id ?? "b2b";
+
+  // Every resolvable catalog (resolution metadata) plus any catalog with hidden
+  // products gets an entry; the default catalog is always present.
+  const catalogIds = Array.from(
+    new Set<string>(
+      [
+        String(defaultId),
+        ...(catalogConfig.catalogResolution as Array<Record<string, unknown>>).map(
+          (entry) => String(entry.id ?? ""),
+        ),
+        ...catalogProductVisibility.map((entry) => String(entry.catalogId ?? "")),
+      ].filter(Boolean),
+    ),
+  );
 
   const hiddenFor = (catalogId: string): string[] =>
     catalogProductVisibility.find((entry) => entry.catalogId === catalogId)
       ?.hiddenProductIds ?? [];
-  const b2bOnlyProductIds = hiddenFor(String(b2bCatalogId));
-  const b2cOnlyProductIds = hiddenFor(String(defaultId));
 
   const resolveHandles = async (productIds: string[]): Promise<string[]> => {
     if (!productIds.length) return [];
@@ -229,14 +238,16 @@ export async function syncVisibilityHandlesMetafield(admin: {
     return handles;
   };
 
-  const [b2bHandles, b2cHandles] = await Promise.all([
-    resolveHandles(b2bOnlyProductIds),
-    resolveHandles(b2cOnlyProductIds),
-  ]);
+  const catalogs: Record<string, string[]> = {};
+  await Promise.all(
+    catalogIds.map(async (catalogId) => {
+      catalogs[catalogId] = [...new Set(await resolveHandles(hiddenFor(catalogId)))];
+    }),
+  );
 
   const metafieldValue = JSON.stringify({
-    b2b: [...new Set(b2bHandles)],
-    b2c: [...new Set(b2cHandles)],
+    catalogs,
+    defaultCatalogId: String(defaultId),
     b2bTag: String(config?.b2bTag ?? "b2b").trim().toLowerCase() || "b2b",
   });
 

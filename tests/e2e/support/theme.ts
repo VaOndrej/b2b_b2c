@@ -101,11 +101,23 @@ export function resolveThemeContext(
   context: TestContext,
   audience: string | null,
 ): ThemeContext | null {
-  const previewThemeId =
-    name === "dawn" ? readEnv("SHOPIFY_E2E_PREVIEW_THEME_ID") : null;
+  // Theme-dev mode (SHOPIFY_E2E_THEME_DEV set by scripts/test-e2e-local.mjs): the
+  // storefront is a local `shopify theme dev` origin serving exactly ONE theme — the
+  // one its checkout runs from. The suite is theme-agnostic (shared selectors,
+  // app-proxy / app-injected assertions), so there is no theme dimension to pin:
+  // preview_theme_id (a remote mechanism) is not sent and the theme guard is off
+  // (you watch which `shopify theme dev` you started).
+  const themeDevMode = readEnv("SHOPIFY_E2E_THEME_DEV") !== null;
 
-  // Dawn requires a preview theme id; without it the project is skipped.
-  if (name === "dawn" && !previewThemeId) {
+  const previewThemeId =
+    !themeDevMode && name === "dawn"
+      ? readEnv("SHOPIFY_E2E_PREVIEW_THEME_ID")
+      : null;
+
+  // Remote mode only: Dawn requires a preview theme id; without it the project is
+  // skipped. In theme-dev mode the served theme is chosen by which `shopify theme
+  // dev` runs, so Dawn never self-skips here.
+  if (!themeDevMode && name === "dawn" && !previewThemeId) {
     return null;
   }
 
@@ -131,6 +143,11 @@ export function resolveThemeContext(
   };
 
   const verifyActiveTheme = async (page: Page): Promise<void> => {
+    // Theme-dev origin serves a single theme chosen by the operator — there is no
+    // theme dimension to verify against, so the guard is a no-op here.
+    if (themeDevMode) {
+      return;
+    }
     if (verifiedPages.has(page)) {
       return;
     }

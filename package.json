@@ -28,6 +28,7 @@
     "graphql-codegen": "graphql-codegen",
     "test:e2e:storefront": "playwright test --config=playwright.config.ts",
     "test:e2e:matrix": "playwright test --config=playwright.matrix.config.ts",
+    "test:e2e:local": "node ./scripts/test-e2e-local.mjs",
     "vite": "vite",
     "typecheck": "react-router typegen && tsc --noEmit"
   },

@@ -79,8 +79,10 @@ test("buildStorefrontProjection carries catalog resolution metadata for client-s
   assert.equal(projection.defaultCatalogId, "default");
   assert.deepEqual(projection.catalogTags, ["b2b", "gold"]);
   assert.deepEqual(projection.catalogResolution, resolution);
-  assert.ok(projection.segments.b2b);
-  assert.ok(projection.segments.b2c);
+  // Every resolvable catalog gets a snapshot keyed by catalogId.
+  assert.ok(projection.catalogSnapshots.default);
+  assert.ok(projection.catalogSnapshots.b2b);
+  assert.ok(projection.catalogSnapshots["loyalty-gold"]);
 });
 
 test("buildStorefrontProjection carries per-catalog hidden variants for storefront enforcement", () => {
@@ -123,9 +125,9 @@ test("buildStorefrontProjection defaults catalog metadata when not provided (bac
   assert.deepEqual(projection.catalogVariantVisibility, []);
 });
 
-test("buildStorefrontProjection regenerates b2b/b2c snapshots from catalog tables", () => {
-  // default catalog (→ b2c) owns product 200 quantity + hides product 100 + the
-  // wholesale collection; the b2b catalog (→ b2b) owns product 100 quantity +
+test("buildStorefrontProjection regenerates per-catalog snapshots from catalog tables", () => {
+  // default catalog owns product 200 quantity + hides product 100 + the
+  // wholesale collection; the b2b catalog owns product 100 quantity +
   // hides a variant.
   const catalogRulesets = rulesetsFromCatalogs([
     {
@@ -169,39 +171,42 @@ test("buildStorefrontProjection regenerates b2b/b2c snapshots from catalog table
     ],
   });
 
-  assert.equal(projection.schemaVersion, 1);
+  assert.equal(projection.schemaVersion, 2);
   assert.equal(projection.b2bTag, "b2b");
   assert.equal(projection.coverage.productQuantityRules, "PROJECTED");
   assert.equal(projection.pricingPreview.mode, "RESERVED");
 
-  // Product 100 is hidden from the default catalog → hidden in the b2c snapshot.
-  assert.deepEqual(projection.segments.b2b.hiddenProductHandles, []);
-  assert.deepEqual(projection.segments.b2c.hiddenProductHandles, ["b2b-carton"]);
-  assert.deepEqual(projection.segments.b2b.hiddenCollectionHandles, []);
-  assert.deepEqual(projection.segments.b2c.hiddenCollectionHandles, ["wholesale"]);
+  const defaultSnap = projection.catalogSnapshots.default;
+  const b2bSnap = projection.catalogSnapshots.b2b;
+
+  // Product 100 is hidden from the default catalog → hidden in the default snapshot.
+  assert.deepEqual(b2bSnap.hiddenProductHandles, []);
+  assert.deepEqual(defaultSnap.hiddenProductHandles, ["b2b-carton"]);
+  assert.deepEqual(b2bSnap.hiddenCollectionHandles, []);
+  assert.deepEqual(defaultSnap.hiddenCollectionHandles, ["wholesale"]);
 
   // Quantity comes from each catalog's effective layer.
-  assert.deepEqual(projection.segments.b2b.quantityConstraintsByHandle["b2b-carton"], {
+  assert.deepEqual(b2bSnap.quantityConstraintsByHandle["b2b-carton"], {
     minimumOrderQuantity: 12,
     stepQuantity: 6,
   });
-  assert.deepEqual(projection.segments.b2c.quantityConstraintsByHandle["all-segments-pack"], {
+  assert.deepEqual(defaultSnap.quantityConstraintsByHandle["all-segments-pack"], {
     minimumOrderQuantity: 4,
     stepQuantity: 4,
     maxOrderQuantity: 20,
   });
-  // The default (b2c) catalog has no quantity for product 100.
+  // The default catalog has no quantity for product 100.
   assert.equal(
-    projection.segments.b2c.quantityConstraintsByHandle["b2b-carton"],
+    defaultSnap.quantityConstraintsByHandle["b2b-carton"],
     undefined,
   );
 
   assert.deepEqual(
-    projection.segments.b2b.variantVisibilityByProductId["gid://shopify/Product/100"],
+    b2bSnap.variantVisibilityByProductId["gid://shopify/Product/100"],
     { hiddenVariantIds: ["gid://shopify/ProductVariant/1001"] },
   );
   assert.equal(
-    projection.segments.b2c.variantVisibilityByProductId["gid://shopify/Product/100"],
+    defaultSnap.variantVisibilityByProductId["gid://shopify/Product/100"],
     undefined,
   );
 });
@@ -224,15 +229,15 @@ test("buildStorefrontProjection only projects catalog-provided visibility (no cu
     ],
   });
 
-  for (const segment of ["b2b", "b2c"] as const) {
+  for (const catalogId of ["default", "b2b"] as const) {
     assert.ok(
-      !projection.segments[segment].hiddenProductHandles.includes("all-segments-pack"),
-      `${segment} hidden handles must only include catalog-hidden products`,
+      !projection.catalogSnapshots[catalogId].hiddenProductHandles.includes("all-segments-pack"),
+      `${catalogId} hidden handles must only include catalog-hidden products`,
     );
     assert.equal(
-      projection.segments[segment].variantVisibilityByProductId["gid://shopify/Product/200"],
+      projection.catalogSnapshots[catalogId].variantVisibilityByProductId["gid://shopify/Product/200"],
       undefined,
-      `${segment} variant visibility must only include catalog-hidden variants`,
+      `${catalogId} variant visibility must only include catalog-hidden variants`,
     );
   }
 });
@@ -260,8 +265,9 @@ test("buildStorefrontProjection marks collection quantity and customer quantity 
 
   // The product-scoped catalog quantity (max 20) is projected; customer-specific
   // maximums are never part of the projection.
-  const b2c = projection.segments.b2c.quantityConstraintsByHandle["all-segments-pack"];
-  assert.equal(b2c?.maxOrderQuantity, 20);
+  const defaultSnap =
+    projection.catalogSnapshots.default.quantityConstraintsByHandle["all-segments-pack"];
+  assert.equal(defaultSnap?.maxOrderQuantity, 20);
 });
 
 test("buildStorefrontProjection produces a valid, fully-formed payload for an empty config", () => {
@@ -270,14 +276,13 @@ test("buildStorefrontProjection produces a valid, fully-formed payload for an em
     productHandleRecords: [],
   });
 
-  for (const segment of ["b2b", "b2c"] as const) {
-    const snapshot = projection.segments[segment];
-    assert.deepEqual(snapshot.hiddenProductHandles, []);
-    assert.deepEqual(snapshot.hiddenCollectionHandles, []);
-    assert.deepEqual(snapshot.quantityConstraintsByHandle, {});
-    assert.deepEqual(snapshot.quantityConstraintsByProductId, {});
-    assert.deepEqual(snapshot.variantVisibilityByProductId, {});
-  }
+  // An empty config still produces a fully-formed default-catalog snapshot.
+  const snapshot = projection.catalogSnapshots.default;
+  assert.deepEqual(snapshot.hiddenProductHandles, []);
+  assert.deepEqual(snapshot.hiddenCollectionHandles, []);
+  assert.deepEqual(snapshot.quantityConstraintsByHandle, {});
+  assert.deepEqual(snapshot.quantityConstraintsByProductId, {});
+  assert.deepEqual(snapshot.variantVisibilityByProductId, {});
 
   const serialized = JSON.stringify(projection);
   assert.doesNotThrow(() => JSON.parse(serialized));

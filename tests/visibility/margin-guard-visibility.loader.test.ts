@@ -32,6 +32,12 @@ function stubConfig(): MarginGuardConfig {
   };
 }
 
+// MVP_5_4_9 — the loader resolves a catalogId (not a B2B/B2C segment). Stub it to
+// mirror the real resolution: the b2b tag → "b2b" catalog, otherwise default.
+async function stubResolveCatalogId(input: { matchedTags: string[] }) {
+  return input.matchedTags.includes("b2b") ? "b2b" : "default";
+}
+
 function baseDeps() {
   return {
     resolveStorefrontVisibilityByHandles: async () => ({
@@ -44,10 +50,11 @@ function baseDeps() {
     resolveStorefrontQuantityConstraintsByHandle: () => ({}),
     resolveStorefrontQuantityConstraintsByProductId: () => ({}),
     resolveStorefrontVariantVisibilityByProductId: () => ({}),
+    resolveStorefrontCatalogId: stubResolveCatalogId,
   };
 }
 
-test("visibility loader ignores ?segment= from querystring", async () => {
+test("visibility loader ignores ?segment= from querystring (anonymous → default catalog)", async () => {
   const loader = createVisibilityLoader({
     async authenticatePublicAppProxy() {
       return { admin: undefined };
@@ -60,7 +67,7 @@ test("visibility loader ignores ?segment= from querystring", async () => {
   const response = await loader({ request });
   const payload = await response.json();
 
-  assert.equal(payload.segment, "B2C");
+  assert.equal(payload.catalogId, "default");
   assert.equal(payload.customerId, null);
 });
 
@@ -91,7 +98,7 @@ test("visibility loader trusts logged_in_customer_id and ignores spoofed custome
   const response = await loader({ request });
   const payload = await response.json();
 
-  assert.equal(payload.segment, "B2B");
+  assert.equal(payload.catalogId, "b2b");
   assert.equal(adminCalls[0]?.id, "gid://shopify/Customer/REAL");
 });
 
@@ -116,9 +123,9 @@ test("visibility loader prefers logged_in_customer_tags hint for B2B detection",
   const response = await loader({ request });
   const payload = await response.json();
 
-  assert.equal(payload.segment, "B2B");
-  assert.equal(payload.segmentDebug.source, "hint_tags");
-  assert.deepEqual(payload.segmentDebug.normalizedTags, ["b2b", "vip"]);
+  assert.equal(payload.catalogId, "b2b");
+  assert.equal(payload.audienceDebug.source, "hint_tags");
+  assert.deepEqual(payload.audienceDebug.normalizedTags, ["b2b", "vip"]);
 });
 
 test("visibility loader returns variant visibility payload alongside quantity rules", async () => {
@@ -215,6 +222,7 @@ function segmentScenarioDeps() {
       customerTags.includes("b2b")
         ? { [B2B_PRODUCT_ID]: [B2B_ONLY_HIDDEN_VARIANT] }
         : {},
+    resolveStorefrontCatalogId: stubResolveCatalogId,
   };
 }
 
@@ -301,7 +309,7 @@ test("integration: B2B customer (tag b2b via admin) gets B2B visibility + quanti
   );
   const payload = await (await loader({ request })).json();
 
-  assert.equal(payload.segment, "B2B");
+  assert.equal(payload.catalogId, "b2b");
   // B2C_ONLY variant must be hidden from a B2B visitor.
   assert.deepEqual(
     payload.variantVisibilityByProductId[B2B_PRODUCT_ID]?.hiddenVariantIds,
@@ -367,7 +375,7 @@ test("override: armed mg_e2e_audience=b2b injects the b2b tag and SKIPS the admi
     );
     const payload = await (await loader({ request })).json();
 
-    assert.equal(payload.segment, "B2B");
+    assert.equal(payload.catalogId, "b2b");
     assert.equal(adminCalled, false);
     // The forced audience tag must drive the REAL catalog resolution (b2b MOQ applies).
     assert.equal(
@@ -391,7 +399,7 @@ test("override: param is IGNORED when the flag is not armed (anonymous stays bas
     );
     const payload = await (await loader({ request })).json();
 
-    assert.equal(payload.segment, "B2C");
+    assert.equal(payload.catalogId, "default");
     assert.equal(payload.quantityConstraintsByProductId[B2B_PRODUCT_ID], undefined);
   });
 });
@@ -456,8 +464,8 @@ test("integration: anonymous B2C visitor does NOT get the B2B-only rules", async
   );
   const payload = await (await loader({ request })).json();
 
-  assert.equal(payload.segment, "B2C");
-  // B2C_ONLY variant stays visible for B2C → not in the hidden list.
+  assert.equal(payload.catalogId, "default");
+  // B2C_ONLY variant stays visible for the default catalog → not in the hidden list.
   const hidden =
     payload.variantVisibilityByProductId[B2B_PRODUCT_ID]?.hiddenVariantIds ?? [];
   assert.equal(hidden.includes(B2B_ONLY_HIDDEN_VARIANT), false);

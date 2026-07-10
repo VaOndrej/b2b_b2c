@@ -20,7 +20,13 @@ export default defineConfig({
   expect: {
     timeout: 12_000,
   },
-  retries: process.env.CI ? 1 : 0,
+  // Opt-in local retries (PLAYWRIGHT_RETRIES=2) help ride out the intermittent
+  // Cloudflare bot challenge on the PUBLIC storefront; a theme-dev origin needs none.
+  retries: process.env.PLAYWRIGHT_RETRIES
+    ? Number(process.env.PLAYWRIGHT_RETRIES)
+    : process.env.CI
+      ? 1
+      : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   // Arms the gated override in the app under test (when the harness starts it).
   // reuseExistingServer lets an already-running dev app be reused; to force the

@@ -62,6 +62,27 @@ export async function loadCatalogRulesets(deps?: {
   return buildCatalogRulesets(catalogConfig as unknown as CatalogRulesetConfig);
 }
 
+// MVP_5_4_9 — which catalog a storefront customer resolves into, from their
+// audience tags (+ purchasing company). Used for the informational `catalogId`
+// field on the visibility response. Resilient to missing catalog tables.
+export async function resolveStorefrontCatalogId(
+  input: {
+    matchedTags: string[];
+    hasPurchasingCompany?: boolean;
+  },
+  deps?: {
+    getOrCreateMarginGuardConfig?: typeof getOrCreateMarginGuardConfig;
+    loadAllCatalogsForConfig?: typeof loadAllCatalogsForConfig;
+  },
+): Promise<string | null> {
+  const rulesets = await loadCatalogRulesets(deps);
+  const ruleset = resolveCatalogRuleset(rulesets, {
+    matchedTags: input.matchedTags,
+    hasPurchasingCompany: input.hasPurchasingCompany,
+  });
+  return ruleset?.catalogId ?? null;
+}
+
 // MVP_5_3 #2.3c — storefront quantity hints (MOQ/step/max, collection max,
 // customer-specific max) for the customer's resolved catalog, sourced from
 // catalog tables. Replaces the visibility loader's legacy MarginGuardConfig

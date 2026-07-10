@@ -327,7 +327,25 @@ MVP_5_4: HOTOVO (catalog-native e2e harness — legacy segment shim odstraněn, 
  │
  └─ K OVĚŘENÍ UŽIVATELEM: plný browser run (npm run test:e2e) potřebuje dev app spuštěnou s MARGIN_GUARD_E2E_OVERRIDE=1 (jinak je override inertní a catalog kontext nevynutí katalog). Tj. restart `MARGIN_GUARD_E2E_OVERRIDE=1 shopify app dev`, pak npm run test:e2e.
 
-MVP_5_4_9 (PLÁN) – Odstranit binární B2B/B2C segment z PRODUKČNÍHO kódu
+MVP_5_4_9 (HOTOVO – storefront-only, 2026-06-19) – Odstranit binární B2B/B2C segment z PRODUKČNÍHO kódu
+ ├─ ROZHODNUTÍ ROZSAHU (uživatel): STOREFRONT-ONLY. Binární segment odstraněn z viditelnostní/projection cesty (projection snapshoty, hidden_handles, liquid embed, loader). CatalogRuleset.segment / CatalogResolutionEntry.segment PONECHÁNY jako interní per-katalog nálepka (NE globální binární přepínač) — čte je conflict detector (admin varování), function-config, pricing/margin cores přes per-katalog adaptér; jejich překlopení = případně samostatné MVP.
+ │
+ ├─ VÝSLEDEK (co se reálně udělalo):
+ │   ├─ Projection (storefront-projection.server.ts): segments.b2b/b2c → catalogSnapshots: Record<catalogId, snapshot> (snapshot pro každý resolvovatelný katalog, default vždy přítomen). schemaVersion 1→2. defaultCatalogId odvozen konzistentně. Test přepsán na catalogSnapshots.
+ │   ├─ hidden_handles metafield (margin-guard-config.server.ts): { b2b, b2c, b2bTag } → { catalogs: Record<catalogId, handles[]>, defaultCatalogId, b2bTag }.
+ │   ├─ Liquid embed: current_segment_key zrušen; current_catalog_id se resolvuje klientsky (iterace catalogResolution: audience tagy + nativní customer.b2b? na matchCompany katalog, nejvyšší priorita vyhrává, default fallback); čte catalogs[id] + catalogSnapshots[id]. Bootstrap pole "segment" → "catalogId".
+ │   ├─ Loader (margin-guard-visibility.loader.server.ts): resolveVisibilitySegment (B2B/B2C derivace) → resolveCustomerAudienceTags (jen sběr tagů). Response: segment → catalogId (přes nový resolveStorefrontCatalogId v catalog-ruleset.server.ts + route wiring), segmentDebug → audienceDebug. Sdílené resolvery (storefront-visibility.server.ts) mají segment param optional; loader ho už nepředává (catalog rules jsou segment-null → vestigiální).
+ │   ├─ visibility-script JS: debug pole payload.segment → catalogId (jen logging).
+ │
+ ├─ RIZIKA (zbylá, dokumentovaná): nutnost re-deploy app-embed + re-projekce shopů (starý metafield tvar po dobu přechodu — liquid je tolerantní: chybějící catalogSnapshots/catalogs → prázdné, default fallback). Anti-flash vizuálně NEověřeno (mimo GATE; je designový požadavek). Market-osa se v liquid anti-flash neřeší (runtime axis, stejně jako dřív).
+ │
+ ├─ NEUDĚLÁNO (vědomě mimo storefront-only scope): CatalogRuleset.segment/CatalogResolutionEntry.segment, conflict-detector segment labely, core/segment/* (čte ho webhook/pricing-preview/storefront-content), storefront-content segment-keyed pravidla.
+ │
+ ├─ KONTEXT (původní): MVP_5_4 zbavil legacy JEN e2e harness; produkční kód nesl binární segment jako nosnou vrstvu.
+ │
+ └─ GATE (upraveno uživatelem 2026-06-19): jen zelené testy MIMO testy pouštěné na živém eshopu → typecheck 0 + guard:test:core zelené. SPLNĚNO: typecheck 0, guard:test:core 271/271 zelené. Storefront e2e proti živému storu a vizuální anti-flash kontrola se zde NEvyžadují.
+
+MVP_5_4_9 (PŮVODNÍ PLÁN – archiv) – Odstranit binární B2B/B2C segment z PRODUKČNÍHO kódu
  ├─ KONTEXT: MVP_5_4 zbavil legacy JEN e2e harness; produkční kód pořád nese binární segment B2B/B2C jako nosnou vrstvu (storefront na něm stojí). Tohle MVP ho doplatí, aby celá aplikace jela jen na katalozích.
  │
  ├─ PROČ ZBYLO: segment je v produkci pořád load-bearing na třech místech, která nejdou vypnout bez náhrady:
@@ -344,7 +362,7 @@ MVP_5_4_9 (PLÁN) – Odstranit binární B2B/B2C segment z PRODUKČNÍHO kódu
  │
  ├─ RIZIKA: přepis liquid embed vrstvy (anti-flash first-paint nesmí blikat), mapování nativního Shopify B2B na katalog, migrace projection schématu (starý vs nový tvar po dobu přechodu), nutnost re-deploy + re-projekce všech shopů. Vyšší riziko než MVP_5_4 → vlastní MVP, ne součást harness cleanupu.
  │
- └─ GATE (až se to bude dělat): typecheck 0, guard:test:core zelené, storefront e2e (catalog-native matice z MVP_5_4) zelená na obou tématech, anti-flash bez bliknutí.
+ └─ GATE (upraveno uživatelem 2026-06-19): jen zelené testy MIMO testy pouštěné na živém eshopu → typecheck 0 + guard:test:core zelené. Storefront e2e proti živému storu a vizuální anti-flash kontrola se zde NEvyžadují (anti-flash zůstává designový požadavek, ne GATE).
 
 
 MVP_5_5
@@ -363,6 +381,33 @@ Lokální origin (http://127.0.0.1:9292) vůbec neprochází Cloudflare bot-chal
     (unset SHOPIFY_E2E_PREVIEW_THEME_ID → Dawn projekty se skipnou samy, jinak spadnou na theme-mismatch guardu). Dual-theme je „nice to have";
     katalogová logika je theme-independent (asertuje se app-proxy payload). Pokud chceš i Dawn, druhý běh s theme dev na Dawn.
 Stejně tak mít na to jeden command kterému dám vždy jenom argument -Dawn nebo -Horizon.
+
+ ──── STAV (implementováno 2026-06-19; theme-agnostic revize téhož dne) ────
+ HOTOVO jeden command přes lokální theme-dev origin, BEZ theme argumentu (suite je theme-agnostická):
+   POUŽITÍ:
+     # terminál 1:  MARGIN_GUARD_E2E_OVERRIDE=1 shopify app dev
+     # terminál 2:  shopify theme dev --store b2b-b2c-store-development.myshopify.com   (libovolný checkout — Horizon i Dawn)
+     # terminál 3:  npm run test:e2e:local                       (theme dev na defaultním :9292)
+     #              npm run test:e2e:local -- --port 53142        (theme dev na jiném portu)
+     #              npm run test:e2e:local -- --url http://127.0.0.1:53142
+   ROZHODNUTÍ (uživatel): testům je jedno, jaký theme běží → odebrán povinný -Dawn/-Horizon flag; který
+     theme jede si hlídá uživatel sám (terminál 2). port theme devu není deterministický → přidán --port/--url.
+   PÁTEŘ = marker env var SHOPIFY_E2E_THEME_DEV=1 (nastaví wrapper). Vše downstream čte env jako každý SHOPIFY_E2E_*.
+   ZMĚNY (1 nový skript + 2 chirurgické edity, runner/runtime/serial NEDOTČENÉ):
+     - scripts/test-e2e-local.mjs (NOVÝ): parse volitelného --port/--url (precedence: arg > pre-set env >
+       default :9292) → env kontrakt (SHOPIFY_E2E_THEME_DEV=1, base URL, SHOPIFY_E2E_SHOP_DOMAIN, prázdné
+       PREVIEW_THEME_ID) → exec stávající runner. Nespouští theme dev (jiný checkout mimo app repo), nesahá na flag.
+     - playwright.matrix.config.ts: SHOPIFY_E2E_THEME_DEV set → 2 theme-agnostické projekty (local-base +
+       local-catalog); unset (remote) → plná 4-projektová matice (tier1-{horizon,dawn}-{base,catalog}) beze změny.
+     - tests/e2e/support/theme.ts: theme-dev mód → theme guard (verifyActiveTheme) je no-op, žádný preview_theme_id.
+       Name-check (SHOPIFY_E2E_{DAWN,HORIZON}_THEME_NAME) + preview_theme_id zůstávají JEN pro remote 4-projektovou matici.
+     - package.json: test:e2e:local → node ./scripts/test-e2e-local.mjs.
+     - tests/e2e/README.md: narovnaná lokální sekce.
+   DŮSLEDEK odebrání flagu: name-check v theme-dev modu PADÁ (není proti čemu jméno ověřovat) — vědomé, hlídá uživatel.
+   ZJIŠTĚNÍ: Horizon-local fungoval i předtím (starý test:e2e:local); delta byl jeden command + Dawn na theme-dev.
+   OVĚŘENO: typecheck 0; --list (remote=4 tier1-*, theme-dev=2 local-base/local-catalog);
+     wrapper: bez argu OK, --port 53142 → base URL :53142, neznámý arg / --url+--port zároveň → usage + exit 2.
+   NEOVĚŘENO LOKÁLNĚ: skutečný zelený běh — vyžaduje běžící theme dev + app s armed flagem (3 terminály).
 
 
 MVP_5_5_1

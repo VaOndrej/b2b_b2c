@@ -1,4 +1,3 @@
-import type { Segment } from "../../core/segment/segment.types";
 import {
   E2E_AUDIENCE_OVERRIDE_PARAM,
   resolveStorefrontAudienceOverride,
@@ -127,45 +126,37 @@ type VisibilityDependencies = {
     hasPurchasingCompany?: boolean;
     customerId?: string | null;
   }) => Promise<StorefrontCatalogQuantity>;
+  // MVP_5_4_9: resolves which catalog the customer falls into (from their audience
+  // tags) for the informational `catalogId` response field. Optional so existing
+  // tests/callers are unaffected (catalogId is null when not wired).
+  resolveStorefrontCatalogId?: (input: {
+    matchedTags: string[];
+    hasPurchasingCompany?: boolean;
+  }) => Promise<string | null>;
 };
 
-async function resolveVisibilitySegment(input: {
+// MVP_5_4_9 — the storefront no longer derives a binary B2B/B2C segment. It only
+// collects the customer's audience tags; catalog resolution (which catalog the
+// customer falls into) is done downstream from those tags.
+async function resolveCustomerAudienceTags(input: {
   admin: AdminGraphqlClient | undefined;
   customerId: string | null;
-  b2bTag: string;
   customerTagsHint: string[];
 }): Promise<{
-  segment: Segment;
   source: "hint_tags" | "admin_tags" | "missing_customer" | "missing_admin" | "fallback";
-  expectedTag: string;
   normalizedTags: string[];
 }> {
-  const expectedTag = normalizeTag(input.b2bTag || "b2b") || "b2b";
-
-  if (!input.customerId || !input.admin) {
-    if (input.customerTagsHint.includes(expectedTag)) {
-      return {
-        segment: "B2B",
-        source: "hint_tags",
-        expectedTag,
-        normalizedTags: input.customerTagsHint,
-      };
-    }
-    return {
-      segment: "B2C",
-      source: input.customerId ? "missing_admin" : "missing_customer",
-      expectedTag,
-      normalizedTags: input.customerTagsHint,
-    };
+  // Trust the storefront-supplied tag hint when present — it carries the full
+  // customer.tags list, so we can skip the admin round-trip.
+  if (input.customerTagsHint.length > 0) {
+    return { source: "hint_tags", normalizedTags: input.customerTagsHint };
   }
 
-  if (input.customerTagsHint.includes(expectedTag)) {
-    return {
-      segment: "B2B",
-      source: "hint_tags",
-      expectedTag,
-      normalizedTags: input.customerTagsHint,
-    };
+  if (!input.customerId) {
+    return { source: "missing_customer", normalizedTags: [] };
+  }
+  if (!input.admin) {
+    return { source: "missing_admin", normalizedTags: [] };
   }
 
   try {
@@ -187,19 +178,9 @@ async function resolveVisibilitySegment(input: {
       ? payload.data.customer.tags
       : [];
     const normalizedTags = tags.map(normalizeTag).filter(Boolean);
-    return {
-      segment: normalizedTags.includes(expectedTag) ? "B2B" : "B2C",
-      source: "admin_tags",
-      expectedTag,
-      normalizedTags,
-    };
+    return { source: "admin_tags", normalizedTags };
   } catch {
-    return {
-      segment: "B2C",
-      source: "fallback",
-      expectedTag,
-      normalizedTags: input.customerTagsHint,
-    };
+    return { source: "fallback", normalizedTags: [] };
   }
 }
 
@@ -223,45 +204,44 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
     const overrideTags = resolveStorefrontAudienceOverride(
       url.searchParams.get(E2E_AUDIENCE_OVERRIDE_PARAM),
     );
-    const overrideExpectedTag = normalizeTag(config.b2bTag || "b2b") || "b2b";
-    const segmentResolution = overrideTags
+    const audienceResolution = overrideTags
       ? {
-          // The segment field stays informational; catalog resolution below uses
-          // normalizedTags. A forced list carrying the B2B tag still reports B2B.
-          segment: overrideTags.includes(overrideExpectedTag)
-            ? ("B2B" as const)
-            : ("B2C" as const),
           source: "e2e_override" as const,
-          expectedTag: overrideExpectedTag,
           normalizedTags: overrideTags,
         }
-      : await resolveVisibilitySegment({
+      : await resolveCustomerAudienceTags({
           admin,
           customerId,
-          b2bTag: config.b2bTag,
           customerTagsHint,
         });
-    const segment = segmentResolution.segment;
+    const matchedTags = audienceResolution.normalizedTags;
+
+    // MVP_5_4_9 — informational: which catalog the customer resolves into. The
+    // storefront no longer thinks in B2B/B2C; this just labels the response.
+    const catalogId = deps.resolveStorefrontCatalogId
+      ? await deps
+          .resolveStorefrontCatalogId({ matchedTags })
+          .catch(() => null)
+      : null;
 
     // MVP_5_3 #2.3c — quantity hints come from the customer's resolved catalog
     // (catalog tables), not the legacy MarginGuardConfig quantity children.
     const catalogQuantity = deps.loadStorefrontCatalogQuantity
       ? await deps
           .loadStorefrontCatalogQuantity({
-            matchedTags: segmentResolution.normalizedTags,
+            matchedTags,
             customerId,
           })
           .catch(() => EMPTY_CATALOG_QUANTITY)
       : EMPTY_CATALOG_QUANTITY;
 
     // Product/variant visibility now flow solely from per-catalog visibility
-    // (merged below); the segment-keyed children are no longer read, so pass no
-    // legacy rules — resolveStorefrontVisibilityByHandles still resolves the
-    // handle→productId map the rest of the loader needs.
+    // (merged below); no segment-keyed rules are read, so pass none —
+    // resolveStorefrontVisibilityByHandles still resolves the handle→productId
+    // map the rest of the loader needs.
     const visibility = await deps.resolveStorefrontVisibilityByHandles({
       admin,
       handles,
-      segment,
       customerId,
       rules: [],
     });
@@ -280,7 +260,6 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
     const quantityConstraintsByHandle = deps.resolveStorefrontQuantityConstraintsByHandle({
       handles,
       productIdByHandle: visibility.productIdByHandle,
-      segment,
       rules: catalogQuantity.productQuantityRules,
       collectionRules: collectionQuantityRules,
       productCollectionIdsByProductId,
@@ -289,7 +268,6 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
     });
     const quantityConstraintsByProductId = deps.resolveStorefrontQuantityConstraintsByProductId({
       productIds,
-      segment,
       rules: catalogQuantity.productQuantityRules,
       collectionRules: collectionQuantityRules,
       productCollectionIdsByProductId,
@@ -297,21 +275,20 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
       customerMaxRules: catalogQuantity.customerQuantityRules,
     });
     // Variant visibility flows solely from per-catalog variant visibility
-    // (merged below); no legacy segment-keyed variant rules are read.
+    // (merged below); no segment-keyed variant rules are read.
     const variantVisibilityByProductId =
       deps.resolveStorefrontVariantVisibilityByProductId({
         productIds: allRelevantProductIds,
-        segment,
         customerId,
         rules: [],
       });
 
     // MVP_5_3 #3 — merge per-catalog hidden variants (custom catalog resolved
-    // from the customer's tags) on top of the segment-based variant visibility.
+    // from the customer's tags) on top of the base variant visibility.
     let mergedVariantVisibilityByProductId = variantVisibilityByProductId;
     if (deps.resolveStorefrontCatalogVariantVisibility) {
       const catalogHiddenVariants = await deps
-        .resolveStorefrontCatalogVariantVisibility(segmentResolution.normalizedTags)
+        .resolveStorefrontCatalogVariantVisibility(matchedTags)
         .catch(() => ({}) as Record<string, string[]>);
       if (Object.keys(catalogHiddenVariants).length > 0) {
         mergedVariantVisibilityByProductId = { ...variantVisibilityByProductId };
@@ -332,7 +309,7 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
       const catalogHiddenProductIds = new Set(
         (
           await deps
-            .resolveStorefrontCatalogProductVisibility(segmentResolution.normalizedTags)
+            .resolveStorefrontCatalogProductVisibility(matchedTags)
             .catch(() => [] as string[])
         ).map((value) => String(value)),
       );
@@ -365,7 +342,7 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
       ? await deps
           .resolveCartDiscountConflictsByHandle({
             admin,
-            matchedTags: segmentResolution.normalizedTags,
+            matchedTags,
             handles,
             productIdByHandle: visibility.productIdByHandle,
             productCollectionIdsByProductId,
@@ -375,14 +352,13 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
 
     return Response.json(
       {
-        segment,
+        catalogId,
         customerId: customerId ?? null,
         b2bTag: config.b2bTag,
         discountConflictsByHandle,
-        segmentDebug: {
-          source: segmentResolution.source,
-          expectedTag: segmentResolution.expectedTag,
-          normalizedTags: segmentResolution.normalizedTags,
+        audienceDebug: {
+          source: audienceResolution.source,
+          normalizedTags: matchedTags,
           customerTagsHint,
           hasAdminClient: Boolean(admin),
         },

@@ -619,10 +619,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
     const payload = await response.json();
     debugLog("visibility response", {
-      segment: payload?.segment ?? null,
+      catalogId: payload?.catalogId ?? null,
       customerId: payload?.customerId ?? null,
       b2bTag: payload?.b2bTag ?? null,
-      segmentDebug: payload?.segmentDebug ?? null,
+      audienceDebug: payload?.audienceDebug ?? null,
       hiddenHandles: Array.isArray(payload?.hiddenHandles) ? payload.hiddenHandles : [],
       productIdByHandle: payload?.productIdByHandle ?? {},
     });

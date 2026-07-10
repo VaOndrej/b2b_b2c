@@ -20,7 +20,11 @@ import {
   resolveStorefrontQuantityConstraintsByProductId,
 } from "./storefront-visibility.server.ts";
 
-const STOREFRONT_PROJECTION_SCHEMA_VERSION = 1;
+// MVP_5_4_9 — schema 2 drops the binary segments.b2b/b2c snapshots in favor of
+// per-catalog snapshots keyed by catalogId (catalogSnapshots). The Liquid embed
+// resolves the customer's catalog client-side from catalogResolution and reads
+// its snapshot directly, so the storefront no longer thinks in B2B/B2C.
+const STOREFRONT_PROJECTION_SCHEMA_VERSION = 2;
 const STOREFRONT_PROJECTION_NAMESPACE = "margin_guard";
 const STOREFRONT_PROJECTION_KEY = "storefront_projection";
 
@@ -139,10 +143,10 @@ export interface StorefrontProjectionPayload {
     loyaltyTiers: string[];
     byHandle: Record<string, never>;
   };
-  segments: {
-    b2b: ProjectionSegmentSnapshot;
-    b2c: ProjectionSegmentSnapshot;
-  };
+  // MVP_5_4_9 — per-catalog anti-flash snapshots keyed by catalogId. The default
+  // catalog is always present (anonymous fallback); custom catalogs add their own
+  // entry. Replaces the legacy segments.b2b/b2c shape.
+  catalogSnapshots: Record<string, ProjectionSegmentSnapshot>;
 }
 
 function normalizeProductId(value: string | null | undefined): string {
@@ -167,10 +171,10 @@ function buildProductIdByHandle(records: ProductHandleRecord[]): Record<string, 
   return Object.fromEntries(records.map((record) => [record.handle, record.productId]));
 }
 
-// MVP_5_3 #2.3c — the b2b/b2c projection snapshots (consumed by the storefront
-// Liquid block for anti-flash) are now regenerated from catalog tables: the
-// default catalog feeds the b2c snapshot, the B2B catalog feeds the b2b one. The
-// payload shape is unchanged so no Liquid/script edit is needed.
+// MVP_5_4_9 — anti-flash snapshots (consumed by the storefront Liquid block) are
+// built once PER catalog from catalog tables and keyed by catalogId. The Liquid
+// embed resolves the customer's catalog client-side and reads its snapshot — no
+// B2B/B2C branching on the storefront.
 interface CatalogSnapshotSources {
   effectiveLayer: EffectiveCatalogPricingLayer | null;
   hiddenProductIds: string[];
@@ -274,17 +278,6 @@ export function buildStorefrontProjection(input: {
     input.defaultCatalogId ??
     (input.catalogRulesets ?? []).find((ruleset) => ruleset.isDefault)?.catalogId ??
     "default";
-  // The b2b snapshot is fed by the (non-default) catalog mapped to the B2B
-  // audience; falls back to the conventional "b2b" id when no catalog metadata
-  // is available (back-compat / empty shop).
-  const b2bCatalogId =
-    (input.catalogRulesets ?? []).find(
-      (ruleset) => !ruleset.isDefault && ruleset.segment === "B2B",
-    )?.catalogId ??
-    (input.catalogResolution ?? []).find(
-      (entry) => !entry.isDefault && entry.segment === "B2B",
-    )?.id ??
-    "b2b";
 
   const sourcesForCatalog = (catalogId: string): CatalogSnapshotSources => ({
     effectiveLayer:
@@ -301,6 +294,28 @@ export function buildStorefrontProjection(input: {
         ?.hiddenCollectionHandles ?? [],
   });
 
+  // Build a snapshot for every catalog that has a ruleset or visibility data; the
+  // default catalog is always present as the anonymous fallback.
+  const catalogIds = Array.from(
+    new Set<string>(
+      [
+        defaultId,
+        ...(input.catalogResolution ?? []).map((entry) => entry.id),
+        ...(input.catalogRulesets ?? []).map((ruleset) => ruleset.catalogId),
+        ...(input.catalogProductVisibility ?? []).map((entry) => entry.catalogId),
+        ...(input.catalogVariantVisibility ?? []).map((entry) => entry.catalogId),
+        ...(input.catalogCollectionVisibility ?? []).map((entry) => entry.catalogId),
+      ].filter(Boolean),
+    ),
+  );
+  const catalogSnapshots: Record<string, ProjectionSegmentSnapshot> = {};
+  for (const catalogId of catalogIds) {
+    catalogSnapshots[catalogId] = buildProjectionSegmentSnapshot({
+      sources: sourcesForCatalog(catalogId),
+      productHandleRecords: input.productHandleRecords,
+    });
+  }
+
   return {
     schemaVersion: STOREFRONT_PROJECTION_SCHEMA_VERSION,
     generatedAt: new Date().toISOString(),
@@ -309,7 +324,7 @@ export function buildStorefrontProjection(input: {
       : null,
     debug: storefrontProjection.debug,
     b2bTag: String(input.config.b2bTag ?? "b2b").trim() || "b2b",
-    defaultCatalogId: input.defaultCatalogId ?? "default",
+    defaultCatalogId: defaultId,
     catalogTags: input.catalogTags ?? [],
     catalogResolution: input.catalogResolution ?? [],
     catalogVariantVisibility: input.catalogVariantVisibility ?? [],
@@ -337,16 +352,7 @@ export function buildStorefrontProjection(input: {
       loyaltyTiers: [],
       byHandle: {},
     },
-    segments: {
-      b2b: buildProjectionSegmentSnapshot({
-        sources: sourcesForCatalog(b2bCatalogId),
-        productHandleRecords: input.productHandleRecords,
-      }),
-      b2c: buildProjectionSegmentSnapshot({
-        sources: sourcesForCatalog(defaultId),
-        productHandleRecords: input.productHandleRecords,
-      }),
-    },
+    catalogSnapshots,
   };
 }
 

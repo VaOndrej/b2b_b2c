@@ -53,7 +53,8 @@ flagu `MARGIN_GUARD_E2E_OVERRIDE=1` nema `mg_e2e_audience` zadny efekt (viz
 2. Envy:
    - `SHOPIFY_E2E_STOREFRONT_BASE_URL=https://b2b-b2c-store-development.myshopify.com`
    - volitelne `SHOPIFY_E2E_STOREFRONT_PASSWORD=...` (zamceny storefront)
-   - volitelne `SHOPIFY_E2E_PREVIEW_THEME_ID=...` (Dawn projekty)
+   - volitelne `SHOPIFY_E2E_PREVIEW_THEME_ID=...` (Dawn projekty — JEN remote storefront; v theme-dev modu se ignoruje)
+   - volitelne `SHOPIFY_E2E_{DAWN,HORIZON}_THEME_NAME=...` (theme-name guard — JEN remote; v theme-dev modu je guard vypnutý)
    - volitelne `SHOPIFY_E2E_PRODUCT_HANDLE_{VISIBILITY,STEP,MAX,VARIANT}=...` (rucni override)
 3. `npx playwright install chromium` (jednou).
 4. `npm run test:e2e` (matice + serialni tier) — flag `MARGIN_GUARD_E2E_OVERRIDE=1`
@@ -64,6 +65,46 @@ flagu `MARGIN_GUARD_E2E_OVERRIDE=1` nema `mg_e2e_audience` zadny efekt (viz
 Handly se resi automaticky ze seedovaneho `.matrix.json` (preferovane, zaruceny
 publikovany produkt) → DB auto-resoluce → `SHOPIFY_E2E_PRODUCT_HANDLE_*` override.
 `productId → handle` preklad jde pres offline Shopify session v Prisma.
+
+### Bot-challenge na VEŘEJNÉM storefrontu (Cloudflare) → jak na zelenou
+
+Shopify/Cloudflare občas servíruje headless prohlížeči na `*.myshopify.com`
+interstitial "Your connection needs to be verified". Je to **environmentální** a
+**intermitentní** — netýká se katalogové logiky (matice `catalog` kontext prochází
+živě). Když nastane, kontext prohlížeče může spadnout dřív, než se stihne skip,
+takže se to NEDÁ spolehlivě opravit jen v testu. Dvě cesty k deterministicky
+zelené:
+
+1. **Lokální theme-dev origin (DOPORUČENO, obejde Cloudflare úplně):**
+   ```
+   # terminál 1 (app-proxy + override armed):
+   MARGIN_GUARD_E2E_OVERRIDE=1 shopify app dev
+   # terminál 2 (lokální storefront — JEDEN theme, libovolný checkout: Horizon NEBO Dawn):
+   shopify theme dev --store b2b-b2c-store-development.myshopify.com
+   # terminál 3:
+   npm run test:e2e:local                       # theme dev na defaultním :9292
+   npm run test:e2e:local -- --port 53142       # theme dev na jiném portu
+   npm run test:e2e:local -- --url http://127.0.0.1:53142
+   ```
+   Suite je **theme-agnostická** (sdílené selektory, asertuje se app-proxy /visibility
+   payload + app-injected markery), takže běží proti tomu, co theme dev zrovna servíruje
+   — který theme jedeš si hlídáš sám (terminálem 2). Žádný theme argument.
+
+   Wrapper `scripts/test-e2e-local.mjs` nastaví env kontrakt: `SHOPIFY_E2E_THEME_DEV=1`,
+   base URL (`--url`/`--port` > pre-set env > default `http://127.0.0.1:9292`),
+   `SHOPIFY_E2E_SHOP_DOMAIN` na reálný shop (Admin API handle lookup) a vyprázdní
+   `SHOPIFY_E2E_PREVIEW_THEME_ID`. Matice se složí na 2 theme-agnostické projekty
+   (`local-base` + `local-catalog`), seriální tier běží proti témuž originu. Browser
+   mluví jen s localhostem → žádná Cloudflare bot-challenge. Theme guard je v theme-dev
+   modu vypnutý (není proti čemu jméno ověřovat); preview_theme_id je remote-only a
+   ignoruje se. Pro druhý theme prostě spusť terminál 2 z druhého checkoutu.
+
+2. **Headed proti veřejnému storefrontu (rychlá zkouška) + retries:**
+   ```
+   PLAYWRIGHT_HEADLESS=0 PLAYWRIGHT_RETRIES=2 npm run test:e2e
+   ```
+   Reálný (ne-headless) Chrome z lokálu bot-detekci skoro netriggeruje; `PLAYWRIGHT_RETRIES`
+   přejede intermitentní challenge. Méně deterministické než theme dev.
 
 ### Co NENI pokryte (zbytkove gapy, dokumentovane)
 

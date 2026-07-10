@@ -13,7 +13,10 @@ import {
   resolveStorefrontCatalogVariantVisibility,
   resolveStorefrontCatalogProductVisibility,
 } from "../services/price-catalog.server";
-import { loadStorefrontCatalogQuantity } from "../services/catalog-ruleset.server";
+import {
+  loadStorefrontCatalogQuantity,
+  resolveStorefrontCatalogId,
+} from "../services/catalog-ruleset.server";
 
 export const loader = createVisibilityLoader({
   authenticatePublicAppProxy: authenticate.public.appProxy,
@@ -34,4 +37,6 @@ export const loader = createVisibilityLoader({
       collectionQuantityRules: [],
       customerQuantityRules: [],
     })),
+  resolveStorefrontCatalogId: (input) =>
+    resolveStorefrontCatalogId(input).catch(() => null),
 });
