@@ -1,11 +1,11 @@
 import { resolvePricingSimulationInput } from "../../../app/services/pricing-preview.server.ts";
-import type { PricingPipelineInput } from "../../../core/pricing/pricing.pipeline.ts";
-import type { TierPrice } from "../../../core/pricing/pricing.types.ts";
-import type { DiscountInput } from "../../../core/discount/discount.rules.ts";
+import type { PricingPipelineInput } from "#core/pricing/pricing.pipeline";
+import type { TierPrice } from "#core/pricing/pricing.types";
+import type { DiscountInput } from "#core/discount/discount.rules";
 import {
   resolveCatalogRuleset,
   type CatalogRuleset,
-} from "../../../core/catalog/catalog.ruleset.ts";
+} from "#core/catalog/catalog.ruleset";
 
 interface CartValidateRequestBody {
   productId: string;

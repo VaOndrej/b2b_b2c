@@ -1,5 +1,5 @@
-import { runPricingPipeline } from "../../../core/pricing/pricing.pipeline.ts";
-import type { PricingPipelineInput } from "../../../core/pricing/pricing.pipeline.ts";
+import { runPricingPipeline } from "#core/pricing/pricing.pipeline";
+import type { PricingPipelineInput } from "#core/pricing/pricing.pipeline";
 
 export function applyDiscountFunction(input: PricingPipelineInput) {
   const result = runPricingPipeline(input);

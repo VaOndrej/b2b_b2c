@@ -5,11 +5,11 @@ import {
   resolveHiddenCollections,
   resolveCollectionRedirectMessage,
   resolveStorefrontContent,
-} from "../../core/storefront/storefront-content.engine.ts";
+} from "#core/storefront/storefront-content.engine";
 import type {
   StorefrontContentRule,
   CollectionVisibilityRule,
-} from "../../core/storefront/storefront-content.types.ts";
+} from "#core/storefront/storefront-content.types";
 
 function makeRule(overrides: Partial<StorefrontContentRule> = {}): StorefrontContentRule {
   return {

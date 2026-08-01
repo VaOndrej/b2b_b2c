@@ -17,6 +17,9 @@
     "allowImportingTsExtensions": true,
     "target": "ES2022",
     "baseUrl": ".",
+    "paths": {
+      "#core/*": ["packages/core/src/*"]
+    },
     "types": ["@react-router/node", "vite/client", "@shopify/polaris-types"],
     "rootDirs": [".", "./.react-router/types"]
   }

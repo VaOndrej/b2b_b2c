@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mergeCatalogLayer } from "../../core/catalog/catalog.merge.ts";
-import type { CatalogPricingLayer } from "../../core/catalog/catalog.types.ts";
+import { mergeCatalogLayer } from "#core/catalog/catalog.merge";
+import type { CatalogPricingLayer } from "#core/catalog/catalog.types";
 
 /**
  * Direct coverage for mergeCatalogLayer (delta-over-base). Previously only exercised

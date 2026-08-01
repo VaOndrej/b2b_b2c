@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveDiscounts } from "../../core/discount/discount.orchestrator.ts";
+import { resolveDiscounts } from "#core/discount/discount.orchestrator";
 
 test("discount orchestrator resolves product over collection over global rules", () => {
   const productId = "gid://shopify/Product/ADV_PRODUCT";

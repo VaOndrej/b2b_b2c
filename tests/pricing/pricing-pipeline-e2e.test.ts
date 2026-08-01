@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { runPricingPipeline } from "../../core/pricing/pricing.pipeline.ts";
-import type { PricingPipelineInput } from "../../core/pricing/pricing.pipeline.ts";
+import { runPricingPipeline } from "#core/pricing/pricing.pipeline";
+import type { PricingPipelineInput } from "#core/pricing/pricing.pipeline";
 
 /**
  * End-to-end composition of the full pricing pipeline (no existing test drives the

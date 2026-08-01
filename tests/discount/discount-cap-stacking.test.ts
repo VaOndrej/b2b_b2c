@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveDiscounts } from "../../core/discount/discount.orchestrator.ts";
-import type { DiscountRules } from "../../core/discount/discount.rules.ts";
+import { resolveDiscounts } from "#core/discount/discount.orchestrator";
+import type { DiscountRules } from "#core/discount/discount.rules";
 
 /**
  * Explicit coverage for the discount cap + stacking outcomes that had NO tests:

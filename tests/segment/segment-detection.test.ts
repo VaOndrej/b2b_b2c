@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveSegment } from "../../core/segment/segment.engine.ts";
+import { resolveSegment } from "#core/segment/segment.engine";
 
 test("segment detection uses company-role -> tag -> fallback precedence", () => {
   const byCompany = resolveSegment({

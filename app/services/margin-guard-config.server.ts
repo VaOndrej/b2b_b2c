@@ -2,9 +2,9 @@ import prisma from "../db.server.ts";
 import {
   buildDiscountRuleLookupKey,
   canonicalizeDiscountBlacklistPair,
-} from "../../core/discount/discount.identity.ts";
-import type { FloorRuleset } from "../../core/margin/floor.rules.ts";
-import { buildCatalogConfigFromCatalogs } from "../../core/config/function-config.ts";
+} from "#core/discount/discount.identity";
+import type { FloorRuleset } from "#core/margin/floor.rules";
+import { buildCatalogConfigFromCatalogs } from "#core/config/function-config";
 import {
   loadAllCatalogsForConfig,
   loadCatalogProductVisibility,

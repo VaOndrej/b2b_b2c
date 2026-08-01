@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   isProductVisible,
   isVariantVisible,
-} from "../../core/visibility/visibility.engine.ts";
+} from "#core/visibility/visibility.engine";
 
 test("product visibility rules apply segment and customer restrictions", () => {
   const rules = [

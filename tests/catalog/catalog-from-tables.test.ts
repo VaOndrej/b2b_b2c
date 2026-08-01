@@ -4,8 +4,8 @@ import {
   buildCatalogConfigFromCatalogs,
   type CatalogTableInput,
   type CatalogShopScalars,
-} from "../../core/config/function-config.ts";
-import { mergeCatalogLayer } from "../../core/catalog/catalog.merge.ts";
+} from "#core/config/function-config";
+import { mergeCatalogLayer } from "#core/catalog/catalog.merge";
 
 const SHOP: CatalogShopScalars = {
   b2bTag: "b2b",

@@ -1,10 +1,10 @@
-import { buildCatalogConfigFromCatalogs } from "../../core/config/function-config.ts";
+import { buildCatalogConfigFromCatalogs } from "#core/config/function-config";
 import {
   buildCatalogRulesets,
   resolveCatalogRuleset,
   type CatalogRuleset,
   type CatalogRulesetConfig,
-} from "../../core/catalog/catalog.ruleset.ts";
+} from "#core/catalog/catalog.ruleset";
 import { getOrCreateMarginGuardConfig } from "./margin-guard-config.server.ts";
 import { loadAllCatalogsForConfig } from "./price-catalog.server.ts";
 
@@ -28,11 +28,11 @@ export interface StorefrontCatalogQuantity {
   }>;
 }
 
-export type { CatalogRuleset } from "../../core/catalog/catalog.ruleset.ts";
+export type { CatalogRuleset } from "#core/catalog/catalog.ruleset";
 export {
   findCatalogRuleset,
   resolveCatalogRuleset,
-} from "../../core/catalog/catalog.ruleset.ts";
+} from "#core/catalog/catalog.ruleset";
 
 // MVP_5_3 #2.3c — single entry point that assembles the per-catalog rulesets the
 // conflict detector / webhook / preview consume. Shop-wide scalars come from

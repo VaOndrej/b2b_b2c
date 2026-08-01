@@ -7,8 +7,8 @@ import {
   getB2bTag,
 } from "../services/storefront-content.server";
 import { E2E_AUDIENCE_OVERRIDE_PARAM } from "../services/storefront-catalog-override.server";
-import { resolveStorefrontContent } from "../../core/storefront/storefront-content.engine";
-import type { PageType } from "../../core/storefront/storefront-content.types";
+import { resolveStorefrontContent } from "#core/storefront/storefront-content.engine";
+import type { PageType } from "#core/storefront/storefront-content.types";
 
 function normalizeCustomerId(value: string | null): string | null {
   const normalized = String(value ?? "").trim();

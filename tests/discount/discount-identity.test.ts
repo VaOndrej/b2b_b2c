@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildDiscountRuleLookupKey,
   canonicalizeDiscountBlacklistPair,
-} from "../../core/discount/discount.identity.ts";
+} from "#core/discount/discount.identity";
 
 test("discount rule lookup key is stable across nullish inputs", () => {
   const undefinedKey = buildDiscountRuleLookupKey({

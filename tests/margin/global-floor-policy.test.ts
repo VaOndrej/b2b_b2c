@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateMargin } from "../../core/margin/margin.guard.ts";
+import { validateMargin } from "#core/margin/margin.guard";
 
 function discountedPrice(basePrice: number, percentOff: number): number {
   return Math.round(basePrice * (1 - percentOff / 100) * 100) / 100;

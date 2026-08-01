@@ -2,7 +2,7 @@ import prisma from "../db.server.ts";
 import type {
   CustomCatalogInput,
   CatalogTableInput,
-} from "../../core/config/function-config.ts";
+} from "#core/config/function-config";
 
 // MVP_5_3 Phase 2 — repository for simulated price catalogs (PriceCatalog +
 // children). Follows the repo's dependency-injection idiom: every function takes

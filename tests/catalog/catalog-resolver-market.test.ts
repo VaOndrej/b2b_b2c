@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveCatalog } from "../../core/catalog/catalog.resolver.ts";
-import type { CatalogResolutionEntry } from "../../core/catalog/catalog.types.ts";
+import { resolveCatalog } from "#core/catalog/catalog.resolver";
+import type { CatalogResolutionEntry } from "#core/catalog/catalog.types";
 
 /**
  * Market-filter resolution gaps (the base resolver test covers tags/priority/default).

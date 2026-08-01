@@ -1,8 +1,8 @@
-import { validateMargin } from "../../core/margin/margin.guard.ts";
-import { resolveSegment } from "../../core/segment/segment.engine.ts";
-import { computeEffectiveBasePrice } from "../../core/pricing/pricing.engine.ts";
-import type { TierPrice } from "../../core/pricing/pricing.types.ts";
-import type { Segment } from "../../core/segment/segment.types.ts";
+import { validateMargin } from "#core/margin/margin.guard";
+import { resolveSegment } from "#core/segment/segment.engine";
+import { computeEffectiveBasePrice } from "#core/pricing/pricing.engine";
+import type { TierPrice } from "#core/pricing/pricing.types";
+import type { Segment } from "#core/segment/segment.types";
 import { buildFloorRuleset } from "./margin-guard-config.server.ts";
 import type { CatalogRuleset } from "./catalog-ruleset.server.ts";
 

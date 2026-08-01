@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   resolveCatalogUnitPrice,
   type CatalogPriceRule,
-} from "../../core/pricing/price-list.engine.ts";
+} from "#core/pricing/price-list.engine";
 
 const PRODUCT = "gid://shopify/Product/1";
 const VARIANT = "gid://shopify/ProductVariant/11";

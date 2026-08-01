@@ -1,6 +1,9 @@
 {
-  "name": "b2b-companion",
+  "name": "won-apps",
   "private": true,
+  "imports": {
+    "#core/*": "./packages/core/src/*.ts"
+  },
   "scripts": {
     "build": "react-router build",
     "guard:test": "npm run guard:test:core && npm run guard:test:e2e",

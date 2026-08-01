@@ -1,4 +1,4 @@
-import type { AutomaticDiscount } from "../../core/discount/conflict.detector.ts";
+import type { AutomaticDiscount } from "#core/discount/conflict.detector";
 
 interface AdminGraphqlClient {
   graphql: (

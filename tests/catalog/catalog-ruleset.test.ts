@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import {
   buildCatalogConfigFromCatalogs,
   type CatalogTableInput,
-} from "../../core/config/function-config.ts";
+} from "#core/config/function-config";
 import {
   buildCatalogRulesets,
   findCatalogRuleset,
   type CatalogRulesetConfig,
-} from "../../core/catalog/catalog.ruleset.ts";
+} from "#core/catalog/catalog.ruleset";
 
 // MVP_5_3 #2.3c — the per-catalog ruleset adapter feeds the (segment-shaped)
 // conflict detector / webhook / preview from catalog tables. One ruleset per

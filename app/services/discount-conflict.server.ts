@@ -4,7 +4,7 @@ import {
   type AutomaticDiscountValueType,
   type ConflictDetectionProduct,
   type DiscountFloorConflict,
-} from "../../core/discount/conflict.detector.ts";
+} from "#core/discount/conflict.detector";
 import {
   loadCatalogRulesets,
   resolveCatalogRuleset,

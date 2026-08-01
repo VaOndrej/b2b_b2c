@@ -1,6 +1,6 @@
 import prisma from "../db.server.ts";
-import type { Segment } from "../../core/segment/segment.types";
-import { resolveSegment } from "../../core/segment/segment.engine.ts";
+import type { Segment } from "#core/segment/segment.types";
+import { resolveSegment } from "#core/segment/segment.engine";
 import { resolveStorefrontAudienceOverride } from "./storefront-catalog-override.server.ts";
 
 const DEFAULT_CONFIG_ID = "default";

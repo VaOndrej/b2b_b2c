@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildCatalogConfigFromCatalogs } from "../../core/config/function-config.ts";
+import { buildCatalogConfigFromCatalogs } from "#core/config/function-config";
 import { hasExpectedB2BTags } from "../../app/services/cart-validation-activation.server.ts";
 
 test("custom b2bTag propagates into cart validation config b2bTags", () => {

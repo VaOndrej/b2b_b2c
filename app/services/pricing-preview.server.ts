@@ -1,9 +1,9 @@
-import type { DiscountInput } from "../../core/discount/discount.rules.ts";
-import { resolveConfiguredPricing } from "../../core/pricing/pricing.config.ts";
-import type { TierPrice } from "../../core/pricing/pricing.types.ts";
-import type { PricingPipelineInput } from "../../core/pricing/pricing.pipeline.ts";
-import type { Segment } from "../../core/segment/segment.types.ts";
-import type { CatalogRuleset } from "../../core/catalog/catalog.ruleset.ts";
+import type { DiscountInput } from "#core/discount/discount.rules";
+import { resolveConfiguredPricing } from "#core/pricing/pricing.config";
+import type { TierPrice } from "#core/pricing/pricing.types";
+import type { PricingPipelineInput } from "#core/pricing/pricing.pipeline";
+import type { Segment } from "#core/segment/segment.types";
+import type { CatalogRuleset } from "#core/catalog/catalog.ruleset";
 
 // MVP_5_3 #2.3c — the admin pricing preview simulates against the customer's
 // resolved price catalog (the same per-catalog ruleset the cart validation /

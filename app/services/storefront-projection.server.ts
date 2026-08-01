@@ -1,13 +1,13 @@
 import { storefrontProjection } from "../../config/feature-flags.ts";
-import { resolveCollectionRedirectMessage } from "../../core/storefront/storefront-content.engine.ts";
-import type { EffectiveCatalogPricingLayer } from "../../core/catalog/catalog.types.ts";
+import { resolveCollectionRedirectMessage } from "#core/storefront/storefront-content.engine";
+import type { EffectiveCatalogPricingLayer } from "#core/catalog/catalog.types";
 import {
   buildCatalogRulesets,
   type CatalogRuleset,
   type CatalogRulesetConfig,
-} from "../../core/catalog/catalog.ruleset.ts";
+} from "#core/catalog/catalog.ruleset";
 import { getOrCreateMarginGuardConfig } from "./margin-guard-config.server.ts";
-import { buildCatalogConfigFromCatalogs } from "../../core/config/function-config.ts";
+import { buildCatalogConfigFromCatalogs } from "#core/config/function-config";
 import { getCatalogProductMapByIds } from "./product-catalog.server.ts";
 import {
   loadAllCatalogsForConfig,
