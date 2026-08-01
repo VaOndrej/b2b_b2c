@@ -2,9 +2,7 @@ import type { Page } from "@playwright/test";
 
 import type { ThemeEnvironment } from "./theme.ts";
 
-export function isThemeDevMode(
-  env: ThemeEnvironment = process.env,
-): boolean {
+export function isThemeDevMode(env: ThemeEnvironment = process.env): boolean {
   return String(env.SHOPIFY_E2E_THEME_DEV ?? "").trim() === "1";
 }
 

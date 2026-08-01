@@ -5,7 +5,8 @@
   "description": "Shared, app-agnostic test infrastructure for WonApps.",
   "type": "module",
   "exports": {
-    "./theme-paths": "./src/theme-paths.ts",
+    "./theme-paths": "./src/theme-paths.js",
+    "./runner-config": "./src/runner-config.js",
     "./playwright": "./src/playwright/index.ts"
   },
   "scripts": {

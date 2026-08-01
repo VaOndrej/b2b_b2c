@@ -33,7 +33,7 @@
     "test:e2e:storefront": "playwright test --config=playwright.config.ts",
     "test:e2e:matrix": "playwright test --config=playwright.matrix.config.ts",
     "test:e2e:local": "node ./scripts/test-e2e-local.mjs",
-    "test:e2e:local:all": "node ./scripts/test-e2e-local-all.mjs",
+    "test:e2e:local:all": "node ../../packages/testing/scripts/run-theme-matrix.mjs --config ./e2e.app.config.mjs",
     "vite": "vite",
     "typecheck": "react-router typegen && tsc --noEmit"
   },

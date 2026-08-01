@@ -114,3 +114,44 @@ Baseline je zelený a plánovaná path regrese je potvrzená. Task 0 dokončen.
 
 - `b2b-companion` zatím používá původní lokální fixture; migrace proběhne až po
   zavedení generického runneru, aby se změny daly ověřovat odděleně.
+
+## 2026-08-01 — Task 3: generický Horizon/Dawn matrix runner
+
+### Změny
+
+- Přidán app-owned config contract a validační utility pro proxy probe, test
+  command, oba themes, porty a CLI argumenty.
+- Přidán generický `run-theme-matrix.mjs`, který načítá config aplikace, odvozuje
+  checkouty od rootu monorepa, volí porty, spouští themes sekvenčně, provádí
+  konfigurovatelný proxy preflight a garantuje cleanup vlastního child procesu.
+- Dry-run záměrně neotvírá port ani nespouští child proces; pouze validuje config,
+  checkouty a preferované porty.
+- B2B-specific proxy marker, start hint a stabilní Margin Guard test data byly
+  přesunuty do `apps/b2b-companion/e2e.app.config.mjs`.
+- `b2b-companion` script `test:e2e:local:all` nyní deleguje do sdíleného runneru.
+- Runtime utility jsou čisté ESM JavaScript moduly s vedlejšími `.d.ts` typy,
+  takže runner funguje i na podporovaném Node 20 bez nativního načítání `.ts`.
+
+### TDD a ověření
+
+- Failing config test před implementací — **PASS jako důkaz TDD**:
+  `ERR_MODULE_NOT_FOUND` pro chybějící runner config modul.
+- Config testy pokrývají chybějící/neplatnou proxy path, checkout bez
+  `layout/theme.liquid`, neplatný port a neznámý/prázdný `--only`.
+- `npx tsx --test packages/testing/tests/*.test.ts` — **PASS**, 11/11 testů.
+- `node --check` pro runner, runtime utility a B2B config — **PASS**.
+- cílený `prettier --check` — **PASS**.
+- `git diff --check` — **PASS**.
+- B2B `--dry-run` — **PASS**; Horizon i Dawn ukazují canonical checkouty v
+  `/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c_themes`, preferované porty
+  9781/9782 a hlášku `no child process spawned`.
+
+Poznámka: izolovaný worktree leží v `/private/tmp`, proto byly pouze při tomto
+ověření použity explicitní `SHOPIFY_E2E_THEME_DIR_*` overrides. V běžném rootu
+monorepa resolver odvodí stejné cesty bez override.
+
+### Zbývající riziko
+
+- Plný browser běh nebyl v Task 3 spuštěn, protože ještě nebyla migrována lokální
+  B2B fixture na `@won/testing`; to je samostatná Task 4 s vlastním typecheck,
+  core gate a dvoutheme browser ověřením.

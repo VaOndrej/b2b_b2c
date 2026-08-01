@@ -7,16 +7,19 @@ import {
 } from "../src/playwright/index.ts";
 
 test("shared selectors use stable Shopify form contracts", () => {
-  assert.equal(SHARED_THEME_SELECTORS.addToCartForm, "form[action*='/cart/add']");
-  assert.match(SHARED_THEME_SELECTORS.quantityInput, /input\[name='quantity'\]/);
+  assert.equal(
+    SHARED_THEME_SELECTORS.addToCartForm,
+    "form[action*='/cart/add']",
+  );
+  assert.match(
+    SHARED_THEME_SELECTORS.quantityInput,
+    /input\[name='quantity'\]/,
+  );
   assert.match(SHARED_THEME_SELECTORS.addToCartButton, /type='submit'/);
 });
 
 test("remote Dawn requires and decorates with a preview theme id", () => {
-  assert.equal(
-    createThemeContext({ name: "dawn", env: {} }),
-    null,
-  );
+  assert.equal(createThemeContext({ name: "dawn", env: {} }), null);
 
   const context = createThemeContext({
     name: "dawn",
@@ -64,4 +67,3 @@ test("app-specific path decoration stays outside the generic theme layer", () =>
     "/collections/all?app_test_context=catalog",
   );
 });
-

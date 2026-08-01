@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveThemePaths } from "../src/theme-paths.ts";
+import { resolveThemePaths } from "../src/theme-paths.js";
 
 test("theme paths resolve from the monorepo root, not an app workspace", () => {
   assert.deepEqual(
@@ -46,4 +46,3 @@ test("relative overrides resolve against the monorepo root", () => {
     },
   );
 });
-

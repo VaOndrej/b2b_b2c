@@ -104,9 +104,11 @@ export function createThemeContext({
     }
 
     const theme = await page.evaluate(() => {
-      const shopify = (window as unknown as {
-        Shopify?: { theme?: ShopifyThemeGlobal };
-      }).Shopify;
+      const shopify = (
+        window as unknown as {
+          Shopify?: { theme?: ShopifyThemeGlobal };
+        }
+      ).Shopify;
       return shopify?.theme ?? null;
     });
 

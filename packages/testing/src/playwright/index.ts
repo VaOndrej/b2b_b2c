@@ -8,10 +8,7 @@ export {
   type ThemeName,
   type ThemeSelectors,
 } from "./theme.ts";
-export {
-  installThemeDevJsMimeShim,
-  isThemeDevMode,
-} from "./theme-dev-mime.ts";
+export { installThemeDevJsMimeShim, isThemeDevMode } from "./theme-dev-mime.ts";
 export {
   createStorefrontTest,
   expect,
