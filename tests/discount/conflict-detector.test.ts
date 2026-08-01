@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { detectDiscountFloorConflicts } from "#core/discount/conflict.detector";
-import type { DiscountRules } from "#core/discount/discount.rules";
-import type { FloorRuleset } from "#core/margin/floor.rules";
+import { detectDiscountFloorConflicts } from "@won/core/discount/conflict.detector";
+import type { DiscountRules } from "@won/core/discount/discount.rules";
+import type { FloorRuleset } from "@won/core/margin/floor.rules";
 
 const NO_CONFIGURED_RULES: DiscountRules = { allowStacking: true, rules: [] };
 

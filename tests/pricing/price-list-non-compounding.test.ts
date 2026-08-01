@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   resolveCatalogUnitPrice,
   type CatalogPriceRule,
-} from "#core/pricing/price-list.engine";
+} from "@won/core/pricing/price-list.engine";
 
 /**
  * Non-compounding regression guard: percents must NOT stack — only the most-specific

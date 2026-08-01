@@ -1,7 +1,7 @@
-import { runPricingPipeline } from "#core/pricing/pricing.pipeline";
-import { resolveSegment } from "#core/segment/segment.engine";
-import type { DiscountInput, DiscountRules } from "#core/discount/discount.rules";
-import type { FloorRuleset } from "#core/margin/floor.rules";
+import { runPricingPipeline } from "@won/core/pricing/pricing.pipeline";
+import { resolveSegment } from "@won/core/segment/segment.engine";
+import type { DiscountInput, DiscountRules } from "@won/core/discount/discount.rules";
+import type { FloorRuleset } from "@won/core/margin/floor.rules";
 
 export interface MarginGuardEvaluationInput {
   customerTags?: string[];

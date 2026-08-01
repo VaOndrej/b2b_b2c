@@ -5,7 +5,7 @@ import { cartLinesDiscountsGenerateRun } from "../../extensions/margin-guard-dis
 import {
   buildCatalogConfigFromCatalogs,
   type CatalogTableInput,
-} from "#core/config/function-config";
+} from "@won/core/config/function-config";
 
 // MVP_5_3 — the Shopify Functions enforce a tag-routed custom catalog (config
 // assembled from catalog tables): resolveCatalog(matchedTags) → merge(default,

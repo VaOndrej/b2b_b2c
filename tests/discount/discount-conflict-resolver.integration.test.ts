@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { resolveCartDiscountConflictsByHandle } from "../../app/services/discount-conflict.server.ts";
-import type { CatalogRuleset } from "#core/catalog/catalog.ruleset";
+import type { CatalogRuleset } from "@won/core/catalog/catalog.ruleset";
 
 /**
  * Tier 3 runtime integration: the conflict resolver must turn the live Shopify

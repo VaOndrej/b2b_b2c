@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import { applyDiscountFunction } from "../../functions/discount-function/src/index.ts";
 import { createCartValidateAdminAction } from "../../functions/cart-validation/src/admin-cart-validate-endpoint.ts";
 import { resolvePricingSimulationInput } from "../../app/services/pricing-preview.server.ts";
-import type { PricingPipelineInput } from "#core/pricing/pricing.pipeline";
+import type { PricingPipelineInput } from "@won/core/pricing/pricing.pipeline";
 import type {
   CatalogProductFloorInput,
   CatalogProductTierPriceInput,
   CatalogRuleset,
-} from "#core/catalog/catalog.ruleset";
+} from "@won/core/catalog/catalog.ruleset";
 
 // MVP_5_3 #2.3c — the preview/endpoint now simulate against a resolved catalog
 // ruleset (sourced from catalog tables). This factory builds a minimal one.

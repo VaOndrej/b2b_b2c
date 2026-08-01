@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   resolveQuantityConstraints,
   validateQuantity,
-} from "#core/quantity/quantity.engine";
+} from "@won/core/quantity/quantity.engine";
 
 test("quantity engine resolves segment-specific MOQ over all-segment rule", () => {
   const rules = [

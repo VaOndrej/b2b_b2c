@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveDiscounts } from "#core/discount/discount.orchestrator";
+import { resolveDiscounts } from "@won/core/discount/discount.orchestrator";
 
 test("discount orchestrator sums all codes when stacking is enabled", () => {
   const result = resolveDiscounts(

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveDiscounts } from "#core/discount/discount.orchestrator";
+import { resolveDiscounts } from "@won/core/discount/discount.orchestrator";
 
 test("advanced orchestration prefers product rule over collection and global defaults", () => {
   const result = resolveDiscounts(

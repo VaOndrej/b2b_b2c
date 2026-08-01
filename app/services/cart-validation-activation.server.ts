@@ -1,6 +1,6 @@
 import prisma from "../db.server.ts";
 import { getOrCreateMarginGuardConfig } from "./margin-guard-config.server.ts";
-import { buildCatalogConfigFromCatalogs } from "#core/config/function-config";
+import { buildCatalogConfigFromCatalogs } from "@won/core/config/function-config";
 import { loadAllCatalogsForConfig } from "./price-catalog.server.ts";
 
 // The published cart-validation config is now catalog-shaped; helpers only need

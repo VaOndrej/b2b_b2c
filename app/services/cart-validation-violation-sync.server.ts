@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import prisma from "../db.server.ts";
 import { recordMarginViolation } from "./margin-guard-config.server.ts";
-import { validateMargin } from "#core/margin/margin.guard";
+import { validateMargin } from "@won/core/margin/margin.guard";
 
 interface FunctionRunLogLine {
   id?: string;

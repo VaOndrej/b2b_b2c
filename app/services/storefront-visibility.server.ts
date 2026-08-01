@@ -1,9 +1,9 @@
-import type { Segment } from "#core/segment/segment.types";
+import type { Segment } from "@won/core/segment/segment.types";
 import {
   resolveQuantityConstraints,
   type QuantityValidationInput,
-} from "#core/quantity/quantity.engine";
-import type { QuantityRule } from "#core/quantity/quantity.rules";
+} from "@won/core/quantity/quantity.engine";
+import type { QuantityRule } from "@won/core/quantity/quantity.rules";
 
 interface AdminGraphqlClient {
   graphql: (

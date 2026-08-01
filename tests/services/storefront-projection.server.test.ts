@@ -8,12 +8,12 @@ import type { getOrCreateMarginGuardConfig } from "../../app/services/margin-gua
 import {
   buildCatalogConfigFromCatalogs,
   type CatalogTableInput,
-} from "#core/config/function-config";
+} from "@won/core/config/function-config";
 import {
   buildCatalogRulesets,
   type CatalogRuleset,
   type CatalogRulesetConfig,
-} from "#core/catalog/catalog.ruleset";
+} from "@won/core/catalog/catalog.ruleset";
 
 type MarginGuardConfig = Awaited<ReturnType<typeof getOrCreateMarginGuardConfig>>;
 

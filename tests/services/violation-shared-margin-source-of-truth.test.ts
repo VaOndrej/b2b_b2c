@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateMargin } from "#core/margin/margin.guard";
+import { validateMargin } from "@won/core/margin/margin.guard";
 import { evaluateViolationFromSharedMarginGuard } from "../../app/services/cart-validation-violation-sync.server.ts";
 
 test("violation sync uses same margin calculation as shared margin guard", () => {

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveCatalog } from "#core/catalog/catalog.resolver";
-import type { CatalogResolutionEntry } from "#core/catalog/catalog.types";
+import { resolveCatalog } from "@won/core/catalog/catalog.resolver";
+import type { CatalogResolutionEntry } from "@won/core/catalog/catalog.types";
 
 // Phase 1 seed: default (anonymous/B2C fallback) + b2b (company or b2b tag).
 const PHASE1_CATALOGS: CatalogResolutionEntry[] = [

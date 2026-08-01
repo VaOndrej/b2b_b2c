@@ -26,24 +26,27 @@ won-apps/
     └── _template/                  # startovací šablona pro příští appku
 ```
 
-## Klíčové technické rozhodnutí (proč NE npm workspaces)
+## Klíčové technické rozhodnutí (workspaces + tsx runner)
 
-Core testy běží přes `node --test --experimental-strip-types` a importují moduly
-jako `.ts`. Ověřeno experimentem:
+Zvolený model: **npm workspaces** (standardní monorepo, každá appka nezávislá) —
+balíčky `@won/core`, `@won/shopify-adapter` s `exports` na `.ts` zdroje (bez build
+stepu). Ověřeno experimenty, které vyloučily jednodušší varianty:
 
-- **npm workspaces + balíček `@won/core`** → symlink do `node_modules/@won/core` →
-  node hodí `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING` (odmítá strippovat typy
-  pod `node_modules`). **Nefunguje.**
-- **Jeden root `package.json` + node subpath imports** `#core/*` →
-  `./packages/core/src/*.ts` → cíl je MIMO `node_modules` → stripping projde.
-  Ověřeno z rootu i z vnořených `apps/` složek. **Funguje.**
+- **node subpath imports `#core/*` s vlastním package.json v appce** → cíl
+  `../../packages/...` uniká z package → `ERR_INVALID_PACKAGE_TARGET`. Appka by
+  nemohla mít vlastní package.json (Shopify CLI ho očekává). **Nefunguje pro víc appek.**
+- **workspaces + `@won/core` pod `node --test --experimental-strip-types`** →
+  symlink `node_modules/@won/core` → `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`
+  (node odmítá strippovat typy pod `node_modules`). **Runner node --test nefunguje.**
+- **workspaces + `@won/core` + `tsx --test`** → tsx transformuje `.ts` sám (obchází
+  node zákaz), resolvuje workspace balíček přes symlink + `exports`. Zachová
+  `node:test`/`node:assert` API → **žádný přepis 305 assercí**. **Funguje.** ✓
 
-Proto: **jeden root package.json**, žádné per-package `exports`, žádný build step
-pro sdílené balíčky. `#`-importy resolvují node (přes `imports` pole), TS (přes
-`imports` + `paths`) i vite/react-router (nativně `imports` pole). Pro tenhle
-use-case ("stejný stack, jiné funkce") je jeden dependency set výhoda, ne
-omezení — žádný verzový drift mezi appkami. Každá appka má vlastní
-`shopify.app.toml`; extensions/functions mají vlastní package.json (už dnes).
+Proto: workspace balíčky s `exports: { "./*": "./src/*.ts" }`, root `workspaces`,
+runner `tsx --test`. `@won/*` resolvuje tsx (testy), vite/react-router i Shopify
+function build (přes node_modules symlink + exports), TS přes `paths` + exports.
+Každá appka má vlastní `package.json` a `shopify.app.toml`; extensions už jsou
+workspace balíčky (`extensions/*`).
 
 ## Fáze (každá samostatně commitovatelná, každá končí zelenými testy)
 
@@ -52,13 +55,22 @@ omezení — žádný verzový drift mezi appkami. Každá appka má vlastní
 - [x] **Fáze 1 — `packages/core`.** `git mv core packages/core/src`;
       `packages/core/package.json` (`@won/core`, metadata); codemod 93 importů
       v 50 souborech `../core/…ts` → `#core/…`. Brána: 305 pass, 0 fail.
-- [ ] **Fáze 2 — `packages/shopify-adapter`.** `integrations/shopify` →
-      `packages/shopify-adapter/src`; `#adapter/*` mapa; codemod importů.
-      Brána: testy zelené.
-- [ ] **Fáze 3 — přesun appky do `apps/b2b-companion/`.** `app/`, `functions/`,
-      `extensions/`, `prisma/`, `config/`, `scripts/`, `shopify.app.toml`, `.env`,
-      `database/`. Přepis root skriptů; `shopify app dev` z app složky.
-      Brána: `typecheck` + `guard:test` + reálný **build funkcí/extensions (wasm)**.
+- [x] **Fáze 2 — `packages/shopify-adapter`.** `integrations/shopify` (nezadrátovaný
+      scaffolding, 0 importérů) → `packages/shopify-adapter/src`. Brána: 305 pass.
+- [x] **Fáze 3a — package model → workspaces + tsx.** `@won/core` a
+      `@won/shopify-adapter` jako workspace balíčky (exports na `.ts`); root
+      `workspaces: [packages/*, extensions/*]`; `tsx` devDep; codemod 93 importů
+      `#core`→`@won/core`, `#adapter`→`@won/shopify-adapter`; runner
+      `guard:test:core` → `tsx --test`; tsconfig `paths` `@won/*`. Appka ZATÍM
+      v rootu. Brána: 305 pass pod tsx, `@won/*` resolvuje v TS. ✓
+- [ ] **Fáze 3b — fyzický přesun appky do `apps/b2b-companion/`.** `app/`,
+      `functions/`, `extensions/`, `prisma/`, `config/`, `scripts/`, `tests/`,
+      `public/`, `types/`, `shopify.*.toml`, `vite.config.ts`, `.graphqlrc.ts`,
+      `playwright*.ts`, `.env`, `database/`. Split package.json (app deps+scripts →
+      apps/b2b-companion, root = workspaces orchestrace); root workspaces +=
+      `apps/*`. Fix cest: `vite server.fs.allow` (+root/packages), graphqlrc, prisma,
+      playwright, shopify.web.toml commands. Brána: `typecheck` + `guard:test` (tsx)
+      + reálný **build funkcí/extensions (wasm)** + `shopify app dev` smoke.
 - [ ] **Fáze 4 — `packages/app-kit`.** Vytáhnout framework-generický skeleton
       (`shopify.server`, `db.server`, `entry.server`, auth routes, `root.tsx` base,
       `utils`) → `#app-kit/*`. Brána: app běží (`shopify app dev`, health, e2e smoke).

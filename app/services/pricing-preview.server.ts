@@ -1,9 +1,9 @@
-import type { DiscountInput } from "#core/discount/discount.rules";
-import { resolveConfiguredPricing } from "#core/pricing/pricing.config";
-import type { TierPrice } from "#core/pricing/pricing.types";
-import type { PricingPipelineInput } from "#core/pricing/pricing.pipeline";
-import type { Segment } from "#core/segment/segment.types";
-import type { CatalogRuleset } from "#core/catalog/catalog.ruleset";
+import type { DiscountInput } from "@won/core/discount/discount.rules";
+import { resolveConfiguredPricing } from "@won/core/pricing/pricing.config";
+import type { TierPrice } from "@won/core/pricing/pricing.types";
+import type { PricingPipelineInput } from "@won/core/pricing/pricing.pipeline";
+import type { Segment } from "@won/core/segment/segment.types";
+import type { CatalogRuleset } from "@won/core/catalog/catalog.ruleset";
 
 // MVP_5_3 #2.3c — the admin pricing preview simulates against the customer's
 // resolved price catalog (the same per-catalog ruleset the cart validation /

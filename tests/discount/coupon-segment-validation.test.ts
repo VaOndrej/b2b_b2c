@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   normalizeCouponSegmentRule,
   validateCouponsBySegment,
-} from "#core/discount/coupon-segment.rules";
+} from "@won/core/discount/coupon-segment.rules";
 
 test("coupon segment validation normalizes rules and rejects mismatched segment codes", () => {
   const normalized = normalizeCouponSegmentRule({

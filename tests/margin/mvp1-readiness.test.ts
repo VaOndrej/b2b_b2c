@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { runPricingPipeline } from "#core/pricing/pricing.pipeline";
-import { resolveSegment } from "#core/segment/segment.engine";
+import { runPricingPipeline } from "@won/core/pricing/pricing.pipeline";
+import { resolveSegment } from "@won/core/segment/segment.engine";
 
 test("MVP_1 readiness: segment + floor + stacking governance works", () => {
   const floorRuleset = {

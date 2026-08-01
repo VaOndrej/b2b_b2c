@@ -1,5 +1,5 @@
 import { getOrCreateMarginGuardConfig } from "./margin-guard-config.server.ts";
-import { buildCatalogConfigFromCatalogs } from "#core/config/function-config";
+import { buildCatalogConfigFromCatalogs } from "@won/core/config/function-config";
 import { loadAllCatalogsForConfig } from "./price-catalog.server.ts";
 import { discountFunctionPolicy } from "../../config/feature-flags.ts";
 

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   resolveConfiguredPricing,
   resolveConfiguredTierPrices,
-} from "#core/pricing/pricing.config";
+} from "@won/core/pricing/pricing.config";
 
 test("pricing config resolution prefers exact segment override and merges tier prices deterministically", () => {
   const tierPrices = resolveConfiguredTierPrices(

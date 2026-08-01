@@ -1,8 +1,8 @@
-import { validateMargin } from "#core/margin/margin.guard";
-import { resolveSegment } from "#core/segment/segment.engine";
-import { computeEffectiveBasePrice } from "#core/pricing/pricing.engine";
-import type { TierPrice } from "#core/pricing/pricing.types";
-import type { Segment } from "#core/segment/segment.types";
+import { validateMargin } from "@won/core/margin/margin.guard";
+import { resolveSegment } from "@won/core/segment/segment.engine";
+import { computeEffectiveBasePrice } from "@won/core/pricing/pricing.engine";
+import type { TierPrice } from "@won/core/pricing/pricing.types";
+import type { Segment } from "@won/core/segment/segment.types";
 import { buildFloorRuleset } from "./margin-guard-config.server.ts";
 import type { CatalogRuleset } from "./catalog-ruleset.server.ts";
 

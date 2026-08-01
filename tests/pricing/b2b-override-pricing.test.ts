@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { computeEffectiveBasePrice } from "#core/pricing/pricing.engine";
+import { computeEffectiveBasePrice } from "@won/core/pricing/pricing.engine";
 
 test("pricing engine uses B2B override base price only for B2B segment", () => {
   const b2b = computeEffectiveBasePrice({

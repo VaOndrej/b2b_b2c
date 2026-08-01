@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import {
   buildCatalogConfigFromCatalogs,
   type CatalogTableInput,
-} from "#core/config/function-config";
+} from "@won/core/config/function-config";
 
 // MVP_5_3 #2.3 — the legacy *B2C/*B2B builders were deleted; per-facet mapping is
 // now covered by catalog-from-tables + catalog-custom-runtime. This file keeps

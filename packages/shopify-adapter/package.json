@@ -2,6 +2,9 @@
   "name": "@won/shopify-adapter",
   "version": "0.0.0",
   "private": true,
-  "description": "Shopify integration adapter (admin GraphQL client, metafields, webhooks). Consumed via #adapter/* subpath imports.",
-  "type": "module"
+  "description": "Shopify integration adapter (admin GraphQL client, metafields, webhooks). Consumed as a workspace package via @won/shopify-adapter/* subpath exports.",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  }
 }

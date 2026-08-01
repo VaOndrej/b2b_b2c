@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveDiscounts } from "#core/discount/discount.orchestrator";
+import { resolveDiscounts } from "@won/core/discount/discount.orchestrator";
 import type {
   DiscountInput,
   DiscountRules,
   DiscountResolutionContext,
-} from "#core/discount/discount.rules";
+} from "@won/core/discount/discount.rules";
 
 /**
  * Property-based coverage for the discount orchestrator — the most combinatorial,
