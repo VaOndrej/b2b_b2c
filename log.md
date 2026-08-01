@@ -320,3 +320,26 @@ monorepa resolver odvodí stejné cesty bez override.
   instalace nemá parser, a proto skončil chybou. Následná cílená kontrola
   podporovaných změněných souborů a `git diff --check` musí projít před commitem.
 - Roadmapa nyní eviduje vytvořený Won Quantity scaffold, ne hotovou feature.
+
+## 2026-08-01 — Task 7: quantity doména patří `@won/core`
+
+### Změny
+
+- Framework-free quantity test suite byla přesunuta z `b2b-companion` do
+  `packages/core/tests/quantity` a importuje přímo source-owned engine.
+- `@won/core` má vlastní `npm test` script a explicitní test dev dependencies.
+- B2B `guard:test:core` už neodkazuje na app-local kopii quantity testu; v repu
+  existuje jediný doménový vlastník očekávání.
+- Původních šest scénářů bylo rozšířeno na devět kontraktů: default
+  `min=1/step=1/max=null`, target a segment precedence, invalid/decimal
+  normalizace, nejpřísnější maximum při stejné prioritě a společná validace
+  minimum/step/maximum.
+- Roadmapa u quantity produktu eviduje ověřené vlastnictví engine v `@won/core`.
+
+### Ověření
+
+- `npm test -w @won/core` — **PASS**, 9/9 testů.
+- `npm run guard:test:core -w b2b-companion` — **PASS**, 300/300 zbývajících
+  app-owned testů. Pokles z 306 je přesně odstraněných šest duplicitních quantity
+  testů; celkové quantity pokrytí se naopak rozšířilo na devět core testů.
+- `npm install` — **PASS**, audit stav beze změny (50 známých zranitelností).
