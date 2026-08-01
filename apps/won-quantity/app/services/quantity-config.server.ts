@@ -1,6 +1,6 @@
 import { resolveQuantityConstraints } from "@won/core/quantity/quantity.engine";
 
-import type { PrismaClient } from "../generated/prisma";
+import type { PrismaClient } from "../generated/prisma/client";
 import db from "../db.server";
 
 export interface QuantityConfigInput {

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
 
-import { PrismaClient } from "../../app/generated/prisma/index.js";
+import { PrismaClient } from "../../app/generated/prisma/client.ts";
 import { createQuantityConfigService } from "../../app/services/quantity-config.server";
 
 const testDirectory = mkdtempSync(path.join(tmpdir(), "won-quantity-service-"));

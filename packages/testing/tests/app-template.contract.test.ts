@@ -16,8 +16,10 @@ test("standalone app template isolates its generated Prisma client", () => {
   const viteConfig = readTemplateFile("vite.config.ts");
 
   assert.match(schema, /output\s*=\s*"\.\.\/app\/generated\/prisma"/u);
-  assert.match(dbServer, /from\s+"\.\/generated\/prisma"/u);
-  assert.match(viteConfig, /app\W+generated\W+prisma/u);
+  assert.match(schema, /provider\s*=\s*"prisma-client"/u);
+  assert.match(schema, /moduleFormat\s*=\s*"esm"/u);
+  assert.match(dbServer, /from\s+"\.\/generated\/prisma\/client"/u);
+  assert.doesNotMatch(viteConfig, /external:[^}]*generated\/prisma/su);
   assert.doesNotMatch(dbServer, /from\s+"@prisma\/client"/u);
 });
 

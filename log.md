@@ -409,3 +409,72 @@ monorepa resolver odvodí stejné cesty bez override.
 - `npm run build -w won-quantity` — **PASS**, včetně settings a uninstall route.
 - Sandboxové `tsx` pokusy mohou na tomto hostu skončit `EPERM` při vytvoření IPC
   socketu; stejné příkazy mimo sandbox prošly. Nejde o testovací regresi.
+
+## 2026-08-01 — Task 10: portable theme app extension
+
+### Scaffold a kontrakt
+
+- Theme app extension `won-quantity-storefront` byla vytvořena oficiálním
+  `shopify app generate extension`; vlastní samostatný Shopify UID.
+- CLI demo star-rating bylo nahrazené body app embedem, jediným canonical
+  `won-quantity.js` assetem, malým scoped stylesheetem a CS/EN/SK locales.
+- Contract test vznikl před implementací a očekávaně selhal 0/4 na chybějícím
+  app embedu, assetu, localech a config route.
+
+### Storefront hranice
+
+- Embed pouze předává ověřitelný product/variant kontext, app proxy endpoint a
+  lokalizované message templates; nevytváří product form ani quantity widget.
+- JS spravuje jen existující `input[name=quantity]` napojený na nativní
+  `/cart/add` form, kombinuje nativní a app constraints, je idempotentní pro více
+  forem a používá pouze `data-won-quantity-*` markery.
+- Mutation observer a `shopify:section:load` resync pokrývají section morph a
+  quick-add. Nedostupný proxy endpoint, chybějící input nebo nekompatibilní
+  constraints skončí fail-open no-opem.
+- `/apps/won-quantity/config` čte shop pouze z autentizované app-proxy session
+  nebo z `shop` parametru až po úspěšném podpisovém ověření requestu.
+- Roadmapa eviduje implementovanou portable extension; browser checkpoint bude
+  zaznamenaný až po izolovaných Horizon/Dawn overlays a E2E.
+
+### Shopify validace — první průchod
+
+- Shopify Dev MCP označil Liquid jako invalidní, protože schema `t:` klíč nebyl
+  v odděleném `en.default.schema.json` a JS měl 11 444 B proti 10KB limitu.
+- Storefront locale JSON, JavaScript syntax a CSS samostatně prošly. Oprava proto
+  přidává EN/CS schema locales a minifikuje jediný canonical JS asset; nevytváří
+  druhou source/prod variantu.
+
+### App dev runtime nález
+
+- První skutečný `shopify app dev` sestavil extension a připravil dev preview,
+  ale Vite SSR odhalil `exports is not defined` v lokálně generovaném
+  `prisma-client-js` CommonJS klientu.
+- Kontrola produkčního bundle navíc ukázala, že původní Rollup `external` regex
+  vytvořil neplatnou relativní cestu odvozenou z absolutního worktree path.
+- `apps/_template` i `won-quantity` proto používají izolovaný ESM generátor
+  `prisma-client`, import z `generated/prisma/client` a už generated source
+  neexternalizují. Template contract explicitně hlídá provider, module format a
+  zákaz chybného external pravidla.
+
+### Finální ověření checkpointu
+
+- Shopify Dev MCP validace po opravě — **PASS**, 8/8 theme-extension artefaktů
+  validních. JS zůstává jediným canonical produkčním assetem a splňuje 10KB
+  extension limit; schema překlady jsou oddělené od storefront překladů.
+- `shopify theme check --path apps/won-quantity/extensions/won-quantity-storefront`
+  — **PASS**, 6 kontrolovaných souborů, 0 offenses.
+- Kombinovaný template, persistence a extension contract suite — **PASS**,
+  11/11 testů.
+- `npm run typecheck -w won-quantity` a `npm run build -w won-quantity` —
+  **PASS** po přechodu na ESM Prisma client.
+- `npm run typecheck -w won-app-template` a `npm run build -w
+  won-app-template` — **PASS**; oprava je součástí reusable template, ne jen
+  první appky.
+- Druhý skutečný `shopify app dev --path apps/won-quantity` — **PASS**:
+  migrace bez pending změn, React Router server i theme app extension preview
+  ready, bez původní SSR chyby `exports is not defined`.
+- Lokální Shopify CLI nemá příkaz `shopify app config validate`; tento konkrétní
+  gate proto nebyl předstíraný. Skutečný `shopify app dev` ověřil config,
+  extension build i runtime integraci.
+- Přímý veřejný proxy probe skončil na očekávaném storefront password redirectu;
+  funkční probe bude provedený uvnitř autentizovaného `shopify theme dev` běhu.

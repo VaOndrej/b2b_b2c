@@ -1,0 +1,12 @@
+{
+  "blocks": {
+    "won_quantity": {
+      "name": "Won Quantity"
+    }
+  },
+  "won_quantity": {
+    "minimum": "Minimum: {{ quantity }}",
+    "step": "Sold in multiples of {{ quantity }}",
+    "maximum": "Maximum: {{ quantity }}"
+  }
+}
