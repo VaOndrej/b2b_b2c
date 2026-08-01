@@ -34,6 +34,12 @@ test("standalone app template exposes shared test hooks without fake E2E coverag
       `Missing template script: ${script}`,
     );
   }
+  assert.match(packageJson.scripts?.dev ?? "", /shopify app dev --path \./u);
+  assert.match(
+    packageJson.scripts?.["config:link"] ?? "",
+    /shopify app config link --path \./u,
+  );
+  assert.match(packageJson.scripts?.setup ?? "", /ensure-sqlite-db\.mjs/u);
   assert.match(
     packageJson.scripts?.["test:e2e"] ?? "",
     /require-e2e-contract/u,

@@ -59,7 +59,10 @@ npm run <script> -w <app-name>     # e.g. -w won-app-template
      --exclude build \
      --exclude .react-router \
      --exclude .env \
+     --exclude app/generated \
+     --exclude .shopify \
      --exclude node_modules \
+     --exclude test-results \
      apps/_template/ apps/<your-app>/
    ```
 2. **Name it** — set `"name"` in `apps/<your-app>/package.json` and `name` in

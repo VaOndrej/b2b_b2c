@@ -1,0 +1,36 @@
+// Minimal schema for a new app: only the Session model required by Shopify's
+// Prisma session storage. Add your own models below.
+//
+// Every standalone app owns its generated Prisma client. Never point a second
+// schema at the hoisted @prisma/client output: generating one app would then
+// overwrite the runtime expected by another app in this monorepo.
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}

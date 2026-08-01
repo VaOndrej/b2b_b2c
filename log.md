@@ -263,3 +263,60 @@ monorepa resolver odvodí stejné cesty bez override.
   `build/**` assety a jeden nedotčený route soubor, proto skončil varováním.
   Cílená kontrola všech změněných zdrojů následně — **PASS**.
 - `npm install` — bez změny dependency rizik; stále 50 známých zranitelností.
+
+## 2026-08-01 — Task 6: scaffold `apps/won-quantity`
+
+### Scaffold a decoupling
+
+- Template byl kopírován přes source-only `rsync`; kromě původního seznamu jsou
+  explicitně vyloučené také `app/generated`, `.shopify` a `test-results`.
+- Nový workspace se jmenuje `won-quantity`, admin shell `Won Quantity` a používá
+  pouze `read_products` scope pro první slice.
+- App proxy má vlastní namespace `/apps/won-quantity` a app-owned health route s
+  markerem `won-quantity-ok`.
+- Přidán app-local `.env.example`; skutečný `.env` obsahuje pouze lokální SQLite
+  cestu, je ignorovaný a nebyl přidán do gitu.
+- `npm ls -w won-quantity @won/core @won/app-kit @won/testing --depth=0` —
+  **PASS**, všechny tři dependency jsou workspace linky.
+
+### Samostatný Shopify app record
+
+- První `config:link` vytvořil nový record `Won Quantity`, ale bez `--path .`
+  Shopify CLI následně prohledal celý monorepo a skončil na konfliktu tří backend
+  `shopify.web.toml` souborů. Chybně vytvořený rootový `shopify.app.toml` byl
+  odstraněn; správný app-local config zůstal zachovaný.
+- Template i app nyní používají `shopify app dev --path .` a
+  `shopify app config link --path .`; kontrakt to regresně hlídá.
+- Druhý app-local link úspěšně připojil existující `Won Quantity` record.
+  Vygenerovaný pojmenovaný config obsahoval promptový suffix `\\r`; finální
+  canonical `shopify.app.toml` jej normalizuje na `Won Quantity` a zachovává
+  zamýšlený proxy, scope a API `2026-04`.
+- Client ID je vyplněný a programově ověřený jako odlišný od `B2Bcommerce`;
+  jeho hodnota se do logu nevypisuje.
+
+### Databázový setup od nuly
+
+- První `npm run setup -w won-quantity` vygeneroval per-app client, ale migrate
+  deploy skončil `Schema engine error`: template neměl init migraci a nový SQLite
+  soubor ještě neexistoval.
+- Doplněna Prisma-generovaná init migrace `Session` do template i appky.
+- Druhý pokus stále ukázal, že `migrate deploy` sám prázdný SQLite soubor
+  nevytvoří. `ensure-sqlite-db.mjs` nyní bezpečně vytvoří pouze `file:` datasource
+  před deployem a je součástí template setup contractu.
+- Čistý setup proti nové dočasné DB — **PASS**; vznikly pouze tabulky `Session`
+  a `_prisma_migrations`, poté byla dočasná DB odstraněna.
+- Opakovaný setup proti app-local DB — **PASS**, bez pending migrací.
+
+### Ověření
+
+- `npm install` — **PASS**, workspace registrován; dependency audit beze změny.
+- `npm run typecheck -w won-quantity` — **PASS**.
+- `npm run build -w won-quantity` — **PASS**, včetně app-proxy health route.
+- aktualizovaný template contract — **PASS**, 3/3.
+- `npm run test:e2e -w won-quantity` — **očekávaný FAIL** už pouze na chybějící
+  app-specific `tests/e2e/*.spec.ts`. Proxy contract je vyplněný; spec vznikne v
+  Task 12 společně se skutečným Horizon/Dawn během.
+- První formátovací příkaz zahrnul `.gitignore` a TOML, pro které tato Prettier
+  instalace nemá parser, a proto skončil chybou. Následná cílená kontrola
+  podporovaných změněných souborů a `git diff --check` musí projít před commitem.
+- Roadmapa nyní eviduje vytvořený Won Quantity scaffold, ne hotovou feature.
