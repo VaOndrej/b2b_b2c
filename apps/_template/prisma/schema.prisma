@@ -1,16 +1,12 @@
 // Minimal schema for a new app: only the Session model required by Shopify's
 // Prisma session storage. Add your own models below.
 //
-// MONOREPO NOTE: this uses the default @prisma/client output, which is hoisted
-// and SHARED across the workspace. Do NOT run `prisma generate` for this app
-// inside the monorepo while another app relies on that client — it would
-// overwrite it. When you actually add a second DB-backed app that runs
-// alongside b2b-companion, give each app its own client via a per-app output:
-//   generator client { provider = "prisma-client-js"; output = "../app/generated/prisma" }
-// and import it in db.server.ts — but then externalize it from the SSR bundle
-// (see README "Adding a new app" → Prisma).
+// Every standalone app owns its generated Prisma client. Never point a second
+// schema at the hoisted @prisma/client output: generating one app would then
+// overwrite the runtime expected by another app in this monorepo.
 generator client {
   provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
 }
 
 datasource db {

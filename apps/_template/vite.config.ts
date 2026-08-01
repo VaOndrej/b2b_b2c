@@ -11,7 +11,8 @@ if (
   delete process.env.HOST;
 }
 
-const host = new URL(process.env.SHOPIFY_APP_URL || "http://localhost").hostname;
+const host = new URL(process.env.SHOPIFY_APP_URL || "http://localhost")
+  .hostname;
 
 let hmrConfig;
 if (host === "localhost") {
@@ -46,6 +47,11 @@ export default defineConfig({
   plugins: [reactRouter(), tsconfigPaths()],
   build: {
     assetsInlineLimit: 0,
+    rollupOptions: {
+      // Each app generates Prisma below app/generated. Keep its dynamic CJS
+      // runtime outside the React Router SSR bundle.
+      external: [/\/app\/generated\/prisma/],
+    },
   },
   optimizeDeps: {
     include: ["@shopify/app-bridge-react"],

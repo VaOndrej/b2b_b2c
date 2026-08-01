@@ -55,7 +55,12 @@ npm run <script> -w <app-name>     # e.g. -w won-app-template
 
 1. **Copy the template**
    ```bash
-   cp -R apps/_template apps/<your-app>
+   rsync -a \
+     --exclude build \
+     --exclude .react-router \
+     --exclude .env \
+     --exclude node_modules \
+     apps/_template/ apps/<your-app>/
    ```
 2. **Name it** — set `"name"` in `apps/<your-app>/package.json` and `name` in
    `apps/<your-app>/shopify.app.toml`.
@@ -69,15 +74,20 @@ npm run <script> -w <app-name>     # e.g. -w won-app-template
    - Add routes under `apps/<your-app>/app/routes/`.
    - Add Shopify Functions / extensions under `apps/<your-app>/extensions/`
      (each is its own workspace with its own `package.json`).
-6. **Verify** — `npm run typecheck -w <your-app>` and `npm run build -w <your-app>`.
-7. **Run** — `npm run dev -w <your-app>`.
+6. **Own the test contract** — replace the placeholders in
+   `e2e.app.config.mjs`, add at least one app-specific `tests/e2e/*.spec.ts`, and
+   use `@won/testing/playwright` for shared Horizon/Dawn fixtures. The template's
+   `test:e2e` intentionally fails until both pieces exist.
+7. **Verify** — `npm run test:unit -w <your-app>`,
+   `npm run typecheck -w <your-app>`, `npm run build -w <your-app>`, and
+   `npm run test:e2e:local:all -w <your-app>`.
+8. **Run** — `npm run dev -w <your-app>`.
 
 ### Prisma in the monorepo (read before adding a second DB-backed app)
 
-`@prisma/client` is generated to a single hoisted location shared by the whole
-workspace. `b2b-companion` owns it today. If you add another app that also uses
-Prisma **with a different schema**, generating its client would overwrite
-b2b-companion's. Give each app its own client:
+Every standalone app generates Prisma into its own source-local ignored
+directory. This prevents one workspace's schema from overwriting another app's
+runtime client:
 
 ```prisma
 generator client {
@@ -92,9 +102,16 @@ into the rollup bundle and fails on Prisma's dynamic CJS exports):
 
 ```ts
 // vite.config.ts
-build: { rollupOptions: { external: [/\/app\/generated\/prisma/] } }
+build: {
+  rollupOptions: {
+    external: [/\/app\/generated\/prisma/];
+  }
+}
 ```
 
-The template ships with the simple shared-client setup so it builds out of the
-box; switch to per-app output when the collision actually applies.
+The template already ships with this isolated output and matching Vite
+externalization. Keep that contract when scaffolding every new app.
+
+```
+
 ```

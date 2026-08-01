@@ -222,3 +222,44 @@ monorepa resolver odvodí stejné cesty bez override.
 - Dev-store storefront password se při jednom interaktivním CLI pokusu omylem
   propsal do lokálního nástrojového výstupu. Hodnota není v repozitáři ani v
   tomto logu; po dokončení práce je potřeba ji preventivně rotovat.
+
+## 2026-08-01 — Task 5: zpevnění standalone app template
+
+### TDD contract
+
+- Přidán `app-template.contract.test.ts` pro per-app Prisma output, sdílenou
+  testing dependency, povinné test hooks, prázdný `client_id` a zákaz Margin
+  Guard couplingu.
+- První běh — **očekávaný FAIL**, 0/3: template importoval hoistovaný
+  `@prisma/client`, neměl `@won/testing` ani scripts a chyběl E2E config.
+
+### Změny
+
+- Prisma generator zapisuje do `app/generated/prisma`; `db.server.ts` importuje
+  lokální client a Vite ho externalizuje z SSR bundlu.
+- Template přímo závisí na `@won/testing` a nabízí `test:unit`, `test:e2e` a
+  `test:e2e:local:all`.
+- Přidán generický Playwright config a app-owned `e2e.app.config.mjs` s povinnými
+  `REPLACE_ME` hodnotami.
+- `require-e2e-contract.mjs` je fail-closed: dokud appka nenastaví vlastní proxy
+  probe a nepřidá alespoň jednu `*.spec.ts(x)`, E2E skončí explicitní chybou;
+  potom spustí Playwright nebo sdílenou lokální Horizon/Dawn matici.
+- README nyní popisuje bezpečné `rsync` scaffoldování bez build/env stavu,
+  povinný E2E contract a skutečnost, že per-app Prisma izolace je výchozí stav.
+- Roadmapa u prvního quantity produktu eviduje hotový izolovaný standalone
+  template, nikoli hotovou Won Quantity appku.
+
+### Ověření
+
+- `npm run prisma:generate -w won-app-template` — **PASS**, client vygenerován
+  do `apps/_template/app/generated/prisma` (adresář je gitignored).
+- `npm run typecheck -w won-app-template` — **PASS**.
+- `npm run build -w won-app-template` — **PASS**, client zůstal externalizovaný.
+- template contract po implementaci — **PASS**, 3/3.
+- `npm run test:e2e -w won-app-template` — **očekávaný FAIL** s přesným seznamem:
+  nahradit `REPLACE_ME` a přidat app-specific storefront spec. To je požadovaný
+  ochranný kontrakt, nikoli regrese.
+- První široký `prettier --check apps/_template` zahrnul existující generované
+  `build/**` assety a jeden nedotčený route soubor, proto skončil varováním.
+  Cílená kontrola všech změněných zdrojů následně — **PASS**.
+- `npm install` — bez změny dependency rizik; stále 50 známých zranitelností.
