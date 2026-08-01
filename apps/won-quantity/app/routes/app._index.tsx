@@ -2,28 +2,30 @@ import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
 
 import { authenticate } from "../shopify.server";
-// Shared, framework-free domain logic lives in @won/core — import from it the
-// same way across every app. This demo just proves the wiring resolves.
-import { SEGMENTS } from "@won/core/segment/segment.types";
+import { getQuantityConfig } from "../services/quantity-config.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  return { segments: SEGMENTS };
+  const { session } = await authenticate.admin(request);
+  return { config: await getQuantityConfig(session.shop) };
 };
 
 export default function Index() {
-  const { segments } = useLoaderData<typeof loader>();
+  const { config } = useLoaderData<typeof loader>();
 
   return (
     <s-page heading="Won Quantity">
-      <s-section heading="Standalone app is ready">
+      <s-section heading="Storefront status">
         <s-paragraph>
-          Won Quantity is wired to <s-text>@won/app-kit</s-text> (Shopify auth,
-          SSR, webhooks), <s-text>@won/core</s-text> (shared domain logic), and
-          the shared Horizon/Dawn test harness.
+          Quantity rules are{" "}
+          <strong>{config.enabled ? "enabled" : "disabled"}</strong>.
         </s-paragraph>
         <s-paragraph>
-          Segments from @won/core: {segments.join(", ")}
+          Default rule: minimum <strong>{config.minimum}</strong>, step{" "}
+          <strong>{config.step}</strong>, maximum{" "}
+          <strong>{config.maximum ?? "none"}</strong>.
+        </s-paragraph>
+        <s-paragraph>
+          <a href="/app/settings">Configure quantity defaults and app embed</a>
         </s-paragraph>
       </s-section>
     </s-page>

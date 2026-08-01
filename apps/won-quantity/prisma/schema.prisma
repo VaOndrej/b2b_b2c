@@ -34,3 +34,30 @@ model Session {
   refreshToken        String?
   refreshTokenExpires DateTime?
 }
+
+model QuantityConfig {
+  id        String         @id @default(cuid())
+  shop      String         @unique
+  enabled   Boolean        @default(false)
+  minimum   Int            @default(1)
+  step      Int            @default(1)
+  maximum   Int?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  rules     QuantityRule[]
+}
+
+model QuantityRule {
+  id        String         @id @default(cuid())
+  shop      String
+  targetKey String
+  minimum   Int?
+  step      Int?
+  maximum   Int?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  config    QuantityConfig @relation(fields: [shop], references: [shop], onDelete: Cascade)
+
+  @@unique([shop, targetKey])
+  @@index([shop])
+}

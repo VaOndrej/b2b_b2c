@@ -371,3 +371,41 @@ monorepa resolver odvodí stejné cesty bez override.
   desktop jsou explicitní acceptance criteria pro společný Horizon/Dawn spec.
 - Roadmapa eviduje dokončený behavior contract, nikoli dokončenou storefront
   feature.
+
+## 2026-08-01 — Task 9: shop-scoped persistence a admin konfigurace
+
+### TDD a datový model
+
+- Service test vznikl před implementací a očekávaně selhal na chybějícím
+  `quantity-config.server` modulu.
+- `QuantityConfig` má unikátní `shop`; `QuantityRule` má unikátní dvojici
+  `(shop, targetKey)` a cascade vazbu na konfiguraci stejného shopu.
+- Service API validuje kladná celá čísla a `maximum >= minimum`, normalizuje shop
+  z autentizované session a skládá `variant > product > shop` přes framework-free
+  resolver z `@won/core`.
+- Uninstall webhook maže app-owned rules/config a sessions pouze pro shop z
+  ověřeného webhooku; nebere shop z formuláře ani query parametru.
+
+### Admin slice
+
+- Dashboard zobrazuje skutečný stav a efektivní shop default.
+- `/app/settings` obsahuje pouze enable, minimum, step, optional maximum a
+  explicitní stav app embedu s odkazem do theme editoru.
+- Roadmapa eviduje shop-scoped config checkpoint; storefront extension zatím
+  není označená jako hotová.
+
+### Ověření
+
+- Failing service test před implementací — **PASS jako TDD evidence**:
+  `ERR_MODULE_NOT_FOUND` pro chybějící service modul.
+- `npm run test:unit -w won-quantity` — **PASS**, 4/4 integrační service testy
+  nad izolovanou SQLite DB.
+- `npm test -w @won/core` — **PASS**, 9/9 quantity doménových testů.
+- `npm run prisma:migrate:deploy -w won-quantity` — **PASS**, nová migrace
+  aplikovaná na app-local DB.
+- Čistý `npm run setup -w won-quantity` proti nové dočasné SQLite DB — **PASS**,
+  obě migrace aplikované od nuly; dočasná DB byla odstraněna.
+- `npm run typecheck -w won-quantity` — **PASS**.
+- `npm run build -w won-quantity` — **PASS**, včetně settings a uninstall route.
+- Sandboxové `tsx` pokusy mohou na tomto hostu skončit `EPERM` při vytvoření IPC
+  socketu; stejné příkazy mimo sandbox prošly. Nejde o testovací regresi.
