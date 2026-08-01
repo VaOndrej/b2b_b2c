@@ -18,7 +18,8 @@
     "target": "ES2022",
     "baseUrl": ".",
     "paths": {
-      "#core/*": ["packages/core/src/*"]
+      "#core/*": ["packages/core/src/*"],
+      "#adapter/*": ["packages/shopify-adapter/src/*"]
     },
     "types": ["@react-router/node", "vite/client", "@shopify/polaris-types"],
     "rootDirs": [".", "./.react-router/types"]

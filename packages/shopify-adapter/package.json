@@ -1,0 +1,7 @@
+{
+  "name": "@won/shopify-adapter",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shopify integration adapter (admin GraphQL client, metafields, webhooks). Consumed via #adapter/* subpath imports.",
+  "type": "module"
+}

@@ -2,7 +2,8 @@
   "name": "won-apps",
   "private": true,
   "imports": {
-    "#core/*": "./packages/core/src/*.ts"
+    "#core/*": "./packages/core/src/*.ts",
+    "#adapter/*": "./packages/shopify-adapter/src/*.ts"
   },
   "scripts": {
     "build": "react-router build",
