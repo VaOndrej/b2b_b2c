@@ -13,8 +13,24 @@ test("shopify.app.toml declares required scopes and webhooks", async () => {
 });
 
 test("app server uses API version 2026-04", async () => {
+  // The Shopify app instance (and its API version) is built by the shared
+  // @won/app-kit factory, which is the source of truth after the monorepo split.
+  const appKitServer = await readFile(
+    new URL("../../../../packages/app-kit/src/shopify.server.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    appKitServer,
+    /ApiVersion\.April26/,
+    "@won/app-kit shopify factory must target ApiVersion.April26",
+  );
+  // The app wires that factory rather than re-declaring the version.
   const server = await readFileText("app/shopify.server.ts");
-  assert.match(server, /ApiVersion\.April26/, "app server must target ApiVersion.April26");
+  assert.match(
+    server,
+    /createShopifyApp/,
+    "app server must build its Shopify app via the @won/app-kit factory",
+  );
 });
 
 test("function extensions target API version 2026-04", async () => {

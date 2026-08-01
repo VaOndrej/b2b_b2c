@@ -1,0 +1,17 @@
+/.cache
+/build
+/app/build
+/public/build/
+/prisma/dev.sqlite
+/prisma/dev.sqlite-journal
+
+# Per-app generated Prisma client (isolated so apps don't collide on the hoisted client)
+/app/generated
+
+.env
+.env.*
+
+.shopify/*
+.shopify.lock
+.react-router/
+test-results

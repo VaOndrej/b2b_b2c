@@ -1,0 +1,41 @@
+{
+  "payload": {
+    "export": "cart-validations-generate-run",
+    "target": "cart.validations.generate.run",
+    "input": {
+      "cart": {
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": { "amount": "50.00" },
+              "subtotalAmount": { "amount": "100.00" },
+              "totalAmount": { "amount": "50.00" }
+            },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/2001",
+              "product": { "id": "gid://shopify/Product/1001", "title": "Test Hoodie" }
+            }
+          }
+        ]
+      },
+      "localization": { "language": { "isoCode": "EN" } }
+    },
+    "output": {
+      "operations": [
+        {
+          "validationAdd": {
+            "errors": [
+              {
+                "message": "A discount would push at least one item below the minimum allowed price. Next step: reduce discount level or remove discount codes and try again. Affected product: Test Hoodie.",
+                "target": "$.cart"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

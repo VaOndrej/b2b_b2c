@@ -1,0 +1,28 @@
+{
+  "payload": {
+    "export": "cart-validations-generate-run",
+    "target": "cart.validations.generate.run",
+    "input": {
+      "cart": {
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": { "amount": "100.00" },
+              "subtotalAmount": { "amount": "100.00" },
+              "totalAmount": { "amount": "100.00" }
+            },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/2001",
+              "product": { "id": "gid://shopify/Product/1001", "title": "Test Hoodie" }
+            }
+          }
+        ]
+      },
+      "localization": { "language": { "isoCode": "EN" } }
+    },
+    "output": { "operations": [] }
+  }
+}

@@ -78,11 +78,27 @@ workspace balíčky (`extensions/*`).
       success. Pre-existing (NE regrese, byte-identické s HEAD): extension integrační
       vitest `margin-guard-cart-validation` 2 fail (výstup wasm ≠ fixture; není
       v `guard:test`). Ruční smoke (nejde headless): `shopify app dev`.
-- [ ] **Fáze 4 — `packages/app-kit`.** Vytáhnout framework-generický skeleton
-      (`shopify.server`, `db.server`, `entry.server`, auth routes, `root.tsx` base,
-      `utils`) → `#app-kit/*`. Brána: app běží (`shopify app dev`, health, e2e smoke).
-- [ ] **Fáze 5 — `apps/_template`.** Minimální appka importující `#core` + `#app-kit`.
-      Brána: `_template` nastartuje.
+- [x] **Fáze 4 — `packages/app-kit`.** `@won/app-kit` se sdílenými *továrnami*:
+      `createShopifyApp(prisma)` + `apiVersion`, `createHandleRequest` (SSR entry),
+      `AppDocument` (root shell), `createAuthSplatRoute` (auth `/auth/*`),
+      `createAppUninstalledAction` / `createScopesUpdateAction` (lifecycle webhooky).
+      b2b přepojeno přes tenké soubory (import surface `../shopify.server` beze změny).
+      **Per-app zůstává** `db.server` (svázané s generovaným Prisma clientem), `routes.ts`.
+      **Login page se NEsdílí** — React Router vyžaduje, aby default (client) export
+      route souboru neměl server-only závislost; `createLoginRoute` továrna to porušila,
+      tak login page zůstává per-app (leaf boilerplate). Brána: typecheck 0, 305 pass
+      (opraven contract test na nový zdroj pravdy app-kitu), `react-router build` ok.
+- [x] **Fáze 5 — `apps/_template`.** Bootovatelný skeleton (`won-app-template`)
+      importující `@won/app-kit` + `@won/core` (demo: `SEGMENTS` na home page),
+      vlastní minimální Prisma schema (jen `Session`), vlastní vite/tsconfig/tomls.
+      Brána: typecheck 0, `react-router build` ok, b2b nedotčeno.
+      **Prisma pozn.:** template používá sdílený hoisted `@prisma/client` (buildí se);
+      per-app output izolace zdokumentovaná v [README.md](README.md) pro druhou DB appku
+      (generovaný client v `app/` jinak spadne na rollup bundlingu Prisma CJS exportů).
+
+**Stav: monorepo připravené na stavbu dalších appek.** `@won/core` + `@won/adapter`
++ `@won/app-kit` sdílené, `apps/_template` ke klonování. Viz [README.md](README.md)
+→ "Adding a new app".
 - [ ] **Fáze 6 — úklid.** README, odstranit duplicity (`database/schema.prisma`
       vs `prisma/schema.prisma`), narovnat CI.
 

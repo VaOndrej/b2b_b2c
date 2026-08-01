@@ -1,0 +1,23 @@
+{
+  "name": "@won/app-kit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared Shopify + React Router app skeleton (shopify app factory, SSR entry, root shell, auth routes, lifecycle webhooks). Consumed via @won/app-kit/* subpath exports.",
+  "type": "module",
+  "exports": {
+    "./shopify.server": "./src/shopify.server.ts",
+    "./entry.server": "./src/entry.server.tsx",
+    "./root": "./src/root.tsx",
+    "./auth": "./src/auth.tsx",
+    "./webhooks": "./src/webhooks.ts"
+  },
+  "dependencies": {
+    "@react-router/node": "^7.12.0",
+    "@shopify/shopify-app-react-router": "^1.1.0",
+    "@shopify/shopify-app-session-storage-prisma": "^8.0.0",
+    "isbot": "^5.1.31",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router": "^7.12.0"
+  }
+}
