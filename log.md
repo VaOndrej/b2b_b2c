@@ -343,3 +343,31 @@ monorepa resolver odvodí stejné cesty bez override.
   app-owned testů. Pokles z 306 je přesně odstraněných šest duplicitních quantity
   testů; celkové quantity pokrytí se naopak rozšířilo na devět core testů.
 - `npm install` — **PASS**, audit stav beze změny (50 známých zranitelností).
+
+## 2026-08-01 — Task 8: kontrakt prvního Won Quantity slice
+
+### Zdrojová evidence
+
+- Prostudované Horizon quantity, product-form a variant-morph flow potvrzuje, že
+  theme vlastní custom element, `min/max/step`, cart-aware maximum,
+  `QuantitySelectorUpdateEvent` a asynchronní morph při změně varianty.
+- Prostudované Dawn `QuantityInput`, `ProductInfo`, product form a Liquid markup
+  potvrzuje vlastní `stepUp/stepDown`, pub/sub variant events, section fetch a
+  výměnu product subtree.
+- Z více než 4 000 řádků B2B storefront skriptu byly inventarizované jen
+  quantity principy: normalizace, app-owned notice, product form zachování a
+  resync po změnách DOM. B2B katalogy, visibility, pricing, discounts a cart
+  orchestration jsou výslovně mimo vlastnictví nové appky.
+
+### Rozhodnutí
+
+- `feature-contract.md` uzamyká precedence `variant > product > shop`, dědění
+  override hodnot, fail-open/no-op chování a pravidlo, že appka může nativní
+  Shopify constraints pouze zpřísnit.
+- První slice pracuje s existujícím product quantity inputem na PDP, featured
+  product a quick-add. Nevytváří druhý form ani vlastní add-to-cart a zatím
+  neinterceptuje cart line quantity.
+- CS/EN notice, více product forem, variant change, section morph, mobile i
+  desktop jsou explicitní acceptance criteria pro společný Horizon/Dawn spec.
+- Roadmapa eviduje dokončený behavior contract, nikoli dokončenou storefront
+  feature.
