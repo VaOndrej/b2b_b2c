@@ -88,3 +88,29 @@ Baseline je zelený a plánovaná path regrese je potvrzená. Task 0 dokončen.
 ### Zbývající riziko
 
 - Původní B2B runner ještě resolver nepoužívá. To řeší Task 3.
+
+## 2026-08-01 — Task 2: sdílené Playwright theme fixtures
+
+### Změny
+
+- Přidán generický `createThemeContext` pro Horizon a Dawn s kontrolou
+  aktivního Shopify theme, remote preview ID a lokálního theme-dev režimu.
+- Stabilní Shopify selektory formuláře, quantity inputu a submit tlačítka jsou
+  soustředěné v `@won/testing/playwright`.
+- Přidán konfigurovatelný JS MIME shim a základní Playwright fixture bez vazby
+  na Margin Guard nebo jinou konkrétní aplikaci.
+- App-specific URL dekorace je podporovaná callbackem, ale její význam zůstává
+  mimo sdílený package.
+
+### TDD a ověření
+
+- Failing test před implementací — **PASS jako důkaz TDD**: chybějící
+  `src/playwright/index.ts` skončil `ERR_MODULE_NOT_FOUND`.
+- `npx tsx --test packages/testing/tests/*.test.ts` po implementaci — **PASS**,
+  7/7 testů.
+- `git diff --check` — **PASS**.
+
+### Zbývající riziko
+
+- `b2b-companion` zatím používá původní lokální fixture; migrace proběhne až po
+  zavedení generického runneru, aby se změny daly ověřovat odděleně.
