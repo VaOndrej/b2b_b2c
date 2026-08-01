@@ -18,7 +18,8 @@
     "baseUrl": ".",
     "paths": {
       "@won/core/*": ["packages/core/src/*"],
-      "@won/shopify-adapter/*": ["packages/shopify-adapter/src/*"]
+      "@won/shopify-adapter/*": ["packages/shopify-adapter/src/*"],
+      "@won/testing/*": ["packages/testing/src/*"]
     }
   }
 }

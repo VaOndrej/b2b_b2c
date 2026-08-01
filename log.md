@@ -64,3 +64,27 @@ existující `prisma:generate` pro baseline `b2b-companion`.
 - `git diff --check` — **PASS**.
 
 Baseline je zelený a plánovaná path regrese je potvrzená. Task 0 dokončen.
+
+## 2026-08-01 — Task 1: `@won/testing` a theme path resolver
+
+### Změny
+
+- Přidán workspace package `@won/testing`.
+- Přidán čistý `resolveThemePaths`, který odvozuje canonical Horizon/Dawn
+  checkouty od monorepo rootu, ne od konkrétní appky.
+- Přidány nezávislé env overrides pro oba themes a podpora relativních overrides.
+- Přidán TypeScript alias `@won/testing/*`.
+
+### TDD a ověření
+
+- Failing test před implementací — **PASS jako důkaz TDD**: import skončil
+  `ERR_MODULE_NOT_FOUND`.
+- `npx tsx --test packages/testing/tests/theme-paths.test.ts` po implementaci —
+  **PASS**, 3/3 testů.
+- `npm install` zaregistroval nový workspace; lockfile aktualizován.
+- Automatický audit fix nebyl spuštěn; existující dependency zranitelnosti jsou
+  mimo scope této funkční změny.
+
+### Zbývající riziko
+
+- Původní B2B runner ještě resolver nepoužívá. To řeší Task 3.

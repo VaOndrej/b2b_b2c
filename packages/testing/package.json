@@ -1,0 +1,22 @@
+{
+  "name": "@won/testing",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared, app-agnostic test infrastructure for WonApps.",
+  "type": "module",
+  "exports": {
+    "./theme-paths": "./src/theme-paths.ts",
+    "./playwright": "./src/playwright/index.ts"
+  },
+  "scripts": {
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.58.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.8",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
+  }
+}
