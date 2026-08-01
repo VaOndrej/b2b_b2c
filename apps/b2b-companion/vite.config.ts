@@ -45,7 +45,8 @@ export default defineConfig({
     hmr: hmrConfig,
     fs: {
       // See https://vitejs.dev/config/server-options.html#server-fs-allow for more information
-      allow: ["app", "node_modules"],
+      // Monorepo: allow serving workspace packages (@won/*) and hoisted node_modules from the repo root.
+      allow: ["app", "node_modules", "../../packages", "../../node_modules"],
     },
   },
   plugins: [

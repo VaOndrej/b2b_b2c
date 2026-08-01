@@ -63,14 +63,21 @@ workspace balíčky (`extensions/*`).
       `#core`→`@won/core`, `#adapter`→`@won/shopify-adapter`; runner
       `guard:test:core` → `tsx --test`; tsconfig `paths` `@won/*`. Appka ZATÍM
       v rootu. Brána: 305 pass pod tsx, `@won/*` resolvuje v TS. ✓
-- [ ] **Fáze 3b — fyzický přesun appky do `apps/b2b-companion/`.** `app/`,
-      `functions/`, `extensions/`, `prisma/`, `config/`, `scripts/`, `tests/`,
-      `public/`, `types/`, `shopify.*.toml`, `vite.config.ts`, `.graphqlrc.ts`,
-      `playwright*.ts`, `.env`, `database/`. Split package.json (app deps+scripts →
-      apps/b2b-companion, root = workspaces orchestrace); root workspaces +=
-      `apps/*`. Fix cest: `vite server.fs.allow` (+root/packages), graphqlrc, prisma,
-      playwright, shopify.web.toml commands. Brána: `typecheck` + `guard:test` (tsx)
-      + reálný **build funkcí/extensions (wasm)** + `shopify app dev` smoke.
+- [x] **Fáze 3b — fyzický přesun appky do `apps/b2b-companion/`.** Přesunuto
+      (git mv, sourozenci → relativní importy drží): `app/`, `functions/`,
+      `extensions/`, `prisma/`, `database/`, `config/`, `scripts/`, `tests/`,
+      `public/`, `env.d.ts`, `shopify.*.toml`, `vite.config.ts`, `.graphqlrc.ts`,
+      `playwright*.ts`, `Dockerfile`, `.dockerignore`, `.env` (untracked), app docs.
+      Split `package.json`: app = deps+scripts (+ `@won/core`/`@won/shopify-adapter`
+      jako deps), root = workspaces orchestrátor (`packages/*`, `apps/*`,
+      `apps/*/extensions/*`) + delegující scripty (`-w b2b-companion`). tsconfig:
+      root `tsconfig.base.json` + app `tsconfig.json` (extends). `vite server.fs.allow`
+      += `../../packages`, `../../node_modules`. `.gitignore` split (root + app).
+      **Brány zelené:** `guard:test:core` 305 pass (tsx z app workspace) · `typecheck`
+      čistý · wasm build funkce (Javy) success · `react-router build` (client+SSR)
+      success. Pre-existing (NE regrese, byte-identické s HEAD): extension integrační
+      vitest `margin-guard-cart-validation` 2 fail (výstup wasm ≠ fixture; není
+      v `guard:test`). Ruční smoke (nejde headless): `shopify app dev`.
 - [ ] **Fáze 4 — `packages/app-kit`.** Vytáhnout framework-generický skeleton
       (`shopify.server`, `db.server`, `entry.server`, auth routes, `root.tsx` base,
       `utils`) → `#app-kit/*`. Brána: app běží (`shopify app dev`, health, e2e smoke).
