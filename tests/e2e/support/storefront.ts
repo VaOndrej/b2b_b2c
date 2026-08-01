@@ -43,12 +43,30 @@ const BOT_CHALLENGE_SKIP =
  *
  * Returns false when it skipped — callers should `return` on false.
  */
+/**
+ * Human-like think-time before a navigation. Cloudflare's interstitial here is
+ * triggered by request VOLUME from this IP, not by the browser fingerprint (measured
+ * 2026-07-10: headless shell, full chromium and real headed Chrome all trip it on the
+ * same later tests). Pacing the run — a pause before each navigation — keeps the
+ * request rate closer to a person browsing. Opt-in via SHOPIFY_E2E_PACING_MS so CI /
+ * remote runs can stay fast; the local theme-dev flow sets a sane default.
+ */
+async function pace(page: Page): Promise<void> {
+  const raw = process.env.SHOPIFY_E2E_PACING_MS;
+  const fallback = process.env.SHOPIFY_E2E_THEME_DEV === "1" ? 2_500 : 0;
+  const ms = raw != null && raw !== "" ? Number(raw) : fallback;
+  if (Number.isFinite(ms) && ms > 0) {
+    await page.waitForTimeout(ms);
+  }
+}
+
 export async function gotoStorefrontOrSkip(
   page: Page,
   path: string,
   storefrontPassword: string | null,
 ): Promise<boolean> {
   for (let pass = 0; pass < 2; pass++) {
+    await pace(page);
     try {
       await page.goto(path, { waitUntil: "domcontentloaded", timeout: 30_000 });
     } catch {
@@ -56,14 +74,19 @@ export async function gotoStorefrontOrSkip(
       // Fall through to the challenge check below.
     }
     if (await isStorefrontVerificationChallenge(page)) {
-      test.skip(true, BOT_CHALLENGE_SKIP);
-      return false;
+      // Give the managed challenge a chance to clear itself before writing the test off.
+      if (!(await waitForVerificationChallengeToClear(page))) {
+        test.skip(true, BOT_CHALLENGE_SKIP);
+        return false;
+      }
     }
     if (pass === 0) {
       await maybeUnlockStorefront(page, storefrontPassword);
       if (await isStorefrontVerificationChallenge(page)) {
-        test.skip(true, BOT_CHALLENGE_SKIP);
-        return false;
+        if (!(await waitForVerificationChallengeToClear(page))) {
+          test.skip(true, BOT_CHALLENGE_SKIP);
+          return false;
+        }
       }
     }
   }
@@ -78,11 +101,10 @@ export async function maybeUnlockStorefront(page: Page, storefrontPassword: stri
   await page.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => {});
 
   if (await isStorefrontVerificationChallenge(page)) {
-    test.skip(
-      true,
-      "Storefront served a bot/connection-verification challenge to the headless browser (environmental, not unlockable by the harness).",
-    );
-    return;
+    if (!(await waitForVerificationChallengeToClear(page))) {
+      test.skip(true, BOT_CHALLENGE_SKIP);
+      return;
+    }
   }
 
   const passwordInput = page
@@ -124,6 +146,29 @@ export async function isStorefrontVerificationChallenge(page: Page): Promise<boo
     .getByText(/connection needs to be verified|needs to be verified before you can proceed/i)
     .first();
   return (await challenge.count()) > 0;
+}
+
+/**
+ * Cloudflare serves a MANAGED challenge here ("Verifying your connection…", `_cf_chl`
+ * markers), which clears itself once its JS runs — the page then navigates on to the
+ * real storefront. Skipping the moment the interstitial is seen (the old behavior)
+ * threw away tests that would have passed a few seconds later.
+ *
+ * Waits for it to clear. Returns true if the storefront came through, false if the
+ * challenge is still up when the budget runs out (then the caller skips, as before).
+ */
+export async function waitForVerificationChallengeToClear(
+  page: Page,
+  timeoutMs = 25_000,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(1_000);
+    if (!(await isStorefrontVerificationChallenge(page))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function extractHandleFromPathname(pathname: string): string | null {

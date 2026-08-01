@@ -103,6 +103,17 @@ export async function seedE2ECatalogRules(
           max: fixture.maxOrderQuantity ?? null,
         });
         break;
+      case "COLLECTION_MAX":
+        // Rule targets the COLLECTION; the storefront applies it to member products via
+        // the live Product.collections fetch. Collection quantity supports max only.
+        if (fixture.collectionId) {
+          await upsertCatalogQuantityRule({
+            catalogId,
+            collectionId: fixture.collectionId,
+            max: fixture.maxOrderQuantity ?? null,
+          });
+        }
+        break;
       default:
         break;
     }
@@ -160,6 +171,26 @@ export async function seedCatalogQuantity(
     moq: quantity.moq ?? null,
     step: quantity.step ?? null,
     max: quantity.max ?? null,
+  });
+}
+
+/**
+ * Seeds ONLY a product floor onto the e2e catalog. The cart discount-conflict
+ * banner flags *real Shopify automatic discounts* (not catalog discount rules)
+ * that breach this floor, so the conflict spec pairs this with a real automatic
+ * discount (see support/automatic-discount-e2e.ts) — the floor is the constraint,
+ * the automatic discount is the offender.
+ */
+export async function seedCatalogFloor(
+  catalogId: string,
+  productId: string,
+  floorPercent: number,
+): Promise<void> {
+  await upsertCatalogFloorRule({
+    catalogId,
+    productId,
+    minPercentOfBasePrice: floorPercent,
+    allowZeroFinalPrice: null,
   });
 }
 

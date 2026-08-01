@@ -1,4 +1,4 @@
-import { test as base, expect } from "@playwright/test";
+import { test as base, expect } from "./test-base.ts";
 import { resolveThemeContext, type ThemeContext, type ThemeName } from "./theme.ts";
 import type { TestContext } from "./catalog-context.ts";
 

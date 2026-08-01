@@ -1,0 +1,89 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#MainContent"
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - complementary [ref=e7]:
+        - paragraph [ref=e11]: Welcome to our store
+      - banner [ref=e12]:
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - link "B2b_b2c_store_development" [ref=e18] [cursor=pointer]:
+              - /url: /
+            - navigation "Primary" [ref=e22]:
+              - list [ref=e24]:
+                - generic:
+                  - link "Home" [ref=e25] [cursor=pointer]:
+                    - /url: /
+                  - link "Catalog" [ref=e27] [cursor=pointer]:
+                    - /url: /collections/all
+                  - link "Contact" [ref=e29] [cursor=pointer]:
+                    - /url: /pages/contact
+          - generic [ref=e31]:
+            - button "USD Region and language selector" [ref=e33] [cursor=pointer]:
+              - generic [ref=e34]: USD
+              - generic [ref=e35]: Region and language selector
+            - button "Search" [ref=e37] [cursor=pointer]
+            - generic [ref=e38]:
+              - button "Account" [ref=e43] [cursor=pointer]
+              - button "Cart" [ref=e47] [cursor=pointer]
+              - status [ref=e51]
+    - main [ref=e52]:
+      - generic [ref=e53]:
+        - region "Quick add to cart bar" [ref=e54]:
+          - img "The top and bottom view of a snowboard. The top has view is turquoise and black with graphics of trees. The bottom view is turquoise with the word hydrogen written in cursive." [ref=e56]
+          - paragraph [ref=e58]: The Videographer Snowboard
+          - generic [ref=e59]: $885.95
+          - button "Add to cart" [ref=e62] [cursor=pointer]
+        - generic [ref=e67]:
+          - link "Skip to product information" [ref=e68] [cursor=pointer]:
+            - /url: "#ProductInformation-template--21601063141617__main"
+          - generic [ref=e69]:
+            - list [ref=e72]:
+              - listitem [ref=e73]:
+                - button "Zoom media 1" [ref=e74]
+                - img "The top and bottom view of a snowboard. The top has view is turquoise and black with graphics of trees. The bottom view is turquoise with the word hydrogen written in cursive." [ref=e76]
+              - listitem [ref=e77]:
+                - generic [ref=e78]:
+                  - img "Video of the Snowboard." [ref=e79]
+                  - 'button "Load video: Video of the Snowboard." [ref=e81] [cursor=pointer]':
+                    - generic [ref=e82]: Play video
+            - generic [ref=e88]:
+              - generic [ref=e90]:
+                - heading "The Videographer Snowboard" [level=1] [ref=e92]
+                - generic [ref=e93]: $885.95
+              - generic [ref=e99]:
+                - status [ref=e100]
+                - generic [ref=e102]:
+                  - generic [ref=e104]:
+                    - button "Decrease quantity" [disabled] [ref=e105] [cursor=pointer]
+                    - spinbutton "Quantity" [ref=e107]: "1"
+                    - button "Increase quantity" [ref=e108] [cursor=pointer]
+                  - button "Add to cart" [ref=e112] [cursor=pointer]
+                  - button "Buy it now" [ref=e121] [cursor=pointer]
+      - generic [ref=e125]:
+        - heading "You may also like" [level=3] [ref=e128]
+        - generic [ref=e129]:
+          - generic "Loading product recommendations" [ref=e130]
+          - generic "Loading product recommendations" [ref=e131]
+          - generic "Loading product recommendations" [ref=e132]
+          - generic "Loading product recommendations" [ref=e133]
+    - contentinfo [ref=e134]:
+      - generic [ref=e138]:
+        - generic [ref=e140]:
+          - heading "Join our email list" [level=2] [ref=e142]
+          - paragraph [ref=e144]: Get exclusive deals and early access to new products.
+        - generic [ref=e147]:
+          - generic [ref=e148]: Email
+          - textbox "Email" [ref=e149]:
+            - /placeholder: Email address
+          - button "Sign up" [ref=e150]
+      - generic [ref=e156]:
+        - generic [ref=e158]:
+          - text: © 2026
+          - link "B2b_b2c_store_development" [ref=e159] [cursor=pointer]:
+            - /url: /
+          - text: ","
+          - link "Powered by Shopify" [ref=e160] [cursor=pointer]:
+            - /url: https://www.shopify.com?utm_campaign=poweredby&utm_medium=shopify&utm_source=onlinestore
+        - button "Terms and Policies" [ref=e162] [cursor=pointer]

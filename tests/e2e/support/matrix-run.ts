@@ -252,6 +252,10 @@ export function registerMatrixTests(): void {
             await assertQuantityMoqStep(page, themeContext, fixture, context);
             break;
           case "QUANTITY_MAX":
+          // COLLECTION_MAX is storefront-indistinguishable from QUANTITY_MAX — same
+          // payload field (quantityConstraintsByProductId[productId].maxOrderQuantity)
+          // and DOM max attribute; only the seeded rule's target differs.
+          case "COLLECTION_MAX":
             await assertQuantityMax(page, themeContext, fixture, context);
             break;
           default:

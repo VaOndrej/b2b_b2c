@@ -30,20 +30,25 @@ export default async function globalSetup() {
     firstHandle = matrix.products[0]?.handle;
 
     if (matrix.products.length === 0) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        "[matrix.globalSetup] Empty catalog — no products to seed. Notes:\n" +
+      // FAIL, don't warn. An empty matrix means every spec skips, Playwright exits 0
+      // and the whole suite reports green while asserting NOTHING. That is a setup
+      // defect (unsynced CatalogProduct tables, wrong DATABASE_URL), not the kind of
+      // environmental skip the bot-challenge guard legitimately absorbs.
+      throw new Error(
+        "[matrix.globalSetup] Empty catalog — no products to seed, so every spec would " +
+          "skip and the run would be falsely green. Sync the catalog into the local DB " +
+          "(check DATABASE_URL points at this repo's prisma/dev.sqlite). Notes:\n" +
           matrix.notes.map((note) => `  - ${note}`).join("\n"),
       );
-    } else {
-      await seedE2ECatalogRules(catalogId, matrix);
-      if (matrix.notes.length > 0) {
-        // eslint-disable-next-line no-console
-        console.warn(
-          "[matrix.globalSetup] Coverage gaps:\n" +
-            matrix.notes.map((note) => `  - ${note}`).join("\n"),
-        );
-      }
+    }
+
+    await seedE2ECatalogRules(catalogId, matrix);
+    if (matrix.notes.length > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[matrix.globalSetup] Coverage gaps:\n" +
+          matrix.notes.map((note) => `  - ${note}`).join("\n"),
+      );
     }
 
     // Keep the live shop metafield consistent with the post-seed DB state. The

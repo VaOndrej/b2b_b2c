@@ -116,6 +116,9 @@ export default defineConfig<ThemeOptions>({
   use: {
     baseURL: storefrontBaseUrl,
     browserName: "chromium",
+    // Opt-in only — see playwright.config.ts: the channel does not affect the
+    // Cloudflare interstitial (volume-triggered, not fingerprint-triggered).
+    channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
     headless: process.env.PLAYWRIGHT_HEADLESS !== "0",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",

@@ -409,6 +409,288 @@ Stejně tak mít na to jeden command kterému dám vždy jenom argument -Dawn ne
      wrapper: bez argu OK, --port 53142 → base URL :53142, neznámý arg / --url+--port zároveň → usage + exit 2.
    NEOVĚŘENO LOKÁLNĚ: skutečný zelený běh — vyžaduje běžící theme dev + app s armed flagem (3 terminály).
 
+ ──── DOPLNĚK (2026-07-10): jeden command na OBA themes, theme dev spouští wrapper ────
+ POUŽITÍ (2 terminály místo 3):
+   # terminál 1:  MARGIN_GUARD_E2E_OVERRIDE=1 shopify app dev
+   # terminál 2:  npm run test:e2e:local:all               (Horizon, pak Dawn)
+   #              npm run test:e2e:local:all -- --only dawn | --bail | --dry-run | --verbose
+ ROZHODNUTÍ (uživatel): wrapper si theme dev spouští sám. Cena = app repo zná cestu k theme
+   checkoutům (../b2b_b2c_themes/{Horizon,Dawn}, přepis přes SHOPIFY_E2E_THEME_DIR_*) a
+   `shopify` CLI je runtime závislost testů. Původní test-e2e-local.mjs (jeden theme, theme dev
+   si řídí uživatel) ZŮSTÁVÁ beze změny — nový skript je vedle, ne místo.
+ SEKVENČNĚ, ne paralelně: oba tiery forsují JEDEN sdílený e2e katalog a seriální tier ho mutuje
+   per-test → dva paralelní themes by se porvali o katalog i o globalSetup/teardown.
+ SYNC TARGET: stejnojmenné remote themes "Horizon" / "Dawn" (--theme), NE efemérní development
+   theme. Přepis: SHOPIFY_E2E_THEME_NAME_{HORIZON,DAWN}. OBA MUSÍ ZŮSTAT [unpublished] —
+   `theme dev` do cíle pushuje změny v reálném čase. Live je na storu "test-data" (uživatel
+   přehodil 2026-07-10; předtím byl live Horizon). CLI živý theme bez --allow-live odmítne a
+   skript ten flag nikdy nepředává → špatný cíl selže rychle, ne potichu.
+ PORTY: 9781 / 9782 — schválně daleko od :9292/:9293 (drží je theme dev klientských themes).
+   Obsazený port → fallback na volný ephemeral + hláška. Přepis: SHOPIFY_E2E_THEME_PORT_*.
+ DVA GUARDY (obojí reakce na reálné selhání 2026-07-10):
+   - theme-dir guard: adresář musí mít layout/theme.liquid. `shopify theme dev` spuštěný o adresář
+     výš se zeptá "not a theme directory, proceed?" a na "yes" nasype prázdný strom do dev theme
+     (remote delete errors + GET 404 /). Živý theme se nedotkne, ale běh je k ničemu.
+   - app-proxy preflight: GET /apps/margin-guard/visibility-script musí vrátit 200. Bez něj je
+     chybějící terminál 1 TICHÝ — Playwright má webServer.url na theme-dev originu,
+     reuseExistingServer ho vidí odpovídat, suite jede proti app bez armed override a `catalog`
+     projekt padá, jako by šlo o bug v kódu. Vypnout lze --skip-app-check.
+ POZN. K HESLU: storefront password Playwright umí vyplnit sám (SHOPIFY_E2E_STOREFRONT_PASSWORD,
+   storefront.ts). NIKDY nebyl důvodem pro lokální theme dev — tím je Cloudflare bot-challenge,
+   kterou harness neumí odemknout a test místo toho SKIPNE (skipnutý ≠ zelený).
+ OVĚŘENO (stub `shopify` binárka na PATH, bez sáhnutí na store): dry-run obou themes; --only;
+   --bail (druhý theme se nepustí); exit 2 na neznámý arg / bad --only / bad --timeout; exit 1 na
+   selhání; theme-dir guard na rodičovský i neexistující adresář; port fallback při obsazeném 9781;
+   správné argumenty spawnu (--path/--theme/--port/--store-password); theme dev umírající při startu
+   → fail za 2s (ne 240s) + tail výstupu CLI; žádný orphan proces po doběhnutí ani po SIGTERM.
+   typecheck 0, guard:test:core 271/271.
+ NEOVĚŘENO: skutečný zelený běh proti storu (vyžaduje běžící app s armed flagem + funkční themes).
+   Ověřeno jen, že cílové themes existují a jsou [unpublished] (shopify theme list 2026-07-10).
+
+
+🔴 NÁLEZ (2026-07-10) – `shopify theme dev` přepisuje content-type proxovaných /apps/* odpovědí
+ ├─ SYMPTOM (JEN přes lokální theme dev origin): konzole "Refused to execute script from
+ │   '/apps/margin-guard/visibility-script' because its MIME type ('text/html') is not executable".
+ │   Script se stáhne (200, správné tělo), prohlížeč ho NESPUSTÍ (storefront posílá nosniff) →
+ │   neodejde request na /visibility → všechny storefront e2e testy padají na waitForResponse timeout.
+ │
+ ├─ PRODUKCE JE V POŘÁDKU. Ověřeno v prohlížeči přímo na https://b2b-b2c-store-development.myshopify.com
+ │   /products/the-videographer-snowboard: script se načte s `content-type: text/javascript; charset=utf-8`,
+ │   spustí se, 0 chyb v konzoli, /apps/margin-guard/visibility se volá (2 requesty). Shopify app proxy
+ │   content-type PROPOUŠTÍ. Uživatel to celou dobu tvrdil správně.
+ │
+ ├─ MĚŘENÍ přes theme dev origin (co se reálně děje): theme dev přepošle TĚLO ze Shopify, ale sám
+ │   přepíše content-type na text/html u všeho, co není application/json:
+ │     app posílá text/javascript / application/javascript / text/css / text/plain → theme dev vrací text/html
+ │     app posílá application/json                                                  → theme dev vrací application/json
+ │   (Podepsaný request přímo na app :59946 i na CLI proxy :59943 vrací korektní JS content-type.)
+ │
+ ├─ POZOR NA ZÁMĚNU (moje chyba 2026-07-10): odpověď z theme devu nese cf-ray, x-request-id a
+ │   set-cookie _shopify_y → svádí k závěru "to posílá Shopify". Dokazuje to jen původ TĚLA, ne hlaviček.
+ │   Jediný platný test produkčního chování je request na živý storefront, ne přes theme dev.
+ │
+ ├─ DOSAH: pouze lokální testovací cesta (test:e2e:local, test:e2e:local:all). Remote matice nedotčena.
+ │
+ ├─ POZN.: app-proxy preflight v test-e2e-local-all.mjs kontroloval jen status 200 → tenhle blok NECHYTIL.
+ │   Nově asertuje TĚLO (obsahuje DEFAULT_PROXY_PREFIX); content-type kontrolovat nelze, theme dev ho přepíše.
+ │
+ └─ OPRAVA (testy, NE aplikace): tests/e2e/support/theme-dev-mime.ts — page.route vrátí skriptu
+    spustitelný content-type. Aktivní JEN při SHOPIFY_E2E_THEME_DEV=1, proti remote se nespustí.
+    Nasazen přes nový tests/e2e/support/test-base.ts (jediný vstupní bod pro `test`); fixtures.ts z něj
+    dědí, tři seriální specy na něj přepsány. Import `test` z "@playwright/test" ve specu = ztráta shimu.
+
+🔴 KOREKCE (2026-07-10) – tvrzení "lokální theme-dev origin NIKDY neservíruje bot-challenge" je NEPRAVDIVÉ
+ ├─ theme dev renderuje stránku přes Shopify (posílá lokální soubory nahoru), takže Cloudflare
+ │   interstitial chodí i na 127.0.0.1 originu. POTVRZENO dumpem stránky v okamžiku detekce:
+ │   <title>Verifying your connection...</title>, 10× marker `_cf_chl` → skutečná Cloudflare challenge,
+ │   ne false positive detektoru.
+ │
+ ├─ NENÍ to fingerprint prohlížeče. Změřeno na seriálním tieru (7 testů, workers=1):
+ │     headless shell   → 3 passed, 1 failed, 3 skipped (challenge na testech 5-7)
+ │     plný chromium    → totéž pořadí; v "horkém" běhu hned po předchozím 7/7 skipnuto
+ │     headed real Chrome (channel=chrome, PLAYWRIGHT_HEADLESS=0) → 3 passed, 1 failed, 3 skipped
+ │   Vždy padnou POZDĚJŠÍ testy → spouštěčem je objem requestů z této IP, ne to, čím se prohlížeč tváří.
+ │   channel je proto v obou configech jen OPT-IN (PLAYWRIGHT_CHANNEL), default zůstal nezměněn.
+ │
+ ├─ OPRAVA (částečná, storefront.ts): je to Cloudflare MANAGED challenge → sama se doresolvuje.
+ │   Harness ale skipoval v okamžiku detekce. Nově waitForVerificationChallengeToClear() počká až 25 s
+ │   a skipne, jen když challenge přetrvá. Efekt: testy, které dřív skipovaly, doběhnou (test 7 prošel,
+ │   test 5 odhalil selhání). Skipy tím klesly, ale nezmizely — běh od běhu se to liší.
+ │
+ ├─ PACING (storefront.ts, implementováno, NEOVĚŘENO): pace() vloží think-time před každou navigaci.
+ │   Default 2500 ms v theme-dev módu (SHOPIFY_E2E_THEME_DEV=1), jinak 0; přepis SHOPIFY_E2E_PACING_MS.
+ │   Logika: challenge spouští objem requestů z IP → chovat se víc jako člověk = pomaleji. Ověření
+ │   zablokováno throttlingem storu (viz níže).
+ │
+ ├─ 🔴 STORE THROTTLED (2026-07-10, po mých testech+sondách): POST /password → 503, GET / → 500,
+ │   `shopify theme dev` → "store password is invalid" (i se správným leotra — auth chyba převlečená za
+ │   rate-limit). Store potřebuje vychladnout (desítky minut). Do té doby NELZE spustit lokální e2e.
+ │
+ └─ ZBÝVÁ: (1) ověřit pacing až store obživne; (2) pořádné řešení = přenášet cf_clearance cookie mezi
+    testy (storageState / persistent context), ať se challenge řeší JEDNOU za běh, ne v každém test
+    contextu (Playwright dělá čerstvý context per test → každý startuje bez cookie → může chytit challenge).
+
+✅ VYŘEŠENO (2026-07-11, oba themes ZELENÉ přes test:e2e:local:all, exit 0)
+ ├─ NÁLEZ #1 (proč app-proxy 500): běžící `shopify app dev` startoval PŘED opravou prisma/.env, takže jeho
+ │   Prisma klient byl navázaný na STAROU prázdnou DB (0 sessions) → appProxy nenašel session → 500, který
+ │   Shopify zabalil do storefront „error in the third-party application". Fix: restart app dev. (Prisma čte
+ │   DATABASE_URL jen při startu procesu; vite SSR reload klienta nereinicializuje.)
+ ├─ NÁLEZ #2 (discount-conflict banner nevznikal): banner řídí REÁLNÉ Shopify automatic slevy, ne katalogová
+ │   discount pravidla. Test přepsán věrně featuře (viz FÁZE 2 / test 7 níže + support/automatic-discount-e2e.ts).
+ │   Po cestě změřeno: propagace create/delete slevy ke cart-validation funkci ~1,2 s; floor-breaching sleva
+ │   blokuje /cart/add 422 (proto add PŘED slevou).
+ ├─ CHALLENGE (skutečné řešení, ne storageState): cf_clearance nelze získat proaktivně (vydá se až PO vyřešení
+ │   challenge, nízkoobjemový warmup ji nevyvolá). Místo toho: (a) warmStorefrontTunnel počká na vyčištění
+ │   AKTIVNÍ challenge před sadou (wait-until-clean, běží v matrix globalSetup i v beforeAll seriálních speců);
+ │   (b) wrapper nastaví PLAYWRIGHT_RETRIES=1 → mid-run challenge flake se přeběhne (managed challenge se
+ │   vyčistí v sekundách). Fetchy v discount-conflict specu obaleny AbortController (5 s), ať challenge
+ │   nezasekne page.evaluate na celý timeout.
+ └─ VÝSLEDEK: ✓ Horizon, ✓ Dawn. discount-conflict prochází na OBOU. Zbytkový flake (variant-visibility
+    challenge timeout na 1. pokus) pohltí retry → „flaky", ale běh zelený. 0 stray slev (afterEach maže).
+
+🟡 VÝSLEDEK BĚHU (2026-07-10, po opravě DB + MIME shimu, oba themes přes test:e2e:local:all)
+ ├─ Horizon: matice 8/8 PASSED. Seriální tier: 3 passed, 1 failed, 3 skipped (bot-challenge).
+ ├─ Dawn:    matice 8 skipped (nutno došetřit), seriální: 4 passed, 1 failed, 2 skipped.
+ ├─ WRAPPER EXIT=1 (poctivě červené — už nelže, viz oprava matrix.setup + preflightu).
+ ├─ 🔴 REÁLNÉ SELHÁNÍ (obě témata, konzistentní): storefront.discount-conflict.spec.ts:119 —
+ │   #margin-guard-cart-discount-conflict-notice se na /cart nezobrazí (element not found, 12s).
+ │   NENÍ to timeout na waitForResponse → script běží, jen banner nevznikne. Nedošetřeno.
+ └─ 🟡 K DOŠETŘENÍ: proč Dawn matice skipla všech 8, když Horizon matice 8/8 prošla (stejné env).
+
+🔴 NÁLEZ (2026-07-10) – prisma/.env mířil absolutní cestou na STAROU lokaci repa
+ ├─ DATABASE_URL="file:/Users/ondrej/Development/b2b_b2c/prisma/dev.sqlite" (repo se přesunulo do
+ │   WonCommerce/Apps/). Prisma si tam vyrobila PRÁZDNOU DB → app i testy nad ní běžely od přesunu.
+ │   Skutečná data (17 CatalogProduct, 26 CatalogVariant, 1 Session) leží v prisma/dev.sqlite v repu.
+ ├─ DŮSLEDEK: matice e2e neměla z čeho stavět → .matrix.json prázdný → všech 9 testů SKIPNUTO →
+ │   Playwright exit 0 → suite hlásila zelenou, aniž by cokoli asertovala.
+ ├─ OPRAVA: prisma/.env → DATABASE_URL="file:dev.sqlite" (relativní vůči schema.prisma). Ověřeno:
+ │   app dev startuje s 'SQLite database "dev.sqlite"', matice staví 8 testů místo 2 placeholderů.
+ └─ OPRAVA #2: tests/e2e/matrix.setup.ts na prázdné matici HÁZÍ výjimku místo console.warn.
+    ZBÝVÁ: seriální tier umí naskipovat všech 7 testů a wrapper to pořád vyhodnotí jako ✓.
+    Skutečná pojistka = trvat na tom, že aspoň jeden test PROBĚHL (JSON reporter v run-playwright-e2e.mjs).
+
+═══════════════ REFERENCE: LOKÁLNÍ STOREFRONT E2E — commandy, testy, testovaná data (2026-07-10) ═══════════════
+ Tohle je STABILNÍ přehled toho, co se pouští a co se u jakého produktu testuje. Cíl: testovaná data
+ se už nesmí měnit (viz VAROVÁNÍ o stabilitě dole).
+
+ ── COMMANDY ──
+   # terminál 1 (app + gated override armed):
+   MARGIN_GUARD_E2E_OVERRIDE=1 shopify app dev
+   # terminál 2 (oba themes, wrapper si theme dev spouští i uklízí sám):
+   npm run test:e2e:local:all
+     přepínače:  -- --only horizon|dawn   -- --bail   -- --dry-run   -- --verbose
+     env:        SHOPIFY_E2E_PACING_MS (think-time před navigací; default 2500 v theme-dev módu)
+                 PLAYWRIGHT_CHANNEL=chrome + PLAYWRIGHT_HEADLESS=0 (opt-in, na challenge NEPOMÁHÁ)
+   Store password (leotra) se bere z .env → SHOPIFY_E2E_STOREFRONT_PASSWORD, wrapper ho předá theme devu.
+   Wrapper interně spustí node ./scripts/run-playwright-e2e.mjs → 2 fáze v pořadí:
+     1) MATICE  (playwright.matrix.config.ts) — paralelní, read-only
+     2) SERIÁL  (playwright.config.ts)        — workers=1, mutace per test
+
+ ── FÁZE 1: MATICE (storefront.matrix.spec.ts via support/matrix-run.ts) ──
+   4 archetypy × 2 kontexty (base = default katalog / catalog = vynucený e2e katalog přes mg_e2e_audience).
+   Asertuje /apps/margin-guard/visibility PAYLOAD (ne DOM). Pravidla naseeduje jednou globalSetup na
+   1 sdílený e2e katalog, každý archetyp na VLASTNÍ produkt (nepřekrývají se). Co se ověřuje:
+     HIDDEN             → produkt je v e2e katalogu skrytý (v base viditelný)
+     QUANTITY_MOQ_STEP  → minimum order quantity = 6, step = 3
+     QUANTITY_MAX       → max order quantity = 3
+     VARIANT_HIDDEN     → konkrétní VARIANTA produktu je skrytá (potřebuje produkt s variantami)
+
+ ── FÁZE 2: SERIÁL (3 spec soubory, každý test si naseeduje 1 pravidlo na ČERSTVÝ e2e katalog) ──
+   storefront.smoke.spec.ts (5 testů):
+     1) HIDDEN produkt na PDP → #margin-guard-visibility-banner obsahuje hlášku o nedostupnosti
+     2) MOQ+STEP na PDP → notice "Minimum order quantity: 6." + "sold in multiples of 3.";
+        quantity input value=6, min=6, step=3
+     3) VARIANT_HIDDEN → banner viditelnosti varianty (u skryté varianty text, u viditelné count=0)
+     4) MAX qty + acknowledgment → input vyplněn na 5, add-to-cart, cart notice; dismiss tlačítko
+        viditelné s textem "I understand"/"Rozumim"; po kliku notice zmizí
+     5) MAX na PDP → quantity input má atribut max=3
+   storefront.listing.spec.ts (1 test):
+     6) HIDDEN produkt → jeho karta zmizí z /collections/all listingu (count=0)
+   storefront.discount-conflict.spec.ts (1 test):
+     7) sleva v konfliktu s floor → na /cart se objeví #margin-guard-cart-discount-conflict-notice
+        VĚRNĚ FEATUŘE (2026-07-11): banner řídí resolveCartDiscountConflictsByHandle, který jako viníka
+        bere REÁLNÉ Shopify _automatic_ slevy (ne katalogová discount pravidla — ta jsou jen stacking
+        kontext). Test proto: seeduje 80% floor na e2e katalog, přidá produkt do košíku, PAK vytvoří přes
+        Admin API reálnou PRODUCT-scoped 50% automatic slevu na mg-e2e-hidden (50 % < 80 % floor → konflikt),
+        ověří banner, a v afterEach slevu smaže. Pořadí (add PŘED slevou) je nutné: cart-validation funkce
+        jinak add zablokuje 422 (floor breach); GET /cart už validaci nespouští. Blast radius: 1 sleva na
+        e2e produktu po dobu 1 testu. Helper: tests/e2e/support/automatic-discount-e2e.ts.
+
+ ── 🔒 TESTOVANÁ DATA (ZAMČENO 2026-07-10 — dedikované produkty, už se nemění) ──
+     HIDDEN            → mg-e2e-hidden           "MG E2E · Hidden Product"   product 9665009811697
+     QUANTITY_MOQ_STEP → mg-e2e-moq-step         "MG E2E · MOQ + Step"       (MOQ 6, step 3)  9665009877233
+     QUANTITY_MAX      → mg-e2e-max              "MG E2E · Max Quantity"     (max 3)          9665009910001
+     VARIANT_HIDDEN    → mg-e2e-variant-hidden   "MG E2E · Variant Hidden"   9665010139377
+                          Size S/M/L; testovaná varianta S = gid …/48393748578545
+     COLLECTION_MAX    → mg-e2e-collection-member "MG E2E · Collection Member" 9665055129841
+                          člen kolekce "MG E2E Collection" (gid …/466006212849, handle mg-e2e-collection);
+                          max 3 se seeduje na KOLEKCI, storefront ho aplikuje na člena přes živé
+                          Product.collections (členství NENÍ v DB → collection GID je připíchnutý).
+   Všech 5 produktů + kolekce: ACTIVE, publikované na Online Store, cena 19.90, sklad NEsledovaný,
+   obrázek READY. Vytvořeny přes Admin API dedikovaně pro e2e. Číselné hodnoty (6/3/3) napevno.
+   POZN.: collection-scope na storefrontu = JEN quantity max (collection visibility skrývá jen stránku
+   kolekce podle handle, ne její produkty). Proto COLLECTION_MAX, ne COLLECTION_HIDDEN.
+
+ ── JAK JE TO ZAMČENÉ (aby "data se nemění" platilo) ──
+   PIN = handly v scripts/test-e2e-local-all.mjs (konstanta PINNED_PRODUCT_HANDLES), injektované do env
+   jako SHOPIFY_E2E_PRODUCT_HANDLE_{VISIBILITY,STEP,MAX,VARIANT}. Čtou je OBĚ fáze:
+     • Seriál: support/runtime.ts (už uměl).
+     • Matice: support/matrix.ts — buildPinnedFixtures() (DOPLNĚNO 2026-07-10): když jsou všechny 4 piny
+       nastavené, matice vezme PŘESNĚ ty produkty s FIXNÍM archetypem, místo round-robin dle updatedAt.
+   Předpoklad: produkty musí být v lokální CatalogProduct (sync). Když app běží, chytne je webhookem;
+   jinak sync ručně (otevřít app / syncShopifyProductCatalog). Pin lze přebít pre-set env / .env.
+   Admin token pro out-of-band operace: .env → SHOPIFY_ADMIN_API_TOKEN (gitignored). Po dokončení SETUPU
+   ho DOPORUČUJI rotovat (byl v plaintextu v chatu).
+
+🔴🐛 NALEZENÝ + OPRAVENÝ BUG (2026-07-10, odhalil property-based test) — cap slev se dal prorazit
+ ├─ SYMPTOM: naskládané slevy přesahující 100 % obešly kombinovaný cap. Př.: dvě slevy 90 %+90 %,
+ │   cap 80 % → total zůstal 100 % (produkt ZDARMA) místo 80 %. Ještě horší při capu hluboko pod součtem:
+ │   slevy 83+73+41=197 %, cap 16 % → total 97 %.
+ ├─ PŘÍČINA: core/discount/discount.orchestrator.ts — cap-excess aritmetika používala roundPercent(),
+ │   který KLAMPUJE na [0,100]. Takže: (a) runningTotal = roundPercent(součet) usekl součet na 100 dřív,
+ │   než se změřil přebytek; (b) remainingExcess = roundPercent(total − cap) usekl i přebytek na 100.
+ │   Přebytek k oříznutí tak nikdy nepřesáhl 100 → při součtu > cap+100 se ořízlo málo → cap se prorazil.
+ ├─ FIX: zaveden round2() (2 des. místa BEZ klampu) a použit v celém cap bloku (runningTotal, init
+ │   remainingExcess, dekrement). roundPercent zůstává na finálním total (kde klamp na 100 patří).
+ ├─ OVĚŘENÍ: property test (500 náhodných sad, invariant „total ≤ cap") + 2 explicitní regresní testy
+ │   (90+90 cap 80 → 80; 83+73+41 cap 16 → 16). Všech 54 existujících discount+margin testů dál zelených.
+ └─ DOPAD: reálný, produkční. Kdokoli naskládal slevy přes cap dostal větší slevu, než měl —
+    až po produkt zdarma. Margin floor to u checkoutu částečně chytal, ale orchestrátorův cap byl slepý.
+
+═══════════════ PLÁN POKRYTÍ PRAVIDEL (2026-07-10, podklad od druhé AI + ověření proti kódu) ═══════════════
+ KLÍČOVÝ POZNATEK: pokrytí má 4 VRSTVY, produkty potřebuje JEN jedna. Většina navrženého seznamu je
+ čistá core logika → jednotkové testy s in-memory fixturami, ŽÁDNÝ Shopify produkt. Ověřeno v kódu:
+ všechny engine soubory existují (core/**), scope váhy 500/400/300/200/100, CAP_REDUCED_TO_ZERO,
+ UNVERIFIABLE_AGAINST_FLOOR, priorita auto-slev 1000 — sedí. Property-based testy fakt CHYBÍ.
+
+ ── VRSTVA A: CORE UNIT (bez produktů) — sem patří body 1-9 „správnosti" ──
+   Testuje core/** s vymyšlenými objekty (dnes 271 zelených node --test). Doplnit:
+     1  catalog.resolver   ⚠️ market filtr (nenastaveno=any / přesná shoda / chybějící kontext=no-match),
+                              kombinace market×audience (market NE + audience ANO → NEmatch)
+     2  catalog.merge      ⚠️ invariant delta≠base (normalizace při persistenci → spíš service test),
+                              defaulty (globalMinPricePercent=70, allowZeroFinalPrice=false), per-key merge map
+     3  price-list.engine  ⚠️ non-compounding (procenta se neskládají) — explicitní regresní test
+     4  discount.orchestr. ❌ PROPERTY-BASED (náhodné množiny slev → invarianty: nikdy pod cap, floor se
+                              neprorazí, deterministika při přeházení vstupu) = NEJVYŠŠÍ PŘÍNOS, nejkřehčí část
+                           ⚠️ cap min(global,segment)+CAP_REDUCED_TO_ZERO, pořadí appliedCodes = pořadí vstupu
+     5  margin.guard       ✅ floor logika; value-based enforcement u checkoutu → VRSTVA B
+     6  pricing.pipeline   ⚠️ end-to-end kompozice kroků (ne jen izolované kroky)
+     7  quantity.engine    ✅ precedence/validace; customer-specific max ve storefront resolveru → B/E2E
+     8  visibility.engine  ✅ módy; per-katalog merge ve storefront loaderu → VRSTVA D / E2E
+     9  conflict.detector  ⚠️ store/collection-wide fixed → UNSUPPORTED; auto-sleva priorita 1000
+
+ ── VRSTVA B: FUNCTION INTEGRATION (bez produktů, vymyšlený function input) ──
+   Vynucení cen/marží/slev NEBĚŽÍ na storefrontu — dělají Shopify Functions u checkoutu (discount-function,
+   cart-validation). Pokrývá tests/cart + tests/discount. Sem patří: bod 5 (floor u checkoutu, value-based),
+   bod 6 (pipeline skrz funkci). PRODUKTY NEPOMOHOU — logika jde mimo storefront embed.
+
+ ── VRSTVA C: ROUTE / CONTRACT / WEBHOOK (bez produktů, DB fixtury) ──
+   Bod 11: každý zápis do katalogu → republishCatalogRuntime; save-catalog bez id=create+redirect / s id=update;
+   system katalogy (default,b2b) nejdou smazat + fixní priorita; webhook orders/create → margin log per line.
+   Pokrývá tests/routes + tests/contracts + tests/webhooks.
+
+ ── VRSTVA D: STOREFRONT E2E (JEDINÁ, co potřebuje publikované produkty) ──
+   Testuje jen to, co prohlížeč VIDÍ na stránce: /visibility payload + DOM bannery z embed skriptu.
+   Body: 8 (viditelnost prod/varianta), 7 (MOQ/step/max notice), 9 (discount-conflict banner), 10 (projekce).
+   STÁVAJÍCÍ 4 mg-e2e produkty tuhle sadu POKRÝVAJÍ. Jediná reálná mezera: collection-scope pravidla
+   (catalogMembership je prázdné) → chce 1 nový produkt + 1 kolekci.
+
+ ── MINIMÁLNÍ E2E SADA PRODUKTŮ (cíl „testovat vše minimem produktů") — HOTOVO ──
+   Minimum diktuje počet věcí, co musí prohlížeč ROZLIŠIT na stránce, NE počet pravidel. NEnacpávat víc
+   pravidel na jeden produkt → ztráta izolace, křehké testy závislé na pořadí. Realizovaná sada (5+1):
+     mg-e2e-hidden           → viditelnost produktu + projekce/anti-flash + discount-conflict banner
+     mg-e2e-variant-hidden   → viditelnost varianty (S/M/L)
+     mg-e2e-moq-step         → MOQ + step notice
+     mg-e2e-max              → max notice
+     mg-e2e-collection-member + kolekce mg-e2e-collection → collection-scope max (COLLECTION_MAX)
+   = 5 produktů + 1 kolekce. Víc netřeba; zbytek seznamu je VRSTVA A/B/C.
+
+ ── DOPORUČENÉ POŘADÍ (až se rozhodne dělat) ──
+   1) VRSTVA A property-based orchestrace slev (bod 4 ❌) — největší přínos, nula produktů.
+   2) Zbylé ⚠️ ve VRSTVĚ A (merge, cap, non-compounding, resolver market).
+   3) VRSTVA D: mg-e2e-collection-member + kolekce, zavřít poslední storefront mezeru.
+   4) VRSTVA B/C revize kontraktů (bod 11).
+   Nezakládat produkty kvůli bodům 1-9 — patří do unit testů, kde produkt nic nepřidá.
 
 MVP_5_5_1
 ├─ Po tomhle nesmí být žádný technický dluh

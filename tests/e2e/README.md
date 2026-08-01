@@ -76,16 +76,54 @@ takže se to NEDÁ spolehlivě opravit jen v testu. Dvě cesty k deterministicky
 zelené:
 
 1. **Lokální theme-dev origin (DOPORUČENO, obejde Cloudflare úplně):**
+
+   **Oba themes jedním příkazem** (`scripts/test-e2e-local-all.mjs`) — theme dev si
+   spouští a uklízí sám, sekvenčně Horizon → Dawn:
    ```
    # terminál 1 (app-proxy + override armed):
    MARGIN_GUARD_E2E_OVERRIDE=1 shopify app dev
-   # terminál 2 (lokální storefront — JEDEN theme, libovolný checkout: Horizon NEBO Dawn):
-   shopify theme dev --store b2b-b2c-store-development.myshopify.com
-   # terminál 3:
-   npm run test:e2e:local                       # theme dev na defaultním :9292
-   npm run test:e2e:local -- --port 53142       # theme dev na jiném portu
-   npm run test:e2e:local -- --url http://127.0.0.1:53142
+   # terminál 2:
+   npm run test:e2e:local:all                   # Horizon, pak Dawn
+   npm run test:e2e:local:all -- --only dawn    # jen jeden theme
+   npm run test:e2e:local:all -- --bail         # stop po prvním padlém theme
+   npm run test:e2e:local:all -- --dry-run      # co by se pustilo, bez spuštění
    ```
+   Checkouty se hledají v `../b2b_b2c_themes/{Horizon,Dawn}` a syncují se do stejnojmenných
+   remote themes `Horizon` / `Dawn`, na portech **9781 / 9782** — schválně daleko od
+   `:9292`/`:9293`, které drží theme dev klientských themes. Obsazený port není fatální:
+   spadne se na volný ephemeral a napíše se to. Přepis: `SHOPIFY_E2E_THEME_{DIR,NAME,PORT}_{HORIZON,DAWN}`.
+
+   **Oba cílové themes musí zůstat `[unpublished]`** — `theme dev` do nich pushuje změny
+   v reálném čase. Živý theme na storu je `test-data`. CLI živý theme bez `--allow-live`
+   odmítne a skript ten flag nikdy nepředává, takže špatný cíl selže hned, ne potichu.
+
+   Store password se bere ze `SHOPIFY_E2E_STOREFRONT_PASSWORD` (i z `.env`) a předává
+   theme devu přes `--store-password`, takže se na nic neptá. Běhy jsou **sekvenční**
+   záměrně: oba tiery forsují JEDEN sdílený e2e katalog a seriální tier ho mutuje
+   per-test — dva paralelní themes by se o něj poprali.
+
+   Před během se dělá **preflight na app proxy** (`GET /apps/margin-guard/visibility-script`,
+   čeká 200). Bez něj je chybějící terminál 1 tichý: Playwright má `webServer.url`
+   namířený na theme-dev origin, `reuseExistingServer` ho vidí odpovídat a suite pak
+   jede proti app bez armed override → `catalog` projekt padá jako by šlo o bug v kódu.
+   Vypnout jde `--skip-app-check` (nedoporučeno).
+
+   **Jeden theme, theme dev si řídíš sám** (`scripts/test-e2e-local.mjs`):
+   ```
+   # terminál 1 (app-proxy + override armed):
+   MARGIN_GUARD_E2E_OVERRIDE=1 shopify app dev
+   # terminál 2 (lokální storefront — spouštěj Z CHECKOUTU, ne z jeho rodiče):
+   cd ../b2b_b2c_themes/Horizon
+   shopify theme dev --store b2b-b2c-store-development.myshopify.com --port 9393
+   # terminál 3:
+   npm run test:e2e:local -- --port 9393
+   npm run test:e2e:local                       # jen když theme dev sedí na :9292
+   npm run test:e2e:local -- --url http://127.0.0.1:9393
+   ```
+   POZOR: `shopify theme dev` spuštěný o adresář výš se zeptá "not a theme directory,
+   proceed?" a na "yes" nasype prázdný strom do tvého development theme (remote delete
+   errors + `GET 404 /`). Dev theme je odhoditelný, živý theme se nedotkne — ale běh je
+   k ničemu. `test:e2e:local:all` tenhle guard dělá za tebe.
    Suite je **theme-agnostická** (sdílené selektory, asertuje se app-proxy /visibility
    payload + app-injected markery), takže běží proti tomu, co theme dev zrovna servíruje
    — který theme jedeš si hlídáš sám (terminálem 2). Žádný theme argument.

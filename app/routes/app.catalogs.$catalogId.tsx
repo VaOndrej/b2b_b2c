@@ -11,8 +11,10 @@ import {
   type CatalogEditorTab,
 } from "../components/catalog-editor-view";
 
-// MVP_5_3 Phase 2 — catalog editor (per-facet tabs). The `catalogs_` segment opts
-// out of layout nesting so this renders standalone at /app/catalogs/:catalogId.
+// MVP_5_3 Phase 2 — catalog editor (per-facet tabs), at /app/catalogs/:catalogId.
+// MVP_5_5: nests under the app.catalogs layout, which owns the page shell and the
+// catalog rail. So this route renders the right pane only — no page element of its
+// own (two would double the frame) and no back link, since the rail replaces it.
 
 function normalizeTab(value: string | null): CatalogEditorTab {
   return CATALOG_EDITOR_TABS.some((tab) => tab.id === value)
@@ -51,14 +53,5 @@ export default function CatalogEditorRoute() {
   const isSubmitting = navigation.state === "submitting";
   const activeTab = normalizeTab(searchParams.get("tab"));
 
-  return (
-    <s-page heading={catalog.name}>
-      <p style={{ margin: "0 0 12px" }}>
-        <a href="/app/catalogs" style={{ color: "#005bd3", fontWeight: 600, textDecoration: "none" }}>
-          ← All catalogs
-        </a>
-      </p>
-      <CatalogEditorView catalog={catalog} activeTab={activeTab} isSubmitting={isSubmitting} />
-    </s-page>
-  );
+  return <CatalogEditorView catalog={catalog} activeTab={activeTab} isSubmitting={isSubmitting} />;
 }

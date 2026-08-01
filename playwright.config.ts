@@ -4,6 +4,18 @@ const storefrontBaseUrl =
   process.env.SHOPIFY_E2E_STOREFRONT_BASE_URL ||
   "https://b2b-b2c-store-development.myshopify.com";
 
+/**
+ * Opt-in browser channel. Default stays Playwright's bundled headless shell.
+ *
+ * Measured 2026-07-10 against the theme-dev origin: switching to the full browser
+ * (`chromium`) or to the real installed Chrome (`chrome`, headed) does NOT reduce the
+ * Cloudflare "connection needs to be verified" interstitial. In every run the SAME
+ * later tests (5-7 of the serial tier) hit it, so the trigger is request VOLUME from
+ * this IP, not the browser fingerprint. Kept configurable anyway — it costs nothing
+ * and makes the next experiment a one-liner.
+ */
+const browserChannel = process.env.PLAYWRIGHT_CHANNEL || undefined;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   // Serial, mutate-per-test suite only. The parallel read-only matrix suite has
@@ -44,6 +56,7 @@ export default defineConfig({
   use: {
     baseURL: storefrontBaseUrl,
     browserName: "chromium",
+    channel: browserChannel,
     headless: process.env.PLAYWRIGHT_HEADLESS !== "0",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",

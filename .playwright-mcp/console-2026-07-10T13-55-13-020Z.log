@@ -1,0 +1,3 @@
+[     381ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:9781/api/collect:0
+[     525ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://cdn.shopify.com/shopify-marketing_assets/static/ShopifySans--regular.woff:0
+[     598ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://b2b-b2c-store-development.myshopify.com/favicon.ico:0

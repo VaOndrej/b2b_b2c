@@ -1,5 +1,9 @@
-import { chromium, type Browser } from "@playwright/test";
-import { maybeUnlockStorefront } from "./storefront.ts";
+import { chromium, type Browser, type Page } from "@playwright/test";
+import {
+  isStorefrontVerificationChallenge,
+  maybeUnlockStorefront,
+  waitForVerificationChallengeToClear,
+} from "./storefront.ts";
 import { resolveShopifyE2ERuntimeConfig } from "./runtime.ts";
 import { E2E_CATALOG_AUDIENCE_TAG } from "./catalog-context.ts";
 
@@ -49,9 +53,33 @@ export async function warmStorefrontTunnel(productHandle?: string): Promise<void
     // Let the no-defer head embed script actually fetch the proxy script so the
     // dev server has JIT-compiled the visibility-script route.
     await page.waitForTimeout(1_500);
+
+    // Wait out any ACTIVE Cloudflare bot-challenge before the suite starts, so the
+    // first tests don't inherit it mid-run. Best-effort + bounded: on the public
+    // storefront the managed challenge clears itself within seconds; the theme-dev
+    // origin never serves one, so this is a fast no-op there.
+    await warmUntilChallengeClears(page, `/products/${handle}?${audience}`);
   } catch {
     /* best-effort warm-up */
   } finally {
     await browser?.close();
+  }
+}
+
+/**
+ * Re-navigates to a PDP up to a few times, clearing any Cloudflare bot-challenge
+ * between attempts, until the page comes through clean (or the budget runs out).
+ * Best-effort: leaves the suite to handle a still-present challenge as before.
+ */
+async function warmUntilChallengeClears(page: Page, path: string): Promise<void> {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (!(await isStorefrontVerificationChallenge(page).catch(() => false))) {
+      return;
+    }
+    // Managed challenge is up — give it its self-clearing budget, then re-navigate.
+    await waitForVerificationChallengeToClear(page).catch(() => {});
+    await page
+      .goto(path, { waitUntil: "domcontentloaded", timeout: 45_000 })
+      .catch(() => {});
   }
 }

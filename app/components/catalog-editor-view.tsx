@@ -70,7 +70,21 @@ export function CatalogEditorView({ catalog, activeTab, isSubmitting }: CatalogE
         .catalog-editor .tabs { display:flex; flex-wrap:wrap; gap:8px; }
         .catalog-editor .tabs a { text-decoration:none; border:1px solid rgba(7,33,58,0.16); border-radius:999px; padding:8px 16px; font-size:13px; font-weight:500; color:#51606f; }
         .catalog-editor .tabs a.active { background:#07213a; color:#fff; font-weight:700; }
+        .catalog-editor .editor-head { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+        .catalog-editor .editor-head h2 { margin:0; font-size:20px; font-weight:700; color:#101828; }
+        .catalog-editor .editor-badge { padding:2px 10px; border-radius:999px; font-size:12px; font-weight:700; background:#f2f4f7; color:#475467; }
+        .catalog-editor .editor-badge.is-default { background:#eaf2ff; color:#0a4ea3; }
+        .catalog-editor .danger-zone { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+        .catalog-editor .danger-zone p { margin:0; font-size:13px; color:#667085; max-width:60ch; }
       `}</style>
+
+      <div className="editor-head">
+        <h2>{catalog.name}</h2>
+        {catalog.isDefault && <span className="editor-badge is-default">default</span>}
+        {catalog.isSystem && <span className="editor-badge">system</span>}
+        <span className="editor-badge">priority {catalog.priority}</span>
+        <span className="editor-badge">{catalog.status}</span>
+      </div>
 
       <div className="tabs">
         {CATALOG_EDITOR_TABS.map((tab) => (
@@ -92,6 +106,20 @@ export function CatalogEditorView({ catalog, activeTab, isSubmitting }: CatalogE
             <CatalogFields catalog={catalog} />
             <button type="submit" disabled={isSubmitting}>Save settings</button>
           </form>
+
+          {!catalog.isSystem && (
+            <form method="post" className="danger-zone">
+              <input type="hidden" name="intent" value="delete-catalog" />
+              <HiddenCatalogId id={cid} />
+              <p>
+                Deleting a catalog removes its rules and memberships. Customers it scoped fall
+                back to the default catalog.
+              </p>
+              <button type="submit" className="danger" disabled={isSubmitting}>
+                Delete catalog
+              </button>
+            </form>
+          )}
         </s-section>
       )}
 

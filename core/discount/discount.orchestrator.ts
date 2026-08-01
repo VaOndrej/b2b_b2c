@@ -20,6 +20,13 @@ function roundPercent(value: number): number {
   return Math.round(clampPercent(value) * 100) / 100;
 }
 
+// 2-decimal rounding WITHOUT the [0,100] clamp. Used only in the cap-excess
+// arithmetic, where a stacked total (and thus the excess to trim) can legitimately
+// exceed 100 — clamping it there under-trims and lets the combined cap be breached.
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 function normalizeCode(code: string | undefined): string | undefined {
   const normalized = String(code ?? "").trim().toUpperCase();
   return normalized || undefined;
@@ -411,13 +418,19 @@ export function resolveDiscounts(
   const capAdjustments: DiscountCapAdjustment[] = [];
   const configuredCap = resolveConfiguredCap(rules, context);
   if (configuredCap.cap != null) {
-      const runningTotal = roundPercent(
+      // round2 (NOT roundPercent) throughout the cap-excess math: roundPercent clamps
+      // to [0,100], which would cap the running total — and the excess to trim — at 100
+      // BEFORE it is measured. When stacked discounts exceed 100% that made the excess
+      // (rawSum − cap) collapse to at most (100 − cap), so too little was trimmed and the
+      // combined cap was silently breached (a 100%-off free line could survive an 80%
+      // cap, and even the running total stayed at 100 against a much lower cap).
+      const runningTotal = round2(
         selected.reduce((sum, item) => sum + item.appliedPercentOff, 0),
       );
 
     if (runningTotal > configuredCap.cap) {
       const selectedByLowestPriority = [...selected].sort(compareCandidates).reverse();
-      let remainingExcess = roundPercent(runningTotal - configuredCap.cap);
+      let remainingExcess = round2(runningTotal - configuredCap.cap);
 
       for (const candidate of selectedByLowestPriority) {
         if (remainingExcess <= 0) {
@@ -425,8 +438,8 @@ export function resolveDiscounts(
         }
 
         const original = candidate.appliedPercentOff;
-        const reduced = roundPercent(Math.max(0, original - remainingExcess));
-        remainingExcess = roundPercent(Math.max(0, remainingExcess - original));
+        const reduced = round2(Math.max(0, original - remainingExcess));
+        remainingExcess = round2(Math.max(0, remainingExcess - original));
         candidate.appliedPercentOff = reduced;
         capAdjustments.push({
           id: candidate.id,

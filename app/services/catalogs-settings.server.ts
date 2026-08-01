@@ -106,10 +106,12 @@ export async function handleCatalogsSettingsAction(
     const input = parseWriteInput(formData);
     if (catalogId) {
       await update(catalogId, input);
-    } else {
-      await create(input);
+      return { ok: true, intent, catalogId };
     }
-    return { ok: true, intent };
+    // Returned so the create pane can redirect into the new catalog's editor.
+    // Stubbed deps in tests may resolve to nothing — hence the guard.
+    const created = (await create(input)) as { id?: string } | undefined;
+    return { ok: true, intent, catalogId: created?.id };
   }
 
   if (intent === "delete-catalog") {
