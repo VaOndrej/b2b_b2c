@@ -17,6 +17,7 @@ import {
   loadStorefrontCatalogQuantity,
   resolveStorefrontCatalogId,
 } from "../services/catalog-ruleset.server";
+import { getCatalogProductMapByIds } from "../services/product-catalog.server";
 
 export const loader = createVisibilityLoader({
   authenticatePublicAppProxy: authenticate.public.appProxy,
@@ -31,6 +32,7 @@ export const loader = createVisibilityLoader({
     resolveStorefrontCatalogVariantVisibility(customerTags).catch(() => ({})),
   resolveStorefrontCatalogProductVisibility: (customerTags) =>
     resolveStorefrontCatalogProductVisibility(customerTags).catch(() => []),
+  getCatalogProductMapByIds,
   loadStorefrontCatalogQuantity: (input) =>
     loadStorefrontCatalogQuantity(input).catch(() => ({
       productQuantityRules: [],

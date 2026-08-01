@@ -36,6 +36,7 @@ interface ShopifyThemeGlobal {
 }
 
 export interface ThemeEnvironment {
+  [key: string]: string | undefined;
   SHOPIFY_E2E_THEME_DEV?: string;
   SHOPIFY_E2E_PREVIEW_THEME_ID?: string;
   SHOPIFY_E2E_DAWN_THEME_NAME?: string;

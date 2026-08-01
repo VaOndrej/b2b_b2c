@@ -155,3 +155,70 @@ monorepa resolver odvodí stejné cesty bez override.
 - Plný browser běh nebyl v Task 3 spuštěn, protože ještě nebyla migrována lokální
   B2B fixture na `@won/testing`; to je samostatná Task 4 s vlastním typecheck,
   core gate a dvoutheme browser ověřením.
+
+## 2026-08-01 — Task 4: B2B používá sdílený storefront harness
+
+### Změny
+
+- `b2b-companion` nyní závisí na `@won/testing` a jeho lokální Playwright base
+  fixture deleguje do `createStorefrontTest`.
+- B2B `theme.ts` zůstal jen tenkým adaptérem pro app-specific catalog audience;
+  generické Horizon/Dawn selektory, URL a theme guardy vlastní sdílený package.
+- Duplicitní `theme-dev-mime.ts` byl odstraněn.
+- Playwright CLI se rozlišuje přes hoistovaný `playwright/package.json`, takže
+  runner není závislý na neexistujícím app-local `node_modules`.
+- `ThemeEnvironment` podporuje běžný `ProcessEnv` index signature.
+- Browser trace odhalil produkční edge case: app proxy bez Admin klienta neuměla
+  přeložit catalog-hidden product ID zpět na handle. Loader nyní používá jako
+  fallback synchronizovaný lokální product catalog; chování kryje nový regresní
+  test a route explicitně injektuje `getCatalogProductMapByIds`.
+- Roadmapa u Won Stepperu nově eviduje skutečně ověřený sdílený Horizon + Dawn
+  harness; neoznačuje zatím samotnou aplikaci jako implementovanou.
+
+### Diagnostika a neúspěšné pokusy
+
+- První typecheck selhal kvůli chybějícím generovaným extension API a příliš
+  úzkému typu `ThemeEnvironment`. Oba extension `typegen` příkazy následně
+  prošly a typ prostředí byl opraven.
+- Celý app GraphQL codegen zůstává blokovaný existující duplicitní operací
+  `ProductHandlesByIds` ve dvou B2B zdrojích; pro tento checkpoint nebyl nutný,
+  protože potřebný extension typegen proběhl samostatně.
+- První browser pokus zastavil hardcoded app-local Playwright CLI; druhý pokus
+  ukázal, že `playwright/cli` není exportovaný subpath. Finální resolver používá
+  exportovaný `playwright/package.json` a sousední `cli.js`.
+- Další pokus správně odmítl prázdnou E2E databázi místo falešně zeleného běhu.
+  Přes existující `syncShopifyProductCatalog` bylo do izolované DB načteno 21
+  produktů a 29 variant.
+- Horizon trace poté odhalil chybějící Admin session a whole-product mapping.
+  Nejdřív vznikl failing regresní test (12 PASS / 1 FAIL), po fallbacku prošel
+  13/13. Standardní Shopify preview flow obnovil offline session pro scénáře,
+  které skutečně potřebují Admin API (zejména collection membership).
+- Přerušené diagnostické browser běhy nejsou započítané jako úspěch. Finální
+  Horizon a Dawn checkpointy byly spuštěny znovu od čistého setupu.
+
+### Finální ověření
+
+- `npm run typecheck -w b2b-companion` — **PASS**.
+- `npm run guard:test:core -w b2b-companion` — **PASS**, 306/306 testů.
+- `npx tsx --test packages/testing/tests/*.test.ts` — **PASS**, 11/11 testů.
+- `npx tsx --test tests/visibility/margin-guard-visibility.loader.test.ts` —
+  **PASS**, 13/13 testů.
+- Prisma migrate deploy proti izolované SQLite DB — **PASS**, všech 28 migrací
+  aplikováno / bez pending migrace.
+- Horizon přes reálný `shopify theme dev`, app proxy a Chromium — **PASS**:
+  matrix 5 PASS + 5 environment/DOM skips, serial tier 5 PASS + 2 skips.
+- Dawn přes reálný `shopify theme dev`, app proxy a Chromium — **PASS**:
+  matrix 8 PASS + 2 skips, serial tier 5 PASS + 2 skips.
+- Oba themes byly obsloužené z canonical checkoutů
+  `b2b_b2c_themes/Horizon` a `b2b_b2c_themes/Dawn`; runner po každém běhu svůj
+  theme-dev child proces korektně ukončil.
+
+### Známé poznámky
+
+- NPM stále hlásí 50 existujících dependency zranitelností (1 low, 6 moderate,
+  41 high, 2 critical). Automatický audit fix nebyl spuštěn mimo scope.
+- Node vypisuje warning k deprecated `module.register()` a kombinaci
+  `NO_COLOR`/`FORCE_COLOR`; testy tím nejsou ovlivněné.
+- Dev-store storefront password se při jednom interaktivním CLI pokusu omylem
+  propsal do lokálního nástrojového výstupu. Hodnota není v repozitáři ani v
+  tomto logu; po dokončení práce je potřeba ji preventivně rotovat.

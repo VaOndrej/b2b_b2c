@@ -7,7 +7,9 @@ import {
   resolveStorefrontVariantVisibilityByProductId,
 } from "../../app/services/storefront-visibility.server.ts";
 
-type MarginGuardConfig = Awaited<ReturnType<typeof getOrCreateMarginGuardConfig>>;
+type MarginGuardConfig = Awaited<
+  ReturnType<typeof getOrCreateMarginGuardConfig>
+>;
 
 function stubConfig(): MarginGuardConfig {
   return {
@@ -63,7 +65,9 @@ test("visibility loader ignores ?segment= from querystring (anonymous → defaul
     ...baseDeps(),
   });
 
-  const request = new Request("https://example.com/apps/margin-guard/visibility?segment=B2B");
+  const request = new Request(
+    "https://example.com/apps/margin-guard/visibility?segment=B2B",
+  );
   const response = await loader({ request });
   const payload = await response.json();
 
@@ -77,7 +81,10 @@ test("visibility loader trusts logged_in_customer_id and ignores spoofed custome
     async authenticatePublicAppProxy() {
       return {
         admin: {
-          async graphql(_query: string, options?: { variables?: Record<string, unknown> }) {
+          async graphql(
+            _query: string,
+            options?: { variables?: Record<string, unknown> },
+          ) {
             adminCalls.push(options?.variables);
             return {
               async json() {
@@ -108,7 +115,9 @@ test("visibility loader prefers logged_in_customer_tags hint for B2B detection",
       return {
         admin: {
           async graphql() {
-            throw new Error("admin lookup should not be required when tags hint is present");
+            throw new Error(
+              "admin lookup should not be required when tags hint is present",
+            );
           },
         },
       };
@@ -235,11 +244,15 @@ test("visibility loader merges per-catalog hidden variants from the resolved cus
     getOrCreateMarginGuardConfig: async () => stubConfig(),
     ...baseDeps(),
     resolveStorefrontVariantVisibilityByProductId: () => ({
-      "gid://shopify/Product/1": { hiddenVariantIds: ["gid://shopify/ProductVariant/seg"] },
+      "gid://shopify/Product/1": {
+        hiddenVariantIds: ["gid://shopify/ProductVariant/seg"],
+      },
     }),
     resolveStorefrontCatalogVariantVisibility: async (tags: string[]) => {
       tagsSeen.push(tags);
-      return { "gid://shopify/Product/1": ["gid://shopify/ProductVariant/cat"] };
+      return {
+        "gid://shopify/Product/1": ["gid://shopify/ProductVariant/cat"],
+      };
     },
   });
 
@@ -253,7 +266,9 @@ test("visibility loader merges per-catalog hidden variants from the resolved cus
 
   assert.deepEqual(tagsSeen[0], ["gold"]);
   assert.deepEqual(
-    payload.variantVisibilityByProductId["gid://shopify/Product/1"].hiddenVariantIds.sort(),
+    payload.variantVisibilityByProductId[
+      "gid://shopify/Product/1"
+    ].hiddenVariantIds.sort(),
     ["gid://shopify/ProductVariant/cat", "gid://shopify/ProductVariant/seg"],
   );
 });
@@ -266,12 +281,17 @@ test("visibility loader hides whole products for the resolved custom catalog", a
     getOrCreateMarginGuardConfig: async () => stubConfig(),
     ...baseDeps(),
     resolveStorefrontVisibilityByHandles: async () => ({
-      productIdByHandle: { alpha: "gid://shopify/Product/9", beta: "gid://shopify/Product/10" },
+      productIdByHandle: {
+        alpha: "gid://shopify/Product/9",
+        beta: "gid://shopify/Product/10",
+      },
       hiddenHandles: [],
       hiddenProductIds: [],
       visibilityByHandle: {},
     }),
-    resolveStorefrontCatalogProductVisibility: async () => ["gid://shopify/Product/9"],
+    resolveStorefrontCatalogProductVisibility: async () => [
+      "gid://shopify/Product/9",
+    ],
   });
 
   const request = new Request(
@@ -284,6 +304,41 @@ test("visibility loader hides whole products for the resolved custom catalog", a
 
   assert.deepEqual(payload.hiddenHandles, ["alpha"]);
   assert.deepEqual(payload.hiddenProductIds, ["gid://shopify/Product/9"]);
+});
+
+test("visibility loader maps catalog-hidden products without an app-proxy Admin client", async () => {
+  const loader = createVisibilityLoader({
+    async authenticatePublicAppProxy() {
+      return { admin: undefined };
+    },
+    getOrCreateMarginGuardConfig: async () => stubConfig(),
+    ...baseDeps(),
+    resolveStorefrontVisibilityByHandles: async () => ({
+      productIdByHandle: {},
+      hiddenHandles: [],
+      hiddenProductIds: [],
+      visibilityByHandle: { alpha: true, beta: true },
+    }),
+    resolveStorefrontCatalogProductVisibility: async () => [
+      "gid://shopify/Product/9",
+    ],
+    getCatalogProductMapByIds: async () => ({
+      "gid://shopify/Product/9": { title: "Alpha", handle: "alpha" },
+    }),
+  });
+
+  const request = new Request(
+    `https://example.com/apps/margin-guard/visibility?handles=alpha,beta&logged_in_customer_tags=${encodeURIComponent(
+      JSON.stringify(["gold"]),
+    )}`,
+  );
+  const response = await loader({ request });
+  const payload = await response.json();
+
+  assert.deepEqual(payload.hiddenHandles, ["alpha"]);
+  assert.deepEqual(payload.hiddenProductIds, ["gid://shopify/Product/9"]);
+  assert.equal(payload.visibilityByHandle.alpha, false);
+  assert.equal(payload.visibilityByHandle.beta, true);
 });
 
 test("integration: B2B customer (tag b2b via admin) gets B2B visibility + quantity rules applied", async () => {
@@ -317,7 +372,8 @@ test("integration: B2B customer (tag b2b via admin) gets B2B visibility + quanti
   );
   // The B2B-segment MOQ rule must apply.
   assert.equal(
-    payload.quantityConstraintsByProductId[B2B_PRODUCT_ID]?.minimumOrderQuantity,
+    payload.quantityConstraintsByProductId[B2B_PRODUCT_ID]
+      ?.minimumOrderQuantity,
     6,
   );
 });
@@ -362,7 +418,9 @@ test("override: armed mg_e2e_audience=b2b injects the b2b tag and SKIPS the admi
           admin: {
             async graphql() {
               adminCalled = true;
-              throw new Error("admin tag lookup must be skipped under the E2E override");
+              throw new Error(
+                "admin tag lookup must be skipped under the E2E override",
+              );
             },
           },
         };
@@ -379,7 +437,8 @@ test("override: armed mg_e2e_audience=b2b injects the b2b tag and SKIPS the admi
     assert.equal(adminCalled, false);
     // The forced audience tag must drive the REAL catalog resolution (b2b MOQ applies).
     assert.equal(
-      payload.quantityConstraintsByProductId[B2B_PRODUCT_ID]?.minimumOrderQuantity,
+      payload.quantityConstraintsByProductId[B2B_PRODUCT_ID]
+        ?.minimumOrderQuantity,
       6,
     );
   });
@@ -400,7 +459,10 @@ test("override: param is IGNORED when the flag is not armed (anonymous stays bas
     const payload = await (await loader({ request })).json();
 
     assert.equal(payload.catalogId, "default");
-    assert.equal(payload.quantityConstraintsByProductId[B2B_PRODUCT_ID], undefined);
+    assert.equal(
+      payload.quantityConstraintsByProductId[B2B_PRODUCT_ID],
+      undefined,
+    );
   });
 });
 
@@ -428,7 +490,10 @@ test("visibility loader surfaces injected cart discount conflicts in the respons
     },
     getOrCreateMarginGuardConfig: async () => stubConfig(),
     ...baseDeps(),
-    resolveCartDiscountConflictsByHandle: async (input: { matchedTags?: string[]; handles: string[] }) => ({
+    resolveCartDiscountConflictsByHandle: async (input: {
+      matchedTags?: string[];
+      handles: string[];
+    }) => ({
       widget: [
         {
           discountTitle: "Spring Sale",
@@ -447,8 +512,14 @@ test("visibility loader surfaces injected cart discount conflicts in the respons
   );
   const payload = await (await loader({ request })).json();
 
-  assert.equal(payload.discountConflictsByHandle.widget[0].discountTitle, "Spring Sale");
-  assert.equal(payload.discountConflictsByHandle.widget[0].reason, "BELOW_FLOOR");
+  assert.equal(
+    payload.discountConflictsByHandle.widget[0].discountTitle,
+    "Spring Sale",
+  );
+  assert.equal(
+    payload.discountConflictsByHandle.widget[0].reason,
+    "BELOW_FLOOR",
+  );
 });
 
 test("integration: anonymous B2C visitor does NOT get the B2B-only rules", async () => {
@@ -467,8 +538,12 @@ test("integration: anonymous B2C visitor does NOT get the B2B-only rules", async
   assert.equal(payload.catalogId, "default");
   // B2C_ONLY variant stays visible for the default catalog → not in the hidden list.
   const hidden =
-    payload.variantVisibilityByProductId[B2B_PRODUCT_ID]?.hiddenVariantIds ?? [];
+    payload.variantVisibilityByProductId[B2B_PRODUCT_ID]?.hiddenVariantIds ??
+    [];
   assert.equal(hidden.includes(B2B_ONLY_HIDDEN_VARIANT), false);
   // The B2B-only MOQ rule must NOT apply → no constraint entry for the product.
-  assert.equal(payload.quantityConstraintsByProductId[B2B_PRODUCT_ID], undefined);
+  assert.equal(
+    payload.quantityConstraintsByProductId[B2B_PRODUCT_ID],
+    undefined,
+  );
 });

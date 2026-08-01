@@ -54,7 +54,9 @@ function normalizeCustomerId(value: string | null): string | null {
 }
 
 function normalizeTag(value: unknown): string {
-  return String(value ?? "").trim().toLowerCase();
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 function parseLoggedInCustomerTags(value: string | null): string[] {
@@ -69,10 +71,7 @@ function parseLoggedInCustomerTags(value: string | null): string[] {
     }
     return parsed.map(normalizeTag).filter(Boolean);
   } catch {
-    return normalized
-      .split(",")
-      .map(normalizeTag)
-      .filter(Boolean);
+    return normalized.split(",").map(normalizeTag).filter(Boolean);
   }
 }
 
@@ -118,6 +117,13 @@ type VisibilityDependencies = {
   resolveStorefrontCatalogProductVisibility?: (
     customerTags: string[],
   ) => Promise<string[]>;
+  // Local catalog fallback for app-proxy requests where Shopify does not attach
+  // an Admin client. The catalog is already synchronized by the app, so product
+  // visibility must not depend on a second live Admin lookup just to recover a
+  // handle from a known product ID.
+  getCatalogProductMapByIds?: (
+    ids: string[],
+  ) => Promise<Record<string, { title: string; handle: string | null }>>;
   // MVP_5_3 #2.3c: catalog-sourced quantity hints (MOQ/step/max, collection max,
   // customer-specific max) for the resolved catalog. Replaces the legacy
   // MarginGuardConfig quantity children.
@@ -143,7 +149,12 @@ async function resolveCustomerAudienceTags(input: {
   customerId: string | null;
   customerTagsHint: string[];
 }): Promise<{
-  source: "hint_tags" | "admin_tags" | "missing_customer" | "missing_admin" | "fallback";
+  source:
+    | "hint_tags"
+    | "admin_tags"
+    | "missing_customer"
+    | "missing_admin"
+    | "fallback";
   normalizedTags: string[];
 }> {
   // Trust the storefront-supplied tag hint when present — it carries the full
@@ -191,7 +202,9 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
     const handles = parseHandles(url.searchParams.get("handles"));
     const productIds = parseProductIds(url.searchParams.get("product_ids"));
     const config = await deps.getOrCreateMarginGuardConfig();
-    const customerId = normalizeCustomerId(url.searchParams.get("logged_in_customer_id"));
+    const customerId = normalizeCustomerId(
+      url.searchParams.get("logged_in_customer_id"),
+    );
     const customerTagsHint = parseLoggedInCustomerTags(
       url.searchParams.get("logged_in_customer_tags"),
     );
@@ -219,9 +232,7 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
     // MVP_5_4_9 — informational: which catalog the customer resolves into. The
     // storefront no longer thinks in B2B/B2C; this just labels the response.
     const catalogId = deps.resolveStorefrontCatalogId
-      ? await deps
-          .resolveStorefrontCatalogId({ matchedTags })
-          .catch(() => null)
+      ? await deps.resolveStorefrontCatalogId({ matchedTags }).catch(() => null)
       : null;
 
     // MVP_5_3 #2.3c — quantity hints come from the customer's resolved catalog
@@ -249,31 +260,38 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
     const allRelevantProductIds = Array.from(
       new Set([
         ...productIds,
-        ...Object.values(visibility.productIdByHandle).map((value) => String(value ?? "")),
+        ...Object.values(visibility.productIdByHandle).map((value) =>
+          String(value ?? ""),
+        ),
       ]),
     ).filter(Boolean);
-    const productCollectionIdsByProductId = await deps.fetchProductCollectionIdsByProductIds({
-      admin,
-      productIds: allRelevantProductIds,
-      collectionIds: collectionQuantityRules.map((rule) => String(rule.collectionId ?? "")),
-    });
-    const quantityConstraintsByHandle = deps.resolveStorefrontQuantityConstraintsByHandle({
-      handles,
-      productIdByHandle: visibility.productIdByHandle,
-      rules: catalogQuantity.productQuantityRules,
-      collectionRules: collectionQuantityRules,
-      productCollectionIdsByProductId,
-      customerId,
-      customerMaxRules: catalogQuantity.customerQuantityRules,
-    });
-    const quantityConstraintsByProductId = deps.resolveStorefrontQuantityConstraintsByProductId({
-      productIds,
-      rules: catalogQuantity.productQuantityRules,
-      collectionRules: collectionQuantityRules,
-      productCollectionIdsByProductId,
-      customerId,
-      customerMaxRules: catalogQuantity.customerQuantityRules,
-    });
+    const productCollectionIdsByProductId =
+      await deps.fetchProductCollectionIdsByProductIds({
+        admin,
+        productIds: allRelevantProductIds,
+        collectionIds: collectionQuantityRules.map((rule) =>
+          String(rule.collectionId ?? ""),
+        ),
+      });
+    const quantityConstraintsByHandle =
+      deps.resolveStorefrontQuantityConstraintsByHandle({
+        handles,
+        productIdByHandle: visibility.productIdByHandle,
+        rules: catalogQuantity.productQuantityRules,
+        collectionRules: collectionQuantityRules,
+        productCollectionIdsByProductId,
+        customerId,
+        customerMaxRules: catalogQuantity.customerQuantityRules,
+      });
+    const quantityConstraintsByProductId =
+      deps.resolveStorefrontQuantityConstraintsByProductId({
+        productIds,
+        rules: catalogQuantity.productQuantityRules,
+        collectionRules: collectionQuantityRules,
+        productCollectionIdsByProductId,
+        customerId,
+        customerMaxRules: catalogQuantity.customerQuantityRules,
+      });
     // Variant visibility flows solely from per-catalog variant visibility
     // (merged below); no segment-keyed variant rules are read.
     const variantVisibilityByProductId =
@@ -291,10 +309,15 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
         .resolveStorefrontCatalogVariantVisibility(matchedTags)
         .catch(() => ({}) as Record<string, string[]>);
       if (Object.keys(catalogHiddenVariants).length > 0) {
-        mergedVariantVisibilityByProductId = { ...variantVisibilityByProductId };
-        for (const [productId, variantIds] of Object.entries(catalogHiddenVariants)) {
+        mergedVariantVisibilityByProductId = {
+          ...variantVisibilityByProductId,
+        };
+        for (const [productId, variantIds] of Object.entries(
+          catalogHiddenVariants,
+        )) {
           const existing =
-            mergedVariantVisibilityByProductId[productId]?.hiddenVariantIds ?? [];
+            mergedVariantVisibilityByProductId[productId]?.hiddenVariantIds ??
+            [];
           mergedVariantVisibilityByProductId[productId] = {
             hiddenVariantIds: Array.from(new Set([...existing, ...variantIds])),
           };
@@ -314,11 +337,34 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
         ).map((value) => String(value)),
       );
       if (catalogHiddenProductIds.size > 0) {
+        const productIdByHandle = { ...(visibility.productIdByHandle ?? {}) };
+        if (deps.getCatalogProductMapByIds) {
+          const catalogProductMap = await deps
+            .getCatalogProductMapByIds(Array.from(catalogHiddenProductIds))
+            .catch(
+              () =>
+                ({}) as Record<
+                  string,
+                  { title: string; handle: string | null }
+                >,
+            );
+          const requestedHandles = new Set(handles);
+          for (const [productId, product] of Object.entries(
+            catalogProductMap,
+          )) {
+            const handle = String(product.handle ?? "").trim();
+            if (
+              handle &&
+              requestedHandles.has(handle) &&
+              !productIdByHandle[handle]
+            ) {
+              productIdByHandle[handle] = productId;
+            }
+          }
+        }
         const extraHiddenHandles: string[] = [];
         const extraHiddenProductIds: string[] = [];
-        for (const [handle, productId] of Object.entries(
-          visibility.productIdByHandle ?? {},
-        )) {
+        for (const [handle, productId] of Object.entries(productIdByHandle)) {
           if (catalogHiddenProductIds.has(String(productId))) {
             extraHiddenHandles.push(handle);
             extraHiddenProductIds.push(String(productId));
@@ -328,11 +374,24 @@ export function createVisibilityLoader(deps: VisibilityDependencies) {
           mergedVisibility = {
             ...visibility,
             hiddenHandles: Array.from(
-              new Set([...(visibility.hiddenHandles ?? []), ...extraHiddenHandles]),
+              new Set([
+                ...(visibility.hiddenHandles ?? []),
+                ...extraHiddenHandles,
+              ]),
             ),
             hiddenProductIds: Array.from(
-              new Set([...(visibility.hiddenProductIds ?? []), ...extraHiddenProductIds]),
+              new Set([
+                ...(visibility.hiddenProductIds ?? []),
+                ...extraHiddenProductIds,
+              ]),
             ),
+            productIdByHandle,
+            visibilityByHandle: {
+              ...(visibility.visibilityByHandle ?? {}),
+              ...Object.fromEntries(
+                extraHiddenHandles.map((handle) => [handle, false]),
+              ),
+            },
           };
         }
       }
