@@ -12,3 +12,5 @@ node_modules
 .shopify.lock
 .react-router/
 test-results
+/tmp/e2e-themes/
+/tmp/e2e-seed/

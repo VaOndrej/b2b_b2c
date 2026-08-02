@@ -39,6 +39,7 @@
     "vite-tsconfig-paths": "^5.1.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@shopify/polaris-types": "^1.0.1",
     "@types/node": "^22.18.8",
     "@types/react": "^18.3.25",

@@ -17,7 +17,15 @@
     "lint": "npm run lint -w b2b-companion",
     "guard:test": "npm run guard:test -w b2b-companion",
     "guard:test:core": "npm run guard:test:core -w b2b-companion",
-    "test:e2e": "npm run test:e2e -w b2b-companion"
+    "test:e2e": "npm run test:e2e -w b2b-companion",
+    "test:packages": "npm test -w @won/core -w @won/testing",
+    "lint:standalone": "npm run lint -w won-app-template && npm run lint -w won-quantity",
+    "typecheck:apps": "npm run typecheck --workspaces --if-present",
+    "build:apps": "npm run build --workspaces --if-present",
+    "validate:shopify": "shopify theme check --path apps/won-quantity/extensions/won-quantity-storefront"
+  },
+  "devDependencies": {
+    "@shopify/cli": "3.92.1"
   },
   "trustedDependencies": [
     "@shopify/plugin-cloudflare"

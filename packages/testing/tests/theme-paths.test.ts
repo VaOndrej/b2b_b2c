@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import { resolveThemePaths } from "../src/theme-paths.js";
@@ -45,4 +48,27 @@ test("relative overrides resolve against the monorepo root", () => {
       dawn: "/repo/b2b_b2c_themes/Dawn",
     },
   );
+});
+
+test("linked worktrees resolve themes beside the primary checkout", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "won-worktree-"));
+  const primaryCheckout = path.join(temporaryRoot, "source/b2b_b2c");
+  const worktreeRoot = path.join(temporaryRoot, "worktrees/feature");
+  const themesRoot = path.join(temporaryRoot, "source/b2b_b2c_themes");
+  try {
+    await mkdir(worktreeRoot, { recursive: true });
+    await mkdir(path.join(themesRoot, "Horizon"), { recursive: true });
+    await mkdir(path.join(themesRoot, "Dawn"), { recursive: true });
+    await writeFile(
+      path.join(worktreeRoot, ".git"),
+      `gitdir: ${primaryCheckout}/.git/worktrees/feature\n`,
+    );
+
+    assert.deepEqual(resolveThemePaths({ repoRoot: worktreeRoot, env: {} }), {
+      horizon: path.join(themesRoot, "Horizon"),
+      dawn: path.join(themesRoot, "Dawn"),
+    });
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
 });

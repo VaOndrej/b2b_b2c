@@ -1,0 +1,67 @@
+name: Static monorepo gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Generate isolated Prisma clients
+        env:
+          DATABASE_URL: file:ci.sqlite
+        run: |
+          npm run prisma:generate -w b2b-companion
+          npm run prisma:generate -w won-app-template
+          npm run prisma:generate -w won-quantity
+
+      - name: Package and domain tests
+        run: npm run test:packages
+
+      - name: B2B app-owned unit and contract tests
+        run: npm run guard:test:core -w b2b-companion
+
+      - name: Won Quantity unit and contract tests
+        run: npm run test:unit -w won-quantity
+
+      - name: Lint standalone template and app
+        run: npm run lint:standalone
+
+      - name: Typecheck all apps
+        run: npm run typecheck:apps
+
+      - name: Build all workspaces
+        run: npm run build:apps
+
+      - name: Validate Shopify extension
+        run: npm run validate:shopify
+
+      - name: Reject Shopify access tokens and local runtime data
+        shell: bash
+        run: |
+          if git grep -n -I -E '(s[h]pat_|s[h]pca_)' -- ':!package-lock.json'; then
+            echo 'Potential Shopify access token found in tracked files.' >&2
+            exit 1
+          fi
+          runtime_files="$(git ls-files '*.sqlite' '*.sqlite3' '*.db' '.env' '.env.*' | grep -v '\.env\.example$' || true)"
+          if [ -n "$runtime_files" ]; then
+            echo "$runtime_files" >&2
+            echo 'Tracked local database or environment file found.' >&2
+            exit 1
+          fi

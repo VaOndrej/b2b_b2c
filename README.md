@@ -16,11 +16,13 @@ won-apps/
 │   │                       #    quantity, visibility, storefront). NO Shopify/
 │   │                       #    React/Prisma imports. Unit-tested in isolation.
 │   ├── shopify-adapter/    # @won/shopify-adapter — admin GraphQL / metafields / webhooks
-│   └── app-kit/            # @won/app-kit — shared app skeleton (shopify app
+│   ├── app-kit/            # @won/app-kit — shared app skeleton (shopify app
 │                           #   factory, SSR entry, root shell, auth splat,
 │                           #   lifecycle webhooks)
+│   └── testing/            # @won/testing — shared Horizon/Dawn runner + fixtures
 └── apps/
     ├── b2b-companion/      # the original B2B/B2C app (margin guard, catalogs, …)
+    ├── won-quantity/       # standalone quantity-rules app + Theme App Extension
     └── _template/          # copy this to start a new app
 ```
 
@@ -47,8 +49,15 @@ npm run build               # b2b-companion build
 npm run typecheck
 npm run guard:test          # b2b-companion full gate (core + e2e)
 npm run guard:test:core     # tsx core tests
+npm run test:packages       # @won/core + @won/testing package/domain tests
+npm run lint:standalone     # reusable template + Won Quantity
+npm run typecheck:apps      # every workspace that exposes typecheck
+npm run build:apps          # every workspace that exposes build
+npm run validate:shopify    # deterministic Theme App Extension validation
 # target another app explicitly:
-npm run <script> -w <app-name>     # e.g. -w won-app-template
+npm run dev -w won-quantity
+npm run build -w won-quantity
+npm run test:e2e:local:all -w won-quantity
 ```
 
 ## Adding a new app
@@ -79,8 +88,13 @@ npm run <script> -w <app-name>     # e.g. -w won-app-template
      (each is its own workspace with its own `package.json`).
 6. **Own the test contract** — replace the placeholders in
    `e2e.app.config.mjs`, add at least one app-specific `tests/e2e/*.spec.ts`, and
-   use `@won/testing/playwright` for shared Horizon/Dawn fixtures. The template's
-   `test:e2e` intentionally fails until both pieces exist.
+   use `@won/testing/playwright` for shared Horizon/Dawn fixtures. Capture each
+   app's real `config/settings_data.json` after enabling its embed in the theme
+   editor and configure it as `settingsDataOverlay`; never invent an extension
+   UUID. The shared runner copies canonical themes to
+   `tmp/e2e-themes/<workspace>/...`, so apps never edit or contaminate each
+   other's checkouts. The template's `test:e2e` intentionally fails until its
+   proxy contract and spec exist.
 7. **Verify** — `npm run test:unit -w <your-app>`,
    `npm run typecheck -w <your-app>`, `npm run build -w <your-app>`, and
    `npm run test:e2e:local:all -w <your-app>`.
@@ -94,27 +108,39 @@ runtime client:
 
 ```prisma
 generator client {
-  provider = "prisma-client-js"
-  output   = "../app/generated/prisma"   // per-app, not the hoisted client
+  provider     = "prisma-client"
+  output       = "../app/generated/prisma"   // per-app, not the hoisted client
+  moduleFormat = "esm"
 }
 ```
 
-Import it in `db.server.ts` from that path, and externalize it from the SSR
-bundle in `vite.config.ts` (a generated client under `app/` is otherwise pulled
-into the rollup bundle and fails on Prisma's dynamic CJS exports):
+Import `PrismaClient` from `./generated/prisma/client`. Do not externalize the
+generated source from the SSR bundle: the ESM generator is deliberately
+bundle-compatible and avoids both CommonJS `exports is not defined` failures
+and worktree-specific absolute imports.
 
-```ts
-// vite.config.ts
-build: {
-  rollupOptions: {
-    external: [/\/app\/generated\/prisma/];
-  }
-}
+The template's contract test locks this shape for every future app.
+
+## CI and merchant-backed release gate
+
+Every PR runs the deterministic gate in `.github/workflows/ci.yml`: package and
+domain tests, app-owned unit/contract tests, standalone lint, typechecks, builds,
+Theme App Extension validation, and a secret/runtime scan of the tracked tree.
+Merchant-backed checks stay explicit because they need an installed app,
+authenticated Shopify CLI, a
+password-protected dev store and unpublished themes:
+
+```bash
+# Terminal A — one app session only
+npm run dev -w won-quantity
+
+# Terminal B — app-specific overlays, Horizon then Dawn
+npm run test:e2e:local:all -w won-quantity -- --bail
+
+# Regression for the original app on its own workspace
+npm run test:e2e:local:all -w b2b-companion -- --bail
 ```
 
-The template already ships with this isolated output and matching Vite
-externalization. Keep that contract when scaffolding every new app.
-
-```
-
-```
+Before release also verify theme-editor enable/disable, uninstall/reinstall,
+fail-open storefront behavior and that no secret or local database is present in
+the diff. Never publish the E2E themes.

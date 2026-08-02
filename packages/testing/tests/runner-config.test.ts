@@ -13,6 +13,7 @@ import {
 
 const VALID_CONFIG = {
   appName: "example-app",
+  workspace: "example-app",
   shopDomain: "example.myshopify.com",
   appProxyProbe: {
     path: "/apps/example/probe",
@@ -20,8 +21,16 @@ const VALID_CONFIG = {
   },
   testCommand: ["node", "./scripts/run-tests.mjs"],
   themes: {
-    horizon: { remoteName: "Horizon" },
-    dawn: { remoteName: "Dawn" },
+    horizon: {
+      remoteName: "Horizon",
+      settingsDataOverlay: "tests/themes/horizon.settings_data.json",
+      preferredPort: 9781,
+    },
+    dawn: {
+      remoteName: "Dawn",
+      settingsDataOverlay: "tests/themes/dawn.settings_data.json",
+      preferredPort: 9782,
+    },
   },
 };
 
@@ -96,6 +105,44 @@ test("configured theme port must be an integer in the TCP range", () => {
         9781,
       ),
     /valid port number/,
+  );
+});
+
+test("runner config validates isolated workspaces, overlays and app-owned ports", () => {
+  assert.doesNotThrow(() => validateRunnerConfig(VALID_CONFIG));
+
+  assert.throws(
+    () => validateRunnerConfig({ ...VALID_CONFIG, workspace: "../shared" }),
+    /workspace/,
+  );
+  assert.throws(
+    () =>
+      validateRunnerConfig({
+        ...VALID_CONFIG,
+        themes: {
+          ...VALID_CONFIG.themes,
+          dawn: {
+            remoteName: "Dawn",
+            settingsDataOverlay: "",
+            preferredPort: 9782,
+          },
+        },
+      }),
+    /settingsDataOverlay/,
+  );
+  assert.throws(
+    () =>
+      validateRunnerConfig({
+        ...VALID_CONFIG,
+        themes: {
+          ...VALID_CONFIG.themes,
+          horizon: {
+            ...VALID_CONFIG.themes.horizon,
+            preferredPort: 70_000,
+          },
+        },
+      }),
+    /preferredPort/,
   );
 });
 

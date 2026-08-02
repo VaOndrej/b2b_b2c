@@ -11,13 +11,16 @@ import {
   parseRunnerArgs,
   resolveConfiguredPort,
   validateRunnerConfig,
-  validateThemeCheckout,
 } from "../src/runner-config.js";
 import { resolveThemePaths } from "../src/theme-paths.js";
+import {
+  inspectThemeWorkspace,
+  prepareThemeWorkspace,
+  resolveThemeWorkspace,
+} from "../src/theme-workspace.js";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDirectory, "../../..");
-const PREFERRED_PORTS = { horizon: 9781, dawn: 9782 };
 
 const USAGE = [
   "Usage: run-theme-matrix --config <app/e2e.app.config.mjs> [options]",
@@ -96,7 +99,7 @@ async function loadConfig(configArgument) {
   };
 }
 
-function createThemeDefinitions(config) {
+function createThemeDefinitions(config, appRoot) {
   const paths = resolveThemePaths({ repoRoot, env: process.env });
   return THEME_KEYS.map((key) => {
     const upperKey = key.toUpperCase();
@@ -104,12 +107,19 @@ function createThemeDefinitions(config) {
     return {
       key,
       label,
-      directory: paths[key],
+      canonicalDirectory: paths[key],
+      workspaceDirectory: resolveThemeWorkspace({
+        repoRoot,
+        workspace: config.workspace,
+        themeKey: key,
+      }),
+      settingsDataOverlay: config.themes[key].settingsDataOverlay,
+      appRoot,
       directoryEnvironmentKey: `SHOPIFY_E2E_THEME_DIR_${upperKey}`,
       nameEnvironmentKey: `SHOPIFY_E2E_THEME_NAME_${upperKey}`,
       portEnvironmentKey: `SHOPIFY_E2E_THEME_PORT_${upperKey}`,
       defaultRemoteName: config.themes[key].remoteName,
-      preferredPort: PREFERRED_PORTS[key],
+      preferredPort: config.themes[key].preferredPort,
     };
   });
 }
@@ -346,7 +356,14 @@ async function runTheme({
   storePassword,
   theme,
 }) {
-  const directory = validateThemeCheckout(theme.label, theme.directory);
+  const directory = await prepareThemeWorkspace({
+    repoRoot,
+    appRoot,
+    workspace: config.workspace,
+    themeKey: theme.key,
+    sourceDirectory: theme.canonicalDirectory,
+    settingsDataOverlay: theme.settingsDataOverlay,
+  });
   const remoteName = resolveThemeName(theme);
   const { port, fellBack, preferred } = await reserveRunPort(theme);
   const baseUrl = `http://127.0.0.1:${port}`;
@@ -354,7 +371,11 @@ async function runTheme({
   console.log(
     `\n── ${theme.label} ─────────────────────────────────────────────`,
   );
-  console.log(`   checkout:     ${directory}`);
+  console.log(`   canonical:    ${theme.canonicalDirectory}`);
+  console.log(`   workspace:    ${directory}`);
+  console.log(
+    `   overlay:      ${theme.settingsDataOverlay ?? "none (canonical settings_data)"}`,
+  );
   console.log(`   remote theme: ${remoteName}`);
   console.log(`   origin:       ${baseUrl}`);
   if (fellBack) {
@@ -431,7 +452,7 @@ async function main() {
     "SHOPIFY_E2E_STOREFRONT_PASSWORD",
     dotenv,
   );
-  const definitions = createThemeDefinitions(config);
+  const definitions = createThemeDefinitions(config, appRoot);
   const selected = options.only
     ? definitions.filter((theme) => theme.key === options.only)
     : definitions;
@@ -453,10 +474,21 @@ async function main() {
       }`,
     );
     for (const theme of selected) {
-      const directory = validateThemeCheckout(theme.label, theme.directory);
+      const inspection = await inspectThemeWorkspace({
+        repoRoot,
+        appRoot,
+        workspace: config.workspace,
+        themeKey: theme.key,
+        sourceDirectory: theme.canonicalDirectory,
+        settingsDataOverlay: theme.settingsDataOverlay,
+      });
       const preferredPort = resolvePreferredPort(theme);
       console.log(`  ${theme.label}`);
-      console.log(`    checkout:     ${directory}`);
+      console.log(`    canonical:    ${inspection.canonicalDirectory}`);
+      console.log(`    workspace:    ${inspection.workspaceDirectory}`);
+      console.log(
+        `    overlay:      ${inspection.overlayPath ?? "none (canonical settings_data)"}`,
+      );
       console.log(`    remote theme: ${resolveThemeName(theme)}`);
       console.log(`    port:         :${preferredPort} (preferred)`);
     }

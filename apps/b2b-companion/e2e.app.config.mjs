@@ -1,5 +1,6 @@
 export default {
   appName: "b2b-companion",
+  workspace: "b2b-companion",
   shopDomain: "b2b-b2c-store-development.myshopify.com",
   appProxyProbe: {
     path: "/apps/margin-guard/visibility-script",
@@ -7,8 +8,8 @@ export default {
   },
   testCommand: ["node", "./scripts/run-playwright-e2e.mjs"],
   themes: {
-    horizon: { remoteName: "Horizon" },
-    dawn: { remoteName: "Dawn" },
+    horizon: { remoteName: "Horizon", preferredPort: 9781 },
+    dawn: { remoteName: "Dawn", preferredPort: 9782 },
   },
   environment: {
     SHOPIFY_E2E_PRODUCT_HANDLE_VISIBILITY: "mg-e2e-hidden",

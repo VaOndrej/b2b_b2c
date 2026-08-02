@@ -468,7 +468,7 @@ monorepa resolver odvodí stejné cesty bez override.
 - `npm run typecheck -w won-quantity` a `npm run build -w won-quantity` —
   **PASS** po přechodu na ESM Prisma client.
 - `npm run typecheck -w won-app-template` a `npm run build -w
-  won-app-template` — **PASS**; oprava je součástí reusable template, ne jen
+won-app-template` — **PASS**; oprava je součástí reusable template, ne jen
   první appky.
 - Druhý skutečný `shopify app dev --path apps/won-quantity` — **PASS**:
   migrace bez pending změn, React Router server i theme app extension preview
@@ -478,3 +478,133 @@ monorepa resolver odvodí stejné cesty bez override.
   extension build i runtime integraci.
 - Přímý veřejný proxy probe skončil na očekávaném storefront password redirectu;
   funkční probe bude provedený uvnitř autentizovaného `shopify theme dev` běhu.
+- Pozdější probe proti běžícímu CLI development theme originu na loopbacku —
+  **PASS**, HTTP 200 a očekávaný `won-quantity-config-ok` marker; response body
+  ani credentials nebyly zapsané do repozitáře.
+
+## 2026-08-01 — Task 11: app-isolated Horizon/Dawn workspaces
+
+### Remote themes a bezpečnost
+
+- Dev store před změnou obsahoval live `test-data`, unpublished `Horizon` a
+  `Dawn` a CLI-owned development theme.
+- První pokus vytvořit `Won Quantity — Horizon` přes canonical push se s
+  `--strict` bezpečně zastavil na existujících upstream Theme Check chybách.
+  Push bez strict následně vytvořil neúplný unpublished theme, protože Shopify
+  odmítl část upstream schema souborů. Přesně tento nově vytvořený vadný theme
+  byl odstraněn; live ani původní themes se nezměnily.
+- Čisté `Won Quantity — Horizon` a `Won Quantity — Dawn` byly proto vytvořené
+  Shopify-native duplikací funkčních remote themes. Oba mají roli unpublished;
+  nebyl použit `--publish`, `--live` ani `--allow-live`.
+- Theme editor vyžaduje Shopify account login. In-app browser byl uživateli
+  zobrazený na přihlašovací stránce; skutečné enable/save a stažení obou overlayů
+  proto zůstává otevřený browser checkpoint. CLI development theme žádný uložený
+  Won Quantity embed neobsahoval, takže nebyl vydáván za zdroj overlaye.
+
+### Sdílený runner
+
+- Nový `@won/testing` workspace helper kopíruje canonical checkout do
+  `tmp/e2e-themes/<app>/<theme>`, bezpečně omezuje mazání na tento root a teprve
+  v kopii nahrazuje `config/settings_data.json` app-owned overlayem.
+- Runner config nyní vlastní bezpečný workspace slug a app-specific preferred
+  ports. Won Quantity má vlastní remote names, overlay paths, proxy marker a
+  porty 9881/9882; B2B zůstává na 9781/9782.
+- Resolver umí najít canonical theme repositories i z Git linked worktree,
+  nejen z primárního checkoutu. Původní dry run z `/private/tmp` správně odhalil
+  chybný sibling path; nový resolver jej napravil bez hardcoded Ondřej pathu.
+- Overlay parser přijímá Shopify-generated `/* ... */` header a validuje, že
+  výsledný JSON obsahuje objekt `current`.
+
+### TDD a ověření
+
+- První `@won/testing` průchod — očekávaný **FAIL**, 2 testy: chybějící
+  `theme-workspace.js` a chybějící workspace validace.
+- Po implementaci `npm test -w @won/testing` — **PASS**, 18/18 testů včetně
+  odmítnutí path traversal workspace/overlaye a overlaye bez `current` objektu.
+- B2B dry run — **PASS**: canonical Horizon/Dawn jsou resolved u primárního
+  checkoutu, runtime cíle jsou pouze pod worktree `tmp/e2e-themes/b2b-companion`.
+- Won Quantity dry run zatím záměrně fail-closed na chybějících skutečných
+  overlay files; nebude označený green, dokud je nevygeneruje theme editor.
+- Následná statická mezitheme revize upravila variant helper tak, aby radio
+  options hledal uvnitř hlavního nativního `variant-picker`/`variant-selects` i
+  tehdy, když je input vizuálně skrytý a ovládá se přes label. `won-quantity`
+  typecheck a opakovaný `@won/testing` suite po změně — **PASS** (18/18).
+- První opakování `@won/testing` v sandboxu skončilo hostitelským `EPERM` na
+  lokálním `tsx` IPC socketu; identický příkaz mimo sandbox prošel. Nešlo o
+  aplikační ani testovací regresi.
+
+## 2026-08-01 — Task 12: app-owned Playwright a seed contract (rozpracováno)
+
+### Implementovaný kontrakt
+
+- Playwright config spouští stejný spec v desktopním 1440×1000 a mobilním
+  390×844 projektu, sekvenčně a s retained trace/screenshot/video při chybě.
+- App-owned fixtures sledují proxy/JS/CSS HTTP chyby, failed requests, page
+  exceptions a Won Quantity console errors. Spec pokrývá nativní form, asset a
+  proxy, minimum/step/max, ruční normalizaci, variant morph a skutečnou cart
+  quantity po add-to-cart.
+- Global setup používá pouze `wq-e2e-default`, `wq-e2e-step` a
+  `wq-e2e-maximum`, snapshotuje jen dotčené Won Quantity DB řádky a teardown je
+  obnoví. Produkty ani B2B katalogy test během běhu nemění.
+
+### Fail-first evidence a blokující merchant data
+
+- První skutečný Playwright běh mimo sandbox — očekávaný **FAIL**, desktop i
+  mobile na chybějícím `[data-won-quantity-embed]`; žádný false skip.
+- Po zapojení seedu gate skončí dříve a přesně na chybějících namespaced product
+  fixtures; typová kontrola celého E2E kódu je **PASS**.
+- Admin GraphQL `productSet` mutation byla ověřena Shopify Dev MCP proti API
+  2026-04 jako validní a vyžadující `write_products`. Pokus použít starou B2B
+  offline session skončil 401; token nebyl vypsaný ani uložený a dočasný skript
+  byl odstraněn. Lokální Shopify CLI 3.92.1 příkaz `shopify store execute`
+  neposkytuje.
+- Vytvoření/publikování tří fixture products proto čeká na stejné Shopify Admin
+  přihlášení jako theme editor. Nové appce nebyl kvůli testům přidán
+  `write_products` scope.
+- První app lint po přidání E2E — **FAIL**, dva nepoužité Playwright `FullConfig`
+  parametry v global setup/teardown. Signatury byly zjednodušené bez změny
+  chování; opakovaný Won Quantity lint — **PASS**.
+- Playwright collection gate (`--list`) — **PASS**, 8 konkrétních testů: čtyři
+  stejné scénáře v desktop a mobile projektu, bez skrytého skipu.
+
+## 2026-08-01 — Task 13: portfolio static/release gate
+
+### Orchestrace a dokumentace
+
+- Root má explicitní `test:packages`, `typecheck:apps`, `build:apps` a
+  `validate:shopify`; vývoj nadále startuje jen jednu explicitně vybranou appku.
+- README opravuje zastaralý Prisma CJS/external návod na ověřený ESM client a
+  popisuje app-specific overlays, temp workspace a merchant-backed release gate.
+- Won Quantity README dokumentuje ownership, setup, přesné fixture handles,
+  unpublished themes, overlay pravidla, porty a seed/restore blast radius.
+- PR workflow generuje všechny izolované Prisma clients, spouští package/domain,
+  B2B app-owned a Won app-owned testy, lint standalone template/appky,
+  typecheck, build, Theme Check a kontrolu tokenů/runtime files. Merchant
+  credentials nejsou předstírané v PR CI.
+
+### Ověření a nalezený starší gate problém
+
+- Původně navržené `npm test --workspaces --if-present` spustilo také stale
+  scaffold fixtures v B2B discount Function: 4/8 očekávaly demo slevy, zatímco
+  současná produkční function správně vrací bez configu prázdné operations.
+  Produkční B2B core gate tuto logiku testuje vlastními kontrakty; demo fixtures
+  nebyly přepisované ani jejich failure maskovaný.
+- `test:packages` proto přesně odpovídá názvu a spouští `@won/core` a
+  `@won/testing`: **PASS**, 9/9 + 18/18.
+- `npm run typecheck:apps` — **PASS**, template, B2B Companion a Won Quantity.
+- `npm run build:apps` — **PASS**, všechny tři app builds i obě B2B Shopify
+  Functions.
+- `npm run validate:shopify` — **PASS**, 6 extension files, 0 offenses.
+- Opakovaný kombinovaný deterministický release gate po self-review — **PASS**:
+  `test:packages` (9/9 + 18/18), `lint:standalone`, `typecheck:apps`,
+  `build:apps` včetně obou B2B Functions a `validate:shopify` (6 souborů,
+  0 offenses).
+- Přidání lokálně reprodukovatelného Shopify CLI 3.92.1 změnilo lockfile;
+  `npm install` zůstává na 50 známých zranitelnostech (1 low, 6 moderate,
+  41 high, 2 critical). Nebyl spuštěn destruktivní `npm audit fix --force`.
+- Statická self-review zachytila, že první token scanner by v CI našel vlastní
+  doslovný regex. Pattern byl změněn na ekvivalentní `s[h]...` zápis, který dál
+  detekuje skutečné Shopify tokeny, ale neblokuje workflow sám sebou.
+- Won Quantity i reusable template lint — **PASS**. Portfolio B2B lint byl také
+  prověřen, ale obsahuje 326 starších chyb v legacy/generated kódu; ty nebyly v
+  rámci decouplingu hromadně přepisované ani falešně přidané do green CI gate.

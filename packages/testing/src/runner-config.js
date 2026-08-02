@@ -17,6 +17,12 @@ export function validateRunnerConfig(value) {
   }
 
   requireNonEmptyString(value.appName, "appName");
+  const workspace = requireNonEmptyString(value.workspace, "workspace");
+  if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/u.test(workspace)) {
+    throw new Error(
+      "workspace must contain only lowercase letters, numbers and internal hyphens.",
+    );
+  }
   requireNonEmptyString(value.shopDomain, "shopDomain");
   if (
     !value.appProxyProbe ||
@@ -55,6 +61,21 @@ export function validateRunnerConfig(value) {
       throw new Error(`themes.${key} must be an object.`);
     }
     requireNonEmptyString(entry.remoteName, `themes.${key}.remoteName`);
+    if (entry.settingsDataOverlay !== undefined) {
+      requireNonEmptyString(
+        entry.settingsDataOverlay,
+        `themes.${key}.settingsDataOverlay`,
+      );
+    }
+    if (
+      !Number.isInteger(entry.preferredPort) ||
+      entry.preferredPort <= 0 ||
+      entry.preferredPort > 65_535
+    ) {
+      throw new Error(
+        `themes.${key}.preferredPort must be a valid port number.`,
+      );
+    }
   }
 
   if (value.environment !== undefined) {
