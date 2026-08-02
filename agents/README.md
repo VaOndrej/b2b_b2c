@@ -2,6 +2,13 @@
 
 Soubory v tomto adresáři slouží jako playbooky pro práci podle role nebo typu úkolu.
 
+## Závazné pravidlo pro celý repozitář
+
+Každý playbook dědí kořenové instrukce z `AGENTS.md`. Při jakékoli implementační
+změně je povinnou součástí stejného úkolu relevantní synchronizace
+`docs/product-roadmap.html`. Úkol nesmí být označený jako hotový bez kontroly, že
+roadmapa odpovídá skutečně implementovanému a ověřenému stavu.
+
 ## Konvence pro zadání
 
 - Když zadání obsahuje `dle agents/<soubor>.md`, použij tento soubor jako hlavní instrukci pro řešení úkolu.
@@ -21,4 +28,7 @@ Soubory v tomto adresáři slouží jako playbooky pro práci podle role nebo ty
 1. Načti zvolený playbook.
 2. Použij jeho workflow, checklist a výstupní pravidla.
 3. Drž se nejmenšího smysluplného zásahu.
-4. Na konci vždy uveď, co bylo změněno a jaké ověření proběhlo.
+4. U implementační změny relevantně aktualizuj `docs/product-roadmap.html` podle
+   kořenového `AGENTS.md`.
+5. Na konci vždy uveď, co bylo změněno a jaké ověření proběhlo, včetně
+   synchronizace roadmapy.

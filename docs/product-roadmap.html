@@ -1,0 +1,1064 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Katalog sedmnácti navrhovaných WonApps rozdělených do šesti produktových suit."
+    />
+    <title>WonApps — katalog produktové roadmapy</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --page: #0b120e;
+        --surface: #141b17;
+        --surface-soft: #18211c;
+        --line: #29352e;
+        --line-strong: #34443a;
+        --text: #eef1ee;
+        --text-soft: #b7bdb9;
+        --text-muted: #818b85;
+        --mint: #3fd7a5;
+        --mint-dark: #08271d;
+        --amber: #e5b64c;
+        --amber-dark: #302713;
+        --meter-off: #202a24;
+        --radius: 15px;
+        --max-width: 1640px;
+        --sans:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        color: var(--text);
+        background: var(--page);
+        font-family: var(--sans);
+        line-height: 1.45;
+        text-rendering: optimizeLegibility;
+      }
+
+      .shell {
+        width: min(calc(100% - 30px), var(--max-width));
+        margin-inline: auto;
+      }
+
+      .catalog-header {
+        padding: 12px 0 22px;
+      }
+
+      .eyebrow {
+        margin: 0 0 13px;
+        color: var(--text-soft);
+        font-family: var(--mono);
+        font-size: 1rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 15px;
+        font-size: clamp(2.45rem, 4vw, 3rem);
+        font-weight: 760;
+        letter-spacing: -0.05em;
+        line-height: 1.05;
+      }
+
+      .lede {
+        max-width: 940px;
+        margin: 0;
+        color: var(--text-soft);
+        font-size: clamp(1.06rem, 1.55vw, 1.48rem);
+        line-height: 1.62;
+      }
+
+      .suite {
+        padding: 18px 0 34px;
+      }
+
+      .suite-heading {
+        display: grid;
+        grid-template-columns: minmax(280px, auto) 1fr;
+        gap: 38px;
+        align-items: baseline;
+        padding: 0 0 17px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .suite-title {
+        display: flex;
+        gap: 21px;
+        align-items: baseline;
+        min-width: max-content;
+      }
+
+      .suite-number {
+        color: var(--mint);
+        font-family: var(--mono);
+        font-size: 1.05rem;
+        font-weight: 800;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: clamp(1.45rem, 2.4vw, 1.83rem);
+        font-weight: 720;
+        letter-spacing: -0.035em;
+      }
+
+      .suite-summary {
+        justify-self: end;
+        margin: 0;
+        color: var(--text-muted);
+        font-family: var(--mono);
+        font-size: 1.02rem;
+        letter-spacing: 0.025em;
+        text-align: right;
+      }
+
+      .app-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+        padding-top: 23px;
+      }
+
+      .app-card {
+        display: flex;
+        min-height: 406px;
+        flex-direction: column;
+        padding: 26px 26px 22px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+      }
+
+      .app-card.build-now {
+        border-left: 4px solid var(--mint);
+        padding-left: 25px;
+      }
+
+      .card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 13px;
+      }
+
+      .app-code {
+        color: var(--text-muted);
+        font-family: var(--mono);
+        font-size: 0.93rem;
+        letter-spacing: 0.08em;
+      }
+
+      .price {
+        flex: 0 0 auto;
+        padding: 8px 13px;
+        border: 1px solid #59471b;
+        border-radius: 999px;
+        color: var(--amber);
+        background: var(--amber-dark);
+        font-family: var(--mono);
+        font-size: 1rem;
+        font-weight: 800;
+      }
+
+      .app-card h3 {
+        margin-bottom: 18px;
+        font-size: 1.52rem;
+        font-weight: 720;
+        letter-spacing: -0.025em;
+        line-height: 1.15;
+      }
+
+      .description {
+        min-height: 92px;
+        margin-bottom: 17px;
+        color: var(--text-soft);
+        font-size: 1.04rem;
+        line-height: 1.55;
+      }
+
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      .tag {
+        display: inline-flex;
+        min-height: 36px;
+        align-items: center;
+        padding: 5px 11px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        color: var(--text-muted);
+        background: var(--surface-soft);
+        font-family: var(--mono);
+        font-size: 0.88rem;
+        line-height: 1.2;
+      }
+
+      .tag strong {
+        margin-left: 8px;
+        color: var(--text-soft);
+        font-weight: 800;
+      }
+
+      .tag.source {
+        border-color: var(--mint);
+        color: var(--mint);
+        background: var(--mint-dark);
+      }
+
+      .tag.platform {
+        color: var(--amber);
+      }
+
+      .card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-top: auto;
+        padding-top: 17px;
+        border-top: 1px solid var(--line);
+      }
+
+      .potential {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        min-width: 0;
+      }
+
+      .meter {
+        position: relative;
+        display: block;
+        width: 130px;
+        height: 10px;
+        flex: 0 0 130px;
+        background: var(--meter-off);
+        -webkit-mask: repeating-linear-gradient(
+          90deg,
+          #000 0 22px,
+          transparent 22px 27px
+        );
+        mask: repeating-linear-gradient(
+          90deg,
+          #000 0 22px,
+          transparent 22px 27px
+        );
+      }
+
+      .meter::after {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: calc(var(--score) * 20%);
+        background: var(--mint);
+        content: "";
+      }
+
+      .potential-label {
+        color: var(--text-muted);
+        font-family: var(--mono);
+        font-size: 0.83rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .state {
+        flex: 0 0 auto;
+        padding: 7px 13px;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        color: var(--text-muted);
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        line-height: 1.2;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .state.now {
+        border-color: var(--mint);
+        color: #06241a;
+        background: var(--mint);
+      }
+
+      .catalog-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        margin-top: 6px;
+        padding: 22px 0 34px;
+        border-top: 1px solid var(--line);
+        color: var(--text-muted);
+        font-family: var(--mono);
+        font-size: 0.84rem;
+      }
+
+      @media (max-width: 1120px) {
+        .app-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .suite-heading {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+
+        .suite-summary {
+          justify-self: start;
+          text-align: left;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .catalog-header {
+          padding-top: 22px;
+        }
+
+        .eyebrow {
+          font-size: 0.85rem;
+        }
+
+        h1 {
+          font-size: clamp(2.2rem, 11vw, 3rem);
+        }
+
+        .app-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .suite-title {
+          min-width: 0;
+        }
+
+        .suite-summary {
+          font-size: 0.88rem;
+          line-height: 1.5;
+        }
+
+        .app-card,
+        .app-card.build-now {
+          min-height: 0;
+          padding: 22px 20px 19px;
+        }
+
+        .description {
+          min-height: 0;
+        }
+
+        .card-footer {
+          align-items: flex-end;
+        }
+
+        .potential {
+          display: grid;
+          gap: 9px;
+        }
+
+        .catalog-footer {
+          flex-direction: column;
+        }
+      }
+
+      @media (max-width: 430px) {
+        .card-head {
+          align-items: flex-start;
+        }
+
+        .meter {
+          width: 108px;
+          flex-basis: 108px;
+          -webkit-mask: repeating-linear-gradient(
+            90deg,
+            #000 0 18px,
+            transparent 18px 23px
+          );
+          mask: repeating-linear-gradient(
+            90deg,
+            #000 0 18px,
+            transparent 18px 23px
+          );
+        }
+
+        .state {
+          padding-inline: 10px;
+          font-size: 0.73rem;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+
+      @media print {
+        :root {
+          color-scheme: light;
+          --page: #fff;
+          --surface: #fff;
+          --surface-soft: #f5f7f5;
+          --line: #cbd1cd;
+          --line-strong: #9ca69f;
+          --text: #111713;
+          --text-soft: #404a44;
+          --text-muted: #667069;
+          --mint-dark: #effbf6;
+          --amber-dark: #fff8e8;
+          --meter-off: #dfe4e1;
+        }
+
+        body {
+          background: white;
+        }
+
+        .app-card {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="catalog-header">
+        <p class="eyebrow">Katalog</p>
+        <h1>Šest suit, sedmnáct appek</h1>
+        <p class="lede">
+          Seřazeno tak, jak by šly nabízet. Karty se zeleným okrajem jsou
+          doporučené „stavět hned“. Cena, coupling, náročnost extrakce a
+          mapování na Shopify API jsou v každé kartě.
+        </p>
+      </header>
+
+      <section class="suite" aria-labelledby="suite-core">
+        <header class="suite-heading">
+          <div class="suite-title">
+            <span class="suite-number">01</span>
+            <h2 id="suite-core">Core &amp; Cart UX</h2>
+          </div>
+          <p class="suite-summary">
+            2 appky · Kostra ekosystému — plynulá práce s košíkem napříč celým
+            storefrontem.
+          </p>
+        </header>
+
+        <div class="app-grid">
+          <article class="app-card build-now">
+            <div class="card-head">
+              <span class="app-code">WON·STEP</span>
+              <span class="price">$2/mo</span>
+            </div>
+            <h3>Won Stepper</h3>
+            <p class="description">
+              Optimistické +/− množství všude — na kartě, v searchi, v draweru i
+              na PDP. Mění košík okamžitě, bez čekání na server.
+            </p>
+            <div class="tags">
+              <span class="tag source">E+T · oba</span>
+              <span class="tag">coupling <strong>nízký→vysoký</strong></span>
+              <span class="tag">extrakce <strong>M–L</strong></span>
+              <span class="tag">Theme App Ext · Ajax Cart</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 4"
+                  role="img"
+                  aria-label="Potenciál 4 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state now">Stavět hned</span>
+            </footer>
+          </article>
+
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·TOAST</span>
+              <span class="price">$1/mo</span>
+            </div>
+            <h3>Won Toasts</h3>
+            <p class="description">
+              Nenápadné mini-oznámení po každé změně košíku — „přidáno /
+              odebráno / +2 ks / dárek odemčen“ s náhledem produktu.
+            </p>
+            <div class="tags">
+              <span class="tag source">E · Enervit</span>
+              <span class="tag">coupling <strong>nízký</strong></span>
+              <span class="tag">extrakce <strong>S</strong></span>
+              <span class="tag">Theme App Ext</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 3"
+                  role="img"
+                  aria-label="Potenciál 3 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Modul</span>
+            </footer>
+          </article>
+        </div>
+      </section>
+
+      <section class="suite" aria-labelledby="suite-aov">
+        <header class="suite-heading">
+          <div class="suite-title">
+            <span class="suite-number">02</span>
+            <h2 id="suite-aov">Cross-sell &amp; AOV</h2>
+          </div>
+          <p class="suite-summary">
+            2 appky · Zvednout hodnotu objednávky bez frikce.
+          </p>
+        </header>
+
+        <div class="app-grid">
+          <article class="app-card build-now">
+            <div class="card-head">
+              <span class="app-code">WON·COMP</span>
+              <span class="price">$2–3/mo</span>
+            </div>
+            <h3>Won Companion</h3>
+            <p class="description">
+              Post-add dialog s doporučeními odvozenými z celého košíku a
+              nákupem na jeden klik. Nejčistší AOV MVP — bez Function.
+            </p>
+            <div class="tags">
+              <span class="tag source">T · Therabeast</span>
+              <span class="tag">coupling <strong>vysoký</strong></span>
+              <span class="tag">extrakce <strong>L</strong></span>
+              <span class="tag">Theme App Ext · Admin GraphQL</span>
+              <span class="tag platform">◐ Shopify má základ</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 4"
+                  role="img"
+                  aria-label="Potenciál 4 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state now">Stavět hned</span>
+            </footer>
+          </article>
+
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·PACK</span>
+              <span class="price">$2/mo</span>
+            </div>
+            <h3>Won PackUp</h3>
+            <p class="description">
+              Nabídne větší/výhodnější balení podle právě zvolené příchutě — a
+              poslední příchuť si pamatuje i po přepnutí na mix.
+            </p>
+            <div class="tags">
+              <span class="tag source">E · Enervit</span>
+              <span class="tag">coupling <strong>střední</strong></span>
+              <span class="tag">extrakce <strong>M</strong></span>
+              <span class="tag">Theme App Ext · Admin API</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 3"
+                  role="img"
+                  aria-label="Potenciál 3 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Později</span>
+            </footer>
+          </article>
+        </div>
+      </section>
+
+      <section class="suite" aria-labelledby="suite-rewards">
+        <header class="suite-heading">
+          <div class="suite-title">
+            <span class="suite-number">03</span>
+            <h2 id="suite-rewards">Rewards &amp; Progress</h2>
+          </div>
+          <p class="suite-summary">
+            2 appky · Gamifikované prahy — dárky a doprava zdarma.
+          </p>
+        </header>
+
+        <div class="app-grid">
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·GIFT</span>
+              <span class="price">$3/mo</span>
+            </div>
+            <h3>Won GiftLadder</h3>
+            <p class="description">
+              Dárky zdarma po kumulativních prazích s gamifikovanou lištou a
+              možností odmítnout. Nacenění řeší Discount Function; dárek jako
+              reálný skladový produkt — to Shopify nativně neumí.
+            </p>
+            <div class="tags">
+              <span class="tag source">E · Enervit</span>
+              <span class="tag">coupling <strong>vysoký</strong></span>
+              <span class="tag">extrakce <strong>L</strong></span>
+              <span class="tag">Shopify Functions · Theme App Ext</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 4"
+                  role="img"
+                  aria-label="Potenciál 4 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Později</span>
+            </footer>
+          </article>
+
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·SHIP</span>
+              <span class="price">$1/mo</span>
+            </div>
+            <h3>Won ShipGoal</h3>
+            <p class="description">
+              „Do dopravy zdarma zbývá X“ živě v liště i v košíku. Komodita, ale
+              levné lepidlo do rewards suity.
+            </p>
+            <div class="tags">
+              <span class="tag source">E+T · oba</span>
+              <span class="tag">coupling <strong>nízký</strong></span>
+              <span class="tag">extrakce <strong>S</strong></span>
+              <span class="tag">Theme App Ext</span>
+              <span class="tag platform">◐ Shopify má základ</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 2"
+                  role="img"
+                  aria-label="Potenciál 2 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Modul</span>
+            </footer>
+          </article>
+        </div>
+      </section>
+
+      <section class="suite" aria-labelledby="suite-pricing">
+        <header class="suite-heading">
+          <div class="suite-title">
+            <span class="suite-number">04</span>
+            <h2 id="suite-pricing">Pricing &amp; Margin</h2>
+          </div>
+          <p class="suite-summary">4 appky · Slevy a marže pod kontrolou.</p>
+        </header>
+
+        <div class="app-grid">
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·TIER</span>
+              <span class="price">$3/mo</span>
+            </div>
+            <h3>Won Tiers</h3>
+            <p class="description">
+              Množstevní slevy s živými cenami napříč PDP, kartami, searchem i
+              košíkem. Zdroj pravdy = Discount Function.
+            </p>
+            <div class="tags">
+              <span class="tag source">T · Therabeast</span>
+              <span class="tag">coupling <strong>vysoký</strong></span>
+              <span class="tag">extrakce <strong>XL</strong></span>
+              <span class="tag">Shopify Functions · Theme App Ext</span>
+              <span class="tag platform">◐ Shopify má základ</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 4"
+                  role="img"
+                  aria-label="Potenciál 4 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Později</span>
+            </footer>
+          </article>
+
+          <article class="app-card build-now">
+            <div class="card-head">
+              <span class="app-code">WON·MRGN</span>
+              <span class="price">$2/mo</span>
+            </div>
+            <h3>Won MarginGuard</h3>
+            <p class="description">
+              Slevy samy neplatí na outlet, dárkové karty, sady a dárky. Chrání
+              marži bez ručních výjimek u každého kupónu.
+            </p>
+            <div class="tags">
+              <span class="tag source">E · Enervit</span>
+              <span class="tag">coupling <strong>nízký</strong></span>
+              <span class="tag">extrakce <strong>M</strong></span>
+              <span class="tag">Shopify Functions (discount)</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 5"
+                  role="img"
+                  aria-label="Potenciál 5 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state now">Stavět hned</span>
+            </footer>
+          </article>
+
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·OUT</span>
+              <span class="price">$2/mo</span>
+            </div>
+            <h3>Won Outlet</h3>
+            <p class="description">
+              Průvodce výprodejem: kopie produktu s novými cenami,
+              auto-vyloučení ze slev, po doprodání smaže a založí 301 redirect.
+            </p>
+            <div class="tags">
+              <span class="tag source">E · Enervit</span>
+              <span class="tag">coupling <strong>střední</strong></span>
+              <span class="tag">extrakce <strong>M</strong></span>
+              <span class="tag">Admin API app</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 3"
+                  role="img"
+                  aria-label="Potenciál 3 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Admin</span>
+            </footer>
+          </article>
+
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·MYST</span>
+              <span class="price">$2/mo</span>
+            </div>
+            <h3>Won Mystery</h3>
+            <p class="description">
+              Dárek k objednávce jako reálný skladový produkt — odečítá sklad a
+              skladník ho vidí na objednávce, ne jako poznámku.
+            </p>
+            <div class="tags">
+              <span class="tag source">E · Enervit</span>
+              <span class="tag">coupling <strong>nízký</strong></span>
+              <span class="tag">extrakce <strong>M</strong></span>
+              <span class="tag">Admin API · Functions</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 3"
+                  role="img"
+                  aria-label="Potenciál 3 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Admin</span>
+            </footer>
+          </article>
+        </div>
+      </section>
+
+      <section class="suite" aria-labelledby="suite-merchandising">
+        <header class="suite-heading">
+          <div class="suite-title">
+            <span class="suite-number">05</span>
+            <h2 id="suite-merchandising">Merchandising &amp; Content</h2>
+          </div>
+          <p class="suite-summary">
+            5 appek · Jak produkt vypadá a co o něm e-shop říká.
+          </p>
+        </header>
+
+        <div class="app-grid">
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·SWCH</span>
+              <span class="price">$2/mo</span>
+            </div>
+            <h3>Won Swatches</h3>
+            <p class="description">
+              Příchuť a balení jako chipy přímo na kartě produktu — přepne
+              fotku, cenu i quick-add CTA bez otevření produktu.
+            </p>
+            <div class="tags">
+              <span class="tag source">E · Enervit</span>
+              <span class="tag">coupling <strong>vysoký</strong></span>
+              <span class="tag">extrakce <strong>L</strong></span>
+              <span class="tag">Theme App Ext</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 4"
+                  role="img"
+                  aria-label="Potenciál 4 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Později</span>
+            </footer>
+          </article>
+
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·INFO</span>
+              <span class="price">$1/mo</span>
+            </div>
+            <h3>Won PackInfo</h3>
+            <p class="description">
+              Velikost balení a počet dávek u ceny, živě přepočítané při
+              přepnutí varianty. Kontext hodnoty na první pohled.
+            </p>
+            <div class="tags">
+              <span class="tag source">E · Enervit</span>
+              <span class="tag">coupling <strong>střední</strong></span>
+              <span class="tag">extrakce <strong>S</strong></span>
+              <span class="tag">Theme App Ext</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 2"
+                  role="img"
+                  aria-label="Potenciál 2 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Modul</span>
+            </footer>
+          </article>
+
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·BADG</span>
+              <span class="price">$1/mo</span>
+            </div>
+            <h3>Won Badges</h3>
+            <p class="description">
+              Produktové štítky s vlastními barvami, konzistentně renderované na
+              kartách, PDP i v searchi. Modul do Content Studia.
+            </p>
+            <div class="tags">
+              <span class="tag source">T · Therabeast</span>
+              <span class="tag">coupling <strong>střední</strong></span>
+              <span class="tag">extrakce <strong>M</strong></span>
+              <span class="tag">Theme App Ext · Admin GraphQL</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 2"
+                  role="img"
+                  aria-label="Potenciál 2 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Modul</span>
+            </footer>
+          </article>
+
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·CONT</span>
+              <span class="price">$3/mo</span>
+            </div>
+            <h3>Won Content Studio</h3>
+            <p class="description">
+              Vertikální editor PDP obsahu — složení, dávkování, benefity,
+              bannery. Ne další accordion, ale content OS pro
+              doplňky/nutraceutika.
+            </p>
+            <div class="tags">
+              <span class="tag source">T · Therabeast</span>
+              <span class="tag">coupling <strong>střední</strong></span>
+              <span class="tag">extrakce <strong>M–L</strong></span>
+              <span class="tag">Theme App Ext · custom data</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 4"
+                  role="img"
+                  aria-label="Potenciál 4 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Později</span>
+            </footer>
+          </article>
+
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·PEEK</span>
+              <span class="price">$5/mo</span>
+            </div>
+            <h3>Won Peek</h3>
+            <p class="description">
+              Odkaz na produkt v blogu/RTE nevystřelí čtenáře na PDP — otevře
+              quick-view modal s produktem a přidáním do košíku. Čtenář neztratí
+              kontext článku a nákup je na dosah.
+            </p>
+            <div class="tags">
+              <span class="tag source">E · Enervit</span>
+              <span class="tag">coupling <strong>nízký–střední</strong></span>
+              <span class="tag">extrakce <strong>M</strong></span>
+              <span class="tag">Theme App Ext · Ajax Cart</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 4"
+                  role="img"
+                  aria-label="Potenciál 4 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Později</span>
+            </footer>
+          </article>
+        </div>
+      </section>
+
+      <section class="suite" aria-labelledby="suite-discovery">
+        <header class="suite-heading">
+          <div class="suite-title">
+            <span class="suite-number">06</span>
+            <h2 id="suite-discovery">Discovery</h2>
+          </div>
+          <p class="suite-summary">2 appky · Než zákazník najde, co hledá.</p>
+        </header>
+
+        <div class="app-grid">
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·SRCH</span>
+              <span class="price">$1/mo</span>
+            </div>
+            <h3>Won Search</h3>
+            <p class="description">
+              Historie hledání, katalog v prázdném searchi a quick-add přímo z
+              výsledků. Slabší odlišení — nejlépe jako doplněk.
+            </p>
+            <div class="tags">
+              <span class="tag source">T · Therabeast</span>
+              <span class="tag">coupling <strong>vysoký</strong></span>
+              <span class="tag">extrakce <strong>L</strong></span>
+              <span class="tag">Theme App Ext · Ajax Cart</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 2"
+                  role="img"
+                  aria-label="Potenciál 2 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Modul</span>
+            </footer>
+          </article>
+
+          <article class="app-card">
+            <div class="card-head">
+              <span class="app-code">WON·NAV</span>
+              <span class="price">$1/mo</span>
+            </div>
+            <h3>Won Navigator</h3>
+            <p class="description">
+              Rozcestník podle problému nebo segmentu — jednoduchý přepínač
+              dlaždic. Levná náhrada quizu tam, kde stačí navigace.
+            </p>
+            <div class="tags">
+              <span class="tag source">T · Therabeast</span>
+              <span class="tag">coupling <strong>nízký</strong></span>
+              <span class="tag">extrakce <strong>S–M</strong></span>
+              <span class="tag">Theme App Ext</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 2"
+                  role="img"
+                  aria-label="Potenciál 2 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Modul</span>
+            </footer>
+          </article>
+        </div>
+      </section>
+
+      <footer class="catalog-footer">
+        <span>WonApps · živá produktová roadmapa</span>
+        <span>6 suit · 17 appek · 3 doporučené stavět hned</span>
+      </footer>
+    </main>
+  </body>
+</html>
