@@ -608,3 +608,19 @@ won-app-template` — **PASS**; oprava je součástí reusable template, ne jen
 - Won Quantity i reusable template lint — **PASS**. Portfolio B2B lint byl také
   prověřen, ale obsahuje 326 starších chyb v legacy/generated kódu; ty nebyly v
   rámci decouplingu hromadně přepisované ani falešně přidané do green CI gate.
+
+## 2026-08-02 — Integrace do main
+
+- Uživatel potvrdil celý pracovní rozsah pro publikování přímo na `main`.
+- Feature větev byla po kontrole staged diffu a token/runtime scanu commitnutá,
+  přebázovaná na aktuální `origin/main` a lokální `main` byl aktualizovaný pouze
+  fast-forwardem. Ekvivalentní roadmap commit Git při rebase správně vynechal.
+- První gate z čistého main checkoutu — **FAIL** až v Won Quantity unit suite:
+  ignorovaný `app/generated/prisma/client.ts` v tomto worktree ještě neexistoval.
+  Jde o očekávaný generated artefakt; CI ho už před testy explicitně generuje.
+- Po spuštění stejných tří `prisma:generate` kroků jako v CI — **PASS**:
+  `test:packages` 9/9 + 18/18, B2B core 300/300, Won Quantity unit 8/8,
+  `lint:standalone`, `typecheck:apps`, `build:apps` včetně obou Functions a
+  Theme Check 6/6 bez offenses.
+- Merchant-backed Horizon/Dawn browser gate zůstává v roadmapě pravdivě
+  rozpracovaný; přímé publikování na main jeho stav nemění ani nepředstírá.
