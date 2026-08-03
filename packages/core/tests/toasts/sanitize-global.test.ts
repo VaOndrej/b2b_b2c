@@ -44,3 +44,26 @@ test("non-object input yields an empty patch", () => {
   assert.deepEqual(sanitizeGlobalSettings(null), {});
   assert.deepEqual(sanitizeGlobalSettings("nope"), {});
 });
+
+test("grouping sub-settings are validated and clamped", () => {
+  const out = sanitizeGlobalSettings({
+    grouping: {
+      mode: "by-type",
+      burstWindowMs: 900,
+      dedupeWindowMs: 99999,
+      rateLimitPerMin: 500,
+      mergeDeltas: false,
+      bogus: "x",
+    },
+  });
+  assert.equal(out.grouping?.mode, "by-type");
+  assert.equal(out.grouping?.burstWindowMs, 900);
+  assert.equal(out.grouping?.dedupeWindowMs, 10000); // clamped
+  assert.equal(out.grouping?.rateLimitPerMin, 240); // clamped
+  assert.equal(out.grouping?.mergeDeltas, false);
+});
+
+test("invalid grouping mode is dropped", () => {
+  const out = sanitizeGlobalSettings({ grouping: { mode: "by-moon" } });
+  assert.equal(out.grouping, undefined);
+});

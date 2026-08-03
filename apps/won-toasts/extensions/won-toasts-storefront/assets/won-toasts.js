@@ -119,17 +119,72 @@
     var a = cfg.theme.accent || FALLBACK.theme.accent;
     return a[type] || a.info || "#4a5568";
   }
-  function presentation(ev) {
+  function presentation(grp) {
+    var ev = grp.rep;
+    var semantic = grp.type === "mixed" ? "info" : grp.type;
     var name = ev.line.product_title || ev.line.title || "Item";
-    var showDelta = cfg.theme.showDelta && ev.type !== "removed";
+    if (grp.count > 1) name += " +" + (grp.count - 1) + " more";
+    var showDelta =
+      cfg.theme.showDelta && grp.type !== "removed" && grp.totalDelta !== 0;
     return {
-      type: ev.type,
-      title: TITLES[ev.type] || "Cart updated",
+      type: semantic,
+      title: TITLES[grp.type] || "Cart updated",
       detail: name,
-      delta: showDelta ? (ev.delta > 0 ? "+" : "") + ev.delta : "",
-      accent: accentFor(ev.type),
+      delta: showDelta ? (grp.totalDelta > 0 ? "+" : "") + grp.totalDelta : "",
+      accent: accentFor(semantic),
       image: cfg.theme.showImage ? ev.line.image : null,
     };
+  }
+
+  // ---- grouping (mirror of @won/core/toasts/grouping) ----
+  function groupKey(ev, mode) {
+    if (mode === "by-type") return "type:" + ev.type;
+    if (mode === "by-variant") return "variant:" + (ev.line.id || ev.line.key);
+    if (mode === "by-product")
+      return "product:" + (ev.line.product_id || ev.line.id || ev.line.key);
+    return "";
+  }
+  function groupEvents(events, g) {
+    if (g.mode === "off" || !g.mergeDeltas) {
+      return events.map(function (e, i) {
+        return { key: String(i), type: e.type, count: 1, totalDelta: e.delta, rep: e };
+      });
+    }
+    var order = [];
+    var map = {};
+    events.forEach(function (e) {
+      var k = groupKey(e, g.mode);
+      var ex = map[k];
+      if (!ex) {
+        order.push(k);
+        map[k] = { key: k, type: e.type, count: 1, totalDelta: e.delta, rep: e };
+      } else {
+        ex.count += 1;
+        ex.totalDelta += e.delta;
+        if (ex.type !== e.type) ex.type = "mixed";
+      }
+    });
+    return order.map(function (k) {
+      return map[k];
+    });
+  }
+
+  // ---- rate-limit + dedupe (mirror of @won/core/toasts/rate-limit) ----
+  var emitTimes = [];
+  var lastSeen = {};
+  function withinRateLimit(now, perMin) {
+    if (!(perMin > 0)) return true;
+    var start = now - 60000;
+    var n = 0;
+    emitTimes.forEach(function (t) {
+      if (t >= start) n++;
+    });
+    return n < perMin;
+  }
+  function isDuplicate(key, now, win) {
+    if (!(win > 0)) return false;
+    var prev = lastSeen[key];
+    return typeof prev === "number" && now - prev < win;
   }
 
   // ---- style tokens (mirror of @won/core/toasts/presentation.styleTokensFor) ----
@@ -244,12 +299,14 @@
     return e;
   }
 
-  function renderToast(ev) {
+  function renderToast(grp) {
     if (!region) return;
-    var p = presentation(ev);
+    var ev = grp.rep;
+    var p = presentation(grp);
     var card = elem("div");
     card.setAttribute("data-won-toast", "");
-    card.setAttribute("data-type", ev.type);
+    card.setAttribute("data-type", grp.type);
+    card.setAttribute("data-group-count", String(grp.count));
     card.style.borderLeft = "4px solid " + p.accent;
 
     if (p.image) {
@@ -276,7 +333,7 @@
       card.appendChild(badge);
     }
 
-    if (ev.type === "removed") {
+    if (grp.type === "removed" && grp.count === 1) {
       var undo = elem("button");
       undo.type = "button";
       undo.setAttribute("data-won-toast-undo", "");
@@ -289,7 +346,10 @@
           .fetch("/cart/add.js", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: ev.line.id, quantity: Math.abs(ev.delta) }),
+            body: JSON.stringify({
+              id: ev.line.id,
+              quantity: Math.abs(grp.totalDelta),
+            }),
           })
           .then(function () {
             reconcile();
@@ -356,13 +416,38 @@
   function enforceMaxVisible() {
     if (!region) return;
     var max = cfg.global.maxVisible || 3;
-    while (region.children.length > max) {
+    var dropped = 0;
+    while (region.querySelectorAll("[data-won-toast]").length > max) {
+      var list = region.querySelectorAll("[data-won-toast]");
       dismiss(
         cfg.global.stackDirection === "newest-top"
-          ? region.lastChild
-          : region.firstChild,
+          ? list[list.length - 1]
+          : list[0],
       );
+      dropped += 1;
     }
+    if (cfg.global.overflowStrategy === "collapse" && dropped > 0) {
+      bumpOverflow(dropped);
+    }
+  }
+
+  function bumpOverflow(n) {
+    var chip = region.querySelector("[data-won-toast-overflow]");
+    if (!chip) {
+      chip = elem("div");
+      chip.setAttribute("data-won-toast-overflow", "");
+      chip.__n = 0;
+      chip.style.cssText =
+        "pointer-events:auto;align-self:flex-end;font:12px system-ui;" +
+        "background:#111;color:#fff;border-radius:999px;padding:2px 10px;opacity:.85;";
+      region.appendChild(chip);
+    }
+    chip.__n += n;
+    chip.textContent = "+" + chip.__n + " more";
+    clearTimeout(chip.__t);
+    chip.__t = setTimeout(function () {
+      if (chip.parentNode) chip.parentNode.removeChild(chip);
+    }, cfg.global.durationMs);
   }
 
   // ---- cart observation ----
@@ -379,7 +464,22 @@
           return r.json();
         })
         .then(function (after) {
-          if (cfg.enabled) deriveEvents(lastCart, after).forEach(renderToast);
+          if (cfg.enabled) {
+            var g = cfg.global.grouping;
+            var groups = groupEvents(deriveEvents(lastCart, after), g);
+            var now = Date.now();
+            emitTimes = emitTimes.filter(function (t) {
+              return t >= now - 60000;
+            });
+            groups.forEach(function (grp) {
+              if (g.mode !== "off" && isDuplicate(grp.key, now, g.dedupeWindowMs))
+                return;
+              if (!withinRateLimit(now, g.rateLimitPerMin)) return;
+              emitTimes.push(now);
+              lastSeen[grp.key] = now;
+              renderToast(grp);
+            });
+          }
           lastCart = after;
         })
         .catch(function () {})

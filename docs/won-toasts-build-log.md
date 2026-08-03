@@ -115,4 +115,28 @@ core spec testy + contract test. Storefront JS 16.5 kB raw / **5.1 kB gz**.
 (accent border + close) authored, pending live embed.
 
 **Gate:** core 41 ✓ · unit 11 ✓ · typecheck ✓ · build ✓ · theme-check ✓ · lint ✓.
-Commit: `won-toasts MVP2 design studio + live preview`.
+Commit: `won-toasts MVP2 design studio + live preview` (`51d46f3`).
+
+### MVP3 — Grouping, milestone stavy & conflict engine ✅ (badge → Beta)
+Core (regression-critical, čistě testované): `grouping.groupEvents` (merge dle
+by-product/variant/type, mergeDeltas, mixed typy), `milestones.milestoneState`
+(stavový automat `unreached|approaching|just_reached|reached|just_lost` +
+remaining/progress, fresh-crossing detekce — základ pro dopravu/dárek v MVP4),
+`conflict.resolveToasts` (severity→priority řazení + **summary toast** při 2+
+reward milnících), `rate-limit` (withinRateLimit, pruneTimestamps, isDuplicate).
+Storefront: reconcile teď **grupuje** (mirror `groupEvents`), **dedupe** +
+**rate-limit** (mirror), **overflow chip „+N more"** (collapse strategy),
+`data-group-count` marker. Admin **Behavior** rozšířen o Grouping & anti-spam
+(mode, burst window, dedupe, rate-limit, merge deltas) přes rozšířený
+`sanitizeGlobalSettings` (validace grouping + deep-merge).
+
+**Pozn.:** burst téhož produktu je sloučen už net-diffem (3× add → cart qty 3 →
+jeden reconcile → jeden toast `+3`); grouping řeší více různých produktů/typů v
+jednom batchi. Milestone/conflict engine jsou hotové a testované, plně se zapojí
+v MVP4 (doprava/dárek/qty milníky + summary).
+
+**Testy:** core +21 (grouping 5, milestones 7, conflict 4, rate-limit 5 →
+celkem 64 core); E2E MVP3 (burst → jeden `+3`) authored.
+
+**Gate:** core 64 ✓ · unit 11 ✓ · typecheck ✓ · build ✓ · theme-check ✓ · lint ✓.
+JS 17.7 kB raw / 6.1 kB gz. Commit: `won-toasts MVP3 grouping + conflict engine`.

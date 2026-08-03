@@ -36,13 +36,23 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     autoDismiss: form.get("autoDismiss") === "on",
     pauseOnHover: form.get("pauseOnHover") === "on",
     closeable: form.get("closeable") === "on",
+    grouping: {
+      mode: form.get("grouping_mode"),
+      burstWindowMs: form.get("burstWindowMs"),
+      dedupeWindowMs: form.get("dedupeWindowMs"),
+      rateLimitPerMin: form.get("rateLimitPerMin"),
+      mergeDeltas: form.get("mergeDeltas") === "on",
+    },
   });
 
-  // Merge onto the shop's current global so unrelated fields are preserved.
+  // Merge onto the shop's current global so unrelated fields are preserved
+  // (deep-merge grouping so its untouched keys survive too).
   const current = await getToastConfig(session.shop);
-  await updateToastConfig(session.shop, {
-    global: { ...current.global, ...patch },
-  });
+  const merged = { ...current.global, ...patch };
+  if (patch.grouping) {
+    merged.grouping = { ...current.global.grouping, ...patch.grouping };
+  }
+  await updateToastConfig(session.shop, { global: merged });
   return { saved: true };
 };
 
@@ -206,6 +216,70 @@ export default function BehaviorRoute() {
               />
               <span>Show a close (×) button</span>
             </label>
+
+            <fieldset
+              style={{ border: "1px solid #e2e6ea", borderRadius: 10, padding: 14 }}
+            >
+              <legend>Grouping &amp; anti-spam</legend>
+              <div style={{ display: "grid", gap: "14px", maxWidth: 360 }}>
+                <label style={field}>
+                  <span>Group rapid changes</span>
+                  <select
+                    name="grouping_mode"
+                    defaultValue={g.grouping.mode}
+                    style={input}
+                  >
+                    <option value="by-product">by product</option>
+                    <option value="by-variant">by variant</option>
+                    <option value="by-type">by event type</option>
+                    <option value="off">off</option>
+                  </select>
+                </label>
+                <label style={field}>
+                  <span>Burst window (ms)</span>
+                  <input
+                    type="number"
+                    name="burstWindowMs"
+                    min={0}
+                    max={5000}
+                    step={50}
+                    defaultValue={g.grouping.burstWindowMs}
+                    style={input}
+                  />
+                </label>
+                <label style={field}>
+                  <span>Dedupe window (ms)</span>
+                  <input
+                    type="number"
+                    name="dedupeWindowMs"
+                    min={0}
+                    max={10000}
+                    step={100}
+                    defaultValue={g.grouping.dedupeWindowMs}
+                    style={input}
+                  />
+                </label>
+                <label style={field}>
+                  <span>Max toasts / minute</span>
+                  <input
+                    type="number"
+                    name="rateLimitPerMin"
+                    min={0}
+                    max={240}
+                    defaultValue={g.grouping.rateLimitPerMin}
+                    style={input}
+                  />
+                </label>
+                <label style={row}>
+                  <input
+                    type="checkbox"
+                    name="mergeDeltas"
+                    defaultChecked={g.grouping.mergeDeltas}
+                  />
+                  <span>Merge quantity changes into one “+N”</span>
+                </label>
+              </div>
+            </fieldset>
 
             <div>
               <button type="submit" disabled={saving}>

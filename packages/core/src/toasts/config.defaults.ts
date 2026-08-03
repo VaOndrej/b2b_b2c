@@ -126,6 +126,17 @@ const STACK: readonly GlobalSettings["stackDirection"][] = [
   "newest-top",
   "newest-bottom",
 ];
+const GROUPING_MODES: readonly GroupingSettings["mode"][] = [
+  "off",
+  "by-product",
+  "by-variant",
+  "by-type",
+];
+
+/** Sanitized partial global; `grouping` may itself be partial. */
+export type SanitizedGlobal = Omit<Partial<GlobalSettings>, "grouping"> & {
+  grouping?: Partial<GroupingSettings>;
+};
 
 function clampInt(value: unknown, min: number, max: number): number | undefined {
   const n = Number(value);
@@ -147,11 +158,9 @@ function oneOf<T extends string>(
  * shop's current config without clobbering unrelated values. This is the single
  * guardrail that keeps a merchant from saving an unusable config.
  */
-export function sanitizeGlobalSettings(
-  input: unknown,
-): Partial<GlobalSettings> {
+export function sanitizeGlobalSettings(input: unknown): SanitizedGlobal {
   if (!isPlainObject(input)) return {};
-  const out: Partial<GlobalSettings> = {};
+  const out: SanitizedGlobal = {};
 
   const position = oneOf(input.position, POSITIONS);
   if (position) out.position = position;
@@ -179,6 +188,21 @@ export function sanitizeGlobalSettings(
   if (overflowStrategy) out.overflowStrategy = overflowStrategy;
   const stackDirection = oneOf(input.stackDirection, STACK);
   if (stackDirection) out.stackDirection = stackDirection;
+
+  if (isPlainObject(input.grouping)) {
+    const g = input.grouping;
+    const gr: Partial<GroupingSettings> = {};
+    const mode = oneOf(g.mode, GROUPING_MODES);
+    if (mode) gr.mode = mode;
+    const burstWindowMs = clampInt(g.burstWindowMs, 0, 5000);
+    if (burstWindowMs !== undefined) gr.burstWindowMs = burstWindowMs;
+    const dedupeWindowMs = clampInt(g.dedupeWindowMs, 0, 10000);
+    if (dedupeWindowMs !== undefined) gr.dedupeWindowMs = dedupeWindowMs;
+    const rateLimitPerMin = clampInt(g.rateLimitPerMin, 0, 240);
+    if (rateLimitPerMin !== undefined) gr.rateLimitPerMin = rateLimitPerMin;
+    if (typeof g.mergeDeltas === "boolean") gr.mergeDeltas = g.mergeDeltas;
+    if (Object.keys(gr).length > 0) out.grouping = gr;
+  }
 
   return out;
 }

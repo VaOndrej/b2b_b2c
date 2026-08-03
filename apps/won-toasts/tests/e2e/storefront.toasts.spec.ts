@@ -107,3 +107,28 @@ test.describe("Won Toasts appearance (MVP2)", () => {
     await expect(added).toHaveCount(0);
   });
 });
+
+// SPEC-DRIVEN (MVP3). A rapid burst of the same product becomes ONE toast, not
+// three — via net-diff + grouping.
+test.describe("Won Toasts grouping (MVP3)", () => {
+  test("three rapid adds of one product yield a single +3 toast", async ({
+    page,
+  }) => {
+    await openProduct(page, TOASTS_E2E_HANDLES.primary);
+    await readyEmbed(page);
+    await clearCart(page);
+
+    const variantId = await firstVariantId(page);
+    await Promise.all([
+      addToCart(page, variantId, 1),
+      addToCart(page, variantId, 1),
+      addToCart(page, variantId, 1),
+    ]);
+
+    const toasts = toast(page);
+    await expect(toasts).toHaveCount(1);
+    await expect(toasts.first().locator("[data-won-toast-delta]")).toHaveText(
+      "+3",
+    );
+  });
+});
