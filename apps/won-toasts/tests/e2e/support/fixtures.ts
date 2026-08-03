@@ -82,6 +82,27 @@ export async function addToCart(
   );
 }
 
+/** Add a line carrying the Won GiftLadder `_gift_progress` property. */
+export async function addGiftLine(
+  page: Page,
+  variantId: string | number,
+): Promise<void> {
+  await page.evaluate(
+    async ({ id }) => {
+      await fetch("/cart/add.js", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          quantity: 1,
+          properties: { _gift_progress: "1" },
+        }),
+      });
+    },
+    { id: variantId },
+  );
+}
+
 export async function setLineQuantity(
   page: Page,
   variantId: string | number,

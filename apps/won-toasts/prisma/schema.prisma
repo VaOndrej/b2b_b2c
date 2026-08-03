@@ -45,9 +45,11 @@ model ToastAppConfig {
   shop      String   @unique
   version   Int      @default(1)
   enabled   Boolean  @default(false)
-  plan      String   @default("free")
-  global    Json?
-  theme     Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  plan       String   @default("free")
+  global     Json?
+  theme      Json?
+  messages   Json?
+  milestones Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }

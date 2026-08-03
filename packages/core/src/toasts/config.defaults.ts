@@ -6,8 +6,11 @@
 import type {
   GlobalSettings,
   GroupingSettings,
+  MilestoneRuleConfig,
   StoredToastConfig,
   ToastAppConfig,
+  ToastLocale,
+  ToastMessages,
   ToastSemanticType,
   ToastTheme,
 } from "./config.types.ts";
@@ -88,12 +91,31 @@ export const DEFAULT_THEME: ToastTheme = {
   customCss: "",
 };
 
+export const DEFAULT_MESSAGES: ToastMessages = {
+  added: { en: "Added to cart", cs: "Přidáno do košíku", sk: "Pridané do košíka" },
+  removed: { en: "Removed", cs: "Odebráno", sk: "Odobrané" },
+  increased: { en: "Updated", cs: "Aktualizováno", sk: "Aktualizované" },
+  decreased: { en: "Updated", cs: "Aktualizováno", sk: "Aktualizované" },
+  gift: { en: "Gift unlocked 🎁", cs: "Dárek odemčen 🎁", sk: "Darček odomknutý 🎁" },
+  shipping: {
+    en: "You’ve got free shipping! 🎉",
+    cs: "Máš dopravu zdarma! 🎉",
+    sk: "Máš dopravu zadarmo! 🎉",
+  },
+};
+
+export const DEFAULT_MILESTONES: MilestoneRuleConfig[] = [];
+
+const LOCALES: readonly ToastLocale[] = ["cs", "sk", "en"];
+
 export const DEFAULT_TOAST_CONFIG: ToastAppConfig = {
   version: TOAST_CONFIG_VERSION,
   enabled: false,
   plan: "free",
   global: DEFAULT_GLOBAL,
   theme: DEFAULT_THEME,
+  messages: DEFAULT_MESSAGES,
+  milestones: DEFAULT_MILESTONES,
 };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -346,5 +368,48 @@ export function resolveToastConfig(
     plan: input.plan === "pro" ? "pro" : "free",
     global,
     theme,
+    messages: mergeMessages(input.messages),
+    milestones: sanitizeMilestones(input.milestones),
   };
+}
+
+/** Deep-merge stored message overrides over the default templates. */
+export function mergeMessages(input: unknown): ToastMessages {
+  const out: ToastMessages = {};
+  for (const type of SEMANTIC_TYPES) {
+    const base = DEFAULT_MESSAGES[type];
+    const override =
+      isPlainObject(input) && isPlainObject((input as Record<string, unknown>)[type])
+        ? ((input as Record<string, Record<string, unknown>>)[type] ?? {})
+        : {};
+    const merged: Partial<Record<ToastLocale, string>> = { ...(base ?? {}) };
+    for (const locale of LOCALES) {
+      const value = override[locale];
+      if (typeof value === "string" && value.trim()) merged[locale] = value.slice(0, 200);
+    }
+    if (Object.keys(merged).length > 0) out[type] = merged;
+  }
+  return out;
+}
+
+const MILESTONE_KINDS = new Set(["free_shipping", "gift", "qty_discount"]);
+
+/** Validate a milestones array; drop malformed entries. */
+export function sanitizeMilestones(input: unknown): MilestoneRuleConfig[] {
+  if (!Array.isArray(input)) return [];
+  const out: MilestoneRuleConfig[] = [];
+  for (const raw of input) {
+    if (!isPlainObject(raw)) continue;
+    if (!MILESTONE_KINDS.has(String(raw.kind))) continue;
+    const threshold = clampInt(raw.thresholdCents, 0, 100_000_000);
+    out.push({
+      id: typeof raw.id === "string" && raw.id ? raw.id.slice(0, 60) : String(raw.kind),
+      kind: raw.kind as MilestoneRuleConfig["kind"],
+      enabled: raw.enabled === true,
+      thresholdCents: threshold ?? 0,
+      label: typeof raw.label === "string" ? raw.label.slice(0, 80) : String(raw.kind),
+    });
+    if (out.length >= 20) break;
+  }
+  return out;
 }

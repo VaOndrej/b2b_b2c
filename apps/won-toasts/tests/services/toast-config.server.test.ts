@@ -23,6 +23,8 @@ before(async () => {
       "plan" TEXT NOT NULL DEFAULT 'free',
       "global" TEXT,
       "theme" TEXT,
+      "messages" TEXT,
+      "milestones" TEXT,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL
     )
@@ -46,6 +48,32 @@ test("fresh shop resolves to the complete spec default config", async () => {
   assert.equal(config.global.maxVisible, 3);
   assert.equal(config.global.grouping.burstWindowMs, 600);
   assert.equal(config.theme.mode, "system");
+  // MVP4: default messages + empty milestones present
+  assert.equal(typeof config.messages.added?.en, "string");
+  assert.deepEqual(config.milestones, []);
+});
+
+test("message overrides and milestone rules persist and merge", async () => {
+  const shop = "messages.myshopify.com";
+  await service.updateToastConfig(shop, {
+    messages: { added: { cs: "Máš to v košíku!" } },
+    milestones: [
+      {
+        id: "ship",
+        kind: "free_shipping",
+        enabled: true,
+        thresholdCents: 150000,
+        label: "free shipping",
+      },
+    ],
+  });
+  const config = await service.getToastConfig(shop);
+  assert.equal(config.messages.added?.cs, "Máš to v košíku!");
+  // default locales for the same type survive the merge
+  assert.equal(typeof config.messages.added?.en, "string");
+  assert.equal(config.milestones.length, 1);
+  assert.equal(config.milestones[0].kind, "free_shipping");
+  assert.equal(config.milestones[0].thresholdCents, 150000);
 });
 
 test("configuration is isolated by authenticated shop", async () => {

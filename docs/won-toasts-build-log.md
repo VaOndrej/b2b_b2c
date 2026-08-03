@@ -139,4 +139,30 @@ v MVP4 (doprava/dárek/qty milníky + summary).
 celkem 64 core); E2E MVP3 (burst → jeden `+3`) authored.
 
 **Gate:** core 64 ✓ · unit 11 ✓ · typecheck ✓ · build ✓ · theme-check ✓ · lint ✓.
-JS 17.7 kB raw / 6.1 kB gz. Commit: `won-toasts MVP3 grouping + conflict engine`.
+JS 17.7 kB raw / 6.1 kB gz. Commit: `won-toasts MVP3 grouping + conflict engine` (`b1446c5`).
+
+### MVP4 — Eventy, šablony, milníky (doprava/dárek) + GiftLadder + i18n ✅ (badge Beta)
+Core: `template.renderTemplate` (placeholdery) + `pluralCategory`/`plural`
+(cs/sk/en pluralizace), `milestone-rules` (`eligibleSubtotalCents`,
+`cartHasGiftLine`, `evaluateMilestones` — doprava/dárek/qty přes milestone state
+machine; **GiftLadder** = detekce `_gift_progress` řádku jako gift milníku),
+config rozšířen o `messages` (per typ×locale) + `milestones[]` s
+`mergeMessages`/`sanitizeMilestones`. Prisma migrace `toast_messages_milestones`
+(Json sloupce). Storefront: šablony (locale z embedu), **milestone eval na
+reconcile** s announced flagy per cart token (sessionStorage → oslaví jednou,
+`just_lost` resetuje), summary toast při 2+ rewardech, `renderMilestoneToast`.
+Admin **Events & messages**: editor šablon (6 typů × cs/sk/en) + milníky
+(doprava threshold + dárek toggle) — zásada „oznamuje, negrantuje" v UI.
+
+**Vědomě odloženo (zapsáno):** generický **Advanced rule builder** UI
+(trigger→conditions→actions) — MVP4 pokrývá recepty (cart eventy + doprava +
+dárek) dle zamčeného rozhodnutí „recepty first"; plný builder je pozdější
+refinement. **Analytics lifecycle** = event ID/lifecycle je v modelu (conflict/
+milestone events mají id), plné logování metrik → MVP5/po-MVP.
+
+**Testy:** core +14 (template 5, milestone-rules 5, messages/milestones 4 →
+celkem 78 core); unit +1 (messages/milestones persistence → 12); E2E MVP4
+(gift line ≠ cart toast) authored.
+
+**Gate:** core 78 ✓ · unit 12 ✓ · typecheck ✓ · build ✓ · theme-check ✓ · lint ✓.
+JS 24.4 kB raw / 7.3 kB gz. Commit: `won-toasts MVP4 milestones + templates`.

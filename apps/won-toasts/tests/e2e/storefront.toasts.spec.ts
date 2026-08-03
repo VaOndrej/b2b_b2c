@@ -1,4 +1,5 @@
 import {
+  addGiftLine,
   addToCart,
   cartItems,
   clearCart,
@@ -130,5 +131,23 @@ test.describe("Won Toasts grouping (MVP3)", () => {
     await expect(toasts.first().locator("[data-won-toast-delta]")).toHaveText(
       "+3",
     );
+  });
+});
+
+// SPEC-DRIVEN (MVP4). GiftLadder integration: a gift line is a milestone, not a
+// cart event — it must never produce an "added" cart toast.
+test.describe("Won Toasts GiftLadder integration (MVP4)", () => {
+  test("a _gift_progress line does not create a cart toast", async ({
+    page,
+  }) => {
+    await openProduct(page, TOASTS_E2E_HANDLES.primary);
+    await readyEmbed(page);
+    await clearCart(page);
+
+    const variantId = await firstVariantId(page);
+    await addGiftLine(page, variantId);
+
+    // The gift line is excluded from the cart diff → no "added" toast.
+    await expect(toast(page, "added")).toHaveCount(0);
   });
 });

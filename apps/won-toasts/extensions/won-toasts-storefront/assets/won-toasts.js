@@ -62,9 +62,29 @@
   };
 
   var cfg = FALLBACK;
+  var locale = "en";
+  var lastMilestone = null; // last cart milestone state {subtotalCents,hasGiftLine}
   var lastCart = { items: [] };
   var host = null;
   var region = null;
+
+  function normLocale(v) {
+    v = String(v || "en").toLowerCase();
+    if (v.indexOf("cs") === 0) return "cs";
+    if (v.indexOf("sk") === 0) return "sk";
+    return "en";
+  }
+  function messageFor(type, fallback) {
+    var m = cfg.messages && cfg.messages[type];
+    return (m && (m[locale] || m.en)) || fallback;
+  }
+  function renderTemplate(tpl, vars) {
+    if (typeof tpl !== "string") return "";
+    return tpl.replace(/\{(\w+)\}/g, function (_, k) {
+      var val = vars[k];
+      return val === undefined || val === null ? "" : String(val);
+    });
+  }
 
   // ---- cart diff (mirror of @won/core/toasts/cart-events) ----
   function isGift(l) {
@@ -126,9 +146,14 @@
     if (grp.count > 1) name += " +" + (grp.count - 1) + " more";
     var showDelta =
       cfg.theme.showDelta && grp.type !== "removed" && grp.totalDelta !== 0;
+    var tpl = messageFor(grp.type, TITLES[grp.type] || "Cart updated");
     return {
       type: semantic,
-      title: TITLES[grp.type] || "Cart updated",
+      title: renderTemplate(tpl, {
+        qty: Math.abs(grp.totalDelta),
+        delta: grp.totalDelta,
+        product: ev.line.product_title || ev.line.title || "",
+      }),
       detail: name,
       delta: showDelta ? (grp.totalDelta > 0 ? "+" : "") + grp.totalDelta : "",
       accent: accentFor(semantic),
@@ -185,6 +210,90 @@
     if (!(win > 0)) return false;
     var prev = lastSeen[key];
     return typeof prev === "number" && now - prev < win;
+  }
+
+  // ---- milestones (mirror of @won/core/toasts/milestone-rules) ----
+  function subtotalCents(cart) {
+    var t = 0;
+    (cart && cart.items ? cart.items : []).forEach(function (l) {
+      if (l && !isGift(l)) t += Number(l.final_line_price || l.linePrice || 0) || 0;
+    });
+    return t;
+  }
+  function hasGift(cart) {
+    return (cart && cart.items ? cart.items : []).some(function (l) {
+      return l && isGift(l);
+    });
+  }
+  function cartMilestone(cart) {
+    return { subtotalCents: subtotalCents(cart), hasGiftLine: hasGift(cart) };
+  }
+  function mState(prev, next, thr) {
+    var t = thr > 0 ? thr : 1;
+    var pr = prev >= t;
+    var nx = next >= t;
+    if (nx) return pr ? "reached" : "just_reached";
+    if (pr) return "just_lost";
+    if (next >= t * 0.8) return "approaching";
+    return "unreached";
+  }
+  function announced(token, id, val) {
+    var key = "won-toasts:" + token + ":" + id;
+    try {
+      if (val === undefined) return sessionStorage.getItem(key) === "1";
+      if (val) sessionStorage.setItem(key, "1");
+      else sessionStorage.removeItem(key);
+    } catch (e) {
+      /* private mode: fail open (no persistence) */
+    }
+    return false;
+  }
+  function evaluateMilestones(after) {
+    var rules = cfg.milestones || [];
+    if (!rules.length) return;
+    var token = after.token || "cart";
+    var prev = lastMilestone || cartMilestone(after);
+    var next = cartMilestone(after);
+    var rewards = [];
+    rules.forEach(function (rule) {
+      if (!rule.enabled) return;
+      var state;
+      if (rule.kind === "gift" && (prev.hasGiftLine || next.hasGiftLine)) {
+        state = next.hasGiftLine
+          ? prev.hasGiftLine
+            ? "reached"
+            : "just_reached"
+          : prev.hasGiftLine
+            ? "just_lost"
+            : "unreached";
+      } else {
+        state = mState(prev.subtotalCents, next.subtotalCents, rule.thresholdCents);
+      }
+      if (state === "just_lost") {
+        announced(token, rule.id, false);
+      } else if (state === "just_reached" && !announced(token, rule.id)) {
+        announced(token, rule.id, true);
+        rewards.push(rule);
+      }
+    });
+    lastMilestone = next;
+    if (!rewards.length) return;
+    if (cfg.global.summarizeConcurrent && rewards.length >= 2) {
+      renderMilestoneToast(
+        "shipping",
+        "🎉 " +
+          rewards
+            .map(function (r) {
+              return r.label;
+            })
+            .join(" + "),
+      );
+    } else {
+      rewards.forEach(function (r) {
+        var type = r.kind === "gift" ? "gift" : "shipping";
+        renderMilestoneToast(type, messageFor(type, r.label));
+      });
+    }
   }
 
   // ---- style tokens (mirror of @won/core/toasts/presentation.styleTokensFor) ----
@@ -362,6 +471,28 @@
       card.appendChild(undo);
     }
 
+    finalizeCard(card);
+  }
+
+  // Milestone toast (free shipping / gift) — a reward message with no line body.
+  function renderMilestoneToast(type, text) {
+    if (!region) return;
+    var card = elem("div");
+    card.setAttribute("data-won-toast", "");
+    card.setAttribute("data-type", type);
+    card.setAttribute("data-milestone", "");
+    card.setAttribute("data-group-count", "1");
+    card.style.borderLeft = "4px solid " + accentFor(type);
+    var body = elem("div", "won-b");
+    var title = elem("div", "won-t");
+    title.textContent = text;
+    body.appendChild(title);
+    card.appendChild(body);
+    finalizeCard(card);
+  }
+
+  // Shared: close button, click action, placement, overflow, auto-dismiss.
+  function finalizeCard(card) {
     if (cfg.global.closeable) {
       var close = elem("button");
       close.type = "button";
@@ -479,6 +610,7 @@
               lastSeen[grp.key] = now;
               renderToast(grp);
             });
+            evaluateMilestones(after);
           }
           lastCart = after;
         })
@@ -575,6 +707,7 @@
       reconcile();
     });
 
+    locale = normLocale(embed.getAttribute("data-won-toasts-locale"));
     var endpoint = embed.getAttribute("data-won-toasts-endpoint");
     var ready = function () {
       applyTheme();
@@ -585,6 +718,7 @@
         })
         .then(function (c) {
           lastCart = c;
+          lastMilestone = cartMilestone(c);
         })
         .catch(function () {})
         .then(function () {

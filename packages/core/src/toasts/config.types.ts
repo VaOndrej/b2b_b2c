@@ -99,6 +99,24 @@ export interface ToastTheme {
 
 export type ToastPlan = "free" | "pro";
 
+export type ToastLocale = "cs" | "sk" | "en";
+
+/** Editable message templates: event type → locale → template string. */
+export type ToastMessages = Partial<
+  Record<ToastSemanticType, Partial<Record<ToastLocale, string>>>
+>;
+
+export type MilestoneKind = "free_shipping" | "gift" | "qty_discount";
+
+export interface MilestoneRuleConfig {
+  id: string;
+  kind: MilestoneKind;
+  enabled: boolean;
+  /** Threshold in minor units (cents/haléře); must match the real shipping rate. */
+  thresholdCents: number;
+  label: string;
+}
+
 export interface ToastAppConfig {
   /** Schema version — bump on breaking config shape changes; enables migration. */
   version: number;
@@ -106,6 +124,8 @@ export interface ToastAppConfig {
   plan: ToastPlan;
   global: GlobalSettings;
   theme: ToastTheme;
+  messages: ToastMessages;
+  milestones: MilestoneRuleConfig[];
 }
 
 /** Partial persisted config as stored/sent over the wire (any depth may be absent). */
@@ -119,4 +139,6 @@ export interface StoredToastConfig {
   theme?: Omit<Partial<ToastTheme>, "accent"> & {
     accent?: Partial<Record<ToastSemanticType, string>>;
   };
+  messages?: ToastMessages;
+  milestones?: MilestoneRuleConfig[];
 }

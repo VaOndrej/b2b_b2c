@@ -21,6 +21,7 @@ export default function App() {
         <a href="/app">Overview</a>
         <a href="/app/behavior">Behavior</a>
         <a href="/app/appearance">Appearance</a>
+        <a href="/app/events">Events</a>
       </ui-nav-menu>
       <Outlet />
     </AppProvider>
