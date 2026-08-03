@@ -1,16 +1,15 @@
-import {
-  SHARED_THEME_SELECTORS,
-  createStorefrontTest,
-  expect,
-} from "@won/testing/playwright";
+import { createStorefrontTest, expect } from "@won/testing/playwright";
+import { WON_E2E_PRODUCTS } from "@won/testing/e2e-products";
 import type { Locator, Page, Response } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+// Roles for this app's quantity scenarios, mapped onto the SHARED E2E product
+// catalog. Every app reuses these products; we never create app-specific ones.
 export const QUANTITY_E2E_HANDLES = {
-  default: "wq-e2e-default",
-  step: "wq-e2e-step",
-  maximum: "wq-e2e-maximum",
+  default: WON_E2E_PRODUCTS.simpleA.handle,
+  step: WON_E2E_PRODUCTS.twoVariants.handle,
+  maximum: WON_E2E_PRODUCTS.simpleB.handle,
 } as const;
 
 interface AppDiagnostics {
@@ -138,12 +137,19 @@ export async function openProduct(page: Page, handle: string): Promise<void> {
 }
 
 export async function readyQuantityInput(page: Page): Promise<Locator> {
-  const candidates = page.locator(
-    `${SHARED_THEME_SELECTORS.quantityInput}:visible`,
-  );
-  await expect(candidates.first()).toBeVisible();
-  const input = candidates.first();
-  await expect(input).toHaveAttribute("data-won-quantity-status", "ready");
+  // Target the input the embed has finished enhancing, via its own readiness
+  // marker. This is theme-agnostic — Dawn wraps the quantity input in a classic
+  // <form action="/cart/add">, while Horizon uses a <product-form> web component
+  // whose /cart/add form only settles after hydration. The embed sets
+  // data-won-quantity-status="ready" once it owns the input in either theme, so
+  // waiting on that marker rides out Horizon's timing instead of racing the
+  // form-scoped selector the previous version used.
+  const input = page
+    .locator(
+      "input[name='quantity'][data-won-quantity-status='ready']:not([type='hidden'])",
+    )
+    .first();
+  await expect(input).toBeVisible();
   await expect(input).toHaveAttribute("data-won-quantity-ready", "");
   return input;
 }
@@ -156,18 +162,23 @@ export function responseMatches(response: Response, pathName: string): boolean {
 }
 
 export async function clearCart(page: Page): Promise<void> {
-  const result = await page.evaluate(async () => {
-    const response = await fetch("/cart/clear.js", {
-      method: "POST",
-      headers: { Accept: "application/json" },
-    });
-    return response.status;
+  // Use the request context (baseURL-aware) so this works even before the page
+  // has navigated — an in-page `fetch("/cart/clear.js")` on about:blank has no
+  // origin to resolve the relative URL against.
+  const response = await page.request.post("/cart/clear.js", {
+    headers: { Accept: "application/json" },
   });
-  expect(result).toBeLessThan(400);
+  expect(response.status()).toBeLessThan(400);
 }
 
-export function quantityForm(page: Page, input: Locator): Locator {
-  return page.locator("form[action*='/cart/add']").filter({ has: input });
+export function quantityForm(input: Locator): Locator {
+  // The /cart/add form that actually contains this resolved quantity input.
+  // Filtering `form[action*='/cart/add']` by the absolute `input` locator would
+  // require a nested cart form (0 matches), so walk up to the input's nearest
+  // /cart/add ancestor form instead.
+  return input.locator(
+    "xpath=ancestor::form[contains(@action, '/cart/add')][1]",
+  );
 }
 
 export async function assertAppTransport(

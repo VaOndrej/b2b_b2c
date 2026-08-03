@@ -20,7 +20,7 @@ test.describe("Won Quantity storefront vertical slice", () => {
   }) => {
     await openProduct(page, QUANTITY_E2E_HANDLES.default);
     const input = await readyQuantityInput(page);
-    const form = quantityForm(page, input);
+    const form = quantityForm(input);
 
     await expect(form).toHaveCount(1);
     expect(
@@ -38,7 +38,7 @@ test.describe("Won Quantity storefront vertical slice", () => {
     await clearCart(page);
     await openProduct(page, QUANTITY_E2E_HANDLES.step);
     let input = await readyQuantityInput(page);
-    const form = quantityForm(page, input);
+    const form = quantityForm(input);
 
     await expect(input).toHaveAttribute("min", "2");
     await expect(input).toHaveAttribute("step", "2");
@@ -90,7 +90,7 @@ test.describe("Won Quantity storefront vertical slice", () => {
   }) => {
     await openProduct(page, QUANTITY_E2E_HANDLES.maximum);
     const input = await readyQuantityInput(page);
-    const form = quantityForm(page, input);
+    const form = quantityForm(input);
 
     await expect(input).toHaveAttribute("min", "2");
     await expect(input).toHaveAttribute("step", "2");

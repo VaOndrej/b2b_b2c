@@ -8,14 +8,14 @@ export default {
   },
   testCommand: ["npm", "run", "test:e2e"],
   themes: {
+    // The Won Quantity app embed is enabled directly in the shared canonical
+    // Horizon/Dawn checkouts, so no per-app settings_data overlay is needed.
     horizon: {
-      remoteName: "Won Quantity — Horizon",
-      settingsDataOverlay: "tests/themes/horizon.settings_data.json",
+      remoteName: "Horizon",
       preferredPort: 9881,
     },
     dawn: {
-      remoteName: "Won Quantity — Dawn",
-      settingsDataOverlay: "tests/themes/dawn.settings_data.json",
+      remoteName: "Dawn",
       preferredPort: 9882,
     },
   },

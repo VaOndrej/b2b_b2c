@@ -22,7 +22,8 @@
     "lint:standalone": "npm run lint -w won-app-template && npm run lint -w won-quantity",
     "typecheck:apps": "npm run typecheck --workspaces --if-present",
     "build:apps": "npm run build --workspaces --if-present",
-    "validate:shopify": "shopify theme check --path apps/won-quantity/extensions/won-quantity-storefront"
+    "validate:shopify": "shopify theme check --path apps/won-quantity/extensions/won-quantity-storefront",
+    "seed:e2e-products": "node packages/testing/scripts/seed-e2e-products.mjs"
   },
   "devDependencies": {
     "@shopify/cli": "3.92.1"

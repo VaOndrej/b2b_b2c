@@ -8,6 +8,7 @@
     "./theme-paths": "./src/theme-paths.js",
     "./runner-config": "./src/runner-config.js",
     "./theme-workspace": "./src/theme-workspace.js",
+    "./e2e-products": "./src/e2e-products.js",
     "./playwright": "./src/playwright/index.ts"
   },
   "scripts": {

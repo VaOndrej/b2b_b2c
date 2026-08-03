@@ -41,7 +41,15 @@ test("standalone app template exposes shared test hooks without fake E2E coverag
     packageJson.scripts?.["config:link"] ?? "",
     /shopify app config link --path \./u,
   );
-  assert.match(packageJson.scripts?.setup ?? "", /ensure-sqlite-db\.mjs/u);
+  // A fresh clone has no .env, so migrate:deploy must self-provision the local
+  // SQLite DB (and its DATABASE_URL fallback) before running migrations, and
+  // setup must go through it. This keeps `shopify app dev` zero-config.
+  assert.match(
+    packageJson.scripts?.["prisma:migrate:deploy"] ?? "",
+    /ensure-sqlite-db\.mjs/u,
+    "prisma:migrate:deploy must run ensure-sqlite-db before migrating",
+  );
+  assert.match(packageJson.scripts?.setup ?? "", /prisma:migrate:deploy/u);
   assert.match(
     packageJson.scripts?.["test:e2e"] ?? "",
     /require-e2e-contract/u,

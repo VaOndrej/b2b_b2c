@@ -116,7 +116,13 @@ async function resolveProduct(
       redirect: "follow",
     },
   );
-  if (!response.ok || !response.headers.get("content-type")?.includes("json")) {
+  // Shopify serves /products/<handle>.js as `text/javascript` with a JSON body.
+  // A missing or password-gated product instead returns `text/html` (even with
+  // HTTP 200), so accept only JSON/JS content types — not a bare status check.
+  const contentType = response.headers.get("content-type") ?? "";
+  const servesJson =
+    contentType.includes("json") || contentType.includes("javascript");
+  if (!response.ok || !servesJson) {
     throw new Error(
       `Required namespaced fixture ${handle} is unavailable (HTTP ${response.status}).`,
     );

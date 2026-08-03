@@ -86,15 +86,22 @@ npm run test:e2e:local:all -w won-quantity
    - Add routes under `apps/<your-app>/app/routes/`.
    - Add Shopify Functions / extensions under `apps/<your-app>/extensions/`
      (each is its own workspace with its own `package.json`).
-6. **Own the test contract** — replace the placeholders in
-   `e2e.app.config.mjs`, add at least one app-specific `tests/e2e/*.spec.ts`, and
-   use `@won/testing/playwright` for shared Horizon/Dawn fixtures. Capture each
-   app's real `config/settings_data.json` after enabling its embed in the theme
-   editor and configure it as `settingsDataOverlay`; never invent an extension
-   UUID. The shared runner copies canonical themes to
-   `tmp/e2e-themes/<workspace>/...`, so apps never edit or contaminate each
-   other's checkouts. The template's `test:e2e` intentionally fails until its
-   proxy contract and spec exist.
+6. **Own the test contract** — replace the placeholders in `e2e.app.config.mjs`,
+   add at least one app-specific `tests/e2e/*.spec.ts`, and use
+   `@won/testing/playwright` for shared selectors. Reuse the **shared** E2E
+   infrastructure — do not create per-app themes or products:
+   - **Themes:** keep `remoteName: "Horizon"` / `"Dawn"` (the shared canonical
+     checkouts). Enable your app's embed on those shared themes; no per-app
+     `settingsDataOverlay` is needed once the embed lives in the canonical theme.
+   - **Products:** map your roles onto the shared catalog
+     `@won/testing/e2e-products` (`WON_E2E_PRODUCTS`). Never create app-specific
+     products — enhance the shared catalog and re-run `npm run seed:e2e-products`
+     (idempotent) only if an existing shape cannot cover the case.
+
+   The runner copies canonical themes to `tmp/e2e-themes/<workspace>/...`, so apps
+   never contaminate each other's checkouts. The template's `test:e2e`
+   intentionally fails until its proxy contract and spec exist. Full walkthrough:
+   [docs/nova-aplikace.md](docs/nova-aplikace.md).
 7. **Verify** — `npm run test:unit -w <your-app>`,
    `npm run typecheck -w <your-app>`, `npm run build -w <your-app>`, and
    `npm run test:e2e:local:all -w <your-app>`.
