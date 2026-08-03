@@ -14,6 +14,7 @@ import type {
   ToastMessages,
   ToastPlan,
 } from "@won/core/toasts/config.types";
+import type { ToastTargeting } from "@won/core/toasts/targeting";
 
 import type { PrismaClient } from "../generated/prisma/client";
 import db from "../db.server";
@@ -25,6 +26,7 @@ export interface ToastConfigWrite {
   theme?: StoredToastConfig["theme"];
   messages?: ToastMessages;
   milestones?: MilestoneRuleConfig[];
+  targeting?: Partial<ToastTargeting>;
 }
 
 function normalizeShop(shop: string): string {
@@ -49,6 +51,7 @@ function rowToConfig(row: {
   theme: unknown;
   messages: unknown;
   milestones: unknown;
+  targeting: unknown;
 }): ToastAppConfig {
   const stored: StoredToastConfig = {
     enabled: row.enabled,
@@ -64,6 +67,9 @@ function rowToConfig(row: {
       : undefined,
     milestones: Array.isArray(row.milestones)
       ? (row.milestones as MilestoneRuleConfig[])
+      : undefined,
+    targeting: isPlainObject(row.targeting)
+      ? (row.targeting as Partial<ToastTargeting>)
       : undefined,
   };
   return resolveToastConfig(stored);
@@ -99,6 +105,7 @@ export function createToastConfigService(prisma: PrismaClient) {
     if (isPlainObject(input.theme)) data.theme = input.theme;
     if (isPlainObject(input.messages)) data.messages = input.messages;
     if (Array.isArray(input.milestones)) data.milestones = input.milestones;
+    if (isPlainObject(input.targeting)) data.targeting = input.targeting;
 
     const row = await prisma.toastAppConfig.update({
       where: { shop: normalizedShop },

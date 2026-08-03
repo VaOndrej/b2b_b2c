@@ -97,6 +97,8 @@ export interface ToastTheme {
   customCss: string;
 }
 
+import type { ToastTargeting } from "./targeting.ts";
+
 export type ToastPlan = "free" | "pro";
 
 export type ToastLocale = "cs" | "sk" | "en";
@@ -126,6 +128,7 @@ export interface ToastAppConfig {
   theme: ToastTheme;
   messages: ToastMessages;
   milestones: MilestoneRuleConfig[];
+  targeting: ToastTargeting;
 }
 
 /** Partial persisted config as stored/sent over the wire (any depth may be absent). */
@@ -141,4 +144,5 @@ export interface StoredToastConfig {
   };
   messages?: ToastMessages;
   milestones?: MilestoneRuleConfig[];
+  targeting?: Partial<ToastTargeting>;
 }

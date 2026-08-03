@@ -165,4 +165,44 @@ celkem 78 core); unit +1 (messages/milestones persistence → 12); E2E MVP4
 (gift line ≠ cart toast) authored.
 
 **Gate:** core 78 ✓ · unit 12 ✓ · typecheck ✓ · build ✓ · theme-check ✓ · lint ✓.
-JS 24.4 kB raw / 7.3 kB gz. Commit: `won-toasts MVP4 milestones + templates`.
+JS 24.4 kB raw / 7.3 kB gz. Commit: `won-toasts MVP4 milestones + templates` (`56f3d8e`).
+
+### MVP5 — Cílení, Pro tier gating & billing rails ✅ (badge zůstává Beta — viz „zbývá do Shipped")
+Core: `tier` (`isFeatureAllowed`, `PRO_FEATURES`, `gateConfigForPlan` — Free
+vynutí default vzhled + cap milníků na 2 + reset targetingu, ale zachová
+použitelnost/i18n/a11y; `showsBranding`), `targeting` (`matchesTargeting` dle
+page/device/customer, `DEFAULT_TARGETING`) + `sanitizeTargeting`. Config +
+`targeting` (Prisma migrace `toast_targeting`). **App-proxy route gate-uje
+server-side** (`gateConfigForPlan`) → storefront jen renderuje. Storefront:
+targeting (pageType + device mirror; customerState ignorován — storefront ho
+spolehlivě nezná), **branding „Won"** na Free. Admin **Plan** (tier přehled +
+dev toggle plánu) a **Targeting** (Pro-gated s upsellem).
+
+**Zbývá do „Shipped" (BFS-ready, potřebuje živý store):**
+- **Reálný billing:** teď dev toggle plánu; napojit Shopify **managed pricing /
+  Billing API** (recurring $5, 7denní trial) + čtení aktivní subscription.
+- **Live E2E na Dawn+Horizon:** všechny specy authored (spec-driven), spustit
+  proti storu s aktivním app embedem; opravit případné selektory.
+- **App Bridge latest + session tokens** ověřit; **GDPR webhooky** (data_request,
+  customers/redact, shop/redact) doplnit vedle app/uninstalled.
+- **App Store listing** (ikona, screenshoty design studia + Scenario Lab), perf
+  audit (JS 7.75 kB gz — OK), a11y audit.
+- **Advanced rule builder UI** (generický ToastRule[]) + plné **analytics**
+  logování — po-MVP refinement.
+
+**Testy:** core +9 (tier 4, targeting 5 → celkem 87 core); E2E MVP5 (Free
+branding mark) authored.
+
+**Gate:** core 87 ✓ · unit 12 ✓ · typecheck ✓ · build ✓ · theme-check ✓ · lint ✓.
+JS 24.9 kB raw / 7.75 kB gz. Commit: `won-toasts MVP5 tier gating + targeting`.
+
+---
+
+## Souhrn: MVP0–5 feature-complete
+6 MVP postaveno, každý s **červenými spec-driven testy first** a zeleným gate,
+commitnuto po fázích. **87 core unit testů + 12 app testů zelených**, typecheck/
+build/theme-check/lint čisté, storefront **7.75 kB gz** (<< 15 kB BFS budget).
+Badge **Beta** — feature-complete; do **Shipped** zbývá reálný billing, live E2E
+proti storu a App Store listing (viz výše). Plná appka: config-driven admin
+(Overview/Behavior/Appearance/Events/Targeting/Plan) + Shadow-DOM storefront +
+sdílený `@won/core/toasts` engine + živý preview s paritou.

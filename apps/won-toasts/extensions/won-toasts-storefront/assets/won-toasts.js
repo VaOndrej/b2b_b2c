@@ -63,7 +63,30 @@
 
   var cfg = FALLBACK;
   var locale = "en";
+  var active = true; // targeting: whether toasts run on this page
+  var branding = false; // Free plan shows a subtle "Won" mark
   var lastMilestone = null; // last cart milestone state {subtotalCents,hasGiftLine}
+
+  function pageType() {
+    var p = location.pathname || "/";
+    if (/\/products\//.test(p)) return "product";
+    if (/\/collections\/[^/]+/.test(p)) return "collection";
+    if (/\/cart/.test(p)) return "cart";
+    if (/\/search/.test(p)) return "search";
+    if (p === "/" || p === "") return "home";
+    return "other";
+  }
+  function matchesTargeting(t) {
+    if (!t) return true;
+    var isMobile =
+      window.matchMedia && window.matchMedia("(max-width: 749px)").matches;
+    if (t.pages && t.pages.length && t.pages.indexOf(pageType()) < 0)
+      return false;
+    if (t.device === "mobile" && !isMobile) return false;
+    if (t.device === "desktop" && isMobile) return false;
+    // customerState is not reliably known on the storefront → ignored here.
+    return true;
+  }
   var lastCart = { items: [] };
   var host = null;
   var region = null;
@@ -493,6 +516,15 @@
 
   // Shared: close button, click action, placement, overflow, auto-dismiss.
   function finalizeCard(card) {
+    if (branding) {
+      var mark = elem("span");
+      mark.setAttribute("data-won-branding", "");
+      mark.textContent = "Won";
+      mark.style.cssText =
+        "flex:0 0 auto;font-size:9px;letter-spacing:.08em;text-transform:uppercase;" +
+        "opacity:.4;align-self:flex-start;";
+      card.appendChild(mark);
+    }
     if (cfg.global.closeable) {
       var close = elem("button");
       close.type = "button";
@@ -595,7 +627,7 @@
           return r.json();
         })
         .then(function (after) {
-          if (cfg.enabled) {
+          if (cfg.enabled && active) {
             var g = cfg.global.grouping;
             var groups = groupEvents(deriveEvents(lastCart, after), g);
             var now = Date.now();
@@ -734,6 +766,8 @@
         })
         .then(function (data) {
           if (data && data.config) cfg = data.config;
+          active = matchesTargeting(cfg.targeting);
+          branding = cfg.plan !== "pro";
         })
         .catch(function () {})
         .then(ready);

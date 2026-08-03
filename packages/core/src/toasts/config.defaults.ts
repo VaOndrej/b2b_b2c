@@ -14,6 +14,13 @@ import type {
   ToastSemanticType,
   ToastTheme,
 } from "./config.types.ts";
+import {
+  DEFAULT_TARGETING,
+  type CustomerTarget,
+  type DeviceTarget,
+  type PageType,
+  type ToastTargeting,
+} from "./targeting.ts";
 
 const SEMANTIC_TYPES: readonly ToastSemanticType[] = [
   "added",
@@ -116,6 +123,7 @@ export const DEFAULT_TOAST_CONFIG: ToastAppConfig = {
   theme: DEFAULT_THEME,
   messages: DEFAULT_MESSAGES,
   milestones: DEFAULT_MILESTONES,
+  targeting: DEFAULT_TARGETING,
 };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -370,6 +378,35 @@ export function resolveToastConfig(
     theme,
     messages: mergeMessages(input.messages),
     milestones: sanitizeMilestones(input.milestones),
+    targeting: sanitizeTargeting(input.targeting),
+  };
+}
+
+const PAGE_TYPES = new Set<PageType>([
+  "product",
+  "collection",
+  "cart",
+  "home",
+  "search",
+  "other",
+]);
+const DEVICE_TARGETS: readonly DeviceTarget[] = ["both", "mobile", "desktop"];
+const CUSTOMER_TARGETS: readonly CustomerTarget[] = [
+  "both",
+  "guest",
+  "logged-in",
+];
+
+/** Validate targeting; unknown values fall back to defaults. */
+export function sanitizeTargeting(input: unknown): ToastTargeting {
+  if (!isPlainObject(input)) return DEFAULT_TARGETING;
+  const pages = Array.isArray(input.pages)
+    ? (input.pages.filter((p) => PAGE_TYPES.has(p as PageType)) as PageType[])
+    : [];
+  return {
+    pages,
+    device: oneOf(input.device, DEVICE_TARGETS) ?? "both",
+    customerState: oneOf(input.customerState, CUSTOMER_TARGETS) ?? "both",
   };
 }
 

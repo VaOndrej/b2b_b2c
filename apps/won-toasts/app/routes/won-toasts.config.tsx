@@ -5,6 +5,7 @@
 import type { LoaderFunctionArgs } from "react-router";
 
 import { resolveToastConfig } from "@won/core/toasts/config.defaults";
+import { gateConfigForPlan } from "@won/core/toasts/tier";
 
 import { authenticate } from "../shopify.server";
 import { getToastConfig } from "../services/toast-config.server";
@@ -23,7 +24,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   try {
-    const config = await getToastConfig(shop);
+    // Gate to the shop's plan server-side, so the storefront simply renders
+    // what it receives (Free gets the default look + capped milestones).
+    const config = gateConfigForPlan(await getToastConfig(shop));
     return Response.json(
       { status: "won-toasts-config-ok", config },
       { headers: { "Cache-Control": "no-store" } },

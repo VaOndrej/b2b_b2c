@@ -50,6 +50,7 @@ model ToastAppConfig {
   theme      Json?
   messages   Json?
   milestones Json?
+  targeting  Json?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
