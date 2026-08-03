@@ -1,0 +1,34 @@
+# Won Toasts owns a separate Shopify app record and proxy namespace.
+# `config:link` fills client_id for that record; never reuse another app here.
+
+client_id = ""
+name = "Won Toasts"
+application_url = "https://example.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2026-04"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+[access_scopes]
+# Toasts only reads cart state from the storefront Ajax API (no scope needed)
+# and reads product data for the admin. Billing scope is added in MVP5.
+scopes = "read_products"
+
+[auth]
+redirect_urls = [ "https://example.com/api/auth" ]
+
+[app_proxy]
+url = "https://example.com/won-toasts"
+subpath = "won-toasts"
+prefix = "apps"

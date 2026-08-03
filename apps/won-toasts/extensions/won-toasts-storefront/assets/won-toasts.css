@@ -1,0 +1,16 @@
+/*
+ * Won Toasts app embed stylesheet.
+ *
+ * Intentionally near-empty: the actual toast styling lives INSIDE the
+ * Shadow DOM of <won-toast-host> (see won-toasts.js), driven by the admin
+ * theme tokens, so the storefront theme's CSS cannot affect it and vice versa.
+ * This file only guarantees the host itself never disturbs page layout.
+ */
+won-toast-host {
+  position: fixed;
+  inset: 0 auto auto 0;
+  width: 0;
+  height: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+}

@@ -1,0 +1,27 @@
+{% liquid
+  assign won_toasts_locale = request.locale.iso_code | default: 'en'
+%}
+
+{% comment %}
+  App embed for Won Toasts. Injects nothing visible itself — the storefront JS
+  mounts a Shadow-DOM <won-toast-host> and renders toasts entirely from the
+  admin config served at /apps/won-toasts/config. No price/cart manipulation
+  happens here; this is a pure notification surface.
+{% endcomment %}
+
+<div
+  hidden
+  data-won-toasts-embed
+  data-won-toasts-endpoint="/apps/won-toasts/config"
+  data-won-toasts-locale="{{ won_toasts_locale | escape }}"
+></div>
+
+{% schema %}
+{
+  "name": "t:blocks.won_toasts.name",
+  "target": "body",
+  "stylesheet": "won-toasts.css",
+  "javascript": "won-toasts.js",
+  "settings": []
+}
+{% endschema %}

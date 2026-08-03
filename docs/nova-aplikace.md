@@ -4,6 +4,61 @@ Kanonický postup pro novou Shopify appku v tomhle monorepu. Cíl: co nejvíc
 znovupoužít sdílený základ (`@won/*`) a **nevytvářet nové věci, které už sdíleně
 existují** — hlavně E2E témata a produkty.
 
+## 0. Povinný brainstorming → rozpad na MVP (GATE)
+
+**Žádná appka nezačne kódem (ani klonem) dřív, než projde tímhle gate.** Každá
+appka: **brainstorming → rozpad na MVP**, sepsaný do `docs/<appka>-mvp-plan.md`
+a odsouhlasený se zadavatelem. Vzorový výstup: [`won-toasts-mvp-plan.md`](won-toasts-mvp-plan.md).
+
+### a) Brainstorming (divergentní, pak kritický) musí pokrýt
+
+- **Produktové principy** (8–12) a **problémy zákazníka vs. merchanta** odděleně.
+- **Config = jediný zdroj pravdy:** kompletní surface toho, co půjde měnit v
+  Shopify adminu (žádné magic numbers v kódu; každá hodnota = pole s defaultem,
+  validované, bezpečné i při neúplné/starší konfiguraci).
+- **Datový model:** posoudit **rules engine (`Rule[]`) vs. plochý config** —
+  u čehokoliv s eventy/pravidly preferovat verzovaný layered model
+  (`global` / `theme` / `rules` / `locales` / `targeting`) s migracemi, ne stovky
+  plochých polí.
+- **Preview parity:** admin renderuje **tentýž** komponent/renderer jako
+  storefront, krmený neuloženým stavem formuláře. U appek s vizuálním výstupem i
+  **Scenario Lab** (realistické scénáře, ne jeden prvek).
+- **Priorita & konflikty:** deterministické řešení, když nastane víc eventů
+  naráz (pořadí, slučování, potlačení, souhrn, cooldown, stav milníků, per
+  session/cart/customer).
+- **Surface ≠ jen jeden UI prvek:** rozhodnout, kdy je vhodnější inline/banner/
+  progress/žádná zpráva místo násilného zobrazení.
+- **Tarify Free/Pro dělené podle _rozsahu_, ne kvality:** základní použitelnost,
+  přístupnost, spolehlivost a základní design **nesmí být ve Free zmrzačené**.
+- **Guardrails**, **kompatibilita/adapter vrstva**, **analytics lifecycle** (stabilní
+  ID + měřitelný lifecycle už v modelu, sběr může přijít později).
+- **Kritická analýza:** co zachovat / zjednodušit / odložit / odstranit. Nezaměňuj
+  počet funkcí za kvalitu; slučuj duplicity; označ předpoklady a nejasnosti.
+
+### b) Rozpad na MVP
+
+Žebřík MVP0…N, kde **každá fáze** má: zákaznickou hodnotu · merchant hodnotu ·
+technický rozsah · admin rozsah · preview rozsah · testovací scénáře (TDD
+**červené první**) · **exit criteria**. Config je **verzovaný od MVP0**, aby nové
+eventy/pravidla nešly proti breaking migracím. Badge appky v roadmapě postupuje
+`Spec → Scaffold → Alpha → Beta → Shipped`.
+
+### c) Standing goals (platí pro každou Won appku)
+
+- **Shopify-native → Built for Shopify:** embedded (App Bridge latest + session
+  tokens), Polaris, theme app extension (žádné ScriptTag/Asset API), managed
+  billing, GDPR webhooky, perf budget. BFS je post-launch cíl; architektura ho
+  nikdy nesmí blokovat.
+- Gate každého MVP: `test:unit -w <appka> && typecheck && build && validate:shopify`.
+- E2E minimálně na **Dawn + Horizon** přes `@won/testing/playwright`, vlastní
+  markery, ne DOM tématu.
+
+### d) Výstupy gate
+
+1. `docs/<appka>-mvp-plan.md` (brainstorming + MVP žebřík + exit criteria).
+2. Karta v [`product-roadmap.html`](product-roadmap.html) s badge a rozpadem.
+3. Odsouhlasení zadavatelem → teprve pak pokračuj bodem 1 níž.
+
 ## 1. Naklonuj template
 
 ```bash
