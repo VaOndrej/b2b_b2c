@@ -1,10 +1,15 @@
 import {
+  addToCart,
   cartItems,
+  clearCart,
   expect,
+  firstVariantId,
   hasShadowRegion,
   openProduct,
   readyEmbed,
+  setLineQuantity,
   test,
+  toast,
   TOASTS_E2E_HANDLES,
 } from "./support/fixtures.ts";
 
@@ -30,5 +35,47 @@ test.describe("Won Toasts storefront skeleton (MVP0)", () => {
 
     // MVP0 renders nothing and must not add/remove anything by merely loading.
     expect((await cartItems(page)).length).toBe(0);
+  });
+});
+
+// SPEC-DRIVEN (MVP1). Cart toasts with delta + user-initiated Undo.
+test.describe("Won Toasts cart events (MVP1)", () => {
+  test("adding a product shows an 'added' toast with the delta", async ({
+    page,
+  }) => {
+    await openProduct(page, TOASTS_E2E_HANDLES.primary);
+    await readyEmbed(page);
+    await clearCart(page);
+
+    const variantId = await firstVariantId(page);
+    await addToCart(page, variantId, 2);
+
+    const added = toast(page, "added");
+    await expect(added).toHaveCount(1);
+    await expect(added.locator("[data-won-toast-delta]")).toHaveText("+2");
+  });
+
+  test("removing a line shows a 'removed' toast whose Undo restores it", async ({
+    page,
+  }) => {
+    await openProduct(page, TOASTS_E2E_HANDLES.primary);
+    await readyEmbed(page);
+    await clearCart(page);
+
+    const variantId = await firstVariantId(page);
+    await addToCart(page, variantId, 1);
+    await expect(toast(page, "added")).toHaveCount(1);
+
+    // remove the line
+    await setLineQuantity(page, variantId, 0);
+    const removed = toast(page, "removed");
+    await expect(removed).toHaveCount(1);
+    expect((await cartItems(page)).length).toBe(0);
+
+    // Undo is the only cart write the surface performs — it restores the line.
+    await removed.locator("[data-won-toast-undo]").click();
+    await expect
+      .poll(async () => (await cartItems(page)).length)
+      .toBeGreaterThan(0);
   });
 });

@@ -38,7 +38,8 @@ export default function Index() {
           <strong>{config.enabled ? "enabled" : "disabled"}</strong>. Toasts
           appear <strong>{config.global.position}</strong> for{" "}
           <strong>{config.global.durationMs} ms</strong> on the{" "}
-          <strong>{config.plan}</strong> plan.
+          <strong>{config.plan}</strong> plan.{" "}
+          <a href="/app/behavior">Edit behavior</a>.
         </s-paragraph>
         <Form method="post">
           <label style={{ display: "flex", gap: "10px", alignItems: "center" }}>

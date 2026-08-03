@@ -30,22 +30,39 @@ test("theme extension is an app embed with static storefront assets", async () =
   assert.match(block, /data-won-toasts-endpoint="\/apps\/won-toasts\/config"/);
 });
 
-test("storefront JS is a pure notification surface (no price/cart mutation)", async () => {
+test("storefront JS mounts a Shadow-DOM host with stable, accessible markers", async () => {
   const javascript = await readExtension("assets/won-toasts.js");
 
-  // Mounts a Shadow-DOM host and exposes stable markers.
   assert.match(javascript, /customElements/);
   assert.match(javascript, /["']won-toast-host["']/);
   assert.match(javascript, /attachShadow/);
   assert.match(javascript, /data-won-toasts-region/);
   assert.match(javascript, /data-won-toasts-status/);
   assert.match(javascript, /aria-live/);
+});
 
-  // Never manufactures a product/cart form or hits cart-mutating endpoints.
+test("storefront observes the cart and reconciles from /cart.js (not theme DOM)", async () => {
+  const javascript = await readExtension("assets/won-toasts.js");
+
+  // Intercepts cart mutations and always re-reads the authoritative snapshot.
+  assert.match(javascript, /CART_MUTATOR/);
+  assert.match(javascript, /add\|change\|update\|clear/);
+  assert.match(javascript, /\/cart\.js/);
+  assert.match(javascript, /cart:updated/);
+  // Renders semantic toasts with a stable marker + delta.
+  assert.match(javascript, /data-won-toast["'\]]/);
+  assert.match(javascript, /data-type/);
+});
+
+test("storefront stays a notification surface: no price/discount/form fabrication", async () => {
+  const javascript = await readExtension("assets/won-toasts.js");
+
+  // It must never manufacture the merchant's product form or touch pricing.
   assert.doesNotMatch(javascript, /createElement\(["']form["']\)/);
-  assert.doesNotMatch(javascript, /\/cart\/add/);
-  assert.doesNotMatch(javascript, /\/cart\/change/);
-  assert.doesNotMatch(javascript, /\/cart\/update/);
+  assert.doesNotMatch(javascript, /discount|applied_discount|final_price\s*=/i);
+  // The ONLY cart write is the user-initiated Undo re-add.
+  assert.match(javascript, /data-won-toast-undo/);
+  assert.match(javascript, /"\/cart\/add\.js"/);
 });
 
 test("block name and locales are localized", async () => {

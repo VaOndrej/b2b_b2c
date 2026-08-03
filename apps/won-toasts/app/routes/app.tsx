@@ -19,6 +19,7 @@ export default function App() {
     <AppProvider embedded apiKey={apiKey}>
       <ui-nav-menu>
         <a href="/app">Overview</a>
+        <a href="/app/behavior">Behavior</a>
       </ui-nav-menu>
       <Outlet />
     </AppProvider>

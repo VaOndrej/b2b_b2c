@@ -54,3 +54,55 @@ export async function clearCart(page: Page): Promise<void> {
     await fetch("/cart/clear.js", { method: "POST" });
   });
 }
+
+/** Read the variant id from the product page's add-to-cart form. */
+export async function firstVariantId(page: Page): Promise<string> {
+  return page
+    .locator(
+      "form[action*='/cart/add'] [name='id'], form[action*='/cart/add'] input[name='id']",
+    )
+    .first()
+    .inputValue();
+}
+
+export async function addToCart(
+  page: Page,
+  variantId: string | number,
+  quantity = 1,
+): Promise<void> {
+  await page.evaluate(
+    async ({ id, qty }) => {
+      await fetch("/cart/add.js", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, quantity: qty }),
+      });
+    },
+    { id: variantId, qty: quantity },
+  );
+}
+
+export async function setLineQuantity(
+  page: Page,
+  variantId: string | number,
+  quantity: number,
+): Promise<void> {
+  await page.evaluate(
+    async ({ id, qty }) => {
+      await fetch("/cart/change.js", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: String(id), quantity: qty }),
+      });
+    },
+    { id: variantId, qty: quantity },
+  );
+}
+
+/** Toasts render inside the open shadow root; Playwright pierces it for CSS. */
+export function toast(page: Page, type?: string) {
+  const selector = type
+    ? `[data-won-toast][data-type='${type}']`
+    : "[data-won-toast]";
+  return page.locator(selector);
+}

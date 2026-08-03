@@ -91,6 +91,87 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   );
 }
 
+const POSITIONS: readonly GlobalSettings["position"][] = [
+  "top-left",
+  "top-center",
+  "top-right",
+  "middle-left",
+  "middle-center",
+  "middle-right",
+  "bottom-left",
+  "bottom-center",
+  "bottom-right",
+];
+const CLICK_ACTIONS: readonly GlobalSettings["clickAction"][] = [
+  "none",
+  "open-cart",
+  "go-to-product",
+];
+const OVERFLOW: readonly GlobalSettings["overflowStrategy"][] = [
+  "queue",
+  "collapse",
+];
+const STACK: readonly GlobalSettings["stackDirection"][] = [
+  "newest-top",
+  "newest-bottom",
+];
+
+function clampInt(value: unknown, min: number, max: number): number | undefined {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return undefined;
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
+function oneOf<T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+): T | undefined {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : undefined;
+}
+
+/**
+ * Validate/clamp a partial GlobalSettings from admin input. Invalid or unknown
+ * fields are DROPPED (not defaulted) so callers can merge the result onto the
+ * shop's current config without clobbering unrelated values. This is the single
+ * guardrail that keeps a merchant from saving an unusable config.
+ */
+export function sanitizeGlobalSettings(
+  input: unknown,
+): Partial<GlobalSettings> {
+  if (!isPlainObject(input)) return {};
+  const out: Partial<GlobalSettings> = {};
+
+  const position = oneOf(input.position, POSITIONS);
+  if (position) out.position = position;
+
+  const offsetTop = clampInt(input.offsetTop, 0, 400);
+  if (offsetTop !== undefined) out.offsetTop = offsetTop;
+  const offsetInline = clampInt(input.offsetInline, 0, 400);
+  if (offsetInline !== undefined) out.offsetInline = offsetInline;
+
+  // durationMs floor of 800ms is a guardrail: shorter is unreadable.
+  const durationMs = clampInt(input.durationMs, 800, 60000);
+  if (durationMs !== undefined) out.durationMs = durationMs;
+
+  const maxVisible = clampInt(input.maxVisible, 1, 6);
+  if (maxVisible !== undefined) out.maxVisible = maxVisible;
+
+  if (typeof input.autoDismiss === "boolean") out.autoDismiss = input.autoDismiss;
+  if (typeof input.pauseOnHover === "boolean")
+    out.pauseOnHover = input.pauseOnHover;
+  if (typeof input.closeable === "boolean") out.closeable = input.closeable;
+
+  const clickAction = oneOf(input.clickAction, CLICK_ACTIONS);
+  if (clickAction) out.clickAction = clickAction;
+  const overflowStrategy = oneOf(input.overflowStrategy, OVERFLOW);
+  if (overflowStrategy) out.overflowStrategy = overflowStrategy;
+  const stackDirection = oneOf(input.stackDirection, STACK);
+  if (stackDirection) out.stackDirection = stackDirection;
+
+  return out;
+}
+
 /**
  * Resolve a partial/stored config into a complete config by layering it over
  * defaults. Unknown/absent keys fall back to defaults; nested objects
