@@ -7,6 +7,7 @@ import {
   expect,
   openProduct,
   quantityForm,
+  quantityStepper,
   readyQuantityInput,
   responseMatches,
   selectSecondVariant,
@@ -20,7 +21,7 @@ test.describe("Won Quantity storefront vertical slice", () => {
   }) => {
     await openProduct(page, QUANTITY_E2E_HANDLES.default);
     const input = await readyQuantityInput(page);
-    const form = quantityForm(input);
+    const form = await quantityForm(input);
 
     await expect(form).toHaveCount(1);
     expect(
@@ -38,14 +39,15 @@ test.describe("Won Quantity storefront vertical slice", () => {
     await clearCart(page);
     await openProduct(page, QUANTITY_E2E_HANDLES.step);
     let input = await readyQuantityInput(page);
-    const form = quantityForm(input);
+    const form = await quantityForm(input);
+    const stepper = quantityStepper(input);
 
     await expect(input).toHaveAttribute("min", "2");
     await expect(input).toHaveAttribute("step", "2");
     await expect(input).toHaveValue("2");
 
-    const plus = form.locator("button[name='plus']");
-    const minus = form.locator("button[name='minus']");
+    const plus = stepper.locator("button[name='plus']");
+    const minus = stepper.locator("button[name='minus']");
     await expect(plus).toHaveCount(1);
     await expect(minus).toHaveCount(1);
     await plus.click();
@@ -90,7 +92,7 @@ test.describe("Won Quantity storefront vertical slice", () => {
   }) => {
     await openProduct(page, QUANTITY_E2E_HANDLES.maximum);
     const input = await readyQuantityInput(page);
-    const form = quantityForm(input);
+    const stepper = quantityStepper(input);
 
     await expect(input).toHaveAttribute("min", "2");
     await expect(input).toHaveAttribute("step", "2");
@@ -98,7 +100,15 @@ test.describe("Won Quantity storefront vertical slice", () => {
     await input.fill("99");
     await input.blur();
     await expect(input).toHaveValue("6");
-    await form.locator("button[name='plus']").click();
+    // At the app maximum the native theme stepper disables the increment
+    // control, so the cap holds without any further app intervention. In a
+    // theme that leaves plus enabled, clicking it must still not exceed the
+    // cap — assert the invariant either way rather than clicking a disabled
+    // button (which would just time out).
+    const plus = stepper.locator("button[name='plus']");
+    if (await plus.isEnabled()) {
+      await plus.click();
+    }
     await expect(input).toHaveValue("6");
     await expect(page.locator("[data-won-quantity-notice]")).toContainText("6");
     await assertAppTransport(page, appDiagnostics);

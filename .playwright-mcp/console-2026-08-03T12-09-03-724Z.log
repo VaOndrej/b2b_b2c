@@ -1,0 +1,21 @@
+[    2341ms] [ERROR] Framing 'https://shop.app/' violates the following Content Security Policy directive: "frame-ancestors https://b2b-b2c-store-development.myshopify.com https://b2b-b2c-store-development.account.myshopify.com https://shopify.com". The request has been blocked.
+ @ :0
+[    2363ms] [INFO] [HotReload] Connected @ http://127.0.0.1:9293/cdn/shopifycloud/theme-hot-reload/theme-hot-reload.js:299
+[    3453ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:9293/favicon.ico:0
+[   94224ms] [INFO] [HotReload] Full reload: assets/won-quantity.js @ http://127.0.0.1:9293/cdn/shopifycloud/theme-hot-reload/theme-hot-reload.js:55
+[   95242ms] [INFO] [HotReload] Connected @ http://127.0.0.1:9293/cdn/shopifycloud/theme-hot-reload/theme-hot-reload.js:299
+[11944246ms] [ERROR] [HotReload] Connection closed by the server, attempting to reconnect... @ http://127.0.0.1:9293/cdn/shopifycloud/theme-hot-reload/theme-hot-reload.js:304
+[11944247ms] [ERROR] Failed to load resource: net::ERR_INCOMPLETE_CHUNKED_ENCODING @ http://127.0.0.1:9293/:0
+[11947249ms] [ERROR] [HotReload] Connection closed by the server, attempting to reconnect... @ http://127.0.0.1:9293/cdn/shopifycloud/theme-hot-reload/theme-hot-reload.js:304
+[11947249ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:9293/:0
+[11950251ms] [ERROR] [HotReload] Connection closed by the server, attempting to reconnect... @ http://127.0.0.1:9293/cdn/shopifycloud/theme-hot-reload/theme-hot-reload.js:304
+[11950251ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:9293/:0
+[11953254ms] [ERROR] [HotReload] Connection closed by the server, attempting to reconnect... @ http://127.0.0.1:9293/cdn/shopifycloud/theme-hot-reload/theme-hot-reload.js:304
+[11953254ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:9293/:0
+[11956258ms] [ERROR] [HotReload] Connection closed by the server, attempting to reconnect... @ http://127.0.0.1:9293/cdn/shopifycloud/theme-hot-reload/theme-hot-reload.js:304
+[11956258ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:9293/:0
+[11959262ms] [INFO] [HotReload] Connected @ http://127.0.0.1:9293/cdn/shopifycloud/theme-hot-reload/theme-hot-reload.js:299
+[11959263ms] [INFO] [HotReload] Full reload: Reconnected to new server @ http://127.0.0.1:9293/cdn/shopifycloud/theme-hot-reload/theme-hot-reload.js:55
+[11960325ms] [INFO] [HotReload] Connected @ http://127.0.0.1:9293/cdn/shopifycloud/theme-hot-reload/theme-hot-reload.js:299
+[11960476ms] [ERROR] Framing 'https://shop.app/' violates the following Content Security Policy directive: "frame-ancestors https://b2b-b2c-store-development.myshopify.com https://b2b-b2c-store-development.account.myshopify.com https://shopify.com". The request has been blocked.
+ @ :0

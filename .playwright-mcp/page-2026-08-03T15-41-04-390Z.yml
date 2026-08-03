@@ -1,0 +1,135 @@
+- generic [active] [ref=f19e1]:
+  - link "Skip to content" [ref=f19e2] [cursor=pointer]:
+    - /url: "#MainContent"
+  - region "Announcement" [ref=f19e6]:
+    - paragraph [ref=f19e7]: Welcome to our store
+  - banner [ref=f19e10]:
+    - link "B2b_b2c_store_development" [ref=f19e11] [cursor=pointer]:
+      - /url: /
+    - navigation [ref=f19e12]:
+      - list [ref=f19e13]:
+        - listitem [ref=f19e14]:
+          - link "Home" [ref=f19e15] [cursor=pointer]:
+            - /url: /
+        - listitem [ref=f19e17]:
+          - link "Catalog" [ref=f19e18] [cursor=pointer]:
+            - /url: /collections/all
+        - listitem [ref=f19e20]:
+          - link "Contact" [ref=f19e21] [cursor=pointer]:
+            - /url: /pages/contact
+    - generic [ref=f19e23]:
+      - generic [ref=f19e27]:
+        - heading "Country/region" [level=2] [ref=f19e28]
+        - button "United States | USD $" [ref=f19e30] [cursor=pointer]
+      - group [ref=f19e35]:
+        - button "Search" [ref=f19e36] [cursor=pointer]
+      - link "Log in" [ref=f19e41] [cursor=pointer]:
+        - /url: https://shopify.com/78971076849/account?locale=en&region_country=US&buyer_flags=eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJiMmItYjJjLXN0b3JlLWRldmVsb3BtZW50Lm15c2hvcGlmeS5jb20iLCJmbGFncyI6W10sImV4cCI6MTc4NjM3NjQ2MywibmJmIjoxNzg1NzcxNjYzfQ.KMQxjwiBbqodCn2o48MIWwlKSCwa0g6d13u5Y0yLU4M
+      - link "Cart" [ref=f19e47] [cursor=pointer]:
+        - /url: /cart
+  - main [ref=f19e52]:
+    - generic [ref=f19e56]:
+      - generic:
+        - region "Gallery Viewer":
+          - link "Skip to product information" [ref=f19e57] [cursor=pointer]:
+            - /url: "#ProductInfo-template--21600768360689__main"
+      - generic [ref=f19e59]:
+        - paragraph [ref=f19e60]: B2b_b2c_store_development
+        - heading "Won E2E — Simple A" [level=1] [ref=f19e62]
+        - status [ref=f19e63]:
+          - generic [ref=f19e66]:
+            - generic [ref=f19e67]: Regular price
+            - generic [ref=f19e68]: $10.00 USD
+        - generic [ref=f19e69]:
+          - generic [ref=f19e70]: Quantity
+          - generic "Quantity" [ref=f19e71]
+          - generic [ref=f19e73]:
+            - button "Decrease quantity for Won E2E — Simple A" [ref=f19e74]
+            - spinbutton "Quantity" [ref=f19e76]: "1"
+            - button "Increase quantity for Won E2E — Simple A" [ref=f19e77] [cursor=pointer]
+        - generic [ref=f19e82]:
+          - button "Add to cart" [ref=f19e83] [cursor=pointer]
+          - button "Buy it now" [ref=f19e88] [cursor=pointer]
+        - button [ref=f19e90] [cursor=pointer]
+    - generic [ref=f19e98]:
+      - heading "You may also like" [level=2] [ref=f19e99]
+      - list [ref=f19e100]:
+        - listitem [ref=f19e101]:
+          - generic [ref=f19e103]:
+            - img "Top and bottom view of a snowboard. The top view shows a stylized scene of water, trees, mountains, sky and a moon in blue colours. The bottom view has a blue liquid, drippy background with the text \"liquid\" in a stylized script typeface." [ref=f19e107]
+            - generic [ref=f19e110]:
+              - heading [level=3] [ref=f19e111]:
+                - 'link "The Collection Snowboard: Liquid" [ref=f19e112] [cursor=pointer]':
+                  - /url: /products/the-collection-snowboard-liquid?pr_prod_strat=collection_fallback&pr_rec_id=67ed2e526&pr_rec_pid=9520133144817&pr_ref_pid=9692429058289&pr_seq=uniform
+              - generic [ref=f19e116]:
+                - generic [ref=f19e117]: Regular price
+                - generic [ref=f19e118]: $749.95 USD
+        - listitem [ref=f19e119]:
+          - generic [ref=f19e121]:
+            - img "Top and bottom view of a snowboard. The top view shows an illustration with varied outlined shapes in black. The bottom view shows a black box character with an H pointing, and surrounded by black outlined illustrative elements." [ref=f19e125]
+            - generic [ref=f19e128]:
+              - heading [level=3] [ref=f19e129]:
+                - link "The Multi-managed Snowboard" [ref=f19e130] [cursor=pointer]:
+                  - /url: /products/the-multi-managed-snowboard?pr_prod_strat=collection_fallback&pr_rec_id=67ed2e526&pr_rec_pid=9520133079281&pr_ref_pid=9692429058289&pr_seq=uniform
+              - generic [ref=f19e134]:
+                - generic [ref=f19e135]: Regular price
+                - generic [ref=f19e136]: $629.95 USD
+        - listitem [ref=f19e137]:
+          - generic [ref=f19e139]:
+            - img "Top and bottom view of a snowboard. The top view shows a pixelated Shopify bag logo and a pixelated character reviewing a clipboard with a questioning expression with a bright green-blue background. The bottom view is a pattern of many pixel characters with a bright green-blue background." [ref=f19e143]
+            - generic [ref=f19e146]:
+              - heading [level=3] [ref=f19e147]:
+                - link "The Multi-location Snowboard" [ref=f19e148] [cursor=pointer]:
+                  - /url: /products/the-multi-location-snowboard?pr_prod_strat=collection_fallback&pr_rec_id=67ed2e526&pr_rec_pid=9520133046513&pr_ref_pid=9692429058289&pr_seq=uniform
+              - generic [ref=f19e152]:
+                - generic [ref=f19e153]: Regular price
+                - generic [ref=f19e154]: $729.95 USD
+        - listitem [ref=f19e155]:
+          - generic [ref=f19e157]:
+            - img "Top and bottom view of a snowboard. The top view shows abstract circles and lines in shades of teal. The bottom view shows abstract circles and lines in shades of purple and blue with the text “SHOPIFY” in a sans serif typeface on top." [ref=f19e161]
+            - generic [ref=f19e164]:
+              - heading [level=3] [ref=f19e165]:
+                - link "The Complete Snowboard" [ref=f19e166] [cursor=pointer]:
+                  - /url: /products/the-complete-snowboard?pr_prod_strat=collection_fallback&pr_rec_id=67ed2e526&pr_rec_pid=9520132948209&pr_ref_pid=9692429058289&pr_seq=uniform
+              - generic [ref=f19e170]:
+                - generic [ref=f19e171]: Regular price
+                - generic [ref=f19e172]: $699.95 USD
+  - contentinfo [ref=f19e174]:
+    - generic [ref=f19e177]:
+      - heading "Subscribe to our emails" [level=2] [ref=f19e178]
+      - generic [ref=f19e181]:
+        - textbox "Email" [ref=f19e182]
+        - generic: Email
+        - button "Subscribe" [ref=f19e183] [cursor=pointer]
+    - generic [ref=f19e187]:
+      - generic [ref=f19e188]:
+        - generic [ref=f19e192]:
+          - heading "Country/region" [level=2] [ref=f19e193]
+          - button "United States | USD $" [ref=f19e195] [cursor=pointer]
+        - generic [ref=f19e200]:
+          - generic [ref=f19e201]: Payment methods
+          - list [ref=f19e202]:
+            - listitem [ref=f19e203]:
+              - img "Visa" [ref=f19e204]
+            - listitem [ref=f19e209]:
+              - img "Mastercard" [ref=f19e210]
+            - listitem [ref=f19e217]:
+              - img "American Express" [ref=f19e218]
+            - listitem [ref=f19e223]:
+              - img "PayPal" [ref=f19e224]
+            - listitem [ref=f19e230]:
+              - img "Diners Club" [ref=f19e231]
+            - listitem [ref=f19e235]:
+              - img "Discover" [ref=f19e236]
+      - generic [ref=f19e246]:
+        - generic [ref=f19e247]:
+          - text: © 2026,
+          - link "B2b_b2c_store_development" [ref=f19e248] [cursor=pointer]:
+            - /url: /
+        - link "Powered by Shopify" [ref=f19e250] [cursor=pointer]:
+          - /url: https://www.shopify.com?utm_campaign=poweredby&utm_medium=shopify&utm_source=onlinestore
+        - list [ref=f19e251]:
+          - listitem [ref=f19e252]:
+            - text: ·
+            - link "Privacy policy" [ref=f19e254] [cursor=pointer]:
+              - /url: /policies/privacy-policy

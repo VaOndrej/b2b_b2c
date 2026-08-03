@@ -310,6 +310,57 @@
         background: var(--mint);
       }
 
+      .mvp-badge {
+        margin-right: auto;
+        padding: 6px 11px;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        color: var(--text-muted);
+        background: var(--surface-soft);
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .mvp-badge::before {
+        content: "";
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin-right: 7px;
+        border-radius: 999px;
+        background: currentColor;
+        vertical-align: middle;
+        transform: translateY(-1px);
+      }
+
+      .mvp-badge.mvp-scaffold {
+        border-color: #59471b;
+        color: var(--amber);
+        background: var(--amber-dark);
+      }
+
+      .mvp-badge.mvp-alpha {
+        border-color: #6a5320;
+        color: #f0c766;
+        background: #2b220f;
+      }
+
+      .mvp-badge.mvp-beta {
+        border-color: #1f5b46;
+        color: var(--mint);
+        background: var(--mint-dark);
+      }
+
+      .mvp-badge.mvp-shipped {
+        border-color: var(--mint);
+        color: #06241a;
+        background: var(--mint);
+      }
+
       .catalog-footer {
         display: flex;
         justify-content: space-between;
@@ -503,7 +554,7 @@
     <main class="shell">
       <header class="catalog-header">
         <p class="eyebrow">Katalog</p>
-        <h1>Šest suit, sedmnáct appek</h1>
+        <h1>Sedm suit, osmnáct appek</h1>
         <p class="lede">
           Seřazeno tak, jak by šly nabízet. Karty se zeleným okrajem jsou
           doporučené „stavět hned“. Cena, coupling, náročnost extrakce a
@@ -527,6 +578,7 @@
           <article class="app-card build-now">
             <div class="card-head">
               <span class="app-code">WON·STEP</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2/mo</span>
             </div>
             <h3>Won Stepper</h3>
@@ -644,113 +696,158 @@
             </details>
           </article>
 
-          <article class="app-card">
+          <article class="app-card build-now">
             <div class="card-head">
               <span class="app-code">WON·TOAST</span>
-              <span class="price">$1/mo</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
+              <span class="price">Free / $5/mo</span>
             </div>
             <h3>Won Toasts</h3>
             <p class="description">
-              Nenápadné mini-oznámení po každé změně košíku — „přidáno /
-              odebráno / +2 ks / dárek odemčen“ s náhledem produktu.
+              Konfigurovatelný notification engine pro storefront: toasty po
+              každé změně košíku s plnou kontrolou vzhledu, groupování, délky,
+              zavírání i toho, které eventy zachytávat. První plnohodnotná
+              appka z <code>_template</code>.
             </p>
             <div class="tags">
               <span class="tag source">E · Enervit</span>
               <span class="tag">coupling <strong>nízký</strong></span>
-              <span class="tag">extrakce <strong>S</strong></span>
-              <span class="tag">Theme App Ext</span>
+              <span class="tag">extrakce <strong>M</strong></span>
+              <span class="tag">Theme App Ext (app embed) · Admin · Prisma</span>
+              <span class="tag platform">◆ První appka z template</span>
+              <span class="tag platform">◆ Web Component + Shadow DOM</span>
+              <span class="tag platform">◆ Design studio v adminu</span>
+              <span class="tag platform">◆ Free / $5 tier gate</span>
             </div>
             <footer class="card-footer">
               <div class="potential">
                 <span
                   class="meter"
-                  style="--score: 3"
+                  style="--score: 4"
                   role="img"
-                  aria-label="Potenciál 3 z 5"
+                  aria-label="Potenciál 4 z 5"
                 ></span>
                 <span class="potential-label">Potenciál</span>
               </div>
-              <span class="state">Modul</span>
+              <span class="state now">Stavět hned</span>
             </footer>
             <details class="app-guide">
-              <summary>Návod k implementaci</summary>
+              <summary>Návod k implementaci (plnohodnotná appka)</summary>
               <p class="guide-idea">
-                <strong>0 · Nápad (E·Enervit):</strong> po každé změně košíku
-                (přidání / odebrání / ±ks) vyskočí vpravo nahoře pod headerem
-                mini-toast s náhledem produktu, názvem a deltou („Aktualizováno:
-                +2“ zeleně, „Odebráno“ červeně), zmizí po ~2,5 s. Samostatné
-                úzké toasty pro „dárek odemčen“ a slevu. V Enervitu:
-                <code>assets/tb-cart-qty.js</code> (showMiniToast) +
-                <code>tb-cart-qty.css</code>.
+                <strong>0 · Nápad (E·Enervit → produkt):</strong> po každé
+                změně košíku (přidání / odebrání / ±ks / dárek odemčen / doprava
+                zdarma) vyskočí toast s náhledem produktu, názvem a deltou.
+                Origin je Enervit <code>assets/tb-cart-qty.js</code>
+                (showMiniToast), ale cíl je <em>maximální kontrola pro
+                klienta</em>: jak toasty vypadají, co groupují, které eventy
+                zachytávají, jak dlouho zůstávají a jestli jdou zavřít — vše z
+                Polaris adminu, ne z tématu. Proto plnohodnotná appka, ne pouhý
+                theme extension.
+              </p>
+              <p class="guide-idea">
+                <strong>Rozhodnutí:</strong> ceník <strong>Free / $5</strong>
+                (Free = 1 event <code>added</code> + default styl + „Powered by
+                Won"; $5 odemkne vše — design studio, grouping, editovatelné
+                eventy, cílení, bez brandingu). Default vzhled =
+                <strong>neutrální systémový</strong> (auto light/dark přes
+                <code>prefers-color-scheme</code>, jemný stín, sémantické
+                akcenty), design studio je override. Badge:
+                <code>Spec · Scaffold · Alpha · Beta · Shipped</code>.
               </p>
               <ol>
                 <li>
-                  <strong>Klon:</strong> <code>rsync -a --exclude build
-                  --exclude .react-router --exclude .env --exclude
-                  app/generated --exclude .shopify --exclude node_modules
-                  --exclude test-results apps/_template/ apps/won-toasts/</code>;
-                  přejmenuj <code>name</code> v <code>package.json</code> +
-                  <code>shopify.app.toml</code>; <code>npm install</code> z
-                  rootu; <code>npm run config:link -w won-toasts</code>.
+                  <strong>Architektura:</strong> App
+                  <code>apps/won-toasts/</code> (React Router + Polaris, klon
+                  <code>_template</code>) + core engine
+                  <code>packages/core/src/toasts/</code> (framework-free, čisté
+                  funkce) + storefront plocha = Theme App Extension
+                  <strong>app embed</strong>, který injektne Web Component
+                  <code>&lt;won-toast-host&gt;</code> se <strong>Shadow
+                  DOM</strong> (téma nemůže prosáknout CSS → 100 % kontrola
+                  stylu). Žádná manipulace s cenami → Function ani metafieldy
+                  netřeba.
                 </li>
                 <li>
-                  <strong>Core modul:</strong>
-                  <code>packages/core/src/toasts/toast-events.ts</code> —
-                  framework-free funkce <code>diffCartStates(before, after)</code>:
-                  ze dvou snapshotů <code>/cart.js</code> (pole
-                  <code>{variantId, quantity}</code>) spočítá seznam toast
-                  eventů <code>{type: "added"|"removed"|"updated", variantId,
-                  delta}</code>; ignoruje řádky s property
-                  <code>_gift_progress</code>. + <code>node:test</code> testy
-                  (spouští se přes <code>tsx --test</code>, viz
-                  <code>test:packages</code>).
+                  <strong>Core engine (unit testy červené první,
+                  <code>tsx --test</code>):</strong>
+                  <code>diffCartStates(before, after)</code> → eventy ze dvou
+                  <code>/cart.js</code> snapshotů (ignoruje
+                  <code>_gift_progress</code>);
+                  <code>groupEvents(events, cfg)</code> → slučování (per produkt
+                  / per typ / merge burstů do „+3 ks" v okně N ms);
+                  <code>resolveToastPresentation(event, theme)</code> → text ze
+                  šablony + barva + ikona;
+                  <code>planToastQueue(existing, incoming, cfg)</code> → fronta
+                  (stack / replace / merge, max-visible, overflow „+N dalších").
                 </li>
                 <li>
-                  <strong>Plocha: Theme App Extension</strong> (čisté
-                  storefront UI, žádná manipulace s cenami → Function ani
-                  metafieldy nejsou potřeba). App embed
-                  <code>extensions/won-toasts-storefront/</code> podle vzoru
-                  <code>won-quantity-storefront</code>: JS naslouchá
-                  <code>fetch</code>/XHR na <code>/cart/add.js</code> a
-                  <code>/cart/update.js</code> (wrap fetch + porovnání stavů
-                  přes core diff), vykreslí toast region
-                  <code>[data-won-toasts-region]</code> pod viditelný header;
-                  název + obrázek bere z odpovědi <code>cart.js</code>, nikdy
-                  ze struktury tématu.
+                  <strong>Zdroje eventů (volitelné, co zachytávat):</strong>
+                  wrap <code>fetch</code> + XHR na
+                  <code>/cart/add|change|update|clear.js</code>
+                  <em>a</em> odběr theme pub/sub (<code>cart:updated</code>;
+                  Horizon <code>PUB_SUB_EVENTS</code>) → vždy rekonciliace přes
+                  <code>/cart.js</code> diff v core, nikdy ne DOM tématu.
+                  Sémantické eventy z diffu: added / removed / increased /
+                  decreased / gift-unlocked / free-shipping.
                 </li>
                 <li>
-                  <strong>Data (Prisma per-app, generator beze změny):</strong>
-                  model <code>ToastConfig { shop, enabled, durationMs,
-                  position, messages(JSON) }</code>. App-proxy route
-                  <code>app/routes/proxy.config.tsx</code> →
-                  <code>/apps/won-toasts/config</code> vrací JSON s texty a
-                  nastavením (vzor: won-quantity config route, marker
-                  <code>won-toasts-config-ok</code>).
+                  <strong>Data:</strong> Prisma
+                  <code>ToastConfig { shop, enabled, plan, position, theme,
+                  durationMs, closeable, pauseOnHover, maxVisible, grouping,
+                  events(JSON) }</code> + <code>ToastMessage { shop, eventType,
+                  locale, template, styleOverride }</code>. App-proxy
+                  <code>/apps/won-toasts/config</code> vrací resolved JSON
+                  (marker <code>won-toasts-config-ok</code>, vzor
+                  won-quantity config route).
                 </li>
                 <li>
-                  <strong>Produkty pro testy:</strong> jen mapování rolí na
-                  sdílený katalog <code>@won/testing/e2e-products</code> —
-                  <code>simpleA</code> (add/update toast), <code>simpleB</code>
-                  (druhá položka). Nic netvořit, seed katalogu už existuje.
+                  <strong>Admin UX (Polaris, více stránek):</strong>
+                  <em>Přehled</em> (vypínač, kontrola instalace app embedu,
+                  <strong>živý náhled</strong> tímtéž
+                  <code>&lt;won-toast-host&gt;</code> jako storefront);
+                  <em>Vzhled</em> (pozice 9-grid + offset, light/dark/auto/custom,
+                  barvy per typ, radius/stín/blur/šířka/mezery, animace, hustota,
+                  přepínače obrázek/cena/delta/ikona); <em>Chování</em> (délka
+                  per-typ, pauza na hover, zavíratelnost, max-visible + overflow,
+                  <strong>groupování</strong>, dedupe, rate-limit, reduced-motion,
+                  <code>aria-live</code>); <em>Eventy &amp; zprávy</em> (toggly per
+                  typ, šablony s <code>{qty} {delta} {product} {price}
+                  {cartTotal} {remaining}</code>, per-locale cs/sk/en).
                 </li>
                 <li>
-                  <strong>Admin UI:</strong> zapnuto/vypnuto, délka zobrazení,
-                  pozice, editovatelné šablony textů (s placeholdery
-                  <code>{qty}</code>).
+                  <strong>MVP žebřík (každý shippable, TDD):</strong>
+                  <code>MVP0</code> skeleton (klon, <code>ToastConfig</code>,
+                  config proxy, app embed injektne
+                  <code>&lt;won-toast-host&gt;</code> no-op s
+                  <code>data-won-toasts-status="ready"</code>) ·
+                  <code>MVP1</code> cart toasty (diff + queue + render added/
+                  removed/updated s deltou, auto-dismiss, pozice+délka) ·
+                  <code>MVP2</code> design studio + živý náhled ·
+                  <code>MVP3</code> grouping &amp; chování ·
+                  <code>MVP4</code> eventy &amp; lokalizované šablony
+                  (gift/shipping) · <code>MVP5</code> cílení &amp; Pro (custom
+                  CSS, non-cart eventy, remove-branding).
                 </li>
                 <li>
-                  <strong>E2E:</strong> sdílený Horizon/Dawn přes
-                  <code>@won/testing/playwright</code>; v
-                  <code>e2e.app.config.mjs</code> jen
-                  <code>remoteName: "Horizon"/"Dawn"</code>. Testy cílí na
-                  vlastní markery (<code>[data-won-toasts-region]</code>,
-                  <code>data-won-toasts-status="ready"</code>), ne na DOM
-                  tématu: přidej produkt → toast s deltou → auto-dismiss.
+                  <strong>Produkty pro testy:</strong> sdílený katalog
+                  <code>@won/testing/e2e-products</code> —
+                  <code>simpleA</code> (add/update toast),
+                  <code>simpleB</code> (druhá položka),
+                  <code>spare</code> (dárek). Nic netvořit.
+                </li>
+                <li>
+                  <strong>E2E (Dawn i Horizon):</strong> sdílený harness přes
+                  <code>@won/testing/playwright</code>; testy cílí na vlastní
+                  markery (<code>[data-won-toasts-region]</code>,
+                  <code>data-won-toasts-status="ready"</code>,
+                  <code>[data-won-toast][data-type]</code>), ne na DOM tématu:
+                  přidej produkt → toast s deltou → auto-dismiss; burst 3× →
+                  jeden groupnutý toast „+3".
                 </li>
                 <li>
                   <strong>Gate:</strong> <code>npm run test:unit -w won-toasts
-                  && npm run typecheck -w won-toasts && npm run build -w
-                  won-toasts && npm run validate:shopify</code>.
+                  &amp;&amp; npm run typecheck -w won-toasts &amp;&amp; npm run
+                  build -w won-toasts &amp;&amp; npm run validate:shopify</code>.
                 </li>
               </ol>
             </details>
@@ -773,6 +870,7 @@
           <article class="app-card build-now">
             <div class="card-head">
               <span class="app-code">WON·COMP</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2–3/mo</span>
             </div>
             <h3>Won Companion</h3>
@@ -887,6 +985,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·PACK</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2/mo</span>
             </div>
             <h3>Won PackUp</h3>
@@ -1006,6 +1105,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·GIFT</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$3/mo</span>
             </div>
             <h3>Won GiftLadder</h3>
@@ -1129,6 +1229,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·SHIP</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$1/mo</span>
             </div>
             <h3>Won ShipGoal</h3>
@@ -1184,6 +1285,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·TIER</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$3/mo</span>
             </div>
             <h3>Won Tiers</h3>
@@ -1287,6 +1389,7 @@
           <article class="app-card build-now">
             <div class="card-head">
               <span class="app-code">WON·MRGN</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2/mo</span>
             </div>
             <h3>Won MarginGuard</h3>
@@ -1391,6 +1494,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·OUT</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2/mo</span>
             </div>
             <h3>Won Outlet</h3>
@@ -1491,6 +1595,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·MYST</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2/mo</span>
             </div>
             <h3>Won Mystery</h3>
@@ -1603,6 +1708,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·SWCH</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2/mo</span>
             </div>
             <h3>Won Swatches</h3>
@@ -1705,6 +1811,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·INFO</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$1/mo</span>
             </div>
             <h3>Won PackInfo</h3>
@@ -1804,6 +1911,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·BADG</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$1/mo</span>
             </div>
             <h3>Won Badges</h3>
@@ -1903,6 +2011,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·CONT</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$3/mo</span>
             </div>
             <h3>Won Content Studio</h3>
@@ -2005,6 +2114,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·PEEK</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$5/mo</span>
             </div>
             <h3>Won Peek</h3>
@@ -2119,6 +2229,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·SRCH</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$1/mo</span>
             </div>
             <h3>Won Search</h3>
@@ -2216,6 +2327,7 @@
           <article class="app-card">
             <div class="card-head">
               <span class="app-code">WON·NAV</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$1/mo</span>
             </div>
             <h3>Won Navigator</h3>
@@ -2315,9 +2427,141 @@
         </div>
       </section>
 
+      <section class="suite" aria-labelledby="suite-data">
+        <header class="suite-heading">
+          <div class="suite-title">
+            <span class="suite-number">07</span>
+            <h2 id="suite-data">Data &amp; Schema Ops</h2>
+          </div>
+          <p class="suite-summary">
+            1 appka · Jediná suita bez storefrontu — nástroje pro merchanta,
+            který si zavádí nebo uklízí katalog. Zdroj: shopify-migrator.
+          </p>
+        </header>
+
+        <div class="app-grid">
+          <article class="app-card build-now">
+            <div class="card-head">
+              <span class="app-code">WON·SCHM</span>
+              <span class="mvp-badge mvp-spec">Spec</span>
+              <span class="price">$19/mo</span>
+            </div>
+            <h3>Won Schema</h3>
+            <p class="description">
+              Změní typ metapole bez ztráty dat — jediná operace, kterou Shopify
+              API neumí vůbec. Plus přejmenování klíčů, hromadné doplnění hodnot
+              a audit nekonzistencí.
+            </p>
+            <div class="tags">
+              <span class="tag source">M · migrator</span>
+              <span class="tag">coupling <strong>žádný</strong></span>
+              <span class="tag">extrakce <strong>L</strong></span>
+              <span class="tag">Admin API · Bulk Operations</span>
+              <span class="tag platform">✓ 17 skriptů tier A (8 451 řádků)</span>
+              <span class="tag platform">✓ migrate-metafield-type s journalem</span>
+              <span class="tag platform">✓ fixes-catalog C+D jako spec</span>
+              <span class="tag platform">◐ Bez storefrontu — jiný test harness</span>
+            </div>
+            <footer class="card-footer">
+              <div class="potential">
+                <span
+                  class="meter"
+                  style="--score: 4"
+                  role="img"
+                  aria-label="Potenciál 4 z 5"
+                ></span>
+                <span class="potential-label">Potenciál</span>
+              </div>
+              <span class="state">Admin</span>
+            </footer>
+            <details class="app-guide">
+              <summary>Návod k implementaci</summary>
+              <p class="guide-idea">
+                <strong>0 · Nápad (M·migrator):</strong> typ existující definice
+                metapole nejde změnit —
+                <code>MetafieldDefinitionUpdateInput</code> nemá pole
+                <code>type</code> (ověřeno proti schématu 2026-04). Jediná cesta
+                je záloha → smazat definici → založit s novým typem → převést a
+                vrátit hodnoty. Matrixify tohle neřeší, protože přesouvá data,
+                neřídí schéma. V migratoru:
+                <code>examples/reference-migrations/hotfixes/legacy-utils/migrate-metafield-type.mjs</code>
+                (journal na disku, resumovatelný restore) +
+                <code>scripts/audit.mjs</code>,
+                <code>scripts/rename-metafield-values.mjs</code>,
+                <code>scripts/backfill-metafield-values.mjs</code>. Katalog
+                pastí je <code>migration-fixes</code> sekce C a D.
+              </p>
+              <ol>
+                <li>
+                  <strong>Klon:</strong> rsync z <code>apps/_template/</code>
+                  (standardní vyloučení dle README), přejmenovat, <code>npm
+                  install</code>, <code>npm run config:link -w won-schema</code>.
+                </li>
+                <li>
+                  <strong>Core modul:</strong>
+                  <code>packages/core/src/schema/convert.ts</code> —
+                  <code>convertValue(raw, fromType, toType)</code> jako čistá
+                  funkce pro dvojice typů (text ↔ rich_text ↔ list.*, number,
+                  boolean) s explicitním <code>UnsupportedConversion</code>
+                  místo tichého průchodu; +
+                  <code>planMigration({definition, values, targetType})</code>
+                  vrátí seznam nekonvertovatelných hodnot <em>před</em> zápisem.
+                  + <code>node:test</code> na každou dvojici typů a na
+                  odmítnutí neznámé konverze.
+                </li>
+                <li>
+                  <strong>Plocha: pouze Admin (App Home).</strong> Žádná Theme
+                  App Extension ani Function — appka nesahá na storefront.
+                  Polaris průvodce: výběr definice → náhled dopadu (kolik
+                  hodnot, kolik se nepřevede) → potvrzení → job s progressem.
+                </li>
+                <li>
+                  <strong>Data — kritické:</strong> Prisma
+                  <code>SchemaJob { shop, ownerType, namespace, key, fromType,
+                  toType, phase, startedAt, completedAt }</code> +
+                  <code>SchemaJobValue { jobId, ownerId, originalValue,
+                  restoredAt }</code>. Záloha hodnot i metadat definice
+                  (description, pin, access, capabilities) musí být
+                  <em>commitnutá v DB</em> dřív, než se zavolá
+                  <code>metafieldDefinitionDelete</code> — jinak přijde merchant
+                  o data. Job je resumovatelný podle <code>phase</code>, worker
+                  na
+                  <code>bulkOperationRunQuery</code> pro čtení a
+                  <code>metafieldsSet</code> po 25 pro zápis.
+                </li>
+                <li>
+                  <strong>Produkty pro testy:</strong> sdílený katalog nestačí —
+                  potřeba vlastní seed definic
+                  <code>won-e2e-schema.*</code> na <code>simpleA</code>/<code>simpleB</code>
+                  (idempotentně zakládané a mazané testem), protože scénář je
+                  ze své podstaty destruktivní. Produkty samotné se nemutují.
+                </li>
+                <li>
+                  <strong>Admin UI:</strong> seznam definic s počtem hodnot a
+                  varováním u typů, kde konverze ztrácí strukturu; historie
+                  jobů se stažením zálohy jako JSON; tlačítko „obnovit ze
+                  zálohy“.
+                </li>
+                <li>
+                  <strong>Testy:</strong> těžiště v unit testech konverzí a v
+                  integračním testu proti dev storu, který ověří, že po pádu
+                  uprostřed jobu <code>--resume</code> doběhne do stavu s
+                  původním počtem hodnot. Browser E2E jen na Polaris průvodce.
+                </li>
+                <li>
+                  <strong>Gate:</strong> <code>test:unit</code>,
+                  <code>typecheck</code>, <code>build</code> (<code>-w
+                  won-schema</code>) + <code>npm run validate:shopify</code>.
+                </li>
+              </ol>
+            </details>
+          </article>
+        </div>
+      </section>
+
       <footer class="catalog-footer">
         <span>WonApps · živá produktová roadmapa</span>
-        <span>6 suit · 17 appek · 3 doporučené stavět hned</span>
+        <span>7 suit · 18 appek · 5 doporučené stavět hned</span>
       </footer>
     </main>
   </body>

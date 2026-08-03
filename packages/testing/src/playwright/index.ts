@@ -8,6 +8,7 @@ export {
   type ThemeName,
   type ThemeSelectors,
 } from "./theme.ts";
+export { quantityForm, quantityStepper } from "./locators.ts";
 export { installThemeDevJsMimeShim, isThemeDevMode } from "./theme-dev-mime.ts";
 export {
   createStorefrontTest,

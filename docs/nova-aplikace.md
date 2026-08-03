@@ -115,3 +115,54 @@ npm exec -w <tvoje-appka> -- playwright install chromium chromium-headless-shell
 Statický/CI gate (`test:packages`, `typecheck:apps`, `build:apps`,
 `validate:shopify`, secret scan) je v `.github/workflows/ci.yml`; merchant-backed
 browser E2E se pouští lokálně proti dev storu (viz výše).
+
+## 8. Cross-theme pravidla (Horizon + Dawn) — ať to jede na první dobrou
+
+Horizon a Dawn skládají produktový formulář **odlišně** a obojí je validní HTML.
+Tyhle rozdíly opakovaně rozbily E2E i storefront chování, tak je respektuj hned:
+
+### Storefront JS (theme app extension), který reaguje na změnu varianty
+
+- **Rescanuj na `shopify:product:select`.** Horizon po výběru varianty fetchne
+  sekci a **morphuje formulář in-place** — `input[name='id']` nastaví přes
+  `.value` property (žádný `change` event) a nativní `min/step` přes atributy.
+  Ani `change`, ani `MutationObserver({childList})` to nechytí, takže bez tohohle
+  eventu zůstane aplikované staré (product/global) pravidlo místo variant pravidla.
+  Vzor (viz `apps/won-quantity/.../assets/won-quantity.js`): na
+  `shopify:product:select` počkej na `event.promise` (Horizon ho resolvne po
+  domorfování) a pak spusť rescan; fallback bez promise = debounced rescan.
+- **Formulář hledej přes `input.form`, ne přes DOM-předka.** Na Dawn input v
+  `<form action="/cart/add">` **není vnořený** — váže se přes `form="<id>"`
+  atribut. `input.form || input.closest("form[action*='/cart/add']")` funguje na
+  obojím; samotný `closest`/`ancestor::form` na Dawn vrátí null.
+- Asset servíruj **čitelně** (žádná minifikace / build step) — je to malý soubor
+  přímo z `extensions/*/assets/`.
+
+### E2E helpery — nikdy nepředpokládej DOM-nesting
+
+Používej **sdílené** helpery z `@won/testing/playwright`, nepiš si vlastní
+XPath `ancestor::form`:
+
+```ts
+import { quantityForm, quantityStepper } from "@won/testing/playwright";
+
+const input = await readyQuantityInput(page);
+const form = await quantityForm(input);          // /cart/add form (form-attr i nesting)
+const stepper = quantityStepper(input);          // kontejner s plus/minus
+await stepper.locator("button[name='plus']").click();
+const id = await form.locator("input[name='id']").inputValue();
+```
+
+- **`id` input + submit** jsou uvnitř formu na obou tématech → přes `quantityForm`.
+- **plus/minus** jsou na Dawn v `<quantity-input>` **mimo form** → přes
+  `quantityStepper`, ne přes form.
+- Když téma na maximu **disabluje** tlačítko plus (Horizon), netestuj klik na něj
+  (timeout) — ověř invariant „hodnota nepřekročí max" (klikni jen když je enabled).
+
+### Vždy prověř obě témata
+
+`--bail` se zastaví u Horizonu a k Dawn se nedostane — před shipnutím spusť
+matrix **bez** `--bail`, ať Dawn leg vážně proběhne (`✓ Horizon` i `✓ Dawn`
+v summary). Dawn lze ověřit i izolovaně proti ručně spuštěnému
+`shopify theme dev --path tmp/e2e-themes/<app>/dawn --theme Dawn --port 9882` s
+`SHOPIFY_E2E_STOREFRONT_BASE_URL=http://127.0.0.1:9882 npm run test:e2e`.

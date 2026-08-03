@@ -1,4 +1,9 @@
-import { createStorefrontTest, expect } from "@won/testing/playwright";
+import {
+  createStorefrontTest,
+  expect,
+  quantityForm,
+  quantityStepper,
+} from "@won/testing/playwright";
 import { WON_E2E_PRODUCTS } from "@won/testing/e2e-products";
 import type { Locator, Page, Response } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
@@ -171,15 +176,9 @@ export async function clearCart(page: Page): Promise<void> {
   expect(response.status()).toBeLessThan(400);
 }
 
-export function quantityForm(input: Locator): Locator {
-  // The /cart/add form that actually contains this resolved quantity input.
-  // Filtering `form[action*='/cart/add']` by the absolute `input` locator would
-  // require a nested cart form (0 matches), so walk up to the input's nearest
-  // /cart/add ancestor form instead.
-  return input.locator(
-    "xpath=ancestor::form[contains(@action, '/cart/add')][1]",
-  );
-}
+// quantityForm / quantityStepper are theme-agnostic DOM-relationship helpers
+// shared across apps — see @won/testing/playwright. Re-exported below so specs
+// can keep importing them from this support module.
 
 export async function assertAppTransport(
   page: Page,
@@ -237,4 +236,4 @@ export async function selectSecondVariant(page: Page): Promise<void> {
   await second.check({ force: true });
 }
 
-export { expect };
+export { expect, quantityForm, quantityStepper };
