@@ -79,3 +79,31 @@ test.describe("Won Toasts cart events (MVP1)", () => {
       .toBeGreaterThan(0);
   });
 });
+
+// SPEC-DRIVEN (MVP2). Toast look is driven by the admin theme tokens; the close
+// button dismisses. (Deeper appearance assertions belong to the admin preview
+// parity test; here we assert the storefront honours the theme + closeable.)
+test.describe("Won Toasts appearance (MVP2)", () => {
+  test("added toast carries a coloured accent and can be closed", async ({
+    page,
+  }) => {
+    await openProduct(page, TOASTS_E2E_HANDLES.primary);
+    await readyEmbed(page);
+    await clearCart(page);
+
+    const variantId = await firstVariantId(page);
+    await addToCart(page, variantId, 1);
+    const added = toast(page, "added");
+    await expect(added).toHaveCount(1);
+
+    const borderColor = await added.evaluate(
+      (el) => getComputedStyle(el as HTMLElement).borderLeftColor,
+    );
+    // a real accent, not the default transparent/none
+    expect(borderColor).not.toBe("rgba(0, 0, 0, 0)");
+    expect(borderColor).not.toBe("");
+
+    await added.locator("[data-won-toast-close]").click();
+    await expect(added).toHaveCount(0);
+  });
+});

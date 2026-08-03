@@ -91,4 +91,28 @@ invariant); E2E MVP1 (add→toast +delta; remove→Undo obnoví) authored, pendi
 live embed.
 
 **Gate:** core 31 ✓ · unit 11 ✓ · typecheck ✓ · build ✓ · theme-check ✓ · lint ✓.
-Commit: `won-toasts MVP1 cart toasts`.
+Commit: `won-toasts MVP1 cart toasts` (`8076684`).
+
+### MVP2 — Design studio + živý preview ✅ (badge zůstává Alpha, → Beta v MVP3)
+Core `@won/core/toasts/presentation`: `resolveToastPresentation(event, config)`
+(title/detail/delta/accent/image, pure) + `styleTokensFor(theme)` (CSS custom
+properties z theme tokenů) + `config.sanitizeTheme` (validace hex/enum/clamp).
+Storefront: renderer přepsán na Shadow **stylesheet + CSS proměnné** z tokenů —
+light/dark/custom, radius, shadow, border, blur, width/density, animace
+(slide/fade/pop/slide-scale), `prefers-color-scheme` pro `system`,
+`prefers-reduced-motion`, per-typ accent, show flags. Admin **Appearance**
+(design studio): mode, custom barvy, accent per event, radius/width/shadow/
+density/animace, show toggly — vše přes `sanitizeTheme`, merge do current theme.
+**Živý preview** (`app/components/ToastPreview`) na Appearance i Overview: React
+island, který používá **tentýž** `styleTokensFor` + `resolveToastPresentation`
+jako storefront → parita; Scenario Lab základ (Add/Remove/Update/Mixed).
+
+**Parita (rozhodnutí):** admin preview importuje core presentation/tokeny přímo
+(vite bundluje), storefront je zrcadlí v plain JS (raw asset). Shodu drží sdílené
+core spec testy + contract test. Storefront JS 16.5 kB raw / **5.1 kB gz**.
+
+**Testy:** core +10 (presentation 6, sanitize-theme 4 → celkem 41 core); E2E MVP2
+(accent border + close) authored, pending live embed.
+
+**Gate:** core 41 ✓ · unit 11 ✓ · typecheck ✓ · build ✓ · theme-check ✓ · lint ✓.
+Commit: `won-toasts MVP2 design studio + live preview`.

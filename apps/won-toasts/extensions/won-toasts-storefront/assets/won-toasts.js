@@ -1,16 +1,15 @@
 /*
- * Won Toasts — storefront runtime (MVP1: cart toasts).
+ * Won Toasts — storefront runtime (MVP2: cart toasts + design studio theming).
  *
- * Pure notification surface: it observes cart mutations, diffs /cart.js
- * snapshots, and renders toasts inside a Shadow-DOM host. It NEVER rewrites
- * prices, never fabricates the merchant's product form, and never auto-adds a
- * product to grant a reward. The ONLY cart write it performs is a user-initiated
- * "Undo" that re-adds a line the shopper just removed.
+ * Pure notification surface: observes cart mutations, diffs /cart.js snapshots,
+ * renders toasts inside a Shadow-DOM host. It NEVER rewrites prices, fabricates
+ * the merchant's product form, or auto-adds a product to grant a reward. The
+ * ONLY cart write is a user-initiated "Undo" that re-adds a just-removed line.
  *
- * All behaviour comes from the admin config at /apps/won-toasts/config — no
- * behavioural constants are hardcoded here (the object below is only a safe
- * fallback if the config request fails). The diff mirrors
- * @won/core/toasts/cart-events (kept in lockstep by shared spec tests).
+ * All behaviour + look comes from the admin config at /apps/won-toasts/config
+ * (no constants hardcoded; the object below is only a safe fallback). The diff
+ * mirrors @won/core/toasts/cart-events and the style tokens mirror
+ * @won/core/toasts/presentation — both kept in lockstep by shared spec tests.
  */
 (function () {
   "use strict";
@@ -34,6 +33,9 @@
       stackDirection: "newest-top",
     },
     theme: {
+      mode: "system",
+      colorBg: "#ffffff",
+      colorText: "#1a1f24",
       accent: {
         added: "#1f8f5f",
         removed: "#c0392b",
@@ -41,10 +43,18 @@
         decreased: "#b7791f",
         info: "#4a5568",
       },
-      colorBg: "#ffffff",
-      colorText: "#1a1f24",
       cornerRadius: 12,
+      shadow: "md",
+      border: false,
+      borderColor: "#e2e6ea",
+      backdropBlur: false,
       width: 340,
+      minWidth: 260,
+      maxWidth: 480,
+      gap: 10,
+      density: "comfortable",
+      animationIn: "slide",
+      animationMs: 220,
       showImage: true,
       showDelta: true,
       showIcon: true,
@@ -81,8 +91,7 @@
       var pq = prev ? prev.quantity : 0;
       var d = l.quantity - pq;
       if (d === 0) return;
-      if (pq === 0)
-        ev.push({ type: "added", key: l.key, delta: d, line: l });
+      if (pq === 0) ev.push({ type: "added", key: l.key, delta: d, line: l });
       else
         ev.push({
           type: d > 0 ? "increased" : "decreased",
@@ -99,23 +108,109 @@
     return ev;
   }
 
-  // ---- rendering ----
+  // ---- presentation (mirror of @won/core/toasts/presentation) ----
+  var TITLES = {
+    added: "Added to cart",
+    removed: "Removed",
+    increased: "Updated",
+    decreased: "Updated",
+  };
   function accentFor(type) {
     var a = cfg.theme.accent || FALLBACK.theme.accent;
     return a[type] || a.info || "#4a5568";
   }
-  function labelFor(ev) {
+  function presentation(ev) {
     var name = ev.line.product_title || ev.line.title || "Item";
-    if (ev.type === "added") return { title: "Added to cart", detail: name };
-    if (ev.type === "removed") return { title: "Removed", detail: name };
-    return { title: "Updated", detail: name };
-  }
-  function deltaText(ev) {
-    if (!cfg.theme.showDelta || ev.type === "removed") return "";
-    return (ev.delta > 0 ? "+" : "") + ev.delta;
+    var showDelta = cfg.theme.showDelta && ev.type !== "removed";
+    return {
+      type: ev.type,
+      title: TITLES[ev.type] || "Cart updated",
+      detail: name,
+      delta: showDelta ? (ev.delta > 0 ? "+" : "") + ev.delta : "",
+      accent: accentFor(ev.type),
+      image: cfg.theme.showImage ? ev.line.image : null,
+    };
   }
 
-  function styleRegion() {
+  // ---- style tokens (mirror of @won/core/toasts/presentation.styleTokensFor) ----
+  var SHADOWS = {
+    none: "none",
+    sm: "0 2px 8px rgba(0,0,0,.12)",
+    md: "0 6px 24px rgba(0,0,0,.16)",
+    lg: "0 12px 40px rgba(0,0,0,.22)",
+  };
+  function styleTokens(t) {
+    var isDark = t.mode === "dark";
+    var bg = t.mode === "custom" ? t.colorBg : isDark ? "#1a1f24" : "#ffffff";
+    var text =
+      t.mode === "custom" ? t.colorText : isDark ? "#eef1f4" : "#1a1f24";
+    return {
+      "--won-bg": bg,
+      "--won-text": text,
+      "--won-radius": t.cornerRadius + "px",
+      "--won-width": t.width + "px",
+      "--won-min-width": t.minWidth + "px",
+      "--won-max-width": t.maxWidth + "px",
+      "--won-gap": t.gap + "px",
+      "--won-shadow": SHADOWS[t.shadow] || SHADOWS.md,
+      "--won-pad": t.density === "compact" ? "8px 12px" : "12px 14px",
+      "--won-border": t.border ? "1px solid " + t.borderColor : "0",
+      "--won-blur": t.backdropBlur ? "blur(8px)" : "none",
+      "--won-anim-ms": t.animationMs + "ms",
+    };
+  }
+
+  var SHADOW_CSS =
+    "[data-won-toasts-region]{position:fixed;display:flex;flex-direction:column;" +
+    "gap:var(--won-gap);z-index:2147483000;pointer-events:none;max-width:100vw;}" +
+    "[data-won-toast]{pointer-events:auto;box-sizing:border-box;display:flex;gap:10px;" +
+    "align-items:center;width:var(--won-width);min-width:var(--won-min-width);" +
+    "max-width:min(var(--won-max-width),calc(100vw - 32px));padding:var(--won-pad);" +
+    "background:var(--won-bg);color:var(--won-text);border-radius:var(--won-radius);" +
+    "box-shadow:var(--won-shadow);border:var(--won-border);" +
+    "-webkit-backdrop-filter:var(--won-blur);backdrop-filter:var(--won-blur);" +
+    "font:14px/1.35 system-ui,-apple-system,sans-serif;" +
+    "animation:won-in var(--won-anim-ms) ease both;}" +
+    "[data-won-toast] img{width:40px;height:40px;border-radius:8px;object-fit:cover;flex:0 0 auto;}" +
+    "[data-won-toast] .won-b{flex:1 1 auto;min-width:0;}" +
+    "[data-won-toast] .won-t{font-weight:700;}" +
+    "[data-won-toast] .won-d{color:#8892a0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}" +
+    "[data-won-toast-delta]{font-weight:800;flex:0 0 auto;}" +
+    "[data-won-toast] button{border:0;background:transparent;font:inherit;cursor:pointer;flex:0 0 auto;}" +
+    "[data-won-toast-undo]{font-weight:700;text-decoration:underline;}" +
+    "[data-won-toast-close]{font-size:18px;line-height:1;color:#9aa4ad;padding:0 2px;}" +
+    "@keyframes won-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}" +
+    '[data-anim="fade"] [data-won-toast]{animation-name:won-fade}' +
+    '[data-anim="pop"] [data-won-toast]{animation-name:won-pop}' +
+    '[data-anim="slide-scale"] [data-won-toast]{animation-name:won-ss}' +
+    "@keyframes won-fade{from{opacity:0}to{opacity:1}}" +
+    "@keyframes won-pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}" +
+    "@keyframes won-ss{from{opacity:0;transform:translateY(-8px) scale(.96)}to{opacity:1;transform:none}}" +
+    "@media (prefers-reduced-motion: reduce){[data-won-toast]{animation:none}}";
+
+  var SYSTEM_DARK_CSS =
+    "@media (prefers-color-scheme: dark){[data-won-toasts-region]{" +
+    "--won-bg:#1a1f24;--won-text:#eef1f4;}}";
+
+  // ---- rendering ----
+  function applyTheme() {
+    if (!region) return;
+    var tokens = styleTokens(cfg.theme);
+    Object.keys(tokens).forEach(function (k) {
+      region.style.setProperty(k, tokens[k]);
+    });
+    region.setAttribute("data-anim", cfg.theme.animationIn || "slide");
+    var styleEl = region.__wonStyle;
+    if (styleEl) {
+      styleEl.textContent =
+        SHADOW_CSS +
+        (cfg.theme.mode === "system" ? SYSTEM_DARK_CSS : "") +
+        (cfg.theme.customCss || "");
+    }
+    positionRegion();
+  }
+
+  function positionRegion() {
     if (!region) return;
     var g = cfg.global;
     var vert = g.position.indexOf("bottom") === 0 ? "bottom" : "top";
@@ -127,13 +222,8 @@
           ? "center"
           : "right";
     var s = region.style;
-    s.position = "fixed";
-    s.display = "flex";
-    s.flexDirection = "column";
-    s.gap = (cfg.theme.gap || 10) + "px";
-    s.zIndex = "2147483000";
-    s.pointerEvents = "none";
     s.top = s.bottom = s.left = s.right = "auto";
+    s.transform = "none";
     if (mid) {
       s.top = "50%";
       s.transform = "translateY(-50%)";
@@ -142,85 +232,56 @@
     }
     if (horiz === "center") {
       s.left = "50%";
-      s.transform = (mid ? "translate(-50%,-50%)" : "translateX(-50%)");
+      s.transform = mid ? "translate(-50%,-50%)" : "translateX(-50%)";
     } else {
       s[horiz] = g.offsetInline + "px";
     }
   }
 
-  function el(tag, css) {
+  function elem(tag, cls) {
     var e = document.createElement(tag);
-    if (css) e.setAttribute("style", css);
+    if (cls) e.className = cls;
     return e;
   }
 
   function renderToast(ev) {
     if (!region) return;
-    var t = cfg.theme;
-    var label = labelFor(ev);
-    var card = el(
-      "div",
-      "pointer-events:auto;box-sizing:border-box;display:flex;gap:10px;align-items:center;" +
-        "width:" +
-        (t.width || 340) +
-        "px;max-width:calc(100vw - 32px);padding:12px 14px;" +
-        "background:" +
-        (t.colorBg || "#fff") +
-        ";color:" +
-        (t.colorText || "#1a1f24") +
-        ";border-radius:" +
-        (t.cornerRadius || 12) +
-        "px;border-left:4px solid " +
-        accentFor(ev.type) +
-        ";box-shadow:0 6px 24px rgba(0,0,0,.16);font:14px/1.35 system-ui,sans-serif;",
-    );
+    var p = presentation(ev);
+    var card = elem("div");
     card.setAttribute("data-won-toast", "");
     card.setAttribute("data-type", ev.type);
+    card.style.borderLeft = "4px solid " + p.accent;
 
-    if (t.showImage && ev.line.image) {
-      var img = el(
-        "img",
-        "width:40px;height:40px;border-radius:8px;object-fit:cover;flex:0 0 auto;",
-      );
-      img.src = ev.line.image;
+    if (p.image) {
+      var img = elem("img");
+      img.src = p.image;
       img.alt = "";
       card.appendChild(img);
     }
 
-    var body = el("div", "flex:1 1 auto;min-width:0;");
-    var title = el("div", "font-weight:700;");
-    title.textContent = label.title;
-    var detail = el(
-      "div",
-      "color:#5c6670;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;",
-    );
-    detail.textContent = label.detail;
+    var body = elem("div", "won-b");
+    var title = elem("div", "won-t");
+    title.textContent = p.title;
+    var detail = elem("div", "won-d");
+    detail.textContent = p.detail;
     body.appendChild(title);
     body.appendChild(detail);
     card.appendChild(body);
 
-    var dt = deltaText(ev);
-    if (dt) {
-      var badge = el(
-        "div",
-        "font-weight:800;flex:0 0 auto;color:" + accentFor(ev.type) + ";",
-      );
-      badge.textContent = dt;
+    if (p.delta) {
+      var badge = elem("div");
       badge.setAttribute("data-won-toast-delta", "");
+      badge.style.color = p.accent;
+      badge.textContent = p.delta;
       card.appendChild(badge);
     }
 
-    // Undo re-adds the just-removed line — the only user-initiated cart write.
     if (ev.type === "removed") {
-      var undo = el(
-        "button",
-        "flex:0 0 auto;border:0;background:transparent;color:" +
-          accentFor("info") +
-          ";font:inherit;font-weight:700;cursor:pointer;text-decoration:underline;",
-      );
+      var undo = elem("button");
       undo.type = "button";
-      undo.textContent = "Undo";
       undo.setAttribute("data-won-toast-undo", "");
+      undo.style.color = accentFor("info");
+      undo.textContent = "Undo";
       undo.addEventListener("click", function (e) {
         e.stopPropagation();
         undo.disabled = true;
@@ -228,10 +289,7 @@
           .fetch("/cart/add.js", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: ev.line.id,
-              quantity: Math.abs(ev.delta),
-            }),
+            body: JSON.stringify({ id: ev.line.id, quantity: Math.abs(ev.delta) }),
           })
           .then(function () {
             reconcile();
@@ -245,14 +303,10 @@
     }
 
     if (cfg.global.closeable) {
-      var close = el(
-        "button",
-        "flex:0 0 auto;border:0;background:transparent;color:#9aa4ad;font:inherit;" +
-          "font-size:18px;line-height:1;cursor:pointer;padding:0 2px;",
-      );
+      var close = elem("button");
       close.type = "button";
-      close.setAttribute("aria-label", "Dismiss");
       close.setAttribute("data-won-toast-close", "");
+      close.setAttribute("aria-label", "Dismiss");
       close.textContent = "×";
       close.addEventListener("click", function (e) {
         e.stopPropagation();
@@ -268,7 +322,6 @@
       });
     }
 
-    // stack placement
     if (cfg.global.stackDirection === "newest-top") {
       region.insertBefore(card, region.firstChild);
     } else {
@@ -276,7 +329,6 @@
     }
     enforceMaxVisible();
 
-    // auto-dismiss with pause-on-hover
     if (cfg.global.autoDismiss) {
       scheduleDismiss(card);
       if (cfg.global.pauseOnHover) {
@@ -297,19 +349,19 @@
     }, cfg.global.durationMs);
   }
   function dismiss(card) {
+    if (!card) return;
     clearTimeout(card.__wonTimer);
-    if (card && card.parentNode) card.parentNode.removeChild(card);
+    if (card.parentNode) card.parentNode.removeChild(card);
   }
   function enforceMaxVisible() {
     if (!region) return;
     var max = cfg.global.maxVisible || 3;
     while (region.children.length > max) {
-      // remove the oldest (opposite end from where new ones are inserted)
-      var oldest =
+      dismiss(
         cfg.global.stackDirection === "newest-top"
           ? region.lastChild
-          : region.firstChild;
-      dismiss(oldest);
+          : region.firstChild,
+      );
     }
   }
 
@@ -327,9 +379,7 @@
           return r.json();
         })
         .then(function (after) {
-          if (cfg.enabled) {
-            deriveEvents(lastCart, after).forEach(renderToast);
-          }
+          if (cfg.enabled) deriveEvents(lastCart, after).forEach(renderToast);
           lastCart = after;
         })
         .catch(function () {})
@@ -342,24 +392,20 @@
   function isMutator(url) {
     return typeof url === "string" && CART_MUTATOR.test(url);
   }
-
   function wrapFetch() {
     if (!window.fetch || window.fetch.__wonWrapped) return;
     var orig = window.fetch;
     var wrapped = function (input) {
       var url = typeof input === "string" ? input : input && input.url;
       var p = orig.apply(this, arguments);
-      if (isMutator(url)) {
-        p.then(function () {
-          reconcile();
-        }).catch(function () {});
-      }
+      if (isMutator(url)) p.then(function () {
+        reconcile();
+      }).catch(function () {});
       return p;
     };
     wrapped.__wonWrapped = true;
     window.fetch = wrapped;
   }
-
   function wrapXHR() {
     var proto = window.XMLHttpRequest && window.XMLHttpRequest.prototype;
     if (!proto || proto.__wonWrapped) return;
@@ -371,11 +417,10 @@
     var send = proto.send;
     proto.send = function () {
       var self = this;
-      if (isMutator(self.__wonUrl)) {
+      if (isMutator(self.__wonUrl))
         self.addEventListener("loadend", function () {
           reconcile();
         });
-      }
       return send.apply(this, arguments);
     };
     proto.__wonWrapped = true;
@@ -391,11 +436,15 @@
             if (this.__wonMounted) return;
             this.__wonMounted = true;
             var root = this.attachShadow({ mode: "open" });
+            var style = document.createElement("style");
+            style.textContent = SHADOW_CSS;
+            root.appendChild(style);
             var r = document.createElement("div");
             r.setAttribute("data-won-toasts-region", "");
             r.setAttribute("role", "status");
             r.setAttribute("aria-live", "polite");
             r.setAttribute("aria-atomic", "false");
+            r.__wonStyle = style;
             root.appendChild(r);
             this.__region = r;
           }
@@ -403,9 +452,8 @@
       );
     }
     var existing = document.querySelector(HOST_TAG + "[data-won-toasts-host]");
-    if (existing) {
-      host = existing;
-    } else {
+    if (existing) host = existing;
+    else {
       host = document.createElement(HOST_TAG);
       host.setAttribute("data-won-toasts-host", "");
       document.body.appendChild(host);
@@ -420,18 +468,16 @@
     embed.__wonToastsInit = true;
 
     mountHost();
-    styleRegion();
+    applyTheme();
     wrapFetch();
     wrapXHR();
-
     document.addEventListener("cart:updated", function () {
       reconcile();
     });
 
     var endpoint = embed.getAttribute("data-won-toasts-endpoint");
     var ready = function () {
-      styleRegion();
-      // seed the baseline cart so the first mutation diffs correctly
+      applyTheme();
       window
         .fetch("/cart.js", { headers: { Accept: "application/json" } })
         .then(function (r) {

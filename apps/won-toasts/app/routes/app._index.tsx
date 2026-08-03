@@ -6,6 +6,7 @@ import {
   getToastConfig,
   updateToastConfig,
 } from "../services/toast-config.server";
+import { ToastPreview } from "../components/ToastPreview";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -69,6 +70,15 @@ export default function Index() {
             Open theme editor → App embeds
           </a>
         </s-paragraph>
+      </s-section>
+
+      <s-section heading="Preview">
+        <s-paragraph>
+          This is how toasts look with your current settings. Tune them on the{" "}
+          <a href="/app/appearance">Appearance</a> and{" "}
+          <a href="/app/behavior">Behavior</a> pages.
+        </s-paragraph>
+        <ToastPreview theme={config.theme} />
       </s-section>
     </s-page>
   );

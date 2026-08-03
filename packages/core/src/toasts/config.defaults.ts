@@ -12,6 +12,17 @@ import type {
   ToastTheme,
 } from "./config.types.ts";
 
+const SEMANTIC_TYPES: readonly ToastSemanticType[] = [
+  "added",
+  "removed",
+  "increased",
+  "decreased",
+  "gift",
+  "shipping",
+  "discount",
+  "info",
+];
+
 /** Current config schema version. Bump when the shape changes incompatibly. */
 export const TOAST_CONFIG_VERSION = 1;
 
@@ -168,6 +179,105 @@ export function sanitizeGlobalSettings(
   if (overflowStrategy) out.overflowStrategy = overflowStrategy;
   const stackDirection = oneOf(input.stackDirection, STACK);
   if (stackDirection) out.stackDirection = stackDirection;
+
+  return out;
+}
+
+const THEME_MODES: readonly ToastTheme["mode"][] = [
+  "system",
+  "light",
+  "dark",
+  "custom",
+];
+const SHADOW_LEVELS: readonly ToastTheme["shadow"][] = ["none", "sm", "md", "lg"];
+const DENSITIES: readonly ToastTheme["density"][] = ["compact", "comfortable"];
+const ANIMATIONS: readonly ToastTheme["animationIn"][] = [
+  "slide",
+  "fade",
+  "pop",
+  "slide-scale",
+];
+const ICON_SETS: readonly ToastTheme["iconSet"][] = ["emoji", "line", "none"];
+const FONT_MODES: readonly ToastTheme["fontMode"][] = [
+  "system",
+  "inherit-theme",
+  "custom",
+];
+
+const HEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+function hex(value: unknown): string | undefined {
+  return typeof value === "string" && HEX.test(value.trim())
+    ? value.trim()
+    : undefined;
+}
+
+/**
+ * Validate/clamp a partial ToastTheme from the design studio. Invalid values
+ * are dropped (not defaulted) so the result can merge onto the shop's current
+ * theme. Guardrail: colours must be valid hex; sizes are clamped to sane ranges.
+ */
+export function sanitizeTheme(input: unknown): Partial<ToastTheme> {
+  if (!isPlainObject(input)) return {};
+  const out: Partial<ToastTheme> = {};
+
+  const mode = oneOf(input.mode, THEME_MODES);
+  if (mode) out.mode = mode;
+
+  const colorBg = hex(input.colorBg);
+  if (colorBg) out.colorBg = colorBg;
+  const colorText = hex(input.colorText);
+  if (colorText) out.colorText = colorText;
+
+  if (isPlainObject(input.accent)) {
+    const accent: Partial<Record<ToastSemanticType, string>> = {};
+    for (const type of SEMANTIC_TYPES) {
+      const value = hex((input.accent as Record<string, unknown>)[type]);
+      if (value) accent[type] = value;
+    }
+    if (Object.keys(accent).length > 0) {
+      out.accent = accent as ToastTheme["accent"];
+    }
+  }
+
+  const cornerRadius = clampInt(input.cornerRadius, 0, 32);
+  if (cornerRadius !== undefined) out.cornerRadius = cornerRadius;
+  const width = clampInt(input.width, 240, 600);
+  if (width !== undefined) out.width = width;
+  const minWidth = clampInt(input.minWidth, 200, 600);
+  if (minWidth !== undefined) out.minWidth = minWidth;
+  const maxWidth = clampInt(input.maxWidth, 240, 720);
+  if (maxWidth !== undefined) out.maxWidth = maxWidth;
+  const gap = clampInt(input.gap, 0, 40);
+  if (gap !== undefined) out.gap = gap;
+  const animationMs = clampInt(input.animationMs, 0, 1200);
+  if (animationMs !== undefined) out.animationMs = animationMs;
+
+  const shadow = oneOf(input.shadow, SHADOW_LEVELS);
+  if (shadow) out.shadow = shadow;
+  const density = oneOf(input.density, DENSITIES);
+  if (density) out.density = density;
+  const animationIn = oneOf(input.animationIn, ANIMATIONS);
+  if (animationIn) out.animationIn = animationIn;
+  const animationOut = oneOf(input.animationOut, ANIMATIONS);
+  if (animationOut) out.animationOut = animationOut;
+  const iconSet = oneOf(input.iconSet, ICON_SETS);
+  if (iconSet) out.iconSet = iconSet;
+  const fontMode = oneOf(input.fontMode, FONT_MODES);
+  if (fontMode) out.fontMode = fontMode;
+
+  if (typeof input.border === "boolean") out.border = input.border;
+  const borderColor = hex(input.borderColor);
+  if (borderColor) out.borderColor = borderColor;
+  if (typeof input.backdropBlur === "boolean")
+    out.backdropBlur = input.backdropBlur;
+  if (typeof input.showImage === "boolean") out.showImage = input.showImage;
+  if (typeof input.showPrice === "boolean") out.showPrice = input.showPrice;
+  if (typeof input.showDelta === "boolean") out.showDelta = input.showDelta;
+  if (typeof input.showIcon === "boolean") out.showIcon = input.showIcon;
+
+  if (typeof input.customCss === "string") {
+    out.customCss = input.customCss.slice(0, 4000);
+  }
 
   return out;
 }

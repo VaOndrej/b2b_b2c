@@ -20,6 +20,7 @@ export default function App() {
       <ui-nav-menu>
         <a href="/app">Overview</a>
         <a href="/app/behavior">Behavior</a>
+        <a href="/app/appearance">Appearance</a>
       </ui-nav-menu>
       <Outlet />
     </AppProvider>
