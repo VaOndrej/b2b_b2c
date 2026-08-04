@@ -113,7 +113,10 @@ export const DEFAULT_MESSAGES: ToastMessages = {
 
 export const DEFAULT_MILESTONES: MilestoneRuleConfig[] = [];
 
-const LOCALES: readonly ToastLocale[] = ["cs", "sk", "en"];
+// Canonical allow-lists. These are the single source of truth used both by the
+// sanitizers below and by the support-docs reference generator
+// (apps/*/scripts/gen-docs.ts) — exported so docs can never drift from code.
+export const LOCALES: readonly ToastLocale[] = ["cs", "sk", "en"];
 
 export const DEFAULT_TOAST_CONFIG: ToastAppConfig = {
   version: TOAST_CONFIG_VERSION,
@@ -132,7 +135,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   );
 }
 
-const POSITIONS: readonly GlobalSettings["position"][] = [
+export const POSITIONS: readonly GlobalSettings["position"][] = [
   "top-left",
   "top-center",
   "top-right",
@@ -143,20 +146,20 @@ const POSITIONS: readonly GlobalSettings["position"][] = [
   "bottom-center",
   "bottom-right",
 ];
-const CLICK_ACTIONS: readonly GlobalSettings["clickAction"][] = [
+export const CLICK_ACTIONS: readonly GlobalSettings["clickAction"][] = [
   "none",
   "open-cart",
   "go-to-product",
 ];
-const OVERFLOW: readonly GlobalSettings["overflowStrategy"][] = [
+export const OVERFLOW: readonly GlobalSettings["overflowStrategy"][] = [
   "queue",
   "collapse",
 ];
-const STACK: readonly GlobalSettings["stackDirection"][] = [
+export const STACK: readonly GlobalSettings["stackDirection"][] = [
   "newest-top",
   "newest-bottom",
 ];
-const GROUPING_MODES: readonly GroupingSettings["mode"][] = [
+export const GROUPING_MODES: readonly GroupingSettings["mode"][] = [
   "off",
   "by-product",
   "by-variant",
@@ -237,21 +240,21 @@ export function sanitizeGlobalSettings(input: unknown): SanitizedGlobal {
   return out;
 }
 
-const THEME_MODES: readonly ToastTheme["mode"][] = [
+export const THEME_MODES: readonly ToastTheme["mode"][] = [
   "system",
   "light",
   "dark",
   "custom",
 ];
-const SHADOW_LEVELS: readonly ToastTheme["shadow"][] = ["none", "sm", "md", "lg"];
-const DENSITIES: readonly ToastTheme["density"][] = ["compact", "comfortable"];
-const ANIMATIONS: readonly ToastTheme["animationIn"][] = [
+export const SHADOW_LEVELS: readonly ToastTheme["shadow"][] = ["none", "sm", "md", "lg"];
+export const DENSITIES: readonly ToastTheme["density"][] = ["compact", "comfortable"];
+export const ANIMATIONS: readonly ToastTheme["animationIn"][] = [
   "slide",
   "fade",
   "pop",
   "slide-scale",
 ];
-const ICON_SETS: readonly ToastTheme["iconSet"][] = ["emoji", "line", "none"];
+export const ICON_SETS: readonly ToastTheme["iconSet"][] = ["emoji", "line", "none"];
 const FONT_MODES: readonly ToastTheme["fontMode"][] = [
   "system",
   "inherit-theme",
@@ -429,7 +432,7 @@ export function mergeMessages(input: unknown): ToastMessages {
   return out;
 }
 
-const MILESTONE_KINDS = new Set(["free_shipping", "gift", "qty_discount"]);
+export const MILESTONE_KINDS = new Set(["free_shipping", "gift", "qty_discount"]);
 
 /** Validate a milestones array; drop malformed entries. */
 export function sanitizeMilestones(input: unknown): MilestoneRuleConfig[] {

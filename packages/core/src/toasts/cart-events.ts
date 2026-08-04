@@ -35,6 +35,15 @@ export interface CartSnapshot {
 
 export type CartEventType = "added" | "removed" | "increased" | "decreased";
 
+// Runtime allow-list — single source of truth for the support-docs reference
+// generator. `satisfies` makes it a type error if it drifts from the union.
+export const CART_EVENT_TYPES = [
+  "added",
+  "removed",
+  "increased",
+  "decreased",
+] as const satisfies readonly CartEventType[];
+
 export interface ToastCartEvent {
   type: CartEventType;
   key: string;

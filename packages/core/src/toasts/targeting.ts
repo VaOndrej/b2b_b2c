@@ -13,6 +13,28 @@ export type PageType =
 export type DeviceTarget = "both" | "mobile" | "desktop";
 export type CustomerTarget = "both" | "guest" | "logged-in";
 
+// Canonical allow-lists (runtime), the single source of truth for both the
+// admin targeting UI and the support-docs reference generator. Keep in sync with
+// the unions above (the `satisfies` check makes a drift a type error).
+export const PAGE_TYPES = [
+  "product",
+  "collection",
+  "cart",
+  "home",
+  "search",
+  "other",
+] as const satisfies readonly PageType[];
+export const DEVICE_TARGETS = [
+  "both",
+  "mobile",
+  "desktop",
+] as const satisfies readonly DeviceTarget[];
+export const CUSTOMER_TARGETS = [
+  "both",
+  "guest",
+  "logged-in",
+] as const satisfies readonly CustomerTarget[];
+
 export interface ToastTargeting {
   /** Allowed page types; empty = all pages. */
   pages: PageType[];

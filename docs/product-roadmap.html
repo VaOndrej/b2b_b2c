@@ -850,6 +850,18 @@
                   jeden groupnutý toast „+3".
                 </li>
                 <li>
+                  <strong>Support knowledge base:</strong>
+                  <code>apps/won-toasts/docs/</code> — vrstveno podle stability
+                  (<code>concepts/</code> ručně hned · <code>tasks/</code> po
+                  ustálení MVP · <code>reference/*.generated.md</code> generováno
+                  z <code>@won/core/toasts</code> přes <code>docs:gen</code> ·
+                  <code>support/</code>). Každý dokument má RAG frontmatter
+                  (<code>min_plan</code>/<code>status</code> = filtry pro chatbota).
+                  Drift hlídá <code>docs-freshness.test.ts</code> (součást gate).
+                  Kanonický vzor pro nové appky, viz
+                  <code>nova-aplikace.md §9</code>.
+                </li>
+                <li>
                   <strong>Gate:</strong> <code>npm run test:unit -w won-toasts
                   &amp;&amp; npm run typecheck -w won-toasts &amp;&amp; npm run
                   build -w won-toasts &amp;&amp; npm run validate:shopify</code>.

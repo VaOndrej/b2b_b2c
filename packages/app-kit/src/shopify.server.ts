@@ -2,6 +2,7 @@ import "@shopify/shopify-app-react-router/adapters/node";
 import {
   ApiVersion,
   AppDistribution,
+  LogSeverity,
   shopifyApp,
 } from "@shopify/shopify-app-react-router/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
@@ -27,6 +28,8 @@ export function createShopifyApp(prisma: any) {
     authPathPrefix: "/auth",
     sessionStorage: new PrismaSessionStorage(prisma),
     distribution: AppDistribution.AppStore,
+    // TEMP debug: surface token-exchange / auth flow in the dev terminal.
+    logger: { level: LogSeverity.Debug, httpRequests: true },
     future: {
       expiringOfflineAccessTokens: true,
     },

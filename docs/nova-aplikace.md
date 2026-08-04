@@ -52,6 +52,9 @@ eventy/pravidla nešly proti breaking migracím. Badge appky v roadmapě postupu
 - Gate každého MVP: `test:unit -w <appka> && typecheck && build && validate:shopify`.
 - E2E minimálně na **Dawn + Horizon** přes `@won/testing/playwright`, vlastní
   markery, ne DOM tématu.
+- **Support/chatbot dokumentace se píše průběžně, ne „až bude hotovo"** — vrstvená
+  podle stability, volatilní věci generované z kódu, drift hlídaný testem. Detail
+  v [§9](#9-supportchatbot-dokumentace-průběžně-ne-až-bude-hotovo).
 
 ### d) Výstupy gate
 
@@ -221,3 +224,52 @@ matrix **bez** `--bail`, ať Dawn leg vážně proběhne (`✓ Horizon` i `✓ D
 v summary). Dawn lze ověřit i izolovaně proti ručně spuštěnému
 `shopify theme dev --path tmp/e2e-themes/<app>/dawn --theme Dawn --port 9882` s
 `SHOPIFY_E2E_STOREFRONT_BASE_URL=http://127.0.0.1:9882 npm run test:e2e`.
+
+## 9. Support/chatbot dokumentace (průběžně, ne „až bude hotovo")
+
+Každá appka dostane **support knowledge base** v `apps/<appka>/docs/` už během
+vývoje. Cíl: dokumentace, u které je **změna levná**, takže „appka se ještě mění"
+přestane být argument pro odkládání. Neřeš *kdy* psát, řeš *jak strukturovat, aby
+změna byla levná.* Kanonický vzor: [`apps/won-toasts/docs/`](../apps/won-toasts/docs/).
+
+### Princip: rozvrstvi podle stability, ne podle featur
+
+| Vrstva | Obsah | Stabilita | Píše |
+|---|---|---|---|
+| `concepts/` | Mentální model („jak to funguje / proč X"). Pokryje ~80 % dotazů a přežije refaktor UI. | Vysoká | **Ručně, hned.** |
+| `tasks/` | „Jak nastavím Y." | Střední | **Ručně, po ustálení MVP.** |
+| `reference/` | Přesné hodnoty (plan limity, enumy, config volby). | Nízká | **Generováno z kódu.** |
+| `support/` | Troubleshooting / FAQ. | Střední | Ručně. |
+
+Volatilní detaily (přesné názvy tlačítek, screenshoty) do textu **nepiš** — to je
+nejdražší na údržbu. Rozpracovanou featuru označ `status: beta`/`planned`, ať na
+ni chatbot neodpovídá, dokud není `stable`.
+
+### Config = single source of truth i pro dokumentaci
+
+Co jde odvodit z kódu (plan gating, event/semantic typy, locale, config allow-listy),
+se **negeneruje ručně podruhé.** Enumy drž jako **exportované runtime konstanty**
+v `@won/core/<doména>` (`readonly [...] as const satisfies …`), ne jen jako `type`
+(ty v runtimu neexistují). Generátor je z nich vytáhne:
+
+- `apps/<appka>/scripts/gen-docs.ts` — `buildDocs()` (čistá funkce kódu, žádný
+  wall-clock/env) → `docs/reference/*.generated.md`. Skript = `docs:gen`.
+- Frontmatter na každém dokumentu s **metadaty pro RAG**: `layer`, `feature`,
+  `min_plan` (chatbot skryje Pro-only Free merchantovi), `status` (skryje
+  planned/beta), `source`, `lang`, `summary`, `keywords`. Malé samostatné chunky,
+  ne dlouhé kapitoly.
+
+### Drift guard (součást gate)
+
+`tests/<...>/docs-freshness.test.ts` importuje `buildDocs()`, porovná s commitnutými
+`*.generated.md` a **spadne, když se změní enum a reference se neregenerovala.**
+Tím se dokumentace nemůže tiše rozejít s realitou. Je součástí
+`test:unit -w <appka>`, takže i gate každého MVP.
+
+### Co udělat při stavbě appky
+
+1. Naklonovaný `_template` už nese `docs/` skeleton (README + frontmatter vzor +
+   prázdné vrstvy). Vyplň `concepts/` hned, jak je jasný mentální model.
+2. Přidej `docs:gen` skript + `gen-docs.ts` napojený na exportované enumy své
+   domény a `docs-freshness.test.ts` (kopíruj z won-toasts, přemapuj importy).
+3. Po ustálení každého MVP dopiš `tasks/` a `support/` pro `stable` featury.
