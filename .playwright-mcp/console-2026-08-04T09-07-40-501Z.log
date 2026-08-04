@@ -1,3 +1,0 @@
-[    1740ms] [ERROR] The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy. @ https://accounts.shopify.com/lookup?rid=1f0c8f41-49f4-4180-b07f-14c6d13fa25e&verify=1785834461-WAd120v6Dcbjq0jVSv4rRQb0tnYkF6INvycITxZS7Q0%3D:0
-[    1991ms] [ERROR] The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy. @ https://hcaptcha.com/1/api.js?render=explicit&onload=simpleCaptchaReady:3
-[    1992ms] [ERROR] The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy. @ https://hcaptcha.com/1/api.js?render=explicit&onload=simpleCaptchaReady:3
