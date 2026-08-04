@@ -113,6 +113,8 @@ export interface ToastTheme {
 }
 
 import type { ToastTargeting } from "./targeting.ts";
+import type { NotificationRule } from "./notifications.ts";
+import type { ExclusionSettings } from "./exclusions.ts";
 
 export type ToastPlan = "free" | "pro";
 
@@ -144,6 +146,10 @@ export interface ToastAppConfig {
   messages: ToastMessages;
   milestones: MilestoneRuleConfig[];
   targeting: ToastTargeting;
+  /** MVP9+ recipes: page-view / aggregate notification rules. */
+  notifications: NotificationRule[];
+  /** MVP10 exclusions (Free): pages / URLs where the app must not run. */
+  exclusions: ExclusionSettings;
 }
 
 /** Partial persisted config as stored/sent over the wire (any depth may be absent). */
@@ -161,4 +167,6 @@ export interface StoredToastConfig {
   messages?: ToastMessages;
   milestones?: MilestoneRuleConfig[];
   targeting?: Partial<ToastTargeting>;
+  notifications?: NotificationRule[];
+  exclusions?: Partial<ExclusionSettings>;
 }

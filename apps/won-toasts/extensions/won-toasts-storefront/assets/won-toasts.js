@@ -1,15 +1,9 @@
 /*
- * Won Toasts — storefront runtime (MVP2: cart toasts + design studio theming).
- *
- * Pure notification surface: observes cart mutations, diffs /cart.js snapshots,
- * renders toasts inside a Shadow-DOM host. It NEVER rewrites prices, fabricates
- * the merchant's product form, or auto-adds a product to grant a reward. The
- * ONLY cart write is a user-initiated "Undo" that re-adds a just-removed line.
- *
- * All behaviour + look comes from the admin config at /apps/won-toasts/config
- * (no constants hardcoded; the object below is only a safe fallback). The diff
- * mirrors @won/core/toasts/cart-events and the style tokens mirror
- * @won/core/toasts/presentation — both kept in lockstep by shared spec tests.
+ * Won Toasts — storefront runtime. Pure notification surface: diffs /cart.js,
+ * renders page-view recipes (countdown/stock/announcement/aggregates/social) and
+ * cart toasts in a Shadow-DOM host. NEVER rewrites prices or auto-adds products;
+ * the only cart write is user-initiated Undo. All behaviour/look comes from the
+ * admin config at /apps/won-toasts/config; logic mirrors @won/core (spec-tested).
  */
 (function () {
   "use strict";
@@ -40,6 +34,15 @@
         dedupeWindowMs: 1000,
         rateLimitPerMin: 30,
       },
+      // Must mirror @won/core DEFAULT_FREQUENCY (MVP8). governanceOK/quietOn
+      // read cfg.global.frequency; a fallback without it would break governance
+      // if the config endpoint ever fails.
+      frequency: {
+        maxPerSession: 0,
+        cooldownMs: 0,
+        suppressAfterDismissMs: 0,
+        quietMode: false,
+      },
     },
     theme: {
       mode: "system",
@@ -68,11 +71,16 @@
       showDelta: true,
       showIcon: true,
     },
+    // MVP9 page-view recipes (mirror @won/core DEFAULT_NOTIFICATIONS = []).
+    notifications: [],
+    // MVP10 exclusions (mirror @won/core DEFAULT_EXCLUSIONS).
+    exclusions: { pages: [], urls: [] },
   };
 
   var cfg = FALLBACK;
   var locale = "en";
   var active = true; // targeting: whether toasts run on this page
+  var shopTz = "UTC"; // shop IANA timezone (from the embed block) for scheduling
   var lastMilestone = null; // last cart milestone state {subtotalCents,hasGiftLine}
 
   function pageType() {
@@ -95,6 +103,107 @@
     // customerState is not reliably known on the storefront → ignored here.
     return true;
   }
+
+  // ---- exclusions (mirror of @won/core/toasts/url-match + exclusions, MVP10) ----
+  function normPath(p) {
+    p = String(p || "");
+    var q = p.indexOf("?");
+    if (q >= 0) p = p.slice(0, q);
+    var h = p.indexOf("#");
+    if (h >= 0) p = p.slice(0, h);
+    if (!p) return "/";
+    return p.charAt(0) === "/" ? p : "/" + p;
+  }
+  function matchUrl(path, pattern) {
+    var a = normPath(path);
+    var b = normPath(pattern);
+    if (b.indexOf("*") < 0) return a === b;
+    var re = new RegExp(
+      "^" +
+        b
+          .split("*")
+          .map(function (s) {
+            return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          })
+          .join(".*") +
+        "$",
+    );
+    return re.test(a);
+  }
+  function pathExcluded(path, patterns) {
+    if (!patterns || !patterns.length) return false;
+    for (var i = 0; i < patterns.length; i++) {
+      var pat = patterns[i];
+      if (typeof pat === "string" && pat.trim() && matchUrl(path, pat.trim()))
+        return true;
+    }
+    return false;
+  }
+  function metaOptedOut() {
+    var m = document.querySelector('meta[name="won-toasts:active"]');
+    return !!(m && String(m.getAttribute("content")).toLowerCase() === "false");
+  }
+  // Whether the whole app is suppressed on this page (pages/urls/meta opt-out).
+  function isExcluded() {
+    if (metaOptedOut()) return true;
+    var ex = cfg.exclusions || {};
+    if (ex.pages && ex.pages.indexOf(pageType()) >= 0) return true;
+    if (pathExcluded(location.pathname || "/", ex.urls)) return true;
+    return false;
+  }
+
+  // ---- scheduling (mirror of @won/core/toasts/scheduling.isScheduledNow) ----
+  function shopLocalParts(ms, tz) {
+    try {
+      var parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz || "UTC",
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).formatToParts(new Date(ms));
+      var get = function (t) {
+        for (var i = 0; i < parts.length; i++)
+          if (parts[i].type === t) return parts[i].value;
+        return "";
+      };
+      var DOW = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+      var hh = parseInt(get("hour"), 10);
+      if (!isFinite(hh) || hh === 24) hh = 0;
+      var mm = parseInt(get("minute"), 10) || 0;
+      return { dow: DOW[get("weekday")] || 0, hour: hh + mm / 60 };
+    } catch (e) {
+      return { dow: new Date(ms).getDay(), hour: new Date(ms).getHours() };
+    }
+  }
+  function isScheduledNow(sch, now, tz) {
+    if (!sch) return true;
+    if (sch.startsAt) {
+      var st = Date.parse(sch.startsAt);
+      if (isFinite(st) && now < st) return false;
+    }
+    if (sch.endsAt) {
+      var en = Date.parse(sch.endsAt);
+      if (isFinite(en) && now > en) return false;
+    }
+    var needsLocal =
+      (sch.daysOfWeek && sch.daysOfWeek.length) ||
+      (sch.hours && sch.hours.length === 2);
+    if (!needsLocal) return true;
+    var lp = shopLocalParts(now, tz);
+    if (sch.daysOfWeek && sch.daysOfWeek.length && sch.daysOfWeek.indexOf(lp.dow) < 0)
+      return false;
+    if (sch.hours && sch.hours.length === 2) {
+      var from = sch.hours[0];
+      var to = sch.hours[1];
+      if (from === to) return false;
+      if (from < to) {
+        if (!(lp.hour >= from && lp.hour < to)) return false;
+      } else if (!(lp.hour >= from || lp.hour < to)) return false;
+    }
+    return true;
+  }
+
   var lastCart = { items: [] };
   var host = null;
   var region = null;
@@ -241,6 +350,547 @@
     if (!(win > 0)) return false;
     var prev = lastSeen[key];
     return typeof prev === "number" && now - prev < win;
+  }
+
+  // ---- frequency governance (mirror of @won/core/toasts/governance) ----
+  // The GATE for page-view types (MVP8): per-session caps, cooldown, suppress-
+  // after-dismiss and a global quiet mode. State persists per cart token in
+  // sessionStorage so caps survive navigation. Cart-change toasts are NOT
+  // governed (only quiet mode mutes them); page-view types (MVP9+) call
+  // governanceOK/govRecordEmit before rendering.
+  function govKey(token) {
+    return "won-toasts:gov:" + (token || "cart");
+  }
+  function loadGov(token) {
+    try {
+      return JSON.parse(sessionStorage.getItem(govKey(token)) || "{}") || {};
+    } catch (e) {
+      return {}; // private mode: fail open (no persistence)
+    }
+  }
+  function saveGov(token, s) {
+    try {
+      sessionStorage.setItem(govKey(token), JSON.stringify(s));
+    } catch (e) {
+      /* private mode: fail open */
+    }
+  }
+  function quietOn() {
+    var f = cfg.global && cfg.global.frequency;
+    return !!(f && f.quietMode);
+  }
+  function freqNum(rule, field) {
+    var f = cfg.global.frequency || {};
+    return rule && rule[field] != null ? rule[field] : f[field] || 0;
+  }
+  function governanceOK(token, rule, groupKey, now) {
+    if (quietOn()) return false;
+    var s = loadGov(token);
+    var maxPer = freqNum(rule, "maxPerSession");
+    if (maxPer > 0 && ((s.counts && s.counts[rule.key]) || 0) >= maxPer)
+      return false;
+    var cd = freqNum(rule, "cooldownMs");
+    if (cd > 0 && s.last && now - (s.last[rule.key] || -Infinity) < cd)
+      return false;
+    var sup = freqNum(rule, "suppressAfterDismissMs");
+    if (sup > 0 && s.dismissed && now - (s.dismissed[groupKey] || -Infinity) < sup)
+      return false;
+    return true;
+  }
+  function govRecordEmit(token, rule, now) {
+    var s = loadGov(token);
+    s.counts = s.counts || {};
+    s.last = s.last || {};
+    s.counts[rule.key] = (s.counts[rule.key] || 0) + 1;
+    s.last[rule.key] = now;
+    saveGov(token, s);
+  }
+  function govRecordDismiss(token, groupKey, now) {
+    var s = loadGov(token);
+    s.dismissed = s.dismissed || {};
+    s.dismissed[groupKey] = now;
+    saveGov(token, s);
+  }
+  // ---- a11y + collision + RTL (MVP14, mirror @won/core a11y/format/layout) ----
+  var ASSERTIVE = { stock: 1, "stock.low": 1 };
+  function ariaRole(t) {
+    return ASSERTIVE[t] ? "alert" : "status";
+  }
+  function srText(a, b) {
+    return [a, b]
+      .map(function (s) {
+        return String(s || "").trim();
+      })
+      .filter(Boolean)
+      .join(". ");
+  }
+  var RTL = { ar: 1, he: 1, fa: 1, ur: 1, ps: 1, syr: 1, dv: 1 };
+  function isRTL(l) {
+    return !!RTL[String(l || "").toLowerCase().split(/[-_]/)[0]];
+  }
+  // Clear the tallest fixed/sticky obstacle (header, cookie bar, chat) on `edge`.
+  function collisionOffset(base, edge) {
+    var tallest = 0;
+    try {
+      var els = document.querySelectorAll(
+        '[class*="cookie" i],[id*="cookie" i],[class*="chat" i],[id*="chat" i],' +
+          "header,[data-sticky]",
+      );
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        var cs = window.getComputedStyle(el);
+        if (cs.position !== "fixed" && cs.position !== "sticky") continue;
+        var r = el.getBoundingClientRect();
+        if (r.width < 40 || r.height < 20 || r.height > 240) continue;
+        var onEdge =
+          edge === "top" ? r.top <= 4 : window.innerHeight - r.bottom <= 4;
+        if (onEdge && r.height > tallest) tallest = r.height;
+      }
+    } catch (e) {
+      /* no-op */
+    }
+    return tallest > 0 ? Math.max(base, tallest + 8) : base;
+  }
+  function dismissAll() {
+    if (!region) return;
+    var list = region.querySelectorAll("[data-won-toast]:not([data-won-persistent])");
+    for (var i = 0; i < list.length; i++) dismiss(list[i]);
+  }
+
+  // ---- analytics + A/B (MVP13) ----
+  // Beacon one toast lifecycle event. Pro-only (matches server gating); silent
+  // for Free. No PII — just a rule id, event type, and A/B variant.
+  function trackEvent(ruleId, type, variant) {
+    if (!ruleId || !cfg || cfg.plan !== "pro") return;
+    try {
+      window
+        .fetch("/apps/won-toasts/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ruleId: ruleId, type: type, variant: variant || 0 }),
+          keepalive: true,
+        })
+        .catch(function () {});
+    } catch (e) {
+      /* no-op */
+    }
+  }
+  // FNV-1a mirror of @won/core/toasts/experiments for a deterministic A/B split.
+  function abHash(token) {
+    var h = 0x811c9dc5;
+    var s = String(token || "");
+    for (var i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return h >>> 0;
+  }
+  function abVariant(token, n) {
+    if (!(n > 1)) return 0;
+    return abHash(token) % n;
+  }
+
+  // ---- page-view notifications (MVP9): mirror @won/core/toasts/page-view +
+  // notifications + aggregates. These are NOT cart-diff driven — they render on
+  // page load for the configured pages, and every emit is governed by MVP8.
+  function pvRemaining(now, o) {
+    if (typeof o.endsAt === "number") return Math.max(0, o.endsAt - now);
+    if (typeof o.evergreenMs === "number" && typeof o.startedAt === "number")
+      return Math.max(0, o.startedAt + o.evergreenMs - now);
+    return 0;
+  }
+  function pad2(n) {
+    return (n < 10 ? "0" : "") + n;
+  }
+  function fmtCountdown(ms) {
+    var total = Math.max(0, Math.floor(ms / 1000));
+    var d = Math.floor(total / 86400);
+    var h = Math.floor((total % 86400) / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    return (d > 0 ? d + ":" : "") + pad2(h) + ":" + pad2(m) + ":" + pad2(s);
+  }
+  function pvLowStock(inv, thr) {
+    return (
+      isFinite(inv) && isFinite(thr) && thr > 0 && inv > 0 && inv < thr
+    );
+  }
+  function notifOnPage(rule) {
+    var pages = rule.pages || [];
+    if (!pages.length || pages.indexOf("all") >= 0) return true;
+    return pages.indexOf(pageType()) >= 0;
+  }
+  // Flatten a rule's optional per-rule frequency for governanceOK/freqNum.
+  function govRuleOf(rule) {
+    var f = rule.frequency || {};
+    return {
+      key: rule.id,
+      maxPerSession: f.maxPerSession,
+      cooldownMs: f.cooldownMs,
+      suppressAfterDismissMs: f.suppressAfterDismissMs,
+    };
+  }
+  function cartToken() {
+    return (lastCart && lastCart.token) || "cart";
+  }
+
+  // A page-view card: no line body, just a message (+ optional live timer node).
+  function notifCard(type, timeEl, text) {
+    var card = elem("div");
+    card.setAttribute("data-won-toast", "");
+    card.setAttribute("data-type", type);
+    card.setAttribute("role", ariaRole(type));
+    if (text) card.setAttribute("aria-label", srText(text, ""));
+    card.style.borderLeft = "4px solid " + accentFor("info");
+    var body = elem("div", "won-b");
+    var title = elem("div", "won-t");
+    if (timeEl) {
+      // Split the message on {countdown} so the live node sits inline.
+      var parts = String(text || "").split("{countdown}");
+      title.appendChild(document.createTextNode(parts[0] || ""));
+      title.appendChild(timeEl);
+      if (parts.length > 1) title.appendChild(document.createTextNode(parts[1] || ""));
+    } else {
+      title.textContent = text;
+    }
+    body.appendChild(title);
+    card.appendChild(body);
+    return card;
+  }
+
+  function isPersistentSurface(surface) {
+    return (
+      surface === "banner" ||
+      surface === "persistent-toast" ||
+      surface === "inline"
+    );
+  }
+
+  function cdStart(rule) {
+    // Evergreen countdown start persists per session so it doesn't reset on nav.
+    var key = "won-toasts:cd:" + rule.id;
+    try {
+      var v = sessionStorage.getItem(key);
+      if (v) return Number(v);
+      var now = Date.now();
+      sessionStorage.setItem(key, String(now));
+      return now;
+    } catch (e) {
+      return Date.now();
+    }
+  }
+
+  function renderCountdown(rule) {
+    if (!region) return;
+    var opts = rule.endsAt
+      ? { endsAt: Date.parse(rule.endsAt) }
+      : typeof rule.evergreenMs === "number"
+        ? { evergreenMs: rule.evergreenMs, startedAt: cdStart(rule) }
+        : null;
+    if (!opts || !isFinite(opts.endsAt != null ? opts.endsAt : 0) && rule.endsAt)
+      return;
+    var now = Date.now();
+    if (pvRemaining(now, opts) <= 0) return; // already ended → show nothing
+    var token = cartToken();
+    var gr = "countdown:" + rule.id;
+    if (!governanceOK(token, govRuleOf(rule), gr, now)) return;
+
+    var timeEl = elem("span");
+    timeEl.setAttribute("data-won-countdown-time", "");
+    var card = notifCard("countdown", timeEl, rule.message || "Ends in {countdown}");
+    card.setAttribute("data-won-countdown", "");
+    function paint() {
+      var r = pvRemaining(Date.now(), opts);
+      timeEl.textContent = fmtCountdown(r);
+      if (r <= 0) {
+        clearInterval(card.__cd);
+        dismiss(card);
+      }
+    }
+    paint();
+    card.__cd = setInterval(paint, 1000);
+    var persistent = isPersistentSurface(rule.surface);
+    finalizeCard(card, {
+      persistent: persistent,
+      ruleId: rule.id,
+      onClose: function () {
+        clearInterval(card.__cd);
+        govRecordDismiss(token, gr, Date.now());
+      },
+    });
+    govRecordEmit(token, govRuleOf(rule), now);
+  }
+
+  function currentProductHandle() {
+    var m = /\/products\/([^/?#]+)/.exec(location.pathname || "");
+    return m ? m[1] : null;
+  }
+  // Real inventory only: an explicit theme hook wins; product.js is a best-effort
+  // fallback (Shopify usually omits inventory there). Unknown → NaN → show nothing.
+  function readInventory(cb) {
+    var el = document.querySelector("[data-won-stock]");
+    if (el) {
+      var n = parseInt(el.getAttribute("data-won-stock"), 10);
+      if (isFinite(n)) {
+        cb(n);
+        return;
+      }
+    }
+    var handle = currentProductHandle();
+    if (!handle || !window.fetch) {
+      cb(NaN);
+      return;
+    }
+    window
+      .fetch("/products/" + handle + ".js", { headers: { Accept: "application/json" } })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (p) {
+        var inv = NaN;
+        if (p && p.variants && p.variants.length) {
+          var vid = Number(new URLSearchParams(location.search).get("variant"));
+          var sel = vid
+            ? p.variants.filter(function (v) {
+                return v.id === vid;
+              })[0]
+            : null;
+          if (sel && typeof sel.inventory_quantity === "number") {
+            inv = sel.inventory_quantity;
+          } else {
+            var qs = p.variants
+              .map(function (v) {
+                return v.inventory_quantity;
+              })
+              .filter(function (x) {
+                return typeof x === "number";
+              });
+            if (qs.length) inv = Math.min.apply(Math, qs);
+          }
+        }
+        cb(inv);
+      })
+      .catch(function () {
+        cb(NaN);
+      });
+  }
+
+  function renderStockLow(rule) {
+    readInventory(function (inv) {
+      if (!pvLowStock(inv, rule.threshold)) return; // honest: only real scarcity
+      var now = Date.now();
+      var token = cartToken();
+      var gr = "stock:" + rule.id;
+      if (!governanceOK(token, govRuleOf(rule), gr, now)) return;
+      var text = renderTemplate(rule.message || "Only {count} left", {
+        count: inv,
+      });
+      var card = notifCard("stock", null, text);
+      var persistent = isPersistentSurface(rule.surface);
+      finalizeCard(card, {
+        persistent: persistent,
+        ruleId: rule.id,
+        onClose: function () {
+          govRecordDismiss(token, gr, Date.now());
+        },
+      });
+      govRecordEmit(token, govRuleOf(rule), now);
+    });
+  }
+
+  // ---- aggregates (mirror of @won/core/toasts/aggregates, MVP11) ----
+  function countWithinWindow(events, now, windowMs) {
+    if (!events || !events.length || !(windowMs > 0)) return 0;
+    var start = now - windowMs;
+    var n = 0;
+    for (var i = 0; i < events.length; i++) {
+      var t = events[i];
+      if (typeof t === "number" && t >= start && t <= now) n++;
+    }
+    return n;
+  }
+  function formatAggregateCount(template, count) {
+    if (!(count > 0)) return ""; // honest: never "0 people"
+    return String(template || "").replace(/\{count\}/g, String(count));
+  }
+
+  // ---- social proof (mirror of @won/core/toasts/social-proof, MVP12) ----
+  function relTime(at) {
+    var diff = Date.now() - at;
+    if (!(diff > 0)) diff = 0;
+    var min = Math.floor(diff / 60000);
+    if (min < 1) return locale === "cs" ? "právě teď" : locale === "sk" ? "práve teraz" : "just now";
+    if (min < 60) return min + " min";
+    return Math.floor(min / 60) + " h";
+  }
+  function formatSale(tpl, sale) {
+    var t = String(tpl || "");
+    var name = (sale.firstName || "").trim();
+    var city = (sale.city || "").trim();
+    var product = (sale.product || "").trim();
+    if (!city) t = t.replace(/\s*from\s+\{city\}/gi, "");
+    return t
+      .replace(/\{name\}/g, name || "Someone")
+      .replace(/\{city\}/g, city)
+      .replace(/\{product\}/g, product || "an item")
+      .replace(/\{time\}/g, relTime(sale.at))
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+  function renderSocialProof(rule) {
+    window
+      .fetch("/apps/won-toasts/social", { headers: { Accept: "application/json" } })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        var sales = (data && data.sales) || [];
+        if (!sales.length) return; // cold-start honest: nothing to show
+        var i = 0;
+        var token = cartToken();
+        var timer = null;
+        function pop() {
+          if (i >= sales.length) {
+            if (timer) clearInterval(timer);
+            return;
+          }
+          var sale = sales[i++];
+          var now = Date.now();
+          var gr = "sale:" + rule.id;
+          if (!governanceOK(token, govRuleOf(rule), gr, now)) return;
+          var text = formatSale(
+            rule.message || "{name} from {city} bought {product}",
+            sale,
+          );
+          if (!text) return;
+          var card = notifCard("sale", null, text);
+          finalizeCard(card, {
+            persistent: false,
+            ruleId: rule.id,
+            onClose: function () {
+              govRecordDismiss(token, gr, Date.now());
+            },
+          });
+          govRecordEmit(token, govRuleOf(rule), now);
+        }
+        pop();
+        timer = setInterval(pop, Math.max(4000, (cfg.global.durationMs || 3500) + 1500));
+      })
+      .catch(function () {});
+  }
+
+  function renderAnnouncement(rule) {
+    var token = cartToken();
+    // MVP13 A/B: when variants exist, split deterministically by cart token so a
+    // shopper always sees the same one; else fall back to the i18n/base message.
+    var variant = 0;
+    var text;
+    if (rule.variants && rule.variants.length) {
+      variant = abVariant(token, rule.variants.length);
+      text = rule.variants[variant];
+    } else {
+      text = (rule.messages && rule.messages[locale]) || rule.message || "";
+    }
+    if (!text) return;
+    var now = Date.now();
+    var gr = "announcement:" + rule.id;
+    if (!governanceOK(token, govRuleOf(rule), gr, now)) return;
+    var card = notifCard("announcement", null, renderTemplate(text, {}));
+    finalizeCard(card, {
+      persistent: isPersistentSurface(rule.surface),
+      ruleId: rule.id,
+      variant: variant,
+      onClose: function () {
+        govRecordDismiss(token, gr, Date.now());
+      },
+    });
+    govRecordEmit(token, govRuleOf(rule), now);
+  }
+
+  function renderAggregates(rules) {
+    var maxHours = 1;
+    rules.forEach(function (r) {
+      maxHours = Math.max(maxHours, r.windowHours || 24);
+    });
+    window
+      .fetch("/apps/won-toasts/aggregates?window=" + maxHours, {
+        headers: { Accept: "application/json" },
+      })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        var carts = (data && data.cartAdds) || [];
+        var orders = (data && data.orders) || [];
+        var now = Date.now();
+        rules.forEach(function (rule) {
+          var evs = rule.type === "order.summary" ? orders : carts;
+          var count = countWithinWindow(
+            evs,
+            now,
+            (rule.windowHours || 24) * 3_600_000,
+          );
+          var text = formatAggregateCount(rule.message || "{count}", count);
+          if (!text) return; // honest: 0 → render nothing
+          var token = cartToken();
+          var gr = rule.type + ":" + rule.id;
+          if (!governanceOK(token, govRuleOf(rule), gr, now)) return;
+          var dtype =
+            rule.type === "order.summary" ? "order-summary" : "cart-activity";
+          var card = notifCard(dtype, null, text);
+          // Aggregates are visually distinct from single events (spec).
+          card.setAttribute("data-won-aggregate", "1");
+          finalizeCard(card, {
+            persistent: isPersistentSurface(rule.surface),
+            ruleId: rule.id,
+            onClose: function () {
+              govRecordDismiss(token, gr, Date.now());
+            },
+          });
+          govRecordEmit(token, govRuleOf(rule), now);
+        });
+      })
+      .catch(function () {});
+  }
+
+  function renderNotifications() {
+    if (!region || quietOn()) return;
+    var list = cfg.notifications || [];
+    var now = Date.now();
+    var aggRules = [];
+    list.forEach(function (rule) {
+      if (!rule || !rule.enabled || !notifOnPage(rule)) return;
+      // MVP10 scheduling: a rule outside its active window doesn't render.
+      if (rule.schedule && !isScheduledNow(rule.schedule, now, shopTz)) return;
+      if (rule.type === "countdown") renderCountdown(rule);
+      else if (rule.type === "stock.low") renderStockLow(rule);
+      else if (rule.type === "announcement") renderAnnouncement(rule);
+      else if (rule.type === "order.created") renderSocialProof(rule);
+      else if (rule.type === "cart.activity" || rule.type === "order.summary")
+        aggRules.push(rule);
+    });
+    if (aggRules.length) renderAggregates(aggRules);
+  }
+
+  // True when a real cart-add should be beaconed to the aggregate counter.
+  function cartActivityEnabled() {
+    return (cfg.notifications || []).some(function (n) {
+      return n && n.enabled && n.type === "cart.activity";
+    });
+  }
+  function beaconCartAdd() {
+    try {
+      window
+        .fetch("/apps/won-toasts/aggregates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+          keepalive: true,
+        })
+        .catch(function () {});
+    } catch (e) {
+      /* no-op */
+    }
   }
 
   // ---- milestones (mirror of @won/core/toasts/milestone-rules) ----
@@ -423,7 +1073,8 @@
       s.top = "50%";
       s.transform = "translateY(-50%)";
     } else {
-      s[vert] = g.offsetTop + "px";
+      // MVP14: nudge past a sticky header / cookie bar / chat on the same edge.
+      s[vert] = collisionOffset(g.offsetTop, vert) + "px";
     }
     if (horiz === "center") {
       s.left = "50%";
@@ -447,6 +1098,8 @@
     card.setAttribute("data-won-toast", "");
     card.setAttribute("data-type", grp.type);
     card.setAttribute("data-group-count", String(grp.count));
+    card.setAttribute("role", ariaRole(grp.type));
+    card.setAttribute("aria-label", srText(p.title, p.detail));
     card.style.borderLeft = "4px solid " + p.accent;
 
     if (p.image) {
@@ -492,6 +1145,7 @@
             }),
           })
           .then(function () {
+            trackEvent("cart:removed", "undo");
             reconcile();
             dismiss(card);
           })
@@ -502,7 +1156,7 @@
       card.appendChild(undo);
     }
 
-    finalizeCard(card);
+    finalizeCard(card, { ruleId: "cart:" + grp.type });
   }
 
   // Milestone toast (free shipping / gift) — a reward message with no line body.
@@ -519,12 +1173,17 @@
     title.textContent = text;
     body.appendChild(title);
     card.appendChild(body);
-    finalizeCard(card);
+    finalizeCard(card, { ruleId: "milestone:" + type });
   }
 
   // Shared: close button, click action, placement, overflow, auto-dismiss.
-  function finalizeCard(card) {
-    if (cfg.global.closeable) {
+  // opts.persistent → no auto-dismiss and exempt from maxVisible eviction
+  // (page-view fixtures like a countdown). opts.onClose → called on user dismiss
+  // (used by governance suppress-after-dismiss).
+  function finalizeCard(card, opts) {
+    opts = opts || {};
+    if (opts.persistent) card.setAttribute("data-won-persistent", "");
+    if (cfg.global.closeable || opts.persistent) {
       var close = elem("button");
       close.type = "button";
       close.setAttribute("data-won-toast-close", "");
@@ -533,13 +1192,16 @@
       close.addEventListener("click", function (e) {
         e.stopPropagation();
         dismiss(card);
+        if (opts.ruleId) trackEvent(opts.ruleId, "dismiss", opts.variant);
+        if (typeof opts.onClose === "function") opts.onClose();
       });
       card.appendChild(close);
     }
 
-    if (cfg.global.clickAction === "open-cart") {
+    if (cfg.global.clickAction === "open-cart" && !opts.persistent) {
       card.style.cursor = "pointer";
       card.addEventListener("click", function () {
+        if (opts.ruleId) trackEvent(opts.ruleId, "click", opts.variant);
         window.location.href = "/cart";
       });
     }
@@ -549,9 +1211,11 @@
     } else {
       region.appendChild(card);
     }
+    // MVP13: one impression per rendered toast (Pro analytics).
+    if (opts.ruleId) trackEvent(opts.ruleId, "impression", opts.variant);
     enforceMaxVisible();
 
-    if (cfg.global.autoDismiss) {
+    if (cfg.global.autoDismiss && !opts.persistent) {
       scheduleDismiss(card);
       if (cfg.global.pauseOnHover) {
         card.addEventListener("mouseenter", function () {
@@ -579,8 +1243,11 @@
     if (!region) return;
     var max = cfg.global.maxVisible || 3;
     var dropped = 0;
-    while (region.querySelectorAll("[data-won-toast]").length > max) {
-      var list = region.querySelectorAll("[data-won-toast]");
+    // Persistent page-view fixtures (countdown, inline stock) are exempt — only
+    // transient cart toasts compete for the maxVisible budget.
+    var sel = "[data-won-toast]:not([data-won-persistent])";
+    while (region.querySelectorAll(sel).length > max) {
+      var list = region.querySelectorAll(sel);
       dismiss(
         cfg.global.stackDirection === "newest-top"
           ? list[list.length - 1]
@@ -626,10 +1293,20 @@
           return r.json();
         })
         .then(function (after) {
-          if (cfg.enabled && active) {
+          // Quiet mode (MVP8) mutes everything without touching other settings.
+          if (cfg.enabled && active && !quietOn()) {
             var g = cfg.global.grouping;
             var groups = groupEvents(deriveEvents(lastCart, after), g);
             var now = Date.now();
+            // MVP11: a genuine cart-add feeds the real cart.activity counter.
+            if (
+              cartActivityEnabled() &&
+              groups.some(function (gr) {
+                return gr.type === "added" || gr.type === "increased";
+              })
+            ) {
+              beaconCartAdd();
+            }
             emitTimes = emitTimes.filter(function (t) {
               return t >= now - 60000;
             });
@@ -737,8 +1414,14 @@
     document.addEventListener("cart:updated", function () {
       reconcile();
     });
+    // MVP14 a11y: Escape dismisses all transient toasts.
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") dismissAll();
+    });
 
     locale = normLocale(embed.getAttribute("data-won-toasts-locale"));
+    shopTz = embed.getAttribute("data-won-toasts-shop-tz") || "UTC";
+    if (region) region.setAttribute("dir", isRTL(locale) ? "rtl" : "ltr");
     var endpoint = embed.getAttribute("data-won-toasts-endpoint");
     var ready = function () {
       applyTheme();
@@ -753,10 +1436,17 @@
         })
         .catch(function () {})
         .then(function () {
+          // Page-view notifications (MVP9) run once on load, after we know the
+          // cart token (governance state) and targeting. Cart-diff toasts stay
+          // event-driven via reconcile().
+          if (cfg.enabled && active) renderNotifications();
           embed.setAttribute("data-won-toasts-status", "ready");
         });
     };
 
+    // Load config immediately (the script already runs async, after
+    // DOMContentLoaded, and does non-blocking fetches — so this doesn't compete
+    // with critical render, and a notification surface should be ready promptly).
     if (endpoint && window.fetch) {
       window
         .fetch(endpoint, { headers: { Accept: "application/json" } })
@@ -765,7 +1455,8 @@
         })
         .then(function (data) {
           if (data && data.config) cfg = data.config;
-          active = matchesTargeting(cfg.targeting);
+          // MVP10 exclusions/meta opt-out fully suppress the app on this page.
+          active = matchesTargeting(cfg.targeting) && !isExcluded();
         })
         .catch(function () {})
         .then(ready);

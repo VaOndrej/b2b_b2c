@@ -15,6 +15,8 @@ import type {
   ToastPlan,
 } from "@won/core/toasts/config.types";
 import type { ToastTargeting } from "@won/core/toasts/targeting";
+import type { NotificationRule } from "@won/core/toasts/notifications";
+import type { ExclusionSettings } from "@won/core/toasts/exclusions";
 
 import type { PrismaClient } from "../generated/prisma/client";
 import db from "../db.server";
@@ -27,6 +29,8 @@ export interface ToastConfigWrite {
   messages?: ToastMessages;
   milestones?: MilestoneRuleConfig[];
   targeting?: Partial<ToastTargeting>;
+  notifications?: NotificationRule[];
+  exclusions?: Partial<ExclusionSettings>;
 }
 
 function normalizeShop(shop: string): string {
@@ -52,6 +56,8 @@ function rowToConfig(row: {
   messages: unknown;
   milestones: unknown;
   targeting: unknown;
+  notifications: unknown;
+  exclusions: unknown;
 }): ToastAppConfig {
   const stored: StoredToastConfig = {
     enabled: row.enabled,
@@ -70,6 +76,12 @@ function rowToConfig(row: {
       : undefined,
     targeting: isPlainObject(row.targeting)
       ? (row.targeting as Partial<ToastTargeting>)
+      : undefined,
+    notifications: Array.isArray(row.notifications)
+      ? (row.notifications as NotificationRule[])
+      : undefined,
+    exclusions: isPlainObject(row.exclusions)
+      ? (row.exclusions as Partial<ExclusionSettings>)
       : undefined,
   };
   return resolveToastConfig(stored);
@@ -110,6 +122,8 @@ export function createToastConfigService(prisma: PrismaClient) {
     if (isPlainObject(input.messages)) data.messages = input.messages;
     if (Array.isArray(input.milestones)) data.milestones = input.milestones;
     if (isPlainObject(input.targeting)) data.targeting = input.targeting;
+    if (Array.isArray(input.notifications)) data.notifications = input.notifications;
+    if (isPlainObject(input.exclusions)) data.exclusions = input.exclusions;
 
     const row = await prisma.toastAppConfig.update({
       where: { shop: normalizedShop },

@@ -22,6 +22,14 @@ import {
   type PageType,
   type ToastTargeting,
 } from "./targeting.ts";
+import {
+  DEFAULT_NOTIFICATIONS,
+  sanitizeNotifications,
+} from "./notifications.ts";
+import {
+  DEFAULT_EXCLUSIONS,
+  sanitizeExclusions,
+} from "./exclusions.ts";
 
 const SEMANTIC_TYPES: readonly ToastSemanticType[] = [
   "added",
@@ -136,6 +144,8 @@ export const DEFAULT_TOAST_CONFIG: ToastAppConfig = {
   messages: DEFAULT_MESSAGES,
   milestones: DEFAULT_MILESTONES,
   targeting: DEFAULT_TARGETING,
+  notifications: DEFAULT_NOTIFICATIONS,
+  exclusions: DEFAULT_EXCLUSIONS,
 };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -415,6 +425,8 @@ export function resolveToastConfig(
     messages: mergeMessages(input.messages),
     milestones: sanitizeMilestones(input.milestones),
     targeting: sanitizeTargeting(input.targeting),
+    notifications: sanitizeNotifications(input.notifications),
+    exclusions: sanitizeExclusions(input.exclusions),
   };
 }
 

@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Master katalog bloků a komponent Won supplements šablony — napříč HP, PDP, kolekcemi, cartem, blogem. Každá s příznakem generalizovat / stavět nově / app block a zdrojem z Enervit + Therabeast."
+    />
+    <title>Won Theme — master katalog bloků &amp; komponent</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --page: #0b120e;
+        --surface: #141b17;
+        --surface-soft: #18211c;
+        --line: #29352e;
+        --line-strong: #34443a;
+        --text: #eef1ee;
+        --text-soft: #b7bdb9;
+        --text-muted: #818b85;
+        --mint: #3fd7a5;
+        --mint-dark: #08271d;
+        --amber: #e5b64c;
+        --amber-dark: #302713;
+        --rose: #e57c7c;
+        --rose-dark: #2f1616;
+        --violet: #9d8cf0;
+        --violet-dark: #1e1936;
+        --radius: 14px;
+        --max-width: 1440px;
+        --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0; color: var(--text); background: var(--page);
+        font-family: var(--sans); line-height: 1.5; text-rendering: optimizeLegibility;
+      }
+      .shell { width: min(calc(100% - 30px), var(--max-width)); margin-inline: auto; }
+      a { color: var(--mint); }
+
+      .head { padding: 22px 0; }
+      .eyebrow {
+        margin: 0 0 12px; color: var(--text-soft); font-family: var(--mono);
+        font-size: 0.9rem; letter-spacing: 0.16em; text-transform: uppercase;
+      }
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { margin-bottom: 14px; font-size: clamp(2.1rem, 3.6vw, 2.8rem); font-weight: 760; letter-spacing: -0.05em; line-height: 1.06; }
+      .lede { max-width: 900px; margin: 0; color: var(--text-soft); font-size: clamp(1.02rem, 1.4vw, 1.24rem); line-height: 1.6; }
+
+      .legend { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+      .legend-item { display: flex; align-items: center; gap: 9px; font-size: 0.9rem; color: var(--text-soft); }
+
+      .flag { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 6px; font-family: var(--mono); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap; }
+      .flag.gen { color: var(--mint); background: var(--mint-dark); border: 1px solid #1f5b46; }
+      .flag.new { color: var(--amber); background: var(--amber-dark); border: 1px solid #59471b; }
+      .flag.app { color: var(--violet); background: var(--violet-dark); border: 1px solid #3a3160; }
+
+      .callout { margin-top: 18px; padding: 16px 20px; border: 1px solid var(--line); border-left: 4px solid var(--mint); border-radius: 0 var(--radius) var(--radius) 0; background: var(--surface); color: var(--text-soft); }
+      .callout strong { color: var(--text); }
+      .callout.violet { border-left-color: var(--violet); }
+      .callout.amber { border-left-color: var(--amber); }
+
+      section.surface { padding: 26px 0 6px; border-top: 1px solid var(--line); margin-top: 24px; }
+      .surface-head { display: flex; gap: 16px; align-items: baseline; margin-bottom: 6px; flex-wrap: wrap; }
+      .surface-num { color: var(--mint); font-family: var(--mono); font-size: 0.95rem; font-weight: 800; }
+      h2 { margin: 0; font-size: clamp(1.3rem, 2.1vw, 1.6rem); font-weight: 720; letter-spacing: -0.035em; }
+      .surface-note { color: var(--text-muted); font-family: var(--mono); font-size: 0.82rem; }
+
+      .table-wrap { overflow-x: auto; margin-top: 14px; border: 1px solid var(--line); border-radius: var(--radius); }
+      table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 720px; }
+      thead th {
+        position: sticky; top: 0; text-align: left; padding: 10px 14px; background: var(--surface-soft);
+        color: var(--text-muted); font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.06em;
+        text-transform: uppercase; font-weight: 700; border-bottom: 1px solid var(--line-strong);
+      }
+      tbody td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--text-soft); }
+      tbody tr:last-child td { border-bottom: none; }
+      tbody tr:hover td { background: rgba(63, 215, 165, 0.03); }
+      td.comp { color: var(--text); font-weight: 600; white-space: nowrap; }
+      td.src { font-family: var(--mono); font-size: 0.82rem; color: var(--text-muted); }
+      td.src .e { color: var(--mint); }
+      td.src .t { color: var(--amber); }
+      .tok { font-family: var(--mono); font-size: 0.9rem; }
+      .tok.ok { color: var(--mint); }
+      .tok.no { color: var(--rose); }
+      code { font-family: var(--mono); font-size: 0.85em; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+
+      footer.foot { margin-top: 30px; padding: 22px 0 46px; border-top: 1px solid var(--line); color: var(--text-muted); font-family: var(--mono); font-size: 0.82rem; }
+      footer.foot a { color: var(--text-soft); }
+      @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="head">
+        <p class="eyebrow">Won Storefront System · Master katalog komponent</p>
+        <h1>Každý blok, napříč každou stránkou</h1>
+        <p class="lede">
+          Kompletní seznam komponent pro Won <strong>supplements</strong> šablonu — HP, PDP,
+          kolekce, cart, blog, účet, finder. Každá je označená jako
+          <strong>zgeneralizovat z repa</strong>, <strong>stavět od nuly</strong>, nebo
+          <strong>dodat přes app block</strong>, se zdrojem z Enervit / Therabeast a stavem
+          tokenizace. Companion k <a href="theme-roadmap.html">strategii</a> a
+          <a href="product-roadmap.html">katalogu appek</a>.
+        </p>
+
+        <div class="legend">
+          <span class="legend-item"><span class="flag gen">GEN</span> zgeneralizovat z repa (zdroj uveden)</span>
+          <span class="legend-item"><span class="flag new">NEW</span> stavět od nuly (AI/skill)</span>
+          <span class="legend-item"><span class="flag app">APP</span> nepatří do motivu → app block (Won appka)</span>
+          <span class="legend-item"><span class="tok ok">◆</span> token-ready / <span class="tok no">✕</span> pozor: hardcode v repu</span>
+          <span class="legend-item"><span class="src"><span class="e">E</span></span> Enervit · <span class="src"><span class="t">T</span></span> Therabeast</span>
+        </div>
+
+        <div class="callout">
+          <strong>Repozitáře se doplňují.</strong> Enervit má konfigurátor (+testy), carousel
+          progress-bar, nutriční/dávkovací tabulky, gift-ladder, flavor upsell. Therabeast má
+          sticky-ATC web component, complementary engine, PDP bloky (FAQ/highlights/video/bundle),
+          problem-chooser finder. Kde má komponentu jen jeden, generalizuje se odtud; kde oba,
+          bereme lepší (uvedeno).
+        </div>
+        <div class="callout amber">
+          <strong>Tokenizační pravidlo (locked):</strong> žádné hardcoded hex/px v komponentě.
+          Enervit hero sekce (Lactate <code>#e40521</code>) jsou <span class="tok no">✕</span> — při
+          generalizaci se přepisují na <code>var(--color-*)</code> / <code>settings</code>. Vše čte
+          <code>won-tokens</code>.
+        </div>
+        <div class="callout violet">
+          <strong>Vrstva rozhoduje o moatu.</strong> Prezentační bloky = theme-native (kopírovatelné,
+          OK). Server-backed hodnota (upsell engine, gift ladder, social proof, qty stepper, reviews,
+          finder s analytikou) = <span class="flag app">APP</span>, mapované na Won appky z
+          <a href="product-roadmap.html">roadmapy</a>: Won Stepper, Won Toasts, Won Companion, GiftLadder.
+        </div>
+      </header>
+
+      <!-- 00 GLOBAL CHROME -->
+      <section class="surface">
+        <div class="surface-head"><span class="surface-num">00</span><h2>Global / chrome</h2><span class="surface-note">na každé stránce</span></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Komponenta</th><th>Co dělá</th><th>Akce</th><th>Zdroj</th><th>Tok</th><th>Vrstva</th></tr></thead>
+          <tbody>
+            <tr><td class="comp">Header + nav</td><td>logo, menu, ikony</td><td><span class="flag new">NEW</span></td><td class="src">Horizon base</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Mega menu</td><td>víceúrovňové menu s obrázky</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span>/<span class="t">T</span> mega-menu-list</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Announcement bar</td><td>oznámení, rotace, scheduling</td><td><span class="flag new">NEW</span></td><td class="src">Horizon base</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Footer</td><td>menu, social, platby, newsletter slot</td><td><span class="flag new">NEW</span></td><td class="src">Horizon base</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Predictive search</td><td>instant search + resource carousely</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> predictive-search-resource-carousel</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Cart drawer</td><td>off-canvas košík</td><td><span class="flag new">NEW</span></td><td class="src">Horizon base</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Qty stepper</td><td>optimistický +/− všude</td><td><span class="flag app">APP</span></td><td class="src"><span class="e">E</span>/<span class="t">T</span> tb-cart-qty</td><td class="tok ok">◆</td><td>Won Stepper</td></tr>
+            <tr><td class="comp">Cart badge</td><td>živý počet na kartách/ikoně</td><td><span class="flag app">APP</span></td><td class="src"><span class="t">T</span> tb-cart-badge</td><td class="tok ok">◆</td><td>Won Stepper</td></tr>
+            <tr><td class="comp">Toasty / notifikace</td><td>toast po změně košíku, social proof</td><td><span class="flag app">APP</span></td><td class="src"><span class="e">E</span> tb-cart-qty (showMiniToast)</td><td class="tok ok">◆</td><td>Won Toasts</td></tr>
+            <tr><td class="comp">Breadcrumbs</td><td>+ „odkud jsem přišel" kontext</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> breadcrumb-context.js</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Fly-to-cart</td><td>animace přidání</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> fly-to-cart.js</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Cookie / consent</td><td>GDPR banner</td><td><span class="flag new">NEW</span></td><td class="src">Shopify native</td><td class="tok ok">◆</td><td>theme</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- 01 HOME -->
+      <section class="surface">
+        <div class="surface-head"><span class="surface-num">01</span><h2>Home page</h2><span class="surface-note">skladatelné sekce</span></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Komponenta</th><th>Co dělá</th><th>Akce</th><th>Zdroj</th><th>Tok</th><th>Vrstva</th></tr></thead>
+          <tbody>
+            <tr><td class="comp">Split hero slider</td><td>2-sloupcový hero se slidy</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-split-hero + tb-sections.js</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Layered slideshow</td><td>parallax vrstvený slideshow</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> layered-slideshow.js</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Product carousel</td><td>slider produktů + progress bar</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> carousel-progress-sync.js + no-mouse-drag</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">USP / icon features</td><td>řada ikon+text (doprava, kvalita…)</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> usp-features · <span class="t">T</span> icon-features</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Benefits cards</td><td>karty s benefity</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-benefits-cards</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Marquee</td><td>běžící pás textu/log</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span>/<span class="t">T</span> marquee</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Editorial / bento grid</td><td>magazínové mřížky</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> editorial-*-grid, bento-grid</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Testimonials / reviews slider</td><td>carousel recenzí</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-reviews-slider</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Comparison slider</td><td>before/after přetahovací</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> comparison-slider.js</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Story / about block</td><td>brand story se scénami</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-story-block</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Image + text</td><td>media + copy + CTA</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-image-with-text</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Instagram / UGC grid</td><td>social feed mřížka</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> instagram-feed · <span class="t">T</span> tb-instagram-grid</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Blog highlights</td><td>vybrané články</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> featured-blog · <span class="t">T</span> tb-featured-blog</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Promo banner</td><td>akční pruh s CTA</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> promo-banner</td><td class="tok no">✕</td><td>theme</td></tr>
+            <tr><td class="comp">Team / athletes</td><td>ambasadoři/veterináři (trust)</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> team · <span class="t">T</span> tb-vet-profile</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Newsletter banner</td><td>e-mail capture</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-newsletter-banner</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Featured collection</td><td>vybraná kolekce/produkty</td><td><span class="flag new">NEW</span></td><td class="src">Horizon base</td><td class="tok ok">◆</td><td>theme</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- 02 PDP -->
+      <section class="surface">
+        <div class="surface-head"><span class="surface-num">02</span><h2>PDP (produkt)</h2><span class="surface-note">nejhustší na komponenty</span></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Komponenta</th><th>Co dělá</th><th>Akce</th><th>Zdroj</th><th>Tok</th><th>Vrstva</th></tr></thead>
+          <tbody>
+            <tr><td class="comp">Gallery + hotspots</td><td>media galerie, zoom, image hotspoty</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> product-hotspot.js, drag-zoom</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Sticky add-to-cart</td><td>lišta ATC při scrollu (web component)</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> sticky-add-to-cart.js ★</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Variant picker + chips/swatches</td><td>výběr variant, barevné chips</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> card-variant-chips, variant-main-picker</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Pack-size selector</td><td>„Balení" — výběr velikosti balení</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> product-baleni.js</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Servings selector</td><td>„Počet dávek" — dávky/porce</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> product-davky.js</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Price + per-day/serving</td><td>cena + „od X /deň", strikethrough</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-price-per-day · <span class="e">E</span> pdp-price-sync</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Volume / qty discount</td><td>množstevní sleva (tiery)</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-qty-discount + tb-qty-price.js</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Bundle / cross-sell upsell</td><td>doporučení z celého košíku, 1-klik</td><td><span class="flag app">APP</span></td><td class="src"><span class="t">T</span> tb-complementary-* · <span class="e">E</span> variant-upsell-filter</td><td class="tok ok">◆</td><td>Won Companion</td></tr>
+            <tr><td class="comp">Configurator</td><td>skladač bundle/plánu (engine+view+testy)</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> enervit-konfigurator-*</td><td class="tok ok">◆</td><td>theme*</td></tr>
+            <tr><td class="comp">Nutrition / ingredient table</td><td>nutriční hodnoty, složení</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> product-nutritions</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Dosage guide</td><td>dávkování/užití</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> product-dosage</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">PDP FAQ</td><td>accordion otázek na produktu</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-pdp-faq (+item)</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">PDP highlights</td><td>benefity/USP list na produktu</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-pdp-highlights (+item)</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">PDP video</td><td>embed videa</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-pdp-video</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Product tabs</td><td>záložky popis/složení/použití</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> component-section-tabs.css · <span class="e">E</span> use-effect</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Delivery / ETA note</td><td>„doručení do…" + doprava zdarma</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-delivery-note · <span class="e">E</span> clock-icon</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Stock banner</td><td>skladem/dochází/vyprodáno</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> product-stock-banner.js</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Trust badges</td><td>doping-free/WADA, vet, certifikace</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> doping-free-statement · <span class="t">T</span> vet-profile</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Reviews (widget)</td><td>plné recenze + hvězdy</td><td><span class="flag app">APP</span></td><td class="src"><span class="t">T</span> Air Reviews (3rd) · <span class="e">E</span> review.liquid (stars)</td><td class="tok ok">◆</td><td>Won Reviews / 3rd</td></tr>
+            <tr><td class="comp">Gift-ladder progress</td><td>„do dárku zbývá…" progress</td><td><span class="flag app">APP</span></td><td class="src"><span class="e">E</span> gift-progress-bar, gift-auto-add</td><td class="tok ok">◆</td><td>GiftLadder</td></tr>
+            <tr><td class="comp">Recommended / recently viewed</td><td>related + naposledy prohlížené</td><td><span class="flag new">NEW</span></td><td class="src">Horizon + recently-viewed.js</td><td class="tok ok">◆</td><td>theme</td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout violet" style="margin-top:14px">
+          <strong>* Configurator</strong> je hraniční: prezentačně může být theme-native, ale pokud
+          se z něj stane „advisor" s uloženými pravidly/analytikou (viz roadmapa AI advisor), překlopí
+          se za app block. Zatím GEN do motivu, s čistým rozhraním, ať jde později vyměnit za appku.
+        </div>
+      </section>
+
+      <!-- 03 COLLECTION -->
+      <section class="surface">
+        <div class="surface-head"><span class="surface-num">03</span><h2>Kolekce / PLP</h2></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Komponenta</th><th>Co dělá</th><th>Akce</th><th>Zdroj</th><th>Tok</th><th>Vrstva</th></tr></thead>
+          <tbody>
+            <tr><td class="comp">Product card</td><td>karta: badge, cena/deň, hvězdy, qty</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tpc-card, tb-product-card</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Filters</td><td>facety, cena, příchuť, dostupnost</td><td><span class="flag new">NEW</span></td><td class="src">Horizon filters</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Sort + paging</td><td>řazení, infinite/paginace</td><td><span class="flag new">NEW</span></td><td class="src">Horizon base</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Subcollections / links</td><td>dlaždice podkolekcí</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> subcollections, collection-links</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Quick-add / hotspot</td><td>přidání z karty bez PDP</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> product-hotspot.js</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Collection hero / hub</td><td>banner + intro kolekce</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> produkty-hub, poradna-hub</td><td class="tok ok">◆</td><td>theme</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- 04 CART -->
+      <section class="surface">
+        <div class="surface-head"><span class="surface-num">04</span><h2>Cart</h2><span class="surface-note">drawer + stránka</span></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Komponenta</th><th>Co dělá</th><th>Akce</th><th>Zdroj</th><th>Tok</th><th>Vrstva</th></tr></thead>
+          <tbody>
+            <tr><td class="comp">Cart page + drawer</td><td>řádky, qty, poznámka, checkout</td><td><span class="flag new">NEW</span></td><td class="src">Horizon base</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Cart cross-sell</td><td>complementary carousel v košíku</td><td><span class="flag app">APP</span></td><td class="src"><span class="t">T</span> cart-complementary-products, tb-cart-rec</td><td class="tok ok">◆</td><td>Won Companion</td></tr>
+            <tr><td class="comp">Free-shipping / gift bar</td><td>„do dopravy zdarma zbývá…"</td><td><span class="flag app">APP</span></td><td class="src"><span class="e">E</span> free-shipping-bar, gift-progress-cart</td><td class="tok ok">◆</td><td>GiftLadder</td></tr>
+            <tr><td class="comp">Auto-add gift + opt-out</td><td>automatický dárek nad práh</td><td><span class="flag app">APP</span></td><td class="src"><span class="e">E</span> gift-auto-add.js, gift-opt-out.js</td><td class="tok ok">◆</td><td>GiftLadder</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- 05 BLOG -->
+      <section class="surface">
+        <div class="surface-head"><span class="surface-num">05</span><h2>Blog / článek</h2><span class="surface-note">obsahový marketing = SEO kanál</span></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Komponenta</th><th>Co dělá</th><th>Akce</th><th>Zdroj</th><th>Tok</th><th>Vrstva</th></tr></thead>
+          <tbody>
+            <tr><td class="comp">Blog listing + tag filter</td><td>výpis článků, filtr podle tagu</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-main-blog</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Article layout</td><td>rich text, obrázky, TOC</td><td><span class="flag new">NEW</span></td><td class="src">Horizon main-blog-post</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Editorial grid</td><td>magazínové rozložení článků</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> editorial-blog-grid</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Related articles + shop-the-post</td><td>související články + produkty v článku</td><td><span class="flag new">NEW</span></td><td class="src">—</td><td class="tok ok">◆</td><td>theme</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- 06 FINDER / QUIZ -->
+      <section class="surface">
+        <div class="surface-head"><span class="surface-num">06</span><h2>Finder / poradna</h2><span class="surface-note">konverzní diferenciátor</span></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Komponenta</th><th>Co dělá</th><th>Akce</th><th>Zdroj</th><th>Tok</th><th>Vrstva</th></tr></thead>
+          <tbody>
+            <tr><td class="comp">Problem chooser</td><td>symptom/cíl → doporučený produkt</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="t">T</span> tb-problem-chooser</td><td class="tok ok">◆</td><td>theme → APP</td></tr>
+            <tr><td class="comp">Plan / goal guide</td><td>tréninkový/cílový průvodce</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> plan-guide, performance-steps</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Advice hub</td><td>rozcestník poradny</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> poradna-hub</td><td class="tok ok">◆</td><td>theme</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- 07 ACCOUNT / MISC -->
+      <section class="surface">
+        <div class="surface-head"><span class="surface-num">07</span><h2>Účet &amp; ostatní stránky</h2></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Komponenta</th><th>Co dělá</th><th>Akce</th><th>Zdroj</th><th>Tok</th><th>Vrstva</th></tr></thead>
+          <tbody>
+            <tr><td class="comp">Login / account</td><td>přihlášení, objednávky, B2B</td><td><span class="flag new">NEW</span></td><td class="src">Horizon + quick-order-list</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Contact page + map</td><td>formulář + mapa + info</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> contact-info · <span class="t">T</span> tb-contact-page</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">FAQ page</td><td>samostatná stránka FAQ</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> faq · <span class="t">T</span> tb-faq-split</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">About / story page</td><td>o značce</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> about-page · <span class="t">T</span> tb-story-block</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Shipping / payment table</td><td>tabulka doprava &amp; platba</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> shipping-table</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Legal (withdrawal form)</td><td>odstoupení od smlouvy, GDPR</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> withdrawal-form</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">B2B banner / gate</td><td>velkoobchod CTA</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> b2b-banner</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">404 / password</td><td>chybové a heslové stránky</td><td><span class="flag new">NEW</span></td><td class="src">Horizon base</td><td class="tok ok">◆</td><td>theme</td></tr>
+            <tr><td class="comp">Metaobject profil</td><td>detail sportovce/experta</td><td><span class="flag gen">GEN</span></td><td class="src"><span class="e">E</span> metaobject-sportovec</td><td class="tok ok">◆</td><td>theme</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <footer class="foot">
+        Won Storefront System — master katalog · živý dokument · 2026-08-04 ·
+        zdroje inventáře: Enervit (Horizon 3.5.1) + Therabeast (Horizon 3.4.0) ·
+        ★ = referenční implementace · viz <a href="theme-roadmap.html">strategie</a> ·
+        <a href="product-roadmap.html">appky</a>
+      </footer>
+    </main>
+  </body>
+</html>

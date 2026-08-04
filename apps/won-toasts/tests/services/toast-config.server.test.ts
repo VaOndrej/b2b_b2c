@@ -26,6 +26,8 @@ before(async () => {
       "messages" TEXT,
       "milestones" TEXT,
       "targeting" TEXT,
+      "notifications" TEXT,
+      "exclusions" TEXT,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL
     )
@@ -55,6 +57,41 @@ test("fresh shop resolves to the complete spec default config", async () => {
   // MVP4: default messages + empty milestones present
   assert.equal(typeof config.messages.added?.en, "string");
   assert.deepEqual(config.milestones, []);
+  // MVP9: notifications default to none
+  assert.deepEqual(config.notifications, []);
+});
+
+test("MVP9: notification recipes persist and are re-sanitized on read", async () => {
+  const shop = "recipes.myshopify.com";
+  await service.updateToastConfig(shop, {
+    plan: "pro",
+    notifications: [
+      {
+        id: "sale",
+        type: "countdown",
+        enabled: true,
+        surface: "banner",
+        pages: ["product"],
+        message: "Ends in {countdown}",
+        endsAt: "2026-12-31T23:59:59.000Z",
+      },
+      {
+        id: "few",
+        type: "stock.low",
+        enabled: true,
+        surface: "inline",
+        pages: ["product"],
+        message: "Only {count} left",
+        threshold: 5,
+      },
+    ],
+  });
+  const config = await service.getToastConfig(shop);
+  assert.equal(config.notifications.length, 2);
+  const countdown = config.notifications.find((n) => n.type === "countdown");
+  assert.ok(countdown);
+  assert.equal(countdown.enabled, true);
+  assert.equal((countdown as { endsAt?: string }).endsAt, "2026-12-31T23:59:59.000Z");
 });
 
 test("message overrides and milestone rules persist and merge", async () => {

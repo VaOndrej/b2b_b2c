@@ -11,6 +11,8 @@ import {
   sanitizeTargeting,
   sanitizeTheme,
 } from "./config.defaults.ts";
+import { sanitizeNotifications } from "./notifications.ts";
+import { sanitizeExclusions } from "./exclusions.ts";
 
 export function exportConfig(config: ToastAppConfig): string {
   return JSON.stringify(
@@ -23,6 +25,8 @@ export function exportConfig(config: ToastAppConfig): string {
       messages: config.messages,
       milestones: config.milestones,
       targeting: config.targeting,
+      notifications: config.notifications,
+      exclusions: config.exclusions,
     },
     null,
     2,
@@ -62,6 +66,8 @@ export function importConfig(json: string): StoredToastConfig {
   out.messages = mergeMessages(p.messages);
   out.milestones = sanitizeMilestones(p.milestones);
   out.targeting = sanitizeTargeting(p.targeting);
+  out.notifications = sanitizeNotifications(p.notifications);
+  out.exclusions = sanitizeExclusions(p.exclusions);
 
   return out;
 }

@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Strategie a roadmapa Won storefront systému — theme jako funnel, appky jako moat. Supplements-first, dvě právní tratě, přenositelná IP vrstva."
+    />
+    <title>Won Theme — strategie &amp; roadmapa storefront systému</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --page: #0b120e;
+        --surface: #141b17;
+        --surface-soft: #18211c;
+        --line: #29352e;
+        --line-strong: #34443a;
+        --text: #eef1ee;
+        --text-soft: #b7bdb9;
+        --text-muted: #818b85;
+        --mint: #3fd7a5;
+        --mint-dark: #08271d;
+        --amber: #e5b64c;
+        --amber-dark: #302713;
+        --rose: #e57c7c;
+        --rose-dark: #2f1616;
+        --radius: 15px;
+        --max-width: 1180px;
+        --sans:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+
+      body {
+        margin: 0;
+        color: var(--text);
+        background: var(--page);
+        font-family: var(--sans);
+        line-height: 1.55;
+        text-rendering: optimizeLegibility;
+      }
+
+      .shell {
+        width: min(calc(100% - 30px), var(--max-width));
+        margin-inline: auto;
+      }
+
+      a { color: var(--mint); }
+
+      .catalog-header { padding: 22px 0; }
+
+      .eyebrow {
+        margin: 0 0 13px;
+        color: var(--text-soft);
+        font-family: var(--mono);
+        font-size: 0.95rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      h1, h2, h3, p { margin-top: 0; }
+
+      h1 {
+        margin-bottom: 15px;
+        font-size: clamp(2.35rem, 4vw, 3rem);
+        font-weight: 760;
+        letter-spacing: -0.05em;
+        line-height: 1.05;
+      }
+
+      .lede {
+        max-width: 860px;
+        margin: 0;
+        color: var(--text-soft);
+        font-size: clamp(1.05rem, 1.5vw, 1.32rem);
+        line-height: 1.62;
+      }
+
+      .status-line {
+        margin-top: 18px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-family: var(--mono);
+        font-size: 0.82rem;
+      }
+
+      .chip {
+        padding: 5px 11px;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        color: var(--text-muted);
+        background: var(--surface-soft);
+      }
+      .chip.live { border-color: var(--mint); color: var(--mint); background: var(--mint-dark); }
+      .chip.wait { border-color: #59471b; color: var(--amber); background: var(--amber-dark); }
+
+      section.block { padding: 30px 0; border-top: 1px solid var(--line); }
+
+      .block-heading {
+        display: flex;
+        gap: 18px;
+        align-items: baseline;
+        margin-bottom: 20px;
+      }
+      .block-number {
+        color: var(--mint);
+        font-family: var(--mono);
+        font-size: 1rem;
+        font-weight: 800;
+      }
+      h2 {
+        margin: 0;
+        font-size: clamp(1.4rem, 2.3vw, 1.8rem);
+        font-weight: 720;
+        letter-spacing: -0.035em;
+      }
+
+      p.body { color: var(--text-soft); max-width: 820px; }
+      p.body + p.body { margin-top: 12px; }
+      strong { color: var(--text); }
+      em { color: var(--text-soft); }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+        padding: 22px 24px;
+      }
+      .card + .card { margin-top: 16px; }
+      .card h3 {
+        font-size: 1.24rem;
+        font-weight: 720;
+        letter-spacing: -0.02em;
+        margin-bottom: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+      @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+
+      .accent-mint { border-left: 4px solid var(--mint); }
+      .accent-amber { border-left: 4px solid var(--amber); }
+      .accent-rose { border-left: 4px solid var(--rose); }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.96rem;
+        margin-top: 6px;
+      }
+      th, td {
+        text-align: left;
+        padding: 11px 14px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        color: var(--text-muted);
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+      td strong { color: var(--text); }
+      .col-a { color: var(--mint); }
+      .col-b { color: var(--amber); }
+
+      .quote {
+        margin: 14px 0 0;
+        padding: 12px 16px;
+        border-left: 3px solid var(--line-strong);
+        background: var(--surface-soft);
+        border-radius: 0 8px 8px 0;
+        color: var(--text-soft);
+        font-size: 0.95rem;
+        font-style: italic;
+      }
+      .quote cite {
+        display: block;
+        margin-top: 6px;
+        font-style: normal;
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        color: var(--text-muted);
+      }
+
+      ul.clean, ol.clean { margin: 10px 0 0; padding-left: 20px; color: var(--text-soft); }
+      ul.clean li, ol.clean li { margin-bottom: 8px; }
+      li strong { color: var(--text); }
+
+      code {
+        font-family: var(--mono);
+        font-size: 0.9em;
+        background: var(--surface-soft);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 0 4px;
+        overflow-wrap: anywhere;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--text-muted);
+        background: var(--surface-soft);
+        font-family: var(--mono);
+        font-size: 0.82rem;
+        margin: 0 6px 6px 0;
+      }
+      .tag.mint { border-color: #1f5b46; color: var(--mint); background: var(--mint-dark); }
+      .tag.amber { border-color: #59471b; color: var(--amber); background: var(--amber-dark); }
+
+      .verdict {
+        margin-top: 14px;
+        padding: 12px 16px;
+        border: 1px dashed var(--mint);
+        border-radius: 10px;
+        background: var(--mint-dark);
+        color: var(--text);
+        font-size: 0.98rem;
+      }
+      .verdict::before {
+        content: "→ ROZHODNUTÍ";
+        display: block;
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.1em;
+        color: var(--mint);
+        margin-bottom: 6px;
+      }
+      .verdict.open { border-color: var(--amber); background: var(--amber-dark); }
+      .verdict.open::before { content: "→ OTEVŘENÉ / ČEKÁ"; color: var(--amber); }
+
+      .preset-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 14px;
+      }
+      @media (max-width: 760px) { .preset-row { grid-template-columns: 1fr; } }
+      .preset {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--surface-soft);
+        padding: 16px 18px;
+      }
+      .preset h4 { margin: 0 0 8px; font-size: 1.05rem; }
+      .preset p { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
+      .preset.hero { border-color: var(--mint); }
+      .preset .badge {
+        display: inline-block;
+        margin-bottom: 8px;
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--mint);
+      }
+
+      footer.foot {
+        margin-top: 10px;
+        padding: 22px 0 40px;
+        border-top: 1px solid var(--line);
+        color: var(--text-muted);
+        font-family: var(--mono);
+        font-size: 0.82rem;
+      }
+      footer.foot a { color: var(--text-soft); }
+
+      @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="catalog-header">
+        <p class="eyebrow">Won Storefront System · Strategie</p>
+        <h1>Ne „další šablona". Storefront systém.</h1>
+        <p class="lede">
+          Theme je funnel a nosič, appky jsou moat a příjem. Tahle stránka drží
+          rozhodnutí, kterými se řídí stavba první Won šablony — právní tratě,
+          přenositelnou IP vrstvu, model prodeje a supplements-first volbu.
+          Companion k <a href="product-roadmap.html">katalogu appek</a>.
+        </p>
+        <div class="status-line">
+          <span class="chip">Datum: 2026-08-04</span>
+          <span class="chip live">Fáze: teorie / rozhodnutí</span>
+          <span class="chip wait">Čeká: klientská repa motivů</span>
+        </div>
+      </header>
+
+      <!-- 01 — THESIS -->
+      <section class="block" aria-labelledby="s-thesis">
+        <div class="block-heading">
+          <span class="block-number">01</span>
+          <h2 id="s-thesis">Strategický rámec</h2>
+        </div>
+        <p class="body">
+          Konkurence prodává <em>soubor</em> — šablonu za ~400 USD a bojuje o to,
+          čí demo je hezčí. My prodáváme <strong>storefront systém</strong>: rychlý
+          motiv + sada vlastních first-party appek navržených dohromady + dokumentaci
+          jako produkt. To je jiná kategorie, kde nemáme konkurenty za 400 USD.
+        </p>
+        <p class="body">
+          Pozorování, ze kterého to celé vzniklo: i drahé šablony jdou nativně
+          v theme editoru měnit jen málo. Ale závěr <strong>není</strong> „vystav
+          úplně všechno" — víc nastavení často znamená horší merchant UX a vyšší
+          support. Vítězná strategie = vystavit <strong>ta správná</strong> nastavení
+          s dobrými defaulty a presety, řídit vzhled přes design tokeny (CSS custom
+          properties ze <code>settings_schema.json</code>), a udělat z dokumentace
+          plnohodnotnou (a akviziční) část produktu.
+        </p>
+        <div class="verdict">
+          Priorita je opačná, než vypadá: <strong>appky a jejich integrace jsou
+          produkt, motiv je jejich nosič.</strong> Samotný motiv neuživí — dává
+          smysl jen kvůli app balíku za ním.
+        </div>
+      </section>
+
+      <!-- 02 — LEGAL FORK -->
+      <section class="block" aria-labelledby="s-legal">
+        <div class="block-heading">
+          <span class="block-number">02</span>
+          <h2 id="s-legal">Právní vidlička: Horizon ≠ prodejná šablona</h2>
+        </div>
+        <p class="body">
+          Horizon <strong>není MIT</strong> jako kdysi Dawn — má vlastní proprietární
+          licenci. Odvozenou šablonu (Derived Theme) nesmíš prodávat nikde, ani mimo
+          Shopify. Jediná výjimka je dodání konkrétnímu klientovi jako služba.
+        </p>
+        <blockquote class="quote">
+          „you may not submit, list, market, sell, distribute, or otherwise make
+          available any theme that is based on, derived from, or incorporates any
+          portion of the Software via the Shopify Theme Store, any other
+          Shopify-operated channel, or any off-platform channel"
+          <cite>Horizon LICENSE.md</cite>
+        </blockquote>
+        <blockquote class="quote">
+          „you may deliver a Derived Theme directly to merchants as part of services
+          engagements… may not be marketed or offered as a general-purpose product…
+          may not be resold, relicensed, or redistributed"
+          <cite>Horizon LICENSE.md — výjimka pro klientskou práci</cite>
+        </blockquote>
+        <p class="body">
+          A z druhé strany: do Theme Store se od 2026 přijímá jen šablona postavená
+          na <strong>Shopify Skeleton</strong> nebo plně originální kód. Nic
+          odvozeného z Dawn/Horizonu. Proto jsou to <strong>dvě různé tratě</strong>:
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th class="col-a">A) Agency accelerator</th>
+              <th class="col-b">B) Produkt do Theme Store</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Základ</strong></td><td>Horizon (klidně)</td><td>Skeleton nebo vlastní kód</td></tr>
+            <tr><td><strong>Kde končí</strong></td><td>u klienta jako služba</td><td>prodej mnoha merchantům</td></tr>
+            <tr><td><strong>Monetizace</strong></td><td>fakturace implementace</td><td>licence / revenue share</td></tr>
+            <tr><td><strong>Rychlost k penězům</strong></td><td>rychlá</td><td>pomalá (review, konkurence)</td></tr>
+            <tr><td><strong>Údržba</strong></td><td>per klient</td><td>věčná proti změnám platformy</td></tr>
+          </tbody>
+        </table>
+        <div class="verdict">
+          Zvolená cesta: <strong>Obojí — accelerator první, pak produktizovat.</strong>
+          Obě tratě sdílejí architekturu theme blocks, takže znalosti i velká část
+          komponent jsou přenositelné. ALE stejný kód nejde jen tak překlopit z A do
+          B — viz vrstva IP níže.
+        </div>
+      </section>
+
+      <!-- 03 — PORTABLE IP LAYER -->
+      <section class="block" aria-labelledby="s-ip">
+        <div class="block-heading">
+          <span class="block-number">03</span>
+          <h2 id="s-ip">Přenositelná IP vrstva (podmínka hybridu)</h2>
+        </div>
+        <p class="body">
+          Past hybridu: postavit accelerator jako <em>upravený Horizon</em>, a při
+          produktizaci zjistit, že je celý „derived from Horizon" a nesmí do Skeleton
+          produktu. Řešení: <strong>base motiv = vendor kód, kterého se nedotýkáš.</strong>
+          Tvoje IP žije v aditivních, originálních souborech nad ním. Theme blocks jsou
+          Shopify standard identický v Horizonu i Skeletonu — blok, který napíšeš ty
+          sám, jede na obou.
+        </p>
+        <div class="grid-2">
+          <div class="card accent-mint">
+            <h3>Přenositelné (A → B bez přepisu)</h3>
+            <ul class="clean">
+              <li><code>/blocks/won-*.liquid</code> — vlastní theme blocks</li>
+              <li><code>/sections/won-*.liquid</code> — vlastní sekce</li>
+              <li><code>/snippets/won-*.liquid</code>, <code>/assets/won-*.{js,css}</code></li>
+              <li>konvence design tokenů v <code>settings_schema.json</code></li>
+            </ul>
+          </div>
+          <div class="card accent-rose">
+            <h3>NEpřenositelné (jen trať A)</h3>
+            <ul class="clean">
+              <li>jakýkoli override Horizonových souborů (header, cart drawer, <code>main-product</code>, base CSS/JS)</li>
+              <li>očištění customer dat ≠ očištění původu — zůstává „derived"</li>
+              <li>do produktu jen jako <strong>specifikace</strong> → napsat clean-room nanovo</li>
+            </ul>
+          </div>
+        </div>
+        <p class="body" style="margin-top:16px">
+          Monorepo: <code>themes/won-base/</code> = originální IP knihovna (zdroj pravdy,
+          verzovaná, testovaná). <code>themes/clients/&lt;klient&gt;/</code> = Horizon
+          (netknutý) + won-base + klient config. Build krok won-base „vlepí" nad Horizon
+          (klient) nebo nad Skeleton (produkt). Stejná disciplína jako <code>won-</code>
+          prefixy u appek.
+        </p>
+        <div class="verdict open">
+          Ověřit: <strong>smlouvy s klienty</strong> — smí se komponenty recyklovat
+          jako tvoje IP? U „work for hire" může kód patřit klientovi. To je na tobě.
+        </div>
+      </section>
+
+      <!-- 04 — MOAT -->
+      <section class="block" aria-labelledby="s-moat">
+        <div class="block-heading">
+          <span class="block-number">04</span>
+          <h2 id="s-moat">Moat: appka, ne šablona</h2>
+        </div>
+        <p class="body">
+          Tvrdá pravda: <strong>Shopify šablonu proti zkopírování technicky neochráníš.</strong>
+          Merchant má vždy plný přístup k <code>.liquid</code>/JS/CSS. DRM neexistuje,
+          obfuskace je reverzibilní + zabíjí Lighthouse + Theme Store čitelnost přímo
+          vyžaduje, a server-side license kill-switch je proti pravidlům Theme Store.
+          Boj o ochranu motivu je nevyhratelný — a nemá se vyhrávat tam.
+        </p>
+        <p class="body">
+          Obrácení strachu „to zabije moje appky": appka je <strong>to jediné, co se
+          zkopírovat nedá</strong> — logika běží na tvé infrastruktuře, za Shopify OAuth
+          + Billing API. Ať si někdo motiv klidně zveřejní — bez předplatného appky jsou
+          dobré části <strong>inertní</strong>. Zkopíruje prázdný obal.
+        </p>
+        <div class="verdict">
+          Čím víc hodnoty schováš za <strong>app blocks</strong> místo do motivu, tím
+          míň tě zajímá pirátství <em>a</em> tím víc chráníš produktovou trať (app blocks
+          nejsou „derived from Horizon", jedou napříč šablonami, spadají pod App Store
+          režim).
+        </div>
+      </section>
+
+      <!-- 05 — NATIVE vs APP BLOCK -->
+      <section class="block" aria-labelledby="s-native">
+        <div class="block-heading">
+          <span class="block-number">05</span>
+          <h2 id="s-native">Free featury: native vs. app block</h2>
+        </div>
+        <p class="body">
+          Instinkt „free featury zapeču nativně do motivu" zahazuje nejcennější moment:
+          <strong>instalaci appky</strong>. Kdyby byly native, dostane je merchant i bez
+          instalace → není v funnelu → není komu prodat placený tier.
+        </p>
+        <table>
+          <thead>
+            <tr><th>Vrstva</th><th>Co tam patří</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Nativně v motivu</strong></td>
+              <td>jen generická storefront základna (layout, PDP, košík, navigace, design tokeny) — „hloupá skořápka". Volitelně čistě-frontend drobnosti (size guide, sticky ATC).</td>
+            </tr>
+            <tr>
+              <td><strong>Free plán appky (app block)</strong></td>
+              <td>free featury doruč přes app block, ne zapečené. Instalace = ta hodnota. Free tier = akvizice, placený = konverze.</td>
+            </tr>
+            <tr>
+              <td><strong>Server-only → vždy appka</strong></td>
+              <td>uložená konfigurace, analytika, tracking, admin UI, databáze — native být nemůže.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="verdict">
+          Past „ale to je zase app sprawl!" řeš přes <strong>jedna appka, hodně featur</strong>:
+          jedna instalace (nízké tření), free plán odemkne balík přes app blocks, placený
+          tier zbytek. Máš funnel <em>i</em> pitch „nula app sprawlu".
+        </div>
+      </section>
+
+      <!-- 06 — FIRST THEME -->
+      <section class="block" aria-labelledby="s-first">
+        <div class="block-heading">
+          <span class="block-number">06</span>
+          <h2 id="s-first">První šablona: Supplements / Consumables</h2>
+        </div>
+        <p class="body">
+          Ze 4 dobrých vertikál (sportovní oblečení, sportovní suplementace, gaming
+          suplementace, doplňky pro psy) jsou <strong>tři tentýž commerce engine</strong>:
+          suplementy sdílejí ~80 % mechaniky — subscriptions / „subscribe &amp; save",
+          bundly, varianty příchutí/dávkování, nutriční tabulky, vysoká opakovaná koupě,
+          silný social proof a recenze. Oblečení je jiný svět (velikosti/fit, lookbook,
+          sezónnost, vratky).
+        </p>
+        <div class="verdict">
+          Postav <strong>jednu „supplements/consumables" šablonu se 3 demo presety</strong>
+          — vypadá jako tři motivy, je to jeden codebase. Oblečení = <strong>druhá
+          šablona, později</strong> (jiný engine, nemíchat).
+        </div>
+        <div class="preset-row">
+          <div class="preset hero">
+            <span class="badge">Hero kandidát</span>
+            <h4>Gaming supp</h4>
+            <p>Nejmíň obsazený segment, mladší publikum konvertuje na craft/estetiku — nejlepší prostor se odlišit řemeslem.</p>
+          </div>
+          <div class="preset">
+            <h4>Sport supp</h4>
+            <p>Největší trh, nejvíc referenčního materiálu. Silný default preset.</p>
+          </div>
+          <div class="preset">
+            <h4>Dog supp</h4>
+            <p>Stejný engine, jiná vizuální identita — důkaz šíře presetů.</p>
+          </div>
+        </div>
+        <p class="body" style="margin-top:16px">
+          Hero demo zvol podle toho, kde máš <strong>nejsilnější existující custom práci</strong>.
+          Bonus: <a href="product-roadmap.html">won-toasts</a> (social proof, „X lidí
+          právě koupilo", restock alerty) sedí na suplementy jako ulitá — první app block
+          do balíku máš prakticky předpřipravený.
+        </p>
+        <div class="verdict open">
+          Rozhodnout: který preset jde jako hero demo (podle objemu hotové custom práce).
+        </div>
+      </section>
+
+      <!-- 07 — SELLING MODEL -->
+      <section class="block" aria-labelledby="s-sell">
+        <div class="block-heading">
+          <span class="block-number">07</span>
+          <h2 id="s-sell">Jak to prodávat jako celek</h2>
+        </div>
+        <p class="body">
+          Shopify nemá SKU „theme + apps bundle" — „celek" složíš z modelu:
+          <strong>šablona = distribuce a funnel, appky = opakovaný příjem a hradba.</strong>
+        </p>
+        <ul class="clean">
+          <li><strong>Motiv do Theme Store, levný nebo zdarma.</strong> Peníze nejsou v jednorázových 400 USD, ale v MRR z appek. Levný/free motiv = širší hrdlo funnelu = víc instalací. Shopify k tomu dá zdarma distribuci, důvěru a licencování motivu (které stejně neochráníš).</li>
+          <li><strong>Premium zážitek podmíň appkami.</strong> App blocks v motivu bez placené appky nejsou / jsou v základní podobě → recurring revenue + jediná nekopírovatelná část.</li>
+          <li><strong>GTM narativ:</strong> ne „další téma", ale <em>„storefront systém pro suplementy: rychlý motiv + sada nativních apps + kompletní dokumentace, jeden vendor, nula app sprawlu"</em>. Proti „kup motiv + lov 8 apps + modli se, ať se nebijou".</li>
+          <li><strong>Ekonomika:</strong> konkurent vydělá jednou ~400 USD a konec. Ty na motivu málo/nic, ale získáš instalovanou bázi platící <strong>měsíčně</strong> za appky. Víc appek v balíku = vyšší LTV + tvrdší lock-in (odejít = vyměnit celý storefront systém).</li>
+        </ul>
+      </section>
+
+      <!-- 08 — DIFFERENTIATION -->
+      <section class="block" aria-labelledby="s-diff">
+        <div class="block-heading">
+          <span class="block-number">08</span>
+          <h2 id="s-diff">Páky odlišení (dle síly)</h2>
+        </div>
+        <ol class="clean">
+          <li><strong>App-bundle moat</strong> — 5–6 věcí, na které jinak potřebují samostatné appky, už nativně přes app blocks. Jeden vendor, sladěné, rychlé, bez konfliktů. Merchanti nesnáší app sprawl.</li>
+          <li><strong>Vertikála místo generičnosti</strong> — užší = prodejnější. Ze svých eshopů víš, co v segmentu chybí.</li>
+          <li><strong>Výkon jako měřitelný nárok</strong> — provably nejrychlejší ve třídě (Core Web Vitals), claim co prodává sám.</li>
+          <li><strong>Craft viditelný v demu</strong> — kupující se rozhodne v demo storu za 30 s. Custom interakce musí být vidět tam.</li>
+          <li><strong>Dokumentace jako marketing</strong> — veřejný doc web rankuje v Googlu, buduje důvěru před nákupem, snižuje support.</li>
+        </ol>
+      </section>
+
+      <!-- 09 — TECH BINDING -->
+      <section class="block" aria-labelledby="s-bind">
+        <div class="block-heading">
+          <span class="block-number">09</span>
+          <h2 id="s-bind">Jak se motiv váže na appky (mechanika)</h2>
+        </div>
+        <p class="body">
+          Přes <strong>theme app extensions</strong>. Appka dodává <strong>app block</strong>
+          (merchant vloží do sekce) a <strong>app embed block</strong> (globální plocha /
+          injektnutý skript — to dělá won-toasts). Vazba je záměrně měkká: motiv i appka
+          se instalují nezávisle.
+        </p>
+        <ul class="clean">
+          <li>Motiv má v sekcích sloty <code>{% content_for "blocks" %}</code> s <code>"type": "@app"</code> a jeho <strong>presety už app block obsahují</strong>.</li>
+          <li>Když appka není nainstalovaná → na místě bloku onboarding placeholder s CTA a deep-linkem do App Store.</li>
+          <li>Motiv detekuje appku (embed marker / app-proxy), appka detekuje motiv.</li>
+          <li>Technicky oddělené (nutnost kvůli Theme Store i App Store pravidlům), ale <strong>navržené a dodané jako jeden zážitek</strong>.</li>
+        </ul>
+      </section>
+
+      <!-- 10 — NEXT -->
+      <section class="block" aria-labelledby="s-next">
+        <div class="block-heading">
+          <span class="block-number">10</span>
+          <h2 id="s-next">Další kroky</h2>
+        </div>
+        <ol class="clean">
+          <li><span class="tag amber">čeká na tebe</span> Dodat klientská repa motivů → udělám <strong>triage A/B/C</strong> jedné šablony (originální IP / Horizon-override / klient obsah).</li>
+          <li><strong>Prototyp jednoho <code>won-*</code> bloku</strong> end-to-end ve vakuu → nasadit na Horizon i Skeleton, ověřit portabilitu, než na tom stojí dům.</li>
+          <li><strong>Design token systém</strong> — <code>won-tokens.liquid</code> + <code>won-tokens.css</code> řízené ze <code>settings_schema.json</code>.</li>
+          <li><strong>CI od začátku</strong> — <code>shopify theme check</code> + Lighthouse gate (v Theme Store tvrdá podmínka).</li>
+          <li><strong>Feature matice supplements šablony</strong> — co je nativní skořápka / free app block / placený tier, a které z 10 apps do balíku sednou.</li>
+        </ol>
+      </section>
+
+      <footer class="foot">
+        Won Storefront System — living dokument · poslední aktualizace 2026-08-04 ·
+        zdroje: <a href="https://github.com/Shopify/horizon/blob/main/LICENSE.md">Horizon LICENSE</a> ·
+        <a href="https://shopify.dev/docs/storefronts/themes/store/requirements">Theme Store requirements</a> ·
+        <a href="https://github.com/Shopify/skeleton-theme">Skeleton theme</a>
+      </footer>
+    </main>
+  </body>
+</html>

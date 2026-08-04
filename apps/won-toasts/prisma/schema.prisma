@@ -51,6 +51,54 @@ model ToastAppConfig {
   messages   Json?
   milestones Json?
   targeting  Json?
+  // MVP9+ recipes: page-view / aggregate notification rules (see @won/core/toasts/notifications).
+  notifications Json?
+  // MVP10 exclusions: pages / URL patterns where the app must not run.
+  exclusions Json?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+// MVP11 — real aggregate events. Each row is a genuine cart-add or order,
+// timestamped, so "X people added" / "Y orders in the last week" are counted
+// from real data (see @won/core/toasts/aggregates). No PII is stored here — the
+// social-proof feed (MVP12) uses its own anonymized model. Retention is capped.
+model ToastEvent {
+  id       String   @id @default(cuid())
+  shop     String
+  kind     String // 'order' | 'cart_add'
+  quantity Int      @default(1)
+  at       DateTime @default(now())
+
+  @@index([shop, kind, at])
+}
+
+// MVP12 — social proof feed. Deliberately minimal PII: first name + city +
+// product title only (see @won/core/toasts/social-proof.anonymizeOrder).
+// customerId is kept solely to honour GDPR customers/redact. Retention capped.
+model SaleEvent {
+  id         String   @id @default(cuid())
+  shop       String
+  firstName  String?
+  city       String?
+  product    String?
+  customerId String?
+  at         DateTime @default(now())
+
+  @@index([shop, at])
+  @@index([shop, customerId])
+}
+
+// MVP13 — toast lifecycle analytics. Raw impression/click/dismiss/undo events
+// per rule (+ A/B variant), aggregated on read (see @won/core/toasts/analytics).
+// No PII; a toast is an assist, not attributed revenue. Retention capped.
+model AnalyticsEvent {
+  id      String   @id @default(cuid())
+  shop    String
+  ruleId  String
+  variant Int      @default(0)
+  type    String // impression | click | dismiss | undo
+  at      DateTime @default(now())
+
+  @@index([shop, at])
 }

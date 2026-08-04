@@ -20,10 +20,13 @@ export default function App() {
     <AppProvider embedded apiKey={apiKey}>
       <WonNavMenu
         items={[
+          { to: "/app/recipes", label: "Recipes" },
           { to: "/app/behavior", label: "Behavior" },
           { to: "/app/appearance", label: "Appearance" },
           { to: "/app/events", label: "Events" },
           { to: "/app/targeting", label: "Targeting" },
+          { to: "/app/exclusions", label: "Exclusions" },
+          { to: "/app/analytics", label: "Analytics" },
           { to: "/app/plan", label: "Plan" },
         ]}
       />

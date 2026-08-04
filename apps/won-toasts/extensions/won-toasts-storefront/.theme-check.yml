@@ -1,14 +1,16 @@
 # Won Toasts app embed theme-check config.
 #
 # AssetSizeAppBlockJavaScript flags UNCOMPRESSED bytes. Our real performance
-# budget (and what Built for Shopify measures) is gzipped storefront weight:
-# won-toasts.js is ~14 kB raw but ~4.4 kB gzipped — comfortably under the
-# 15 kB gz budget. Per the monorepo convention we ship the asset readable
-# (no minification/build step), so we raise the raw-byte threshold rather than
-# minify. Revisit if the gzipped size approaches the budget.
+# budget (and what Built for Shopify measures) is gzipped storefront weight,
+# enforced authoritatively by tests/contracts/perf-budget.contract.test.ts
+# (<= 15 kB gz). After the full MVP6–14 feature set won-toasts.js is ~51 kB raw
+# but ~14.5 kB gzipped — under budget. Per the monorepo convention we ship the
+# asset readable (no minification/build step), which keeps the raw:gz ratio high;
+# esbuild-minified it is ~9 kB gz, the lever if features grow. This raw threshold
+# is a coarse proxy set with headroom; the gz test is the real gate.
 AssetSizeAppBlockJavaScript:
   enabled: true
-  threshold_in_bytes: 30000
+  threshold_in_bytes: 55000
 
 # ValidSchema does not understand theme-app-embed keys (`target`, `javascript`,
 # `stylesheet`) and reports them as "not allowed" — a false positive for app

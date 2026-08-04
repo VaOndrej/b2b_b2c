@@ -11,6 +11,14 @@ automatically_update_urls_on_dev = true
 [webhooks]
 api_version = "2026-10"
 
+  # GDPR/compliance webhooks are configured via their dedicated block (NOT as
+  # regular subscriptions). Handlers: webhooks.customers.redact / .data_request /
+  # webhooks.shop.redact.
+  [webhooks.privacy_compliance]
+  customer_deletion_url = "/webhooks/customers/redact"
+  customer_data_request_url = "/webhooks/customers/data_request"
+  shop_deletion_url = "/webhooks/shop/redact"
+
   [[webhooks.subscriptions]]
   topics = [ "app/scopes_update" ]
   uri = "/webhooks/app/scopes_update"
@@ -18,6 +26,17 @@ api_version = "2026-10"
   [[webhooks.subscriptions]]
   topics = [ "app/uninstalled" ]
   uri = "/webhooks/app/uninstalled"
+
+  # MVP11 order.summary aggregate + MVP12 social proof read orders/create. That
+  # topic carries protected customer data, so it needs "Protected customer data
+  # access" approved in the Partner Dashboard (App → API access) before it can be
+  # registered — otherwise `shopify app dev` refuses to start the preview.
+  # Handler (webhooks.orders.create.tsx) is ready; re-enable this block once the
+  # access is granted. Until then, order.summary + Recent sales stay dormant
+  # (empty feeds — cold-start honest), everything else works.
+  # [[webhooks.subscriptions]]
+  # topics = [ "orders/create" ]
+  # uri = "/webhooks/orders/create"
 
 [access_scopes]
 # read_products: admin product data. read_themes: MVP6 app-embed detection

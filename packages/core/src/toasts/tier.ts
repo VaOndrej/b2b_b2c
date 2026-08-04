@@ -6,6 +6,7 @@
 import { DEFAULT_THEME } from "./config.defaults.ts";
 import type { ToastAppConfig, ToastPlan } from "./config.types.ts";
 import { DEFAULT_TARGETING } from "./targeting.ts";
+import { notificationPlanFor } from "./notifications.ts";
 
 export type ProFeature =
   | "design_studio"
@@ -49,6 +50,11 @@ export function gateConfigForPlan(config: ToastAppConfig): ToastAppConfig {
     theme: DEFAULT_THEME,
     milestones: config.milestones.slice(0, FREE_MILESTONE_LIMIT),
     targeting: DEFAULT_TARGETING, // targeting is a Pro feature
+    // Free keeps countdown notifications (real deadline urgency) but not the
+    // Pro-only page-view types. Quality is never gated — only scope.
+    notifications: config.notifications.filter(
+      (n) => notificationPlanFor(n.type) === "free",
+    ),
     // Free keeps global behaviour (position, duration, basic grouping) and
     // messages/localization — those are usability, not scope.
   };

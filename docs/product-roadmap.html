@@ -668,78 +668,166 @@
               <span class="state now">Stavět hned</span>
             </footer>
             <details class="app-guide">
-              <summary>Návod k implementaci</summary>
+              <summary>Návod k implementaci (Won-Toasts hloubka)</summary>
               <p class="guide-idea">
-                <strong>0 · Nápad (E+T):</strong> optimistické +/− steppery u
-                každého výskytu produktu (karta, search, drawer, PDP) — UI se
-                přepne okamžitě, server se dorovnává na pozadí. V Enervitu
+                <strong>0 · Nápad (E+T → produkt):</strong> optimistické +/−
+                steppery u <em>každého</em> výskytu produktu — PDP, cart page,
+                drawer, collection karta, search — kde klik na plus/minus
+                přepne UI <strong>okamžitě</strong> a server se dorovnává na
+                pozadí. Origin je custom klientské řešení Enervit
                 <code>assets/tb-cart-qty.js</code>: steppery
                 <code>.tb-qty-ctrl[data-variant-id]</code>, mapa cílových
                 množství <code>desiredQtyMap</code>, agregovaný sync přes
                 <code>/cart/update.js</code>, po chybě re-sync z
-                <code>cart.js</code>; první přidání 0→1 má zámek proti
-                dvojkliku, dárkové řádky (<code>_gift_progress</code>) se
-                ignorují.
+                <code>/cart.js</code>, zámek proti dvojkliku na prvním 0→1 a
+                ignorování dárkových řádků (<code>_gift_progress</code>). Cíl =
+                nejčistší ztělesnění „příjemné na používání": jediné zápisy do
+                košíku jsou <em>user-initiated</em>, žádná Function, žádná
+                manipulace cen — pure-surface widget.
+              </p>
+              <p class="guide-idea">
+                <strong>Rozhodnutí / pozicování:</strong> ceník
+                <strong>flat &amp; levný</strong> ($2/mo, žádné usage metry) a
+                úmyslně <strong>modulární</strong> — jen stepper, ne celá
+                cart-drawer suite. Warm-start recenze sbíráme z reálných eshopů,
+                kde stepper už běží (Enervit + Therabeast). <strong>Wedge z
+                auditu:</strong> celá cart-UX kategorie je
+                <em>usage-metered</em> — Buy Me měří add-to-carts, sticky-ATC
+                appky měří kliky, takže náklady rostou s trakcí; iCart je navíc
+                delistovaný. Won hraje opačně: <strong>flat levná cena</strong>
+                (predikovatelná, ne penalizace za úspěch) + genuinely modular
+                (koupíš jen stepper) + <strong>rychlý a spolehlivý optimistic</strong>
+                (okamžité UI, agregovaný sync, rollback na server-pravdu) +
+                jednodušší UX. Neveme na šířku funkcí, ale „stejná funkčnost,
+                jednodušší používání". Badge:
+                <code>Spec · Scaffold · Alpha · Beta · Shipped</code>.
+              </p>
+              <p class="guide-idea">
+                <strong>Sdílený cart-core (@won/core/cart):</strong> Stepper je
+                appka, která <strong>staví optimistickou páteř</strong> celé
+                suite. Konzumuje <code>cartState</code> (reaktivní store,
+                jediný zdroj pravdy = snapshot <code>/cart.js</code>) a
+                <code>cartAdapter</code> (wrap <code>fetch</code>+XHR na
+                <code>/cart/(add|change|update|clear).js</code> + theme pub/sub
+                → reconcile → <code>NormalizedCartEvent</code>), ale
+                <strong>vlastní a dodává</strong> dva stěžejní díly:
+                <code>optimistic.mutate(op)</code> (okamžitý next-state do
+                <code>cartState</code> → reálný <code>/cart/*.js</code> →
+                reconcile z <code>/cart.js</code> → rollback při chybě/timeoutu;
+                idempotence proti dvojkliku; re-sync mezi taby; ignoruje
+                <code>_gift_progress</code>) a <strong>zpevnění adapteru</strong>
+                pro Dawn i Horizon (quick-add, Section Rendering API, multi-tab).
+                <code>cartState</code>, <code>deriveEvents</code> a milestone
+                state machine <strong>zdědil Toasts pilot</strong> — tady se
+                zúročí; Companion a Rewards na hotovém core <em>jen stojí</em> a
+                referencují „viz Won Stepper". Design tokeny sdílíme přes
+                <code>&lt;won-host&gt;</code>, cross-app bus přes document event
+                <code>won:cart:update</code>, ať appky nedělají dvojité fetche.
               </p>
               <ol>
                 <li>
-                  <strong>Klon:</strong> rsync z <code>apps/_template/</code>
-                  (vyloučit <code>build .react-router .env app/generated
-                  .shopify node_modules test-results</code>), přejmenovat
-                  <code>package.json</code> + <code>shopify.app.toml</code>,
-                  <code>npm install</code>, <code>npm run config:link -w
-                  won-stepper</code>.
+                  <strong>Architektura:</strong> App
+                  <code>apps/won-stepper/</code> (React Router + Polaris, klon
+                  <code>_template</code> přes rsync — vyloučit
+                  <code>build .react-router .env app/generated .shopify
+                  node_modules test-results</code>) + storefront plocha = Theme
+                  App Extension <strong>app embed</strong>
+                  <code>won-stepper-storefront</code>, který najde add-to-cart
+                  CTA / quantity inputy a přikreslí stepper
+                  <code>[data-won-stepper]</code> s markerem
+                  <code>data-won-stepper-status="ready"</code>. Jen košíkové
+                  operace (Ajax Cart) → žádná Function, žádné ceny, žádné
+                  metafieldy. Logika žije v <code>@won/core/cart</code>, ne v
+                  tématu.
                 </li>
                 <li>
-                  <strong>Core modul:</strong>
-                  <code>packages/core/src/stepper/optimistic-cart.ts</code> —
-                  <code>planCartSync({desired, serverCart})</code>: z mapy
-                  variantId→cílové množství a posledního stavu košíku vyrobí
-                  minimální payload pro <code>/cart/update.js</code> +
-                  <code>reconcile(serverResponse)</code> vrátí opravy pro UI
-                  (co se nepovedlo, např. vyprodáno). Čisté datové funkce,
-                  <code>node:test</code> na agregaci rychlých kliků a rollback.
+                  <strong>Core moduly (unit testy červené první,
+                  <code>tsx --test</code>):</strong> Stepper staví a vlastní v
+                  <code>packages/core/src/cart/</code>:
+                  <code>optimistic.mutate(op)</code> (aplikuje očekávaný
+                  next-state do <code>cartState</code>, pošle reálný
+                  <code>/cart/*.js</code>, reconciluje z <code>/cart.js</code>,
+                  rollback při chybě/timeoutu, idempotentní zámek, re-sync mezi
+                  taby) a <strong>hardened <code>cartAdapter</code></strong>
+                  (Dawn i Horizon <code>PUB_SUB_EVENTS</code>, quick-add,
+                  Section Rendering). Konzumuje sdílený <code>cartState</code>
+                  (subscribe/notify) a <code>deriveEvents(before, after)</code>.
+                  Čisté datové funkce: agregace rychlých kliků do jednoho
+                  update payloadu, minimální diff, rollback plán, cap na
+                  inventory.
                 </li>
                 <li>
-                  <strong>Plocha: Theme App Extension + Ajax Cart</strong>
-                  (žádné ceny, jen košíkové operace). App embed
-                  <code>won-stepper-storefront</code>: najde add-to-cart
-                  CTA/quantity inputy, přikreslí stepper
-                  <code>[data-won-stepper]</code> s vlastním markerem
-                  <code>data-won-stepper-status="ready"</code>; debounce
-                  ~300 ms, jeden běžící request, po odpovědi dispatch
-                  document eventu <code>won:cart:update</code> pro ostatní
-                  Won appky.
+                  <strong>Data model:</strong> Prisma <code>StepperConfig {
+                  shop, enabled, surfaces[], debounceMs, inventoryAware,
+                  minMaxSource }</code> (<code>surfaces</code> =
+                  pdp/cart/drawer/cards/search) + app-proxy
+                  <code>/apps/won-stepper/config</code> vrací resolved JSON
+                  (marker <code>won-stepper-config-ok</code>, vzor
+                  won-quantity config route). Pokud běží Won Quantity, stepper
+                  respektuje min/step/max z jejích DOM atributů na inputu — čte
+                  atributy, ne cizí API.
                 </li>
                 <li>
-                  <strong>Data:</strong> Prisma <code>StepperConfig { shop,
-                  enabled, showOnCards, showInSearch, debounceMs }</code> +
-                  app-proxy <code>/apps/won-stepper/config</code> (vzor
-                  won-quantity). Pokud je nainstalovaná Won Quantity, stepper
-                  respektuje min/step/max z jejích atributů na inputu — čte
-                  DOM atributy, ne cizí API.
+                  <strong>Admin UX (Polaris):</strong> <em>Přehled</em>
+                  (vypínač, kontrola instalace app embedu, živý náhled steppery
+                  toutéž core plochou jako storefront); <em>Plochy</em>
+                  (per-surface toggly PDP/cart/drawer/karty/search + debounce
+                  slider); <em>Chování &amp; inventář</em> (inventory-aware
+                  min/max/step, loading/disabled/out-of-stock stavy, hláška při
+                  vyprodání); <em>Plán &amp; billing</em> (gate na těžkou
+                  „everywhere" část — karty + search).
                 </li>
                 <li>
-                  <strong>Produkty pro testy:</strong> sdílený katalog
-                  <code>@won/testing/e2e-products</code> — <code>simpleA</code>
-                  (rychlé kliky, agregace), <code>twoVariants</code> (stepper u
-                  varianty). Nové produkty netvořit.
+                  <strong>MVP žebřík (každý shippable, TDD):</strong>
+                  <code>MVP0</code> skeleton (klon <code>_template</code>, embed,
+                  <code>StepperConfig</code> + config proxy, cart-core scaffold,
+                  no-op host s <code>data-won-stepper-status="ready"</code>) ·
+                  <code>MVP1</code> PDP optimistický +/− (okamžité UI přes
+                  <code>optimistic.mutate</code>, sync na pozadí, rollback na
+                  server-pravdu, zámek proti dvojkliku) ·
+                  <code>MVP2</code> cart page + drawer steppery + živý count
+                  badge čtený z <code>cartState</code> ·
+                  <code>MVP3</code> <strong>zpevnění adapteru</strong> (Dawn +
+                  Horizon, quick-add, Section Rendering API, multi-tab re-sync) —
+                  díl, na kterém pak stojí celá suite ·
+                  <code>MVP4</code> inventory-aware min/max/step +
+                  loading/disabled/out-of-stock stavy + a11y (<code>aria-live</code>
+                  count, klávesnice) ·
+                  <code>MVP5</code> steppery na collection kartách + v search
+                  výsledcích (těžká „everywhere" část, <strong>gated</strong>) ·
+                  <code>MVP6</code> presety/config UI, targeting, plán/billing
+                  (reálné Shopify Billing / managed pricing).
                 </li>
                 <li>
-                  <strong>Admin UI:</strong> kde stepper zobrazovat
-                  (karty/search/drawer/PDP), debounce, zapnuto/vypnuto.
+                  <strong>Akceptační kritéria (výběr):</strong> (1) 3× rychle
+                  <em>plus</em> → UI ukáže 3 <strong>okamžitě</strong> → po
+                  ustálení má <code>/cart.js</code> quantity 3 jediným
+                  <code>update</code> requestem (agregace, ne tři volání); (2)
+                  chyba API / timeout → <strong>rollback</strong> na server
+                  pravdu, UI se vrátí na skutečné množství; (3) dva otevřené
+                  taby → oba reflektují změnu (multi-tab re-sync přes
+                  <code>cartState</code>); (4) vyprodáno → stepper
+                  <strong>capne</strong> na dostupné množství + zobrazí hlášku;
+                  (5) dvojklik na 0→1 přidá právě jednu položku (idempotentní
+                  zámek); (6) <code>_gift_progress</code> řádky stepper ignoruje
+                  a nikdy je nemění.
                 </li>
                 <li>
-                  <strong>E2E:</strong> sdílený Horizon/Dawn přes
-                  <code>@won/testing/playwright</code>; cílit na
-                  <code>data-won-stepper-status="ready"</code>: 3× rychle
-                  plus → UI ukazuje 3 okamžitě → po ustálení
-                  <code>/cart.js</code> má quantity 3 (jediný update request).
+                  <strong>Testy / E2E (Dawn i Horizon):</strong> sdílený harness
+                  <code>@won/testing/playwright</code>; produkty ze sdíleného
+                  katalogu <code>@won/testing/e2e-products</code>
+                  (<code>simpleA</code> pro rychlé kliky a agregaci,
+                  <code>twoVariants</code> pro stepper u varianty) — nic
+                  netvořit. Testy cílí na vlastní markery
+                  (<code>[data-won-stepper]</code>,
+                  <code>data-won-stepper-status="ready"</code>), ne na DOM
+                  tématu: burst 3× plus → jeden update request → quantity 3;
+                  simulace 500 → rollback; dva konteksty → oba reflektují.
                 </li>
                 <li>
-                  <strong>Gate:</strong> <code>test:unit</code>,
-                  <code>typecheck</code>, <code>build</code> (<code>-w
-                  won-stepper</code>) + <code>npm run validate:shopify</code>.
+                  <strong>Gate:</strong> <code>npm run test:unit -w won-stepper
+                  &amp;&amp; npm run typecheck -w won-stepper &amp;&amp; npm run
+                  build -w won-stepper &amp;&amp; npm run validate:shopify</code>.
                 </li>
               </ol>
             </details>
@@ -1091,84 +1179,164 @@
               <span class="state now">Stavět hned</span>
             </footer>
             <details class="app-guide">
-              <summary>Návod k implementaci</summary>
+              <summary>Návod k implementaci (Won-Toasts hloubka)</summary>
               <p class="guide-idea">
-                <strong>0 · Nápad (T·Therabeast):</strong> merchant si ke
-                každému produktu ručně definuje vlastní seznam souvisejících
-                produktů (metafield
-                <code>custom.complementary_product</code>, list.product_reference)
-                — obchází limity nativních related. Po přidání do košíku se
-                zobrazí dialog „přidáno do košíka“ s doporučeními odvozenými z
-                celého košíku (seedy = položky košíku, dedup, vyloučí co už v
-                košíku je, limit 4) a one-click add. V Therabeastu:
-                <code>assets/cart-add-notification.js</code> +
-                <code>tb-complementary-engine.js</code>.
+                <strong>0 · Nápad:</strong> vychází z custom klientského řešení
+                (Therabeast <code>assets/cart-add-notification.js</code> +
+                <code>tb-complementary-engine.js</code>) — po přidání do košíku
+                vyskočí <strong>post-add upsell dialog</strong> „přidáno do
+                košíka&ldquo; s doporučeními odvozenými z <em>celého</em> košíku
+                (ne jen z právě přidané položky) a přidáním na
+                <strong>jeden klik</strong>. Won Companion navíc
+                <strong>pohlcuje PackUp</strong>: kde existuje větší / výhodnější
+                balení téhož produktu, nabídne <strong>bigger-pack swap</strong>
+                (varianta → větší varianta, nahrazení řádku), takže z jednoho
+                dialogu řešíme cross-sell i pack-upgrade. Headline dialogu je
+                <strong>revenue bundlu</strong> („dokup a ušetři / získej&hellip;&ldquo;),
+                doporučení jsou <strong>reálná</strong> — pravidla a signály, ne
+                fabrikované „AI&ldquo;.
+              </p>
+              <p class="guide-idea">
+                <strong>Rozhodnutí / pozicování:</strong> upsell kategorie je
+                dnes <strong>metered</strong> a znečištěná — ReConvert
+                double-metruje objednávky <em>i</em> revenue, Honeycomb bere
+                <code>$55&ndash;170</code> za funnel impressions, a AfterSell
+                (Rokt) i Rebuy (Monetize) <strong>injektují cizí reklamy</strong>
+                přímo do tvého funnelu. Won je <strong>flat, unlimited</strong>
+                (In Cart Upsell dokazuje, že to jde), <strong>bez jakékoli
+                cizí ad-injection</strong> (nikdy), modulární a s
+                <strong>reálnými doporučeními</strong> (ruční páry, by-collection,
+                kurátorované FBT, bigger-pack swap — žádné fake AI). Poziční
+                věta: <em>„stejná funkčnost, jednodušší používání&ldquo;</em> +
+                férová flat cena. Warm-start: recenze čerpáme z reálných eshopů,
+                kde už custom verze běží (Therabeast). Žádná
+                <strong>Discount Function</strong> — jen cart operace, takže
+                instalace je lehká a bez plan-gate na cenotvorbu.
+              </p>
+              <p class="guide-idea">
+                <strong>Sdílený cart-core (<code>@won/core/cart</code>):</strong>
+                Companion je <em>konzument</em> páteře, nestaví ji — <strong>viz
+                Won Stepper</strong>, který <code>cartAdapter</code> a
+                <code>optimistic.mutate</code> zpevňuje (Dawn/Horizon, quick-add,
+                Section Rendering, multi-tab). Companion odebírá
+                <code>cartState.subscribe()</code> a
+                <code>deriveEvents(before, after)</code>, reaguje na
+                <strong>add eventy</strong> (spouštěč dialogu) a přidává /
+                swapuje <em>výhradně</em> přes <code>optimistic.mutate(op)</code>
+                (okamžitý next-state → reálný <code>/cart/*.js</code> →
+                reconcile z <code>/cart.js</code> → rollback při chybě). Dialog
+                žije v <strong>sdíleném <code>&lt;won-host&gt;</code></strong>
+                (Shadow DOM + design tokeny celé suite), na cross-app sběrnici
+                <code>won:cart:update</code>, ať nedělá dvojité fetche. Řádky
+                <code>_gift_progress</code> ignoruje (řeší cart-core).
               </p>
               <ol>
                 <li>
-                  <strong>Klon:</strong> rsync z <code>apps/_template/</code>
-                  (vyloučit <code>build .react-router .env app/generated
-                  .shopify node_modules test-results</code>), přejmenovat
-                  <code>package.json</code> + <code>shopify.app.toml</code>,
-                  <code>npm install</code>, <code>npm run config:link -w
-                  won-companion</code>.
+                  <strong>Architektura:</strong> App
+                  <code>apps/won-companion/</code> (React Router + Polaris, klon
+                  <code>_template</code>) + rec engine
+                  <code>packages/core/src/companion/</code> (framework-free čisté
+                  funkce) + storefront plocha = Theme App Extension
+                  <strong>app embed</strong> <code>won-companion-storefront</code>,
+                  který vykreslí dialog <code>[data-won-companion-dialog]</code>
+                  do <strong>sdíleného <code>&lt;won-host&gt;</code></strong>
+                  (Shadow DOM → téma neprosákne CSS). <strong>Žádná
+                  Discount Function</strong>, žádné metafieldy na ceny — jen
+                  cart operace přes cart-core.
                 </li>
                 <li>
-                  <strong>Core modul:</strong>
-                  <code>packages/core/src/companion/recommendations.ts</code> —
-                  <code>resolveRecommendations({cartProductIds, companionLists,
-                  justAddedId, limit})</code>: sjednotí companion listy všech
-                  seedů, odstraní duplicity, produkty už v košíku a právě
-                  přidaný produkt, ořízne na limit, zachová pořadí seedů. +
-                  <code>node:test</code>.
+                  <strong>Core moduly (unit testy červené první,
+                  <code>tsx --test</code>):</strong>
+                  <code>resolveRecommendations({cart, rules, justAddedId, limit})</code>
+                  — sjednotí seedy z <em>celého</em> košíku, aplikuje pravidla
+                  (ruční páry / by-collection / kurátorované FBT), provede
+                  <strong>dedupe</strong> a <strong>tvrdě vyloučí položky už
+                  v košíku</strong> i právě přidanou, ořízne na limit, zachová
+                  prioritu pravidel; <code>resolvePackSwap(line, variants)</code>
+                  → najde větší/výhodnější variantu (PackUp) a vyrobí swap op
+                  (remove starý řádek + add nový);
+                  <code>guardAvailability(recs, inventory)</code> → odfiltruje
+                  vyprodané. Přidání i swap se provádí přes
+                  <code>optimistic.mutate</code> z <code>@won/core/cart</code>
+                  (Companion ho jen konzumuje).
                 </li>
                 <li>
-                  <strong>Plocha: Theme App Extension + Admin GraphQL</strong>
-                  (UI dialog ve storefrontu; žádná cenová logika → Function
-                  netřeba). Embed <code>won-companion-storefront</code>:
-                  zachytí add-to-cart (wrap fetch na <code>/cart/add.js</code>),
-                  otevře dialog <code>[data-won-companion-dialog]</code>
-                  s právě přidanou položkou + kartami doporučení; one-click add
-                  = POST <code>/cart/add.js {id, quantity:1}</code> a překreslení;
-                  multi-variant produkt vede odkazem na PDP. Nikdy neotvírat na
-                  cart stránce; auto-close ~12 s s pauzou při hoveru.
+                  <strong>Data (Prisma + app-proxy):</strong>
+                  <code>CompanionConfig { shop, enabled, rules(JSON),
+                  placements[], plan }</code> — <code>rules</code> drží ruční
+                  páry, collection mapy, kurátorované FBT a pack-swap tabulky;
+                  <code>placements</code> = kde dialog žije (post-add / cart page
+                  / drawer / PDP inline). App-proxy
+                  <code>/apps/won-companion/config</code> vrací resolved JSON
+                  (marker <code>won-companion-config-ok</code>, vzor
+                  won-quantity config route); ceny/obrázky/inventář doplní Admin
+                  API, takže storefront nepotřebuje Section Rendering hacky.
                 </li>
                 <li>
-                  <strong>Data:</strong> zdroj pravdy = product metafield
-                  (definice metafieldu založí appka přes Admin GraphQL
-                  <code>metafieldDefinitionCreate</code>,
-                  namespace/klíč vlastní appky, např.
-                  <code>won_companion.related</code>). App-proxy route
-                  <code>/apps/won-companion/recommendations?product_ids=…</code>
-                  čte metafieldy + ceny/obrázky přes Admin API a vrací hotový
-                  JSON karet (storefront tak nepotřebuje Section Rendering
-                  hacky jako Therabeast). Prisma per-app: jen
-                  <code>CompanionConfig { shop, enabled, limit, dialogTexts }</code>.
+                  <strong>Admin UX (Polaris, více stránek):</strong>
+                  <em>Přehled</em> (vypínač, kontrola app embedu, živý náhled
+                  dialogu tímtéž <code>&lt;won-host&gt;</code> jako storefront);
+                  <em>Pravidla</em> (product picker → ruční páry, by-collection
+                  mapování, kurátorované FBT sety, <strong>bigger-pack swap</strong>
+                  tabulka varianta→větší varianta, limit doporučení, texty
+                  dialogu + revenue headline); <em>Placementy</em> (post-add /
+                  cart / drawer / PDP inline toggly + design studio přes sdílené
+                  tokeny); <em>Cílení &amp; guardraily</em> (product / collection
+                  / cart-value / segment; nikdy nedoporučit vyprodané);
+                  <em>Analytika</em ($Pro: impressions / CTR / attributed add +
+                  A/B).
                 </li>
                 <li>
-                  <strong>Produkty pro testy:</strong> sdílený katalog
-                  <code>@won/testing/e2e-products</code> — companion list na
-                  <code>simpleA</code> → doporučí <code>simpleB</code> +
-                  <code>spare</code>; <code>twoVariants</code> ověří větev
-                  „Vybrat variantu“ (link na PDP). Metafieldy sadí appkový seed
-                  (E2E DB/metafield seed), produkty se nemutují.
+                  <strong>MVP žebřík (každý shippable, TDD):</strong>
+                  <code>MVP0</code> skeleton (klon, <code>CompanionConfig</code>,
+                  config proxy, app embed no-op s
+                  <code>data-won-companion-status="ready"</code>) ·
+                  <code>MVP1</code> post-add modal + ruční rec páry + 1-click add
+                  přes <code>optimistic.mutate</code> ·
+                  <code>MVP2</code> whole-cart rec logika (seedy z celého košíku,
+                  dedupe co už v košíku je) + <strong>PackUp bigger-pack swap</strong>
+                  (varianta → větší varianta, nahrazení řádku) ·
+                  <code>MVP3</code> placementy (cart page, drawer, PDP inline) +
+                  design studio na sdílených tokenech ·
+                  <code>MVP4</code> targeting/pravidla
+                  (product / collection / cart-value / segment) + guardraily
+                  (nedoporučovat vyprodané) ·
+                  <code>MVP5</code> analytika (impressions / CTR / attributed add)
+                  + A/B experimenty; reálné Shopify Billing (flat).
                 </li>
                 <li>
-                  <strong>Admin UI:</strong> správa companion listu per produkt
-                  (product picker → zápis metafieldu), limit doporučení, texty
-                  dialogu, zapnuto/vypnuto.
+                  <strong>Akceptační kritéria (výběr):</strong> (1) přidání
+                  produktu → post-add modal s doporučeními z <em>celého</em>
+                  košíku; (2) 1-click add → košík se aktualizuje
+                  <strong>optimisticky</strong> a při chybě/timeoutu se
+                  <strong>rollbackne</strong>; (3) doporučení
+                  <strong>NIKDY neukáže položku, která už je v košíku</strong>
+                  (ani právě přidanou); (4) <strong>bigger-pack swap nahradí
+                  řádek</strong> (starý pryč, větší varianta v košíku, quantity
+                  sedí); (5) guardrail — vyprodaná položka se nikdy nedoporučí;
+                  (6) <strong>žádné volání externí ad sítě</strong> (Rokt /
+                  Monetize apod.) v celém funnelu — nikdy.
                 </li>
                 <li>
-                  <strong>E2E:</strong> sdílený Horizon/Dawn, žádný overlay;
-                  cílit na <code>data-won-companion-status="ready"</code> a
-                  <code>[data-won-companion-dialog]</code>: add
-                  <code>simpleA</code> → dialog ukáže <code>simpleB</code> →
-                  one-click add → <code>/cart.js</code> obsahuje obě položky.
+                  <strong>Testy / E2E (Dawn i Horizon,
+                  <code>@won/testing</code>):</strong> sdílený harness přes
+                  <code>@won/testing/playwright</code>, sdílený katalog
+                  <code>@won/testing/e2e-products</code> (pravidlo na
+                  <code>simpleA</code> → doporučí <code>simpleB</code>,
+                  <code>twoVariants</code> ověří pack-swap na větší variantu);
+                  testy cílí na vlastní markery
+                  (<code>data-won-companion-status="ready"</code>,
+                  <code>[data-won-companion-dialog]</code>), ne na DOM tématu:
+                  add <code>simpleA</code> → dialog ukáže <code>simpleB</code> →
+                  1-click add → <code>/cart.js</code> má obě položky; položka
+                  v košíku se v doporučeních neobjeví; swap → řádek nahrazen;
+                  síťový asserthook potvrdí <strong>0 requestů</strong> na cizí
+                  ad hosty.
                 </li>
                 <li>
-                  <strong>Gate:</strong> <code>test:unit</code>,
-                  <code>typecheck</code>, <code>build</code> (vše
-                  <code>-w won-companion</code>) + <code>npm run
+                  <strong>Gate:</strong> <code>npm run test:unit -w
+                  won-companion &amp;&amp; npm run typecheck -w won-companion
+                  &amp;&amp; npm run build -w won-companion &amp;&amp; npm run
                   validate:shopify</code>.
                 </li>
               </ol>
@@ -1215,6 +1383,7 @@
             </footer>
             <details class="app-guide">
               <summary>Návod k implementaci</summary>
+              <p class="guide-idea">🔀 <strong>Konsolidováno do Won Companion</strong> (upsell) — viz karta <code>WON·COMP</code>. PackUp = modul „bigger-pack swap“ (varianta→větší balení). Karta zůstává jako reference k modulu.</p>
               <p class="guide-idea">
                 <strong>0 · Nápad (E·Enervit):</strong> na PDP se pod výběrem
                 příchutě nabízejí větší/výhodnější balení (dvoj/trojbalení =
@@ -1346,93 +1515,162 @@
               <span class="state">Později</span>
             </footer>
             <details class="app-guide">
-              <summary>Návod k implementaci (GiftLadder + ShipGoal společně)</summary>
+              <summary>Návod k implementaci (Won-Toasts hloubka)</summary>
               <p class="guide-idea">
-                <strong>0 · Nápad (E·Enervit, ShipGoal i T):</strong> jedna
-                „rewards“ dvojice nad společným jádrem prahů. Kumulativní prahy
-                hodnoty košíku odemykají dárky = reálné skladové produkty
-                automaticky přidané do košíku (property
-                <code>_gift_progress</code>), s možností odmítnout (cart
-                attribute <code>_gift_opt_out</code>) a self-healingem
-                (pokles pod práh dárek odebere, ručně přidaný dárek se
-                strhne). Nacenění dárku na 0 řeší Discount Function — v
-                Enervitu to suploval theme JS (<code>gift-auto-add.js</code>,
-                <code>gift-progress-bar.js</code>) + ruční „Buy X get Y“
-                sleva. ShipGoal = tentýž progress výpočet pro práh dopravy
-                zdarma: „zbývá X“ živě v liště i košíku
-                (<code>free-shipping-bar.js</code>; v Therabeastu server-side
-                v <code>cart-summary.liquid</code> nad
-                <code>items_subtotal_price</code>).
+                <strong>0 · Nápad:</strong> konsolidace tří custom klientských
+                řešení do jedné appky &mdash; <strong>Won Rewards</strong>
+                (dřívější GiftLadder + ShipGoal + Mystery). Kumulativní prahy
+                hodnoty košíku odemykají odměny: (a) lišta „do dopravy zdarma
+                zbývá X&ldquo; (ShipGoal, v Enervitu suploval
+                <code>free-shipping-bar.js</code>, v Therabeastu server-side nad
+                <code>items_subtotal_price</code>), (b) free-gift ladder &mdash;
+                dárek jako <strong>reálný skladový produkt</strong> automaticky
+                přidaný do košíku (property <code>_gift_progress</code>, origin
+                <code>gift-auto-add.js</code> + <code>gift-progress-bar.js</code>)
+                s možností odmítnout, a (c) <strong>MYSTERY / reveal</strong>
+                dárek &mdash; u prahu se odemkne skrytý/náhodný reálný skladový
+                dárek s reveal animací. Nacenění na $0 řeší
+                <strong>Discount Function</strong>, ne ruční „Buy X get Y&ldquo;
+                sleva, kterou klient dřív spravoval v adminu.
+              </p>
+              <p class="guide-idea">
+                <strong>Rozhodnutí / pozicování:</strong> ceník
+                <strong>flat</strong> (jeden předvídatelný tarif, ne metered
+                jako BOGOS overage nebo Monk $49&ndash;149) &mdash;
+                <em>stejná funkčnost, jednodušší používání</em>, warm-start
+                recenze z reálných eshopů (Enervit, Therabeast), kde všechny tři
+                mechaniky roky běžely jako theme JS. Gift kategorie je
+                <strong>crowded</strong> (BOGOS 5.0/4025 recenzí), reálný skladový
+                dárek už je <em>table stakes</em> (Corner to má přímo v copy).
+                Náš <strong>wedge z auditu</strong>: FLAT cena +
+                <strong>MYSTERY / reveal mechanika, kterou nikdo nemarketuje</strong>
+                (neobsazený reveal úhel &mdash; VÉST tímto) + reálný sklad +
+                jednodušší nastavení + warm-start. „No ads&ldquo; je tu
+                irelevantní, není to headline.
+              </p>
+              <p class="guide-idea">
+                <strong>Sdílený cart-core:</strong> Rewards je čistý konzument
+                <code>@won/core/cart</code> &mdash; nestaví ho (to je Stepper,
+                viz Won Stepper), jen čte. Bere <code>cartState</code>
+                (reaktivní snapshot <code>/cart.js</code>), <strong>milestone
+                state machine</strong> per cart token
+                (<code>unreached | approaching | just_reached | reached |
+                just_lost</code>) a property <code>_gift_progress</code> &mdash;
+                obojí <strong>seedol Toasts</strong> a Rewards je znovupoužívá,
+                takže <strong>žádné dvojité oslavování</strong>: práh oslaví
+                buď Rewards bar, nebo Toasts, přes jeden sdílený milestone
+                engine (<code>summarizeConcurrent</code>). Storefront kreslí do
+                sdíleného <code>&lt;won-host&gt;</code> (Shadow DOM + design
+                tokeny) a poslouchá cross-app bus
+                <code>document</code> event <code>won:cart:update</code>, ať
+                nedělá dvojité fetche.
               </p>
               <ol>
                 <li>
-                  <strong>Klon:</strong> rsync z <code>apps/_template/</code>
-                  (standardní vyloučení), přejmenovat, <code>npm install</code>,
-                  <code>config:link</code>. Stavět jako JEDNU appku
-                  (won-giftladder) se ship-goal prahem jako typem tieru;
-                  ShipGoal lze později vydat i samostatně nad stejným core.
+                  <strong>Architektura:</strong> cart-core
+                  (<code>cartState</code> + <strong>milestone machine</strong>,
+                  reuse) &rarr; <strong>reward engine</strong>
+                  (<code>packages/core/src/rewards/</code>, framework-free) &rarr;
+                  <strong>Discount Function</strong> (product discount: $0 na
+                  zvolený reálný skladový dárek / doprava zdarma) +
+                  <strong>storefront progress-bar &amp; reveal plocha</strong> ve
+                  sdíleném <code>&lt;won-host&gt;</code>. App
+                  <code>apps/won-rewards/</code> (klon <code>_template</code>,
+                  React Router + Polaris). Milestone machine reused &rarr; žádné
+                  dvojité oslavování s Toasts.
                 </li>
                 <li>
-                  <strong>Core modul:</strong>
-                  <code>packages/core/src/rewards/thresholds.ts</code> —
-                  <code>evaluateThresholds({eligibleSubtotalCents, tiers})</code>:
-                  tier = <code>{id, kind: "gift"|"shipping", cents, variantId?,
-                  qty?, label}</code>; vrací <code>{reached[], next,
-                  remainingCents, progressPct(cap 100)}</code>. Eligible
+                  <strong>Core moduly (unit testy červené první,
+                  <code>tsx --test</code>):</strong> čte
+                  <code>cartState</code> z <code>@won/core/cart</code> (eligible
                   subtotal = součet <code>final_line_price</code> bez řádků s
-                  <code>_gift_progress</code>. Druhá funkce
-                  <code>reconcileGiftLines({cart, reachedTiers, optOut})</code>
-                  vrací diff operací (add/remove/qty) pro
-                  <code>/cart/update.js</code>. + <code>node:test</code>:
-                  pokles pod práh, opt-out, ručně přidaný dárek, dělení nulou
-                  (threshold &lt; 1 → 1).
+                  <code>_gift_progress</code>);
+                  <code>evaluateThresholds({eligibleSubtotalCents, tiers})</code>
+                  &rarr; <code>{reached[], next, remainingCents,
+                  progressPct(cap 100)}</code>, tier =
+                  <code>{id, kind:"shipping"|"gift"|"mystery", cents,
+                  giftPool[], label}</code>; feeduje sdílenou
+                  <strong>milestone machine</strong> (reuse z Toasts) &rarr;
+                  <code>just_reached</code>/<code>just_lost</code> per cart token;
+                  <code>reconcileGiftLines({cart, reached, optOut})</code> &rarr;
+                  diff operací (add/remove/qty) pro <code>/cart/change.js</code>;
+                  <code>pickMysteryGift(giftPool, cartToken)</code> &rarr;
+                  deterministický výběr PRÁVĚ JEDNOHO reálného skladového dárku
+                  (seed = token, ať reveal nekmitá mezi tabů/refreshy).
                 </li>
                 <li>
-                  <strong>Plochy — obě:</strong> (a) <strong>Discount
-                  Function</strong> (product discount): řádky s property
-                  <code>_gift_progress</code> zlevní na 100 %, ale jen když
-                  eligible subtotal ≥ práh daného tieru — bez ručních slev,
-                  které Enervit vyžadoval; (b) <strong>Theme App
-                  Extension</strong>: progress lišta
-                  <code>[data-won-rewards-bar]</code> (uzly tierů,
-                  „do dárku/dopravy zbývá X“), auto-add JS na cart update
-                  (debounce ~50 ms, loop-safe přes sourceId), opt-out ×.
-                  Doprava zdarma zůstává nativní shipping rate — appka jen
-                  ukazuje progress.
+                  <strong>Data model:</strong> Prisma
+                  <code>RewardsConfig { shop, enabled, thresholds(JSON),
+                  giftPool[], mysteryEnabled, plan }</code>. App-proxy
+                  <code>/apps/won-rewards/config</code> vrací resolved tiers +
+                  texty (marker <code>won-rewards-config-ok</code>, vzor
+                  won-quantity config route); tatáž konfigurace se zrcadlí do
+                  <strong>metafieldu</strong> pro Discount Function (Function
+                  nemá DB přístup).
                 </li>
                 <li>
-                  <strong>Data:</strong> Prisma <code>RewardTier { shop, kind,
-                  thresholdCents, giftVariantId?, giftQty?, label, position,
-                  enabled }</code>; app-proxy
-                  <code>/apps/won-giftladder/config</code> vrací tiers + texty;
-                  tatáž konfigurace se zrcadlí do metafieldu pro Function
-                  (Function nemá DB přístup).
+                  <strong>Admin UX (Polaris):</strong> <em>Přehled</em> (vypínač,
+                  kontrola app embedu, živý náhled bar/reveal ve stejném
+                  <code>&lt;won-host&gt;</code> jako storefront);
+                  <em>Prahy &amp; odměny</em> (žebřík tierů: částka + typ
+                  shipping/gift/mystery + dárek nebo <code>giftPool</code> pro
+                  Mystery + label, pořadí); <em>Mystery</em> (zapnout, pool
+                  skladových variant, reveal styl/animace); <em>Vzhled</em>
+                  (barvy, uzly prahů, texty lišty per-locale cs/sk/en).
                 </li>
                 <li>
-                  <strong>Produkty pro testy:</strong> sdílený katalog —
-                  <code>spare</code> ($9) jako dárek, <code>simpleA/B</code> +
-                  <code>twoVariants</code> na naplnění košíku k prahům (např.
-                  gift práh $30, shipping $50). Jen role v seedu tierů, žádné
-                  nové produkty.
+                  <strong>MVP žebřík (každý shippable, TDD):</strong>
+                  <code>MVP0</code> skeleton (klon, <code>RewardsConfig</code>,
+                  config proxy, Discount Function scaffold + app embed injektne
+                  <code>&lt;won-host&gt;</code> no-op) ·
+                  <code>MVP1</code> <strong>free-shipping progress bar</strong>
+                  (ShipGoal &mdash; read-only <code>cartState</code>/cart-total,
+                  BEZ Function, cold-start-safe &mdash; ship first) ·
+                  <code>MVP2</code> <strong>free-gift ladder</strong> (Discount
+                  Function: $0 na zvolený reálný skladový dárek; auto-add +
+                  možnost odmítnout přes <code>_gift_opt_out</code>; odečítá
+                  sklad) ·
+                  <code>MVP3</code> <strong>MYSTERY / reveal dárek</strong> (u
+                  prahu odemkne skrytý/náhodný reálný skladový dárek + reveal
+                  animace &mdash; diferenciátor) ·
+                  <code>MVP4</code> <strong>tiered / více prahů + conflict
+                  integrace s Toasts</strong> (sdílený milestone engine &rarr;
+                  jedno oznámení, <code>summarizeConcurrent</code>, žádný dvojitý
+                  toast) ·
+                  <code>MVP5</code> targeting, analytika &amp; billing
+                  (segmenty, plan gate, attributed revenue, Shopify Billing).
                 </li>
                 <li>
-                  <strong>Admin UI:</strong> žebřík tierů (částka + typ +
-                  dárek/qty + label), pořadí, texty lišty, zapnout/vypnout
-                  auto-add a opt-out.
+                  <strong>Akceptační kritéria (výběr, E2E/unit):</strong>
+                  (1) košík překročí práh &rarr; bar přejde do
+                  <code>just_reached</code> <strong>JEDNOU</strong>, ne při každé
+                  změně; (2) dárek auto-přidán jako <strong>reálný řádek
+                  odečítající sklad</strong> s <code>_gift_progress</code> a cenou
+                  $0 (Function); (3) odmítnutí dárek odebere a nevrací se;
+                  (4) Mystery odhalí <strong>PRÁVĚ JEDEN</strong> reálný skladový
+                  dárek (deterministicky per token); (5) pokles pod práh &rarr;
+                  dárek odebrán + stav <code>just_lost</code>; (6) Toasts oznámí
+                  přes sdílený milestone &mdash; <strong>žádný dvojitý toast</strong>.
                 </li>
                 <li>
-                  <strong>E2E:</strong> sdílený Horizon/Dawn; markery
+                  <strong>Testy / E2E (Dawn i Horizon,
+                  <code>@won/testing</code>):</strong> sdílený harness
+                  <code>@won/testing/playwright</code> + katalog
+                  <code>@won/testing/e2e-products</code> (<code>spare</code> jako
+                  dárek/Mystery pool, <code>simpleA/B</code> na naplnění košíku k
+                  prahům); cílit na vlastní markery
                   <code>data-won-rewards-status="ready"</code>,
-                  <code>[data-won-rewards-bar]</code>: naplň košík pod práh →
-                  „zbývá X“; překroč práh → dárek v <code>/cart.js</code> s
-                  <code>_gift_progress</code> a cenou 0 (Function); odeber
-                  položky → dárek zmizí; opt-out → dárek se nevrací; shipping
-                  tier ukáže „doprava zdarma“.
+                  <code>[data-won-rewards-bar]</code>,
+                  <code>[data-won-mystery-reveal]</code>, ne na DOM tématu.
+                  Scénáře: pod práh „zbývá X&ldquo; &rarr; překroč &rarr; dárek v
+                  <code>/cart.js</code> s cenou 0 &rarr; odeber položky &rarr;
+                  dárek zmizí; Mystery reveal ukáže jeden produkt; současný práh
+                  s Toasts &rarr; jen jedno oznámení.
                 </li>
                 <li>
-                  <strong>Gate:</strong> <code>test:unit</code>,
-                  <code>typecheck</code>, <code>build</code> (<code>-w
-                  won-giftladder</code>) + <code>npm run validate:shopify</code>
+                  <strong>Gate:</strong> <code>npm run test:unit -w won-rewards
+                  &amp;&amp; npm run typecheck -w won-rewards &amp;&amp; npm run
+                  build -w won-rewards &amp;&amp; npm run validate:shopify</code>
                   (Function build je součást <code>build</code>).
                 </li>
               </ol>
@@ -1481,6 +1719,7 @@
             </footer>
             <details class="app-guide">
               <summary>Návod k implementaci</summary>
+              <p class="guide-idea">🔀 <strong>Konsolidováno do Won Rewards</strong> — viz karta <code>WON·GIFT</code>. ShipGoal = free-shipping progress bar (Rewards MVP1, cold-start-safe, bez Function). Karta zůstává jako reference k modulu.</p>
               <p class="guide-idea">
                 ShipGoal se staví společně s Won GiftLadder nad jedním core
                 modulem <code>packages/core/src/rewards/thresholds.ts</code> —
@@ -1883,6 +2122,7 @@
             </footer>
             <details class="app-guide">
               <summary>Návod k implementaci</summary>
+              <p class="guide-idea">🔀 <strong>Konsolidováno do Won Rewards</strong> — viz karta <code>WON·GIFT</code>. Mystery = reveal-gift mechanika (Rewards MVP3, hlavní wedge kategorie). Karta zůstává jako reference k modulu.</p>
               <p class="guide-idea">
                 <strong>0 · Nápad (E·Enervit):</strong> dárek k objednávce nad
                 práh jako reálný skladový line-item s neutrálním názvem
