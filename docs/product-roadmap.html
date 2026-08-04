@@ -164,6 +164,40 @@
         margin-bottom: 13px;
       }
 
+      /* App identity tile — a rounded glyph mark per app, echoing the Won
+         wordmark's rounded-square logo. Neutral by default; build-now cards
+         inherit the mint accent so the recommended apps read at a glance. */
+      .card-id {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        min-width: 0;
+      }
+
+      .app-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 auto;
+        border: 1px solid var(--line-strong);
+        border-radius: 11px;
+        background: var(--surface-soft);
+        color: var(--text-soft);
+      }
+
+      .app-icon svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      .build-now .app-icon {
+        border-color: #1f5b46;
+        background: var(--mint-dark);
+        color: var(--mint);
+      }
+
       .app-code {
         color: var(--text-muted);
         font-family: var(--mono);
@@ -582,7 +616,17 @@
         <div class="app-grid">
           <article class="app-card build-now">
             <div class="card-head">
-              <span class="app-code">WON·STEP</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="8" width="16" height="8" rx="2" />
+                    <path d="M6.2 12h2.6" />
+                    <path d="M15.2 12h2.6" />
+                    <path d="M16.5 10.7v2.6" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·STEP</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2/mo</span>
             </div>
@@ -703,7 +747,18 @@
 
           <article class="app-card build-now">
             <div class="card-head">
-              <span class="app-code">WON·TOAST</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="7" width="15" height="10" rx="2.4" />
+                    <path d="M6.4 10.2v3.6" />
+                    <path d="M9.2 10.8h5.4" />
+                    <path d="M9.2 13.6h3.4" />
+                    <circle cx="18" cy="6" r="2.4" fill="currentColor" stroke="none" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·TOAST</span>
+              </span>
               <span class="mvp-badge mvp-beta">Beta</span>
               <span class="price">Free / $5/mo</span>
             </div>
@@ -758,6 +813,61 @@
                 <code>prefers-color-scheme</code>, jemný stín, sémantické
                 akcenty), design studio je override. Badge:
                 <code>Spec · Scaffold · Alpha · Beta · Shipped</code>.
+              </p>
+              <p class="guide-idea">
+                <strong>v2 směr (obecný notification engine):</strong> Won
+                Toasts přerůstá z cart-toastů na <strong>jednotný notification
+                engine</strong> — cart eventy, social proof, announcementy i
+                urgency pod jedním designem, jedním rate-limit/conflict
+                „mozkem" a jednou Shadow-DOM plochou.
+                <strong>Odlišení</strong> ne počtem funkcí, ale (1) unified
+                engine (konkurence lepí typy po jednom, bez společného
+                frequency budgetu), (2) <strong>trust</strong> — „real events
+                only", GDPR-first, perf budget, Built for Shopify, (3)
+                jednoduchost / onboarding (presety + progressive disclosure).
+                Cena = radikálně jednoduchá &amp; předvídatelná (flat), s
+                přehodnocením tieru až doroste engine (social proof + analytika
+                + A/B). <strong>Zásada (locked):</strong> každý
+                <em>page-view</em> typ (social proof, announcement, urgency) je
+                povinně governovaný frequency cappingem (max/session, cooldown,
+                „po zavření už ne", cross-page dedupe) — nesmí ven dřív, než ten
+                gate existuje. Cart eventy zůstávají bezpečné (spouští je jen
+                akce zákazníka). Free-shipping progress bar sem
+                <em>nepatří</em> (řeší GiftLadder); tady je milestone
+                jednorázový toast, ne page-view spam.
+              </p>
+              <p class="guide-idea">
+                <strong>Konkurenční benchmark (ToastiBar = MPS / Channelwill
+                whitelabel):</strong> zralý veterán s ~11 typy live (sales, cart,
+                countdown, online/recent/product visitors, reviews, order
+                summary, low-stock, cart summary), <strong>skvělým onboardingem</strong>
+                (2-krokový setup guide: enable app → enable app embed → All Done)
+                a empty-state inteligencí (detekuje „nový obchod bez objednávek",
+                nabídne countdown teď + sales pops po první objednávce). Slabiny =
+                naše otvory: <strong>bloatware</strong> (11 typů + in-dashboard
+                reklama + „Recommended Apps" = adware pocit),
+                <strong>fabrikovaná čísla</strong> („537 online", „294 se dívá na…"
+                — přesně náš „real events only" wedge) a
+                <strong>impression-metered pricing</strong> (5 000/měs zdarma, pak
+                anxiety). <strong>Poctivé háčky (locked):</strong> (a) fake čísla
+                <em>prodávají</em> → „real only" je sázka, co ZUŽUJE trh na
+                merchanty citlivé na férovost, ne celý trh; (b) „real only" vyrábí
+                <strong>cold-start problém</strong> (nový/malý obchod nemá co
+                ukázat) → naše odpověď: cart eventy jedou od první návštěvy,
+                countdown + announcement jako cold-start výplň, agregovaný social
+                proof až s objemem; (c) unified engine je pro merchanta
+                <strong>neviditelný</strong> → překládat do benefitu „vypadá to
+                jednotně + nezahltí zákazníka + jedno nastavení"; (d) flat pricing
+                je marketingový wedge proti impression-anxiety, ale přehodnotit až
+                doroste engine. <strong>Strategické závěry promítnuté do žebříku
+                níže:</strong> onboarding ukrást hned (MVP6), jeden VIDITELNÝ
+                cold-start-safe typ dřív (countdown + low-stock/cart-activity,
+                MVP9) ať MVP6–8 nejsou jen plumbing, vrátit škrtnutý
+                <strong>countdown timer</strong> a <strong>exclude-URLs</strong>,
+                a AI hrát se substancí (advisor co reálně konfiguruje/optimalizuje,
+                ne gimmick). Nevyhráváme na šířku — vyhráváme jako čistá,
+                důvěryhodná, dobře designovaná, „nezahltí zákazníka", férově
+                placená alternativa pro segment odpuzený adwarem.
               </p>
               <ol>
                 <li>
@@ -831,7 +941,63 @@
                   <code>MVP3</code> grouping &amp; chování ·
                   <code>MVP4</code> eventy &amp; lokalizované šablony
                   (gift/shipping) · <code>MVP5</code> cílení &amp; Pro (custom
-                  CSS, non-cart eventy, remove-branding).
+                  CSS, non-cart eventy, remove-branding) ·
+                  <code>MVP6</code> <strong>onboarding &amp; aktivace</strong>
+                  (ukradeno ToastiBaru — řeší náš vlastní <code>enabled=false</code>
+                  + „chybí app embed" footgun): 2-krokový guided setup (enable app
+                  → enable app embed s odkazem do theme editoru → „All Done"),
+                  progress bar, dashboard s <strong>theme-embed status</strong> +
+                  enable status nahoře, empty-state / new-store detekce („nový
+                  obchod bez objednávek" → nabídne cold-start-safe typy). PRVNÍ,
+                  protože bez aktivace je zbytek k ničemu ·
+                  <code>MVP7</code> usnadnění &amp; self-service (presety looků +
+                  profily chování Subtle/Standard/High-urgency, progressive
+                  disclosure Basics/Advanced, <strong>fire test toast</strong> —
+                  in-admin náhled + „preview on my store" přes podepsaný query
+                  param = syntetický event stejnou pipeline, bez zápisu do
+                  košíku i analytiky; plné per-event UI on/off + surface + zpráva
+                  + styl, recommended defaults podle typu obchodu, import/export
+                  + duplikace pravidla, „+N more" collapse; haptika toggle /žádný
+                  zvuk/, in-toast +1/−1 stepper jako <strong>Pro toggle</strong>
+                  default OFF) ·
+                  <code>MVP8</code> <strong>frequency governance</strong> (gate
+                  pro všechny page-view typy: per-rule + per-session cap,
+                  cooldown, „po zavření už neukazovat", cross-page dedupe, quiet
+                  mode) — musí předcházet MVP9+ ·
+                  <code>MVP9</code> <strong>první VIDITELNÝ cold-start-safe typ</strong>
+                  (aby MVP6–8 nebyly jen plumbing): <strong>countdown timer</strong>
+                  (vrácen ze škrtů — <code>rule.kind</code>, product/cart/landing/all
+                  pages) + <strong>low-stock urgency</strong> z inventáře +
+                  cart-activity z reálných cart eventů. Funguje od 1. návštěvy i na
+                  malém obchodě (odpověď na cold-start), governováno MVP8 ·
+                  <code>MVP10</code> cílení, časování &amp; <strong>exkluze</strong>
+                  (scheduling start/end + dny + hodiny v TZ shopu,
+                  per-product/collection/tag, segmenty
+                  B2B/retail/logged-in/first-time-vs-returning/tags, geo/Market;
+                  <strong>exclude-URLs</strong> vrácen ze škrtů — quick toggles
+                  Home/Product/Cart, meta-tag opt-out, per-URL per-app) ·
+                  <code>MVP11</code> announcement &amp; agregáty (merchantem psaný
+                  scheduled announcement toast; order/cart summary agregáty jasně
+                  odlišené jako agregace — ne-cart typy governované MVP8) ·
+                  <code>MVP12</code> <strong>social proof</strong> (recent sales
+                  z reálných objednávek přes <code>orders/create</code>,
+                  privacy-first jméno+město + opt-out + GDPR redact, <em>i</em>
+                  agregované / merchantem zadané „47 prodáno za 24 h"; „real
+                  events only" jako značka, agregace jasně odlišené, cold-start
+                  honesty) ·
+                  <code>MVP13</code> insighty, <strong>AI advisor</strong> &amp;
+                  experimenty (toast analytika — impressions, clicks, CTR, Undo
+                  rate, dismiss rate per-event/per-rule; <strong>AI
+                  Setup/Optimize advisor SE SUBSTANCÍ</strong> — reálně
+                  nakonfiguruje a optimalizuje pravidla dle dat, ne gimmick jako
+                  konkurenční „AI Wizard"; A/B experimenty se zprávou/stylem/pozicí
+                  + auto-winner; attributed revenue best-effort) ·
+                  <code>MVP14</code> kvalita &amp; Built for Shopify (a11y
+                  kontroly — <code>aria-live</code> politeness, dismiss-all,
+                  focus management, SR-only text; performance mode + lazy-load +
+                  perf budget; collision avoidance se sticky hlavičkou / jinými
+                  widgety; money/locale + RTL; reálné Shopify Billing / managed
+                  pricing; GDPR webhooky).
                 </li>
                 <li>
                   <strong>Produkty pro testy:</strong> sdílený katalog
@@ -886,7 +1052,17 @@
         <div class="app-grid">
           <article class="app-card build-now">
             <div class="card-head">
-              <span class="app-code">WON·COMP</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="9" width="8" height="9" rx="1.6" />
+                    <rect x="13" y="6" width="7" height="8" rx="1.6" />
+                    <path d="M16.5 8.2v3.2" />
+                    <path d="M14.9 9.8h3.2" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·COMP</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2–3/mo</span>
             </div>
@@ -1001,7 +1177,16 @@
 
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·PACK</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 4l8 4-8 4-8-4z" />
+                    <path d="M4 8v8l8 4 8-4V8" />
+                    <path d="M12 12v8" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·PACK</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2/mo</span>
             </div>
@@ -1121,7 +1306,18 @@
         <div class="app-grid">
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·GIFT</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4.5" y="10" width="15" height="8.5" rx="1.2" />
+                    <rect x="4" y="7.5" width="16" height="2.5" rx="0.8" />
+                    <path d="M12 7.5v11" />
+                    <path d="M12 7.5c-2.6 0-3.6-3.4-1.1-3.4 1.8 0 1.1 3.4 1.1 3.4z" />
+                    <path d="M12 7.5c2.6 0 3.6-3.4 1.1-3.4-1.8 0-1.1 3.4-1.1 3.4z" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·GIFT</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$3/mo</span>
             </div>
@@ -1245,7 +1441,17 @@
 
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·SHIP</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="8" width="10" height="7" rx="1" />
+                    <path d="M13 10h3.6l2.6 3v2H13z" />
+                    <circle cx="7" cy="16.6" r="1.5" />
+                    <circle cx="16.5" cy="16.6" r="1.5" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·SHIP</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$1/mo</span>
             </div>
@@ -1301,7 +1507,17 @@
         <div class="app-grid">
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·TIER</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="13" width="3.6" height="5" rx="0.6" />
+                    <rect x="10.2" y="9.5" width="3.6" height="8.5" rx="0.6" />
+                    <rect x="16.4" y="6" width="3.6" height="12" rx="0.6" />
+                    <circle cx="18.2" cy="3.6" r="0.9" fill="currentColor" stroke="none" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·TIER</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$3/mo</span>
             </div>
@@ -1405,7 +1621,15 @@
 
           <article class="app-card build-now">
             <div class="card-head">
-              <span class="app-code">WON·MRGN</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3.5l7 2.5v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z" />
+                    <path d="M8.6 12l2.4 2.4 4.4-4.9" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·MRGN</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2/mo</span>
             </div>
@@ -1510,7 +1734,17 @@
 
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·OUT</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11.5 4h-6a1.5 1.5 0 0 0-1.5 1.5v6a2 2 0 0 0 .6 1.4l6.5 6.5a2 2 0 0 0 2.8 0l5.6-5.6a2 2 0 0 0 0-2.8L12.9 4.6A2 2 0 0 0 11.5 4z" />
+                    <circle cx="7.6" cy="7.6" r="1.3" fill="currentColor" stroke="none" />
+                    <path d="M11 10v3.6" />
+                    <path d="M9.4 12.2l1.6 1.8 1.6-1.8" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·OUT</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2/mo</span>
             </div>
@@ -1611,7 +1845,16 @@
 
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·MYST</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4.5" y="6.5" width="15" height="13" rx="2" />
+                    <path d="M9.6 10.2c0-1.9 4.8-1.9 4.8.2 0 1.6-2.4 1.4-2.4 3" />
+                    <circle cx="12" cy="16.4" r="0.8" fill="currentColor" stroke="none" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·MYST</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2/mo</span>
             </div>
@@ -1724,7 +1967,16 @@
         <div class="app-grid">
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·SWCH</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="9" r="4.5" />
+                    <circle cx="15" cy="9" r="4.5" />
+                    <circle cx="12" cy="15" r="4.5" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·SWCH</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$2/mo</span>
             </div>
@@ -1827,7 +2079,16 @@
 
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·INFO</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="8.5" />
+                    <circle cx="12" cy="8.2" r="0.9" fill="currentColor" stroke="none" />
+                    <path d="M12 11.2v5.4" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·INFO</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$1/mo</span>
             </div>
@@ -1927,7 +2188,16 @@
 
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·BADG</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="9" r="5" />
+                    <path d="M9.4 13.4L8 20l4-2 4 2-1.4-6.6" />
+                    <path d="M12 6.6l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2L8.8 8.9l2.2-.3z" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·BADG</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$1/mo</span>
             </div>
@@ -2027,7 +2297,17 @@
 
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·CONT</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4.5" y="4" width="15" height="16" rx="2" />
+                    <path d="M7.5 8h9" />
+                    <rect x="7.5" y="11" width="9" height="2.4" rx="0.6" />
+                    <rect x="7.5" y="15" width="9" height="2.4" rx="0.6" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·CONT</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$3/mo</span>
             </div>
@@ -2130,7 +2410,15 @@
 
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·PEEK</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z" />
+                    <circle cx="12" cy="12" r="2.6" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·PEEK</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$5/mo</span>
             </div>
@@ -2245,7 +2533,15 @@
         <div class="app-grid">
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·SRCH</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="10.5" cy="10.5" r="6" />
+                    <path d="M14.8 14.8l4.7 4.7" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·SRCH</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$1/mo</span>
             </div>
@@ -2343,7 +2639,15 @@
 
           <article class="app-card">
             <div class="card-head">
-              <span class="app-code">WON·NAV</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="8.5" />
+                    <path d="M15.6 8.4l-2.1 5.1-5.1 2.1 2.1-5.1z" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·NAV</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$1/mo</span>
             </div>
@@ -2459,7 +2763,19 @@
         <div class="app-grid">
           <article class="app-card build-now">
             <div class="card-head">
-              <span class="app-code">WON·SCHM</span>
+              <span class="card-id">
+                <span class="app-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="5.5" r="2.2" />
+                    <circle cx="6" cy="17" r="2.2" />
+                    <circle cx="18" cy="17" r="2.2" />
+                    <path d="M10.9 7.4l-3.8 7.6" />
+                    <path d="M13.1 7.4l3.8 7.6" />
+                    <path d="M8.2 17h7.6" />
+                  </svg>
+                </span>
+                <span class="app-code">WON·SCHM</span>
+              </span>
               <span class="mvp-badge mvp-spec">Spec</span>
               <span class="price">$19/mo</span>
             </div>

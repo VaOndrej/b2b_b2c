@@ -80,7 +80,11 @@ export function createToastConfigService(prisma: PrismaClient) {
     const normalizedShop = normalizeShop(shop);
     return prisma.toastAppConfig.upsert({
       where: { shop: normalizedShop },
-      create: { shop: normalizedShop, version: TOAST_CONFIG_VERSION },
+      // A shop only ever reaches here after installing the app AND enabling the
+      // theme app embed (the merchant's real opt-in), so a fresh install is on
+      // by default. The unknown-shop path still serves resolveToastConfig(null)
+      // (enabled:false) — that safety default is deliberate and untouched.
+      create: { shop: normalizedShop, version: TOAST_CONFIG_VERSION, enabled: true },
       update: {},
     });
   }

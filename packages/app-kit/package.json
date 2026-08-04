@@ -9,6 +9,7 @@
     "./entry.server": "./src/entry.server.tsx",
     "./root": "./src/root.tsx",
     "./auth": "./src/auth.tsx",
+    "./admin-nav": "./src/admin-nav.tsx",
     "./webhooks": "./src/webhooks.ts"
   },
   "dependencies": {

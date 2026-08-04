@@ -34,27 +34,32 @@ export default function PlanRoute() {
 
   return (
     <s-page heading="Plan">
-      <s-section heading={`You are on the ${config.plan.toUpperCase()} plan`}>
+      <s-section heading="Your plan">
+        <s-stack direction="inline" gap="base" alignItems="center">
+          <s-badge tone={isPro ? "success" : "neutral"}>
+            {isPro ? "Pro" : "Free"}
+          </s-badge>
+          <s-text color="subdued">
+            You are on the {isPro ? "Pro" : "Free"} plan.
+          </s-text>
+        </s-stack>
+
         <s-paragraph>
           <strong>Free</strong> keeps all cart events, the default look,
           localization, accessibility, preview and basic grouping — nothing
           essential is crippled. <strong>Pro ($5/mo)</strong> unlocks scope:
         </s-paragraph>
-        <ul>
+        <s-unordered-list>
           {PRO_FEATURES.map((f) => (
-            <li key={f}>{f.replace(/_/g, " ")}</li>
+            <s-list-item key={f}>{f.replace(/_/g, " ")}</s-list-item>
           ))}
-        </ul>
+        </s-unordered-list>
 
         <Form method="post">
           <input type="hidden" name="plan" value={isPro ? "free" : "pro"} />
-          <button type="submit" disabled={busy}>
-            {busy
-              ? "Updating…"
-              : isPro
-                ? "Switch to Free"
-                : "Upgrade to Pro ($5/mo)"}
-          </button>
+          <s-button variant="primary" type="submit" loading={busy}>
+            {isPro ? "Switch to Free" : "Upgrade to Pro ($5/mo)"}
+          </s-button>
         </Form>
 
         <s-paragraph>

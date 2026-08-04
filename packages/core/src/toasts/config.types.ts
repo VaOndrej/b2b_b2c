@@ -34,6 +34,20 @@ export interface GroupingSettings {
   rateLimitPerMin: number;
 }
 
+/** MVP8 — frequency governance. Caps how often toasts (esp. page-view types)
+ * may appear, and a global mute. The storefront enforces these via
+ * @won/core/toasts/governance before rendering. */
+export interface FrequencySettings {
+  /** Max toasts per session across all rules (0 = unlimited). */
+  maxPerSession: number;
+  /** Minimum ms between emits of the same rule. */
+  cooldownMs: number;
+  /** After a dismiss, hide the same group for this long (ms). */
+  suppressAfterDismissMs: number;
+  /** Global mute — when true, nothing is shown. */
+  quietMode: boolean;
+}
+
 export interface GlobalSettings {
   position: ToastPosition;
   offsetTop: number;
@@ -47,6 +61,7 @@ export interface GlobalSettings {
   overflowStrategy: OverflowStrategy;
   stackDirection: StackDirection;
   grouping: GroupingSettings;
+  frequency: FrequencySettings;
   /** When 2+ reward milestones fire together, merge into one summary toast. */
   summarizeConcurrent: boolean;
 }
@@ -136,8 +151,9 @@ export interface StoredToastConfig {
   version?: number;
   enabled?: boolean;
   plan?: ToastPlan;
-  global?: Omit<Partial<GlobalSettings>, "grouping"> & {
+  global?: Omit<Partial<GlobalSettings>, "grouping" | "frequency"> & {
     grouping?: Partial<GroupingSettings>;
+    frequency?: Partial<FrequencySettings>;
   };
   theme?: Omit<Partial<ToastTheme>, "accent"> & {
     accent?: Partial<Record<ToastSemanticType, string>>;

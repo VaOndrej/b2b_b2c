@@ -42,7 +42,10 @@ after(async () => {
 
 test("fresh shop resolves to the complete spec default config", async () => {
   const config = await service.getToastConfig("fresh.myshopify.com");
-  assert.equal(config.enabled, false);
+  // Installing the app (which lands a row here) opts the shop in — the merchant
+  // already opted in by enabling the theme app embed. Only the unknown-shop
+  // path (resolveToastConfig(null)) stays disabled.
+  assert.equal(config.enabled, true);
   assert.equal(config.plan, "free");
   assert.equal(config.global.position, "top-right");
   assert.equal(config.global.durationMs, 3500);

@@ -20,8 +20,9 @@ api_version = "2026-10"
   uri = "/webhooks/app/uninstalled"
 
 [access_scopes]
-# Toasts reads product data for the admin; storefront cart state needs no scope.
-scopes = "read_products"
+# read_products: admin product data. read_themes: MVP6 app-embed detection
+# (theme settings_data.json). read_orders: MVP6 empty-store / cold-start hint.
+scopes = "read_products,read_themes,read_orders"
 
 [auth]
 redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]

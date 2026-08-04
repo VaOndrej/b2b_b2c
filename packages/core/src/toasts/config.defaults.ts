@@ -4,6 +4,7 @@
 // "config is the single source of truth" hold even for a fresh install.
 
 import type {
+  FrequencySettings,
   GlobalSettings,
   GroupingSettings,
   MilestoneRuleConfig,
@@ -44,6 +45,13 @@ export const DEFAULT_GROUPING: GroupingSettings = {
   rateLimitPerMin: 30,
 };
 
+export const DEFAULT_FREQUENCY: FrequencySettings = {
+  maxPerSession: 0,
+  cooldownMs: 0,
+  suppressAfterDismissMs: 0,
+  quietMode: false,
+};
+
 export const DEFAULT_GLOBAL: GlobalSettings = {
   position: "top-right",
   offsetTop: 16,
@@ -57,6 +65,7 @@ export const DEFAULT_GLOBAL: GlobalSettings = {
   overflowStrategy: "collapse",
   stackDirection: "newest-top",
   grouping: DEFAULT_GROUPING,
+  frequency: DEFAULT_FREQUENCY,
   summarizeConcurrent: true,
 };
 
@@ -166,9 +175,13 @@ export const GROUPING_MODES: readonly GroupingSettings["mode"][] = [
   "by-type",
 ];
 
-/** Sanitized partial global; `grouping` may itself be partial. */
-export type SanitizedGlobal = Omit<Partial<GlobalSettings>, "grouping"> & {
+/** Sanitized partial global; `grouping`/`frequency` may themselves be partial. */
+export type SanitizedGlobal = Omit<
+  Partial<GlobalSettings>,
+  "grouping" | "frequency"
+> & {
   grouping?: Partial<GroupingSettings>;
+  frequency?: Partial<FrequencySettings>;
 };
 
 function clampInt(value: unknown, min: number, max: number): number | undefined {
@@ -235,6 +248,20 @@ export function sanitizeGlobalSettings(input: unknown): SanitizedGlobal {
     if (rateLimitPerMin !== undefined) gr.rateLimitPerMin = rateLimitPerMin;
     if (typeof g.mergeDeltas === "boolean") gr.mergeDeltas = g.mergeDeltas;
     if (Object.keys(gr).length > 0) out.grouping = gr;
+  }
+
+  if (isPlainObject(input.frequency)) {
+    const fr = input.frequency;
+    const freq: Partial<FrequencySettings> = {};
+    const maxPerSession = clampInt(fr.maxPerSession, 0, 100);
+    if (maxPerSession !== undefined) freq.maxPerSession = maxPerSession;
+    const cooldownMs = clampInt(fr.cooldownMs, 0, 3_600_000);
+    if (cooldownMs !== undefined) freq.cooldownMs = cooldownMs;
+    const suppressAfterDismissMs = clampInt(fr.suppressAfterDismissMs, 0, 86_400_000);
+    if (suppressAfterDismissMs !== undefined)
+      freq.suppressAfterDismissMs = suppressAfterDismissMs;
+    if (typeof fr.quietMode === "boolean") freq.quietMode = fr.quietMode;
+    if (Object.keys(freq).length > 0) out.frequency = freq;
   }
 
   return out;
@@ -356,10 +383,16 @@ export function resolveToastConfig(
     ...(isPlainObject(input.global?.grouping) ? input.global!.grouping : {}),
   };
 
+  const frequency: FrequencySettings = {
+    ...DEFAULT_FREQUENCY,
+    ...(isPlainObject(input.global?.frequency) ? input.global!.frequency : {}),
+  };
+
   const global: GlobalSettings = {
     ...DEFAULT_GLOBAL,
     ...(isPlainObject(input.global) ? input.global : {}),
     grouping,
+    frequency,
   };
 
   const accent: Record<ToastSemanticType, string> = {

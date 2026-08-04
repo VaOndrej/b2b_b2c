@@ -1,10 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import {
-  Form,
-  useActionData,
-  useLoaderData,
-  useNavigation,
-} from "react-router";
+import { Form, useLoaderData } from "react-router";
 
 import type { PageType } from "@won/core/toasts/targeting";
 
@@ -13,6 +8,7 @@ import {
   getToastConfig,
   updateToastConfig,
 } from "../services/toast-config.server";
+import { useSavedToast } from "../lib/use-saved-toast";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -47,91 +43,68 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   return { saved: true };
 };
 
-const control = {
-  border: "1px solid #8a8a8a",
-  borderRadius: "8px",
-  font: "inherit",
-  padding: "8px 10px",
-} as const;
-
 export default function TargetingRoute() {
   const { config } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
-  const navigation = useNavigation();
-  const saving = navigation.state === "submitting";
+  useSavedToast();
   const isPro = config.plan === "pro";
   const t = config.targeting;
 
   return (
     <s-page heading="Targeting">
       {!isPro ? (
-        <s-section heading="Pro feature">
+        <s-section heading="Targeting is a Pro feature">
+          <s-banner tone="info" heading="Toasts run everywhere on Free">
+            Choosing which pages, devices and customers see toasts is part of
+            Pro.
+          </s-banner>
           <s-paragraph>
-            Targeting (which pages, devices and customers see toasts) is part of
-            Pro. <a href="/app/plan">Upgrade to Pro</a> to enable it. Toasts run
-            everywhere on Free.
+            <s-link href="/app/plan">Upgrade to Pro</s-link> to enable
+            targeting.
           </s-paragraph>
         </s-section>
       ) : null}
 
       <s-section heading="Where toasts run">
-        <Form method="post">
-          <fieldset
-            disabled={!isPro}
-            style={{ border: 0, padding: 0, opacity: isPro ? 1 : 0.55 }}
-          >
-            <div style={{ display: "grid", gap: 18, maxWidth: 420 }}>
-              <div>
-                <div style={{ marginBottom: 6 }}>Pages (none = all pages)</div>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                  {PAGE_TYPES.map((p) => (
-                    <label
-                      key={p}
-                      style={{ display: "flex", gap: 6, alignItems: "center" }}
-                    >
-                      <input
-                        type="checkbox"
-                        name={`page_${p}`}
-                        defaultChecked={t.pages.includes(p)}
-                      />
-                      <span>{p}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+        <Form method="post" data-save-bar>
+          <s-stack direction="block" gap="large">
+            <s-stack direction="block" gap="base">
+              <s-text type="strong">Pages (none = all pages)</s-text>
+              <s-stack direction="inline" gap="base">
+                {PAGE_TYPES.map((p) => (
+                  <s-checkbox
+                    key={p}
+                    label={p}
+                    name={`page_${p}`}
+                    value="on"
+                    checked={t.pages.includes(p)}
+                    disabled={!isPro}
+                  />
+                ))}
+              </s-stack>
+            </s-stack>
 
-              <label style={{ display: "grid", gap: 4 }}>
-                <span>Device</span>
-                <select name="device" defaultValue={t.device} style={control}>
-                  <option value="both">both</option>
-                  <option value="mobile">mobile only</option>
-                  <option value="desktop">desktop only</option>
-                </select>
-              </label>
+            <s-select
+              label="Device"
+              name="device"
+              value={t.device}
+              disabled={!isPro}
+            >
+              <s-option value="both">both</s-option>
+              <s-option value="mobile">mobile only</s-option>
+              <s-option value="desktop">desktop only</s-option>
+            </s-select>
 
-              <label style={{ display: "grid", gap: 4 }}>
-                <span>Customer</span>
-                <select
-                  name="customerState"
-                  defaultValue={t.customerState}
-                  style={control}
-                >
-                  <option value="both">everyone</option>
-                  <option value="guest">guests only</option>
-                  <option value="logged-in">logged-in only</option>
-                </select>
-              </label>
-
-              <div>
-                <button type="submit" disabled={!isPro || saving}>
-                  {saving ? "Saving…" : "Save targeting"}
-                </button>
-                {actionData?.saved ? (
-                  <span style={{ marginLeft: 12, color: "#1f8f5f" }}>Saved.</span>
-                ) : null}
-              </div>
-            </div>
-          </fieldset>
+            <s-select
+              label="Customer"
+              name="customerState"
+              value={t.customerState}
+              disabled={!isPro}
+            >
+              <s-option value="both">everyone</s-option>
+              <s-option value="guest">guests only</s-option>
+              <s-option value="logged-in">logged-in only</s-option>
+            </s-select>
+          </s-stack>
         </Form>
       </s-section>
     </s-page>

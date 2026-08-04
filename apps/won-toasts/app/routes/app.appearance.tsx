@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { Form, useActionData, useLoaderData, useNavigation } from "react-router";
+import { Form, useLoaderData } from "react-router";
 
-import { sanitizeTheme } from "@won/core/toasts/config.defaults";
+import {
+  resolveToastConfig,
+  sanitizeTheme,
+} from "@won/core/toasts/config.defaults";
+import { PRESET_LOOKS, applyLookPreset } from "@won/core/toasts/presets";
+import { exportConfig, importConfig } from "@won/core/toasts/config-io";
 
 import { authenticate } from "../shopify.server";
 import {
@@ -10,16 +15,74 @@ import {
   updateToastConfig,
 } from "../services/toast-config.server";
 import { ToastPreview } from "../components/ToastPreview";
+import { useSavedToast } from "../lib/use-saved-toast";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  return { config: await getToastConfig(session.shop) };
+  const config = await getToastConfig(session.shop);
+  return { config, exportJson: exportConfig(config) };
 };
+
+// Read every named field straight out of the form. Used both by the live
+// preview (on input) and — implicitly, via the same names — by the action on
+// submit, so preview === what gets saved === what the storefront renders.
+function readTheme(form: HTMLFormElement) {
+  const f = new FormData(form);
+  return sanitizeTheme({
+    mode: f.get("mode"),
+    colorBg: f.get("colorBg"),
+    colorText: f.get("colorText"),
+    accent: {
+      added: f.get("accent_added"),
+      removed: f.get("accent_removed"),
+      increased: f.get("accent_increased"),
+      decreased: f.get("accent_decreased"),
+      gift: f.get("accent_gift"),
+      shipping: f.get("accent_shipping"),
+    },
+    cornerRadius: f.get("cornerRadius"),
+    shadow: f.get("shadow"),
+    width: f.get("width"),
+    density: f.get("density"),
+    animationIn: f.get("animationIn"),
+    border: f.get("border") === "on",
+    backdropBlur: f.get("backdropBlur") === "on",
+    showImage: f.get("showImage") === "on",
+    showDelta: f.get("showDelta") === "on",
+    showIcon: f.get("showIcon") === "on",
+  });
+}
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const f = await request.formData();
-  const patch = sanitizeTheme({
+  const intent = f.get("intent");
+
+  // MVP7 — one-click preset: merge a named look over the current theme + save.
+  if (intent === "applyLook") {
+    const current = await getToastConfig(session.shop);
+    const theme = applyLookPreset(current.theme, String(f.get("preset") ?? ""));
+    await updateToastConfig(session.shop, { theme });
+    return { saved: true };
+  }
+
+  // MVP7 — import a config JSON. importConfig re-sanitizes every section, so an
+  // untrusted file can't produce an unusable config. `enabled` is left alone
+  // (install state must not be flipped by an import).
+  if (intent === "import") {
+    const resolved = resolveToastConfig(importConfig(String(f.get("config") ?? "")));
+    await updateToastConfig(session.shop, {
+      plan: resolved.plan,
+      global: resolved.global,
+      theme: resolved.theme,
+      messages: resolved.messages,
+      milestones: resolved.milestones,
+      targeting: resolved.targeting,
+    });
+    return { saved: true };
+  }
+
+  const saved = sanitizeTheme({
     mode: f.get("mode"),
     colorBg: f.get("colorBg"),
     colorText: f.get("colorText"),
@@ -46,47 +109,83 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   await updateToastConfig(session.shop, {
     theme: {
       ...current.theme,
-      ...patch,
-      accent: { ...current.theme.accent, ...(patch.accent ?? {}) },
+      ...saved,
+      accent: { ...current.theme.accent, ...(saved.accent ?? {}) },
     },
   });
   return { saved: true };
 };
 
-const field = { display: "grid", gap: "6px" } as const;
-const control = {
-  border: "1px solid #8a8a8a",
-  borderRadius: "8px",
-  font: "inherit",
-  padding: "8px 10px",
-} as const;
-const grid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-  gap: "16px",
-} as const;
+const ACCENTS = [
+  ["added", "Added"],
+  ["removed", "Removed"],
+  ["increased", "Increased"],
+  ["decreased", "Decreased"],
+  ["gift", "Gift"],
+  ["shipping", "Shipping"],
+] as const;
+
+const TOGGLES = [
+  ["showImage", "Product image"],
+  ["showDelta", "Delta (+N)"],
+  ["showIcon", "Icon"],
+  ["border", "Border"],
+  ["backdropBlur", "Backdrop blur"],
+] as const;
+
+const LOOK_PRESETS: { id: keyof typeof PRESET_LOOKS; label: string }[] = [
+  { id: "minimal", label: "Minimal" },
+  { id: "bold", label: "Bold" },
+  { id: "luxury", label: "Luxury" },
+  { id: "playful", label: "Playful" },
+];
 
 export default function AppearanceRoute() {
-  const { config } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
-  const navigation = useNavigation();
-  const saving = navigation.state === "submitting";
+  const { config, exportJson } = useLoaderData<typeof loader>();
+  useSavedToast();
 
-  // Local state drives the LIVE preview from unsaved form values. On submit the
-  // named inputs post these same values, so preview === what gets saved ===
-  // what the storefront renders (shared @won/core tokens).
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // The form is uncontrolled (Polaris fields keep their own value; initial
+  // values come from config). The live preview is driven by re-reading the
+  // whole form on every input/change — native events from the s-* components
+  // bubble up to the <form>, so this stays in sync without per-field wiring.
   const [theme, setTheme] = useState(config.theme);
-  const set = (patch: Partial<typeof theme>) =>
-    setTheme((t) => ({ ...t, ...patch }));
-  const setAccent = (key: string, value: string) =>
-    setTheme((t) => ({ ...t, accent: { ...t.accent, [key]: value } }));
+  const sync = useCallback(() => {
+    if (!formRef.current) return;
+    const patch = readTheme(formRef.current);
+    setTheme((prev) => ({
+      ...prev,
+      ...patch,
+      accent: { ...prev.accent, ...(patch.accent ?? {}) },
+    }));
+  }, []);
+
+  const isCustom = theme.mode === "custom";
 
   return (
     <s-page heading="Appearance">
-      <s-section heading="Design studio">
+      {/* MVP7 — start from a curated look in one click, then fine-tune below. */}
+      <s-section heading="Presets">
+        <s-paragraph>
+          Start from a look, then fine-tune it below. Applying a preset saves
+          immediately.
+        </s-paragraph>
+        <s-stack direction="inline" gap="base">
+          {LOOK_PRESETS.map((p) => (
+            <Form key={p.id} method="post">
+              <input type="hidden" name="intent" value="applyLook" />
+              <input type="hidden" name="preset" value={p.id} />
+              <s-button type="submit">{p.label}</s-button>
+            </Form>
+          ))}
+        </s-stack>
+      </s-section>
+
+      <s-section heading="Fine-tune (advanced)">
         <s-paragraph>
           Style is configured here; the storefront only renders what you set.
-          The preview below uses the exact same render tokens as the storefront.
+          The preview uses the exact same render tokens as the storefront.
         </s-paragraph>
 
         <div
@@ -97,179 +196,138 @@ export default function AppearanceRoute() {
             alignItems: "start",
           }}
         >
-          <Form method="post">
-            <div style={{ display: "grid", gap: "18px" }}>
-              <label style={field}>
-                <span>Theme mode</span>
-                <select
-                  name="mode"
-                  value={theme.mode}
-                  onChange={(e) => set({ mode: e.target.value as typeof theme.mode })}
-                  style={control}
-                >
-                  <option value="system">system (auto light/dark)</option>
-                  <option value="light">light</option>
-                  <option value="dark">dark</option>
-                  <option value="custom">custom colours</option>
-                </select>
-              </label>
+          {/* data-save-bar shows the native Save/Discard bar on any change and
+              guards navigation. onInput/onChange drive the live preview from the
+              (uncontrolled) fields; onReset resyncs it after a Discard. */}
+          <Form
+            method="post"
+            ref={formRef}
+            data-save-bar
+            onInput={sync}
+            onChange={sync}
+            onReset={() => setTheme(config.theme)}
+          >
+            <s-stack direction="block" gap="large">
+              <s-select label="Theme mode" name="mode" value={theme.mode}>
+                <s-option value="system">system (auto light/dark)</s-option>
+                <s-option value="light">light</s-option>
+                <s-option value="dark">dark</s-option>
+                <s-option value="custom">custom colours</s-option>
+              </s-select>
 
-              {theme.mode === "custom" ? (
-                <div style={grid}>
-                  <label style={field}>
-                    <span>Background</span>
-                    <input
-                      type="color"
-                      name="colorBg"
-                      value={theme.colorBg}
-                      onChange={(e) => set({ colorBg: e.target.value })}
-                    />
-                  </label>
-                  <label style={field}>
-                    <span>Text</span>
-                    <input
-                      type="color"
-                      name="colorText"
-                      value={theme.colorText}
-                      onChange={(e) => set({ colorText: e.target.value })}
-                    />
-                  </label>
-                </div>
-              ) : (
-                <>
-                  <input type="hidden" name="colorBg" value={theme.colorBg} />
-                  <input type="hidden" name="colorText" value={theme.colorText} />
-                </>
-              )}
+              {/* Always posted (so the action + preview always read them);
+                  only shown when the mode is custom. */}
+              <div style={{ display: isCustom ? "block" : "none" }}>
+                <s-stack direction="inline" gap="base">
+                  <s-color-field
+                    label="Background"
+                    name="colorBg"
+                    value={config.theme.colorBg}
+                  />
+                  <s-color-field
+                    label="Text"
+                    name="colorText"
+                    value={config.theme.colorText}
+                  />
+                </s-stack>
+              </div>
 
-              <fieldset style={{ border: "1px solid #e2e6ea", borderRadius: 10, padding: 14 }}>
-                <legend>Accent colours per event</legend>
-                <div style={grid}>
-                  {(
-                    [
-                      ["added", "Added"],
-                      ["removed", "Removed"],
-                      ["increased", "Increased"],
-                      ["decreased", "Decreased"],
-                      ["gift", "Gift"],
-                      ["shipping", "Shipping"],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <label key={key} style={field}>
-                      <span>{label}</span>
-                      <input
-                        type="color"
-                        name={`accent_${key}`}
-                        value={theme.accent[key]}
-                        onChange={(e) => setAccent(key, e.target.value)}
-                      />
-                    </label>
+              <s-section heading="Accent colours per event">
+                <s-stack direction="inline" gap="base">
+                  {ACCENTS.map(([key, label]) => (
+                    <s-color-field
+                      key={key}
+                      label={label}
+                      name={`accent_${key}`}
+                      value={config.theme.accent[key]}
+                    />
                   ))}
-                </div>
-              </fieldset>
+                </s-stack>
+              </s-section>
 
-              <div style={grid}>
-                <label style={field}>
-                  <span>Corner radius: {theme.cornerRadius}px</span>
-                  <input
-                    type="range"
-                    name="cornerRadius"
-                    min={0}
-                    max={32}
-                    value={theme.cornerRadius}
-                    onChange={(e) => set({ cornerRadius: Number(e.target.value) })}
-                  />
-                </label>
-                <label style={field}>
-                  <span>Width: {theme.width}px</span>
-                  <input
-                    type="range"
-                    name="width"
-                    min={240}
-                    max={480}
-                    value={theme.width}
-                    onChange={(e) => set({ width: Number(e.target.value) })}
-                  />
-                </label>
-                <label style={field}>
-                  <span>Shadow</span>
-                  <select
-                    name="shadow"
-                    value={theme.shadow}
-                    onChange={(e) => set({ shadow: e.target.value as typeof theme.shadow })}
-                    style={control}
-                  >
-                    <option value="none">none</option>
-                    <option value="sm">small</option>
-                    <option value="md">medium</option>
-                    <option value="lg">large</option>
-                  </select>
-                </label>
-                <label style={field}>
-                  <span>Density</span>
-                  <select
-                    name="density"
-                    value={theme.density}
-                    onChange={(e) => set({ density: e.target.value as typeof theme.density })}
-                    style={control}
-                  >
-                    <option value="comfortable">comfortable</option>
-                    <option value="compact">compact</option>
-                  </select>
-                </label>
-                <label style={field}>
-                  <span>Entry animation</span>
-                  <select
-                    name="animationIn"
-                    value={theme.animationIn}
-                    onChange={(e) =>
-                      set({ animationIn: e.target.value as typeof theme.animationIn })
-                    }
-                    style={control}
-                  >
-                    <option value="slide">slide</option>
-                    <option value="fade">fade</option>
-                    <option value="pop">pop</option>
-                    <option value="slide-scale">slide-scale</option>
-                  </select>
-                </label>
-              </div>
+              <s-stack direction="inline" gap="base">
+                <s-number-field
+                  label="Corner radius (px)"
+                  name="cornerRadius"
+                  value={String(config.theme.cornerRadius)}
+                  min={0}
+                  max={32}
+                />
+                <s-number-field
+                  label="Width (px)"
+                  name="width"
+                  value={String(config.theme.width)}
+                  min={240}
+                  max={480}
+                />
+              </s-stack>
 
-              <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
-                {(
-                  [
-                    ["showImage", "Product image"],
-                    ["showDelta", "Delta (+N)"],
-                    ["showIcon", "Icon"],
-                    ["border", "Border"],
-                    ["backdropBlur", "Backdrop blur"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <label key={key} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <input
-                      type="checkbox"
-                      name={key}
-                      checked={Boolean(theme[key])}
-                      onChange={(e) => set({ [key]: e.target.checked } as Partial<typeof theme>)}
-                    />
-                    <span>{label}</span>
-                  </label>
+              <s-stack direction="inline" gap="base">
+                <s-select label="Shadow" name="shadow" value={theme.shadow}>
+                  <s-option value="none">none</s-option>
+                  <s-option value="sm">small</s-option>
+                  <s-option value="md">medium</s-option>
+                  <s-option value="lg">large</s-option>
+                </s-select>
+                <s-select label="Density" name="density" value={theme.density}>
+                  <s-option value="comfortable">comfortable</s-option>
+                  <s-option value="compact">compact</s-option>
+                </s-select>
+                <s-select
+                  label="Entry animation"
+                  name="animationIn"
+                  value={theme.animationIn}
+                >
+                  <s-option value="slide">slide</s-option>
+                  <s-option value="fade">fade</s-option>
+                  <s-option value="pop">pop</s-option>
+                  <s-option value="slide-scale">slide-scale</s-option>
+                </s-select>
+              </s-stack>
+
+              <s-stack direction="inline" gap="base">
+                {TOGGLES.map(([key, label]) => (
+                  <s-switch
+                    key={key}
+                    label={label}
+                    name={key}
+                    value="on"
+                    checked={Boolean(config.theme[key])}
+                  />
                 ))}
-              </div>
+              </s-stack>
 
-              <div>
-                <button type="submit" disabled={saving}>
-                  {saving ? "Saving…" : "Save appearance"}
-                </button>
-                {actionData?.saved ? (
-                  <span style={{ marginLeft: 12, color: "#1f8f5f" }}>Saved.</span>
-                ) : null}
-              </div>
-            </div>
+            </s-stack>
           </Form>
 
           <ToastPreview theme={theme} />
         </div>
+      </s-section>
+
+      {/* MVP7 — portable backup/restore. Export is a plain snapshot; import
+          re-sanitizes every section before saving. */}
+      <s-section heading="Backup & restore">
+        <s-paragraph>
+          Copy the JSON below to back up your settings, or paste a saved config
+          to restore it.
+        </s-paragraph>
+        <s-text-area
+          label="Current config (copy to back up)"
+          value={exportJson}
+          rows={6}
+        />
+        <Form method="post">
+          <input type="hidden" name="intent" value="import" />
+          <s-stack direction="block" gap="base">
+            <s-text-area
+              label="Paste a config to restore"
+              name="config"
+              rows={6}
+              placeholder="{ …exported Won Toasts config… }"
+            />
+            <s-button type="submit">Import config</s-button>
+          </s-stack>
+        </Form>
       </s-section>
     </s-page>
   );

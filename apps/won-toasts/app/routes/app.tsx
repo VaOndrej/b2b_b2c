@@ -2,6 +2,7 @@ import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
+import { WonNavMenu } from "@won/app-kit/admin-nav";
 
 import { authenticate } from "../shopify.server";
 
@@ -17,14 +18,15 @@ export default function App() {
 
   return (
     <AppProvider embedded apiKey={apiKey}>
-      <ui-nav-menu>
-        <a href="/app">Overview</a>
-        <a href="/app/behavior">Behavior</a>
-        <a href="/app/appearance">Appearance</a>
-        <a href="/app/events">Events</a>
-        <a href="/app/targeting">Targeting</a>
-        <a href="/app/plan">Plan</a>
-      </ui-nav-menu>
+      <WonNavMenu
+        items={[
+          { to: "/app/behavior", label: "Behavior" },
+          { to: "/app/appearance", label: "Appearance" },
+          { to: "/app/events", label: "Events" },
+          { to: "/app/targeting", label: "Targeting" },
+          { to: "/app/plan", label: "Plan" },
+        ]}
+      />
       <Outlet />
     </AppProvider>
   );

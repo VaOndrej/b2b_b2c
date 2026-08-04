@@ -31,6 +31,15 @@
       clickAction: "open-cart",
       maxVisible: 3,
       stackDirection: "newest-top",
+      // Must mirror @won/core DEFAULT_GROUPING. reconcile() reads
+      // cfg.global.grouping unconditionally, so a fallback without it would
+      // throw and silently kill every toast if the config endpoint ever fails.
+      grouping: {
+        mode: "by-product",
+        mergeDeltas: true,
+        dedupeWindowMs: 1000,
+        rateLimitPerMin: 30,
+      },
     },
     theme: {
       mode: "system",
@@ -64,7 +73,6 @@
   var cfg = FALLBACK;
   var locale = "en";
   var active = true; // targeting: whether toasts run on this page
-  var branding = false; // Free plan shows a subtle "Won" mark
   var lastMilestone = null; // last cart milestone state {subtotalCents,hasGiftLine}
 
   function pageType() {
@@ -516,15 +524,6 @@
 
   // Shared: close button, click action, placement, overflow, auto-dismiss.
   function finalizeCard(card) {
-    if (branding) {
-      var mark = elem("span");
-      mark.setAttribute("data-won-branding", "");
-      mark.textContent = "Won";
-      mark.style.cssText =
-        "flex:0 0 auto;font-size:9px;letter-spacing:.08em;text-transform:uppercase;" +
-        "opacity:.4;align-self:flex-start;";
-      card.appendChild(mark);
-    }
     if (cfg.global.closeable) {
       var close = elem("button");
       close.type = "button";
@@ -767,7 +766,6 @@
         .then(function (data) {
           if (data && data.config) cfg = data.config;
           active = matchesTargeting(cfg.targeting);
-          branding = cfg.plan !== "pro";
         })
         .catch(function () {})
         .then(ready);

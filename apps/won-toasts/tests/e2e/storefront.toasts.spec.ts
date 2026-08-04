@@ -152,12 +152,11 @@ test.describe("Won Toasts GiftLadder integration (MVP4)", () => {
   });
 });
 
-// SPEC-DRIVEN (MVP5). Free plan shows a subtle "Won" mark; Pro removes it.
-// (Default plan is Free, so the shared theme exercises the Free branding path.)
-test.describe("Won Toasts plan gating (MVP5)", () => {
-  test("free plan renders a subtle branding mark on toasts", async ({
-    page,
-  }) => {
+// SPEC-DRIVEN (MVP5, revised). The "Won" watermark is removed by default on
+// every plan — a toast still renders, but never carries a branding mark.
+// (Default plan is Free, so the shared theme exercises the un-branded path.)
+test.describe("Won Toasts branding (MVP5)", () => {
+  test("no plan renders a branding watermark on toasts", async ({ page }) => {
     await openProduct(page, TOASTS_E2E_HANDLES.primary);
     await readyEmbed(page);
     await clearCart(page);
@@ -167,6 +166,6 @@ test.describe("Won Toasts plan gating (MVP5)", () => {
 
     const added = toast(page, "added");
     await expect(added).toHaveCount(1);
-    await expect(added.locator("[data-won-branding]")).toHaveCount(1);
+    await expect(added.locator("[data-won-branding]")).toHaveCount(0);
   });
 });

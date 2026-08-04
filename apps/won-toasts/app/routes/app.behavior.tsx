@@ -1,10 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import {
-  Form,
-  useActionData,
-  useLoaderData,
-  useNavigation,
-} from "react-router";
+import { Form, useLoaderData } from "react-router";
 
 import { sanitizeGlobalSettings } from "@won/core/toasts/config.defaults";
 
@@ -13,6 +8,8 @@ import {
   getToastConfig,
   updateToastConfig,
 } from "../services/toast-config.server";
+import { PositionField } from "../components/PositionField";
+import { useSavedToast } from "../lib/use-saved-toast";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -32,7 +29,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     clickAction: form.get("clickAction"),
     stackDirection: form.get("stackDirection"),
     overflowStrategy: form.get("overflowStrategy"),
-    // checkboxes: absent means false
+    // switches: absent means false
     autoDismiss: form.get("autoDismiss") === "on",
     pauseOnHover: form.get("pauseOnHover") === "on",
     closeable: form.get("closeable") === "on",
@@ -43,255 +40,210 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       rateLimitPerMin: form.get("rateLimitPerMin"),
       mergeDeltas: form.get("mergeDeltas") === "on",
     },
+    frequency: {
+      maxPerSession: form.get("maxPerSession"),
+      cooldownMs: form.get("cooldownMs"),
+      suppressAfterDismissMs: form.get("suppressAfterDismissMs"),
+      quietMode: form.get("quietMode") === "on",
+    },
   });
 
   // Merge onto the shop's current global so unrelated fields are preserved
-  // (deep-merge grouping so its untouched keys survive too).
+  // (deep-merge nested groups so their untouched keys survive too).
   const current = await getToastConfig(session.shop);
   const merged = { ...current.global, ...patch };
   if (patch.grouping) {
     merged.grouping = { ...current.global.grouping, ...patch.grouping };
   }
+  if (patch.frequency) {
+    merged.frequency = { ...current.global.frequency, ...patch.frequency };
+  }
   await updateToastConfig(session.shop, { global: merged });
   return { saved: true };
 };
 
-const POSITIONS = [
-  "top-left",
-  "top-center",
-  "top-right",
-  "middle-left",
-  "middle-center",
-  "middle-right",
-  "bottom-left",
-  "bottom-center",
-  "bottom-right",
-] as const;
-
-const field = { display: "grid", gap: "6px", maxWidth: "360px" } as const;
-const input = {
-  border: "1px solid #8a8a8a",
-  borderRadius: "8px",
-  font: "inherit",
-  padding: "8px 10px",
-} as const;
-const row = { display: "flex", gap: "10px", alignItems: "center" } as const;
-
 export default function BehaviorRoute() {
   const { config } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
-  const navigation = useNavigation();
-  const saving = navigation.state === "submitting";
   const g = config.global;
+  useSavedToast();
 
   return (
     <s-page heading="Behavior">
       <s-section heading="How toasts appear and dismiss">
         <s-paragraph>
           These are the storefront defaults. Every value is stored here in the
-          admin — the storefront only renders what you configure. Design (colors,
-          animation) lives on the Appearance page.
+          admin — the storefront only renders what you configure. Design
+          (colours, animation) lives on the Appearance page.
         </s-paragraph>
 
-        <Form method="post">
-          <div style={{ display: "grid", gap: "18px" }}>
-            <label style={field}>
-              <span>Position</span>
-              <select name="position" defaultValue={g.position} style={input}>
-                {POSITIONS.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </label>
+        <Form method="post" data-save-bar>
+          <s-stack direction="block" gap="large">
+            <PositionField name="position" defaultValue={g.position} />
 
-            <label style={field}>
-              <span>Duration (ms)</span>
-              <input
-                type="number"
-                name="durationMs"
-                min={800}
-                max={60000}
-                step={100}
-                defaultValue={g.durationMs}
-                style={input}
+            <s-number-field
+              label="Duration (ms)"
+              name="durationMs"
+              value={String(g.durationMs)}
+              min={800}
+              max={60000}
+              step={100}
+            />
+
+            <s-stack direction="inline" gap="base">
+              <s-number-field
+                label="Offset top/bottom (px)"
+                name="offsetTop"
+                value={String(g.offsetTop)}
+                min={0}
+                max={400}
               />
-            </label>
-
-            <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
-              <label style={field}>
-                <span>Offset top/bottom (px)</span>
-                <input
-                  type="number"
-                  name="offsetTop"
-                  min={0}
-                  max={400}
-                  defaultValue={g.offsetTop}
-                  style={input}
-                />
-              </label>
-              <label style={field}>
-                <span>Offset inline (px)</span>
-                <input
-                  type="number"
-                  name="offsetInline"
-                  min={0}
-                  max={400}
-                  defaultValue={g.offsetInline}
-                  style={input}
-                />
-              </label>
-              <label style={field}>
-                <span>Max visible</span>
-                <input
-                  type="number"
-                  name="maxVisible"
-                  min={1}
-                  max={6}
-                  defaultValue={g.maxVisible}
-                  style={input}
-                />
-              </label>
-            </div>
-
-            <label style={field}>
-              <span>Stack direction</span>
-              <select
-                name="stackDirection"
-                defaultValue={g.stackDirection}
-                style={input}
-              >
-                <option value="newest-top">newest-top</option>
-                <option value="newest-bottom">newest-bottom</option>
-              </select>
-            </label>
-
-            <label style={field}>
-              <span>Overflow strategy</span>
-              <select
-                name="overflowStrategy"
-                defaultValue={g.overflowStrategy}
-                style={input}
-              >
-                <option value="collapse">collapse (+N more)</option>
-                <option value="queue">queue</option>
-              </select>
-            </label>
-
-            <label style={field}>
-              <span>Click a toast to…</span>
-              <select
-                name="clickAction"
-                defaultValue={g.clickAction}
-                style={input}
-              >
-                <option value="open-cart">open cart</option>
-                <option value="go-to-product">go to product</option>
-                <option value="none">do nothing</option>
-              </select>
-            </label>
-
-            <label style={row}>
-              <input
-                type="checkbox"
-                name="autoDismiss"
-                defaultChecked={g.autoDismiss}
+              <s-number-field
+                label="Offset inline (px)"
+                name="offsetInline"
+                value={String(g.offsetInline)}
+                min={0}
+                max={400}
               />
-              <span>Auto-dismiss after the duration</span>
-            </label>
-            <label style={row}>
-              <input
-                type="checkbox"
-                name="pauseOnHover"
-                defaultChecked={g.pauseOnHover}
+              <s-number-field
+                label="Max visible"
+                name="maxVisible"
+                value={String(g.maxVisible)}
+                min={1}
+                max={6}
               />
-              <span>Pause auto-dismiss on hover</span>
-            </label>
-            <label style={row}>
-              <input
-                type="checkbox"
-                name="closeable"
-                defaultChecked={g.closeable}
-              />
-              <span>Show a close (×) button</span>
-            </label>
+            </s-stack>
 
-            <fieldset
-              style={{ border: "1px solid #e2e6ea", borderRadius: 10, padding: 14 }}
+            <s-select
+              label="Stack direction"
+              name="stackDirection"
+              value={g.stackDirection}
             >
-              <legend>Grouping &amp; anti-spam</legend>
-              <div style={{ display: "grid", gap: "14px", maxWidth: 360 }}>
-                <label style={field}>
-                  <span>Group rapid changes</span>
-                  <select
-                    name="grouping_mode"
-                    defaultValue={g.grouping.mode}
-                    style={input}
-                  >
-                    <option value="by-product">by product</option>
-                    <option value="by-variant">by variant</option>
-                    <option value="by-type">by event type</option>
-                    <option value="off">off</option>
-                  </select>
-                </label>
-                <label style={field}>
-                  <span>Burst window (ms)</span>
-                  <input
-                    type="number"
-                    name="burstWindowMs"
-                    min={0}
-                    max={5000}
-                    step={50}
-                    defaultValue={g.grouping.burstWindowMs}
-                    style={input}
-                  />
-                </label>
-                <label style={field}>
-                  <span>Dedupe window (ms)</span>
-                  <input
-                    type="number"
-                    name="dedupeWindowMs"
-                    min={0}
-                    max={10000}
-                    step={100}
-                    defaultValue={g.grouping.dedupeWindowMs}
-                    style={input}
-                  />
-                </label>
-                <label style={field}>
-                  <span>Max toasts / minute</span>
-                  <input
-                    type="number"
-                    name="rateLimitPerMin"
-                    min={0}
-                    max={240}
-                    defaultValue={g.grouping.rateLimitPerMin}
-                    style={input}
-                  />
-                </label>
-                <label style={row}>
-                  <input
-                    type="checkbox"
-                    name="mergeDeltas"
-                    defaultChecked={g.grouping.mergeDeltas}
-                  />
-                  <span>Merge quantity changes into one “+N”</span>
-                </label>
-              </div>
-            </fieldset>
+              <s-option value="newest-top">newest-top</s-option>
+              <s-option value="newest-bottom">newest-bottom</s-option>
+            </s-select>
 
-            <div>
-              <button type="submit" disabled={saving}>
-                {saving ? "Saving…" : "Save behavior"}
-              </button>
-              {actionData?.saved ? (
-                <span style={{ marginLeft: "12px", color: "#1f8f5f" }}>
-                  Saved.
-                </span>
-              ) : null}
-            </div>
-          </div>
+            <s-select
+              label="Overflow strategy"
+              name="overflowStrategy"
+              value={g.overflowStrategy}
+            >
+              <s-option value="collapse">collapse (+N more)</s-option>
+              <s-option value="queue">queue</s-option>
+            </s-select>
+
+            <s-select
+              label="Click a toast to…"
+              name="clickAction"
+              value={g.clickAction}
+            >
+              <s-option value="open-cart">open cart</s-option>
+              <s-option value="go-to-product">go to product</s-option>
+              <s-option value="none">do nothing</s-option>
+            </s-select>
+
+            <s-switch
+              label="Auto-dismiss after the duration"
+              name="autoDismiss"
+              value="on"
+              checked={g.autoDismiss}
+            />
+            <s-switch
+              label="Pause auto-dismiss on hover"
+              name="pauseOnHover"
+              value="on"
+              checked={g.pauseOnHover}
+            />
+            <s-switch
+              label="Show a close (×) button"
+              name="closeable"
+              value="on"
+              checked={g.closeable}
+            />
+
+            <s-section heading="Grouping & anti-spam">
+              <s-stack direction="block" gap="base">
+                <s-select
+                  label="Group rapid changes"
+                  name="grouping_mode"
+                  value={g.grouping.mode}
+                >
+                  <s-option value="by-product">by product</s-option>
+                  <s-option value="by-variant">by variant</s-option>
+                  <s-option value="by-type">by event type</s-option>
+                  <s-option value="off">off</s-option>
+                </s-select>
+                <s-number-field
+                  label="Burst window (ms)"
+                  name="burstWindowMs"
+                  value={String(g.grouping.burstWindowMs)}
+                  min={0}
+                  max={5000}
+                  step={50}
+                />
+                <s-number-field
+                  label="Dedupe window (ms)"
+                  name="dedupeWindowMs"
+                  value={String(g.grouping.dedupeWindowMs)}
+                  min={0}
+                  max={10000}
+                  step={100}
+                />
+                <s-number-field
+                  label="Max toasts / minute"
+                  name="rateLimitPerMin"
+                  value={String(g.grouping.rateLimitPerMin)}
+                  min={0}
+                  max={240}
+                />
+                <s-switch
+                  label="Merge quantity changes into one “+N”"
+                  name="mergeDeltas"
+                  value="on"
+                  checked={g.grouping.mergeDeltas}
+                />
+              </s-stack>
+            </s-section>
+
+            {/* MVP8 — frequency governance. Caps how often toasts appear per
+                visitor; the storefront enforces these limits before rendering. */}
+            <s-section heading="Frequency &amp; quiet mode">
+              <s-paragraph>
+                Protects shoppers from spam. 0 means no limit. Quiet mode mutes
+                everything without changing your other settings.
+              </s-paragraph>
+              <s-stack direction="block" gap="base">
+                <s-number-field
+                  label="Max toasts per session (0 = unlimited)"
+                  name="maxPerSession"
+                  value={String(g.frequency.maxPerSession)}
+                  min={0}
+                  max={100}
+                />
+                <s-number-field
+                  label="Cooldown between same-type toasts (ms)"
+                  name="cooldownMs"
+                  value={String(g.frequency.cooldownMs)}
+                  min={0}
+                  max={3600000}
+                  step={100}
+                />
+                <s-number-field
+                  label="Hide a dismissed toast for (ms)"
+                  name="suppressAfterDismissMs"
+                  value={String(g.frequency.suppressAfterDismissMs)}
+                  min={0}
+                  max={86400000}
+                  step={1000}
+                />
+                <s-switch
+                  label="Quiet mode — mute all toasts"
+                  name="quietMode"
+                  value="on"
+                  checked={g.frequency.quietMode}
+                />
+              </s-stack>
+            </s-section>
+          </s-stack>
         </Form>
       </s-section>
     </s-page>

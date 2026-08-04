@@ -261,6 +261,208 @@ breaking migrace.
 - Testy: tier-gate, targeting match, billing flow. E2E: Free vs Pro rozsah;
   targeting „jen mobil".
 
+---
+
+## 7b. v2 — obecný notification engine (MVP6–14)
+
+> **Kontext (ZAMČENO, viz `docs/product-roadmap.html` Won Toasts karta):** po
+> MVP0–5 (1.0 = cart-notifikátor) přerůstá Won Toasts na **jednotný notification
+> engine** (cart eventy + countdown + urgency + announcement + social proof pod
+> jedním designem, jedním rate-limit/conflict „mozkem", jednou Shadow-DOM
+> plochou). **Odlišení:** unified engine + trust („real events only", GDPR-first,
+> perf budget) + jednoduchost — NE počet featur. **Konkurenční benchmark =
+> ToastiBar (MPS/Channelwill whitelabel):** ~11 typů live, skvělý onboarding,
+> ale bloatware + fabrikovaná čísla + impression-metered pricing. Poctivé háčky:
+> „real only" zužuje trh a vyrábí cold-start daň → odpověď = cart eventy jedou
+> od 1. návštěvy + countdown/announcement jako výplň + agregát až s objemem.
+>
+> **Pořadí je záměrné a závazné:** onboarding první (MVP6), pak usnadnění (MVP7),
+> pak **frequency governance jako GATE** (MVP8) — a teprve po něm smí přijít
+> jakýkoli *page-view* typ (MVP9+). Žádný page-view typ se nesmí implementovat
+> ani zapnout před dokončením MVP8.
+>
+> Každý MVP níže: shippable, **TDD červené testy první**, E2E na Dawn i Horizon,
+> stejný gate jako 1.0. Markery zůstávají (`[data-won-toasts-embed]`,
+> `data-won-toasts-status="ready"`, `[data-won-toasts-region]`,
+> `[data-won-toast][data-type]`, `[data-won-toast-delta/undo/close]`). Watermark
+> `[data-won-branding]` byl odstraněn (výchozí stav = bez brandingu).
+
+### MVP6 — Onboarding & aktivace → badge `Spec` (Free)
+Ukradeno ToastiBaru; řeší náš vlastní `enabled=false` + „chybí app embed"
+footgun (nová instalace se sotva zobrazí, když merchant nezapne app embed).
+- **Admin — Quick setup guide** (Polaris modal/stránka): 2 úkoly + progress bar
+  („X of 2 tasks complete") + „All Done" success.
+  - Úkol 1 „Enable app": nastaví `ToastAppConfig.enabled=true` (od install už
+    default true — viz service `create`, ale toggle zůstává viditelný a
+    reverzibilní).
+  - Úkol 2 „Enable app embed": tlačítko deep-linkuje do theme editoru na app
+    embed —
+    `/admin/themes/current/editor?context=apps&template=index&activateAppId=<extensionUuid>/won_toasts_embed`.
+    Po návratu „Continue" re-checkne stav.
+- **Admin — Dashboard/Přehled**: karta **„Theme embed status: Enabled/Disabled"**
+  + tlačítko „Manage theme embed"; karta „App is enabled / Disable"; **empty-state
+  detekce** („nový obchod bez objednávek" přes Admin GraphQL `orders(first:1)` →
+  banner: nabídni cold-start-safe typy /countdown, cart-activity/, social proof
+  až po 1. objednávce).
+- **Embed detekce (jak):** číst current theme `settings_data.json` (Admin
+  GraphQL `theme` → asset), najít blok extension v `current.blocks` a ověřit
+  `disabled != true`. Fallback: storefront probe na `/apps/won-toasts/config` už
+  existuje, ale ten neověří app embed → primární je settings_data.
+- **Akceptační kritéria:** (1) unit: embed-status parser vrací
+  enabled/disabled/unknown z fixtur settings_data (blok povolený / zakázaný /
+  chybějící). (2) unit: deep-link URL builder produkuje výše uvedený tvar. (3)
+  unit: empty-state banner logika = `ordersCount === 0`. (4) E2E: onboarding
+  projde stavy 0/2 → 1/2 → All Done; dashboard zobrazí embed-status kartu.
+
+### MVP7 — Usnadnění & self-service → badge `Spec` (Free core, Pro hloubka)
+- **Presety (`@won/core`):** `PRESET_LOOKS` (4–6 pojmenovaných theme presetů:
+  Minimal / Bold / Luxury / Playful …) + `PRESET_BEHAVIORS`
+  (Subtle / Standard / High-urgency global presetů). Admin: preset picker; klik =
+  aplikuje do configu; „Customize" odkryje Advanced.
+- **Progressive disclosure:** Vzhled i Chování mají `Basics` (≤5 polí) vs
+  `Advanced` (plný katalog přílohy A). Default = Basics.
+- **Fire test toast (2 režimy, oba přes tentýž renderer, aktuální NEuložený
+  stav):**
+  - In-admin: vyrenderuje toast v Přehledu (už existuje preview).
+  - „Preview on my store": tlačítko otevře storefront s podepsaným query
+    paramem `?won_test=<type>&exp=<ts>&sig=<hmac>`. Embed ověří `sig` (HMAC z
+    krátkého tokenu vydaného config endpointem, TTL ~5 min) → vystřelí
+    **syntetický** event stejnou render pipeline. Marker `data-won-test="1"`.
+    **Nezapisuje do košíku, neloguje analytiku.**
+- **Plné per-event UI:** každý rule/event má on/off, `surface`, zprávu, styl, CTA
+  (rozšíření stránky Eventy & zprávy).
+- **Recommended defaults podle typu obchodu** (Fashion/Electronics/B2B →
+  přednastaví preset + pravidla; volitelně krok v MVP6 onboardingu).
+- **Import/export configu (JSON)** + **duplikace pravidla**.
+- **„+N more" collapse** — dotáhnout admin toggle nad existujícím
+  `overflowStrategy: "collapse"` (chip už v storefront JS).
+- **Haptika** toggle (default OFF, mobil, `navigator.vibrate`) — **žádný zvuk**.
+- **In-toast +1 / −1 stepper:** **Pro toggle, default OFF**. User-initiated zápis
+  přes `/cart/change.js` (jako Undo → neporušuje „pure surface"), optimistic +
+  rollback + idempotence + re-sync z `/cart.js`.
+- **Akceptační kritéria:** (1) unit: aplikace presetu deterministicky nastaví
+  očekávaná pole. (2) unit: HMAC podpis test-tokenu se ověří / expirovaný
+  odmítne. (3) E2E: „preview on my store" → toast s `data-won-test="1"`, a
+  `cartItems` se NEzmění. (4) unit: export→import round-trip = identický config.
+  (5) E2E (Pro): +1 stepper zvýší qty řádku o 1; při chybě API rollback.
+
+### MVP8 — Frequency governance → badge `Spec` (Free) — **GATE**
+Bez tohoto se NEIMPLEMENTUJE žádný page-view typ (MVP9+).
+- **Core (`rate-limit` + cooldown rozšíření):** `maxPerSession` (per-rule i
+  global), per-rule `cooldown.minIntervalMs`, `suppressAfterDismiss`
+  (po zavření se stejný `groupKey` v okně nevrátí), **cross-page dedupe**
+  (persistуje `lastSeen`/`announced` přes `sessionStorage` per **cart token**),
+  **quiet mode** (global mute okno / úplné ztlumení).
+- **Enforcement:** conflict engine (§3) přidá krok „governanceOK(rule, state)"
+  před `render`; page-view typy bez governance = tvrdě nerenderovat.
+- **Storage:** namespace `won-toasts:<token>:<key>` v `sessionStorage` (private
+  mode fail-open, jak už dělá `announced()` v JS).
+- **Admin:** Chování → sekce Frequency (maxPerSession, cooldown, quiet mode).
+- **Akceptační kritéria:** (1) unit: N+1-tý emit v session je potlačen při
+  `maxPerSession=N`. (2) unit: po dismissu se rule se stejným groupKey v okně
+  nevrátí. (3) unit: quiet mode = 0 emitů. (4) E2E: opakované page-view spouštění
+  téhož typu na 5 PDP → max `maxPerSession` toastů, ne 5.
+
+### MVP9 — První VIDITELNÝ cold-start-safe typ → badge `Spec` (Free countdown, Pro hloubka)
+Aby MVP6–8 nebyly jen plumbing — první typ, co dá appce viditelný důvod
+existovat. Funguje od 1. návštěvy i na malém obchodě (odpověď na cold-start).
+Vše governováno MVP8.
+- **Countdown timer** (vrácen ze škrtů): nový `trigger.type="countdown"`, surface
+  `persistent-toast`|`banner`, config `{ endsAt?: ISO | evergreenMs?: number,
+  pages: ("product"|"cart"|"landing"|"all")[], style }`. Renderer nový blok
+  DD:HH:MM:SS, marker `[data-won-countdown]`. Evergreen = per-session odpočet.
+- **Low-stock urgency** `trigger.type="stock.low"`: čte dostupný inventory
+  (product JSON `variants[].inventory_quantity` je-li vystaven, jinak Storefront
+  API), config `threshold`; „Only N left". Marker `[data-won-toast][data-type=
+  "stock"]`.
+- **Cart-activity** `trigger.type="cart.activity"`: agregát z **reálných** cart
+  eventů („X lidí přidalo do košíku") — server-side counter, žádná fabrikace.
+- **Admin:** stránka Recepty/Notifikace přidá karty Countdown / Low-stock /
+  Cart-activity (styl ToastiBar mřížky, ale bez bloatu).
+- **Akceptační kritéria:** (1) E2E: countdown se renderuje na product page s
+  `[data-won-countdown]` a odpočítává. (2) E2E: low-stock se ukáže jen když
+  inventory < threshold; jinak nic. (3) unit: cart-activity číslo = reálný
+  counter (seed), nikdy náhodné. (4) E2E: governance (MVP8) limit platí i pro
+  tyto typy.
+
+### MVP10 — Cílení, časování & exkluze → badge `Spec` (Pro cílení, Free základní exkluze)
+- **Scheduling:** `rule.schedule { startsAt?, endsAt?, daysOfWeek?: 0–6[],
+  hours?: [from,to], tz: "shop" }`. Core `isScheduledNow(rule, now, shopTz)`
+  (TZ shopu z Admin API). Mimo okno = pravidlo neaktivní.
+- **Inclusion targeting (rozšíření conditions):** per-product/collection/tag,
+  segmenty (`customerState` už; přidat `first-time` vs `returning` přes cookie,
+  `customerTags` přes customer objekt v app-proxy), geo/Market
+  (`request.locale`/country / Shopify Markets).
+- **Exclude-URLs (nová admin stránka, Free):** quick toggles
+  (Home/Product/Cart/Collection/…), **meta-tag opt-out**
+  (`<meta name="won-toasts:active" content="false">` → storefront respektuje a
+  no-opne), per-URL per-app exclusion list (glob/prefix match v configu, storefront
+  matchuje `location.pathname`).
+- **Akceptační kritéria:** (1) unit: `isScheduledNow` true/false dle okna + dne +
+  hodiny v TZ shopu. (2) E2E: exclude „Home" → na home nic, na PDP ano. (3) E2E:
+  stránka s meta-tag opt-out → embed no-opne. (4) unit: URL matcher (prefix/glob)
+  pokrývá query/hash edge-cases.
+
+### MVP11 — Announcement & agregáty → badge `Spec` (Free announcement basic, Pro hloubka)
+- **Announcement** `trigger.type="announcement"`: merchantem psaná zpráva,
+  scheduled (MVP10), surface toast|banner|persistent, i18n (locales). Governováno
+  MVP8.
+- **Agregáty z REÁLNÝCH dat** (jasně odlišené jako agregace, ne jednotlivé
+  eventy): `order.summary` („X objednávek za Y dní"), `cart.summary` („X lidí
+  přidalo Z položek za W h"). Server: `orders/create` webhook → inkrementuje
+  counters; endpoint vrací agregát. **Žádná fabrikace čísel.**
+- **Akceptační kritéria:** (1) E2E: announcement se ukáže dle rozvrhu, mimo okno
+  ne. (2) unit: order/cart summary counter = reálná seed data. (3) E2E: agregát
+  má vizuálně odlišený marker `data-won-aggregate="1"` (ne stejný jako jednotlivý
+  event).
+
+### MVP12 — Social proof → badge `Spec` (Pro; cold-start honesty)
+- **Recent sales** `trigger.type="order.created"`: `orders/create` webhook →
+  ukládá **anonymizované** eventy (křestní jméno + město, konfigurovatelné
+  on/off), retence N dní. Storefront fetchuje feed přes app proxy → „Anna
+  z Prahy koupila X před 5 min". Marker `[data-won-toast][data-type="sale"]`.
+- **Privacy:** per-pole toggle (jméno/město), **opt-out** per objednávka, GDPR
+  `customers/redact` maže eventy zákazníka (napojit na MVP14 webhooky).
+- **Cold-start honesty:** pod prahem N reálných objednávek se social proof
+  **nezapne** (nebo jen agregát z MVP11) — **NEfabrikuje**. Fallback = manuální/
+  agregovaná varianta, jasně odlišená.
+- **Akceptační kritéria:** (1) unit: webhook payload → uložený anonymizovaný
+  event (bez PII nad jméno+město). (2) E2E: feed renderuje uložené eventy. (3)
+  unit: `customers/redact` smaže eventy daného zákazníka. (4) unit: pod prahem
+  objednávek feed prázdný a typ se nezapne.
+
+### MVP13 — Insighty, AI advisor & experimenty → badge `Spec` (Pro)
+- **Analytics dashboard** (sběr už v modelu §5): impressions, clicks, CTR, Undo
+  rate, dismiss rate **per-event/per-rule**, „most recent / top products". **Bez
+  falešné atribuce** (toast = asistence, ne příčina).
+- **AI advisor SE SUBSTANCÍ** (Claude API, `claude-opus-4-8`/`claude-sonnet-5`):
+  „AI Setup" navrhne pravidla dle typu obchodu; „AI Optimize" vezme **reálné
+  metriky** a vrátí **konkrétní akční** návrhy (vypni pravidlo s 0 CTR, zkrať
+  duration, přesuň pozici) jako strukturovaný JSON → merchant potvrdí aplikaci.
+  Ne generický text jako konkurenční „AI Wizard".
+- **A/B experimenty:** varianta zprávy/stylu/pozice, deterministický split podle
+  hashe cart tokenu, auto-winner dle metriky, inkrementální měření.
+- **Attributed revenue** best-effort (asistence).
+- **Akceptační kritéria:** (1) unit: analytics counters agregují lifecycle eventy
+  správně. (2) unit: AI advisor vrací JSON dle schématu (mock LLM); nevalidní
+  odpověď se odmítne/retry. (3) unit: A/B split je deterministický pro daný token.
+
+### MVP14 — Kvalita & Built for Shopify → badge `Spec` (Free kvalita, release gate)
+- **A11y:** `aria-live` politeness config, dismiss-all, focus management, SR-only
+  text, `role=status|alert` dle severity.
+- **Performance mode:** lazy-load JS až při interakci/cart change, perf budget
+  **~15 kB gz**, žádný layout shift.
+- **Collision avoidance:** auto-offset od sticky header / cookie lišty / chatu.
+- **Money/locale formátování + RTL.**
+- **Reálný Shopify Billing / managed pricing** (nahradí dev plan toggle z MVP5).
+- **GDPR webhooky:** `customers/data_request`, `customers/redact` (napojit na
+  MVP12 social proof data), `shop/redact`.
+- **Release checklist §8 zelený.**
+- **Akceptační kritéria:** (1) a11y audit projde (aria-live/role, focus,
+  reduced-motion). (2) perf budget check v CI (bundle gz ≤ prah). (3) billing
+  flow (subscribe/cancel/proration) E2E. (4) GDPR webhook handlery mažou/exportují
+  data a vrací 200.
+
 ## 8. Release checklist (BFS-ready)
 
 - [ ] **Built for Shopify readiness** (post-launch milník): embedded + **App
