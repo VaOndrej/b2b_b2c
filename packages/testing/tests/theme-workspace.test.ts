@@ -30,23 +30,23 @@ test("theme workspace copies canonical checkout and applies only app overlay", a
     );
     await writeFile(
       overlayPath,
-      '/* Shopify generated file. */\n{"current":{"blocks":{"quantity":{"type":"shopify://apps/won-quantity"}}}}',
+      '/* Shopify generated file. */\n{"current":{"blocks":{"quantity":{"type":"shopify://apps/won-toasts"}}}}',
     );
 
     const workspaceDirectory = resolveThemeWorkspace({
       repoRoot,
-      workspace: "won-quantity",
+      workspace: "won-toasts",
       themeKey: "horizon",
     });
     assert.equal(
       workspaceDirectory,
-      path.join(repoRoot, "tmp/e2e-themes/won-quantity/horizon"),
+      path.join(repoRoot, "tmp/e2e-themes/won-toasts/horizon"),
     );
 
     const prepared = await prepareThemeWorkspace({
       repoRoot,
       appRoot,
-      workspace: "won-quantity",
+      workspace: "won-toasts",
       themeKey: "horizon",
       sourceDirectory,
       settingsDataOverlay: overlayRelativePath,
@@ -59,7 +59,7 @@ test("theme workspace copies canonical checkout and applies only app overlay", a
     );
     assert.match(
       await readFile(path.join(prepared, "config/settings_data.json"), "utf8"),
-      /shopify:\/\/apps\/won-quantity/u,
+      /shopify:\/\/apps\/won-toasts/u,
     );
     assert.match(
       await readFile(
@@ -108,7 +108,7 @@ test("theme workspace rejects unsafe destinations and invalid overlays", async (
         prepareThemeWorkspace({
           repoRoot,
           appRoot,
-          workspace: "won-quantity",
+          workspace: "won-toasts",
           themeKey: "dawn",
           sourceDirectory,
           settingsDataOverlay: "../outside.json",
@@ -122,7 +122,7 @@ test("theme workspace rejects unsafe destinations and invalid overlays", async (
         prepareThemeWorkspace({
           repoRoot,
           appRoot,
-          workspace: "won-quantity",
+          workspace: "won-toasts",
           themeKey: "dawn",
           sourceDirectory,
           settingsDataOverlay: overlayRelativePath,

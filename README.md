@@ -22,7 +22,7 @@ won-apps/
 │   └── testing/            # @won/testing — shared Horizon/Dawn runner + fixtures
 └── apps/
     ├── b2b-companion/      # the original B2B/B2C app (margin guard, catalogs, …)
-    ├── won-quantity/       # standalone quantity-rules app + Theme App Extension
+    ├── won-toasts/         # first standalone pilot app + Theme App Extension
     └── _template/          # copy this to start a new app
 ```
 
@@ -50,14 +50,14 @@ npm run typecheck
 npm run guard:test          # b2b-companion full gate (core + e2e)
 npm run guard:test:core     # tsx core tests
 npm run test:packages       # @won/core + @won/testing package/domain tests
-npm run lint:standalone     # reusable template + Won Quantity
+npm run lint:standalone     # reusable template + Won Toasts
 npm run typecheck:apps      # every workspace that exposes typecheck
 npm run build:apps          # every workspace that exposes build
 npm run validate:shopify    # deterministic Theme App Extension validation
 # target another app explicitly:
-npm run dev -w won-quantity
-npm run build -w won-quantity
-npm run test:e2e:local:all -w won-quantity
+npm run dev -w won-toasts
+npm run build -w won-toasts
+npm run test:e2e:local:all -w won-toasts
 ```
 
 ## Adding a new app
@@ -139,10 +139,10 @@ password-protected dev store and unpublished themes:
 
 ```bash
 # Terminal A — one app session only
-npm run dev -w won-quantity
+npm run dev -w won-toasts
 
 # Terminal B — app-specific overlays, Horizon then Dawn
-npm run test:e2e:local:all -w won-quantity -- --bail
+npm run test:e2e:local:all -w won-toasts -- --bail
 
 # Regression for the original app on its own workspace
 npm run test:e2e:local:all -w b2b-companion -- --bail

@@ -29,7 +29,7 @@ jobs:
         run: |
           npm run prisma:generate -w b2b-companion
           npm run prisma:generate -w won-app-template
-          npm run prisma:generate -w won-quantity
+          npm run prisma:generate -w won-toasts
 
       - name: Package and domain tests
         run: npm run test:packages
@@ -37,8 +37,8 @@ jobs:
       - name: B2B app-owned unit and contract tests
         run: npm run guard:test:core -w b2b-companion
 
-      - name: Won Quantity unit and contract tests
-        run: npm run test:unit -w won-quantity
+      - name: Won Toasts unit and contract tests
+        run: npm run test:unit -w won-toasts
 
       - name: Lint standalone template and app
         run: npm run lint:standalone

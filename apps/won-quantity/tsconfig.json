@@ -1,8 +1,0 @@
-{
-  "extends": "../../tsconfig.base.json",
-  "include": ["env.d.ts", "**/*.ts", "**/*.tsx", ".react-router/types/**/*"],
-  "compilerOptions": {
-    "types": ["@react-router/node", "vite/client", "@shopify/polaris-types"],
-    "rootDirs": [".", "./.react-router/types"]
-  }
-}
