@@ -1,0 +1,337 @@
+{%- liquid
+  assign s = section.settings
+  assign items_count = 0
+  if s.source == 'collection'
+    assign items_count = s.collection.products.size
+    if items_count > s.products_limit
+      assign items_count = s.products_limit
+    endif
+  else
+    assign items_count = section.blocks.size
+  endif
+
+  assign cols = s.columns
+  if items_count > 0 and items_count < cols
+    assign cols = items_count
+  endif
+  assign fits = false
+  if items_count > 0 and items_count <= cols
+    assign fits = true
+  endif
+-%}
+
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-spacing', settings: s %}"
+  data-testid="won-carousel-section"
+>
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-carousel-wrap">
+    {%- if s.heading != blank or s.head_link_label != blank -%}
+      <div class="won-carousel__header">
+        {%- if s.heading != blank -%}
+          <h2
+            class="won-heading won-carousel__heading"
+            style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%;"
+          >
+            {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
+          </h2>
+        {%- endif -%}
+        {%- if s.head_link_label != blank -%}
+          <a class="won-carousel__head-link" {% if s.head_link_url != blank %}href="{{ s.head_link_url }}"{% endif %}>{{ s.head_link_label }}</a>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    <won-carousel
+      class="won-carousel won-carousel--{{ s.layout }}{% if fits %} won-carousel--fits{% endif %}"
+      {% if s.layout == 'slider' and s.autoplay %}data-autoplay="{{ s.autoplay_interval }}"{% endif %}
+      style="--won-cols-lg: {{ cols }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-sm: {{ s.columns_mobile }}; --won-gap: {{ s.gap }}px;"
+    >
+      <div class="won-carousel__track" data-won-track {% if s.layout == 'marquee' %}data-marquee{% endif %}>
+        {%- if s.source == 'collection' -%}
+          {%- for product in s.collection.products limit: s.products_limit -%}
+            <a class="won-carousel__item won-pcard" href="{{ product.url }}">
+              <div class="won-pcard__media won-pcard__media--{{ s.card_aspect }}">
+                {%- if product.featured_image -%}
+                  {{ product.featured_image | image_url: width: 800 | image_tag: widths: '200, 300, 400, 600, 800', sizes: '(min-width: 1024px) 25vw, 60vw', class: 'won-pcard__img', loading: 'lazy', alt: product.featured_image.alt | default: product.title }}
+                {%- else -%}
+                  {{ 'product-apparel-1' | placeholder_svg_tag: 'won-pcard__img' }}
+                {%- endif -%}
+              </div>
+              <div class="won-pcard__title">{{ product.title }}</div>
+              <div class="won-pcard__price">{{ product.price | money }}</div>
+            </a>
+          {%- endfor -%}
+        {%- else -%}
+          {% content_for 'blocks' %}
+        {%- endif -%}
+      </div>
+
+      {%- if s.layout == 'slider' -%}
+        {%- if s.show_arrows -%}
+          <div class="won-carousel__arrows">
+            <button type="button" class="won-carousel__arrow" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
+            <button type="button" class="won-carousel__arrow" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
+          </div>
+        {%- endif -%}
+        {%- if s.show_progress -%}
+          <div class="won-carousel__progress" data-won-progress><span class="won-carousel__progress-bar" data-won-progress-bar></span></div>
+        {%- endif -%}
+        {%- if s.show_dots -%}
+          <div class="won-carousel__dots" data-won-dots></div>
+        {%- endif -%}
+      {%- endif -%}
+    </won-carousel>
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-carousel-wrap { display: flex; flex-direction: column; gap: var(--won-space-4); }
+  .won-carousel__header { display: flex; align-items: baseline; justify-content: space-between; gap: var(--won-space-4); flex-wrap: wrap; }
+  .won-carousel__heading {
+    font-size: var(--won-h-size-m, 1.5rem);
+    max-width: var(--won-h-mw-m, 100%);
+  }
+  .won-carousel__head-link { color: var(--won-accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
+
+  .won-carousel { position: relative; display: block; }
+  .won-carousel__track {
+    display: flex;
+    gap: var(--won-gap, 16px);
+    --won-cols-cur: var(--won-cols-sm, 1);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    touch-action: pan-x pan-y;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .won-carousel__track::-webkit-scrollbar { display: none; }
+  .won-carousel__track > * {
+    scroll-snap-align: start;
+    flex: 0 0 calc((100% - (var(--won-cols-cur) - 1) * var(--won-gap, 16px)) / var(--won-cols-cur));
+  }
+  .won-carousel--fits .won-carousel__track { justify-content: center; }
+  .won-carousel--fits .won-carousel__track { overflow-x: visible; scroll-snap-type: none; }
+  .won-carousel--grid .won-carousel__track {
+    display: grid;
+    grid-template-columns: repeat(var(--won-cols-cur), minmax(0, 1fr));
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+  .won-carousel.is-dragging .won-carousel__track { scroll-snap-type: none; scroll-behavior: auto; cursor: grabbing; }
+
+  .won-carousel__arrows { display: flex; gap: var(--won-space-2); justify-content: flex-end; margin-top: var(--won-space-3); }
+  .won-carousel__arrow {
+    inline-size: 44px; block-size: 44px; border-radius: var(--won-radius-pill);
+    border: 1px solid var(--won-border); background: var(--won-bg); color: var(--won-fg);
+    font-size: 1.4rem; line-height: 1; cursor: pointer;
+  }
+  .won-carousel__arrow:disabled { opacity: 0.35; cursor: default; }
+  .won-carousel__progress { margin-top: var(--won-space-3); block-size: 4px; background: var(--won-border); border-radius: var(--won-radius-pill); overflow: hidden; }
+  .won-carousel__progress-bar { display: block; block-size: 100%; inline-size: 30%; background: var(--won-accent); border-radius: inherit; transform: translateX(0); }
+  .won-carousel__dots { display: flex; gap: var(--won-space-2); justify-content: center; margin-top: var(--won-space-3); }
+
+  .won-carousel--marquee .won-carousel__track { overflow: hidden; }
+  .won-carousel--marquee .won-carousel__track[data-marquee] { animation: won-marquee 30s linear infinite; }
+  @keyframes won-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) {
+    .won-carousel--marquee .won-carousel__track[data-marquee] { animation: none; }
+    .won-carousel__track { scroll-behavior: auto; }
+  }
+
+  .won-pcard { display: flex; flex-direction: column; gap: var(--won-space-2); text-decoration: none; color: var(--won-fg); }
+  .won-pcard__media { background: var(--won-surface); border-radius: var(--won-radius-sm); overflow: hidden; }
+  .won-pcard__media--square { aspect-ratio: 1 / 1; }
+  .won-pcard__media--portrait { aspect-ratio: 4 / 5; }
+  .won-pcard__media--landscape { aspect-ratio: 4 / 3; }
+  .won-pcard__img { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; }
+  .won-pcard__media--natural .won-pcard__img { object-fit: cover; }
+  .won-pcard__title { font-weight: 600; }
+  .won-pcard__price { color: var(--won-accent); font-weight: 700; }
+
+  @media (min-width: 768px) {
+    .won-carousel__track { --won-cols-cur: var(--won-cols-md, 2); }
+    .won-carousel__heading { font-size: var(--won-h-size-d, 2rem); max-width: var(--won-h-mw-d, 60%); }
+  }
+  @media (min-width: 1024px) {
+    .won-carousel__track { --won-cols-cur: var(--won-cols-lg, 4); }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  class WonCarousel extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.wonBound) return;
+      this.dataset.wonBound = '1';
+      this.track = this.querySelector('[data-won-track]');
+      if (!this.track) return;
+      this.prevBtn = this.querySelector('[data-won-prev]');
+      this.nextBtn = this.querySelector('[data-won-next]');
+      this.bar = this.querySelector('[data-won-progress-bar]');
+      this._onScroll = this.onScroll.bind(this);
+      this.track.addEventListener('scroll', this._onScroll, { passive: true });
+      if (this.prevBtn) this.prevBtn.addEventListener('click', () => this.scrollByItems(-1));
+      if (this.nextBtn) this.nextBtn.addEventListener('click', () => this.scrollByItems(1));
+      this.bindMouseDrag();
+      this.onScroll();
+      const interval = parseInt(this.dataset.autoplay, 10);
+      if (interval && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        this._timer = setInterval(() => this.autoAdvance(), interval * 1000);
+        this.addEventListener('pointerenter', () => clearInterval(this._timer));
+      }
+    }
+    disconnectedCallback() {
+      if (this.track) this.track.removeEventListener('scroll', this._onScroll);
+      clearInterval(this._timer);
+    }
+    itemWidth() {
+      const first = this.track.firstElementChild;
+      if (!first) return this.track.clientWidth;
+      const gap = parseFloat(getComputedStyle(this.track).columnGap || getComputedStyle(this.track).gap) || 0;
+      return first.getBoundingClientRect().width + gap;
+    }
+    scrollByItems(dir) {
+      this.track.scrollBy({ left: dir * this.itemWidth(), behavior: 'smooth' });
+    }
+    autoAdvance() {
+      const max = this.track.scrollWidth - this.track.clientWidth;
+      if (Math.abs(this.track.scrollLeft) >= max - 2) {
+        this.track.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        this.scrollByItems(1);
+      }
+    }
+    onScroll() {
+      const max = this.track.scrollWidth - this.track.clientWidth;
+      const ratio = max > 0 ? Math.abs(this.track.scrollLeft) / max : 0;
+      if (this.bar) {
+        const travel = 100 - (this.bar.getBoundingClientRect().width / this.bar.parentElement.getBoundingClientRect().width) * 100;
+        this.bar.style.transform = 'translateX(' + ratio * travel + '%)';
+      }
+      if (this.prevBtn) this.prevBtn.disabled = ratio <= 0.001;
+      if (this.nextBtn) this.nextBtn.disabled = ratio >= 0.999;
+    }
+    bindMouseDrag() {
+      let startX = 0, startLeft = 0, dragging = false;
+      const down = (e) => {
+        if (e.pointerType !== 'mouse') return;
+        dragging = true; startX = e.clientX; startLeft = this.track.scrollLeft;
+        this.classList.add('is-dragging');
+      };
+      const move = (e) => {
+        if (!dragging) return;
+        this.track.scrollLeft = startLeft - (e.clientX - startX);
+      };
+      const up = () => {
+        if (!dragging) return;
+        dragging = false; this.classList.remove('is-dragging');
+      };
+      this.track.addEventListener('pointerdown', down);
+      window.addEventListener('pointermove', move, { passive: true });
+      window.addEventListener('pointerup', up);
+    }
+  }
+  if (!customElements.get('won-carousel')) customElements.define('won-carousel', WonCarousel);
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "t:won.names.carousel",
+  "tag": "section",
+  "disabled_on": { "groups": ["header", "footer"] },
+  "max_blocks": 24,
+  "blocks": [{ "type": "won-slide" }, { "type": "@theme" }, { "type": "@app" }],
+  "settings": [
+    { "type": "header", "content": "t:won.headers.source" },
+    {
+      "type": "select", "id": "source", "label": "t:won.settings.source",
+      "options": [
+        { "value": "manual", "label": "t:won.options.source_manual" },
+        { "value": "collection", "label": "t:won.options.source_collection" }
+      ],
+      "default": "manual"
+    },
+    { "type": "collection", "id": "collection", "label": "t:won.settings.collection" },
+    { "type": "range", "id": "products_limit", "label": "t:won.settings.products_limit", "min": 2, "max": 24, "step": 1, "default": 8, "visible_if": "{{ section.settings.source == 'collection' }}" },
+    { "type": "header", "content": "t:won.headers.heading" },
+    { "type": "richtext", "id": "heading", "label": "t:won.settings.heading" },
+    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 72, "step": 2, "unit": "px", "default": 34 },
+    { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 60 },
+    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 16, "max": 48, "step": 2, "unit": "px", "default": 24 },
+    { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "text", "id": "head_link_label", "label": "t:won.settings.head_link_label" },
+    { "type": "url", "id": "head_link_url", "label": "t:won.settings.head_link_url" },
+    { "type": "header", "content": "t:won.headers.layout" },
+    {
+      "type": "select", "id": "layout", "label": "t:won.settings.layout",
+      "options": [
+        { "value": "slider", "label": "t:won.options.layout_slider" },
+        { "value": "grid", "label": "t:won.options.layout_grid" },
+        { "value": "marquee", "label": "t:won.options.layout_marquee" }
+      ],
+      "default": "slider"
+    },
+    { "type": "range", "id": "columns", "label": "t:won.settings.columns_desktop", "min": 1, "max": 6, "step": 1, "default": 4 },
+    { "type": "range", "id": "columns_tablet", "label": "t:won.settings.columns_tablet", "min": 1, "max": 4, "step": 1, "default": 2 },
+    {
+      "type": "select", "id": "columns_mobile", "label": "t:won.settings.columns_mobile",
+      "options": [
+        { "value": "1", "label": "1" },
+        { "value": "1.2", "label": "t:won.options.one_peek" },
+        { "value": "2", "label": "2" }
+      ],
+      "default": "1"
+    },
+    { "type": "range", "id": "gap", "label": "t:won.settings.gap", "min": 0, "max": 48, "step": 2, "unit": "px", "default": 16 },
+    {
+      "type": "select", "id": "card_aspect", "label": "t:won.settings.card_aspect", "visible_if": "{{ section.settings.source == 'collection' }}",
+      "options": [
+        { "value": "natural", "label": "t:won.options.aspect_natural" },
+        { "value": "square", "label": "t:won.options.aspect_square" },
+        { "value": "portrait", "label": "t:won.options.aspect_portrait" },
+        { "value": "landscape", "label": "t:won.options.aspect_landscape" }
+      ],
+      "default": "portrait"
+    },
+    { "type": "header", "content": "t:won.headers.controls" },
+    { "type": "checkbox", "id": "show_arrows", "label": "t:won.settings.show_arrows", "default": true, "visible_if": "{{ section.settings.layout == 'slider' }}" },
+    { "type": "checkbox", "id": "show_progress", "label": "t:won.settings.show_progress", "default": true, "visible_if": "{{ section.settings.layout == 'slider' }}" },
+    { "type": "checkbox", "id": "show_dots", "label": "t:won.settings.show_dots", "default": false, "visible_if": "{{ section.settings.layout == 'slider' }}" },
+    { "type": "checkbox", "id": "autoplay", "label": "t:won.settings.autoplay", "default": false, "visible_if": "{{ section.settings.layout == 'slider' }}" },
+    { "type": "range", "id": "autoplay_interval", "label": "t:won.settings.autoplay_interval", "min": 2, "max": 10, "step": 1, "unit": "s", "default": 5, "visible_if": "{{ section.settings.layout == 'slider' and section.settings.autoplay }}" },
+    { "type": "header", "content": "t:won.headers.appearance" },
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
+    {
+      "type": "select", "id": "section_width", "label": "t:won.settings.section_width",
+      "options": [
+        { "value": "page", "label": "t:won.options.width_page" },
+        { "value": "full", "label": "t:won.options.width_full" }
+      ],
+      "default": "page"
+    },
+    { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" },
+    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 48 },
+    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 48 }
+  ],
+  "presets": [
+    {
+      "name": "t:won.presets.product_carousel",
+      "category": "t:won.categories.products",
+      "settings": { "source": "collection", "layout": "slider", "columns": 4, "heading": "<p>Bestsellers</p>" }
+    },
+    {
+      "name": "t:won.presets.content_slider",
+      "category": "t:won.categories.content",
+      "settings": { "source": "manual", "layout": "slider", "columns": 3 },
+      "blocks": [{ "type": "won-slide" }, { "type": "won-slide" }, { "type": "won-slide" }]
+    },
+    {
+      "name": "t:won.presets.logo_marquee",
+      "category": "t:won.categories.content",
+      "settings": { "source": "manual", "layout": "marquee", "columns": 6, "show_arrows": false, "show_progress": false }
+    }
+  ]
+}
+{% endschema %}

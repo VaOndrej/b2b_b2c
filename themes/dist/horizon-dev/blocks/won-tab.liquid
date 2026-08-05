@@ -1,0 +1,29 @@
+{% doc %}
+won-tab — one tab (title + rich content) used inside won-tabs. The title feeds the
+tab button that won-tabs builds; this block renders the matching panel.
+@example
+{% content_for 'block', type: 'won-tab', id: 'tab-1' %}
+{% enddoc %}
+
+{%- assign s = block.settings -%}
+<div
+  class="won-tabs__panel"
+  role="tabpanel"
+  id="won-tabpanel-{{ block.id }}"
+  aria-labelledby="won-tab-{{ block.id }}"
+  hidden
+  {{ block.shopify_attributes }}
+>
+  <div class="rte">{{ s.content }}</div>
+</div>
+
+{% schema %}
+{
+  "name": "t:won.names.tab",
+  "settings": [
+    { "type": "inline_richtext", "id": "title", "label": "t:won.settings.title", "default": "t:won.defaults.tab_title" },
+    { "type": "richtext", "id": "content", "label": "t:won.settings.text", "default": "t:won.defaults.tab_content" }
+  ],
+  "presets": [{ "name": "t:won.names.tab" }]
+}
+{% endschema %}

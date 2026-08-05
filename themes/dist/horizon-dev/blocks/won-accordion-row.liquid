@@ -1,0 +1,61 @@
+{% doc %}
+won-accordion-row — one native <details> FAQ row used inside won-accordion (or any
+section accepting theme blocks). Exclusive-open is driven by the parent section's
+allow_multiple setting via a shared name attribute.
+@example
+{% content_for 'block', type: 'won-accordion-row', id: 'row-1' %}
+{% enddoc %}
+
+{%- assign s = block.settings -%}
+<details
+  class="won-acc__row"
+  {% if s.open %}open{% endif %}
+  {%- unless section.settings.allow_multiple %} name="won-acc-{{ section.id }}"{% endunless %}
+  {{ block.shopify_attributes }}
+>
+  <summary class="won-acc__summary">
+    <span class="won-acc__q">{{ s.summary }}</span>
+    <span class="won-acc__icon" aria-hidden="true"></span>
+  </summary>
+  <div class="won-acc__answer rte">{{ s.content }}</div>
+</details>
+
+{% stylesheet %}
+  .won-acc__row { border-bottom: 1px solid var(--won-border); }
+  .won-acc__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--won-space-3);
+    padding: var(--won-space-4) 0;
+    cursor: pointer;
+    font-weight: 600;
+    list-style: none;
+  }
+  .won-acc__summary::-webkit-details-marker { display: none; }
+  .won-acc__icon { position: relative; flex: 0 0 auto; inline-size: 16px; block-size: 16px; }
+  .won-acc__icon::before,
+  .won-acc__icon::after {
+    content: ""; position: absolute; inset-block-start: 50%; inset-inline-start: 0;
+    inline-size: 16px; block-size: 2px; background: var(--won-accent);
+    transform: translateY(-50%); transition: transform var(--won-dur) var(--won-ease);
+  }
+  .won-acc__icon::after { transform: translateY(-50%) rotate(90deg); }
+  .won-acc__row[open] .won-acc__icon::after { transform: translateY(-50%) rotate(0deg); }
+  .won-acc__answer { padding-block-end: var(--won-space-4); opacity: 0.92; }
+  @media (prefers-reduced-motion: reduce) {
+    .won-acc__icon::before, .won-acc__icon::after { transition: none; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.accordion_row",
+  "settings": [
+    { "type": "inline_richtext", "id": "summary", "label": "t:won.settings.summary", "default": "t:won.defaults.faq_summary" },
+    { "type": "richtext", "id": "content", "label": "t:won.settings.content", "default": "t:won.defaults.faq_answer" },
+    { "type": "checkbox", "id": "open", "label": "t:won.settings.open_by_default", "default": false }
+  ],
+  "presets": [{ "name": "t:won.names.accordion_row" }]
+}
+{% endschema %}

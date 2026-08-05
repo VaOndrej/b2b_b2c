@@ -1,0 +1,120 @@
+{%- assign s = section.settings -%}
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-spacing', settings: s %}"
+  data-testid="won-tabs-section"
+>
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-tabs-wrap">
+    {%- if s.heading != blank -%}
+      <h2
+        class="won-heading won-tabs__heading"
+        style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%;"
+      >
+        {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
+      </h2>
+    {%- endif -%}
+
+    <won-tabs class="won-tabs">
+      <div class="won-tabs__nav" role="tablist">
+        {%- for block in section.blocks -%}
+          <button
+            class="won-tabs__tab"
+            role="tab"
+            type="button"
+            id="won-tab-{{ block.id }}"
+            aria-controls="won-tabpanel-{{ block.id }}"
+            aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+            {% unless forloop.first %}tabindex="-1"{% endunless %}
+          >{{ block.settings.title }}</button>
+        {%- endfor -%}
+      </div>
+      <div class="won-tabs__panels">
+        {% content_for 'blocks' %}
+      </div>
+    </won-tabs>
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-tabs-wrap { display: flex; flex-direction: column; gap: var(--won-space-4); }
+  .won-tabs__heading { font-size: var(--won-h-size-m, 1.6rem); max-width: var(--won-h-mw-m, 100%); }
+  .won-tabs__nav { display: flex; flex-wrap: wrap; gap: var(--won-space-2); border-block-end: 1px solid var(--won-border); }
+  .won-tabs__tab {
+    padding: var(--won-space-3) var(--won-space-4); border: 0; background: transparent; color: var(--won-fg);
+    font: inherit; font-weight: 600; cursor: pointer; border-block-end: 2px solid transparent; margin-block-end: -1px;
+  }
+  .won-tabs__tab[aria-selected="true"] { color: var(--won-accent); border-block-end-color: var(--won-accent); }
+  .won-tabs__panels { padding-block-start: var(--won-space-4); }
+  .won-tabs__panel[hidden] { display: none; }
+  @media (min-width: 750px) {
+    .won-tabs__heading { font-size: var(--won-h-size-d, 2rem); max-width: var(--won-h-mw-d, 100%); }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  class WonTabs extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.wonBound) return;
+      this.dataset.wonBound = '1';
+      this.tabs = Array.from(this.querySelectorAll('[role="tab"]'));
+      this.select(0);
+      this.tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => this.select(i));
+        tab.addEventListener('keydown', (e) => {
+          let next = null;
+          if (e.key === 'ArrowRight') next = (i + 1) % this.tabs.length;
+          else if (e.key === 'ArrowLeft') next = (i - 1 + this.tabs.length) % this.tabs.length;
+          if (next !== null) { e.preventDefault(); this.select(next); this.tabs[next].focus(); }
+        });
+      });
+    }
+    select(index) {
+      this.tabs.forEach((tab, i) => {
+        const on = i === index;
+        tab.setAttribute('aria-selected', on ? 'true' : 'false');
+        tab.tabIndex = on ? 0 : -1;
+        const panel = this.querySelector('#' + tab.getAttribute('aria-controls'));
+        if (panel) panel.hidden = !on;
+      });
+    }
+  }
+  if (!customElements.get('won-tabs')) customElements.define('won-tabs', WonTabs);
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "t:won.names.tabs",
+  "tag": "section",
+  "disabled_on": { "groups": ["header", "footer"] },
+  "max_blocks": 8,
+  "blocks": [{ "type": "won-tab" }],
+  "settings": [
+    { "type": "header", "content": "t:won.headers.content" },
+    { "type": "richtext", "id": "heading", "label": "t:won.settings.heading" },
+    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 72, "step": 2, "unit": "px", "default": 30 },
+    { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 16, "max": 48, "step": 2, "unit": "px", "default": 22 },
+    { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "header", "content": "t:won.headers.appearance" },
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
+    {
+      "type": "select", "id": "section_width", "label": "t:won.settings.section_width",
+      "options": [
+        { "value": "page", "label": "t:won.options.width_page" },
+        { "value": "full", "label": "t:won.options.width_full" }
+      ],
+      "default": "page"
+    },
+    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 40 },
+    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 40 }
+  ],
+  "presets": [
+    {
+      "name": "t:won.presets.tabs",
+      "category": "t:won.categories.content",
+      "blocks": [{ "type": "won-tab" }, { "type": "won-tab" }, { "type": "won-tab" }]
+    }
+  ]
+}
+{% endschema %}

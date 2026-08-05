@@ -1,0 +1,105 @@
+/* won-base design tokens — self-contained, base-agnostic.
+   Colors defer to the active Shopify color scheme (var(--color-*)) with neutral
+   fallbacks so the layer renders on Horizon, Skeleton, or bare Liquid alike.
+   Brand accent is a single swappable token. */
+
+:root {
+  /* Container + gutter */
+  --won-container-wide: 1320px;
+  --won-container-narrow: 760px;
+  --won-gutter: clamp(16px, 4vw, 48px);
+
+  /* Fluid spacing scale */
+  --won-space-1: clamp(4px, 0.5vw, 6px);
+  --won-space-2: clamp(8px, 1vw, 12px);
+  --won-space-3: clamp(12px, 1.5vw, 18px);
+  --won-space-4: clamp(16px, 2vw, 24px);
+  --won-space-5: clamp(24px, 3vw, 40px);
+  --won-space-6: clamp(32px, 5vw, 64px);
+  --won-space-7: clamp(48px, 7vw, 96px);
+
+  /* Radii */
+  --won-radius-sm: 8px;
+  --won-radius-md: 14px;
+  --won-radius-lg: 22px;
+  --won-radius-pill: 999px;
+
+  /* Color tokens — inherit active scheme, fall back to neutral-athletic */
+  --won-fg: var(--color-foreground, #14171c);
+  --won-bg: var(--color-background, #ffffff);
+  --won-muted: var(--color-foreground, #14171c);
+  --won-border: color-mix(in oklab, var(--won-fg) 14%, transparent);
+  --won-surface: color-mix(in oklab, var(--won-fg) 4%, var(--won-bg));
+
+  /* Brand accent — single swappable token (neutral-athletic default) */
+  --won-accent: #ff5a3c;
+  --won-accent-contrast: #ffffff;
+
+  /* Motion */
+  --won-dur: 240ms;
+  --won-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.won-container {
+  width: min(100% - (2 * var(--won-gutter)), var(--won-container-wide));
+  margin-inline: auto;
+}
+.won-container--narrow {
+  width: min(100% - (2 * var(--won-gutter)), var(--won-container-narrow));
+}
+.won-container--full {
+  width: 100%;
+}
+
+.won-section {
+  --won-pad-scale: 0.7;
+  padding-block:
+    max(20px, var(--won-pt, 56px) * var(--won-pad-scale))
+    max(20px, var(--won-pb, 56px) * var(--won-pad-scale));
+  color: var(--won-fg);
+}
+@media (min-width: 990px) {
+  .won-section { --won-pad-scale: 1; }
+}
+
+.won-heading {
+  margin: 0;
+  font-family: var(--font-heading--family, inherit);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.won-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--won-space-2);
+  padding: 0.7em 1.2em;
+  border-radius: var(--won-radius-pill);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform var(--won-dur) var(--won-ease), opacity var(--won-dur) var(--won-ease);
+}
+.won-btn--primary {
+  background: var(--won-accent);
+  color: var(--won-accent-contrast);
+}
+.won-btn--secondary {
+  background: transparent;
+  color: var(--won-fg);
+  border-color: var(--won-border);
+}
+.won-btn:hover {
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .won-btn,
+  .won-btn:hover {
+    transition: none;
+    transform: none;
+  }
+}

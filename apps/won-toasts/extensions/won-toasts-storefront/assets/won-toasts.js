@@ -334,9 +334,11 @@
     });
   }
 
-  // ---- rate-limit + dedupe (mirror of @won/core/toasts/rate-limit) ----
+  // ---- rate-limit (mirror of @won/core/toasts/rate-limit) ----
   var emitTimes = [];
-  var lastSeen = {};
+  // Visible cart toasts by group key: a burst spanning reconciles merges its net
+  // delta into the one toast (cumulative "+N") instead of dropping duplicates.
+  var liveCartToasts = {};
   function withinRateLimit(now, perMin) {
     if (!(perMin > 0)) return true;
     var start = now - 60000;
@@ -345,11 +347,6 @@
       if (t >= start) n++;
     });
     return n < perMin;
-  }
-  function isDuplicate(key, now, win) {
-    if (!(win > 0)) return false;
-    var prev = lastSeen[key];
-    return typeof prev === "number" && now - prev < win;
   }
 
   // ---- frequency governance (mirror of @won/core/toasts/governance) ----
@@ -530,8 +527,32 @@
       suppressAfterDismissMs: f.suppressAfterDismissMs,
     };
   }
+  // Stable per-session governance id: an empty cart's token can regenerate per
+  // /cart.js call and reset caps, so anchor to a persistent session id and use
+  // the real cart token only once the cart has items.
+  function govSessionId() {
+    try {
+      var k = "won-toasts:sid";
+      var v = sessionStorage.getItem(k);
+      if (!v) {
+        v = "s" + Date.now().toString(36);
+        sessionStorage.setItem(k, v);
+      }
+      return v;
+    } catch (e) {
+      return "session"; // private mode: fixed key (still per-tab-session)
+    }
+  }
   function cartToken() {
-    return (lastCart && lastCart.token) || "cart";
+    if (
+      lastCart &&
+      lastCart.token &&
+      lastCart.items &&
+      lastCart.items.length > 0
+    ) {
+      return lastCart.token;
+    }
+    return govSessionId();
   }
 
   // A page-view card: no line body, just a message (+ optional live timer node).
@@ -1090,6 +1111,44 @@
     return e;
   }
 
+  function fmtDelta(n) {
+    return (n > 0 ? "+" : "") + n;
+  }
+  // Fold a burst increment into an already-visible toast for the same group
+  // (cumulative delta + count, refreshed badge, reset timer). True = merged.
+  function toastDir(type) {
+    return type === "removed" || type === "decreased" ? -1 : 1;
+  }
+  function mergeIntoLiveToast(grp) {
+    var entry = liveCartToasts[grp.key];
+    // Merge same key + same direction: a burst folds "added"(0→N)+"increased"
+    // (N→N+1) into one cumulative toast; a flip (removed→added) stays separate.
+    if (
+      !entry ||
+      !entry.card ||
+      !entry.card.parentNode ||
+      toastDir(entry.type) !== toastDir(grp.type)
+    ) {
+      return false;
+    }
+    entry.total += grp.totalDelta;
+    entry.count += grp.count;
+    entry.card.setAttribute("data-group-count", String(entry.count));
+    var show =
+      cfg.theme.showDelta && entry.type !== "removed" && entry.total !== 0;
+    if (show) {
+      if (!entry.badge) {
+        entry.badge = elem("div");
+        entry.badge.setAttribute("data-won-toast-delta", "");
+        entry.badge.style.color = entry.accent;
+        entry.card.appendChild(entry.badge);
+      }
+      entry.badge.textContent = fmtDelta(entry.total);
+    }
+    if (cfg.global.autoDismiss) scheduleDismiss(entry.card);
+    return true;
+  }
+
   function renderToast(grp) {
     if (!region) return;
     var ev = grp.rep;
@@ -1101,6 +1160,7 @@
     card.setAttribute("role", ariaRole(grp.type));
     card.setAttribute("aria-label", srText(p.title, p.detail));
     card.style.borderLeft = "4px solid " + p.accent;
+    card.__wonKey = grp.key;
 
     if (p.image) {
       var img = elem("img");
@@ -1118,13 +1178,23 @@
     body.appendChild(detail);
     card.appendChild(body);
 
+    var badge = null;
     if (p.delta) {
-      var badge = elem("div");
+      badge = elem("div");
       badge.setAttribute("data-won-toast-delta", "");
       badge.style.color = p.accent;
       badge.textContent = p.delta;
       card.appendChild(badge);
     }
+    // Track this toast so later burst increments merge into it.
+    liveCartToasts[grp.key] = {
+      card: card,
+      badge: badge,
+      total: grp.totalDelta,
+      count: grp.count,
+      type: grp.type,
+      accent: p.accent,
+    };
 
     if (grp.type === "removed" && grp.count === 1) {
       var undo = elem("button");
@@ -1237,6 +1307,8 @@
   function dismiss(card) {
     if (!card) return;
     clearTimeout(card.__wonTimer);
+    var e = card.__wonKey && liveCartToasts[card.__wonKey];
+    if (e && e.card === card) delete liveCartToasts[card.__wonKey];
     if (card.parentNode) card.parentNode.removeChild(card);
   }
   function enforceMaxVisible() {
@@ -1311,11 +1383,10 @@
               return t >= now - 60000;
             });
             groups.forEach(function (grp) {
-              if (g.mode !== "off" && isDuplicate(grp.key, now, g.dedupeWindowMs))
-                return;
+              // Merge a burst into its visible toast (keeps net delta correct).
+              if (mergeIntoLiveToast(grp)) return;
               if (!withinRateLimit(now, g.rateLimitPerMin)) return;
               emitTimes.push(now);
-              lastSeen[grp.key] = now;
               renderToast(grp);
             });
             evaluateMilestones(after);

@@ -136,6 +136,55 @@
         </div>
       </header>
 
+      <!-- ARCH: BREAKPOINTS + CONFIG CONTRACT -->
+      <section class="surface" style="border-top:none">
+        <div class="surface-head"><span class="surface-num">TOK</span><h2>Breakpointy &amp; univerzální config contract</h2><span class="surface-note">platí pro všechny bloky</span></div>
+
+        <div class="callout" style="margin-top:8px">
+          <strong>Mobile-first.</strong> Vše se stylује base → nahoru přes <code>min-width</code>.
+          Mezi tabletem a desktopem se layout <strong>fluidně roztahuje</strong> (clamp na
+          paddingy/typografii), ne skoky.
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Token</th><th>Od</th><th>Zařízení</th><th>Kontejner max</th><th>Grid default</th></tr></thead>
+          <tbody>
+            <tr><td class="comp">base</td><td class="src">0</td><td>mobil</td><td>100% − 32px</td><td>1 sloupec</td></tr>
+            <tr><td class="comp">--bp-sm</td><td class="src">480px</td><td>velký mobil</td><td>100% − 32px</td><td>1–2</td></tr>
+            <tr><td class="comp">--bp-md</td><td class="src">768px</td><td>tablet</td><td>720px</td><td>2</td></tr>
+            <tr><td class="comp">--bp-lg</td><td class="src">1024px</td><td>desktop</td><td>960px</td><td>3–4</td></tr>
+            <tr><td class="comp">--bp-xl</td><td class="src">1440px</td><td>wide</td><td>1320px</td><td>4+</td></tr>
+          </tbody>
+        </table></div>
+
+        <div class="callout amber" style="margin-top:16px">
+          <strong>LOCKED — barva je kaskáda, ne override-first.</strong> Globální barevná schéma
+          (Horizon color schemes) je zdroj pravdy. Per-block override je jen <em>volitelný</em>:
+          blok si vezme <code>color_scheme</code> → aplikuje <code>var(--color-*)</code>; override,
+          když je vyplněný, vysází inline <code>style="--color-x: …"</code> který proměnnou
+          <strong>zastíní</strong> jen pro ten blok. Prázdné = dědí z globálu.
+        </div>
+        <div class="callout amber">
+          <strong>LOCKED — každý text = Rich Text.</strong> Nadpisy <code>inline_richtext</code>
+          (tučně/kurzíva/odkaz/br), body <code>richtext</code> (odstavce, seznamy). Žádný plain
+          <code>text</code>/<code>textarea</code> pro viditelnou kopii.
+        </div>
+        <div class="callout violet">
+          <strong>Grounded-only varianty (adoptováno z EshopAudit WF grammar).</strong> Nová
+          varianta bloku jen s <strong>důkazem z reálného WF/designu</strong> — nevymýšlet. Každá
+          varianta musí dál držet stejná pravidla bloku (hero = vždy value-prop + CTA, i full-bleed)
+          a fungovat v celku (banding white/muted/dark, vertikální rytmus).
+        </div>
+
+        <div class="callout">
+          <strong>Config contract — má KAŽDÝ <code>won-*</code> blok</strong> (v tabulkách níže se
+          už neopakuje): color scheme (+opt override) · banding white/muted/dark · šířka full/wide/narrow ·
+          padding top/bottom per breakpoint · nadpis/podnadpis/text (rich) · media (obrázek/video,
+          <strong>pozice vlevo/vpravo/nahoře</strong>, poměr, focal point) · CTA (text+odkaz+styl) ·
+          zarovnání left/center · položek na řádek per breakpoint · <strong>viditelnost per breakpoint</strong> ·
+          reorder (theme blocks) · reveal animace on/off (respektuje reduced-motion).
+        </div>
+      </section>
+
       <!-- 00 GLOBAL CHROME -->
       <section class="surface">
         <div class="surface-head"><span class="surface-num">00</span><h2>Global / chrome</h2><span class="surface-note">na každé stránce</span></div>

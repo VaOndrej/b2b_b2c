@@ -1,0 +1,98 @@
+{%- assign s = section.settings -%}
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-spacing', settings: s %}"
+  data-testid="won-newsletter-section"
+>
+  <div class="won-container won-container--narrow won-nl" style="--won-nl-align: {{ s.content_align }};">
+    {%- if s.heading != blank -%}
+      <h2
+        class="won-heading won-nl__heading"
+        style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%;"
+      >
+        {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
+      </h2>
+    {%- endif -%}
+    {%- if s.body != blank -%}<div class="won-nl__body rte">{{ s.body }}</div>{%- endif -%}
+
+    {%- form 'customer' -%}
+      {%- if form.posted_successfully? -%}
+        <p class="won-nl__success">{{ s.success_message }}</p>
+      {%- else -%}
+        <input type="hidden" name="contact[tags]" value="newsletter">
+        <div class="won-nl__form">
+          <input
+            type="email"
+            name="contact[email]"
+            class="won-nl__input"
+            placeholder="{{ s.placeholder }}"
+            aria-label="{{ s.placeholder }}"
+            autocomplete="email"
+            required
+          >
+          <button type="submit" class="won-btn won-btn--primary">{{ s.button_label }}</button>
+        </div>
+        {%- if form.errors -%}
+          <p class="won-nl__error">{{ form.errors | default_errors }}</p>
+        {%- endif -%}
+      {%- endif -%}
+    {%- endform -%}
+
+    {%- if s.benefits != blank -%}<div class="won-nl__benefits rte">{{ s.benefits }}</div>{%- endif -%}
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-nl { display: flex; flex-direction: column; gap: var(--won-space-4); text-align: var(--won-nl-align, center); align-items: var(--won-nl-align, center); }
+  .won-nl__heading { font-size: var(--won-h-size-m, 1.8rem); max-width: var(--won-h-mw-m, 100%); }
+  .won-nl__body { opacity: 0.9; }
+  .won-nl__form { display: flex; flex-wrap: wrap; gap: var(--won-space-2); inline-size: 100%; max-inline-size: 480px; }
+  .won-nl__input {
+    flex: 1 1 200px;
+    min-inline-size: 0;
+    padding: 0.7em 1em;
+    border: 1px solid var(--won-border);
+    border-radius: var(--won-radius-pill);
+    background: var(--won-bg);
+    color: var(--won-fg);
+    font: inherit;
+  }
+  .won-nl__success { color: var(--won-accent); font-weight: 600; }
+  .won-nl__error { opacity: 0.9; }
+  .won-nl__benefits { font-size: 0.9rem; opacity: 0.75; }
+
+  @media (min-width: 750px) {
+    .won-nl__heading { font-size: var(--won-h-size-d, 2.4rem); max-width: var(--won-h-mw-d, 100%); }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.newsletter",
+  "tag": "section",
+  "disabled_on": { "groups": ["header"] },
+  "settings": [
+    { "type": "header", "content": "t:won.headers.content" },
+    { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.newsletter_heading" },
+    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 72, "step": 2, "unit": "px", "default": 36 },
+    { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 16, "max": 48, "step": 2, "unit": "px", "default": 26 },
+    { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "richtext", "id": "body", "label": "t:won.settings.body" },
+    { "type": "text", "id": "placeholder", "label": "t:won.settings.placeholder", "default": "t:won.defaults.newsletter_placeholder" },
+    { "type": "text", "id": "button_label", "label": "t:won.settings.button_label", "default": "t:won.defaults.newsletter_button" },
+    { "type": "text", "id": "success_message", "label": "t:won.settings.success_message", "default": "t:won.defaults.newsletter_success" },
+    { "type": "richtext", "id": "benefits", "label": "t:won.settings.benefits" },
+    { "type": "header", "content": "t:won.headers.appearance" },
+    { "type": "text_alignment", "id": "content_align", "label": "t:won.settings.content_align", "default": "center" },
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
+    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 },
+    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 }
+  ],
+  "presets": [
+    { "name": "t:won.presets.newsletter_signup", "category": "t:won.categories.content" },
+    { "name": "t:won.presets.newsletter_leadmagnet", "category": "t:won.categories.content", "settings": { "benefits": "<p>PDF zdarma · Bez spamu</p>" } }
+  ]
+}
+{% endschema %}

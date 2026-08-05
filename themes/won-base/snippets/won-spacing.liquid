@@ -1,0 +1,11 @@
+{% doc %}
+Emits an inline style string for section/block padding + optional accent override,
+driven by standard won-base settings. Self-contained (no Horizon snippets).
+
+@param {object} settings - A section or block settings object.
+@example
+<div class="won-section" style="{% render 'won-spacing', settings: section.settings %}">
+{% enddoc %}
+{%- if settings.padding_top != blank or settings.padding_top == 0 -%}--won-pt: {{ settings.padding_top }}px;{%- endif -%}
+{%- if settings.padding_bottom != blank or settings.padding_bottom == 0 -%}--won-pb: {{ settings.padding_bottom }}px;{%- endif -%}
+{%- if settings.accent_override != blank -%}--won-accent: {{ settings.accent_override }};{%- endif -%}

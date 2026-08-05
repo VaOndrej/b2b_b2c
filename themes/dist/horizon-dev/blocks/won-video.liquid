@@ -1,0 +1,56 @@
+{% doc %}
+won-video — a responsive video embed (Shopify-hosted or external URL) with an
+optional heading. Self-contained; for PDP or any section accepting theme blocks.
+@example
+{% content_for 'block', type: 'won-video', id: 'video' %}
+{% enddoc %}
+
+{%- assign s = block.settings -%}
+<div class="won-video" style="--won-video-ratio: {{ s.aspect }};" {{ block.shopify_attributes }}>
+  {%- if s.heading != blank -%}<p class="won-video__heading">{{ s.heading }}</p>{%- endif -%}
+  <div class="won-video__frame">
+    {%- if s.video_type == 'external' and s.video_url != blank -%}
+      {{ s.video_url | external_video_tag: class: 'won-video__el', loading: 'lazy' }}
+    {%- elsif s.video != blank -%}
+      {{ s.video | video_tag: controls: true, class: 'won-video__el', image_size: '1200x' }}
+    {%- else -%}
+      <div class="won-video__placeholder">{{ 'lifestyle-1' | placeholder_svg_tag: 'won-video__el' }}</div>
+    {%- endif -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .won-video__heading { margin: 0 0 var(--won-space-3); font-weight: 700; }
+  .won-video__frame { position: relative; aspect-ratio: var(--won-video-ratio, 16/9); border-radius: var(--won-radius-md); overflow: hidden; background: var(--won-surface); }
+  .won-video__el,
+  .won-video__frame iframe { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; border: 0; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.video",
+  "settings": [
+    { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading" },
+    {
+      "type": "select", "id": "video_type", "label": "t:won.settings.video_type",
+      "options": [
+        { "value": "hosted", "label": "t:won.options.video_hosted" },
+        { "value": "external", "label": "t:won.options.video_external" }
+      ],
+      "default": "hosted"
+    },
+    { "type": "video", "id": "video", "label": "t:won.settings.video", "visible_if": "{{ block.settings.video_type == 'hosted' }}" },
+    { "type": "video_url", "id": "video_url", "label": "t:won.settings.video_url", "accept": ["youtube", "vimeo"], "visible_if": "{{ block.settings.video_type == 'external' }}" },
+    {
+      "type": "select", "id": "aspect", "label": "t:won.settings.card_aspect",
+      "options": [
+        { "value": "16/9", "label": "16:9" },
+        { "value": "4/3", "label": "4:3" },
+        { "value": "1/1", "label": "1:1" }
+      ],
+      "default": "16/9"
+    }
+  ],
+  "presets": [{ "name": "t:won.names.video" }]
+}
+{% endschema %}

@@ -1,0 +1,59 @@
+{% doc %}
+won-dosage — a "when to use" timeline (one "Label : description" per line) rendered
+as numbered steps. Self-contained; for PDP or any section accepting theme blocks.
+@example
+{% content_for 'block', type: 'won-dosage', id: 'dosage' %}
+{% enddoc %}
+
+{%- liquid
+  assign s = block.settings
+  assign lines = s.steps | newline_to_br | split: '<br />'
+-%}
+<div class="won-dosage" {{ block.shopify_attributes }}>
+  {%- if s.heading != blank -%}<p class="won-dosage__heading">{{ s.heading }}</p>{%- endif -%}
+  <ol class="won-dosage__list">
+    {%- for line in lines -%}
+      {%- assign step = line | strip -%}
+      {%- if step contains ':' -%}
+        {%- assign label = step | split: ':' | first | strip -%}
+        {%- assign desc = step | split: ':' | last | strip -%}
+        <li class="won-dosage__step">
+          <span class="won-dosage__num" aria-hidden="true">{{ forloop.index }}</span>
+          <span class="won-dosage__body">
+            <span class="won-dosage__label">{{ label }}</span>
+            <span class="won-dosage__desc">{{ desc }}</span>
+          </span>
+        </li>
+      {%- endif -%}
+    {%- endfor -%}
+  </ol>
+</div>
+
+{% stylesheet %}
+  .won-dosage__heading { margin: 0 0 var(--won-space-4); font-weight: 700; }
+  .won-dosage__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--won-space-4); }
+  .won-dosage__step { display: flex; gap: var(--won-space-3); align-items: flex-start; }
+  .won-dosage__num {
+    flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+    inline-size: 32px; block-size: 32px; border-radius: var(--won-radius-pill);
+    background: var(--won-accent); color: var(--won-accent-contrast); font-weight: 700; font-size: 0.9rem;
+  }
+  .won-dosage__body { display: flex; flex-direction: column; gap: 2px; }
+  .won-dosage__label { font-weight: 600; }
+  .won-dosage__desc { opacity: 0.85; }
+  @media (min-width: 750px) {
+    .won-dosage__list { grid-auto-flow: column; grid-auto-columns: 1fr; }
+    .won-dosage__step { flex-direction: column; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.dosage",
+  "settings": [
+    { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.dosage_heading" },
+    { "type": "textarea", "id": "steps", "label": "t:won.settings.steps", "default": "t:won.defaults.dosage_steps" }
+  ],
+  "presets": [{ "name": "t:won.names.dosage" }]
+}
+{% endschema %}

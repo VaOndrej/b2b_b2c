@@ -1,0 +1,134 @@
+{%- liquid
+  assign s = section.settings
+  assign blog = s.blog
+  assign articles = blog.articles
+  assign count = articles.size
+  if count > s.articles_limit
+    assign count = s.articles_limit
+  endif
+  assign cols = s.columns_desktop
+  if count > 0 and count < cols
+    assign cols = count
+  endif
+-%}
+
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-spacing', settings: s %}"
+  data-testid="won-articles-section"
+>
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-articles-wrap">
+    {%- if s.heading != blank or s.head_link_label != blank -%}
+      <div class="won-articles__head">
+        {%- if s.heading != blank -%}
+          <h2
+            class="won-heading won-articles__heading"
+            style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%;"
+          >
+            {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
+          </h2>
+        {%- endif -%}
+        {%- if s.head_link_label != blank -%}
+          <a class="won-articles__head-link" {% if blog != blank %}href="{{ blog.url }}"{% endif %}>{{ s.head_link_label }}</a>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    {%- if count > 0 -%}
+      <div class="won-articles won-articles--{{ s.layout }}" style="--won-cols-lg: {{ cols }}; --won-cols-md: {{ s.columns_tablet }};">
+        {%- for article in articles limit: s.articles_limit -%}
+          <a class="won-article {% if s.layout == 'featured' and forloop.first %}won-article--lead{% endif %}" href="{{ article.url }}">
+            <div class="won-article__media">
+              {%- if article.image -%}
+                {{ article.image | image_url: width: 1200 | image_tag: widths: '300, 500, 800, 1200', sizes: '(min-width: 750px) 33vw, 100vw', class: 'won-article__img', loading: 'lazy', alt: article.image.alt | default: article.title }}
+              {%- else -%}{{ 'image' | placeholder_svg_tag: 'won-article__img' }}{%- endif -%}
+            </div>
+            <div class="won-article__body">
+              {%- if s.show_date -%}<span class="won-article__date">{{ article.published_at | date: '%-d. %-m. %Y' }}</span>{%- endif -%}
+              <span class="won-article__title">{{ article.title }}</span>
+              {%- if s.show_excerpt and article.excerpt_or_content != blank -%}
+                <span class="won-article__excerpt">{{ article.excerpt_or_content | strip_html | truncate: 120 }}</span>
+              {%- endif -%}
+            </div>
+          </a>
+        {%- endfor -%}
+      </div>
+    {%- else -%}
+      <p class="won-articles__empty">{{ 'won.a11y.no_articles' | t }}</p>
+    {%- endif -%}
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-articles-wrap { display: flex; flex-direction: column; gap: var(--won-space-5); }
+  .won-articles__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--won-space-4); flex-wrap: wrap; }
+  .won-articles__heading { font-size: var(--won-h-size-m, 1.8rem); max-width: var(--won-h-mw-m, 100%); }
+  .won-articles__head-link { color: var(--won-accent); font-weight: 600; text-decoration: none; }
+  .won-articles { display: grid; gap: var(--won-space-4); grid-template-columns: 1fr; }
+  .won-article { display: flex; flex-direction: column; gap: var(--won-space-3); text-decoration: none; color: var(--won-fg); }
+  .won-article__media { aspect-ratio: 3 / 2; border-radius: var(--won-radius-md); overflow: hidden; background: var(--won-surface); }
+  .won-article__img { inline-size: 100%; block-size: 100%; object-fit: cover; }
+  .won-article__body { display: flex; flex-direction: column; gap: var(--won-space-1); }
+  .won-article__date { font-size: 0.8rem; opacity: 0.6; }
+  .won-article__title { font-weight: 700; font-size: 1.1rem; }
+  .won-article__excerpt { opacity: 0.85; font-size: 0.95rem; }
+
+  @media (min-width: 750px) {
+    .won-articles__heading { font-size: var(--won-h-size-d, 2.4rem); max-width: var(--won-h-mw-d, 100%); }
+    .won-articles { grid-template-columns: repeat(var(--won-cols-md, 2), minmax(0, 1fr)); }
+    .won-articles--featured .won-article--lead { grid-column: span 2; }
+    .won-articles--featured .won-article--lead .won-article__media { aspect-ratio: 21 / 9; }
+  }
+  @media (min-width: 990px) {
+    .won-articles { grid-template-columns: repeat(var(--won-cols-lg, 3), minmax(0, 1fr)); }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.articles",
+  "tag": "section",
+  "disabled_on": { "groups": ["header", "footer"] },
+  "settings": [
+    { "type": "header", "content": "t:won.headers.content" },
+    { "type": "richtext", "id": "heading", "label": "t:won.settings.heading" },
+    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 72, "step": 2, "unit": "px", "default": 34 },
+    { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 16, "max": 48, "step": 2, "unit": "px", "default": 24 },
+    { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "text", "id": "head_link_label", "label": "t:won.settings.head_link_label" },
+    { "type": "header", "content": "t:won.headers.source" },
+    { "type": "blog", "id": "blog", "label": "t:won.settings.blog" },
+    { "type": "range", "id": "articles_limit", "label": "t:won.settings.articles_limit", "min": 2, "max": 12, "step": 1, "default": 3 },
+    {
+      "type": "select", "id": "layout", "label": "t:won.settings.layout",
+      "options": [
+        { "value": "grid", "label": "t:won.options.layout_grid" },
+        { "value": "featured", "label": "t:won.options.layout_featured" }
+      ],
+      "default": "grid"
+    },
+    { "type": "range", "id": "columns_desktop", "label": "t:won.settings.columns_desktop", "min": 2, "max": 4, "step": 1, "default": 3 },
+    { "type": "range", "id": "columns_tablet", "label": "t:won.settings.columns_tablet", "min": 1, "max": 3, "step": 1, "default": 2 },
+    { "type": "checkbox", "id": "show_date", "label": "t:won.settings.show_date", "default": true },
+    { "type": "checkbox", "id": "show_excerpt", "label": "t:won.settings.show_excerpt", "default": true },
+    { "type": "header", "content": "t:won.headers.appearance" },
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
+    {
+      "type": "select", "id": "section_width", "label": "t:won.settings.section_width",
+      "options": [
+        { "value": "page", "label": "t:won.options.width_page" },
+        { "value": "full", "label": "t:won.options.width_full" }
+      ],
+      "default": "page"
+    },
+    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 },
+    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 }
+  ],
+  "presets": [
+    { "name": "t:won.presets.articles_grid", "category": "t:won.categories.content", "settings": { "layout": "grid" } },
+    { "name": "t:won.presets.articles_featured", "category": "t:won.categories.content", "settings": { "layout": "featured", "articles_limit": 5 } }
+  ]
+}
+{% endschema %}

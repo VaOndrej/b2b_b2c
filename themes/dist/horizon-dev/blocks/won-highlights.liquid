@@ -1,0 +1,46 @@
+{% doc %}
+won-highlights — a compact benefit/checklist list (one item per line) for PDP or
+any section accepting theme blocks. Self-contained; no product data required.
+@example
+{% content_for 'block', type: 'won-highlights', id: 'highlights' %}
+{% enddoc %}
+
+{%- liquid
+  assign s = block.settings
+  assign lines = s.items | newline_to_br | split: '<br />'
+-%}
+<div class="won-highlights" {{ block.shopify_attributes }}>
+  {%- if s.heading != blank -%}<p class="won-highlights__heading">{{ s.heading }}</p>{%- endif -%}
+  <ul class="won-highlights__list">
+    {%- for line in lines -%}
+      {%- assign item = line | strip -%}
+      {%- if item != blank -%}
+        <li class="won-highlights__item">
+          {%- if s.show_icon -%}
+            <svg class="won-highlights__icon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {%- endif -%}
+          <span>{{ item }}</span>
+        </li>
+      {%- endif -%}
+    {%- endfor -%}
+  </ul>
+</div>
+
+{% stylesheet %}
+  .won-highlights__heading { margin: 0 0 var(--won-space-3); font-weight: 700; }
+  .won-highlights__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--won-space-2); }
+  .won-highlights__item { display: flex; align-items: flex-start; gap: var(--won-space-2); }
+  .won-highlights__icon { flex: 0 0 auto; inline-size: 20px; block-size: 20px; color: var(--won-accent); margin-block-start: 2px; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.highlights",
+  "settings": [
+    { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading" },
+    { "type": "textarea", "id": "items", "label": "t:won.settings.items", "default": "t:won.defaults.highlights_items" },
+    { "type": "checkbox", "id": "show_icon", "label": "t:won.settings.show_icon", "default": true }
+  ],
+  "presets": [{ "name": "t:won.names.highlights" }]
+}
+{% endschema %}

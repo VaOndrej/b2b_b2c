@@ -605,6 +605,74 @@
         </ol>
       </section>
 
+      <!-- 11 — ARCHITECTURE -->
+      <section class="block" aria-labelledby="s-arch">
+        <div class="block-heading">
+          <span class="block-number">11</span>
+          <h2 id="s-arch">Architektura &amp; implementace</h2>
+        </div>
+        <p class="body">
+          Stavíme jako <strong>aditivní nadstavbu nad čistým Horizonem</strong> (trať A). Podmínka,
+          aby to šlo později produktizovat na Skeletonu (trať B): <code>won-base</code> je
+          <strong>base-agnostická</strong> — závisí jen na sdíleném theme-blocks kontraktu, vlastních
+          <code>won-tokens</code> a token názvech kompatibilních i se Skeletonem. <strong>Nikdy nesahá
+          do Horizonových privátních snippetů/JS.</strong> Horizon = vendor kód, kterého se nedotýkáš.
+        </p>
+
+        <div class="grid-2">
+          <div class="card accent-mint">
+            <h3>LOCKED — barva je kaskáda</h3>
+            <p class="body" style="margin:0">
+              Globální color scheme = zdroj pravdy. Per-block override je volitelný: blok vezme
+              <code>color_scheme</code> → <code>var(--color-*)</code>; override, když vyplněný,
+              vysází inline <code>style="--color-x:…"</code> zastiňující proměnnou jen pro ten blok.
+              Prázdné = dědí globál.
+            </p>
+          </div>
+          <div class="card accent-mint">
+            <h3>LOCKED — každý text = Rich Text</h3>
+            <p class="body" style="margin:0">
+              Nadpisy <code>inline_richtext</code>, body <code>richtext</code>. Žádný plain
+              <code>text</code>/<code>textarea</code> pro viditelnou kopii. + config contract a
+              breakpointy viz <a href="theme-blocks-catalog.html">katalog</a>.
+            </p>
+          </div>
+        </div>
+
+        <p class="body" style="margin-top:16px"><strong>Struktura v monorepu:</strong></p>
+        <ul class="clean">
+          <li><code>themes/won-base/</code> — zdroj pravdy, jen <strong>kód</strong> (liquid/js/css + <code>won-tokens</code> + <code>won-settings.schema.json</code> fragment + <code>manifest.json</code>)</li>
+          <li><code>themes/bases/horizon/</code>, <code>bases/skeleton/</code> — čisté base, pinned vendor (netknuté)</li>
+          <li><code>themes/clients/&lt;klient&gt;/</code> — composed: base + won-base + klient settings</li>
+          <li><code>themes/build/compose.mjs</code> — base → overlay won-base → merge schema → <code>dist/&lt;target&gt;</code></li>
+        </ul>
+        <div class="verdict">
+          <strong>Oddělení kód vs. nastavení:</strong> <code>won-base</code> vlastní kód; nastavení a
+          JSON šablony (<code>settings_data.json</code>, <code>templates/*.json</code>) jsou
+          <strong>per-klient</strong>, taháš je z živého motivu (<code>shopify theme pull</code>),
+          nikdy nejsou ve won-base. Merchant edituje v editoru, ty vlastníš kód.
+        </div>
+        <div class="verdict open">
+          <strong>Pragmatický start:</strong> pro pilot compose <em>neřeš</em> — nahraj won-base přímo
+          do jedné kopie Horizonu, vychytej workflow, compose přidej až u druhého targetu.
+        </div>
+
+        <p class="body" style="margin-top:16px"><strong>Fáze implementace:</strong></p>
+        <ol class="clean">
+          <li><strong>P0 — scaffold:</strong> <code>won-base</code> kostra + <code>won-tokens</code> + CI (theme check + Lighthouse) na Horizonu</li>
+          <li><strong>P1 — důkaz portability:</strong> 1 blok clean (sticky ATC ★) → Horizon <em>i</em> Skeleton</li>
+          <li><strong>P2 — token systém + config contract</strong> zapečený do block generátoru (color-scheme kaskáda + rich text default)</li>
+          <li><strong>P3 — generalizace HP + PDP bloků</strong> z repozitářů (GEN seznam), grounded varianty</li>
+          <li><strong>P4 — app-block sloty</strong> (Stepper/Toasts/Companion/GiftLadder + onboarding placeholder)</li>
+          <li><strong>P5 — supplements presety</strong> (sport hero) + demo store + doc web</li>
+          <li><strong>P6 — produktizace</strong> → Skeleton clean-room pro trať B</li>
+        </ol>
+        <p class="body" style="margin-top:12px">
+          <strong>Dev + CI od začátku:</strong> <code>shopify theme dev</code> · <code>shopify theme check</code>
+          + MCP <code>validate_theme</code> · Lighthouse gate · unit testy JS enginů (vzor: Enervit konfigurátor <code>.test.mjs</code>).
+        </p>
+      </section>
+
       <footer class="foot">
         Won Storefront System — living dokument · poslední aktualizace 2026-08-04 ·
         zdroje: <a href="https://github.com/Shopify/horizon/blob/main/LICENSE.md">Horizon LICENSE</a> ·

@@ -1,0 +1,19 @@
+{
+  "name": "won-base",
+  "version": "0.0.1",
+  "description": "Portable, base-agnostic Won storefront IP layer — generic composable blocks + design tokens. Overlays onto pristine Horizon (client track A) or Skeleton (product track B).",
+  "baseAgnostic": true,
+  "requires": { "themeArchitecture": "blocks" },
+  "tokenContract": ["--color-*", "--font-*", "--won-*"],
+  "provides": { "blocks": [], "sections": [], "snippets": [], "assets": [] },
+  "rules": {
+    "colorCascade": "Global color_scheme is the source of truth. A per-block override is opt-in and only emits an inline style shadowing the scheme var when the setting is filled.",
+    "richText": "Headings use inline_richtext, body uses richtext. No plain text/textarea for visible copy.",
+    "variants": "Presets are grounded-only quick-starts (evidence from real WF/design). Orthogonal axes underneath are free but guardrailed: sane per-axis defaults, visible_if pruning, token-only values, responsive clamps.",
+    "neverTouch": "Never edit Horizon/Skeleton vendor files. Additive won-* files only — that is what keeps this layer portable to both bases."
+  },
+  "appBlocks": {
+    "note": "Theme cannot install apps. Sections accept @app blocks and presets pre-wire the slots; when the Won app is installed the slot lights up in place. Premium value lives here, behind Shopify OAuth + Billing.",
+    "slots": ["won-stepper", "won-toasts", "won-companion", "gift-ladder"]
+  }
+}

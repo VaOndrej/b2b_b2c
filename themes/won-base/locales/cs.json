@@ -1,0 +1,17 @@
+{
+  "won": {
+    "a11y": {
+      "previous": "Předchozí",
+      "next": "Další",
+      "compare": "Posuvník porovnání",
+      "no_articles": "Zatím žádné články."
+    },
+    "contact": {
+      "name": "Jméno",
+      "email": "E-mail",
+      "phone": "Telefon",
+      "message": "Zpráva",
+      "send": "Odeslat"
+    }
+  }
+}

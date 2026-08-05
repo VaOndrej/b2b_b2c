@@ -1,0 +1,64 @@
+{% doc %}
+won-tile — a single image tile linking to a collection or page, used inside
+won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
+@example
+{% content_for 'block', type: 'won-tile', id: 'tile-1' %}
+{% enddoc %}
+
+{%- assign s = block.settings -%}
+<a
+  class="won-tile won-tile--{{ s.tile_size }}"
+  {% if s.link_url != blank %}href="{{ s.link_url }}"{% endif %}
+  {{ block.shopify_attributes }}
+>
+  <div class="won-tile__media">
+    {%- if s.toggle_overlay -%}<span class="won-tile__overlay" style="background: {{ s.overlay_color }};"></span>{%- endif -%}
+    {%- if s.image != blank -%}
+      {{ s.image | image_url: width: 1200 | image_tag: widths: '300, 500, 800, 1200', sizes: '(min-width: 750px) 33vw, 100vw', class: 'won-tile__img', loading: 'lazy', alt: s.image.alt | default: '' }}
+    {%- else -%}
+      {{ 'collection-1' | placeholder_svg_tag: 'won-tile__img' }}
+    {%- endif -%}
+  </div>
+  {%- if s.heading != blank -%}
+    <span class="won-tile__label">{{ s.heading }}</span>
+  {%- endif -%}
+</a>
+
+{% stylesheet %}
+  .won-tile { position: relative; display: block; border-radius: var(--won-radius-md); overflow: hidden; text-decoration: none; color: #fff; }
+  .won-tile__media { position: relative; aspect-ratio: 3 / 4; }
+  .won-tile--large { grid-column: span 2; grid-row: span 2; }
+  .won-tile__img { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
+  .won-tile__overlay { position: absolute; inset: 0; z-index: 1; }
+  .won-tile__label {
+    position: absolute; inset-block-end: 0; inset-inline: 0; z-index: 2;
+    padding: var(--won-space-4);
+    font-size: 1.2rem; font-weight: 700;
+    background: linear-gradient(to top, color-mix(in oklab, #000 55%, transparent), transparent);
+  }
+  @media (min-width: 750px) {
+    .won-tile--large .won-tile__media { aspect-ratio: auto; block-size: 100%; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.tile",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "t:won.settings.image" },
+    { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.tile_heading" },
+    { "type": "url", "id": "link_url", "label": "t:won.settings.link_url" },
+    {
+      "type": "select", "id": "tile_size", "label": "t:won.settings.tile_size",
+      "options": [
+        { "value": "small", "label": "t:won.options.tile_small" },
+        { "value": "large", "label": "t:won.options.tile_large" }
+      ],
+      "default": "small"
+    },
+    { "type": "checkbox", "id": "toggle_overlay", "label": "t:won.settings.overlay", "default": true },
+    { "type": "color", "id": "overlay_color", "label": "t:won.settings.overlay_color", "alpha": true, "default": "#0000001a" }
+  ],
+  "presets": [{ "name": "t:won.names.tile" }]
+}
+{% endschema %}

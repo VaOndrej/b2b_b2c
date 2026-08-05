@@ -1,0 +1,69 @@
+{% doc %}
+won-feature — a single icon/image + heading + text item used inside won-features
+(or any section accepting theme blocks). Per-item image size and position so
+merchants can normalize mixed icon assets without code.
+@example
+{% content_for 'block', type: 'won-feature', id: 'feature-1' %}
+{% enddoc %}
+
+{%- assign s = block.settings -%}
+<div
+  class="won-feature won-feature--icon-{{ s.image_position }}"
+  style="--won-icon-size: {{ s.image_size }}px;{% if s.accent_override != blank %}--won-accent: {{ s.accent_override }};{% endif %}"
+  {{ block.shopify_attributes }}
+>
+  {%- if s.image != blank -%}
+    <div class="won-feature__icon">
+      {{ s.image | image_url: width: 320 | image_tag: class: 'won-feature__img', loading: 'lazy', alt: s.image.alt | default: '' }}
+    </div>
+  {%- endif -%}
+  <div class="won-feature__body">
+    {%- if s.heading != blank -%}
+      <h3 class="won-feature__title">{{ s.heading }}</h3>
+    {%- endif -%}
+    {%- if s.text != blank -%}
+      <div class="won-feature__text rte">{{ s.text }}</div>
+    {%- endif -%}
+    {%- if s.link_label != blank -%}
+      <a class="won-feature__link" {% if s.link_url != blank %}href="{{ s.link_url }}"{% endif %}>{{ s.link_label }}</a>
+    {%- endif -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .won-feature { display: flex; gap: var(--won-space-3); color: var(--won-fg); }
+  .won-feature--icon-top { flex-direction: column; }
+  .won-feature--icon-below { flex-direction: column-reverse; }
+  .won-feature--icon-left { flex-direction: row; align-items: flex-start; }
+  .won-feature__icon { flex: 0 0 auto; inline-size: var(--won-icon-size, 48px); block-size: var(--won-icon-size, 48px); }
+  .won-feature__img { inline-size: 100%; block-size: 100%; object-fit: contain; }
+  .won-feature__body { display: flex; flex-direction: column; gap: var(--won-space-2); }
+  .won-feature__title { margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
+  .won-feature__text { margin: 0; opacity: 0.9; }
+  .won-feature__link { color: var(--won-accent); font-weight: 600; text-decoration: none; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.feature",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "t:won.settings.image" },
+    { "type": "range", "id": "image_size", "label": "t:won.settings.image_size", "min": 24, "max": 160, "step": 4, "unit": "px", "default": 48 },
+    {
+      "type": "select", "id": "image_position", "label": "t:won.settings.image_position",
+      "options": [
+        { "value": "top", "label": "t:won.options.top" },
+        { "value": "left", "label": "t:won.options.left" },
+        { "value": "below", "label": "t:won.options.below" }
+      ],
+      "default": "top"
+    },
+    { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.feature_heading" },
+    { "type": "richtext", "id": "text", "label": "t:won.settings.text" },
+    { "type": "text", "id": "link_label", "label": "t:won.settings.link_label" },
+    { "type": "url", "id": "link_url", "label": "t:won.settings.link_url" },
+    { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" }
+  ],
+  "presets": [{ "name": "t:won.names.feature" }]
+}
+{% endschema %}

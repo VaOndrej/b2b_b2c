@@ -1,0 +1,120 @@
+{%- assign s = section.settings -%}
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-spacing', settings: s %}"
+  data-testid="won-compare-section"
+>
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-compare-wrap">
+    {%- if s.heading != blank -%}
+      <h2
+        class="won-heading won-compare__heading"
+        style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%;"
+      >
+        {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
+      </h2>
+    {%- endif -%}
+
+    <won-compare class="won-compare" style="--won-cmp-pos: {{ s.start_position }}%;">
+      <div class="won-compare__frame">
+        <div class="won-compare__layer won-compare__layer--after">
+          {%- if s.after_image != blank -%}
+            {{ s.after_image | image_url: width: 1600 | image_tag: widths: '600, 900, 1200, 1600', sizes: '100vw', class: 'won-compare__img', loading: 'lazy', alt: s.after_image.alt | default: '' }}
+          {%- else -%}{{ 'lifestyle-1' | placeholder_svg_tag: 'won-compare__img' }}{%- endif -%}
+          {%- if s.after_label != blank -%}<span class="won-compare__badge won-compare__badge--after">{{ s.after_label }}</span>{%- endif -%}
+        </div>
+        <div class="won-compare__layer won-compare__layer--before">
+          {%- if s.before_image != blank -%}
+            {{ s.before_image | image_url: width: 1600 | image_tag: widths: '600, 900, 1200, 1600', sizes: '100vw', class: 'won-compare__img', loading: 'lazy', alt: s.before_image.alt | default: '' }}
+          {%- else -%}{{ 'lifestyle-2' | placeholder_svg_tag: 'won-compare__img' }}{%- endif -%}
+          {%- if s.before_label != blank -%}<span class="won-compare__badge won-compare__badge--before">{{ s.before_label }}</span>{%- endif -%}
+        </div>
+        <span class="won-compare__divider" aria-hidden="true"></span>
+        <input
+          type="range" class="won-compare__range" min="0" max="100" value="{{ s.start_position }}"
+          aria-label="{{ 'won.a11y.compare' | t }}"
+        >
+      </div>
+    </won-compare>
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-compare-wrap { display: flex; flex-direction: column; gap: var(--won-space-4); }
+  .won-compare__heading { font-size: var(--won-h-size-m, 1.6rem); max-width: var(--won-h-mw-m, 100%); }
+  .won-compare { display: block; }
+  .won-compare__frame { position: relative; overflow: hidden; border-radius: var(--won-radius-md); aspect-ratio: 16 / 10; }
+  .won-compare__layer { position: absolute; inset: 0; }
+  .won-compare__layer--before { inline-size: var(--won-cmp-pos, 50%); overflow: hidden; }
+  .won-compare__layer--before .won-compare__img { inline-size: 100vw; max-inline-size: none; }
+  .won-compare__img { inline-size: 100%; block-size: 100%; object-fit: cover; display: block; }
+  .won-compare__badge {
+    position: absolute; inset-block-start: var(--won-space-3); z-index: 3;
+    padding: 4px 10px; border-radius: var(--won-radius-pill);
+    background: color-mix(in oklab, #000 55%, transparent); color: #fff;
+    font-size: 0.8rem; font-weight: 600;
+  }
+  .won-compare__badge--before { inset-inline-start: var(--won-space-3); }
+  .won-compare__badge--after { inset-inline-end: var(--won-space-3); }
+  .won-compare__divider {
+    position: absolute; inset-block: 0; inset-inline-start: var(--won-cmp-pos, 50%);
+    z-index: 4; inline-size: 2px; background: #fff; transform: translateX(-50%);
+  }
+  .won-compare__range {
+    position: absolute; inset: 0; z-index: 5; inline-size: 100%; block-size: 100%;
+    margin: 0; opacity: 0; cursor: ew-resize;
+  }
+  @media (min-width: 750px) {
+    .won-compare__heading { font-size: var(--won-h-size-d, 2rem); max-width: var(--won-h-mw-d, 100%); }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  class WonCompare extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.wonBound) return;
+      this.dataset.wonBound = '1';
+      const range = this.querySelector('.won-compare__range');
+      if (!range) return;
+      const update = () => this.style.setProperty('--won-cmp-pos', range.value + '%');
+      range.addEventListener('input', update);
+      update();
+    }
+  }
+  if (!customElements.get('won-compare')) customElements.define('won-compare', WonCompare);
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "t:won.names.media_compare",
+  "tag": "section",
+  "disabled_on": { "groups": ["header", "footer"] },
+  "settings": [
+    { "type": "header", "content": "t:won.headers.content" },
+    { "type": "richtext", "id": "heading", "label": "t:won.settings.heading" },
+    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 72, "step": 2, "unit": "px", "default": 34 },
+    { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 16, "max": 48, "step": 2, "unit": "px", "default": 24 },
+    { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "header", "content": "t:won.headers.media" },
+    { "type": "image_picker", "id": "before_image", "label": "t:won.settings.before_image" },
+    { "type": "text", "id": "before_label", "label": "t:won.settings.before_label", "default": "t:won.defaults.compare_before" },
+    { "type": "image_picker", "id": "after_image", "label": "t:won.settings.after_image" },
+    { "type": "text", "id": "after_label", "label": "t:won.settings.after_label", "default": "t:won.defaults.compare_after" },
+    { "type": "range", "id": "start_position", "label": "t:won.settings.start_position", "min": 0, "max": 100, "step": 5, "unit": "%", "default": 50 },
+    { "type": "header", "content": "t:won.headers.appearance" },
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
+    {
+      "type": "select", "id": "section_width", "label": "t:won.settings.section_width",
+      "options": [
+        { "value": "page", "label": "t:won.options.width_page" },
+        { "value": "full", "label": "t:won.options.width_full" }
+      ],
+      "default": "page"
+    },
+    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 },
+    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 }
+  ],
+  "presets": [{ "name": "t:won.presets.before_after", "category": "t:won.categories.content" }]
+}
+{% endschema %}

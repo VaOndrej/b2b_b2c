@@ -214,13 +214,26 @@ export async function mockInventory(
   );
 }
 
-/** Inject the documented per-page opt-out meta tag before any page script runs. */
+/**
+ * Simulate a merchant's server-rendered per-page opt-out meta tag. We add it to
+ * <head> as soon as it exists (a stray <meta> appended to <html> pre-parse is
+ * unreliable), which matches real usage where the tag is in the template head
+ * before the app's JS reads it.
+ */
 export async function injectOptOutMeta(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    const meta = document.createElement("meta");
-    meta.setAttribute("name", "won-toasts:active");
-    meta.setAttribute("content", "false");
-    document.documentElement.appendChild(meta);
+    const add = () => {
+      if (document.querySelector('meta[name="won-toasts:active"]')) return;
+      const meta = document.createElement("meta");
+      meta.setAttribute("name", "won-toasts:active");
+      meta.setAttribute("content", "false");
+      (document.head || document.documentElement).appendChild(meta);
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", add);
+    } else {
+      add();
+    }
   });
 }
 

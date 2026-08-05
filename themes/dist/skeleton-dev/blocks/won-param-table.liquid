@@ -1,0 +1,46 @@
+{% doc %}
+won-param-table — a scannable key/value spec table (one "Label : Value" per line)
+for PDP or any section accepting theme blocks. Self-contained.
+@example
+{% content_for 'block', type: 'won-param-table', id: 'params' %}
+{% enddoc %}
+
+{%- liquid
+  assign s = block.settings
+  assign lines = s.rows | newline_to_br | split: '<br />'
+-%}
+<div class="won-params" {{ block.shopify_attributes }}>
+  {%- if s.heading != blank -%}<p class="won-params__heading">{{ s.heading }}</p>{%- endif -%}
+  <dl class="won-params__list">
+    {%- for line in lines -%}
+      {%- assign row = line | strip -%}
+      {%- if row contains ':' -%}
+        {%- assign key = row | split: ':' | first | strip -%}
+        {%- assign val = row | split: ':' | last | strip -%}
+        <div class="won-params__row">
+          <dt class="won-params__key">{{ key }}</dt>
+          <dd class="won-params__val">{{ val }}</dd>
+        </div>
+      {%- endif -%}
+    {%- endfor -%}
+  </dl>
+</div>
+
+{% stylesheet %}
+  .won-params__heading { margin: 0 0 var(--won-space-3); font-weight: 700; }
+  .won-params__list { margin: 0; display: flex; flex-direction: column; }
+  .won-params__row { display: flex; gap: var(--won-space-4); justify-content: space-between; padding: var(--won-space-3) 0; border-block-end: 1px solid var(--won-border); }
+  .won-params__key { margin: 0; opacity: 0.75; }
+  .won-params__val { margin: 0; font-weight: 600; text-align: end; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.param_table",
+  "settings": [
+    { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading" },
+    { "type": "textarea", "id": "rows", "label": "t:won.settings.rows_kv", "default": "t:won.defaults.param_rows" }
+  ],
+  "presets": [{ "name": "t:won.names.param_table" }]
+}
+{% endschema %}

@@ -1,0 +1,17 @@
+{
+  "won": {
+    "a11y": {
+      "previous": "Previous",
+      "next": "Next",
+      "compare": "Comparison slider",
+      "no_articles": "No articles yet."
+    },
+    "contact": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "message": "Message",
+      "send": "Send"
+    }
+  }
+}

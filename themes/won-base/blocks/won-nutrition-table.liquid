@@ -1,0 +1,61 @@
+{% doc %}
+won-nutrition-table — a nutrition / ingredient table (one "Nutrient | col1 | col2"
+per line) with configurable column headers. Self-contained; for PDP or any section
+accepting theme blocks.
+@example
+{% content_for 'block', type: 'won-nutrition-table', id: 'nutrition' %}
+{% enddoc %}
+
+{%- liquid
+  assign s = block.settings
+  assign lines = s.rows | newline_to_br | split: '<br />'
+-%}
+<div class="won-nutri" {{ block.shopify_attributes }}>
+  {%- if s.heading != blank -%}<p class="won-nutri__heading">{{ s.heading }}</p>{%- endif -%}
+  <table class="won-nutri__table">
+    <thead>
+      <tr>
+        <th scope="col">{{ s.label_nutrient }}</th>
+        <th scope="col">{{ s.label_col1 }}</th>
+        {%- if s.label_col2 != blank -%}<th scope="col">{{ s.label_col2 }}</th>{%- endif -%}
+      </tr>
+    </thead>
+    <tbody>
+      {%- for line in lines -%}
+        {%- assign row = line | strip -%}
+        {%- if row contains '|' -%}
+          {%- assign cells = row | split: '|' -%}
+          <tr>
+            <th scope="row">{{ cells[0] | strip }}</th>
+            <td>{{ cells[1] | strip }}</td>
+            {%- if s.label_col2 != blank -%}<td>{{ cells[2] | strip }}</td>{%- endif -%}
+          </tr>
+        {%- endif -%}
+      {%- endfor -%}
+    </tbody>
+  </table>
+</div>
+
+{% stylesheet %}
+  .won-nutri__heading { margin: 0 0 var(--won-space-3); font-weight: 700; }
+  .won-nutri__table { inline-size: 100%; border-collapse: collapse; }
+  .won-nutri__table th,
+  .won-nutri__table td { padding: var(--won-space-2) var(--won-space-3); border-block-end: 1px solid var(--won-border); text-align: start; }
+  .won-nutri__table thead th { font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; }
+  .won-nutri__table tbody th { font-weight: 500; }
+  .won-nutri__table td { text-align: end; font-variant-numeric: tabular-nums; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.nutrition_table",
+  "settings": [
+    { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.nutrition_heading" },
+    { "type": "text", "id": "label_nutrient", "label": "t:won.settings.label_nutrient", "default": "t:won.defaults.label_nutrient" },
+    { "type": "text", "id": "label_col1", "label": "t:won.settings.label_col1", "default": "t:won.defaults.label_col1" },
+    { "type": "text", "id": "label_col2", "label": "t:won.settings.label_col2", "default": "t:won.defaults.label_col2" },
+    { "type": "textarea", "id": "rows", "label": "t:won.settings.rows_nutri", "default": "t:won.defaults.nutrition_rows" }
+  ],
+  "presets": [{ "name": "t:won.names.nutrition_table" }]
+}
+{% endschema %}
