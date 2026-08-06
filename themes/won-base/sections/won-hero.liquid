@@ -1,0 +1,123 @@
+{%- comment -%}
+  won-hero — single-stage hero. One full-bleed stage rendering one won-slide
+  (the slide's own media_position gives the overlay / split / centered look).
+  Sibling sections won-hero-grid and won-hero-carousel cover the other two hero
+  shapes; all three share the .won-hero styling in won-tokens.css.
+{%- endcomment -%}
+
+{%- assign s = section.settings -%}
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-spacing', settings: s %}"
+  data-testid="won-hero-section"
+>
+  <div
+    class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-hero won-hero--single"
+    style="--won-hero-min: {{ s.min_height }}px;"
+  >
+    <div class="won-hero__track">
+      {% content_for 'blocks' %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "t:won.names.hero",
+  "tag": "section",
+  "disabled_on": { "groups": ["header", "footer"] },
+  "max_blocks": 1,
+  "blocks": [{ "type": "won-slide" }, { "type": "@theme" }, { "type": "@app" }],
+  "settings": [
+    { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 0, "max": 800, "step": 20, "unit": "px", "default": 560, "info": "t:won.info.hero_min_height" },
+    { "type": "header", "content": "t:won.headers.appearance" },
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
+    {
+      "type": "select", "id": "section_width", "label": "t:won.settings.section_width",
+      "options": [
+        { "value": "page", "label": "t:won.options.width_page" },
+        { "value": "full", "label": "t:won.options.width_full" }
+      ],
+      "default": "full"
+    },
+    { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" },
+    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 0 },
+    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 0 }
+  ],
+  "presets": [
+    {
+      "name": "t:won.presets.hero_split", "category": "t:won.categories.hero",
+      "settings": { "min_height": 620, "section_width": "full", "color_scheme": "scheme-1" },
+      "blocks": [
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "Sports nutrition",
+            "heading": "<p>Fuel your best performance</p>",
+            "heading_size_desktop": 64, "heading_max_width_desktop": 80,
+            "text": "<p>Clean formulas, lab-tested. <strong>★ 4.9/5</strong> from 25,000+ athletes · fast delivery.</p>",
+            "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary",
+            "button2_label": "Learn more", "button2_style": "secondary",
+            "media_type": "image", "image_asset": "won-hero-product.png", "media_position": "background",
+            "alignment": "left", "min_height": 620
+          }
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.hero_overlay", "category": "t:won.categories.hero",
+      "settings": { "min_height": 560, "section_width": "full", "color_scheme": "scheme-1" },
+      "blocks": [
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "New season",
+            "heading": "<p>Made for movement</p>",
+            "heading_size_desktop": 68, "heading_max_width_desktop": 70,
+            "text": "<p>Everything you need to train, recover and feel your best.</p>",
+            "button_label": "Shop the collection", "button_link": "shopify://collections/all", "button_style": "primary",
+            "media_type": "image", "image_asset": "won-hero-supplements.png", "media_position": "background",
+            "toggle_overlay": true, "overlay_color": "#1c0a1859",
+            "alignment": "center", "min_height": 560
+          }
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.hero_minimal", "category": "t:won.categories.hero",
+      "settings": { "min_height": 0, "section_width": "page", "color_scheme": "scheme-1", "padding_top": 96, "padding_bottom": 96 },
+      "blocks": [
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "Since 2014",
+            "heading": "<p>Performance, simplified</p>",
+            "heading_size_desktop": 72, "heading_max_width_desktop": 60,
+            "text": "<p>Clean supplements with nothing to hide. Free delivery over $60.</p>",
+            "button_label": "Explore products", "button_link": "shopify://collections/all", "button_style": "primary",
+            "button2_label": "Our story", "button2_style": "secondary",
+            "media_type": "none", "alignment": "center"
+          }
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.cta_band", "category": "t:won.categories.hero",
+      "settings": { "min_height": 0, "section_width": "page", "color_scheme": "scheme-2", "padding_top": 72, "padding_bottom": 72 },
+      "blocks": [
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "Loyalty club",
+            "heading": "<p>Join the club — get 10% off</p>", "heading_size_desktop": 44,
+            "text": "<p>Earn points on every order and unlock member-only prices.</p>",
+            "button_label": "Create account", "button_link": "/account/register", "button_style": "primary",
+            "media_type": "none", "alignment": "center"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

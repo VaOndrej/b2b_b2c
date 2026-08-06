@@ -23,7 +23,10 @@ before(async () => {
       "plan" TEXT NOT NULL DEFAULT 'free',
       "global" TEXT,
       "theme" TEXT,
+      "byType" TEXT,
+      "cartEvents" TEXT,
       "messages" TEXT,
+      "locales" TEXT,
       "milestones" TEXT,
       "targeting" TEXT,
       "notifications" TEXT,
@@ -34,6 +37,17 @@ before(async () => {
   `);
   await prisma.$executeRawUnsafe(
     'CREATE UNIQUE INDEX "ToastAppConfig_shop_key" ON "ToastAppConfig"("shop")',
+  );
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE "ConfigVersion" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "shop" TEXT NOT NULL,
+      "data" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX "ConfigVersion_shop_createdAt_idx" ON "ConfigVersion"("shop", "createdAt")',
   );
 });
 
@@ -117,6 +131,19 @@ test("message overrides and milestone rules persist and merge", async () => {
   assert.equal(config.milestones[0].thresholdCents, 150000);
 });
 
+test("per-type overrides and per-event on/off persist", async () => {
+  const shop = "pertype.myshopify.com";
+  await service.updateToastConfig(shop, {
+    byType: { countdown: { theme: { colorBg: "#222222" }, behavior: { durationMs: 9000 } } },
+    cartEvents: { removed: false },
+  });
+  const config = await service.getToastConfig(shop);
+  assert.equal(config.byType.countdown?.theme?.colorBg, "#222222");
+  assert.equal(config.byType.countdown?.behavior?.durationMs, 9000);
+  assert.equal(config.cartEvents.removed, false);
+  assert.equal(config.cartEvents.added, undefined); // default on, not stored
+});
+
 test("configuration is isolated by authenticated shop", async () => {
   await service.updateToastConfig("alpha.myshopify.com", { enabled: true });
   await service.updateToastConfig("beta.myshopify.com", { enabled: false });
@@ -174,5 +201,45 @@ test("uninstall cleanup deletes only the selected shop", async () => {
   assert.equal(
     await prisma.toastAppConfig.count({ where: { shop: retained } }),
     1,
+  );
+});
+
+test("locales persist and re-resolve; every save snapshots a restorable version", async () => {
+  const shop = "locales.myshopify.com";
+
+  await service.updateToastConfig(shop, {
+    locales: { enabledLocales: ["en", "de", "cs"], defaultLocale: "de" },
+  });
+  const cfg = await service.getToastConfig(shop);
+  assert.equal(cfg.locales.defaultLocale, "de");
+  assert.deepEqual(cfg.locales.enabledLocales, ["de", "en", "cs"]);
+
+  // A second save creates another version; the first is restorable.
+  await service.updateToastConfig(shop, {
+    locales: { enabledLocales: ["en"], defaultLocale: "en" },
+  });
+  assert.equal((await service.getToastConfig(shop)).locales.defaultLocale, "en");
+
+  const versions = await service.listConfigVersions(shop);
+  assert.ok(versions.length >= 2, "each save is snapshotted");
+
+  // Restore the oldest (the "de" state) and confirm it comes back.
+  const oldest = versions[versions.length - 1];
+  const restored = await service.restoreConfigVersion(shop, oldest.id);
+  assert.ok(restored);
+  assert.equal(restored?.locales.defaultLocale, "de");
+  assert.equal((await service.getToastConfig(shop)).locales.defaultLocale, "de");
+});
+
+test("deleteShopData also purges the shop's version history", async () => {
+  const shop = "purge.myshopify.com";
+  await service.updateToastConfig(shop, { enabled: true });
+  await service.updateToastConfig(shop, { plan: "pro" });
+  assert.ok((await service.listConfigVersions(shop)).length >= 1);
+
+  await service.deleteShopData(shop);
+  assert.equal(
+    await prisma.configVersion.count({ where: { shop } }),
+    0,
   );
 });

@@ -23,6 +23,7 @@
     "typecheck:apps": "npm run typecheck --workspaces --if-present",
     "build:apps": "npm run build --workspaces --if-present",
     "validate:shopify": "shopify theme check --path apps/won-toasts/extensions/won-toasts-storefront",
+    "test:smoke": "playwright test tests/smoke",
     "seed:e2e-products": "node packages/testing/scripts/seed-e2e-products.mjs"
   },
   "devDependencies": {

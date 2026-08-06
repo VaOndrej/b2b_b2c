@@ -1,0 +1,91 @@
+{%- liquid
+  assign s = section.settings
+  assign has_media = false
+  if s.image != blank
+    assign has_media = true
+  endif
+-%}
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-spacing', settings: s %}"
+  data-testid="won-page-header-section"
+>
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %}">
+    <div
+      class="won-page-header{% if has_media %} won-page-header--media{% endif %}"
+      style="--won-ph-align: {{ s.content_align }};{% if s.min_height > 0 %}--won-ph-min: {{ s.min_height }}px;{% endif %}"
+    >
+      {%- if has_media -%}
+        <div class="won-page-header__media">
+          {%- if s.toggle_overlay -%}<span class="won-page-header__overlay" style="background: {{ s.overlay_color }};"></span>{%- endif -%}
+          {{ s.image | image_url: width: 2400 | image_tag: widths: '800, 1200, 1800, 2400', sizes: '100vw', class: 'won-page-header__img', loading: 'eager', alt: s.image.alt | default: '' }}
+        </div>
+      {%- endif -%}
+      <div class="won-page-header__content">
+        {%- if s.heading != blank -%}
+          <h1
+            class="won-heading won-page-header__heading"
+            style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%;"
+          >
+            {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
+          </h1>
+        {%- endif -%}
+        {%- if s.subheading != blank -%}<div class="won-page-header__sub rte">{{ s.subheading }}</div>{%- endif -%}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-page-header__content { display: flex; flex-direction: column; gap: var(--won-space-3); text-align: var(--won-ph-align, left); align-items: var(--won-ph-align, flex-start); }
+  .won-page-header__heading { font-size: var(--won-h-size-m, 2rem); max-width: var(--won-h-mw-m, 100%); }
+  .won-page-header__sub { opacity: 0.9; max-inline-size: 60ch; }
+  .won-page-header--media {
+    position: relative; overflow: hidden; border-radius: var(--won-radius-lg);
+    min-block-size: var(--won-ph-min, 320px); display: flex; align-items: center; padding: var(--won-space-6);
+  }
+  .won-page-header--media .won-page-header__media { position: absolute; inset: 0; }
+  .won-page-header--media .won-page-header__img { inline-size: 100%; block-size: 100%; object-fit: cover; }
+  .won-page-header--media .won-page-header__overlay { position: absolute; inset: 0; z-index: 1; }
+  .won-page-header--media .won-page-header__content { position: relative; z-index: 2; }
+  @media (min-width: 750px) {
+    .won-page-header__heading { font-size: var(--won-h-size-d, 3rem); max-width: var(--won-h-mw-d, 100%); }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.page_header",
+  "tag": "section",
+  "disabled_on": { "groups": ["header", "footer"] },
+  "settings": [
+    { "type": "header", "content": "t:won.headers.content" },
+    { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.page_header_heading" },
+    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 24, "max": 96, "step": 2, "unit": "px", "default": 48 },
+    { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 18, "max": 64, "step": 2, "unit": "px", "default": 30 },
+    { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "richtext", "id": "subheading", "label": "t:won.settings.subheading" },
+    { "type": "header", "content": "t:won.headers.media" },
+    { "type": "image_picker", "id": "image", "label": "t:won.settings.image" },
+    { "type": "checkbox", "id": "toggle_overlay", "label": "t:won.settings.overlay", "default": true },
+    { "type": "color", "id": "overlay_color", "label": "t:won.settings.overlay_color", "alpha": true, "default": "#00000059" },
+    { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 0, "max": 700, "step": 20, "unit": "px", "default": 0 },
+    { "type": "header", "content": "t:won.headers.appearance" },
+    { "type": "text_alignment", "id": "content_align", "label": "t:won.settings.content_align", "default": "left" },
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
+    {
+      "type": "select", "id": "section_width", "label": "t:won.settings.section_width",
+      "options": [
+        { "value": "page", "label": "t:won.options.width_page" },
+        { "value": "full", "label": "t:won.options.width_full" }
+      ],
+      "default": "page"
+    },
+    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 40 },
+    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 24 }
+  ],
+  "presets": [{ "name": "t:won.names.page_header", "category": "t:won.categories.layout" }]
+}
+{% endschema %}

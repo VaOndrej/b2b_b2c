@@ -22,9 +22,11 @@ back to the default (the config is version 1).
 
 ## Languages (locales)
 
-- `cs`
-- `sk`
-- `en`
+Languages are **merchant-defined data**, not a fixed list. The app ships English
+(`en`) as the built-in fallback; add any BCP-47 locales you need (e.g. `cs`,
+`sk`, `de`, `pt-BR`) in Languages settings. Free plans ship up to
+2 languages; Pro ships many. Shoppers see the string for their
+storefront locale, falling back to your default language.
 
 ## Behavior
 

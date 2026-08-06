@@ -16,7 +16,19 @@
       "param_table": "Won Tabulka parametrů",
       "nutrition_table": "Won Nutriční tabulka",
       "video": "Won Video",
-      "delivery_note": "Won Poznámka o doručení"
+      "delivery_note": "Won Poznámka o doručení",
+      "app_slot": "Won App Slot",
+      "dosage": "Won Dosage",
+      "comparison": "Won Comparison",
+      "articles": "Won Articles",
+      "page_header": "Won Page Header",
+      "stats": "Won Stats",
+      "contact": "Won Contact",
+      "tabs": "Won Tabs",
+      "tab": "Won Tab"
+    },
+    "info": {
+      "app_slot": "Tato sekce zobrazí Won app blok, když je nainstalovaný; jinak placeholder níže."
     },
     "headers": {
       "source": "Zdroj",
@@ -107,7 +119,18 @@
       "label_col2": "Popisek sloupce 2 (prázdné = skrýt)",
       "video_type": "Typ videa",
       "video_url": "URL videa",
-      "note": "Poznámka"
+      "note": "Poznámka",
+      "steps": "Kroky (Popisek : popis, jeden na řádek)",
+      "rows_compare": "Řádky (první řádek = hlavička, pak Vlastnost | hodnota | hodnota; použij 'ano' / 'ne')",
+      "highlight_col": "Zvýrazněný sloupec",
+      "blog": "Blog",
+      "articles_limit": "Maximum článků",
+      "show_date": "Zobrazit datum",
+      "show_excerpt": "Zobrazit perex",
+      "subheading": "Podnadpis",
+      "stats": "Statistiky (Hodnota : Popisek, jedna na řádek)",
+      "show_phone": "Zobrazit pole telefon",
+      "title": "Titulek"
     },
     "options": {
       "source_manual": "Ruční slidy",
@@ -144,7 +167,9 @@
       "tile_large": "Velká",
       "layout_mosaic": "Mozaika",
       "video_hosted": "Nahrané v Shopify",
-      "video_external": "Externí URL"
+      "video_external": "Externí URL",
+      "layout_featured": "Zvýrazněný",
+      "layout_form": "Jen formulář"
     },
     "presets": {
       "product_carousel": "Won Carousel — produkty",
@@ -163,12 +188,19 @@
       "newsletter_leadmagnet": "Won Newsletter — lead magnet",
       "category_grid": "Won Collection Tiles — mřížka",
       "category_mosaic": "Won Collection Tiles — mozaika",
-      "before_after": "Won Před / Po"
+      "before_after": "Won Před / Po",
+      "comparison_table": "Won Comparison",
+      "articles_grid": "Won Articles — mřížka",
+      "articles_featured": "Won Articles — zvýrazněný",
+      "contact": "Won Contact",
+      "contact_split": "Won Contact — split",
+      "tabs": "Won Tabs"
     },
     "categories": {
       "products": "Produkty",
       "content": "Obsah",
-      "layout": "Rozvržení"
+      "layout": "Rozvržení",
+      "apps": "Aplikace"
     },
     "defaults": {
       "slide_heading": "<p>Nadpis slidu</p>",
@@ -192,7 +224,20 @@
       "label_nutrient": "Živina",
       "label_col1": "Na 100 g",
       "label_col2": "Na porci",
-      "delivery_note": "<p>Objednejte do 14:00 pro odeslání ještě dnes.</p>"
+      "delivery_note": "<p>Objednejte do 14:00 pro odeslání ještě dnes.</p>",
+      "app_slot_heading": "Odemkněte víc s Won aplikacemi",
+      "app_slot_text": "<p>Nainstalujte Won aplikaci a aktivujte tuto funkci na svém storefrontu.</p>",
+      "app_slot_cta": "Nainstalovat",
+      "dosage_heading": "<p>Kdy užívat</p>",
+      "dosage_steps": "Před : 30–60 min před výkonem\nBěhem : každých 20 minut\nPo : do 30 min po dokončení",
+      "comparison_heading": "<p>Proč zvolit nás</p>",
+      "comparison_rows": "Vlastnost | My | Ostatní\nDoprava zdarma | ano | ne\nLaboratorně testováno | ano | ne\nJednoduchá cena | ano | ne",
+      "page_header_heading": "<p>Název stránky</p>",
+      "stats_items": "10k+ : Spokojených zákazníků\n4,8★ : Průměrné hodnocení\n24h : Expedice\n100% : Laboratorně testováno",
+      "contact_heading": "<p>Napište nám</p>",
+      "contact_success": "Děkujeme — brzy se ozveme.",
+      "tab_title": "Záložka",
+      "tab_content": "<p>Obsah záložky.</p>"
     }
   }
 }

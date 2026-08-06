@@ -45,22 +45,15 @@
     <won-carousel
       class="won-carousel won-carousel--{{ s.layout }}{% if fits %} won-carousel--fits{% endif %}"
       {% if s.layout == 'slider' and s.autoplay %}data-autoplay="{{ s.autoplay_interval }}"{% endif %}
+      data-mobile-mode="{{ s.columns_mobile }}"
       style="--won-cols-lg: {{ cols }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-sm: {{ s.columns_mobile }}; --won-gap: {{ s.gap }}px;"
     >
       <div class="won-carousel__track" data-won-track {% if s.layout == 'marquee' %}data-marquee{% endif %}>
         {%- if s.source == 'collection' -%}
           {%- for product in s.collection.products limit: s.products_limit -%}
-            <a class="won-carousel__item won-pcard" href="{{ product.url }}">
-              <div class="won-pcard__media won-pcard__media--{{ s.card_aspect }}">
-                {%- if product.featured_image -%}
-                  {{ product.featured_image | image_url: width: 800 | image_tag: widths: '200, 300, 400, 600, 800', sizes: '(min-width: 1024px) 25vw, 60vw', class: 'won-pcard__img', loading: 'lazy', alt: product.featured_image.alt | default: product.title }}
-                {%- else -%}
-                  {{ 'product-apparel-1' | placeholder_svg_tag: 'won-pcard__img' }}
-                {%- endif -%}
-              </div>
-              <div class="won-pcard__title">{{ product.title }}</div>
-              <div class="won-pcard__price">{{ product.price | money }}</div>
-            </a>
+            <div class="won-carousel__item">
+              {% render 'won-product-card', product: product, aspect: s.card_aspect, show_ppu: s.show_card_ppu, ppu_base: s.ppu_base, ppu_amount: s.ppu_amount, ppu_metafield: s.ppu_metafield %}
+            </div>
           {%- endfor -%}
         {%- else -%}
           {% content_for 'blocks' %}
@@ -85,6 +78,8 @@
   </div>
 </section>
 
+<script src="{{ 'won-carousel.js' | asset_url }}" defer></script>
+
 {% stylesheet %}
   .won-carousel-wrap { display: flex; flex-direction: column; gap: var(--won-space-4); }
   .won-carousel__header { display: flex; align-items: baseline; justify-content: space-between; gap: var(--won-space-4); flex-wrap: wrap; }
@@ -92,7 +87,7 @@
     font-size: var(--won-h-size-m, 1.5rem);
     max-width: var(--won-h-mw-m, 100%);
   }
-  .won-carousel__head-link { color: var(--won-accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
+  .won-carousel__head-link { display: inline-flex; align-items: center; min-block-size: 44px; color: var(--won-accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
 
   .won-carousel { position: relative; display: block; }
   .won-carousel__track {
@@ -111,8 +106,13 @@
     scroll-snap-align: start;
     flex: 0 0 calc((100% - (var(--won-cols-cur) - 1) * var(--won-gap, 16px)) / var(--won-cols-cur));
   }
-  .won-carousel--fits .won-carousel__track { justify-content: center; }
-  .won-carousel--fits .won-carousel__track { overflow-x: visible; scroll-snap-type: none; }
+  /* "fits" = fewer items than desktop columns → center them and drop the scroll.
+     Only from the desktop breakpoint: on mobile the cards are near-full-width, so
+     removing the scroll clip would spill them past the viewport (horizontal page
+     overflow). Mobile always keeps overflow-x: auto (internal scroll). */
+  @media (min-width: 1024px) {
+    .won-carousel--fits .won-carousel__track { justify-content: center; overflow-x: visible; scroll-snap-type: none; }
+  }
   .won-carousel--grid .won-carousel__track {
     display: grid;
     grid-template-columns: repeat(var(--won-cols-cur), minmax(0, 1fr));
@@ -140,15 +140,7 @@
     .won-carousel__track { scroll-behavior: auto; }
   }
 
-  .won-pcard { display: flex; flex-direction: column; gap: var(--won-space-2); text-decoration: none; color: var(--won-fg); }
-  .won-pcard__media { background: var(--won-surface); border-radius: var(--won-radius-sm); overflow: hidden; }
-  .won-pcard__media--square { aspect-ratio: 1 / 1; }
-  .won-pcard__media--portrait { aspect-ratio: 4 / 5; }
-  .won-pcard__media--landscape { aspect-ratio: 4 / 3; }
-  .won-pcard__img { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; }
-  .won-pcard__media--natural .won-pcard__img { object-fit: cover; }
-  .won-pcard__title { font-weight: 600; }
-  .won-pcard__price { color: var(--won-accent); font-weight: 700; }
+  /* .won-pcard* styles are global (won-tokens.css) — shared by carousel + PLP. */
 
   @media (min-width: 768px) {
     .won-carousel__track { --won-cols-cur: var(--won-cols-md, 2); }
@@ -158,82 +150,6 @@
     .won-carousel__track { --won-cols-cur: var(--won-cols-lg, 4); }
   }
 {% endstylesheet %}
-
-{% javascript %}
-  class WonCarousel extends HTMLElement {
-    connectedCallback() {
-      if (this.dataset.wonBound) return;
-      this.dataset.wonBound = '1';
-      this.track = this.querySelector('[data-won-track]');
-      if (!this.track) return;
-      this.prevBtn = this.querySelector('[data-won-prev]');
-      this.nextBtn = this.querySelector('[data-won-next]');
-      this.bar = this.querySelector('[data-won-progress-bar]');
-      this._onScroll = this.onScroll.bind(this);
-      this.track.addEventListener('scroll', this._onScroll, { passive: true });
-      if (this.prevBtn) this.prevBtn.addEventListener('click', () => this.scrollByItems(-1));
-      if (this.nextBtn) this.nextBtn.addEventListener('click', () => this.scrollByItems(1));
-      this.bindMouseDrag();
-      this.onScroll();
-      const interval = parseInt(this.dataset.autoplay, 10);
-      if (interval && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        this._timer = setInterval(() => this.autoAdvance(), interval * 1000);
-        this.addEventListener('pointerenter', () => clearInterval(this._timer));
-      }
-    }
-    disconnectedCallback() {
-      if (this.track) this.track.removeEventListener('scroll', this._onScroll);
-      clearInterval(this._timer);
-    }
-    itemWidth() {
-      const first = this.track.firstElementChild;
-      if (!first) return this.track.clientWidth;
-      const gap = parseFloat(getComputedStyle(this.track).columnGap || getComputedStyle(this.track).gap) || 0;
-      return first.getBoundingClientRect().width + gap;
-    }
-    scrollByItems(dir) {
-      this.track.scrollBy({ left: dir * this.itemWidth(), behavior: 'smooth' });
-    }
-    autoAdvance() {
-      const max = this.track.scrollWidth - this.track.clientWidth;
-      if (Math.abs(this.track.scrollLeft) >= max - 2) {
-        this.track.scrollTo({ left: 0, behavior: 'smooth' });
-      } else {
-        this.scrollByItems(1);
-      }
-    }
-    onScroll() {
-      const max = this.track.scrollWidth - this.track.clientWidth;
-      const ratio = max > 0 ? Math.abs(this.track.scrollLeft) / max : 0;
-      if (this.bar) {
-        const travel = 100 - (this.bar.getBoundingClientRect().width / this.bar.parentElement.getBoundingClientRect().width) * 100;
-        this.bar.style.transform = 'translateX(' + ratio * travel + '%)';
-      }
-      if (this.prevBtn) this.prevBtn.disabled = ratio <= 0.001;
-      if (this.nextBtn) this.nextBtn.disabled = ratio >= 0.999;
-    }
-    bindMouseDrag() {
-      let startX = 0, startLeft = 0, dragging = false;
-      const down = (e) => {
-        if (e.pointerType !== 'mouse') return;
-        dragging = true; startX = e.clientX; startLeft = this.track.scrollLeft;
-        this.classList.add('is-dragging');
-      };
-      const move = (e) => {
-        if (!dragging) return;
-        this.track.scrollLeft = startLeft - (e.clientX - startX);
-      };
-      const up = () => {
-        if (!dragging) return;
-        dragging = false; this.classList.remove('is-dragging');
-      };
-      this.track.addEventListener('pointerdown', down);
-      window.addEventListener('pointermove', move, { passive: true });
-      window.addEventListener('pointerup', up);
-    }
-  }
-  if (!customElements.get('won-carousel')) customElements.define('won-carousel', WonCarousel);
-{% endjavascript %}
 
 {% schema %}
 {
@@ -294,6 +210,10 @@
       ],
       "default": "portrait"
     },
+    { "type": "checkbox", "id": "show_card_ppu", "label": "t:won.settings.vp_show_ppu", "default": false, "visible_if": "{{ section.settings.source == 'collection' }}" },
+    { "type": "select", "id": "ppu_base", "label": "t:won.settings.ppu_base", "visible_if": "{{ section.settings.show_card_ppu }}", "options": [ { "value": "per_100g", "label": "t:won.options.per_100g" }, { "value": "per_kg", "label": "t:won.options.per_kg" }, { "value": "per_serving", "label": "t:won.options.per_serving" } ], "default": "per_100g" },
+    { "type": "number", "id": "ppu_amount", "label": "t:won.settings.ppu_amount", "info": "t:won.info.ppu_amount", "default": 1000, "visible_if": "{{ section.settings.show_card_ppu }}" },
+    { "type": "text", "id": "ppu_metafield", "label": "t:won.settings.ppu_metafield", "info": "t:won.info.ppu_metafield", "visible_if": "{{ section.settings.show_card_ppu }}" },
     { "type": "header", "content": "t:won.headers.controls" },
     { "type": "checkbox", "id": "show_arrows", "label": "t:won.settings.show_arrows", "default": true, "visible_if": "{{ section.settings.layout == 'slider' }}" },
     { "type": "checkbox", "id": "show_progress", "label": "t:won.settings.show_progress", "default": true, "visible_if": "{{ section.settings.layout == 'slider' }}" },

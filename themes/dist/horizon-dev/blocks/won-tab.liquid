@@ -11,9 +11,12 @@ tab button that won-tabs builds; this block renders the matching panel.
   role="tabpanel"
   id="won-tabpanel-{{ block.id }}"
   aria-labelledby="won-tab-{{ block.id }}"
-  hidden
+  data-title="{{ s.title | strip_html | strip | escape }}"
   {{ block.shopify_attributes }}
 >
+  {%- if s.title != blank -%}
+    <h3 class="won-tabs__panel-title">{{ s.title }}</h3>
+  {%- endif -%}
   <div class="rte">{{ s.content }}</div>
 </div>
 

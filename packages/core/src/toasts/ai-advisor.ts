@@ -4,6 +4,14 @@
 // rule-based fallback runs with no API key so the feature always does something
 // useful and stays unit-testable. Suggestions are proposals — the merchant
 // confirms before they apply.
+//
+// DEFERRED — NOT wired into the admin UI (removed from Insights 2026-08-06).
+// `ruleBasedSuggestions` below stands on a premise that is WRONG for
+// informational toasts: it flags high-impression / zero-click rules as low value,
+// but "Added to cart" is read, not clicked — ~0 CTR is expected and does NOT mean
+// no value. Before re-enabling in MVP13, the success metric MUST be per-type
+// (informational/cart events measured by read-through / low-dismiss / a merchant
+// goal, NOT clicks; only action toasts judged by CTR). Kept for unit tests only.
 
 import type { RuleCounters } from "./analytics.ts";
 import { computeMetrics } from "./analytics.ts";

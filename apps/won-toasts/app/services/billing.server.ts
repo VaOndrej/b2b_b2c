@@ -12,9 +12,18 @@ type AdminGraphql = {
 };
 
 // eslint-disable-next-line no-undef
-export const billingDevMode = (): boolean => process.env.WON_BILLING_DEV === "1";
+const isProd = (): boolean => process.env.NODE_ENV === "production";
 // eslint-disable-next-line no-undef
-const isTestCharge = (): boolean => process.env.NODE_ENV !== "production";
+export const billingDevMode = (): boolean => process.env.WON_BILLING_DEV === "1";
+const isTestCharge = (): boolean => !isProd();
+
+/**
+ * Whether to bypass Shopify Billing and flip the stored plan directly (no
+ * charge). True in any non-production run (`shopify app dev`, local build) or
+ * when WON_BILLING_DEV=1 — so Pro is testable in dev without a live subscription.
+ * Production always uses real Shopify Billing.
+ */
+export const billingBypassed = (): boolean => billingDevMode() || !isProd();
 
 interface Subscription {
   id: string;

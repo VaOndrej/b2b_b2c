@@ -1,0 +1,41 @@
+{%- comment -%}
+  won-badges — renders product badge chips. Source: product tags shaped as
+  "badge:<Label>" (merchant-editable, no app) plus an optional list metafield.
+  Known keywords map to coloured variants (sale / new / eco), everything else
+  is neutral. Blank-safe. Reused on cards and PDP.
+  Usage: {% render 'won-badges', product: product %}
+{%- endcomment -%}
+{%- liquid
+  assign items = ''
+  for tag in product.tags
+    if tag contains 'badge:'
+      assign label = tag | remove_first: 'badge:' | strip
+      assign items = items | append: label | append: '||'
+    endif
+  endfor
+  assign mf = product.metafields.won.badges.value
+  if mf != blank
+    for label in mf
+      assign items = items | append: label | append: '||'
+    endfor
+  endif
+-%}
+{%- if items != blank -%}
+  <div class="won-badges">
+    {%- assign list = items | split: '||' -%}
+    {%- for label in list -%}
+      {%- if label != blank -%}
+        {%- assign key = label | downcase -%}
+        {%- assign mod = 'neutral' -%}
+        {%- if key contains 'akc' or key contains 'sleva' or key contains 'sale' or key contains 'deal' -%}
+          {%- assign mod = 'sale' -%}
+        {%- elsif key contains 'novin' or key contains 'new' -%}
+          {%- assign mod = 'new' -%}
+        {%- elsif key contains 'bio' or key contains 'vegan' or key contains 'natural' or key contains 'eco' -%}
+          {%- assign mod = 'eco' -%}
+        {%- endif -%}
+        <span class="won-badge won-badge--{{ mod }}">{{ label }}</span>
+      {%- endif -%}
+    {%- endfor -%}
+  </div>
+{%- endif -%}

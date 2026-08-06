@@ -20,6 +20,14 @@ async function readExtension(relativePath: string): Promise<string> {
   return readFile(path.join(extensionRoot, relativePath), "utf8");
 }
 
+// The shipped assets/won-toasts.js is a minified build, so identifier markers
+// (e.g. CART_MUTATOR) are renamed. Assert the storefront behaviour contract
+// against the AUTHORED, readable source; the storefront-build contract proves
+// the shipped asset is exactly minify(source), and perf-budget guards its size.
+async function readStorefrontSource(): Promise<string> {
+  return readFile(path.join(appRoot, "storefront-src/won-toasts.js"), "utf8");
+}
+
 test("theme extension is an app embed with static storefront assets", async () => {
   const block = await readExtension("blocks/won_toasts_embed.liquid");
 
@@ -31,7 +39,7 @@ test("theme extension is an app embed with static storefront assets", async () =
 });
 
 test("storefront JS mounts a Shadow-DOM host with stable, accessible markers", async () => {
-  const javascript = await readExtension("assets/won-toasts.js");
+  const javascript = await readStorefrontSource();
 
   assert.match(javascript, /customElements/);
   assert.match(javascript, /["']won-toast-host["']/);
@@ -42,7 +50,7 @@ test("storefront JS mounts a Shadow-DOM host with stable, accessible markers", a
 });
 
 test("storefront observes the cart and reconciles from /cart.js (not theme DOM)", async () => {
-  const javascript = await readExtension("assets/won-toasts.js");
+  const javascript = await readStorefrontSource();
 
   // Intercepts cart mutations and always re-reads the authoritative snapshot.
   assert.match(javascript, /CART_MUTATOR/);
@@ -55,7 +63,7 @@ test("storefront observes the cart and reconciles from /cart.js (not theme DOM)"
 });
 
 test("storefront stays a notification surface: no price/discount/form fabrication", async () => {
-  const javascript = await readExtension("assets/won-toasts.js");
+  const javascript = await readStorefrontSource();
 
   // It must never manufacture the merchant's product form or touch pricing.
   assert.doesNotMatch(javascript, /createElement\(["']form["']\)/);

@@ -48,7 +48,13 @@ model ToastAppConfig {
   plan       String   @default("free")
   global     Json?
   theme      Json?
+  // Per-type look/behaviour overrides (default + override); cart events share one type.
+  byType     Json?
+  // Per cart-event on/off (added/removed/increased/decreased). Absent = on.
+  cartEvents Json?
   messages   Json?
+  // Merchant-defined languages (locale-as-data): enabledLocales + defaultLocale.
+  locales    Json?
   milestones Json?
   targeting  Json?
   // MVP9+ recipes: page-view / aggregate notification rules (see @won/core/toasts/notifications).
@@ -57,6 +63,18 @@ model ToastAppConfig {
   exclusions Json?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+// Automatic config version history — a snapshot is stored on every save so the
+// merchant can roll back to a previous state (replaces raw-JSON backup). Capped
+// per shop; purged with the shop's data on uninstall/redact.
+model ConfigVersion {
+  id        String   @id @default(cuid())
+  shop      String
+  data      Json
+  createdAt DateTime @default(now())
+
+  @@index([shop, createdAt])
 }
 
 // MVP11 — real aggregate events. Each row is a genuine cart-add or order,

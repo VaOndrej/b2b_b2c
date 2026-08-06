@@ -350,12 +350,60 @@
       "compare": "Posuvník porovnání",
       "no_articles": "Zatím žádné články."
     },
+    "guide": {
+      "metafield_title": "Napojte metapole a tabulka se vyplní sama",
+      "metafield_step1": "Nastavení → Vlastní data → Produkty → Přidat definici.",
+      "metafield_step2": "Použijte tento namespace a klíč, typ „Seznam jednořádkových textů“ (nebo JSON).",
+      "metafield_step3": "Otevřete produkt a přidejte jeden řádek za řádek ve formátu níže.",
+      "metafield_example": "Každý řádek — popisek, pak hodnoty oddělené svislítkem:"
+    },
     "contact": {
       "name": "Jméno",
       "email": "E-mail",
       "phone": "Telefon",
       "message": "Zpráva",
       "send": "Odeslat"
+    },
+    "cart": {
+      "add": "Do košíku",
+      "added": "Přidáno ✓",
+      "choose": "Vybrat",
+      "soldout": "Vyprodáno"
+    },
+    "unit": {
+      "per_100g": "100 g",
+      "per_kg": "kg",
+      "per_serving": "porce"
+    },
+    "vp": {
+      "placeholder": "Výběr varianty — zobrazí se na stránce produktu.",
+      "show_table": "Zobrazit tabulku variant",
+      "variant": "Varianta",
+      "price": "Cena",
+      "unit": "Za jednotku",
+      "choose": "Vybrat",
+      "quantity": "Množství"
+    },
+    "plp": {
+      "products": "produktů",
+      "filters": "Filtry",
+      "clear": "Zrušit vše",
+      "sort": "Řadit",
+      "empty": "Žádné produkty neodpovídají filtrům.",
+      "apply": "Použít",
+      "pagination": "Stránkování",
+      "price_from": "Cena od",
+      "price_to": "Cena do"
+    },
+    "stock": {
+      "in": "Skladem",
+      "low": "Poslední kusy",
+      "out": "Vyprodáno",
+      "expiry": "Min. trvanlivost"
+    },
+    "ship": {
+      "remaining": "Do dopravy zdarma zbývá [amount]",
+      "reached": "Máš dopravu zdarma 🎉"
     }
   }
 }

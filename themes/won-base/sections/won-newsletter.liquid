@@ -46,9 +46,10 @@
   .won-nl { display: flex; flex-direction: column; gap: var(--won-space-4); text-align: var(--won-nl-align, center); align-items: var(--won-nl-align, center); }
   .won-nl__heading { font-size: var(--won-h-size-m, 1.8rem); max-width: var(--won-h-mw-m, 100%); }
   .won-nl__body { opacity: 0.9; }
-  .won-nl__form { display: flex; flex-wrap: wrap; gap: var(--won-space-2); inline-size: 100%; max-inline-size: 480px; }
+  .won-nl__form { display: flex; flex-wrap: nowrap; align-items: stretch; gap: var(--won-space-2); inline-size: 100%; max-inline-size: 520px; }
+  .won-nl__form .won-btn { flex: 0 0 auto; }
   .won-nl__input {
-    flex: 1 1 200px;
+    flex: 1 1 auto;
     min-inline-size: 0;
     padding: 0.7em 1em;
     border: 1px solid var(--won-border);

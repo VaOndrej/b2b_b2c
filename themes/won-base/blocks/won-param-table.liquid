@@ -1,29 +1,94 @@
 {% doc %}
-won-param-table — a scannable key/value spec table (one "Label : Value" per line)
-for PDP or any section accepting theme blocks. Self-contained.
-@example
-{% content_for 'block', type: 'won-param-table', id: 'params' %}
+  won-param-table — a scannable key/value spec list ("Label : Value" per row) for PDP
+  or any section accepting theme blocks. Content can be typed manually OR pulled from a
+  product metafield (auto-detected the same way as won-nutrition-table):
+    • list.single_line_text_field  → each entry is one "Label : Value" row
+    • single_line / multi_line text → each line is one "Label : Value" row
+    • json (object)                → each key/value pair becomes a row
+  When a metafield is selected but empty, the theme editor shows setup guidance.
+  @example
+  {% content_for 'block', type: 'won-param-table', id: 'params' %}
 {% enddoc %}
 
 {%- liquid
   assign s = block.settings
-  assign lines = s.rows | newline_to_br | split: '<br />'
+
+  assign mode = 'none'
+  assign line_items = ''
+  assign kv_value = ''
+
+  if s.source == 'metafield'
+    if s.metafield_key != blank
+      assign parts = s.metafield_key | split: '.'
+      assign ns = parts[0] | strip
+      assign k = parts[1] | strip
+      if ns != blank and k != blank
+        assign mf = product.metafields[ns][k]
+        if mf != blank and mf.type != blank
+          assign mtype = mf.type
+          if mtype contains 'list.'
+            assign line_items = mf.value
+            assign mode = 'lines'
+          elsif mtype == 'json'
+            assign kv_value = mf.value
+            assign mode = 'kv'
+          else
+            assign line_items = mf.value | newline_to_br | split: '<br />'
+            assign mode = 'lines'
+          endif
+        endif
+      endif
+    endif
+  else
+    if s.rows != blank
+      assign line_items = s.rows | newline_to_br | split: '<br />'
+      assign mode = 'lines'
+    endif
+  endif
 -%}
 <div class="won-params" {{ block.shopify_attributes }}>
   {%- if s.heading != blank -%}<p class="won-params__heading">{{ s.heading }}</p>{%- endif -%}
-  <dl class="won-params__list">
-    {%- for line in lines -%}
-      {%- assign row = line | strip -%}
-      {%- if row contains ':' -%}
-        {%- assign key = row | split: ':' | first | strip -%}
-        {%- assign val = row | split: ':' | last | strip -%}
+
+  {%- if mode == 'none' -%}
+    {%- if request.design_mode and s.source == 'metafield' -%}
+      <div class="won-params__guide">
+        <p class="won-params__guide-title">{{ 'won.guide.metafield_title' | t }}</p>
+        <p class="won-params__guide-key">{{ s.metafield_key | default: 'custom.specs' }}</p>
+        <ol class="won-params__guide-steps">
+          <li>{{ 'won.guide.metafield_step1' | t }}</li>
+          <li>{{ 'won.guide.metafield_step2' | t }}</li>
+          <li>{{ 'won.guide.metafield_step3' | t }}</li>
+        </ol>
+        <p class="won-params__guide-eg">{{ 'won.guide.metafield_example' | t }}</p>
+        <code class="won-params__guide-code">Weight : 500 g</code>
+      </div>
+    {%- endif -%}
+
+  {%- elsif mode == 'kv' -%}
+    <dl class="won-params__list">
+      {%- for property in kv_value -%}
         <div class="won-params__row">
-          <dt class="won-params__key">{{ key }}</dt>
-          <dd class="won-params__val">{{ val }}</dd>
+          <dt class="won-params__key">{{ property.first }}</dt>
+          <dd class="won-params__val">{{ property.last }}</dd>
         </div>
-      {%- endif -%}
-    {%- endfor -%}
-  </dl>
+      {%- endfor -%}
+    </dl>
+
+  {%- else -%}
+    <dl class="won-params__list">
+      {%- for line in line_items -%}
+        {%- assign row = line | strip -%}
+        {%- if row contains ':' -%}
+          {%- assign key = row | split: ':' | first | strip -%}
+          {%- assign val = row | split: ':' | last | strip -%}
+          <div class="won-params__row">
+            <dt class="won-params__key">{{ key }}</dt>
+            <dd class="won-params__val">{{ val }}</dd>
+          </div>
+        {%- endif -%}
+      {%- endfor -%}
+    </dl>
+  {%- endif -%}
 </div>
 
 {% stylesheet %}
@@ -32,6 +97,16 @@ for PDP or any section accepting theme blocks. Self-contained.
   .won-params__row { display: flex; gap: var(--won-space-4); justify-content: space-between; padding: var(--won-space-3) 0; border-block-end: 1px solid var(--won-border); }
   .won-params__key { margin: 0; opacity: 0.75; }
   .won-params__val { margin: 0; font-weight: 600; text-align: end; }
+  .won-params__guide {
+    border: 1px dashed var(--won-border); border-radius: var(--won-radius-md);
+    padding: var(--won-space-4); background: var(--won-surface); text-align: start;
+    display: flex; flex-direction: column; gap: var(--won-space-2);
+  }
+  .won-params__guide-title { margin: 0; font-weight: 700; }
+  .won-params__guide-key { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; color: var(--won-accent); }
+  .won-params__guide-steps { margin: 0; padding-inline-start: 1.2em; display: flex; flex-direction: column; gap: 2px; }
+  .won-params__guide-eg { margin: var(--won-space-2) 0 0; opacity: 0.8; }
+  .won-params__guide-code { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: color-mix(in oklab, var(--won-fg) 8%, var(--won-bg)); padding: 0.3em 0.6em; border-radius: var(--won-radius-sm); }
 {% endstylesheet %}
 
 {% schema %}
@@ -39,7 +114,18 @@ for PDP or any section accepting theme blocks. Self-contained.
   "name": "t:won.names.param_table",
   "settings": [
     { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading" },
-    { "type": "textarea", "id": "rows", "label": "t:won.settings.rows_kv", "default": "t:won.defaults.param_rows" }
+    {
+      "type": "select",
+      "id": "source",
+      "label": "t:won.settings.source",
+      "options": [
+        { "value": "manual", "label": "t:won.options.source_manual_text" },
+        { "value": "metafield", "label": "t:won.options.source_metafield" }
+      ],
+      "default": "manual"
+    },
+    { "type": "text", "id": "metafield_key", "label": "t:won.settings.metafield_key", "info": "t:won.info.nutrition_metafield", "default": "custom.specs", "visible_if": "{{ block.settings.source == 'metafield' }}" },
+    { "type": "textarea", "id": "rows", "label": "t:won.settings.rows_kv", "default": "t:won.defaults.param_rows", "visible_if": "{{ block.settings.source == 'manual' }}" }
   ],
   "presets": [{ "name": "t:won.names.param_table" }]
 }

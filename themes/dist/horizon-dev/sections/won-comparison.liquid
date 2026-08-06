@@ -62,15 +62,23 @@
   .won-cmp-wrap { display: flex; flex-direction: column; gap: var(--won-space-5); }
   .won-cmp__heading { font-size: var(--won-h-size-m, 1.8rem); max-width: var(--won-h-mw-m, 100%); }
   .won-cmp__scroll { overflow-x: auto; }
-  .won-cmp__table { inline-size: 100%; border-collapse: collapse; min-inline-size: 480px; }
+  .won-cmp__table { inline-size: 100%; border-collapse: collapse; min-inline-size: 480px; table-layout: fixed; }
   .won-cmp__table th,
-  .won-cmp__table td { padding: var(--won-space-3) var(--won-space-4); text-align: center; border-block-end: 1px solid var(--won-border); }
+  .won-cmp__table td { padding: var(--won-space-3) var(--won-space-4); text-align: center; vertical-align: middle; border-block-end: 1px solid var(--won-border); }
+  .won-cmp__table th:first-child,
+  .won-cmp__table td:first-child { inline-size: 42%; }
   .won-cmp__table thead th { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; }
   .won-cmp__table tbody th { text-align: start; font-weight: 500; }
   .won-cmp__table .is-us { background: color-mix(in oklab, var(--won-accent) 12%, transparent); }
   .won-cmp__table thead .is-us { border-radius: var(--won-radius-sm) var(--won-radius-sm) 0 0; color: var(--won-accent); font-weight: 800; }
-  .won-cmp__yes { inline-size: 20px; block-size: 20px; color: var(--won-accent); }
-  .won-cmp__no { inline-size: 18px; block-size: 18px; opacity: 0.4; }
+  .won-cmp__yes { display: block; margin-inline: auto; inline-size: 20px; block-size: 20px; color: var(--won-accent); }
+  .won-cmp__no { display: block; margin-inline: auto; inline-size: 18px; block-size: 18px; opacity: 0.4; }
+  /* Mobile reads centered like the rest of the page — the feature (row-label)
+     column joins the centered heading instead of sitting left under it. Desktop
+     keeps row-labels start-aligned (standard comparison-table readability). */
+  @media (max-width: 749px) {
+    .won-cmp__table tbody th { text-align: center; }
+  }
   @media (min-width: 750px) {
     .won-cmp__heading { font-size: var(--won-h-size-d, 2.4rem); max-width: var(--won-h-mw-d, 100%); }
   }

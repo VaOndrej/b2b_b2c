@@ -1,0 +1,19 @@
+{%- comment -%}
+  won-rating — star rating from metafields (won.rating 0–5, won.rating_count).
+  A review app (or import) writes the metafields; the theme renders them, so it
+  works with any review provider. Blank-safe. Used on cards and PDP.
+  Usage: {% render 'won-rating', product: product %}
+{%- endcomment -%}
+{%- liquid
+  assign rating = product.metafields.won.rating.value | default: 0.0
+  assign count = product.metafields.won.rating_count.value | default: 0
+-%}
+{%- if rating > 0 -%}
+  <div class="won-rating" title="{{ rating }} / 5">
+    <span class="won-rating__stars" style="--won-rating: {{ rating }};" aria-hidden="true">★★★★★</span>
+    <span class="won-rating__count">
+      {{- rating -}}{%- if count > 0 -%} <span class="won-rating__n">({{ count }})</span>{%- endif -%}
+    </span>
+    <span class="won-visually-hidden">{{ rating }} / 5{% if count > 0 %}, {{ count }}{% endif %}</span>
+  </div>
+{%- endif -%}

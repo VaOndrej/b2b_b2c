@@ -4,17 +4,26 @@
 // "config is the single source of truth" hold even for a fresh install.
 
 import type {
+  ClickAction,
   FrequencySettings,
   GlobalSettings,
   GroupingSettings,
   MilestoneRuleConfig,
   StoredToastConfig,
   ToastAppConfig,
-  ToastLocale,
   ToastMessages,
   ToastSemanticType,
   ToastTheme,
+  ToastTypeBehaviorOverride,
+  ToastTypeKey,
+  ToastTypeOverride,
 } from "./config.types.ts";
+import { TOAST_TYPE_KEYS } from "./type-style.ts";
+import {
+  DEFAULT_LOCALE_SETTINGS,
+  normalizeLocale,
+  sanitizeLocaleSettings,
+} from "./locales.ts";
 import {
   DEFAULT_TARGETING,
   type CustomerTarget,
@@ -115,25 +124,19 @@ export const DEFAULT_THEME: ToastTheme = {
   customCss: "",
 };
 
+// The product ships ONE default language (English) as the fallback. Every other
+// language is merchant-supplied DATA (locale-as-data, doctrine §5) — no cs/sk/…
+// is baked in. Merchants add their own via the Languages settings.
 export const DEFAULT_MESSAGES: ToastMessages = {
-  added: { en: "Added to cart", cs: "Přidáno do košíku", sk: "Pridané do košíka" },
-  removed: { en: "Removed", cs: "Odebráno", sk: "Odobrané" },
-  increased: { en: "Updated", cs: "Aktualizováno", sk: "Aktualizované" },
-  decreased: { en: "Updated", cs: "Aktualizováno", sk: "Aktualizované" },
-  gift: { en: "Gift unlocked 🎁", cs: "Dárek odemčen 🎁", sk: "Darček odomknutý 🎁" },
-  shipping: {
-    en: "You’ve got free shipping! 🎉",
-    cs: "Máš dopravu zdarma! 🎉",
-    sk: "Máš dopravu zadarmo! 🎉",
-  },
+  added: { en: "Added to cart" },
+  removed: { en: "Removed" },
+  increased: { en: "Updated" },
+  decreased: { en: "Updated" },
+  gift: { en: "Gift unlocked" },
+  shipping: { en: "You’ve got free shipping!" },
 };
 
 export const DEFAULT_MILESTONES: MilestoneRuleConfig[] = [];
-
-// Canonical allow-lists. These are the single source of truth used both by the
-// sanitizers below and by the support-docs reference generator
-// (apps/*/scripts/gen-docs.ts) — exported so docs can never drift from code.
-export const LOCALES: readonly ToastLocale[] = ["cs", "sk", "en"];
 
 export const DEFAULT_TOAST_CONFIG: ToastAppConfig = {
   version: TOAST_CONFIG_VERSION,
@@ -141,7 +144,10 @@ export const DEFAULT_TOAST_CONFIG: ToastAppConfig = {
   plan: "free",
   global: DEFAULT_GLOBAL,
   theme: DEFAULT_THEME,
+  byType: {},
+  cartEvents: {},
   messages: DEFAULT_MESSAGES,
+  locales: DEFAULT_LOCALE_SETTINGS,
   milestones: DEFAULT_MILESTONES,
   targeting: DEFAULT_TARGETING,
   notifications: DEFAULT_NOTIFICATIONS,
@@ -299,9 +305,13 @@ const FONT_MODES: readonly ToastTheme["fontMode"][] = [
 ];
 
 const HEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+// Colours are stored canonically in lowercase. Admin colour inputs (s-color-field)
+// emit uppercase hex; without normalising, every "unchanged" colour would look
+// different from the lowercase defaults and get written as a spurious per-type
+// override on every save. Canonical case keeps stored config clean and diffable.
 function hex(value: unknown): string | undefined {
   return typeof value === "string" && HEX.test(value.trim())
-    ? value.trim()
+    ? value.trim().toLowerCase()
     : undefined;
 }
 
@@ -376,6 +386,70 @@ export function sanitizeTheme(input: unknown): Partial<ToastTheme> {
   return out;
 }
 
+function sanitizeTypeBehavior(input: unknown): ToastTypeBehaviorOverride | undefined {
+  if (!isPlainObject(input)) return undefined;
+  const out: ToastTypeBehaviorOverride = {};
+  const durationMs = clampInt(input.durationMs, 800, 60000);
+  if (durationMs !== undefined) out.durationMs = durationMs;
+  if (CLICK_ACTIONS.includes(input.clickAction as ClickAction)) {
+    out.clickAction = input.clickAction as ClickAction;
+  }
+  if (typeof input.autoDismiss === "boolean") out.autoDismiss = input.autoDismiss;
+  if (typeof input.pauseOnHover === "boolean") out.pauseOnHover = input.pauseOnHover;
+  if (typeof input.closeable === "boolean") out.closeable = input.closeable;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** The cart events that can be individually turned off (deltas). gift/shipping
+ *  are gated by their milestone toggles, not here. */
+const CART_EVENT_TYPES: readonly ToastSemanticType[] = [
+  "added",
+  "removed",
+  "increased",
+  "decreased",
+];
+
+/** Sanitize per cart-event on/off: only known event types, only booleans, and
+ *  only store the OFF ones (default is on) so the map stays sparse. */
+export function sanitizeCartEvents(
+  input: unknown,
+): Partial<Record<ToastSemanticType, boolean>> {
+  const out: Partial<Record<ToastSemanticType, boolean>> = {};
+  if (!isPlainObject(input)) return out;
+  for (const type of CART_EVENT_TYPES) {
+    if (input[type] === false) out[type] = false;
+  }
+  return out;
+}
+
+/** Is this cart event enabled? Absent = on (back-compat). */
+export function cartEventEnabled(
+  config: { cartEvents: Partial<Record<ToastSemanticType, boolean>> },
+  type: ToastSemanticType,
+): boolean {
+  return config.cartEvents[type] !== false;
+}
+
+/** Sanitize the per-type override map: each type keeps only valid theme/behaviour
+ *  overrides; empty overrides are dropped so byType stays sparse. */
+export function sanitizeByType(
+  input: unknown,
+): Partial<Record<ToastTypeKey, ToastTypeOverride>> {
+  const out: Partial<Record<ToastTypeKey, ToastTypeOverride>> = {};
+  if (!isPlainObject(input)) return out;
+  for (const key of TOAST_TYPE_KEYS) {
+    const raw = input[key];
+    if (!isPlainObject(raw)) continue;
+    const override: ToastTypeOverride = {};
+    const theme = sanitizeTheme(raw.theme);
+    if (Object.keys(theme).length > 0) override.theme = theme;
+    const behavior = sanitizeTypeBehavior(raw.behavior);
+    if (behavior) override.behavior = behavior;
+    if (override.theme || override.behavior) out[key] = override;
+  }
+  return out;
+}
+
 /**
  * Resolve a partial/stored config into a complete config by layering it over
  * defaults. Unknown/absent keys fall back to defaults; nested objects
@@ -422,7 +496,10 @@ export function resolveToastConfig(
     plan: input.plan === "pro" ? "pro" : "free",
     global,
     theme,
+    byType: sanitizeByType(input.byType),
+    cartEvents: sanitizeCartEvents(input.cartEvents),
     messages: mergeMessages(input.messages),
+    locales: sanitizeLocaleSettings(input.locales),
     milestones: sanitizeMilestones(input.milestones),
     targeting: sanitizeTargeting(input.targeting),
     notifications: sanitizeNotifications(input.notifications),
@@ -458,7 +535,11 @@ export function sanitizeTargeting(input: unknown): ToastTargeting {
   };
 }
 
-/** Deep-merge stored message overrides over the default templates. */
+/**
+ * Deep-merge stored message overrides over the English defaults. Locale keys are
+ * open (any BCP-47 tag the merchant added); each is normalised and length-capped.
+ * The default `en` template is always kept as the fallback.
+ */
 export function mergeMessages(input: unknown): ToastMessages {
   const out: ToastMessages = {};
   for (const type of SEMANTIC_TYPES) {
@@ -467,10 +548,15 @@ export function mergeMessages(input: unknown): ToastMessages {
       isPlainObject(input) && isPlainObject((input as Record<string, unknown>)[type])
         ? ((input as Record<string, Record<string, unknown>>)[type] ?? {})
         : {};
-    const merged: Partial<Record<ToastLocale, string>> = { ...(base ?? {}) };
-    for (const locale of LOCALES) {
-      const value = override[locale];
-      if (typeof value === "string" && value.trim()) merged[locale] = value.slice(0, 200);
+    const merged: Record<string, string> = {};
+    for (const [k, v] of Object.entries(base ?? {})) {
+      if (typeof v === "string") merged[k] = v;
+    }
+    for (const [rawLocale, value] of Object.entries(override)) {
+      const locale = normalizeLocale(rawLocale);
+      if (locale && typeof value === "string" && value.trim()) {
+        merged[locale] = value.slice(0, 200);
+      }
     }
     if (Object.keys(merged).length > 0) out[type] = merged;
   }

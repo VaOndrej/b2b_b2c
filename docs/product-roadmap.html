@@ -724,6 +724,141 @@
                 <code>&lt;won-host&gt;</code>, cross-app bus přes document event
                 <code>won:cart:update</code>, ať appky nedělají dvojité fetche.
               </p>
+              <p class="guide-idea">
+                <strong>Brainstorm &amp; rozhodnutí (vyladěno 2026-08):</strong>
+                <em>Reach = osa MVP žebříku</em> — „kdekoli je buy CTA nebo
+                manipulace množství → Won Stepper": PDP → cart/drawer → search →
+                collection karty → zbytek. <em>Qty 0</em>: default
+                <strong>odebrat z košíku</strong>, ale jako toggle (odebrat /
+                disable na 1 / potvrzení); undo deleguj na Toasts, když běží.
+                <em>Quantity rules</em> (MOQ / násobky / max): Stepper zůstává
+                <strong>Function-free, pure-surface</strong> — Free = inventory
+                cap; <strong>Pro</strong> čte pravidla z metafieldu
+                <code>won.quantity_rules</code> (snap na násobky, disable na
+                maxu, hint „min N"). Tvrdé vynucení u checkoutu (Cart Validation
+                Function) = <strong>samostatná budoucí appka „Won Quantity
+                Rules"</strong> sdílející tentýž metafield, ať Stepper zůstane
+                čistý a rychlý. <em>Free/Pro</em>: Free = steppery všude + živý
+                count + inventory cap + a11y/klávesnice; Pro = quantity rules +
+                segment/collection cílení + appearance tuning + custom CSS.
+                <em>Vzhled</em> z 90 % <strong>dědí téma</strong>, jen lehký Pro
+                tuning. <strong>Dodatečné featury:</strong> síťová odolnost
+                (queue/retry/reconcile na flaky mobilu), <strong>adopce
+                existujícího theme qty controlu</strong> (převzít, ne zdvojit),
+                lazy-mount na gridech (IntersectionObserver), varianta-na-kartě
+                (default / mini-picker), micro-feedback na min/max, přímé zadání
+                čísla na cart page, a toggle <strong>„neotvírat boční košík
+                při quick add/remove"</strong> (default neotvírat — feedback dá
+                živý count badge / Toasts, ne otevřený drawer).
+              </p>
+              <p class="guide-idea">
+                <strong>Požadavek — cross-app awareness v adminu:</strong> Stepper
+                funguje nejpříjemněji s <strong>Won Toasts</strong> (bez otevřeného
+                drawru dá „přidáno" feedback živý count badge / toast). Admin to
+                musí čitelně ukázat: karta/banner „Nejlépe funguje s Won Toasts" s
+                <strong>install statusem + odkazem</strong>, a když je
+                drawer-auto-open vypnutý a Toasts není nainstalovaný,
+                <strong>varovat</strong>, že zákazník nedostane feedback o přidání.
+                <em>Obecná zásada (kandidát do
+                <code>ADMIN-UX-PRINCIPLES.md</code>):</em> každá Won appka, co se
+                cross-referencuje na jinou, to <strong>vkusně zmíní v adminu</strong>
+                (benefit + install status + odkaz) — cross-app awareness, ne adware
+                cross-promo à la konkurence.
+              </p>
+              <p class="guide-idea">
+                <strong>Širší úhly (vyladěno 2026-08):</strong>
+                <em>Stale totals</em> — stepper změní košík, ale součet na
+                stránce chvíli lže; po reconcile proto <strong>vždy emit
+                <code>won:cart:update</code></strong> (téma / ostatní Won appky
+                si repaint řeší samy) a <strong>Pro opt-in aktivní refresh přes
+                Section Rendering API</strong> (stepper si vyžádá nový HTML
+                cart/totals sekcí a vymění ho) pro témata, co event
+                neposlouchají. <em>Robustnost na ~99 % témat</em> = štěpení
+                rizika: logika je 100% přenositelná (Ajax Cart API je
+                univerzální kontrakt, láme se jen DOM attachment), na to
+                vrstvíme <strong>(1)</strong> OS2.0 konvence
+                (<code>form[action*="/cart/add"]</code>, <code>[name="id"]</code>,
+                <code>input[name="quantity"]</code>/<code>updates[]</code>,
+                <code>&lt;quantity-input&gt;</code>, řádky s <code>data-key</code>),
+                <strong>(2)</strong> <strong>theme-adapter registry</strong> —
+                projet HTML strukturu top N témat (Dawn, Horizon +
+                nejprodávanější) a nakódit přesné selektory; známé téma → precizní
+                adapter, neznámé → heuristika z (1), <strong>(3)</strong> app
+                block na PDP (merchant položí stepper ručně → obchází
+                auto-detekci), <strong>(4)</strong> admin selector-override +
+                živý indikátor <em>„detekováno / nedetekováno"</em> na každé
+                ploše, a pojistku <strong>safe no-op</strong> (když si není jistý,
+                radši nekreslí, než aby rozbil téma). <em>Reconcile = autorita</em>:
+                při server-reject (inventory / Function / cart-limit řádek upraví)
+                vyhrává <code>/cart.js</code>, rollback <strong>nenápadný</strong>
+                (ne blikání); <strong>flush před odchodem</strong>
+                (<code>pagehide</code>/<code>visibilitychange</code>), ať se
+                agregovaný sync neztratí při navigaci, a nenápadný
+                <strong>„pending" mikro-stav</strong> během round-tripu.
+                <em>B2B / wholesale pozice:</em> rychlá manipulace velkých
+                množství, case-packs, přímé zadání čísla a MOQ/násobky = přesně
+                bolest B2B → Stepper je „B2B-friendly qty widget" a most k
+                <strong>Won Tiers</strong>; <strong>direct-entry velkých množství
+                = Pro</strong> (spolu s quantity rules). <em>Analytika vede k
+                závěrům, ne vanity metrikám:</em> kde se mění množství
+                (PDP/cart/karta = kam dát pozornost), up/down/qty→0 na ploše
+                (removal v draweru = cenový/shipping šok = friction diagnóza),
+                produkty často bumpnuté na 2–3+ = <strong>kandidáti na
+                multipack/bundle</strong> → krmí <strong>Companion bigger-pack</strong>
+                a <strong>Rewards</strong> prahy, B2B účty s velkými množstvími →
+                insight pro <strong>Tiers</strong>. Dva akční závěry: merchandising
+                (co zabalit) + friction (kde ztrácíš košík) — obojí předá dál jiné
+                Won appce. <em>Zralost:</em> spec na úrovni Toasts, ~70 % substrátu
+                zděděno z pilota; nové jen dva rizikové kusy
+                (<code>optimistic.mutate</code> + theme-attachment) → před plným
+                buildem <strong>krátký spike</strong>: theme-adapter detekce napříč
+                top tématy + <code>optimistic.mutate</code> red-first unit testy.
+              </p>
+              <p class="guide-idea">
+                <strong>Ověřeno sweepem 8 Theme Store témat (2026-08):</strong>
+                headless Playwright probe (Impact, Concept, Pebble, Purevea,
+                Stack, Fit-Check, Local, Shapes). Nálezy zamykají architekturu:
+                <strong>(a)</strong> logická vrstva 100% přenositelná —
+                <code>[name="id"]</code> + <code>/cart/add.js</code>+<code>/cart.js</code>
+                fungují <strong>8/8</strong>; <strong>(b)</strong> cart qty =
+                <code>input[name="updates[]"]</code> u <strong>7/8</strong>
+                (jediný outlier Impact = custom <code>&lt;quantity-input&gt;</code>
+                přes <code>/cart/change.js</code> → adapter) → generická heuristika
+                pokryje ~85 %, zbytek ~3 adaptery; <strong>(c)</strong> PDP qty
+                stepper chybí u <strong>7/8</strong> témat → <strong>na PDP jít
+                přes merchant app block, ne auto-detekci</strong> (a Stepper tam
+                přidává schopnost, kterou většina témat nemá), <strong>drawer/cart
+                = univerzální auto-attach plocha</strong> (drawer 6/8, cart-page
+                fallback pro Local/Shapes); <strong>(d)</strong> line-identity se
+                liší (<code>data-key</code> / <code>data-line</code> / positional)
+                → resolvovat přes nejbližší cart-item předka nebo pořadí z
+                <code>/cart.js</code>, nikdy přes jediný atribut. Reusable
+                <code>theme-sweep.mjs</code> (přidat téma = jeden řádek) je ta
+                theme-attachment půlka de-risk spike; zbývá jen
+                <code>optimistic.mutate</code>. <strong>→ Stav Stepperu:
+                ready-to-build</strong> — brainstorm + theme-attachment de-risk
+                <strong>uzavřeny</strong>; <code>optimistic.mutate</code> red-first
+                spike náleží už do build fáze (psaní core kódu), ne do plánování.
+              </p>
+              <p class="guide-idea">
+                <strong>Ekosystém — Function-owning appky (zásada, platí i pro
+                Rewards/Tiers):</strong> Function appka = <strong>dvě extension,
+                jedna appka</strong>: storefront (pure surface) <em>zobrazuje</em>
+                efekt, Shopify Function (Rust→WASM) <em>vynucuje/naceňuje</em> u
+                checkoutu; config = jeden zdroj pravdy → storefront přes app-proxy
+                <code>/config</code>, Function přes <code>won.*</code> metafield.
+                <strong>Koordinace (blend):</strong> každá appka vlastní a nasazuje
+                <em>svoji</em> Function (modularita), ale <strong>postavené ze
+                sdílené Rust logiky</strong> v <code>packages/functions/*</code> →
+                konzistentní chování, sdílené zaokrouhlování, sdílený
+                <code>won.*</code> metafield schema a jedna <strong>„Won stacking
+                policy"</strong> (konzistentní <code>combinesWith</code> +
+                zdokumentované pořadí + cross-app awareness jako Toasts↔GiftLadder
+                <code>_gift_progress</code>). Vyhnout se: jeden „hub" vlastnící
+                všechny Functions (zabíjí modularitu) i nekoordinovaným per-app
+                Functions (dvojité slevy). Přesné limity Functions ověřit přes
+                <code>shopify-dev</code> MCP při psaní Rewards/Tiers.
+              </p>
               <ol>
                 <li>
                   <strong>Architektura:</strong> App
@@ -778,25 +913,32 @@
                   „everywhere" část — karty + search).
                 </li>
                 <li>
-                  <strong>MVP žebřík (každý shippable, TDD):</strong>
+                  <strong>MVP žebřík (reach-first, každý shippable, TDD):</strong>
                   <code>MVP0</code> skeleton (klon <code>_template</code>, embed,
                   <code>StepperConfig</code> + config proxy, cart-core scaffold,
                   no-op host s <code>data-won-stepper-status="ready"</code>) ·
-                  <code>MVP1</code> PDP optimistický +/− (okamžité UI přes
-                  <code>optimistic.mutate</code>, sync na pozadí, rollback na
-                  server-pravdu, zámek proti dvojkliku) ·
-                  <code>MVP2</code> cart page + drawer steppery + živý count
-                  badge čtený z <code>cartState</code> ·
-                  <code>MVP3</code> <strong>zpevnění adapteru</strong> (Dawn +
-                  Horizon, quick-add, Section Rendering API, multi-tab re-sync) —
-                  díl, na kterém pak stojí celá suite ·
-                  <code>MVP4</code> inventory-aware min/max/step +
-                  loading/disabled/out-of-stock stavy + a11y (<code>aria-live</code>
-                  count, klávesnice) ·
-                  <code>MVP5</code> steppery na collection kartách + v search
-                  výsledcích (těžká „everywhere" část, <strong>gated</strong>) ·
-                  <code>MVP6</code> presety/config UI, targeting, plán/billing
-                  (reálné Shopify Billing / managed pricing).
+                  <code>MVP1</code> <strong>PDP</strong> optimistický +/− (okamžité
+                  UI přes <code>optimistic.mutate</code>, agregovaný sync na
+                  pozadí, rollback na server-pravdu, zámek proti dvojkliku) +
+                  <strong>živý cart-count badge</strong> z <code>cartState</code> ·
+                  <code>MVP2</code> <strong>cart page + drawer</strong> steppery
+                  (Section Rendering; qty 0 → default remove, toggle chování) +
+                  přímé zadání čísla ·
+                  <code>MVP3</code> <strong>search výsledky</strong> (add-from-card
+                  0→1 + qty, varianta-na-kartě) + lazy-mount (IntersectionObserver) ·
+                  <code>MVP4</code> <strong>collection / product karty</strong>
+                  (grid) + adopce existujícího theme qty controlu ·
+                  <code>MVP5</code> <strong>zbývající buy-CTA plochy</strong>
+                  (quick-view, featured/related) + <strong>zpevnění adapteru</strong>
+                  (Dawn+Horizon <code>shopify:product:select</code> rescan,
+                  multi-tab, síťová odolnost) = „everywhere" kompletní ·
+                  <code>MVP6</code> <strong>quantity rules UI</strong> (Pro):
+                  min/step/max z <code>won.quantity_rules</code> (snap na násobky,
+                  disable na maxu, hint + micro-feedback); Free drží inventory cap ·
+                  <code>MVP7</code> appearance tuning + custom CSS (Pro) + a11y
+                  (klávesnice, hold-to-repeat) + haptika (opt-in) + reduced-motion ·
+                  <code>MVP8</code> targeting/exclusions + presety/config + reálné
+                  Shopify Billing.
                 </li>
                 <li>
                   <strong>Akceptační kritéria (výběr):</strong> (1) 3× rychle

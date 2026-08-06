@@ -1,0 +1,106 @@
+{%- liquid
+  assign s = section.settings
+  assign has_product = false
+  if product != blank and product.id != blank
+    assign has_product = true
+  endif
+  assign pv = product.selected_or_first_available_variant
+-%}
+{%- if has_product -%}
+<section class="won-sticky-host" data-testid="won-sticky-atc-section">
+  <won-sticky-atc class="won-sticky won-sticky--{{ s.bar_style | default: 'full' }}" data-hidden>
+    <div class="won-sticky__inner won-container">
+      {%- if product.featured_image -%}
+        <img class="won-sticky__thumb" src="{{ product.featured_image | image_url: width: 120 }}" alt="" width="48" height="48" loading="lazy">
+      {%- endif -%}
+      <span class="won-sticky__title">{{ product.title }}</span>
+      <span class="won-sticky__price" data-sticky-price>{{ pv.price | money }}</span>
+      <button type="button" class="won-btn won-btn--primary won-sticky__atc" data-won-add data-variant-id="{{ pv.id }}" data-added-label="{{ 'won.cart.added' | t }}">
+        <span class="won-pcard__add-label">{%- if s.atc_label != blank -%}{{ s.atc_label }}{%- else -%}{{ 'won.cart.add' | t }}{%- endif -%}</span>
+      </button>
+    </div>
+  </won-sticky-atc>
+</section>
+{%- endif -%}
+
+{% stylesheet %}
+  .won-sticky {
+    position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 40;
+    background: var(--won-bg); border-block-start: 1px solid var(--won-border);
+    box-shadow: 0 -6px 24px color-mix(in oklab, var(--won-fg) 10%, transparent);
+    transform: translateY(110%); transition: transform var(--won-dur) var(--won-ease);
+  }
+  .won-sticky.is-visible { transform: translateY(0); }
+  .won-sticky__inner { display: flex; align-items: center; gap: var(--won-space-3); padding-block: var(--won-space-2); }
+  .won-sticky__thumb { inline-size: 48px; block-size: 48px; border-radius: var(--won-radius-sm); object-fit: cover; flex: 0 0 auto; }
+  .won-sticky__title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .won-sticky__price { font-weight: 700; color: var(--won-fg); margin-inline-start: auto; white-space: nowrap; }
+  .won-sticky__atc { flex: 0 0 auto; }
+  @media (min-width: 750px) {
+    .won-sticky__price { margin-inline-start: 0; }
+    .won-sticky__title { margin-inline-end: auto; }
+  }
+  /* Visual variants — switchable in the theme editor. */
+  .won-sticky--compact .won-sticky__thumb { display: none; }
+  .won-sticky--minimal .won-sticky__thumb,
+  .won-sticky--minimal .won-sticky__title { display: none; }
+  .won-sticky--minimal .won-sticky__price { margin-inline-start: 0; margin-inline-end: var(--won-space-3); }
+  .won-sticky--minimal .won-sticky__atc { flex: 1 1 auto; }
+  @media (prefers-reduced-motion: reduce) { .won-sticky { transition: none; } }
+{% endstylesheet %}
+
+{% javascript %}
+  class WonStickyAtc extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.wonBound) return;
+      this.dataset.wonBound = '1';
+      this.priceEl = this.querySelector('[data-sticky-price]');
+      this.btn = this.querySelector('[data-won-add]');
+      // Mirror the main buy area's variant selection when a won-variant-picker is present.
+      document.addEventListener('won:variant:change', (e) => {
+        var v = e.detail && e.detail.variant;
+        if (!v) return;
+        if (this.priceEl && v.price) this.priceEl.textContent = v.price;
+        if (this.btn && v.id) this.btn.setAttribute('data-variant-id', v.id);
+        if (this.btn) this.btn.disabled = v.available === false;
+      });
+      // Reveal once the primary buy area scrolls out of view.
+      var target = document.querySelector('won-variant-picker')
+        || document.querySelector('[data-testid="won-variant-picker-section"]')
+        || document.querySelector('product-form-component, .product-form, main h1');
+      if (target && 'IntersectionObserver' in window) {
+        this.observer = new IntersectionObserver((entries) => {
+          entries.forEach((en) => {
+            this.classList.toggle('is-visible', !en.isIntersecting && en.boundingClientRect.top < 0);
+          });
+        }, { threshold: 0 });
+        this.observer.observe(target);
+      } else {
+        this.classList.add('is-visible');
+      }
+    }
+    disconnectedCallback() { if (this.observer) this.observer.disconnect(); }
+  }
+  if (!customElements.get('won-sticky-atc')) customElements.define('won-sticky-atc', WonStickyAtc);
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "t:won.names.sticky_atc",
+  "tag": "section",
+  "settings": [
+    { "type": "paragraph", "content": "t:won.info.sticky_atc" },
+    {
+      "type": "select", "id": "bar_style", "label": "t:won.settings.sticky_style",
+      "options": [
+        { "value": "full", "label": "t:won.options.sticky_full" },
+        { "value": "compact", "label": "t:won.options.sticky_compact" },
+        { "value": "minimal", "label": "t:won.options.sticky_minimal" }
+      ],
+      "default": "full"
+    },
+    { "type": "text", "id": "atc_label", "label": "t:won.settings.vp_atc_label" }
+  ],
+  "presets": [{ "name": "t:won.names.sticky_atc" }]
+}
+{% endschema %}

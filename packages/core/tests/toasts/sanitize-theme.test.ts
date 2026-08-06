@@ -32,6 +32,21 @@ test("rejects invalid hex and out-of-range numbers", () => {
   assert.equal(sanitizeTheme({ width: 10 }).width, 240);
 });
 
+test("normalises hex colours to lowercase (canonical storage)", () => {
+  // Admin colour pickers emit UPPERCASE hex; storing them canonically keeps the
+  // config diffable and stops spurious per-type overrides on every save.
+  const out = sanitizeTheme({
+    colorBg: "#FFFFFF",
+    colorText: "#1A1F24",
+    borderColor: "#E2E6EA",
+    accent: { added: "#1F8F5F" },
+  });
+  assert.equal(out.colorBg, "#ffffff");
+  assert.equal(out.colorText, "#1a1f24");
+  assert.equal(out.borderColor, "#e2e6ea");
+  assert.equal(out.accent?.added, "#1f8f5f");
+});
+
 test("drops unknown enums instead of defaulting", () => {
   assert.equal("mode" in sanitizeTheme({ mode: "neon" }), false);
   assert.equal("shadow" in sanitizeTheme({ shadow: "huge" }), false);

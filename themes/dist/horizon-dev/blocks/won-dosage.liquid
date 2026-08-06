@@ -32,18 +32,17 @@ as numbered steps. Self-contained; for PDP or any section accepting theme blocks
 {% stylesheet %}
   .won-dosage__heading { margin: 0 0 var(--won-space-4); font-weight: 700; }
   .won-dosage__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--won-space-4); }
-  .won-dosage__step { display: flex; gap: var(--won-space-3); align-items: flex-start; }
+  .won-dosage__step { display: flex; flex-direction: column; gap: var(--won-space-2); align-items: center; text-align: center; }
   .won-dosage__num {
     flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
     inline-size: 32px; block-size: 32px; border-radius: var(--won-radius-pill);
     background: var(--won-accent); color: var(--won-accent-contrast); font-weight: 700; font-size: 0.9rem;
   }
-  .won-dosage__body { display: flex; flex-direction: column; gap: 2px; }
+  .won-dosage__body { display: flex; flex-direction: column; gap: 2px; align-items: center; }
   .won-dosage__label { font-weight: 600; }
   .won-dosage__desc { opacity: 0.85; }
   @media (min-width: 750px) {
     .won-dosage__list { grid-auto-flow: column; grid-auto-columns: 1fr; }
-    .won-dosage__step { flex-direction: column; }
   }
 {% endstylesheet %}
 

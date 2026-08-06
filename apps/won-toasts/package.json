@@ -7,6 +7,9 @@
   },
   "scripts": {
     "build": "react-router build",
+    "build:storefront": "node ./scripts/build-storefront.mjs",
+    "build:storefront:watch": "node --watch-path=./storefront-src ./scripts/build-storefront.mjs",
+    "predev": "npm run build:storefront",
     "dev": "shopify app dev --path .",
     "prisma:generate": "prisma generate",
     "prisma:migrate:deploy": "node ./scripts/ensure-sqlite-db.mjs && prisma migrate deploy",
@@ -44,6 +47,7 @@
     "@types/node": "^22.18.8",
     "@types/react": "^18.3.25",
     "@types/react-dom": "^18.3.7",
+    "esbuild": "0.25.12",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vite": "^6.3.6"

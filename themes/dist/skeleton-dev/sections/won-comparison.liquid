@@ -1,0 +1,109 @@
+{%- liquid
+  assign s = section.settings
+  assign rows = s.rows | newline_to_br | split: '<br />'
+-%}
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-spacing', settings: s %}"
+  data-testid="won-comparison-section"
+>
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-cmp-wrap">
+    {%- if s.heading != blank -%}
+      <h2
+        class="won-heading won-cmp__heading"
+        style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%;"
+      >
+        {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
+      </h2>
+    {%- endif -%}
+    <div class="won-cmp__scroll">
+      {%- assign header_cells = rows[0] | split: '|' -%}
+      <table class="won-cmp__table">
+        <thead>
+          <tr>
+            {%- for c in header_cells -%}
+              <th scope="col" {% if forloop.index == s.highlight_col %}class="is-us"{% endif %}>{{ c | strip }}</th>
+            {%- endfor -%}
+          </tr>
+        </thead>
+        <tbody>
+          {%- for line in rows offset: 1 -%}
+            {%- assign row = line | strip -%}
+            {%- unless row == blank -%}
+              {%- assign cells = row | split: '|' -%}
+              <tr>
+                {%- for c in cells -%}
+                  {%- assign val = c | strip -%}
+                  {%- assign vl = val | downcase -%}
+                  {%- if forloop.first -%}
+                    <th scope="row">{{ val }}</th>
+                  {%- else -%}
+                    <td {% if forloop.index == s.highlight_col %}class="is-us"{% endif %}>
+                      {%- if vl == 'yes' or vl == 'ano' -%}
+                        <svg class="won-cmp__yes" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      {%- elsif vl == 'no' or vl == 'ne' -%}
+                        <svg class="won-cmp__no" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                      {%- else -%}
+                        {{ val }}
+                      {%- endif -%}
+                    </td>
+                  {%- endif -%}
+                {%- endfor -%}
+              </tr>
+            {%- endunless -%}
+          {%- endfor -%}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-cmp-wrap { display: flex; flex-direction: column; gap: var(--won-space-5); }
+  .won-cmp__heading { font-size: var(--won-h-size-m, 1.8rem); max-width: var(--won-h-mw-m, 100%); }
+  .won-cmp__scroll { overflow-x: auto; }
+  .won-cmp__table { inline-size: 100%; border-collapse: collapse; min-inline-size: 480px; }
+  .won-cmp__table th,
+  .won-cmp__table td { padding: var(--won-space-3) var(--won-space-4); text-align: center; border-block-end: 1px solid var(--won-border); }
+  .won-cmp__table thead th { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .won-cmp__table tbody th { text-align: start; font-weight: 500; }
+  .won-cmp__table .is-us { background: color-mix(in oklab, var(--won-accent) 12%, transparent); }
+  .won-cmp__table thead .is-us { border-radius: var(--won-radius-sm) var(--won-radius-sm) 0 0; color: var(--won-accent); font-weight: 800; }
+  .won-cmp__yes { inline-size: 20px; block-size: 20px; color: var(--won-accent); }
+  .won-cmp__no { inline-size: 18px; block-size: 18px; opacity: 0.4; }
+  @media (min-width: 750px) {
+    .won-cmp__heading { font-size: var(--won-h-size-d, 2.4rem); max-width: var(--won-h-mw-d, 100%); }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.comparison",
+  "tag": "section",
+  "disabled_on": { "groups": ["header", "footer"] },
+  "settings": [
+    { "type": "header", "content": "t:won.headers.content" },
+    { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.comparison_heading" },
+    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 72, "step": 2, "unit": "px", "default": 36 },
+    { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 16, "max": 48, "step": 2, "unit": "px", "default": 26 },
+    { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "textarea", "id": "rows", "label": "t:won.settings.rows_compare", "default": "t:won.defaults.comparison_rows" },
+    { "type": "range", "id": "highlight_col", "label": "t:won.settings.highlight_col", "min": 1, "max": 6, "step": 1, "default": 2 },
+    { "type": "header", "content": "t:won.headers.appearance" },
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
+    {
+      "type": "select", "id": "section_width", "label": "t:won.settings.section_width",
+      "options": [
+        { "value": "page", "label": "t:won.options.width_page" },
+        { "value": "full", "label": "t:won.options.width_full" }
+      ],
+      "default": "page"
+    },
+    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 },
+    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 }
+  ],
+  "presets": [{ "name": "t:won.presets.comparison_table", "category": "t:won.categories.content" }]
+}
+{% endschema %}

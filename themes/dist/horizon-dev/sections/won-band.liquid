@@ -3,6 +3,8 @@
   assign has_media = false
   if s.media_type == 'image' and s.image != blank
     assign has_media = true
+  elsif s.media_type == 'image' and s.image_asset != blank
+    assign has_media = true
   elsif s.media_type == 'video' and s.video != blank
     assign has_media = true
   endif
@@ -34,7 +36,11 @@
             <span class="won-band__overlay" style="background: {{ s.overlay_color }};"></span>
           {%- endif -%}
           {%- if s.media_type == 'image' -%}
-            {{ s.image | image_url: width: 2400 | image_tag: widths: '600, 900, 1200, 1800, 2400', sizes: '(min-width: 750px) 50vw, 100vw', class: 'won-band__img', loading: 'lazy', alt: s.image.alt | default: '' }}
+            {%- if s.image != blank -%}
+              {{ s.image | image_url: width: 2400 | image_tag: widths: '600, 900, 1200, 1800, 2400', sizes: '(min-width: 750px) 50vw, 100vw', class: 'won-band__img', loading: 'lazy', alt: s.image.alt | default: '' }}
+            {%- else -%}
+              <img class="won-band__img" src="{{ s.image_asset | asset_url }}" alt="" width="2400" height="1200" loading="lazy">
+            {%- endif -%}
           {%- else -%}
             {{ s.video | video_tag: autoplay: true, loop: true, muted: true, controls: false, class: 'won-band__video' }}
           {%- endif -%}
@@ -101,9 +107,27 @@
   .won-band__video { display: block; width: 100%; height: 100%; object-fit: cover; }
   .won-band__overlay { position: absolute; inset: 0; z-index: 1; }
 
-  .won-band--overlay { position: relative; justify-content: flex-end; min-height: var(--won-band-min, 480px); border-radius: var(--won-radius-lg); overflow: hidden; padding: var(--won-space-6); }
+  .won-band--overlay { position: relative; justify-content: center; align-items: var(--won-band-align, flex-start); min-height: var(--won-band-min, 480px); border-radius: var(--won-radius-lg); overflow: hidden; padding: var(--won-space-7) var(--won-space-6); }
   .won-band--overlay .won-band__media { position: absolute; inset: 0; border-radius: 0; }
-  .won-band--overlay .won-band__content { position: relative; z-index: 2; }
+  /* Depth + header separation scrim: darken top (behind a transparent header) and
+     bottom, keep the middle clear for content. */
+  .won-band--overlay .won-band__media::after {
+    content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background: linear-gradient(180deg, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0) 26%, rgba(0,0,0,0) 62%, rgba(0,0,0,0.28) 100%);
+  }
+  .won-band--overlay .won-band__content { position: relative; z-index: 2; color: #fff; text-shadow: 0 1px 24px rgba(0, 0, 0, 0.28); max-inline-size: 760px; }
+  .won-band--overlay .won-band__eyebrow { color: rgba(255, 255, 255, 0.92); }
+  .won-band--overlay .won-band__heading,
+  .won-band--overlay .won-band__body { color: #fff; }
+  .won-band--overlay .won-btn--secondary { color: #fff; border-color: rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.08); text-shadow: none; }
+  /* Full-bleed background hero: no rounded corners. */
+  .won-container--full > .won-band--overlay { border-radius: 0; }
+  /* Mobile hard-rule: background heroes read centered on small screens even when
+     the desktop layout is left-aligned (the side product art crops off anyway). */
+  @media (max-width: 749px) {
+    .won-band--overlay { align-items: center; }
+    .won-band--overlay .won-band__content { align-items: center; text-align: center; }
+  }
 
   @media (min-width: 750px) {
     .won-band__heading { font-size: var(--won-h-size-d, 3rem); max-width: var(--won-h-mw-d, 60%); }
@@ -161,6 +185,7 @@
       "default": "none"
     },
     { "type": "image_picker", "id": "image", "label": "t:won.settings.image", "visible_if": "{{ section.settings.media_type == 'image' }}" },
+    { "type": "text", "id": "image_asset", "label": "t:won.settings.image_asset", "info": "t:won.info.image_asset", "visible_if": "{{ section.settings.media_type == 'image' }}" },
     { "type": "video", "id": "video", "label": "t:won.settings.video", "visible_if": "{{ section.settings.media_type == 'video' }}" },
     {
       "type": "select", "id": "media_position", "label": "t:won.settings.media_position", "visible_if": "{{ section.settings.media_type != 'none' }}",
@@ -191,10 +216,16 @@
     { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 }
   ],
   "presets": [
-    { "name": "t:won.presets.hero_split", "category": "t:won.categories.layout", "settings": { "media_type": "image", "media_position": "right", "heading": "<p>Fuel your performance</p>", "button_label": "Shop now" } },
-    { "name": "t:won.presets.hero_overlay", "category": "t:won.categories.layout", "settings": { "media_type": "image", "media_position": "background", "content_align": "center", "min_height": 520, "color_scheme": "scheme-2" } },
-    { "name": "t:won.presets.media_text", "category": "t:won.categories.layout", "settings": { "media_type": "image", "media_position": "left" } },
-    { "name": "t:won.presets.cta_band", "category": "t:won.categories.layout", "settings": { "media_type": "none", "content_align": "center", "color_scheme": "scheme-2" } }
+    {
+      "name": "t:won.presets.media_text", "category": "t:won.categories.content",
+      "settings": {
+        "eyebrow": "Why Won", "heading": "<p>Made with clean ingredients</p>", "heading_size_desktop": 44,
+        "body": "<p>Every batch is tested by an independent lab. No fillers, no compromises.</p>",
+        "button_label": "Learn more", "button_style": "secondary",
+        "media_type": "image", "image_asset": "won-hero-product.png", "media_position": "left",
+        "content_align": "left", "min_height": 420, "color_scheme": "scheme-1"
+      }
+    }
   ]
 }
 {% endschema %}

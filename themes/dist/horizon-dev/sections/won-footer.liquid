@@ -1,0 +1,126 @@
+{%- liquid
+  assign s = section.settings
+-%}
+<footer class="won-section won-footer color-{{ s.color_scheme }}" style="{% render 'won-spacing', settings: s %}" data-testid="won-footer-section">
+  <div class="won-container won-footer__inner">
+    <div class="won-footer__top">
+      <div class="won-footer__brand">
+        {%- if s.brand_heading != blank -%}<p class="won-footer__brandname">{{ s.brand_heading }}</p>{%- endif -%}
+        {%- if s.brand_text != blank -%}<div class="won-footer__brandtext rte">{{ s.brand_text }}</div>{%- endif -%}
+        {%- if s.show_payments -%}
+          <div class="won-footer__pay" aria-hidden="true">
+            {%- for type in shop.enabled_payment_types limit: 6 -%}
+              {{ type | payment_type_svg_tag: class: 'won-footer__payicon' }}
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
+      </div>
+
+      <div class="won-footer__cols">
+        {%- for block in section.blocks -%}
+          {%- if block.type == 'menu' -%}
+            <nav class="won-footer__col" {{ block.shopify_attributes }} aria-label="{{ block.settings.heading | escape }}">
+              {%- if block.settings.heading != blank -%}<p class="won-footer__coltitle">{{ block.settings.heading }}</p>{%- endif -%}
+              <ul class="won-footer__list">
+                {%- if block.settings.menu != blank -%}
+                  {%- for link in block.settings.menu.links -%}
+                    <li><a class="won-footer__link" href="{{ link.url }}">{{ link.title }}</a></li>
+                  {%- endfor -%}
+                {%- else -%}
+                  {%- assign rows = block.settings.links | newline_to_br | split: '<br />' -%}
+                  {%- for row in rows -%}
+                    {%- assign r = row | strip -%}
+                    {%- if r contains '|' -%}
+                      {%- assign label = r | split: '|' | first | strip -%}
+                      {%- assign url = r | split: '|' | last | strip -%}
+                      <li><a class="won-footer__link" href="{{ url }}">{{ label }}</a></li>
+                    {%- endif -%}
+                  {%- endfor -%}
+                {%- endif -%}
+              </ul>
+            </nav>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    </div>
+
+    <div class="won-footer__bottom">
+      <p class="won-footer__copy">© {{ 'now' | date: '%Y' }} {{ shop.name }}{% if s.copyright_extra != blank %} · {{ s.copyright_extra }}{% endif %}</p>
+      {%- if s.legal_links != blank -%}
+        <ul class="won-footer__legal">
+          {%- assign legal = s.legal_links | newline_to_br | split: '<br />' -%}
+          {%- for row in legal -%}
+            {%- assign r = row | strip -%}
+            {%- if r contains '|' -%}
+              <li><a class="won-footer__link" href="{{ r | split: '|' | last | strip }}">{{ r | split: '|' | first | strip }}</a></li>
+            {%- endif -%}
+          {%- endfor -%}
+        </ul>
+      {%- endif -%}
+    </div>
+  </div>
+</footer>
+
+{% stylesheet %}
+  .won-footer { border-block-start: 1px solid var(--won-border); }
+  .won-footer__inner { display: flex; flex-direction: column; gap: var(--won-space-6); }
+  .won-footer__top { display: grid; grid-template-columns: 1fr; gap: var(--won-space-6); }
+  .won-footer__brand { display: flex; flex-direction: column; gap: var(--won-space-3); max-inline-size: 34ch; }
+  .won-footer__brandname { margin: 0; font-weight: 800; font-size: 1.25rem; letter-spacing: -0.01em; }
+  .won-footer__brandtext { opacity: 0.75; font-size: 0.95rem; }
+  .won-footer__pay { display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: var(--won-space-2); }
+  .won-footer__payicon { inline-size: 38px; block-size: auto; border-radius: 4px; }
+  .won-footer__cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--won-space-5); }
+  .won-footer__coltitle { margin: 0 0 var(--won-space-3); font-weight: 700; font-size: 0.9rem; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.9; }
+  .won-footer__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--won-space-2); }
+  .won-footer__link { color: var(--won-fg); text-decoration: none; opacity: 0.8; transition: opacity var(--won-dur) var(--won-ease); }
+  .won-footer__link:hover { opacity: 1; }
+  .won-footer__bottom { display: flex; flex-wrap: wrap; gap: var(--won-space-3); justify-content: space-between; align-items: center; padding-block-start: var(--won-space-5); border-block-start: 1px solid var(--won-border); }
+  .won-footer__copy { margin: 0; font-size: 0.85rem; opacity: 0.7; }
+  .won-footer__legal { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--won-space-4); font-size: 0.85rem; }
+  @media (min-width: 750px) {
+    .won-footer__top { grid-template-columns: 1.4fr 2fr; gap: var(--won-space-7); }
+    .won-footer__cols { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.footer",
+  "tag": "section",
+  "settings": [
+    { "type": "header", "content": "t:won.headers.content" },
+    { "type": "inline_richtext", "id": "brand_heading", "label": "t:won.settings.brand_heading", "default": "Won" },
+    { "type": "richtext", "id": "brand_text", "label": "t:won.settings.brand_text", "default": "<p>Sportovní výživa s čistým složením a poctivým poradenstvím.</p>" },
+    { "type": "checkbox", "id": "show_payments", "label": "t:won.settings.show_payments", "default": true },
+    { "type": "textarea", "id": "legal_links", "label": "t:won.settings.legal_links", "info": "t:won.info.footer_links", "default": "Obchodní podmínky | /policies/terms-of-service\nOchrana soukromí | /policies/privacy-policy" },
+    { "type": "text", "id": "copyright_extra", "label": "t:won.settings.copyright_extra", "default": "Všechna práva vyhrazena." },
+    { "type": "header", "content": "t:won.headers.appearance" },
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-2" },
+    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 120, "step": 4, "unit": "px", "default": 64 },
+    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 120, "step": 4, "unit": "px", "default": 40 }
+  ],
+  "blocks": [
+    {
+      "type": "menu",
+      "name": "t:won.names.footer_menu",
+      "settings": [
+        { "type": "text", "id": "heading", "label": "t:won.settings.heading", "default": "Nabídka" },
+        { "type": "link_list", "id": "menu", "label": "t:won.settings.footer_menu_list", "info": "t:won.info.footer_menu" },
+        { "type": "textarea", "id": "links", "label": "t:won.settings.footer_links_manual", "info": "t:won.info.footer_links", "default": "Proteiny | /collections/proteiny\nKreatin & aminokyseliny | /collections/kreatin-aminokyseliny\nVitamíny & minerály | /collections/vitaminy-mineraly" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:won.names.footer",
+      "blocks": [
+        { "type": "menu", "settings": { "heading": "Kategorie", "links": "Proteiny | /collections/proteiny\nKreatin & aminokyseliny | /collections/kreatin-aminokyseliny\nVitamíny & minerály | /collections/vitaminy-mineraly\nZdraví & regenerace | /collections/zdravi-regenerace" } },
+        { "type": "menu", "settings": { "heading": "Informace", "links": "O nás | /pages/about\nBlog | /blogs/news\nČasté dotazy | /pages/faq\nKontakt | /pages/contact" } },
+        { "type": "menu", "settings": { "heading": "Zákaznický servis", "links": "Doprava a platba | /pages/shipping\nVrácení zboží | /policies/refund-policy\nReklamace | /pages/claims\nVěrnostní klub | /account/register" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

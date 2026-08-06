@@ -17,8 +17,9 @@ import type {
 import type { ToastTargeting } from "@won/core/toasts/targeting";
 import type { NotificationRule } from "@won/core/toasts/notifications";
 import type { ExclusionSettings } from "@won/core/toasts/exclusions";
+import type { LocaleSettings } from "@won/core/toasts/locales";
 
-import type { PrismaClient } from "../generated/prisma/client";
+import type { Prisma, PrismaClient } from "../generated/prisma/client";
 import db from "../db.server";
 
 export interface ToastConfigWrite {
@@ -26,12 +27,18 @@ export interface ToastConfigWrite {
   plan?: ToastPlan;
   global?: StoredToastConfig["global"];
   theme?: StoredToastConfig["theme"];
+  byType?: StoredToastConfig["byType"];
+  cartEvents?: StoredToastConfig["cartEvents"];
   messages?: ToastMessages;
+  locales?: Partial<LocaleSettings>;
   milestones?: MilestoneRuleConfig[];
   targeting?: Partial<ToastTargeting>;
   notifications?: NotificationRule[];
   exclusions?: Partial<ExclusionSettings>;
 }
+
+// How many auto-saved versions to keep per shop.
+const VERSION_CAP = 15;
 
 function normalizeShop(shop: string): string {
   const normalized = String(shop ?? "")
@@ -53,7 +60,10 @@ function rowToConfig(row: {
   plan: string;
   global: unknown;
   theme: unknown;
+  byType?: unknown;
+  cartEvents?: unknown;
   messages: unknown;
+  locales?: unknown;
   milestones: unknown;
   targeting: unknown;
   notifications: unknown;
@@ -68,8 +78,17 @@ function rowToConfig(row: {
     theme: isPlainObject(row.theme)
       ? (row.theme as StoredToastConfig["theme"])
       : undefined,
+    byType: isPlainObject(row.byType)
+      ? (row.byType as StoredToastConfig["byType"])
+      : undefined,
+    cartEvents: isPlainObject(row.cartEvents)
+      ? (row.cartEvents as StoredToastConfig["cartEvents"])
+      : undefined,
     messages: isPlainObject(row.messages)
       ? (row.messages as ToastMessages)
+      : undefined,
+    locales: isPlainObject(row.locales)
+      ? (row.locales as Partial<LocaleSettings>)
       : undefined,
     milestones: Array.isArray(row.milestones)
       ? (row.milestones as MilestoneRuleConfig[])
@@ -119,7 +138,10 @@ export function createToastConfigService(prisma: PrismaClient) {
     if (input.plan === "pro" || input.plan === "free") data.plan = input.plan;
     if (isPlainObject(input.global)) data.global = input.global;
     if (isPlainObject(input.theme)) data.theme = input.theme;
+    if (isPlainObject(input.byType)) data.byType = input.byType;
+    if (isPlainObject(input.cartEvents)) data.cartEvents = input.cartEvents;
     if (isPlainObject(input.messages)) data.messages = input.messages;
+    if (isPlainObject(input.locales)) data.locales = input.locales;
     if (Array.isArray(input.milestones)) data.milestones = input.milestones;
     if (isPlainObject(input.targeting)) data.targeting = input.targeting;
     if (Array.isArray(input.notifications)) data.notifications = input.notifications;
@@ -129,6 +151,88 @@ export function createToastConfigService(prisma: PrismaClient) {
       where: { shop: normalizedShop },
       data,
     });
+    await snapshotVersion(normalizedShop, row);
+    return rowToConfig(row);
+  }
+
+  // Persist a rollback snapshot of the saved row, capped per shop. Best-effort —
+  // a history hiccup must never break a save.
+  async function snapshotVersion(
+    shop: string,
+    row: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      const snapshot = {
+        enabled: row.enabled,
+        plan: row.plan,
+        global: row.global ?? null,
+        theme: row.theme ?? null,
+        byType: row.byType ?? null,
+        cartEvents: row.cartEvents ?? null,
+        messages: row.messages ?? null,
+        locales: row.locales ?? null,
+        milestones: row.milestones ?? null,
+        targeting: row.targeting ?? null,
+        notifications: row.notifications ?? null,
+        exclusions: row.exclusions ?? null,
+      };
+      await prisma.configVersion.create({
+        data: { shop, data: snapshot as unknown as Prisma.InputJsonValue },
+      });
+      const old = await prisma.configVersion.findMany({
+        where: { shop },
+        orderBy: { createdAt: "desc" },
+        skip: VERSION_CAP,
+        select: { id: true },
+      });
+      if (old.length) {
+        await prisma.configVersion.deleteMany({
+          where: { id: { in: old.map((v) => v.id) } },
+        });
+      }
+    } catch {
+      // ignore — history is non-critical
+    }
+  }
+
+  /** Recent rollback points (newest first). */
+  async function listConfigVersions(shop: string) {
+    const normalizedShop = normalizeShop(shop);
+    return prisma.configVersion.findMany({
+      where: { shop: normalizedShop },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, createdAt: true },
+      take: VERSION_CAP,
+    });
+  }
+
+  /** Restore a stored version into the live config (does not itself snapshot). */
+  async function restoreConfigVersion(
+    shop: string,
+    versionId: string,
+  ): Promise<ToastAppConfig | null> {
+    const normalizedShop = normalizeShop(shop);
+    const version = await prisma.configVersion.findFirst({
+      where: { id: versionId, shop: normalizedShop },
+    });
+    if (!version || !isPlainObject(version.data)) return null;
+    const d = version.data as Record<string, unknown>;
+    const row = await prisma.toastAppConfig.update({
+      where: { shop: normalizedShop },
+      data: {
+        version: TOAST_CONFIG_VERSION,
+        enabled: d.enabled === true,
+        plan: d.plan === "pro" ? "pro" : "free",
+        global: (d.global ?? null) as never,
+        theme: (d.theme ?? null) as never,
+        messages: (d.messages ?? null) as never,
+        locales: (d.locales ?? null) as never,
+        milestones: (d.milestones ?? null) as never,
+        targeting: (d.targeting ?? null) as never,
+        notifications: (d.notifications ?? null) as never,
+        exclusions: (d.exclusions ?? null) as never,
+      },
+    });
     return rowToConfig(row);
   }
 
@@ -137,12 +241,17 @@ export function createToastConfigService(prisma: PrismaClient) {
     await prisma.toastAppConfig.deleteMany({
       where: { shop: normalizedShop },
     });
+    await prisma.configVersion.deleteMany({
+      where: { shop: normalizedShop },
+    });
   }
 
   return {
     getRawConfig,
     getToastConfig,
     updateToastConfig,
+    listConfigVersions,
+    restoreConfigVersion,
     deleteShopData,
   };
 }
@@ -151,4 +260,6 @@ const toastConfigService = createToastConfigService(db);
 
 export const getToastConfig = toastConfigService.getToastConfig;
 export const updateToastConfig = toastConfigService.updateToastConfig;
+export const listConfigVersions = toastConfigService.listConfigVersions;
+export const restoreConfigVersion = toastConfigService.restoreConfigVersion;
 export const deleteShopData = toastConfigService.deleteShopData;

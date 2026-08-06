@@ -13,6 +13,7 @@ import {
 } from "./config.defaults.ts";
 import { sanitizeNotifications } from "./notifications.ts";
 import { sanitizeExclusions } from "./exclusions.ts";
+import { sanitizeLocaleSettings } from "./locales.ts";
 
 export function exportConfig(config: ToastAppConfig): string {
   return JSON.stringify(
@@ -23,6 +24,7 @@ export function exportConfig(config: ToastAppConfig): string {
       global: config.global,
       theme: config.theme,
       messages: config.messages,
+      locales: config.locales,
       milestones: config.milestones,
       targeting: config.targeting,
       notifications: config.notifications,
@@ -64,6 +66,7 @@ export function importConfig(json: string): StoredToastConfig {
   if (Object.keys(theme).length > 0) out.theme = theme;
 
   out.messages = mergeMessages(p.messages);
+  out.locales = sanitizeLocaleSettings(p.locales);
   out.milestones = sanitizeMilestones(p.milestones);
   out.targeting = sanitizeTargeting(p.targeting);
   out.notifications = sanitizeNotifications(p.notifications);

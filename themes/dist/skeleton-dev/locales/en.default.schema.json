@@ -91,7 +91,19 @@
       "param_table": "Won Spec Table",
       "nutrition_table": "Won Nutrition Table",
       "video": "Won Video",
-      "delivery_note": "Won Delivery Note"
+      "delivery_note": "Won Delivery Note",
+      "app_slot": "Won App Slot",
+      "dosage": "Won Dosage",
+      "comparison": "Won Comparison",
+      "articles": "Won Articles",
+      "page_header": "Won Page Header",
+      "stats": "Won Stats",
+      "contact": "Won Contact",
+      "tabs": "Won Tabs",
+      "tab": "Won Tab"
+    },
+    "info": {
+      "app_slot": "This section shows a Won app block when installed; otherwise it shows the placeholder below."
     },
     "headers": {
       "source": "Source",
@@ -182,7 +194,18 @@
       "label_col2": "Column 2 label (leave blank to hide)",
       "video_type": "Video type",
       "video_url": "Video URL",
-      "note": "Note"
+      "note": "Note",
+      "steps": "Steps (Label : description, one per line)",
+      "rows_compare": "Rows (first line = header, then Feature | value | value; use 'yes' / 'no')",
+      "highlight_col": "Highlighted column",
+      "blog": "Blog",
+      "articles_limit": "Maximum articles",
+      "show_date": "Show date",
+      "show_excerpt": "Show excerpt",
+      "subheading": "Subheading",
+      "stats": "Stats (Value : Label, one per line)",
+      "show_phone": "Show phone field",
+      "title": "Title"
     },
     "options": {
       "source_manual": "Manual slides",
@@ -219,7 +242,9 @@
       "tile_large": "Large",
       "layout_mosaic": "Mosaic",
       "video_hosted": "Shopify-hosted",
-      "video_external": "External URL"
+      "video_external": "External URL",
+      "layout_featured": "Featured",
+      "layout_form": "Form only"
     },
     "presets": {
       "product_carousel": "Won Carousel — products",
@@ -238,12 +263,19 @@
       "newsletter_leadmagnet": "Won Newsletter — lead magnet",
       "category_grid": "Won Collection Tiles — grid",
       "category_mosaic": "Won Collection Tiles — mosaic",
-      "before_after": "Won Before / After"
+      "before_after": "Won Before / After",
+      "comparison_table": "Won Comparison",
+      "articles_grid": "Won Articles — grid",
+      "articles_featured": "Won Articles — featured",
+      "contact": "Won Contact",
+      "contact_split": "Won Contact — split",
+      "tabs": "Won Tabs"
     },
     "categories": {
       "products": "Products",
       "content": "Content",
-      "layout": "Layout"
+      "layout": "Layout",
+      "apps": "Apps"
     },
     "defaults": {
       "slide_heading": "<p>Slide heading</p>",
@@ -267,7 +299,20 @@
       "label_nutrient": "Nutrient",
       "label_col1": "Per 100 g",
       "label_col2": "Per serving",
-      "delivery_note": "<p>Order by 2 pm for same-day dispatch.</p>"
+      "delivery_note": "<p>Order by 2 pm for same-day dispatch.</p>",
+      "app_slot_heading": "Unlock more with Won apps",
+      "app_slot_text": "<p>Install the Won app to activate this feature on your storefront.</p>",
+      "app_slot_cta": "Install",
+      "dosage_heading": "<p>When to use</p>",
+      "dosage_steps": "Before : 30–60 min before activity\nDuring : every 20 minutes\nAfter : within 30 min of finishing",
+      "comparison_heading": "<p>Why choose us</p>",
+      "comparison_rows": "Feature | Us | Others\nFree shipping | yes | no\nLab tested | yes | no\nFlat pricing | yes | no",
+      "page_header_heading": "<p>Page title</p>",
+      "stats_items": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+      "contact_heading": "<p>Get in touch</p>",
+      "contact_success": "Thanks — we'll be in touch soon.",
+      "tab_title": "Tab",
+      "tab_content": "<p>Tab content.</p>"
     }
   }
 }

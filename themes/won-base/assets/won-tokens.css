@@ -62,6 +62,31 @@
   .won-section { --won-pad-scale: 1; }
 }
 
+/* HARD RULE: on mobile every section reads centered by default. But a centered
+   section TITLE must never float over a left-aligned body — that mismatch reads
+   as broken. So structured/data sections (comparison tables, FAQ/tabs) opt out as
+   a WHOLE via `won-section--start`: heading AND body go start-aligned together,
+   staying internally consistent. Merchants override per section on desktop via
+   each section's own alignment setting. (Invariant: assertHeadingBodyAlignment.) */
+@media (max-width: 749px) {
+  .won-section { text-align: center; }
+
+  /* Whole-section start alignment — the title travels with its content. */
+  .won-section--start,
+  .won-section--start :where(*) { text-align: start; }
+
+  /* A single data element inside an otherwise-centered section still opts out on
+     its own (e.g. a spec/params table under a centered marketing heading). NOTE:
+     FAQ/tabs (won-panels) are intentionally NOT here — merchants want those
+     centered on mobile like the rest of the page; the section centers its own
+     rows/questions/answers. */
+  .won-section:not(.won-section--start) :is(
+    table, ul, ol, .won-params__list,
+    .won-pcard, .won-collection__grid, .won-collection__filters, .won-facet,
+    .won-vp__table
+  ) { text-align: start; }
+}
+
 .won-heading {
   margin: 0;
   font-family: var(--font-heading--family, inherit);
@@ -74,6 +99,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--won-space-2);
+  min-block-size: 44px; /* WCAG 2.5.5 tap target */
   padding: 0.7em 1.2em;
   border-radius: var(--won-radius-pill);
   font: inherit;
@@ -103,3 +129,144 @@
     transform: none;
   }
 }
+
+/* Badges — shared across product cards and PDP (see snippets/won-badges). */
+.won-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.won-badge {
+  display: inline-flex; align-items: center;
+  padding: 0.28em 0.62em; border-radius: var(--won-radius-pill);
+  font-size: 0.72rem; font-weight: 700; line-height: 1; letter-spacing: 0.02em;
+  background: color-mix(in oklab, var(--won-fg) 8%, var(--won-bg)); color: var(--won-fg);
+}
+.won-badge--sale { background: var(--won-accent); color: var(--won-accent-contrast); }
+.won-badge--new { background: #1e66f5; color: #fff; }
+.won-badge--eco { background: #1e8e3e; color: #fff; }
+
+/* Product card — shared by carousel, PLP, search, cross-sell (see
+   snippets/won-product-card). Quick-add pill: hover-reveal on desktop, always
+   visible on touch. The add button is a sibling of the media link (never nested
+   in an anchor). */
+.won-pcard { position: relative; display: flex; flex-direction: column; gap: var(--won-space-2); }
+.won-pcard__media { position: relative; background: var(--won-surface); border-radius: var(--won-radius-sm); overflow: hidden; }
+.won-pcard__media--square { aspect-ratio: 1 / 1; }
+.won-pcard__media--portrait { aspect-ratio: 4 / 5; }
+.won-pcard__media--landscape { aspect-ratio: 4 / 3; }
+.won-pcard__badges { position: absolute; inset-block-start: var(--won-space-2); inset-inline-start: var(--won-space-2); z-index: 2; }
+.won-pcard__media-link { display: block; inline-size: 100%; block-size: 100%; }
+.won-pcard__media-link--placeholder { background: radial-gradient(120% 90% at 50% 0%, color-mix(in oklab, var(--won-accent) 18%, var(--won-surface)), var(--won-surface)); }
+.won-pcard__img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
+.won-pcard__media--natural .won-pcard__img { object-fit: cover; }
+.won-pcard__info { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--won-fg); }
+.won-pcard__title { font-weight: 600; }
+.won-pcard__price { color: var(--won-accent); font-weight: 700; }
+.won-pcard__price-was { color: var(--won-muted); opacity: 0.6; font-weight: 500; margin-inline-start: var(--won-space-2); }
+.won-pcard__ppu { color: var(--won-muted); font-size: 0.8rem; }
+
+/* Star rating — from metafields, rendered on cards + PDP (see snippets/won-rating). */
+.won-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.won-rating { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+.won-rating__stars { position: relative; display: inline-block; color: var(--won-border); letter-spacing: 2px; }
+.won-rating__stars::before { content: '★★★★★'; position: absolute; inset-block-start: 0; inset-inline-start: 0; color: var(--won-accent); overflow: hidden; white-space: nowrap; inline-size: calc(var(--won-rating, 0) / 5 * 100%); }
+.won-rating__count, .won-rating__n { color: var(--won-muted); }
+.won-pcard__add {
+  position: absolute; inset-block-end: var(--won-space-3); inset-inline-end: var(--won-space-3);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--won-space-2);
+  max-inline-size: calc(100% - 2 * var(--won-space-3));
+  min-block-size: 44px; /* WCAG 2.5.5 tap target */
+  padding: 0.6em 1em; border: 0; border-radius: var(--won-radius-pill);
+  background: var(--won-accent); color: var(--won-accent-contrast);
+  font: inherit; font-weight: 600; font-size: 0.9rem; line-height: 1.1;
+  text-decoration: none; cursor: pointer; white-space: nowrap;
+  box-shadow: 0 4px 14px color-mix(in oklab, var(--won-fg) 20%, transparent);
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity var(--won-dur) var(--won-ease), transform var(--won-dur) var(--won-ease), background var(--won-dur) var(--won-ease);
+}
+.won-pcard:hover .won-pcard__add,
+.won-pcard:focus-within .won-pcard__add { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.won-pcard__add:disabled { cursor: default; }
+.won-pcard__add.is-added { background: color-mix(in oklab, var(--won-accent) 45%, #1e8e3e); }
+.won-pcard__add--soldout { background: var(--won-border); color: var(--won-fg); cursor: default; opacity: 1; transform: none; box-shadow: none; font-weight: 500; }
+@media (max-width: 1024px), (hover: none) { .won-pcard__add { opacity: 1; transform: none; pointer-events: auto; } }
+@media (prefers-reduced-motion: reduce) { .won-pcard__add { transition: background var(--won-dur) var(--won-ease); } }
+
+/* ------------------------------------------------------------------ *
+ * Won Hero — shared across won-hero (single) / won-hero-grid /        *
+ * won-hero-carousel. Each of those thin sections outputs the matching *
+ * .won-hero--{single|grid|slider} wrapper; the styling lives here once.*
+ * ------------------------------------------------------------------ */
+.won-hero { position: relative; }
+.won-hero__carousel { position: relative; display: block; }
+
+/* Single stage: one slide filling the width, height from the slide's min_height. */
+.won-hero--single .won-hero__track { display: flex; flex-direction: column; }
+.won-hero--single .won-hero__track > .won-slide { min-height: var(--won-hero-min, 0px); }
+.won-container--full .won-hero--single .won-hero__track > .won-slide { border-radius: 0; }
+
+/* Grid: N hero tiles side by side (Aktin-style). Tablet 2-up, mobile stacked. */
+.won-hero--grid .won-hero__track {
+  display: grid;
+  grid-template-columns: repeat(var(--won-hero-cols, 4), minmax(0, 1fr));
+  gap: var(--won-hero-gap, 16px);
+}
+.won-hero--grid .won-hero__track > .won-slide { min-height: var(--won-hero-min, 0px); }
+@media (max-width: 990px) { .won-hero--grid .won-hero__track { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 749px) { .won-hero--grid .won-hero__track { grid-template-columns: 1fr; } }
+
+/* Slider: one slide per view, horizontal snap; driven by shared won-carousel.js. */
+.won-hero--slider .won-hero__track {
+  display: flex; gap: var(--won-hero-gap, 0px);
+  overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+  touch-action: pan-x pan-y; scrollbar-width: none;
+}
+.won-hero--slider .won-hero__track::-webkit-scrollbar { display: none; }
+.won-hero--slider .won-hero__track > * {
+  scroll-snap-align: start;
+  flex: 0 0 calc((100% - (var(--won-hero-peek, 1) - 1) * var(--won-hero-gap, 0px)) / var(--won-hero-peek, 1));
+  min-height: var(--won-hero-min, 0px);
+}
+.won-container--full .won-hero--slider .won-hero__track > .won-slide { border-radius: 0; }
+.won-hero__carousel.is-dragging .won-hero__track { scroll-snap-type: none; scroll-behavior: auto; cursor: grabbing; }
+@media (min-width: 750px) { .won-hero--slider .won-hero__track > * { flex-basis: 100%; } }
+
+.won-hero__arrows { position: absolute; inset-block-end: var(--won-space-4); inset-inline-end: var(--won-space-4); display: flex; gap: var(--won-space-2); z-index: 3; }
+.won-hero__arrow {
+  inline-size: 44px; block-size: 44px; border-radius: var(--won-radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.5); background: rgba(0, 0, 0, 0.28); color: #fff;
+  font-size: 1.4rem; line-height: 1; cursor: pointer; backdrop-filter: blur(4px);
+}
+.won-hero__arrow:disabled { opacity: 0.3; cursor: default; }
+.won-hero__progress {
+  position: absolute; inset-block-end: var(--won-space-3); inset-inline: 0; margin-inline: auto;
+  inline-size: min(200px, 40%); block-size: 4px; z-index: 3;
+  background: rgba(255, 255, 255, 0.35); border-radius: var(--won-radius-pill); overflow: hidden;
+}
+.won-hero__progress-bar { display: block; block-size: 100%; inline-size: 30%; background: #fff; border-radius: inherit; }
+@media (prefers-reduced-motion: reduce) { .won-hero__track { scroll-behavior: auto; } }
+
+/* Durable rule: hero slides read centered on small screens. */
+@media (max-width: 749px) {
+  .won-hero .won-slide__body { align-items: center; text-align: center; }
+  .won-hero .won-slide__actions { justify-content: center; }
+}
+
+/* Tap-target floor (WCAG 2.5.5, 44px) for base-theme controls the won layer
+   sits alongside — native Horizon ships some controls a hair under 44px. */
+.skip-to-content-link,
+.button { min-block-size: 44px; }
+/* Native Horizon icon controls that ship well under 44px — safe to enlarge the
+   hit area without distorting layout (both are icon buttons with room around). */
+.slideshow-control { min-inline-size: 44px; min-block-size: 44px; }
+.search__reset-button { min-inline-size: 44px; min-block-size: 44px; display: inline-flex; align-items: center; justify-content: center; }
+/* Selects and text-like inputs floor to 44px tall — safe (no visual distortion).
+   Checkbox/radio/range are excluded: their tap target is the label, not the box. */
+select,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not([type="color"]) {
+  min-block-size: 44px;
+}
+/* Native Horizon grid-density switcher (2/3/4 columns) in the mobile facet drawer. */
+.column-options__option { min-block-size: 44px; min-inline-size: 44px; display: inline-flex; align-items: center; justify-content: center; }
+/* Native Horizon quantity stepper: the numeric field between −/+ ships ~36px wide. */
+.quantity-selector input[type="number"] { min-inline-size: 44px; }
+/* Won interactive controls that must meet the 44px tap floor. */
+.won-collection__clear,
+.won-facet__summary { min-block-size: 44px; display: flex; align-items: center; }

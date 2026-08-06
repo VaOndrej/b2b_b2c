@@ -435,6 +435,15 @@ Vše governováno MVP8.
 - **Analytics dashboard** (sběr už v modelu §5): impressions, clicks, CTR, Undo
   rate, dismiss rate **per-event/per-rule**, „most recent / top products". **Bez
   falešné atribuce** (toast = asistence, ne příčina).
+- **DEFERRED SEM z admin review (2026-08-06):** interim on-device „Suggestions"
+  (`ruleBasedSuggestions` v `@won/core/toasts/ai-advisor`) byly **staženy z Insights
+  UI** — byly předčasné a stály na špatné premise. **Korekce návrhu (závazná pro
+  MVP13):** *kliky nejsou signál hodnoty pro informativní toasty.* „Added to cart"
+  má z principu ~0 CTR (nakupující ji přečte, ale neklikne) — to **neznamená**, že je
+  bezcenná. Advisor nesmí navrhovat „vypni pravidlo s 0 CTR" plošně. Success metrika
+  musí být **per-typ**: informativní/cart eventy měř read-through / low-dismiss /
+  merchantem definovaný cíl, ne kliky; jen akční toasty (countdown/announcement/CTA)
+  smí být hodnoceny přes CTR. Teprve s touto per-typ metrikou má advisor smysl zapnout.
 - **AI advisor SE SUBSTANCÍ** (Claude API, `claude-opus-4-8`/`claude-sonnet-5`):
   „AI Setup" navrhne pravidla dle typu obchodu; „AI Optimize" vezme **reálné
   metriky** a vrátí **konkrétní akční** návrhy (vypni pravidlo s 0 CTR, zkrať

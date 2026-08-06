@@ -1,0 +1,48 @@
+{% doc %}
+won-panel — one panel (title + rich content) used inside won-panels. Renders
+mode-aware from the parent section's `display` setting: a tab panel (for the
+won-tabset element to wire) when display=tabs, or a native <details> row when
+display=accordion. Exclusive-open in accordion mode is driven by the section's
+allow_multiple via a shared name attribute.
+@example
+{% content_for 'block', type: 'won-panel', id: 'panel-1' %}
+{% enddoc %}
+
+{%- assign s = block.settings -%}
+{%- if section.settings.display == 'tabs' -%}
+  <div
+    class="won-panels__panel"
+    role="tabpanel"
+    id="won-panelpanel-{{ block.id }}"
+    data-title="{{ s.title | strip_html | strip | escape }}"
+    {{ block.shopify_attributes }}
+  >
+    {%- if s.title != blank -%}<h3 class="won-panels__panel-title">{{ s.title }}</h3>{%- endif -%}
+    <div class="rte">{{ s.content }}</div>
+  </div>
+{%- else -%}
+  <details
+    class="won-panels__row"
+    {% if s.open %}open{% endif %}
+    {%- unless section.settings.allow_multiple %} name="won-panels-{{ section.id }}"{% endunless %}
+    {{ block.shopify_attributes }}
+  >
+    <summary class="won-panels__summary">
+      <span class="won-panels__q">{{ s.title }}</span>
+      <span class="won-panels__icon" aria-hidden="true"></span>
+    </summary>
+    <div class="won-panels__answer rte">{{ s.content }}</div>
+  </details>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "t:won.names.panel",
+  "settings": [
+    { "type": "inline_richtext", "id": "title", "label": "t:won.settings.title", "default": "t:won.defaults.tab_title" },
+    { "type": "richtext", "id": "content", "label": "t:won.settings.content", "default": "t:won.defaults.tab_content" },
+    { "type": "checkbox", "id": "open", "label": "t:won.settings.open_by_default", "info": "t:won.info.panel_open", "default": false }
+  ],
+  "presets": [{ "name": "t:won.names.panel" }]
+}
+{% endschema %}

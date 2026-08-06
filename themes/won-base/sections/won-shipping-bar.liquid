@@ -1,0 +1,108 @@
+{%- liquid
+  assign s = section.settings
+  assign threshold = s.threshold | times: 100
+  assign total = cart.total_price
+  assign remaining = threshold | minus: total
+  assign reached = false
+  if remaining <= 0
+    assign reached = true
+  endif
+  assign pct = 0
+  if threshold > 0
+    assign pct = total | times: 100 | divided_by: threshold
+    if pct > 100
+      assign pct = 100
+    endif
+  endif
+-%}
+<section
+  class="won-section won-section--flush color-{{ s.color_scheme }}"
+  style="{% render 'won-spacing', settings: s %}"
+  data-testid="won-shipping-bar-section"
+>
+  <div class="won-container">
+    <won-shipping-bar
+      class="won-shipbar"
+      data-threshold="{{ threshold }}"
+      data-msg-remaining="{{ s.msg_remaining | default: 'won.ship.remaining' | t | escape }}"
+      data-msg-reached="{{ s.msg_reached | default: 'won.ship.reached' | t | escape }}"
+    >
+      <p class="won-shipbar__msg" data-shipbar-msg>
+        {%- if reached -%}
+          {{ s.msg_reached | default: 'won.ship.reached' | t }}
+        {%- else -%}
+          {%- assign rem_money = remaining | money -%}
+          {{ s.msg_remaining | default: 'won.ship.remaining' | t | replace: '[amount]', rem_money }}
+        {%- endif -%}
+      </p>
+      <div class="won-shipbar__track"><span class="won-shipbar__fill" data-shipbar-fill style="inline-size: {{ pct }}%;"></span></div>
+    </won-shipping-bar>
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-section--flush { padding-block: var(--won-space-2); }
+  .won-shipbar { display: flex; align-items: center; justify-content: center; gap: var(--won-space-3); flex-wrap: wrap; max-inline-size: 620px; margin-inline: auto; }
+  .won-shipbar__msg { margin: 0; text-align: center; font-size: 0.86rem; font-weight: 600; }
+  .won-shipbar__track { flex: 1 1 160px; min-inline-size: 120px; max-inline-size: 240px; block-size: 6px; background: var(--won-border); border-radius: var(--won-radius-pill); overflow: hidden; }
+  .won-shipbar__fill { display: block; block-size: 100%; inline-size: 0; background: var(--won-accent); border-radius: inherit; transition: inline-size var(--won-dur) var(--won-ease); }
+{% endstylesheet %}
+
+{% javascript %}
+  class WonShippingBar extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.wonBound) return;
+      this.dataset.wonBound = '1';
+      this.threshold = parseInt(this.dataset.threshold, 10) || 0;
+      this.fill = this.querySelector('[data-shipbar-fill]');
+      this.msg = this.querySelector('[data-shipbar-msg]');
+      this._update = this.refresh.bind(this);
+      document.addEventListener('won:cart:added', this._update);
+      document.addEventListener('cart:refresh', this._update);
+    }
+    disconnectedCallback() {
+      document.removeEventListener('won:cart:added', this._update);
+      document.removeEventListener('cart:refresh', this._update);
+    }
+    money(cents, currency) {
+      try {
+        return new Intl.NumberFormat(undefined, { style: 'currency', currency: currency || 'USD' }).format(cents / 100);
+      } catch (e) {
+        return (cents / 100).toFixed(2);
+      }
+    }
+    async refresh() {
+      if (!this.threshold) return;
+      try {
+        var cart = await (await fetch('/cart.js')).json();
+        var total = cart.total_price;
+        var pct = Math.min(100, Math.round((total / this.threshold) * 100));
+        if (this.fill) this.fill.style.inlineSize = pct + '%';
+        if (this.msg) {
+          if (total >= this.threshold) {
+            this.msg.textContent = this.dataset.msgReached;
+          } else {
+            this.msg.textContent = (this.dataset.msgRemaining || '').replace('[amount]', this.money(this.threshold - total, cart.currency));
+          }
+        }
+      } catch (e) { /* keep server-rendered state */ }
+    }
+  }
+  if (!customElements.get('won-shipping-bar')) customElements.define('won-shipping-bar', WonShippingBar);
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "t:won.names.shipping_bar",
+  "tag": "section",
+  "settings": [
+    { "type": "number", "id": "threshold", "label": "t:won.settings.ship_threshold", "info": "t:won.info.ship_threshold", "default": 1500 },
+    { "type": "text", "id": "msg_remaining", "label": "t:won.settings.ship_msg_remaining", "info": "t:won.info.ship_msg_remaining" },
+    { "type": "text", "id": "msg_reached", "label": "t:won.settings.ship_msg_reached" },
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-2" },
+    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 60, "step": 2, "unit": "px", "default": 12 },
+    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 60, "step": 2, "unit": "px", "default": 12 }
+  ],
+  "presets": [{ "name": "t:won.names.shipping_bar" }]
+}
+{% endschema %}

@@ -33,3 +33,17 @@ neověřené části musí zůstat označené jako plánované, rozpracované ne
 Výjimkou jsou čistě read-only úkoly bez změn souborů, například vysvětlení,
 analýza, audit nebo plán. Pokud se z takového úkolu stane implementace, povinnost
 se okamžitě aktivuje.
+
+## Ověřování storefrontu (responzivní invarianty)
+
+Každá změna dotýkající se storefrontu (`themes/**/*.liquid|css|js`) se ověřuje
+spuštěním `test:smoke` a voláním sdíleného invariantu `assertResponsiveSane(page)`
+na mobilním viewportu (390px) — žádný horizontální overflow, nic širšího než
+viewport, control tap targety ≥44px. Horizontální snap-scrollery (carousel, card
+row, slider) se navíc ověřují přes `assertCarousel(...)` v režimu čteném z
+`data-mobile-mode` (`single` = jedna vycentrovaná karta, default; `peek`; `N`).
+
+Postup, prahy i kanonický kód helperu vlastní skill `shopify-dev` →
+`shopify-theme-testing` („Universal Responsive Invariants"). Pokud repo Playwright
+harness nebo `tests/support/responsive-invariants.ts` ještě nemá, řiď se pokynem
+skillu a založ je podle něj — nekopíruj invarianty ručně po komponentách.

@@ -48,6 +48,27 @@ for (const dir of codeDirs) {
   }
 }
 
+// 2b. Wire the shared won token/utility stylesheet into the base layout <head>.
+// won-tokens.css holds the global :root design tokens and shared classes
+// (.won-container, .won-section, .won-heading, .won-btn) that every won section
+// depends on. Per Shopify guidance, global utility CSS is loaded once via
+// stylesheet_tag in the layout. won-base source never edits vendor files, so this
+// integration happens here at compose time. Idempotent; targets both bases.
+const wonHead = [
+  "{{ 'won-tokens.css' | asset_url | stylesheet_tag }}",
+  "<script src=\"{{ 'won-cart.js' | asset_url }}\" defer></script>",
+].join('\n  ');
+const layoutFile = join(outDir, 'layout', 'theme.liquid');
+if (existsSync(layoutFile)) {
+  let layout = readFileSync(layoutFile, 'utf8');
+  if (!layout.includes('won-tokens.css')) {
+    layout = layout.replace(/<\/head>/i, `  ${wonHead}\n  </head>`);
+    writeFileSync(layoutFile, layout);
+  }
+} else {
+  console.warn('warning: layout/theme.liquid not found; won assets not wired');
+}
+
 // 3. Deep-merge won locale fragments into the matching base locale files.
 // Base locale files can carry a /* ... */ header comment (Horizon) or trailing
 // commas (Skeleton) — neither is strict JSON. Tolerate both before parsing.
@@ -83,4 +104,29 @@ if (existsSync(wonLocales)) {
   }
 }
 
-console.log(`composed ${target}: ${overlaid} code files overlaid, ${mergedLocales} locale files merged -> ${outDir}`);
+// 4. Demo overlay (dev only): apply curated merchant data for our demo store —
+//    templates/*.json, section groups (header/footer), config/settings_data.json.
+//    Real client themes pull this from their live store; for the -dev demo build we
+//    keep it reproducible in themes/demo/<base>/ so a fresh compose never wipes the
+//    curated homepage/PDP/footer again. Copies over the pristine base data files.
+const demoDir = join(themesRoot, 'demo', target);
+let demoFiles = 0;
+if (existsSync(demoDir)) {
+  const walk = (rel) => {
+    const abs = join(demoDir, rel);
+    for (const entry of readdirSync(abs)) {
+      const childRel = join(rel, entry);
+      if (statSync(join(abs, entry)).isDirectory()) {
+        walk(childRel);
+      } else {
+        const dest = join(outDir, childRel);
+        mkdirSync(dirname(dest), { recursive: true });
+        cpSync(join(demoDir, childRel), dest);
+        demoFiles++;
+      }
+    }
+  };
+  walk('.');
+}
+
+console.log(`composed ${target}: ${overlaid} code files overlaid, ${mergedLocales} locale files merged, ${demoFiles} demo data files applied -> ${outDir}`);

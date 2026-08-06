@@ -112,13 +112,47 @@ export interface ToastTheme {
   customCss: string;
 }
 
+/** Toast "types" whose look + behaviour can differ. The 6 cart events share the
+ *  single "cart" type; every other type is its own. (doctrine: per-type style,
+ *  cart shared.) */
+export type ToastTypeKey =
+  | "cart"
+  | "countdown"
+  | "announcement"
+  | "stock.low"
+  | "cart.activity"
+  | "order.summary"
+  | "order.created";
+
+/** The behaviour fields a single type may override; everything else (position,
+ *  stacking, anti-spam/frequency) stays GLOBAL. Absent = inherit the default. */
+export interface ToastTypeBehaviorOverride {
+  durationMs?: number;
+  clickAction?: ClickAction;
+  autoDismiss?: boolean;
+  pauseOnHover?: boolean;
+  closeable?: boolean;
+}
+
+/** Per-type override layered over the global default look/behaviour. Absent
+ *  fields inherit — a merchant only sets what should differ (default + override). */
+export interface ToastTypeOverride {
+  theme?: Partial<ToastTheme>;
+  behavior?: ToastTypeBehaviorOverride;
+}
+
 import type { ToastTargeting } from "./targeting.ts";
 import type { NotificationRule } from "./notifications.ts";
 import type { ExclusionSettings } from "./exclusions.ts";
+import type { LocaleSettings } from "./locales.ts";
 
 export type ToastPlan = "free" | "pro";
 
-export type ToastLocale = "cs" | "sk" | "en";
+/**
+ * A BCP-47 locale tag (e.g. "en", "cs", "pt-BR"). Locales are merchant-defined
+ * DATA, not a fixed product enum — see ./locales.ts and doctrine §5.
+ */
+export type ToastLocale = string;
 
 /** Editable message templates: event type → locale → template string. */
 export type ToastMessages = Partial<
@@ -143,7 +177,16 @@ export interface ToastAppConfig {
   plan: ToastPlan;
   global: GlobalSettings;
   theme: ToastTheme;
+  /** Per-type look/behaviour overrides layered over `theme`/`global` (the
+   *  defaults). Empty = every type uses the default (back-compat). */
+  byType: Partial<Record<ToastTypeKey, ToastTypeOverride>>;
+  /** Per cart-event on/off (added/removed/increased/decreased). Absent = on, so
+   *  an empty map means every cart event shows (back-compat). gift/shipping are
+   *  gated by their milestone toggles instead. */
+  cartEvents: Partial<Record<ToastSemanticType, boolean>>;
   messages: ToastMessages;
+  /** Merchant-defined languages (locale-as-data); default is the fallback. */
+  locales: LocaleSettings;
   milestones: MilestoneRuleConfig[];
   targeting: ToastTargeting;
   /** MVP9+ recipes: page-view / aggregate notification rules. */
@@ -164,7 +207,10 @@ export interface StoredToastConfig {
   theme?: Omit<Partial<ToastTheme>, "accent"> & {
     accent?: Partial<Record<ToastSemanticType, string>>;
   };
+  byType?: Partial<Record<ToastTypeKey, ToastTypeOverride>>;
+  cartEvents?: Partial<Record<ToastSemanticType, boolean>>;
   messages?: ToastMessages;
+  locales?: Partial<LocaleSettings>;
   milestones?: MilestoneRuleConfig[];
   targeting?: Partial<ToastTargeting>;
   notifications?: NotificationRule[];

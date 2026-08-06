@@ -336,12 +336,60 @@
       "compare": "Comparison slider",
       "no_articles": "No articles yet."
     },
+    "guide": {
+      "metafield_title": "Connect a metafield to fill this table",
+      "metafield_step1": "Settings → Custom data → Products → Add definition.",
+      "metafield_step2": "Use this namespace and key, type \"List of single line text\" (or JSON).",
+      "metafield_step3": "Open a product, add one line per row using the format below.",
+      "metafield_example": "Each row — label, then values separated by a vertical bar:"
+    },
     "contact": {
       "name": "Name",
       "email": "Email",
       "phone": "Phone",
       "message": "Message",
       "send": "Send"
+    },
+    "cart": {
+      "add": "Add to cart",
+      "added": "Added ✓",
+      "choose": "Choose",
+      "soldout": "Sold out"
+    },
+    "unit": {
+      "per_100g": "100 g",
+      "per_kg": "kg",
+      "per_serving": "serving"
+    },
+    "vp": {
+      "placeholder": "Variant picker — appears on a product page.",
+      "show_table": "Show variants table",
+      "variant": "Variant",
+      "price": "Price",
+      "unit": "Per unit",
+      "choose": "Choose",
+      "quantity": "Quantity"
+    },
+    "plp": {
+      "products": "products",
+      "filters": "Filters",
+      "clear": "Clear all",
+      "sort": "Sort",
+      "empty": "No products match your filters.",
+      "apply": "Apply",
+      "pagination": "Pagination",
+      "price_from": "Price from",
+      "price_to": "Price to"
+    },
+    "stock": {
+      "in": "In stock",
+      "low": "Only a few left",
+      "out": "Sold out",
+      "expiry": "Best before"
+    },
+    "ship": {
+      "remaining": "Add [amount] more for free shipping",
+      "reached": "You’ve got free shipping 🎉"
     }
   }
 }

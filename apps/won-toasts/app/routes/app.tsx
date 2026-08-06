@@ -20,13 +20,13 @@ export default function App() {
     <AppProvider embedded apiKey={apiKey}>
       <WonNavMenu
         items={[
-          { to: "/app/recipes", label: "Recipes" },
-          { to: "/app/behavior", label: "Behavior" },
-          { to: "/app/appearance", label: "Appearance" },
-          { to: "/app/events", label: "Events" },
+          // 4 task-based destinations + Plan (doctrine §7). Recipes+Events→Toasts,
+          // Appearance+Behavior→Design, Targeting+Exclusions→Targeting,
+          // Analytics→Insights. Old routes redirect so deep-links still resolve.
+          { to: "/app/toasts", label: "Toasts" },
+          { to: "/app/design", label: "Design" },
           { to: "/app/targeting", label: "Targeting" },
-          { to: "/app/exclusions", label: "Exclusions" },
-          { to: "/app/analytics", label: "Analytics" },
+          { to: "/app/analytics", label: "Insights" },
           { to: "/app/plan", label: "Plan" },
         ]}
       />

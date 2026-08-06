@@ -3,6 +3,15 @@ import { useRef, useState } from "react";
 const ROWS = ["top", "middle", "bottom"] as const;
 const COLS = ["left", "center", "right"] as const;
 
+// Human names for the position enum (doctrine §4c — no raw "top-right" in a
+// label, aria-label or the readout).
+const ROW_LABEL: Record<string, string> = { top: "Top", middle: "Middle", bottom: "Bottom" };
+const COL_LABEL: Record<string, string> = { left: "left", center: "centre", right: "right" };
+function positionLabel(v: string): string {
+  const [row, col] = v.split("-");
+  return `${ROW_LABEL[row] ?? row} ${COL_LABEL[col] ?? col}`;
+}
+
 // Visual position picker: a dummy storefront screen with 9 clickable zones.
 // The selected zone shows a mock toast so the merchant sees *where* it lands
 // instead of reading "top-right" from a dropdown. Posts `position` via a hidden
@@ -96,7 +105,7 @@ export function PositionField({
                   key={v}
                   type="button"
                   onClick={() => choose(v)}
-                  aria-label={v}
+                  aria-label={positionLabel(v)}
                   aria-pressed={active}
                   style={{
                     display: "flex",
@@ -144,7 +153,7 @@ export function PositionField({
           )}
         </div>
       </div>
-      <div style={{ marginTop: 6, fontSize: 12, color: "#6b7280" }}>{value}</div>
+      <div style={{ marginTop: 6, fontSize: 12, color: "#6b7280" }}>{positionLabel(value)}</div>
     </div>
   );
 }

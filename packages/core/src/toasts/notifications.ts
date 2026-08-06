@@ -8,8 +8,11 @@
 // real inventory, cart.activity a real server-side counter. Nothing fabricated.
 
 import type { ToastLocale, ToastPlan } from "./config.types.ts";
-import type { NotificationSchedule } from "./scheduling.ts";
-import { sanitizeSchedule } from "./scheduling.ts";
+import {
+  DEFAULT_LOCALE,
+  normalizeLocale,
+  resolveLocalizedText,
+} from "./locales.ts";
 
 export type NotificationType =
   | "countdown"
@@ -77,8 +80,6 @@ interface NotificationBase {
   message: string;
   /** Optional per-rule frequency (MVP8 governance) overrides. */
   frequency?: NotificationFrequency;
-  /** Optional active window (MVP10); absent = always scheduled. */
-  schedule?: NotificationSchedule;
 }
 
 export interface CountdownNotification extends NotificationBase {
@@ -149,17 +150,21 @@ export function notificationOnPage(
   return (pages as string[]).includes(pageType);
 }
 
-/** Locale-aware message. Announcements carry a per-locale map; everything else
- * (and any missing locale) falls back to the base `message`. */
+/** Locale-aware message. Announcements carry a per-locale map resolved with the
+ * shared fallback chain (exact → language → default locale → any); everything
+ * else, and any unresolved locale, falls back to the base `message`. */
 export function notificationMessage(
   rule: NotificationRule | Pick<NotificationRule, "message">,
   locale: ToastLocale,
+  defaultLocale: ToastLocale = DEFAULT_LOCALE,
 ): string {
   const messages = (rule as AnnouncementNotification).messages;
-  if (messages && typeof messages[locale] === "string" && messages[locale]) {
-    return messages[locale] as string;
-  }
-  return rule.message ?? "";
+  // No "any language" catch-all: the base `message` is the author's fallback, so
+  // an unrelated language must never win over it.
+  const localized = resolveLocalizedText(messages, locale, defaultLocale, {
+    allowAny: false,
+  });
+  return localized || rule.message || "";
 }
 
 // ---- sanitation ----
@@ -197,17 +202,15 @@ function sanitizePages(input: unknown): NotificationPage[] {
   return out;
 }
 
-// Locale set kept inline to avoid a runtime import cycle with config.defaults.
-const NOTIF_LOCALES: readonly ToastLocale[] = ["cs", "sk", "en"];
-
 function sanitizeLocaleMap(
   input: unknown,
 ): Partial<Record<ToastLocale, string>> | undefined {
   if (!isPlainObject(input)) return undefined;
   const out: Partial<Record<ToastLocale, string>> = {};
-  for (const loc of NOTIF_LOCALES) {
-    const v = (input as Record<string, unknown>)[loc];
-    if (typeof v === "string" && v.trim()) out[loc] = v.slice(0, 200);
+  // Open locale set (locale-as-data): keep any valid BCP-47 key, normalised.
+  for (const [rawLoc, v] of Object.entries(input)) {
+    const loc = normalizeLocale(rawLoc);
+    if (loc && typeof v === "string" && v.trim()) out[loc] = v.slice(0, 200);
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }
@@ -251,8 +254,6 @@ export function sanitizeNotifications(input: unknown): NotificationRule[] {
     };
     const frequency = sanitizeFrequency(raw.frequency);
     if (frequency) base.frequency = frequency;
-    const schedule = sanitizeSchedule(raw.schedule);
-    if (schedule) base.schedule = schedule;
 
     let rule: NotificationRule;
     if (type === "countdown") {

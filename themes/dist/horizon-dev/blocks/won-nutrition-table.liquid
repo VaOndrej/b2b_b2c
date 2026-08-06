@@ -1,39 +1,119 @@
 {% doc %}
-won-nutrition-table — a nutrition / ingredient table (one "Nutrient | col1 | col2"
-per line) with configurable column headers. Self-contained; for PDP or any section
-accepting theme blocks.
-@example
-{% content_for 'block', type: 'won-nutrition-table', id: 'nutrition' %}
+  won-nutrition-table — a composition / nutrition table for PDP (or any section that
+  accepts theme blocks). Content can be typed manually OR, preferably, pulled from a
+  product metafield. The metafield TYPE is auto-detected and rendered the same clean
+  way every time:
+    • list.single_line_text_field  → each list entry is one "Label | col1 | col2" row
+    • single_line / multi_line text → each line is one "Label | col1 | col2" row
+    • json (object)                → each key/value pair becomes a "Label | Value" row
+  When a metafield is selected but empty/missing, the theme editor shows the merchant
+  exactly how to create and fill it — nothing renders on the live storefront.
+  @example
+  {% content_for 'block', type: 'won-nutrition-table', id: 'nutrition' %}
 {% enddoc %}
 
 {%- liquid
   assign s = block.settings
-  assign lines = s.rows | newline_to_br | split: '<br />'
+
+  assign mode = 'none'
+  assign line_items = ''
+  assign kv_value = ''
+  assign resolved_key = s.metafield_key
+
+  if s.source == 'metafield'
+    if s.metafield_key != blank
+      assign parts = s.metafield_key | split: '.'
+      assign ns = parts[0] | strip
+      assign k = parts[1] | strip
+      if ns != blank and k != blank
+        assign mf = product.metafields[ns][k]
+        if mf != blank and mf.type != blank
+          assign mtype = mf.type
+          if mtype contains 'list.'
+            assign line_items = mf.value
+            assign mode = 'lines'
+          elsif mtype == 'json'
+            assign kv_value = mf.value
+            assign mode = 'kv'
+          else
+            assign line_items = mf.value | newline_to_br | split: '<br />'
+            assign mode = 'lines'
+          endif
+        endif
+      endif
+    endif
+  else
+    if s.rows != blank
+      assign line_items = s.rows | newline_to_br | split: '<br />'
+      assign mode = 'lines'
+    endif
+  endif
+
+  assign has_col2 = false
+  if s.label_col2 != blank
+    assign has_col2 = true
+  endif
 -%}
 <div class="won-nutri" {{ block.shopify_attributes }}>
   {%- if s.heading != blank -%}<p class="won-nutri__heading">{{ s.heading }}</p>{%- endif -%}
-  <table class="won-nutri__table">
-    <thead>
-      <tr>
-        <th scope="col">{{ s.label_nutrient }}</th>
-        <th scope="col">{{ s.label_col1 }}</th>
-        {%- if s.label_col2 != blank -%}<th scope="col">{{ s.label_col2 }}</th>{%- endif -%}
-      </tr>
-    </thead>
-    <tbody>
-      {%- for line in lines -%}
-        {%- assign row = line | strip -%}
-        {%- if row contains '|' -%}
-          {%- assign cells = row | split: '|' -%}
+
+  {%- if mode == 'none' -%}
+    {%- if request.design_mode and s.source == 'metafield' -%}
+      <div class="won-nutri__guide">
+        <p class="won-nutri__guide-title">{{ 'won.guide.metafield_title' | t }}</p>
+        <p class="won-nutri__guide-key">{{ resolved_key | default: 'custom.nutrition' }}</p>
+        <ol class="won-nutri__guide-steps">
+          <li>{{ 'won.guide.metafield_step1' | t }}</li>
+          <li>{{ 'won.guide.metafield_step2' | t }}</li>
+          <li>{{ 'won.guide.metafield_step3' | t }}</li>
+        </ol>
+        <p class="won-nutri__guide-eg">{{ 'won.guide.metafield_example' | t }}</p>
+        <code class="won-nutri__guide-code">Protein | 24 g | 4.8 g</code>
+      </div>
+    {%- endif -%}
+
+  {%- elsif mode == 'kv' -%}
+    <table class="won-nutri__table">
+      <thead>
+        <tr>
+          <th scope="col">{{ s.label_nutrient }}</th>
+          <th scope="col">{{ s.label_col1 }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for property in kv_value -%}
           <tr>
-            <th scope="row">{{ cells[0] | strip }}</th>
-            <td>{{ cells[1] | strip }}</td>
-            {%- if s.label_col2 != blank -%}<td>{{ cells[2] | strip }}</td>{%- endif -%}
+            <th scope="row">{{ property.first }}</th>
+            <td>{{ property.last }}</td>
           </tr>
-        {%- endif -%}
-      {%- endfor -%}
-    </tbody>
-  </table>
+        {%- endfor -%}
+      </tbody>
+    </table>
+
+  {%- else -%}
+    <table class="won-nutri__table">
+      <thead>
+        <tr>
+          <th scope="col">{{ s.label_nutrient }}</th>
+          <th scope="col">{{ s.label_col1 }}</th>
+          {%- if has_col2 -%}<th scope="col">{{ s.label_col2 }}</th>{%- endif -%}
+        </tr>
+      </thead>
+      <tbody>
+        {%- for line in line_items -%}
+          {%- assign row = line | strip -%}
+          {%- if row != blank -%}
+            {%- assign cells = row | split: '|' -%}
+            <tr>
+              <th scope="row">{{ cells[0] | strip }}</th>
+              <td>{{ cells[1] | strip }}</td>
+              {%- if has_col2 -%}<td>{{ cells[2] | strip }}</td>{%- endif -%}
+            </tr>
+          {%- endif -%}
+        {%- endfor -%}
+      </tbody>
+    </table>
+  {%- endif -%}
 </div>
 
 {% stylesheet %}
@@ -44,6 +124,16 @@ accepting theme blocks.
   .won-nutri__table thead th { font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; }
   .won-nutri__table tbody th { font-weight: 500; }
   .won-nutri__table td { text-align: end; font-variant-numeric: tabular-nums; }
+  .won-nutri__guide {
+    border: 1px dashed var(--won-border); border-radius: var(--won-radius-md);
+    padding: var(--won-space-4); background: var(--won-surface); text-align: start;
+    display: flex; flex-direction: column; gap: var(--won-space-2);
+  }
+  .won-nutri__guide-title { margin: 0; font-weight: 700; }
+  .won-nutri__guide-key { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; color: var(--won-accent); }
+  .won-nutri__guide-steps { margin: 0; padding-inline-start: 1.2em; display: flex; flex-direction: column; gap: 2px; }
+  .won-nutri__guide-eg { margin: var(--won-space-2) 0 0; opacity: 0.8; }
+  .won-nutri__guide-code { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: color-mix(in oklab, var(--won-fg) 8%, var(--won-bg)); padding: 0.3em 0.6em; border-radius: var(--won-radius-sm); }
 {% endstylesheet %}
 
 {% schema %}
@@ -51,10 +141,21 @@ accepting theme blocks.
   "name": "t:won.names.nutrition_table",
   "settings": [
     { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.nutrition_heading" },
+    {
+      "type": "select",
+      "id": "source",
+      "label": "t:won.settings.source",
+      "options": [
+        { "value": "manual", "label": "t:won.options.source_manual_text" },
+        { "value": "metafield", "label": "t:won.options.source_metafield" }
+      ],
+      "default": "manual"
+    },
+    { "type": "text", "id": "metafield_key", "label": "t:won.settings.metafield_key", "info": "t:won.info.nutrition_metafield", "default": "custom.nutrition", "visible_if": "{{ block.settings.source == 'metafield' }}" },
     { "type": "text", "id": "label_nutrient", "label": "t:won.settings.label_nutrient", "default": "t:won.defaults.label_nutrient" },
     { "type": "text", "id": "label_col1", "label": "t:won.settings.label_col1", "default": "t:won.defaults.label_col1" },
-    { "type": "text", "id": "label_col2", "label": "t:won.settings.label_col2", "default": "t:won.defaults.label_col2" },
-    { "type": "textarea", "id": "rows", "label": "t:won.settings.rows_nutri", "default": "t:won.defaults.nutrition_rows" }
+    { "type": "text", "id": "label_col2", "label": "t:won.settings.label_col2", "default": "t:won.defaults.label_col2", "info": "t:won.info.label_col2_json" },
+    { "type": "textarea", "id": "rows", "label": "t:won.settings.rows_nutri", "default": "t:won.defaults.nutrition_rows", "visible_if": "{{ block.settings.source == 'manual' }}" }
   ],
   "presets": [{ "name": "t:won.names.nutrition_table" }]
 }

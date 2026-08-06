@@ -7,6 +7,7 @@ import { DEFAULT_THEME } from "./config.defaults.ts";
 import type { ToastAppConfig, ToastPlan } from "./config.types.ts";
 import { DEFAULT_TARGETING } from "./targeting.ts";
 import { notificationPlanFor } from "./notifications.ts";
+import { capLocaleSettingsForPlan } from "./locales.ts";
 
 export type ProFeature =
   | "design_studio"
@@ -48,6 +49,9 @@ export function gateConfigForPlan(config: ToastAppConfig): ToastAppConfig {
   return {
     ...config,
     theme: DEFAULT_THEME,
+    // Per-type look/behaviour overrides are a Pro scope (the design studio); Free
+    // renders every type with the default look.
+    byType: {},
     milestones: config.milestones.slice(0, FREE_MILESTONE_LIMIT),
     targeting: DEFAULT_TARGETING, // targeting is a Pro feature
     // Free keeps countdown notifications (real deadline urgency) but not the
@@ -55,8 +59,11 @@ export function gateConfigForPlan(config: ToastAppConfig): ToastAppConfig {
     notifications: config.notifications.filter(
       (n) => notificationPlanFor(n.type) === "free",
     ),
-    // Free keeps global behaviour (position, duration, basic grouping) and
-    // messages/localization — those are usability, not scope.
+    // Localization is tiered by COUNT (not quality): Free ships up to 2 languages
+    // (the default is always kept), Pro ships many. Messages themselves stay
+    // fully editable on Free — only the number of languages is a Pro scope.
+    locales: capLocaleSettingsForPlan(config.locales, "free"),
+    // Free keeps global behaviour (position, duration, basic grouping).
   };
 }
 

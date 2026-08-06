@@ -84,6 +84,11 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     background: var(--won-surface);
     box-shadow: 0 6px 24px color-mix(in oklab, var(--won-fg) 10%, transparent);
   }
+  /* Card styles need inner breathing room. The media sits in a sibling element,
+     so it stays full-bleed against the card edges while only the text body is
+     padded. Overlayed (background media) keeps its own padding. */
+  .won-slide--bordered:not(.won-slide--overlayed) .won-slide__body,
+  .won-slide--elevated:not(.won-slide--overlayed) .won-slide__body { padding: var(--won-space-4); }
   .won-slide__media { position: relative; overflow: hidden; border-radius: var(--won-radius-sm); }
   .won-slide__img,
   .won-slide__video { display: block; width: 100%; height: 100%; object-fit: cover; }

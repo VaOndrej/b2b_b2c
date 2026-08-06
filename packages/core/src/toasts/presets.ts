@@ -5,6 +5,8 @@
 import type { GlobalSettings, ToastTheme } from "./config.types.ts";
 import type { SanitizedGlobal } from "./config.defaults.ts";
 
+// Each look is a COMPLETE visual set — including a distinct accent palette — so
+// applying one visibly switches the whole colour scheme, not just the shape.
 export const PRESET_LOOKS = {
   minimal: {
     mode: "system",
@@ -15,6 +17,16 @@ export const PRESET_LOOKS = {
     backdropBlur: false,
     iconSet: "none",
     showImage: false,
+    accent: {
+      added: "#3a7d5d",
+      removed: "#b45555",
+      increased: "#3a7d5d",
+      decreased: "#9a7b3f",
+      gift: "#6b6f76",
+      shipping: "#5a6b8a",
+      discount: "#6b6f76",
+      info: "#6b6f76",
+    },
   },
   bold: {
     mode: "dark",
@@ -24,6 +36,16 @@ export const PRESET_LOOKS = {
     iconSet: "line",
     showImage: true,
     showDelta: true,
+    accent: {
+      added: "#22c55e",
+      removed: "#ef4444",
+      increased: "#22c55e",
+      decreased: "#f59e0b",
+      gift: "#a855f7",
+      shipping: "#3b82f6",
+      discount: "#f43f5e",
+      info: "#94a3b8",
+    },
   },
   luxury: {
     mode: "light",
@@ -33,6 +55,16 @@ export const PRESET_LOOKS = {
     borderColor: "#111111",
     iconSet: "none",
     fontMode: "inherit-theme",
+    accent: {
+      added: "#0f766e",
+      removed: "#7f1d1d",
+      increased: "#0f766e",
+      decreased: "#b8860b",
+      gift: "#b8860b",
+      shipping: "#1e3a5f",
+      discount: "#7f1d1d",
+      info: "#57534e",
+    },
   },
   playful: {
     mode: "system",
@@ -41,6 +73,16 @@ export const PRESET_LOOKS = {
     animationIn: "pop",
     iconSet: "emoji",
     showImage: true,
+    accent: {
+      added: "#10b981",
+      removed: "#f43f5e",
+      increased: "#14b8a6",
+      decreased: "#f59e0b",
+      gift: "#d946ef",
+      shipping: "#3b82f6",
+      discount: "#ec4899",
+      info: "#8b5cf6",
+    },
   },
 } satisfies Record<string, Partial<ToastTheme>>;
 

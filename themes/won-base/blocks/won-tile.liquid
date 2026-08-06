@@ -5,28 +5,52 @@ won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
 {% content_for 'block', type: 'won-tile', id: 'tile-1' %}
 {% enddoc %}
 
-{%- assign s = block.settings -%}
+{%- liquid
+  assign s = block.settings
+  assign col = s.collection
+  assign col_by_handle = collections[s.collection]
+  if col_by_handle != blank
+    assign col = col_by_handle
+  endif
+  assign tile_image = s.image
+  if tile_image == blank and col != blank
+    assign tile_image = col.image
+  endif
+  assign tile_url = s.link_url
+  if tile_url == blank and col != blank
+    assign tile_url = col.url
+  endif
+  assign tile_heading = s.heading
+  if tile_heading == blank and col != blank
+    assign tile_heading = col.title
+  endif
+-%}
 <a
   class="won-tile won-tile--{{ s.tile_size }}"
-  {% if s.link_url != blank %}href="{{ s.link_url }}"{% endif %}
+  style="--won-radius-md: {{ s.corner_radius }}px;"
+  {% if tile_url != blank %}href="{{ tile_url }}"{% endif %}
   {{ block.shopify_attributes }}
 >
-  <div class="won-tile__media">
-    {%- if s.toggle_overlay -%}<span class="won-tile__overlay" style="background: {{ s.overlay_color }};"></span>{%- endif -%}
-    {%- if s.image != blank -%}
-      {{ s.image | image_url: width: 1200 | image_tag: widths: '300, 500, 800, 1200', sizes: '(min-width: 750px) 33vw, 100vw', class: 'won-tile__img', loading: 'lazy', alt: s.image.alt | default: '' }}
-    {%- else -%}
-      {{ 'collection-1' | placeholder_svg_tag: 'won-tile__img' }}
+  <div class="won-tile__media{% if tile_image == blank %} won-tile__media--placeholder{% endif %}">
+    {%- if s.toggle_overlay and tile_image != blank -%}<span class="won-tile__overlay" style="background: {{ s.overlay_color }};"></span>{%- endif -%}
+    {%- if tile_image != blank -%}
+      {{ tile_image | image_url: width: 1200 | image_tag: widths: '300, 500, 800, 1200', sizes: '(min-width: 750px) 33vw, 100vw', class: 'won-tile__img', loading: 'lazy', alt: tile_image.alt | default: tile_heading }}
     {%- endif -%}
   </div>
-  {%- if s.heading != blank -%}
-    <span class="won-tile__label">{{ s.heading }}</span>
+  {%- if tile_heading != blank -%}
+    <span class="won-tile__label">{{ tile_heading }}</span>
   {%- endif -%}
 </a>
 
 {% stylesheet %}
   .won-tile { position: relative; display: block; border-radius: var(--won-radius-md); overflow: hidden; text-decoration: none; color: #fff; }
   .won-tile__media { position: relative; aspect-ratio: 3 / 4; }
+  /* No image → clean branded gradient card (no vendor silhouette), so category
+     tiles look intentional before the merchant uploads artwork. */
+  .won-tile__media--placeholder {
+    background:
+      radial-gradient(120% 80% at 50% 0%, color-mix(in oklab, var(--won-accent) 22%, var(--won-surface)), var(--won-surface));
+  }
   .won-tile--large { grid-column: span 2; grid-row: span 2; }
   .won-tile__img { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
   .won-tile__overlay { position: absolute; inset: 0; z-index: 1; }
@@ -35,6 +59,12 @@ won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
     padding: var(--won-space-4);
     font-size: 1.2rem; font-weight: 700;
     background: linear-gradient(to top, color-mix(in oklab, #000 55%, transparent), transparent);
+  }
+  /* On the imageless gradient the label sits on a light surface — use dark ink
+     and no scrim so it stays legible. */
+  .won-tile__media--placeholder .won-tile__label {
+    color: var(--won-fg);
+    background: none;
   }
   @media (min-width: 750px) {
     .won-tile--large .won-tile__media { aspect-ratio: auto; block-size: 100%; }
@@ -45,6 +75,7 @@ won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
 {
   "name": "t:won.names.tile",
   "settings": [
+    { "type": "collection", "id": "collection", "label": "t:won.settings.collection", "info": "t:won.info.tile_collection" },
     { "type": "image_picker", "id": "image", "label": "t:won.settings.image" },
     { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.tile_heading" },
     { "type": "url", "id": "link_url", "label": "t:won.settings.link_url" },
@@ -56,8 +87,9 @@ won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
       ],
       "default": "small"
     },
-    { "type": "checkbox", "id": "toggle_overlay", "label": "t:won.settings.overlay", "default": true },
-    { "type": "color", "id": "overlay_color", "label": "t:won.settings.overlay_color", "alpha": true, "default": "#0000001a" }
+    { "type": "range", "id": "corner_radius", "label": "t:won.settings.corner_radius", "min": 0, "max": 40, "step": 2, "unit": "px", "default": 14, "info": "t:won.info.corner_radius" },
+    { "type": "checkbox", "id": "toggle_overlay", "label": "t:won.settings.overlay", "info": "t:won.info.overlay", "default": true },
+    { "type": "color", "id": "overlay_color", "label": "t:won.settings.overlay_color", "info": "t:won.info.overlay_color", "alpha": true, "default": "#0000001a", "visible_if": "{{ block.settings.toggle_overlay }}" }
   ],
   "presets": [{ "name": "t:won.names.tile" }]
 }

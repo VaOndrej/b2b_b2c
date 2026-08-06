@@ -1,0 +1,128 @@
+{%- assign s = section.settings -%}
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-spacing', settings: s %}"
+  data-testid="won-contact-section"
+>
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %}">
+    <div class="won-contact won-contact--{{ s.layout }}">
+      <div class="won-contact__intro">
+        {%- if s.heading != blank -%}
+          <h2
+            class="won-heading won-contact__heading"
+            style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%;"
+          >
+            {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
+          </h2>
+        {%- endif -%}
+        {%- if s.intro != blank -%}<div class="won-contact__text rte">{{ s.intro }}</div>{%- endif -%}
+        {%- if s.layout == 'split' and s.image != blank -%}
+          <div class="won-contact__media">
+            {{ s.image | image_url: width: 1200 | image_tag: widths: '400, 700, 1000, 1200', sizes: '(min-width: 750px) 45vw, 100vw', class: 'won-contact__img', loading: 'lazy', alt: s.image.alt | default: '' }}
+          </div>
+        {%- endif -%}
+      </div>
+
+      <div class="won-contact__form-col">
+        {%- form 'contact' -%}
+          {%- if form.posted_successfully? -%}
+            <p class="won-contact__success">{{ s.success_message }}</p>
+          {%- else -%}
+            {%- if form.errors -%}<div class="won-contact__errors">{{ form.errors | default_errors }}</div>{%- endif -%}
+            <div class="won-contact__field">
+              <label for="won-contact-name-{{ section.id }}">{{ 'won.contact.name' | t }}</label>
+              <input id="won-contact-name-{{ section.id }}" type="text" name="contact[name]" autocomplete="name">
+            </div>
+            <div class="won-contact__field">
+              <label for="won-contact-email-{{ section.id }}">{{ 'won.contact.email' | t }}</label>
+              <input id="won-contact-email-{{ section.id }}" type="email" name="contact[email]" autocomplete="email" required>
+            </div>
+            {%- if s.show_phone -%}
+              <div class="won-contact__field">
+                <label for="won-contact-phone-{{ section.id }}">{{ 'won.contact.phone' | t }}</label>
+                <input id="won-contact-phone-{{ section.id }}" type="tel" name="contact[phone]" autocomplete="tel">
+              </div>
+            {%- endif -%}
+            <div class="won-contact__field">
+              <label for="won-contact-body-{{ section.id }}">{{ 'won.contact.message' | t }}</label>
+              <textarea id="won-contact-body-{{ section.id }}" name="contact[body]" rows="5" required></textarea>
+            </div>
+            <button type="submit" class="won-btn won-btn--primary">{{ 'won.contact.send' | t }}</button>
+          {%- endif -%}
+        {%- endform -%}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-contact { display: flex; flex-direction: column; gap: var(--won-space-5); }
+  .won-contact__intro { display: flex; flex-direction: column; gap: var(--won-space-3); }
+  .won-contact__heading { font-size: var(--won-h-size-m, 1.8rem); max-width: var(--won-h-mw-m, 100%); }
+  .won-contact__text { opacity: 0.9; }
+  .won-contact__media { border-radius: var(--won-radius-md); overflow: hidden; }
+  .won-contact__img { inline-size: 100%; block-size: auto; display: block; }
+  .won-contact__form-col { display: flex; flex-direction: column; gap: var(--won-space-3); }
+  .won-contact__field { display: flex; flex-direction: column; gap: var(--won-space-1); }
+  .won-contact__field label { font-size: 0.9rem; font-weight: 600; }
+  .won-contact__field input,
+  .won-contact__field textarea {
+    padding: 0.7em 1em; border: 1px solid var(--won-border); border-radius: var(--won-radius-sm);
+    background: var(--won-bg); color: var(--won-fg); font: inherit;
+  }
+  .won-contact__success { color: var(--won-accent); font-weight: 600; }
+  .won-contact__errors { color: #c0392b; }
+  .won-contact__btn { align-self: flex-start; }
+  @media (min-width: 750px) {
+    .won-contact__heading { font-size: var(--won-h-size-d, 2.4rem); max-width: var(--won-h-mw-d, 100%); }
+    .won-contact--split { flex-direction: row; align-items: flex-start; gap: var(--won-space-7); }
+    .won-contact--split .won-contact__intro { flex: 1 1 45%; }
+    .won-contact--split .won-contact__form-col { flex: 1 1 55%; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.contact",
+  "tag": "section",
+  "disabled_on": { "groups": ["header", "footer"] },
+  "settings": [
+    { "type": "header", "content": "t:won.headers.content" },
+    { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.contact_heading" },
+    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 72, "step": 2, "unit": "px", "default": 36 },
+    { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 16, "max": 48, "step": 2, "unit": "px", "default": 26 },
+    { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "richtext", "id": "intro", "label": "t:won.settings.intro" },
+    { "type": "checkbox", "id": "show_phone", "label": "t:won.settings.show_phone", "default": false },
+    { "type": "text", "id": "success_message", "label": "t:won.settings.success_message", "default": "t:won.defaults.contact_success" },
+    { "type": "header", "content": "t:won.headers.layout" },
+    {
+      "type": "select", "id": "layout", "label": "t:won.settings.layout",
+      "options": [
+        { "value": "form", "label": "t:won.options.layout_form" },
+        { "value": "split", "label": "t:won.options.layout_split" }
+      ],
+      "default": "form"
+    },
+    { "type": "image_picker", "id": "image", "label": "t:won.settings.image", "visible_if": "{{ section.settings.layout == 'split' }}" },
+    { "type": "header", "content": "t:won.headers.appearance" },
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
+    {
+      "type": "select", "id": "section_width", "label": "t:won.settings.section_width",
+      "options": [
+        { "value": "page", "label": "t:won.options.width_page" },
+        { "value": "full", "label": "t:won.options.width_full" }
+      ],
+      "default": "page"
+    },
+    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 },
+    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 }
+  ],
+  "presets": [
+    { "name": "t:won.presets.contact", "category": "t:won.categories.content", "settings": { "layout": "form" } },
+    { "name": "t:won.presets.contact_split", "category": "t:won.categories.content", "settings": { "layout": "split" } }
+  ]
+}
+{% endschema %}

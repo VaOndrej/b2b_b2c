@@ -1,0 +1,77 @@
+{%- comment -%}
+  won-product-card — the one product card used everywhere (carousel, PLP, search,
+  cross-sell). Badges + quick-add (global won-cart.js) + optional price-per-unit.
+  Params: product (required), aspect ('square'|'portrait'|'landscape'|'natural'),
+  show_add (default true), show_badges (default true), show_ppu + ppu_base +
+  ppu_amount + ppu_metafield (per-unit price on the card).
+{%- endcomment -%}
+{%- liquid
+  assign aspect = aspect | default: 'portrait'
+  if show_add == nil
+    assign show_add = true
+  endif
+  if show_badges == nil
+    assign show_badges = true
+  endif
+  assign pv = product.selected_or_first_available_variant
+
+  assign ppu_out = ''
+  if show_ppu and ppu_amount != blank
+    assign amt = ppu_amount
+    if ppu_metafield != blank
+      assign parts = ppu_metafield | split: '.'
+      assign mfv = product.metafields[parts[0]][parts[1]].value
+      if mfv != blank and mfv > 0
+        assign amt = mfv
+      endif
+    endif
+    if amt > 0
+      assign base = ppu_base | default: 'per_100g'
+      if base == 'per_kg'
+        assign up = pv.price | times: 1000 | divided_by: amt
+        assign ulabel = 'won.unit.per_kg' | t
+      elsif base == 'per_serving'
+        assign up = pv.price | divided_by: amt
+        assign ulabel = 'won.unit.per_serving' | t
+      else
+        assign up = pv.price | times: 100 | divided_by: amt
+        assign ulabel = 'won.unit.per_100g' | t
+      endif
+      assign ppu_out = up | money | append: ' / ' | append: ulabel
+    endif
+  endif
+-%}
+<div class="won-pcard">
+  <div class="won-pcard__media won-pcard__media--{{ aspect }}">
+    {%- if show_badges -%}<div class="won-pcard__badges">{% render 'won-badges', product: product %}</div>{%- endif -%}
+    <a class="won-pcard__media-link{% unless product.featured_image %} won-pcard__media-link--placeholder{% endunless %}" href="{{ product.url }}" aria-label="{{ product.title | escape }}">
+      {%- if product.featured_image -%}
+        {{ product.featured_image | image_url: width: 800 | image_tag: widths: '200, 300, 400, 600, 800', sizes: '(min-width: 1024px) 25vw, 60vw', class: 'won-pcard__img', loading: 'lazy', alt: product.featured_image.alt | default: product.title }}
+      {%- endif -%}
+    </a>
+    {%- if show_add -%}
+      {%- if product.available -%}
+        {%- if product.has_only_default_variant or product.variants.size == 1 -%}
+          <button type="button" class="won-pcard__add" data-won-add data-variant-id="{{ pv.id }}" data-added-label="{{ 'won.cart.added' | t }}" aria-label="{{ 'won.cart.add' | t }}: {{ product.title | escape }}"><span class="won-pcard__add-label">{{ 'won.cart.add' | t }}</span></button>
+        {%- else -%}
+          <a class="won-pcard__add won-pcard__add--link" href="{{ product.url }}">{{ 'won.cart.choose' | t }}</a>
+        {%- endif -%}
+      {%- else -%}
+        <span class="won-pcard__add won-pcard__add--soldout" aria-disabled="true">{{ 'won.cart.soldout' | t }}</span>
+      {%- endif -%}
+    {%- endif -%}
+  </div>
+  <a class="won-pcard__info" href="{{ product.url }}">
+    <div class="won-pcard__title">{{ product.title }}</div>
+    {% render 'won-rating', product: product %}
+    <div class="won-pcard__price">
+      {%- if product.compare_at_price > product.price -%}
+        <span class="won-pcard__price-sale">{{ product.price | money }}</span>
+        <s class="won-pcard__price-was">{{ product.compare_at_price | money }}</s>
+      {%- else -%}
+        {{ product.price | money }}
+      {%- endif -%}
+    </div>
+    {%- if ppu_out != blank -%}<div class="won-pcard__ppu">{{ ppu_out }}</div>{%- endif -%}
+  </a>
+</div>
