@@ -25,6 +25,7 @@ export default function App() {
           // Analytics→Insights. Old routes redirect so deep-links still resolve.
           { to: "/app/toasts", label: "Toasts" },
           { to: "/app/design", label: "Design" },
+          { to: "/app/languages", label: "Languages" },
           { to: "/app/targeting", label: "Targeting" },
           { to: "/app/analytics", label: "Insights" },
           { to: "/app/plan", label: "Plan" },

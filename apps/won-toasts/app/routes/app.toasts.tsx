@@ -14,7 +14,6 @@ import {
 } from "@won/core/toasts/notifications";
 import type {
   MilestoneRuleConfig,
-  ToastMessages,
   ToastSemanticType,
   ToastTheme,
   ToastTypeKey,
@@ -28,17 +27,18 @@ import {
   getToastConfig,
   updateToastConfig,
 } from "../services/toast-config.server";
-import { ToastPreview } from "../components/ToastPreview";
 import { NotificationPreview } from "../components/NotificationPreview";
 import { AnimatedToastPreview } from "../components/AnimatedToastPreview";
+import { StorefrontPreview } from "../components/StorefrontPreview";
 import { ProFrame } from "../components/ProFrame";
 import { SegmentedNav } from "../components/SegmentedNav";
 import { MessageMatrix } from "../components/MessageMatrix";
+import { mergeMessages } from "../lib/localization";
 import { TypeStyleFields } from "../components/TypeStyleFields";
 import { useSavedToast } from "../lib/use-saved-toast";
 import { readTypeOverride } from "../lib/type-override";
 import { persistConfig } from "../lib/persist-config.server";
-import { pageLabel, languageName } from "../lib/labels";
+import { pageLabel } from "../lib/labels";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -71,7 +71,6 @@ function readPages(form: FormData, type: NotificationType): NotificationPage[] {
 function buildRule(
   form: FormData,
   type: NotificationType,
-  enabledLocales: string[],
 ): NotificationRule | null {
   const enabled = form.get(`${type}_enabled`) === "on";
   const surface =
@@ -95,19 +94,14 @@ function buildRule(
     };
   }
   if (type === "announcement") {
-    // Locale-as-data: read one message per merchant-enabled language.
-    const messages: Record<string, string> = {};
-    for (const loc of enabledLocales) {
-      const v = String(form.get(`announcement_msg_${loc}`) ?? "").trim();
-      if (v) messages[loc] = v;
-    }
+    // Only the DEFAULT message is edited here (kept compact); per-language
+    // translations live on the Languages page and are preserved by the caller.
     const variants = String(form.get("announcement_variants") ?? "")
       .split(/\r?\n/)
       .map((v) => v.trim())
       .filter(Boolean);
     return {
       id: "announcement", type, enabled, surface, pages, message,
-      ...(Object.keys(messages).length ? { messages } : {}),
       ...(variants.length ? { variants } : {}),
     };
   }
@@ -151,20 +145,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const config = await getToastConfig(session.shop);
   const isPro = config.plan === "pro";
-  const enabledLocales = config.locales.enabledLocales;
   const form = await request.formData();
 
   // --- notification recipes ---
   const rules: NotificationRule[] = [];
   for (const type of ["countdown", "announcement"] as NotificationType[]) {
-    const r = buildRule(form, type, enabledLocales);
+    const r = buildRule(form, type);
     if (r) rules.push(r);
   }
   for (const type of [
     "stock.low", "cart.activity", "order.summary", "order.created",
   ] as NotificationType[]) {
     if (isPro) {
-      const r = buildRule(form, type, enabledLocales);
+      const r = buildRule(form, type);
       if (r) rules.push(r);
     } else {
       const existing = config.notifications.find((n) => n.type === type);
@@ -172,16 +165,32 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   }
 
-  // --- cart-toast messages (per event × enabled locale) + milestones ---
-  const messages: ToastMessages = {};
-  for (const type of EVENT_TYPES) {
-    const perLocale: Record<string, string> = {};
-    for (const locale of enabledLocales) {
-      const value = String(form.get(`msg_${type}_${locale}`) ?? "").trim();
-      if (value) perLocale[locale] = value;
+  // Announcement translations are owned by the Languages page — this page only
+  // edits the default message, so carry the stored translations forward (a save
+  // here must not wipe them).
+  const priorAnnouncement = config.notifications.find((n) => n.type === "announcement");
+  const priorAnnMessages =
+    priorAnnouncement && "messages" in priorAnnouncement
+      ? priorAnnouncement.messages
+      : undefined;
+  if (priorAnnMessages) {
+    for (const r of rules) {
+      if (r.type === "announcement") r.messages = priorAnnMessages;
     }
-    if (Object.keys(perLocale).length > 0) messages[type] = perLocale;
   }
+
+  // --- cart-toast messages (DEFAULT locale only) + milestones ---
+  // The Toasts page keeps the source copy compact: it edits only the default
+  // language. Translations live on the Languages page, which owns every other
+  // locale. Merge so a save here never drops those translations.
+  const defaultLocale = config.locales.defaultLocale;
+  const messageEdits: Record<string, Record<string, string>> = {};
+  for (const type of EVENT_TYPES) {
+    messageEdits[type] = {
+      [defaultLocale]: String(form.get(`msg_${type}_${defaultLocale}`) ?? ""),
+    };
+  }
+  const messages = mergeMessages(config.messages, messageEdits);
 
   const milestones: MilestoneRuleConfig[] = [
     {
@@ -376,7 +385,6 @@ export default function ToastsRoute() {
   const { config } = useLoaderData<typeof loader>();
   const saveError = useSavedToast();
   const isPro = config.plan === "pro";
-  const enabledLocales = config.locales.enabledLocales;
 
   // Selected recipe can be deep-linked (Insights suggestions → /app/toasts?rule=…).
   const [searchParams] = useSearchParams();
@@ -532,6 +540,9 @@ export default function ToastsRoute() {
     const pvBeh = liveTypeBehavior(selKey);
     switch (selected) {
       case "cart":
+        // Animate → motion/timing close-up. Otherwise the schematic storefront:
+        // the cart toast in context, where it actually lands (global placement),
+        // so the merchant sees it on their shop, not as a floating list.
         return animate ? (
           <AnimatedToastPreview
             theme={pvTheme}
@@ -542,7 +553,16 @@ export default function ToastsRoute() {
             customCss={isPro ? pvTheme.customCss : undefined}
           />
         ) : (
-          <ToastPreview theme={pvTheme} closeable={pvBeh.closeable} customCss={isPro ? pvTheme.customCss : undefined} />
+          <StorefrontPreview
+            theme={pvTheme}
+            position={config.global.position}
+            offsetTop={config.global.offsetTop}
+            offsetInline={config.global.offsetInline}
+            maxVisible={config.global.maxVisible}
+            stackDirection={config.global.stackDirection}
+            closeable={pvBeh.closeable}
+            customCss={isPro ? pvTheme.customCss : undefined}
+          />
         );
       case "countdown":
         return <NotificationPreview type="countdown" message={liveMsg("countdown", countdown?.message)} surface={liveSurface("countdown", countdown?.surface)} theme={pvTheme} />;
@@ -562,7 +582,7 @@ export default function ToastsRoute() {
   }
 
   return (
-    <s-page heading="Toasts">
+    <s-page heading="Toasts" inlineSize="large">
       <s-section>
         <s-paragraph>
           Everything Won Toasts can show, in one place. Pick a toast on the left to
@@ -612,14 +632,15 @@ export default function ToastsRoute() {
                 <s-stack direction="block" gap="base">
                   <s-text type="strong">Cart events</s-text>
                   <s-text color="subdued">
-                    Toggle each toast on or off. Blank wording uses the built-in
-                    text; blank languages fall back to your default. Gift &amp; free
-                    shipping only <s-text type="strong">announce</s-text> a milestone —
-                    they never grant it.
+                    Toggle each toast on or off and write its wording in your default
+                    language. Blank uses the built-in text. Translate into other
+                    languages on <s-link href="/app/languages">Languages</s-link>.
+                    Gift &amp; free shipping only <s-text type="strong">announce</s-text>{" "}
+                    a milestone — they never grant it.
                   </s-text>
                   <MessageMatrix
                     theme={config.theme}
-                    locales={enabledLocales}
+                    locales={[defaultLocale]}
                     messages={config.messages}
                     toggleFor={(key) => {
                       if (key === "gift") return { name: "ms_gift_enabled", checked: gift?.enabled ?? false };
@@ -696,13 +717,11 @@ export default function ToastsRoute() {
               <s-stack direction="block" gap="base">
                 <s-badge tone="success">Free</s-badge>
                 <s-switch label="Show an announcement" name="announcement_enabled" checked={announcement?.enabled ?? false} />
-                <s-paragraph>Your own message. One per language; blank languages fall back to your default.</s-paragraph>
-                <s-stack direction="inline" gap="base">
-                  {enabledLocales.map((loc) => (
-                    <s-text-field key={loc} label={languageName(loc)} name={`announcement_msg_${loc}`} value={announcement?.messages?.[loc] ?? ""} placeholder="Free gift on orders over 1000 Kč this week!" />
-                  ))}
-                  <s-text-field label="Default" name="announcement_message" value={announcement?.message ?? ""} details="Shown to shoppers whose language you haven’t written above." />
-                </s-stack>
+                <s-paragraph>Your own message, written in your default language.</s-paragraph>
+                <s-text-field label="Message" name="announcement_message" value={announcement?.message ?? ""} placeholder="Free gift on orders over 1000 Kč this week!" details="Translate it into your other languages on Languages." />
+                <s-text color="subdued">
+                  Add translations on <s-link href="/app/languages">Languages</s-link>.
+                </s-text>
                 <Advanced>
                   <SurfaceSelect type="announcement" value={announcement?.surface ?? "banner"} />
                   <s-text-area label="A/B variants (one per line; splits shoppers evenly)" name="announcement_variants" rows={3} value={(announcement?.variants ?? []).join("\n")} />

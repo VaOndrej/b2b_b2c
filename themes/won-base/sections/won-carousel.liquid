@@ -130,7 +130,17 @@
   .won-carousel__arrow:disabled { opacity: 0.35; cursor: default; }
   .won-carousel__progress { margin-top: var(--won-space-3); block-size: 4px; background: var(--won-border); border-radius: var(--won-radius-pill); overflow: hidden; }
   .won-carousel__progress-bar { display: block; block-size: 100%; inline-size: 30%; background: var(--won-accent); border-radius: inherit; transform: translateX(0); }
-  .won-carousel__dots { display: flex; gap: var(--won-space-2); justify-content: center; margin-top: var(--won-space-3); }
+  .won-carousel__dots { display: flex; gap: var(--won-space-1); justify-content: center; margin-top: var(--won-space-3); }
+  .won-carousel__dots[hidden] { display: none; }
+  .won-carousel__dot {
+    inline-size: 44px; block-size: 44px; padding: 0; border: 0; background: transparent;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .won-carousel__dot::before {
+    content: ""; inline-size: 8px; block-size: 8px; border-radius: 50%;
+    background: var(--won-border); transition: inline-size var(--won-dur) var(--won-ease), background var(--won-dur) var(--won-ease);
+  }
+  .won-carousel__dot[aria-current="true"]::before { inline-size: 22px; border-radius: var(--won-radius-pill); background: var(--won-accent); }
 
   .won-carousel--marquee .won-carousel__track { overflow: hidden; }
   .won-carousel--marquee .won-carousel__track[data-marquee] { animation: won-marquee 30s linear infinite; }

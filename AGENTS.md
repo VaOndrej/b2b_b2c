@@ -34,6 +34,27 @@ Výjimkou jsou čistě read-only úkoly bez změn souborů, například vysvětl
 analýza, audit nebo plán. Pokud se z takového úkolu stane implementace, povinnost
 se okamžitě aktivuje.
 
+## Povinný kritický self-audit po implementaci
+
+Po **každé** nenulové implementaci (jakákoli změna souborů) si PŘED předáním k
+review sám polož a PRAVDIVĚ zodpověz otázku:
+
+> „Je tu něco, co jsem hacknul, ošidil, obešel, nebo přešel mlčením?"
+
+Odpověď dej uživateli **sám a bez vyzvání**, BEZ okrašlování:
+
+- Vypiš reálné **zkratky, technický dluh, nedodělky** a **NEOVĚŘENÉ předpoklady**
+  (např. „nevidím admin vizuálně", „neověřil jsem chování na Free plánu",
+  „mock měl 4 metriky, dodal jsem 3").
+- **Seřaď podle závažnosti** — materiální (kazí záměr uživatele) → kosmetické.
+- **Rozlišuj** „hotové a ověřené" vs. „hotové ale neověřené" vs. „vědomý kompromis".
+- **Nikdy neříkej „vše čisté", pokud to není doslova pravda.** Falešné ujištění je
+  horší než přiznaný dluh — uživatel staví další práci na tvém slově.
+
+Toto platí **i po zeleném gate**: zelený typecheck/lint/build/test neznamená, že
+jsi neošidil *záměr*. Výjimka: čistě read-only úkoly (vysvětlení, analýza, audit,
+plán) — povinnost se aktivuje v okamžiku, kdy z nich vznikne implementace.
+
 ## Ověřování storefrontu (responzivní invarianty)
 
 Každá změna dotýkající se storefrontu (`themes/**/*.liquid|css|js`) se ověřuje

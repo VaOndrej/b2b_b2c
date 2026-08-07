@@ -17,10 +17,12 @@
     this.nextBtn = this.querySelector('[data-won-next]');
     this.progress = this.querySelector('[data-won-progress]');
     this.bar = this.querySelector('[data-won-progress-bar]');
+    this.dots = this.querySelector('[data-won-dots]');
     this._onScroll = this.onScroll.bind(this);
     this.track.addEventListener('scroll', this._onScroll, { passive: true });
     if (this.prevBtn) this.prevBtn.addEventListener('click', () => this.scrollByItems(-1));
     if (this.nextBtn) this.nextBtn.addEventListener('click', () => this.scrollByItems(1));
+    if (this.dots) this.buildDots();
     this.bindMouseDrag();
     this.onScroll();
     const interval = parseInt(this.dataset.autoplay, 10);
@@ -50,9 +52,42 @@
       this.scrollByItems(1);
     }
   }
+  // Page-based dots: one dot per viewport-width page (not per item), so the
+  // count stays small and each dot is a full 44px tap target. Hidden when the
+  // rail doesn't scroll (nothing to page through) — no dead control.
+  pageCount() {
+    const w = this.track.clientWidth;
+    return w > 0 ? Math.max(1, Math.round(this.track.scrollWidth / w)) : 1;
+  }
+  buildDots() {
+    const pages = this.pageCount();
+    this.dots.hidden = pages <= 1;
+    if (pages <= 1) { this.dots.innerHTML = ''; this._dotEls = []; return; }
+    this.dots.innerHTML = '';
+    this._dotEls = [];
+    for (let i = 0; i < pages; i++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'won-carousel__dot';
+      b.setAttribute('aria-label', String(i + 1));
+      b.addEventListener('click', () => {
+        this.track.scrollTo({ left: i * this.track.clientWidth, behavior: 'smooth' });
+      });
+      this.dots.appendChild(b);
+      this._dotEls.push(b);
+    }
+    this.updateDots();
+  }
+  updateDots() {
+    if (!this._dotEls || !this._dotEls.length) return;
+    const w = this.track.clientWidth;
+    const active = w > 0 ? Math.round(Math.abs(this.track.scrollLeft) / w) : 0;
+    this._dotEls.forEach((d, i) => d.setAttribute('aria-current', i === active ? 'true' : 'false'));
+  }
   onScroll() {
     const max = this.track.scrollWidth - this.track.clientWidth;
     const ratio = max > 0 ? Math.min(1, Math.abs(this.track.scrollLeft) / max) : 0;
+    this.updateDots();
     // The progress thumb must mirror the scroll: its width is the visible
     // fraction of the content, its offset is how far through that scroll we
     // are. When nothing overflows, there's nothing to indicate — hide it.

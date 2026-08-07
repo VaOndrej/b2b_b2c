@@ -30,7 +30,12 @@ export async function assertResponsiveSane(page: Page) {
       let p = el.parentElement;
       while (p) {
         const ox = getComputedStyle(p).overflowX;
-        if ((ox === 'auto' || ox === 'scroll') && p.scrollWidth > p.clientWidth + tol) return true;
+        // auto/scroll = an intentional scroller; hidden/clip = a marquee/clip box.
+        // Either way the wide child is contained and cannot push the PAGE wider
+        // (check 1 already proves the page itself doesn't scroll), so it's not
+        // the overflow bug this heuristic hunts for.
+        const clips = ox === 'auto' || ox === 'scroll' || ox === 'hidden' || ox === 'clip';
+        if (clips && p.scrollWidth > p.clientWidth + tol) return true;
         p = p.parentElement;
       }
       return false;

@@ -20,6 +20,10 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
   if s.media_position == 'background' and has_media
     assign is_bg = true
   endif
+  assign has_gradient = false
+  if s.background_gradient != blank
+    assign has_gradient = true
+  endif
 -%}
 
 <article
@@ -29,8 +33,10 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     won-slide--media-{{ s.media_position }}
     {% if s.inherit_color_scheme == false %}color-{{ s.color_scheme }}{% endif %}
     {% if is_bg %}won-slide--overlayed{% endif %}
+    {% if has_gradient %}won-slide--gradient{% endif %}
+    {% if s.headline_annotation != 'none' and s.headline_annotation != blank %}won-slide--annot-{{ s.headline_annotation }}{% endif %}
   "
-  style="{% render 'won-spacing', settings: s %}--won-slide-align: {{ s.alignment }};--won-radius-md: {{ s.corner_radius }}px;--won-radius-sm: {{ s.corner_radius }}px;{% if s.min_height > 0 %}--won-slide-min: {{ s.min_height }}px;{% endif %}"
+  style="{% render 'won-spacing', settings: s %}--won-slide-align: {{ s.alignment }};--won-radius-md: {{ s.corner_radius }}px;--won-radius-sm: {{ s.corner_radius }}px;{% if s.min_height > 0 %}--won-slide-min: {{ s.min_height }}px;{% endif %}{% if has_gradient %}--won-slide-bg: {{ s.background_gradient }};{% endif %}"
   {{ block.shopify_attributes }}
 >
   {%- if has_media and s.media_position != 'none' -%}
@@ -96,6 +102,13 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     background: transparent;
   }
   .won-slide--bordered { border: 1px solid var(--won-border); }
+  /* Gradient background hero (no photo) — CSS gradient + copy anchored to the
+     bottom, like a full-bleed marketing slide. Text colour follows the slide's
+     colour scheme, so pair a vivid gradient with a matching (usually dark) scheme. */
+  .won-slide--gradient { background: var(--won-slide-bg); }
+  .won-slide--gradient .won-slide__body {
+    padding: var(--won-space-5); min-height: var(--won-slide-min, 320px); justify-content: flex-end;
+  }
   .won-slide--elevated {
     background: var(--won-surface);
     box-shadow: 0 6px 24px color-mix(in oklab, var(--won-fg) 10%, transparent);
@@ -143,6 +156,27 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     max-width: var(--won-h-mw-m, 100%);
   }
   .won-slide__text { margin: 0; opacity: 0.9; }
+
+  /* Hand-drawn headline annotation (flow-style). The doodle is an accent-coloured
+     box masked to an SVG stroke, so it inherits --won-accent. */
+  .won-slide--annot-underline .won-slide__heading,
+  .won-slide--annot-circle .won-slide__heading { position: relative; }
+  .won-slide--annot-underline .won-slide__heading::after {
+    content: ""; position: absolute; inset-inline: -0.1em; inset-block-end: -0.24em; block-size: 0.34em;
+    background: var(--won-accent); pointer-events: none;
+    -webkit-mask: var(--won-annot-underline) no-repeat center / 100% 100%;
+    mask: var(--won-annot-underline) no-repeat center / 100% 100%;
+  }
+  .won-slide--annot-circle .won-slide__heading::before {
+    content: ""; position: absolute; inset: -0.28em -0.55em; z-index: -1; pointer-events: none;
+    background: var(--won-accent);
+    -webkit-mask: var(--won-annot-circle) no-repeat center / 100% 100%;
+    mask: var(--won-annot-circle) no-repeat center / 100% 100%;
+  }
+  .won-slide {
+    --won-annot-underline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 20' preserveAspectRatio='none'%3E%3Cpath d='M4 13 C 60 4 120 4 180 10 S 262 17 296 7' fill='none' stroke='black' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E");
+    --won-annot-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 100' preserveAspectRatio='none'%3E%3Cpath d='M150 6 C 44 6 10 30 14 52 C 18 80 92 96 162 94 C 252 92 292 64 286 40 C 280 16 210 5 138 9' fill='none' stroke='black' stroke-width='4'/%3E%3C/svg%3E");
+  }
 
   @media (min-width: 768px) {
     .won-slide__heading { font-size: var(--won-h-size-d, 1.8rem); max-width: var(--won-h-mw-d, 100%); }
@@ -212,6 +246,7 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
       "default": "top",
       "visible_if": "{{ block.settings.media_type != 'none' }}"
     },
+    { "type": "color_background", "id": "background_gradient", "label": "t:won.settings.background_gradient", "info": "t:won.info.background_gradient" },
     { "type": "header", "content": "t:won.headers.appearance" },
     {
       "type": "select", "id": "card_style", "label": "t:won.settings.card_style", "info": "t:won.info.card_style",
@@ -221,6 +256,15 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
         { "value": "elevated", "label": "t:won.options.elevated" }
       ],
       "default": "minimal"
+    },
+    {
+      "type": "select", "id": "headline_annotation", "label": "t:won.settings.headline_annotation", "info": "t:won.info.headline_annotation",
+      "options": [
+        { "value": "none", "label": "t:won.options.annot_none" },
+        { "value": "underline", "label": "t:won.options.annot_underline" },
+        { "value": "circle", "label": "t:won.options.annot_circle" }
+      ],
+      "default": "none"
     },
     { "type": "text_alignment", "id": "alignment", "label": "t:won.settings.alignment", "default": "left" },
     { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 0, "max": 800, "step": 20, "unit": "px", "default": 0, "info": "t:won.info.slide_min_height" },

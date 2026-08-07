@@ -106,9 +106,12 @@
         {%- for line in lines -%}
           {%- assign row = line | strip -%}
           {%- if row contains ':' -%}
-            {%- assign value = row | split: ':' | first | strip -%}
-            {%- assign label = row | split: ':' | last | strip -%}
+            {%- assign parts = row | split: ':' -%}
+            {%- assign value = parts[0] | strip -%}
+            {%- assign label = parts[1] | strip -%}
+            {%- assign icon = parts[2] | strip -%}
             <div class="won-grid__stat">
+              {%- if icon != blank -%}<span class="won-grid__stat-icon" aria-hidden="true">{{ icon }}</span>{%- endif -%}
               <dt class="won-grid__stat-value">{{ value }}</dt>
               <dd class="won-grid__stat-label">{{ label }}</dd>
             </div>
@@ -138,7 +141,8 @@
 
   /* Stats (absorbs won-stats). */
   .won-grid--stats { text-align: var(--won-grid-align, center); }
-  .won-grid__stat { display: flex; flex-direction: column; gap: var(--won-space-1); }
+  .won-grid__stat { display: flex; flex-direction: column; gap: var(--won-space-1); align-items: inherit; }
+  .won-grid__stat-icon { font-size: 1.9rem; line-height: 1; margin-block-end: var(--won-space-1); }
   .won-grid__stat-value { margin: 0; font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; letter-spacing: -0.03em; color: var(--won-accent); line-height: 1; }
   .won-grid__stat-label { margin: 0; opacity: 0.8; }
 
@@ -221,7 +225,7 @@
       ],
       "default": "grid"
     },
-    { "type": "textarea", "id": "stats", "label": "t:won.settings.stats", "default": "t:won.defaults.stats_items", "visible_if": "{{ section.settings.source == 'stats' }}" },
+    { "type": "textarea", "id": "stats", "label": "t:won.settings.stats", "info": "t:won.info.stats", "default": "t:won.defaults.stats_items", "visible_if": "{{ section.settings.source == 'stats' }}" },
     { "type": "header", "content": "t:won.headers.layout" },
     { "type": "range", "id": "columns_desktop", "label": "t:won.settings.columns_desktop", "min": 1, "max": 6, "step": 1, "default": 4 },
     { "type": "range", "id": "columns_tablet", "label": "t:won.settings.columns_tablet", "min": 1, "max": 4, "step": 1, "default": 2, "visible_if": "{{ section.settings.source != 'stats' }}" },
@@ -287,8 +291,22 @@
       "blocks": [{ "type": "won-tile", "settings": { "tile_size": "large" } }, { "type": "won-tile" }, { "type": "won-tile" }, { "type": "won-tile" }, { "type": "won-tile" }]
     },
     {
+      "name": "t:won.presets.shop_by_goal", "category": "t:won.categories.content",
+      "settings": { "source": "blocks", "columns_desktop": 4, "gap": 16, "content_align": "center" },
+      "blocks": [
+        { "type": "won-tile", "settings": { "icon": "💪", "heading": "Sport & výkon" } },
+        { "type": "won-tile", "settings": { "icon": "🛡️", "heading": "Imunita" } },
+        { "type": "won-tile", "settings": { "icon": "😴", "heading": "Spánek" } },
+        { "type": "won-tile", "settings": { "icon": "🧠", "heading": "Mentální výkon" } }
+      ]
+    },
+    {
       "name": "t:won.presets.stats_row", "category": "t:won.categories.content",
       "settings": { "source": "stats", "columns_desktop": 4 }
+    },
+    {
+      "name": "t:won.presets.trust_band", "category": "t:won.categories.content",
+      "settings": { "source": "stats", "columns_desktop": 4, "content_align": "center", "color_scheme": "scheme-2", "stats": "500 tis.+ : spokojených zákazníků : 👥\n10 000+ : recenzí : ★\n24 h : expedice : ⚡\n100% : testováno : ✅" }
     },
     {
       "name": "t:won.presets.articles_grid", "category": "t:won.categories.content",

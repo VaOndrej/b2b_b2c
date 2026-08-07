@@ -12,8 +12,8 @@
   data-testid="won-hero-carousel-section"
 >
   <div
-    class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-hero won-hero--slider"
-    style="--won-hero-min: {{ s.min_height }}px; --won-hero-gap: {{ s.gap }}px; --won-hero-peek: {{ s.columns_mobile }};"
+    class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-hero won-hero--slider{% if s.layout == 'peek' %} won-hero--peek{% endif %}"
+    style="--won-hero-min: {{ s.min_height }}px; --won-hero-gap: {{ s.gap }}px; --won-hero-peek: {{ s.columns_mobile }}; --won-hero-slide: {{ s.slide_width }}%;"
   >
     <won-carousel class="won-hero__carousel"{% if s.autoplay %} data-autoplay="{{ s.autoplay_interval }}"{% endif %}><div class="won-hero__track" data-won-track>
         {% content_for 'blocks' %}
@@ -42,6 +42,15 @@
   "blocks": [{ "type": "won-slide" }, { "type": "@theme" }, { "type": "@app" }],
   "settings": [
     { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 200, "max": 800, "step": 20, "unit": "px", "default": 520 },
+    {
+      "type": "select", "id": "layout", "label": "t:won.settings.hero_slider_layout", "info": "t:won.info.hero_slider_layout",
+      "options": [
+        { "value": "fill", "label": "t:won.options.hero_fill" },
+        { "value": "peek", "label": "t:won.options.hero_peek" }
+      ],
+      "default": "fill"
+    },
+    { "type": "range", "id": "slide_width", "label": "t:won.settings.slide_width", "info": "t:won.info.slide_width", "min": 50, "max": 85, "step": 1, "unit": "%", "default": 64, "visible_if": "{{ section.settings.layout == 'peek' }}" },
     { "type": "header", "content": "t:won.headers.controls" },
     { "type": "checkbox", "id": "show_arrows", "label": "t:won.settings.show_arrows", "default": true },
     { "type": "checkbox", "id": "show_progress", "label": "t:won.settings.show_progress", "default": true },
@@ -80,6 +89,16 @@
         { "type": "won-slide", "settings": { "eyebrow": "Deal", "heading": "<p>Creatine −20%</p>", "heading_size_desktop": 52, "text": "<p>Strength and performance, every day.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-2.png", "media_position": "background", "alignment": "left", "min_height": 520 } },
         { "type": "won-slide", "settings": { "eyebrow": "Bestseller", "heading": "<p>Whey with 21g protein</p>", "heading_size_desktop": 52, "text": "<p>Selected flavours at a great price.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-3.png", "media_position": "background", "alignment": "left", "min_height": 520 } },
         { "type": "won-slide", "settings": { "eyebrow": "New", "heading": "<p>New: BCAA</p>", "heading_size_desktop": 52, "text": "<p>Recovery after every workout.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-4.png", "media_position": "background", "alignment": "left", "min_height": 520 } }
+      ]
+    },
+    {
+      "name": "t:won.presets.hero_peek", "category": "t:won.categories.hero",
+      "settings": { "layout": "peek", "slide_width": 64, "min_height": 460, "gap": 20, "section_width": "page", "show_arrows": true, "show_progress": false, "autoplay": false },
+      "blocks": [
+        { "type": "won-slide", "settings": { "eyebrow": "Hydration", "heading": "<p>When water isn't enough</p>", "heading_size_desktop": 44, "text": "<p>Replace key minerals lost in the heat.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-1.png", "media_position": "background", "alignment": "left", "min_height": 460, "corner_radius": 20 } },
+        { "type": "won-slide", "settings": { "eyebrow": "Deal", "heading": "<p>Creatine −20%</p>", "heading_size_desktop": 44, "text": "<p>Strength and performance, every day.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-2.png", "media_position": "background", "alignment": "left", "min_height": 460, "corner_radius": 20 } },
+        { "type": "won-slide", "settings": { "eyebrow": "Bestseller", "heading": "<p>Whey with 21g protein</p>", "heading_size_desktop": 44, "text": "<p>Selected flavours at a great price.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-3.png", "media_position": "background", "alignment": "left", "min_height": 460, "corner_radius": 20 } },
+        { "type": "won-slide", "settings": { "eyebrow": "New", "heading": "<p>New: BCAA</p>", "heading_size_desktop": 44, "text": "<p>Recovery after every workout.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-4.png", "media_position": "background", "alignment": "left", "min_height": 460, "corner_radius": 20 } }
       ]
     }
   ]

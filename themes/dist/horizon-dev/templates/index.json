@@ -1,5 +1,45 @@
 {
   "sections": {
+    "peek_hero": {
+      "type": "won-hero-carousel",
+      "blocks": {
+        "s1": { "type": "won-slide", "settings": { "eyebrow": "Hydratace", "heading": "<p>Když voda nestačí 💧</p>", "heading_size_desktop": 40, "text": "<p>Doplň klíčové minerály v horku.</p>", "button_label": "Koupit", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-1.png", "media_position": "background", "alignment": "left", "headline_annotation": "underline", "min_height": 420, "corner_radius": 20 } },
+        "s2": { "type": "won-slide", "settings": { "eyebrow": "Akce", "heading": "<p>Kreatin −20 %</p>", "heading_size_desktop": 40, "text": "<p>Síla a výkon každý den.</p>", "button_label": "Koupit", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-2.png", "media_position": "background", "alignment": "left", "min_height": 420, "corner_radius": 20 } },
+        "s3": { "type": "won-slide", "settings": { "eyebrow": "Bestseller", "heading": "<p>Whey s 21 g proteinu 🥤</p>", "heading_size_desktop": 40, "text": "<p>Vybrané příchutě za skvělou cenu.</p>", "button_label": "Koupit", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-3.png", "media_position": "background", "alignment": "left", "min_height": 420, "corner_radius": 20 } },
+        "s4": { "type": "won-slide", "settings": { "eyebrow": "Novinka", "heading": "<p>Novinka: BCAA</p>", "heading_size_desktop": 40, "text": "<p>Regenerace po každém tréninku.</p>", "button_label": "Koupit", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "none", "background_gradient": "linear-gradient(135deg, #fef3c7, #fbcfe8, #ddd6fe)", "alignment": "left", "min_height": 420, "corner_radius": 20 } }
+      },
+      "block_order": ["s1", "s2", "s3", "s4"],
+      "settings": { "layout": "peek", "slide_width": 64, "min_height": 420, "gap": 20, "section_width": "page", "show_arrows": true, "show_progress": false, "autoplay": false, "color_scheme": "scheme-1", "padding_top": 24, "padding_bottom": 24 }
+    },
+    "tabbed_rail": {
+      "type": "won-tabbed-rail",
+      "blocks": {
+        "tab1": { "type": "tab", "settings": { "collection": "automated-collection", "title": "Bestsellery", "products_limit": 8 } },
+        "tab2": { "type": "tab", "settings": { "collection": "automated-collection", "title": "Novinky", "products_limit": 6 } }
+      },
+      "block_order": ["tab1", "tab2"],
+      "settings": { "heading": "<p>Prohlédni si nabídku</p>", "columns_desktop": 4, "columns_mobile": "1.2", "color_scheme": "scheme-1" }
+    },
+    "shoppable": {
+      "type": "won-shoppable-image",
+      "blocks": {
+        "h1": { "type": "hotspot", "settings": { "x": 28, "y": 44, "label": "Whey Protein", "link": "shopify://collections/all" } },
+        "h2": { "type": "hotspot", "settings": { "x": 66, "y": 58, "label": "BCAA", "link": "shopify://collections/all" } }
+      },
+      "block_order": ["h1", "h2"],
+      "settings": { "heading": "<p>Nakupuj přímo z fotky</p>", "image_asset": "won-hero-product.png", "aspect_ratio": "wide", "color_scheme": "scheme-1" }
+    },
+    "usp_marquee": {
+      "type": "won-marquee",
+      "blocks": {
+        "t1": { "type": "token", "settings": { "text": "Doprava zdarma nad 1 500 Kč" } },
+        "t2": { "type": "token", "settings": { "text": "Doručení do 24 hodin" } },
+        "t3": { "type": "token", "settings": { "text": "100% clean složení" } },
+        "t4": { "type": "token", "settings": { "text": "Poradenství zdarma" } }
+      },
+      "block_order": ["t1", "t2", "t3", "t4"],
+      "settings": { "separator": "dot", "color_scheme": "scheme-2", "duration": 26 }
+    },
     "promo_hero": {
       "type": "won-carousel",
       "blocks": {
@@ -154,7 +194,11 @@
           "settings": {
             "collection": "proteiny",
             "heading": "Proteiny",
-            "link_url": "shopify://collections/proteiny"
+            "icon": "💪",
+            "link_url": "shopify://collections/proteiny",
+            "badge_text": "Novinka",
+            "badge_position": "top_right",
+            "badge_style": "accent"
           }
         },
         "c2": {
@@ -162,6 +206,7 @@
           "settings": {
             "collection": "kreatin-aminokyseliny",
             "heading": "Kreatin & aminokyseliny",
+            "icon": "⚡",
             "link_url": "shopify://collections/kreatin-aminokyseliny"
           }
         },
@@ -170,6 +215,7 @@
           "settings": {
             "collection": "vitaminy-mineraly",
             "heading": "Vitamíny & minerály",
+            "icon": "🛡️",
             "link_url": "shopify://collections/vitaminy-mineraly"
           }
         },
@@ -178,6 +224,7 @@
           "settings": {
             "collection": "zdravi-regenerace",
             "heading": "Zdraví & regenerace",
+            "icon": "🌿",
             "link_url": "shopify://collections/zdravi-regenerace"
           }
         }
@@ -269,7 +316,8 @@
         "ppu_base": "per_serving",
         "ppu_amount": 33,
         "show_arrows": true,
-        "show_progress": true,
+        "show_progress": false,
+        "show_dots": true,
         "color_scheme": "scheme-1",
         "padding_top": 48,
         "padding_bottom": 48
@@ -285,18 +333,22 @@
         "button_label": "Založit účet",
         "button_link": "/account/register",
         "button_style": "primary",
-        "media_type": "none",
+        "media_type": "image",
+        "media_position": "center_gutter",
+        "image_asset": "won-promo-2.png",
+        "image_asset_2": "won-promo-4.png",
+        "min_height": 340,
         "content_align": "center",
         "color_scheme": "scheme-2",
-        "padding_top": 64,
-        "padding_bottom": 64
+        "padding_top": 56,
+        "padding_bottom": 56
       }
     },
     "comparison": {
       "type": "won-comparison",
       "settings": {
         "heading": "<p>Proč zvolit Won</p>",
-        "rows": "Funkce | Won | Běžná značka\nČisté složení | yes | no\nTestováno laboratoří | yes | no\nPoradenství zdarma | yes | no\nDoprava zdarma nad 1 500 Kč | yes | no",
+        "rows": "Funkce | Won | Běžná značka\nČisté složení | yes | no\nKvalita složení | dots:4/4 | dots:2/4\nTestováno laboratoří | yes | no\nPoradenství zdarma | yes | no\nDoprava zdarma nad 1 500 Kč | yes | no",
         "highlight_col": 2,
         "color_scheme": "scheme-1",
         "padding_top": 56,
@@ -307,7 +359,7 @@
       "type": "won-grid",
       "settings": {
         "heading": "<p>Čísla, kterým věříte</p>",
-        "stats": "25 000+ : spokojených zákazníků\n4,9/5 : průměrné hodnocení\n12 let : na trhu\n98 % : opakovaných nákupů",
+        "stats": "25 000+ : spokojených zákazníků : 👥\n4,9/5 : průměrné hodnocení : ★\n12 let : na trhu : 🏅\n98 % : opakovaných nákupů : 🔁",
         "columns_desktop": 4,
         "content_align": "center",
         "color_scheme": "scheme-1",
@@ -403,6 +455,8 @@
       "settings": {
         "heading": "<p>Časté dotazy</p>",
         "layout": "split",
+        "split_side": "content_media",
+        "split_position": "start",
         "show_contact": true,
         "contact_heading": "Nenašli jste odpověď?",
         "contact_text": "<p>Ozvěte se, rádi poradíme.</p>",
@@ -455,16 +509,20 @@
   },
   "order": [
     "hero",
+    "usp_marquee",
     "promo_hero",
     "categories",
     "trust",
     "bestsellers",
+    "peek_hero",
     "cta",
     "comparison",
     "stats",
     "reviews",
+    "tabbed_rail",
     "faq",
     "articles",
+    "shoppable",
     "newsletter",
     "appslot"
   ]

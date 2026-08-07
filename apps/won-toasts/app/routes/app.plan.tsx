@@ -8,12 +8,12 @@ import { PRO_FEATURES } from "@won/core/toasts/tier";
 // key or a `key.replace(/_/g," ")` of it).
 const FEATURE_LABELS: Record<string, string> = {
   design_studio: "Full design studio (custom colours, shape & motion)",
-  advanced_grouping: "Advanced grouping & anti-spam",
+  advanced_grouping: "Advanced anti-spam (merge, cap & rate limits)",
   custom_css: "Custom CSS styling",
   targeting: "Page, device & customer targeting",
   unlimited_milestones: "Unlimited milestones",
   remove_branding: "Remove Won branding",
-  analytics: "Insights & on-device suggestions",
+  analytics: "Insights — impressions, interactions & per-toast metrics",
   experiments: "A/B experiments",
 };
 
@@ -21,14 +21,25 @@ function featureLabel(key: string): string {
   return FEATURE_LABELS[key] ?? key.replace(/_/g, " ");
 }
 
+// Pro capabilities that are gated outside the PRO_FEATURES/isFeatureAllowed list
+// (per-type look via gateConfigForPlan; the Pro toast types via the recipe action;
+// language count via the locale limit). Shown as bullets so the Pro card reflects
+// what the plan actually unlocks, without inventing unenforced feature flags.
+const EXTRA_PRO_FEATURES = [
+  "Per-type look & behaviour (each toast styled on its own)",
+  "Pro toast types — low-stock, cart activity, order summary, recent sales",
+  "Up to 20 languages (Free includes 2)",
+];
+
 // What Free already includes — stated positively so the merchant sees Free isn't
 // crippled (doctrine: Pro gates scope, never quality).
 const FREE_FEATURES = [
-  "All cart-event toasts (add, remove, update)",
+  "All cart-event toasts (add, remove, update) — each on/off",
   "Countdown timer & announcements",
   "The default look, presets & live preview",
+  "Free-shipping & gift milestones",
   "Localization in 2 languages",
-  "Basic grouping & anti-spam",
+  "Basic anti-spam — merge, cap & quiet mode",
   "Exclusions — turn toasts off on any page",
 ];
 
@@ -180,7 +191,7 @@ export default function PlanRoute() {
   const error = (actionData as { error?: string } | undefined)?.error;
 
   return (
-    <s-page heading="Plan">
+    <s-page heading="Plan" inlineSize="large">
       <s-section>
         {error ? (
           <s-banner tone="critical" heading="Billing error">
@@ -222,7 +233,7 @@ export default function PlanRoute() {
             highlighted
             current={isPro}
             intro="Everything in Free, plus:"
-            features={PRO_FEATURES.map(featureLabel)}
+            features={[...PRO_FEATURES.map(featureLabel), ...EXTRA_PRO_FEATURES]}
             footer={
               !isPro ? (
                 <Form method="post">

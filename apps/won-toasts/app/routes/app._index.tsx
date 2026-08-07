@@ -274,9 +274,13 @@ export default function Index() {
   const appEnabled = config.enabled;
   const embedEnabled = embedStatus === "enabled";
   const live = appEnabled && embedEnabled;
+  // Lifecycle events are only recorded for Pro shops (see won-toasts.track), so the
+  // numbers exist only on Pro. On Free we show an honest upsell, not a "collecting
+  // data" state that would never fill.
+  const isPro = config.plan === "pro";
 
   return (
-    <s-page heading="Won Toasts">
+    <s-page heading="Won Toasts" inlineSize="large">
       {saveError ? (
         <s-section>
           <s-banner tone="critical" heading="Your changes weren’t saved">
@@ -298,7 +302,18 @@ export default function Index() {
                 <s-badge tone="success">Running on your storefront</s-badge>
               </s-stack>
 
-              {stats.impressions > 0 ? (
+              {!isPro ? (
+                <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
+                  <s-stack direction="block" gap="small-100">
+                    <s-text type="strong">See how your toasts perform</s-text>
+                    <s-text color="subdued">
+                      Impressions and interactions are a Pro feature.{" "}
+                      <s-link href="/app/plan">Upgrade to Pro</s-link> to see the
+                      numbers here and in Insights.
+                    </s-text>
+                  </s-stack>
+                </s-box>
+              ) : stats.impressions > 0 ? (
                 <s-grid
                   gridTemplateColumns="repeat(3, minmax(0, 1fr))"
                   gap="base"
@@ -332,7 +347,7 @@ export default function Index() {
                 </s-banner>
               )}
 
-              {stats.impressions > 0 ? (
+              {isPro && stats.impressions > 0 ? (
                 <s-box
                   padding="base"
                   borderWidth="base"

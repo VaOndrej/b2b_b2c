@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { accentFor, styleTokensFor } from "@won/core/toasts/presentation";
 import type {
@@ -64,24 +64,43 @@ export function StorefrontPreview({
   const shown = SCENE.slice(0, visible);
   const extra = SCENE.length - visible;
 
-  // Clamp offsets so the stack always stays inside the little frame while still
-  // moving visibly as the merchant edits the number.
-  const offT = Math.min(Math.max(0, offsetTop), 120);
-  const offX = Math.min(Math.max(0, offsetInline), mobile ? 32 : 130);
+  // TRUE SCALE: the frame is a scale model of a real screen. We measure the frame's
+  // width and scale every px value (toast width, offsets) by the same factor, so
+  // "40px" and "400px" are visibly, proportionally different and nothing is capped
+  // or clamped — the merchant sees the real effect of the number. REF_W is the
+  // screen width the frame stands in for (a modest desktop / a phone).
+  const REF_W = mobile ? 390 : 680;
+  const vpRef = useRef<HTMLDivElement>(null);
+  const [vpW, setVpW] = useState(300);
+  useEffect(() => {
+    const el = vpRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => setVpW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [device]);
+  const scale = vpW > 0 ? vpW / REF_W : 0.4;
 
-  const desktopWidth = Math.min(Number(theme.width) || 300, 205);
+  const offXpx = Math.round(Math.max(0, offsetInline) * scale);
+  const offYpx = Math.round(Math.max(0, offsetTop) * scale);
+  // Proportional width (no upper cap); a small floor keeps the card legible below
+  // the minimum configurable width — it never limits how wide the toast can grow.
+  const toastW = Math.max(108, Math.round((Number(theme.width) || 300) * scale));
+
   // Horizontal placement (mobile always spans the width, like the storefront).
   const horizontal: CSSProperties = mobile
-    ? { left: offX, right: offX }
+    ? { left: offXpx, right: offXpx }
     : isCenter
-      ? { left: "50%", width: desktopWidth }
-      : { [isLeft ? "left" : "right"]: offX, width: desktopWidth };
+      ? { left: "50%", width: toastW }
+      : { [isLeft ? "left" : "right"]: offXpx, width: toastW };
   // Vertical placement: top / vertically-centred / bottom.
   const vertical: CSSProperties = isMiddle
     ? { top: "50%" }
     : isTop
-      ? { top: offT }
-      : { bottom: offT };
+      ? { top: offYpx }
+      : { bottom: offYpx };
   const translate = [
     isCenter && !mobile ? "translateX(-50%)" : "",
     isMiddle ? "translateY(-50%)" : "",
@@ -159,7 +178,7 @@ export function StorefrontPreview({
         </div>
 
         {/* viewport with a faux product page + the positioned toast stack */}
-        <div style={{ position: "relative", padding: 16, minHeight: 260, background: isDark ? "#0f1317" : "linear-gradient(180deg,#fff,#fafbfc)" }}>
+        <div ref={vpRef} style={{ position: "relative", padding: 16, minHeight: 300, background: isDark ? "#0f1317" : "linear-gradient(180deg,#fff,#fafbfc)" }}>
           <div style={{ display: "grid", gridTemplateColumns: "68px 1fr", gap: 12 }}>
             <div style={{ aspectRatio: "1", borderRadius: 9, border: "1px solid #e6e9ee", background: "repeating-linear-gradient(135deg,#e9edf1,#e9edf1 7px,transparent 7px,transparent 14px)" }} />
             <div>
@@ -190,7 +209,7 @@ export function StorefrontPreview({
       </div>
 
       <p style={{ color: "#8892a0", fontSize: 12, marginTop: 10, textAlign: "center" }}>
-        Same render tokens as the storefront · toast sits <strong>{position.replace("-", " ")}</strong>
+        To-scale preview · toast sits <strong>{position.replace("-", " ")}</strong>
       </p>
     </div>
   );

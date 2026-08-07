@@ -4,7 +4,8 @@
       "previous": "Předchozí",
       "next": "Další",
       "compare": "Posuvník porovnání",
-      "no_articles": "Zatím žádné články."
+      "no_articles": "Zatím žádné články.",
+      "no_products": "Zatím žádné produkty."
     },
     "guide": {
       "metafield_title": "Napojte metapole a tabulka se vyplní sama",

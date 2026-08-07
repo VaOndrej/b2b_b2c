@@ -22,6 +22,7 @@ export function MessageMatrix({
   messages,
   toggleFor,
   extraFor,
+  referenceLocale,
 }: {
   theme: ToastTheme;
   locales: string[];
@@ -30,6 +31,10 @@ export function MessageMatrix({
   toggleFor?: (key: string) => RowToggle | null;
   /** Optional extra inline settings shown under a row (e.g. a threshold). */
   extraFor?: (key: string) => ReactNode;
+  /** When translating, show the merchant's ACTUAL default copy for this locale as
+   *  the reference (falling back to the built-in example) so they're not
+   *  translating blind against a placeholder. */
+  referenceLocale?: string;
 }) {
   const multi = locales.length > 1;
   const gridTemplateColumns = `minmax(200px, 260px) ${locales
@@ -53,6 +58,9 @@ export function MessageMatrix({
         const accent = accentFor(theme, ev.key);
         const toggle = toggleFor?.(ev.key) ?? null;
         const extra = extraFor?.(ev.key) ?? null;
+        const reference = referenceLocale
+          ? (messages[ev.key]?.[referenceLocale] ?? "").trim()
+          : "";
         return (
           <div key={ev.key} style={{ display: "contents" }}>
             {/* Row header: accent swatch + ON/OFF toggle (or plain title) + example. */}
@@ -67,7 +75,9 @@ export function MessageMatrix({
                 ) : (
                   <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1f24" }}>{ev.title}</div>
                 )}
-                <div style={{ fontSize: 12, color: "#8892a0" }}>e.g. “{ev.example}”</div>
+                <div style={{ fontSize: 12, color: "#8892a0" }}>
+                  {reference ? `Your default: “${reference}”` : `e.g. “${ev.example}”`}
+                </div>
               </div>
             </div>
 

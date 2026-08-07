@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Form, useLoaderData } from "react-router";
 
@@ -12,15 +11,9 @@ import {
   updateToastConfig,
 } from "../services/toast-config.server";
 import { ProFrame } from "../components/ProFrame";
-import { SegmentedNav } from "../components/SegmentedNav";
 import { useSavedToast } from "../lib/use-saved-toast";
 import { persistConfig } from "../lib/persist-config.server";
 import { pageLabel } from "../lib/labels";
-
-const TARGETING_SEGMENTS = [
-  { key: "never", label: "Where it never runs" },
-  { key: "run", label: "Where it runs", pro: true },
-];
 
 const PAGES = PAGE_TYPES as readonly PageType[];
 
@@ -65,13 +58,9 @@ export default function TargetingRoute() {
   const isPro = config.plan === "pro";
   const t = config.targeting;
   const ex = config.exclusions;
-  const [seg, setSeg] = useState("never");
-  const panel = (key: string): React.CSSProperties => ({
-    display: seg === key ? "block" : "none",
-  });
 
   return (
-    <s-page heading="Targeting">
+    <s-page heading="Targeting" inlineSize="large">
       {saveError ? (
         <s-section>
           <s-banner tone="critical" heading="Your changes weren’t saved">
@@ -87,12 +76,56 @@ export default function TargetingRoute() {
         </s-paragraph>
       </s-section>
 
-      {/* Same studio shell as Toasts/Design (doctrine §7b). */}
-      <SegmentedNav items={TARGETING_SEGMENTS} selected={seg} onSelect={setSeg} ariaLabel="Targeting sections" />
-
+      {/* Unified on one page (doctrine §7c): Free exclusions and Pro targeting are
+          two halves of the same "where" question, so the merchant sees both at once
+          instead of hunting across tabs. Free leads — it's always usable and must
+          never feel blocked; Pro sits below with a clear upgrade path. */}
       <Form method="post" data-save-bar>
+        {/* ---- Where they never run (Free) ---- */}
+        <s-section heading="Where they never run">
+          <s-stack direction="block" gap="large">
+            <s-badge tone="success">Free</s-badge>
+            <s-paragraph>
+              Turn the app off where it doesn’t belong. Excluded pages and URLs
+              stop <s-text type="strong">everything</s-text> — cart toasts and
+              notifications alike.
+            </s-paragraph>
+
+            <s-stack direction="block" gap="small">
+              <s-text type="strong">Whole page types</s-text>
+              <s-stack direction="inline" gap="base">
+                {PAGES.map((p) => (
+                  <s-checkbox
+                    key={p}
+                    label={pageLabel(p)}
+                    name={`exclude_page_${p}`}
+                    value="on"
+                    checked={ex.pages.includes(p)}
+                  />
+                ))}
+              </s-stack>
+            </s-stack>
+
+            <s-text-area
+              label="Specific URLs"
+              name="exclude_urls"
+              rows={5}
+              value={ex.urls.join("\n")}
+              placeholder={"/checkout*\n/pages/legal"}
+              details="One pattern per line. Use * as a wildcard (e.g. /checkout*). Query strings and hashes are ignored."
+            />
+
+            <s-text color="subdued">
+              You can also add{" "}
+              <s-text type="strong">
+                {'<meta name="won-toasts:active" content="false">'}
+              </s-text>{" "}
+              to any template to opt that page out with no config here.
+            </s-text>
+          </s-stack>
+        </s-section>
+
         {/* ---- Where toasts run (Pro) ---- */}
-        <div style={panel("run")}>
         <s-section heading="Where toasts run">
           <ProFrame locked={!isPro}>
           <s-stack direction="block" gap="large">
@@ -152,53 +185,6 @@ export default function TargetingRoute() {
           </s-stack>
           </ProFrame>
         </s-section>
-        </div>
-
-        {/* ---- Where they never run (Free) ---- */}
-        <div style={panel("never")}>
-        <s-section heading="Where they never run">
-          <s-stack direction="block" gap="large">
-            <s-badge tone="success">Free</s-badge>
-            <s-paragraph>
-              Turn the app off where it doesn’t belong. Excluded pages and URLs
-              stop <s-text type="strong">everything</s-text> — cart toasts and
-              notifications alike.
-            </s-paragraph>
-
-            <s-stack direction="block" gap="small">
-              <s-text type="strong">Whole page types</s-text>
-              <s-stack direction="inline" gap="base">
-                {PAGES.map((p) => (
-                  <s-checkbox
-                    key={p}
-                    label={pageLabel(p)}
-                    name={`exclude_page_${p}`}
-                    value="on"
-                    checked={ex.pages.includes(p)}
-                  />
-                ))}
-              </s-stack>
-            </s-stack>
-
-            <s-text-area
-              label="Specific URLs"
-              name="exclude_urls"
-              rows={5}
-              value={ex.urls.join("\n")}
-              placeholder={"/checkout*\n/pages/legal"}
-              details="One pattern per line. Use * as a wildcard (e.g. /checkout*). Query strings and hashes are ignored."
-            />
-
-            <s-text color="subdued">
-              You can also add{" "}
-              <s-text type="strong">
-                {'<meta name="won-toasts:active" content="false">'}
-              </s-text>{" "}
-              to any template to opt that page out with no config here.
-            </s-text>
-          </s-stack>
-        </s-section>
-        </div>
       </Form>
     </s-page>
   );

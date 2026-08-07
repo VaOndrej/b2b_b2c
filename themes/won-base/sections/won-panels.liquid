@@ -14,10 +14,26 @@
   if s.display == 'tabs'
     assign is_tabs = true
   endif
+  assign is_split = false
+  if is_tabs == false and s.layout == 'split'
+    assign is_split = true
+  endif
+  assign show_media = false
+  if is_split and s.split_side != 'content'
+    assign show_media = true
+  endif
+  assign show_content = true
+  if is_split and s.split_side == 'media'
+    assign show_content = false
+  endif
   assign has_head = false
-  if s.heading != blank or s.intro != blank
+  if show_media
     assign has_head = true
-  elsif is_tabs == false and s.show_contact
+  elsif show_content and s.heading != blank
+    assign has_head = true
+  elsif show_content and s.intro != blank
+    assign has_head = true
+  elsif show_content and is_tabs == false and s.show_contact
     assign has_head = true
   endif
 -%}
@@ -28,26 +44,37 @@
   data-testid="won-panels-section"
 >
   <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %}">
-    <div class="won-panels won-panels--{{ s.display }}{% if is_tabs == false %} won-panels--{{ s.layout }}{% endif %}">
+    <div class="won-panels won-panels--{{ s.display }}{% if is_tabs == false %} won-panels--{{ s.layout }}{% endif %}{% if is_split and s.split_position == 'end' %} won-panels--flip{% endif %}{% if show_media %} won-panels--media{% endif %}">
       {%- if has_head -%}
         <div class="won-panels__head">
-          {%- if s.heading != blank -%}
-            <h2
-              class="won-heading won-panels__heading"
-              style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%;"
-            >
-              {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
-            </h2>
-          {%- endif -%}
-          {%- if s.intro != blank -%}<div class="won-panels__intro rte">{{ s.intro }}</div>{%- endif -%}
-          {%- if is_tabs == false and s.show_contact -%}
-            <div class="won-panels__contact">
-              {%- if s.contact_heading != blank -%}<p class="won-panels__contact-heading">{{ s.contact_heading }}</p>{%- endif -%}
-              {%- if s.contact_text != blank -%}<div class="rte">{{ s.contact_text }}</div>{%- endif -%}
-              {%- if s.contact_button_label != blank -%}
-                <a class="won-btn won-btn--secondary" {% if s.contact_button_link != blank %}href="{{ s.contact_button_link }}"{% endif %}>{{ s.contact_button_label }}</a>
+          {%- if show_media -%}
+            <div class="won-panels__media">
+              {%- if s.split_media != blank -%}
+                {{ s.split_media | image_url: width: 1000 | image_tag: widths: '300, 600, 1000', sizes: '(min-width: 990px) 34vw, 100vw', class: 'won-panels__media-img', loading: 'lazy' }}
+              {%- else -%}
+                {{ 'image' | placeholder_svg_tag: 'won-panels__media-img won-panels__media-img--ph' }}
               {%- endif -%}
             </div>
+          {%- endif -%}
+          {%- if show_content -%}
+            {%- if s.heading != blank -%}
+              <h2
+                class="won-heading won-panels__heading"
+                style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%;"
+              >
+                {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
+              </h2>
+            {%- endif -%}
+            {%- if s.intro != blank -%}<div class="won-panels__intro rte">{{ s.intro }}</div>{%- endif -%}
+            {%- if is_tabs == false and s.show_contact -%}
+              <div class="won-panels__contact">
+                {%- if s.contact_heading != blank -%}<p class="won-panels__contact-heading">{{ s.contact_heading }}</p>{%- endif -%}
+                {%- if s.contact_text != blank -%}<div class="rte">{{ s.contact_text }}</div>{%- endif -%}
+                {%- if s.contact_button_label != blank -%}
+                  <a class="won-btn won-btn--secondary" {% if s.contact_button_link != blank %}href="{{ s.contact_button_link }}"{% endif %}>{{ s.contact_button_label }}</a>
+                {%- endif -%}
+              </div>
+            {%- endif -%}
           {%- endif -%}
         </div>
       {%- endif -%}
@@ -70,6 +97,9 @@
   .won-panels__intro { opacity: 0.9; }
   .won-panels__contact { margin-top: var(--won-space-3); display: flex; flex-direction: column; gap: var(--won-space-2); align-items: flex-start; }
   .won-panels__contact-heading { margin: 0; font-weight: 700; }
+  .won-panels__media { margin: 0; }
+  .won-panels__media-img { display: block; inline-size: 100%; block-size: auto; border-radius: var(--won-radius-md); object-fit: cover; }
+  .won-panels__media-img--ph { aspect-ratio: 4 / 3; background: var(--won-surface); }
 
   /* Tabs (absorbs won-tabs). */
   .won-panels__nav { display: flex; flex-wrap: wrap; gap: var(--won-space-2); border-block-end: 1px solid var(--won-border); }
@@ -122,8 +152,12 @@
   }
   @media (min-width: 990px) {
     .won-panels--accordion.won-panels--split { flex-direction: row; align-items: flex-start; gap: var(--won-space-7); }
+    /* split_position: end → the head/image column moves to the right. */
+    .won-panels--accordion.won-panels--split.won-panels--flip { flex-direction: row-reverse; }
     .won-panels--split .won-panels__head { flex: 0 0 34%; position: sticky; top: var(--won-space-5); }
     .won-panels--split .won-panels__rows { flex: 1 1 auto; }
+    /* an image side column earns a bit more room and isn't sticky-cropped */
+    .won-panels--split.won-panels--media .won-panels__head { flex-basis: 40%; position: static; }
   }
 {% endstylesheet %}
 
@@ -153,6 +187,26 @@
       "default": "stacked"
     },
     { "type": "checkbox", "id": "allow_multiple", "label": "t:won.settings.allow_multiple", "default": false, "visible_if": "{{ section.settings.display == 'accordion' }}" },
+    {
+      "type": "select", "id": "split_side", "label": "t:won.settings.split_side", "info": "t:won.info.split_side",
+      "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' }}",
+      "options": [
+        { "value": "content", "label": "t:won.options.split_content" },
+        { "value": "media", "label": "t:won.options.split_media" },
+        { "value": "content_media", "label": "t:won.options.split_content_media" }
+      ],
+      "default": "content"
+    },
+    {
+      "type": "select", "id": "split_position", "label": "t:won.settings.split_position", "info": "t:won.info.split_position",
+      "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' }}",
+      "options": [
+        { "value": "start", "label": "t:won.options.position_start" },
+        { "value": "end", "label": "t:won.options.position_end" }
+      ],
+      "default": "start"
+    },
+    { "type": "image_picker", "id": "split_media", "label": "t:won.settings.split_media", "info": "t:won.info.split_media", "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' and section.settings.split_side != 'content' }}" },
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.faq_heading" },
     { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 80, "step": 2, "unit": "px", "default": 36 },
@@ -194,6 +248,11 @@
     {
       "name": "t:won.presets.faq_split", "category": "t:won.categories.content",
       "settings": { "display": "accordion", "layout": "split", "show_contact": true },
+      "blocks": [{ "type": "won-panel" }, { "type": "won-panel" }, { "type": "won-panel" }, { "type": "won-panel" }]
+    },
+    {
+      "name": "t:won.presets.faq_media", "category": "t:won.categories.content",
+      "settings": { "display": "accordion", "layout": "split", "split_side": "content_media", "split_position": "start" },
       "blocks": [{ "type": "won-panel" }, { "type": "won-panel" }, { "type": "won-panel" }, { "type": "won-panel" }]
     }
   ]

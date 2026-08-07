@@ -334,7 +334,8 @@
       "previous": "Previous",
       "next": "Next",
       "compare": "Comparison slider",
-      "no_articles": "No articles yet."
+      "no_articles": "No articles yet.",
+      "no_products": "No products yet."
     },
     "guide": {
       "metafield_title": "Connect a metafield to fill this table",

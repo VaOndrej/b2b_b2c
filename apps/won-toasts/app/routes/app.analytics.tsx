@@ -68,7 +68,7 @@ export default function AnalyticsRoute() {
 
   if (!data.pro) {
     return (
-      <s-page heading="Insights">
+      <s-page heading="Insights" inlineSize="large">
         <s-section heading="Analytics is a Pro feature">
           <s-banner tone="info" heading="Measure what your toasts do">
             Impressions, click-through, dismiss and undo rates per rule — plus
@@ -90,7 +90,7 @@ export default function AnalyticsRoute() {
   const maxImpr = Math.max(1, ...rows.map(([, m]) => m.impressions));
 
   return (
-    <s-page heading="Insights">
+    <s-page heading="Insights" inlineSize="large">
       {rows.length === 0 ? (
         <s-section heading="Performance (last 30 days)">
           <s-paragraph>

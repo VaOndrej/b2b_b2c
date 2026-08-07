@@ -859,6 +859,26 @@
                 Functions (dvojité slevy). Přesné limity Functions ověřit přes
                 <code>shopify-dev</code> MCP při psaní Rewards/Tiers.
               </p>
+              <p class="guide-idea">
+                <strong>Admin UX (sdílený Won admin systém — mechanika, ne štítky):</strong>
+                nav <em>Overview → Steppers → Design → Targeting → Insights → Plan</em>
+                (tvar sdílený s Toasts, jména vlastní). Studio shell (segmented picker →
+                panel → sticky preview → jeden save-bar) jako u Toasts. <em>Per-screen:</em>
+                Overview onboarding (3 kroky: zapnout → app embed → volitelně PDP blok);
+                <strong>Steppers studio</strong> (surfaces jako segmenty cart&amp;drawer / PDP /
+                karty / search; <strong>quantity-rules jako matrix</strong> v human units z
+                <code>won.quantity_rules</code>, Pro; toggle „neotvírat boční košík při quick
+                add/remove"; adopce existujícího theme controlu + <strong>safe no-op</strong>;
+                cross-app awareness s <strong>VAROVÁNÍM</strong> když drawer-suppress zapnutý a
+                Toasts chybí — zákazník nedostane feedback); Design (presety „start from a look" +
+                Look / Placement <code>PositionField</code> / Timing / Anti-spam segmenty);
+                Targeting (never-runs Free / runs Pro); Insights (Pro — <strong>adoption/interakce
+                metriky, NE revenue</strong>, poctivě); Plan (Free positivně / Pro amber).
+                <em>Sdílené:</em> <code>ProFrame</code>, human-label mapy, settings search, Custom
+                CSS escape hatch (<code>[data-won-*]</code>/<code>--won-*</code>), config history.
+                Vizuální spec:
+                <a href="https://claude.ai/code/artifact/0a447e59-6373-4162-8d32-fad3e2a84c92">Won Admin System artifact</a>.
+              </p>
               <ol>
                 <li>
                   <strong>Architektura:</strong> App
@@ -1372,6 +1392,112 @@
                 <code>won:cart:update</code>, ať nedělá dvojité fetche. Řádky
                 <code>_gift_progress</code> ignoruje (řeší cart-core).
               </p>
+              <p class="guide-idea">
+                <strong>Duše &amp; rozhodnutí forků (vyladěno 2026-08):</strong>
+                Companion je <em>vkusný prodejní asistent jednoho okamžiku</em> —
+                proměňuje „přidáno do košíku" v „a tohle to dokončí" a zvedá AOV
+                <strong>skrze upřímnou pomoc, ne tlak</strong> (důvěra = růstový
+                motor; nikdy nedoporučí šunt jen pro číslo, respektuje „ne").
+                Z té duše plynou forky: <strong>(1) Engine</strong> — Free =
+                ruční páry + by-collection + bigger-pack swap; <strong>Pro =
+                reálné co-occurrence FBT z objednávek</strong> (pravdivý signál,
+                ne fake-AI) + collection/segment cílení. <strong>(2) Slevy</strong>
+                — v1 zůstává <strong>Function-free</strong> (lehká instalace, čistá
+                pomoc bez úplatku); slevový upsell = <strong>budoucí Pro</strong>
+                přes sdílený <code>packages/functions</code> crate (respektuje Won
+                stacking policy). <strong>(3) Placementy</strong> — v1
+                <strong>post-add modal + cart</strong> (srdce = post-add okamžik),
+                PDP inline fast-follow, <strong>post-purchase park</strong> (jiný
+                okamžik, jiná extension). <strong>(4) PackUp</strong> = modul
+                bigger-pack swap (potvrzeno). <strong>(5) Cross-app synergie</strong>
+                (upsell-to-unlock reward / next Tiers break) — napsáno jako Pro,
+                <strong>build park</strong> až budou Rewards/Tiers živé.
+                <strong>(6) Free/Pro čára</strong> — Free = modal + manuál +
+                1-click + bigger-pack + design + governance (plnohodnotný asistent,
+                ne mrzák); Pro <strong>gatuje SCOPE, ne kvalitu</strong> = real FBT
+                + slevy + segment/collection + measurement. <strong>(7) Mobil</strong>
+                = <strong>bottom-sheet</strong> místo full modalu (nikdy invazivní).
+                <strong>(8) Measurement dřív</strong> — upřímnost = retence, takže
+                attributed-lift + <strong>A/B holdout</strong> není koncová featura,
+                ale jádro hodnoty (asistent, který si věří, nelže o své hodnotě);
+                základní atribuce jde dřív v žebříku. <strong>(9) „Nikdy
+                nenabízet" guardrail</strong> (exclude-from-recommendation:
+                dárkové karty / subscription / výprodej) = brand-safety =
+                <strong>Free jádro</strong> (asistent netlačí šunt), vedle už
+                existujícího out-of-stock guardu. <strong>(10) Presety
+                agresivity</strong> — <em>subtle</em> (default) / <em>standard</em>,
+                <strong>žádný „pushy" stupeň</strong>; asistent umí být tichý i
+                sebevědomý, nikdy otravný.
+              </p>
+              <p class="guide-idea">
+                <strong>Hloubkový brainstorm (širší úhly, 2026-08):</strong>
+                <em>Kvalita recs = skrytý core risk</em> (Companionův ekvivalent
+                Stepperova theme-attachmentu). Doktrína <strong>„žádné doporučení
+                &gt; špatné doporučení"</strong>: nemá-li engine jistý rec,
+                <strong>modal se prostě neukáže</strong> (radši ticho než šunt —
+                soul). <em>Cold-start</em> (0 objednávek, nenastavená pravidla):
+                real FBT nemá z čeho → fallback ruční páry + by-collection/type/tag,
+                jinak nic; a <strong>authoring UX = adopce</strong> — starter rules
+                <strong>auto-navržené z katalogu</strong> + bulk + „quick start" +
+                <strong>preview co pravidlo doporučí</strong> (když je psaní pravidel
+                dřina, merchant odejde). <em>Ranking když fíří víc pravidel:</em>
+                priorita (manuál &gt; FBT &gt; collection) + skóre (síla
+                co-occurrence) + cap 2–3 + <strong>diverzita</strong> (ne 3 skoro
+                stejné). <em>Mechanika okamžiku:</em> <strong>burst</strong> (3
+                rychlé addy) → <strong>jeden modal</strong> s net stavem (zrcadlí
+                Toasts grouping přes cart-core), <strong>recursion guard</strong>
+                (přidání doporučeného produktu znovu nespustí modal) a
+                <strong>frequency cap</strong> per session (únava), vedle
+                „odmítnuté neukázat znovu". <em>Konverze:</em> po 1-click add
+                <strong>modal zůstane otevřený</strong> s ✓ „přidáno" (umožní přidat
+                víc); varianta doporučeného produktu = <strong>default varianta</strong>
+                (mini-picker později). <em>Cross-app koordinace</em> (trojice běží
+                spolu): <strong>drawer kolize</strong> — když téma po addu auto-otevře
+                boční košík, <strong>modal potlačí auto-open draweru</strong> (ladí se
+                Stepperovým drawer-suppress togglem); <strong>toast-suppress</strong>
+                — když běží modal, potlačit redundantní „přidáno" toast (Toasts dál
+                řeší remove/undo); <strong>hranice s Rewards</strong> — Companion
+                <em>doporučuje produkty</em>, Rewards <em>vlastní prahy/progress bar</em>
+                (Companion je neduplikuje; upsell-to-unlock jen v Pro). <em>Measurement
+                = retence:</em> <strong>holdout</strong> (modal 90 % / skrytý 10 % →
+                srovnání AOV = inkrementální pravda) vedle „attributed-add value"
+                (horní odhad), obojí <strong>poctivě označené</strong>; +
+                <strong>smyčka zpět do pravidel</strong> — per-rule atribuce → prune
+                losers + navrhni vítězné páry jako nová pravidla (Pro). <em>Correctness
+                / perf / i18n (Toasts parita):</em> vyprodáno mezi loadem a klikem →
+                optimistic rollback + hláška; neseedovat z / nedoporučovat gift /
+                subscription / bundle řádky; <strong>i18n cs/sk/en + RTL</strong>;
+                <strong>perf budget</strong> (lazy-load obrázků, neblokovat LCP);
+                <strong>fetch-on-add se skeletonem</strong> (prefetch jako pozdější
+                optimalizace). <em>De-risk spike (build fáze, ne teď):</em> prototyp
+                <code>resolveRecommendations</code> scoring + <strong>generátor
+                starter-rules z reálného katalogu</strong> (Therabeast → by-collection/
+                type/tag páry → ruční posouzení „dávají smysl?") — recs-quality je
+                ten pravý risk, ne DOM.
+              </p>
+              <p class="guide-idea">
+                <strong>Admin UX (sdílený Won admin systém — mechanika, ne štítky):</strong>
+                nav <em>Overview → Recommendations → Design → Placements → Targeting →
+                Insights → Plan</em> (Overview home, Plan last; <strong>jména vlastní,
+                tvar sdílený</strong>). Každá storefront-ovlivňující stránka = <strong>studio
+                shell</strong>: segmented picker → jeden panel → sticky live preview;
+                skryté panely dál submitují → <strong>jeden contextual save-bar</strong>
+                (nikdy inline Save); preview bindí <strong>native input/change</strong>, ne
+                onInput (s-* nefírují). <em>Per-screen:</em> Overview onboarding→dashboard
+                (StatCards impressions/CTR/attributed + <strong>cross-app awareness banner</strong>
+                „nejlépe s Won Stepper+Toasts" s install statusem); Recommendations studio
+                (rule-typy jako segmenty, doktrína „žádné doporučení &gt; špatné", cold-start
+                starter-rules z katalogu, post-add modal preview, bottom-sheet); Placements
+                (<strong>clickable position grid</strong>, ne dropdown; subtle/standard presety;
+                Toasts koordinace — potlačit toast+auto-open drawer); Targeting (never-runs Free
+                / runs Pro); Insights (Pro, barevné charty <strong>holdout + attributed poctivě</strong>,
+                honest empty state, loop-back prune/suggest); Plan (Free positivně / Pro amber,
+                last). <em>Sdílené patterny:</em> amber <code>ProFrame</code> (Pro gatuje scope,
+                ne kvalitu), human-label mapy (žádné enum/ms/px, žádné emoji), settings search
+                s deep-linky, Custom CSS escape hatch (stabilní <code>[data-won-*]</code>/<code>--won-*</code>
+                hooky), config history (snapshoty + restore). Vizuální spec:
+                <a href="https://claude.ai/code/artifact/0a447e59-6373-4162-8d32-fad3e2a84c92">Won Admin System artifact</a>.
+              </p>
               <ol>
                 <li>
                   <strong>Architektura:</strong> App
@@ -1434,17 +1560,33 @@
                   config proxy, app embed no-op s
                   <code>data-won-companion-status="ready"</code>) ·
                   <code>MVP1</code> post-add modal + ruční rec páry + 1-click add
-                  přes <code>optimistic.mutate</code> ·
+                  přes <code>optimistic.mutate</code> (<strong>bottom-sheet na
+                  mobilu</strong>, a11y focus-trap/Escape, <strong>respektuje „ne"</strong>
+                  — odmítnutou nabídku neukáže znovu; <strong>burst</strong> rychlých addů →
+                  jeden modal, <strong>recursion guard</strong> + frequency cap) ·
                   <code>MVP2</code> whole-cart rec logika (seedy z celého košíku,
-                  dedupe co už v košíku je) + <strong>PackUp bigger-pack swap</strong>
-                  (varianta → větší varianta, nahrazení řádku) ·
+                  dedupe co už v košíku je, <strong>ranking</strong> priorita+skóre+
+                  cap+diverzita, <strong>cold-start starter-rules</strong> z katalogu,
+                  doktrína „žádné doporučení &gt; špatné") + <strong>PackUp
+                  bigger-pack swap</strong> (varianta → větší varianta, nahrazení
+                  řádku) ·
                   <code>MVP3</code> placementy (cart page, drawer, PDP inline) +
                   design studio na sdílených tokenech ·
                   <code>MVP4</code> targeting/pravidla
                   (product / collection / cart-value / segment) + guardraily
-                  (nedoporučovat vyprodané) ·
-                  <code>MVP5</code> analytika (impressions / CTR / attributed add)
-                  + A/B experimenty; reálné Shopify Billing (flat).
+                  (nedoporučovat vyprodané + <strong>„nikdy nenabízet"
+                  exclude-list</strong>: dárkové karty / subscription / výprodej)
+                  + <strong>presety agresivity</strong> (subtle default / standard) ·
+                  <code>MVP5</code> analytika s <strong>poctivou atribucí</strong>
+                  (impressions / CTR / attributed add value, <strong>A/B holdout
+                  = retention mechanism</strong>, ne vanity) + reálné Shopify
+                  Billing (flat) · <code>MVP6</code> (budoucí Pro) <strong>real
+                  co-occurrence FBT z objednávek</strong> (GDPR: žádné PII ve
+                  storefront payloadu, vyloučit stornované/vrácené) +
+                  <strong>slevové upsely</strong> přes sdílený
+                  <code>packages/functions</code> crate (Won stacking policy) +
+                  <strong>cross-app upsell-to-unlock</strong> (park až budou
+                  Rewards/Tiers živé).
                 </li>
                 <li>
                   <strong>Akceptační kritéria (výběr):</strong> (1) přidání
@@ -1706,6 +1848,108 @@
                 tokeny) a poslouchá cross-app bus
                 <code>document</code> event <code>won:cart:update</code>, ať
                 nedělá dvojité fetche.
+              </p>
+              <p class="guide-idea">
+                <strong>Duše appky:</strong> Rewards je <em>štědrý, poctivý
+                hostitel</em> — promění košík ve <strong>viditelný, férový cíl s
+                reálnou odměnou</strong> a zvedá AOV tím, že <strong>dává, ne že
+                manipuluje</strong>. Kde Toasts říká „stalo se", Stepper „změň to
+                snadno" a Companion „a tohle?", Rewards říká <strong>„skoro tam jsi
+                — a čeká tě tohle"</strong>. Duše = <em>zasloužená štědrost</em>:
+                progress bar, který <strong>říká pravdu</strong>, práh, který se
+                <strong>nehýbe</strong>, a dárek, který je <strong>reálný a hezký</strong>
+                (ne šunt na vyprodání deadstocku). Anti-duše: falešná scarcity,
+                posouvání cíle, skryté podmínky, „dárek" jako past — Rewards jde
+                <strong>odmítnout</strong> a nikdy nepřekvapí účtem. Odměna je dar,
+                ne trik.
+              </p>
+              <p class="guide-idea">
+                <strong>Forky &amp; rozhodnutí (grounded shopify-dev, 2026-08):</strong>
+                <strong>(1) Function architektura</strong> — <strong>jedna Discount
+                Function, dva targety</strong> (<code>cart.lines.discounts.generate.run</code>
+                = $0 na gift line, <code>cart.delivery-options.discounts.generate.run</code>
+                = doprava zdarma); <strong>ne Cart Transform</strong> → žádné Plus
+                omezení. <strong>(2) Gift line</strong> — storefront auto-přidá reálný
+                skladový produkt (<code>_gift_progress</code>, jako dnes Toasts
+                ignoruje), Function nacení $0; milestone machine přidá/odebere na
+                reached/just_lost. <strong>(3) Multi-currency prahy</strong> = core
+                (ne jedno číslo) — Function detekuje měnu košíku a bere práh per-měna
+                (Markets); špatný práh v cizí měně = trust disaster, proto od MVP1.
+                <strong>(4) Re-validation / abuse</strong> — Function nacení $0 jen
+                dokud práh platí; když zákazník u checkoutu sundá položky, gift by se
+                naúčtoval → primární obrana storefront odebere na just_lost, +
+                <strong>volitelná Cart-Checkout-Validation Function</strong> jako
+                hard-guard (blokne checkout s nekvalifikovaným <code>_gift_progress</code>);
+                zařazeno jako <strong>correctness hardening MVP, ne Pro gate</strong>
+                (je to důvěra). <strong>(5) Mystery</strong> — deterministický
+                <strong>client-side</strong> výběr (Functions jsou pure, nemůžou
+                random), seed = cart token, reveal u prahu; honest (pool jako
+                „překvapení z těchto"). <strong>(6) Free/Pro čára</strong> — Free =
+                free-shipping goal + <em>jeden</em> free-gift práh + bar + odmítnutí;
+                Pro = multi-tier ladder, Mystery, gift-choice, segment/targeting,
+                scheduling, analytics holdout, custom CSS. Pro gatuje SCOPE, ne
+                kvalitu. <strong>(7) Ownership</strong> — Rewards <strong>vlastní
+                progress bar</strong>; Toasts/Companion se odkazují, oslava jde přes
+                sdílený milestone engine → žádné dvojité oslavování.
+                <strong>(8) Won stacking policy</strong> — gift = product discount,
+                doprava = shipping discount; deklarované <code>combinesWith</code>
+                (kooperativní), aby Rewards neblokoval merchantovy jiné slevy ani
+                Companion budoucí; řízeno „Stacking" kontrolou v adminu.
+              </p>
+              <p class="guide-idea">
+                <strong>Hloubkový brainstorm (širší úhly):</strong>
+                <em>Function ↔ storefront mirror = core risk</em> (Rewards ekvivalent
+                Stepperova theme-attachmentu). Storefront ukazuje „dárek zdarma", ale
+                Function to MUSÍ reálně nacenit $0 u checkoutu — když se rozejdou
+                (Function nenasazená / chyba), zákazník zaplatí dárek = trust disaster.
+                → admin ukazuje <strong>Function deployment/active status</strong>;
+                „nic se neukáže, dokud Function nežije". <em>Gift inventory / OOS:</em>
+                dárek = reálný skladový produkt → vyprodáno → fallback (další z poolu /
+                disable tieru / skrýt), nikdy nenabídnout OOS, odečítat sklad.
+                <em>Threshold honesty:</em> eligible subtotal = bez gift řádků (ať se
+                práh nepočítá z dárku), multi-currency, zaokrouhlování.
+                <em>Pokles pod práh</em> → dárek odebrán → Toasts jemně oznámí „ztratil
+                jsi…", ne agresivně (just_lost). <em>Multi-tier ladder UX:</em> víc
+                prahů = eskalace, bar s uzly, „další odměna za X". <em>Gift-choice (Pro):</em>
+                zákazník si vybere z poolu vs auto — kontrola vs anticipace.
+                <em>Scheduling (Pro):</em> Functions neznají čas → kampaň se
+                zapíná/vypíná <strong>změnou configu/metafieldu</strong>, ne uvnitř
+                Function. <em>Analytika = retence:</em> zvedla odměna reálně AOV?
+                <strong>holdout</strong> (jako Companion) + redemption rate + threshold
+                distribution, poctivě. <em>Cross-app:</em> Companion
+                <strong>upsell-to-unlock</strong> doporučí produkt co překročí práh;
+                Toasts oznámí reached/lost; Stepper qty → recompute — Rewards je „cíl",
+                ostatní k němu navigují. <em>A11y/i18n/perf:</em> bar = <code>aria</code>
+                (valuenow), cs/sk/en + RTL, perf budget, reveal respektuje
+                reduced-motion. <em>GDPR:</em> segment/targeting = customer data →
+                webhooky + protected customer data access. <em>De-risk spike (build
+                fáze):</em> prototyp Discount Function se dvěma targety + <code>shopify
+                app function run</code> proti input.json (práh splněn / nesplněn / pod
+                prahem po odebrání) = ověří re-validation + combinesWith; deterministický
+                <code>pickMysteryGift</code> unit testy = druhá půlka.
+              </p>
+              <p class="guide-idea">
+                <strong>Admin UX (sdílený Won admin systém — mechanika, ne štítky):</strong>
+                nav <em>Overview → Rewards → Design → Targeting → Insights → Plan</em>
+                (tvar sdílený, jména vlastní). Studio shell jako u Toasts. <em>Per-screen:</em>
+                Overview onboarding (zapnout → app embed → <strong>Function status</strong>
+                „sleva aktivní u checkoutu ✓" — nový prvek, první Function appka) →
+                dashboard (redemption, AOV lift); cross-app awareness „Progress oznámení
+                přes Won Toasts" + „Companion umí doporučit produkt k dosažení prahu".
+                <strong>Rewards studio</strong> (segmenty = typy odměn Free-shipping /
+                Free-gift / Mystery / Tiered; panel = práh <strong>per-měna</strong> v
+                human units, gift picker z reálného skladu, <code>giftPool</code> pro
+                Mystery, label; sticky preview = <strong>progress bar + reward state</strong>
+                approaching/reached/reveal v <code>&lt;won-host&gt;</code>). Design (bar
+                look — barvy, uzly prahů, reveal styl + Placement cart/drawer/announcement/sticky
+                + presety). Targeting (never/runs Free/Pro). Insights (Pro — holdout AOV
+                lift + redemption rate + threshold distribution, honest). Plan (Free single
+                reward / Pro amber). <em>Rewards přidává do sdíleného systému dva nové
+                prvky</em> (použije i Tiers): <strong>Function/checkout status</strong> +
+                <strong>Stacking control</strong> (Won stacking policy). Sdílené patterny:
+                <code>ProFrame</code>, human-label mapy, settings search, Custom CSS escape
+                hatch, config history. Vizuální spec:
+                <a href="https://claude.ai/code/artifact/0a447e59-6373-4162-8d32-fad3e2a84c92">Won Admin System artifact</a>.
               </p>
               <ol>
                 <li>

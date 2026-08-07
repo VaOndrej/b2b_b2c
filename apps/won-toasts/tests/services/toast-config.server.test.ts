@@ -108,6 +108,47 @@ test("MVP9: notification recipes persist and are re-sanitized on read", async ()
   assert.equal((countdown as { endsAt?: string }).endsAt, "2026-12-31T23:59:59.000Z");
 });
 
+test("announcement per-locale translations persist and update round-trip", async () => {
+  const shop = "announce.myshopify.com";
+  await service.updateToastConfig(shop, {
+    plan: "pro",
+    notifications: [
+      {
+        id: "announcement",
+        type: "announcement",
+        enabled: true,
+        surface: "banner",
+        pages: [],
+        message: "Free gift this week!",
+        messages: { cs: "Dárek zdarma!", de: "Geschenk!" },
+      },
+    ],
+  });
+  const config = await service.getToastConfig(shop);
+  const ann = config.notifications.find((n) => n.type === "announcement");
+  assert.ok(ann);
+  assert.equal(ann.message, "Free gift this week!");
+  assert.deepEqual(
+    (ann as { messages?: Record<string, string> }).messages,
+    { cs: "Dárek zdarma!", de: "Geschenk!" },
+  );
+
+  // Mirror the Languages save: re-send notifications with only the announcement's
+  // translations changed. They must replace cleanly and survive re-read.
+  const merged = config.notifications.map((n) =>
+    n.type === "announcement" ? { ...n, messages: { cs: "Nový dárek!" } } : n,
+  );
+  await service.updateToastConfig(shop, { notifications: merged });
+  const reloaded = await service.getToastConfig(shop);
+  const ann2 = reloaded.notifications.find((n) => n.type === "announcement");
+  assert.ok(ann2);
+  assert.equal(ann2.message, "Free gift this week!");
+  assert.deepEqual(
+    (ann2 as { messages?: Record<string, string> }).messages,
+    { cs: "Nový dárek!" },
+  );
+});
+
 test("message overrides and milestone rules persist and merge", async () => {
   const shop = "messages.myshopify.com";
   await service.updateToastConfig(shop, {

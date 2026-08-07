@@ -227,6 +227,23 @@
 .won-container--full .won-hero--slider .won-hero__track > .won-slide { border-radius: 0; }
 .won-hero__carousel.is-dragging .won-hero__track { scroll-snap-type: none; scroll-behavior: auto; cursor: grabbing; }
 @media (min-width: 750px) { .won-hero--slider .won-hero__track > * { flex-basis: 100%; } }
+/* Desktop peek (koto-style): the active slide is centered and its siblings peek
+   in on both sides as rounded cards. Flex-item SPACERS (::before/::after) create
+   the leading/trailing room so the first/last card can reach the centre — using
+   them instead of padding-inline keeps the card's `%` basis measured against the
+   full track (padding would shrink the content box and the cards with it). */
+@media (min-width: 750px) {
+  .won-hero--peek.won-hero--slider .won-hero__track::before,
+  .won-hero--peek.won-hero--slider .won-hero__track::after {
+    content: "";
+    flex: 0 0 calc((100% - var(--won-hero-slide, 64%)) / 2);
+  }
+  .won-hero--peek.won-hero--slider .won-hero__track > * {
+    flex-basis: var(--won-hero-slide, 64%);
+    scroll-snap-align: center;
+  }
+  .won-hero--peek .won-hero__track > .won-slide { border-radius: var(--won-radius-md); overflow: hidden; }
+}
 
 .won-hero__arrows { position: absolute; inset-block-end: var(--won-space-4); inset-inline-end: var(--won-space-4); display: flex; gap: var(--won-space-2); z-index: 3; }
 .won-hero__arrow {

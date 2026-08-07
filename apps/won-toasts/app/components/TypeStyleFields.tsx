@@ -20,14 +20,22 @@ export function TypeStyleFields({
   const { theme, behavior } = resolveTypeStyle(config, typeKey);
   const p = typeKey;
 
+  // Visible, first-class block (doctrine §7c) — NOT hidden behind a disclosure.
+  // A Pro perk should look like one, not be buried. Merchants asked why per-type
+  // look & timing was tucked away and unformatted; it now reads as its own card.
   return (
-    <details style={{ marginTop: 8 }}>
-      <summary style={{ cursor: "pointer", color: "#5c6975", fontSize: 13, padding: "6px 0" }}>
-        Look &amp; timing for this toast
-      </summary>
+    <s-box
+      padding="base"
+      borderWidth="base"
+      borderRadius="base"
+      background="subdued"
+    >
       <ProFrame locked={!isPro}>
         <s-stack direction="block" gap="base">
-          <s-badge tone={isPro ? "success" : "info"}>{isPro ? "Pro" : "Pro — upgrade to customise per type"}</s-badge>
+          <s-stack direction="inline" gap="small-300" alignItems="center">
+            <s-text type="strong">Look &amp; timing for this toast</s-text>
+            <s-badge tone={isPro ? "success" : "info"}>{isPro ? "Pro" : "Pro — upgrade"}</s-badge>
+          </s-stack>
           <s-text color="subdued">
             Leave everything as-is to inherit your global Design. Change anything
             here and it applies to <s-text type="strong">only this toast</s-text> —
@@ -87,6 +95,6 @@ export function TypeStyleFields({
           <s-switch label="Show a close (×) button" name={`bt_${p}_closeable`} value="on" checked={behavior.closeable} disabled={!isPro} details="Lets shoppers dismiss this toast themselves." />
         </s-stack>
       </ProFrame>
-    </details>
+    </s-box>
   );
 }

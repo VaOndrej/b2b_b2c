@@ -8,13 +8,6 @@ import {
   sanitizeTheme,
 } from "@won/core/toasts/config.defaults";
 import { PRESET_LOOKS, applyLookPreset } from "@won/core/toasts/presets";
-import {
-  LOCALE_LIMIT_FREE,
-  LOCALE_LIMIT_PRO,
-  capLocales,
-  localeLimit,
-  normalizeLocale,
-} from "@won/core/toasts/locales";
 
 import { authenticate } from "../shopify.server";
 import {
@@ -31,25 +24,10 @@ import { PositionField } from "../components/PositionField";
 import { SegmentedNav } from "../components/SegmentedNav";
 import { useSavedToast } from "../lib/use-saved-toast";
 import { persistConfig } from "../lib/persist-config.server";
-import { EVENT_META, languageName } from "../lib/labels";
+import { EVENT_META } from "../lib/labels";
 
 // Languages the merchant can pick from (open BCP-47; this is just a convenient
 // starter set — resolveMessage accepts any code).
-const COMMON_LOCALES: { code: string; label: string }[] = [
-  { code: "en", label: "English" },
-  { code: "cs", label: "Čeština" },
-  { code: "sk", label: "Slovenčina" },
-  { code: "de", label: "Deutsch" },
-  { code: "fr", label: "Français" },
-  { code: "es", label: "Español" },
-  { code: "it", label: "Italiano" },
-  { code: "pl", label: "Polski" },
-  { code: "nl", label: "Nederlands" },
-  { code: "pt-br", label: "Português (BR)" },
-  { code: "hu", label: "Magyar" },
-  { code: "ro", label: "Română" },
-];
-
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const config = await getToastConfig(session.shop);
@@ -154,23 +132,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (patch.grouping) mergedGlobal.grouping = { ...current.global.grouping, ...patch.grouping };
   if (patch.frequency) mergedGlobal.frequency = { ...current.global.frequency, ...patch.frequency };
 
-  // Languages (locale-as-data): checked codes + default. Free is capped to its
-  // language limit (the default is always kept).
-  const chosen = COMMON_LOCALES.map((l) => l.code).filter((c) => f.get(`lang_${c}`) === "on");
-  const extra = String(f.get("lang_custom") ?? "")
-    .split(/[\s,]+/)
-    .map((c) => normalizeLocale(c))
-    .filter(Boolean);
-  const wantDefault = normalizeLocale(f.get("default_locale")) || "en";
-  const dedup = capLocales(
-    [wantDefault, ...chosen, ...extra],
-    localeLimit(current.plan),
-  );
-  const locales = {
-    enabledLocales: dedup.length ? dedup : ["en"],
-    defaultLocale: wantDefault,
-  };
-
+  // Languages moved to their own page (/app/languages) — Design no longer touches
+  // locales, so it can't clobber them.
   return persistConfig(() =>
     updateToastConfig(session.shop, {
       theme: {
@@ -179,7 +142,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         accent: { ...current.theme.accent, ...(savedTheme.accent ?? {}) },
       },
       global: mergedGlobal,
-      locales,
     }),
   );
 };
@@ -207,9 +169,31 @@ const DESIGN_SEGMENTS = [
   { key: "placement", label: "Placement" },
   { key: "timing", label: "Timing" },
   { key: "rules", label: "Anti-spam" },
-  { key: "languages", label: "Languages" },
   { key: "advanced", label: "Advanced" },
 ];
+
+// Tiny "before → after" illustration for the Merge lever, so the setting's effect
+// is visible, not just described (a burst of separate toasts becomes one "+N").
+const beforeAfter: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+  fontSize: 12,
+  color: "#5b6472",
+  background: "#fff",
+  border: "1px solid #e6e9ee",
+  borderRadius: 8,
+  padding: "8px 10px",
+};
+const miniT: React.CSSProperties = {
+  width: 14,
+  height: 12,
+  borderRadius: 3,
+  background: "#f4a259",
+  opacity: 0.5,
+  display: "inline-block",
+};
 
 // A titled group of controls — gives the page a readable rhythm instead of a
 // flat wall of fields (doctrine §8). Reused for every Design section.
@@ -229,8 +213,6 @@ export default function DesignRoute() {
   const { config, versions } = useLoaderData<typeof loader>();
   const saveError = useSavedToast();
   const isPro = config.plan === "pro";
-  const loc = config.locales;
-  const langLimit = isPro ? LOCALE_LIMIT_PRO : LOCALE_LIMIT_FREE;
 
   const formRef = useRef<HTMLFormElement>(null);
   const [theme, setTheme] = useState(config.theme);
@@ -305,7 +287,7 @@ export default function DesignRoute() {
   });
 
   return (
-    <s-page heading="Design">
+    <s-page heading="Design" inlineSize="large">
       {saveError ? (
         <s-section>
           <s-banner tone="critical" heading="Your changes weren’t saved">
@@ -456,76 +438,85 @@ export default function DesignRoute() {
             </s-section>
             </div>
 
-            {/* ---- ANTI-SPAM (grouping [Pro] + frequency) ---- */}
+            {/* ---- ANTI-SPAM — three plain-language levers instead of four
+                 overlapping concepts (grouping/anti-spam/frequency/quiet).
+                 MERGE bursts · CAP the volume · QUIET everything. Field NAMES are
+                 unchanged so the action/sanitizer are untouched; only the framing
+                 changed. Governance stays global (per-type anti-spam makes no
+                 sense — see per-type-look-behavior decision). ---- */}
             <div style={panel("rules")}>
-            {/* ---- GROUPING (Pro) ---- */}
-            <s-section heading="Grouping & anti-spam">
-              <ProFrame locked={!isPro}>
-              <s-stack direction="block" gap="base">
-                <s-badge tone={isPro ? "success" : "info"}>{isPro ? "Pro" : "Pro — basic grouping on Free"}</s-badge>
-                <s-select label="Group rapid changes" name="grouping_mode" value={g.grouping.mode} details="When a shopper quickly changes the cart several times, show one combined toast instead of many — less spam. Choose what counts as “the same thing”." disabled={!isPro}>
-                  <s-option value="by-product">By product</s-option>
-                  <s-option value="by-variant">By variant</s-option>
-                  <s-option value="by-type">By event type</s-option>
-                  <s-option value="off">Off</s-option>
-                </s-select>
-                <s-stack direction="inline" gap="base">
-                  <s-number-field label="Merge changes within" name="burstWindowSec" value={String(g.grouping.burstWindowMs / 1000)} min={0} max={5} step={0.1} disabled={!isPro} details="Cart changes this many seconds apart merge into one toast." />
-                  <s-number-field label="Ignore repeats within" name="dedupeWindowSec" value={String(g.grouping.dedupeWindowMs / 1000)} min={0} max={10} step={0.1} disabled={!isPro} details="Identical toasts within this many seconds are skipped." />
-                  <s-number-field label="Max toasts per minute" name="rateLimitPerMin" value={String(g.grouping.rateLimitPerMin)} min={0} max={240} disabled={!isPro} details="Hard cap on how many toasts show each minute. 0 = no cap." />
-                </s-stack>
-                <s-switch label="Merge quantity changes into one “+N”" name="mergeDeltas" value="on" checked={g.grouping.mergeDeltas} disabled={!isPro} />
-              </s-stack>
-              </ProFrame>
-            </s-section>
-
-            {/* ---- FREQUENCY ---- */}
-            <s-section heading="Frequency & quiet mode">
-              <s-stack direction="block" gap="base">
-                <s-text color="subdued">Protects shoppers from spam. 0 means no limit.</s-text>
-                <s-number-field label="Max toasts per session" name="maxPerSession" value={String(g.frequency.maxPerSession)} min={0} max={100} details="0 = unlimited. Caps how many a single visitor sees." />
-                <s-number-field label="Wait between repeats" name="cooldownSec" value={String(g.frequency.cooldownMs / 1000)} min={0} max={3600} step={1} details="Seconds to wait before showing the same type again. 0 = no wait." />
-                <s-number-field label="Hide a dismissed toast for" name="suppressAfterDismissMin" value={String(Math.round(g.frequency.suppressAfterDismissMs / 60000))} min={0} max={1440} step={1} details="Minutes to keep a dismissed toast hidden. 0 = it can show again right away." />
-                <s-switch label="Quiet mode — mute all toasts" name="quietMode" value="on" checked={g.frequency.quietMode} details="A master off switch: turns every toast off for all shoppers without losing your settings. Handy during a sale or a busy period." />
-              </s-stack>
-            </s-section>
-            </div>
-
-            {/* ---- LANGUAGES (locale-as-data) ---- */}
-            <div style={panel("languages")}>
-            <s-section heading="Languages">
-              <s-stack direction="block" gap="base">
+            <s-section heading="Anti-spam">
+              <s-stack direction="block" gap="large">
                 <s-text color="subdued">
-                  Pick the languages your storefront copy is written in. Shoppers
-                  see the string for their language, falling back to your default.
-                  Your plan includes <s-text type="strong">{String(langLimit)}</s-text>{" "}
-                  languages{isPro ? "" : " — upgrade to Pro for more"}.
+                  Three levers keep toasts from overwhelming a shopper — <s-text type="strong">merge</s-text> bursts,
+                  <s-text type="strong"> cap</s-text> the volume, or <s-text type="strong">quiet</s-text> everything.
+                  They apply across your whole store.
                 </s-text>
-                <s-stack direction="inline" gap="base">
-                  {COMMON_LOCALES.map((l) => (
-                    <s-checkbox
-                      key={l.code}
-                      label={l.label}
-                      name={`lang_${l.code}`}
-                      value="on"
-                      checked={loc.enabledLocales.includes(l.code)}
-                    />
-                  ))}
-                </s-stack>
-                <s-text-field
-                  label="Other languages"
-                  name="lang_custom"
-                  value={loc.enabledLocales
-                    .filter((c) => !COMMON_LOCALES.some((l) => l.code === c))
-                    .join(", ")}
-                  placeholder="pt-pt, sv, da"
-                  details="Any code works, e.g. de, pt-BR, zh-Hant. Extras beyond your plan limit are dropped on save."
-                />
-                <s-select label="Default (fallback) language" name="default_locale" value={loc.defaultLocale}>
-                  {[...new Set([loc.defaultLocale, ...loc.enabledLocales, "en"])].map((c) => (
-                    <s-option key={c} value={c}>{languageName(c)}</s-option>
-                  ))}
-                </s-select>
+
+                {/* MERGE (Pro) */}
+                <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
+                  <ProFrame locked={!isPro}>
+                    <s-stack direction="block" gap="base">
+                      <s-stack direction="inline" gap="small-300" alignItems="center">
+                        <s-text type="strong">Merge — group rapid changes</s-text>
+                        <s-badge tone={isPro ? "success" : "info"}>{isPro ? "Pro" : "Pro — upgrade"}</s-badge>
+                      </s-stack>
+                      <s-text color="subdued">
+                        When a shopper changes the cart several times fast, show one combined
+                        toast instead of many.
+                      </s-text>
+                      <s-select label="Group by" name="grouping_mode" value={g.grouping.mode} details="What counts as “the same thing” when merging." disabled={!isPro}>
+                        <s-option value="by-product">Product</s-option>
+                        <s-option value="by-variant">Variant</s-option>
+                        <s-option value="by-type">Event type</s-option>
+                        <s-option value="off">Don’t merge</s-option>
+                      </s-select>
+                      <s-number-field label="Merge changes within" name="burstWindowSec" value={String(g.grouping.burstWindowMs / 1000)} min={0} max={5} step={0.1} disabled={!isPro} details="Cart changes this many seconds apart merge into one toast." />
+                      <s-switch label="Merge quantity changes into one “+N”" name="mergeDeltas" value="on" checked={g.grouping.mergeDeltas} disabled={!isPro} details="Two quick “+1”s become a single “+2”." />
+                      <div style={beforeAfter}>
+                        <span>Without</span>
+                        <span style={miniT} /><span style={miniT} /><span style={miniT} /><span style={miniT} />
+                        <span style={{ color: "#8892a0" }}>→</span>
+                        <span>With</span>
+                        <span style={{ ...miniT, width: 34, opacity: 0.9 }} />
+                        <strong style={{ color: "#2f9e6f" }}>+4</strong>
+                      </div>
+                    </s-stack>
+                  </ProFrame>
+                </s-box>
+
+                {/* CAP */}
+                <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
+                  <s-stack direction="block" gap="base">
+                    <s-text type="strong">Cap — how much is too much</s-text>
+                    <s-text color="subdued">Hard limits so a shopper is never flooded. 0 means no limit.</s-text>
+                    <s-stack direction="inline" gap="base">
+                      <s-number-field label="Max toasts per session" name="maxPerSession" value={String(g.frequency.maxPerSession)} min={0} max={100} details="Caps how many a single visitor sees the whole visit." />
+                      <s-number-field label="Wait between repeats" name="cooldownSec" value={String(g.frequency.cooldownMs / 1000)} min={0} max={3600} step={1} details="Seconds to wait before showing the same type again." />
+                      <s-number-field label="Hide a dismissed toast for" name="suppressAfterDismissMin" value={String(Math.round(g.frequency.suppressAfterDismissMs / 60000))} min={0} max={1440} step={1} details="Minutes to keep a toast hidden after a shopper closes it." />
+                    </s-stack>
+                    <s-stack direction="inline" gap="small-300" alignItems="center">
+                      <s-text color="subdued">Advanced caps</s-text>
+                      <s-badge tone={isPro ? "success" : "info"}>{isPro ? "Pro" : "Pro — upgrade"}</s-badge>
+                    </s-stack>
+                    <s-stack direction="inline" gap="base">
+                      <s-number-field label="Max toasts per minute" name="rateLimitPerMin" value={String(g.grouping.rateLimitPerMin)} min={0} max={240} disabled={!isPro} details="Hard cap per minute across all shoppers." />
+                      <s-number-field label="Ignore repeats within" name="dedupeWindowSec" value={String(g.grouping.dedupeWindowMs / 1000)} min={0} max={10} step={0.1} disabled={!isPro} details="Identical toasts this close together are skipped." />
+                    </s-stack>
+                  </s-stack>
+                </s-box>
+
+                {/* QUIET */}
+                <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
+                  <s-stack direction="block" gap="base">
+                    <s-text type="strong">Quiet — mute everything</s-text>
+                    <s-text color="subdued">
+                      A master off switch: turn every toast off during a sale or a busy
+                      period without losing your settings.
+                    </s-text>
+                    <s-switch label="Quiet mode" name="quietMode" value="on" checked={g.frequency.quietMode} details="Turns all toasts off for every shopper until you switch it back on." />
+                  </s-stack>
+                </s-box>
               </s-stack>
             </s-section>
             </div>

@@ -12,9 +12,19 @@
   if s.media_position == 'background' and has_media
     assign is_bg = true
   endif
+  assign is_gutter = false
+  if s.media_position == 'center_gutter'
+    assign is_gutter = true
+  endif
+  assign has_media2 = false
+  if s.image_2 != blank or s.image_asset_2 != blank
+    assign has_media2 = true
+  endif
   assign layout = 'stacked'
   if is_bg
     assign layout = 'overlay'
+  elsif is_gutter
+    assign layout = 'gutter'
   elsif has_media
     assign layout = 'split'
   endif
@@ -74,6 +84,16 @@
         {%- endif -%}
         {% content_for 'blocks' %}
       </div>
+
+      {%- if is_gutter and has_media2 -%}
+        <div class="won-band__media won-band__media--2">
+          {%- if s.image_2 != blank -%}
+            {{ s.image_2 | image_url: width: 1400 | image_tag: widths: '400, 700, 1000, 1400', sizes: '(min-width: 750px) 28vw, 100vw', class: 'won-band__img', loading: 'lazy', alt: s.image_2.alt | default: '' }}
+          {%- else -%}
+            <img class="won-band__img" src="{{ s.image_asset_2 | asset_url }}" alt="" width="1400" height="1400" loading="lazy">
+          {%- endif -%}
+        </div>
+      {%- endif -%}
     </div>
   </div>
 </section>
@@ -136,6 +156,11 @@
     .won-band--split .won-band__media,
     .won-band--split .won-band__content { flex: 1 1 50%; }
     .won-band--split .won-band__media { align-self: stretch; min-height: var(--won-band-min, 360px); }
+    /* center-gutter: media | centred copy island | media (flawless-style). */
+    .won-band--gutter { flex-direction: row; align-items: center; gap: var(--won-space-6); }
+    .won-band--gutter .won-band__media { flex: 1 1 28%; align-self: stretch; min-height: var(--won-band-min, 360px); }
+    .won-band--gutter .won-band__content { flex: 1 1 44%; text-align: center; align-items: center; }
+    .won-band--gutter .won-band__body { margin-inline: auto; }
   }
 {% endstylesheet %}
 
@@ -192,10 +217,13 @@
       "options": [
         { "value": "left", "label": "t:won.options.left" },
         { "value": "right", "label": "t:won.options.right" },
+        { "value": "center_gutter", "label": "t:won.options.center_gutter" },
         { "value": "background", "label": "t:won.options.background" }
       ],
       "default": "right"
     },
+    { "type": "image_picker", "id": "image_2", "label": "t:won.settings.image_2", "info": "t:won.info.image_2", "visible_if": "{{ section.settings.media_type == 'image' and section.settings.media_position == 'center_gutter' }}" },
+    { "type": "text", "id": "image_asset_2", "label": "t:won.settings.image_asset_2", "info": "t:won.info.image_asset", "visible_if": "{{ section.settings.media_type == 'image' and section.settings.media_position == 'center_gutter' }}" },
     { "type": "checkbox", "id": "toggle_overlay", "label": "t:won.settings.overlay", "default": true, "visible_if": "{{ section.settings.media_position == 'background' }}" },
     { "type": "color", "id": "overlay_color", "label": "t:won.settings.overlay_color", "alpha": true, "default": "#00000059", "visible_if": "{{ section.settings.media_position == 'background' }}" },
     { "type": "header", "content": "t:won.headers.appearance" },
@@ -224,6 +252,16 @@
         "button_label": "Learn more", "button_style": "secondary",
         "media_type": "image", "image_asset": "won-hero-product.png", "media_position": "left",
         "content_align": "left", "min_height": 420, "color_scheme": "scheme-1"
+      }
+    },
+    {
+      "name": "t:won.presets.center_gutter", "category": "t:won.categories.content",
+      "settings": {
+        "eyebrow": "This one just works", "heading": "<p>Fuel your best</p>", "heading_size_desktop": 48,
+        "body": "<p>Clean, tested, and made to perform.</p>",
+        "button_label": "Shop now", "button_style": "primary",
+        "media_type": "image", "image_asset": "won-promo-1.png", "image_asset_2": "won-promo-3.png",
+        "media_position": "center_gutter", "content_align": "center", "min_height": 380, "color_scheme": "scheme-1"
       }
     }
   ]

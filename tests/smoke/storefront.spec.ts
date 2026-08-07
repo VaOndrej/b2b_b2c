@@ -84,6 +84,172 @@ test('sections — heading alignment matches body (no centered title over left c
   await assertHeadingBodyAlignment(page);
 });
 
+test('FAQ split — image column sits beside the accordion (image left, questions right)', async ({ page }, testInfo) => {
+  const isDesktop = (testInfo.project.use.viewport?.width ?? 0) >= 990;
+  test.skip(!isDesktop, 'the split image+accordion layout is a >=990px concern');
+
+  await open(page, '/', '[data-testid="won-panels-section"]');
+  const section = page.locator('[data-testid="won-panels-section"]').first();
+  const media = section.locator('.won-panels__media').first();
+  await media.waitFor({ state: 'visible' });
+  const [mediaBox, rowsBox] = await Promise.all([
+    media.boundingBox(),
+    section.locator('.won-panels__rows').first().boundingBox(),
+  ]);
+  expect(mediaBox && rowsBox, 'both the media column and the FAQ rows must render').toBeTruthy();
+  // split_position: start → the image column is fully left of the questions.
+  expect(
+    Math.round(mediaBox!.x + mediaBox!.width),
+    'FAQ image column should sit left of the questions',
+  ).toBeLessThanOrEqual(Math.round(rowsBox!.x) + 4);
+});
+
+test('hero peek — centred card with side peeks on desktop', async ({ page }, testInfo) => {
+  const isDesktop = (testInfo.project.use.viewport?.width ?? 0) >= 990;
+  test.skip(!isDesktop, 'peek geometry is a desktop concern (mobile collapses to 1-up)');
+
+  await open(page, '/', '[data-testid="won-hero-carousel-section"]');
+  const sec = page.locator('[data-testid="won-hero-carousel-section"]').first();
+  await sec.scrollIntoViewIfNeeded();
+  const track = sec.locator('[data-won-track]').first();
+  await assertCarousel(page, track, track.locator('> *'), { mode: 'peek' });
+});
+
+test('band center-gutter — media flanks the centred copy on desktop', async ({ page }, testInfo) => {
+  const isDesktop = (testInfo.project.use.viewport?.width ?? 0) >= 990;
+  test.skip(!isDesktop, 'the gutter layout is a >=750px concern (mobile stacks)');
+
+  await open(page, '/', '[data-testid="won-band-section"]');
+  const band = page.locator('.won-band--gutter').first();
+  await band.scrollIntoViewIfNeeded();
+  const medias = band.locator('.won-band__media');
+  expect(await medias.count(), 'gutter band has two media columns').toBe(2);
+  const [m0, m1, c] = [
+    await medias.nth(0).boundingBox(),
+    await medias.nth(1).boundingBox(),
+    await band.locator('.won-band__content').first().boundingBox(),
+  ];
+  const copyCenter = c!.x + c!.width / 2;
+  expect(copyCenter, 'copy sits right of the left media').toBeGreaterThan(m0!.x + m0!.width);
+  expect(copyCenter, 'copy sits left of the right media').toBeLessThan(m1!.x);
+});
+
+test('tile badge — renders in the chosen corner (top-right)', async ({ page }) => {
+  await open(page, '/', 'main');
+  const badge = page.locator('.won-tile__badge').first();
+  await badge.scrollIntoViewIfNeeded();
+  await badge.waitFor({ state: 'visible' });
+  const tile = page.locator('.won-tile', { has: page.locator('.won-tile__badge') }).first();
+  const [bb, tb] = [await badge.boundingBox(), await tile.boundingBox()];
+  expect(bb && tb, 'badge and its tile must render').toBeTruthy();
+  expect(bb!.y - tb!.y, 'badge hugs the tile top edge').toBeLessThan(40);
+  expect((tb!.x + tb!.width) - (bb!.x + bb!.width), 'badge hugs the tile right edge').toBeLessThan(40);
+});
+
+test('slide annotation — headline gets a hand-drawn accent doodle', async ({ page }) => {
+  await open(page, '/', 'main');
+  const h = page.locator('.won-slide--annot-underline .won-slide__heading').first();
+  await h.scrollIntoViewIfNeeded();
+  await expect(h).toBeVisible();
+  const mask = await h.evaluate((el) => {
+    const s = getComputedStyle(el as HTMLElement, '::after');
+    return (s.maskImage && s.maskImage !== 'none') ? s.maskImage : (s as any).webkitMaskImage;
+  });
+  expect(mask, 'the annotation ::after paints an SVG doodle mask').toContain('svg');
+});
+
+test('comparison — quality dots render (dots:N/M cell syntax)', async ({ page }) => {
+  await open(page, '/', 'main');
+  const dots = page.locator('.won-cmp__dots').first();
+  await dots.scrollIntoViewIfNeeded();
+  await expect(dots).toBeVisible();
+  const total = await dots.locator('.won-cmp__dot').count();
+  const filled = await dots.locator('.won-cmp__dot.is-on').count();
+  expect(total, 'dots:4/4 renders 4 dots').toBe(4);
+  expect(filled, 'the "us" cell fills 4 of 4').toBe(4);
+});
+
+test('tile icon — emoji renders before the label', async ({ page }) => {
+  await open(page, '/', 'main');
+  const icon = page.locator('.won-tile__icon').first();
+  await icon.scrollIntoViewIfNeeded();
+  await expect(icon).toBeVisible();
+});
+
+test('slide gradient — a photo-free slide paints its CSS gradient background', async ({ page }) => {
+  await open(page, '/', 'main');
+  const slide = page.locator('.won-slide--gradient').first();
+  await slide.scrollIntoViewIfNeeded();
+  const bg = await slide.evaluate((el) => getComputedStyle(el as HTMLElement).backgroundImage);
+  expect(bg, 'gradient slide paints a gradient background-image').toContain('gradient');
+});
+
+test('stats — optional icon renders on each stat', async ({ page }) => {
+  await open(page, '/', 'main');
+  const stats = page.locator('.won-grid--stats').first();
+  await stats.scrollIntoViewIfNeeded();
+  const icons = stats.locator('.won-grid__stat-icon');
+  expect(await icons.count(), 'stats with a 3rd icon part render an icon').toBeGreaterThanOrEqual(2);
+  await expect(icons.first()).toBeVisible();
+});
+
+test('shoppable image — hotspot pins reveal a product card on focus', async ({ page }) => {
+  await open(page, '/', 'main');
+  const sec = page.locator('[data-testid="won-shoppable-image-section"]').first();
+  await sec.scrollIntoViewIfNeeded();
+  const pins = sec.locator('.won-shop__pin');
+  expect(await pins.count(), 'at least two hotspots').toBeGreaterThanOrEqual(2);
+  const card = pins.first().locator('.won-shop__card');
+  await expect(card).toBeHidden();
+  await pins.first().locator('.won-shop__dot').focus();
+  await expect(card).toBeVisible();
+});
+
+test('tabbed rail — segmented tabs toggle their product panels', async ({ page }) => {
+  await open(page, '/', 'main');
+  const rail = page.locator('[data-testid="won-tabbed-rail-section"] won-tabset').first();
+  await rail.scrollIntoViewIfNeeded();
+  const tabs = rail.locator('.won-panels__tab');
+  expect(await tabs.count(), 'a tab is built per collection').toBeGreaterThanOrEqual(2);
+  const panels = rail.locator('.won-tabrail__panel');
+  await expect(panels.nth(0)).toBeVisible();
+  await expect(panels.nth(1)).toBeHidden();
+  await tabs.nth(1).click();
+  await expect(panels.nth(1)).toBeVisible();
+  await expect(panels.nth(0)).toBeHidden();
+  expect(await panels.nth(1).locator('.won-pcard').count(), 'active tab shows product cards').toBeGreaterThan(0);
+});
+
+test('carousel dots — page pager renders, is clickable, and tracks position', async ({ page }) => {
+  await open(page, '/', 'main');
+  const carousel = page.locator('won-carousel:has(.won-carousel__dots:not([hidden]))').first();
+  await carousel.scrollIntoViewIfNeeded();
+  const dots = carousel.locator('.won-carousel__dot');
+  expect(await dots.count(), 'a scrolling carousel with dots enabled shows >=2 page dots').toBeGreaterThanOrEqual(2);
+  const track = carousel.locator('[data-won-track]');
+  const before = await track.evaluate((t) => Math.abs((t as HTMLElement).scrollLeft));
+  await dots.last().click();
+  await page.waitForTimeout(600);
+  const after = await track.evaluate((t) => Math.abs((t as HTMLElement).scrollLeft));
+  expect(after, 'clicking the last dot scrolls the rail').toBeGreaterThan(before + 20);
+  await expect(dots.last()).toHaveAttribute('aria-current', 'true');
+});
+
+test('marquee — seamless loop is a duplicated, aria-hidden track', async ({ page }) => {
+  await open(page, '/', '[data-testid="won-marquee"]');
+  const mq = page.locator('[data-testid="won-marquee"]').first();
+  await mq.waitFor({ state: 'visible' });
+  const groups = mq.locator('.won-marquee__group');
+  expect(await groups.count(), 'marquee needs two identical groups for a seamless loop').toBe(2);
+  await expect(groups.nth(1)).toHaveAttribute('aria-hidden', 'true');
+  // textContent (not innerText) — the duplicate group scrolls off-screen and
+  // innerText would return only its visible portion.
+  const a = ((await groups.nth(0).textContent()) || '').replace(/\s+/g, ' ').trim();
+  const b = ((await groups.nth(1).textContent()) || '').replace(/\s+/g, ' ').trim();
+  expect(a.length, 'first marquee group has content').toBeGreaterThan(0);
+  expect(b, 'duplicate group mirrors the first for a seamless loop').toBe(a);
+});
+
 test('home — block grids with mobile carousel become a real swipeable rail', async ({ page }, testInfo) => {
   const isMobile = (testInfo.project.use.viewport?.width ?? 9999) < 750;
   test.skip(!isMobile, 'the mobile carousel option only applies on phones');
