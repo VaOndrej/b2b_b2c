@@ -37,27 +37,29 @@ milestony (free shipping; případně gift). Toasts disclosure nahradit odkazem
 jen free-shipping, nebo všechny milestony s prahy. Doporučení: začít
 free-shipping (to je dnešní rozsah disclosure), gift doplnit pokud dává smysl.
 
-## Část B — i18n coverage (hardcoded shopper stringy)
+## Část B — i18n coverage (REVIDOVÁNO po hlubším auditu)
 
-**Audit (hotový):** tyto shopper-viditelné stringy obcházejí `messages`/překlady:
-- `DEFAULT_TITLES` „Added to cart"/„Removed"/„Updated" —
-  `packages/core/src/toasts/presentation.ts:30` + storefront kopie
-  `storefront-src/won-toasts.js:303`.
-- Grouping „+N more" — `won-toasts.js:316` a `:1657`.
-- „Undo" — `won-toasts.js:1408`. „Dismiss" — `won-toasts.js:1531`.
+**Zjištění:** cart titulky **UŽ přeložitelné jsou** — storefront `presentation()`
+volá `messageFor(grp.type, TITLES[...])` (`won-toasts.js:320`); `TITLES`/
+`DEFAULT_TITLES` jsou jen anglický **fallback**, když merchant nemá message.
+Merchant nastaví „Přidáno do košíku" na Markets → Languages a jede. Takže
+původní audit byl přísnější, než realita.
 
-**Cíl:** každý shopper-viditelný string přeložitelný přes `messages`/locale, ať
-Markets → Languages fakt pokrývá „vše, co toast říká".
+**Reálný zbytek = 3 generická chrome slova**, natvrdo anglicky, mimo `messages`:
+„+N **more**" (`won-toasts.js` grouping), „**Undo**", „**Dismiss**" (aria).
 
-**Kroky:**
-1. Katalog UI stringů (titles per semantic type + „more"/„Undo"/„Dismiss") do
-   `messages` (nebo nový `ui`-namespace v locales), s anglickým defaultem.
-2. `resolveToastPresentation` a config endpoint (`won-toasts.config.tsx`) protáhnout
-   locale → resolved titles/labels poslat na storefront.
-3. Storefront JS: brát tyto stringy z configu, ne z hardcoded konstant.
-4. Markets → Languages UI: doplnit tyto klíče do překladové matice.
-5. Test/audit: prokázat, že žádný shopper-viditelný string není hardcoded mimo
-   `messages` (grep-gate nebo unit).
+**Proč nejsou v JS bundle (pokus + revert):** vestavěný 11-jazyčný slovník do
+storefront JS přidal ~270 B gzip a **porušil perf budget** (11534 > 11264 B).
+Storefront musí zůstat lean → slovník **nepatří do JS bundle**.
+
+**Správná cesta (nedodělaná):** poslat chrome překlady ze **serveru** —
+`won-toasts.config.tsx` přidá do payloadu `ui` mapu (locale → {more,undo,dismiss}),
+storefront `ui(key)` čte z `cfg` (ne z konstant). JSON payload není v gz-budgetu
+JS. Merchant nic nepřekládá (product words, vestavěné). Volitelně později
+zpřístupnit v Markets → Languages pro override.
+
+**Kroky:** (1) `ui` mapa do config endpointu; (2) storefront `ui(key)` z `cfg.ui`
++ EN fallback; (3) nahradit 3 hardcoded použití; (4) ověřit budget zelený.
 
 ## Mimo rozsah
 Admin copy (merchant-facing, zůstává EN). Ceny/Function. Nové typy toastů.
