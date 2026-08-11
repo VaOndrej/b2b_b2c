@@ -333,6 +333,40 @@ merchant nasnímal a označil „splývá to, ošklivé".
 - Jestli je opakovaných řádků hodně a jsou vzácně editované, sbal je pod §8
   disclosure — ale i sbalené musí být matice, ne stack.
 
+## 9. Jednoduchý povrch, hloubka pod ním — first-paint MUSÍ být klidný
+
+Nejsilnější a nejčastěji porušované pravidlo. §8 říká „sbaluj" — §9 říká **jak moc**
+a **proč to pořád nestačí**. Hloubka appky je tvůj moat, ale je to **opt-in, ne
+default view**. Konfigurační obrazovka musí na **první pohled působit krátce a
+klidně**; síla je klik daleko. Je to ta samá věc, kterou slibuješ zákazníkovi na
+storefrontu („nezahltím tě"), otočená na merchanta. **Ironie, kterou jsme si
+vyrobili: appka co nezahltí zákazníka, zahlcuje merchanta.**
+
+- **§9a — Řaď podle četnosti použití, ne podle schématu.** Ukaž ~20 % controlů,
+  co ~80 % merchantů reálně sáhne (je to zapnuté? co to říká? jeden preset look).
+  Zbytek (per-event barvy, tvar/pohyb, per-měna prahy, přepisy textů, custom CSS)
+  sbal za pojmenovaný disclosure. „Každé pole schématu dostane vždy-viditelný
+  control" = engineer-out failure mode (viz meta-princip).
+- **§9b — §7c „inline first-class" ≠ „vždy otevřené".** Přinést controly k entitě
+  (§7c) a mít je defaultně rozbalené jsou **dvě různé věci**. First-class znamená
+  „dosažitelné tady", ne „nasypané na tebe". Primární controly viditelné; vzácné
+  first-class **uvnitř** disclosure.
+- **§9c — Opakování JE zahlcení.** N skoro-stejných polí (6 accent pickerů, 6
+  prázdných currency řádků, 4 wording pole) se čte jako stěna, i když je každé
+  triviální. Sbal je, nebo **lazy-add** („Přidat měnu" → jeden řádek naráz), ne
+  pre-renderuj N prázdných.
+- **§9d — Sbalený blok říká svůj stav v summary** („dědí global" / „upraveno",
+  „1 měna nastavená"), ať nic důležitého není neviditelné — jen tiché.
+- **§9e — Test klidu:** udělej screenshot celé stránky na první načtení. Když
+  vidíš víc než ~5–7 primárních controlů bez scrollu, nebo blok ≥4 skoro-stejných
+  polí, nebo prázdné opakované řádky → porušuješ §9, přeskládej.
+
+**Reálné failure mody (Won Toasts, nesmí se opakovat):** Design → Look = **15+ polí
+naráz** (6 accent pickerů + tvar/pohyb + branding vše rozbalené); Markets →
+Currencies = **6 prázdných dvojic** napřed; jeden cart-toast panel = **~12 polí**
+pod sebou. Oprava: primární viditelné, zbytek za disclosure s dobrým defaultem
+(§9a/§9b), lazy-add pro měny (§9c).
+
 ---
 
 ## Řemeslné invarianty (nemění se)

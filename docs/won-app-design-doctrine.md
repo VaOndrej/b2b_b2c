@@ -72,14 +72,36 @@ that group; nothing floats "glued" to a neighbouring block it doesn't belong to.
   one focused panel at a time + a sticky live preview. The same shape on every
   config page and every app, so the merchant learns a single layout once.
 - **§7c** — configure a thing **where it lives**: related settings unify on one
-  page, as **visible first-class blocks**, not hidden behind disclosures or split
-  across tabs.
+  page. The **primary** controls are visible first-class blocks; **rare/advanced**
+  controls stay first-class but **collapsed by frequency-of-use** (see §9) — not
+  scattered across tabs, not deleted, not all forced open at once.
 
 ### §8 — Structure over a wall of fields
 No flat wall of inputs. Complex config gets a **purpose-built layout**.
 - **§8b** — an N×M relationship (e.g. events × languages) renders as a **grid/
   matrix**, not a flat list. Hidden fields still submit; collapsing affects only
   visibility.
+
+### §9 — Simple surface, deep underneath (progressive disclosure by frequency)
+Depth is the product's moat — but it must be **opt-in, never the default view**.
+A config screen must read as **short and calm on first paint**; power lives one
+click away. This is the same promise the storefront makes to shoppers ("don't
+overwhelm"), turned on the merchant. It **tempers §7c**: first-class ≠ always-open.
+
+- **§9a — Rank by frequency, not by schema.** Show the ~20% of controls the ~80%
+  of merchants touch (is it on? what does it say? one preset look). Collapse the
+  rest (per-event colours, shape/motion, per-currency thresholds, wording
+  overrides, custom CSS) behind a labelled disclosure. Giving every schema field
+  its own always-visible control is the engineer-out failure mode.
+- **§9b — Every collapsed block ships a strong default.** The merchant who never
+  opens it still gets a good result. Defaults are what make hiding safe.
+- **§9c — Repetition IS overwhelm.** N near-identical fields (6 accent pickers, 6
+  blank currency rows, 4 wording fields) read as a wall even when each is simple.
+  Collapse them, or lazy-add ("Add currency" → one row at a time), rather than
+  pre-rendering N empties.
+- **§9d — The disclosure summary tells the truth.** A collapsed block states its
+  state ("inherits global" / "customised", "1 currency set") so nothing important
+  is invisible — only quiet.
 
 ---
 
