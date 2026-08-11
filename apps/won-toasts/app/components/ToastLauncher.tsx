@@ -37,14 +37,14 @@ export function ToastLauncher({
   onSelect: (key: string) => void;
 }) {
   return (
-    <div role="tablist" aria-label="Toast types" style={{ marginBottom: 20 }}>
-      <s-stack direction="block" gap="large">
+    <div role="tablist" aria-label="Toast types" style={{ marginBottom: 12 }}>
+      <s-stack direction="block" gap="base">
         {groups.map((group) => {
           const live = group.items.filter((it) => it.on).length;
           const total = group.items.length;
           return (
             <div key={group.id}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: "#111418" }}>
                   {group.title}
                 </span>
@@ -75,9 +75,9 @@ export function ToastLauncher({
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "flex-start",
-                        gap: 6,
+                        gap: 4,
                         textAlign: "left",
-                        padding: "12px 14px",
+                        padding: "9px 12px",
                         borderRadius: 12,
                         border: active ? "1.5px solid #1a73e8" : "1px solid #d6dbe1",
                         background: active ? "#f2f7ff" : "#ffffff",
@@ -103,12 +103,13 @@ export function ToastLauncher({
                           {it.label}
                         </span>
                         {it.pro ? <PlanBadge tier="pro" /> : null}
+                        {/* On/Off inline (was a 3rd line) — one row shorter per card. */}
+                        <span style={{ fontSize: 11, fontWeight: 600, color: it.on ? "#1a8f4b" : "#8a93a0", flex: "0 0 auto" }}>
+                          {it.on ? "On" : "Off"}
+                        </span>
                       </span>
-                      <span style={{ fontSize: 12, lineHeight: 1.35, color: "#586573" }}>
+                      <span style={{ fontSize: 12, lineHeight: 1.3, color: "#586573" }}>
                         {it.blurb}
-                      </span>
-                      <span style={{ fontSize: 11.5, fontWeight: 600, color: it.on ? "#1a8f4b" : "#8a93a0" }}>
-                        {it.on ? "On" : "Off"}
                       </span>
                     </button>
                   );
