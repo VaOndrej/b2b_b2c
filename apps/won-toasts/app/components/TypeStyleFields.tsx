@@ -20,23 +20,30 @@ export function TypeStyleFields({
 }) {
   const { theme, behavior } = resolveTypeStyle(config, typeKey);
   const p = typeKey;
+  // Whether this type actually diverges from the global Design — drives the
+  // summary hint so a collapsed override still tells you if it's touched.
+  const customised = Boolean(
+    config.byType?.[typeKey]?.theme || config.byType?.[typeKey]?.behavior,
+  );
 
-  // Visible, first-class block (doctrine §7c) — NOT hidden behind a disclosure.
-  // A Pro perk should look like one, not be buried. Merchants asked why per-type
-  // look & timing was tucked away and unformatted; it now reads as its own card.
+  // Collapsed disclosure (merchant-review point 3): per-type look & timing is a
+  // power feature almost nobody opens, so it must not dominate the page. The
+  // summary still surfaces the Pro badge + whether it's customised; the single
+  // ProFrame container replaces the old s-box+ProFrame nesting that clashed.
+  // Hidden <details> fields still submit — collapsing only affects visibility.
   return (
-    <s-box
-      padding="base"
-      borderWidth="base"
-      borderRadius="base"
-      background="subdued"
-    >
+    <details style={{ marginTop: 4 }}>
+      <summary style={{ cursor: "pointer", padding: "6px 0" }}>
+        <s-stack direction="inline" gap="small-300" alignItems="center">
+          <s-text type="strong">Look &amp; timing for this toast</s-text>
+          <PlanBadge tier="pro" locked={!isPro} />
+          <s-text color="subdued">
+            {customised ? "· customised" : "· inherits your global Design"}
+          </s-text>
+        </s-stack>
+      </summary>
       <ProFrame locked={!isPro}>
         <s-stack direction="block" gap="base">
-          <s-stack direction="inline" gap="small-300" alignItems="center">
-            <s-text type="strong">Look &amp; timing for this toast</s-text>
-            <PlanBadge tier="pro" locked={!isPro} />
-          </s-stack>
           <s-text color="subdued">
             Leave everything as-is to inherit your global Design. Change anything
             here and it applies to <s-text type="strong">only this toast</s-text> —
@@ -96,6 +103,6 @@ export function TypeStyleFields({
           <s-switch label="Show a close (×) button" name={`bt_${p}_closeable`} value="on" checked={behavior.closeable} disabled={!isPro} details="Lets shoppers dismiss this toast themselves." />
         </s-stack>
       </ProFrame>
-    </s-box>
+    </details>
   );
 }
