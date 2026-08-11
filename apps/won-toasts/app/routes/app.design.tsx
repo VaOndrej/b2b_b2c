@@ -479,11 +479,11 @@ export default function DesignRoute() {
                 <Group title="Branding" hint="No-code styling between the on/off toggles and Custom CSS — a gradient fill, your own icons, a border, and the font.">
                   <s-stack direction="block" gap="base">
                     <s-stack direction="inline" gap="base" alignItems="end">
-                      <s-switch label="Gradient background" name="gradient" value="on" checked={config.theme.gradient} details="Fill the toast with a soft two-colour gradient instead of a flat colour." />
+                      <s-switch label="Gradient background" name="gradient" value="on" checked={config.theme.gradient} details="Fill the toast with a soft two-colour gradient instead of a flat colour." onChange={() => sync()} />
                       <s-color-field label="Gradient blends to" name="gradientColor" value={config.theme.gradientColor} details="The second colour the background fades into (from the background colour above)." />
                     </s-stack>
                     <s-stack direction="inline" gap="base" alignItems="end">
-                      <s-switch label="Border" name="border" value="on" checked={config.theme.border} details="Draw a thin outline around each toast." />
+                      <s-switch label="Border" name="border" value="on" checked={config.theme.border} details="Draw a thin outline around each toast." onChange={() => sync()} />
                       <s-color-field label="Border colour" name="borderColor" value={config.theme.borderColor} />
                     </s-stack>
                     <s-stack direction="inline" gap="base">
@@ -507,7 +507,7 @@ export default function DesignRoute() {
                 <Group title="Show / hide" hint="Pick what appears inside each toast. Product image = the item’s thumbnail; Quantity change = the “+N” badge; Event icon = a small coloured mark; Border/Backdrop blur = the frame around it.">
                   <s-stack direction="inline" gap="base">
                     {TOGGLES.map(([key, label]) => (
-                      <s-switch key={key} label={label} name={key} value="on" checked={Boolean(config.theme[key])} />
+                      <s-switch key={key} label={label} name={key} value="on" checked={Boolean(config.theme[key])} onChange={() => sync()} />
                     ))}
                   </s-stack>
                 </Group>
@@ -555,7 +555,7 @@ export default function DesignRoute() {
                 </s-select>
                 <s-switch label="Auto-dismiss after the duration" name="autoDismiss" value="on" checked={g.autoDismiss} details="On: each toast fades out on its own after the time above. Off: it stays until the shopper closes it." />
                 <s-switch label="Pause auto-dismiss on hover" name="pauseOnHover" value="on" checked={g.pauseOnHover} details="While the shopper's cursor is over a toast, the countdown to fade out pauses — so it won't vanish mid-read. It resumes when they move away." />
-                <s-switch label="Show a close (×) button" name="closeable" value="on" checked={g.closeable} details="Adds an × in the corner so a shopper can dismiss a toast immediately." />
+                <s-switch label="Show a close (×) button" name="closeable" value="on" checked={g.closeable} details="Adds an × in the corner so a shopper can dismiss a toast immediately." onChange={() => sync()} />
               </s-stack>
             </s-section>
             </div>

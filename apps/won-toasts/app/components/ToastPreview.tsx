@@ -115,7 +115,9 @@ export function ToastPreview({
       <div
         style={{
           ...tokens,
-          background: theme.mode === "dark" ? "#0f1317" : "#eef1f4",
+          // Backdrop always light — the preview never darkens the shop itself,
+          // only the toast card (merchant-review point 6).
+          background: "#eef1f4",
           borderRadius: 14,
           padding: 18,
           display: "flex",
