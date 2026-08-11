@@ -96,6 +96,15 @@ schválení uživatelem (spouští shell) — viz `.claude/settings.json`.
 
 ## Ověřování storefrontu (responzivní invarianty)
 
+> **DEV STORE (povinné):** storefront/theme se VŽDY testuje proti b2b dev storu
+> **`b2b-b2c-store-development.myshopify.com`**, nikdy proti jinému (např.
+> `therabeast`, `test-data`). Ten jediný má demo katalog, který `tests/smoke/storefront.spec.ts`
+> očekává (`/products/the-collection-snowboard-hydrogen`, `/collections/automated-collection`).
+> Spouštěj kanonicky přes prostředí z `shopify.theme.toml`:
+> `shopify theme dev -e horizon` (načte store i `themes/dist/horizon-dev` sám) →
+> Playwright na `http://127.0.0.1:9292`. Špatný store = falešných ~13 storefront.spec
+> selhání (404 na demo produkty/kolekce), NE regrese.
+
 Každá změna dotýkající se storefrontu (`themes/**/*.liquid|css|js`) se ověřuje
 spuštěním `test:smoke` a voláním sdíleného invariantu `assertResponsiveSane(page)`
 na mobilním viewportu (390px) — žádný horizontální overflow, nic širšího než
