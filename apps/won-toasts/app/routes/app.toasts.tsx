@@ -663,6 +663,7 @@ export default function ToastsRoute() {
                     theme={config.theme}
                     locales={[defaultLocale]}
                     messages={config.messages}
+                    wordingCollapsible
                     toggleFor={(key) => {
                       if (key === "gift") return { name: "ms_gift_enabled", checked: gift?.enabled ?? false };
                       if (key === "shipping") return { name: "ms_ship_enabled", checked: ship?.enabled ?? false };

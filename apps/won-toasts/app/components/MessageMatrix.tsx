@@ -23,6 +23,7 @@ export function MessageMatrix({
   toggleFor,
   extraFor,
   referenceLocale,
+  wordingCollapsible = false,
 }: {
   theme: ToastTheme;
   locales: string[];
@@ -35,7 +36,85 @@ export function MessageMatrix({
    *  the reference (falling back to the built-in example) so they're not
    *  translating blind against a placeholder. */
   referenceLocale?: string;
+  /** Single-locale on/off view (Toasts): render sexy toggle CARDS with the
+   *  wording tucked behind a per-row "Edit wording" disclosure (§9a). The grid
+   *  form (translations, multi-locale) is unaffected. */
+  wordingCollapsible?: boolean;
 }) {
+  // §9a + "make the on/off sexy": one card per event — accent stripe, bold title,
+  // a concrete example, a prominent switch; the wording field hides behind a small
+  // disclosure so the default view is just clean on/off rows.
+  if (wordingCollapsible && locales.length === 1) {
+    const loc = locales[0];
+    return (
+      <s-stack direction="block" gap="small-100">
+        {EVENT_META.map((ev) => {
+          const accent = accentFor(theme, ev.key);
+          const toggle = toggleFor?.(ev.key) ?? null;
+          const extra = extraFor?.(ev.key) ?? null;
+          return (
+            <div
+              key={ev.key}
+              style={{
+                border: "1px solid #e3e6ea",
+                borderRadius: 12,
+                overflow: "hidden",
+                background: "#fff",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "10px 14px",
+                  borderLeft: `4px solid ${accent}`,
+                }}
+              >
+                <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13.5, color: "#1a1f24" }}>
+                    {ev.title}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#8892a0" }}>
+                    e.g. “{ev.example}”
+                  </div>
+                </div>
+                {toggle ? (
+                  <s-switch
+                    label={ev.title}
+                    labelAccessibilityVisibility="exclusive"
+                    name={toggle.name}
+                    value="on"
+                    checked={toggle.checked}
+                  />
+                ) : null}
+              </div>
+              <details style={{ borderTop: "1px dashed #eceff3" }}>
+                <summary
+                  style={{ cursor: "pointer", padding: "7px 14px", fontSize: 12, color: "#5c6975" }}
+                >
+                  Edit wording
+                </summary>
+                <div style={{ padding: "0 14px 12px" }}>
+                  <s-text-field
+                    label={`${ev.title} wording`}
+                    labelAccessibilityVisibility="exclusive"
+                    name={`msg_${ev.key}_${loc}`}
+                    value={messages[ev.key]?.[loc] ?? ""}
+                    placeholder={ev.example}
+                  />
+                </div>
+              </details>
+              {extra ? (
+                <div style={{ padding: "0 14px 12px", borderTop: "1px dashed #eceff3" }}>{extra}</div>
+              ) : null}
+            </div>
+          );
+        })}
+      </s-stack>
+    );
+  }
+
   const multi = locales.length > 1;
   const gridTemplateColumns = `minmax(200px, 260px) ${locales
     .map(() => "minmax(0, 1fr)")
