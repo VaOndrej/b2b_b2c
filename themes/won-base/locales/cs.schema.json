@@ -56,8 +56,6 @@
       "animate_duration": "Jak dlouho naběhnutí trvá. Nech na 0 = použije se výchozí hodnota z nastavení tématu (Won · Animace čísel), jinak přebiješ jen pro tuhle sekci.",
       "countup_group": "Výchozí chování naběhnutí čísel (count-up) pro celé téma. Jednotlivé sekce ho můžou přebít vlastní hodnotou.",
       "countup_default_duration": "Výchozí délka naběhnutí čísel pro sekce, které mají dobu trvání nastavenou na 0 (dědit z tématu).",
-      "show_on_mobile": "Odškrtnutím schováš celou tuhle sekci na telefonech (obrazovky pod 750px).",
-      "show_on_desktop": "Odškrtnutím schováš celou tuhle sekci na tabletech a počítačích (750px a víc).",
       "loop": "Jen slider. Nekonečná smyčka railu, takže nikdy nenarazí na prázdný konec — vyber, kde platí.",
       "announcement_bar_about": "Úzký pruh úplně nahoře na každé stránce. Přidej si rotující sdělení (nebo zprávu o dopravě zdarma), nastav interval rotace, zarovnání a jestli ho zákazník může zavřít. Celoobchodní novinky, ne obsah konkrétní stránky.",
       "band_about": "Flexibilní řádek médium + text — obrázek nebo video na jedné straně, nadpis, text a až dvě tlačítka na druhé. Přidej druhý obrázek pro rozložení se středovým textem, překryv, nebo nastav minimální výšku. Univerzální blok na příběh, benefit i promo.",
@@ -178,8 +176,6 @@
       "price_per_unit": "Cena za jednotku"
     },
     "settings": {
-      "show_on_mobile": "Zobrazit na mobilu",
-      "show_on_desktop": "Zobrazit na desktopu",
       "loop": "Nekonečné rolování",
       "source": "Zdroj obsahu",
       "collection": "Kolekce",

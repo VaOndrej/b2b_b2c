@@ -20,7 +20,7 @@
 -%}
 
 <section
-  class="won-section won-shop-sec color-{{ s.color_scheme }} {% render 'won-visibility', settings: s %}"
+  class="won-section won-shop-sec color-{{ s.color_scheme }}"
   style="{% render 'won-spacing', settings: s %}"
   data-testid="won-shoppable-image-section"
 >
@@ -125,9 +125,6 @@
   ],
   "settings": [
     { "type": "paragraph", "content": "t:won.info.shoppable_image_about" },
-    { "type": "header", "content": "t:won.headers.visibility" },
-    { "type": "checkbox", "id": "show_on_mobile", "label": "t:won.settings.show_on_mobile", "info": "t:won.info.show_on_mobile", "default": true },
-    { "type": "checkbox", "id": "show_on_desktop", "label": "t:won.settings.show_on_desktop", "info": "t:won.info.show_on_desktop", "default": true },
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "richtext", "id": "heading", "label": "t:won.settings.heading" },
     { "type": "image_picker", "id": "image", "label": "t:won.settings.image" },

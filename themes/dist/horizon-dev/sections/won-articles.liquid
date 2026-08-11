@@ -98,6 +98,44 @@
   "settings": [
     {
       "type": "header",
+      "content": "t:won.headers.visibility"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.mode"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "t:won.settings.layout",
+      "options": [
+        {
+          "value": "grid",
+          "label": "t:won.options.layout_grid"
+        },
+        {
+          "value": "featured",
+          "label": "t:won.options.layout_featured"
+        }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "header",
       "content": "t:won.headers.content"
     },
     {
@@ -151,10 +189,6 @@
       "label": "t:won.settings.head_link_label"
     },
     {
-      "type": "header",
-      "content": "t:won.headers.source"
-    },
-    {
       "type": "blog",
       "id": "blog",
       "label": "t:won.settings.blog"
@@ -169,20 +203,20 @@
       "default": 3
     },
     {
-      "type": "select",
-      "id": "layout",
-      "label": "t:won.settings.layout",
-      "options": [
-        {
-          "value": "grid",
-          "label": "t:won.options.layout_grid"
-        },
-        {
-          "value": "featured",
-          "label": "t:won.options.layout_featured"
-        }
-      ],
-      "default": "grid"
+      "type": "checkbox",
+      "id": "show_date",
+      "label": "t:won.settings.show_date",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_excerpt",
+      "label": "t:won.settings.show_excerpt",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
     },
     {
       "type": "range",
@@ -201,18 +235,6 @@
       "max": 3,
       "step": 1,
       "default": 2
-    },
-    {
-      "type": "checkbox",
-      "id": "show_date",
-      "label": "t:won.settings.show_date",
-      "default": true
-    },
-    {
-      "type": "checkbox",
-      "id": "show_excerpt",
-      "label": "t:won.settings.show_excerpt",
-      "default": true
     },
     {
       "type": "header",
@@ -330,22 +352,8 @@
       "info": "t:won.info.text_color"
     },
     {
-      "type": "checkbox",
-      "id": "hide_mobile",
-      "label": "t:won.settings.hide_mobile",
-      "info": "t:won.info.hide_mobile",
-      "default": false
-    },
-    {
-      "type": "checkbox",
-      "id": "hide_desktop",
-      "label": "t:won.settings.hide_desktop",
-      "info": "t:won.info.hide_desktop",
-      "default": false
-    },
-    {
       "type": "header",
-      "content": "t:won.headers.padding"
+      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",

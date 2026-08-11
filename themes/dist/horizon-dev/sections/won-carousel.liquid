@@ -46,6 +46,7 @@
     <won-carousel
       class="won-carousel won-carousel--{{ s.layout }}{% if fits %} won-carousel--fits{% endif %}{% if s.columns_mobile contains '.' %} won-carousel--peek-mobile{% endif %}"
       {% if s.layout == 'slider' and s.autoplay %}data-autoplay="{{ s.autoplay_interval }}"{% endif %}
+      {% if s.layout == 'slider' and s.loop != blank %}data-won-loop="{{ s.loop }}"{% endif %}
       data-mobile-mode="{{ s.columns_mobile }}"
       style="--won-cols-lg: {{ cols }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-sm: {{ s.columns_mobile }}; --won-gap: {{ s.gap }}px;"
     >
@@ -217,7 +218,49 @@
     },
     {
       "type": "header",
-      "content": "t:won.headers.source"
+      "content": "t:won.headers.visibility"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.mode"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "t:won.settings.layout",
+      "options": [
+        {
+          "value": "slider",
+          "label": "t:won.options.layout_slider"
+        },
+        {
+          "value": "grid",
+          "label": "t:won.options.layout_grid"
+        },
+        {
+          "value": "marquee",
+          "label": "t:won.options.layout_marquee"
+        }
+      ],
+      "default": "slider"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.content"
     },
     {
       "type": "select",
@@ -249,10 +292,6 @@
       "step": 1,
       "default": 8,
       "visible_if": "{{ section.settings.source == 'collection' }}"
-    },
-    {
-      "type": "header",
-      "content": "t:won.headers.heading"
     },
     {
       "type": "richtext",
@@ -312,26 +351,6 @@
     {
       "type": "header",
       "content": "t:won.headers.layout"
-    },
-    {
-      "type": "select",
-      "id": "layout",
-      "label": "t:won.settings.layout",
-      "options": [
-        {
-          "value": "slider",
-          "label": "t:won.options.layout_slider"
-        },
-        {
-          "value": "grid",
-          "label": "t:won.options.layout_grid"
-        },
-        {
-          "value": "marquee",
-          "label": "t:won.options.layout_marquee"
-        }
-      ],
-      "default": "slider"
     },
     {
       "type": "range",
@@ -475,6 +494,32 @@
       "visible_if": "{{ section.settings.layout == 'slider' }}"
     },
     {
+      "type": "select",
+      "id": "loop",
+      "label": "t:won.settings.loop",
+      "info": "t:won.info.loop",
+      "visible_if": "{{ section.settings.layout == 'slider' }}",
+      "options": [
+        {
+          "value": "",
+          "label": "t:won.options.loop_off"
+        },
+        {
+          "value": "always",
+          "label": "t:won.options.loop_always"
+        },
+        {
+          "value": "desktop",
+          "label": "t:won.options.loop_desktop"
+        },
+        {
+          "value": "mobile",
+          "label": "t:won.options.loop_mobile"
+        }
+      ],
+      "default": ""
+    },
+    {
       "type": "checkbox",
       "id": "autoplay",
       "label": "t:won.settings.autoplay",
@@ -608,22 +653,8 @@
       "info": "t:won.info.text_color"
     },
     {
-      "type": "checkbox",
-      "id": "hide_mobile",
-      "label": "t:won.settings.hide_mobile",
-      "info": "t:won.info.hide_mobile",
-      "default": false
-    },
-    {
-      "type": "checkbox",
-      "id": "hide_desktop",
-      "label": "t:won.settings.hide_desktop",
-      "info": "t:won.info.hide_desktop",
-      "default": false
-    },
-    {
       "type": "header",
-      "content": "t:won.headers.padding"
+      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",

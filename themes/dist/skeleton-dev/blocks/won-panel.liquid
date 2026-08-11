@@ -39,8 +39,10 @@ allow_multiple via a shared name attribute.
 {
   "name": "t:won.names.panel",
   "settings": [
+    { "type": "header", "content": "t:won.headers.content" },
     { "type": "inline_richtext", "id": "title", "label": "t:won.settings.title", "default": "t:won.defaults.tab_title" },
     { "type": "richtext", "id": "content", "label": "t:won.settings.content", "default": "t:won.defaults.tab_content" },
+    { "type": "header", "content": "t:won.headers.controls" },
     { "type": "checkbox", "id": "open", "label": "t:won.settings.open_by_default", "info": "t:won.info.panel_open", "default": false }
   ],
   "presets": [{ "name": "t:won.names.panel" }]

@@ -23,5 +23,21 @@ won accent token.
 {%- if s.border_width != blank and s.border_width > 0 -%}--won-border-width: {{ s.border_width }}px; --won-border-style: {{ s.border_style | default: 'solid' }};{%- if s.border_color != blank -%} --won-border-color: {{ s.border_color }};{%- endif -%} --won-section-radius: var(--won-radius-md);{%- endif -%}
 {%- if s.shadow != blank and s.shadow != 'none' -%}{%- case s.shadow -%}{%- when 'sm' -%}--won-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);{%- when 'md' -%}--won-shadow: 0 6px 18px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);{%- when 'lg' -%}--won-shadow: 0 18px 48px rgba(0,0,0,0.16), 0 6px 14px rgba(0,0,0,0.08);{%- endcase -%}{%- endif -%}
 {%- if s.accent_override != blank -%}--won-accent: {{ s.accent_override }};{%- endif -%}
+{%- comment -%} Colours: default inherits the section's Horizon colour scheme; a value
+   here overrides just this section (both paths supported). We override only the won
+   token / won section-scoped vars, never Horizon's scheme system. {%- endcomment -%}
+{%- if s.bg_color != blank -%}--won-section-bg: {{ s.bg_color }};{%- endif -%}
+{%- if s.text_color != blank -%}--won-text-color: {{ s.text_color }}; --won-fg: {{ s.text_color }};{%- endif -%}
 {%- if s.hide_mobile -%}--won-d-m: none;{%- endif -%}
 {%- if s.hide_desktop -%}--won-d-d: none;{%- endif -%}
+{%- comment -%} Tier 2 — typography + motion (opt-in; 'theme'/'none' emit nothing) {%- endcomment -%}
+{%- if s.heading_weight != blank and s.heading_weight != 'theme' -%}--won-heading-weight: {{ s.heading_weight }};{%- endif -%}
+{%- if s.letter_spacing != blank and s.letter_spacing != 'theme' -%}{%- case s.letter_spacing -%}{%- when 'tight' -%}--won-letter-spacing: -0.02em;{%- when 'normal' -%}--won-letter-spacing: 0;{%- when 'wide' -%}--won-letter-spacing: 0.04em;{%- when 'wider' -%}--won-letter-spacing: 0.08em;{%- endcase -%}{%- endif -%}
+{%- if s.line_height != blank and s.line_height != 'theme' -%}{%- case s.line_height -%}{%- when 'tight' -%}--won-line-height: 1.2;{%- when 'normal' -%}--won-line-height: 1.5;{%- when 'relaxed' -%}--won-line-height: 1.7;{%- endcase -%}{%- endif -%}
+{%- if s.text_transform != blank and s.text_transform != 'none' -%}--won-text-transform: {{ s.text_transform }};{%- endif -%}
+{%- if s.animate_in != blank and s.animate_in != 'none' -%}--won-anim: won-anim-{{ s.animate_in }};{%- endif -%}
+{%- comment -%} Tier 3 — advanced raw overrides (behind show_advanced; opt-in) {%- endcomment -%}
+{%- if s.pad_inline != blank and s.pad_inline > 0 -%}--won-pad-inline: {{ s.pad_inline }}px;{%- endif -%}
+{%- if s.section_opacity != blank and s.section_opacity < 100 -%}--won-section-opacity: {{ s.section_opacity | divided_by: 100.0 }};{%- endif -%}
+{%- comment -%} custom_shadow overrides the mapped shadow select — emitted last so it wins {%- endcomment -%}
+{%- if s.custom_shadow != blank -%}--won-shadow: {{ s.custom_shadow }};{%- endif -%}

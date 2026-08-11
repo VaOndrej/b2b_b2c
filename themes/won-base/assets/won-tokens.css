@@ -368,7 +368,3 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="
 /* Won interactive controls that must meet the 44px tap floor. */
 .won-collection__clear,
 .won-facet__summary { min-block-size: 44px; display: flex; align-items: center; }
-/* Won device visibility — driven by section show_on_mobile / show_on_desktop
-   toggles via the won-visibility snippet. 749/750px = Horizon mobile/desktop cut. */
-@media (max-width: 749px) { .won-hide-mobile { display: none !important; } }
-@media (min-width: 750px) { .won-hide-desktop { display: none !important; } }

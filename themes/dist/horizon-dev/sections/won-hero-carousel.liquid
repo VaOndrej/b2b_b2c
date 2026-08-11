@@ -62,14 +62,26 @@
       "content": "t:won.info.hero_carousel_about"
     },
     {
-      "type": "range",
-      "id": "min_height",
-      "label": "t:won.settings.min_height",
-      "min": 200,
-      "max": 800,
-      "step": 20,
-      "unit": "px",
-      "default": 520
+      "type": "header",
+      "content": "t:won.headers.visibility"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.mode"
     },
     {
       "type": "select",
@@ -89,6 +101,20 @@
       "default": "fill"
     },
     {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "range",
+      "id": "min_height",
+      "label": "t:won.settings.min_height",
+      "min": 200,
+      "max": 800,
+      "step": 20,
+      "unit": "px",
+      "default": 520
+    },
+    {
       "type": "range",
       "id": "slide_width",
       "label": "t:won.settings.slide_width",
@@ -99,6 +125,32 @@
       "unit": "%",
       "default": 64,
       "visible_if": "{{ section.settings.layout == 'peek' }}"
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "t:won.settings.columns_mobile",
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "1.15",
+          "label": "t:won.options.one_peek"
+        }
+      ],
+      "default": "1"
+    },
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "t:won.settings.gap",
+      "min": 0,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 0
     },
     {
       "type": "header",
@@ -132,32 +184,6 @@
       "unit": "s",
       "default": 6,
       "visible_if": "{{ section.settings.autoplay }}"
-    },
-    {
-      "type": "select",
-      "id": "columns_mobile",
-      "label": "t:won.settings.columns_mobile",
-      "options": [
-        {
-          "value": "1",
-          "label": "1"
-        },
-        {
-          "value": "1.15",
-          "label": "t:won.options.one_peek"
-        }
-      ],
-      "default": "1"
-    },
-    {
-      "type": "range",
-      "id": "gap",
-      "label": "t:won.settings.gap",
-      "min": 0,
-      "max": 32,
-      "step": 2,
-      "unit": "px",
-      "default": 0
     },
     {
       "type": "header",
@@ -275,22 +301,8 @@
       "info": "t:won.info.text_color"
     },
     {
-      "type": "checkbox",
-      "id": "hide_mobile",
-      "label": "t:won.settings.hide_mobile",
-      "info": "t:won.info.hide_mobile",
-      "default": false
-    },
-    {
-      "type": "checkbox",
-      "id": "hide_desktop",
-      "label": "t:won.settings.hide_desktop",
-      "info": "t:won.info.hide_desktop",
-      "default": false
-    },
-    {
       "type": "header",
-      "content": "t:won.headers.padding"
+      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",

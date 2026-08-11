@@ -47,7 +47,13 @@ merchants can normalize mixed icon assets without code.
 {
   "name": "t:won.names.feature",
   "settings": [
+    { "type": "header", "content": "t:won.headers.content" },
     { "type": "image_picker", "id": "image", "label": "t:won.settings.image" },
+    { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.feature_heading" },
+    { "type": "richtext", "id": "text", "label": "t:won.settings.text" },
+    { "type": "text", "id": "link_label", "label": "t:won.settings.link_label" },
+    { "type": "url", "id": "link_url", "label": "t:won.settings.link_url" },
+    { "type": "header", "content": "t:won.headers.layout" },
     { "type": "range", "id": "image_size", "label": "t:won.settings.image_size", "min": 24, "max": 160, "step": 4, "unit": "px", "default": 48 },
     {
       "type": "select", "id": "image_position", "label": "t:won.settings.image_position",
@@ -58,10 +64,7 @@ merchants can normalize mixed icon assets without code.
       ],
       "default": "top"
     },
-    { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.feature_heading" },
-    { "type": "richtext", "id": "text", "label": "t:won.settings.text" },
-    { "type": "text", "id": "link_label", "label": "t:won.settings.link_label" },
-    { "type": "url", "id": "link_url", "label": "t:won.settings.link_url" },
+    { "type": "header", "content": "t:won.headers.appearance" },
     { "type": "range", "id": "corner_radius", "label": "t:won.settings.corner_radius", "min": 0, "max": 40, "step": 2, "unit": "px", "default": 14, "info": "t:won.info.corner_radius" },
     { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" }
   ],

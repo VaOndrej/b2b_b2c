@@ -1,6 +1,12 @@
 {%- liquid
   assign s = section.settings
   assign lines = s.stats | newline_to_br | split: '<br />'
+  # Count-up: section duration of 0 means "inherit the theme-wide default"
+  # (Won · Animace čísel global setting), otherwise the section value wins.
+  assign countup_duration = s.animate_duration
+  if countup_duration == 0
+    assign countup_duration = settings.won_countup_default_duration | default: 1600
+  endif
 -%}
 <section
   class="won-section color-{{ s.color_scheme }}"
@@ -24,7 +30,7 @@
           {%- assign value = row | split: ':' | first | strip -%}
           {%- assign label = row | split: ':' | last | strip -%}
           <div class="won-stat">
-            <dt class="won-stat__value">{{ value }}</dt>
+            <dt class="won-stat__value"{% if s.animate_values %} data-won-countup data-won-countup-duration="{{ countup_duration }}"{% endif %}>{{ value }}</dt>
             <dd class="won-stat__label">{{ label }}</dd>
           </div>
         {%- endif -%}
@@ -32,6 +38,10 @@
     </dl>
   </div>
 </section>
+
+{%- if s.animate_values -%}
+  {{ 'won-count-up.js' | asset_url | script_tag }}
+{%- endif -%}
 
 {% stylesheet %}
   .won-stats-wrap { display: flex; flex-direction: column; gap: var(--won-space-5); }
@@ -57,6 +67,24 @@
     ]
   },
   "settings": [
+    {
+      "type": "header",
+      "content": "t:won.headers.visibility"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
     {
       "type": "header",
       "content": "t:won.headers.content"
@@ -113,6 +141,10 @@
       "default": "t:won.defaults.stats_items"
     },
     {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
       "type": "range",
       "id": "columns_desktop",
       "label": "t:won.settings.columns_desktop",
@@ -126,6 +158,29 @@
       "id": "content_align",
       "label": "t:won.settings.content_align",
       "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.controls"
+    },
+    {
+      "type": "checkbox",
+      "id": "animate_values",
+      "label": "t:won.settings.animate_values",
+      "info": "t:won.info.animate_values",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "animate_duration",
+      "label": "t:won.settings.animate_duration",
+      "min": 0,
+      "max": 4000,
+      "step": 100,
+      "unit": "ms",
+      "default": 0,
+      "info": "t:won.info.animate_duration",
+      "visible_if": "{{ section.settings.animate_values }}"
     },
     {
       "type": "header",
@@ -243,22 +298,8 @@
       "info": "t:won.info.text_color"
     },
     {
-      "type": "checkbox",
-      "id": "hide_mobile",
-      "label": "t:won.settings.hide_mobile",
-      "info": "t:won.info.hide_mobile",
-      "default": false
-    },
-    {
-      "type": "checkbox",
-      "id": "hide_desktop",
-      "label": "t:won.settings.hide_desktop",
-      "info": "t:won.info.hide_desktop",
-      "default": false
-    },
-    {
       "type": "header",
-      "content": "t:won.headers.padding"
+      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",

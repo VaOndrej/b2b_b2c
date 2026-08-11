@@ -94,11 +94,14 @@ won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
 {
   "name": "t:won.names.tile",
   "settings": [
+    { "type": "header", "content": "t:won.headers.content" },
     { "type": "collection", "id": "collection", "label": "t:won.settings.collection", "info": "t:won.info.tile_collection" },
     { "type": "image_picker", "id": "image", "label": "t:won.settings.image" },
     { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.tile_heading" },
     { "type": "text", "id": "icon", "label": "t:won.settings.icon", "info": "t:won.info.tile_icon" },
     { "type": "url", "id": "link_url", "label": "t:won.settings.link_url" },
+    { "type": "text", "id": "badge_text", "label": "t:won.settings.badge_text", "info": "t:won.info.badge_text" },
+    { "type": "header", "content": "t:won.headers.layout" },
     {
       "type": "select", "id": "tile_size", "label": "t:won.settings.tile_size",
       "options": [
@@ -107,7 +110,7 @@ won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
       ],
       "default": "small"
     },
-    { "type": "text", "id": "badge_text", "label": "t:won.settings.badge_text", "info": "t:won.info.badge_text" },
+    { "type": "header", "content": "t:won.headers.appearance" },
     {
       "type": "select", "id": "badge_position", "label": "t:won.settings.badge_position", "visible_if": "{{ block.settings.badge_text != blank }}",
       "options": [

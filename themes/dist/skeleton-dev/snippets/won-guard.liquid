@@ -1,0 +1,60 @@
+{% doc %}
+Won merchant coaching layer — editor-only, non-blocking soft warnings. Runs a set
+of self-skipping checks over a section's settings and renders a small note box in
+the theme editor ONLY (request.design_mode). Never shown to shoppers, never blocks
+saving. Wired after each won section root by compose step 2d. Supersedes
+won-contrast-guard (that check is folded in here).
+
+@param {object} settings - A section settings object.
+@example
+{% render 'won-guard', settings: section.settings %}
+{% enddoc %}
+{%- if request.design_mode -%}
+  {%- liquid
+    assign s = settings
+    assign show_hidden = false
+    if s.hide_mobile and s.hide_desktop
+      assign show_hidden = true
+    endif
+    assign show_accent = false
+    if s.accent_override != blank
+      assign r_accent = s.accent_override | color_contrast: '#ffffff'
+      if r_accent < 3.0
+        assign show_accent = true
+      endif
+    endif
+    assign show_textbg = false
+    if s.text_color != blank and s.bg_color != blank
+      assign r_textbg = s.text_color | color_contrast: s.bg_color
+      if r_textbg < 3.0
+        assign show_textbg = true
+      endif
+    endif
+    assign show_media = false
+    if s.media_type == 'image' and s.image == blank and s.image_asset == blank
+      assign show_media = true
+    endif
+    assign show_label = false
+    if s.button_label != blank and s.button_link == blank
+      assign show_label = true
+    endif
+    assign show_link = false
+    if s.button_link != blank and s.button_label == blank
+      assign show_link = true
+    endif
+    assign any = false
+    if show_hidden or show_accent or show_textbg or show_media or show_label or show_link
+      assign any = true
+    endif
+  -%}
+  {%- if any -%}
+    <div class="won-editor-notes" role="status">
+      {%- if show_hidden -%}<p class="won-editor-note">{{ 'won.editor.hidden_all' | t }}</p>{%- endif -%}
+      {%- if show_accent -%}<p class="won-editor-note">{{ 'won.editor.contrast_warn' | t }}</p>{%- endif -%}
+      {%- if show_textbg -%}<p class="won-editor-note">{{ 'won.editor.contrast_textbg' | t }}</p>{%- endif -%}
+      {%- if show_media -%}<p class="won-editor-note">{{ 'won.editor.empty_media' | t }}</p>{%- endif -%}
+      {%- if show_label -%}<p class="won-editor-note">{{ 'won.editor.label_no_link' | t }}</p>{%- endif -%}
+      {%- if show_link -%}<p class="won-editor-note">{{ 'won.editor.link_no_label' | t }}</p>{%- endif -%}
+    </div>
+  {%- endif -%}
+{%- endif -%}

@@ -1,0 +1,20 @@
+{
+  "name": "t:won.names.animation",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:won.info.countup_group"
+    },
+    {
+      "type": "range",
+      "id": "won_countup_default_duration",
+      "label": "t:won.settings.countup_default_duration",
+      "min": 400,
+      "max": 4000,
+      "step": 100,
+      "unit": "ms",
+      "default": 1600,
+      "info": "t:won.info.countup_default_duration"
+    }
+  ]
+}

@@ -188,7 +188,25 @@
     },
     {
       "type": "header",
-      "content": "t:won.headers.layout"
+      "content": "t:won.headers.visibility"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.mode"
     },
     {
       "type": "select",
@@ -206,6 +224,65 @@
         }
       ],
       "default": "accordion"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.content"
+    },
+    {
+      "type": "richtext",
+      "id": "heading",
+      "label": "t:won.settings.heading",
+      "default": "t:won.defaults.faq_heading"
+    },
+    {
+      "type": "range",
+      "id": "heading_size_desktop",
+      "label": "t:won.settings.heading_size_desktop",
+      "min": 20,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "heading_max_width_desktop",
+      "label": "t:won.settings.heading_max_width_desktop",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "label": "t:won.settings.heading_size_mobile",
+      "min": 16,
+      "max": 56,
+      "step": 2,
+      "unit": "px",
+      "default": 26
+    },
+    {
+      "type": "range",
+      "id": "heading_max_width_mobile",
+      "label": "t:won.settings.heading_max_width_mobile",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "richtext",
+      "id": "intro",
+      "label": "t:won.settings.intro"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
     },
     {
       "type": "select",
@@ -263,61 +340,6 @@
       "label": "t:won.settings.split_media",
       "info": "t:won.info.split_media",
       "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' and section.settings.show_side_media }}"
-    },
-    {
-      "type": "header",
-      "content": "t:won.headers.content"
-    },
-    {
-      "type": "richtext",
-      "id": "heading",
-      "label": "t:won.settings.heading",
-      "default": "t:won.defaults.faq_heading"
-    },
-    {
-      "type": "range",
-      "id": "heading_size_desktop",
-      "label": "t:won.settings.heading_size_desktop",
-      "min": 20,
-      "max": 80,
-      "step": 2,
-      "unit": "px",
-      "default": 36
-    },
-    {
-      "type": "range",
-      "id": "heading_max_width_desktop",
-      "label": "t:won.settings.heading_max_width_desktop",
-      "min": 30,
-      "max": 100,
-      "step": 5,
-      "unit": "%",
-      "default": 100
-    },
-    {
-      "type": "range",
-      "id": "heading_size_mobile",
-      "label": "t:won.settings.heading_size_mobile",
-      "min": 16,
-      "max": 56,
-      "step": 2,
-      "unit": "px",
-      "default": 26
-    },
-    {
-      "type": "range",
-      "id": "heading_max_width_mobile",
-      "label": "t:won.settings.heading_max_width_mobile",
-      "min": 30,
-      "max": 100,
-      "step": 5,
-      "unit": "%",
-      "default": 100
-    },
-    {
-      "type": "richtext",
-      "id": "intro",
-      "label": "t:won.settings.intro"
     },
     {
       "type": "header",
@@ -470,22 +492,8 @@
       "info": "t:won.info.text_color"
     },
     {
-      "type": "checkbox",
-      "id": "hide_mobile",
-      "label": "t:won.settings.hide_mobile",
-      "info": "t:won.info.hide_mobile",
-      "default": false
-    },
-    {
-      "type": "checkbox",
-      "id": "hide_desktop",
-      "label": "t:won.settings.hide_desktop",
-      "info": "t:won.info.hide_desktop",
-      "default": false
-    },
-    {
       "type": "header",
-      "content": "t:won.headers.padding"
+      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",

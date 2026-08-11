@@ -24,7 +24,8 @@
     "custom_shadow"
   ],
   "removeHeaders": [
-    "t:won.headers.padding"
+    "t:won.headers.padding",
+    "t:won.headers.spacing"
   ],
   "preserveDefaultIds": [
     "corner_radius",
@@ -43,7 +44,7 @@
     { "type": "color", "id": "text_color", "label": "t:won.settings.text_color", "info": "t:won.info.text_color" },
     { "type": "checkbox", "id": "hide_mobile", "label": "t:won.settings.hide_mobile", "info": "t:won.info.hide_mobile", "default": false },
     { "type": "checkbox", "id": "hide_desktop", "label": "t:won.settings.hide_desktop", "info": "t:won.info.hide_desktop", "default": false },
-    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "header", "content": "t:won.headers.spacing" },
     { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 },
     { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 }
   ],

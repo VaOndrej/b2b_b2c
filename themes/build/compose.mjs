@@ -173,10 +173,24 @@ for (const name of WON_STYLE_SECTIONS) {
     }
     return merged;
   });
-  if (!hadAppearanceHeader) {
-    block.unshift({ type: 'header', content: 't:won.headers.appearance' });
+  // Device visibility (hide_mobile/hide_desktop) is authored in the tier1
+  // fragment for one source of truth, but the canonical won- editor language
+  // puts it at the TOP under a Visibility header (a section-level on/off is the
+  // first decision, not an Appearance detail). Lift those two controls out of
+  // the appended Appearance block and prepend them as their own group — after a
+  // leading About paragraph if the section has one.
+  const VIS_IDS = new Set(['hide_mobile', 'hide_desktop']);
+  const visControls = block.filter((x) => x && VIS_IDS.has(x.id));
+  const appendBlock = block.filter((x) => !(x && VIS_IDS.has(x.id)));
+  if (visControls.length) {
+    const visGroup = [{ type: 'header', content: 't:won.headers.visibility' }, ...visControls];
+    const insertAt = obj.settings[0] && obj.settings[0].type === 'paragraph' ? 1 : 0;
+    obj.settings.splice(insertAt, 0, ...visGroup);
   }
-  obj.settings.push(...block);
+  if (!hadAppearanceHeader) {
+    appendBlock.unshift({ type: 'header', content: 't:won.headers.appearance' });
+  }
+  obj.settings.push(...appendBlock);
 
   const rebuilt = `${m[1]}\n${JSON.stringify(obj, null, 2)}\n${m[3]}`;
   src = src.replace(m[0], () => rebuilt);
@@ -199,6 +213,30 @@ for (const name of WON_STYLE_SECTIONS) {
   }
   writeFileSync(file, src);
   styledSections++;
+}
+
+// 2e. Inject the Won global settings group (theme-wide animation defaults) into
+// the base config/settings_schema.json. This is the "advanced" tier: a merchant
+// sets the default count-up duration ONCE here, and every won-stats section with
+// its own duration left at 0 inherits it (section value != 0 overrides). Same
+// build-fragment-into-dist philosophy as 2b/2d; idempotent (skipped if the group
+// already exists) and never mutates the pristine base source.
+const animFragment = JSON.parse(readFileSync(join(themesRoot, 'build', 'won-animation-settings.json'), 'utf8'));
+const schemaFile = join(outDir, 'config', 'settings_schema.json');
+if (existsSync(schemaFile)) {
+  const schema = readJson(schemaFile);
+  if (Array.isArray(schema)) {
+    const already = schema.some((g) => g && g.name === animFragment.name);
+    if (!already) {
+      schema.push(animFragment);
+      writeFileSync(schemaFile, JSON.stringify(schema, null, 2) + '\n');
+      console.log(`2e: injected Won animation settings group into ${target} settings_schema.json`);
+    }
+  } else {
+    console.warn('2e: config/settings_schema.json is not an array — Won animation group not injected');
+  }
+} else {
+  console.warn('2e: config/settings_schema.json not found — Won animation group not injected');
 }
 
 // 2b. Wire the shared won token/utility stylesheet into the base layout <head>.

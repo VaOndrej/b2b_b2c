@@ -156,6 +156,7 @@
   .won-vp { display: flex; flex-direction: column; gap: var(--won-space-4); max-inline-size: 640px; }
   .won-vp__placeholder { color: var(--won-muted); }
   .won-vp__title { font-size: var(--won-h-size-m, 1.8rem); }
+  @media (min-width: 750px) { .won-vp__title { font-size: var(--won-h-size-d, 2.4rem); } }
   .won-vp__pricing { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--won-space-3); }
   .won-vp__price { font-size: 1.6rem; font-weight: 700; color: var(--won-fg); }
   .won-vp__compare { color: var(--won-muted); opacity: 0.6; }
@@ -326,6 +327,44 @@
     },
     {
       "type": "header",
+      "content": "t:won.headers.visibility"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.mode"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "t:won.settings.layout",
+      "options": [
+        {
+          "value": "axes",
+          "label": "t:won.options.vp_axes"
+        },
+        {
+          "value": "packs",
+          "label": "t:won.options.vp_packs"
+        }
+      ],
+      "default": "axes"
+    },
+    {
+      "type": "header",
       "content": "t:won.headers.content"
     },
     {
@@ -355,30 +394,19 @@
       "default": 26
     },
     {
-      "type": "header",
-      "content": "t:won.headers.layout"
-    },
-    {
-      "type": "select",
-      "id": "layout",
-      "label": "t:won.settings.layout",
-      "options": [
-        {
-          "value": "axes",
-          "label": "t:won.options.vp_axes"
-        },
-        {
-          "value": "packs",
-          "label": "t:won.options.vp_packs"
-        }
-      ],
-      "default": "axes"
-    },
-    {
       "type": "text",
       "id": "packs_label",
       "label": "t:won.settings.vp_packs_label",
       "visible_if": "{{ section.settings.layout == 'packs' }}"
+    },
+    {
+      "type": "text",
+      "id": "atc_label",
+      "label": "t:won.settings.vp_atc_label"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
     },
     {
       "type": "select",
@@ -493,11 +521,6 @@
       "id": "show_quantity",
       "label": "t:won.settings.vp_show_qty",
       "default": true
-    },
-    {
-      "type": "text",
-      "id": "atc_label",
-      "label": "t:won.settings.vp_atc_label"
     },
     {
       "type": "checkbox",
@@ -621,22 +644,8 @@
       "info": "t:won.info.text_color"
     },
     {
-      "type": "checkbox",
-      "id": "hide_mobile",
-      "label": "t:won.settings.hide_mobile",
-      "info": "t:won.info.hide_mobile",
-      "default": false
-    },
-    {
-      "type": "checkbox",
-      "id": "hide_desktop",
-      "label": "t:won.settings.hide_desktop",
-      "info": "t:won.info.hide_desktop",
-      "default": false
-    },
-    {
       "type": "header",
-      "content": "t:won.headers.padding"
+      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",

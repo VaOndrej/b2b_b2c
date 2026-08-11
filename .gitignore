@@ -17,3 +17,4 @@ test-results
 shpat.md
 # Playwright MCP session artifacts (console logs + page snapshots)
 .playwright-mcp/
+themes/bases/

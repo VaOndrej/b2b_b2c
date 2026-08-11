@@ -74,6 +74,44 @@
   "settings": [
     {
       "type": "header",
+      "content": "t:won.headers.visibility"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.mode"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "t:won.settings.layout",
+      "options": [
+        {
+          "value": "grid",
+          "label": "t:won.options.layout_grid"
+        },
+        {
+          "value": "mosaic",
+          "label": "t:won.options.layout_mosaic"
+        }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "header",
       "content": "t:won.headers.content"
     },
     {
@@ -124,22 +162,6 @@
     {
       "type": "header",
       "content": "t:won.headers.layout"
-    },
-    {
-      "type": "select",
-      "id": "layout",
-      "label": "t:won.settings.layout",
-      "options": [
-        {
-          "value": "grid",
-          "label": "t:won.options.layout_grid"
-        },
-        {
-          "value": "mosaic",
-          "label": "t:won.options.layout_mosaic"
-        }
-      ],
-      "default": "grid"
     },
     {
       "type": "range",
@@ -285,22 +307,8 @@
       "info": "t:won.info.text_color"
     },
     {
-      "type": "checkbox",
-      "id": "hide_mobile",
-      "label": "t:won.settings.hide_mobile",
-      "info": "t:won.info.hide_mobile",
-      "default": false
-    },
-    {
-      "type": "checkbox",
-      "id": "hide_desktop",
-      "label": "t:won.settings.hide_desktop",
-      "info": "t:won.info.hide_desktop",
-      "default": false
-    },
-    {
       "type": "header",
-      "content": "t:won.headers.padding"
+      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",
