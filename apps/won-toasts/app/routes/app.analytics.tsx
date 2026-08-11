@@ -10,6 +10,8 @@ import {
 } from "@won/core/toasts/insights-metrics";
 import { emptyRollupCounters, mergeCounters, dateKeyUTC, type RollupCounters } from "@won/core/toasts/insights";
 import { monthlyRoi } from "@won/core/toasts/roi";
+import { diagnoseSilentType } from "@won/core/toasts/insights-diagnosis";
+import { PAGE_TYPES } from "@won/core/toasts/targeting";
 
 import { authenticate } from "../shopify.server";
 import { getToastConfig } from "../services/toast-config.server";
@@ -107,7 +109,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     benchmark = rows.length ? rows : null;
   }
 
-  return { pro: true as const, perType, cards, totalReach, roi, benchmark, optedOut, industry };
+  // Definite signal for the silent-gap diagnosis: has the merchant excluded
+  // literally every page in Targeting? Then nothing can run anywhere.
+  const allPagesExcluded = PAGE_TYPES.every((p) => config.exclusions.pages.includes(p));
+
+  return { pro: true as const, perType, cards, totalReach, roi, benchmark, optedOut, industry, allPagesExcluded };
 };
 
 export const INDUSTRIES = ["fashion", "electronics", "beauty", "food", "home", "b2b", "other"];
@@ -175,7 +181,7 @@ export default function AnalyticsRoute() {
     );
   }
 
-  const { perType, cards, totalReach, roi, benchmark, optedOut, industry } = data;
+  const { perType, cards, totalReach, roi, benchmark, optedOut, industry, allPagesExcluded } = data;
 
   return (
     <s-page heading="Insights" inlineSize="large">
@@ -195,20 +201,21 @@ export default function AnalyticsRoute() {
               // usual culprit; if others fire but this one doesn't, it's this
               // type's targeting/on-off.
               if (c.kind === "silent_gap") {
-                const globalSilent = totalReach === 0;
-                const name = ruleLabel(c.metricType ?? "");
+                const dg = diagnoseSilentType({
+                  type: c.metricType ?? "",
+                  label: ruleLabel(c.metricType ?? ""),
+                  allPagesExcluded,
+                  anyToastShown: totalReach > 0,
+                });
                 return (
                   <s-banner key={c.id} tone="warning">
                     <s-stack direction="block" gap="small-200">
-                      <s-text>
-                        {globalSilent
-                          ? `${name} hasn't shown once — and nothing else has either. Your app embed is probably off, or Targeting is excluding every page.`
-                          : `${name} is set up but hasn't shown once, while other toasts are firing — it's likely turned off or excluded in Targeting.`}
-                      </s-text>
-                      <s-stack direction="inline" gap="base">
-                        {globalSilent ? <s-button href="/app">Check setup</s-button> : null}
-                        <s-button href="/app/targeting">Open Targeting</s-button>
-                      </s-stack>
+                      <s-text>{dg.message}</s-text>
+                      {dg.action ? (
+                        <s-stack direction="inline" gap="base">
+                          <s-button href={dg.action.href}>{dg.action.label}</s-button>
+                        </s-stack>
+                      ) : null}
                     </s-stack>
                   </s-banner>
                 );
