@@ -39,7 +39,7 @@
 -%}
 
 <section
-  class="won-section color-{{ s.color_scheme }} {% render 'won-visibility', settings: s %}"
+  class="won-section color-{{ s.color_scheme }}"
   style="{% render 'won-style-vars', settings: s %}"
   data-testid="won-band-section"
 >
@@ -61,7 +61,7 @@
               <img class="won-band__img" src="{{ s.image_asset | asset_url }}" alt="" width="2400" height="1200" loading="lazy">
             {%- endif -%}
           {%- else -%}
-            {{ s.video | video_tag: autoplay: true, loop: true, muted: true, controls: false, class: 'won-band__video' }}
+            {{ s.video | video_tag: autoplay: s.video_autoplay, loop: s.video_loop, muted: s.video_autoplay, controls: s.video_controls, class: 'won-band__video' }}
           {%- endif -%}
         </div>
       {%- endif -%}
@@ -202,46 +202,17 @@
     },
     {
       "type": "checkbox",
-      "id": "show_on_mobile",
-      "label": "t:won.settings.show_on_mobile",
-      "info": "t:won.info.show_on_mobile",
-      "default": true
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
     },
     {
       "type": "checkbox",
-      "id": "show_on_desktop",
-      "label": "t:won.settings.show_on_desktop",
-      "info": "t:won.info.show_on_desktop",
-      "default": true
-    },
-    {
-      "type": "header",
-      "content": "t:won.headers.mode"
-    },
-    {
-      "type": "select",
-      "id": "media_position",
-      "label": "t:won.settings.media_position",
-      "visible_if": "{{ section.settings.media_type != 'none' }}",
-      "options": [
-        {
-          "value": "left",
-          "label": "t:won.options.left"
-        },
-        {
-          "value": "right",
-          "label": "t:won.options.right"
-        },
-        {
-          "value": "center_gutter",
-          "label": "t:won.options.center_gutter"
-        },
-        {
-          "value": "background",
-          "label": "t:won.options.background"
-        }
-      ],
-      "default": "right"
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
     },
     {
       "type": "header",
@@ -380,6 +351,31 @@
       "default": "none"
     },
     {
+      "type": "select",
+      "id": "media_position",
+      "label": "t:won.settings.media_position",
+      "visible_if": "{{ section.settings.media_type != 'none' }}",
+      "options": [
+        {
+          "value": "left",
+          "label": "t:won.options.left"
+        },
+        {
+          "value": "right",
+          "label": "t:won.options.right"
+        },
+        {
+          "value": "center_gutter",
+          "label": "t:won.options.center_gutter"
+        },
+        {
+          "value": "background",
+          "label": "t:won.options.background"
+        }
+      ],
+      "default": "right"
+    },
+    {
       "type": "image_picker",
       "id": "image",
       "label": "t:won.settings.image",
@@ -396,6 +392,28 @@
       "type": "video",
       "id": "video",
       "label": "t:won.settings.video",
+      "visible_if": "{{ section.settings.media_type == 'video' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "video_autoplay",
+      "label": "t:won.settings.video_autoplay",
+      "info": "t:won.info.video_autoplay",
+      "default": true,
+      "visible_if": "{{ section.settings.media_type == 'video' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "video_loop",
+      "label": "t:won.settings.video_loop",
+      "default": true,
+      "visible_if": "{{ section.settings.media_type == 'video' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "video_controls",
+      "label": "t:won.settings.video_controls",
+      "default": false,
       "visible_if": "{{ section.settings.media_type == 'video' }}"
     },
     {
@@ -472,10 +490,6 @@
         }
       ],
       "default": "page"
-    },
-    {
-      "type": "header",
-      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",
@@ -567,22 +581,8 @@
       "info": "t:won.info.text_color"
     },
     {
-      "type": "checkbox",
-      "id": "hide_mobile",
-      "label": "t:won.settings.hide_mobile",
-      "info": "t:won.info.hide_mobile",
-      "default": false
-    },
-    {
-      "type": "checkbox",
-      "id": "hide_desktop",
-      "label": "t:won.settings.hide_desktop",
-      "info": "t:won.info.hide_desktop",
-      "default": false
-    },
-    {
       "type": "header",
-      "content": "t:won.headers.padding"
+      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",

@@ -34,6 +34,7 @@ allow_multiple via a shared name attribute.
     </summary>
     <div class="won-panels__answer rte">{{ s.content }}</div>
   </details>
+  {%- render 'won-faq-schema', enabled: section.settings.emit_faq_schema, question: s.title, answer: s.content -%}
 {%- endif -%}
 
 {% schema %}

@@ -1,6 +1,6 @@
 {%- assign s = section.settings -%}
 <section
-  class="won-section color-{{ s.color_scheme }} {% render 'won-visibility', settings: s %}"
+  class="won-section color-{{ s.color_scheme }}"
   style="{% render 'won-style-vars', settings: s %}"
   data-testid="won-contact-section"
 >
@@ -103,17 +103,17 @@
     },
     {
       "type": "checkbox",
-      "id": "show_on_mobile",
-      "label": "t:won.settings.show_on_mobile",
-      "info": "t:won.info.show_on_mobile",
-      "default": true
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
     },
     {
       "type": "checkbox",
-      "id": "show_on_desktop",
-      "label": "t:won.settings.show_on_desktop",
-      "info": "t:won.info.show_on_desktop",
-      "default": true
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
     },
     {
       "type": "header",
@@ -235,10 +235,6 @@
       "default": "page"
     },
     {
-      "type": "header",
-      "content": "t:won.headers.spacing"
-    },
-    {
       "type": "range",
       "id": "corner_radius",
       "label": "t:won.settings.corner_radius",
@@ -328,22 +324,8 @@
       "info": "t:won.info.text_color"
     },
     {
-      "type": "checkbox",
-      "id": "hide_mobile",
-      "label": "t:won.settings.hide_mobile",
-      "info": "t:won.info.hide_mobile",
-      "default": false
-    },
-    {
-      "type": "checkbox",
-      "id": "hide_desktop",
-      "label": "t:won.settings.hide_desktop",
-      "info": "t:won.info.hide_desktop",
-      "default": false
-    },
-    {
       "type": "header",
-      "content": "t:won.headers.padding"
+      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",

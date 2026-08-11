@@ -1,0 +1,29 @@
+{% doc %}
+won-faq-schema — emit one FAQPage JSON-LD node for a single FAQ row, so search
+and AI answer engines can read the question/answer as structured data.
+
+Rendered by the ROW block (won-accordion-row / won-panel), NOT by the parent
+section: a section cannot read its child theme-blocks' settings when they render
+through `{% content_for 'blocks' %}` (the loop yields empty settings — verified
+live, see repo memory). A block CAN always read its own settings and its parent
+`section` object, so each row self-emits, gated by the section's toggle. Several
+FAQPage nodes on one page are merged by search/AI parsers.
+
+Honesty guard: emits nothing unless the toggle is on AND both question and answer
+are non-blank — never ship schema for content that isn't really on the page
+(Google requires visible-content parity).
+
+@param {boolean} enabled - The parent section's emit_faq_schema toggle
+@param {string} question - The question text (row summary/title)
+@param {string} answer - The answer HTML (row richtext content)
+@example
+{% render 'won-faq-schema', enabled: section.settings.emit_faq_schema, question: block.settings.summary, answer: block.settings.content %}
+{% enddoc %}
+{%- liquid
+  assign q = question | strip_html | strip
+  assign a = answer | strip
+-%}
+{%- if enabled and q != blank and a != blank -%}
+  {%- capture won_faq_json -%}{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":{{ q | json }},"acceptedAnswer":{"@type":"Answer","text":{{ a | json }}}}]}{%- endcapture -%}
+  <script type="application/ld+json">{{ won_faq_json | replace: '</', '<\/' }}</script>
+{%- endif -%}

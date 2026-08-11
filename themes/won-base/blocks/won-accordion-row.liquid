@@ -19,6 +19,7 @@ allow_multiple setting via a shared name attribute.
   </summary>
   <div class="won-acc__answer rte">{{ s.content }}</div>
 </details>
+{%- render 'won-faq-schema', enabled: section.settings.emit_faq_schema, question: s.summary, answer: s.content -%}
 
 {% stylesheet %}
   .won-acc__row { border-bottom: 1px solid var(--won-border); }

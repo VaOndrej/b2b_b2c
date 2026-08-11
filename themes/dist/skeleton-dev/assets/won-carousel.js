@@ -48,8 +48,12 @@
     }
     const interval = parseInt(this.dataset.autoplay, 10);
     if (interval && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      this._timer = setInterval(() => this.autoAdvance(), interval * 1000);
+      this._autoMs = interval * 1000;
+      const start = () => { clearInterval(this._timer); this._timer = setInterval(() => this.autoAdvance(), this._autoMs); };
+      // Pause on hover, RESUME on leave (previously it stopped for good).
       this.addEventListener('pointerenter', () => clearInterval(this._timer));
+      this.addEventListener('pointerleave', start);
+      start();
     }
   }
   disconnectedCallback() {

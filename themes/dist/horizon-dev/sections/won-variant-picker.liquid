@@ -103,11 +103,19 @@
                 {%- endfor -%}
               </select>
             {%- else -%}
-              <div class="won-vp__swatches">
+              {%- assign is_swatch = false -%}{%- if style == 'swatches' -%}{%- assign is_swatch = true -%}{%- endif -%}
+              <div class="won-vp__swatches{% if is_swatch %} won-vp__swatches--chips won-vp__swatches--{{ s.swatch_shape | default: 'circle' }}{% endif %}">
                 {%- for value in option.values -%}
-                  <label class="won-vp__swatch">
+                  <label class="won-vp__swatch{% unless value.available %} is-soldout{% endunless %}" title="{{ value }}{% unless value.available %} — {{ 'won.vp.soldout' | t }}{% endunless %}">
                     <input type="radio" name="won-option-{{ option.position }}" value="{{ value | escape }}" data-won-value="{{ option.position }}" {% if value == option.selected_value %}checked{% endif %}>
-                    <span class="won-vp__swatch-label">{{ value }}</span>
+                    {%- if is_swatch and value.swatch.image -%}
+                      <span class="won-vp__chip" style="background-image: url({{ value.swatch.image | image_url: width: 96 }});"></span>
+                    {%- elsif is_swatch and value.swatch.color -%}
+                      <span class="won-vp__chip" style="background-color: rgb({{ value.swatch.color.rgb }});"></span>
+                    {%- else -%}
+                      <span class="won-vp__swatch-label">{{ value }}</span>
+                    {%- endif -%}
+                    {%- if is_swatch and s.swatch_show_label and value.swatch -%}<span class="won-vp__chip-label">{{ value }}</span>{%- endif -%}
                   </label>
                 {%- endfor -%}
               </div>
@@ -172,6 +180,32 @@
   }
   .won-vp__swatch input:checked + .won-vp__swatch-label { border-color: var(--won-accent); background: color-mix(in oklab, var(--won-accent) 12%, transparent); color: var(--won-accent); }
   .won-vp__swatch input:focus-visible + .won-vp__swatch-label { outline: 2px solid var(--won-accent); outline-offset: 2px; }
+
+  /* Native-swatch chips (driven by product option_value.swatch: color or image) */
+  .won-vp__swatches--chips { gap: var(--won-space-3); align-items: flex-start; }
+  .won-vp__swatches--chips .won-vp__swatch { flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+  .won-vp__chip {
+    display: block; inline-size: 34px; block-size: 34px;
+    background-size: cover; background-position: center;
+    border: 1px solid color-mix(in oklab, var(--won-fg) 18%, transparent);
+    box-shadow: inset 0 0 0 2px var(--won-bg);
+    transition: box-shadow var(--won-dur) var(--won-ease), outline-color var(--won-dur) var(--won-ease);
+  }
+  .won-vp__swatches--circle .won-vp__chip { border-radius: 50%; }
+  .won-vp__swatches--square .won-vp__chip { border-radius: var(--won-radius-sm, 6px); }
+  .won-vp__swatch input:checked + .won-vp__chip { outline: 2px solid var(--won-accent); outline-offset: 2px; }
+  .won-vp__swatch input:focus-visible + .won-vp__chip { outline: 2px solid var(--won-accent); outline-offset: 2px; }
+  .won-vp__chip-label { font-size: 0.8rem; color: var(--won-muted); }
+  .won-vp__swatch input:checked ~ .won-vp__chip-label { color: var(--won-accent); }
+
+  /* Sold-out option value: dimmed + struck through, still selectable. */
+  .won-vp__swatch.is-soldout { opacity: 0.55; }
+  .won-vp__swatch.is-soldout .won-vp__swatch-label { text-decoration: line-through; }
+  .won-vp__swatch.is-soldout .won-vp__chip { position: relative; }
+  .won-vp__swatch.is-soldout .won-vp__chip::after {
+    content: ""; position: absolute; inset: -1px; border-radius: inherit;
+    background: linear-gradient(to top right, transparent calc(50% - 1px), color-mix(in oklab, var(--won-fg) 55%, transparent) 50%, transparent calc(50% + 1px));
+  }
   .won-vp__select { padding: 0.6em 0.8em; border: 1px solid var(--won-border); border-radius: var(--won-radius-sm); font: inherit; background: var(--won-bg); color: var(--won-fg); inline-size: 100%; max-inline-size: 320px; }
 
   .won-vp__packs { display: grid; gap: var(--won-space-2); }
@@ -419,6 +453,10 @@
           "label": "t:won.options.vp_buttons"
         },
         {
+          "value": "swatches",
+          "label": "t:won.options.vp_swatches"
+        },
+        {
           "value": "dropdown",
           "label": "t:won.options.vp_dropdown"
         }
@@ -434,6 +472,10 @@
         {
           "value": "buttons",
           "label": "t:won.options.vp_buttons"
+        },
+        {
+          "value": "swatches",
+          "label": "t:won.options.vp_swatches"
         },
         {
           "value": "dropdown",
@@ -453,11 +495,40 @@
           "label": "t:won.options.vp_buttons"
         },
         {
+          "value": "swatches",
+          "label": "t:won.options.vp_swatches"
+        },
+        {
           "value": "dropdown",
           "label": "t:won.options.vp_dropdown"
         }
       ],
       "default": "dropdown"
+    },
+    {
+      "type": "select",
+      "id": "swatch_shape",
+      "label": "t:won.settings.swatch_shape",
+      "info": "t:won.info.swatch_shape",
+      "visible_if": "{{ section.settings.layout == 'axes' }}",
+      "options": [
+        {
+          "value": "circle",
+          "label": "t:won.options.swatch_circle"
+        },
+        {
+          "value": "square",
+          "label": "t:won.options.swatch_square"
+        }
+      ],
+      "default": "circle"
+    },
+    {
+      "type": "checkbox",
+      "id": "swatch_show_label",
+      "label": "t:won.settings.swatch_show_label",
+      "default": true,
+      "visible_if": "{{ section.settings.layout == 'axes' }}"
     },
     {
       "type": "checkbox",

@@ -12,6 +12,7 @@ tab button that won-tabs builds; this block renders the matching panel.
   id="won-tabpanel-{{ block.id }}"
   aria-labelledby="won-tab-{{ block.id }}"
   data-title="{{ s.title | strip_html | strip | escape }}"
+  {% if s.open %}data-won-default="true"{% endif %}
   {{ block.shopify_attributes }}
 >
   {%- if s.title != blank -%}
@@ -26,7 +27,8 @@ tab button that won-tabs builds; this block renders the matching panel.
   "settings": [
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "inline_richtext", "id": "title", "label": "t:won.settings.title", "default": "t:won.defaults.tab_title" },
-    { "type": "richtext", "id": "content", "label": "t:won.settings.text", "default": "t:won.defaults.tab_content" }
+    { "type": "richtext", "id": "content", "label": "t:won.settings.text", "default": "t:won.defaults.tab_content" },
+    { "type": "checkbox", "id": "open", "label": "t:won.settings.default_tab", "info": "t:won.info.default_tab", "default": false }
   ],
   "presets": [{ "name": "t:won.names.tab" }]
 }

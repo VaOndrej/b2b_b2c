@@ -34,7 +34,9 @@
       return btn;
     });
     this.dataset.wonBound = '1';
-    this.select(0);
+    // Honour a merchant-chosen default tab (data-won-default on the panel); fall back to the first.
+    const def = this.panels.findIndex((p) => p.dataset.wonDefault === 'true');
+    this.select(def >= 0 ? def : 0);
   }
   select(index) {
     this.tabs.forEach((tab, i) => {

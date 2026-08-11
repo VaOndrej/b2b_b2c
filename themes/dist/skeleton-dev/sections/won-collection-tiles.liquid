@@ -8,7 +8,7 @@
 -%}
 
 <section
-  class="won-section color-{{ s.color_scheme }} {% render 'won-visibility', settings: s %}"
+  class="won-section color-{{ s.color_scheme }}"
   style="{% render 'won-style-vars', settings: s %}"
   data-testid="won-tiles-section"
 >
@@ -24,7 +24,7 @@
     {%- endif -%}
     <div
       class="won-tiles won-tiles--{{ s.layout }}"
-      style="--won-cols-lg: {{ cols }}; --won-cols-md: {{ s.columns_tablet }}; --won-gap: {{ s.gap }}px;"
+      style="--won-cols-lg: {{ cols }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-sm: {{ s.columns_mobile }}; --won-gap: {{ s.gap }}px;"
     >
       {% content_for 'blocks' %}
     </div>
@@ -37,7 +37,7 @@
   .won-tiles {
     display: grid;
     gap: var(--won-gap, 16px);
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--won-cols-sm, 2), minmax(0, 1fr));
   }
   @media (min-width: 750px) {
     .won-tiles { grid-template-columns: repeat(var(--won-cols-md, 3), minmax(0, 1fr)); }
@@ -78,17 +78,17 @@
     },
     {
       "type": "checkbox",
-      "id": "show_on_mobile",
-      "label": "t:won.settings.show_on_mobile",
-      "info": "t:won.info.show_on_mobile",
-      "default": true
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
     },
     {
       "type": "checkbox",
-      "id": "show_on_desktop",
-      "label": "t:won.settings.show_on_desktop",
-      "info": "t:won.info.show_on_desktop",
-      "default": true
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
     },
     {
       "type": "header",
@@ -183,6 +183,15 @@
     },
     {
       "type": "range",
+      "id": "columns_mobile",
+      "label": "t:won.settings.columns_mobile",
+      "min": 1,
+      "max": 2,
+      "step": 1,
+      "default": 2
+    },
+    {
+      "type": "range",
       "id": "gap",
       "label": "t:won.settings.gap",
       "min": 4,
@@ -216,10 +225,6 @@
         }
       ],
       "default": "page"
-    },
-    {
-      "type": "header",
-      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",
@@ -311,22 +316,8 @@
       "info": "t:won.info.text_color"
     },
     {
-      "type": "checkbox",
-      "id": "hide_mobile",
-      "label": "t:won.settings.hide_mobile",
-      "info": "t:won.info.hide_mobile",
-      "default": false
-    },
-    {
-      "type": "checkbox",
-      "id": "hide_desktop",
-      "label": "t:won.settings.hide_desktop",
-      "info": "t:won.info.hide_desktop",
-      "default": false
-    },
-    {
       "type": "header",
-      "content": "t:won.headers.padding"
+      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",

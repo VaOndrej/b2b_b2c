@@ -9,7 +9,7 @@
   endif
 -%}
 <section
-  class="won-section color-{{ s.color_scheme }} {% render 'won-visibility', settings: s %}"
+  class="won-section color-{{ s.color_scheme }}"
   style="{% render 'won-style-vars', settings: s %}"
   data-testid="won-stats-section"
 >
@@ -23,7 +23,7 @@
         {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
       </h2>
     {%- endif -%}
-    <dl class="won-stats" style="--won-cols-lg: {{ s.columns_desktop }};">
+    <dl class="won-stats" style="--won-cols-lg: {{ s.columns_desktop }}; --won-cols-sm: {{ s.columns_mobile }};">
       {%- for line in lines -%}
         {%- assign row = line | strip -%}
         {%- if row contains ':' -%}
@@ -46,7 +46,7 @@
 {% stylesheet %}
   .won-stats-wrap { display: flex; flex-direction: column; gap: var(--won-space-5); }
   .won-stats__heading { font-size: var(--won-h-size-m, 1.8rem); max-width: var(--won-h-mw-m, 100%); }
-  .won-stats { margin: 0; display: grid; gap: var(--won-space-5); grid-template-columns: repeat(2, minmax(0, 1fr)); text-align: center; }
+  .won-stats { margin: 0; display: grid; gap: var(--won-space-5); grid-template-columns: repeat(var(--won-cols-sm, 2), minmax(0, 1fr)); text-align: center; }
   .won-stat { display: flex; flex-direction: column; gap: var(--won-space-1); }
   .won-stat__value { margin: 0; font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; letter-spacing: -0.03em; color: var(--won-accent); line-height: 1; }
   .won-stat__label { margin: 0; opacity: 0.8; }
@@ -73,17 +73,17 @@
     },
     {
       "type": "checkbox",
-      "id": "show_on_mobile",
-      "label": "t:won.settings.show_on_mobile",
-      "info": "t:won.info.show_on_mobile",
-      "default": true
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
     },
     {
       "type": "checkbox",
-      "id": "show_on_desktop",
-      "label": "t:won.settings.show_on_desktop",
-      "info": "t:won.info.show_on_desktop",
-      "default": true
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
     },
     {
       "type": "header",
@@ -154,6 +154,15 @@
       "default": 4
     },
     {
+      "type": "range",
+      "id": "columns_mobile",
+      "label": "t:won.settings.columns_mobile",
+      "min": 1,
+      "max": 2,
+      "step": 1,
+      "default": 2
+    },
+    {
       "type": "text_alignment",
       "id": "content_align",
       "label": "t:won.settings.content_align",
@@ -207,10 +216,6 @@
         }
       ],
       "default": "page"
-    },
-    {
-      "type": "header",
-      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",
@@ -302,22 +307,8 @@
       "info": "t:won.info.text_color"
     },
     {
-      "type": "checkbox",
-      "id": "hide_mobile",
-      "label": "t:won.settings.hide_mobile",
-      "info": "t:won.info.hide_mobile",
-      "default": false
-    },
-    {
-      "type": "checkbox",
-      "id": "hide_desktop",
-      "label": "t:won.settings.hide_desktop",
-      "info": "t:won.info.hide_desktop",
-      "default": false
-    },
-    {
       "type": "header",
-      "content": "t:won.headers.padding"
+      "content": "t:won.headers.spacing"
     },
     {
       "type": "range",
