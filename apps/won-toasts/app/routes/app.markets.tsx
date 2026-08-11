@@ -28,9 +28,9 @@ import { EVENT_META, languageName } from "../lib/labels";
 import { useSavedToast } from "../lib/use-saved-toast";
 import { persistConfig } from "../lib/persist-config.server";
 
-// Per-currency free-shipping threshold rows the Currencies editor renders
-// (existing entries + blanks to add more).
-const MKT_CURRENCY_ROWS = 6;
+// Upper cap on per-currency free-shipping rows the action reads (Markets caps at
+// 50). The editor itself shows only existing rows + one blank (lazy-add, §9c).
+const MKT_CURRENCY_ROWS = 50;
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -136,7 +136,9 @@ export default function MarketsRoute() {
   )
     .slice(0, MKT_CURRENCY_ROWS)
     .map(([code, cents]) => ({ code, amount: String(cents / 100) }));
-  while (currencyRows.length < MKT_CURRENCY_ROWS) currencyRows.push({ code: "", amount: "" });
+  // §9c: lazy-add — show what's set plus ONE blank row to add the next, not a
+  // wall of empty pairs. Each saved currency reveals the next blank.
+  currencyRows.push({ code: "", amount: "" });
 
   // Live language set: checking a language reveals its translation column
   // immediately (no save+reload). Mirrors the action's dedup so what you see is
