@@ -2,7 +2,15 @@
   won-rating — star rating from metafields (won.rating 0–5, won.rating_count).
   A review app (or import) writes the metafields; the theme renders them, so it
   works with any review provider. Blank-safe. Used on cards and PDP.
-  Usage: {% render 'won-rating', product: product %}
+
+  Usage:  {% render 'won-rating', product: product %}
+          {% render 'won-rating', product: product, schema: true %}  (PDP only)
+
+  schema:true ALSO emits an AggregateRating (as a Product node keyed by the
+  canonical URL, so search/AI merge it onto the product — see [[won-schema-engine]]).
+  Pass it ONLY for the page's main product (PDP), never for collection/grid cards,
+  or every card would emit a competing product rating. The rating is visible right
+  here, so schema + visible content stay in parity (Google's requirement).
 {%- endcomment -%}
 {%- liquid
   assign rating = product.metafields.won.rating.value | default: 0.0
@@ -16,4 +24,9 @@
     </span>
     <span class="won-visually-hidden">{{ rating }} / 5{% if count > 0 %}, {{ count }}{% endif %}</span>
   </div>
+  {%- if schema and product != blank -%}
+    {%- assign won_rating_url = product.url | prepend: shop.url -%}
+    {%- capture won_rating_json -%}{"@context":"https://schema.org","@type":"Product","@id":{{ won_rating_url | json }},"url":{{ won_rating_url | json }},"name":{{ product.title | json }},"aggregateRating":{"@type":"AggregateRating","ratingValue":{{ rating }},"bestRating":5,"worstRating":1{% if count > 0 %},"ratingCount":{{ count }},"reviewCount":{{ count }}{% endif %}}}{%- endcapture -%}
+    <script type="application/ld+json">{{ won_rating_json | replace: '</', '<\/' }}</script>
+  {%- endif -%}
 {%- endif -%}

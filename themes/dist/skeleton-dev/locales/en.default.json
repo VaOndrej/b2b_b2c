@@ -93,6 +93,7 @@
     },
     "vp": {
       "placeholder": "Variant picker — appears on a product page.",
+      "soldout": "Sold out",
       "show_table": "Show variants table",
       "variant": "Variant",
       "price": "Price",

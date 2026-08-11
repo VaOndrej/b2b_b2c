@@ -1,0 +1,25 @@
+{% doc %}
+won-policy-schema — emit the store's return policy as structured data
+(Product.hasMerchantReturnPolicy) so AI + search read it as a buy-here trust
+signal. Values come from the theme-wide "Won · AI / vrácení" global settings, so a
+merchant sets them ONCE and every product page inherits them.
+
+Keyed by the canonical product URL (@id) so it merges onto the product — same
+pattern as [[won-schema-engine]]. Rendered once per PDP (from won-variant-picker).
+Emits nothing off a product page, when disabled, or without a return window +
+country (never assert a policy the merchant hasn't entered).
+
+@param {boolean} enabled - settings.won_return_enabled
+@param {number} days - return window in days (settings.won_return_days)
+@param {string} country - applicable country code (settings.won_return_country)
+@example
+{% render 'won-policy-schema', enabled: settings.won_return_enabled, days: settings.won_return_days, country: settings.won_return_country %}
+{% enddoc %}
+{%- liquid
+  assign return_days = days | default: 0 | plus: 0
+-%}
+{%- if enabled and product != blank and return_days > 0 and country != blank -%}
+  {%- assign won_policy_url = product.url | prepend: shop.url -%}
+  {%- capture won_policy_json -%}{"@context":"https://schema.org","@type":"Product","@id":{{ won_policy_url | json }},"url":{{ won_policy_url | json }},"name":{{ product.title | json }},"hasMerchantReturnPolicy":{"@type":"MerchantReturnPolicy","applicableCountry":{{ country | json }},"returnPolicyCategory":"https://schema.org/MerchantReturnFiniteReturnWindow","merchantReturnDays":{{ return_days }}}}{%- endcapture -%}
+  <script type="application/ld+json">{{ won_policy_json | replace: '</', '<\/' }}</script>
+{%- endif -%}

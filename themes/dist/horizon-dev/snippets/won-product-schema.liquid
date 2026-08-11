@@ -1,0 +1,74 @@
+{% doc %}
+won-product-schema — emit a supplementary Product JSON-LD node carrying
+`additionalProperty` (spec / nutrition facts) so search and AI answer engines can
+read the product's attributes as structured data.
+
+Rendered by the ROW block (won-param-table / won-nutrition-table), NOT the
+section: a section can't read its child theme-blocks' settings through
+`{% content_for 'blocks' %}`, so each table self-emits (see repo memory /
+[[won-schema-engine]]). The node is keyed by the canonical product URL as `@id`
++ `url`, so search/AI engines merge it onto the product — including Shopify's own
+Product node from the `structured_data` filter — instead of creating a duplicate.
+Several blocks on one PDP share the `@id` and merge into one property list.
+
+Honesty/safety guards: emits nothing off a product page, when disabled, or when
+there is no valid name/value pair. `| json` encodes every value; `</` is
+neutralised so FAQ/spec text can never break out of the script.
+
+@param {boolean} enabled - the block's emit_schema toggle
+@param {string} mode - 'lines' | 'kv' | 'none'
+@param {string} separator - cell separator for lines mode (':' specs, '|' nutrition)
+@param line_items - array/string of "name<sep>value" rows (lines mode)
+@param kv_value - parsed JSON object of name/value pairs (kv mode)
+@example
+{% render 'won-product-schema', enabled: block.settings.emit_schema, mode: mode, separator: ':', line_items: line_items, kv_value: kv_value %}
+{% enddoc %}
+{%- liquid
+  assign props = ''
+  if enabled and product != blank
+    if mode == 'kv'
+      for property in kv_value
+        assign pk = property.first | strip_html | strip
+        assign pv = property.last | strip_html | strip
+        if pk != blank and pv != blank
+          capture frag
+            echo '{"@type":"PropertyValue","name":'
+            echo pk | json
+            echo ',"value":'
+            echo pv | json
+            echo '}'
+          endcapture
+          if props != blank
+            assign props = props | append: ','
+          endif
+          assign props = props | append: frag
+        endif
+      endfor
+    elsif mode == 'lines'
+      for line in line_items
+        assign row = line | strip
+        assign cells = row | split: separator
+        assign pk = cells[0] | strip_html | strip
+        assign pv = cells[1] | strip_html | strip
+        if pk != blank and pv != blank
+          capture frag
+            echo '{"@type":"PropertyValue","name":'
+            echo pk | json
+            echo ',"value":'
+            echo pv | json
+            echo '}'
+          endcapture
+          if props != blank
+            assign props = props | append: ','
+          endif
+          assign props = props | append: frag
+        endif
+      endfor
+    endif
+  endif
+  assign canonical = product.url | prepend: shop.url
+-%}
+{%- if props != blank -%}
+  {%- capture won_prod_json -%}{"@context":"https://schema.org","@type":"Product","@id":{{ canonical | json }},"url":{{ canonical | json }},"name":{{ product.title | json }},"additionalProperty":[{{ props }}]}{%- endcapture -%}
+  <script type="application/ld+json">{{ won_prod_json | replace: '</', '<\/' }}</script>
+{%- endif -%}

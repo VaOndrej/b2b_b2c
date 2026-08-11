@@ -67,6 +67,11 @@
         <h1 class="won-heading won-vp__title" style="--won-h-size-m: {{ s.title_size_mobile }}px; --won-h-size-d: {{ s.title_size_desktop }}px;">{{ product.title }}</h1>
       {%- endif -%}
 
+      {%- if s.show_rating -%}
+        {% render 'won-rating', product: product, schema: true %}
+      {%- endif -%}
+      {% render 'won-policy-schema', enabled: settings.won_return_enabled, days: settings.won_return_days, country: settings.won_return_country %}
+
       <div class="won-vp__pricing">
         <span class="won-vp__price" data-won-price>{{ product.selected_or_first_available_variant.price | money }}</span>
         {%- assign cav = product.selected_or_first_available_variant.compare_at_price -%}
@@ -361,6 +366,7 @@
     },
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "checkbox", "id": "show_title", "label": "t:won.settings.vp_show_title", "default": true },
+    { "type": "checkbox", "id": "show_rating", "label": "t:won.settings.vp_show_rating", "info": "t:won.info.vp_show_rating", "default": true },
     { "type": "range", "id": "title_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 64, "step": 2, "unit": "px", "default": 34 },
     { "type": "range", "id": "title_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 16, "max": 48, "step": 2, "unit": "px", "default": 26 },
     { "type": "text", "id": "packs_label", "label": "t:won.settings.vp_packs_label", "visible_if": "{{ section.settings.layout == 'packs' }}" },

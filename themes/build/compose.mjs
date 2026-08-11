@@ -215,28 +215,37 @@ for (const name of WON_STYLE_SECTIONS) {
   styledSections++;
 }
 
-// 2e. Inject the Won global settings group (theme-wide animation defaults) into
-// the base config/settings_schema.json. This is the "advanced" tier: a merchant
-// sets the default count-up duration ONCE here, and every won-stats section with
-// its own duration left at 0 inherits it (section value != 0 overrides). Same
-// build-fragment-into-dist philosophy as 2b/2d; idempotent (skipped if the group
-// already exists) and never mutates the pristine base source.
-const animFragment = JSON.parse(readFileSync(join(themesRoot, 'build', 'won-animation-settings.json'), 'utf8'));
+// 2e. Inject every Won global settings group into the base config/settings_schema.json.
+// This is the "advanced" tier: a merchant sets a theme-wide default ONCE (count-up
+// duration, return policy, …) and won sections inherit it. Each group is authored as a
+// build fragment `won-*-settings.json` in themes/build/ and injected here — same
+// build-fragment-into-dist philosophy as 2b/2d; idempotent (skipped if a group of that
+// name already exists) and never mutates the pristine base source. Add a new global
+// group by dropping another `won-*-settings.json` fragment in — no compose edit needed.
 const schemaFile = join(outDir, 'config', 'settings_schema.json');
+const globalFragments = readdirSync(join(themesRoot, 'build'))
+  .filter((f) => /^won-.*-settings\.json$/.test(f))
+  .sort();
 if (existsSync(schemaFile)) {
   const schema = readJson(schemaFile);
   if (Array.isArray(schema)) {
-    const already = schema.some((g) => g && g.name === animFragment.name);
-    if (!already) {
-      schema.push(animFragment);
+    let injected = 0;
+    for (const frag of globalFragments) {
+      const group = JSON.parse(readFileSync(join(themesRoot, 'build', frag), 'utf8'));
+      if (!schema.some((g) => g && g.name === group.name)) {
+        schema.push(group);
+        injected++;
+      }
+    }
+    if (injected > 0) {
       writeFileSync(schemaFile, JSON.stringify(schema, null, 2) + '\n');
-      console.log(`2e: injected Won animation settings group into ${target} settings_schema.json`);
+      console.log(`2e: injected ${injected} Won global settings group(s) into ${target} settings_schema.json`);
     }
   } else {
-    console.warn('2e: config/settings_schema.json is not an array — Won animation group not injected');
+    console.warn('2e: config/settings_schema.json is not an array — Won global groups not injected');
   }
 } else {
-  console.warn('2e: config/settings_schema.json not found — Won animation group not injected');
+  console.warn('2e: config/settings_schema.json not found — Won global groups not injected');
 }
 
 // 2b. Wire the shared won token/utility stylesheet into the base layout <head>.
@@ -248,6 +257,7 @@ if (existsSync(schemaFile)) {
 const wonHead = [
   "{{ 'won-tokens.css' | asset_url | stylesheet_tag }}",
   "<script src=\"{{ 'won-cart.js' | asset_url }}\" defer></script>",
+  "{% render 'won-site-schema' %}",
 ].join('\n  ');
 const layoutFile = join(outDir, 'layout', 'theme.liquid');
 if (existsSync(layoutFile)) {

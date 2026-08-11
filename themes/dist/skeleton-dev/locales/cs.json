@@ -43,6 +43,7 @@
     },
     "vp": {
       "placeholder": "Výběr varianty — zobrazí se na stránce produktu.",
+      "soldout": "Vyprodáno",
       "show_table": "Zobrazit tabulku variant",
       "variant": "Varianta",
       "price": "Cena",

@@ -1,0 +1,21 @@
+{% doc %}
+won-site-schema — emit a site-level WebSite JSON-LD node with a SearchAction, so
+search + AI engines understand the store as a whole and know its search entry
+point (the machine-readable "store map" a theme CAN ship). Complements — does not
+duplicate — the base theme's Organization node.
+
+Wired into the layout <head> by compose (step 2b) and self-limited to the
+homepage, so exactly one WebSite node is emitted per store.
+
+NOTE: a canonical `/llms.txt` file is NOT a theme route (Shopify only lets themes
+customise robots.txt, and won-base ships code, not templates). Serving a real
+`/llms.txt` store map is an app / app-proxy / hosting concern — see the Won Toasts
+/ app layer (Fáze 8). This snippet is the theme-native equivalent.
+@example
+{% render 'won-site-schema' %}
+{% enddoc %}
+{%- if request.page_type == 'index' -%}
+  {%- assign won_site_url = shop.url -%}
+  {%- capture won_site_json -%}{"@context":"https://schema.org","@type":"WebSite","name":{{ shop.name | json }},"url":{{ won_site_url | json }},"potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":{{ won_site_url | append: '/search?q={search_term_string}' | json }}},"query-input":"required name=search_term_string"}}{%- endcapture -%}
+  <script type="application/ld+json">{{ won_site_json | replace: '</', '<\/' }}</script>
+{%- endif -%}

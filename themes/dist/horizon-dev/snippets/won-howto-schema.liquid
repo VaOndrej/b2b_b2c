@@ -1,0 +1,56 @@
+{% doc %}
+won-howto-schema — emit a HowTo JSON-LD node from a "Label : description" step
+list (won-dosage's "when to use" timeline), so AI answer engines can read the
+usage steps. NOTE: Google deprecated HowTo *rich results* (2023); this is now
+primarily for AI/LLM legibility, not a Google visual feature.
+
+Self-emitted by the block (content_for can't expose child settings to the
+section — see [[won-schema-engine]]). Honesty guard: emits nothing when disabled,
+without a name, or without at least one real step.
+
+@param {boolean} enabled - the block's emit_schema toggle
+@param {string} name - the HowTo name (block heading, falls back to product title)
+@param {string} separator - cell separator (':' for dosage)
+@param steps - array/string of "label<sep>description" lines
+@example
+{% render 'won-howto-schema', enabled: block.settings.emit_schema, name: s.heading, separator: ':', steps: lines %}
+{% enddoc %}
+{%- liquid
+  assign howto_name = name | strip_html | strip
+  if howto_name == blank
+    assign howto_name = product.title | default: '' | strip
+  endif
+  assign items = ''
+  assign pos = 0
+  if enabled and howto_name != blank
+    for line in steps
+      assign row = line | strip
+      assign parts = row | split: separator
+      assign label = parts[0] | strip_html | strip
+      assign desc = parts[1] | strip_html | strip
+      if label != blank
+        if desc == blank
+          assign desc = label
+        endif
+        assign pos = pos | plus: 1
+        capture frag
+          echo '{"@type":"HowToStep","position":'
+          echo pos
+          echo ',"name":'
+          echo label | json
+          echo ',"text":'
+          echo desc | json
+          echo '}'
+        endcapture
+        if items != blank
+          assign items = items | append: ','
+        endif
+        assign items = items | append: frag
+      endif
+    endfor
+  endif
+-%}
+{%- if items != blank -%}
+  {%- capture won_howto_json -%}{"@context":"https://schema.org","@type":"HowTo","name":{{ howto_name | json }},"step":[{{ items }}]}{%- endcapture -%}
+  <script type="application/ld+json">{{ won_howto_json | replace: '</', '<\/' }}</script>
+{%- endif -%}

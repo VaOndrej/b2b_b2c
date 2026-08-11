@@ -41,9 +41,9 @@
                   {%- else -%}
                     <td {% if forloop.index == s.highlight_col %}class="is-us"{% endif %}>
                       {%- if vl == 'yes' or vl == 'ano' -%}
-                        <svg class="won-cmp__yes" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg class="won-cmp__yes" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="won-visually-hidden">{{ val }}</span>
                       {%- elsif vl == 'no' or vl == 'ne' -%}
-                        <svg class="won-cmp__no" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        <svg class="won-cmp__no" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="won-visually-hidden">{{ val }}</span>
                       {%- elsif vl contains 'dots:' -%}
                         {%- assign dspec = vl | remove: 'dots:' | strip -%}
                         {%- assign dfilled = dspec | split: '/' | first | times: 1 -%}

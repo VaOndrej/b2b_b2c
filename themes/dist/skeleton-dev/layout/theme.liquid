@@ -26,6 +26,7 @@
     {{ content_for_header }}
     {{ 'won-tokens.css' | asset_url | stylesheet_tag }}
   <script src="{{ 'won-cart.js' | asset_url }}" defer></script>
+  {% render 'won-site-schema' %}
   </head>
 
   <body>

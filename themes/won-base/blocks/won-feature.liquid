@@ -14,7 +14,7 @@ merchants can normalize mixed icon assets without code.
 >
   {%- if s.image != blank -%}
     <div class="won-feature__icon">
-      {{ s.image | image_url: width: 320 | image_tag: class: 'won-feature__img', loading: 'lazy', alt: s.image.alt | default: '' }}
+      {{ s.image | image_url: width: 320 | image_tag: class: 'won-feature__img', loading: 'lazy', alt: s.image_alt | default: s.image.alt | default: '' }}
     </div>
   {%- endif -%}
   <div class="won-feature__body">
@@ -25,7 +25,7 @@ merchants can normalize mixed icon assets without code.
       <div class="won-feature__text rte">{{ s.text }}</div>
     {%- endif -%}
     {%- if s.link_label != blank -%}
-      {%- if s.link_url != blank -%}<a class="won-feature__link" href="{{ s.link_url }}">{{ s.link_label }}</a>{%- endif -%}
+      {%- if s.link_url != blank -%}<a class="won-feature__link" href="{{ s.link_url }}"{% if s.link_new_tab %} target="_blank" rel="noopener"{% endif %}>{{ s.link_label }}</a>{%- endif -%}
     {%- endif -%}
   </div>
 </div>
@@ -49,10 +49,12 @@ merchants can normalize mixed icon assets without code.
   "settings": [
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "image_picker", "id": "image", "label": "t:won.settings.image" },
+    { "type": "text", "id": "image_alt", "label": "t:won.settings.image_alt", "info": "t:won.info.image_alt" },
     { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.feature_heading" },
     { "type": "richtext", "id": "text", "label": "t:won.settings.text" },
     { "type": "text", "id": "link_label", "label": "t:won.settings.link_label" },
     { "type": "url", "id": "link_url", "label": "t:won.settings.link_url" },
+    { "type": "checkbox", "id": "link_new_tab", "label": "t:won.settings.link_new_tab", "default": false },
     { "type": "header", "content": "t:won.headers.layout" },
     { "type": "range", "id": "image_size", "label": "t:won.settings.image_size", "min": 24, "max": 160, "step": 4, "unit": "px", "default": 48 },
     {

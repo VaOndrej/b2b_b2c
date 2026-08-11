@@ -28,6 +28,7 @@ as numbered steps. Self-contained; for PDP or any section accepting theme blocks
     {%- endfor -%}
   </ol>
 </div>
+{%- render 'won-howto-schema', enabled: s.emit_schema, name: s.heading, separator: ':', steps: lines -%}
 
 {% stylesheet %}
   .won-dosage__heading { margin: 0 0 var(--won-space-4); font-weight: 700; }
@@ -52,7 +53,9 @@ as numbered steps. Self-contained; for PDP or any section accepting theme blocks
   "settings": [
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.dosage_heading" },
-    { "type": "textarea", "id": "steps", "label": "t:won.settings.steps", "default": "t:won.defaults.dosage_steps" }
+    { "type": "textarea", "id": "steps", "label": "t:won.settings.steps", "default": "t:won.defaults.dosage_steps" },
+    { "type": "header", "content": "t:won.headers.ai_schema" },
+    { "type": "checkbox", "id": "emit_schema", "label": "t:won.settings.emit_howto_schema", "info": "t:won.info.emit_howto_schema", "default": true }
   ],
   "presets": [{ "name": "t:won.names.dosage" }]
 }

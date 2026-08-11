@@ -90,6 +90,7 @@
     </dl>
   {%- endif -%}
 </div>
+{%- render 'won-product-schema', enabled: s.emit_schema, mode: mode, separator: ':', line_items: line_items, kv_value: kv_value -%}
 
 {% stylesheet %}
   .won-params__heading { margin: 0 0 var(--won-space-3); font-weight: 700; }
@@ -126,7 +127,9 @@
       "default": "manual"
     },
     { "type": "text", "id": "metafield_key", "label": "t:won.settings.metafield_key", "info": "t:won.info.nutrition_metafield", "default": "custom.specs", "visible_if": "{{ block.settings.source == 'metafield' }}" },
-    { "type": "textarea", "id": "rows", "label": "t:won.settings.rows_kv", "default": "t:won.defaults.param_rows", "visible_if": "{{ block.settings.source == 'manual' }}" }
+    { "type": "textarea", "id": "rows", "label": "t:won.settings.rows_kv", "default": "t:won.defaults.param_rows", "visible_if": "{{ block.settings.source == 'manual' }}" },
+    { "type": "header", "content": "t:won.headers.ai_schema" },
+    { "type": "checkbox", "id": "emit_schema", "label": "t:won.settings.emit_product_schema", "info": "t:won.info.emit_product_schema", "default": true }
   ],
   "presets": [{ "name": "t:won.names.param_table" }]
 }
