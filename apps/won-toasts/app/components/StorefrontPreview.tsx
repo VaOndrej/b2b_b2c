@@ -37,10 +37,17 @@ interface SceneCard {
 
 // One representative burst — enough cards that "Max visible" has something to
 // clamp, covering a cart add, a milestone and a quantity change.
+// A representative mix of ALL toast kinds — not just cart events — so the
+// animated preview shows the whole picture together (merchant-review point 5):
+// cart activity, urgency, social proof, announcement and milestones side by side.
 const SCENE: readonly SceneCard[] = [
   { type: "added", title: "Added to cart", detail: "Widget Pro", delta: "+1" },
   { type: "shipping", title: "Free shipping unlocked", detail: "You’ve hit the threshold", delta: "" },
+  { type: "decreased", title: "Only 3 left", detail: "Selling fast", delta: "" },
   { type: "increased", title: "Updated", detail: "Gizmo Plus", delta: "+1" },
+  { type: "info", title: "Free gift this week", detail: "On orders over 1000 Kč", delta: "" },
+  { type: "added", title: "Anna from Praha", detail: "just bought Ceramic Mug", delta: "" },
+  { type: "gift", title: "Gift unlocked", detail: "Added to your order", delta: "" },
   { type: "removed", title: "Removed", detail: "Gadget Mini", delta: "" },
 ];
 
