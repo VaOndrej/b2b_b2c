@@ -282,6 +282,18 @@ function LookPresetCard({ id, label }: { id: keyof typeof PRESET_LOOKS | "defaul
 
 // A titled group of controls — gives the page a readable rhythm instead of a
 // flat wall of fields (doctrine §8). Reused for every Design section.
+// §7/W1 — a section title that clearly OUTRANKS Polaris field labels (which we
+// can't restyle). Bolder + a touch larger + darker, so "Theme mode" reads as a
+// field UNDER "Colours", not a peer. One line, no extra chrome — hierarchy, not
+// more perceived settings.
+function GroupTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1f24", letterSpacing: "-0.01em", lineHeight: 1.3 }}>
+      {children}
+    </div>
+  );
+}
+
 function Group({
   title,
   hint,
@@ -300,7 +312,7 @@ function Group({
     return (
       <details>
         <summary style={{ cursor: "pointer", padding: "4px 0" }}>
-          <s-text type="strong">{title}</s-text>
+          <GroupTitle>{title}</GroupTitle>
         </summary>
         <div style={{ marginTop: 8 }}>
           <s-stack direction="block" gap="base">
@@ -314,7 +326,7 @@ function Group({
   return (
     <s-stack direction="block" gap="base">
       <s-stack direction="block" gap="small">
-        <s-text type="strong">{title}</s-text>
+        <GroupTitle>{title}</GroupTitle>
         {hint ? <s-text color="subdued">{hint}</s-text> : null}
       </s-stack>
       {children}
