@@ -218,7 +218,7 @@
   ],
   "settings": [
     { "type": "paragraph", "content": "t:won.info.announcement_bar_about" },
-    { "type": "header", "content": "t:won.headers.layout" },
+    { "type": "header", "content": "t:won.headers.mode" },
     {
       "type": "select", "id": "display", "label": "t:won.settings.ann_display", "info": "t:won.info.ann_display",
       "options": [
@@ -227,7 +227,7 @@
       ],
       "default": "rotate"
     },
-    { "type": "range", "id": "interval", "label": "t:won.settings.ann_interval", "info": "t:won.info.ann_interval", "min": 3, "max": 12, "step": 1, "unit": "s", "default": 5, "visible_if": "{{ section.settings.display == 'rotate' }}" },
+    { "type": "header", "content": "t:won.headers.layout" },
     {
       "type": "select", "id": "alignment", "label": "t:won.settings.alignment",
       "options": [
@@ -236,10 +236,12 @@
       ],
       "default": "center"
     },
+    { "type": "header", "content": "t:won.headers.controls" },
+    { "type": "range", "id": "interval", "label": "t:won.settings.ann_interval", "info": "t:won.info.ann_interval", "min": 3, "max": 12, "step": 1, "unit": "s", "default": 5, "visible_if": "{{ section.settings.display == 'rotate' }}" },
     { "type": "checkbox", "id": "dismissible", "label": "t:won.settings.ann_dismissible", "info": "t:won.info.ann_dismissible", "default": false },
     { "type": "header", "content": "t:won.headers.appearance" },
     { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-2" },
-    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "header", "content": "t:won.headers.spacing" },
     { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 40, "step": 2, "unit": "px", "default": 10 },
     { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 40, "step": 2, "unit": "px", "default": 10 }
   ],

@@ -36,7 +36,7 @@
 -%}
 
 <section
-  class="won-section color-{{ s.color_scheme }}"
+  class="won-section color-{{ s.color_scheme }} {% render 'won-visibility', settings: s %}"
   style="{% render 'won-spacing', settings: s %}"
   data-testid="won-panels-section"
 >
@@ -167,7 +167,10 @@
   "blocks": [{ "type": "won-panel" }, { "type": "@theme" }, { "type": "@app" }],
   "settings": [
     { "type": "paragraph", "content": "t:won.info.panels_about" },
-    { "type": "header", "content": "t:won.headers.layout" },
+    { "type": "header", "content": "t:won.headers.visibility" },
+    { "type": "checkbox", "id": "show_on_mobile", "label": "t:won.settings.show_on_mobile", "info": "t:won.info.show_on_mobile", "default": true },
+    { "type": "checkbox", "id": "show_on_desktop", "label": "t:won.settings.show_on_desktop", "info": "t:won.info.show_on_desktop", "default": true },
+    { "type": "header", "content": "t:won.headers.mode" },
     {
       "type": "select", "id": "display", "label": "t:won.settings.display", "info": "t:won.info.panels_display",
       "options": [
@@ -176,6 +179,14 @@
       ],
       "default": "accordion"
     },
+    { "type": "header", "content": "t:won.headers.content" },
+    { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.faq_heading" },
+    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 80, "step": 2, "unit": "px", "default": 36 },
+    { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 16, "max": 56, "step": 2, "unit": "px", "default": 26 },
+    { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "richtext", "id": "intro", "label": "t:won.settings.intro" },
+    { "type": "header", "content": "t:won.headers.layout" },
     {
       "type": "select", "id": "layout", "label": "t:won.settings.layout", "visible_if": "{{ section.settings.display == 'accordion' }}",
       "options": [
@@ -196,13 +207,6 @@
       "default": "start"
     },
     { "type": "image_picker", "id": "split_media", "label": "t:won.settings.split_media", "info": "t:won.info.split_media", "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' and section.settings.show_side_media }}" },
-    { "type": "header", "content": "t:won.headers.content" },
-    { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.faq_heading" },
-    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 80, "step": 2, "unit": "px", "default": 36 },
-    { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
-    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 16, "max": 56, "step": 2, "unit": "px", "default": 26 },
-    { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
-    { "type": "richtext", "id": "intro", "label": "t:won.settings.intro" },
     { "type": "header", "content": "t:won.headers.contact" },
     { "type": "checkbox", "id": "show_contact", "label": "t:won.settings.show_contact", "default": false, "visible_if": "{{ section.settings.display == 'accordion' }}" },
     { "type": "inline_richtext", "id": "contact_heading", "label": "t:won.settings.contact_heading", "visible_if": "{{ section.settings.show_contact }}" },
@@ -219,7 +223,7 @@
       ],
       "default": "page"
     },
-    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "header", "content": "t:won.headers.spacing" },
     { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 48 },
     { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 48 }
   ],

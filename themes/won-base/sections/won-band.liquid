@@ -39,7 +39,7 @@
 -%}
 
 <section
-  class="won-section color-{{ s.color_scheme }}"
+  class="won-section color-{{ s.color_scheme }} {% render 'won-visibility', settings: s %}"
   style="{% render 'won-spacing', settings: s %}"
   data-testid="won-band-section"
 >
@@ -180,6 +180,9 @@
   "blocks": [{ "type": "@theme" }, { "type": "@app" }],
   "settings": [
     { "type": "paragraph", "content": "t:won.info.band_about" },
+    { "type": "header", "content": "t:won.headers.visibility" },
+    { "type": "checkbox", "id": "show_on_mobile", "label": "t:won.settings.show_on_mobile", "info": "t:won.info.show_on_mobile", "default": true },
+    { "type": "checkbox", "id": "show_on_desktop", "label": "t:won.settings.show_on_desktop", "info": "t:won.info.show_on_desktop", "default": true },
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "inline_richtext", "id": "eyebrow", "label": "t:won.settings.eyebrow" },
     { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.band_heading" },
@@ -218,9 +221,6 @@
       ],
       "default": "none"
     },
-    { "type": "image_picker", "id": "image", "label": "t:won.settings.image", "visible_if": "{{ section.settings.media_type == 'image' }}" },
-    { "type": "text", "id": "image_asset", "label": "t:won.settings.image_asset", "info": "t:won.info.image_asset", "visible_if": "{{ section.settings.media_type == 'image' }}" },
-    { "type": "video", "id": "video", "label": "t:won.settings.video", "visible_if": "{{ section.settings.media_type == 'video' }}" },
     {
       "type": "select", "id": "media_position", "label": "t:won.settings.media_position", "visible_if": "{{ section.settings.media_type != 'none' }}",
       "options": [
@@ -231,13 +231,17 @@
       ],
       "default": "right"
     },
+    { "type": "image_picker", "id": "image", "label": "t:won.settings.image", "visible_if": "{{ section.settings.media_type == 'image' }}" },
+    { "type": "text", "id": "image_asset", "label": "t:won.settings.image_asset", "info": "t:won.info.image_asset", "visible_if": "{{ section.settings.media_type == 'image' }}" },
+    { "type": "video", "id": "video", "label": "t:won.settings.video", "visible_if": "{{ section.settings.media_type == 'video' }}" },
     { "type": "image_picker", "id": "image_2", "label": "t:won.settings.image_2", "info": "t:won.info.image_2", "visible_if": "{{ section.settings.media_type == 'image' and section.settings.media_position == 'center_gutter' }}" },
     { "type": "text", "id": "image_asset_2", "label": "t:won.settings.image_asset_2", "info": "t:won.info.image_asset", "visible_if": "{{ section.settings.media_type == 'image' and section.settings.media_position == 'center_gutter' }}" },
     { "type": "checkbox", "id": "toggle_overlay", "label": "t:won.settings.overlay", "default": true, "visible_if": "{{ section.settings.media_position == 'background' }}" },
     { "type": "color", "id": "overlay_color", "label": "t:won.settings.overlay_color", "alpha": true, "default": "#00000059", "visible_if": "{{ section.settings.media_position == 'background' }}" },
-    { "type": "header", "content": "t:won.headers.appearance" },
+    { "type": "header", "content": "t:won.headers.layout" },
     { "type": "text_alignment", "id": "content_align", "label": "t:won.settings.content_align", "default": "left" },
     { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 0, "max": 800, "step": 20, "unit": "px", "default": 0 },
+    { "type": "header", "content": "t:won.headers.appearance" },
     { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
     {
       "type": "select", "id": "section_width", "label": "t:won.settings.section_width",
@@ -248,7 +252,7 @@
       "default": "page"
     },
     { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" },
-    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "header", "content": "t:won.headers.spacing" },
     { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 },
     { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 }
   ],

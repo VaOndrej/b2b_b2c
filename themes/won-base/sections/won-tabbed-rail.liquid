@@ -10,7 +10,7 @@
 
 {%- assign s = section.settings -%}
 <section
-  class="won-section won-tabrail-sec color-{{ s.color_scheme }}"
+  class="won-section won-tabrail-sec color-{{ s.color_scheme }} {% render 'won-visibility', settings: s %}"
   style="{% render 'won-spacing', settings: s %}"
   data-testid="won-tabbed-rail-section"
 >
@@ -116,7 +116,10 @@
   ],
   "settings": [
     { "type": "paragraph", "content": "t:won.info.tabbed_rail_about" },
-    { "type": "header", "content": "t:won.headers.heading" },
+    { "type": "header", "content": "t:won.headers.visibility" },
+    { "type": "checkbox", "id": "show_on_mobile", "label": "t:won.settings.show_on_mobile", "info": "t:won.info.show_on_mobile", "default": true },
+    { "type": "checkbox", "id": "show_on_desktop", "label": "t:won.settings.show_on_desktop", "info": "t:won.info.show_on_desktop", "default": true },
+    { "type": "header", "content": "t:won.headers.content" },
     { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.tabbed_rail_heading" },
     { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 72, "step": 2, "unit": "px", "default": 34 },
     { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 16, "max": 48, "step": 2, "unit": "px", "default": 24 },
@@ -153,7 +156,7 @@
       ],
       "default": "page"
     },
-    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "header", "content": "t:won.headers.spacing" },
     { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 48 },
     { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 48 }
   ],

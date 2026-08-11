@@ -30,6 +30,7 @@ optional heading. Self-contained; for PDP or any section accepting theme blocks.
 {
   "name": "t:won.names.video",
   "settings": [
+    { "type": "header", "content": "t:won.headers.content" },
     { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading" },
     {
       "type": "select", "id": "video_type", "label": "t:won.settings.video_type",
@@ -41,6 +42,7 @@ optional heading. Self-contained; for PDP or any section accepting theme blocks.
     },
     { "type": "video", "id": "video", "label": "t:won.settings.video", "visible_if": "{{ block.settings.video_type == 'hosted' }}" },
     { "type": "video_url", "id": "video_url", "label": "t:won.settings.video_url", "accept": ["youtube", "vimeo"], "visible_if": "{{ block.settings.video_type == 'external' }}" },
+    { "type": "header", "content": "t:won.headers.layout" },
     {
       "type": "select", "id": "aspect", "label": "t:won.settings.card_aspect",
       "options": [

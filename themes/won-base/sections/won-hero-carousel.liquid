@@ -7,7 +7,7 @@
 
 {%- assign s = section.settings -%}
 <section
-  class="won-section color-{{ s.color_scheme }}"
+  class="won-section color-{{ s.color_scheme }} {% render 'won-visibility', settings: s %}"
   style="{% render 'won-spacing', settings: s %}"
   data-testid="won-hero-carousel-section"
 >
@@ -42,7 +42,10 @@
   "blocks": [{ "type": "won-slide" }, { "type": "@theme" }, { "type": "@app" }],
   "settings": [
     { "type": "paragraph", "content": "t:won.info.hero_carousel_about" },
-    { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 200, "max": 800, "step": 20, "unit": "px", "default": 520 },
+    { "type": "header", "content": "t:won.headers.visibility" },
+    { "type": "checkbox", "id": "show_on_mobile", "label": "t:won.settings.show_on_mobile", "info": "t:won.info.show_on_mobile", "default": true },
+    { "type": "checkbox", "id": "show_on_desktop", "label": "t:won.settings.show_on_desktop", "info": "t:won.info.show_on_desktop", "default": true },
+    { "type": "header", "content": "t:won.headers.mode" },
     {
       "type": "select", "id": "layout", "label": "t:won.settings.hero_slider_layout", "info": "t:won.info.hero_slider_layout",
       "options": [
@@ -51,12 +54,9 @@
       ],
       "default": "fill"
     },
+    { "type": "header", "content": "t:won.headers.layout" },
+    { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 200, "max": 800, "step": 20, "unit": "px", "default": 520 },
     { "type": "range", "id": "slide_width", "label": "t:won.settings.slide_width", "info": "t:won.info.slide_width", "min": 50, "max": 85, "step": 1, "unit": "%", "default": 64, "visible_if": "{{ section.settings.layout == 'peek' }}" },
-    { "type": "header", "content": "t:won.headers.controls" },
-    { "type": "checkbox", "id": "show_arrows", "label": "t:won.settings.show_arrows", "default": true },
-    { "type": "checkbox", "id": "show_progress", "label": "t:won.settings.show_progress", "default": true },
-    { "type": "checkbox", "id": "autoplay", "label": "t:won.settings.autoplay", "default": true },
-    { "type": "range", "id": "autoplay_interval", "label": "t:won.settings.autoplay_interval", "min": 2, "max": 10, "step": 1, "unit": "s", "default": 6, "visible_if": "{{ section.settings.autoplay }}" },
     {
       "type": "select", "id": "columns_mobile", "label": "t:won.settings.columns_mobile",
       "options": [
@@ -66,6 +66,11 @@
       "default": "1"
     },
     { "type": "range", "id": "gap", "label": "t:won.settings.gap", "min": 0, "max": 32, "step": 2, "unit": "px", "default": 0 },
+    { "type": "header", "content": "t:won.headers.controls" },
+    { "type": "checkbox", "id": "show_arrows", "label": "t:won.settings.show_arrows", "default": true },
+    { "type": "checkbox", "id": "show_progress", "label": "t:won.settings.show_progress", "default": true },
+    { "type": "checkbox", "id": "autoplay", "label": "t:won.settings.autoplay", "default": true },
+    { "type": "range", "id": "autoplay_interval", "label": "t:won.settings.autoplay_interval", "min": 2, "max": 10, "step": 1, "unit": "s", "default": 6, "visible_if": "{{ section.settings.autoplay }}" },
     { "type": "header", "content": "t:won.headers.appearance" },
     { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
     {
@@ -77,7 +82,7 @@
       "default": "full"
     },
     { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" },
-    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "header", "content": "t:won.headers.spacing" },
     { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 0 },
     { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 0 }
   ],

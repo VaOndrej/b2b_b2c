@@ -247,6 +247,9 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
       "visible_if": "{{ block.settings.media_type != 'none' }}"
     },
     { "type": "color_background", "id": "background_gradient", "label": "t:won.settings.background_gradient", "info": "t:won.info.background_gradient" },
+    { "type": "header", "content": "t:won.headers.layout" },
+    { "type": "text_alignment", "id": "alignment", "label": "t:won.settings.alignment", "default": "left" },
+    { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 0, "max": 800, "step": 20, "unit": "px", "default": 0, "info": "t:won.info.slide_min_height" },
     { "type": "header", "content": "t:won.headers.appearance" },
     {
       "type": "select", "id": "card_style", "label": "t:won.settings.card_style", "info": "t:won.info.card_style",
@@ -266,15 +269,13 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
       ],
       "default": "none"
     },
-    { "type": "text_alignment", "id": "alignment", "label": "t:won.settings.alignment", "default": "left" },
-    { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 0, "max": 800, "step": 20, "unit": "px", "default": 0, "info": "t:won.info.slide_min_height" },
     { "type": "range", "id": "corner_radius", "label": "t:won.settings.corner_radius", "min": 0, "max": 40, "step": 2, "unit": "px", "default": 14, "info": "t:won.info.corner_radius" },
     { "type": "checkbox", "id": "inherit_color_scheme", "label": "t:won.settings.inherit_color_scheme", "info": "t:won.info.inherit_color_scheme", "default": true },
     { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1", "visible_if": "{{ block.settings.inherit_color_scheme == false }}" },
     { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" },
     { "type": "checkbox", "id": "toggle_overlay", "label": "t:won.settings.overlay", "info": "t:won.info.overlay", "default": false, "visible_if": "{{ block.settings.media_type != 'none' }}" },
     { "type": "color", "id": "overlay_color", "label": "t:won.settings.overlay_color", "info": "t:won.info.overlay_color", "alpha": true, "default": "#00000059", "visible_if": "{{ block.settings.toggle_overlay }}" },
-    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "header", "content": "t:won.headers.spacing" },
     { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 120, "step": 2, "unit": "px", "default": 0 },
     { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 120, "step": 2, "unit": "px", "default": 0 }
   ],

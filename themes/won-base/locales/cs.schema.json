@@ -25,6 +25,7 @@
       "articles": "Won Articles",
       "page_header": "Won Page Header",
       "stats": "Won Stats",
+      "animation": "Won · Animace čísel",
       "contact": "Won Contact",
       "tabs": "Won Tabs",
       "tab": "Won Tab",
@@ -51,6 +52,10 @@
       "ann_freeship": "Doprava zdarma (progress)"
     },
     "info": {
+      "animate_values": "Čísla se při scrollnutí do záběru „naběhnou“ z nuly do své finální podoby. Prefix, jednotky i formát (10 000+, 98 %, €1.2M) zůstanou zachované. Hodnoty bez jasného čísla (např. 24/7) se nechají být.",
+      "animate_duration": "Jak dlouho naběhnutí trvá. Nech na 0 = použije se výchozí hodnota z nastavení tématu (Won · Animace čísel), jinak přebiješ jen pro tuhle sekci.",
+      "countup_group": "Výchozí chování naběhnutí čísel (count-up) pro celé téma. Jednotlivé sekce ho můžou přebít vlastní hodnotou.",
+      "countup_default_duration": "Výchozí délka naběhnutí čísel pro sekce, které mají dobu trvání nastavenou na 0 (dědit z tématu).",
       "show_on_mobile": "Odškrtnutím schováš celou tuhle sekci na telefonech (obrazovky pod 750px).",
       "show_on_desktop": "Odškrtnutím schováš celou tuhle sekci na tabletech a počítačích (750px a víc).",
       "loop": "Jen slider. Nekonečná smyčka railu, takže nikdy nenarazí na prázdný konec — vyber, kde platí.",
@@ -250,6 +255,9 @@
       "button2_link": "Odkaz druhého tlačítka",
       "button2_style": "Styl druhého tlačítka",
       "content_align": "Zarovnání obsahu",
+      "animate_values": "Animovat čísla (count-up)",
+      "animate_duration": "Délka naběhnutí",
+      "countup_default_duration": "Výchozí délka naběhnutí čísel",
       "min_height": "Minimální výška",
       "hero_slider_layout": "Rozložení slidů",
       "slide_width": "Šířka karty (desktop)",

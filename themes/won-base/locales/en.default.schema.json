@@ -25,6 +25,7 @@
       "articles": "Won Articles",
       "page_header": "Won Page Header",
       "stats": "Won Stats",
+      "animation": "Won · Number animation",
       "contact": "Won Contact",
       "tabs": "Won Tabs",
       "tab": "Won Tab",
@@ -51,6 +52,10 @@
       "ann_freeship": "Free shipping (progress)"
     },
     "info": {
+      "animate_values": "Numbers count up from zero to their final form the first time they scroll into view. Prefix, units and formatting (10,000+, 98%, €1.2M) are preserved. Values with no clear number (e.g. 24/7) are left as-is.",
+      "animate_duration": "How long the count-up runs. Leave at 0 to use the theme-wide default (Won · Number animation); set a value to override it for this section only.",
+      "countup_group": "Default count-up behaviour for the whole theme. Individual sections can override it with their own duration.",
+      "countup_default_duration": "Default count-up length for sections whose duration is set to 0 (inherit from theme).",
       "show_on_mobile": "Uncheck to hide this whole section on phones (screens under 750px).",
       "show_on_desktop": "Uncheck to hide this whole section on tablets and computers (750px and wider).",
       "loop": "Slider only. Loops the rail endlessly so it never hits an empty end — pick where it applies.",
@@ -250,6 +255,9 @@
       "button2_link": "Second button link",
       "button2_style": "Second button style",
       "content_align": "Content alignment",
+      "animate_values": "Animate numbers (count-up)",
+      "animate_duration": "Count-up length",
+      "countup_default_duration": "Default count-up length",
       "min_height": "Minimum height",
       "hero_slider_layout": "Slide layout",
       "slide_width": "Card width (desktop)",
