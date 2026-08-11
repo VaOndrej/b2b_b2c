@@ -559,7 +559,6 @@ export default function DesignRoute() {
                     <s-stack direction="block" gap="base">
                       <s-stack direction="inline" gap="small-300" alignItems="center">
                         <s-text type="strong">Merge — group rapid changes</s-text>
-                        <PlanBadge tier="pro" locked={!isPro} />
                       </s-stack>
                       <s-text color="subdued">
                         When a shopper changes the cart several times fast, show one combined
@@ -627,7 +626,6 @@ export default function DesignRoute() {
             <s-section heading="Custom CSS">
               <ProFrame locked={!isPro}>
                 <s-stack direction="block" gap="base">
-                  <PlanBadge tier="pro" locked={!isPro} />
                   <s-text color="subdued">
                     Go wild — inject your own CSS into the toast (rainbow borders,
                     a mascot, whatever). It applies only inside the toast, never

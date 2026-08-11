@@ -43,7 +43,7 @@ export function ToastLauncher({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))",
           gap: 16,
           alignItems: "start",
         }}
@@ -67,7 +67,7 @@ export function ToastLauncher({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(248px, 1fr))",
                   gap: 10,
                 }}
               >

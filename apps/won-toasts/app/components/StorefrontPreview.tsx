@@ -137,12 +137,15 @@ export function StorefrontPreview({
   // the minimum configurable width — it never limits how wide the toast can grow.
   const toastW = Math.max(108, Math.round((Number(theme.width) || 300) * scale));
 
-  // Horizontal placement (mobile always spans the width, like the storefront).
-  const horizontal: CSSProperties = mobile
-    ? { left: offXpx, right: offXpx }
-    : isCenter
-      ? { left: "50%", width: toastW }
-      : { [isLeft ? "left" : "right"]: offXpx, width: toastW };
+  // Horizontal placement mirrors the LIVE storefront on both sizes: the toast
+  // keeps its (scaled) width at its chosen edge/centre, capped so it never
+  // exceeds the viewport. It does NOT stretch edge-to-edge on mobile — verified
+  // against the storefront CSS (width: var(--won-width) capped to
+  // calc(100vw - 32px), not full-bleed).
+  const CAP = "calc(100% - 20px)";
+  const horizontal: CSSProperties = isCenter
+    ? { left: "50%", width: toastW, maxWidth: CAP }
+    : { [isLeft ? "left" : "right"]: offXpx, width: toastW, maxWidth: CAP };
   // Vertical placement: top / vertically-centred / bottom. Top-anchored stacks
   // start BELOW the fixed header, never over it.
   const vertical: CSSProperties = isMiddle
@@ -151,7 +154,7 @@ export function StorefrontPreview({
       ? { top: HEADER_SAFE + offYpx }
       : { bottom: offYpx };
   const translate = [
-    isCenter && !mobile ? "translateX(-50%)" : "",
+    isCenter ? "translateX(-50%)" : "",
     isMiddle ? "translateY(-50%)" : "",
   ]
     .filter(Boolean)

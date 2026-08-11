@@ -136,7 +136,6 @@ export default function TargetingRoute() {
               <s-stack direction="block" gap="large">
                 <s-stack direction="inline" gap="small">
                   <s-text type="strong">Narrow it down</s-text>
-                  <PlanBadge tier="pro" locked={!isPro} />
                 </s-stack>
                 {!isPro ? (
                   <s-paragraph>
