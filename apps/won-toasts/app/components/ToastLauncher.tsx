@@ -38,7 +38,16 @@ export function ToastLauncher({
 }) {
   return (
     <div role="tablist" aria-label="Toast types" style={{ marginBottom: 12 }}>
-      <s-stack direction="block" gap="base">
+      {/* Groups flow side-by-side AND wrap (not one tall column) so the picker
+          stays short. Each group is a grid cell; its cards wrap inside it. */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+          gap: 16,
+          alignItems: "start",
+        }}
+      >
         {groups.map((group) => {
           const live = group.items.filter((it) => it.on).length;
           const total = group.items.length;
@@ -118,7 +127,7 @@ export function ToastLauncher({
             </div>
           );
         })}
-      </s-stack>
+      </div>
     </div>
   );
 }
