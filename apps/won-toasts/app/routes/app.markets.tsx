@@ -28,6 +28,10 @@ import { EVENT_META, languageName } from "../lib/labels";
 import { useSavedToast } from "../lib/use-saved-toast";
 import { persistConfig } from "../lib/persist-config.server";
 
+// Per-currency free-shipping threshold rows the Currencies editor renders
+// (existing entries + blanks to add more).
+const MKT_CURRENCY_ROWS = 6;
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   return { config: await getToastConfig(session.shop) };
@@ -91,21 +95,48 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     notifications = config.notifications.map((n, i) => (i === annIndex ? updated : n));
   }
 
+  // Currencies: per-presentment-currency free-shipping thresholds. This page owns
+  // the currency table; the Toasts page owns the base amount/label/on-off — so we
+  // update ONLY the free_shipping milestone's `thresholds` and keep the rest.
+  const shipThresholds: Record<string, number> = {};
+  for (let i = 0; i < MKT_CURRENCY_ROWS; i++) {
+    const code = String(f.get(`cur_code_${i}`) ?? "").trim().toUpperCase();
+    const raw = f.get(`cur_amt_${i}`);
+    if (!/^[A-Z]{3}$/.test(code)) continue;
+    if (raw == null || String(raw).trim() === "") continue;
+    const n = Number(String(raw).replace(",", "."));
+    if (Number.isFinite(n) && n > 0) shipThresholds[code] = Math.round(n * 100);
+  }
+  const milestones = config.milestones.map((m) =>
+    m.kind === "free_shipping" ? { ...m, thresholds: shipThresholds } : m,
+  );
+
   return persistConfig(() =>
     updateToastConfig(session.shop, {
       locales,
       messages,
+      milestones,
       ...(notifications ? { notifications } : {}),
     }),
   );
 };
 
-export default function LanguagesRoute() {
+export default function MarketsRoute() {
   const { config } = useLoaderData<typeof loader>();
   const saveError = useSavedToast();
   const isPro = config.plan === "pro";
   const loc = config.locales;
   const langLimit = isPro ? LOCALE_LIMIT_PRO : LOCALE_LIMIT_FREE;
+
+  // Existing per-currency free-shipping thresholds → editable rows (+ blanks to
+  // add more). The base amount + on/off stay on Toasts; here we set per-currency.
+  const ship = config.milestones.find((m) => m.kind === "free_shipping");
+  const currencyRows: { code: string; amount: string }[] = Object.entries(
+    ship?.thresholds ?? {},
+  )
+    .slice(0, MKT_CURRENCY_ROWS)
+    .map(([code, cents]) => ({ code, amount: String(cents / 100) }));
+  while (currencyRows.length < MKT_CURRENCY_ROWS) currencyRows.push({ code: "", amount: "" });
 
   // Live language set: checking a language reveals its translation column
   // immediately (no save+reload). Mirrors the action's dedup so what you see is
@@ -256,6 +287,35 @@ export default function LanguagesRoute() {
               ) : null}
             </s-stack>
           )}
+        </s-section>
+
+        <s-section heading="Currencies">
+          <s-stack direction="block" gap="base">
+            <s-text color="subdued">
+              Selling in more than one currency? Set your free-shipping threshold
+              per currency so a shopper paying in EUR isn&apos;t measured against
+              your base amount. The base amount + on/off live on{" "}
+              <s-link href="/app/toasts">Toasts</s-link>; currencies left blank use it.
+            </s-text>
+            {currencyRows.map((row, i) => (
+              <s-stack key={i} direction="inline" gap="base">
+                <s-text-field
+                  label="Currency"
+                  name={`cur_code_${i}`}
+                  value={row.code}
+                  placeholder="EUR"
+                  maxLength={3}
+                  details={i === 0 ? "ISO code, e.g. EUR, USD, GBP." : undefined}
+                />
+                <s-money-field
+                  label="Threshold"
+                  name={`cur_amt_${i}`}
+                  value={row.amount}
+                  min={0}
+                />
+              </s-stack>
+            ))}
+          </s-stack>
         </s-section>
       </Form>
     </s-page>

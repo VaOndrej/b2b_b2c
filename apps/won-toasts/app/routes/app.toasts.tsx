@@ -129,9 +129,6 @@ function toCents(value: FormDataEntryValue | null): number {
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
 }
 
-// How many per-currency threshold rows the free-shipping editor renders (existing
-// entries + blanks to add more). Markets caps at 50; this covers real stores.
-const MS_CURRENCY_ROWS = 6;
 
 const RECIPE_KEYS: ToastTypeKey[] = [
   "cart",
@@ -195,18 +192,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
   const messages = mergeMessages(config.messages, messageEdits);
 
-  // Per-currency free-shipping thresholds (multi-currency / Markets stores). The
-  // shopper's cart subtotal is in its presentment currency, so a CZK threshold
-  // must not be compared against a EUR cart. Blank rows are ignored; core
-  // sanitizeMilestones re-validates currency codes + amounts.
-  const shipThresholds: Record<string, number> = {};
-  for (let i = 0; i < MS_CURRENCY_ROWS; i++) {
-    const code = String(form.get(`ms_ship_cur_${i}`) ?? "").trim().toUpperCase();
-    const raw = form.get(`ms_ship_amt_${i}`);
-    if (!/^[A-Z]{3}$/.test(code)) continue;
-    if (raw == null || String(raw).trim() === "") continue;
-    shipThresholds[code] = toCents(raw);
-  }
+  // Per-currency free-shipping thresholds are edited on Markets → Currencies now
+  // (one place for everything market-specific). Preserve whatever's stored so
+  // saving THIS page never wipes the currency table — Markets owns that slice.
+  const currentShip = config.milestones.find((m) => m.kind === "free_shipping");
+  const shipThresholds: Record<string, number> = currentShip?.thresholds ?? {};
 
   const milestones: MilestoneRuleConfig[] = [
     {
@@ -498,17 +488,6 @@ export default function ToastsRoute() {
   const ship = config.milestones.find((m) => m.kind === "free_shipping");
   const gift = config.milestones.find((m) => m.kind === "gift");
 
-  // Per-currency free-shipping rows: existing entries first, padded with blanks
-  // so the merchant can add currencies for a multi-currency (Markets) store.
-  const shipCurrencyRows: { code: string; amount: string }[] = Object.entries(
-    ship?.thresholds ?? {},
-  )
-    .slice(0, MS_CURRENCY_ROWS)
-    .map(([code, cents]) => ({ code, amount: String(cents / 100) }));
-  while (shipCurrencyRows.length < MS_CURRENCY_ROWS) {
-    shipCurrencyRows.push({ code: "", amount: "" });
-  }
-
   const enabledOf: Record<string, boolean> = {
     cart: true,
     countdown: countdown?.enabled ?? false,
@@ -708,37 +687,12 @@ export default function ToastsRoute() {
                                 details="Used in the message, e.g. “You’ve got free shipping”."
                               />
                             </s-stack>
-                            <details>
-                              <summary>
-                                <s-text type="strong">Selling in more currencies?</s-text>
-                              </summary>
-                              <s-stack direction="block" gap="small-200">
-                                <s-text color="subdued">
-                                  Set the threshold per currency so a shopper paying
-                                  in EUR isn&apos;t measured against your CZK amount.
-                                  Match your real free-shipping rate in each market.
-                                  Currencies left blank use the base amount above.
-                                </s-text>
-                                {shipCurrencyRows.map((row, i) => (
-                                  <s-stack key={i} direction="inline" gap="base">
-                                    <s-text-field
-                                      label="Currency"
-                                      name={`ms_ship_cur_${i}`}
-                                      value={row.code}
-                                      placeholder="EUR"
-                                      maxLength={3}
-                                      details={i === 0 ? "ISO code, e.g. EUR, USD, GBP." : undefined}
-                                    />
-                                    <s-money-field
-                                      label="Threshold"
-                                      name={`ms_ship_amt_${i}`}
-                                      value={row.amount}
-                                      min={0}
-                                    />
-                                  </s-stack>
-                                ))}
-                              </s-stack>
-                            </details>
+                            <s-text color="subdued">
+                              Selling in more currencies? Set the free-shipping
+                              threshold per currency in{" "}
+                              <s-link href="/app/markets">Markets → Currencies</s-link>,
+                              so a EUR cart isn&apos;t measured against your base amount.
+                            </s-text>
                           </s-stack>
                         );
                       if (key === "gift")
