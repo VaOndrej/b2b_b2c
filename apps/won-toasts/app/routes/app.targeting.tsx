@@ -134,8 +134,12 @@ export default function TargetingRoute() {
 
             <ProFrame locked={!isPro}>
               <s-stack direction="block" gap="large">
-                <s-stack direction="inline" gap="small">
+                <s-stack direction="inline" gap="small" alignItems="center">
                   <s-text type="strong">Narrow it down</s-text>
+                  {/* This IS the page's Free-vs-Pro split, so the Pro marker earns
+                      its place here (it pairs with the Free badge above) even though
+                      the amber frame already hints at it. */}
+                  <PlanBadge tier="pro" locked={!isPro} />
                 </s-stack>
                 {!isPro ? (
                   <s-paragraph>

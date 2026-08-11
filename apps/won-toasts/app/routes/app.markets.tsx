@@ -225,7 +225,11 @@ export default function MarketsRoute() {
                   label={l.label}
                   name={`lang_${l.code}`}
                   value="on"
-                  checked={loc.enabledLocales.includes(l.code)}
+                  // Controlled to LIVE state (not the static server value) so the
+                  // box and the shown translation columns never disagree; onChange
+                  // guarantees recompute even if the native event doesn't bubble.
+                  checked={liveLocales.includes(l.code)}
+                  onChange={() => recompute()}
                 />
               ))}
             </s-stack>
