@@ -60,7 +60,7 @@
               <img class="won-band__img" src="{{ s.image_asset | asset_url }}" alt="" width="2400" height="1200" loading="lazy">
             {%- endif -%}
           {%- else -%}
-            {{ s.video | video_tag: autoplay: true, loop: true, muted: true, controls: false, class: 'won-band__video' }}
+            {{ s.video | video_tag: autoplay: s.video_autoplay, loop: s.video_loop, muted: s.video_autoplay, controls: s.video_controls, class: 'won-band__video' }}
           {%- endif -%}
         </div>
       {%- endif -%}
@@ -231,6 +231,9 @@
     { "type": "image_picker", "id": "image", "label": "t:won.settings.image", "visible_if": "{{ section.settings.media_type == 'image' }}" },
     { "type": "text", "id": "image_asset", "label": "t:won.settings.image_asset", "info": "t:won.info.image_asset", "visible_if": "{{ section.settings.media_type == 'image' }}" },
     { "type": "video", "id": "video", "label": "t:won.settings.video", "visible_if": "{{ section.settings.media_type == 'video' }}" },
+    { "type": "checkbox", "id": "video_autoplay", "label": "t:won.settings.video_autoplay", "info": "t:won.info.video_autoplay", "default": true, "visible_if": "{{ section.settings.media_type == 'video' }}" },
+    { "type": "checkbox", "id": "video_loop", "label": "t:won.settings.video_loop", "default": true, "visible_if": "{{ section.settings.media_type == 'video' }}" },
+    { "type": "checkbox", "id": "video_controls", "label": "t:won.settings.video_controls", "default": false, "visible_if": "{{ section.settings.media_type == 'video' }}" },
     { "type": "image_picker", "id": "image_2", "label": "t:won.settings.image_2", "info": "t:won.info.image_2", "visible_if": "{{ section.settings.media_type == 'image' and section.settings.media_position == 'center_gutter' }}" },
     { "type": "text", "id": "image_asset_2", "label": "t:won.settings.image_asset_2", "info": "t:won.info.image_asset", "visible_if": "{{ section.settings.media_type == 'image' and section.settings.media_position == 'center_gutter' }}" },
     { "type": "checkbox", "id": "toggle_overlay", "label": "t:won.settings.overlay", "default": true, "visible_if": "{{ section.settings.media_position == 'background' }}" },

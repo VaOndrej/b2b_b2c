@@ -24,7 +24,7 @@
     {%- endif -%}
     <div
       class="won-tiles won-tiles--{{ s.layout }}"
-      style="--won-cols-lg: {{ cols }}; --won-cols-md: {{ s.columns_tablet }}; --won-gap: {{ s.gap }}px;"
+      style="--won-cols-lg: {{ cols }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-sm: {{ s.columns_mobile }}; --won-gap: {{ s.gap }}px;"
     >
       {% content_for 'blocks' %}
     </div>
@@ -37,7 +37,7 @@
   .won-tiles {
     display: grid;
     gap: var(--won-gap, 16px);
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--won-cols-sm, 2), minmax(0, 1fr));
   }
   @media (min-width: 750px) {
     .won-tiles { grid-template-columns: repeat(var(--won-cols-md, 3), minmax(0, 1fr)); }
@@ -180,6 +180,15 @@
       "max": 4,
       "step": 1,
       "default": 3
+    },
+    {
+      "type": "range",
+      "id": "columns_mobile",
+      "label": "t:won.settings.columns_mobile",
+      "min": 1,
+      "max": 2,
+      "step": 1,
+      "default": 2
     },
     {
       "type": "range",

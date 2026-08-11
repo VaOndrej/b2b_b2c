@@ -39,6 +39,7 @@
             id="won-panelpanel-{{ block.id }}"
             role="tabpanel"
             data-title="{{ bs.title | default: col.title | default: 'Tab' | escape }}"
+            {% if bs.open %}data-won-default="true"{% endif %}
             {{ block.shopify_attributes }}
           >
             {%- if col != blank and col.products.size > 0 -%}
@@ -133,6 +134,13 @@
           "max": 24,
           "step": 1,
           "default": 8
+        },
+        {
+          "type": "checkbox",
+          "id": "open",
+          "label": "t:won.settings.default_tab",
+          "info": "t:won.info.default_tab",
+          "default": false
         }
       ]
     }

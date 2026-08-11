@@ -23,7 +23,7 @@
         {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
       </h2>
     {%- endif -%}
-    <dl class="won-stats" style="--won-cols-lg: {{ s.columns_desktop }};">
+    <dl class="won-stats" style="--won-cols-lg: {{ s.columns_desktop }}; --won-cols-sm: {{ s.columns_mobile }};">
       {%- for line in lines -%}
         {%- assign row = line | strip -%}
         {%- if row contains ':' -%}
@@ -46,7 +46,7 @@
 {% stylesheet %}
   .won-stats-wrap { display: flex; flex-direction: column; gap: var(--won-space-5); }
   .won-stats__heading { font-size: var(--won-h-size-m, 1.8rem); max-width: var(--won-h-mw-m, 100%); }
-  .won-stats { margin: 0; display: grid; gap: var(--won-space-5); grid-template-columns: repeat(2, minmax(0, 1fr)); text-align: center; }
+  .won-stats { margin: 0; display: grid; gap: var(--won-space-5); grid-template-columns: repeat(var(--won-cols-sm, 2), minmax(0, 1fr)); text-align: center; }
   .won-stat { display: flex; flex-direction: column; gap: var(--won-space-1); }
   .won-stat__value { margin: 0; font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; letter-spacing: -0.03em; color: var(--won-accent); line-height: 1; }
   .won-stat__label { margin: 0; opacity: 0.8; }
@@ -152,6 +152,15 @@
       "max": 5,
       "step": 1,
       "default": 4
+    },
+    {
+      "type": "range",
+      "id": "columns_mobile",
+      "label": "t:won.settings.columns_mobile",
+      "min": 1,
+      "max": 2,
+      "step": 1,
+      "default": 2
     },
     {
       "type": "text_alignment",

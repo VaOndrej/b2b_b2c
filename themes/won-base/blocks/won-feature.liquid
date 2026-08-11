@@ -25,7 +25,7 @@ merchants can normalize mixed icon assets without code.
       <div class="won-feature__text rte">{{ s.text }}</div>
     {%- endif -%}
     {%- if s.link_label != blank -%}
-      <a class="won-feature__link" {% if s.link_url != blank %}href="{{ s.link_url }}"{% endif %}>{{ s.link_label }}</a>
+      {%- if s.link_url != blank -%}<a class="won-feature__link" href="{{ s.link_url }}">{{ s.link_label }}</a>{%- endif -%}
     {%- endif -%}
   </div>
 </div>
@@ -35,7 +35,7 @@ merchants can normalize mixed icon assets without code.
   .won-feature--icon-top { flex-direction: column; }
   .won-feature--icon-below { flex-direction: column-reverse; }
   .won-feature--icon-left { flex-direction: row; align-items: flex-start; }
-  .won-feature__icon { flex: 0 0 auto; inline-size: var(--won-icon-size, 48px); block-size: var(--won-icon-size, 48px); }
+  .won-feature__icon { flex: 0 0 auto; inline-size: var(--won-icon-size, 48px); block-size: var(--won-icon-size, 48px); border-radius: var(--won-radius-md, 0); overflow: hidden; }
   .won-feature__img { inline-size: 100%; block-size: 100%; object-fit: contain; }
   .won-feature__body { display: flex; flex-direction: column; gap: var(--won-space-2); }
   .won-feature__title { margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }

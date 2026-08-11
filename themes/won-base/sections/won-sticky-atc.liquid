@@ -7,7 +7,7 @@
   assign pv = product.selected_or_first_available_variant
 -%}
 {%- if has_product -%}
-<section class="won-sticky-host" data-testid="won-sticky-atc-section">
+<section class="won-sticky-host won-sticky-host--scope-{{ s.device_scope | default: 'both' }}" data-testid="won-sticky-atc-section">
   <won-sticky-atc class="won-sticky won-sticky--{{ s.bar_style | default: 'full' }}" style="--won-radius-md: {{ s.corner_radius | default: 14 }}px; --won-sticky-offset: {{ s.offset_bottom | default: 12 }}px;" data-hidden>
     <div class="won-sticky__inner won-container">
       {%- if product.featured_image -%}
@@ -24,6 +24,9 @@
 {%- endif -%}
 
 {% stylesheet %}
+  /* Device scope — hide the whole sticky bar on the breakpoint it's not meant for. */
+  @media (min-width: 750px) { .won-sticky-host--scope-mobile .won-sticky { display: none !important; } }
+  @media (max-width: 749px) { .won-sticky-host--scope-desktop .won-sticky { display: none !important; } }
   .won-sticky {
     position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 40;
     background: var(--won-bg); border-block-start: 1px solid var(--won-border);
@@ -135,6 +138,15 @@
         { "value": "corner", "label": "t:won.options.sticky_corner" }
       ],
       "default": "full"
+    },
+    {
+      "type": "select", "id": "device_scope", "label": "t:won.settings.device_scope", "info": "t:won.info.device_scope",
+      "options": [
+        { "value": "both", "label": "t:won.options.device_both" },
+        { "value": "mobile", "label": "t:won.options.device_mobile" },
+        { "value": "desktop", "label": "t:won.options.device_desktop" }
+      ],
+      "default": "both"
     },
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "text", "id": "atc_label", "label": "t:won.settings.vp_atc_label" },

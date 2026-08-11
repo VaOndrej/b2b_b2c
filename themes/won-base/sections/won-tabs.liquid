@@ -86,7 +86,8 @@
       });
 
       this.dataset.wonBound = '1';
-      this.select(0);
+      var def = this.panels.findIndex(function (p) { return p.dataset.wonDefault === 'true'; });
+      this.select(def >= 0 ? def : 0);
     }
     select(index) {
       this.tabs.forEach((tab, i) => {

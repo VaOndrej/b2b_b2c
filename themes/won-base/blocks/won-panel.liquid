@@ -15,6 +15,7 @@ allow_multiple via a shared name attribute.
     role="tabpanel"
     id="won-panelpanel-{{ block.id }}"
     data-title="{{ s.title | strip_html | strip | escape }}"
+    {% if s.open %}data-won-default="true"{% endif %}
     {{ block.shopify_attributes }}
   >
     {%- if s.title != blank -%}<h3 class="won-panels__panel-title">{{ s.title }}</h3>{%- endif -%}

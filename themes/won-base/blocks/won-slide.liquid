@@ -77,11 +77,11 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     {%- endif -%}
     {%- if s.button_label != blank or s.button2_label != blank -%}
       <div class="won-slide__actions">
-        {%- if s.button_label != blank -%}
-          <a class="won-btn won-btn--{{ s.button_style }} won-slide__btn" {% if s.button_link != blank %}href="{{ s.button_link }}"{% endif %}>{{ s.button_label }}</a>
+        {%- if s.button_label != blank and s.button_link != blank -%}
+          <a class="won-btn won-btn--{{ s.button_style }} won-slide__btn" href="{{ s.button_link }}">{{ s.button_label }}</a>
         {%- endif -%}
-        {%- if s.button2_label != blank -%}
-          <a class="won-btn won-btn--{{ s.button2_style }} won-slide__btn" {% if s.button2_link != blank %}href="{{ s.button2_link }}"{% endif %}>{{ s.button2_label }}</a>
+        {%- if s.button2_label != blank and s.button2_link != blank -%}
+          <a class="won-btn won-btn--{{ s.button2_style }} won-slide__btn" href="{{ s.button2_link }}">{{ s.button2_label }}</a>
         {%- endif -%}
       </div>
     {%- endif -%}

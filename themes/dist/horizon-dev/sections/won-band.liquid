@@ -61,7 +61,7 @@
               <img class="won-band__img" src="{{ s.image_asset | asset_url }}" alt="" width="2400" height="1200" loading="lazy">
             {%- endif -%}
           {%- else -%}
-            {{ s.video | video_tag: autoplay: true, loop: true, muted: true, controls: false, class: 'won-band__video' }}
+            {{ s.video | video_tag: autoplay: s.video_autoplay, loop: s.video_loop, muted: s.video_autoplay, controls: s.video_controls, class: 'won-band__video' }}
           {%- endif -%}
         </div>
       {%- endif -%}
@@ -392,6 +392,28 @@
       "type": "video",
       "id": "video",
       "label": "t:won.settings.video",
+      "visible_if": "{{ section.settings.media_type == 'video' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "video_autoplay",
+      "label": "t:won.settings.video_autoplay",
+      "info": "t:won.info.video_autoplay",
+      "default": true,
+      "visible_if": "{{ section.settings.media_type == 'video' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "video_loop",
+      "label": "t:won.settings.video_loop",
+      "default": true,
+      "visible_if": "{{ section.settings.media_type == 'video' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "video_controls",
+      "label": "t:won.settings.video_controls",
+      "default": false,
       "visible_if": "{{ section.settings.media_type == 'video' }}"
     },
     {
