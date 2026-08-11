@@ -282,7 +282,35 @@ function LookPresetCard({ id, label }: { id: keyof typeof PRESET_LOOKS | "defaul
 
 // A titled group of controls — gives the page a readable rhythm instead of a
 // flat wall of fields (doctrine §8). Reused for every Design section.
-function Group({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Group({
+  title,
+  hint,
+  children,
+  collapsible = false,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+  collapsible?: boolean;
+}) {
+  // §9: advanced / rarely-touched groups collapse so the page reads calm on first
+  // paint (depth is opt-in). Hidden <details> fields still submit and still feed
+  // the live preview — collapsing changes visibility only.
+  if (collapsible) {
+    return (
+      <details>
+        <summary style={{ cursor: "pointer", padding: "4px 0" }}>
+          <s-text type="strong">{title}</s-text>
+        </summary>
+        <div style={{ marginTop: 8 }}>
+          <s-stack direction="block" gap="base">
+            {hint ? <s-text color="subdued">{hint}</s-text> : null}
+            {children}
+          </s-stack>
+        </div>
+      </details>
+    );
+  }
   return (
     <s-stack direction="block" gap="base">
       <s-stack direction="block" gap="small">
@@ -443,7 +471,7 @@ export default function DesignRoute() {
                   </div>
                 </Group>
 
-                <Group title="Accent colour per event" hint="The coloured stripe on each toast — one per shopper action.">
+                <Group title="Accent colour per event" hint="The coloured stripe on each toast — one per shopper action." collapsible>
                   <s-stack direction="inline" gap="base">
                     {EVENT_META.map((ev) => (
                       <s-color-field key={ev.key} label={ev.title} name={`accent_${ev.key}`} value={config.theme.accent[ev.key]} />
@@ -451,7 +479,7 @@ export default function DesignRoute() {
                   </s-stack>
                 </Group>
 
-                <Group title="Shape & motion">
+                <Group title="Shape & motion" collapsible>
                   <s-stack direction="inline" gap="base">
                     <s-number-field label="Corner radius" name="cornerRadius" value={String(config.theme.cornerRadius)} min={0} max={32} details="Roundness of the corners, in pixels (0 = square)." />
                     <s-number-field label="Toast width" name="width" value={String(config.theme.width)} min={240} max={480} details="How wide each toast is, in pixels." />
@@ -476,7 +504,7 @@ export default function DesignRoute() {
                   </s-stack>
                 </Group>
 
-                <Group title="Branding" hint="No-code styling between the on/off toggles and Custom CSS — a gradient fill, your own icons, a border, and the font.">
+                <Group title="Branding" hint="No-code styling between the on/off toggles and Custom CSS — a gradient fill, your own icons, a border, and the font." collapsible>
                   <s-stack direction="block" gap="base">
                     <s-stack direction="inline" gap="base" alignItems="end">
                       <s-switch label="Gradient background" name="gradient" value="on" checked={config.theme.gradient} details="Fill the toast with a soft two-colour gradient instead of a flat colour." onChange={() => sync()} />
@@ -504,7 +532,7 @@ export default function DesignRoute() {
                   </s-stack>
                 </Group>
 
-                <Group title="Show / hide" hint="Pick what appears inside each toast. Product image = the item’s thumbnail; Quantity change = the “+N” badge; Event icon = a small coloured mark; Border/Backdrop blur = the frame around it.">
+                <Group title="Show / hide" hint="Pick what appears inside each toast. Product image = the item’s thumbnail; Quantity change = the “+N” badge; Event icon = a small coloured mark; Border/Backdrop blur = the frame around it." collapsible>
                   <s-stack direction="inline" gap="base">
                     {TOGGLES.map(([key, label]) => (
                       <s-switch key={key} label={label} name={key} value="on" checked={Boolean(config.theme[key])} onChange={() => sync()} />
