@@ -28,7 +28,6 @@ import {
   updateToastConfig,
 } from "../services/toast-config.server";
 import { NotificationPreview } from "../components/NotificationPreview";
-import { AnimatedToastPreview } from "../components/AnimatedToastPreview";
 import { StorefrontPreview } from "../components/StorefrontPreview";
 import { ProFrame } from "../components/ProFrame";
 import { PlanBadge } from "../components/PlanBadge";
@@ -426,7 +425,6 @@ export default function ToastsRoute() {
   const [selected, setSelected] = useState<string>(
     ruleParam && RECIPES.some((r) => r.key === ruleParam) ? ruleParam : "cart",
   );
-  const [animate, setAnimate] = useState(false);
   const [countdownMode, setCountdownMode] = useState<string>(
     (ruleOf(config, "countdown") as { endsAt?: string })?.endsAt ? "fixed" : "evergreen",
   );
@@ -585,19 +583,10 @@ export default function ToastsRoute() {
     const pvBeh = liveTypeBehavior(selKey);
     switch (selected) {
       case "cart":
-        // Animate → motion/timing close-up. Otherwise the schematic storefront:
-        // the cart toast in context, where it actually lands (global placement),
-        // so the merchant sees it on their shop, not as a floating list.
-        return animate ? (
-          <AnimatedToastPreview
-            theme={pvTheme}
-            durationMs={pvBeh.durationMs}
-            stackDirection={config.global.stackDirection}
-            maxVisible={config.global.maxVisible}
-            closeable={pvBeh.closeable}
-            customCss={isPro ? pvTheme.customCss : undefined}
-          />
-        ) : (
+        // One preview for every type (merchant-review point 4): the to-scale
+        // storefront mock with its own Static/Animate control — the cart toast
+        // where it actually lands, not a floating list. No second Animate toggle.
+        return (
           <StorefrontPreview
             theme={pvTheme}
             position={config.global.position}
@@ -926,18 +915,7 @@ export default function ToastsRoute() {
             recipe's live message + surface (doctrine §3c). */}
         <div style={{ position: "sticky", top: 12, alignSelf: "start" }}>
           <s-stack direction="block" gap="small">
-            <s-stack direction="inline" gap="base" alignItems="center">
-              <s-text type="strong">Preview</s-text>
-              {selected === "cart" ? (
-                <s-switch
-                  label="Animate"
-                  checked={animate}
-                  onChange={(e) =>
-                    setAnimate((e.currentTarget as unknown as { checked: boolean }).checked)
-                  }
-                />
-              ) : null}
-            </s-stack>
+            <s-text type="strong">Preview</s-text>
             {renderPreview()}
           </s-stack>
         </div>

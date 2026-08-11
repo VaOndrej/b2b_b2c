@@ -77,7 +77,9 @@ export function NotificationPreview({
   const raw = (message ?? "").trim() || DEFAULT_MSG[type];
   const text = fillSample(raw);
   const title = TITLE_OF[type];
-  const isDark = theme.mode === "dark";
+  // Backdrop always light — the preview never darkens the shop background
+  // itself, only the toast card (merchant-review point 6).
+  const isDark = false;
 
   // Surface changes the SHAPE, so switching surface visibly moves the preview.
   const inner: CSSProperties =

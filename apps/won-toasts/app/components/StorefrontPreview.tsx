@@ -168,7 +168,10 @@ export function StorefrontPreview({
     ...(translate ? { transform: translate } : {}),
   };
 
-  const isDark = theme.mode === "dark";
+  // The storefront mock always stays light — the renderer never darkens the
+  // shop's own background, only the toast card can be dark (merchant-review
+  // point 6). A dark toast then reads honestly against a light storefront.
+  const isDark = false;
   const animName = animKeyframeName(theme.animationIn);
 
   const toggleBtn = (active: boolean): CSSProperties => ({

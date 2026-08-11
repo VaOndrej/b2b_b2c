@@ -6,6 +6,7 @@ import type {
   ToastTheme,
 } from "@won/core/toasts/config.types";
 import { WonToastCard, WonToastKeyframes, animKeyframeName } from "./WonToastCard";
+import { previewTiming } from "../lib/preview-timing";
 
 // Animated live preview (doctrine §3e): loops through sample toasts that appear,
 // stay for `durationMs`, then fade out — respecting stack order and max-visible —
@@ -52,9 +53,10 @@ export function AnimatedToastPreview({
   const [items, setItems] = useState<Live[]>([]);
   const idRef = useRef(0);
 
-  const dur = Math.max(1000, Math.min(durationMs || 3500, 8000));
+  // Animation dwell is capped for a lively loop, but the footer label states the
+  // REAL configured duration — the preview must never lie about the setting.
+  const { dwellMs, labelSec, spawnEveryMs: spawnEvery } = previewTiming(durationMs);
   const cap = Math.max(1, Math.min(maxVisible || 3, 6));
-  const spawnEvery = Math.max(1100, Math.min(dur, 2600));
 
   useEffect(() => {
     const removeTimers: ReturnType<typeof setTimeout>[] = [];
@@ -69,7 +71,7 @@ export function AnimatedToastPreview({
           removeTimers.push(
             setTimeout(() => setItems((prev) => prev.filter((x) => x.id !== id)), 360),
           );
-        }, dur),
+        }, dwellMs),
       );
     };
     spawn();
@@ -78,10 +80,12 @@ export function AnimatedToastPreview({
       clearInterval(spawnTimer);
       removeTimers.forEach(clearTimeout);
     };
-  }, [dur, cap, spawnEvery]);
+  }, [dwellMs, cap, spawnEvery]);
 
   const ordered = stackDirection === "newest-bottom" ? items : [...items].reverse();
-  const isDark = theme.mode === "dark";
+  // Backdrop always light — the preview shows the toast on a light storefront,
+  // never darkening the shop itself (merchant-review point 6).
+  const isDark = false;
 
   // The enter animation reflects the merchant's chosen entry style so the
   // animated preview isn't lying about which animation they picked.
@@ -121,7 +125,7 @@ export function AnimatedToastPreview({
         ))}
       </div>
       <p style={{ color: "#8892a0", fontSize: 12, marginTop: 8 }}>
-        Animated · toasts stay {Math.round(dur / 100) / 10}s · {stackDirection}
+        Animated · toasts stay {labelSec}s · {stackDirection}
       </p>
     </div>
   );
