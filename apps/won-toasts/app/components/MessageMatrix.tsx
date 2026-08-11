@@ -10,6 +10,7 @@ import type { ToastMessages, ToastTheme } from "@won/core/toasts/config.types";
 import { accentFor } from "@won/core/toasts/presentation";
 
 import { EVENT_META, languageName } from "../lib/labels";
+import { WON_FONT } from "../lib/tokens";
 
 export interface RowToggle {
   name: string;
@@ -56,6 +57,7 @@ export function MessageMatrix({
             <div
               key={ev.key}
               style={{
+                fontFamily: WON_FONT,
                 border: "1px solid #e3e6ea",
                 borderRadius: 12,
                 overflow: "hidden",

@@ -22,6 +22,7 @@ import { AnimatedToastPreview } from "../components/AnimatedToastPreview";
 import { StorefrontPreview } from "../components/StorefrontPreview";
 import { ProFrame } from "../components/ProFrame";
 import { PlanBadge } from "../components/PlanBadge";
+import { WON_FONT } from "../lib/tokens";
 import { PositionField } from "../components/PositionField";
 import { SegmentedNav } from "../components/SegmentedNav";
 import { useSavedToast } from "../lib/use-saved-toast";
@@ -288,7 +289,7 @@ function LookPresetCard({ id, label }: { id: keyof typeof PRESET_LOOKS | "defaul
 // more perceived settings.
 function GroupTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1f24", letterSpacing: "-0.01em", lineHeight: 1.3 }}>
+    <div style={{ fontFamily: WON_FONT, fontSize: 14, fontWeight: 700, color: "#1a1f24", letterSpacing: "-0.01em", lineHeight: 1.3 }}>
       {children}
     </div>
   );

@@ -12,3 +12,12 @@ export const WON_AMBER_TINT = "rgba(217, 168, 58, 0.10)";
 export const WON_AMBER_TINT_STRONG = "rgba(217, 168, 58, 0.18)";
 /** Readable amber text on light backgrounds (the raw amber is too light). */
 export const WON_AMBER_TEXT = "#8A6410";
+
+/**
+ * Font stack for our hand-styled elements (cards, custom titles) so they match
+ * the Polaris admin instead of falling back to the document default (which can
+ * render serif). Polaris s-* components own their own type; this keeps our
+ * plain <div>s visually consistent with them.
+ */
+export const WON_FONT =
+  'ShopifySans, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';

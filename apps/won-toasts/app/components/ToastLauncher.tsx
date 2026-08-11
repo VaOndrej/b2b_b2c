@@ -11,6 +11,7 @@
 // this replaces the SegmentedNav without changing the edit flow below it.
 
 import { PlanBadge } from "./PlanBadge";
+import { WON_FONT } from "../lib/tokens";
 
 export interface LauncherItem {
   key: string;
@@ -37,7 +38,7 @@ export function ToastLauncher({
   onSelect: (key: string) => void;
 }) {
   return (
-    <div role="tablist" aria-label="Toast types" style={{ marginBottom: 12 }}>
+    <div role="tablist" aria-label="Toast types" style={{ marginBottom: 12, fontFamily: WON_FONT }}>
       {/* Groups flow side-by-side AND wrap (not one tall column) so the picker
           stays short. Each group is a grid cell; its cards wrap inside it. */}
       <div
@@ -49,18 +50,12 @@ export function ToastLauncher({
         }}
       >
         {groups.map((group) => {
-          const live = group.items.filter((it) => it.on).length;
-          const total = group.items.length;
           return (
             <div key={group.id}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: "#111418" }}>
                   {group.title}
                 </span>
-                {/* Status-first: the count is the point — what's actually live. */}
-                <s-badge tone={live > 0 ? "success" : undefined}>
-                  {live > 0 ? `${live} of ${total} on` : "None on"}
-                </s-badge>
                 <span style={{ fontSize: 12.5, color: "#6b7684" }}>{group.caption}</span>
               </div>
 
@@ -87,6 +82,7 @@ export function ToastLauncher({
                         gap: 4,
                         textAlign: "left",
                         padding: "9px 12px",
+                        minHeight: 68,
                         borderRadius: 12,
                         border: active ? "1.5px solid #1a73e8" : "1px solid #d6dbe1",
                         background: active ? "#f2f7ff" : "#ffffff",
