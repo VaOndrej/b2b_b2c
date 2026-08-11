@@ -23,9 +23,10 @@
 
 <section
   class="won-section won-marquee-sec color-{{ s.color_scheme }}"
-  style="{% render 'won-spacing', settings: s %}"
+  style="{% render 'won-style-vars', settings: s %}"
   data-testid="won-marquee-section"
 >
+  {% render 'won-guard', settings: s %}
   <div
     class="won-marquee{% if s.pause_on_hover %} won-marquee--pause{% endif %}"
     style="--won-mq-gap: {{ s.gap }}px; --won-mq-dur: {{ s.duration }}s;"
@@ -61,11 +62,17 @@
 
 {% stylesheet %}
   .won-marquee-sec { padding-block: max(8px, var(--won-pt, 14px) * var(--won-pad-scale, 1)) max(8px, var(--won-pb, 14px) * var(--won-pad-scale, 1)); }
-  .won-marquee { overflow: hidden; }
+  /* container-type lets each group claim at least the full strip width (100cqi)
+     so two groups always span >= 2x the viewport — the -50% loop then never
+     scrolls a blank gap in, even for a handful of short tokens. When the tokens
+     are naturally wider than the strip, min-inline-size is inert and they pack
+     tight; when they're shorter, space-around spreads them evenly. */
+  .won-marquee { overflow: hidden; container-type: inline-size; }
   .won-marquee__track { display: flex; inline-size: max-content; }
   .won-marquee__group {
     display: flex; align-items: center; gap: var(--won-mq-gap, 28px);
     padding-inline-end: var(--won-mq-gap, 28px); flex: 0 0 auto;
+    min-inline-size: 100cqi; justify-content: space-around;
   }
   .won-marquee__track--left { animation: won-mq-left var(--won-mq-dur, 24s) linear infinite; }
   .won-marquee__track--right { animation: won-mq-right var(--won-mq-dur, 24s) linear infinite; }
@@ -90,7 +97,11 @@
 {
   "name": "t:won.names.marquee",
   "tag": "section",
-  "disabled_on": { "groups": ["header"] },
+  "disabled_on": {
+    "groups": [
+      "header"
+    ]
+  },
   "max_blocks": 20,
   "blocks": [
     {
@@ -98,59 +109,488 @@
       "name": "t:won.names.marquee_item",
       "settings": [
         {
-          "type": "select", "id": "kind", "label": "t:won.settings.token_kind", "info": "t:won.info.token_kind",
+          "type": "select",
+          "id": "kind",
+          "label": "t:won.settings.token_kind",
+          "info": "t:won.info.token_kind",
           "options": [
-            { "value": "text", "label": "t:won.options.kind_text" },
-            { "value": "image", "label": "t:won.options.kind_image" }
+            {
+              "value": "text",
+              "label": "t:won.options.kind_text"
+            },
+            {
+              "value": "image",
+              "label": "t:won.options.kind_image"
+            }
           ],
           "default": "text"
         },
-        { "type": "text", "id": "text", "label": "t:won.settings.text", "default": "t:won.defaults.marquee_item", "visible_if": "{{ block.settings.kind == 'text' }}" },
-        { "type": "url", "id": "link", "label": "t:won.settings.link", "info": "t:won.info.marquee_link", "visible_if": "{{ block.settings.kind == 'text' }}" },
-        { "type": "image_picker", "id": "image", "label": "t:won.settings.image", "visible_if": "{{ block.settings.kind == 'image' }}" }
+        {
+          "type": "text",
+          "id": "text",
+          "label": "t:won.settings.text",
+          "default": "t:won.defaults.marquee_item",
+          "visible_if": "{{ block.settings.kind == 'text' }}"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "t:won.settings.link",
+          "info": "t:won.info.marquee_link",
+          "visible_if": "{{ block.settings.kind == 'text' }}"
+        },
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "t:won.settings.image",
+          "visible_if": "{{ block.settings.kind == 'image' }}"
+        }
       ]
     }
   ],
   "settings": [
-    { "type": "header", "content": "t:won.headers.layout" },
-    { "type": "range", "id": "duration", "label": "t:won.settings.marquee_duration", "info": "t:won.info.marquee_duration", "min": 8, "max": 60, "step": 2, "unit": "s", "default": 24 },
     {
-      "type": "select", "id": "direction", "label": "t:won.settings.direction",
+      "type": "paragraph",
+      "content": "t:won.info.marquee_about"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "range",
+      "id": "duration",
+      "label": "t:won.settings.marquee_duration",
+      "info": "t:won.info.marquee_duration",
+      "min": 8,
+      "max": 60,
+      "step": 2,
+      "unit": "s",
+      "default": 24
+    },
+    {
+      "type": "select",
+      "id": "direction",
+      "label": "t:won.settings.direction",
       "options": [
-        { "value": "left", "label": "t:won.options.dir_left" },
-        { "value": "right", "label": "t:won.options.dir_right" }
+        {
+          "value": "left",
+          "label": "t:won.options.dir_left"
+        },
+        {
+          "value": "right",
+          "label": "t:won.options.dir_right"
+        }
       ],
       "default": "left"
     },
     {
-      "type": "select", "id": "separator", "label": "t:won.settings.separator", "info": "t:won.info.separator",
+      "type": "select",
+      "id": "separator",
+      "label": "t:won.settings.separator",
+      "info": "t:won.info.separator",
       "options": [
-        { "value": "none", "label": "t:won.options.sep_none" },
-        { "value": "dot", "label": "t:won.options.sep_dot" },
-        { "value": "slash", "label": "t:won.options.sep_slash" },
-        { "value": "dash", "label": "t:won.options.sep_dash" },
-        { "value": "star", "label": "t:won.options.sep_star" }
+        {
+          "value": "none",
+          "label": "t:won.options.sep_none"
+        },
+        {
+          "value": "dot",
+          "label": "t:won.options.sep_dot"
+        },
+        {
+          "value": "slash",
+          "label": "t:won.options.sep_slash"
+        },
+        {
+          "value": "dash",
+          "label": "t:won.options.sep_dash"
+        },
+        {
+          "value": "star",
+          "label": "t:won.options.sep_star"
+        }
       ],
       "default": "dot"
     },
-    { "type": "range", "id": "gap", "label": "t:won.settings.gap", "min": 12, "max": 80, "step": 2, "unit": "px", "default": 28 },
-    { "type": "checkbox", "id": "pause_on_hover", "label": "t:won.settings.pause_on_hover", "info": "t:won.info.pause_on_hover", "default": true },
-    { "type": "header", "content": "t:won.headers.appearance" },
-    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-2" },
-    { "type": "header", "content": "t:won.headers.padding" },
-    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 60, "step": 2, "unit": "px", "default": 14 },
-    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 60, "step": 2, "unit": "px", "default": 14 }
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "t:won.settings.gap",
+      "min": 12,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 28
+    },
+    {
+      "type": "checkbox",
+      "id": "pause_on_hover",
+      "label": "t:won.settings.pause_on_hover",
+      "info": "t:won.info.pause_on_hover",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-2"
+    },
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "info": "t:won.info.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:won.settings.border_width",
+      "info": "t:won.info.border_width",
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border_style",
+      "label": "t:won.settings.border_style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "t:won.options.solid"
+        },
+        {
+          "value": "dashed",
+          "label": "t:won.options.dashed"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "t:won.settings.border_color",
+      "info": "t:won.info.border_color",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "select",
+      "id": "shadow",
+      "label": "t:won.settings.shadow",
+      "info": "t:won.info.shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "sm",
+          "label": "t:won.options.shadow_sm"
+        },
+        {
+          "value": "md",
+          "label": "t:won.options.shadow_md"
+        },
+        {
+          "value": "lg",
+          "label": "t:won.options.shadow_lg"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_color",
+      "info": "t:won.info.accent_color"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "t:won.settings.bg_color",
+      "info": "t:won.info.bg_color"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "t:won.settings.text_color",
+      "info": "t:won.info.text_color"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.type_motion"
+    },
+    {
+      "type": "select",
+      "id": "heading_weight",
+      "label": "t:won.settings.heading_weight",
+      "info": "t:won.info.heading_weight",
+      "options": [
+        {
+          "value": "theme",
+          "label": "t:won.options.weight_theme"
+        },
+        {
+          "value": "400",
+          "label": "t:won.options.weight_normal"
+        },
+        {
+          "value": "500",
+          "label": "t:won.options.weight_medium"
+        },
+        {
+          "value": "600",
+          "label": "t:won.options.weight_semibold"
+        },
+        {
+          "value": "700",
+          "label": "t:won.options.weight_bold"
+        },
+        {
+          "value": "800",
+          "label": "t:won.options.weight_extrabold"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "letter_spacing",
+      "label": "t:won.settings.letter_spacing",
+      "info": "t:won.info.letter_spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "t:won.options.ls_theme"
+        },
+        {
+          "value": "tight",
+          "label": "t:won.options.ls_tight"
+        },
+        {
+          "value": "normal",
+          "label": "t:won.options.ls_normal"
+        },
+        {
+          "value": "wide",
+          "label": "t:won.options.ls_wide"
+        },
+        {
+          "value": "wider",
+          "label": "t:won.options.ls_wider"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "line_height",
+      "label": "t:won.settings.line_height",
+      "info": "t:won.info.line_height",
+      "options": [
+        {
+          "value": "theme",
+          "label": "t:won.options.lh_theme"
+        },
+        {
+          "value": "tight",
+          "label": "t:won.options.lh_tight"
+        },
+        {
+          "value": "normal",
+          "label": "t:won.options.lh_normal"
+        },
+        {
+          "value": "relaxed",
+          "label": "t:won.options.lh_relaxed"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "text_transform",
+      "label": "t:won.settings.text_transform",
+      "info": "t:won.info.text_transform",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.tt_none"
+        },
+        {
+          "value": "uppercase",
+          "label": "t:won.options.tt_uppercase"
+        },
+        {
+          "value": "capitalize",
+          "label": "t:won.options.tt_capitalize"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "select",
+      "id": "animate_in",
+      "label": "t:won.settings.animate_in",
+      "info": "t:won.info.animate_in",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.anim_none"
+        },
+        {
+          "value": "fade",
+          "label": "t:won.options.anim_fade"
+        },
+        {
+          "value": "slide",
+          "label": "t:won.options.anim_slide"
+        },
+        {
+          "value": "scale",
+          "label": "t:won.options.anim_scale"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.advanced"
+    },
+    {
+      "type": "paragraph",
+      "content": "t:won.info.advanced_about"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_advanced",
+      "label": "t:won.settings.show_advanced",
+      "info": "t:won.info.show_advanced",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "pad_inline",
+      "label": "t:won.settings.pad_inline",
+      "info": "t:won.info.pad_inline",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.show_advanced }}"
+    },
+    {
+      "type": "range",
+      "id": "section_opacity",
+      "label": "t:won.settings.section_opacity",
+      "info": "t:won.info.section_opacity",
+      "min": 20,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ section.settings.show_advanced }}"
+    },
+    {
+      "type": "text",
+      "id": "custom_shadow",
+      "label": "t:won.settings.custom_shadow",
+      "info": "t:won.info.custom_shadow",
+      "visible_if": "{{ section.settings.show_advanced }}"
+    }
   ],
   "presets": [
     {
-      "name": "t:won.presets.usp_strip", "category": "t:won.categories.content",
-      "settings": { "separator": "dot" },
-      "blocks": [{ "type": "token" }, { "type": "token" }, { "type": "token" }, { "type": "token" }]
+      "name": "t:won.presets.usp_strip",
+      "category": "t:won.categories.content",
+      "settings": {
+        "separator": "dot"
+      },
+      "blocks": [
+        {
+          "type": "token"
+        },
+        {
+          "type": "token"
+        },
+        {
+          "type": "token"
+        },
+        {
+          "type": "token"
+        }
+      ]
     },
     {
-      "name": "t:won.presets.deals_strip", "category": "t:won.categories.content",
-      "settings": { "separator": "star", "duration": 18 },
-      "blocks": [{ "type": "token" }, { "type": "token" }, { "type": "token" }]
+      "name": "t:won.presets.deals_strip",
+      "category": "t:won.categories.content",
+      "settings": {
+        "separator": "star",
+        "duration": 18
+      },
+      "blocks": [
+        {
+          "type": "token"
+        },
+        {
+          "type": "token"
+        },
+        {
+          "type": "token"
+        }
+      ]
     }
   ]
 }

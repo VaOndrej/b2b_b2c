@@ -10,6 +10,7 @@ import type {
   ToastSemanticType,
   ToastTheme,
 } from "@won/core/toasts/config.types";
+import { WonToastCard } from "./WonToastCard";
 
 // Live preview panel. It computes the SAME style tokens + presentation model as
 // the storefront (from @won/core/toasts/presentation), so what the merchant sees
@@ -127,96 +128,18 @@ export function ToastPreview({
             editing blind (doctrine §3k). Hooks: [data-won-toast], [data-type]. */}
         {customCss ? <style>{customCss}</style> : null}
         {cards.map((c, i) => (
-          <div
+          <WonToastCard
             key={i}
-            data-won-toast=""
-            data-type={c.type}
-            style={{
-              boxSizing: "border-box",
-              display: "flex",
-              gap: 10,
-              alignItems: "center",
-              width: "var(--won-width)",
-              maxWidth: "100%",
-              padding: "var(--won-pad)",
-              background: "var(--won-bg)",
-              color: "var(--won-text)",
-              borderRadius: "var(--won-radius)",
-              boxShadow: "var(--won-shadow)",
-              border: "var(--won-border)",
-              borderLeft: `4px solid ${c.accent}`,
-              font: "14px/1.35 system-ui, sans-serif",
-            }}
-          >
-            {c.showImage ? (
-              c.image ? (
-                <img
-                  src={c.image}
-                  alt=""
-                  style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover" }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 8,
-                    background: "rgba(127,127,127,.18)",
-                    flex: "0 0 auto",
-                  }}
-                />
-              )
-            ) : null}
-            {theme.showIcon ? (
-              <div
-                aria-hidden="true"
-                data-won-toast-icon=""
-                style={{ width: 18, height: 18, borderRadius: 5, background: c.accent, opacity: 0.9, flex: "0 0 auto" }}
-              />
-            ) : null}
-            <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-              <div style={{ fontWeight: 700 }}>{c.title}</div>
-              <div
-                style={{
-                  color: "#8892a0",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {c.detail}
-              </div>
-            </div>
-            {theme.showDelta && c.delta ? (
-              <div data-won-toast-delta="" style={{ fontWeight: 800, color: c.accent }}>
-                {c.delta}
-              </div>
-            ) : null}
-            {c.undo ? (
-              <button
-                type="button"
-                style={{
-                  border: 0,
-                  background: "transparent",
-                  color: c.accent,
-                  fontWeight: 700,
-                  textDecoration: "underline",
-                  cursor: "pointer",
-                }}
-              >
-                Undo
-              </button>
-            ) : null}
-            {closeable ? (
-              <span
-                aria-hidden="true"
-                data-won-toast-close=""
-                style={{ color: "#9aa4b0", fontSize: 18, lineHeight: 1, paddingLeft: 4, flex: "0 0 auto" }}
-              >
-                ×
-              </span>
-            ) : null}
-          </div>
+            theme={theme}
+            type={c.type}
+            title={c.title}
+            detail={c.detail}
+            delta={c.delta}
+            accent={c.accent}
+            image={c.image}
+            undo={c.undo}
+            closeable={closeable}
+          />
         ))}
       </div>
       <p style={{ color: "#8892a0", fontSize: 12, marginTop: 8 }}>

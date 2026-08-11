@@ -17,9 +17,31 @@ export interface MilestoneRule {
   id: string;
   kind: MilestoneKind;
   enabled: boolean;
-  /** Threshold in minor units (cents/haléře) for value-based milestones. */
+  /** Threshold in minor units (cents/haléře) for value-based milestones. Base /
+   *  fallback amount; per-currency overrides live in `thresholds`. */
   thresholdCents: number;
+  /** Per presentment-currency thresholds (ISO 4217 → minor units). */
+  thresholds?: Record<string, number>;
   label: string;
+}
+
+/**
+ * Resolve the threshold to compare against a cart in `cartCurrency`. A cart's
+ * subtotal is in its presentment currency (Markets), so a CZK threshold must
+ * never be compared against a EUR cart. If the merchant set a per-currency
+ * amount for the cart's currency, that wins; otherwise we fall back to the base
+ * `thresholdCents` (single-currency stores are unaffected — no `thresholds`).
+ */
+export function resolveMilestoneThresholdCents(
+  rule: Pick<MilestoneRule, "thresholdCents" | "thresholds">,
+  cartCurrency?: string | null,
+): number {
+  const map = rule.thresholds;
+  if (map && cartCurrency) {
+    const per = map[cartCurrency.toUpperCase()];
+    if (typeof per === "number" && Number.isFinite(per)) return per;
+  }
+  return rule.thresholdCents;
 }
 
 export interface CartMilestoneState {
@@ -71,6 +93,7 @@ export function evaluateMilestones(
   prev: CartMilestoneState,
   next: CartMilestoneState,
   rules: readonly MilestoneRule[],
+  cartCurrency?: string | null,
 ): MilestoneEvent[] {
   const events: MilestoneEvent[] = [];
   for (const rule of rules) {
@@ -97,7 +120,7 @@ export function evaluateMilestones(
     const reading = milestoneState(
       prev.subtotalCents,
       next.subtotalCents,
-      rule.thresholdCents,
+      resolveMilestoneThresholdCents(rule, cartCurrency),
     );
     events.push({
       id: rule.id,

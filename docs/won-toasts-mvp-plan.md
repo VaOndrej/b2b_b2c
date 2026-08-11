@@ -287,6 +287,31 @@ breaking migrace.
 > `[data-won-toast][data-type]`, `[data-won-toast-delta/undo/close]`). Watermark
 > `[data-won-branding]` byl odstraněn (výchozí stav = bez brandingu).
 
+> **⏱ Stav implementace — snímek z auditu kódu 2026-08-07.** Badge-y `Spec`
+> u MVP6–14 níže **zaostávají za kódem** (plán se needitoval, jak se stavělo).
+> Skutečný stav proti `apps/won-toasts` + `packages/core/src/toasts|cart`:
+>
+> - **Shipped (v kódu, ověřeno):** MVP8 frequency governance + quiet mode ·
+>   MVP9 countdown + low-stock + cart-activity · MVP11 announcement + agregáty ·
+>   napříč: locale-as-data + Languages route, undo bez reloadu, per-typ
+>   `byType` look+behavior (cart sdílí 1 klíč), PositionField + desktop/mobile
+>   preview, živý preview přes native `input/change` binding, exkluze.
+> - **Částečně:** MVP7 (presety „Start from a look" ano; hlubší self-service ne) ·
+>   MVP10 (cílení + exkluze ano; scheduling neověřeno) · MVP12 (social-proof
+>   endpoint ano; cold-start honesty/fallback neověřeno) · MVP13 (Insights/analytics
+>   ano; **AI advisor `ai-advisor.ts` je DEFERRED — odpojen z UI 2026-08-06**;
+>   per-typ success metrika NE).
+> - **Neověřeno / spíš ne jako top-level:** MVP6 (onboarding/Dashboard není
+>   samostatný nav tab) · MVP14 (BFS/a11y/reálný billing).
+> - **Potvrzeně NENÍ (reálný backlog):** per-měna free-shipping práh (jedno
+>   `thresholdCents` proti košíku v jakékoli měně — Markets ignoruje) ·
+>   storefront **event icon** (preview ho kreslí, `won-toasts.js` ne = parity bug) ·
+>   střední no-code branding vrstva (gradient/font/icon picker mezi on-off a raw
+>   Custom CSS) · per-typ Insights metrika (→ MVP13).
+>
+> Nav IA (aktuální): Toasts · Design · Languages · Targeting · Insights · Plan.
+> Zdroj: SB backlog audit, viz memory `won-toasts-backlog-audit`.
+
 ### MVP6 — Onboarding & aktivace → badge `Spec` (Free)
 Ukradeno ToastiBaru; řeší náš vlastní `enabled=false` + „chybí app embed"
 footgun (nová instalace se sotva zobrazí, když merchant nezapne app embed).
@@ -431,30 +456,154 @@ Vše governováno MVP8.
   unit: `customers/redact` smaže eventy daného zákazníka. (4) unit: pod prahem
   objednávek feed prázdný a typ se nezapne.
 
-### MVP13 — Insighty, AI advisor & experimenty → badge `Spec` (Pro)
-- **Analytics dashboard** (sběr už v modelu §5): impressions, clicks, CTR, Undo
-  rate, dismiss rate **per-event/per-rule**, „most recent / top products". **Bez
-  falešné atribuce** (toast = asistence, ne příčina).
-- **DEFERRED SEM z admin review (2026-08-06):** interim on-device „Suggestions"
-  (`ruleBasedSuggestions` v `@won/core/toasts/ai-advisor`) byly **staženy z Insights
-  UI** — byly předčasné a stály na špatné premise. **Korekce návrhu (závazná pro
-  MVP13):** *kliky nejsou signál hodnoty pro informativní toasty.* „Added to cart"
-  má z principu ~0 CTR (nakupující ji přečte, ale neklikne) — to **neznamená**, že je
-  bezcenná. Advisor nesmí navrhovat „vypni pravidlo s 0 CTR" plošně. Success metrika
-  musí být **per-typ**: informativní/cart eventy měř read-through / low-dismiss /
-  merchantem definovaný cíl, ne kliky; jen akční toasty (countdown/announcement/CTA)
-  smí být hodnoceny přes CTR. Teprve s touto per-typ metrikou má advisor smysl zapnout.
-- **AI advisor SE SUBSTANCÍ** (Claude API, `claude-opus-4-8`/`claude-sonnet-5`):
-  „AI Setup" navrhne pravidla dle typu obchodu; „AI Optimize" vezme **reálné
-  metriky** a vrátí **konkrétní akční** návrhy (vypni pravidlo s 0 CTR, zkrať
-  duration, přesuň pozici) jako strukturovaný JSON → merchant potvrdí aplikaci.
-  Ne generický text jako konkurenční „AI Wizard".
-- **A/B experimenty:** varianta zprávy/stylu/pozice, deterministický split podle
-  hashe cart tokenu, auto-winner dle metriky, inkrementální měření.
-- **Attributed revenue** best-effort (asistence).
-- **Akceptační kritéria:** (1) unit: analytics counters agregují lifecycle eventy
-  správně. (2) unit: AI advisor vrací JSON dle schématu (mock LLM); nevalidní
-  odpověď se odmítne/retry. (3) unit: A/B split je deterministický pro daný token.
+### MVP13 — Insighty, experimenty & AI advisor → badge `Spec` (Pro)
+
+**Filosofie:** *instrumentovat bohatě, ukazovat poctivě.* Syrová čísla neprodávají
+upgrade — hodnota vzniká třemi vrstvami nad datasetem: **per-typ success metrika**,
+**kauzální důkaz (holdout)** a **cross-store benchmarky** (moat portfolia, který
+single-store analytika nikdy nemá). Rozpadeno na fáze MVP13a–e; každá má vlastní
+akceptační kritéria a je autonomně spustitelná (rozhodnutí odsouhlasena — viz konec).
+
+**ŘÍDÍCÍ PRINCIP — jednoduchý povrch, sofistikovaný engine (nepřekročitelné):**
+sofistikovanost žije v ENGINU (měření, experimenty, auto-rollback, benchmarky, AI) —
+**merchant UI zůstává minimální, intuitivní, přehledné.** Won Toasts je notifikační
+engine, ne datová platforma; nesmí od merchanta chtít moc nastavování ani ho zavalit
+grafy. Pravidlo pro celé MVP13: **málo settingů · insight KARTY ne dashboardy · one-
+click akce · auto dělá těžkou práci · progressive disclosure.** Když featura přidá
+merchantovi kognitivní zátěž bez jasné hodnoty, patří pod „auto" nebo pryč.
+
+**Závazná korekce premisy (admin review 2026-08-06):** interim on-device
+„Suggestions" (`ruleBasedSuggestions` v `@won/core/toasts/ai-advisor`, DEFERRED,
+odpojen z UI) stály na špatné premise — *kliky nejsou signál hodnoty pro informativní
+toasty.* „Added to cart" má z principu ~0 CTR (shopper ji přečte, neklikne) → to
+**neznamená** bezcennost. Success metrika **per-typ** je nepřekročitelný základ, na
+kterém stojí dashboard i advisor.
+
+#### MVP13a — Instrumentace (event atomy + dimenze + pipeline + privacy)
+- Storefront JS emituje per-toast lifecycle: `shown` (v DOM) → `visible`
+  (IntersectionObserver, reálně ve viewportu) → `dwell_ms` → `hover/pause` →
+  `read_through` (vydržel plnou dobu) → `click` (cta|body) → `dismiss` (manuální ×)
+  vs `auto_fade` → **`suppressed`** (chtěl se zobrazit, blokoval cooldown/cap/quiet/
+  exclusion — **s důvodem**; tichá zablokovaná zobrazení jsou stejně cenná).
+- Dimenze na každém eventu: `type`, `semantic`, `surface`, `pageType`, `device`,
+  `customerState`, `locale`, `currency`, `hourOfDay`, `dayOfWeek`, `lookPreset`,
+  `abVariant`.
+- Pipeline: app-proxy `/collect` (rozšíří `analytics.server.ts`), append-only event
+  store per shop → denní **rollup** tabulka (dashboard čte rollup, ne raw). Governance
+  session-id (už existuje) = anonymní klíč.
+- **Privacy (must, EU):** session-hash, ne customerId; žádná jména/e-maily do
+  analytiky (order.created ukáže jméno shopperovi, ale neukládá); retention window;
+  ctít Shopify **protected customer data**; uninstall + GDPR redact maže eventy.
+- **Akceptační:** unit — každý lifecycle event se zaznamená s dimenzemi; `suppressed`
+  se počítá s důvodem; rollup agreguje deterministicky; PII-scrub test.
+
+#### MVP13b — Per-typ success metrika + poctivý dashboard (surface)
+- Metrika per typ (závazné): **akční** (announcement-link/countdown/CTA) → CTR;
+  **informativní** (stock.low/cart.activity/order.summary/order.created) →
+  read-through + low-dismiss + reach; **cart/milestone** (free-shipping/gift) →
+  progrese k prahu + delta hodnoty košíku.
+- Merchant volí per typ **cíl (goal)**; dashboard se ladí podle něj.
+- Surface = **insight karty**, ne tabulka syrových eventů: „Nejlépe fungující toast",
+  „Kde ztrácíš pozornost" (vysoký fast-dismiss), „Nejlepší čas/den", **tiché insighty**
+  („0 toastů na cart page s X % trafficu", „countdown skončil před N dny").
+- **Snadný rollback (must, dead-simple):** vizuální **časová osa** uložených stavů
+  (staví na version history, už existuje) — merchant vidí *„co se změnilo"* (diff v
+  lidské řeči, ne JSON) a **jedním klikem** vrátí nastavení k libovolnému timestampu,
+  s okamžitým preview. Scénář: otestuje featuru ve slabém týdnu → vypadá že „funguje"
+  → další týden je to k ničemu → jeden klik zpět. Prezentace = maximálně jednoduchá,
+  bez strachu; každý stav pojmenovaný časem + co ho vyvolal (ruční / experiment /
+  auto-pilot).
+- **Monthly ROI report:** měsíčně **holdout-proven** číslo („Won ti tenhle měsíc
+  prokázaně přinesl X Kč") → sticky retence; jedna karta, ne report-generátor.
+- Plan tiering: **Free** = reach/on-off + health + rollback; **Pro** = per-typ
+  success + čas + karty + ROI.
+- **Akceptační:** unit — success metrika per typ počítá správně; **bez falešné
+  atribuce** (toast = asistence); insight karty se generují z rollupů; rollback obnoví
+  přesně uložený stav a ukáže lidsky čitelný diff.
+
+#### MVP13c — Experimenty: holdout + experiment-gated changes (money + safety layer)
+- **Holdout:** deterministický split podle hashe cart tokenu — X % vidí toasty,
+  (100−X) % ne; srovnání konverze / hodnoty košíku / progrese. **Jediný poctivý důkaz
+  „toasty přinesly Y Kč"** → nejsilnější upgrade/retention argument.
+- **Experiment-gated changes — KAŽDÁ ZMĚNA JE EXPERIMENT (diferenciátor):**
+  jakákoli změna konfigurace (AI advisor **i ruční edit**) se dá nasadit jako
+  experiment — nová konfigurace běží pro X % návštěvníků, stará pro zbytek, po dobu
+  (default týden / do statistické významnosti). Měří per-typ success + guardraily.
+  **Auto-promote** když varianta vyhraje (významně), **auto-rollback** když prohraje
+  nebo shodí guardrail. Staví na version history (už existuje). Per-change volba
+  **„Apply now" vs „Test first"**; u impaktních změn se testování navrhne samo. → to
+  je princip *„žádná změna nikdy nerozbije eshop"*.
+- **Guardrail circuit breaker (self-healing):** nezávisle na experimentech — když
+  živá konfigurace shodí **tvrdou metriku** (pokles konverze nad práh / spike
+  dismiss-rate / chybovost storefront JS), **auto-pauza + rollback + alert**. Bezpečná
+  síť, která dělá „nikdy nerozbije eshop" doslovným.
+- Statistická přísnost: **min-sample + min-doba + sekvenční test** (nepromovat šum);
+  **jeden aktivní experiment na shop** (queue), aby se experimenty nepletly.
+- Per-look A/B, per-message A/B (už existuje), timing A/B — vše přes tentýž engine.
+- **Segment-aware:** experiment se vyhodnotí i **per-segment** (mobil vs desktop,
+  guest vs logged-in) — výhra na mobilu ≠ na desktopu. Report per-segment; volitelně
+  aplikovat vítěze per-segment (advanced, skryté za disclosure — řídící princip).
+- **What-if forecast:** před spuštěním ukázat **odhad dopadu** z historických dat
+  (rozsah), aby merchant věděl, co čekat, a nespouštěl slepě.
+- **Experiment audit log:** čitelná historie experimentů + výsledků (promoted /
+  reverted / expired) — sdílí časovou osu se snadným rollbackem (MVP13b); pro
+  merchanta i pro support.
+- **Attributed revenue** best-effort, jasně označené **„assisted" vs „holdout-proven"**.
+- **Akceptační:** unit — split deterministický pro token; holdout kohorty se
+  nepřekrývají; experiment auto-promote jen při dosažení min-sample+významnosti;
+  guardrail breach → auto-rollback; attribution poctivě (assisted ≠ proven).
+
+#### MVP13d — Cross-store benchmarky (moat)
+- Anonymní agregát napříč Won obchody: percentily read-rate/CTR/dismiss **per typ** +
+  „stores like yours" (segment dle oboru/velikosti). Jen agregát, **žádná cross-store
+  PII**, k-anonymita (počítat jen z ≥ N obchodů).
+- **Akceptační:** benchmark počítá jen z agregátů ≥ N obchodů; opt-out respektován.
+
+#### MVP13e — AI advisor SE SUBSTANCÍ (re-enable na per-typ metrikách)
+- Claude API (`claude-opus-4-8`/`claude-sonnet-5`): „AI Setup" navrhne pravidla dle
+  typu obchodu; „AI Optimize" vezme **reálné per-typ metriky + benchmarky + holdout**
+  a vrátí **strukturovaný JSON** s konkrétními akcemi (zkrať duration, přesuň pozici,
+  změň cíl) → merchant potvrdí. **Nikdy „vypni 0 CTR" plošně.** Zapnout teprve po
+  MVP13b. Každý návrh se aplikuje přes MVP13c (experiment-gated), ne rovnou naživo.
+- **Vysvětlitelnost (trust):** každý návrh ukáže **důkaz** („na základě 1 240
+  impressions, 0 kliků, a že jde o informativní toast měřený read-throughem, ne CTR")
+  — ne black-box.
+- **Benchmark-triggered návrhy:** „stores like you mají read-rate 40 %, ty 25 % — zkus
+  tenhle experiment" (propojí MVP13d → advisor → experiment).
+- **Auto-pilot (opt-in, top tier):** advisor průběžně pouští malé experimenty a
+  **auto-promuje vítěze v rámci guardrailů** — „set & forget optimalizace". Vždy
+  vypnutelné, s logem co udělal.
+- **Cross-store meta-learning (moat++):** výsledky experimentů napříč Won obchody
+  krmí **priory advisora** („tahle změna obvykle vyhrává u doplňků") — privacy-safe
+  agregát, compounding data moat. Jen agregované vzory, žádná cross-store konfigurace.
+- **Akceptační:** vrací JSON dle schématu (mock LLM); nevalidní odmítne/retry;
+  test — nenavrhne vypnout informativní toast kvůli 0 CTR; každý návrh nese evidenci;
+  auto-pilot respektuje guardraily a jde vypnout.
+
+#### Rozhodnutí (odsouhlaseno 2026-08-10 — autonomous-ready)
+1. **Event objem/retention:** agregovat při ingestu (counters); raw jen **30 dní**
+   (debug), rollup **denní**, retention **365 dní**. Žádné samplování.
+2. **Holdout:** default **10 %**, zapínatelné, Pro-only, s explainerem; 0 = vypnuto.
+3. **Benchmarky:** **opt-out** (agregát není PII), **k-anonymita ≥ 10** obchodů; obor
+   = merchant self-select setting.
+4. **Attribution:** session-window = **„assisted"**; **„proven" jen z holdoutu**.
+   Mimo holdout nikdy netvrdit kauzalitu.
+5. **Goal per typ:** **předdefinovaný enum** (ne volný text) — free-shipping→AOV,
+   announcement→clicks, stock.low→read-through, …
+6. **Perf:** batch + flush na `pagehide`/visibility + ~5 s, **`sendBeacon`**, lazy
+   init po prvním toastu; držet **~15 kB gz**.
+7. **Data model:** Prisma **`ToastEvent`** (raw, krátkodobý) + **`ToastRollup`**
+   (shop/date/typ/dims/counters); uninstall + GDPR redact maže obojí.
+8. **AI advisor náklad:** **on-demand** („AI Optimize"), cache dle config-hashe na
+   N h, rate-limit per shop. Žádné periodické LLM.
+9. **Gating default:** impaktní změny (timing/pozice/pravidla/AI) → **„Test first"**;
+   kosmetika (barvy/text/copy) → „Apply now". Merchant může přepnout.
+10. **Významnost + doba:** **Bayesovský** (prob-to-be-best ≥ 95 %), min **7 dní** +
+    min-sample; **auto-expire po 14 dnech → keep original**.
+11. **Guardraily:** pokles konverze > ~**15 % rel.**, spike dismiss, JS error > 0;
+    **traffic floor** — pod N sessions/den nespouštět rollback (žádné false alarmy).
+12. **Auto-pilot rozsah:** jen bezpečné páky (duration/pozice/cooldown/look), **NE**
+    zapínání/vypínání pravidel; **denní cap 1** experiment.
 
 ### MVP14 — Kvalita & Built for Shopify → badge `Spec` (Free kvalita, release gate)
 - **A11y:** `aria-live` politeness config, dismiss-all, focus management, SR-only

@@ -1,0 +1,430 @@
+{%- liquid
+  assign s = section.settings
+-%}
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-style-vars', settings: s %}"
+  data-testid="won-collection-section"
+>
+  <div class="won-container won-collection">
+    {%- if s.show_title -%}
+      <div class="won-collection__head">
+        <h1 class="won-heading won-collection__title">{{ collection.title }}</h1>
+        {%- if collection.description != blank and s.show_description -%}
+          <div class="won-collection__desc rte">{{ collection.description }}</div>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    {%- paginate collection.products by s.per_page -%}
+    <won-facets class="won-collection__layout">
+      {%- if s.show_filters and collection.filters.size > 0 -%}
+        <form class="won-collection__filters" id="won-facets-form">
+          <div class="won-collection__filters-head">
+            <span class="won-collection__filters-title">{{ 'won.plp.filters' | t }}</span>
+            <a href="{{ collection.url }}" class="won-collection__clear">{{ 'won.plp.clear' | t }}</a>
+          </div>
+          {%- for filter in collection.filters -%}
+            <details class="won-facet" open>
+              <summary class="won-facet__summary">{{ filter.label }}</summary>
+              {%- case filter.type -%}
+                {%- when 'list', 'boolean' -%}
+                  <ul class="won-facet__list" role="list">
+                    {%- for value in filter.values -%}
+                      <li>
+                        <label class="won-facet__opt{% if value.count == 0 and value.active == false %} is-empty{% endif %}">
+                          <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}" {% if value.active %}checked{% endif %} {% if value.count == 0 and value.active == false %}disabled{% endif %}>
+                          <span class="won-facet__opt-label">{{ value.label }}</span>
+                          <span class="won-facet__count">{{ value.count }}</span>
+                        </label>
+                      </li>
+                    {%- endfor -%}
+                  </ul>
+                {%- when 'price_range' -%}
+                  <div class="won-facet__price">
+                    <input type="number" name="{{ filter.min_value.param_name }}" value="{{ filter.min_value.value }}" placeholder="{{ 0 | money_without_currency }}" min="0" inputmode="decimal" aria-label="{{ 'won.plp.price_from' | t }}">
+                    <span>–</span>
+                    <input type="number" name="{{ filter.max_value.param_name }}" value="{{ filter.max_value.value }}" placeholder="{{ filter.range_max | money_without_currency }}" min="0" inputmode="decimal" aria-label="{{ 'won.plp.price_to' | t }}">
+                  </div>
+              {%- endcase -%}
+            </details>
+          {%- endfor -%}
+          <noscript><button type="submit" class="won-btn won-btn--primary">{{ 'won.plp.apply' | t }}</button></noscript>
+        </form>
+      {%- endif -%}
+
+      <div class="won-collection__main">
+        <div class="won-collection__toolbar">
+          <span class="won-collection__count">{{ collection.products_count }} {{ 'won.plp.products' | t }}</span>
+          {%- if s.show_sort and collection.sort_options.size > 0 -%}
+            <label class="won-collection__sort">
+              <span>{{ 'won.plp.sort' | t }}</span>
+              <select name="sort_by" form="won-facets-form" data-won-sort>
+                {%- for option in collection.sort_options -%}
+                  <option value="{{ option.value }}" {% if option.value == collection.sort_by %}selected{% endif %}>{{ option.name }}</option>
+                {%- endfor -%}
+              </select>
+            </label>
+          {%- endif -%}
+        </div>
+
+        {%- if collection.products.size == 0 -%}
+          <p class="won-collection__empty">{{ 'won.plp.empty' | t }}</p>
+        {%- else -%}
+          <div class="won-collection__grid" style="--won-cols-lg: {{ s.columns_desktop }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-sm: {{ s.columns_mobile }};">
+            {%- for product in collection.products -%}
+              {% render 'won-product-card', product: product, aspect: s.card_aspect, show_ppu: s.show_card_ppu, ppu_base: s.ppu_base, ppu_amount: s.ppu_amount, ppu_metafield: s.ppu_metafield %}
+            {%- endfor -%}
+          </div>
+          {%- if paginate.pages > 1 -%}
+            <nav class="won-collection__pagination" aria-label="{{ 'won.plp.pagination' | t }}">{{ paginate | default_pagination }}</nav>
+          {%- endif -%}
+        {%- endif -%}
+      </div>
+    </won-facets>
+    {%- endpaginate -%}
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-collection { display: flex; flex-direction: column; gap: var(--won-space-5); }
+  .won-collection__head { display: flex; flex-direction: column; gap: var(--won-space-2); }
+  .won-collection__title { font-size: 2rem; }
+  .won-collection__layout { display: grid; gap: var(--won-space-5); }
+  @media (min-width: 1000px) { .won-collection__layout { grid-template-columns: 260px 1fr; align-items: start; } }
+  .won-collection__filters { display: flex; flex-direction: column; gap: var(--won-space-3); }
+  .won-collection__filters-head { display: flex; align-items: baseline; justify-content: space-between; }
+  .won-collection__filters-title { font-weight: 700; }
+  .won-collection__clear { color: var(--won-accent); font-size: 0.85rem; text-decoration: none; }
+  .won-facet { border-block-end: 1px solid var(--won-border); padding-block-end: var(--won-space-2); }
+  .won-facet__summary { font-weight: 600; cursor: pointer; padding-block: var(--won-space-2); list-style: none; }
+  .won-facet__summary::-webkit-details-marker { display: none; }
+  .won-facet__summary::after { content: '+'; float: inline-end; color: var(--won-muted); }
+  .won-facet[open] .won-facet__summary::after { content: '−'; }
+  .won-facet__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-block-size: 260px; overflow-y: auto; }
+  .won-facet__opt { display: flex; align-items: center; gap: var(--won-space-2); cursor: pointer; font-size: 0.92rem; min-block-size: 44px; /* WCAG 2.5.5 tap row */ }
+  .won-facet__opt.is-empty { opacity: 0.4; cursor: default; }
+  .won-facet__opt input { accent-color: var(--won-accent); }
+  .won-facet__opt-label { flex: 1 1 auto; }
+  .won-facet__count { color: var(--won-muted); font-size: 0.8rem; }
+  .won-facet__price { display: flex; align-items: center; gap: var(--won-space-2); }
+  .won-facet__price input { inline-size: 100%; padding: 0.4em 0.6em; border: 1px solid var(--won-border); border-radius: var(--won-radius-sm); font: inherit; background: var(--won-bg); color: var(--won-fg); }
+
+  .won-collection__toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--won-space-3); flex-wrap: wrap; margin-block-end: var(--won-space-4); }
+  .won-collection__count { color: var(--won-muted); font-size: 0.9rem; }
+  .won-collection__sort { display: inline-flex; align-items: center; gap: var(--won-space-2); font-size: 0.9rem; }
+  .won-collection__sort select { padding: 0.4em 0.6em; border: 1px solid var(--won-border); border-radius: var(--won-radius-sm); font: inherit; background: var(--won-bg); color: var(--won-fg); }
+  .won-collection__grid { display: grid; grid-template-columns: repeat(var(--won-cols-sm, 2), minmax(0, 1fr)); gap: var(--won-space-4); }
+  @media (min-width: 768px) { .won-collection__grid { grid-template-columns: repeat(var(--won-cols-md, 3), minmax(0, 1fr)); } }
+  @media (min-width: 1024px) { .won-collection__grid { grid-template-columns: repeat(var(--won-cols-lg, 4), minmax(0, 1fr)); } }
+  .won-collection__empty { color: var(--won-muted); padding-block: var(--won-space-6); }
+  .won-collection__pagination { margin-block-start: var(--won-space-5); display: flex; justify-content: center; gap: var(--won-space-3); }
+  .won-collection__pagination a, .won-collection__pagination .current { padding: 0.4em 0.7em; border-radius: var(--won-radius-sm); text-decoration: none; color: var(--won-fg); }
+  .won-collection__pagination .current { background: var(--won-accent); color: var(--won-accent-contrast); }
+{% endstylesheet %}
+
+{% javascript %}
+  class WonFacets extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.wonBound) return;
+      this.dataset.wonBound = '1';
+      this.form = this.querySelector('#won-facets-form');
+      // Auto-apply on any control change (checkbox, price, sort). No-JS falls back
+      // to the submit button. Price inputs apply on change (blur/enter).
+      this.addEventListener('change', () => {
+        if (!this.form) return;
+        if (this.form.requestSubmit) this.form.requestSubmit(); else this.form.submit();
+      });
+    }
+  }
+  if (!customElements.get('won-facets')) customElements.define('won-facets', WonFacets);
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "t:won.names.collection",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:won.info.collection_about"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.content"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_title",
+      "label": "t:won.settings.vp_show_title",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_description",
+      "label": "t:won.settings.plp_show_description",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_filters",
+      "label": "t:won.settings.plp_show_filters",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_sort",
+      "label": "t:won.settings.plp_show_sort",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "columns_desktop",
+      "label": "t:won.settings.columns_desktop",
+      "min": 2,
+      "max": 5,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "columns_tablet",
+      "label": "t:won.settings.columns_tablet",
+      "min": 2,
+      "max": 4,
+      "step": 1,
+      "default": 3
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "t:won.settings.columns_mobile",
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        }
+      ],
+      "default": "2"
+    },
+    {
+      "type": "range",
+      "id": "per_page",
+      "label": "t:won.settings.plp_per_page",
+      "min": 8,
+      "max": 48,
+      "step": 4,
+      "default": 24
+    },
+    {
+      "type": "select",
+      "id": "card_aspect",
+      "label": "t:won.settings.card_aspect",
+      "options": [
+        {
+          "value": "natural",
+          "label": "t:won.options.aspect_natural"
+        },
+        {
+          "value": "square",
+          "label": "t:won.options.aspect_square"
+        },
+        {
+          "value": "portrait",
+          "label": "t:won.options.aspect_portrait"
+        },
+        {
+          "value": "landscape",
+          "label": "t:won.options.aspect_landscape"
+        }
+      ],
+      "default": "portrait"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.price_per_unit"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_card_ppu",
+      "label": "t:won.settings.vp_show_ppu",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "ppu_base",
+      "label": "t:won.settings.ppu_base",
+      "visible_if": "{{ section.settings.show_card_ppu }}",
+      "options": [
+        {
+          "value": "per_100g",
+          "label": "t:won.options.per_100g"
+        },
+        {
+          "value": "per_kg",
+          "label": "t:won.options.per_kg"
+        },
+        {
+          "value": "per_serving",
+          "label": "t:won.options.per_serving"
+        }
+      ],
+      "default": "per_100g"
+    },
+    {
+      "type": "number",
+      "id": "ppu_amount",
+      "label": "t:won.settings.ppu_amount",
+      "info": "t:won.info.ppu_amount",
+      "default": 1000,
+      "visible_if": "{{ section.settings.show_card_ppu }}"
+    },
+    {
+      "type": "text",
+      "id": "ppu_metafield",
+      "label": "t:won.settings.ppu_metafield",
+      "info": "t:won.info.ppu_metafield",
+      "visible_if": "{{ section.settings.show_card_ppu }}"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "info": "t:won.info.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:won.settings.border_width",
+      "info": "t:won.info.border_width",
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border_style",
+      "label": "t:won.settings.border_style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "t:won.options.solid"
+        },
+        {
+          "value": "dashed",
+          "label": "t:won.options.dashed"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "t:won.settings.border_color",
+      "info": "t:won.info.border_color",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "select",
+      "id": "shadow",
+      "label": "t:won.settings.shadow",
+      "info": "t:won.info.shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "sm",
+          "label": "t:won.options.shadow_sm"
+        },
+        {
+          "value": "md",
+          "label": "t:won.options.shadow_md"
+        },
+        {
+          "value": "lg",
+          "label": "t:won.options.shadow_lg"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_color",
+      "info": "t:won.info.accent_color"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 56
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:won.names.collection",
+      "category": "t:won.categories.products"
+    }
+  ]
+}
+{% endschema %}

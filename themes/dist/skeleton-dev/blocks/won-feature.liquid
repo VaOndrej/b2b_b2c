@@ -9,7 +9,7 @@ merchants can normalize mixed icon assets without code.
 {%- assign s = block.settings -%}
 <div
   class="won-feature won-feature--icon-{{ s.image_position }}"
-  style="--won-icon-size: {{ s.image_size }}px;{% if s.accent_override != blank %}--won-accent: {{ s.accent_override }};{% endif %}"
+  style="--won-icon-size: {{ s.image_size }}px;--won-radius-md: {{ s.corner_radius }}px;{% if s.accent_override != blank %}--won-accent: {{ s.accent_override }};{% endif %}"
   {{ block.shopify_attributes }}
 >
   {%- if s.image != blank -%}
@@ -62,6 +62,7 @@ merchants can normalize mixed icon assets without code.
     { "type": "richtext", "id": "text", "label": "t:won.settings.text" },
     { "type": "text", "id": "link_label", "label": "t:won.settings.link_label" },
     { "type": "url", "id": "link_url", "label": "t:won.settings.link_url" },
+    { "type": "range", "id": "corner_radius", "label": "t:won.settings.corner_radius", "min": 0, "max": 40, "step": 2, "unit": "px", "default": 14, "info": "t:won.info.corner_radius" },
     { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" }
   ],
   "presets": [{ "name": "t:won.names.feature" }]

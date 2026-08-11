@@ -88,6 +88,10 @@ export interface ToastTheme {
   mode: ThemeMode;
   colorBg: string;
   colorText: string;
+  /** No-code gradient background: when true the card fills with a linear gradient
+   *  from `colorBg` → `gradientColor` instead of a flat colour. */
+  gradient: boolean;
+  gradientColor: string;
   accent: Record<ToastSemanticType, string>;
   cornerRadius: number;
   shadow: ShadowLevel;
@@ -108,6 +112,9 @@ export interface ToastTheme {
   showIcon: boolean;
   iconSet: IconSet;
   fontMode: FontMode;
+  /** Font family used when `fontMode` is "custom" (e.g. "Georgia, serif"). A safe
+   *  CSS font-family list; ignored for "system"/"inherit-theme". */
+  fontFamily: string;
   /** Pro-only raw CSS injected into the shadow root. Empty by default. */
   customCss: string;
 }
@@ -165,8 +172,15 @@ export interface MilestoneRuleConfig {
   id: string;
   kind: MilestoneKind;
   enabled: boolean;
-  /** Threshold in minor units (cents/haléře); must match the real shipping rate. */
+  /** Threshold in minor units (cents/haléře); must match the real shipping rate.
+   *  On a single-currency store this is the whole story. On a multi-currency
+   *  (Shopify Markets) store it is the BASE / fallback amount — see `thresholds`. */
   thresholdCents: number;
+  /** Per presentment-currency thresholds (ISO 4217 → minor units), for
+   *  multi-currency stores. A CZK threshold must not be compared against a EUR
+   *  cart. When the cart's currency has an entry here it wins; otherwise the
+   *  runtime falls back to `thresholdCents`. Absent/empty = single-currency. */
+  thresholds?: Record<string, number>;
   label: string;
 }
 

@@ -31,6 +31,8 @@ before(async () => {
       "targeting" TEXT,
       "notifications" TEXT,
       "exclusions" TEXT,
+      "benchmarkOptOut" BOOLEAN NOT NULL DEFAULT false,
+      "industry" TEXT,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL
     )
@@ -283,4 +285,21 @@ test("deleteShopData also purges the shop's version history", async () => {
     await prisma.configVersion.count({ where: { shop } }),
     0,
   );
+});
+
+test("resolveConfigWithOverlay applies a variant overlay for live A/B serving", async () => {
+  const shop = "overlay.myshopify.com";
+  await service.updateToastConfig(shop, {
+    plan: "pro",
+    global: { durationMs: 5000, position: "top-right" },
+  });
+  const variant = await service.resolveConfigWithOverlay(shop, {
+    global: { durationMs: 2000 },
+  });
+  // Overlaid field changes; sibling + base defaults remain resolved.
+  assert.equal(variant.global.durationMs, 2000);
+  assert.equal(variant.global.position, "top-right");
+  assert.equal(typeof variant.theme.mode, "string");
+  // Base config is untouched by the overlay.
+  assert.equal((await service.getToastConfig(shop)).global.durationMs, 5000);
 });

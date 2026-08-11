@@ -1,0 +1,401 @@
+{%- comment -%}
+  won-marquee — a thin scrolling strip primitive (USP / deals / divider). Renders
+  local `token` blocks (text or image) on an infinite CSS marquee. Seen across
+  flow / boutique / pebble / stack. The track is duplicated (two identical groups)
+  so the loop is seamless; the copy is aria-hidden. No JS — pure CSS animation,
+  disabled under prefers-reduced-motion (falls back to a static, scrollable row).
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+  assign sep = ''
+  case s.separator
+    when 'dot'
+      assign sep = '•'
+    when 'slash'
+      assign sep = '/'
+    when 'dash'
+      assign sep = '—'
+    when 'star'
+      assign sep = '★'
+  endcase
+-%}
+
+<section
+  class="won-section won-marquee-sec color-{{ s.color_scheme }}"
+  style="{% render 'won-style-vars', settings: s %}"
+  data-testid="won-marquee-section"
+>
+  <div
+    class="won-marquee{% if s.pause_on_hover %} won-marquee--pause{% endif %}"
+    style="--won-mq-gap: {{ s.gap }}px; --won-mq-dur: {{ s.duration }}s;"
+    data-testid="won-marquee"
+  >
+    <div class="won-marquee__track won-marquee__track--{{ s.direction }}">
+      {%- for n in (1..2) -%}
+        <div class="won-marquee__group"{% if forloop.last %} aria-hidden="true"{% endif %}>
+          {%- for block in section.blocks -%}
+            {%- assign bs = block.settings -%}
+            {%- if bs.kind == 'image' -%}
+              {%- if bs.image != blank -%}
+                <span class="won-marquee__item won-marquee__item--img" {{ block.shopify_attributes }}>
+                  {{ bs.image | image_url: width: 160 | image_tag: widths: '80, 160', class: 'won-marquee__img', loading: 'lazy', alt: bs.image.alt }}
+                </span>
+              {%- endif -%}
+            {%- else -%}
+              {%- if bs.text != blank -%}
+                {%- if bs.link != blank -%}
+                  <a class="won-marquee__item won-marquee__link" href="{{ bs.link }}" {{ block.shopify_attributes }}>{{ bs.text }}</a>
+                {%- else -%}
+                  <span class="won-marquee__item" {{ block.shopify_attributes }}>{{ bs.text }}</span>
+                {%- endif -%}
+              {%- endif -%}
+            {%- endif -%}
+            {%- if sep != '' -%}<span class="won-marquee__sep" aria-hidden="true">{{ sep }}</span>{%- endif -%}
+          {%- endfor -%}
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-marquee-sec { padding-block: max(8px, var(--won-pt, 14px) * var(--won-pad-scale, 1)) max(8px, var(--won-pb, 14px) * var(--won-pad-scale, 1)); }
+  /* container-type lets each group claim at least the full strip width (100cqi)
+     so two groups always span >= 2x the viewport — the -50% loop then never
+     scrolls a blank gap in, even for a handful of short tokens. When the tokens
+     are naturally wider than the strip, min-inline-size is inert and they pack
+     tight; when they're shorter, space-around spreads them evenly. */
+  .won-marquee { overflow: hidden; container-type: inline-size; }
+  .won-marquee__track { display: flex; inline-size: max-content; }
+  .won-marquee__group {
+    display: flex; align-items: center; gap: var(--won-mq-gap, 28px);
+    padding-inline-end: var(--won-mq-gap, 28px); flex: 0 0 auto;
+    min-inline-size: 100cqi; justify-content: space-around;
+  }
+  .won-marquee__track--left { animation: won-mq-left var(--won-mq-dur, 24s) linear infinite; }
+  .won-marquee__track--right { animation: won-mq-right var(--won-mq-dur, 24s) linear infinite; }
+  @keyframes won-mq-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @keyframes won-mq-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+  .won-marquee--pause:hover .won-marquee__track,
+  .won-marquee--pause:focus-within .won-marquee__track { animation-play-state: paused; }
+  .won-marquee__item { white-space: nowrap; font-weight: 600; letter-spacing: 0.01em; }
+  .won-marquee__link { color: inherit; text-decoration: none; }
+  .won-marquee__link:hover { text-decoration: underline; }
+  .won-marquee__sep { opacity: 0.45; }
+  .won-marquee__img { display: block; block-size: 28px; inline-size: auto; border-radius: var(--won-radius-sm); }
+  @media (prefers-reduced-motion: reduce) {
+    .won-marquee { overflow-x: auto; scrollbar-width: none; }
+    .won-marquee::-webkit-scrollbar { display: none; }
+    .won-marquee__track { animation: none; }
+    .won-marquee__group[aria-hidden="true"] { display: none; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.marquee",
+  "tag": "section",
+  "disabled_on": {
+    "groups": [
+      "header"
+    ]
+  },
+  "max_blocks": 20,
+  "blocks": [
+    {
+      "type": "token",
+      "name": "t:won.names.marquee_item",
+      "settings": [
+        {
+          "type": "select",
+          "id": "kind",
+          "label": "t:won.settings.token_kind",
+          "info": "t:won.info.token_kind",
+          "options": [
+            {
+              "value": "text",
+              "label": "t:won.options.kind_text"
+            },
+            {
+              "value": "image",
+              "label": "t:won.options.kind_image"
+            }
+          ],
+          "default": "text"
+        },
+        {
+          "type": "text",
+          "id": "text",
+          "label": "t:won.settings.text",
+          "default": "t:won.defaults.marquee_item",
+          "visible_if": "{{ block.settings.kind == 'text' }}"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "t:won.settings.link",
+          "info": "t:won.info.marquee_link",
+          "visible_if": "{{ block.settings.kind == 'text' }}"
+        },
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "t:won.settings.image",
+          "visible_if": "{{ block.settings.kind == 'image' }}"
+        }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:won.info.marquee_about"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "range",
+      "id": "duration",
+      "label": "t:won.settings.marquee_duration",
+      "info": "t:won.info.marquee_duration",
+      "min": 8,
+      "max": 60,
+      "step": 2,
+      "unit": "s",
+      "default": 24
+    },
+    {
+      "type": "select",
+      "id": "direction",
+      "label": "t:won.settings.direction",
+      "options": [
+        {
+          "value": "left",
+          "label": "t:won.options.dir_left"
+        },
+        {
+          "value": "right",
+          "label": "t:won.options.dir_right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "separator",
+      "label": "t:won.settings.separator",
+      "info": "t:won.info.separator",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.sep_none"
+        },
+        {
+          "value": "dot",
+          "label": "t:won.options.sep_dot"
+        },
+        {
+          "value": "slash",
+          "label": "t:won.options.sep_slash"
+        },
+        {
+          "value": "dash",
+          "label": "t:won.options.sep_dash"
+        },
+        {
+          "value": "star",
+          "label": "t:won.options.sep_star"
+        }
+      ],
+      "default": "dot"
+    },
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "t:won.settings.gap",
+      "min": 12,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 28
+    },
+    {
+      "type": "checkbox",
+      "id": "pause_on_hover",
+      "label": "t:won.settings.pause_on_hover",
+      "info": "t:won.info.pause_on_hover",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-2"
+    },
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "info": "t:won.info.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:won.settings.border_width",
+      "info": "t:won.info.border_width",
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border_style",
+      "label": "t:won.settings.border_style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "t:won.options.solid"
+        },
+        {
+          "value": "dashed",
+          "label": "t:won.options.dashed"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "t:won.settings.border_color",
+      "info": "t:won.info.border_color",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "select",
+      "id": "shadow",
+      "label": "t:won.settings.shadow",
+      "info": "t:won.info.shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "sm",
+          "label": "t:won.options.shadow_sm"
+        },
+        {
+          "value": "md",
+          "label": "t:won.options.shadow_md"
+        },
+        {
+          "value": "lg",
+          "label": "t:won.options.shadow_lg"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_color",
+      "info": "t:won.info.accent_color"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 14
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:won.presets.usp_strip",
+      "category": "t:won.categories.content",
+      "settings": {
+        "separator": "dot"
+      },
+      "blocks": [
+        {
+          "type": "token"
+        },
+        {
+          "type": "token"
+        },
+        {
+          "type": "token"
+        },
+        {
+          "type": "token"
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.deals_strip",
+      "category": "t:won.categories.content",
+      "settings": {
+        "separator": "star",
+        "duration": 18
+      },
+      "blocks": [
+        {
+          "type": "token"
+        },
+        {
+          "type": "token"
+        },
+        {
+          "type": "token"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

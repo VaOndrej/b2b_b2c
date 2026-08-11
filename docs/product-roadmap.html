@@ -601,6 +601,249 @@
         </p>
       </header>
 
+      <section class="boundaries" aria-labelledby="boundaries-title">
+        <style>
+          .boundaries {
+            margin: 8px 0 40px;
+            padding: 26px 26px 22px;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--radius);
+            background: linear-gradient(
+              180deg,
+              var(--surface-soft),
+              var(--surface)
+            );
+          }
+          .pbnd-eyebrow {
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--mint);
+            margin: 0 0 6px;
+          }
+          .pbnd-title {
+            margin: 0 0 10px;
+            font-size: clamp(1.4rem, 3vw, 1.9rem);
+            line-height: 1.12;
+            text-wrap: balance;
+          }
+          .pbnd-lede {
+            margin: 0 0 20px;
+            max-width: 68ch;
+            color: var(--text-soft);
+          }
+          .pbnd-lede strong {
+            color: var(--text);
+          }
+          .pbnd-scroll {
+            overflow-x: auto;
+            margin-bottom: 22px;
+          }
+          .pbnd-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+            min-width: 620px;
+          }
+          .pbnd-table th,
+          .pbnd-table td {
+            text-align: left;
+            padding: 11px 14px;
+            border-bottom: 1px solid var(--line);
+            vertical-align: top;
+          }
+          .pbnd-table thead th {
+            font-family: var(--mono);
+            font-size: 0.74rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--line-strong);
+          }
+          .pbnd-table tbody th {
+            font-weight: 650;
+            color: var(--text);
+            white-space: nowrap;
+          }
+          .pbnd-table td.owns {
+            color: var(--text);
+          }
+          .pbnd-table td.owns strong {
+            color: var(--mint);
+          }
+          .pbnd-table td.avoids {
+            color: var(--text-muted);
+          }
+          .pbnd-test {
+            margin: 0 0 24px;
+            padding: 12px 16px;
+            border-left: 3px solid var(--mint);
+            background: var(--mint-dark);
+            border-radius: 0 8px 8px 0;
+            color: var(--text-soft);
+          }
+          .pbnd-test strong {
+            color: var(--text);
+          }
+          .pbnd-decisions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+          }
+          .pbnd-card {
+            padding: 16px 18px 15px;
+            border: 1px solid var(--line);
+            border-radius: 11px;
+            background: var(--page);
+          }
+          .pbnd-card h3 {
+            margin: 0 0 8px;
+            font-size: 1rem;
+            display: flex;
+            align-items: baseline;
+            gap: 9px;
+          }
+          .pbnd-tag {
+            font-family: var(--mono);
+            font-size: 0.66rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--amber);
+            border: 1px solid var(--amber);
+            border-radius: 999px;
+            padding: 2px 8px;
+            white-space: nowrap;
+          }
+          .pbnd-card p {
+            margin: 0 0 8px;
+            font-size: 0.9rem;
+            color: var(--text-soft);
+          }
+          .pbnd-card p:last-child {
+            margin-bottom: 0;
+          }
+          .pbnd-card strong {
+            color: var(--text);
+          }
+          .pbnd-card code {
+            font-family: var(--mono);
+            font-size: 0.82em;
+            color: var(--mint);
+          }
+        </style>
+        <p class="pbnd-eyebrow">Než začneš číst karty</p>
+        <h2 id="boundaries-title" class="pbnd-title">
+          Hranice portfolia — jedna appka, jeden primitiv
+        </h2>
+        <p class="pbnd-lede">
+          Appky si nesmí splývat. Když se ptáš „<strong
+            >kterou appkou to vyřeším?</strong
+          >“, nikdy neptej podle marketingové škatulky (spousta appek „zvedá
+          AOV“). Ptej se <strong>„čí je to primitiv?“</strong> — každá Won appka
+          <strong>vlastní právě jeden</strong> a na cizí nesahá. Tím se ti
+          nikdy nepřekryjí.
+        </p>
+        <div class="pbnd-scroll">
+          <table class="pbnd-table">
+            <thead>
+              <tr>
+                <th scope="col">Appka</th>
+                <th scope="col">Vlastní primitiv</th>
+                <th scope="col">Nesahá na</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Won Stepper</th>
+                <td class="owns">
+                  <strong>ovladač množství</strong> + živý cart-count (UX „kolik
+                  kusů“)
+                </td>
+                <td class="avoids">cenu</td>
+              </tr>
+              <tr>
+                <th scope="row">Won Companion</th>
+                <td class="owns">
+                  <strong>doporučení</strong> „přidej ještě <em>jinou</em> věc“ —
+                  cross-sell, bundle, bigger-pack swap (šířka)
+                </td>
+                <td class="avoids">cenu</td>
+              </tr>
+              <tr>
+                <th scope="row">Won Tiers</th>
+                <td class="owns">
+                  <strong>cenu podle množství</strong> — „kup víc <em>toho
+                  samého</em>, levněji“ (hloubka), Shopify Function = zdroj
+                  pravdy
+                </td>
+                <td class="avoids">doporučování / UX</td>
+              </tr>
+              <tr>
+                <th scope="row">Won Rewards</th>
+                <td class="owns">
+                  <strong>odměnu za práh</strong> — dárek / doprava zdarma
+                  (milestone)
+                </td>
+                <td class="avoids">katalogovou cenu</td>
+              </tr>
+              <tr>
+                <th scope="row">Won Badges</th>
+                <td class="owns">
+                  <strong>vizuální štítek</strong> na PDP (Akce / −%)
+                </td>
+                <td class="avoids">cokoli funkčního</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="pbnd-test">
+          <strong>Test proti splývání:</strong> Stepper vlastní <em>ovladač</em>,
+          Tiers vlastní <em>cenu</em>, Companion vlastní <em>doporučení</em>,
+          Rewards vlastní <em>odměnu</em>, Badges vlastní <em>štítek</em>. Když
+          appka potřebuje cizí primitiv, <strong>odkáže</strong> ho, nevlastní.
+        </p>
+        <div class="pbnd-decisions">
+          <div class="pbnd-card">
+            <h3>
+              Množství = Stepper
+              <span class="pbnd-tag">rozhodnuto 2026-08-07</span>
+            </h3>
+            <p>
+              „Quantity rules“ (MOQ / násobky / max) <strong>nejsou samostatná
+              appka</strong> — samostatná „Won Quantity“ se
+              <strong>ruší</strong>. Merchant to vnímá jako jednu věc: <em>jak
+              zákazník volí kolik kusů</em>.
+            </p>
+            <p>
+              <strong>Stepper Free</strong> = widget + živý count.
+              <strong>Stepper Pro</strong> = + pravidla množství (MOQ / násobky /
+              max) přes <code>won.quantity_rules</code>. Stepper stále
+              <strong>nesahá na cenu</strong> — jen na <em>povolené počty</em>.
+            </p>
+          </div>
+          <div class="pbnd-card">
+            <h3>
+              Companion ≠ Tiers
+              <span class="pbnd-tag">rozhodnuto 2026-08-07</span>
+            </h3>
+            <p>
+              Vypadají podobně (oba „upsell“), ale je to <strong>šířka vs
+              hloubka</strong>. <strong>Neslévat.</strong> Tiers drží cenu
+              Functionou a patří do Function-rodiny s Rewards (sdílený
+              <code>packages/functions</code> crate) — vnořit ho do Companionu =
+              zašpinit jeho duši „žádná cenová magie“.
+            </p>
+            <p>
+              Companion Tiers místo toho <strong>odkazuje</strong>: „přidej ještě
+              1 ks a jsi v levnějším tieru“ = Companion <em>doporučení</em>
+              namířené na <em>cenu</em>, kterou vlastní Tiers. Kooperují,
+              neslévají se.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section class="suite" aria-labelledby="suite-core">
         <header class="suite-heading">
           <div class="suite-title">
@@ -735,10 +978,13 @@
                 <strong>Function-free, pure-surface</strong> — Free = inventory
                 cap; <strong>Pro</strong> čte pravidla z metafieldu
                 <code>won.quantity_rules</code> (snap na násobky, disable na
-                maxu, hint „min N"). Tvrdé vynucení u checkoutu (Cart Validation
-                Function) = <strong>samostatná budoucí appka „Won Quantity
-                Rules"</strong> sdílející tentýž metafield, ať Stepper zůstane
-                čistý a rychlý. <em>Free/Pro</em>: Free = steppery všude + živý
+                maxu, hint „min N"). Tvrdé vynucení u checkoutu (volitelná Cart
+                Validation Function nad tímtéž <code>won.quantity_rules</code>
+                metafieldem) = <strong>Stepper Pro</strong>, pozdější
+                hardening-modul — <strong>ne samostatná appka</strong> (viz
+                „Hranice portfolia": množství vlastní Stepper). Storefront
+                surface zůstává Function-free a rychlý. <em>Free/Pro</em>: Free =
+                steppery všude + živý
                 count + inventory cap + a11y/klávesnice; Pro = quantity rules +
                 segment/collection cílení + appearance tuning + custom CSS.
                 <em>Vzhled</em> z 90 % <strong>dědí téma</strong>, jen lehký Pro
@@ -917,10 +1163,10 @@
                   minMaxSource }</code> (<code>surfaces</code> =
                   pdp/cart/drawer/cards/search) + app-proxy
                   <code>/apps/won-stepper/config</code> vrací resolved JSON
-                  (marker <code>won-stepper-config-ok</code>, vzor
-                  won-quantity config route). Pokud běží Won Quantity, stepper
-                  respektuje min/step/max z jejích DOM atributů na inputu — čte
-                  atributy, ne cizí API.
+                  (marker <code>won-stepper-config-ok</code>). Quantity rules
+                  (Stepper Pro) se čtou z <code>won.quantity_rules</code>; když
+                  min/step/max vykresluje samo téma na inputu, stepper je
+                  respektuje — čte DOM atributy, nepřepisuje je.
                 </li>
                 <li>
                   <strong>Admin UX (Polaris):</strong> <em>Přehled</em>
@@ -1119,6 +1365,37 @@
                 důvěryhodná, dobře designovaná, „nezahltí zákazníka", férově
                 placená alternativa pro segment odpuzený adwarem.
               </p>
+              <p class="guide-idea">
+                <strong>Čtení Function-slev (napojení na Tiers / Rewards):</strong>
+                Toasts musí umět oslavit „aktivovala se množstevní sleva", i když ji
+                naceňuje <em>cizí</em> Function (Tiers) u checkoutu. Napojení je čisté a
+                <strong>theme-independent</strong> (ověřeno přes <code>shopify-dev</code>):
+                automatická Function-sleva je vidět na storefrontu už před checkoutem —
+                Ajax <code>/cart.js</code> ji nese jako
+                <code>line_level_discount_allocations[].discount_application.title</code> +
+                <code>amount</code> (a cart-level <code>cart_level_discount_applications</code>);
+                v Liquidu totéž přes <code>cart.discount_applications</code> a line
+                <code>discount_allocations</code>. <strong>Plumbing (bez druhého fetche):</strong>
+                sdílený <code>@won/core/cart</code> už tahá <code>/cart.js</code> (jeden zdroj,
+                <code>won:cart:update</code>) → <code>cartState</code> dostane normalizované
+                <code>discountAllocations</code> (line+cart: <code>{title, amountCents, lineId}</code>)
+                a <code>deriveEvents</code> emituje <code>won:discount:applied|changed|removed</code>
+                při změně množiny alokací. <strong>Atribuce (load-bearing kontrakt):</strong>
+                Toasts smí oslavit jen slevu, kterou <em>umí přiřadit</em> k Won appce — proto
+                Won Functions stampují title/message v rezervovaném <code>won.*</code> namespace
+                (např. marker <code>won-tiers:</code>, lidská část zůstává čitelná „Množstevní
+                sleva 3+ ks"); parser žije ve sdíleném <code>packages/functions</code> (unpark až
+                s Tiers). <strong>Poctivost (doktrína „no toast &gt; wrong toast"):</strong>
+                neznámý title (kupón, merchantova ruční sleva) → <strong>mlčet</strong>, nikdy ho
+                nevydávat za množstevní slevu. <strong>Arbitráž:</strong> Toasts je renderer/arbiter
+                (jeho grouping / rate-limit / conflict engine z MVP3), Tiers a Rewards jsou jen
+                <em>zdroje typed signálů</em> → jedna alokace = jeden toast, žádné dvojité
+                oslavování. <strong>Timing:</strong> alokace je v <code>/cart.js</code> až po
+                server-reconcile, takže toast se pouští na <strong>reconciled</strong> cartState, ne
+                na Stepperově optimistickém — jinak bys oslavil slevu, kterou server nepotvrdil.
+                Primitiv drží: Toasts vlastní <em>notifikaci</em>, Tiers vlastní <em>cenu</em> —
+                Toasts jen přečte hotovou alokaci (odkaz, ne vlastnictví; viz „Hranice portfolia").
+              </p>
               <ol>
                 <li>
                   <strong>Architektura:</strong> App
@@ -1235,19 +1512,54 @@
                   agregované / merchantem zadané „47 prodáno za 24 h"; „real
                   events only" jako značka, agregace jasně odlišené, cold-start
                   honesty) ·
-                  <code>MVP13</code> insighty, <strong>AI advisor</strong> &amp;
-                  experimenty (toast analytika — impressions, clicks, CTR, Undo
-                  rate, dismiss rate per-event/per-rule; <strong>AI
-                  Setup/Optimize advisor SE SUBSTANCÍ</strong> — reálně
-                  nakonfiguruje a optimalizuje pravidla dle dat, ne gimmick jako
-                  konkurenční „AI Wizard"; A/B experimenty se zprávou/stylem/pozicí
-                  + auto-winner; attributed revenue best-effort) ·
+                  <code>MVP13</code> insighty, experimenty &amp;
+                  <strong>AI advisor</strong> — <em>„instrumentovat bohatě,
+                  ukazovat poctivě"</em>, rozpad na fáze MVP13a–e (detail +
+                  otevřené otázky ve <code>won-toasts-mvp-plan.md</code>):
+                  <strong>(a) instrumentace</strong> — bohatý lifecycle
+                  (<code>shown→visible→dwell→read-through→click→dismiss/auto-fade</code>
+                  + <strong>suppressed s důvodem</strong>) × dimenze (typ, page,
+                  device, čas, look, A/B varianta), append-only + denní rollup,
+                  privacy-first (session-hash, žádná PII, EU/protected-data);
+                  <strong>(b) per-typ success metrika</strong> — akční→CTR,
+                  informativní→read-through/low-dismiss/reach, cart/milestone→
+                  progrese k prahu (kliky NEjsou hodnota pro informativní toasty),
+                  surface = <strong>insight karty</strong> vč. tichých mezer;
+                  <strong>(c) experimenty</strong> — holdout (jediný poctivý důkaz
+                  „toasty přinesly Y", assisted vs holdout-proven) +
+                  <strong>experiment-gated changes: KAŽDÁ změna (AI i ruční) se
+                  nasadí na část visitorů, měří se, auto-promote když vyhraje /
+                  auto-rollback když prohraje nebo shodí guardrail</strong> +
+                  guardrail circuit breaker (self-healing) → <em>„žádná změna nikdy
+                  nerozbije eshop"</em> — silný, vzácný diferenciátor;
+                  <strong>(d) cross-store benchmarky</strong> — anonymní percentily
+                  „stores like yours" (<em>moat portfolia</em>, k-anonymita);
+                  <strong>(e) AI advisor SE SUBSTANCÍ</strong> — Claude API vezme
+                  reálné per-typ metriky+benchmarky+holdout a vrátí konkrétní JSON
+                  akce (aplikované přes experiment-gating, ne naživo) s
+                  <strong>vysvětlitelností</strong> (ukáže důkaz, ne black-box),
+                  volitelný <strong>auto-pilot</strong> (průběžně testuje a promuje
+                  vítěze v rámci guardrailů) a <strong>cross-store meta-learning</strong>
+                  (priory z experimentů napříč Won obchody = compounding moat), ne
+                  gimmick „AI Wizard" · <em>Pro / top tier</em>) ·
                   <code>MVP14</code> kvalita &amp; Built for Shopify (a11y
                   kontroly — <code>aria-live</code> politeness, dismiss-all,
                   focus management, SR-only text; performance mode + lazy-load +
                   perf budget; collision avoidance se sticky hlavičkou / jinými
                   widgety; money/locale + RTL; reálné Shopify Billing / managed
                   pricing; GDPR webhooky).
+                </li>
+                <li>
+                  <strong>Sticky lišta (app embed) — PARKOVÁNO, velmi nízká
+                  priorita:</strong> sticky add-to-cart existuje jako <em>theme
+                  blok</em> (<code>won-sticky-atc</code>, styly full/compact/
+                  minimal/center/corner). Nápad z rozhodnutí „sticky ATC = obě
+                  varianty": postavit i <strong>app embed</strong> (theme app
+                  extension) pro <strong>cross-theme přenositelnost</strong> —
+                  první reálný obyvatel <code>won-app-slot</code>. <strong>NE
+                  samostatná appka</strong> (porušilo by „jedna appka = jeden
+                  primitiv"), jen embed varianta existujícího primitivu. Čeká na
+                  volnou kapacitu; theme blok mezitím pokrývá theme-only obchody.
                 </li>
                 <li>
                   <strong>Produkty pro testy:</strong> sdílený katalog
@@ -2204,7 +2516,11 @@
                   <strong>Plocha: Shopify Function (product discount) + Theme
                   App Extension.</strong> Function = zdroj pravdy: podle
                   množství řádku aplikuje tier slevu (config čte z metafieldu
-                  appky). TAE = zobrazení: app block s tabulkou tierů na PDP
+                  appky) a <strong>stampuje discount title/message v Won kontraktu</strong>
+                  (marker <code>won-tiers:</code> + lidský popis), aby ji storefront
+                  přečetl z <code>/cart.js</code> — takhle ji <strong>Won Toasts</strong>
+                  oslaví a <strong>Companion</strong> může nabídnout „přidej 1 ks →
+                  levnější tier" (viz napojení v Toasts kartě). TAE = zobrazení: app block s tabulkou tierů na PDP
                   (<code>[data-won-tiers-table]</code>) + „ušetříš X“ u řádku
                   košíku; živé přepisování cen v cizích kartách/searchi je
                   theme-coupled — nechat jako volitelný „best effort“ modul,
@@ -2260,8 +2576,9 @@
             </div>
             <h3>Won MarginGuard</h3>
             <p class="description">
-              Slevy samy neplatí na outlet, dárkové karty, sady a dárky. Chrání
-              marži bez ručních výjimek u každého kupónu.
+              Slevový hub s duší ochrany: všechny přímé slevy a kódy žijí tady,
+              protože jen tady drží tvoje výjimky (až na úroveň varianty) a
+              marže — sleva nikdy nespadne pod floor.
             </p>
             <div class="tags">
               <span class="tag source">E · Enervit</span>
@@ -2292,6 +2609,85 @@
                 operativa je nápad appky: vyloučení definovat jednou a vynutit
                 automaticky u každé slevy.
               </p>
+              <p class="guide-idea">
+                <strong>Brainstorm &amp; rozhodnutí (2026-08-10):</strong>
+                appka je záměrně <strong>široký slevový hub</strong>, ne malá
+                utilitka — protože exkluzi/floor jde <em>zaručit jen u slevy,
+                kterou MarginGuard sám aplikuje</em> (Functions se navzájem
+                nevidí; nativní „amount off order“ neumí vyloučit řádek;
+                <code>compare_at</code> sleva stále bere kódy). Proto
+                <strong>slevy žijí v MarginGuardu</strong> (plné pojetí A).
+                <strong>Vlastní ruleset</strong> (exkluze + floor) čtou i
+                sourozenci Tiers/Rewards/Outlet (self-exclude přes sdílený
+                <code>packages/core/src/margin/</code>; Outlet do něj píše tagy)
+                — jedna autorita, víc producentů slev.
+                <strong>Hranice hubu:</strong> jen přímé %/fixní slevy
+                (produkt/varianta/kolekce/order), automatické i kódové;
+                <em>free-shipping goal = Rewards, qty-tiery = Tiers, dárky =
+                Rewards</em>; <strong>BOGO až pozdější MVP</strong> (na start
+                ne). <strong>Variantní přesnost je wedge</strong> (1 z 8 variant
+                zlevněná → kód na ni neplatí, na sourozence ano — nativní
+                Shopify to neumí, Function ano, vidí řádek =
+                <code>ProductVariant</code>). Jméno <strong>zamčeno:
+                WonMarginGuard</strong> (ochrana + přesnost, ne generické „Won
+                Discounts“).
+              </p>
+              <p class="guide-idea">
+                <strong>Floor (srdce appky):</strong> Function čte per-řádek
+                <code>cost.amountPerQuantity</code> (aktuální cena) +
+                <code>cost.compareAtAmountPerQuantity</code> (původní) a
+                <strong>clampuje vlastní slevu</strong> tak, aby cena nespadla
+                pod floor: <code>reálnáSleva = min(chtěná, cena − floor)</code>.
+                <code>FloorRule</code> nese <code>basis:
+                "sellingPrice" | "compareAt"</code> — <strong>default A =
+                sellingPrice</strong> (40 % z prodejní ceny), per-produkt toggle
+                na <code>compareAt</code> je Pro. <em>Cenový</em> floor = Free
+                core; <em>cost-based</em> marže (COGS přes Admin API →
+                metafield) = Pro. Reuse hotového jádra
+                <code>margin.guard.ts</code>/<code>floor.rules.ts</code>
+                (<code>validateMargin</code> už vrací
+                <code>BELOW_FLOOR</code>/<code>floorPrice</code>).
+              </p>
+              <p class="guide-idea">
+                <strong>Migrace (bezpečnostně-kritická, MVP3):</strong>
+                one-click přenos nativních Shopify slev do MarginGuardu jako
+                subsystém <code>Backup → Dry-run → Migrate → Report</code> +
+                <strong>Rollback</strong>: (1) plná lokální záloha nativních slev
+                PŘED čímkoli, (2) dry-run report (co se namapuje, co ne, co
+                domigrovat ručně a proč), (3) migrace supported tvarů +
+                deaktivace nativních (kód nutně smazat/vypnout kvůli unikátnosti
+                před vytvořením MarginGuard verze), (4) závěrečný report;
+                záloha dává rollback.
+              </p>
+              <p class="guide-idea">
+                <strong>Free / Pro (Pro gatuje scope, ne kvalitu):</strong>
+                Free = exkluze všech druhů + <strong>price floor</strong> +
+                přímé slevy (auto i kód) + migrace/rollback + <strong>až 50
+                aktivních slev</strong>. Pro = cost-based floor, segment/B2B
+                floory, Insights („sleva capnutá floorem“, nejčastěji vyloučené
+                produkty), scheduling, pokročilý stacking, basis-B toggle,
+                custom badge.
+              </p>
+              <p class="guide-idea">
+                <strong>MVP žebřík (Approach 1 — ochrana první, migrace jako
+                izolovaný milník; každý krok shippable, TDD):</strong>
+                <strong>MVP0</strong> skeleton (klon <code>_template</code>,
+                Prisma <code>ExclusionRule</code>+<code>FloorRule</code>,
+                Function scaffold no-op, config proxy + metafield mirror) ·
+                <strong>MVP1</strong> authoring + ochrana: 1 automatická %/fix
+                sleva authored v appce + exkluze
+                (kolekce/tag/typ/gift-card/produkt/varianta) + price floor
+                (basis A) → Function aplikuje, vyloučí, clampuje (reuse margin
+                core — <em>tady je duše, shippable</em>) ·
+                <strong>MVP2</strong> kódové slevy
+                (<code>enteredDiscountCodes</code>) + stacking/combination
+                control · <strong>MVP3</strong> MIGRACE
+                (backup/dry-run/migrate/report/rollback jako samostatný bezpečný
+                subsystém) · <strong>MVP4</strong> sdílená autorita — ruleset
+                čtou Tiers/Rewards/Outlet (self-exclude), Outlet píše tagy ·
+                <strong>MVP5</strong> Pro: cost-based floor (COGS), segment/B2B
+                floory, Insights, scheduling, basis-B toggle, billing.
+              </p>
               <ol>
                 <li>
                   <strong>Klon:</strong> rsync z <code>apps/_template/</code>
@@ -2320,8 +2716,9 @@
                 </li>
                 <li>
                   <strong>Data:</strong> Prisma <code>ExclusionRule { shop,
-                  kind (collection|tag|productType|giftCard|product),
-                  value, enabled }</code>; zrcadlit do metafieldu pro
+                  kind (collection|tag|productType|giftCard|product|variant),
+                  value, enabled }</code> + <code>FloorRule</code> (viz
+                  brainstorm níže); zrcadlit do metafieldu pro
                   Function; žádná app-proxy route není potřeba (bez
                   storefront JS).
                 </li>

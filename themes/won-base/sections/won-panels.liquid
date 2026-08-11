@@ -18,22 +18,19 @@
   if is_tabs == false and s.layout == 'split'
     assign is_split = true
   endif
-  assign show_media = false
-  if is_split and s.split_side != 'content'
-    assign show_media = true
-  endif
   assign show_content = true
-  if is_split and s.split_side == 'media'
-    assign show_content = false
+  assign show_media = false
+  if is_split and s.show_side_media
+    assign show_media = true
   endif
   assign has_head = false
   if show_media
     assign has_head = true
-  elsif show_content and s.heading != blank
+  elsif s.heading != blank
     assign has_head = true
-  elsif show_content and s.intro != blank
+  elsif s.intro != blank
     assign has_head = true
-  elsif show_content and is_tabs == false and s.show_contact
+  elsif is_tabs == false and s.show_contact
     assign has_head = true
   endif
 -%}
@@ -169,6 +166,7 @@
   "max_blocks": 30,
   "blocks": [{ "type": "won-panel" }, { "type": "@theme" }, { "type": "@app" }],
   "settings": [
+    { "type": "paragraph", "content": "t:won.info.panels_about" },
     { "type": "header", "content": "t:won.headers.layout" },
     {
       "type": "select", "id": "display", "label": "t:won.settings.display", "info": "t:won.info.panels_display",
@@ -187,16 +185,7 @@
       "default": "stacked"
     },
     { "type": "checkbox", "id": "allow_multiple", "label": "t:won.settings.allow_multiple", "default": false, "visible_if": "{{ section.settings.display == 'accordion' }}" },
-    {
-      "type": "select", "id": "split_side", "label": "t:won.settings.split_side", "info": "t:won.info.split_side",
-      "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' }}",
-      "options": [
-        { "value": "content", "label": "t:won.options.split_content" },
-        { "value": "media", "label": "t:won.options.split_media" },
-        { "value": "content_media", "label": "t:won.options.split_content_media" }
-      ],
-      "default": "content"
-    },
+    { "type": "checkbox", "id": "show_side_media", "label": "t:won.settings.show_side_media", "info": "t:won.info.show_side_media", "default": false, "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' }}" },
     {
       "type": "select", "id": "split_position", "label": "t:won.settings.split_position", "info": "t:won.info.split_position",
       "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' }}",
@@ -206,7 +195,7 @@
       ],
       "default": "start"
     },
-    { "type": "image_picker", "id": "split_media", "label": "t:won.settings.split_media", "info": "t:won.info.split_media", "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' and section.settings.split_side != 'content' }}" },
+    { "type": "image_picker", "id": "split_media", "label": "t:won.settings.split_media", "info": "t:won.info.split_media", "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' and section.settings.show_side_media }}" },
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.faq_heading" },
     { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 80, "step": 2, "unit": "px", "default": 36 },
@@ -252,7 +241,7 @@
     },
     {
       "name": "t:won.presets.faq_media", "category": "t:won.categories.content",
-      "settings": { "display": "accordion", "layout": "split", "split_side": "content_media", "split_position": "start" },
+      "settings": { "display": "accordion", "layout": "split", "show_side_media": true, "split_position": "start" },
       "blocks": [{ "type": "won-panel" }, { "type": "won-panel" }, { "type": "won-panel" }, { "type": "won-panel" }]
     }
   ]

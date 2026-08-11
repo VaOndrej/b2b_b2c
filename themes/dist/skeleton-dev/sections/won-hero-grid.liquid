@@ -1,0 +1,310 @@
+{%- comment -%}
+  won-hero-grid — hero as a row of tiles (Aktin-style promo grid). Renders
+  won-slide blocks in a responsive CSS grid. Shares .won-hero styling with
+  won-hero / won-hero-carousel (won-tokens.css).
+{%- endcomment -%}
+
+{%- assign s = section.settings -%}
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-style-vars', settings: s %}"
+  data-testid="won-hero-grid-section"
+>
+  <div
+    class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-hero won-hero--grid"
+    style="--won-hero-min: {{ s.min_height }}px; --won-hero-gap: {{ s.gap }}px; --won-hero-cols: {{ s.columns }};"
+  >
+    <div class="won-hero__track">
+      {% content_for 'blocks' %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "t:won.names.hero_grid",
+  "tag": "section",
+  "disabled_on": {
+    "groups": [
+      "header",
+      "footer"
+    ]
+  },
+  "max_blocks": 8,
+  "blocks": [
+    {
+      "type": "won-slide"
+    },
+    {
+      "type": "@theme"
+    },
+    {
+      "type": "@app"
+    }
+  ],
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:won.info.hero_grid_about"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "range",
+      "id": "columns",
+      "label": "t:won.settings.columns_desktop",
+      "min": 2,
+      "max": 6,
+      "step": 1,
+      "default": 4,
+      "info": "t:won.info.hero_grid_columns"
+    },
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "t:won.settings.gap",
+      "min": 4,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "min_height",
+      "label": "t:won.settings.min_height",
+      "min": 200,
+      "max": 640,
+      "step": 20,
+      "unit": "px",
+      "default": 360,
+      "info": "t:won.info.hero_min_height"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "t:won.settings.section_width",
+      "options": [
+        {
+          "value": "page",
+          "label": "t:won.options.width_page"
+        },
+        {
+          "value": "full",
+          "label": "t:won.options.width_full"
+        }
+      ],
+      "default": "page"
+    },
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "info": "t:won.info.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:won.settings.border_width",
+      "info": "t:won.info.border_width",
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border_style",
+      "label": "t:won.settings.border_style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "t:won.options.solid"
+        },
+        {
+          "value": "dashed",
+          "label": "t:won.options.dashed"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "t:won.settings.border_color",
+      "info": "t:won.info.border_color",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "select",
+      "id": "shadow",
+      "label": "t:won.settings.shadow",
+      "info": "t:won.info.shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "sm",
+          "label": "t:won.options.shadow_sm"
+        },
+        {
+          "value": "md",
+          "label": "t:won.options.shadow_md"
+        },
+        {
+          "value": "lg",
+          "label": "t:won.options.shadow_lg"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_color",
+      "info": "t:won.info.accent_color"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:won.presets.hero_grid",
+      "category": "t:won.categories.hero",
+      "settings": {
+        "columns": 4,
+        "gap": 16,
+        "min_height": 360,
+        "section_width": "page"
+      },
+      "blocks": [
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "Hydration",
+            "heading": "<p>Electrolytes</p>",
+            "heading_size_desktop": 30,
+            "text": "<p>Minerals for hot days</p>",
+            "button_label": "Shop",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-promo-1.png",
+            "media_position": "background",
+            "alignment": "left",
+            "min_height": 360
+          }
+        },
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "Deal",
+            "heading": "<p>Creatine −20%</p>",
+            "heading_size_desktop": 30,
+            "text": "<p>Strength every day</p>",
+            "button_label": "Shop",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-promo-2.png",
+            "media_position": "background",
+            "alignment": "left",
+            "min_height": 360
+          }
+        },
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "Bestseller",
+            "heading": "<p>Whey protein</p>",
+            "heading_size_desktop": 30,
+            "text": "<p>21 g per serving</p>",
+            "button_label": "Shop",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-promo-3.png",
+            "media_position": "background",
+            "alignment": "left",
+            "min_height": 360
+          }
+        },
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "New",
+            "heading": "<p>BCAA</p>",
+            "heading_size_desktop": 30,
+            "text": "<p>Recovery after training</p>",
+            "button_label": "Shop",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-promo-4.png",
+            "media_position": "background",
+            "alignment": "left",
+            "min_height": 360
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,392 @@
+{%- comment -%}
+  won-shoppable-image — a lifestyle image with pinned product HOTSPOTS (pebble /
+  stack). Each `hotspot` local block is a "+" pin at an x/y position that reveals a
+  mini product card and links to the product. Pure CSS reveal (:hover / :focus-
+  within) — no JS. This is the non-link container that won-tile (an <a>) can't be:
+  the pins are the interactive elements, so the wrapper must NOT be a link.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+  assign ar = '16 / 9'
+  case s.aspect_ratio
+    when 'square'
+      assign ar = '1 / 1'
+    when 'portrait'
+      assign ar = '4 / 5'
+    when 'wide'
+      assign ar = '16 / 9'
+  endcase
+-%}
+
+<section
+  class="won-section won-shop-sec color-{{ s.color_scheme }}"
+  style="{% render 'won-style-vars', settings: s %}"
+  data-testid="won-shoppable-image-section"
+>
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-shop-wrap">
+    {%- if s.heading != blank -%}
+      <h2 class="won-heading won-shop__heading">{{ s.heading | remove: '<p>' | remove: '</p>' | strip }}</h2>
+    {%- endif -%}
+
+    <div class="won-shop" style="--won-shop-aspect: {{ ar }}; --won-radius-md: {{ s.corner_radius }}px;">
+      {%- if s.image != blank -%}
+        {{ s.image | image_url: width: 2000 | image_tag: widths: '600, 1000, 1500, 2000', sizes: '100vw', class: 'won-shop__img', loading: 'lazy', alt: s.image.alt | default: '' }}
+      {%- elsif s.image_asset != blank -%}
+        <img class="won-shop__img" src="{{ s.image_asset | asset_url }}" alt="" width="2000" height="1125" loading="lazy">
+      {%- else -%}
+        {{ 'lifestyle' | placeholder_svg_tag: 'won-shop__img won-shop__img--ph' }}
+      {%- endif -%}
+
+      {%- for block in section.blocks -%}
+        {%- assign bs = block.settings -%}
+        {%- assign p = all_products[bs.product] -%}
+        {%- assign purl = bs.link | default: p.url -%}
+        {%- assign ptitle = bs.label | default: p.title | default: 'Product' -%}
+        <div class="won-shop__pin{% if bs.custom_mobile_pos %} won-shop__pin--m{% endif %}" style="--x: {{ bs.x }}%; --y: {{ bs.y }}%;{% if bs.custom_mobile_pos %} --x-m: {{ bs.x_mobile }}%; --y-m: {{ bs.y_mobile }}%;{% endif %}" {{ block.shopify_attributes }}>
+          <a class="won-shop__dot" {% if purl != blank %}href="{{ purl }}"{% endif %} aria-label="{{ ptitle | escape }}"><span aria-hidden="true">+</span></a>
+          <div class="won-shop__card" role="group">
+            {%- if p != blank and p.featured_image != blank -%}
+              {{ p.featured_image | image_url: width: 120 | image_tag: widths: '60, 120', class: 'won-shop__card-img', loading: 'lazy', alt: '' }}
+            {%- endif -%}
+            <span class="won-shop__card-info">
+              <span class="won-shop__card-title">{{ ptitle }}</span>
+              {%- if p != blank -%}<span class="won-shop__card-price">{{ p.price | money }}</span>{%- endif -%}
+            </span>
+          </div>
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-shop-wrap { display: flex; flex-direction: column; gap: var(--won-space-4); }
+  .won-shop__heading { font-size: 1.6rem; }
+  .won-shop { position: relative; border-radius: var(--won-radius-md); overflow: hidden; }
+  .won-shop__img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; aspect-ratio: var(--won-shop-aspect, 16 / 9); }
+  .won-shop__img--ph { background: var(--won-surface); }
+
+  .won-shop__pin { position: absolute; inset-inline-start: var(--x, 50%); inset-block-start: var(--y, 50%); transform: translate(-50%, -50%); z-index: 2; }
+  /* Optional separate mobile position — a pin that reads well on a wide image can
+     sit off the crop on a phone, so a merchant can re-place it for small screens. */
+  @media (max-width: 749px) {
+    .won-shop__pin--m { inset-inline-start: var(--x-m, var(--x, 50%)); inset-block-start: var(--y-m, var(--y, 50%)); }
+  }
+  .won-shop__dot {
+    inline-size: 44px; block-size: 44px; display: inline-flex; align-items: center; justify-content: center;
+    text-decoration: none; -webkit-tap-highlight-color: transparent;
+  }
+  .won-shop__dot > span {
+    inline-size: 30px; block-size: 30px; border-radius: 50%; background: var(--won-bg); color: var(--won-fg);
+    display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 700; line-height: 1;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28); transition: transform var(--won-dur) var(--won-ease);
+  }
+  .won-shop__pin:hover .won-shop__dot > span,
+  .won-shop__pin:focus-within .won-shop__dot > span { transform: scale(1.12); }
+
+  .won-shop__card {
+    position: absolute; inset-block-end: calc(100% + 8px); inset-inline-start: 50%; transform: translateX(-50%);
+    inline-size: 200px; max-inline-size: 60vw; background: var(--won-bg); color: var(--won-fg);
+    border-radius: var(--won-radius-md); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+    padding: var(--won-space-3); display: flex; gap: var(--won-space-3); align-items: center;
+    opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--won-dur) var(--won-ease);
+    z-index: 3;
+  }
+  .won-shop__pin:hover .won-shop__card,
+  .won-shop__pin:focus-within .won-shop__card { opacity: 1; visibility: visible; pointer-events: auto; }
+  .won-shop__card-img { inline-size: 48px; block-size: 48px; object-fit: cover; border-radius: var(--won-radius-sm); flex: 0 0 auto; }
+  .won-shop__card-info { display: flex; flex-direction: column; gap: 2px; text-align: start; }
+  .won-shop__card-title { font-weight: 600; font-size: 0.9rem; line-height: 1.2; }
+  .won-shop__card-price { color: var(--won-accent); font-weight: 700; font-size: 0.9rem; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.shoppable_image",
+  "tag": "section",
+  "disabled_on": {
+    "groups": [
+      "header",
+      "footer"
+    ]
+  },
+  "max_blocks": 8,
+  "blocks": [
+    {
+      "type": "hotspot",
+      "name": "t:won.names.hotspot",
+      "settings": [
+        {
+          "type": "product",
+          "id": "product",
+          "label": "t:won.settings.product"
+        },
+        {
+          "type": "range",
+          "id": "x",
+          "label": "t:won.settings.hotspot_x",
+          "info": "t:won.info.hotspot_pos",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "unit": "%",
+          "default": 50
+        },
+        {
+          "type": "range",
+          "id": "y",
+          "label": "t:won.settings.hotspot_y",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "unit": "%",
+          "default": 50
+        },
+        {
+          "type": "checkbox",
+          "id": "custom_mobile_pos",
+          "label": "t:won.settings.hotspot_mobile_pos",
+          "info": "t:won.info.hotspot_mobile_pos",
+          "default": false
+        },
+        {
+          "type": "range",
+          "id": "x_mobile",
+          "label": "t:won.settings.hotspot_x_mobile",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "unit": "%",
+          "default": 50
+        },
+        {
+          "type": "range",
+          "id": "y_mobile",
+          "label": "t:won.settings.hotspot_y_mobile",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "unit": "%",
+          "default": 50
+        },
+        {
+          "type": "text",
+          "id": "label",
+          "label": "t:won.settings.hotspot_label",
+          "info": "t:won.info.hotspot_label"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "t:won.settings.link"
+        }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:won.info.shoppable_image_about"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.content"
+    },
+    {
+      "type": "richtext",
+      "id": "heading",
+      "label": "t:won.settings.heading"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "t:won.settings.image"
+    },
+    {
+      "type": "text",
+      "id": "image_asset",
+      "label": "t:won.settings.image_asset",
+      "info": "t:won.info.image_asset"
+    },
+    {
+      "type": "select",
+      "id": "aspect_ratio",
+      "label": "t:won.settings.card_aspect",
+      "options": [
+        {
+          "value": "wide",
+          "label": "t:won.options.aspect_landscape"
+        },
+        {
+          "value": "square",
+          "label": "t:won.options.aspect_square"
+        },
+        {
+          "value": "portrait",
+          "label": "t:won.options.aspect_portrait"
+        }
+      ],
+      "default": "wide"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "t:won.settings.section_width",
+      "options": [
+        {
+          "value": "page",
+          "label": "t:won.options.width_page"
+        },
+        {
+          "value": "full",
+          "label": "t:won.options.width_full"
+        }
+      ],
+      "default": "page"
+    },
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "info": "t:won.info.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:won.settings.border_width",
+      "info": "t:won.info.border_width",
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border_style",
+      "label": "t:won.settings.border_style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "t:won.options.solid"
+        },
+        {
+          "value": "dashed",
+          "label": "t:won.options.dashed"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "t:won.settings.border_color",
+      "info": "t:won.info.border_color",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "select",
+      "id": "shadow",
+      "label": "t:won.settings.shadow",
+      "info": "t:won.info.shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "sm",
+          "label": "t:won.options.shadow_sm"
+        },
+        {
+          "value": "md",
+          "label": "t:won.options.shadow_md"
+        },
+        {
+          "value": "lg",
+          "label": "t:won.options.shadow_lg"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_color",
+      "info": "t:won.info.accent_color"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:won.presets.shoppable_image",
+      "category": "t:won.categories.content",
+      "settings": {
+        "heading": "<p>Shop the look</p>"
+      },
+      "blocks": [
+        {
+          "type": "hotspot"
+        },
+        {
+          "type": "hotspot"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

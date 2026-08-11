@@ -199,7 +199,9 @@
 {
   "name": "t:names.media_with_text",
   "disabled_on": {
-    "groups": ["header"]
+    "groups": [
+      "header"
+    ]
   },
   "settings": [
     {
@@ -318,114 +320,6 @@
       "step": 1,
       "unit": "px",
       "default": 0
-    }
-  ],
-  "presets": [
-    {
-      "name": "t:names.editorial",
-      "category": "t:categories.storytelling",
-      "settings": {
-        "media_width": "medium",
-        "media_height": "60svh",
-        "color_scheme": "scheme-4"
-      },
-      "blocks": {
-        "media": {
-          "type": "_media-without-appearance",
-          "static": true
-        },
-        "content": {
-          "type": "_content-without-appearance",
-          "static": true,
-          "settings": {
-            "horizontal_alignment_flex_direction_column": "flex-start",
-            "vertical_alignment_flex_direction_column": "space-between"
-          },
-          "blocks": {
-            "caption": {
-              "type": "text",
-              "name": "t:names.caption",
-              "settings": {
-                "text": "t:html_defaults.bestseller",
-                "type_preset": "h6"
-              }
-            },
-            "group": {
-              "type": "group",
-              "settings": {
-                "height": "fit"
-              },
-              "blocks": {
-                "heading": {
-                  "type": "text",
-                  "name": "t:names.heading",
-                  "settings": {
-                    "text": "t:html_defaults.signature_products",
-                    "type_preset": "h3"
-                  }
-                },
-                "text": {
-                  "type": "text",
-                  "settings": {
-                    "text": "t:html_defaults.made_with_care_extended",
-                    "max_width": "narrow",
-                    "type_preset": "rte"
-                  }
-                }
-              },
-              "block_order": ["heading", "text"]
-            },
-            "button": {
-              "type": "button",
-              "settings": {
-                "label": "t:text_defaults.shop_now_button_label",
-                "link": "shopify://collections/all",
-                "style_class": "link"
-              }
-            }
-          },
-          "block_order": ["caption", "group", "button"]
-        }
-      }
-    },
-    {
-      "name": "t:names.editorial_jumbo_text",
-      "category": "t:categories.storytelling",
-      "settings": {
-        "media_position": "right",
-        "media_width": "medium",
-        "media_height": "60svh",
-        "color_scheme": "scheme-3"
-      },
-      "blocks": {
-        "media": {
-          "type": "_media-without-appearance",
-          "static": true
-        },
-        "content": {
-          "type": "_content-without-appearance",
-          "static": true,
-          "settings": {
-            "horizontal_alignment_flex_direction_column": "flex-start",
-            "vertical_alignment_flex_direction_column": "flex-end"
-          },
-          "blocks": {
-            "caption": {
-              "type": "jumbo-text",
-              "name": "t:names.jumbo_text",
-              "settings": {
-                "text": "t:text_defaults.up_the_ante",
-                "font": "heading",
-                "alignment": "right",
-                "line_height": "0.8",
-                "letter_spacing": "-0.03em",
-                "case": "uppercase"
-              }
-            }
-          },
-          "block_order": ["caption"]
-        }
-      }
     }
   ]
 }

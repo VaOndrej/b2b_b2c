@@ -6,6 +6,7 @@ import { deleteShopData } from "../services/toast-config.server";
 import { deleteShopEvents } from "../services/toast-events.server";
 import { deleteShopSales } from "../services/sale-events.server";
 import { deleteShopAnalytics } from "../services/analytics.server";
+import { deleteShopExperiments } from "../services/experiments.server";
 
 // GDPR shop/redact — 48h after uninstall, erase EVERY trace of the shop:
 // config, aggregate events, social-proof sales, analytics, and sessions.
@@ -17,6 +18,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   await deleteShopEvents(shop).catch(() => {});
   await deleteShopSales(shop).catch(() => {});
   await deleteShopAnalytics(shop).catch(() => {});
+  await deleteShopExperiments(shop).catch(() => {});
   await db.session.deleteMany({ where: { shop } }).catch(() => {});
 
   return new Response();

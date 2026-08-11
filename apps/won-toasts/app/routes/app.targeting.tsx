@@ -68,122 +68,130 @@ export default function TargetingRoute() {
           </s-banner>
         </s-section>
       ) : null}
-      <s-section>
-        <s-paragraph>
-          Decide <s-text type="strong">where</s-text> toasts run. Choosing
-          specific pages, devices and customers is Pro; turning the app off on
-          specific pages is Free.
-        </s-paragraph>
-      </s-section>
-
-      {/* Unified on one page (doctrine §7c): Free exclusions and Pro targeting are
-          two halves of the same "where" question, so the merchant sees both at once
-          instead of hunting across tabs. Free leads — it's always usable and must
-          never feel blocked; Pro sits below with a clear upgrade path. */}
+      {/* One visual section, not two cards (Wave-0 decision): "where toasts show"
+          is a single question. Free leads with the always-usable default (run
+          everywhere, turn off where needed); Pro narrows it down below a divider.
+          The two data models (exclusions Free, targeting Pro) stay separate and
+          are gated independently in the action + gateConfigForPlan — only the UI
+          merges. Free must never read as blocked. */}
       <Form method="post" data-save-bar>
-        {/* ---- Where they never run (Free) ---- */}
-        <s-section heading="Where they never run">
+        <s-section heading="Where toasts show">
           <s-stack direction="block" gap="large">
-            <s-badge tone="success">Free</s-badge>
             <s-paragraph>
-              Turn the app off where it doesn’t belong. Excluded pages and URLs
-              stop <s-text type="strong">everything</s-text> — cart toasts and
-              notifications alike.
+              By default toasts run on <s-text type="strong">every page</s-text>.
+              Turn them off where they don’t belong (Free), or narrow them to
+              specific pages, devices and customers (Pro).
             </s-paragraph>
 
-            <s-stack direction="block" gap="small">
-              <s-text type="strong">Whole page types</s-text>
-              <s-stack direction="inline" gap="base">
-                {PAGES.map((p) => (
-                  <s-checkbox
-                    key={p}
-                    label={pageLabel(p)}
-                    name={`exclude_page_${p}`}
-                    value="on"
-                    checked={ex.pages.includes(p)}
-                  />
-                ))}
+            {/* ---- Run everywhere, except… (Free) ---- */}
+            <s-stack direction="block" gap="base">
+              <s-stack direction="inline" gap="small">
+                <s-text type="strong">Run everywhere, except…</s-text>
+                <s-badge tone="success">Free</s-badge>
               </s-stack>
-            </s-stack>
-
-            <s-text-area
-              label="Specific URLs"
-              name="exclude_urls"
-              rows={5}
-              value={ex.urls.join("\n")}
-              placeholder={"/checkout*\n/pages/legal"}
-              details="One pattern per line. Use * as a wildcard (e.g. /checkout*). Query strings and hashes are ignored."
-            />
-
-            <s-text color="subdued">
-              You can also add{" "}
-              <s-text type="strong">
-                {'<meta name="won-toasts:active" content="false">'}
-              </s-text>{" "}
-              to any template to opt that page out with no config here.
-            </s-text>
-          </s-stack>
-        </s-section>
-
-        {/* ---- Where toasts run (Pro) ---- */}
-        <s-section heading="Where toasts run">
-          <ProFrame locked={!isPro}>
-          <s-stack direction="block" gap="large">
-            <s-badge tone={isPro ? "success" : "info"}>
-              {isPro ? "Pro" : "Pro — upgrade to choose"}
-            </s-badge>
-            {!isPro ? (
-              <s-paragraph>
-                On Free, toasts run everywhere (minus your exclusions below).{" "}
-                <s-link href="/app/plan">Upgrade to Pro</s-link> to target
-                specific pages, devices and customers.
-              </s-paragraph>
-            ) : null}
-
-            <s-stack direction="block" gap="small">
-              <s-text type="strong">Pages</s-text>
               <s-text color="subdued">
-                None selected = every page. Pick pages to run only there.
+                Excluded pages and URLs stop{" "}
+                <s-text type="strong">everything</s-text> — cart toasts and
+                notifications alike.
               </s-text>
-              <s-stack direction="inline" gap="base">
-                {PAGES.map((p) => (
-                  <s-checkbox
-                    key={p}
-                    label={pageLabel(p)}
-                    name={`page_${p}`}
-                    value="on"
-                    checked={t.pages.includes(p)}
-                    disabled={!isPro}
-                  />
-                ))}
+
+              <s-stack direction="block" gap="small">
+                <s-text type="strong">Whole page types</s-text>
+                <s-stack direction="inline" gap="base">
+                  {PAGES.map((p) => (
+                    <s-checkbox
+                      key={p}
+                      label={pageLabel(p)}
+                      name={`exclude_page_${p}`}
+                      value="on"
+                      checked={ex.pages.includes(p)}
+                    />
+                  ))}
+                </s-stack>
               </s-stack>
+
+              <s-text-area
+                label="Specific URLs"
+                name="exclude_urls"
+                rows={5}
+                value={ex.urls.join("\n")}
+                placeholder={"/checkout*\n/pages/legal"}
+                details="One pattern per line. Use * as a wildcard (e.g. /checkout*). Query strings and hashes are ignored."
+              />
+
+              <s-text color="subdued">
+                You can also add{" "}
+                <s-text type="strong">
+                  {'<meta name="won-toasts:active" content="false">'}
+                </s-text>{" "}
+                to any template to opt that page out with no config here.
+              </s-text>
             </s-stack>
 
-            <s-select
-              label="Devices"
-              name="device"
-              value={t.device}
-              disabled={!isPro}
-              details="Limit toasts to one device type, or show on both."
-            >
-              <s-option value="both">Both</s-option>
-              <s-option value="mobile">Mobile only</s-option>
-              <s-option value="desktop">Desktop only</s-option>
-            </s-select>
+            {/* ---- Narrow it down (Pro), same card, below a divider ---- */}
+            <s-box borderWidth="base" />
 
-            <s-select
-              label="Customers"
-              name="customerState"
-              value={t.customerState}
-              disabled={!isPro}
-              details="Show to everyone, or only guests / only logged-in shoppers."
-            >
-              <s-option value="both">Everyone</s-option>
-              <s-option value="guest">Guests only</s-option>
-              <s-option value="logged-in">Logged-in only</s-option>
-            </s-select>
+            <ProFrame locked={!isPro}>
+              <s-stack direction="block" gap="large">
+                <s-stack direction="inline" gap="small">
+                  <s-text type="strong">Narrow it down</s-text>
+                  <s-badge tone={isPro ? "success" : "info"}>
+                    {isPro ? "Pro" : "Pro — upgrade to choose"}
+                  </s-badge>
+                </s-stack>
+                {!isPro ? (
+                  <s-paragraph>
+                    On Free, toasts run everywhere (minus your exclusions above).{" "}
+                    <s-link href="/app/plan">Upgrade to Pro</s-link> to target
+                    specific pages, devices and customers.
+                  </s-paragraph>
+                ) : null}
+
+                <s-stack direction="block" gap="small">
+                  <s-text type="strong">Pages</s-text>
+                  <s-text color="subdued">
+                    None selected = every page. Pick pages to run only there.
+                  </s-text>
+                  <s-stack direction="inline" gap="base">
+                    {PAGES.map((p) => (
+                      <s-checkbox
+                        key={p}
+                        label={pageLabel(p)}
+                        name={`page_${p}`}
+                        value="on"
+                        checked={t.pages.includes(p)}
+                        disabled={!isPro}
+                      />
+                    ))}
+                  </s-stack>
+                </s-stack>
+
+                <s-select
+                  label="Devices"
+                  name="device"
+                  value={t.device}
+                  disabled={!isPro}
+                  details="Limit toasts to one device type, or show on both."
+                >
+                  <s-option value="both">Both</s-option>
+                  <s-option value="mobile">Mobile only</s-option>
+                  <s-option value="desktop">Desktop only</s-option>
+                </s-select>
+
+                <s-select
+                  label="Customers"
+                  name="customerState"
+                  value={t.customerState}
+                  disabled={!isPro}
+                  details="Show to everyone, or only guests / only logged-in shoppers."
+                >
+                  <s-option value="both">Everyone</s-option>
+                  <s-option value="guest">Guests only</s-option>
+                  <s-option value="logged-in">Logged-in only</s-option>
+                </s-select>
+              </s-stack>
+            </ProFrame>
           </s-stack>
-          </ProFrame>
         </s-section>
       </Form>
     </s-page>

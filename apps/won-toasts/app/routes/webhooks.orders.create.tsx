@@ -6,6 +6,7 @@ import { authenticate } from "../shopify.server";
 import { recordToastEvent } from "../services/toast-events.server";
 import { recordSaleEvent } from "../services/sale-events.server";
 import { getToastConfig } from "../services/toast-config.server";
+import { runExperimentGuardrails } from "../services/guardrail.server";
 
 // MVP11 — record every real order as one aggregate event (quantity = total
 // units). Feeds order.summary ("X orders in the last N days").
@@ -37,6 +38,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   } catch {
     // never let feed storage break order processing
   }
+
+  // MVP13c: each order is a natural checkpoint (no cron in a Shopify app) — run
+  // the live guardrail + auto-promote/rollback for any active experiment. This
+  // is fully best-effort and never throws into the webhook.
+  await runExperimentGuardrails(shop).catch(() => {});
 
   return new Response();
 };

@@ -344,12 +344,21 @@
     }
   },
   "won": {
+    "editor": {
+      "contrast_warn": "Nízký kontrast: tento akcent může být s bílým textem špatně čitelný. Uložit lze i tak — jen zkontroluj tlačítka a ceny.",
+      "hidden_all": "Tato sekce je skrytá na mobilu i desktopu — nikde se nezobrazí.",
+      "contrast_textbg": "Nízký kontrast mezi barvou textu a pozadí — text může být špatně čitelný.",
+      "empty_media": "Médium je nastavené na Obrázek, ale žádný není vybraný — do té doby se zobrazí placeholder.",
+      "label_no_link": "Tlačítko má text, ale chybí odkaz — kliknutí nic neudělá.",
+      "link_no_label": "Je tu odkaz bez textu tlačítka — tlačítko se nezobrazí."
+    },
     "a11y": {
       "previous": "Předchozí",
       "next": "Další",
       "compare": "Posuvník porovnání",
       "no_articles": "Zatím žádné články.",
-      "no_products": "Zatím žádné produkty."
+      "no_products": "Zatím žádné produkty.",
+      "close": "Zavřít"
     },
     "guide": {
       "metafield_title": "Napojte metapole a tabulka se vyplní sama",

@@ -1,0 +1,65 @@
+{% doc %}
+  won-stock-signal — availability + delivery + expiry cues on the PDP. Reads the
+  current variant's inventory and optional metafields (won.delivery text,
+  won.expiry date). Low-stock threshold is configurable. Blank-safe off a product.
+{% enddoc %}
+{%- liquid
+  assign s = block.settings
+  assign v = product.selected_or_first_available_variant
+  assign state = 'none'
+  if v != blank
+    if v.available
+      assign state = 'in'
+      if v.inventory_management != blank and v.inventory_quantity != blank and v.inventory_quantity > 0 and v.inventory_quantity <= s.low_threshold
+        assign state = 'low'
+      endif
+    else
+      assign state = 'out'
+    endif
+  endif
+  assign delivery = product.metafields.won.delivery.value | default: s.delivery_fallback
+  assign expiry = product.metafields.won.expiry.value
+-%}
+{%- if state != 'none' -%}
+  <div class="won-stock" {{ block.shopify_attributes }}>
+    <span class="won-stock__row won-stock__row--{{ state }}">
+      <span class="won-stock__dot" aria-hidden="true"></span>
+      {%- if state == 'in' -%}
+        {{ 'won.stock.in' | t }}
+      {%- elsif state == 'low' -%}
+        {{ 'won.stock.low' | t }}{% if v.inventory_quantity and v.inventory_quantity > 0 %} ({{ v.inventory_quantity }}){% endif %}
+      {%- else -%}
+        {{ 'won.stock.out' | t }}
+      {%- endif -%}
+    </span>
+    {%- if delivery != blank and state != 'out' -%}
+      <span class="won-stock__row">🚚 {{ delivery }}</span>
+    {%- endif -%}
+    {%- if expiry != blank -%}
+      <span class="won-stock__row won-stock__muted">{{ 'won.stock.expiry' | t }}: {{ expiry | date: '%-d. %-m. %Y' }}</span>
+    {%- endif -%}
+  </div>
+{%- endif -%}
+
+{% stylesheet %}
+  .won-stock { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
+  .won-stock__row { display: inline-flex; align-items: center; gap: 0.4em; }
+  .won-stock__muted { color: var(--won-muted); font-size: 0.82rem; }
+  .won-stock__dot { inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--won-muted); }
+  .won-stock__row--in { color: #1e8e3e; font-weight: 600; }
+  .won-stock__row--in .won-stock__dot { background: #1e8e3e; }
+  .won-stock__row--low { color: #b26a00; font-weight: 600; }
+  .won-stock__row--low .won-stock__dot { background: #f5a623; }
+  .won-stock__row--out { color: var(--won-muted); }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.stock_signal",
+  "settings": [
+    { "type": "range", "id": "low_threshold", "label": "t:won.settings.stock_low_threshold", "min": 1, "max": 50, "step": 1, "default": 10 },
+    { "type": "text", "id": "delivery_fallback", "label": "t:won.settings.stock_delivery", "info": "t:won.info.stock_delivery" }
+  ],
+  "presets": [{ "name": "t:won.names.stock_signal" }]
+}
+{% endschema %}

@@ -1,11 +1,20 @@
 {
   "won": {
+    "editor": {
+      "contrast_warn": "Low contrast: this accent may be hard to read with white text. Merchants can still save — just double-check buttons and prices.",
+      "hidden_all": "This section is hidden on mobile and desktop — it will not appear anywhere.",
+      "contrast_textbg": "Low contrast between your text and background colors — the text may be hard to read.",
+      "empty_media": "Media is set to Image but no image is selected — a placeholder will show until you add one.",
+      "label_no_link": "This button has text but no link — clicking it will do nothing.",
+      "link_no_label": "There's a link with no button text — the button won't show."
+    },
     "a11y": {
       "previous": "Previous",
       "next": "Next",
       "compare": "Comparison slider",
       "no_articles": "No articles yet.",
-      "no_products": "No products yet."
+      "no_products": "No products yet.",
+      "close": "Close"
     },
     "guide": {
       "metafield_title": "Connect a metafield to fill this table",

@@ -21,9 +21,19 @@ test.describe("Won Toasts — everything turned off is silent, not broken", () =
     page,
   }) => {
     const errors: string[] = [];
+    // A thrown, uncaught script is always a fault — keep every pageerror.
     page.on("pageerror", (err) => errors.push(String(err)));
+    // Console errors, however, are dominated by Shopify's own headless-dev-store
+    // noise that has nothing to do with Won Toasts: Shop Pay wallet resource 4xx
+    // (`shop.app/pay/hop`), the Shop Pay iframe CSP `frame-ancestors` block, and
+    // `[shopify-account] Menu ... not found` fallbacks. This spec guards that OUR
+    // storefront stays silent, so only Won-Toasts-attributable console errors
+    // count; a real Won Toasts throw still surfaces via pageerror above.
     page.on("console", (msg) => {
-      if (msg.type() === "error") errors.push(msg.text());
+      if (msg.type() !== "error") return;
+      const text = msg.text();
+      const from = msg.location()?.url ?? "";
+      if (/won-toasts/i.test(text) || /won-toasts/i.test(from)) errors.push(text);
     });
 
     // Every individually-toggleable cart event is off; no milestones either.
@@ -53,9 +63,19 @@ test.describe("Won Toasts — everything turned off is silent, not broken", () =
     page,
   }) => {
     const errors: string[] = [];
+    // A thrown, uncaught script is always a fault — keep every pageerror.
     page.on("pageerror", (err) => errors.push(String(err)));
+    // Console errors, however, are dominated by Shopify's own headless-dev-store
+    // noise that has nothing to do with Won Toasts: Shop Pay wallet resource 4xx
+    // (`shop.app/pay/hop`), the Shop Pay iframe CSP `frame-ancestors` block, and
+    // `[shopify-account] Menu ... not found` fallbacks. This spec guards that OUR
+    // storefront stays silent, so only Won-Toasts-attributable console errors
+    // count; a real Won Toasts throw still surfaces via pageerror above.
     page.on("console", (msg) => {
-      if (msg.type() === "error") errors.push(msg.text());
+      if (msg.type() !== "error") return;
+      const text = msg.text();
+      const from = msg.location()?.url ?? "";
+      if (/won-toasts/i.test(text) || /won-toasts/i.test(from)) errors.push(text);
     });
 
     await mockConfig(page, { enabled: false });

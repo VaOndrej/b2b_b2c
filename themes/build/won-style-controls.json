@@ -1,0 +1,68 @@
+{
+  "$about": "Won Universal Customization Layer (W3-b) — canonical Tier-1 style-controls fragment. Injected into the top-level `settings` of every allow-listed won-* section by themes/build/compose.mjs (step 2d), replacing 26 hand-copied padding/accent settings with one shared source. PURE-VAR CONTROLS ONLY: each maps to a --won-* custom property emitted by snippets/won-style-vars.liquid and consumed by assets/won-tokens.css on the section root, so the control works with zero per-section CSS and ports to Horizon and Skeleton. Class/Liquid-coupled controls (color_scheme, section_width, content_align) and Horizon color-scheme background/text deliberately stay section-authored (Rozhodnutí 2026-08-10 #9). Keep ids stable — snippet, CSS and demo settings_data depend on them.",
+  "removeIds": [
+    "corner_radius",
+    "border_width",
+    "border_style",
+    "border_color",
+    "shadow",
+    "accent_override",
+    "bg_color",
+    "text_color",
+    "hide_mobile",
+    "hide_desktop",
+    "padding_top",
+    "padding_bottom",
+    "heading_weight",
+    "letter_spacing",
+    "line_height",
+    "text_transform",
+    "animate_in",
+    "show_advanced",
+    "pad_inline",
+    "section_opacity",
+    "custom_shadow"
+  ],
+  "removeHeaders": [
+    "t:won.headers.padding"
+  ],
+  "preserveDefaultIds": [
+    "corner_radius",
+    "accent_override",
+    "padding_top",
+    "padding_bottom"
+  ],
+  "tier1": [
+    { "type": "range", "id": "corner_radius", "label": "t:won.settings.corner_radius", "info": "t:won.info.corner_radius", "min": 0, "max": 40, "step": 2, "unit": "px", "default": 14 },
+    { "type": "range", "id": "border_width", "label": "t:won.settings.border_width", "info": "t:won.info.border_width", "min": 0, "max": 8, "step": 1, "unit": "px", "default": 0 },
+    { "type": "select", "id": "border_style", "label": "t:won.settings.border_style", "options": [ { "value": "solid", "label": "t:won.options.solid" }, { "value": "dashed", "label": "t:won.options.dashed" } ], "default": "solid", "visible_if": "{{ section.settings.border_width > 0 }}" },
+    { "type": "color", "id": "border_color", "label": "t:won.settings.border_color", "info": "t:won.info.border_color", "visible_if": "{{ section.settings.border_width > 0 }}" },
+    { "type": "select", "id": "shadow", "label": "t:won.settings.shadow", "info": "t:won.info.shadow", "options": [ { "value": "none", "label": "t:won.options.none" }, { "value": "sm", "label": "t:won.options.shadow_sm" }, { "value": "md", "label": "t:won.options.shadow_md" }, { "value": "lg", "label": "t:won.options.shadow_lg" } ], "default": "none" },
+    { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_color", "info": "t:won.info.accent_color" },
+    { "type": "color", "id": "bg_color", "label": "t:won.settings.bg_color", "info": "t:won.info.bg_color" },
+    { "type": "color", "id": "text_color", "label": "t:won.settings.text_color", "info": "t:won.info.text_color" },
+    { "type": "checkbox", "id": "hide_mobile", "label": "t:won.settings.hide_mobile", "info": "t:won.info.hide_mobile", "default": false },
+    { "type": "checkbox", "id": "hide_desktop", "label": "t:won.settings.hide_desktop", "info": "t:won.info.hide_desktop", "default": false },
+    { "type": "header", "content": "t:won.headers.padding" },
+    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 },
+    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 }
+  ],
+  "$tier2_about": "Second appearance layer — typography + motion. A6: named selects (not raw numbers), each defaulting to 'theme' (a no-op that emits nothing so the section keeps the theme's type + zero animation). Does NOT duplicate the per-section heading_size_* controls. `animate_in` plays a CSS-only entry animation, disabled under prefers-reduced-motion.",
+  "tier2": [
+    { "type": "header", "content": "t:won.headers.type_motion" },
+    { "type": "select", "id": "heading_weight", "label": "t:won.settings.heading_weight", "info": "t:won.info.heading_weight", "options": [ { "value": "theme", "label": "t:won.options.weight_theme" }, { "value": "400", "label": "t:won.options.weight_normal" }, { "value": "500", "label": "t:won.options.weight_medium" }, { "value": "600", "label": "t:won.options.weight_semibold" }, { "value": "700", "label": "t:won.options.weight_bold" }, { "value": "800", "label": "t:won.options.weight_extrabold" } ], "default": "theme" },
+    { "type": "select", "id": "letter_spacing", "label": "t:won.settings.letter_spacing", "info": "t:won.info.letter_spacing", "options": [ { "value": "theme", "label": "t:won.options.ls_theme" }, { "value": "tight", "label": "t:won.options.ls_tight" }, { "value": "normal", "label": "t:won.options.ls_normal" }, { "value": "wide", "label": "t:won.options.ls_wide" }, { "value": "wider", "label": "t:won.options.ls_wider" } ], "default": "theme" },
+    { "type": "select", "id": "line_height", "label": "t:won.settings.line_height", "info": "t:won.info.line_height", "options": [ { "value": "theme", "label": "t:won.options.lh_theme" }, { "value": "tight", "label": "t:won.options.lh_tight" }, { "value": "normal", "label": "t:won.options.lh_normal" }, { "value": "relaxed", "label": "t:won.options.lh_relaxed" } ], "default": "theme" },
+    { "type": "select", "id": "text_transform", "label": "t:won.settings.text_transform", "info": "t:won.info.text_transform", "options": [ { "value": "none", "label": "t:won.options.tt_none" }, { "value": "uppercase", "label": "t:won.options.tt_uppercase" }, { "value": "capitalize", "label": "t:won.options.tt_capitalize" } ], "default": "none" },
+    { "type": "select", "id": "animate_in", "label": "t:won.settings.animate_in", "info": "t:won.info.animate_in", "options": [ { "value": "none", "label": "t:won.options.anim_none" }, { "value": "fade", "label": "t:won.options.anim_fade" }, { "value": "slide", "label": "t:won.options.anim_slide" }, { "value": "scale", "label": "t:won.options.anim_scale" } ], "default": "none" }
+  ],
+  "$tier3_about": "Power layer — hidden behind the `show_advanced` toggle (disclosure: an untouched merchant never sees these). Raw overrides, all pure-var + no-op by default. `custom_shadow` accepts a raw CSS box-shadow string and overrides the Shadow select. Soft-guardrail note is a static paragraph; the DYNAMIC low-contrast warning is snippets/won-contrast-guard.liquid, rendered editor-only next to each section root (never blocks save).",
+  "tier3": [
+    { "type": "header", "content": "t:won.headers.advanced" },
+    { "type": "paragraph", "content": "t:won.info.advanced_about" },
+    { "type": "checkbox", "id": "show_advanced", "label": "t:won.settings.show_advanced", "info": "t:won.info.show_advanced", "default": false },
+    { "type": "range", "id": "pad_inline", "label": "t:won.settings.pad_inline", "info": "t:won.info.pad_inline", "min": 0, "max": 120, "step": 4, "unit": "px", "default": 0, "visible_if": "{{ section.settings.show_advanced }}" },
+    { "type": "range", "id": "section_opacity", "label": "t:won.settings.section_opacity", "info": "t:won.info.section_opacity", "min": 20, "max": 100, "step": 5, "unit": "%", "default": 100, "visible_if": "{{ section.settings.show_advanced }}" },
+    { "type": "text", "id": "custom_shadow", "label": "t:won.settings.custom_shadow", "info": "t:won.info.custom_shadow", "visible_if": "{{ section.settings.show_advanced }}" }
+  ]
+}

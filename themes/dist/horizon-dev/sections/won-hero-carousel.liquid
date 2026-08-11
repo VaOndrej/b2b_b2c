@@ -8,14 +8,15 @@
 {%- assign s = section.settings -%}
 <section
   class="won-section color-{{ s.color_scheme }}"
-  style="{% render 'won-spacing', settings: s %}"
+  style="{% render 'won-style-vars', settings: s %}"
   data-testid="won-hero-carousel-section"
 >
+  {% render 'won-guard', settings: s %}
   <div
     class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-hero won-hero--slider{% if s.layout == 'peek' %} won-hero--peek{% endif %}"
     style="--won-hero-min: {{ s.min_height }}px; --won-hero-gap: {{ s.gap }}px; --won-hero-peek: {{ s.columns_mobile }}; --won-hero-slide: {{ s.slide_width }}%;"
   >
-    <won-carousel class="won-hero__carousel"{% if s.autoplay %} data-autoplay="{{ s.autoplay_interval }}"{% endif %}><div class="won-hero__track" data-won-track>
+    <won-carousel class="won-hero__carousel" data-won-loop="desktop"{% if s.autoplay %} data-autoplay="{{ s.autoplay_interval }}"{% endif %}><div class="won-hero__track" data-won-track>
         {% content_for 'blocks' %}
       </div>
       {%- if s.show_arrows -%}
@@ -37,68 +38,633 @@
 {
   "name": "t:won.names.hero_carousel",
   "tag": "section",
-  "disabled_on": { "groups": ["header", "footer"] },
+  "disabled_on": {
+    "groups": [
+      "header",
+      "footer"
+    ]
+  },
   "max_blocks": 8,
-  "blocks": [{ "type": "won-slide" }, { "type": "@theme" }, { "type": "@app" }],
-  "settings": [
-    { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 200, "max": 800, "step": 20, "unit": "px", "default": 520 },
+  "blocks": [
     {
-      "type": "select", "id": "layout", "label": "t:won.settings.hero_slider_layout", "info": "t:won.info.hero_slider_layout",
+      "type": "won-slide"
+    },
+    {
+      "type": "@theme"
+    },
+    {
+      "type": "@app"
+    }
+  ],
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:won.info.hero_carousel_about"
+    },
+    {
+      "type": "range",
+      "id": "min_height",
+      "label": "t:won.settings.min_height",
+      "min": 200,
+      "max": 800,
+      "step": 20,
+      "unit": "px",
+      "default": 520
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "t:won.settings.hero_slider_layout",
+      "info": "t:won.info.hero_slider_layout",
       "options": [
-        { "value": "fill", "label": "t:won.options.hero_fill" },
-        { "value": "peek", "label": "t:won.options.hero_peek" }
+        {
+          "value": "fill",
+          "label": "t:won.options.hero_fill"
+        },
+        {
+          "value": "peek",
+          "label": "t:won.options.hero_peek"
+        }
       ],
       "default": "fill"
     },
-    { "type": "range", "id": "slide_width", "label": "t:won.settings.slide_width", "info": "t:won.info.slide_width", "min": 50, "max": 85, "step": 1, "unit": "%", "default": 64, "visible_if": "{{ section.settings.layout == 'peek' }}" },
-    { "type": "header", "content": "t:won.headers.controls" },
-    { "type": "checkbox", "id": "show_arrows", "label": "t:won.settings.show_arrows", "default": true },
-    { "type": "checkbox", "id": "show_progress", "label": "t:won.settings.show_progress", "default": true },
-    { "type": "checkbox", "id": "autoplay", "label": "t:won.settings.autoplay", "default": true },
-    { "type": "range", "id": "autoplay_interval", "label": "t:won.settings.autoplay_interval", "min": 2, "max": 10, "step": 1, "unit": "s", "default": 6, "visible_if": "{{ section.settings.autoplay }}" },
     {
-      "type": "select", "id": "columns_mobile", "label": "t:won.settings.columns_mobile",
+      "type": "range",
+      "id": "slide_width",
+      "label": "t:won.settings.slide_width",
+      "info": "t:won.info.slide_width",
+      "min": 50,
+      "max": 85,
+      "step": 1,
+      "unit": "%",
+      "default": 64,
+      "visible_if": "{{ section.settings.layout == 'peek' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.controls"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_arrows",
+      "label": "t:won.settings.show_arrows",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_progress",
+      "label": "t:won.settings.show_progress",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "autoplay",
+      "label": "t:won.settings.autoplay",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "autoplay_interval",
+      "label": "t:won.settings.autoplay_interval",
+      "min": 2,
+      "max": 10,
+      "step": 1,
+      "unit": "s",
+      "default": 6,
+      "visible_if": "{{ section.settings.autoplay }}"
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "t:won.settings.columns_mobile",
       "options": [
-        { "value": "1", "label": "1" },
-        { "value": "1.15", "label": "t:won.options.one_peek" }
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "1.15",
+          "label": "t:won.options.one_peek"
+        }
       ],
       "default": "1"
     },
-    { "type": "range", "id": "gap", "label": "t:won.settings.gap", "min": 0, "max": 32, "step": 2, "unit": "px", "default": 0 },
-    { "type": "header", "content": "t:won.headers.appearance" },
-    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
     {
-      "type": "select", "id": "section_width", "label": "t:won.settings.section_width",
+      "type": "range",
+      "id": "gap",
+      "label": "t:won.settings.gap",
+      "min": 0,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "t:won.settings.section_width",
       "options": [
-        { "value": "page", "label": "t:won.options.width_page" },
-        { "value": "full", "label": "t:won.options.width_full" }
+        {
+          "value": "page",
+          "label": "t:won.options.width_page"
+        },
+        {
+          "value": "full",
+          "label": "t:won.options.width_full"
+        }
       ],
       "default": "full"
     },
-    { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" },
-    { "type": "header", "content": "t:won.headers.padding" },
-    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 0 },
-    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 0 }
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "info": "t:won.info.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:won.settings.border_width",
+      "info": "t:won.info.border_width",
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border_style",
+      "label": "t:won.settings.border_style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "t:won.options.solid"
+        },
+        {
+          "value": "dashed",
+          "label": "t:won.options.dashed"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "t:won.settings.border_color",
+      "info": "t:won.info.border_color",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "select",
+      "id": "shadow",
+      "label": "t:won.settings.shadow",
+      "info": "t:won.info.shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "sm",
+          "label": "t:won.options.shadow_sm"
+        },
+        {
+          "value": "md",
+          "label": "t:won.options.shadow_md"
+        },
+        {
+          "value": "lg",
+          "label": "t:won.options.shadow_lg"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_color",
+      "info": "t:won.info.accent_color"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "t:won.settings.bg_color",
+      "info": "t:won.info.bg_color"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "t:won.settings.text_color",
+      "info": "t:won.info.text_color"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.type_motion"
+    },
+    {
+      "type": "select",
+      "id": "heading_weight",
+      "label": "t:won.settings.heading_weight",
+      "info": "t:won.info.heading_weight",
+      "options": [
+        {
+          "value": "theme",
+          "label": "t:won.options.weight_theme"
+        },
+        {
+          "value": "400",
+          "label": "t:won.options.weight_normal"
+        },
+        {
+          "value": "500",
+          "label": "t:won.options.weight_medium"
+        },
+        {
+          "value": "600",
+          "label": "t:won.options.weight_semibold"
+        },
+        {
+          "value": "700",
+          "label": "t:won.options.weight_bold"
+        },
+        {
+          "value": "800",
+          "label": "t:won.options.weight_extrabold"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "letter_spacing",
+      "label": "t:won.settings.letter_spacing",
+      "info": "t:won.info.letter_spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "t:won.options.ls_theme"
+        },
+        {
+          "value": "tight",
+          "label": "t:won.options.ls_tight"
+        },
+        {
+          "value": "normal",
+          "label": "t:won.options.ls_normal"
+        },
+        {
+          "value": "wide",
+          "label": "t:won.options.ls_wide"
+        },
+        {
+          "value": "wider",
+          "label": "t:won.options.ls_wider"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "line_height",
+      "label": "t:won.settings.line_height",
+      "info": "t:won.info.line_height",
+      "options": [
+        {
+          "value": "theme",
+          "label": "t:won.options.lh_theme"
+        },
+        {
+          "value": "tight",
+          "label": "t:won.options.lh_tight"
+        },
+        {
+          "value": "normal",
+          "label": "t:won.options.lh_normal"
+        },
+        {
+          "value": "relaxed",
+          "label": "t:won.options.lh_relaxed"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "text_transform",
+      "label": "t:won.settings.text_transform",
+      "info": "t:won.info.text_transform",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.tt_none"
+        },
+        {
+          "value": "uppercase",
+          "label": "t:won.options.tt_uppercase"
+        },
+        {
+          "value": "capitalize",
+          "label": "t:won.options.tt_capitalize"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "select",
+      "id": "animate_in",
+      "label": "t:won.settings.animate_in",
+      "info": "t:won.info.animate_in",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.anim_none"
+        },
+        {
+          "value": "fade",
+          "label": "t:won.options.anim_fade"
+        },
+        {
+          "value": "slide",
+          "label": "t:won.options.anim_slide"
+        },
+        {
+          "value": "scale",
+          "label": "t:won.options.anim_scale"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.advanced"
+    },
+    {
+      "type": "paragraph",
+      "content": "t:won.info.advanced_about"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_advanced",
+      "label": "t:won.settings.show_advanced",
+      "info": "t:won.info.show_advanced",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "pad_inline",
+      "label": "t:won.settings.pad_inline",
+      "info": "t:won.info.pad_inline",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.show_advanced }}"
+    },
+    {
+      "type": "range",
+      "id": "section_opacity",
+      "label": "t:won.settings.section_opacity",
+      "info": "t:won.info.section_opacity",
+      "min": 20,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ section.settings.show_advanced }}"
+    },
+    {
+      "type": "text",
+      "id": "custom_shadow",
+      "label": "t:won.settings.custom_shadow",
+      "info": "t:won.info.custom_shadow",
+      "visible_if": "{{ section.settings.show_advanced }}"
+    }
   ],
   "presets": [
     {
-      "name": "t:won.presets.hero_carousel", "category": "t:won.categories.hero",
-      "settings": { "min_height": 520, "section_width": "full", "show_arrows": true, "show_progress": true, "autoplay": true, "autoplay_interval": 6 },
+      "name": "t:won.presets.hero_carousel",
+      "category": "t:won.categories.hero",
+      "settings": {
+        "min_height": 520,
+        "section_width": "full",
+        "show_arrows": true,
+        "show_progress": true,
+        "autoplay": true,
+        "autoplay_interval": 6
+      },
       "blocks": [
-        { "type": "won-slide", "settings": { "eyebrow": "Hydration", "heading": "<p>When water isn't enough</p>", "heading_size_desktop": 52, "text": "<p>Replace key minerals lost in the heat.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-1.png", "media_position": "background", "alignment": "left", "min_height": 520 } },
-        { "type": "won-slide", "settings": { "eyebrow": "Deal", "heading": "<p>Creatine −20%</p>", "heading_size_desktop": 52, "text": "<p>Strength and performance, every day.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-2.png", "media_position": "background", "alignment": "left", "min_height": 520 } },
-        { "type": "won-slide", "settings": { "eyebrow": "Bestseller", "heading": "<p>Whey with 21g protein</p>", "heading_size_desktop": 52, "text": "<p>Selected flavours at a great price.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-3.png", "media_position": "background", "alignment": "left", "min_height": 520 } },
-        { "type": "won-slide", "settings": { "eyebrow": "New", "heading": "<p>New: BCAA</p>", "heading_size_desktop": 52, "text": "<p>Recovery after every workout.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-4.png", "media_position": "background", "alignment": "left", "min_height": 520 } }
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "Hydration",
+            "heading": "<p>When water isn't enough</p>",
+            "heading_size_desktop": 52,
+            "text": "<p>Replace key minerals lost in the heat.</p>",
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-promo-1.png",
+            "media_position": "background",
+            "alignment": "left",
+            "min_height": 520
+          }
+        },
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "Deal",
+            "heading": "<p>Creatine −20%</p>",
+            "heading_size_desktop": 52,
+            "text": "<p>Strength and performance, every day.</p>",
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-promo-2.png",
+            "media_position": "background",
+            "alignment": "left",
+            "min_height": 520
+          }
+        },
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "Bestseller",
+            "heading": "<p>Whey with 21g protein</p>",
+            "heading_size_desktop": 52,
+            "text": "<p>Selected flavours at a great price.</p>",
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-promo-3.png",
+            "media_position": "background",
+            "alignment": "left",
+            "min_height": 520
+          }
+        },
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "New",
+            "heading": "<p>New: BCAA</p>",
+            "heading_size_desktop": 52,
+            "text": "<p>Recovery after every workout.</p>",
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-promo-4.png",
+            "media_position": "background",
+            "alignment": "left",
+            "min_height": 520
+          }
+        }
       ]
     },
     {
-      "name": "t:won.presets.hero_peek", "category": "t:won.categories.hero",
-      "settings": { "layout": "peek", "slide_width": 64, "min_height": 460, "gap": 20, "section_width": "page", "show_arrows": true, "show_progress": false, "autoplay": false },
+      "name": "t:won.presets.hero_peek",
+      "category": "t:won.categories.hero",
+      "settings": {
+        "layout": "peek",
+        "slide_width": 64,
+        "min_height": 460,
+        "gap": 20,
+        "section_width": "page",
+        "show_arrows": true,
+        "show_progress": false,
+        "autoplay": false
+      },
       "blocks": [
-        { "type": "won-slide", "settings": { "eyebrow": "Hydration", "heading": "<p>When water isn't enough</p>", "heading_size_desktop": 44, "text": "<p>Replace key minerals lost in the heat.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-1.png", "media_position": "background", "alignment": "left", "min_height": 460, "corner_radius": 20 } },
-        { "type": "won-slide", "settings": { "eyebrow": "Deal", "heading": "<p>Creatine −20%</p>", "heading_size_desktop": 44, "text": "<p>Strength and performance, every day.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-2.png", "media_position": "background", "alignment": "left", "min_height": 460, "corner_radius": 20 } },
-        { "type": "won-slide", "settings": { "eyebrow": "Bestseller", "heading": "<p>Whey with 21g protein</p>", "heading_size_desktop": 44, "text": "<p>Selected flavours at a great price.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-3.png", "media_position": "background", "alignment": "left", "min_height": 460, "corner_radius": 20 } },
-        { "type": "won-slide", "settings": { "eyebrow": "New", "heading": "<p>New: BCAA</p>", "heading_size_desktop": 44, "text": "<p>Recovery after every workout.</p>", "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary", "media_type": "image", "image_asset": "won-promo-4.png", "media_position": "background", "alignment": "left", "min_height": 460, "corner_radius": 20 } }
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "Hydration",
+            "heading": "<p>When water isn't enough</p>",
+            "heading_size_desktop": 44,
+            "text": "<p>Replace key minerals lost in the heat.</p>",
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-promo-1.png",
+            "media_position": "background",
+            "alignment": "left",
+            "min_height": 460,
+            "corner_radius": 20
+          }
+        },
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "Deal",
+            "heading": "<p>Creatine −20%</p>",
+            "heading_size_desktop": 44,
+            "text": "<p>Strength and performance, every day.</p>",
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-promo-2.png",
+            "media_position": "background",
+            "alignment": "left",
+            "min_height": 460,
+            "corner_radius": 20
+          }
+        },
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "Bestseller",
+            "heading": "<p>Whey with 21g protein</p>",
+            "heading_size_desktop": 44,
+            "text": "<p>Selected flavours at a great price.</p>",
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-promo-3.png",
+            "media_position": "background",
+            "alignment": "left",
+            "min_height": 460,
+            "corner_radius": 20
+          }
+        },
+        {
+          "type": "won-slide",
+          "settings": {
+            "eyebrow": "New",
+            "heading": "<p>New: BCAA</p>",
+            "heading_size_desktop": 44,
+            "text": "<p>Recovery after every workout.</p>",
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-promo-4.png",
+            "media_position": "background",
+            "alignment": "left",
+            "min_height": 460,
+            "corner_radius": 20
+          }
+        }
       ]
     }
   ]

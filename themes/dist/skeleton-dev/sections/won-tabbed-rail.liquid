@@ -1,0 +1,410 @@
+{%- comment -%}
+  won-tabbed-rail — a product rail with a segmented SOURCE SWITCH (tabs), e.g.
+  Bestsellers ⇄ New Arrivals (pebble / stack / flow). Each `tab` local block is a
+  collection; the shared won-panels.js <won-tabset> builds the tab nav from each
+  panel's data-title and toggles panels. Rails are plain CSS scroll-snap (global
+  .won-pcard cards) — no won-carousel.js dependency, so a hidden panel binding at
+  0 width is a non-issue. Self-contained styles (the tabset nav classes are hard-
+  coded by won-panels.js, so their styles are duplicated here on purpose).
+{%- endcomment -%}
+
+{%- assign s = section.settings -%}
+<section
+  class="won-section won-tabrail-sec color-{{ s.color_scheme }}"
+  style="{% render 'won-style-vars', settings: s %}"
+  data-testid="won-tabbed-rail-section"
+>
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-tabrail-wrap">
+    {%- if s.heading != blank -%}
+      <h2
+        class="won-heading won-tabrail__heading"
+        style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px;"
+      >
+        {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
+      </h2>
+    {%- endif -%}
+
+    <won-tabset
+      class="won-tabrail"
+      style="--won-cols-lg: {{ s.columns_desktop }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-sm: {{ s.columns_mobile }}; --won-gap: {{ s.gap }}px;"
+    >
+      <div class="won-panels__nav" role="tablist"></div>
+      <div class="won-panels__panels">
+        {%- for block in section.blocks -%}
+          {%- assign bs = block.settings -%}
+          {%- assign col = collections[bs.collection] -%}
+          <div
+            class="won-panels__panel won-tabrail__panel"
+            id="won-panelpanel-{{ block.id }}"
+            role="tabpanel"
+            data-title="{{ bs.title | default: col.title | default: 'Tab' | escape }}"
+            {{ block.shopify_attributes }}
+          >
+            {%- if col != blank and col.products.size > 0 -%}
+              <div class="won-tabrail__track">
+                {%- for product in col.products limit: bs.products_limit -%}
+                  <div class="won-tabrail__item">
+                    {% render 'won-product-card', product: product, aspect: s.card_aspect %}
+                  </div>
+                {%- endfor -%}
+              </div>
+            {%- else -%}
+              <p class="won-tabrail__empty">{{ 'won.a11y.no_products' | t }}</p>
+            {%- endif -%}
+          </div>
+        {%- endfor -%}
+      </div>
+    </won-tabset>
+  </div>
+</section>
+
+<script src="{{ 'won-panels.js' | asset_url }}" defer></script>
+
+{% stylesheet %}
+  .won-tabrail-wrap { display: flex; flex-direction: column; gap: var(--won-space-4); }
+  .won-tabrail__heading { font-size: var(--won-h-size-m, 1.6rem); }
+
+  /* Tabset nav — won-panels.js creates buttons with the .won-panels__tab class,
+     so these rules must exist even when no won-panels section is on the page. */
+  .won-tabrail .won-panels__nav {
+    display: flex; flex-wrap: wrap; gap: var(--won-space-2);
+    border-block-end: 1px solid var(--won-border); margin-block-end: var(--won-space-4);
+  }
+  .won-tabrail .won-panels__nav:empty { display: none; border: 0; margin: 0; }
+  .won-tabrail .won-panels__tab {
+    padding: var(--won-space-3) var(--won-space-4); border: 0; background: transparent; color: var(--won-fg);
+    font: inherit; font-weight: 600; cursor: pointer; border-block-end: 2px solid transparent;
+    margin-block-end: -1px; min-block-size: 44px;
+  }
+  .won-tabrail .won-panels__tab[aria-selected="true"] { color: var(--won-accent); border-block-end-color: var(--won-accent); }
+  .won-tabrail__panel[hidden] { display: none; }
+
+  /* Rail — plain scroll-snap; cards are the global .won-pcard. */
+  .won-tabrail__track {
+    display: flex; gap: var(--won-gap, 16px);
+    overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+    scrollbar-width: none; --won-cols-cur: var(--won-cols-sm, 1); padding-bottom: 2px;
+  }
+  .won-tabrail__track::-webkit-scrollbar { display: none; }
+  .won-tabrail__item {
+    scroll-snap-align: start;
+    flex: 0 0 calc((100% - (var(--won-cols-cur) - 1) * var(--won-gap, 16px)) / var(--won-cols-cur));
+  }
+  .won-tabrail__empty { opacity: 0.7; }
+  @media (prefers-reduced-motion: reduce) { .won-tabrail__track { scroll-behavior: auto; } }
+  @media (min-width: 768px) { .won-tabrail__track { --won-cols-cur: var(--won-cols-md, 2); } }
+  @media (min-width: 1024px) { .won-tabrail__track { --won-cols-cur: var(--won-cols-lg, 4); } }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.tabbed_rail",
+  "tag": "section",
+  "disabled_on": {
+    "groups": [
+      "header",
+      "footer"
+    ]
+  },
+  "max_blocks": 6,
+  "blocks": [
+    {
+      "type": "tab",
+      "name": "t:won.names.tabrail_tab",
+      "settings": [
+        {
+          "type": "collection",
+          "id": "collection",
+          "label": "t:won.settings.collection"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "t:won.settings.title",
+          "info": "t:won.info.tabrail_title"
+        },
+        {
+          "type": "range",
+          "id": "products_limit",
+          "label": "t:won.settings.products_limit",
+          "min": 2,
+          "max": 24,
+          "step": 1,
+          "default": 8
+        }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:won.info.tabbed_rail_about"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.heading"
+    },
+    {
+      "type": "richtext",
+      "id": "heading",
+      "label": "t:won.settings.heading",
+      "default": "t:won.defaults.tabbed_rail_heading"
+    },
+    {
+      "type": "range",
+      "id": "heading_size_desktop",
+      "label": "t:won.settings.heading_size_desktop",
+      "min": 20,
+      "max": 72,
+      "step": 2,
+      "unit": "px",
+      "default": 34
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "label": "t:won.settings.heading_size_mobile",
+      "min": 16,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "range",
+      "id": "columns_desktop",
+      "label": "t:won.settings.columns_desktop",
+      "min": 2,
+      "max": 6,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "columns_tablet",
+      "label": "t:won.settings.columns_tablet",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 2
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "t:won.settings.columns_mobile",
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "1.2",
+          "label": "t:won.options.one_peek"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        }
+      ],
+      "default": "1.2"
+    },
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "t:won.settings.gap",
+      "min": 0,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "select",
+      "id": "card_aspect",
+      "label": "t:won.settings.card_aspect",
+      "options": [
+        {
+          "value": "natural",
+          "label": "t:won.options.aspect_natural"
+        },
+        {
+          "value": "square",
+          "label": "t:won.options.aspect_square"
+        },
+        {
+          "value": "portrait",
+          "label": "t:won.options.aspect_portrait"
+        },
+        {
+          "value": "landscape",
+          "label": "t:won.options.aspect_landscape"
+        }
+      ],
+      "default": "portrait"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "t:won.settings.section_width",
+      "options": [
+        {
+          "value": "page",
+          "label": "t:won.options.width_page"
+        },
+        {
+          "value": "full",
+          "label": "t:won.options.width_full"
+        }
+      ],
+      "default": "page"
+    },
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "info": "t:won.info.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:won.settings.border_width",
+      "info": "t:won.info.border_width",
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border_style",
+      "label": "t:won.settings.border_style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "t:won.options.solid"
+        },
+        {
+          "value": "dashed",
+          "label": "t:won.options.dashed"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "t:won.settings.border_color",
+      "info": "t:won.info.border_color",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "select",
+      "id": "shadow",
+      "label": "t:won.settings.shadow",
+      "info": "t:won.info.shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "sm",
+          "label": "t:won.options.shadow_sm"
+        },
+        {
+          "value": "md",
+          "label": "t:won.options.shadow_md"
+        },
+        {
+          "value": "lg",
+          "label": "t:won.options.shadow_lg"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_color",
+      "info": "t:won.info.accent_color"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:won.presets.tabbed_rail",
+      "category": "t:won.categories.products",
+      "settings": {
+        "heading": "<p>Shop the range</p>",
+        "columns_desktop": 4
+      },
+      "blocks": [
+        {
+          "type": "tab"
+        },
+        {
+          "type": "tab"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

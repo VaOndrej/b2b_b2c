@@ -61,6 +61,11 @@ model ToastAppConfig {
   notifications Json?
   // MVP10 exclusions: pages / URL patterns where the app must not run.
   exclusions Json?
+  // MVP13d: benchmarks are opt-OUT (aggregate is not PII). True = exclude this
+  // shop from the cross-store aggregate AND from seeing benchmarks.
+  benchmarkOptOut Boolean @default(false)
+  // MVP13d: merchant self-selected industry for "stores like yours" cohorting.
+  industry   String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
@@ -107,16 +112,72 @@ model SaleEvent {
   @@index([shop, customerId])
 }
 
-// MVP13 — toast lifecycle analytics. Raw impression/click/dismiss/undo events
-// per rule (+ A/B variant), aggregated on read (see @won/core/toasts/analytics).
-// No PII; a toast is an assist, not attributed revenue. Retention capped.
+// MVP13 — RAW toast lifecycle analytics (short-lived; 30-day retention). One row
+// per emitted atom (shown/visible/read_through/hover/click/dismiss/auto_fade/
+// suppressed — plus legacy impression/click/dismiss/undo). `dims` is the scrubbed
+// PII-free dimension bag (see @won/core/toasts/insights.scrubEvent); the daily
+// ToastRollup below is what the dashboard reads. No PII; a toast is an assist,
+// not attributed revenue. Purged on uninstall/redact.
 model AnalyticsEvent {
   id      String   @id @default(cuid())
   shop    String
   ruleId  String
   variant Int      @default(0)
-  type    String // impression | click | dismiss | undo
+  type    String // atom: shown|visible|read_through|hover|click|dismiss|auto_fade|suppressed (+ legacy)
+  // MVP13a: scrubbed dimension bag (type/device/pageType/customerState/…), never PII.
+  dims    Json?
+  // MVP13a: on-screen time in ms (present on dismiss/auto_fade).
+  dwellMs Int?
   at      DateTime @default(now())
 
   @@index([shop, at])
+}
+
+// MVP13c — experiments. Every config change can ship as an experiment: `variant`
+// config runs for a share of visitors, `control` (the pre-change config) for the
+// rest, for `minDays`..`maxDays` or until Bayesian significance. `holdoutPercent`
+// carves out a cohort shown NO toasts (the only honest revenue proof). `baseline`
+// stores the guardrail reference metrics. `audit` is the readable outcome log.
+// Only ONE active experiment per shop (queue). Purged on uninstall/redact.
+model Experiment {
+  id             String   @id @default(cuid())
+  shop           String
+  name           String
+  status         String   @default("running") // running | promoted | reverted | expired
+  // Snapshot of the config BEFORE the change (restore target on rollback/expire).
+  control        Json
+  // The proposed config under test.
+  variant        Json
+  variantPercent Int      @default(50)
+  holdoutPercent Int      @default(0)
+  gatingMode     String   @default("test_first") // test_first | apply_now
+  // Guardrail baseline metrics captured at start (see @won/core experiment-engine).
+  baseline       Json?
+  // Human-readable audit entries (started/promoted/reverted/expired/guardrail).
+  audit          Json?
+  source         String   @default("manual") // manual | ai | auto_pilot
+  createdAt      DateTime @default(now())
+  decidedAt      DateTime?
+
+  @@index([shop, status])
+}
+
+// MVP13a — DAILY rollup (365-day retention). The dashboard and AI advisor read
+// THIS, never raw rows. One row per (shop, date, type, segment); `counters` holds
+// the RollupCounters blob from @won/core/toasts/insights. Upserted as events
+// ingest. Purged on uninstall/redact.
+model ToastRollup {
+  id            String   @id @default(cuid())
+  shop          String
+  date          String // YYYY-MM-DD (UTC)
+  type          String
+  device        String   @default("unknown")
+  pageType      String   @default("unknown")
+  customerState String   @default("unknown")
+  abVariant     Int      @default(0)
+  counters      Json
+  updatedAt     DateTime @updatedAt
+
+  @@unique([shop, date, type, device, pageType, customerState, abVariant])
+  @@index([shop, date])
 }

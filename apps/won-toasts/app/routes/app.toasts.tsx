@@ -31,7 +31,7 @@ import { NotificationPreview } from "../components/NotificationPreview";
 import { AnimatedToastPreview } from "../components/AnimatedToastPreview";
 import { StorefrontPreview } from "../components/StorefrontPreview";
 import { ProFrame } from "../components/ProFrame";
-import { SegmentedNav } from "../components/SegmentedNav";
+import { ToastLauncher } from "../components/ToastLauncher";
 import { MessageMatrix } from "../components/MessageMatrix";
 import { mergeMessages } from "../lib/localization";
 import { TypeStyleFields } from "../components/TypeStyleFields";
@@ -130,6 +130,10 @@ function toCents(value: FormDataEntryValue | null): number {
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
 }
 
+// How many per-currency threshold rows the free-shipping editor renders (existing
+// entries + blanks to add more). Markets caps at 50; this covers real stores.
+const MS_CURRENCY_ROWS = 6;
+
 const RECIPE_KEYS: ToastTypeKey[] = [
   "cart",
   "countdown",
@@ -192,11 +196,25 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
   const messages = mergeMessages(config.messages, messageEdits);
 
+  // Per-currency free-shipping thresholds (multi-currency / Markets stores). The
+  // shopper's cart subtotal is in its presentment currency, so a CZK threshold
+  // must not be compared against a EUR cart. Blank rows are ignored; core
+  // sanitizeMilestones re-validates currency codes + amounts.
+  const shipThresholds: Record<string, number> = {};
+  for (let i = 0; i < MS_CURRENCY_ROWS; i++) {
+    const code = String(form.get(`ms_ship_cur_${i}`) ?? "").trim().toUpperCase();
+    const raw = form.get(`ms_ship_amt_${i}`);
+    if (!/^[A-Z]{3}$/.test(code)) continue;
+    if (raw == null || String(raw).trim() === "") continue;
+    shipThresholds[code] = toCents(raw);
+  }
+
   const milestones: MilestoneRuleConfig[] = [
     {
       id: "free_shipping", kind: "free_shipping",
       enabled: form.get("ms_ship_enabled") === "on",
       thresholdCents: toCents(form.get("ms_ship_threshold")),
+      ...(Object.keys(shipThresholds).length ? { thresholds: shipThresholds } : {}),
       label: String(form.get("ms_ship_label") ?? "free shipping").slice(0, 80),
     },
     {
@@ -364,21 +382,36 @@ function MessageField({
   );
 }
 
+// Outcome groups (Wave-0 decision): the picker is organised by what each toast
+// achieves for the merchant, not as a flat list, so "which toasts do I have"
+// reads as "what am I doing for shoppers". Order = how a merchant thinks about
+// the funnel: the cart core first, then urgency, then social proof, then their
+// own message.
+type RecipeGroup = "cart" | "urgency" | "social" | "message";
+
 interface RecipeMeta {
   key: string;
   label: string;
   plan: "free" | "pro";
   blurb: string;
+  group: RecipeGroup;
 }
 
 const RECIPES: RecipeMeta[] = [
-  { key: "cart", label: "Cart toasts", plan: "free", blurb: "The add/remove/update toasts — the core of the app." },
-  { key: "countdown", label: "Countdown timer", plan: "free", blurb: "A truthful sale or deadline timer." },
-  { key: "announcement", label: "Announcement", plan: "free", blurb: "Your own message — a sale, a shipping cutoff." },
-  { key: "stock.low", label: "Low-stock urgency", plan: "pro", blurb: "“Only N left” — from real inventory." },
-  { key: "cart.activity", label: "Cart activity", plan: "pro", blurb: "“N people added this recently” — real counter." },
-  { key: "order.summary", label: "Order summary", plan: "pro", blurb: "“N orders this week” — from real orders." },
-  { key: "order.created", label: "Recent sales", plan: "pro", blurb: "“Anna from Praha bought …” — real orders only." },
+  { key: "cart", label: "Cart toasts", plan: "free", group: "cart", blurb: "The add/remove/update toasts — the core of the app." },
+  { key: "countdown", label: "Countdown timer", plan: "free", group: "urgency", blurb: "A truthful sale or deadline timer." },
+  { key: "stock.low", label: "Low-stock urgency", plan: "pro", group: "urgency", blurb: "“Only N left” — from real inventory." },
+  { key: "cart.activity", label: "Cart activity", plan: "pro", group: "social", blurb: "“N people added this recently” — real counter." },
+  { key: "order.summary", label: "Order summary", plan: "pro", group: "social", blurb: "“N orders this week” — from real orders." },
+  { key: "order.created", label: "Recent sales", plan: "pro", group: "social", blurb: "“Anna from Praha bought …” — real orders only." },
+  { key: "announcement", label: "Announcement", plan: "free", group: "message", blurb: "Your own message — a sale, a shipping cutoff." },
+];
+
+const RECIPE_GROUPS: { id: RecipeGroup; title: string; caption: string }[] = [
+  { id: "cart", title: "Cart & checkout", caption: "React the moment something changes in the cart." },
+  { id: "urgency", title: "Urgency & scarcity", caption: "Honest nudges that a deal or stock won’t last." },
+  { id: "social", title: "Social proof", caption: "Show real activity from real orders." },
+  { id: "message", title: "Your own message", caption: "Say anything — a sale, a shipping cutoff." },
 ];
 
 export default function ToastsRoute() {
@@ -466,6 +499,17 @@ export default function ToastsRoute() {
   const evergreenHours = countdown?.evergreenMs ? String(countdown.evergreenMs / 3_600_000) : "24";
   const ship = config.milestones.find((m) => m.kind === "free_shipping");
   const gift = config.milestones.find((m) => m.kind === "gift");
+
+  // Per-currency free-shipping rows: existing entries first, padded with blanks
+  // so the merchant can add currencies for a multi-currency (Markets) store.
+  const shipCurrencyRows: { code: string; amount: string }[] = Object.entries(
+    ship?.thresholds ?? {},
+  )
+    .slice(0, MS_CURRENCY_ROWS)
+    .map(([code, cents]) => ({ code, amount: String(cents / 100) }));
+  while (shipCurrencyRows.length < MS_CURRENCY_ROWS) {
+    shipCurrencyRows.push({ code: "", amount: "" });
+  }
 
   const enabledOf: Record<string, boolean> = {
     cart: true,
@@ -585,9 +629,11 @@ export default function ToastsRoute() {
     <s-page heading="Toasts" inlineSize="large">
       <s-section>
         <s-paragraph>
-          Everything Won Toasts can show, in one place. Pick a toast on the left to
-          set it up — each uses <s-text type="strong">real data</s-text> and obeys
-          your frequency &amp; quiet-mode settings.
+          Everything Won Toasts can show, grouped by what it does for shoppers.
+          Each toast below shows whether it’s <s-text type="strong">on</s-text>{" "}
+          right now — pick one to set it up. Every toast uses{" "}
+          <s-text type="strong">real data</s-text> and obeys your frequency &amp;
+          quiet-mode settings.
         </s-paragraph>
       </s-section>
 
@@ -599,21 +645,29 @@ export default function ToastsRoute() {
         </s-section>
       ) : null}
 
-      {/* Studio shell picker (doctrine §7b/§3h): shared SegmentedNav — same shape
-          on every config page. Selection = highlighted chip; green "On" = live. */}
-      <SegmentedNav
-        items={RECIPES.map((r) => ({
-          key: r.key,
-          label: r.label,
-          pro: r.plan === "pro",
-          on: enabledOf[r.key],
+      {/* Status-first, outcome-grouped launcher (Wave-0 decision): replaces the
+          flat SegmentedNav so the "list of toasts" leads with what's live and
+          what each toast is for. Selection still drives the editor panel below. */}
+      <ToastLauncher
+        groups={RECIPE_GROUPS.map((g) => ({
+          id: g.id,
+          title: g.title,
+          caption: g.caption,
+          items: RECIPES.filter((r) => r.group === g.id).map((r) => ({
+            key: r.key,
+            label: r.label,
+            blurb: r.blurb,
+            pro: r.plan === "pro",
+            on: enabledOf[r.key],
+          })),
         }))}
         selected={selected}
         onSelect={setSelected}
-        ariaLabel="Toast types"
       />
 
-      <s-grid gridTemplateColumns="minmax(0, 1fr) 340px" gap="large">
+      {/* Preview is the star (§1) — give it the width a full-page app affords,
+          instead of a thin 340px rail with dead space beside a too-wide form. */}
+      <s-grid gridTemplateColumns="minmax(0, 1fr) minmax(340px, 400px)" gap="large">
 
         <Form ref={formRef} method="post" data-save-bar>
           {/* ---- Cart toasts (Free) ---- */}
@@ -650,20 +704,53 @@ export default function ToastsRoute() {
                     extraFor={(key) => {
                       if (key === "shipping")
                         return (
-                          <s-stack direction="inline" gap="base">
-                            <s-money-field
-                              label="Free-shipping threshold"
-                              name="ms_ship_threshold"
-                              value={ship ? String(ship.thresholdCents / 100) : ""}
-                              min={0}
-                              details="The cart total that unlocks free shipping, in your store currency. The real rule lives in your Shopify shipping settings — this only announces it."
-                            />
-                            <s-text-field
-                              label="What to call it"
-                              name="ms_ship_label"
-                              value={ship?.label ?? "free shipping"}
-                              details="Used in the message, e.g. “You’ve got free shipping”."
-                            />
+                          <s-stack direction="block" gap="base">
+                            <s-stack direction="inline" gap="base">
+                              <s-money-field
+                                label="Free-shipping threshold"
+                                name="ms_ship_threshold"
+                                value={ship ? String(ship.thresholdCents / 100) : ""}
+                                min={0}
+                                details="Cart total that unlocks free shipping, in your store's base currency. The real rule lives in your Shopify shipping settings — this only announces it."
+                              />
+                              <s-text-field
+                                label="What to call it"
+                                name="ms_ship_label"
+                                value={ship?.label ?? "free shipping"}
+                                details="Used in the message, e.g. “You’ve got free shipping”."
+                              />
+                            </s-stack>
+                            <details>
+                              <summary>
+                                <s-text type="strong">Selling in more currencies?</s-text>
+                              </summary>
+                              <s-stack direction="block" gap="small-200">
+                                <s-text color="subdued">
+                                  Set the threshold per currency so a shopper paying
+                                  in EUR isn&apos;t measured against your CZK amount.
+                                  Match your real free-shipping rate in each market.
+                                  Currencies left blank use the base amount above.
+                                </s-text>
+                                {shipCurrencyRows.map((row, i) => (
+                                  <s-stack key={i} direction="inline" gap="base">
+                                    <s-text-field
+                                      label="Currency"
+                                      name={`ms_ship_cur_${i}`}
+                                      value={row.code}
+                                      placeholder="EUR"
+                                      maxLength={3}
+                                      details={i === 0 ? "ISO code, e.g. EUR, USD, GBP." : undefined}
+                                    />
+                                    <s-money-field
+                                      label="Threshold"
+                                      name={`ms_ship_amt_${i}`}
+                                      value={row.amount}
+                                      min={0}
+                                    />
+                                  </s-stack>
+                                ))}
+                              </s-stack>
+                            </details>
                           </s-stack>
                         );
                       if (key === "gift")
@@ -689,6 +776,7 @@ export default function ToastsRoute() {
             <s-section heading="Countdown timer">
               <s-stack direction="block" gap="base">
                 <s-badge tone="success">Free</s-badge>
+                <s-paragraph>A truthful sale or deadline timer — either a fixed end date for everyone, or a rolling window that restarts per visitor. It only ever counts to a real deadline.</s-paragraph>
                 <s-switch label="Show a countdown" name="countdown_enabled" checked={countdown?.enabled ?? false} />
                 <s-select label="Counts down to" name="countdown_mode" value={countdownMode}
                   details="Fixed date ends for everyone at once; a rolling window restarts per visitor."

@@ -4,6 +4,7 @@
 // (DOM construction differs by host — theme asset vs React — but the presented
 // content and style tokens are computed once, here, and covered by shared tests.)
 
+import { resolveFontStack } from "./branding.ts";
 import type { ToastCartEvent } from "./cart-events.ts";
 import type { ToastAppConfig, ToastSemanticType, ToastTheme } from "./config.types.ts";
 
@@ -79,13 +80,18 @@ const SHADOWS: Record<ToastTheme["shadow"], string> = {
  */
 export function styleTokensFor(theme: ToastTheme): Record<string, string> {
   const isDark = theme.mode === "dark";
-  const bg =
+  const baseBg =
     theme.mode === "custom" ? theme.colorBg : isDark ? "#1a1f24" : "#ffffff";
+  const bg = theme.gradient
+    ? `linear-gradient(135deg, ${baseBg}, ${theme.gradientColor})`
+    : baseBg;
   const text =
     theme.mode === "custom" ? theme.colorText : isDark ? "#eef1f4" : "#1a1f24";
+  const font = resolveFontStack(theme) ?? "inherit";
   return {
     "--won-bg": bg,
     "--won-text": text,
+    "--won-font": font,
     "--won-radius": `${theme.cornerRadius}px`,
     "--won-width": `${theme.width}px`,
     "--won-min-width": `${theme.minWidth}px`,

@@ -50,6 +50,8 @@ function readThemeFields(f: FormData) {
     mode: f.get("mode"),
     colorBg: f.get("colorBg"),
     colorText: f.get("colorText"),
+    gradient: f.get("gradient") === "on",
+    gradientColor: f.get("gradientColor"),
     accent: {
       added: f.get("accent_added"),
       removed: f.get("accent_removed"),
@@ -64,10 +66,14 @@ function readThemeFields(f: FormData) {
     density: f.get("density"),
     animationIn: f.get("animationIn"),
     border: f.get("border") === "on",
+    borderColor: f.get("borderColor"),
     backdropBlur: f.get("backdropBlur") === "on",
     showImage: f.get("showImage") === "on",
     showDelta: f.get("showDelta") === "on",
     showIcon: f.get("showIcon") === "on",
+    iconSet: f.get("iconSet"),
+    fontMode: f.get("fontMode"),
+    fontFamily: f.get("fontFamily"),
     customCss: f.get("customCss"),
   });
 }
@@ -146,11 +152,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   );
 };
 
+// Border lives in the Branding group (with its colour); backdrop blur + the
+// content toggles stay here.
 const TOGGLES = [
   ["showImage", "Product image"],
   ["showDelta", "Quantity change (+N)"],
   ["showIcon", "Event icon"],
-  ["border", "Border"],
   ["backdropBlur", "Backdrop blur"],
 ] as const;
 
@@ -194,6 +201,70 @@ const miniT: React.CSSProperties = {
   opacity: 0.5,
   display: "inline-block",
 };
+
+// A preset is a look — so its picker should SHOW the look, not just name it
+// (doctrine §1 preview-first). Each card renders a tiny to-token toast swatch
+// (background from the mode, the accent stripe, the corner radius) plus the
+// preset's palette dots, so the merchant compares looks by eye before applying.
+function presetSwatch(id: keyof typeof PRESET_LOOKS | "default") {
+  const look = id === "default" ? DEFAULT_THEME : PRESET_LOOKS[id];
+  const mode = (look as { mode?: string }).mode ?? "system";
+  const dark = mode === "dark";
+  const bg = dark ? "#12171c" : "#ffffff";
+  const text = dark ? "#e7ecf1" : "#1b2027";
+  const accents = (look as { accent?: Record<string, string> }).accent ?? DEFAULT_THEME.accent;
+  const stripe = accents.added ?? "#4b5bd6";
+  const radius = Math.min(14, Number((look as { cornerRadius?: number }).cornerRadius ?? 10));
+  const border = (look as { border?: boolean }).border
+    ? `1px solid ${(look as { borderColor?: string }).borderColor ?? "#e2e6ea"}`
+    : "1px solid transparent";
+  return { bg, text, stripe, radius, border, accents };
+}
+
+function LookPresetCard({ id, label }: { id: keyof typeof PRESET_LOOKS | "default"; label: string }) {
+  const s = presetSwatch(id);
+  const dots = ["added", "removed", "shipping", "gift"] as const;
+  return (
+    <Form method="post">
+      <input type="hidden" name="intent" value="applyLook" />
+      <input type="hidden" name="preset" value={id} />
+      <button
+        type="submit"
+        style={{
+          width: 150,
+          textAlign: "left",
+          padding: 10,
+          borderRadius: 12,
+          border: "1px solid #d6dbe1",
+          background: "#fff",
+          cursor: "pointer",
+          fontFamily: "inherit",
+          display: "block",
+          boxShadow: "0 1px 2px rgba(0,0,0,.04)",
+        }}
+      >
+        {/* mini toast preview in the preset's own look */}
+        <div style={{ background: s.bg === "#ffffff" ? "#f1f4f7" : "#e9edf1", borderRadius: 9, padding: 10 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", background: s.bg, color: s.text, border: s.border, borderLeft: `3px solid ${s.stripe}`, borderRadius: s.radius, padding: "7px 8px", boxShadow: "0 1px 3px rgba(20,28,45,.12)" }}>
+            <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+              <div style={{ height: 5, width: "70%", borderRadius: 3, background: s.text, opacity: 0.85 }} />
+              <div style={{ height: 4, width: "45%", borderRadius: 3, background: s.text, opacity: 0.4, marginTop: 4 }} />
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: s.stripe }}>+1</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#1b2027" }}>{label}</span>
+          <span style={{ display: "flex", gap: 3 }}>
+            {dots.map((d) => (
+              <span key={d} style={{ width: 8, height: 8, borderRadius: 999, background: s.accents[d] ?? "#c3cad2" }} />
+            ))}
+          </span>
+        </div>
+      </button>
+    </Form>
+  );
+}
 
 // A titled group of controls — gives the page a readable rhythm instead of a
 // flat wall of fields (doctrine §8). Reused for every Design section.
@@ -295,30 +366,30 @@ export default function DesignRoute() {
           </s-banner>
         </s-section>
       ) : null}
-      {/* Start from a curated look in one click, then fine-tune. Kept above the
-          shell (its own mini-forms) so it can't nest inside the main Form. */}
-      <s-section heading="Start from a look">
-        <s-paragraph>Pick a preset, then fine-tune below. Applying a preset saves immediately.</s-paragraph>
-        <s-stack direction="inline" gap="base">
-          {LOOK_PRESETS.map((p) => (
-            <Form key={p.id} method="post">
-              <input type="hidden" name="intent" value="applyLook" />
-              <input type="hidden" name="preset" value={p.id} />
-              <s-button type="submit">{p.label}</s-button>
-            </Form>
-          ))}
-        </s-stack>
-      </s-section>
-
       {/* Studio shell (doctrine §7b): same picker + one panel + sticky preview as
           Toasts. Hidden panels still submit (display:none) so one Save Bar covers
           the whole form. */}
       <SegmentedNav items={DESIGN_SEGMENTS} selected={seg} onSelect={setSeg} ariaLabel="Design sections" />
 
+      {/* "Start from a look" belongs to the Look tab only — a preset IS a look —
+          so it shows under Look and never bleeds into Placement/Timing/etc. Kept
+          outside the main Form: each preset is its own mini-form and forms can't
+          nest. */}
+      {seg === "look" ? (
+        <s-section heading="Start from a look">
+          <s-paragraph>Pick a preset, then fine-tune below. Applying a preset saves immediately.</s-paragraph>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+            {LOOK_PRESETS.map((p) => (
+              <LookPresetCard key={p.id} id={p.id} label={p.label} />
+            ))}
+          </div>
+        </s-section>
+      ) : null}
+
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(0,1fr) minmax(260px,340px)",
+          gridTemplateColumns: "minmax(0,1fr) minmax(320px,420px)",
           gap: "28px",
           alignItems: "start",
         }}
@@ -382,6 +453,34 @@ export default function DesignRoute() {
                   </s-stack>
                 </Group>
 
+                <Group title="Branding" hint="No-code styling between the on/off toggles and Custom CSS — a gradient fill, your own icons, a border, and the font.">
+                  <s-stack direction="block" gap="base">
+                    <s-stack direction="inline" gap="base" alignItems="end">
+                      <s-switch label="Gradient background" name="gradient" value="on" checked={config.theme.gradient} details="Fill the toast with a soft two-colour gradient instead of a flat colour." />
+                      <s-color-field label="Gradient blends to" name="gradientColor" value={config.theme.gradientColor} details="The second colour the background fades into (from the background colour above)." />
+                    </s-stack>
+                    <s-stack direction="inline" gap="base" alignItems="end">
+                      <s-switch label="Border" name="border" value="on" checked={config.theme.border} details="Draw a thin outline around each toast." />
+                      <s-color-field label="Border colour" name="borderColor" value={config.theme.borderColor} />
+                    </s-stack>
+                    <s-stack direction="inline" gap="base">
+                      <s-select label="Icon style" name="iconSet" value={theme.iconSet} details="What the small mark on the left looks like. (Turn it off with “Event icon” below.)">
+                        <s-option value="line">Colour dot</s-option>
+                        <s-option value="emoji">Emoji</s-option>
+                        <s-option value="none">No icon</s-option>
+                      </s-select>
+                      <s-select label="Font" name="fontMode" value={theme.fontMode} details="System = a clean default; Match my theme = your storefront’s font; Custom = your own.">
+                        <s-option value="system">System</s-option>
+                        <s-option value="inherit-theme">Match my theme</s-option>
+                        <s-option value="custom">Custom…</s-option>
+                      </s-select>
+                    </s-stack>
+                    <div style={{ display: theme.fontMode === "custom" ? "block" : "none" }}>
+                      <s-text-field label="Custom font family" name="fontFamily" value={config.theme.fontFamily} placeholder='Georgia, "Times New Roman", serif' details="A CSS font-family list. The font must already load on your storefront." />
+                    </div>
+                  </s-stack>
+                </Group>
+
                 <Group title="Show / hide" hint="Pick what appears inside each toast. Product image = the item’s thumbnail; Quantity change = the “+N” badge; Event icon = a small coloured mark; Border/Backdrop blur = the frame around it.">
                   <s-stack direction="inline" gap="base">
                     {TOGGLES.map(([key, label]) => (
@@ -431,9 +530,9 @@ export default function DesignRoute() {
                   <s-option value="go-to-product">Go to the product</s-option>
                   <s-option value="none">Do nothing</s-option>
                 </s-select>
-                <s-switch label="Auto-dismiss after the duration" name="autoDismiss" value="on" checked={g.autoDismiss} />
-                <s-switch label="Pause auto-dismiss on hover" name="pauseOnHover" value="on" checked={g.pauseOnHover} />
-                <s-switch label="Show a close (×) button" name="closeable" value="on" checked={g.closeable} />
+                <s-switch label="Auto-dismiss after the duration" name="autoDismiss" value="on" checked={g.autoDismiss} details="On: each toast fades out on its own after the time above. Off: it stays until the shopper closes it." />
+                <s-switch label="Pause auto-dismiss on hover" name="pauseOnHover" value="on" checked={g.pauseOnHover} details="While the shopper's cursor is over a toast, the countdown to fade out pauses — so it won't vanish mid-read. It resumes when they move away." />
+                <s-switch label="Show a close (×) button" name="closeable" value="on" checked={g.closeable} details="Adds an × in the corner so a shopper can dismiss a toast immediately." />
               </s-stack>
             </s-section>
             </div>
@@ -533,14 +632,36 @@ export default function DesignRoute() {
                   <s-text color="subdued">
                     Go wild — inject your own CSS into the toast (rainbow borders,
                     a mascot, whatever). It applies only inside the toast, never
-                    the rest of your storefront. Stable hooks that won’t change
-                    between versions:
+                    the rest of your storefront.
                   </s-text>
+
+                  {/* Answers the #1 question merchants ask here: "how do I make my
+                      cart toast look different from my announcements?" — points to
+                      the no-code path first (per-type Look & timing), then the CSS
+                      hook. (doctrine §4 — meet the merchant's real goal, not just
+                      list selectors.) */}
+                  <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
+                    <s-stack direction="block" gap="small">
+                      <s-text type="strong">Want one toast type to look different?</s-text>
+                      <s-text color="subdued">
+                        e.g. your <s-text type="strong">cart</s-text> toast styled
+                        differently from your <s-text type="strong">announcements</s-text>.
+                        You usually don’t need CSS — open a toast on{" "}
+                        <s-link href="/app/toasts">Toasts</s-link> and use{" "}
+                        <s-text type="strong">“Look &amp; timing for this toast”</s-text>.
+                        For finer control, target it by type in the CSS below with{" "}
+                        <s-text type="strong">{'[data-won-type="cart"]'}</s-text>.
+                      </s-text>
+                    </s-stack>
+                  </s-box>
+
+                  <s-text type="strong">Stable hooks</s-text>
+                  <s-text color="subdued">Two axes: what the shopper did, and which toast type it is.</s-text>
                   <s-unordered-list>
                     <s-list-item><s-text type="strong">[data-won-toast]</s-text> — each toast card</s-list-item>
-                    <s-list-item><s-text type="strong">{'[data-type="added"]'}</s-text> (removed / increased / …) — style per event</s-list-item>
-                    <s-list-item><s-text type="strong">{'[data-won-type="countdown"]'}</s-text> (cart / announcement / …) — style one toast type</s-list-item>
-                    <s-list-item><s-text type="strong">[data-won-toast-region]</s-text> — the container</s-list-item>
+                    <s-list-item><s-text type="strong">{'[data-type="added"]'}</s-text> (removed / increased / decreased / gift / shipping) — the shopper <s-text type="strong">action</s-text></s-list-item>
+                    <s-list-item><s-text type="strong">{'[data-won-type="cart"]'}</s-text> (countdown / announcement / stock.low / …) — the toast <s-text type="strong">type</s-text></s-list-item>
+                    <s-list-item><s-text type="strong">[data-won-toasts-region]</s-text> — the container that holds the stack</s-list-item>
                     <s-list-item>vars <s-text type="strong">--won-bg / --won-text / --won-radius / --won-shadow</s-text></s-list-item>
                   </s-unordered-list>
                   <s-text-area
@@ -550,12 +671,10 @@ export default function DesignRoute() {
                     value={config.theme.customCss ?? ""}
                     disabled={!isPro}
                     placeholder={
-                      "[data-won-toast]{\n" +
-                      "  border:3px solid transparent;\n" +
-                      "  background:linear-gradient(var(--won-bg),var(--won-bg)) padding-box,\n" +
-                      "    linear-gradient(90deg,red,orange,yellow,green,blue,violet) border-box;\n" +
-                      "  animation:won-rainbow 3s linear infinite;\n" +
-                      "}\n@keyframes won-rainbow{to{filter:hue-rotate(360deg)}}"
+                      "/* Give cart toasts a green edge… */\n" +
+                      '[data-won-type="cart"]{ border-left:4px solid #16a34a; }\n\n' +
+                      "/* …and make announcements stand out differently */\n" +
+                      '[data-won-type="announcement"]{ --won-bg:#111; --won-text:#fff; }'
                     }
                   />
                 </s-stack>

@@ -5,6 +5,7 @@ import type {
   ToastSemanticType,
   ToastTheme,
 } from "@won/core/toasts/config.types";
+import { WonToastCard, WonToastKeyframes, animKeyframeName } from "./WonToastCard";
 
 // Animated live preview (doctrine §3e): loops through sample toasts that appear,
 // stay for `durationMs`, then fade out — respecting stack order and max-visible —
@@ -84,19 +85,11 @@ export function AnimatedToastPreview({
 
   // The enter animation reflects the merchant's chosen entry style so the
   // animated preview isn't lying about which animation they picked.
-  const animName =
-    ({ slide: "wonSlide", fade: "wonFade", pop: "wonPop", "slide-scale": "wonSlideScale" } as Record<string, string>)[
-      theme.animationIn
-    ] ?? "wonSlide";
+  const animName = animKeyframeName(theme.animationIn);
 
   return (
     <div>
-      <style>{`
-        @keyframes wonSlide{0%{opacity:0;transform:translateY(10px) scale(.96)}60%{opacity:1}100%{opacity:1;transform:none}}
-        @keyframes wonFade{0%{opacity:0}100%{opacity:1}}
-        @keyframes wonPop{0%{opacity:0;transform:scale(.82)}70%{transform:scale(1.03)}100%{opacity:1;transform:none}}
-        @keyframes wonSlideScale{0%{opacity:0;transform:translateX(16px) scale(.94)}100%{opacity:1;transform:none}}
-      `}</style>
+      <WonToastKeyframes />
       <div
         style={{
           ...tokens,
@@ -112,62 +105,20 @@ export function AnimatedToastPreview({
         }}
       >
         {customCss ? <style>{customCss}</style> : null}
-        {ordered.map((it) => {
-          const accent = accentFor(theme, it.sample.type);
-          return (
-            <div
-              key={it.id}
-              data-won-toast=""
-              data-type={it.sample.type}
-              style={{
-                boxSizing: "border-box",
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-                width: "var(--won-width)",
-                maxWidth: "100%",
-                padding: "var(--won-pad)",
-                background: "var(--won-bg)",
-                color: "var(--won-text)",
-                borderRadius: "var(--won-radius)",
-                boxShadow: "var(--won-shadow)",
-                border: "var(--won-border)",
-                borderLeft: `4px solid ${accent}`,
-                font: "14px/1.35 system-ui, sans-serif",
-                // Smooth enter (the merchant's chosen entry style) + collapse-on-
-                // leave so the rest of the stack slides up gently, not snapping.
-                animation: `${animName} .42s cubic-bezier(.16,1,.3,1)`,
-                opacity: it.leaving ? 0 : 1,
-                transform: it.leaving ? "translateX(14px) scale(.97)" : "none",
-                maxHeight: it.leaving ? 0 : 80,
-                paddingTop: it.leaving ? 0 : undefined,
-                paddingBottom: it.leaving ? 0 : undefined,
-                overflow: "hidden",
-                transition:
-                  "opacity .3s ease, transform .3s cubic-bezier(.16,1,.3,1), max-height .32s ease, padding .32s ease",
-              }}
-            >
-              {theme.showImage ? (
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(127,127,127,.18)", flex: "0 0 auto" }} />
-              ) : null}
-              {theme.showIcon ? (
-                <div aria-hidden="true" data-won-toast-icon="" style={{ width: 18, height: 18, borderRadius: 5, background: accent, opacity: 0.9, flex: "0 0 auto" }} />
-              ) : null}
-              <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-                <div style={{ fontWeight: 700 }}>{it.sample.title}</div>
-                <div style={{ color: "#8892a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {it.sample.detail}
-                </div>
-              </div>
-              {theme.showDelta && it.sample.delta ? (
-                <div data-won-toast-delta="" style={{ fontWeight: 800, color: accent }}>{it.sample.delta}</div>
-              ) : null}
-              {closeable ? (
-                <span aria-hidden="true" data-won-toast-close="" style={{ color: "#9aa4b0", fontSize: 18, lineHeight: 1, paddingLeft: 4, flex: "0 0 auto" }}>×</span>
-              ) : null}
-            </div>
-          );
-        })}
+        {ordered.map((it) => (
+          <WonToastCard
+            key={it.id}
+            theme={theme}
+            type={it.sample.type}
+            title={it.sample.title}
+            detail={it.sample.detail}
+            delta={it.sample.delta}
+            accent={accentFor(theme, it.sample.type)}
+            closeable={closeable}
+            animName={animName}
+            leaving={it.leaving}
+          />
+        ))}
       </div>
       <p style={{ color: "#8892a0", fontSize: 12, marginTop: 8 }}>
         Animated · toasts stay {Math.round(dur / 100) / 10}s · {stackDirection}

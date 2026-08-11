@@ -1,0 +1,585 @@
+{%- comment -%}
+  won-panels — the switchable-content schránka. One section that covers tabbed
+  content AND FAQ accordions via a `display` axis, rendering won-panel blocks:
+    • tabs      — a <won-tabset> whose nav is built from each panel's title
+                  (won-panels.js). (absorbs won-tabs)
+    • accordion — native <details> rows, stacked or split-with-sticky-head,
+                  optional contact block. (absorbs won-accordion)
+  content_for 'blocks' appears exactly ONCE; the mode wrappers open/close around it.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+  assign is_tabs = false
+  if s.display == 'tabs'
+    assign is_tabs = true
+  endif
+  assign is_split = false
+  if is_tabs == false and s.layout == 'split'
+    assign is_split = true
+  endif
+  assign show_content = true
+  assign show_media = false
+  if is_split and s.show_side_media
+    assign show_media = true
+  endif
+  assign has_head = false
+  if show_media
+    assign has_head = true
+  elsif s.heading != blank
+    assign has_head = true
+  elsif s.intro != blank
+    assign has_head = true
+  elsif is_tabs == false and s.show_contact
+    assign has_head = true
+  endif
+-%}
+
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-style-vars', settings: s %}"
+  data-testid="won-panels-section"
+>
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %}">
+    <div class="won-panels won-panels--{{ s.display }}{% if is_tabs == false %} won-panels--{{ s.layout }}{% endif %}{% if is_split and s.split_position == 'end' %} won-panels--flip{% endif %}{% if show_media %} won-panels--media{% endif %}">
+      {%- if has_head -%}
+        <div class="won-panels__head">
+          {%- if show_media -%}
+            <div class="won-panels__media">
+              {%- if s.split_media != blank -%}
+                {{ s.split_media | image_url: width: 1000 | image_tag: widths: '300, 600, 1000', sizes: '(min-width: 990px) 34vw, 100vw', class: 'won-panels__media-img', loading: 'lazy' }}
+              {%- else -%}
+                {{ 'image' | placeholder_svg_tag: 'won-panels__media-img won-panels__media-img--ph' }}
+              {%- endif -%}
+            </div>
+          {%- endif -%}
+          {%- if show_content -%}
+            {%- if s.heading != blank -%}
+              <h2
+                class="won-heading won-panels__heading"
+                style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%;"
+              >
+                {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
+              </h2>
+            {%- endif -%}
+            {%- if s.intro != blank -%}<div class="won-panels__intro rte">{{ s.intro }}</div>{%- endif -%}
+            {%- if is_tabs == false and s.show_contact -%}
+              <div class="won-panels__contact">
+                {%- if s.contact_heading != blank -%}<p class="won-panels__contact-heading">{{ s.contact_heading }}</p>{%- endif -%}
+                {%- if s.contact_text != blank -%}<div class="rte">{{ s.contact_text }}</div>{%- endif -%}
+                {%- if s.contact_button_label != blank -%}
+                  <a class="won-btn won-btn--secondary" {% if s.contact_button_link != blank %}href="{{ s.contact_button_link }}"{% endif %}>{{ s.contact_button_label }}</a>
+                {%- endif -%}
+              </div>
+            {%- endif -%}
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+
+      {%- if is_tabs -%}<won-tabset class="won-panels__tabset"><div class="won-panels__nav" role="tablist"></div><div class="won-panels__panels">{%- else -%}<div class="won-panels__rows">{%- endif -%}
+        {% content_for 'blocks' %}
+      {%- if is_tabs -%}</div></won-tabset>{%- else -%}</div>{%- endif -%}
+    </div>
+  </div>
+</section>
+
+{%- if is_tabs -%}
+  <script src="{{ 'won-panels.js' | asset_url }}" defer></script>
+{%- endif -%}
+
+{% stylesheet %}
+  .won-panels { display: flex; flex-direction: column; gap: var(--won-space-4); }
+  .won-panels__head { display: flex; flex-direction: column; gap: var(--won-space-3); }
+  .won-panels__heading { font-size: var(--won-h-size-m, 1.6rem); max-width: var(--won-h-mw-m, 100%); }
+  .won-panels__intro { opacity: 0.9; }
+  .won-panels__contact { margin-top: var(--won-space-3); display: flex; flex-direction: column; gap: var(--won-space-2); align-items: flex-start; }
+  .won-panels__contact-heading { margin: 0; font-weight: 700; }
+  .won-panels__media { margin: 0; }
+  .won-panels__media-img { display: block; inline-size: 100%; block-size: auto; border-radius: var(--won-radius-md); object-fit: cover; }
+  .won-panels__media-img--ph { aspect-ratio: 4 / 3; background: var(--won-surface); }
+
+  /* Tabs (absorbs won-tabs). */
+  .won-panels__nav { display: flex; flex-wrap: wrap; gap: var(--won-space-2); border-block-end: 1px solid var(--won-border); }
+  .won-panels__nav:empty { display: none; border: 0; }
+  .won-panels__tab {
+    padding: var(--won-space-3) var(--won-space-4); border: 0; background: transparent; color: var(--won-fg);
+    font: inherit; font-weight: 600; cursor: pointer; border-block-end: 2px solid transparent; margin-block-end: -1px;
+  }
+  .won-panels__tab[aria-selected="true"] { color: var(--won-accent); border-block-end-color: var(--won-accent); }
+  .won-panels__panels { padding-block-start: var(--won-space-4); }
+  .won-panels__panel[hidden] { display: none; }
+  .won-panels__panel + .won-panels__panel { margin-block-start: var(--won-space-5); }
+  .won-panels__panel-title { margin: 0 0 var(--won-space-2); font-weight: 600; }
+  won-tabset[data-won-bound] .won-panels__panel-title { display: none; }
+  won-tabset[data-won-bound] .won-panels__panel + .won-panels__panel { margin-block-start: 0; }
+
+  /* Accordion (absorbs won-accordion + won-accordion-row). */
+  .won-panels__row { border-bottom: 1px solid var(--won-border); }
+  .won-panels__summary {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--won-space-3);
+    padding: var(--won-space-4) 0; cursor: pointer; font-weight: 600; list-style: none;
+  }
+  .won-panels__summary::-webkit-details-marker { display: none; }
+  .won-panels__icon { position: relative; flex: 0 0 auto; inline-size: 16px; block-size: 16px; }
+  .won-panels__icon::before,
+  .won-panels__icon::after {
+    content: ""; position: absolute; inset-block-start: 50%; inset-inline-start: 0;
+    inline-size: 16px; block-size: 2px; background: var(--won-accent);
+    transform: translateY(-50%); transition: transform var(--won-dur) var(--won-ease);
+  }
+  .won-panels__icon::after { transform: translateY(-50%) rotate(90deg); }
+  .won-panels__row[open] .won-panels__icon::after { transform: translateY(-50%) rotate(0deg); }
+  .won-panels__answer { padding-block-end: var(--won-space-4); opacity: 0.92; }
+  @media (prefers-reduced-motion: reduce) {
+    .won-panels__icon::before, .won-panels__icon::after { transition: none; }
+  }
+
+  /* Mobile reads centered like the rest of the page: the question centers with
+     the +/- icon pinned to the right edge (absolute, out of the flex flow), the
+     contact block and answers center too. Desktop keeps question-left + icon-right. */
+  @media (max-width: 749px) {
+    .won-panels__summary { justify-content: center; position: relative; padding-inline: 28px; }
+    .won-panels__icon { position: absolute; inset-inline-end: 0; inset-block-start: 50%; transform: translateY(-50%); }
+    .won-panels__contact { align-items: center; }
+    .won-panels__answer { text-align: center; }
+  }
+
+  @media (min-width: 750px) {
+    .won-panels__heading { font-size: var(--won-h-size-d, 2rem); max-width: var(--won-h-mw-d, 100%); }
+  }
+  @media (min-width: 990px) {
+    .won-panels--accordion.won-panels--split { flex-direction: row; align-items: flex-start; gap: var(--won-space-7); }
+    /* split_position: end → the head/image column moves to the right. */
+    .won-panels--accordion.won-panels--split.won-panels--flip { flex-direction: row-reverse; }
+    .won-panels--split .won-panels__head { flex: 0 0 34%; position: sticky; top: var(--won-space-5); }
+    .won-panels--split .won-panels__rows { flex: 1 1 auto; }
+    /* an image side column earns a bit more room and isn't sticky-cropped */
+    .won-panels--split.won-panels--media .won-panels__head { flex-basis: 40%; position: static; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.panels",
+  "tag": "section",
+  "disabled_on": {
+    "groups": [
+      "header",
+      "footer"
+    ]
+  },
+  "max_blocks": 30,
+  "blocks": [
+    {
+      "type": "won-panel"
+    },
+    {
+      "type": "@theme"
+    },
+    {
+      "type": "@app"
+    }
+  ],
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:won.info.panels_about"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "select",
+      "id": "display",
+      "label": "t:won.settings.display",
+      "info": "t:won.info.panels_display",
+      "options": [
+        {
+          "value": "tabs",
+          "label": "t:won.options.display_tabs"
+        },
+        {
+          "value": "accordion",
+          "label": "t:won.options.display_accordion"
+        }
+      ],
+      "default": "accordion"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "t:won.settings.layout",
+      "visible_if": "{{ section.settings.display == 'accordion' }}",
+      "options": [
+        {
+          "value": "stacked",
+          "label": "t:won.options.layout_stacked"
+        },
+        {
+          "value": "split",
+          "label": "t:won.options.layout_split"
+        }
+      ],
+      "default": "stacked"
+    },
+    {
+      "type": "checkbox",
+      "id": "allow_multiple",
+      "label": "t:won.settings.allow_multiple",
+      "default": false,
+      "visible_if": "{{ section.settings.display == 'accordion' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_side_media",
+      "label": "t:won.settings.show_side_media",
+      "info": "t:won.info.show_side_media",
+      "default": false,
+      "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' }}"
+    },
+    {
+      "type": "select",
+      "id": "split_position",
+      "label": "t:won.settings.split_position",
+      "info": "t:won.info.split_position",
+      "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' }}",
+      "options": [
+        {
+          "value": "start",
+          "label": "t:won.options.position_start"
+        },
+        {
+          "value": "end",
+          "label": "t:won.options.position_end"
+        }
+      ],
+      "default": "start"
+    },
+    {
+      "type": "image_picker",
+      "id": "split_media",
+      "label": "t:won.settings.split_media",
+      "info": "t:won.info.split_media",
+      "visible_if": "{{ section.settings.display == 'accordion' and section.settings.layout == 'split' and section.settings.show_side_media }}"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.content"
+    },
+    {
+      "type": "richtext",
+      "id": "heading",
+      "label": "t:won.settings.heading",
+      "default": "t:won.defaults.faq_heading"
+    },
+    {
+      "type": "range",
+      "id": "heading_size_desktop",
+      "label": "t:won.settings.heading_size_desktop",
+      "min": 20,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "heading_max_width_desktop",
+      "label": "t:won.settings.heading_max_width_desktop",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "label": "t:won.settings.heading_size_mobile",
+      "min": 16,
+      "max": 56,
+      "step": 2,
+      "unit": "px",
+      "default": 26
+    },
+    {
+      "type": "range",
+      "id": "heading_max_width_mobile",
+      "label": "t:won.settings.heading_max_width_mobile",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "richtext",
+      "id": "intro",
+      "label": "t:won.settings.intro"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.contact"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_contact",
+      "label": "t:won.settings.show_contact",
+      "default": false,
+      "visible_if": "{{ section.settings.display == 'accordion' }}"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "contact_heading",
+      "label": "t:won.settings.contact_heading",
+      "visible_if": "{{ section.settings.show_contact }}"
+    },
+    {
+      "type": "richtext",
+      "id": "contact_text",
+      "label": "t:won.settings.contact_text",
+      "visible_if": "{{ section.settings.show_contact }}"
+    },
+    {
+      "type": "text",
+      "id": "contact_button_label",
+      "label": "t:won.settings.button_label",
+      "visible_if": "{{ section.settings.show_contact }}"
+    },
+    {
+      "type": "url",
+      "id": "contact_button_link",
+      "label": "t:won.settings.button_link",
+      "visible_if": "{{ section.settings.show_contact }}"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "t:won.settings.section_width",
+      "options": [
+        {
+          "value": "page",
+          "label": "t:won.options.width_page"
+        },
+        {
+          "value": "full",
+          "label": "t:won.options.width_full"
+        }
+      ],
+      "default": "page"
+    },
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "info": "t:won.info.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:won.settings.border_width",
+      "info": "t:won.info.border_width",
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border_style",
+      "label": "t:won.settings.border_style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "t:won.options.solid"
+        },
+        {
+          "value": "dashed",
+          "label": "t:won.options.dashed"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "t:won.settings.border_color",
+      "info": "t:won.info.border_color",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "select",
+      "id": "shadow",
+      "label": "t:won.settings.shadow",
+      "info": "t:won.info.shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "sm",
+          "label": "t:won.options.shadow_sm"
+        },
+        {
+          "value": "md",
+          "label": "t:won.options.shadow_md"
+        },
+        {
+          "value": "lg",
+          "label": "t:won.options.shadow_lg"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_color",
+      "info": "t:won.info.accent_color"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:won.presets.tabs",
+      "category": "t:won.categories.content",
+      "settings": {
+        "display": "tabs"
+      },
+      "blocks": [
+        {
+          "type": "won-panel"
+        },
+        {
+          "type": "won-panel"
+        },
+        {
+          "type": "won-panel"
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.faq_plain",
+      "category": "t:won.categories.content",
+      "settings": {
+        "display": "accordion",
+        "layout": "stacked"
+      },
+      "blocks": [
+        {
+          "type": "won-panel"
+        },
+        {
+          "type": "won-panel"
+        },
+        {
+          "type": "won-panel"
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.faq_split",
+      "category": "t:won.categories.content",
+      "settings": {
+        "display": "accordion",
+        "layout": "split",
+        "show_contact": true
+      },
+      "blocks": [
+        {
+          "type": "won-panel"
+        },
+        {
+          "type": "won-panel"
+        },
+        {
+          "type": "won-panel"
+        },
+        {
+          "type": "won-panel"
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.faq_media",
+      "category": "t:won.categories.content",
+      "settings": {
+        "display": "accordion",
+        "layout": "split",
+        "show_side_media": true,
+        "split_position": "start"
+      },
+      "blocks": [
+        {
+          "type": "won-panel"
+        },
+        {
+          "type": "won-panel"
+        },
+        {
+          "type": "won-panel"
+        },
+        {
+          "type": "won-panel"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

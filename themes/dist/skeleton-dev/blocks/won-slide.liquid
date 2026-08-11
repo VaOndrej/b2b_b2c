@@ -11,12 +11,18 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
   assign has_media = false
   if s.media_type == 'image' and s.image != blank
     assign has_media = true
+  elsif s.media_type == 'image' and s.image_asset != blank
+    assign has_media = true
   elsif s.media_type == 'video' and s.video != blank
     assign has_media = true
   endif
   assign is_bg = false
   if s.media_position == 'background' and has_media
     assign is_bg = true
+  endif
+  assign has_gradient = false
+  if s.background_gradient != blank
+    assign has_gradient = true
   endif
 -%}
 
@@ -27,21 +33,27 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     won-slide--media-{{ s.media_position }}
     {% if s.inherit_color_scheme == false %}color-{{ s.color_scheme }}{% endif %}
     {% if is_bg %}won-slide--overlayed{% endif %}
+    {% if has_gradient %}won-slide--gradient{% endif %}
+    {% if s.headline_annotation != 'none' and s.headline_annotation != blank %}won-slide--annot-{{ s.headline_annotation }}{% endif %}
   "
-  style="{% render 'won-spacing', settings: s %}--won-slide-align: {{ s.alignment }};"
+  style="{% render 'won-spacing', settings: s %}--won-slide-align: {{ s.alignment }};--won-radius-md: {{ s.corner_radius }}px;--won-radius-sm: {{ s.corner_radius }}px;{% if s.min_height > 0 %}--won-slide-min: {{ s.min_height }}px;{% endif %}{% if has_gradient %}--won-slide-bg: {{ s.background_gradient }};{% endif %}"
   {{ block.shopify_attributes }}
 >
   {%- if has_media and s.media_position != 'none' -%}
     <div class="won-slide__media won-slide__media--{{ s.media_position }}">
-      {%- if s.toggle_overlay or is_bg -%}
+      {%- if s.toggle_overlay -%}
         <span class="won-slide__overlay" style="background: {{ s.overlay_color }};"></span>
       {%- endif -%}
       {%- if s.media_type == 'image' -%}
-        {{
-          s.image
-          | image_url: width: 1600
-          | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: 'lazy', alt: s.image.alt | default: ''
-        }}
+        {%- if s.image != blank -%}
+          {{
+            s.image
+            | image_url: width: 1600
+            | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: 'lazy', alt: s.image.alt | default: ''
+          }}
+        {%- else -%}
+          <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="880" height="1100" loading="lazy">
+        {%- endif -%}
       {%- else -%}
         {{ s.video | video_tag: autoplay: true, loop: true, muted: true, controls: false, class: 'won-slide__video' }}
       {%- endif -%}
@@ -49,6 +61,9 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
   {%- endif -%}
 
   <div class="won-slide__body">
+    {%- if s.eyebrow != blank -%}
+      <p class="won-slide__eyebrow">{{ s.eyebrow }}</p>
+    {%- endif -%}
     {%- if s.heading != blank -%}
       <h3
         class="won-heading won-slide__heading"
@@ -60,8 +75,15 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     {%- if s.text != blank -%}
       <div class="won-slide__text rte">{{ s.text }}</div>
     {%- endif -%}
-    {%- if s.button_label != blank -%}
-      <a class="won-btn won-btn--{{ s.button_style }} won-slide__btn" {% if s.button_link != blank %}href="{{ s.button_link }}"{% endif %}>{{ s.button_label }}</a>
+    {%- if s.button_label != blank or s.button2_label != blank -%}
+      <div class="won-slide__actions">
+        {%- if s.button_label != blank -%}
+          <a class="won-btn won-btn--{{ s.button_style }} won-slide__btn" {% if s.button_link != blank %}href="{{ s.button_link }}"{% endif %}>{{ s.button_label }}</a>
+        {%- endif -%}
+        {%- if s.button2_label != blank -%}
+          <a class="won-btn won-btn--{{ s.button2_style }} won-slide__btn" {% if s.button2_link != blank %}href="{{ s.button2_link }}"{% endif %}>{{ s.button2_label }}</a>
+        {%- endif -%}
+      </div>
     {%- endif -%}
     {% content_for 'blocks' %}
   </div>
@@ -80,6 +102,13 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     background: transparent;
   }
   .won-slide--bordered { border: 1px solid var(--won-border); }
+  /* Gradient background hero (no photo) — CSS gradient + copy anchored to the
+     bottom, like a full-bleed marketing slide. Text colour follows the slide's
+     colour scheme, so pair a vivid gradient with a matching (usually dark) scheme. */
+  .won-slide--gradient { background: var(--won-slide-bg); }
+  .won-slide--gradient .won-slide__body {
+    padding: var(--won-space-5); min-height: var(--won-slide-min, 320px); justify-content: flex-end;
+  }
   .won-slide--elevated {
     background: var(--won-surface);
     box-shadow: 0 6px 24px color-mix(in oklab, var(--won-fg) 10%, transparent);
@@ -94,20 +123,60 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
   .won-slide__video { display: block; width: 100%; height: 100%; object-fit: cover; }
   .won-slide__overlay { position: absolute; inset: 0; z-index: 1; }
   .won-slide--overlayed .won-slide__media { position: absolute; inset: 0; border-radius: inherit; }
+  /* Header-separation + depth scrim on background slides: darken top (so a
+     transparent header stays legible over the slide) and bottom (so the body
+     copy reads), keep the middle clear. Mirrors the won-band overlay hero. */
+  .won-slide--overlayed .won-slide__media::after {
+    content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background: linear-gradient(180deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0) 28%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.34) 100%);
+  }
   .won-slide--overlayed .won-slide__body {
     position: relative;
     z-index: 2;
     padding: var(--won-space-5);
     justify-content: flex-end;
-    min-height: 320px;
+    min-height: var(--won-slide-min, 320px);
+    color: #fff;
+    text-shadow: 0 1px 16px rgba(0, 0, 0, 0.32);
   }
+  .won-slide--overlayed .won-slide__eyebrow { color: rgba(255, 255, 255, 0.92); }
+  .won-slide--overlayed .won-slide__heading,
+  .won-slide--overlayed .won-slide__text { color: #fff; }
+  .won-slide--overlayed .won-btn--secondary { color: #fff; border-color: rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.08); text-shadow: none; }
   .won-slide__body { display: flex; flex-direction: column; gap: var(--won-space-3); align-items: var(--won-slide-align, flex-start); }
+  .won-slide__eyebrow {
+    margin: 0; font-family: var(--font-body--family, inherit);
+    font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--won-accent);
+  }
+  .won-slide__actions { display: flex; flex-wrap: wrap; gap: var(--won-space-3); }
   .won-slide__heading {
     margin: 0;
     font-size: var(--won-h-size-m, 1.4rem);
     max-width: var(--won-h-mw-m, 100%);
   }
   .won-slide__text { margin: 0; opacity: 0.9; }
+
+  /* Hand-drawn headline annotation (flow-style). The doodle is an accent-coloured
+     box masked to an SVG stroke, so it inherits --won-accent. */
+  .won-slide--annot-underline .won-slide__heading,
+  .won-slide--annot-circle .won-slide__heading { position: relative; }
+  .won-slide--annot-underline .won-slide__heading::after {
+    content: ""; position: absolute; inset-inline: -0.1em; inset-block-end: -0.24em; block-size: 0.34em;
+    background: var(--won-accent); pointer-events: none;
+    -webkit-mask: var(--won-annot-underline) no-repeat center / 100% 100%;
+    mask: var(--won-annot-underline) no-repeat center / 100% 100%;
+  }
+  .won-slide--annot-circle .won-slide__heading::before {
+    content: ""; position: absolute; inset: -0.28em -0.55em; z-index: -1; pointer-events: none;
+    background: var(--won-accent);
+    -webkit-mask: var(--won-annot-circle) no-repeat center / 100% 100%;
+    mask: var(--won-annot-circle) no-repeat center / 100% 100%;
+  }
+  .won-slide {
+    --won-annot-underline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 20' preserveAspectRatio='none'%3E%3Cpath d='M4 13 C 60 4 120 4 180 10 S 262 17 296 7' fill='none' stroke='black' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E");
+    --won-annot-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 100' preserveAspectRatio='none'%3E%3Cpath d='M150 6 C 44 6 10 30 14 52 C 18 80 92 96 162 94 C 252 92 292 64 286 40 C 280 16 210 5 138 9' fill='none' stroke='black' stroke-width='4'/%3E%3C/svg%3E");
+  }
 
   @media (min-width: 768px) {
     .won-slide__heading { font-size: var(--won-h-size-d, 1.8rem); max-width: var(--won-h-mw-d, 100%); }
@@ -126,10 +195,11 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
   "blocks": [{ "type": "@theme" }, { "type": "@app" }],
   "settings": [
     { "type": "header", "content": "t:won.headers.content" },
+    { "type": "inline_richtext", "id": "eyebrow", "label": "t:won.settings.eyebrow" },
     { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.slide_heading" },
-    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 16, "max": 64, "step": 2, "unit": "px", "default": 28 },
+    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 16, "max": 96, "step": 2, "unit": "px", "default": 28 },
     { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
-    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 14, "max": 48, "step": 2, "unit": "px", "default": 22 },
+    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 14, "max": 64, "step": 2, "unit": "px", "default": 22 },
     { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
     { "type": "richtext", "id": "text", "label": "t:won.settings.text", "default": "t:won.defaults.slide_text" },
     { "type": "text", "id": "button_label", "label": "t:won.settings.button_label" },
@@ -142,6 +212,16 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
       ],
       "default": "primary"
     },
+    { "type": "text", "id": "button2_label", "label": "t:won.settings.button2_label" },
+    { "type": "url", "id": "button2_link", "label": "t:won.settings.button2_link" },
+    {
+      "type": "select", "id": "button2_style", "label": "t:won.settings.button2_style",
+      "options": [
+        { "value": "primary", "label": "t:won.options.primary" },
+        { "value": "secondary", "label": "t:won.options.secondary" }
+      ],
+      "default": "secondary"
+    },
     { "type": "header", "content": "t:won.headers.media" },
     {
       "type": "select", "id": "media_type", "label": "t:won.settings.media_type",
@@ -153,9 +233,10 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
       "default": "none"
     },
     { "type": "image_picker", "id": "image", "label": "t:won.settings.image", "visible_if": "{{ block.settings.media_type == 'image' }}" },
+    { "type": "text", "id": "image_asset", "label": "t:won.settings.image_asset", "info": "t:won.info.image_asset", "visible_if": "{{ block.settings.media_type == 'image' }}" },
     { "type": "video", "id": "video", "label": "t:won.settings.video", "visible_if": "{{ block.settings.media_type == 'video' }}" },
     {
-      "type": "select", "id": "media_position", "label": "t:won.settings.media_position",
+      "type": "select", "id": "media_position", "label": "t:won.settings.media_position", "info": "t:won.info.media_position",
       "options": [
         { "value": "top", "label": "t:won.options.top" },
         { "value": "left", "label": "t:won.options.left" },
@@ -165,9 +246,10 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
       "default": "top",
       "visible_if": "{{ block.settings.media_type != 'none' }}"
     },
+    { "type": "color_background", "id": "background_gradient", "label": "t:won.settings.background_gradient", "info": "t:won.info.background_gradient" },
     { "type": "header", "content": "t:won.headers.appearance" },
     {
-      "type": "select", "id": "card_style", "label": "t:won.settings.card_style",
+      "type": "select", "id": "card_style", "label": "t:won.settings.card_style", "info": "t:won.info.card_style",
       "options": [
         { "value": "minimal", "label": "t:won.options.minimal" },
         { "value": "bordered", "label": "t:won.options.bordered" },
@@ -175,12 +257,23 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
       ],
       "default": "minimal"
     },
+    {
+      "type": "select", "id": "headline_annotation", "label": "t:won.settings.headline_annotation", "info": "t:won.info.headline_annotation",
+      "options": [
+        { "value": "none", "label": "t:won.options.annot_none" },
+        { "value": "underline", "label": "t:won.options.annot_underline" },
+        { "value": "circle", "label": "t:won.options.annot_circle" }
+      ],
+      "default": "none"
+    },
     { "type": "text_alignment", "id": "alignment", "label": "t:won.settings.alignment", "default": "left" },
-    { "type": "checkbox", "id": "inherit_color_scheme", "label": "t:won.settings.inherit_color_scheme", "default": true },
+    { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 0, "max": 800, "step": 20, "unit": "px", "default": 0, "info": "t:won.info.slide_min_height" },
+    { "type": "range", "id": "corner_radius", "label": "t:won.settings.corner_radius", "min": 0, "max": 40, "step": 2, "unit": "px", "default": 14, "info": "t:won.info.corner_radius" },
+    { "type": "checkbox", "id": "inherit_color_scheme", "label": "t:won.settings.inherit_color_scheme", "info": "t:won.info.inherit_color_scheme", "default": true },
     { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1", "visible_if": "{{ block.settings.inherit_color_scheme == false }}" },
     { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" },
-    { "type": "checkbox", "id": "toggle_overlay", "label": "t:won.settings.overlay", "default": false, "visible_if": "{{ block.settings.media_type != 'none' }}" },
-    { "type": "color", "id": "overlay_color", "label": "t:won.settings.overlay_color", "alpha": true, "default": "#00000040", "visible_if": "{{ block.settings.media_type != 'none' }}" },
+    { "type": "checkbox", "id": "toggle_overlay", "label": "t:won.settings.overlay", "info": "t:won.info.overlay", "default": false, "visible_if": "{{ block.settings.media_type != 'none' }}" },
+    { "type": "color", "id": "overlay_color", "label": "t:won.settings.overlay_color", "info": "t:won.info.overlay_color", "alpha": true, "default": "#00000059", "visible_if": "{{ block.settings.toggle_overlay }}" },
     { "type": "header", "content": "t:won.headers.padding" },
     { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 120, "step": 2, "unit": "px", "default": 0 },
     { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 120, "step": 2, "unit": "px", "default": 0 }

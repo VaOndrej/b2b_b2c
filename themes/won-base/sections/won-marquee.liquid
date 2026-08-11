@@ -61,11 +61,17 @@
 
 {% stylesheet %}
   .won-marquee-sec { padding-block: max(8px, var(--won-pt, 14px) * var(--won-pad-scale, 1)) max(8px, var(--won-pb, 14px) * var(--won-pad-scale, 1)); }
-  .won-marquee { overflow: hidden; }
+  /* container-type lets each group claim at least the full strip width (100cqi)
+     so two groups always span >= 2x the viewport — the -50% loop then never
+     scrolls a blank gap in, even for a handful of short tokens. When the tokens
+     are naturally wider than the strip, min-inline-size is inert and they pack
+     tight; when they're shorter, space-around spreads them evenly. */
+  .won-marquee { overflow: hidden; container-type: inline-size; }
   .won-marquee__track { display: flex; inline-size: max-content; }
   .won-marquee__group {
     display: flex; align-items: center; gap: var(--won-mq-gap, 28px);
     padding-inline-end: var(--won-mq-gap, 28px); flex: 0 0 auto;
+    min-inline-size: 100cqi; justify-content: space-around;
   }
   .won-marquee__track--left { animation: won-mq-left var(--won-mq-dur, 24s) linear infinite; }
   .won-marquee__track--right { animation: won-mq-right var(--won-mq-dur, 24s) linear infinite; }
@@ -112,6 +118,7 @@
     }
   ],
   "settings": [
+    { "type": "paragraph", "content": "t:won.info.marquee_about" },
     { "type": "header", "content": "t:won.headers.layout" },
     { "type": "range", "id": "duration", "label": "t:won.settings.marquee_duration", "info": "t:won.info.marquee_duration", "min": 8, "max": 60, "step": 2, "unit": "s", "default": 24 },
     {

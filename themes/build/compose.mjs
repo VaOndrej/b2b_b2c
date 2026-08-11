@@ -48,6 +48,159 @@ for (const dir of codeDirs) {
   }
 }
 
+// 2c. De-clutter the "Add section" picker (task: generic-theme non-won sections).
+// Native base sections that duplicate a Won equivalent are hidden by stripping
+// their `presets` — the SAME mechanism the repo uses to deprecate legacy won-*
+// sections (theme-map): the file still renders wherever it is already referenced
+// (page mains, existing templates), it just no longer appears in "Add section",
+// so a merchant picks the Won version instead of choosing between two near-
+// identical heroes. Centralised here (not per-section overlays) so it stays
+// upgrade-safe and reversible — edit the list, re-compose. Operates on dist only.
+const HIDE_NATIVE_SECTIONS = [
+  'hero',            // -> won-hero
+  'carousel',        // -> won-carousel
+  'marquee',         // -> won-marquee
+  'slideshow',       // -> won-hero-carousel
+  'layered-slideshow', // -> won-hero-carousel / won-hero-grid
+  'media-with-content', // -> won-band
+  'collection-list', // -> won-collection / won-collection-tiles
+  'collection-links', // -> won-collection-tiles
+];
+let prunedNative = 0;
+for (const name of HIDE_NATIVE_SECTIONS) {
+  const file = join(outDir, 'sections', `${name}.liquid`);
+  if (!existsSync(file)) continue;
+  const src = readFileSync(file, 'utf8');
+  const m = src.match(/(\{%-?\s*schema\s*-?%\})([\s\S]*?)(\{%-?\s*endschema\s*-?%\})/);
+  if (!m) { console.warn(`2c: ${name}.liquid has no schema block — left in picker`); continue; }
+  let obj;
+  try { obj = JSON.parse(m[2]); } catch { console.warn(`2c: ${name}.liquid schema is not strict JSON — left in picker`); continue; }
+  if (!('presets' in obj)) continue;
+  delete obj.presets;
+  const rebuilt = `${m[1]}\n${JSON.stringify(obj, null, 2)}\n${m[3]}`;
+  // Function replacer: `rebuilt` is JSON and may contain `$` sequences a future
+  // Horizon upgrade could introduce; a string replacement would mis-interpret
+  // them ($&, $1, $$…). A function replacer inserts it literally.
+  writeFileSync(file, src.replace(m[0], () => rebuilt));
+  prunedNative++;
+}
+
+// 2d. Universal Customization Layer (W3-b) — inject the shared Tier-1 style
+// controls (themes/build/won-style-controls.json) into each allow-listed won-*
+// section, replacing the 26 hand-copied padding/accent settings with one source,
+// and swap the section root's `won-spacing` render for the superset
+// `won-style-vars`. Same idempotent schema-parse mechanism as 2c; operates on the
+// dist copies only (won-base source is never mutated — dist is rebuilt from
+// pristine every run). Curated per-section defaults are PRESERVED so an untouched
+// section renders identically. Roll Tier 1 out incrementally by widening
+// WON_STYLE_SECTIONS: pilot (2-3) -> all 26 (won-sticky-atc is excluded — it is a
+// floating widget with its own model and no won-spacing root).
+const styleFragment = JSON.parse(readFileSync(join(themesRoot, 'build', 'won-style-controls.json'), 'utf8'));
+const WON_STYLE_SECTIONS = [
+  // All won-* sections except won-sticky-atc (floating widget, own model, no
+  // won-spacing root). A section whose schema isn't strict JSON or lacks a
+  // settings array is warned-and-skipped by the loop below (never breaks the build).
+  'won-accordion', 'won-announcement-bar', 'won-app-slot', 'won-articles',
+  'won-band', 'won-carousel', 'won-collection', 'won-collection-tiles',
+  'won-comparison', 'won-contact', 'won-features', 'won-footer', 'won-grid',
+  'won-hero', 'won-hero-carousel', 'won-hero-grid', 'won-marquee',
+  'won-media-compare', 'won-newsletter', 'won-page-header', 'won-panels',
+  'won-shoppable-image', 'won-stats', 'won-tabbed-rail', 'won-tabs',
+  'won-variant-picker',
+];
+let styledSections = 0;
+for (const name of WON_STYLE_SECTIONS) {
+  const file = join(outDir, 'sections', `${name}.liquid`);
+  if (!existsSync(file)) { console.warn(`2d: ${name}.liquid not found — skipped`); continue; }
+  let src = readFileSync(file, 'utf8');
+  const m = src.match(/(\{%-?\s*schema\s*-?%\})([\s\S]*?)(\{%-?\s*endschema\s*-?%\})/);
+  if (!m) { console.warn(`2d: ${name}.liquid has no schema block — skipped`); continue; }
+  let obj;
+  try { obj = JSON.parse(m[2]); } catch { console.warn(`2d: ${name}.liquid schema is not strict JSON — skipped`); continue; }
+  if (!Array.isArray(obj.settings)) { console.warn(`2d: ${name}.liquid schema has no settings array — skipped`); continue; }
+
+  // Capture each section's original setting for the migrated ids, so the shared
+  // control keeps its curated look. For range settings we preserve the WHOLE
+  // geometry (min/max/step/default) — a compact section (announcement bar,
+  // marquee) uses a tighter range + finer step, and forcing the template's
+  // step would make its preserved default fall off the grid, which Shopify's
+  // upload parser rejects ("default must represent a step in the range").
+  const captured = {};
+  for (const setting of obj.settings) {
+    if (setting && setting.id && styleFragment.preserveDefaultIds.includes(setting.id)) {
+      captured[setting.id] = setting;
+    }
+  }
+
+  // Strip every fragment-owned id and the migrated headers (dedupe, not add-beside).
+  const removeIds = new Set(styleFragment.removeIds);
+  const removeHeaders = new Set(styleFragment.removeHeaders);
+  const hadAppearanceHeader = obj.settings.some(
+    (x) => x && x.type === 'header' && x.content === 't:won.headers.appearance'
+  );
+  obj.settings = obj.settings.filter((x) => {
+    if (!x) return false;
+    if (x.type === 'header') return !removeHeaders.has(x.content);
+    return !removeIds.has(x.id);
+  });
+
+  // Append the shared block (Tier 1 appearance + Tier 2 type/motion + Tier 3
+  // advanced), applying captured defaults over the template.
+  const block = [
+    ...styleFragment.tier1,
+    ...(styleFragment.tier2 || []),
+    ...(styleFragment.tier3 || []),
+  ].map((setting) => {
+    const orig = setting.id ? captured[setting.id] : undefined;
+    if (!orig) return { ...setting };
+    const merged = { ...setting };
+    if (setting.type === 'range') {
+      // Keep the section's curated range geometry.
+      for (const k of ['min', 'max', 'step', 'default']) {
+        if (k in orig) merged[k] = orig[k];
+      }
+      // Safety snap: guarantee the default lands on the (min, step) grid within
+      // [min, max], whatever combination of template/original values we ended up
+      // with — otherwise the theme upload parser rejects the section.
+      const min = merged.min ?? 0;
+      const step = merged.step || 1;
+      const max = merged.max ?? min;
+      let d = merged.default ?? min;
+      d = min + Math.round((d - min) / step) * step;
+      merged.default = Math.min(max, Math.max(min, d));
+    } else if ('default' in orig) {
+      merged.default = orig.default;
+    }
+    return merged;
+  });
+  if (!hadAppearanceHeader) {
+    block.unshift({ type: 'header', content: 't:won.headers.appearance' });
+  }
+  obj.settings.push(...block);
+
+  const rebuilt = `${m[1]}\n${JSON.stringify(obj, null, 2)}\n${m[3]}`;
+  src = src.replace(m[0], () => rebuilt);
+  // Swap the root style helper for the superset (won-style-vars reads the same
+  // ids plus the new ones). Idempotent; a no-op if a section never used won-spacing.
+  src = src.replace(/render 'won-spacing'/g, "render 'won-style-vars'");
+  // Wire the merchant coaching layer (won-guard): an editor-only, non-blocking set
+  // of soft warnings rendered right after the section root's opening tag. Capture
+  // the settings var from the (just-swapped) root style render and reuse it. Injected
+  // once; skipped (with a warning) if the root tag can't be matched, so a section is
+  // never broken.
+  const rootTag = src.match(/render 'won-style-vars', settings: ([\w.]+) %\}"[^>]*>/);
+  if (rootTag && !src.includes("render 'won-guard'")) {
+    src = src.replace(
+      rootTag[0],
+      `${rootTag[0]}\n  {% render 'won-guard', settings: ${rootTag[1]} %}`
+    );
+  } else if (!rootTag) {
+    console.warn(`2d: ${name}.liquid root tag not matched — coaching guard not wired`);
+  }
+  writeFileSync(file, src);
+  styledSections++;
+}
+
 // 2b. Wire the shared won token/utility stylesheet into the base layout <head>.
 // won-tokens.css holds the global :root design tokens and shared classes
 // (.won-container, .won-section, .won-heading, .won-btn) that every won section
@@ -129,4 +282,4 @@ if (existsSync(demoDir)) {
   walk('.');
 }
 
-console.log(`composed ${target}: ${overlaid} code files overlaid, ${mergedLocales} locale files merged, ${demoFiles} demo data files applied -> ${outDir}`);
+console.log(`composed ${target}: ${overlaid} code files overlaid, ${prunedNative} native duplicate sections hidden from picker, ${styledSections} sections given the shared style controls, ${mergedLocales} locale files merged, ${demoFiles} demo data files applied -> ${outDir}`);

@@ -15,7 +15,7 @@
     class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-hero won-hero--slider{% if s.layout == 'peek' %} won-hero--peek{% endif %}"
     style="--won-hero-min: {{ s.min_height }}px; --won-hero-gap: {{ s.gap }}px; --won-hero-peek: {{ s.columns_mobile }}; --won-hero-slide: {{ s.slide_width }}%;"
   >
-    <won-carousel class="won-hero__carousel"{% if s.autoplay %} data-autoplay="{{ s.autoplay_interval }}"{% endif %}><div class="won-hero__track" data-won-track>
+    <won-carousel class="won-hero__carousel" data-won-loop="desktop"{% if s.autoplay %} data-autoplay="{{ s.autoplay_interval }}"{% endif %}><div class="won-hero__track" data-won-track>
         {% content_for 'blocks' %}
       </div>
       {%- if s.show_arrows -%}
@@ -41,6 +41,7 @@
   "max_blocks": 8,
   "blocks": [{ "type": "won-slide" }, { "type": "@theme" }, { "type": "@app" }],
   "settings": [
+    { "type": "paragraph", "content": "t:won.info.hero_carousel_about" },
     { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 200, "max": 800, "step": 20, "unit": "px", "default": 520 },
     {
       "type": "select", "id": "layout", "label": "t:won.settings.hero_slider_layout", "info": "t:won.info.hero_slider_layout",

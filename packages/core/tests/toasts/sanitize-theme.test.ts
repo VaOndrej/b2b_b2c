@@ -26,6 +26,35 @@ test("keeps valid enums, hex colours and clamped sizes", () => {
   assert.equal(out.showImage, false);
 });
 
+test("branding: gradient, gradientColor, iconSet, fontMode, fontFamily", () => {
+  const out = sanitizeTheme({
+    gradient: true,
+    gradientColor: "#ABCDEF",
+    iconSet: "emoji",
+    fontMode: "custom",
+    fontFamily: 'Georgia, "Times New Roman", serif',
+  });
+  assert.equal(out.gradient, true);
+  assert.equal(out.gradientColor, "#abcdef"); // canonical lowercase
+  assert.equal(out.iconSet, "emoji");
+  assert.equal(out.fontMode, "custom");
+  assert.equal(out.fontFamily, 'Georgia, "Times New Roman", serif');
+});
+
+test("branding: rejects junk (bad enum/hex) and sanitises font family", () => {
+  const out = sanitizeTheme({
+    gradientColor: "nope",
+    iconSet: "sparkles",
+    fontMode: "comic",
+    fontFamily: 'Evil; } body{display:none} <script>',
+  });
+  assert.equal("gradientColor" in out, false); // invalid hex dropped
+  assert.equal("iconSet" in out, false); // invalid enum dropped
+  assert.equal("fontMode" in out, false);
+  // CSS-breaking characters stripped from the family
+  assert.equal(/[<>{};]/.test(out.fontFamily ?? ""), false);
+});
+
 test("rejects invalid hex and out-of-range numbers", () => {
   assert.equal("colorBg" in sanitizeTheme({ colorBg: "red" }), false);
   assert.equal(sanitizeTheme({ cornerRadius: 999 }).cornerRadius, 32);

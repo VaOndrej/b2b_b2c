@@ -1,0 +1,655 @@
+{%- comment -%}
+  won-announcement-bar — a thin, generic top-of-page bar. Replaces the old
+  single-purpose won-shipping-bar: each announcement is its own block, so a
+  merchant mixes free-shipping progress, a promo/new-collection line, and plain
+  messages, and turns each on/off independently. Blocks either rotate one at a
+  time (<won-announcement> cycles them) or show as a single static line. The
+  free_shipping block keeps the live cart progress bar. Optional dismiss button
+  remembers the close for the session.
+{%- endcomment -%}
+
+{%- assign s = section.settings -%}
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-style-vars', settings: s %}"
+  data-testid="won-announcement-bar-section"
+>
+  {% render 'won-guard', settings: s %}
+  <div class="won-container">
+    <won-announcement
+      class="won-annbar won-annbar--{{ s.display }}{% if s.dismissible %} won-annbar--dismissible{% endif %}"
+      data-display="{{ s.display }}"
+      data-interval="{{ s.interval }}"
+      {% if s.dismissible %}data-dismiss-key="won-ann-{{ section.id }}"{% endif %}
+      style="--won-annbar-align: {{ s.alignment }};"
+    >
+      <div class="won-annbar__viewport" aria-live="polite">
+        {%- for block in section.blocks -%}
+          {%- assign bs = block.settings -%}
+          <div class="won-annbar__item" data-annbar-item{% unless forloop.first %} hidden{% endunless %} {{ block.shopify_attributes }}>
+            {%- case block.type -%}
+              {%- when 'free_shipping' -%}
+                {%- liquid
+                  assign threshold = bs.threshold | times: 100
+                  assign total = cart.total_price
+                  assign remaining = threshold | minus: total
+                  assign rem_money = remaining | money
+                  assign pct = 0
+                  if threshold > 0
+                    assign pct = total | times: 100 | divided_by: threshold
+                    if pct > 100
+                      assign pct = 100
+                    endif
+                  endif
+                -%}
+                <span
+                  class="won-annbar__ship"
+                  data-annbar-ship
+                  data-threshold="{{ threshold }}"
+                  data-msg-remaining="{{ bs.msg_remaining | default: 'won.ship.remaining' | t | escape }}"
+                  data-msg-reached="{{ bs.msg_reached | default: 'won.ship.reached' | t | escape }}"
+                >
+                  {%- if bs.icon != blank -%}<span class="won-annbar__icon" aria-hidden="true">{{ bs.icon }}</span>{%- endif -%}
+                  <span class="won-annbar__msg" data-annbar-ship-msg>
+                    {%- if remaining <= 0 -%}
+                      {{ bs.msg_reached | default: 'won.ship.reached' | t }}
+                    {%- else -%}
+                      {{ bs.msg_remaining | default: 'won.ship.remaining' | t | replace: '[amount]', rem_money }}
+                    {%- endif -%}
+                  </span>
+                  <span class="won-annbar__track"><span class="won-annbar__fill" data-annbar-ship-fill style="inline-size: {{ pct }}%;"></span></span>
+                </span>
+              {%- when 'message' -%}
+                {%- if bs.icon != blank -%}<span class="won-annbar__icon" aria-hidden="true">{{ bs.icon }}</span>{%- endif -%}
+                {%- if bs.link != blank -%}
+                  <a class="won-annbar__msg won-annbar__link" href="{{ bs.link }}">{{ bs.text }}</a>
+                {%- else -%}
+                  <span class="won-annbar__msg">{{ bs.text }}</span>
+                {%- endif -%}
+            {%- endcase -%}
+          </div>
+        {%- endfor -%}
+      </div>
+      {%- if s.dismissible -%}
+        <button type="button" class="won-annbar__close" data-annbar-close aria-label="{{ 'won.a11y.close' | t }}"><span aria-hidden="true">&times;</span></button>
+      {%- endif -%}
+    </won-announcement>
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-annbar { position: relative; display: flex; align-items: center; min-block-size: 24px; }
+  .won-annbar__viewport {
+    flex: 1 1 auto; display: flex; align-items: center; flex-wrap: wrap;
+    justify-content: var(--won-annbar-align, center); gap: var(--won-space-1) var(--won-space-3);
+  }
+  .won-annbar--dismissible .won-annbar__viewport { padding-inline: 44px; }
+  .won-annbar__item { display: inline-flex; align-items: center; gap: var(--won-space-2); font-size: 0.86rem; font-weight: 600; }
+  .won-annbar__item[hidden] { display: none; }
+  .won-annbar__ship { display: inline-flex; align-items: center; gap: var(--won-space-2); }
+  .won-annbar__msg { margin: 0; }
+  .won-annbar__link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  .won-annbar__icon { font-size: 1.05em; line-height: 1; }
+  .won-annbar__track {
+    display: inline-block; inline-size: clamp(80px, 20vw, 200px); block-size: 6px;
+    background: var(--won-border); border-radius: var(--won-radius-pill); overflow: hidden; vertical-align: middle;
+  }
+  .won-annbar__fill { display: block; block-size: 100%; inline-size: 0; background: var(--won-accent); border-radius: inherit; transition: inline-size var(--won-dur) var(--won-ease); }
+  .won-annbar__close {
+    position: absolute; inset-inline-end: 0; inset-block: 0; margin-block: auto;
+    inline-size: 44px; block-size: 44px; padding: 0; border: 0; background: transparent;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: inherit; cursor: pointer; font-size: 1.3rem; line-height: 1; opacity: 0.65;
+  }
+  .won-annbar__close:hover { opacity: 1; }
+  /* Rotate: each freshly-shown item fades in. */
+  .won-annbar--rotate .won-annbar__item:not([hidden]) { animation: won-annbar-in var(--won-dur) var(--won-ease); }
+  @keyframes won-annbar-in { from { opacity: 0; } to { opacity: 1; } }
+  /* Reduced motion / no-JS: reveal every rotating message inline (nobody misses
+     an announcement because the rotation never ran). */
+  @media (prefers-reduced-motion: reduce) {
+    .won-annbar--rotate .won-annbar__item[hidden] { display: inline-flex; }
+    .won-annbar--rotate .won-annbar__item { animation: none; }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  class WonAnnouncement extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.wonBound) return;
+      this.dataset.wonBound = '1';
+      this.items = Array.from(this.querySelectorAll('[data-annbar-item]'));
+      this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Dismiss: hide for the session once closed.
+      this.key = this.dataset.dismissKey;
+      if (this.key) {
+        try { if (sessionStorage.getItem(this.key) === '1') this.hideBar(); } catch (e) {}
+        var close = this.querySelector('[data-annbar-close]');
+        if (close) close.addEventListener('click', () => {
+          this.hideBar();
+          try { sessionStorage.setItem(this.key, '1'); } catch (e) {}
+        });
+      }
+
+      // Live free-shipping progress (any free_shipping block).
+      this.ship = this.querySelector('[data-annbar-ship]');
+      if (this.ship) {
+        this._refresh = this.refreshShip.bind(this);
+        document.addEventListener('won:cart:added', this._refresh);
+        document.addEventListener('cart:refresh', this._refresh);
+      }
+
+      // Rotate through the messages (only worth it with 2+ and motion allowed).
+      if (this.dataset.display === 'rotate' && this.items.length > 1 && !this.reduced) {
+        this.i = 0;
+        var interval = (parseFloat(this.dataset.interval) || 5) * 1000;
+        this._timer = setInterval(() => this.advance(), interval);
+        this.addEventListener('pointerenter', () => clearInterval(this._timer));
+        this.addEventListener('pointerleave', () => { this._timer = setInterval(() => this.advance(), interval); });
+      }
+    }
+    disconnectedCallback() {
+      clearInterval(this._timer);
+      if (this._refresh) {
+        document.removeEventListener('won:cart:added', this._refresh);
+        document.removeEventListener('cart:refresh', this._refresh);
+      }
+    }
+    hideBar() {
+      var sec = this.closest('.won-section');
+      (sec || this).setAttribute('hidden', '');
+    }
+    advance() {
+      this.items[this.i].setAttribute('hidden', '');
+      this.i = (this.i + 1) % this.items.length;
+      this.items[this.i].removeAttribute('hidden');
+    }
+    money(cents, currency) {
+      try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: currency || 'USD' }).format(cents / 100); }
+      catch (e) { return (cents / 100).toFixed(2); }
+    }
+    async refreshShip() {
+      var threshold = parseInt(this.ship.dataset.threshold, 10) || 0;
+      if (!threshold) return;
+      try {
+        var cart = await (await fetch('/cart.js')).json();
+        var total = cart.total_price;
+        var pct = Math.min(100, Math.round((total / threshold) * 100));
+        var fill = this.ship.querySelector('[data-annbar-ship-fill]');
+        var msg = this.ship.querySelector('[data-annbar-ship-msg]');
+        if (fill) fill.style.inlineSize = pct + '%';
+        if (msg) {
+          msg.textContent = total >= threshold
+            ? this.ship.dataset.msgReached
+            : (this.ship.dataset.msgRemaining || '').replace('[amount]', this.money(threshold - total, cart.currency));
+        }
+      } catch (e) { /* keep server-rendered state */ }
+    }
+  }
+  if (!customElements.get('won-announcement')) customElements.define('won-announcement', WonAnnouncement);
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "t:won.names.announcement_bar",
+  "tag": "section",
+  "class": "won-announcement-bar-section",
+  "max_blocks": 8,
+  "blocks": [
+    {
+      "type": "message",
+      "name": "t:won.names.ann_message",
+      "settings": [
+        {
+          "type": "text",
+          "id": "text",
+          "label": "t:won.settings.text",
+          "default": "t:won.defaults.ann_message"
+        },
+        {
+          "type": "text",
+          "id": "icon",
+          "label": "t:won.settings.icon",
+          "info": "t:won.info.ann_icon"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "t:won.settings.link",
+          "info": "t:won.info.ann_link"
+        }
+      ]
+    },
+    {
+      "type": "free_shipping",
+      "name": "t:won.names.ann_freeship",
+      "settings": [
+        {
+          "type": "number",
+          "id": "threshold",
+          "label": "t:won.settings.ship_threshold",
+          "info": "t:won.info.ship_threshold",
+          "default": 1500
+        },
+        {
+          "type": "text",
+          "id": "icon",
+          "label": "t:won.settings.icon",
+          "info": "t:won.info.ann_icon"
+        },
+        {
+          "type": "text",
+          "id": "msg_remaining",
+          "label": "t:won.settings.ship_msg_remaining",
+          "info": "t:won.info.ship_msg_remaining"
+        },
+        {
+          "type": "text",
+          "id": "msg_reached",
+          "label": "t:won.settings.ship_msg_reached"
+        }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:won.info.announcement_bar_about"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "select",
+      "id": "display",
+      "label": "t:won.settings.ann_display",
+      "info": "t:won.info.ann_display",
+      "options": [
+        {
+          "value": "rotate",
+          "label": "t:won.options.ann_rotate"
+        },
+        {
+          "value": "single",
+          "label": "t:won.options.ann_single"
+        }
+      ],
+      "default": "rotate"
+    },
+    {
+      "type": "range",
+      "id": "interval",
+      "label": "t:won.settings.ann_interval",
+      "info": "t:won.info.ann_interval",
+      "min": 3,
+      "max": 12,
+      "step": 1,
+      "unit": "s",
+      "default": 5,
+      "visible_if": "{{ section.settings.display == 'rotate' }}"
+    },
+    {
+      "type": "select",
+      "id": "alignment",
+      "label": "t:won.settings.alignment",
+      "options": [
+        {
+          "value": "center",
+          "label": "t:won.options.align_center"
+        },
+        {
+          "value": "flex-start",
+          "label": "t:won.options.align_start"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "checkbox",
+      "id": "dismissible",
+      "label": "t:won.settings.ann_dismissible",
+      "info": "t:won.info.ann_dismissible",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-2"
+    },
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "info": "t:won.info.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:won.settings.border_width",
+      "info": "t:won.info.border_width",
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border_style",
+      "label": "t:won.settings.border_style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "t:won.options.solid"
+        },
+        {
+          "value": "dashed",
+          "label": "t:won.options.dashed"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "t:won.settings.border_color",
+      "info": "t:won.info.border_color",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "select",
+      "id": "shadow",
+      "label": "t:won.settings.shadow",
+      "info": "t:won.info.shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "sm",
+          "label": "t:won.options.shadow_sm"
+        },
+        {
+          "value": "md",
+          "label": "t:won.options.shadow_md"
+        },
+        {
+          "value": "lg",
+          "label": "t:won.options.shadow_lg"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_color",
+      "info": "t:won.info.accent_color"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "t:won.settings.bg_color",
+      "info": "t:won.info.bg_color"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "t:won.settings.text_color",
+      "info": "t:won.info.text_color"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 10
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.type_motion"
+    },
+    {
+      "type": "select",
+      "id": "heading_weight",
+      "label": "t:won.settings.heading_weight",
+      "info": "t:won.info.heading_weight",
+      "options": [
+        {
+          "value": "theme",
+          "label": "t:won.options.weight_theme"
+        },
+        {
+          "value": "400",
+          "label": "t:won.options.weight_normal"
+        },
+        {
+          "value": "500",
+          "label": "t:won.options.weight_medium"
+        },
+        {
+          "value": "600",
+          "label": "t:won.options.weight_semibold"
+        },
+        {
+          "value": "700",
+          "label": "t:won.options.weight_bold"
+        },
+        {
+          "value": "800",
+          "label": "t:won.options.weight_extrabold"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "letter_spacing",
+      "label": "t:won.settings.letter_spacing",
+      "info": "t:won.info.letter_spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "t:won.options.ls_theme"
+        },
+        {
+          "value": "tight",
+          "label": "t:won.options.ls_tight"
+        },
+        {
+          "value": "normal",
+          "label": "t:won.options.ls_normal"
+        },
+        {
+          "value": "wide",
+          "label": "t:won.options.ls_wide"
+        },
+        {
+          "value": "wider",
+          "label": "t:won.options.ls_wider"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "line_height",
+      "label": "t:won.settings.line_height",
+      "info": "t:won.info.line_height",
+      "options": [
+        {
+          "value": "theme",
+          "label": "t:won.options.lh_theme"
+        },
+        {
+          "value": "tight",
+          "label": "t:won.options.lh_tight"
+        },
+        {
+          "value": "normal",
+          "label": "t:won.options.lh_normal"
+        },
+        {
+          "value": "relaxed",
+          "label": "t:won.options.lh_relaxed"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "text_transform",
+      "label": "t:won.settings.text_transform",
+      "info": "t:won.info.text_transform",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.tt_none"
+        },
+        {
+          "value": "uppercase",
+          "label": "t:won.options.tt_uppercase"
+        },
+        {
+          "value": "capitalize",
+          "label": "t:won.options.tt_capitalize"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "select",
+      "id": "animate_in",
+      "label": "t:won.settings.animate_in",
+      "info": "t:won.info.animate_in",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.anim_none"
+        },
+        {
+          "value": "fade",
+          "label": "t:won.options.anim_fade"
+        },
+        {
+          "value": "slide",
+          "label": "t:won.options.anim_slide"
+        },
+        {
+          "value": "scale",
+          "label": "t:won.options.anim_scale"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.advanced"
+    },
+    {
+      "type": "paragraph",
+      "content": "t:won.info.advanced_about"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_advanced",
+      "label": "t:won.settings.show_advanced",
+      "info": "t:won.info.show_advanced",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "pad_inline",
+      "label": "t:won.settings.pad_inline",
+      "info": "t:won.info.pad_inline",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.show_advanced }}"
+    },
+    {
+      "type": "range",
+      "id": "section_opacity",
+      "label": "t:won.settings.section_opacity",
+      "info": "t:won.info.section_opacity",
+      "min": 20,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ section.settings.show_advanced }}"
+    },
+    {
+      "type": "text",
+      "id": "custom_shadow",
+      "label": "t:won.settings.custom_shadow",
+      "info": "t:won.info.custom_shadow",
+      "visible_if": "{{ section.settings.show_advanced }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:won.names.announcement_bar",
+      "category": "t:won.categories.layout",
+      "settings": {
+        "display": "rotate"
+      },
+      "blocks": [
+        {
+          "type": "free_shipping"
+        },
+        {
+          "type": "message"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -55,6 +55,8 @@
         decreased: "#b7791f",
         info: "#4a5568",
       },
+      gradient: false,
+      gradientColor: "#f2f4f7",
       cornerRadius: 12,
       shadow: "md",
       border: false,
@@ -70,6 +72,9 @@
       showImage: true,
       showDelta: true,
       showIcon: true,
+      iconSet: "line",
+      fontMode: "system",
+      fontFamily: "",
     },
     // MVP9 page-view recipes (mirror @won/core DEFAULT_NOTIFICATIONS = []).
     notifications: [],
@@ -83,6 +88,9 @@
 
   var cfg = FALLBACK;
   var locale = "en";
+  // MVP13c: which experiment arm this shopper is in (0 control, 1 variant).
+  // Stamped on every analytics atom so cohorts can be compared.
+  var wonAbVariant = 0;
   var defaultLocale = "en"; // merchant's fallback language (from cfg.locales)
   var active = true; // targeting: whether toasts run on this page
 
@@ -321,7 +329,34 @@
       delta: showDelta ? (grp.totalDelta > 0 ? "+" : "") + grp.totalDelta : "",
       accent: accentFor(semantic),
       image: cartTheme.showImage ? ev.line.image : null,
+      showIcon: cartTheme.showIcon,
+      iconSet: cartTheme.iconSet,
+      semantic: semantic,
     };
+  }
+
+  // Emoji per cart semantic (mirror of @won/core/toasts/branding ICON_EMOJI, cart
+  // subset). Milestone toasts render separately, so only cart events need glyphs;
+  // anything else falls back to info.
+  var ICON_EMOJI = {
+    added: "🛒", removed: "🗑️", increased: "➕", decreased: "➖", info: "🔔",
+  };
+  function iconFor(p) {
+    if (!p.showIcon || p.iconSet === "none") return null;
+    if (p.iconSet === "emoji") {
+      var g = ICON_EMOJI[p.semantic] || ICON_EMOJI.info;
+      var span = elem("span");
+      span.setAttribute("data-won-toast-icon", "");
+      span.setAttribute("data-emoji", "");
+      span.setAttribute("aria-hidden", "true");
+      span.textContent = g;
+      return span;
+    }
+    var chip = elem("div");
+    chip.setAttribute("data-won-toast-icon", "");
+    chip.setAttribute("aria-hidden", "true");
+    chip.style.background = p.accent;
+    return chip;
   }
 
   // ---- grouping (mirror of @won/core/toasts/grouping) ----
@@ -403,18 +438,32 @@
     var f = cfg.global.frequency || {};
     return rule && rule[field] != null ? rule[field] : f[field] || 0;
   }
-  function governanceOK(token, rule, groupKey, now) {
-    if (quietOn()) return false;
+  // Why a rule is blocked right now (or null if it may render). Reasons mirror
+  // @won/core/toasts/insights SUPPRESS_REASONS so the analytics `suppressed` atom
+  // records WHY a wanted toast never showed.
+  function govBlockReason(token, rule, groupKey, now) {
+    if (quietOn()) return "quiet";
     var s = loadGov(token);
     var maxPer = freqNum(rule, "maxPerSession");
     if (maxPer > 0 && ((s.counts && s.counts[rule.key]) || 0) >= maxPer)
-      return false;
+      return "cap";
     var cd = freqNum(rule, "cooldownMs");
     if (cd > 0 && s.last && now - (s.last[rule.key] || -Infinity) < cd)
-      return false;
+      return "cooldown";
     var sup = freqNum(rule, "suppressAfterDismissMs");
     if (sup > 0 && s.dismissed && now - (s.dismissed[groupKey] || -Infinity) < sup)
+      return "cooldown";
+    return null;
+  }
+  // Gate + instrument: emits a `suppressed` atom (with reason) when blocked.
+  function govGate(token, rule, groupKey, now, ruleId) {
+    var reason = govBlockReason(token, rule, groupKey, now);
+    if (reason) {
+      emitAtom("suppressed", ruleId, baseDims(typeKeyFor(ruleId)), {
+        suppressReason: reason,
+      });
       return false;
+    }
     return true;
   }
   function govRecordEmit(token, rule, now) {
@@ -477,23 +526,127 @@
     for (var i = 0; i < list.length; i++) dismiss(list[i]);
   }
 
-  // ---- analytics + A/B (MVP13) ----
-  // Beacon one toast lifecycle event. Pro-only (matches server gating); silent
-  // for Free. No PII — just a rule id, event type, and A/B variant.
-  function trackEvent(ruleId, type, variant) {
-    if (!ruleId || !cfg || cfg.plan !== "pro") return;
+  // ---- analytics: batched lifecycle atoms (MVP13a) ----
+  // Pro-only (matches server gating); silent for Free. Rich atoms
+  // (shown/visible/read_through/hover/click/dismiss/auto_fade/suppressed) carry
+  // NON-PII dimensions only, are batched, and flushed via sendBeacon on
+  // page-hide/visibility/~5s — instrumentation never blocks the shopper and never
+  // costs a request per event (perf budget). The server re-scrubs every event.
+  var _atomQ = [];
+  var _atomTimer = 0;
+  function analyticsOn() {
+    return !!(cfg && cfg.plan === "pro");
+  }
+  function deviceType() {
+    var w = window.innerWidth || 1024;
+    return w < 600 ? "mobile" : w < 1024 ? "tablet" : "desktop";
+  }
+  function baseDims(typeKey, extra) {
+    var d = new Date();
+    var dims = {
+      type: typeKey || "cart",
+      pageType: pageType(),
+      device: deviceType(),
+      locale: locale,
+      hourOfDay: d.getHours(),
+      dayOfWeek: d.getDay(),
+      abVariant: wonAbVariant,
+    };
+    try {
+      if (window.Shopify && Shopify.currency && Shopify.currency.active)
+        dims.currency = Shopify.currency.active;
+    } catch (e) {
+      /* no-op */
+    }
+    if (cfg && cfg.lookPreset) dims.lookPreset = cfg.lookPreset;
+    if (extra)
+      for (var k in extra) if (extra[k] != null && extra[k] !== "") dims[k] = extra[k];
+    return dims;
+  }
+  function flushAtoms() {
+    if (_atomTimer) {
+      clearTimeout(_atomTimer);
+      _atomTimer = 0;
+    }
+    if (!_atomQ.length) return;
+    var batch = _atomQ.splice(0, _atomQ.length);
+    var payload = JSON.stringify({ events: batch });
+    try {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(
+          "/apps/won-toasts/track",
+          new Blob([payload], { type: "application/json" }),
+        );
+        return;
+      }
+    } catch (e) {
+      /* fall through to fetch */
+    }
     try {
       window
         .fetch("/apps/won-toasts/track", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ruleId: ruleId, type: type, variant: variant || 0 }),
+          body: payload,
           keepalive: true,
         })
         .catch(function () {});
     } catch (e) {
       /* no-op */
     }
+  }
+  function scheduleFlush() {
+    if (_atomTimer) return;
+    _atomTimer = setTimeout(flushAtoms, 5000);
+  }
+  function emitAtom(atom, ruleId, dims, extra) {
+    if (!analyticsOn()) return;
+    var ev = { atom: atom, dims: dims || baseDims(typeKeyFor(ruleId)) };
+    if (ruleId) ev.ruleId = ruleId;
+    if (extra) for (var k in extra) if (extra[k] != null) ev[k] = extra[k];
+    _atomQ.push(ev);
+    if (_atomQ.length >= 20) flushAtoms();
+    else scheduleFlush();
+  }
+  // Legacy single-event shim (undo path) → one click atom on the same pipeline.
+  function trackEvent(ruleId, type) {
+    if (!ruleId) return;
+    if (type === "undo")
+      emitAtom("click", ruleId, baseDims(typeKeyFor(ruleId)), {
+        clickTarget: "cta",
+      });
+  }
+  try {
+    window.addEventListener("pagehide", flushAtoms);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") flushAtoms();
+    });
+  } catch (e) {
+    /* no-op */
+  }
+  // MVP13c guardrail telemetry: one `session` atom per session (conversion
+  // denominator) and a `js_error` atom whenever OUR script throws (error-rate
+  // guardrail). Both feed the live circuit breaker; neither is a per-toast metric.
+  function logSession() {
+    if (!analyticsOn()) return;
+    try {
+      if (persist.get("won-toasts:sess-logged")) return;
+      persist.set("won-toasts:sess-logged", "1");
+    } catch (e) {
+      /* private mode: fall through, at worst double-count once */
+    }
+    emitAtom("session", null, baseDims("app"));
+  }
+  try {
+    window.addEventListener("error", function (ev) {
+      // Only OUR errors — match the extension asset filename.
+      var src = (ev && ev.filename) || "";
+      if (src.indexOf("won-toasts") >= 0 && analyticsOn()) {
+        emitAtom("js_error", null, baseDims("app"));
+      }
+    });
+  } catch (e) {
+    /* no-op */
   }
   // FNV-1a mirror of @won/core/toasts/experiments for a deterministic A/B split.
   function abHash(token) {
@@ -631,7 +784,7 @@
     if (pvRemaining(now, opts) <= 0) return; // already ended → show nothing
     var token = cartToken();
     var gr = "countdown:" + rule.id;
-    if (!governanceOK(token, govRuleOf(rule), gr, now)) return;
+    if (!govGate(token, govRuleOf(rule), gr, now, rule.id)) return;
 
     var timeEl = elem("span");
     timeEl.setAttribute("data-won-countdown-time", "");
@@ -719,7 +872,7 @@
       var now = Date.now();
       var token = cartToken();
       var gr = "stock:" + rule.id;
-      if (!governanceOK(token, govRuleOf(rule), gr, now)) return;
+      if (!govGate(token, govRuleOf(rule), gr, now, rule.id)) return;
       var text = renderTemplate(rule.message || "Only {count} left", {
         count: inv,
       });
@@ -795,7 +948,7 @@
           var sale = sales[i++];
           var now = Date.now();
           var gr = "sale:" + rule.id;
-          if (!governanceOK(token, govRuleOf(rule), gr, now)) return;
+          if (!govGate(token, govRuleOf(rule), gr, now, rule.id)) return;
           var text = formatSale(
             rule.message || "{name} from {city} bought {product}",
             sale,
@@ -832,7 +985,7 @@
     if (!text) return;
     var now = Date.now();
     var gr = "announcement:" + rule.id;
-    if (!governanceOK(token, govRuleOf(rule), gr, now)) return;
+    if (!govGate(token, govRuleOf(rule), gr, now, rule.id)) return;
     var card = notifCard("announcement", null, renderTemplate(text, {}));
     finalizeCard(card, {
       persistent: isPersistentSurface(rule.surface),
@@ -872,7 +1025,7 @@
           if (!text) return; // honest: 0 → render nothing
           var token = cartToken();
           var gr = rule.type + ":" + rule.id;
-          if (!governanceOK(token, govRuleOf(rule), gr, now)) return;
+          if (!govGate(token, govRuleOf(rule), gr, now, rule.id)) return;
           var dtype =
             rule.type === "order.summary" ? "order-summary" : "cart-activity";
           var card = notifCard(dtype, null, text);
@@ -944,6 +1097,17 @@
   function cartMilestone(cart) {
     return { subtotalCents: subtotalCents(cart), hasGiftLine: hasGift(cart) };
   }
+  // Mirror of @won/core resolveMilestoneThresholdCents: a cart subtotal is in
+  // its presentment currency (Markets), so pick the per-currency threshold when
+  // the merchant set one, else fall back to the base thresholdCents.
+  function resolveThr(rule, cur) {
+    var map = rule.thresholds;
+    if (map && cur) {
+      var per = map[String(cur).toUpperCase()];
+      if (typeof per === "number" && isFinite(per)) return per;
+    }
+    return rule.thresholdCents;
+  }
   function mState(prev, next, thr) {
     var t = thr > 0 ? thr : 1;
     var pr = prev >= t;
@@ -983,7 +1147,11 @@
             ? "just_lost"
             : "unreached";
       } else {
-        state = mState(prev.subtotalCents, next.subtotalCents, rule.thresholdCents);
+        state = mState(
+          prev.subtotalCents,
+          next.subtotalCents,
+          resolveThr(rule, after.currency),
+        );
       }
       if (state === "just_lost") {
         announced(token, rule.id, false);
@@ -1021,12 +1189,23 @@
   };
   function styleTokens(t) {
     var isDark = t.mode === "dark";
-    var bg = t.mode === "custom" ? t.colorBg : isDark ? "#1a1f24" : "#ffffff";
+    var baseBg = t.mode === "custom" ? t.colorBg : isDark ? "#1a1f24" : "#ffffff";
+    var bg = t.gradient
+      ? "linear-gradient(135deg," + baseBg + "," + t.gradientColor + ")"
+      : baseBg;
     var text =
       t.mode === "custom" ? t.colorText : isDark ? "#eef1f4" : "#1a1f24";
+    // Font: inherit the shop theme, a clean system stack, or the merchant's own.
+    var font =
+      t.fontMode === "inherit-theme"
+        ? "inherit"
+        : t.fontMode === "custom" && (t.fontFamily || "").trim()
+          ? t.fontFamily
+          : 'system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
     return {
       "--won-bg": bg,
       "--won-text": text,
+      "--won-font": font,
       "--won-radius": t.cornerRadius + "px",
       "--won-width": t.width + "px",
       "--won-min-width": t.minWidth + "px",
@@ -1049,12 +1228,14 @@
     "background:var(--won-bg);color:var(--won-text);border-radius:var(--won-radius);" +
     "box-shadow:var(--won-shadow);border:var(--won-border);" +
     "-webkit-backdrop-filter:var(--won-blur);backdrop-filter:var(--won-blur);" +
-    "font:14px/1.35 system-ui,-apple-system,sans-serif;" +
+    "font-size:14px;line-height:1.35;font-family:var(--won-font);" +
     "animation:won-in var(--won-anim-ms) ease both;}" +
     "[data-won-toast] img{width:40px;height:40px;border-radius:8px;object-fit:cover;flex:0 0 auto;}" +
     "[data-won-toast] .won-b{flex:1 1 auto;min-width:0;}" +
     "[data-won-toast] .won-t{font-weight:700;}" +
     "[data-won-toast] .won-d{color:#8892a0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}" +
+    "[data-won-toast-icon]{width:18px;height:18px;border-radius:5px;opacity:.9;flex:0 0 auto;}" +
+    "[data-won-toast-icon][data-emoji]{width:auto;height:auto;background:none!important;border-radius:0;opacity:1;font-size:16px;line-height:1;}" +
     "[data-won-toast-delta]{font-weight:800;flex:0 0 auto;}" +
     "[data-won-toast] button{border:0;background:transparent;font:inherit;cursor:pointer;flex:0 0 auto;}" +
     "[data-won-toast-undo]{font-weight:700;text-decoration:underline;}" +
@@ -1188,6 +1369,10 @@
       card.appendChild(img);
     }
 
+    // Icon — accent chip or emoji glyph per iconSet (parity with the preview).
+    var iconEl = iconFor(p);
+    if (iconEl) card.appendChild(iconEl);
+
     var body = elem("div", "won-b");
     var title = elem("div", "won-t");
     title.textContent = p.title;
@@ -1319,6 +1504,15 @@
     var beh = resolveBehaviorFor(typeKey);
     var th = resolveThemeFor(typeKey);
     card.__wonDur = beh.durationMs;
+    // MVP13a: per-card analytics context (non-PII dims + shown timestamp for dwell).
+    card.__wonRuleId = opts.ruleId || null;
+    // abVariant is the experiment arm (stamped globally by baseDims), not a
+    // per-toast value — so all atoms in a session share the shopper's arm.
+    card.__wonDims = baseDims(typeKey, {
+      semantic: opts.semantic,
+      surface: opts.surface,
+    });
+    card.__wonShownAt = Date.now();
     // A per-type hook + the type's entry animation (per-card, so each type can
     // animate differently; also lets custom CSS target one type).
     card.setAttribute("data-won-type", typeKey);
@@ -1338,8 +1532,11 @@
       close.textContent = "×";
       close.addEventListener("click", function (e) {
         e.stopPropagation();
+        card.__wonManual = 1; // mark so the timer path doesn't also log auto_fade
+        emitAtom("dismiss", card.__wonRuleId, card.__wonDims, {
+          dwellMs: Date.now() - (card.__wonShownAt || Date.now()),
+        });
         dismiss(card);
-        if (opts.ruleId) trackEvent(opts.ruleId, "dismiss", opts.variant);
         if (typeof opts.onClose === "function") opts.onClose();
       });
       card.appendChild(close);
@@ -1348,7 +1545,8 @@
     if (beh.clickAction === "open-cart" && !opts.persistent) {
       card.style.cursor = "pointer";
       card.addEventListener("click", function () {
-        if (opts.ruleId) trackEvent(opts.ruleId, "click", opts.variant);
+        emitAtom("click", card.__wonRuleId, card.__wonDims, { clickTarget: "body" });
+        flushAtoms(); // navigation imminent — don't lose the click
         window.location.href = "/cart";
       });
     }
@@ -1358,8 +1556,36 @@
     } else {
       region.appendChild(card);
     }
-    // MVP13: one impression per rendered toast (Pro analytics).
-    if (opts.ruleId) trackEvent(opts.ruleId, "impression", opts.variant);
+    // MVP13a: lifecycle atoms — `shown` now; `visible` when it truly enters the
+    // viewport (IntersectionObserver); `hover` on first pointer pause.
+    emitAtom("shown", card.__wonRuleId, card.__wonDims);
+    if (analyticsOn()) {
+      try {
+        if (window.IntersectionObserver) {
+          var io = new IntersectionObserver(function (entries) {
+            for (var i = 0; i < entries.length; i++) {
+              if (entries[i].isIntersecting) {
+                emitAtom("visible", card.__wonRuleId, card.__wonDims);
+                io.disconnect();
+                break;
+              }
+            }
+          });
+          io.observe(card);
+        } else {
+          emitAtom("visible", card.__wonRuleId, card.__wonDims);
+        }
+      } catch (e) {
+        /* no-op */
+      }
+      card.addEventListener(
+        "mouseenter",
+        function () {
+          emitAtom("hover", card.__wonRuleId, card.__wonDims);
+        },
+        { once: true },
+      );
+    }
     enforceMaxVisible();
 
     if (beh.autoDismiss && !opts.persistent) {
@@ -1378,6 +1604,13 @@
   function scheduleDismiss(card) {
     clearTimeout(card.__wonTimer);
     card.__wonTimer = setTimeout(function () {
+      // Survived its full duration without a manual dismiss → it was read.
+      if (!card.__wonManual) {
+        emitAtom("read_through", card.__wonRuleId, card.__wonDims);
+        emitAtom("auto_fade", card.__wonRuleId, card.__wonDims, {
+          dwellMs: Date.now() - (card.__wonShownAt || Date.now()),
+        });
+      }
       dismiss(card);
     }, card.__wonDur || cfg.global.durationMs);
   }
@@ -1605,10 +1838,34 @@
         })
         .then(function (data) {
           if (data && data.config) cfg = data.config;
+          var token = cartToken();
+          // MVP13c holdout: a running experiment can hold this visitor out (show
+          // NO toasts) so revenue impact is provable. Deterministic per cart
+          // token — mirror @won/core inHoldout (distinct "holdout:" salt).
+          var holdoutPct = (data && data.holdoutPercent) || 0;
+          var heldOut =
+            holdoutPct > 0 && abHash("holdout:" + token) % 100 < holdoutPct;
+          // MVP13c live A/B: exposed visitors split control vs variant by the
+          // "arm:" salt (mirror @won/core assignArm). The variant arm renders the
+          // experiment's variant config; every analytics atom is tagged with the
+          // arm so the experiment engine can compare cohorts.
+          var exp = data && data.experiment;
+          if (
+            !heldOut &&
+            exp &&
+            exp.variantPercent > 0 &&
+            exp.config &&
+            abHash("arm:" + token) % 100 < exp.variantPercent
+          ) {
+            cfg = exp.config;
+            wonAbVariant = 1;
+          }
           if (cfg.locales && cfg.locales.defaultLocale)
             defaultLocale = normLocale(cfg.locales.defaultLocale) || "en";
           // MVP10 exclusions/meta opt-out fully suppress the app on this page.
-          active = matchesTargeting(cfg.targeting) && !isExcluded();
+          active = matchesTargeting(cfg.targeting) && !isExcluded() && !heldOut;
+          // MVP13c: count this session once (guardrail conversion denominator).
+          logSession();
         })
         .catch(function () {})
         .then(ready);

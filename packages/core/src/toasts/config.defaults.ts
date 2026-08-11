@@ -101,6 +101,8 @@ export const DEFAULT_THEME: ToastTheme = {
   mode: "system",
   colorBg: "#ffffff",
   colorText: "#1a1f24",
+  gradient: false,
+  gradientColor: "#f2f4f7",
   accent: DEFAULT_ACCENT,
   cornerRadius: 12,
   shadow: "md",
@@ -121,6 +123,7 @@ export const DEFAULT_THEME: ToastTheme = {
   showIcon: true,
   iconSet: "line",
   fontMode: "system",
+  fontFamily: "",
   customCss: "",
 };
 
@@ -212,6 +215,28 @@ function oneOf<T extends string>(
   return typeof value === "string" && (allowed as readonly string[]).includes(value)
     ? (value as T)
     : undefined;
+}
+
+/**
+ * Validate a per-currency thresholds map: keys must be ISO 4217-shaped (3 ASCII
+ * letters, upper-cased), values non-negative integer minor units. Drops junk;
+ * returns undefined when nothing valid remains (so we never store an empty map).
+ */
+function sanitizeCurrencyThresholds(
+  input: unknown,
+): Record<string, number> | undefined {
+  if (!isPlainObject(input)) return undefined;
+  const out: Record<string, number> = {};
+  let count = 0;
+  for (const [rawCode, rawAmount] of Object.entries(input)) {
+    const code = String(rawCode).trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(code)) continue;
+    const amount = clampInt(rawAmount, 0, 100_000_000);
+    if (amount === undefined) continue;
+    out[code] = amount;
+    if (++count >= 25) break; // Markets caps at 50; 25 currencies is plenty
+  }
+  return count ? out : undefined;
 }
 
 /**
@@ -368,7 +393,15 @@ export function sanitizeTheme(input: unknown): Partial<ToastTheme> {
   if (iconSet) out.iconSet = iconSet;
   const fontMode = oneOf(input.fontMode, FONT_MODES);
   if (fontMode) out.fontMode = fontMode;
+  if (typeof input.fontFamily === "string") {
+    // Custom font family: strip characters that could break out of the CSS
+    // value (no braces/semicolons/angle brackets), cap length.
+    out.fontFamily = input.fontFamily.replace(/[<>{};]/g, "").slice(0, 120);
+  }
 
+  if (typeof input.gradient === "boolean") out.gradient = input.gradient;
+  const gradientColor = hex(input.gradientColor);
+  if (gradientColor) out.gradientColor = gradientColor;
   if (typeof input.border === "boolean") out.border = input.border;
   const borderColor = hex(input.borderColor);
   if (borderColor) out.borderColor = borderColor;
@@ -573,11 +606,13 @@ export function sanitizeMilestones(input: unknown): MilestoneRuleConfig[] {
     if (!isPlainObject(raw)) continue;
     if (!MILESTONE_KINDS.has(String(raw.kind))) continue;
     const threshold = clampInt(raw.thresholdCents, 0, 100_000_000);
+    const thresholds = sanitizeCurrencyThresholds(raw.thresholds);
     out.push({
       id: typeof raw.id === "string" && raw.id ? raw.id.slice(0, 60) : String(raw.kind),
       kind: raw.kind as MilestoneRuleConfig["kind"],
       enabled: raw.enabled === true,
       thresholdCents: threshold ?? 0,
+      ...(thresholds ? { thresholds } : {}),
       label: typeof raw.label === "string" ? raw.label.slice(0, 80) : String(raw.kind),
     });
     if (out.length >= 20) break;

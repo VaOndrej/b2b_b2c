@@ -87,6 +87,82 @@
   ) { text-align: start; }
 }
 
+/* ------------------------------------------------------------------ *
+ * Universal Customization Layer (W3-b) — section-root style overrides. *
+ * snippets/won-style-vars.liquid emits these --won-* custom properties  *
+ * from the shared Tier-1 style controls; every won section root         *
+ * consumes them here so a control works with ZERO per-section CSS and   *
+ * ports to Horizon + Skeleton. Every property defaults to a no-op       *
+ * (0 border / token radius / no shadow / display:block) → an untouched  *
+ * section is visually unchanged. Background + text color are NOT set    *
+ * here on purpose: those belong to the Horizon color scheme on the same *
+ * element (Rozhodnutí 2026-08-10 #9); only `accent_override` re-points   *
+ * the won accent token. `corner_radius` overrides --won-radius-md, which *
+ * every rounded child already consumes, re-rounding the whole section.  *
+ * ------------------------------------------------------------------ */
+.won-section {
+  border-width: var(--won-border-width, 0);
+  border-style: var(--won-border-style, solid);
+  border-color: var(--won-border-color, var(--won-border));
+  border-radius: var(--won-section-radius, 0);
+  box-shadow: var(--won-shadow, none);
+  /* Tier 2 — typography + motion. Defaults inherit/none → no change when unset. */
+  letter-spacing: var(--won-letter-spacing, inherit);
+  line-height: var(--won-line-height, inherit);
+  text-transform: var(--won-text-transform, none);
+  animation: var(--won-anim, none) var(--won-anim-dur, 600ms) var(--won-ease) both;
+  /* Tier 3 — advanced raw overrides (no-op defaults). */
+  padding-inline: var(--won-pad-inline, 0);
+  opacity: var(--won-section-opacity, 1);
+}
+/* Editor-only coaching notes (won-guard.liquid). Non-blocking, editor-only. */
+.won-editor-notes {
+  display: grid;
+  gap: var(--won-space-2);
+  margin: var(--won-space-2) 0 0;
+}
+.won-editor-note {
+  margin: 0;
+  padding: var(--won-space-2) var(--won-space-3);
+  border-radius: var(--won-radius-sm);
+  background: #fff4e5;
+  color: #7a4a00;
+  border: 1px solid #f0c68a;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+/* Responsive visibility (hide_mobile / hide_desktop). Scoped to :not([hidden]) so
+   it never overrides the HTML `hidden` attribute (e.g. the dismissed announcement
+   bar) — a class selector would otherwise beat the low-specificity UA [hidden] rule. */
+.won-section:not([hidden]) { display: var(--won-d-m, block); }
+@media (min-width: 750px) {
+  .won-section:not([hidden]) { display: var(--won-d-d, block); }
+}
+/* Per-section colour override — supports BOTH paths the merchant expects:
+   leave the pickers empty → the section inherits its Horizon colour scheme
+   (the `Color scheme` control); set Background/Text colour → override just this
+   section. The doubled `.won-section.won-section` (0,0,2,0) out-specifies the
+   scheme rule `.color-<id>` (0,0,1,0) so the override wins, while the fallbacks
+   resolve to the scheme's own variables so an empty picker changes nothing. We
+   never touch Horizon's color-scheme system — only these won-scoped vars. */
+.won-section.won-section {
+  background-color: var(--won-section-bg, var(--color-background));
+  color: var(--won-text-color, var(--won-fg));
+}
+/* Heading weight override. The fallback MUST be the theme's heading weight token
+   (not `inherit` — that would inherit the body's normal weight and silently
+   un-bold every won heading). Unset → theme heading weight; set → merchant value. */
+.won-section .won-heading { font-weight: var(--won-heading-weight, var(--font-heading--weight, 700)); }
+/* Entry animations (opt-in via `animate_in`); each runs once on first paint.
+   Disabled wholesale under reduced-motion so the section renders in its final
+   state — never trapped at the animation's `from` keyframe. */
+@keyframes won-anim-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes won-anim-slide { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes won-anim-scale { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .won-section { animation: none; }
+}
+
 .won-heading {
   margin: 0;
   font-family: var(--font-heading--family, inherit);
@@ -242,6 +318,11 @@
     flex-basis: var(--won-hero-slide, 64%);
     scroll-snap-align: center;
   }
+  /* When the loop is live (won-carousel.js added bookend clones), the cloned
+     slides supply the leading/trailing room — drop the empty spacers so the
+     outer neighbour peeks in instead of blank space. */
+  .won-hero--peek.won-hero--slider .won-hero__track[data-won-loop]::before,
+  .won-hero--peek.won-hero--slider .won-hero__track[data-won-loop]::after { content: none; }
   .won-hero--peek .won-hero__track > .won-slide { border-radius: var(--won-radius-md); overflow: hidden; }
 }
 

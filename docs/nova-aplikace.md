@@ -4,6 +4,11 @@ Kanonický postup pro novou Shopify appku v tomhle monorepu. Cíl: co nejvíc
 znovupoužít sdílený základ (`@won/*`) a **nevytvářet nové věci, které už sdíleně
 existují** — hlavně E2E témata a produkty.
 
+> **Povinná četba před návrhem:** [`won-app-design-doctrine.md`](won-app-design-doctrine.md)
+> — sdílená designová doktrína (`§1–§8`) + architektonická rozhodnutí (A1–A5)
+> platná pro **všechny** `won-*` appky. Nová appka ji dědí; cituj sekce
+> (`doctrine §7b`) v kódu i PR. Brainstorming níže ji konkretizuje.
+
 ## 0. Povinný brainstorming → rozpad na MVP (GATE)
 
 **Žádná appka nezačne kódem (ani klonem) dřív, než projde tímhle gate.** Každá

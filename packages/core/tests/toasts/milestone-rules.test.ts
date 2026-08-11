@@ -5,6 +5,7 @@ import {
   cartMilestoneState,
   eligibleSubtotalCents,
   evaluateMilestones,
+  resolveMilestoneThresholdCents,
   type MilestoneRule,
 } from "../../src/toasts/milestone-rules.ts";
 import type { CartSnapshot } from "../../src/toasts/cart-events.ts";
@@ -74,6 +75,26 @@ test("gift unlocks when a GiftLadder line appears", () => {
 
   // gift removed → just_lost
   assert.equal(evaluateMilestones(after, before, [gift])[0].state, "just_lost");
+});
+
+test("resolveMilestoneThresholdCents: per-currency wins, else base fallback", () => {
+  const rule = { thresholdCents: 150000, thresholds: { EUR: 6000, USD: 6500 } };
+  assert.equal(resolveMilestoneThresholdCents(rule, "EUR"), 6000);
+  assert.equal(resolveMilestoneThresholdCents(rule, "eur"), 6000); // case-insensitive
+  assert.equal(resolveMilestoneThresholdCents(rule, "GBP"), 150000); // unset → base
+  assert.equal(resolveMilestoneThresholdCents(rule, undefined), 150000);
+  assert.equal(resolveMilestoneThresholdCents({ thresholdCents: 150000 }, "EUR"), 150000);
+});
+
+test("multi-currency: EUR cart measured against EUR threshold, not base CZK", () => {
+  // Base (CZK) threshold 1500.00; EUR threshold 60.00. A €59→€61 cart must cross.
+  const shipMC: MilestoneRule = { ...ship, thresholds: { EUR: 6000 } };
+  const before = cartMilestoneState(cart({ linePrice: 5900 }));
+  const after = cartMilestoneState(cart({ linePrice: 6100 }));
+  // Without per-currency, 6100 < 150000 → would never reach. With EUR threshold:
+  assert.equal(evaluateMilestones(before, after, [shipMC], "EUR")[0].state, "just_reached");
+  // Same cart in the base currency still uses the base threshold (no false reach).
+  assert.equal(evaluateMilestones(before, after, [shipMC], "CZK")[0].state, "unreached");
 });
 
 test("disabled rules are skipped", () => {

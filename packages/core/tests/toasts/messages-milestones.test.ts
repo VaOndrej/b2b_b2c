@@ -34,6 +34,26 @@ test("sanitizeMilestones drops malformed entries and clamps", () => {
   assert.equal(rules[1].thresholdCents, 0); // clamped up from -5
 });
 
+test("sanitizeMilestones validates per-currency thresholds", () => {
+  const rules = sanitizeMilestones([
+    {
+      id: "ship", kind: "free_shipping", enabled: true, thresholdCents: 150000,
+      label: "ship",
+      thresholds: { eur: 6000, USD: "6500", GB: 1, EURO: 2, "1UR": 3, JPY: -3 },
+    },
+  ]);
+  // eur→EUR upper-cased, USD string coerced, JPY clamped up from -3; keys that
+  // aren't exactly 3 ASCII letters (GB, EURO, 1UR) are dropped.
+  assert.deepEqual(rules[0].thresholds, { EUR: 6000, USD: 6500, JPY: 0 });
+});
+
+test("sanitizeMilestones omits thresholds when none valid", () => {
+  const rules = sanitizeMilestones([
+    { id: "s", kind: "free_shipping", enabled: true, thresholdCents: 1000, label: "s", thresholds: { XX: 1 } },
+  ]);
+  assert.equal("thresholds" in rules[0], false);
+});
+
 test("resolveToastConfig includes merged messages and milestones", () => {
   const c = resolveToastConfig({
     messages: { shipping: { en: "Free ship!" } },

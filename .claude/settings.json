@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git status --porcelain 2>/dev/null | grep -q . && printf '%s' '{\"systemMessage\":\"AGENTS.md rituál: máš necommitnuté změny — synchronizuj docs/product-roadmap.html a proveď kritický self-audit (co jsem ošidil/obešel/přešel mlčením?) před předáním.\"}' || true",
+            "statusMessage": "Kontrola AGENTS.md rituálu"
+          }
+        ]
+      }
+    ]
+  }
+}

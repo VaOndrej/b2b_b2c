@@ -7,6 +7,7 @@ import {
   resolveToastConfig,
   TOAST_CONFIG_VERSION,
 } from "@won/core/toasts/config.defaults";
+import { applyConfigOverlay } from "@won/core/toasts/config-overlay";
 import type {
   MilestoneRuleConfig,
   StoredToastConfig,
@@ -55,7 +56,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 /** Turn a persisted row into a resolved, complete config. */
-function rowToConfig(row: {
+function rowToStored(row: {
   enabled: boolean;
   plan: string;
   global: unknown;
@@ -68,7 +69,7 @@ function rowToConfig(row: {
   targeting: unknown;
   notifications: unknown;
   exclusions: unknown;
-}): ToastAppConfig {
+}): StoredToastConfig {
   const stored: StoredToastConfig = {
     enabled: row.enabled,
     plan: row.plan === "pro" ? "pro" : "free",
@@ -103,7 +104,11 @@ function rowToConfig(row: {
       ? (row.exclusions as Partial<ExclusionSettings>)
       : undefined,
   };
-  return resolveToastConfig(stored);
+  return stored;
+}
+
+function rowToConfig(row: Parameters<typeof rowToStored>[0]): ToastAppConfig {
+  return resolveToastConfig(rowToStored(row));
 }
 
 export function createToastConfigService(prisma: PrismaClient) {
@@ -124,6 +129,18 @@ export function createToastConfigService(prisma: PrismaClient) {
   async function getToastConfig(shop: string): Promise<ToastAppConfig> {
     const row = await getRawConfig(shop);
     return rowToConfig(row);
+  }
+
+  /** MVP13c live A/B: resolve the shop's config with an experiment variant
+   *  overlay applied over the stored config (defaults still fill in). Used to
+   *  serve the variant arm alongside the control config. */
+  async function resolveConfigWithOverlay(
+    shop: string,
+    overlay: unknown,
+  ): Promise<ToastAppConfig> {
+    const row = await getRawConfig(shop);
+    const merged = applyConfigOverlay(rowToStored(row), overlay);
+    return resolveToastConfig(merged);
   }
 
   async function updateToastConfig(
@@ -206,6 +223,17 @@ export function createToastConfigService(prisma: PrismaClient) {
     });
   }
 
+  /** Rollback points WITH their snapshot data — for the MVP13b timeline diff. */
+  async function listConfigVersionsWithData(shop: string) {
+    const normalizedShop = normalizeShop(shop);
+    return prisma.configVersion.findMany({
+      where: { shop: normalizedShop },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, createdAt: true, data: true },
+      take: VERSION_CAP,
+    });
+  }
+
   /** Restore a stored version into the live config (does not itself snapshot). */
   async function restoreConfigVersion(
     shop: string,
@@ -249,8 +277,10 @@ export function createToastConfigService(prisma: PrismaClient) {
   return {
     getRawConfig,
     getToastConfig,
+    resolveConfigWithOverlay,
     updateToastConfig,
     listConfigVersions,
+    listConfigVersionsWithData,
     restoreConfigVersion,
     deleteShopData,
   };
@@ -258,8 +288,11 @@ export function createToastConfigService(prisma: PrismaClient) {
 
 const toastConfigService = createToastConfigService(db);
 
+export const getRawConfig = toastConfigService.getRawConfig;
 export const getToastConfig = toastConfigService.getToastConfig;
+export const resolveConfigWithOverlay = toastConfigService.resolveConfigWithOverlay;
 export const updateToastConfig = toastConfigService.updateToastConfig;
 export const listConfigVersions = toastConfigService.listConfigVersions;
+export const listConfigVersionsWithData = toastConfigService.listConfigVersionsWithData;
 export const restoreConfigVersion = toastConfigService.restoreConfigVersion;
 export const deleteShopData = toastConfigService.deleteShopData;

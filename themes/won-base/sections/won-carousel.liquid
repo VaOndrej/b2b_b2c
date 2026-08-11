@@ -43,7 +43,7 @@
     {%- endif -%}
 
     <won-carousel
-      class="won-carousel won-carousel--{{ s.layout }}{% if fits %} won-carousel--fits{% endif %}"
+      class="won-carousel won-carousel--{{ s.layout }}{% if fits %} won-carousel--fits{% endif %}{% if s.columns_mobile contains '.' %} won-carousel--peek-mobile{% endif %}"
       {% if s.layout == 'slider' and s.autoplay %}data-autoplay="{{ s.autoplay_interval }}"{% endif %}
       data-mobile-mode="{{ s.columns_mobile }}"
       style="--won-cols-lg: {{ cols }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-sm: {{ s.columns_mobile }}; --won-gap: {{ s.gap }}px;"
@@ -120,6 +120,14 @@
     scroll-snap-type: none;
   }
   .won-carousel.is-dragging .won-carousel__track { scroll-snap-type: none; scroll-behavior: auto; cursor: grabbing; }
+  /* Fractional mobile columns (e.g. 1.2) = a peek rail. Centre-snap so the
+     active card shows a neighbour on BOTH sides mid-scroll — start-snap pinned
+     it left and only ever peeked the card on the right. A fixed 76% card leaves
+     a clearly visible sliver on each side (a 1.2-column basis minus the gap left
+     only a few px — too subtle to read as "there's more"). */
+  @media (max-width: 749px) {
+    .won-carousel--peek-mobile .won-carousel__track > * { scroll-snap-align: center; flex: 0 0 76%; }
+  }
 
   .won-carousel__arrows { display: flex; gap: var(--won-space-2); justify-content: flex-end; margin-top: var(--won-space-3); }
   .won-carousel__arrow {
@@ -142,11 +150,29 @@
   }
   .won-carousel__dot[aria-current="true"]::before { inline-size: 22px; border-radius: var(--won-radius-pill); background: var(--won-accent); }
 
-  .won-carousel--marquee .won-carousel__track { overflow: hidden; }
+  /* Marquee: won-carousel.js wraps the items in a group and duplicates it; each
+     group claims >= the full width (100cqi) so the two together always span >=2x
+     the viewport and the -50% translate never scrolls a blank gap in (the belt
+     used to render its content once, leaving the second half empty). */
+  .won-carousel--marquee .won-carousel__track { overflow: hidden; container-type: inline-size; gap: 0; }
   .won-carousel--marquee .won-carousel__track[data-marquee] { animation: won-marquee 30s linear infinite; }
+  .won-carousel__mq-group {
+    display: flex; align-items: stretch; gap: var(--won-gap, 16px);
+    padding-inline-end: var(--won-gap, 16px); flex: 0 0 auto;
+    min-inline-size: 100cqi; justify-content: space-around;
+  }
+  .won-carousel__mq-group > * {
+    /* Size items from the container (100cqi = viewport), NOT % of the group:
+       the group's own width depends on min-inline-size:100cqi, so a %-of-group
+       basis would be circular and lay out inconsistently. */
+    flex: 0 0 calc((100cqi - (var(--won-cols-cur) - 1) * var(--won-gap, 16px)) / var(--won-cols-cur));
+    scroll-snap-align: none;
+  }
+  .won-carousel--marquee:hover .won-carousel__track[data-marquee] { animation-play-state: paused; }
   @keyframes won-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) {
     .won-carousel--marquee .won-carousel__track[data-marquee] { animation: none; }
+    .won-carousel__mq-group[aria-hidden="true"] { display: none; }
     .won-carousel__track { scroll-behavior: auto; }
   }
 
@@ -169,6 +195,7 @@
   "max_blocks": 24,
   "blocks": [{ "type": "won-slide" }, { "type": "@theme" }, { "type": "@app" }],
   "settings": [
+    { "type": "paragraph", "content": "t:won.info.carousel_about" },
     { "type": "header", "content": "t:won.headers.source" },
     {
       "type": "select", "id": "source", "label": "t:won.settings.source",

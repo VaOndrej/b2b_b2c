@@ -1,0 +1,798 @@
+{%- comment -%}
+  won-grid — the content-grid schránka. One section that covers every static
+  "grid of things" via a `source` axis:
+    • blocks   — a CSS grid of won-feature / won-tile / won-slide blocks
+                 (absorbs won-features + won-collection-tiles). item_style +
+                 mosaic axes. Uses {% content_for 'blocks' %} (exactly once).
+    • articles — cards pulled from a blog (absorbs won-articles).
+    • stats    — a number row parsed from a textarea (absorbs won-stats).
+  Product/slider grids stay in won-carousel (that's the JS slider engine).
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+  assign src = s.source
+
+  if src == 'articles'
+    assign blog = s.blog
+    assign articles = blog.articles
+    assign count = articles.size
+    if count > s.articles_limit
+      assign count = s.articles_limit
+    endif
+  elsif src == 'stats'
+    assign lines = s.stats | newline_to_br | split: '<br />'
+    assign count = lines.size
+  else
+    assign count = section.blocks.size
+  endif
+
+  assign cols = s.columns_desktop
+  if count > 0 and count < cols
+    assign cols = count
+  endif
+
+  assign col_sm = 1
+  if src == 'stats'
+    assign col_sm = 2
+  elsif src == 'blocks'
+    assign col_sm = s.columns_mobile
+  endif
+-%}
+
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-style-vars', settings: s %}"
+  data-testid="won-grid-section"
+>
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-grid-wrap">
+    {%- if s.heading != blank or s.head_link_label != blank -%}
+      <div class="won-grid__head">
+        {%- if s.heading != blank -%}
+          <h2
+            class="won-heading won-grid__heading"
+            style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%; text-align: {{ s.content_align }};"
+          >
+            {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
+          </h2>
+        {%- endif -%}
+        {%- if s.head_link_label != blank and src == 'articles' -%}
+          <a class="won-grid__head-link" {% if blog.url != blank %}href="{{ blog.url }}"{% endif %}>{{ s.head_link_label }}</a>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    {%- if src == 'blocks' -%}
+      <div
+        class="won-grid won-grid--blocks won-grid--{{ s.item_style }}{% if s.mosaic %} won-grid--mosaic{% endif %}{% if s.mobile_carousel %} won-grid--scroll-sm{% endif %}"
+        style="--won-cols-sm: {{ col_sm }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-lg: {{ cols }}; --won-gap: {{ s.gap }}px; --won-grid-align: {{ s.content_align }};"
+        {% if s.mobile_carousel %}data-won-track data-mobile-mode="peek"{% endif %}
+      >
+        {% content_for 'blocks' %}
+      </div>
+
+    {%- elsif src == 'articles' -%}
+      {%- if count > 0 -%}
+        <div
+          class="won-grid won-grid--articles won-grid--art-{{ s.article_layout }}"
+          style="--won-cols-sm: 1; --won-cols-md: {{ s.columns_tablet }}; --won-cols-lg: {{ cols }}; --won-gap: {{ s.gap }}px;"
+        >
+          {%- for article in articles limit: s.articles_limit -%}
+            <a class="won-grid__article {% if s.article_layout == 'featured' and forloop.first %}won-grid__article--lead{% endif %}" href="{{ article.url }}">
+              <div class="won-grid__article-media">
+                {%- if article.image -%}
+                  {{ article.image | image_url: width: 1200 | image_tag: widths: '300, 500, 800, 1200', sizes: '(min-width: 750px) 33vw, 100vw', class: 'won-grid__article-img', loading: 'lazy', alt: article.image.alt | default: article.title }}
+                {%- else -%}{{ 'image' | placeholder_svg_tag: 'won-grid__article-img' }}{%- endif -%}
+              </div>
+              <div class="won-grid__article-body">
+                {%- if s.show_date -%}<span class="won-grid__article-date">{{ article.published_at | date: '%-d. %-m. %Y' }}</span>{%- endif -%}
+                <span class="won-grid__article-title">{{ article.title }}</span>
+                {%- if s.show_excerpt and article.excerpt_or_content != blank -%}
+                  <span class="won-grid__article-excerpt">{{ article.excerpt_or_content | strip_html | truncate: 120 }}</span>
+                {%- endif -%}
+              </div>
+            </a>
+          {%- endfor -%}
+        </div>
+      {%- else -%}
+        <p class="won-grid__empty">{{ 'won.a11y.no_articles' | t }}</p>
+      {%- endif -%}
+
+    {%- else -%}
+      <dl
+        class="won-grid won-grid--stats"
+        style="--won-cols-sm: {{ col_sm }}; --won-cols-lg: {{ s.columns_desktop }}; --won-gap: {{ s.gap }}px; --won-grid-align: {{ s.content_align }};"
+      >
+        {%- for line in lines -%}
+          {%- assign row = line | strip -%}
+          {%- if row contains ':' -%}
+            {%- assign parts = row | split: ':' -%}
+            {%- assign value = parts[0] | strip -%}
+            {%- assign label = parts[1] | strip -%}
+            {%- assign icon = parts[2] | strip -%}
+            <div class="won-grid__stat">
+              {%- if icon != blank -%}<span class="won-grid__stat-icon" aria-hidden="true">{{ icon }}</span>{%- endif -%}
+              <dt class="won-grid__stat-value">{{ value }}</dt>
+              <dd class="won-grid__stat-label">{{ label }}</dd>
+            </div>
+          {%- endif -%}
+        {%- endfor -%}
+      </dl>
+    {%- endif -%}
+  </div>
+</section>
+
+{% stylesheet %}
+  .won-grid-wrap { display: flex; flex-direction: column; gap: var(--won-space-5); }
+  .won-grid__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--won-space-4); flex-wrap: wrap; }
+  .won-grid__heading { font-size: var(--won-h-size-m, 1.6rem); max-width: var(--won-h-mw-m, 100%); }
+  .won-grid__head-link { display: inline-flex; align-items: center; min-block-size: 44px; color: var(--won-accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
+
+  .won-grid {
+    margin: 0;
+    display: grid;
+    gap: var(--won-gap, 24px);
+    grid-template-columns: repeat(var(--won-cols-sm, 1), minmax(0, 1fr));
+  }
+  /* Block-grid item styles (absorbs won-features plain/card/bordered). */
+  .won-grid--blocks > * { text-align: var(--won-grid-align, left); }
+  .won-grid--card > * { background: var(--won-surface); border-radius: var(--won-radius-md); padding: var(--won-space-4); }
+  .won-grid--bordered > * { border: 1px solid var(--won-border); border-radius: var(--won-radius-md); padding: var(--won-space-4); }
+
+  /* Stats (absorbs won-stats). */
+  .won-grid--stats { text-align: var(--won-grid-align, center); }
+  .won-grid__stat { display: flex; flex-direction: column; gap: var(--won-space-1); align-items: inherit; }
+  .won-grid__stat-icon { font-size: 1.9rem; line-height: 1; margin-block-end: var(--won-space-1); }
+  .won-grid__stat-value { margin: 0; font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; letter-spacing: -0.03em; color: var(--won-accent); line-height: 1; }
+  .won-grid__stat-label { margin: 0; opacity: 0.8; }
+
+  /* Articles (absorbs won-articles). */
+  .won-grid__article { display: flex; flex-direction: column; gap: var(--won-space-3); text-decoration: none; color: var(--won-fg); }
+  .won-grid__article-media { aspect-ratio: 3 / 2; border-radius: var(--won-radius-md); overflow: hidden; background: var(--won-surface); }
+  .won-grid__article-img { inline-size: 100%; block-size: 100%; object-fit: cover; }
+  .won-grid__article-body { display: flex; flex-direction: column; gap: var(--won-space-1); }
+  .won-grid__article-date { font-size: 0.8rem; opacity: 0.6; }
+  .won-grid__article-title { font-weight: 700; font-size: 1.1rem; }
+  .won-grid__article-excerpt { opacity: 0.85; font-size: 0.95rem; }
+  .won-grid__empty { opacity: 0.7; }
+
+  /* Optional mobile carousel: on phones the block-grid becomes a single-row
+     scroll-snap rail with a peek of the next card, so a long list of tiles
+     doesn't inflate page height. Off = normal stacked grid. */
+  @media (max-width: 749px) {
+    .won-grid--scroll-sm {
+      display: flex;
+      flex-wrap: nowrap;
+      grid-template-columns: none;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .won-grid--scroll-sm::-webkit-scrollbar { display: none; }
+    .won-grid--scroll-sm > * {
+      flex: 0 0 82%;
+      scroll-snap-align: start;
+    }
+  }
+
+  @media (min-width: 750px) {
+    .won-grid { grid-template-columns: repeat(var(--won-cols-md, 2), minmax(0, 1fr)); }
+    .won-grid__heading { font-size: var(--won-h-size-d, 2rem); max-width: var(--won-h-mw-d, 100%); }
+    .won-grid--art-featured .won-grid__article--lead { grid-column: span 2; }
+    .won-grid--art-featured .won-grid__article--lead .won-grid__article-media { aspect-ratio: 21 / 9; }
+  }
+  @media (min-width: 990px) {
+    .won-grid { grid-template-columns: repeat(var(--won-cols-lg, 4), minmax(0, 1fr)); }
+    .won-grid--mosaic { grid-auto-flow: dense; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.grid",
+  "tag": "section",
+  "disabled_on": {
+    "groups": [
+      "header",
+      "footer"
+    ]
+  },
+  "max_blocks": 24,
+  "blocks": [
+    {
+      "type": "won-feature"
+    },
+    {
+      "type": "won-tile"
+    },
+    {
+      "type": "won-slide"
+    },
+    {
+      "type": "@theme"
+    },
+    {
+      "type": "@app"
+    }
+  ],
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:won.info.grid_about"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.source"
+    },
+    {
+      "type": "select",
+      "id": "source",
+      "label": "t:won.settings.source",
+      "info": "t:won.info.grid_source",
+      "options": [
+        {
+          "value": "blocks",
+          "label": "t:won.options.source_blocks"
+        },
+        {
+          "value": "articles",
+          "label": "t:won.options.source_articles"
+        },
+        {
+          "value": "stats",
+          "label": "t:won.options.source_stats"
+        }
+      ],
+      "default": "blocks"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.content"
+    },
+    {
+      "type": "richtext",
+      "id": "heading",
+      "label": "t:won.settings.heading"
+    },
+    {
+      "type": "range",
+      "id": "heading_size_desktop",
+      "label": "t:won.settings.heading_size_desktop",
+      "min": 20,
+      "max": 72,
+      "step": 2,
+      "unit": "px",
+      "default": 34
+    },
+    {
+      "type": "range",
+      "id": "heading_max_width_desktop",
+      "label": "t:won.settings.heading_max_width_desktop",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "label": "t:won.settings.heading_size_mobile",
+      "min": 16,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "heading_max_width_mobile",
+      "label": "t:won.settings.heading_max_width_mobile",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "text",
+      "id": "head_link_label",
+      "label": "t:won.settings.head_link_label",
+      "visible_if": "{{ section.settings.source == 'articles' }}"
+    },
+    {
+      "type": "blog",
+      "id": "blog",
+      "label": "t:won.settings.blog"
+    },
+    {
+      "type": "range",
+      "id": "articles_limit",
+      "label": "t:won.settings.articles_limit",
+      "min": 2,
+      "max": 12,
+      "step": 1,
+      "default": 3,
+      "visible_if": "{{ section.settings.source == 'articles' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_date",
+      "label": "t:won.settings.show_date",
+      "default": true,
+      "visible_if": "{{ section.settings.source == 'articles' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_excerpt",
+      "label": "t:won.settings.show_excerpt",
+      "default": true,
+      "visible_if": "{{ section.settings.source == 'articles' }}"
+    },
+    {
+      "type": "select",
+      "id": "article_layout",
+      "label": "t:won.settings.layout",
+      "visible_if": "{{ section.settings.source == 'articles' }}",
+      "options": [
+        {
+          "value": "grid",
+          "label": "t:won.options.layout_grid"
+        },
+        {
+          "value": "featured",
+          "label": "t:won.options.layout_featured"
+        }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "textarea",
+      "id": "stats",
+      "label": "t:won.settings.stats",
+      "info": "t:won.info.stats",
+      "default": "t:won.defaults.stats_items",
+      "visible_if": "{{ section.settings.source == 'stats' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "range",
+      "id": "columns_desktop",
+      "label": "t:won.settings.columns_desktop",
+      "min": 1,
+      "max": 6,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "columns_tablet",
+      "label": "t:won.settings.columns_tablet",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 2,
+      "visible_if": "{{ section.settings.source != 'stats' }}"
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "t:won.settings.columns_mobile",
+      "info": "t:won.info.columns_mobile",
+      "visible_if": "{{ section.settings.source == 'blocks' and section.settings.mobile_carousel == false }}",
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        }
+      ],
+      "default": "1"
+    },
+    {
+      "type": "checkbox",
+      "id": "mobile_carousel",
+      "label": "t:won.settings.mobile_carousel",
+      "info": "t:won.info.mobile_carousel",
+      "default": false,
+      "visible_if": "{{ section.settings.source == 'blocks' }}"
+    },
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "t:won.settings.gap",
+      "min": 4,
+      "max": 64,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "select",
+      "id": "item_style",
+      "label": "t:won.settings.item_style",
+      "visible_if": "{{ section.settings.source == 'blocks' }}",
+      "options": [
+        {
+          "value": "plain",
+          "label": "t:won.options.style_plain"
+        },
+        {
+          "value": "card",
+          "label": "t:won.options.style_card"
+        },
+        {
+          "value": "bordered",
+          "label": "t:won.options.style_bordered"
+        }
+      ],
+      "default": "plain"
+    },
+    {
+      "type": "checkbox",
+      "id": "mosaic",
+      "label": "t:won.settings.mosaic",
+      "info": "t:won.info.mosaic",
+      "default": false,
+      "visible_if": "{{ section.settings.source == 'blocks' }}"
+    },
+    {
+      "type": "text_alignment",
+      "id": "content_align",
+      "label": "t:won.settings.content_align",
+      "default": "left",
+      "visible_if": "{{ section.settings.source != 'articles' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "t:won.settings.section_width",
+      "options": [
+        {
+          "value": "page",
+          "label": "t:won.options.width_page"
+        },
+        {
+          "value": "full",
+          "label": "t:won.options.width_full"
+        }
+      ],
+      "default": "page"
+    },
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "info": "t:won.info.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:won.settings.border_width",
+      "info": "t:won.info.border_width",
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border_style",
+      "label": "t:won.settings.border_style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "t:won.options.solid"
+        },
+        {
+          "value": "dashed",
+          "label": "t:won.options.dashed"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "t:won.settings.border_color",
+      "info": "t:won.info.border_color",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "select",
+      "id": "shadow",
+      "label": "t:won.settings.shadow",
+      "info": "t:won.info.shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "sm",
+          "label": "t:won.options.shadow_sm"
+        },
+        {
+          "value": "md",
+          "label": "t:won.options.shadow_md"
+        },
+        {
+          "value": "lg",
+          "label": "t:won.options.shadow_lg"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_color",
+      "info": "t:won.info.accent_color"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 56
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 56
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:won.presets.usp_row",
+      "category": "t:won.categories.content",
+      "settings": {
+        "source": "blocks",
+        "columns_desktop": 4,
+        "item_style": "plain",
+        "content_align": "center"
+      },
+      "blocks": [
+        {
+          "type": "won-feature"
+        },
+        {
+          "type": "won-feature"
+        },
+        {
+          "type": "won-feature"
+        },
+        {
+          "type": "won-feature"
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.benefits_cards",
+      "category": "t:won.categories.content",
+      "settings": {
+        "source": "blocks",
+        "columns_desktop": 3,
+        "item_style": "card"
+      },
+      "blocks": [
+        {
+          "type": "won-feature"
+        },
+        {
+          "type": "won-feature"
+        },
+        {
+          "type": "won-feature"
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.trust_badges",
+      "category": "t:won.categories.content",
+      "settings": {
+        "source": "blocks",
+        "columns_desktop": 4,
+        "item_style": "bordered",
+        "content_align": "center"
+      },
+      "blocks": [
+        {
+          "type": "won-feature"
+        },
+        {
+          "type": "won-feature"
+        },
+        {
+          "type": "won-feature"
+        },
+        {
+          "type": "won-feature"
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.category_grid",
+      "category": "t:won.categories.content",
+      "settings": {
+        "source": "blocks",
+        "columns_desktop": 4,
+        "gap": 16,
+        "mosaic": false
+      },
+      "blocks": [
+        {
+          "type": "won-tile"
+        },
+        {
+          "type": "won-tile"
+        },
+        {
+          "type": "won-tile"
+        },
+        {
+          "type": "won-tile"
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.category_mosaic",
+      "category": "t:won.categories.content",
+      "settings": {
+        "source": "blocks",
+        "columns_desktop": 4,
+        "gap": 16,
+        "mosaic": true
+      },
+      "blocks": [
+        {
+          "type": "won-tile",
+          "settings": {
+            "tile_size": "large"
+          }
+        },
+        {
+          "type": "won-tile"
+        },
+        {
+          "type": "won-tile"
+        },
+        {
+          "type": "won-tile"
+        },
+        {
+          "type": "won-tile"
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.shop_by_goal",
+      "category": "t:won.categories.content",
+      "settings": {
+        "source": "blocks",
+        "columns_desktop": 4,
+        "gap": 16,
+        "content_align": "center"
+      },
+      "blocks": [
+        {
+          "type": "won-tile",
+          "settings": {
+            "icon": "💪",
+            "heading": "Sport & výkon"
+          }
+        },
+        {
+          "type": "won-tile",
+          "settings": {
+            "icon": "🛡️",
+            "heading": "Imunita"
+          }
+        },
+        {
+          "type": "won-tile",
+          "settings": {
+            "icon": "😴",
+            "heading": "Spánek"
+          }
+        },
+        {
+          "type": "won-tile",
+          "settings": {
+            "icon": "🧠",
+            "heading": "Mentální výkon"
+          }
+        }
+      ]
+    },
+    {
+      "name": "t:won.presets.stats_row",
+      "category": "t:won.categories.content",
+      "settings": {
+        "source": "stats",
+        "columns_desktop": 4
+      }
+    },
+    {
+      "name": "t:won.presets.trust_band",
+      "category": "t:won.categories.content",
+      "settings": {
+        "source": "stats",
+        "columns_desktop": 4,
+        "content_align": "center",
+        "color_scheme": "scheme-2",
+        "stats": "500 tis.+ : spokojených zákazníků : 👥\n10 000+ : recenzí : ★\n24 h : expedice : ⚡\n100% : testováno : ✅"
+      }
+    },
+    {
+      "name": "t:won.presets.articles_grid",
+      "category": "t:won.categories.content",
+      "settings": {
+        "source": "articles",
+        "article_layout": "grid",
+        "columns_desktop": 3
+      }
+    },
+    {
+      "name": "t:won.presets.articles_featured",
+      "category": "t:won.categories.content",
+      "settings": {
+        "source": "articles",
+        "article_layout": "featured",
+        "articles_limit": 5,
+        "columns_desktop": 3
+      }
+    }
+  ]
+}
+{% endschema %}

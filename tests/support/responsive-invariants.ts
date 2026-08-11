@@ -40,8 +40,17 @@ export async function assertResponsiveSane(page: Page) {
       }
       return false;
     };
+    // Entirely off-screen boxes (a visually-hidden skip-to-content link parked at
+    // left:-99999px, whose long text can exceed the viewport width) cannot push
+    // the PAGE wider — check 1 already proves it doesn't scroll — so a wide box
+    // that lives completely outside the viewport is a false positive, not overflow.
+    const onScreen = (el: HTMLElement) => {
+      const r = el.getBoundingClientRect();
+      return r.right > tol && r.left < vw - tol;
+    };
     return [...document.querySelectorAll<HTMLElement>('body *')]
       .filter((el) => el.getClientRects().length && el.getBoundingClientRect().width > vw + tol)
+      .filter((el) => onScreen(el))
       .filter((el) => !inHScroller(el))
       .slice(0, 5)
       .map((el) => `${el.tagName.toLowerCase()}.${(el.className || '').toString().split(' ')[0]}`);

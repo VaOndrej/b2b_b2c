@@ -55,6 +55,45 @@ Toto platí **i po zeleném gate**: zelený typecheck/lint/build/test neznamená
 jsi neošidil *záměr*. Výjimka: čistě read-only úkoly (vysvětlení, analýza, audit,
 plán) — povinnost se aktivuje v okamžiku, kdy z nich vznikne implementace.
 
+## Nativní Claude Code nástroje (`.claude/`)
+
+Repo má vlastní Claude Code commands, subagenty a skills v `.claude/`. Jsou to
+nativní nástroje (ne prozaické playbooky v `agents/`) — vyvolávají se přímo.
+
+### Commands (`.claude/commands/`)
+
+- **`/guard-sync`** — porovná ruční seznam `guard:test:core` v
+  `apps/b2b-companion/package.json` se skutečnými `tests/**/*.test.ts` a nahlásí
+  testy mimo bránu (tichý skip) i mrtvé cesty. S `--fix` doplní chybějící.
+- **`/theme-compose <horizon|skeleton>`** — jeden vstup pro theme build:
+  `compose.mjs` → připomínka restartu `theme dev` → `validate:shopify` →
+  responzivní smoke.
+- **`/new-app <name>`** — scaffold nové aplikace klonem `apps/_template`
+  (přejmenování `@won/*`, Prisma, sqlite, roadmap sync).
+
+### Subagenti (`.claude/agents/`)
+
+- **`won-auditor`** — read-only seniorní audit celého monorepa (findings-first,
+  `P0`–`P3`). Port `agents/claude-complete-project-audit.md`.
+- **`won-test-runner`** — vybere a spustí správnou testovací bránu podle
+  dotčeného workspace (core / b2b / toasts / theme) a interpretuje výstup.
+- **`shopify-functions-dev`** — specialista na Shopify Functions a extensions,
+  drží v souladu source ↔ config ↔ generated ↔ testy. Port
+  `agents/codex-shopify-functions-and-extensions.md`.
+
+### Skills (`.claude/skills/`)
+
+- **`won-release-gate`** — kanonický release checklist (zrcadlí `predev`/
+  `predeploy` a statickou bránu z CI + pod-chráněný theme track).
+- **`won-visual-qa`** — řízené vizuální QA storefrontu přes Playwright
+  (screenshoty na 390/768/1280) místo ad-hoc `.jpeg` v rootu.
+
+### Hook (`.claude/settings.json`)
+
+Zamýšlený `Stop` hook připomene tento AGENTS.md rituál (roadmap sync +
+self-audit), když je pracovní strom špinavý; u read-only úkolů mlčí. Vyžaduje
+schválení uživatelem (spouští shell) — viz `.claude/settings.json`.
+
 ## Ověřování storefrontu (responzivní invarianty)
 
 Každá změna dotýkající se storefrontu (`themes/**/*.liquid|css|js`) se ověřuje

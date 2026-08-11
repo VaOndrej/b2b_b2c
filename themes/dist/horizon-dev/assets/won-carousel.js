@@ -13,6 +13,9 @@
     this.dataset.wonBound = '1';
     this.track = this.querySelector('[data-won-track]');
     if (!this.track) return;
+    // Marquee mode is a self-contained continuous belt (no arrows/dots/drag);
+    // it just needs its content duplicated so the -50% loop is seamless.
+    if (this.track.hasAttribute('data-marquee')) { this.setupMarquee(); return; }
     this.prevBtn = this.querySelector('[data-won-prev]');
     this.nextBtn = this.querySelector('[data-won-next]');
     this.progress = this.querySelector('[data-won-progress]');
@@ -25,6 +28,24 @@
     if (this.dots) this.buildDots();
     this.bindMouseDrag();
     this.onScroll();
+    // Infinite loop: clone the end slides so the rail scrolls endlessly both
+    // ways and a neighbour always peeks in on BOTH sides — even resting on the
+    // first/last card (no empty outer spacer). data-won-loop = always | desktop
+    // | mobile picks the breakpoint where it's active.
+    this._loopMode = this.dataset.wonLoop || '';
+    if (this._loopMode) {
+      this._loopMq = this._loopMode === 'always' ? null
+        : matchMedia(this._loopMode === 'mobile' ? '(max-width: 749px)' : '(min-width: 750px)');
+      this._syncLoop = this.syncLoop.bind(this);
+      if (this._loopMq) this._loopMq.addEventListener('change', this._syncLoop);
+      this._onSettle = () => {
+        if (!this._loop) return;
+        clearTimeout(this._settleTimer);
+        this._settleTimer = setTimeout(() => this.wrapIfOnClone(), 130);
+      };
+      this.track.addEventListener('scroll', this._onSettle, { passive: true });
+      this.syncLoop();
+    }
     const interval = parseInt(this.dataset.autoplay, 10);
     if (interval && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       this._timer = setInterval(() => this.autoAdvance(), interval * 1000);
@@ -33,7 +54,98 @@
   }
   disconnectedCallback() {
     if (this.track) this.track.removeEventListener('scroll', this._onScroll);
+    if (this._loopMq && this._syncLoop) this._loopMq.removeEventListener('change', this._syncLoop);
+    if (this._io) this._io.disconnect();
+    clearTimeout(this._settleTimer);
     clearInterval(this._timer);
+  }
+  // Add/remove the bookend clones when the active breakpoint changes.
+  syncLoop() {
+    const want = this._loopMq ? this._loopMq.matches : true;
+    if (want && !this._loop) this.addBookends();
+    else if (!want && this._loop) this.removeBookends();
+  }
+  addBookends() {
+    const reals = Array.from(this.track.children).filter((c) => !c.dataset.wonClone);
+    if (reals.length < 2) return;
+    const clone = (src) => {
+      const c = src.cloneNode(true);
+      c.dataset.wonClone = '1';
+      c.setAttribute('aria-hidden', 'true');
+      c.style.scrollSnapAlign = 'none';
+      if (c.id) c.removeAttribute('id');
+      c.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+      return c;
+    };
+    this._firstReal = reals[0];
+    this._lastReal = reals[reals.length - 1];
+    this._head = clone(this._lastReal);
+    this._tail = clone(this._firstReal);
+    this.track.insertBefore(this._head, this._firstReal);
+    this.track.appendChild(this._tail);
+    this.track.dataset.wonLoop = '1';
+    this._loop = true;
+    // Centre the first real slide as the rest position. A scroll set now can be
+    // dropped when the section is below the fold (content-visibility skips its
+    // render), so also re-centre the first time the carousel actually enters the
+    // viewport — that is exactly when it needs to look right.
+    this.centerOn(this._firstReal, 'auto');
+    if ('IntersectionObserver' in window) {
+      this._io = new IntersectionObserver((entries, obs) => {
+        if (entries.some((e) => e.isIntersecting)) { this.centerOn(this._firstReal, 'auto'); obs.disconnect(); }
+      }, { threshold: 0.01 });
+      this._io.observe(this);
+    }
+  }
+  removeBookends() {
+    if (this._io) { this._io.disconnect(); this._io = null; }
+    if (this._head) this._head.remove();
+    if (this._tail) this._tail.remove();
+    this._head = this._tail = null;
+    delete this.track.dataset.wonLoop;
+    this._loop = false;
+    this.track.scrollTo({ left: 0, behavior: 'auto' });
+  }
+  centerOn(el, behavior) {
+    const eb = this.track.getBoundingClientRect();
+    const rb = el.getBoundingClientRect();
+    const target = this.track.scrollLeft + (rb.left - eb.left) - (eb.width - rb.width) / 2;
+    if (behavior === 'auto') this.track.scrollLeft = target;
+    else this.track.scrollTo({ left: target, behavior: 'smooth' });
+  }
+  // Once scrolling settles on a clone, jump instantly to its real twin — the
+  // clone is identical, so the swap is invisible and the loop feels endless.
+  wrapIfOnClone() {
+    const eb = this.track.getBoundingClientRect();
+    const mid = eb.left + eb.width / 2;
+    let nearest = null, best = Infinity;
+    for (const k of this.track.children) {
+      const r = k.getBoundingClientRect();
+      const d = Math.abs((r.left + r.width / 2) - mid);
+      if (d < best) { best = d; nearest = k; }
+    }
+    if (!nearest || !nearest.dataset.wonClone) return;
+    const twin = nearest === this._head ? this._lastReal : this._firstReal;
+    const prev = this.track.style.scrollBehavior;
+    this.track.style.scrollBehavior = 'auto';
+    this.track.scrollLeft += twin.getBoundingClientRect().left - nearest.getBoundingClientRect().left;
+    this.track.style.scrollBehavior = prev;
+  }
+  // Wrap the items in a group and duplicate it, so the CSS -50% translate loops
+  // seamlessly (the belt rendered its content only once before — the second half
+  // was blank). Mirrors the won-marquee section's proven two-group structure.
+  setupMarquee() {
+    const track = this.track;
+    if (track.dataset.wonMarqueeReady) return;
+    track.dataset.wonMarqueeReady = '1';
+    const group = document.createElement('div');
+    group.className = 'won-carousel__mq-group';
+    while (track.firstChild) group.appendChild(track.firstChild);
+    const clone = group.cloneNode(true);
+    clone.setAttribute('aria-hidden', 'true');
+    clone.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+    track.appendChild(group);
+    track.appendChild(clone);
   }
   itemWidth() {
     const first = this.track.firstElementChild;
@@ -45,6 +157,9 @@
     this.track.scrollBy({ left: dir * this.itemWidth(), behavior: 'smooth' });
   }
   autoAdvance() {
+    // When looping, always step forward — wrapIfOnClone handles the seam, so
+    // there's no "jump back to 0" (that would undo the endless feel).
+    if (this._loop) { this.scrollByItems(1); return; }
     const max = this.track.scrollWidth - this.track.clientWidth;
     if (Math.abs(this.track.scrollLeft) >= max - 2) {
       this.track.scrollTo({ left: 0, behavior: 'smooth' });
@@ -102,8 +217,9 @@
         this.bar.style.transform = 'translateX(' + (ratio * (trackW - barW)) + 'px)';
       }
     }
-    if (this.prevBtn) this.prevBtn.disabled = ratio <= 0.001;
-    if (this.nextBtn) this.nextBtn.disabled = ratio >= 0.999;
+    // A looping rail never reaches an end, so its arrows stay enabled.
+    if (this.prevBtn) this.prevBtn.disabled = !this._loop && ratio <= 0.001;
+    if (this.nextBtn) this.nextBtn.disabled = !this._loop && ratio >= 0.999;
   }
   bindMouseDrag() {
     let startX = 0, startLeft = 0, dragging = false;

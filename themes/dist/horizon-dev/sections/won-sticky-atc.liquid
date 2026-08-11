@@ -8,7 +8,7 @@
 -%}
 {%- if has_product -%}
 <section class="won-sticky-host" data-testid="won-sticky-atc-section">
-  <won-sticky-atc class="won-sticky won-sticky--{{ s.bar_style | default: 'full' }}" data-hidden>
+  <won-sticky-atc class="won-sticky won-sticky--{{ s.bar_style | default: 'full' }}" style="--won-radius-md: {{ s.corner_radius | default: 14 }}px; --won-sticky-offset: {{ s.offset_bottom | default: 12 }}px;" data-hidden>
     <div class="won-sticky__inner won-container">
       {%- if product.featured_image -%}
         <img class="won-sticky__thumb" src="{{ product.featured_image | image_url: width: 120 }}" alt="" width="48" height="48" loading="lazy">
@@ -46,6 +46,39 @@
   .won-sticky--minimal .won-sticky__title { display: none; }
   .won-sticky--minimal .won-sticky__price { margin-inline-start: 0; margin-inline-end: var(--won-space-3); }
   .won-sticky--minimal .won-sticky__atc { flex: 1 1 auto; }
+
+  /* Floating styles — not edge-to-edge: a rounded, shadowed card offset from the
+     bottom edge. Center = a compact pill in the middle; Corner = a small card in
+     the bottom-inline-end corner (price + Add). Both honour the editor's
+     corner-radius + bottom-offset via the --won-* vars set inline on the host. */
+  .won-sticky--center,
+  .won-sticky--corner {
+    inset-block-end: var(--won-sticky-offset, var(--won-space-3));
+    border: 1px solid var(--won-border);
+    border-radius: var(--won-radius-md);
+    box-shadow: 0 8px 28px color-mix(in oklab, var(--won-fg) 16%, transparent);
+  }
+  .won-sticky--center {
+    inset-inline: 0; margin-inline: auto;
+    inline-size: fit-content;
+    max-inline-size: min(560px, calc(100% - var(--won-space-4)));
+  }
+  .won-sticky--corner {
+    inset-inline-start: auto; inset-inline-end: var(--won-space-3);
+    inline-size: auto;
+    max-inline-size: min(360px, calc(100% - var(--won-space-4)));
+  }
+  .won-sticky--center .won-sticky__inner,
+  .won-sticky--corner .won-sticky__inner { padding-inline: var(--won-space-3); }
+  /* Center is a COMPACT pill (task: "kompaktní verze uprostřed") — drop the
+     thumbnail so it stays a tidy pill, name + price + Add, even on a phone. */
+  .won-sticky--center .won-sticky__thumb { display: none; }
+  /* Corner is intentionally tiny: the shopper is already on the product page, so
+     price + Add is enough; the title would force an awkward width. */
+  .won-sticky--corner .won-sticky__thumb,
+  .won-sticky--corner .won-sticky__title { display: none; }
+  .won-sticky--corner .won-sticky__price { margin-inline-start: 0; margin-inline-end: var(--won-space-2); }
+
   @media (prefers-reduced-motion: reduce) { .won-sticky { transition: none; } }
 {% endstylesheet %}
 
@@ -92,15 +125,28 @@
     { "type": "paragraph", "content": "t:won.info.sticky_atc" },
     {
       "type": "select", "id": "bar_style", "label": "t:won.settings.sticky_style",
+      "info": "t:won.info.sticky_style",
       "options": [
         { "value": "full", "label": "t:won.options.sticky_full" },
         { "value": "compact", "label": "t:won.options.sticky_compact" },
-        { "value": "minimal", "label": "t:won.options.sticky_minimal" }
+        { "value": "minimal", "label": "t:won.options.sticky_minimal" },
+        { "value": "center", "label": "t:won.options.sticky_center" },
+        { "value": "corner", "label": "t:won.options.sticky_corner" }
       ],
       "default": "full"
     },
-    { "type": "text", "id": "atc_label", "label": "t:won.settings.vp_atc_label" }
+    { "type": "text", "id": "atc_label", "label": "t:won.settings.vp_atc_label" },
+    {
+      "type": "range", "id": "corner_radius", "label": "t:won.settings.sticky_radius",
+      "info": "t:won.info.sticky_radius",
+      "min": 0, "max": 28, "step": 2, "unit": "px", "default": 14
+    },
+    {
+      "type": "range", "id": "offset_bottom", "label": "t:won.settings.sticky_offset",
+      "info": "t:won.info.sticky_offset",
+      "min": 0, "max": 40, "step": 2, "unit": "px", "default": 12
+    }
   ],
-  "presets": [{ "name": "t:won.names.sticky_atc" }]
+  "presets": [{ "name": "t:won.names.sticky_atc", "category": "t:won.categories.products" }]
 }
 {% endschema %}

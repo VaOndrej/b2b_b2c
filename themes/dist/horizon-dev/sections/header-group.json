@@ -2,10 +2,17 @@
   "type": "header",
   "name": "t:names.header",
   "sections": {
-    "won_shipbar": {
-      "type": "won-shipping-bar",
+    "won_announcement": {
+      "type": "won-announcement-bar",
+      "blocks": {
+        "ship": { "type": "free_shipping", "settings": { "threshold": 1500, "icon": "🚚" } },
+        "promo": { "type": "message", "settings": { "text": "Nová kolekce Hydratace je tu 💧", "link": "shopify://collections/all", "icon": "✨" } }
+      },
+      "block_order": ["ship", "promo"],
       "settings": {
-        "threshold": 1500,
+        "display": "rotate",
+        "interval": 5,
+        "dismissible": true,
         "color_scheme": "scheme-1",
         "padding_top": 10,
         "padding_bottom": 10
@@ -82,7 +89,7 @@
     }
   },
   "order": [
-    "won_shipbar",
+    "won_announcement",
     "header_section"
   ]
 }

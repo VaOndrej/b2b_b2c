@@ -1,0 +1,656 @@
+{%- liquid
+  assign s = section.settings
+  assign has_product = false
+  if product != blank and product.id != blank
+    assign has_product = true
+  endif
+  # Resolve per-unit reference amount (metafield override else manual).
+  assign ppu_amount = s.ppu_amount
+  if s.ppu_metafield != blank
+    assign parts = s.ppu_metafield | split: '.'
+    assign mf_value = product.metafields[parts[0]][parts[1]].value
+    if mf_value != blank and mf_value > 0
+      assign ppu_amount = mf_value
+    endif
+  endif
+  assign show_ppu = false
+  if s.show_price_per_unit and ppu_amount > 0
+    assign show_ppu = true
+  endif
+-%}
+
+{%- unless has_product -%}
+  {%- if request.design_mode -%}
+    <section class="won-section color-{{ s.color_scheme }}" data-testid="won-variant-picker-section">
+      <div class="won-container"><p class="won-vp__placeholder">{{ 'won.vp.placeholder' | t }}</p></div>
+    </section>
+  {%- endif -%}
+{%- else -%}
+<section
+  class="won-section color-{{ s.color_scheme }}"
+  style="{% render 'won-style-vars', settings: s %}"
+  data-testid="won-variant-picker-section"
+>
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %}">
+    <won-variant-picker
+      class="won-vp won-vp--{{ s.layout }}"
+      data-media="{{ s.dynamic_media }}"
+      data-added-label="{{ 'won.cart.added' | t }}"
+      data-soldout-label="{{ 'won.cart.soldout' | t }}"
+    >
+      {%- comment -%} Variant data (money pre-formatted server-side, no client money math). {%- endcomment -%}
+      <script type="application/json" data-won-variants>
+        [
+        {%- for v in product.variants -%}
+          {
+            "id": {{ v.id | json }},
+            "available": {{ v.available | json }},
+            "options": {{ v.options | json }},
+            "title": {{ v.title | json }},
+            "price": {{ v.price | money | json }},
+            "compare": {% if v.compare_at_price > v.price %}{{ v.compare_at_price | money | json }}{% else %}null{% endif %}
+            {%- if show_ppu -%}
+              , "ppu": {%- assign up = v.price | times: 100 | divided_by: ppu_amount -%}
+              {%- if s.ppu_base == 'per_kg' -%}{%- assign up = v.price | times: 1000 | divided_by: ppu_amount -%}{%- endif -%}
+              {%- if s.ppu_base == 'per_serving' -%}{%- assign up = v.price | divided_by: ppu_amount -%}{%- endif -%}
+              {{ up | money | json }}
+            {%- endif -%}
+            {%- if s.dynamic_media and v.featured_image -%}
+              , "image": {{ v.featured_image | image_url: width: 1200 | json }}
+            {%- endif -%}
+          }{%- unless forloop.last -%},{%- endunless -%}
+        {%- endfor -%}
+        ]
+      </script>
+
+      {%- if s.show_title -%}
+        <h1 class="won-heading won-vp__title" style="--won-h-size-m: {{ s.title_size_mobile }}px; --won-h-size-d: {{ s.title_size_desktop }}px;">{{ product.title }}</h1>
+      {%- endif -%}
+
+      <div class="won-vp__pricing">
+        <span class="won-vp__price" data-won-price>{{ product.selected_or_first_available_variant.price | money }}</span>
+        {%- assign cav = product.selected_or_first_available_variant.compare_at_price -%}
+        <s class="won-vp__compare" data-won-compare {% if cav <= product.selected_or_first_available_variant.price %}hidden{% endif %}>{{ cav | money }}</s>
+        {%- if show_ppu -%}
+          <span class="won-vp__ppu" data-won-ppu-label> </span>
+        {%- endif -%}
+      </div>
+
+      {%- if s.layout == 'packs' -%}
+        <fieldset class="won-vp__packs" data-won-packs>
+          <legend class="won-vp__legend">{{ s.packs_label | default: product.options_with_values.first.name }}</legend>
+          {%- for v in product.variants -%}
+            <label class="won-vp__pack{% unless v.available %} is-soldout{% endunless %}">
+              <input type="radio" name="won-variant" value="{{ v.id }}" {% if v == product.selected_or_first_available_variant %}checked{% endif %} {% unless v.available %}disabled{% endunless %}>
+              <span class="won-vp__pack-body">
+                <span class="won-vp__pack-title">{{ v.title }}</span>
+                <span class="won-vp__pack-price">{{ v.price | money }}{% if v.compare_at_price > v.price %} <s>{{ v.compare_at_price | money }}</s>{% endif %}</span>
+              </span>
+            </label>
+          {%- endfor -%}
+        </fieldset>
+      {%- else -%}
+        {%- for option in product.options_with_values -%}
+          {%- assign style_key = 'option' | append: option.position | append: '_style' -%}
+          {%- assign style = s[style_key] | default: 'buttons' -%}
+          <fieldset class="won-vp__option" data-won-option="{{ option.position }}">
+            <legend class="won-vp__legend">{{ option.name }}</legend>
+            {%- if style == 'dropdown' -%}
+              <select class="won-vp__select" data-won-select="{{ option.position }}" aria-label="{{ option.name }}">
+                {%- for value in option.values -%}
+                  <option value="{{ value | escape }}" {% if value == option.selected_value %}selected{% endif %}>{{ value }}</option>
+                {%- endfor -%}
+              </select>
+            {%- else -%}
+              <div class="won-vp__swatches">
+                {%- for value in option.values -%}
+                  <label class="won-vp__swatch">
+                    <input type="radio" name="won-option-{{ option.position }}" value="{{ value | escape }}" data-won-value="{{ option.position }}" {% if value == option.selected_value %}checked{% endif %}>
+                    <span class="won-vp__swatch-label">{{ value }}</span>
+                  </label>
+                {%- endfor -%}
+              </div>
+            {%- endif -%}
+          </fieldset>
+        {%- endfor -%}
+
+        {%- if s.show_table -%}
+          <button type="button" class="won-vp__table-toggle" data-won-table-toggle aria-expanded="false">{{ 'won.vp.show_table' | t }}</button>
+          <div class="won-vp__table-wrap" data-won-table hidden>
+            <table class="won-vp__table">
+              <thead><tr><th>{{ 'won.vp.variant' | t }}</th><th>{{ 'won.vp.price' | t }}</th>{% if show_ppu %}<th>{{ 'won.vp.unit' | t }}</th>{% endif %}<th></th></tr></thead>
+              <tbody>
+                {%- for v in product.variants -%}
+                  <tr{% unless v.available %} class="is-soldout"{% endunless %}>
+                    <td>{{ v.title }}</td>
+                    <td>{{ v.price | money }}</td>
+                    {%- if show_ppu -%}<td>{%- assign tup = v.price | times: 100 | divided_by: ppu_amount -%}{%- if s.ppu_base == 'per_kg' -%}{%- assign tup = v.price | times: 1000 | divided_by: ppu_amount -%}{%- endif -%}{%- if s.ppu_base == 'per_serving' -%}{%- assign tup = v.price | divided_by: ppu_amount -%}{%- endif -%}{{ tup | money }}</td>{%- endif -%}
+                    <td>{% if v.available %}<button type="button" class="won-vp__table-pick" data-won-pick="{{ v.id }}">{{ 'won.vp.choose' | t }}</button>{% else %}{{ 'won.cart.soldout' | t }}{% endif %}</td>
+                  </tr>
+                {%- endfor -%}
+              </tbody>
+            </table>
+          </div>
+        {%- endif -%}
+      {%- endif -%}
+
+      <div class="won-vp__buy">
+        {%- if s.show_quantity -%}
+          <div class="won-vp__qty">
+            <button type="button" class="won-vp__qty-btn" data-won-qty-dec aria-label="−">−</button>
+            <input class="won-vp__qty-input" type="number" inputmode="numeric" min="1" value="1" data-won-qty aria-label="{{ 'won.vp.quantity' | t }}">
+            <button type="button" class="won-vp__qty-btn" data-won-qty-inc aria-label="+">+</button>
+          </div>
+        {%- endif -%}
+        <button type="button" class="won-btn won-btn--primary won-vp__atc" data-won-atc>
+          <span data-won-atc-label>{%- if s.atc_label != blank -%}{{ s.atc_label }}{%- else -%}{{ 'won.cart.add' | t }}{%- endif -%}</span>
+        </button>
+      </div>
+    </won-variant-picker>
+  </div>
+</section>
+{%- endunless -%}
+
+{% stylesheet %}
+  .won-vp { display: flex; flex-direction: column; gap: var(--won-space-4); max-inline-size: 640px; }
+  .won-vp__placeholder { color: var(--won-muted); }
+  .won-vp__title { font-size: var(--won-h-size-m, 1.8rem); }
+  .won-vp__pricing { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--won-space-3); }
+  .won-vp__price { font-size: 1.6rem; font-weight: 700; color: var(--won-fg); }
+  .won-vp__compare { color: var(--won-muted); opacity: 0.6; }
+  .won-vp__ppu { color: var(--won-muted); font-size: 0.9rem; }
+  .won-vp__legend { font-weight: 600; margin-block-end: var(--won-space-2); }
+  .won-vp__option, .won-vp__packs { border: 0; padding: 0; margin: 0; }
+  .won-vp__swatches { display: flex; flex-wrap: wrap; gap: var(--won-space-2); }
+  .won-vp__swatch input { position: absolute; opacity: 0; pointer-events: none; }
+  .won-vp__swatch-label {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0.5em 0.9em; border: 1px solid var(--won-border); border-radius: var(--won-radius-pill);
+    cursor: pointer; transition: border-color var(--won-dur) var(--won-ease), background var(--won-dur) var(--won-ease);
+  }
+  .won-vp__swatch input:checked + .won-vp__swatch-label { border-color: var(--won-accent); background: color-mix(in oklab, var(--won-accent) 12%, transparent); color: var(--won-accent); }
+  .won-vp__swatch input:focus-visible + .won-vp__swatch-label { outline: 2px solid var(--won-accent); outline-offset: 2px; }
+  .won-vp__select { padding: 0.6em 0.8em; border: 1px solid var(--won-border); border-radius: var(--won-radius-sm); font: inherit; background: var(--won-bg); color: var(--won-fg); inline-size: 100%; max-inline-size: 320px; }
+
+  .won-vp__packs { display: grid; gap: var(--won-space-2); }
+  .won-vp__pack { display: flex; align-items: center; gap: var(--won-space-3); padding: var(--won-space-3) var(--won-space-4); border: 1px solid var(--won-border); border-radius: var(--won-radius-md); cursor: pointer; }
+  .won-vp__pack:has(input:checked) { border-color: var(--won-accent); background: color-mix(in oklab, var(--won-accent) 8%, transparent); }
+  .won-vp__pack input { accent-color: var(--won-accent); }
+  .won-vp__pack.is-soldout { opacity: 0.5; }
+  .won-vp__pack-body { display: flex; flex-direction: column; gap: 2px; }
+  .won-vp__pack-title { font-weight: 600; }
+  .won-vp__pack-price s { color: var(--won-muted); opacity: 0.6; }
+
+  .won-vp__table-toggle { align-self: flex-start; background: none; border: 0; color: var(--won-accent); font: inherit; font-weight: 600; cursor: pointer; padding: 0; text-decoration: underline; }
+  .won-vp__table-wrap { overflow-x: auto; }
+  .won-vp__table { inline-size: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .won-vp__table th, .won-vp__table td { text-align: start; padding: var(--won-space-2) var(--won-space-3); border-block-end: 1px solid var(--won-border); }
+  .won-vp__table tr.is-soldout { opacity: 0.5; }
+  .won-vp__table-pick { background: none; border: 1px solid var(--won-border); border-radius: var(--won-radius-pill); padding: 0.3em 0.8em; font: inherit; cursor: pointer; }
+
+  .won-vp__buy { display: flex; align-items: stretch; gap: var(--won-space-3); flex-wrap: wrap; }
+  .won-vp__qty { display: inline-flex; align-items: center; border: 1px solid var(--won-border); border-radius: var(--won-radius-pill); overflow: hidden; }
+  .won-vp__qty-btn { inline-size: 40px; block-size: 44px; border: 0; background: transparent; font-size: 1.2rem; cursor: pointer; color: var(--won-fg); }
+  .won-vp__qty-input { inline-size: 44px; block-size: 44px; border: 0; text-align: center; font: inherit; -moz-appearance: textfield; appearance: textfield; background: transparent; color: var(--won-fg); }
+  .won-vp__qty-input::-webkit-outer-spin-button, .won-vp__qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .won-vp__atc { flex: 1 1 auto; min-inline-size: 200px; }
+  .won-vp__atc:disabled { opacity: 0.5; cursor: default; }
+{% endstylesheet %}
+
+{% javascript %}
+  class WonVariantPicker extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.wonBound) return;
+      this.dataset.wonBound = '1';
+      const dataEl = this.querySelector('[data-won-variants]');
+      try { this.variants = JSON.parse(dataEl.textContent); } catch (e) { this.variants = []; }
+      if (!this.variants.length) return;
+      this.isPacks = this.classList.contains('won-vp--packs');
+      this.priceEl = this.querySelector('[data-won-price]');
+      this.compareEl = this.querySelector('[data-won-compare]');
+      this.ppuEl = this.querySelector('[data-won-ppu-label]');
+      this.atcBtn = this.querySelector('[data-won-atc]');
+      this.atcLabel = this.querySelector('[data-won-atc-label]');
+      this.qtyInput = this.querySelector('[data-won-qty]');
+      this.defaultAtcText = this.atcLabel ? this.atcLabel.textContent.trim() : '';
+
+      this.addEventListener('change', (e) => {
+        if (e.target.matches('[data-won-value], [data-won-select], [name="won-variant"]')) this.resolve();
+      });
+      this.addEventListener('click', (e) => {
+        if (e.target.closest('[data-won-atc]')) { e.preventDefault(); this.addToCart(); }
+        const pick = e.target.closest('[data-won-pick]');
+        if (pick) { e.preventDefault(); this.selectById(pick.getAttribute('data-won-pick')); }
+        const toggle = e.target.closest('[data-won-table-toggle]');
+        if (toggle) { const t = this.querySelector('[data-won-table]'); const open = t.hasAttribute('hidden'); if (open) t.removeAttribute('hidden'); else t.setAttribute('hidden',''); toggle.setAttribute('aria-expanded', String(open)); }
+        if (e.target.closest('[data-won-qty-inc]')) this.stepQty(1);
+        if (e.target.closest('[data-won-qty-dec]')) this.stepQty(-1);
+      });
+
+      this.current = this.variants.find(v => v.available) || this.variants[0];
+      this.resolve(true);
+    }
+    stepQty(d) {
+      if (!this.qtyInput) return;
+      this.qtyInput.value = Math.max(1, (parseInt(this.qtyInput.value, 10) || 1) + d);
+    }
+    selectedValues() {
+      const vals = [];
+      this.querySelectorAll('[data-won-option]').forEach((fs) => {
+        const pos = parseInt(fs.getAttribute('data-won-option'), 10) - 1;
+        const checked = fs.querySelector('input[type=radio]:checked');
+        const select = fs.querySelector('select');
+        vals[pos] = checked ? checked.value : (select ? select.value : null);
+      });
+      return vals;
+    }
+    match(vals) {
+      return this.variants.find(v => v.options.length === vals.length && v.options.every((o, i) => o === vals[i]));
+    }
+    selectById(id) {
+      const v = this.variants.find(x => String(x.id) === String(id));
+      if (!v) return;
+      // reflect into option inputs so the UI stays in sync
+      this.querySelectorAll('[data-won-option]').forEach((fs) => {
+        const pos = parseInt(fs.getAttribute('data-won-option'), 10) - 1;
+        const val = v.options[pos];
+        const radio = fs.querySelector('input[value="' + (window.CSS && CSS.escape ? CSS.escape(val) : val) + '"]');
+        if (radio) radio.checked = true;
+        const select = fs.querySelector('select'); if (select) select.value = val;
+      });
+      const packRadio = this.querySelector('[name="won-variant"][value="' + id + '"]'); if (packRadio) packRadio.checked = true;
+      this.update(v);
+    }
+    resolve(initial) {
+      let v;
+      if (this.isPacks) {
+        const checked = this.querySelector('[name="won-variant"]:checked');
+        v = checked ? this.variants.find(x => String(x.id) === String(checked.value)) : this.current;
+      } else {
+        v = this.match(this.selectedValues());
+      }
+      if (v) this.update(v); else if (initial) this.update(this.current);
+    }
+    update(v) {
+      this.current = v;
+      if (this.priceEl && v.price) this.priceEl.textContent = v.price;
+      if (this.compareEl) { if (v.compare) { this.compareEl.textContent = v.compare; this.compareEl.removeAttribute('hidden'); } else this.compareEl.setAttribute('hidden',''); }
+      if (this.ppuEl) this.ppuEl.textContent = v.ppu ? ('/ ' + v.ppu) : '';
+      if (this.atcBtn) {
+        this.atcBtn.disabled = !v.available;
+        if (this.atcLabel) this.atcLabel.textContent = v.available ? this.defaultAtcText : (this.dataset.soldoutLabel || this.atcLabel.textContent);
+      }
+      if (this.dataset.media === 'true' && v.image) {
+        this.dispatchEvent(new CustomEvent('won:variant:media', { bubbles: true, detail: { image: v.image, id: v.id } }));
+      }
+      this.dispatchEvent(new CustomEvent('won:variant:change', { bubbles: true, detail: { variant: v } }));
+    }
+    async addToCart() {
+      if (!this.current || !this.current.available || this.atcBtn.disabled) return;
+      const qty = this.qtyInput ? Math.max(1, parseInt(this.qtyInput.value, 10) || 1) : 1;
+      this.atcBtn.disabled = true;
+      const prev = this.atcLabel ? this.atcLabel.textContent : '';
+      try {
+        const res = await fetch('/cart/add.js', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ items: [{ id: Number(this.current.id), quantity: qty }] })
+        });
+        if (!res.ok) throw new Error('add failed');
+        document.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true }));
+        document.dispatchEvent(new CustomEvent('won:cart:added', { bubbles: true, detail: { id: this.current.id, quantity: qty } }));
+        if (this.atcLabel && this.dataset.addedLabel) this.atcLabel.textContent = this.dataset.addedLabel;
+        setTimeout(() => { if (this.atcLabel) this.atcLabel.textContent = prev; this.atcBtn.disabled = !this.current.available; }, 1500);
+      } catch (e) {
+        this.atcBtn.disabled = false;
+      }
+    }
+  }
+  if (!customElements.get('won-variant-picker')) customElements.define('won-variant-picker', WonVariantPicker);
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "t:won.names.variant_picker",
+  "tag": "section",
+  "disabled_on": {
+    "groups": [
+      "header",
+      "footer"
+    ]
+  },
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:won.info.variant_picker_about"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.content"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_title",
+      "label": "t:won.settings.vp_show_title",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "title_size_desktop",
+      "label": "t:won.settings.heading_size_desktop",
+      "min": 20,
+      "max": 64,
+      "step": 2,
+      "unit": "px",
+      "default": 34
+    },
+    {
+      "type": "range",
+      "id": "title_size_mobile",
+      "label": "t:won.settings.heading_size_mobile",
+      "min": 16,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "default": 26
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "t:won.settings.layout",
+      "options": [
+        {
+          "value": "axes",
+          "label": "t:won.options.vp_axes"
+        },
+        {
+          "value": "packs",
+          "label": "t:won.options.vp_packs"
+        }
+      ],
+      "default": "axes"
+    },
+    {
+      "type": "text",
+      "id": "packs_label",
+      "label": "t:won.settings.vp_packs_label",
+      "visible_if": "{{ section.settings.layout == 'packs' }}"
+    },
+    {
+      "type": "select",
+      "id": "option1_style",
+      "label": "t:won.settings.vp_option1_style",
+      "visible_if": "{{ section.settings.layout == 'axes' }}",
+      "options": [
+        {
+          "value": "buttons",
+          "label": "t:won.options.vp_buttons"
+        },
+        {
+          "value": "dropdown",
+          "label": "t:won.options.vp_dropdown"
+        }
+      ],
+      "default": "buttons"
+    },
+    {
+      "type": "select",
+      "id": "option2_style",
+      "label": "t:won.settings.vp_option2_style",
+      "visible_if": "{{ section.settings.layout == 'axes' }}",
+      "options": [
+        {
+          "value": "buttons",
+          "label": "t:won.options.vp_buttons"
+        },
+        {
+          "value": "dropdown",
+          "label": "t:won.options.vp_dropdown"
+        }
+      ],
+      "default": "buttons"
+    },
+    {
+      "type": "select",
+      "id": "option3_style",
+      "label": "t:won.settings.vp_option3_style",
+      "visible_if": "{{ section.settings.layout == 'axes' }}",
+      "options": [
+        {
+          "value": "buttons",
+          "label": "t:won.options.vp_buttons"
+        },
+        {
+          "value": "dropdown",
+          "label": "t:won.options.vp_dropdown"
+        }
+      ],
+      "default": "dropdown"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_table",
+      "label": "t:won.settings.vp_show_table",
+      "default": false,
+      "visible_if": "{{ section.settings.layout == 'axes' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.price_per_unit"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_price_per_unit",
+      "label": "t:won.settings.vp_show_ppu",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "ppu_base",
+      "label": "t:won.settings.ppu_base",
+      "visible_if": "{{ section.settings.show_price_per_unit }}",
+      "options": [
+        {
+          "value": "per_100g",
+          "label": "t:won.options.per_100g"
+        },
+        {
+          "value": "per_kg",
+          "label": "t:won.options.per_kg"
+        },
+        {
+          "value": "per_serving",
+          "label": "t:won.options.per_serving"
+        }
+      ],
+      "default": "per_100g"
+    },
+    {
+      "type": "number",
+      "id": "ppu_amount",
+      "label": "t:won.settings.ppu_amount",
+      "info": "t:won.info.ppu_amount",
+      "default": 1000,
+      "visible_if": "{{ section.settings.show_price_per_unit }}"
+    },
+    {
+      "type": "text",
+      "id": "ppu_metafield",
+      "label": "t:won.settings.ppu_metafield",
+      "info": "t:won.info.ppu_metafield",
+      "visible_if": "{{ section.settings.show_price_per_unit }}"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.controls"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_quantity",
+      "label": "t:won.settings.vp_show_qty",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "atc_label",
+      "label": "t:won.settings.vp_atc_label"
+    },
+    {
+      "type": "checkbox",
+      "id": "dynamic_media",
+      "label": "t:won.settings.vp_dynamic_media",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "t:won.settings.section_width",
+      "options": [
+        {
+          "value": "page",
+          "label": "t:won.options.width_page"
+        },
+        {
+          "value": "full",
+          "label": "t:won.options.width_full"
+        }
+      ],
+      "default": "page"
+    },
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "info": "t:won.info.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:won.settings.border_width",
+      "info": "t:won.info.border_width",
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border_style",
+      "label": "t:won.settings.border_style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "t:won.options.solid"
+        },
+        {
+          "value": "dashed",
+          "label": "t:won.options.dashed"
+        }
+      ],
+      "default": "solid",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "t:won.settings.border_color",
+      "info": "t:won.info.border_color",
+      "visible_if": "{{ section.settings.border_width > 0 }}"
+    },
+    {
+      "type": "select",
+      "id": "shadow",
+      "label": "t:won.settings.shadow",
+      "info": "t:won.info.shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "sm",
+          "label": "t:won.options.shadow_sm"
+        },
+        {
+          "value": "md",
+          "label": "t:won.options.shadow_md"
+        },
+        {
+          "value": "lg",
+          "label": "t:won.options.shadow_lg"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_color",
+      "info": "t:won.info.accent_color"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_mobile",
+      "label": "t:won.settings.hide_mobile",
+      "info": "t:won.info.hide_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_desktop",
+      "label": "t:won.settings.hide_desktop",
+      "info": "t:won.info.hide_desktop",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:won.names.variant_picker",
+      "category": "t:won.categories.products"
+    }
+  ]
+}
+{% endschema %}
