@@ -33,14 +33,16 @@ export function TypeStyleFields({
   // Hidden <details> fields still submit — collapsing only affects visibility.
   return (
     <details style={{ marginTop: 4 }}>
+      {/* inline-flex span (not s-stack, which is block) so the content sits NEXT
+          TO the disclosure triangle, not on the line below it. */}
       <summary style={{ cursor: "pointer", padding: "6px 0" }}>
-        <s-stack direction="inline" gap="small-300" alignItems="center">
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, verticalAlign: "middle" }}>
           <s-text type="strong">Look &amp; timing for this toast</s-text>
           <PlanBadge tier="pro" locked={!isPro} />
           <s-text color="subdued">
             {customised ? "· customised" : "· inherits your global Design"}
           </s-text>
-        </s-stack>
+        </span>
       </summary>
       <ProFrame locked={!isPro}>
         <s-stack direction="block" gap="base">

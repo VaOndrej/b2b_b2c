@@ -288,10 +288,12 @@ function LookPresetCard({ id, label }: { id: keyof typeof PRESET_LOOKS | "defaul
 // field UNDER "Colours", not a peer. One line, no extra chrome — hierarchy, not
 // more perceived settings.
 function GroupTitle({ children }: { children: React.ReactNode }) {
+  // inline-block so that inside a <summary> the title flows NEXT TO the
+  // disclosure triangle, not on the line below it.
   return (
-    <div style={{ fontFamily: WON_FONT, fontSize: 14, fontWeight: 700, color: "#1a1f24", letterSpacing: "-0.01em", lineHeight: 1.3 }}>
+    <span style={{ display: "inline-block", verticalAlign: "middle", fontFamily: WON_FONT, fontSize: 14, fontWeight: 700, color: "#1a1f24", letterSpacing: "-0.01em", lineHeight: 1.3 }}>
       {children}
-    </div>
+    </span>
   );
 }
 
