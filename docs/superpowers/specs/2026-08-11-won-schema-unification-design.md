@@ -51,20 +51,32 @@ not apply to a given component are simply omitted (a block with no mode has no
 
 ## Mechanics
 
-### Visibility rendering
-- New snippet `themes/won-base/snippets/won-visibility.liquid`, mirroring the
-  existing `won-spacing.liquid` pattern. Emits a class fragment:
-  `won-hide-mobile` when `settings.show_on_mobile == false`,
-  `won-hide-desktop` when `settings.show_on_desktop == false`.
-  Absent/blank settings are treated as visible (backward compatible).
-- Utility classes added to `themes/won-base/assets/won-tokens.css`:
-  ```css
-  @media (max-width: 749px)  { .won-hide-mobile  { display: none !important; } }
-  @media (min-width: 750px)  { .won-hide-desktop { display: none !important; } }
-  ```
-  (750px = Horizon's mobile/desktop breakpoint; confirm against tokens.)
-- Wired into each qualifying section's root element:
-  `class="won-section color-{{ s.color_scheme }} {% render 'won-visibility', settings: s %}"`.
+### Visibility rendering — CORRECTION (use what already exists)
+The device toggles were **already implemented**: `compose.mjs` step 2d injects a
+shared style-control fragment (`themes/build/won-style-controls.json`) into all
+26 won sections, including `hide_mobile` / `hide_desktop` checkboxes, wired via
+`snippets/won-style-vars.liquid` (`--won-d-m: none` / `--won-d-d: none`) and
+`assets/won-tokens.css` (`.won-section { display: var(--won-d-m, block) }` at
+≤749px, `var(--won-d-d, block)` at ≥750px). They just sat at the BOTTOM inside
+the Appearance block.
+
+So the unification does **not** add a new visibility system. It **relocates the
+existing controls to the top**:
+- `compose.mjs`: lift `hide_mobile` / `hide_desktop` out of the appended
+  Appearance block and prepend them under a `t:won.headers.visibility` header
+  (after a leading About paragraph if present).
+- The shared "Padding" header is renamed to `t:won.headers.spacing`; both keys
+  are in `removeHeaders` so any section-authored padding/spacing header is
+  deduped and replaced by the single shared Spacing group.
+- No `won-visibility` snippet, no `show_on_*` settings, no `.won-hide-*` CSS —
+  those were an initial wrong turn and were reverted.
+
+### Infinite scroll (won-carousel) — expose dormant feature
+`won-carousel.js` already supports an endless rail via a `data-won-loop`
+attribute (`always | desktop | mobile`) that clones bookend slides, but the
+section never emitted it and the schema never exposed it. Added a `loop` select
+to the carousel Controls group (Off / On / Desktop only / Mobile only) and emit
+`data-won-loop="{{ s.loop }}"` when `layout == 'slider'` and `loop != blank`.
 
 ### Source of truth & build
 - **Edit `themes/won-base` only.** `themes/build/compose.mjs` rebuilds
@@ -100,13 +112,15 @@ not apply to a given component are simply omitted (a block with no mode has no
 - **Static:** `validate_theme` (Shopify MCP) clean; existing
   `tests/smoke/won-settings-coverage.spec.ts` still green (271+ settings, 0 dead
   — every new toggle/select must have a visible effect).
-- **Functional (Playwright, new permanent tests):**
-  - `show_on_mobile=false` → section is `display:none` at ≤749px, visible ≥750px.
-  - `show_on_desktop=false` → inverse.
-  - Mode select genuinely changes rendered layout (carousel vs grid vs marquee
-    DOM/class differs).
-  - Added to the smoke suite under `tests/smoke/` so future changes re-verify
-    real behavior, not just static render.
+- **Structural (Playwright, new permanent test `won-unified-schema.spec.ts`):**
+  reads composed dist; asserts canonical header order, Visibility-first,
+  Mode-select-always-visible, and hide_mobile/hide_desktop only under Visibility.
+- **Behavioural (Playwright, new permanent test `won-unified-behavior.spec.ts`,
+  needs `shopify theme dev`):**
+  - `--won-d-m:none` hides the section at ≤749px and NOT at ≥750px (and inverse
+    for `--won-d-d`), asserted on both project viewports.
+  - Mode select drives a `won-carousel--<mode>` render class.
+  - `data-won-loop` clones bookend slides only on the viewport its scope covers.
 
 ## Non-goals
 - No new visual features beyond visibility. No preset changes. No renaming of
