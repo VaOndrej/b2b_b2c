@@ -9,15 +9,10 @@ import {
   type InsightCard,
 } from "@won/core/toasts/insights-metrics";
 import { emptyRollupCounters, mergeCounters, dateKeyUTC, type RollupCounters } from "@won/core/toasts/insights";
-import { describeConfigDiff } from "@won/core/toasts/config-diff";
 import { monthlyRoi } from "@won/core/toasts/roi";
 
 import { authenticate } from "../shopify.server";
 import { getToastConfig } from "../services/toast-config.server";
-import {
-  listConfigVersionsWithData,
-  restoreConfigVersion,
-} from "../services/toast-config.server";
 import { ruleLabel } from "../lib/labels";
 import {
   readRollups,
@@ -47,28 +42,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const config = await getToastConfig(session.shop);
   const since = dateKeyUTC(Date.now() - WINDOW_DAYS * 86_400_000);
 
-  // Rollback timeline (Free + Pro): consecutive snapshots → human diffs.
-  const versions = await listConfigVersionsWithData(session.shop);
-  const timeline = versions.map((v, i) => {
-    const older = versions[i + 1]?.data ?? {};
-    const changes = describeConfigDiff(older, v.data ?? {});
-    return {
-      id: v.id,
-      createdAt: v.createdAt.toISOString(),
-      changes: changes.slice(0, 6).map((c) => c.summary),
-      isCurrent: i === 0,
-    };
-  });
-
+  // History & rollback live on Design (single source) — Insights is observation
+  // only (merchant-review point 11).
   if (config.plan !== "pro") {
-    // Free: reach + on/off health + rollback only.
+    // Free: reach + on/off health.
     const rollups = await readRollups(session.shop, since);
     const reach = rollups.reduce((a, r) => a + (r.counters.shown ?? 0), 0);
     return {
       pro: false as const,
       reach,
       firing: reach > 0,
-      timeline,
     };
   }
 
@@ -124,7 +107,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     benchmark = rows.length ? rows : null;
   }
 
-  return { pro: true as const, perType, cards, totalReach, roi, timeline, benchmark, optedOut, industry };
+  return { pro: true as const, perType, cards, totalReach, roi, benchmark, optedOut, industry };
 };
 
 export const INDUSTRIES = ["fashion", "electronics", "beauty", "food", "home", "b2b", "other"];
@@ -141,11 +124,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     await setBenchmarkIndustry(session.shop, String(form.get("industry") ?? "") || null);
     return { ok: true };
   }
-  const versionId = String(form.get("versionId") ?? "");
-  if (versionId) {
-    await restoreConfigVersion(session.shop, versionId).catch(() => null);
-  }
-  return { restored: !!versionId };
+  return { ok: true };
 };
 
 function pct(n: number): string {
@@ -166,7 +145,6 @@ const CARD_COPY: Record<string, (t: string, e: Record<string, number | string>) 
   attention_loss: (t, e) =>
     `${ruleLabel(t)} loses attention — ${pct(Number(e.dismissRate))} dismiss it fast. Try a shorter, calmer toast.`,
   best_day: (t) => `${ruleLabel(t)} performs best on some days — worth scheduling.`,
-  silent_gap: (t) => `${ruleLabel(t)} is configured but hasn't shown once. Check its triggers or targeting.`,
 };
 
 const CARD_TONE: Record<string, "success" | "warning" | "info"> = {
@@ -175,57 +153,6 @@ const CARD_TONE: Record<string, "success" | "warning" | "info"> = {
   best_day: "info",
   silent_gap: "info",
 };
-
-function Timeline({
-  timeline,
-}: {
-  timeline: { id: string; createdAt: string; changes: string[]; isCurrent: boolean }[];
-}) {
-  return (
-    <s-section heading="History & one-click rollback">
-      <s-paragraph>
-        Every save is a restore point. See what changed, and roll back to any
-        moment with one click — safe and reversible.
-      </s-paragraph>
-      <s-stack direction="block" gap="base">
-        {timeline.length === 0 ? (
-          <s-paragraph>No saved versions yet.</s-paragraph>
-        ) : (
-          timeline.map((v) => (
-            <div
-              key={v.id}
-              style={{ border: "1px solid #e3e6ea", borderRadius: 12, padding: 14, background: "#fff" }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                <div style={{ fontWeight: 700 }}>
-                  {new Date(v.createdAt).toLocaleString()}
-                  {v.isCurrent ? " · current" : ""}
-                </div>
-                {!v.isCurrent ? (
-                  <Form method="post">
-                    <input type="hidden" name="versionId" value={v.id} />
-                    <s-button type="submit" variant="secondary">
-                      Restore
-                    </s-button>
-                  </Form>
-                ) : null}
-              </div>
-              {v.changes.length ? (
-                <ul style={{ margin: "8px 0 0", paddingLeft: 18, color: "#374151", fontSize: 13 }}>
-                  {v.changes.map((c, i) => (
-                    <li key={i}>{c}</li>
-                  ))}
-                </ul>
-              ) : (
-                <div style={{ marginTop: 6, color: "#6b7280", fontSize: 13 }}>Initial save.</div>
-              )}
-            </div>
-          ))
-        )}
-      </s-stack>
-    </s-section>
-  );
-}
 
 export default function AnalyticsRoute() {
   const data = useLoaderData<typeof loader>();
@@ -244,12 +171,11 @@ export default function AnalyticsRoute() {
             <s-link href="/app/plan">Pro</s-link> feature.
           </s-paragraph>
         </s-section>
-        <Timeline timeline={data.timeline} />
       </s-page>
     );
   }
 
-  const { perType, cards, totalReach, roi, timeline, benchmark, optedOut, industry } = data;
+  const { perType, cards, totalReach, roi, benchmark, optedOut, industry } = data;
 
   return (
     <s-page heading="Insights" inlineSize="large">
@@ -262,11 +188,37 @@ export default function AnalyticsRoute() {
           </s-paragraph>
         ) : (
           <s-stack direction="block" gap="base">
-            {(cards as InsightCard[]).map((c) => (
-              <s-banner key={c.id} tone={CARD_TONE[c.kind] ?? "info"}>
-                {(CARD_COPY[c.kind] ?? ((t: string) => ruleLabel(t)))(c.metricType ?? "", c.evidence)}
-              </s-banner>
-            ))}
+            {(cards as InsightCard[]).map((c) => {
+              // Golden platter (merchant-review point 10): don't tell the merchant
+              // to "check triggers or targeting" — diagnose the likely cause and
+              // deep-link to the fix. If nothing shows at all, the embed is the
+              // usual culprit; if others fire but this one doesn't, it's this
+              // type's targeting/on-off.
+              if (c.kind === "silent_gap") {
+                const globalSilent = totalReach === 0;
+                const name = ruleLabel(c.metricType ?? "");
+                return (
+                  <s-banner key={c.id} tone="warning">
+                    <s-stack direction="block" gap="small-200">
+                      <s-text>
+                        {globalSilent
+                          ? `${name} hasn't shown once — and nothing else has either. Your app embed is probably off, or Targeting is excluding every page.`
+                          : `${name} is set up but hasn't shown once, while other toasts are firing — it's likely turned off or excluded in Targeting.`}
+                      </s-text>
+                      <s-stack direction="inline" gap="base">
+                        {globalSilent ? <s-button href="/app">Check setup</s-button> : null}
+                        <s-button href="/app/targeting">Open Targeting</s-button>
+                      </s-stack>
+                    </s-stack>
+                  </s-banner>
+                );
+              }
+              return (
+                <s-banner key={c.id} tone={CARD_TONE[c.kind] ?? "info"}>
+                  {(CARD_COPY[c.kind] ?? ((t: string) => ruleLabel(t)))(c.metricType ?? "", c.evidence)}
+                </s-banner>
+              );
+            })}
           </s-stack>
         )}
       </s-section>
@@ -382,7 +334,6 @@ export default function AnalyticsRoute() {
         )}
       </s-section>
 
-      <Timeline timeline={timeline} />
     </s-page>
   );
 }
