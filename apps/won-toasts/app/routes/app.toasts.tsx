@@ -670,39 +670,55 @@ export default function ToastsRoute() {
                     }}
                     extraFor={(key) => {
                       if (key === "shipping")
+                        // §9a: threshold + wording + currencies are secondary —
+                        // collapse them; the toggle + message stay visible.
                         return (
-                          <s-stack direction="block" gap="base">
-                            <s-stack direction="inline" gap="base">
-                              <s-money-field
-                                label="Free-shipping threshold"
-                                name="ms_ship_threshold"
-                                value={ship ? String(ship.thresholdCents / 100) : ""}
-                                min={0}
-                                details="Cart total that unlocks free shipping, in your store's base currency. The real rule lives in your Shopify shipping settings — this only announces it."
-                              />
-                              <s-text-field
-                                label="What to call it"
-                                name="ms_ship_label"
-                                value={ship?.label ?? "free shipping"}
-                                details="Used in the message, e.g. “You’ve got free shipping”."
-                              />
-                            </s-stack>
-                            <s-text color="subdued">
-                              Selling in more currencies? Set the free-shipping
-                              threshold per currency in{" "}
-                              <s-link href="/app/markets">Markets → Currencies</s-link>,
-                              so a EUR cart isn&apos;t measured against your base amount.
-                            </s-text>
-                          </s-stack>
+                          <details>
+                            <summary style={{ cursor: "pointer", padding: "4px 0" }}>
+                              <s-text type="strong">Free-shipping details</s-text>
+                            </summary>
+                            <div style={{ marginTop: 8 }}>
+                              <s-stack direction="block" gap="base">
+                                <s-stack direction="inline" gap="base">
+                                  <s-money-field
+                                    label="Free-shipping threshold"
+                                    name="ms_ship_threshold"
+                                    value={ship ? String(ship.thresholdCents / 100) : ""}
+                                    min={0}
+                                    details="Cart total that unlocks free shipping, in your store's base currency. The real rule lives in your Shopify shipping settings — this only announces it."
+                                  />
+                                  <s-text-field
+                                    label="What to call it"
+                                    name="ms_ship_label"
+                                    value={ship?.label ?? "free shipping"}
+                                    details="Used in the message, e.g. “You’ve got free shipping”."
+                                  />
+                                </s-stack>
+                                <s-text color="subdued">
+                                  Selling in more currencies? Set the free-shipping
+                                  threshold per currency in{" "}
+                                  <s-link href="/app/markets">Markets → Currencies</s-link>,
+                                  so a EUR cart isn&apos;t measured against your base amount.
+                                </s-text>
+                              </s-stack>
+                            </div>
+                          </details>
                         );
                       if (key === "gift")
                         return (
-                          <s-text-field
-                            label="What to call the gift"
-                            name="ms_gift_label"
-                            value={gift?.label ?? "a gift"}
-                            details="Used in the message, e.g. “You unlocked a gift”. Requires Won GiftLadder to actually grant it."
-                          />
+                          <details>
+                            <summary style={{ cursor: "pointer", padding: "4px 0" }}>
+                              <s-text type="strong">Gift details</s-text>
+                            </summary>
+                            <div style={{ marginTop: 8 }}>
+                              <s-text-field
+                                label="What to call the gift"
+                                name="ms_gift_label"
+                                value={gift?.label ?? "a gift"}
+                                details="Used in the message, e.g. “You unlocked a gift”. Requires Won GiftLadder to actually grant it."
+                              />
+                            </div>
+                          </details>
                         );
                       return null;
                     }}
