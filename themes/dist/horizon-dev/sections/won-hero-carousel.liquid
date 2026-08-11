@@ -16,7 +16,7 @@
     class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-hero won-hero--slider{% if s.layout == 'peek' %} won-hero--peek{% endif %}"
     style="--won-hero-min: {{ s.min_height }}px; --won-hero-gap: {{ s.gap }}px; --won-hero-peek: {{ s.columns_mobile }}; --won-hero-slide: {{ s.slide_width }}%;"
   >
-    <won-carousel class="won-hero__carousel" data-won-loop="desktop"{% if s.autoplay %} data-autoplay="{{ s.autoplay_interval }}"{% endif %}><div class="won-hero__track" data-won-track>
+    <won-carousel class="won-hero__carousel"{% if s.loop != blank %} data-won-loop="{{ s.loop }}"{% endif %}{% if s.autoplay %} data-autoplay="{{ s.autoplay_interval }}"{% endif %}><div class="won-hero__track" data-won-track>
         {% content_for 'blocks' %}
       </div>
       {%- if s.show_arrows -%}
@@ -27,6 +27,9 @@
       {%- endif -%}
       {%- if s.show_progress -%}
         <div class="won-hero__progress" data-won-progress><span class="won-hero__progress-bar" data-won-progress-bar></span></div>
+      {%- endif -%}
+      {%- if s.show_dots -%}
+        <div class="won-carousel__dots won-hero__dots" data-won-dots></div>
       {%- endif -%}
     </won-carousel>
   </div>
@@ -167,6 +170,37 @@
       "id": "show_progress",
       "label": "t:won.settings.show_progress",
       "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_dots",
+      "label": "t:won.settings.show_dots",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "loop",
+      "label": "t:won.settings.loop",
+      "info": "t:won.info.loop",
+      "options": [
+        {
+          "value": "",
+          "label": "t:won.options.loop_off"
+        },
+        {
+          "value": "always",
+          "label": "t:won.options.loop_always"
+        },
+        {
+          "value": "desktop",
+          "label": "t:won.options.loop_desktop"
+        },
+        {
+          "value": "mobile",
+          "label": "t:won.options.loop_mobile"
+        }
+      ],
+      "default": "desktop"
     },
     {
       "type": "checkbox",
