@@ -4,10 +4,10 @@ import { Form, useLoaderData } from "react-router";
 
 import {
   buildEmbedDeepLink,
-  extractEmbedExtensionUuid,
   isEmptyStore,
-  parseEmbedStatus,
+  resolveEmbedState,
   type EmbedStatus,
+  type ThemeSettingsInput,
 } from "@won/core/toasts/embed-status";
 
 import type { RuleMetrics } from "@won/core/toasts/analytics";
@@ -75,45 +75,78 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   let embedUuid = EMBED_EXTENSION_UUID;
 
   if (canReadThemes) {
+    // Phase 1: list themes WITHOUT reading any file. A role-only query can't be
+    // ACCESS_DENIED, so this only fails on a real outage → honest "unknown".
+    let themeList: Array<{ id: string; role: string }> = [];
     try {
-      // Scan all themes (client-side role filter is more robust than a `roles`
-      // argument). Status comes from the live (MAIN) theme; the UUID for the
-      // deep link can come from whichever theme has the embed.
       const res = await admin.graphql(
         `#graphql
-        query WonThemes {
-          themes(first: 20) {
-            nodes {
-              role
-              files(filenames: ["config/settings_data.json"], first: 1) {
-                nodes {
-                  body { ... on OnlineStoreThemeFileBodyText { content } }
-                }
-              }
-            }
-          }
+        query WonThemeList {
+          themes(first: 50) { nodes { id role } }
         }`,
       );
       const json = await res.json();
       const nodes = json?.data?.themes?.nodes;
       if (Array.isArray(nodes)) {
         themeReadOk = true;
-        for (const n of nodes) {
-          const content = n?.files?.nodes?.[0]?.body?.content;
-          if (typeof content !== "string") continue;
-          const isMain = String(n?.role).toUpperCase() === "MAIN";
-          const status = parseEmbedStatus(content, EMBED_BLOCK_HANDLE);
-          if (isMain) embedStatus = status;
-          if (status !== "unknown") {
-            const uuid = extractEmbedExtensionUuid(content, EMBED_BLOCK_HANDLE);
-            if (uuid) embedUuid = uuid;
-            if (!isMain) embedOnDraft = true;
-          }
-        }
+        themeList = nodes
+          .filter((n: unknown) => n && typeof (n as { id?: unknown }).id === "string")
+          .map((n: { id: string; role?: unknown }) => ({
+            id: n.id,
+            role: String(n.role ?? ""),
+          }));
       }
     } catch {
-      // query error → themeReadOk stays false, embedStatus "unknown" (fail-safe)
+      // outage → themeReadOk stays false, embedStatus "unknown" (fail-safe)
     }
+
+    // Phase 2: read each theme's settings_data.json in ISOLATION. One locked /
+    // demo / foreign theme (whose source Shopify protects) returns null and is
+    // tolerated — it can no longer abort the scan and hide the live theme.
+    // Role filter is a request-count optimization only; correctness comes from
+    // the per-theme try/catch + resolveEmbedState tolerating nulls.
+    const RELEVANT = new Set(["MAIN", "UNPUBLISHED", "DEVELOPMENT"]);
+    const readSettings = async (themeId: string): Promise<string | null> => {
+      try {
+        const res = await admin.graphql(
+          `#graphql
+          query WonThemeFile($id: ID!) {
+            node(id: $id) {
+              ... on OnlineStoreTheme {
+                files(filenames: ["config/settings_data.json"], first: 1) {
+                  nodes {
+                    body { ... on OnlineStoreThemeFileBodyText { content } }
+                  }
+                }
+              }
+            }
+          }`,
+          { variables: { id: themeId } },
+        );
+        const json = await res.json();
+        const content =
+          json?.data?.node?.files?.nodes?.[0]?.body?.content;
+        return typeof content === "string" ? content : null;
+      } catch {
+        // locked/denied theme → null, skipped by resolveEmbedState
+        return null;
+      }
+    };
+
+    const relevantThemes = themeList.filter((t) =>
+      RELEVANT.has(t.role.toUpperCase()),
+    );
+    const themeSettings: ThemeSettingsInput[] = await Promise.all(
+      relevantThemes.map(async (t) => ({
+        role: t.role,
+        settings: await readSettings(t.id),
+      })),
+    );
+
+    const resolved = resolveEmbedState(themeSettings, EMBED_BLOCK_HANDLE);
+    embedStatus = resolved.embedStatus;
+    embedOnDraft = resolved.embedOnDraft;
+    if (resolved.embedUuid) embedUuid = resolved.embedUuid;
   }
 
   const embedNote = !canReadThemes

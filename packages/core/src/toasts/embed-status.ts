@@ -81,6 +81,60 @@ export function extractEmbedExtensionUuid(
   return null;
 }
 
+/** One theme's settings as seen by {@link resolveEmbedState}. */
+export interface ThemeSettingsInput {
+  /** Theme role (MAIN, UNPUBLISHED, DEVELOPMENT, DEMO, …); case-insensitive. */
+  role: string;
+  /**
+   * Contents of the theme's `config/settings_data.json`, or `null` when it
+   * couldn't be read — e.g. a locked/purchased/foreign theme whose source
+   * Shopify protects (ACCESS_DENIED) regardless of the `read_themes` scope.
+   * Such themes are tolerated and skipped instead of aborting the whole scan.
+   */
+  settings: string | null;
+}
+
+/** Resolved embed picture across a shop's themes. */
+export interface EmbedState {
+  /** Status on the live (MAIN) theme — the authoritative one for "are we live?". */
+  embedStatus: EmbedStatus;
+  /** Extension UUID for the deep link, discovered on any readable theme (MAIN preferred). */
+  embedUuid: string | null;
+  /** Embed enabled on a non-live theme but not on the live one. */
+  embedOnDraft: boolean;
+}
+
+/**
+ * Fold a list of (readable-or-not) themes into the embed picture, tolerating
+ * any theme whose `settings` is `null`. This is the robustness core: a single
+ * unreadable theme (locked/demo/foreign) must never hide the live theme's real
+ * status. The loader reads each theme's settings in isolation (so one denial
+ * can't throw the batch) and hands the results here.
+ */
+export function resolveEmbedState(
+  themes: readonly ThemeSettingsInput[],
+  blockHandle: string,
+): EmbedState {
+  let embedStatus: EmbedStatus = "unknown";
+  let embedUuid: string | null = null;
+  let embedOnDraft = false;
+
+  for (const theme of themes) {
+    if (theme.settings == null) continue; // unreadable → tolerate & skip
+    const isMain = theme.role.toUpperCase() === "MAIN";
+    const status = parseEmbedStatus(theme.settings, blockHandle);
+    if (isMain) embedStatus = status;
+    if (status !== "unknown") {
+      const uuid = extractEmbedExtensionUuid(theme.settings, blockHandle);
+      // Prefer the live theme's UUID; otherwise take the first one we find.
+      if (uuid && (isMain || embedUuid === null)) embedUuid = uuid;
+      if (!isMain) embedOnDraft = true;
+    }
+  }
+
+  return { embedStatus, embedUuid, embedOnDraft };
+}
+
 /**
  * Deep link straight to the theme editor with our app embed activated, so the
  * merchant flips it on in one click.

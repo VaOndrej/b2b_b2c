@@ -6,9 +6,24 @@ import {
   extractEmbedExtensionUuid,
   isEmptyStore,
   parseEmbedStatus,
+  resolveEmbedState,
 } from "../../src/toasts/embed-status.ts";
 
 const HANDLE = "won_toasts_embed";
+
+/** A settings_data.json string carrying our embed block (optionally disabled). */
+function themeSettings(uuid: string, disabled = false): string {
+  return JSON.stringify({
+    current: {
+      blocks: {
+        rid: {
+          type: `shopify://apps/won-toasts/blocks/${HANDLE}/${uuid}`,
+          disabled,
+        },
+      },
+    },
+  });
+}
 
 function settingsWith(block: Record<string, unknown> | null) {
   return {
@@ -94,6 +109,60 @@ test("extractEmbedExtensionUuid pulls the UUID after the block handle", () => {
     ),
     null,
   );
+});
+
+test("resolveEmbedState: an unreadable (locked/denied) theme is tolerated — MAIN still resolves", () => {
+  // The exact bug: one theme's settings_data.json is ACCESS_DENIED (→ null),
+  // which used to abort the whole scan. MAIN's status must still come through.
+  const state = resolveEmbedState(
+    [
+      { role: "MAIN", settings: themeSettings("019fcc26-7067") },
+      { role: "DEMO", settings: null },
+      { role: "UNPUBLISHED", settings: null },
+    ],
+    HANDLE,
+  );
+  assert.equal(state.embedStatus, "enabled");
+  assert.equal(state.embedUuid, "019fcc26-7067");
+  assert.equal(state.embedOnDraft, false);
+});
+
+test("resolveEmbedState: enabled only on a draft, not live → embedOnDraft, status from MAIN", () => {
+  const state = resolveEmbedState(
+    [
+      { role: "MAIN", settings: JSON.stringify({ current: { blocks: {} } }) },
+      { role: "UNPUBLISHED", settings: themeSettings("draft-uuid") },
+    ],
+    HANDLE,
+  );
+  assert.equal(state.embedStatus, "unknown"); // not on the live theme
+  assert.equal(state.embedOnDraft, true);
+  assert.equal(state.embedUuid, "draft-uuid"); // deep link still works
+});
+
+test("resolveEmbedState: disabled on MAIN is reported as disabled, not overridden by a draft", () => {
+  const state = resolveEmbedState(
+    [
+      { role: "MAIN", settings: themeSettings("main-uuid", true) },
+      { role: "DEVELOPMENT", settings: themeSettings("dev-uuid") },
+    ],
+    HANDLE,
+  );
+  assert.equal(state.embedStatus, "disabled");
+  assert.equal(state.embedUuid, "main-uuid"); // MAIN's uuid preferred
+});
+
+test("resolveEmbedState: nothing readable → all-unknown, no crash", () => {
+  const state = resolveEmbedState(
+    [
+      { role: "MAIN", settings: null },
+      { role: "DEMO", settings: null },
+    ],
+    HANDLE,
+  );
+  assert.equal(state.embedStatus, "unknown");
+  assert.equal(state.embedUuid, null);
+  assert.equal(state.embedOnDraft, false);
 });
 
 test("isEmptyStore is true only when there are zero orders", () => {
