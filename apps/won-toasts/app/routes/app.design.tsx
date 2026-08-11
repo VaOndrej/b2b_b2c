@@ -4,6 +4,7 @@ import { Form, useLoaderData, useSearchParams } from "react-router";
 
 import {
   DEFAULT_THEME,
+  DEFAULT_TOAST_CONFIG,
   sanitizeGlobalSettings,
   sanitizeTheme,
 } from "@won/core/toasts/config.defaults";
@@ -91,6 +92,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const theme =
       preset === "default" ? DEFAULT_THEME : applyLookPreset(current.theme, preset);
     return persistConfig(() => updateToastConfig(session.shop, { theme }));
+  }
+
+  // Reset EVERYTHING (look + timing/placement/grouping/frequency) back to the
+  // built-in defaults — the "how do I undo all my tweaks?" escape hatch. Still a
+  // normal save, so History keeps a restore point if they change their mind.
+  if (intent === "resetAll") {
+    return persistConfig(() =>
+      updateToastConfig(session.shop, {
+        theme: DEFAULT_THEME,
+        global: DEFAULT_TOAST_CONFIG.global,
+      }),
+    );
   }
 
   // Roll back to a stored version (auto history — replaces raw-JSON backup).
@@ -384,6 +397,15 @@ export default function DesignRoute() {
               <LookPresetCard key={p.id} id={p.id} label={p.label} />
             ))}
           </div>
+          {/* Clear escape hatch back to defaults (feedback 2): tweaked too much
+              and want to start over? One click, and History keeps a restore point. */}
+          <s-stack direction="inline" gap="base" alignItems="center">
+            <s-text color="subdued">Changed too much and want to start over?</s-text>
+            <Form method="post">
+              <input type="hidden" name="intent" value="resetAll" />
+              <s-button type="submit" variant="secondary">Reset to default design</s-button>
+            </Form>
+          </s-stack>
         </s-section>
       ) : null}
 
