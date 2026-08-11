@@ -113,7 +113,19 @@ export function ToastLauncher({
                           {it.on ? "On" : "Off"}
                         </span>
                       </span>
-                      <span style={{ fontSize: 12, lineHeight: 1.3, color: "#586573" }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          lineHeight: 1.3,
+                          color: "#586573",
+                          // Clamp to 2 lines so every card is the same height
+                          // regardless of blurb length (with the min-height below).
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
                         {it.blurb}
                       </span>
                     </button>
