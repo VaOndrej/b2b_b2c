@@ -31,6 +31,7 @@ import { NotificationPreview } from "../components/NotificationPreview";
 import { AnimatedToastPreview } from "../components/AnimatedToastPreview";
 import { StorefrontPreview } from "../components/StorefrontPreview";
 import { ProFrame } from "../components/ProFrame";
+import { PlanBadge } from "../components/PlanBadge";
 import { ToastLauncher } from "../components/ToastLauncher";
 import { MessageMatrix } from "../components/MessageMatrix";
 import { mergeMessages } from "../lib/localization";
@@ -674,7 +675,7 @@ export default function ToastsRoute() {
           <div style={panel("cart")}>
             <s-section heading="Cart toasts">
               <s-stack direction="block" gap="large">
-                <s-badge tone="success">Free</s-badge>
+                <PlanBadge tier="free" />
                 <s-paragraph>
                   Shown automatically when the cart changes. Turn each one on or off
                   and edit what it says — all in one place. Add languages in{" "}
@@ -775,7 +776,7 @@ export default function ToastsRoute() {
           <div style={panel("countdown")}>
             <s-section heading="Countdown timer">
               <s-stack direction="block" gap="base">
-                <s-badge tone="success">Free</s-badge>
+                <PlanBadge tier="free" />
                 <s-paragraph>A truthful sale or deadline timer — either a fixed end date for everyone, or a rolling window that restarts per visitor. It only ever counts to a real deadline.</s-paragraph>
                 <s-switch label="Show a countdown" name="countdown_enabled" checked={countdown?.enabled ?? false} />
                 <s-select label="Counts down to" name="countdown_mode" value={countdownMode}
@@ -803,7 +804,7 @@ export default function ToastsRoute() {
           <div style={panel("announcement")}>
             <s-section heading="Announcement">
               <s-stack direction="block" gap="base">
-                <s-badge tone="success">Free</s-badge>
+                <PlanBadge tier="free" />
                 <s-switch label="Show an announcement" name="announcement_enabled" checked={announcement?.enabled ?? false} />
                 <s-paragraph>Your own message, written in your default language.</s-paragraph>
                 <s-text-field label="Message" name="announcement_message" value={announcement?.message ?? ""} placeholder="Free gift on orders over 1000 Kč this week!" details="Translate it into your other languages on Languages." />
@@ -825,7 +826,7 @@ export default function ToastsRoute() {
             <s-section heading="Low-stock urgency">
               <ProFrame locked={!isPro}>
               <s-stack direction="block" gap="base">
-                <s-badge tone={isPro ? "success" : "info"}>{isPro ? "Pro" : "Pro — upgrade to enable"}</s-badge>
+                <PlanBadge tier="pro" locked={!isPro} />
                 <s-switch label="Show low-stock nudges" name="stock.low_enabled" checked={stock?.enabled ?? false} disabled={!isPro} />
                 <s-paragraph>Shows “Only N left” only when real inventory is below your threshold. Out of stock never shouts.</s-paragraph>
                 <s-number-field label="Show when inventory is below" name="stock.low_threshold" value={String(stock?.threshold ?? 5)} min={1} disabled={!isPro} details="Only shows when real inventory is at or below this number." />
@@ -845,7 +846,7 @@ export default function ToastsRoute() {
             <s-section heading="Cart activity">
               <ProFrame locked={!isPro}>
               <s-stack direction="block" gap="base">
-                <s-badge tone={isPro ? "success" : "info"}>{isPro ? "Pro" : "Pro — upgrade to enable"}</s-badge>
+                <PlanBadge tier="pro" locked={!isPro} />
                 <s-switch label="Show cart activity" name="cart.activity_enabled" checked={activity?.enabled ?? false} disabled={!isPro} />
                 <s-paragraph>“{"{count}"} people added this recently” — a real, server-side counter. Never fabricated.</s-paragraph>
                 <s-number-field label="Look back over" name="cart.activity_window_hours" value={String(activity?.windowHours ?? 24)} min={1} disabled={!isPro} details="Hours of add-to-cart activity to count (24 = one day)." />
@@ -865,7 +866,7 @@ export default function ToastsRoute() {
             <s-section heading="Order summary">
               <ProFrame locked={!isPro}>
               <s-stack direction="block" gap="base">
-                <s-badge tone={isPro ? "success" : "info"}>{isPro ? "Pro" : "Pro — upgrade to enable"}</s-badge>
+                <PlanBadge tier="pro" locked={!isPro} />
                 <s-switch label="Show an order summary" name="order.summary_enabled" checked={orderSummary?.enabled ?? false} disabled={!isPro} />
                 <s-paragraph>“{"{count}"} orders this week” — counted from your real orders. Silent until there are orders in the window.</s-paragraph>
                 <s-number-field label="Look back over" name="order.summary_window_hours" value={String(orderSummary?.windowHours ?? 168)} min={1} max={720} disabled={!isPro} details="Hours of orders to count (168 = 7 days)." />
@@ -885,7 +886,7 @@ export default function ToastsRoute() {
             <s-section heading="Recent sales (social proof)">
               <ProFrame locked={!isPro}>
               <s-stack direction="block" gap="base">
-                <s-badge tone={isPro ? "success" : "info"}>{isPro ? "Pro" : "Pro — upgrade to enable"}</s-badge>
+                <PlanBadge tier="pro" locked={!isPro} />
                 <s-switch label="Show recent sales" name="order.created_enabled" checked={social?.enabled ?? false} disabled={!isPro} />
                 <s-paragraph>
                   “Anna from Praha bought a Mug” — from <s-text type="strong">real orders only</s-text>,

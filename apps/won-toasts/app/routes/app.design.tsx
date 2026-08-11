@@ -20,6 +20,7 @@ import { ToastPreview } from "../components/ToastPreview";
 import { AnimatedToastPreview } from "../components/AnimatedToastPreview";
 import { StorefrontPreview } from "../components/StorefrontPreview";
 import { ProFrame } from "../components/ProFrame";
+import { PlanBadge } from "../components/PlanBadge";
 import { PositionField } from "../components/PositionField";
 import { SegmentedNav } from "../components/SegmentedNav";
 import { useSavedToast } from "../lib/use-saved-toast";
@@ -558,7 +559,7 @@ export default function DesignRoute() {
                     <s-stack direction="block" gap="base">
                       <s-stack direction="inline" gap="small-300" alignItems="center">
                         <s-text type="strong">Merge — group rapid changes</s-text>
-                        <s-badge tone={isPro ? "success" : "info"}>{isPro ? "Pro" : "Pro — upgrade"}</s-badge>
+                        <PlanBadge tier="pro" locked={!isPro} />
                       </s-stack>
                       <s-text color="subdued">
                         When a shopper changes the cart several times fast, show one combined
@@ -596,7 +597,7 @@ export default function DesignRoute() {
                     </s-stack>
                     <s-stack direction="inline" gap="small-300" alignItems="center">
                       <s-text color="subdued">Advanced caps</s-text>
-                      <s-badge tone={isPro ? "success" : "info"}>{isPro ? "Pro" : "Pro — upgrade"}</s-badge>
+                      <PlanBadge tier="pro" locked={!isPro} />
                     </s-stack>
                     <s-stack direction="inline" gap="base">
                       <s-number-field label="Max toasts per minute" name="rateLimitPerMin" value={String(g.grouping.rateLimitPerMin)} min={0} max={240} disabled={!isPro} details="Hard cap per minute across all shoppers." />
@@ -626,9 +627,7 @@ export default function DesignRoute() {
             <s-section heading="Custom CSS">
               <ProFrame locked={!isPro}>
                 <s-stack direction="block" gap="base">
-                  <s-badge tone={isPro ? "success" : "info"}>
-                    {isPro ? "Pro" : "Pro — upgrade to enable"}
-                  </s-badge>
+                  <PlanBadge tier="pro" locked={!isPro} />
                   <s-text color="subdued">
                     Go wild — inject your own CSS into the toast (rainbow borders,
                     a mascot, whatever). It applies only inside the toast, never

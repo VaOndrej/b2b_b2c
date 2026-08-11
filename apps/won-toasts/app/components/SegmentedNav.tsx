@@ -10,6 +10,8 @@
 // Native <button> segments on purpose: s-clickable defaults to display:block /
 // width:100% and would stretch full-width.
 
+import { PlanBadge } from "./PlanBadge";
+
 export interface SegmentItem {
   key: string;
   label: string;
@@ -79,7 +81,7 @@ export function SegmentedNav({
               <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: 999, background: "#1a73e8", flex: "0 0 auto" }} />
             ) : null}
             <span>{it.label}</span>
-            {it.pro ? <s-badge>Pro</s-badge> : null}
+            {it.pro ? <PlanBadge tier="pro" /> : null}
             {it.on ? <s-badge tone="success">On</s-badge> : null}
           </button>
         );

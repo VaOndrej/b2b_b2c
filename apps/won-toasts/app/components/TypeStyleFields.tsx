@@ -7,6 +7,7 @@ import type { ToastAppConfig, ToastTypeKey } from "@won/core/toasts/config.types
 import { resolveTypeStyle } from "@won/core/toasts/type-style";
 
 import { ProFrame } from "./ProFrame";
+import { PlanBadge } from "./PlanBadge";
 
 export function TypeStyleFields({
   typeKey,
@@ -34,7 +35,7 @@ export function TypeStyleFields({
         <s-stack direction="block" gap="base">
           <s-stack direction="inline" gap="small-300" alignItems="center">
             <s-text type="strong">Look &amp; timing for this toast</s-text>
-            <s-badge tone={isPro ? "success" : "info"}>{isPro ? "Pro" : "Pro — upgrade"}</s-badge>
+            <PlanBadge tier="pro" locked={!isPro} />
           </s-stack>
           <s-text color="subdued">
             Leave everything as-is to inherit your global Design. Change anything

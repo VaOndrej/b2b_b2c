@@ -11,6 +11,7 @@ import {
   updateToastConfig,
 } from "../services/toast-config.server";
 import { ProFrame } from "../components/ProFrame";
+import { PlanBadge } from "../components/PlanBadge";
 import { useSavedToast } from "../lib/use-saved-toast";
 import { persistConfig } from "../lib/persist-config.server";
 import { pageLabel } from "../lib/labels";
@@ -87,7 +88,7 @@ export default function TargetingRoute() {
             <s-stack direction="block" gap="base">
               <s-stack direction="inline" gap="small">
                 <s-text type="strong">Run everywhere, except…</s-text>
-                <s-badge tone="success">Free</s-badge>
+                <PlanBadge tier="free" />
               </s-stack>
               <s-text color="subdued">
                 Excluded pages and URLs stop{" "}
@@ -135,9 +136,7 @@ export default function TargetingRoute() {
               <s-stack direction="block" gap="large">
                 <s-stack direction="inline" gap="small">
                   <s-text type="strong">Narrow it down</s-text>
-                  <s-badge tone={isPro ? "success" : "info"}>
-                    {isPro ? "Pro" : "Pro — upgrade to choose"}
-                  </s-badge>
+                  <PlanBadge tier="pro" locked={!isPro} />
                 </s-stack>
                 {!isPro ? (
                   <s-paragraph>

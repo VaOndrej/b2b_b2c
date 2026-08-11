@@ -10,6 +10,8 @@
 // Selecting a card drives the same `selected` state the editor panel reads, so
 // this replaces the SegmentedNav without changing the edit flow below it.
 
+import { PlanBadge } from "./PlanBadge";
+
 export interface LauncherItem {
   key: string;
   label: string;
@@ -100,7 +102,7 @@ export function ToastLauncher({
                         <span style={{ fontSize: 13.5, fontWeight: 700, color: "#111418", flex: "1 1 auto" }}>
                           {it.label}
                         </span>
-                        {it.pro ? <s-badge>Pro</s-badge> : null}
+                        {it.pro ? <PlanBadge tier="pro" /> : null}
                       </span>
                       <span style={{ fontSize: 12, lineHeight: 1.35, color: "#586573" }}>
                         {it.blurb}
