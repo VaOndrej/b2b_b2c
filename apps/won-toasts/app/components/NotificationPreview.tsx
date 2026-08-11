@@ -92,7 +92,9 @@ export function NotificationPreview({
           background: "var(--won-bg)",
           color: "var(--won-text)",
           boxShadow: "none",
-          border: "var(--won-border)",
+          borderTop: "var(--won-border)",
+          borderRight: "var(--won-border)",
+          borderBottom: "var(--won-border)",
         }
       : surface === "inline"
         ? {
@@ -114,7 +116,9 @@ export function NotificationPreview({
             background: "var(--won-bg)",
             color: "var(--won-text)",
             boxShadow: "var(--won-shadow)",
-            border: "var(--won-border)",
+            borderTop: "var(--won-border)",
+          borderRight: "var(--won-border)",
+          borderBottom: "var(--won-border)",
           };
 
   const surfaceLabel =

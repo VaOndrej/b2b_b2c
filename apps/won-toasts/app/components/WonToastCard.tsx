@@ -69,7 +69,11 @@ export function WonToastCard({
     color: "var(--won-text)",
     borderRadius: "var(--won-radius)",
     boxShadow: "var(--won-shadow)",
-    border: "var(--won-border)",
+    // Per-side longhand (not `border` shorthand) so the accent borderLeft never
+    // conflicts with the frame — mixing the two triggers a React styling warning.
+    borderTop: "var(--won-border)",
+    borderRight: "var(--won-border)",
+    borderBottom: "var(--won-border)",
     borderLeft: `${sm ? 3 : 4}px solid ${accent}`,
     fontSize: sm ? 12 : 14,
     lineHeight: sm ? 1.3 : 1.35,
