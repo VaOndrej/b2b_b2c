@@ -666,7 +666,7 @@ export default function ToastsRoute() {
                 <s-paragraph>
                   Shown automatically when the cart changes. Turn each one on or off
                   and edit what it says — all in one place. Add languages in{" "}
-                  <s-link href="/app/design">Design → Languages</s-link>.
+                  <s-link href="/app/markets">Markets</s-link>.
                 </s-paragraph>
 
                 {/* Unified per-event control (doctrine §7c/§8b): toggle + wording +
@@ -676,7 +676,7 @@ export default function ToastsRoute() {
                   <s-text color="subdued">
                     Toggle each toast on or off and write its wording in your default
                     language. Blank uses the built-in text. Translate into other
-                    languages on <s-link href="/app/languages">Languages</s-link>.
+                    languages on <s-link href="/app/markets">Markets</s-link>.
                     Gift &amp; free shipping only <s-text type="strong">announce</s-text>{" "}
                     a milestone — they never grant it.
                   </s-text>
@@ -794,7 +794,7 @@ export default function ToastsRoute() {
                 <s-paragraph>Your own message, written in your default language.</s-paragraph>
                 <s-text-field label="Message" name="announcement_message" value={announcement?.message ?? ""} placeholder="Free gift on orders over 1000 Kč this week!" details="Translate it into your other languages on Languages." />
                 <s-text color="subdued">
-                  Add translations on <s-link href="/app/languages">Languages</s-link>.
+                  Add translations on <s-link href="/app/markets">Markets</s-link>.
                 </s-text>
                 <Advanced>
                   <SurfaceSelect type="announcement" value={announcement?.surface ?? "banner"} />

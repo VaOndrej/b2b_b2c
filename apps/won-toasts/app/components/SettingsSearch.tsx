@@ -16,7 +16,7 @@ const INDEX: Entry[] = [
   { label: "Theme mode & colours", page: "Design", to: "/app/design", keywords: "theme mode light dark custom colour color background text" },
   { label: "Accent colours", page: "Design", to: "/app/design", keywords: "accent colour color per event added removed gift shipping" },
   { label: "Radius, width, shadow, animation", page: "Design", to: "/app/design", keywords: "radius corner width shadow density animation entry style" },
-  { label: "Languages", page: "Design", to: "/app/design", keywords: "language locale translation english default fallback" },
+  { label: "Markets — Languages", page: "Markets", to: "/app/markets", keywords: "market language locale translation currency english default fallback" },
   { label: "Custom CSS", page: "Design", to: "/app/design", keywords: "custom css style advanced code rainbow border" },
   { label: "Message wording", page: "Toasts", to: "/app/toasts", keywords: "message text template wording copy language added removed" },
   { label: "Milestones (free shipping, gift)", page: "Toasts", to: "/app/toasts", keywords: "milestone free shipping gift threshold announce" },

@@ -152,7 +152,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (patch.grouping) mergedGlobal.grouping = { ...current.global.grouping, ...patch.grouping };
   if (patch.frequency) mergedGlobal.frequency = { ...current.global.frequency, ...patch.frequency };
 
-  // Languages moved to their own page (/app/languages) — Design no longer touches
+  // Languages moved to Markets (/app/markets) — Design no longer touches
   // locales, so it can't clobber them.
   return persistConfig(() =>
     updateToastConfig(session.shop, {

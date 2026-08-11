@@ -158,7 +158,7 @@ export default function LanguagesRoute() {
     announcement && "messages" in announcement ? announcement.messages : undefined;
 
   return (
-    <s-page heading="Languages" inlineSize="large">
+    <s-page heading="Markets" inlineSize="large">
       {saveError ? (
         <s-section>
           <s-banner tone="critical" heading="Your changes weren’t saved">
@@ -169,10 +169,11 @@ export default function LanguagesRoute() {
 
       <s-section>
         <s-paragraph>
-          One place to translate everything your toasts say. You write the default
-          copy on <s-link href="/app/toasts">Toasts</s-link>; here you translate it
-          for every other language. A shopper sees their language, falling back to
-          your default when a translation is blank.
+          Everything that changes market to market in one place — the language your
+          toasts speak, and the currencies you sell in. Write your default copy on{" "}
+          <s-link href="/app/toasts">Toasts</s-link>; translate it below for every
+          other language (a shopper sees their language, falling back to your default
+          when a translation is blank).
         </s-paragraph>
       </s-section>
 
