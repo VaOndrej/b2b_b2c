@@ -18,6 +18,7 @@ import {
   updateToastConfig,
 } from "../services/toast-config.server";
 import { MessageMatrix } from "../components/MessageMatrix";
+import { HydrationGate } from "../components/HydrationGate";
 import {
   COMMON_LOCALES,
   mergeMessages,
@@ -211,6 +212,7 @@ export default function MarketsRoute() {
       </s-section>
 
       <Form method="post" data-save-bar ref={formRef}>
+        <HydrationGate>
         <s-section heading="Your languages">
           <s-stack direction="block" gap="base">
             <s-text color="subdued">
@@ -323,6 +325,7 @@ export default function MarketsRoute() {
             ))}
           </s-stack>
         </s-section>
+        </HydrationGate>
       </Form>
     </s-page>
   );
