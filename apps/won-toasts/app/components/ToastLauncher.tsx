@@ -56,7 +56,7 @@ export function ToastLauncher({
                 <span style={{ fontSize: 14, fontWeight: 700, color: "#111418" }}>
                   {group.title}
                 </span>
-                <span style={{ fontSize: 12.5, color: "#6b7684" }}>{group.caption}</span>
+                <span style={{ fontSize: 12, color: "#6b7684" }}>{group.caption}</span>
               </div>
 
               <div
@@ -104,7 +104,7 @@ export function ToastLauncher({
                             background: it.on ? "#1a8f4b" : "#c3cad2",
                           }}
                         />
-                        <span style={{ fontSize: 13.5, fontWeight: 700, color: "#111418", flex: "1 1 auto" }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#111418", flex: "1 1 auto" }}>
                           {it.label}
                         </span>
                         {it.pro ? <PlanBadge tier="pro" /> : null}

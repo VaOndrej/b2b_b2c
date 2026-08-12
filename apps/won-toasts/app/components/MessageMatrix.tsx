@@ -74,12 +74,10 @@ export function MessageMatrix({
                 }}
               >
                 <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13.5, color: "#1a1f24" }}>
-                    {ev.title}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#8892a0" }}>
-                    e.g. “{ev.example}”
-                  </div>
+                  {/* Polaris s-text (not raw divs) so the type size/scale matches
+                      the rest of the admin exactly — no hand-picked px. */}
+                  <div><s-text type="strong">{ev.title}</s-text></div>
+                  <div><s-text color="subdued">e.g. “{ev.example}”</s-text></div>
                 </div>
                 {toggle ? (
                   <s-switch

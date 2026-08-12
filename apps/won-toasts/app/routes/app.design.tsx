@@ -236,7 +236,21 @@ function presetSwatch(id: keyof typeof PRESET_LOOKS | "default") {
   return { bg, text, stripe, radius, border, accents };
 }
 
-function LookPresetCard({ id, label }: { id: keyof typeof PRESET_LOOKS | "default"; label: string }) {
+// Which preset (if any) the current theme still matches — signature fields only,
+// so fine-tuning past a preset clears the "active" state (honestly: you're no
+// longer on that exact look).
+function matchesPreset(theme: typeof DEFAULT_THEME, id: keyof typeof PRESET_LOOKS | "default"): boolean {
+  const look = (id === "default" ? DEFAULT_THEME : PRESET_LOOKS[id]) as Partial<typeof DEFAULT_THEME>;
+  return (
+    theme.mode === look.mode &&
+    theme.shadow === look.shadow &&
+    theme.cornerRadius === look.cornerRadius &&
+    theme.accent?.added === look.accent?.added &&
+    theme.accent?.removed === look.accent?.removed
+  );
+}
+
+function LookPresetCard({ id, label, active = false }: { id: keyof typeof PRESET_LOOKS | "default"; label: string; active?: boolean }) {
   const s = presetSwatch(id);
   const dots = ["added", "removed", "shipping", "gift"] as const;
   return (
@@ -245,17 +259,18 @@ function LookPresetCard({ id, label }: { id: keyof typeof PRESET_LOOKS | "defaul
       <input type="hidden" name="preset" value={id} />
       <button
         type="submit"
+        aria-pressed={active}
         style={{
           width: 150,
           textAlign: "left",
           padding: 10,
           borderRadius: 12,
-          border: "1px solid #d6dbe1",
-          background: "#fff",
+          border: active ? "2px solid #1a73e8" : "1px solid #d6dbe1",
+          background: active ? "#f2f7ff" : "#fff",
           cursor: "pointer",
           fontFamily: "inherit",
           display: "block",
-          boxShadow: "0 1px 2px rgba(0,0,0,.04)",
+          boxShadow: active ? "0 2px 8px rgba(26,115,232,.16)" : "0 1px 2px rgba(0,0,0,.04)",
         }}
       >
         {/* mini toast preview in the preset's own look */}
@@ -269,7 +284,14 @@ function LookPresetCard({ id, label }: { id: keyof typeof PRESET_LOOKS | "defaul
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#1b2027" }}>{label}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#1b2027" }}>{label}</span>
+            {active ? (
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#1a73e8", background: "#e7f0ff", borderRadius: 999, padding: "1px 6px", whiteSpace: "nowrap" }}>
+                Active
+              </span>
+            ) : null}
+          </span>
           <span style={{ display: "flex", gap: 3 }}>
             {dots.map((d) => (
               <span key={d} style={{ width: 8, height: 8, borderRadius: 999, background: s.accents[d] ?? "#c3cad2" }} />
@@ -437,7 +459,7 @@ export default function DesignRoute() {
           <s-paragraph>Pick a preset, then fine-tune below. Applying a preset saves immediately.</s-paragraph>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
             {LOOK_PRESETS.map((p) => (
-              <LookPresetCard key={p.id} id={p.id} label={p.label} />
+              <LookPresetCard key={p.id} id={p.id} label={p.label} active={matchesPreset(config.theme, p.id)} />
             ))}
           </div>
           {/* Clear escape hatch back to defaults (feedback 2): tweaked too much
