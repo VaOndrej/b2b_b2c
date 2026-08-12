@@ -16,7 +16,6 @@ export const PRESET_LOOKS = {
     borderColor: "#e2e6ea",
     backdropBlur: false,
     iconSet: "none",
-    showImage: false,
     accent: {
       added: "#3a7d5d",
       removed: "#b45555",
@@ -34,8 +33,6 @@ export const PRESET_LOOKS = {
     cornerRadius: 14,
     border: false,
     iconSet: "line",
-    showImage: true,
-    showDelta: true,
     accent: {
       added: "#22c55e",
       removed: "#ef4444",
@@ -72,7 +69,6 @@ export const PRESET_LOOKS = {
     cornerRadius: 24,
     animationIn: "pop",
     iconSet: "emoji",
-    showImage: true,
     accent: {
       added: "#10b981",
       removed: "#f43f5e",
