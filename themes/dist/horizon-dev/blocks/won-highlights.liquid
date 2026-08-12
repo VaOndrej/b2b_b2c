@@ -17,7 +17,7 @@ any section accepting theme blocks. Self-contained; no product data required.
       {%- if item != blank -%}
         <li class="won-highlights__item">
           {%- if s.show_icon -%}
-            <svg class="won-highlights__icon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {% render 'won-icon', name: s.icon | default: 'check', class: 'won-highlights__icon' %}
           {%- endif -%}
           <span>{{ item }}</span>
         </li>
@@ -40,7 +40,18 @@ any section accepting theme blocks. Self-contained; no product data required.
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading" },
     { "type": "textarea", "id": "items", "label": "t:won.settings.items", "default": "t:won.defaults.highlights_items" },
-    { "type": "checkbox", "id": "show_icon", "label": "t:won.settings.show_icon", "default": true }
+    { "type": "checkbox", "id": "show_icon", "label": "t:won.settings.show_icon", "default": true },
+    {
+      "type": "select", "id": "icon", "label": "t:won.settings.icon", "default": "check", "visible_if": "{{ block.settings.show_icon }}",
+      "options": [
+        { "value": "check", "label": "t:won.options.icon_check" }, { "value": "star", "label": "t:won.options.icon_star" },
+        { "value": "truck", "label": "t:won.options.icon_truck" }, { "value": "shield", "label": "t:won.options.icon_shield" },
+        { "value": "clock", "label": "t:won.options.icon_clock" }, { "value": "leaf", "label": "t:won.options.icon_leaf" },
+        { "value": "bolt", "label": "t:won.options.icon_bolt" }, { "value": "heart", "label": "t:won.options.icon_heart" },
+        { "value": "droplet", "label": "t:won.options.icon_droplet" }, { "value": "box", "label": "t:won.options.icon_box" },
+        { "value": "return", "label": "t:won.options.icon_return" }, { "value": "award", "label": "t:won.options.icon_award" }
+      ]
+    }
   ],
   "presets": [{ "name": "t:won.names.highlights" }]
 }

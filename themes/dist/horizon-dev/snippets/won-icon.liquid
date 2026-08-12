@@ -1,0 +1,26 @@
+{% doc %}
+Renders one of the curated Won inline SVG icons by name, inheriting currentColor.
+Self-contained (no theme dependency). `none` (or an unknown name) renders nothing.
+
+@param {string} name - Icon id: check | star | truck | shield | clock | leaf | bolt | heart | droplet | box | return | award | none
+@param {string} [class] - Extra class(es) for the <svg>.
+@example
+{% render 'won-icon', name: block.settings.icon %}
+{% enddoc %}
+{%- liquid
+  assign n = name | default: 'none'
+-%}
+{%- case n -%}
+  {%- when 'check' -%}<svg class="won-icon {{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+  {%- when 'star' -%}<svg class="won-icon {{ class }}" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6-5.9-3.2-5.9 3.2 1.2-6.6L2.5 9.5l6.6-.9z"/></svg>
+  {%- when 'truck' -%}<svg class="won-icon {{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/></svg>
+  {%- when 'shield' -%}<svg class="won-icon {{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l7.5 2.8v5.7c0 4.8-3.3 8-7.5 9.5-4.2-1.5-7.5-4.7-7.5-9.5V5.3z"/><path d="M8.8 12l2.2 2.2 4.2-4.4"/></svg>
+  {%- when 'clock' -%}<svg class="won-icon {{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+  {%- when 'leaf' -%}<svg class="won-icon {{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20c0-9 7-15 16-15 0 9-6 16-15 16-1 0-1-1-1-1z"/><path d="M4 20C8 15 12 12 17 10"/></svg>
+  {%- when 'bolt' -%}<svg class="won-icon {{ class }}" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M13 2 4 13.5h6L9.5 22 20 10h-6z"/></svg>
+  {%- when 'heart' -%}<svg class="won-icon {{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5C6 16.5 3 13 3 9.2 3 6.4 5.2 4.5 7.7 4.5c1.7 0 3.3.9 4.3 2.4 1-1.5 2.6-2.4 4.3-2.4C18.8 4.5 21 6.4 21 9.2c0 3.8-3 7.3-9 11.3z"/></svg>
+  {%- when 'droplet' -%}<svg class="won-icon {{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5c3.5 4 6 7.4 6 10.5a6 6 0 0 1-12 0c0-3.1 2.5-6.5 6-10.5z"/></svg>
+  {%- when 'box' -%}<svg class="won-icon {{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg>
+  {%- when 'return' -%}<svg class="won-icon {{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h12a5 5 0 0 1 0 10H9"/><path d="M6.5 4.5 3 8l3.5 3.5"/></svg>
+  {%- when 'award' -%}<svg class="won-icon {{ class }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"/><path d="M8.5 14 7 22l5-3 5 3-1.5-8"/></svg>
+{%- endcase -%}

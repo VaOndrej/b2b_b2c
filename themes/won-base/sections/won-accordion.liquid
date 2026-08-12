@@ -5,7 +5,7 @@
   data-testid="won-accordion-section"
 >
   <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %}">
-    <div class="won-acc won-acc--{{ s.layout }}">
+    <div class="won-acc won-acc--{{ s.layout }}{% if s.icon_style == 'chevron' %} won-acc--chevron{% endif %}">
       {%- if s.heading != blank or s.intro != blank -%}
         <div class="won-acc__head">
           {%- if s.heading != blank -%}
@@ -148,6 +148,14 @@
         }
       ],
       "default": "stacked"
+    },
+    {
+      "type": "select", "id": "icon_style", "label": "t:won.settings.icon_style",
+      "options": [
+        { "value": "plus", "label": "t:won.options.icon_plus" },
+        { "value": "chevron", "label": "t:won.options.icon_chevron" }
+      ],
+      "default": "plus"
     },
     {
       "type": "checkbox",

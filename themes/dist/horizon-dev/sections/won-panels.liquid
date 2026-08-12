@@ -77,7 +77,7 @@
         </div>
       {%- endif -%}
 
-      {%- if is_tabs -%}<won-tabset class="won-panels__tabset"><div class="won-panels__nav" role="tablist"></div><div class="won-panels__panels">{%- else -%}<div class="won-panels__rows">{%- endif -%}
+      {%- if is_tabs -%}<won-tabset class="won-panels__tabset"><div class="won-panels__nav" role="tablist"></div><div class="won-panels__panels">{%- else -%}<div class="won-panels__rows{% if s.icon_style == 'chevron' %} won-panels--chevron{% endif %}">{%- endif -%}
         {% content_for 'blocks' %}
       {%- if is_tabs -%}</div></won-tabset>{%- else -%}</div>{%- endif -%}
     </div>
@@ -130,6 +130,14 @@
   }
   .won-panels__icon::after { transform: translateY(-50%) rotate(90deg); }
   .won-panels__row[open] .won-panels__icon::after { transform: translateY(-50%) rotate(0deg); }
+  /* Chevron variant (.won-panels--chevron): a caret instead of a plus/minus. */
+  .won-panels--chevron .won-panels__icon::before { display: none; }
+  .won-panels--chevron .won-panels__icon::after {
+    inline-size: 9px; block-size: 9px; background: none;
+    border-inline-end: 2px solid var(--won-accent); border-block-end: 2px solid var(--won-accent);
+    inset-inline-start: 3px; transform: translateY(-75%) rotate(45deg);
+  }
+  .won-panels--chevron .won-panels__row[open] .won-panels__icon::after { transform: translateY(-25%) rotate(-135deg); }
   .won-panels__answer { padding-block-end: var(--won-space-4); opacity: 0.92; }
   @media (prefers-reduced-motion: reduce) {
     .won-panels__icon::before, .won-panels__icon::after { transition: none; }
@@ -300,6 +308,23 @@
         }
       ],
       "default": "stacked"
+    },
+    {
+      "type": "select",
+      "id": "icon_style",
+      "label": "t:won.settings.icon_style",
+      "visible_if": "{{ section.settings.display == 'accordion' }}",
+      "options": [
+        {
+          "value": "plus",
+          "label": "t:won.options.icon_plus"
+        },
+        {
+          "value": "chevron",
+          "label": "t:won.options.icon_chevron"
+        }
+      ],
+      "default": "plus"
     },
     {
       "type": "checkbox",

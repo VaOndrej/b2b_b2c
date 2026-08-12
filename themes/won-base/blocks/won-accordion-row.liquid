@@ -43,6 +43,14 @@ allow_multiple setting via a shared name attribute.
   }
   .won-acc__icon::after { transform: translateY(-50%) rotate(90deg); }
   .won-acc__row[open] .won-acc__icon::after { transform: translateY(-50%) rotate(0deg); }
+  /* Chevron variant (parent sets .won-acc--chevron): a caret instead of a plus/minus. */
+  .won-acc--chevron .won-acc__icon::before { display: none; }
+  .won-acc--chevron .won-acc__icon::after {
+    inline-size: 9px; block-size: 9px; background: none;
+    border-inline-end: 2px solid var(--won-accent); border-block-end: 2px solid var(--won-accent);
+    inset-inline-start: 3px; transform: translateY(-75%) rotate(45deg);
+  }
+  .won-acc--chevron .won-acc__row[open] .won-acc__icon::after { transform: translateY(-25%) rotate(-135deg); }
   .won-acc__answer { padding-block-end: var(--won-space-4); opacity: 0.92; }
   @media (prefers-reduced-motion: reduce) {
     .won-acc__icon::before, .won-acc__icon::after { transition: none; }
