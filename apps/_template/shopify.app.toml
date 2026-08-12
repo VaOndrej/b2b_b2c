@@ -14,6 +14,16 @@ automatically_update_urls_on_dev = true
 [webhooks]
 api_version = "2026-04"
 
+  # Mandatory GDPR/compliance webhooks — REQUIRED for every App Store app, even
+  # one that stores no personal data (doctrine WBH-3). Configured via this
+  # dedicated block, NOT as regular subscriptions. Handlers live in
+  # webhooks.customers.data_request / .customers.redact / .shop.redact and are
+  # compliant out of the box; wire in deletion callbacks if your app stores data.
+  [webhooks.privacy_compliance]
+  customer_deletion_url = "/webhooks/customers/redact"
+  customer_data_request_url = "/webhooks/customers/data_request"
+  shop_deletion_url = "/webhooks/shop/redact"
+
   [[webhooks.subscriptions]]
   topics = [ "app/scopes_update" ]
   uri = "/webhooks/app/scopes_update"

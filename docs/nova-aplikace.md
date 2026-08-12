@@ -5,9 +5,13 @@ znovupoužít sdílený základ (`@won/*`) a **nevytvářet nové věci, které 
 existují** — hlavně E2E témata a produkty.
 
 > **Povinná četba před návrhem:** [`won-app-design-doctrine.md`](won-app-design-doctrine.md)
-> — sdílená designová doktrína (`§1–§8`) + architektonická rozhodnutí (A1–A5)
-> platná pro **všechny** `won-*` appky. Nová appka ji dědí; cituj sekce
-> (`doctrine §7b`) v kódu i PR. Brainstorming níže ji konkretizuje.
+> — kompletní **Won App Doctrine** platná pro **všechny** `won-*` appky:
+> **Part I** Product/Admin-UX (`§1–§16`, `A1–A6`) **a Part II** Engineering/Platform
+> (SEC/WBH/BILL/DATA/API/REL/SF/PERF/PRIV/TEST/DEPLOY/OBS/MKT/…). Nová appka ji dědí;
+> cituj sekce (`doctrine §7b`, `WBH-3`) v kódu i PR. **Compliant-by-construction
+> (STORE-1):** scaffold z `apps/_template` už splňuje WBH-3 (compliance webhooky),
+> PRIV-2 (uninstall cleanup) a WBH-1 (HMAC) — neduplikuj je, jen doplň deletion
+> callbacky, když appka ukládá data. Brainstorming níže doktrínu konkretizuje.
 
 ## 0. Povinný brainstorming → rozpad na MVP (GATE)
 
