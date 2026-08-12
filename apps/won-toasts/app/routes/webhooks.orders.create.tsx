@@ -23,7 +23,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     ? lineItems.reduce((sum, li) => sum + (Number(li?.quantity) || 0), 0)
     : 1;
 
-  await recordToastEvent(shop, "order", Math.max(1, units)).catch(() => {});
+  // Idempotency key so an at-least-once redelivery of this order doesn't
+  // double-count the aggregate or duplicate the social-proof sale (WBH-2).
+  const orderId = String((payload as { id?: number | string })?.id ?? "") || null;
+
+  await recordToastEvent(shop, "order", Math.max(1, units), new Date(), orderId).catch(
+    () => {},
+  );
 
   // Store an anonymized sale only if the merchant runs the social-proof recipe.
   try {
@@ -33,7 +39,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     );
     if (socialOn) {
       const sale = anonymizeOrder(payload, Date.now());
-      if (sale) await recordSaleEvent(shop, sale);
+      if (sale) await recordSaleEvent(shop, sale, orderId);
     }
   } catch {
     // never let feed storage break order processing

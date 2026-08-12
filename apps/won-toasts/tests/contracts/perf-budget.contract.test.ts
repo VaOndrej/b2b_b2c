@@ -10,18 +10,19 @@ import { test } from "node:test";
 // GZIP size (not raw bytes). This is the authoritative perf check; the
 // theme-check raw-byte rule is a coarser proxy.
 //
-// Budget note: the spec target is "~15 kB gz". The shipped asset is now the
+// Budget note: the spec target is "~15 kB gz". The shipped asset is the
 // esbuild-MINIFIED build of storefront-src/won-toasts.js (see build-storefront.mjs
-// and the storefront-build drift contract). The full MVP6–14 feature set lands
-// at ~9.5 kB gz minified — comfortably under target. The ceiling here is 11 kB:
-// a REGRESSION guard with real headroom, not a hard line. When a feature would
-// push past it, the lever is trimming logic, not raising this number.
+// and the storefront-build drift contract). REALITY CHECK (2026-08): the minified
+// asset is ~10.9 kB gz against an 11 kB ceiling — headroom is now ONLY ~68 B, NOT
+// "comfortable". This ceiling is effectively reached: the next storefront feature
+// MUST trim existing logic first (do not raise this number to make room — that
+// just cuts the store's Lighthouse score, doctrine SF-2).
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ASSET = path.join(
   HERE,
   "../../extensions/won-toasts-storefront/assets/won-toasts.js",
 );
-const GZIP_BUDGET_BYTES = 11 * 1024; // minified ~9.5 kB + regression headroom
+const GZIP_BUDGET_BYTES = 11 * 1024; // 11264 B ceiling; asset ~11196 B → ~68 B left
 
 test("storefront JS stays within the storefront gzip performance budget", () => {
   const raw = readFileSync(ASSET);

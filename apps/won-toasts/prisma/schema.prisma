@@ -92,7 +92,12 @@ model ToastEvent {
   kind     String // 'order' | 'cart_add'
   quantity Int      @default(1)
   at       DateTime @default(now())
+  // Idempotency key for at-least-once order webhooks (WBH-2): a duplicate
+  // orders/create delivery for the same order is a no-op. Null for cart_add
+  // beacons (multiple nulls are allowed by the unique index).
+  orderId  String?
 
+  @@unique([shop, orderId])
   @@index([shop, kind, at])
 }
 
@@ -107,7 +112,10 @@ model SaleEvent {
   product    String?
   customerId String?
   at         DateTime @default(now())
+  // Idempotency key (WBH-2): one sale per order even if orders/create retries.
+  orderId    String?
 
+  @@unique([shop, orderId])
   @@index([shop, at])
   @@index([shop, customerId])
 }

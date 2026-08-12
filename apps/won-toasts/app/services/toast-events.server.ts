@@ -25,12 +25,24 @@ export function createToastEventService(prisma: PrismaClient) {
     kind: ToastEventKind,
     quantity = 1,
     at: Date = new Date(),
+    orderId: string | null = null,
   ): Promise<void> {
     const normalizedShop = normalizeShop(shop);
     const qty = Number.isFinite(quantity) ? Math.max(1, Math.round(quantity)) : 1;
-    await prisma.toastEvent.create({
-      data: { shop: normalizedShop, kind, quantity: qty, at },
-    });
+    if (orderId) {
+      // WBH-2: at-least-once delivery means the same order can arrive twice.
+      // Compound-unique (shop, orderId) makes the second delivery a no-op so we
+      // never double-count "X orders this week".
+      await prisma.toastEvent.upsert({
+        where: { shop_orderId: { shop: normalizedShop, orderId } },
+        create: { shop: normalizedShop, kind, quantity: qty, at, orderId },
+        update: {},
+      });
+    } else {
+      await prisma.toastEvent.create({
+        data: { shop: normalizedShop, kind, quantity: qty, at },
+      });
+    }
     // Opportunistic retention prune (cheap; indexed on at).
     await prisma.toastEvent
       .deleteMany({

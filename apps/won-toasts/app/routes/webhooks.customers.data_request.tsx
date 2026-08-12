@@ -13,11 +13,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const customerId = (payload as { customer?: { id?: number | string } })?.customer
     ?.id;
   if (customerId != null) {
-    const rows = await salesForCustomer(shop, customerId).catch(() => []);
-    // The merchant fulfils the request out-of-band; we report what we hold.
+    // Confirm we can locate the record set, but NEVER log the rows themselves —
+    // they carry the customer's name + city (Level 2 PII). Logging PII, least of
+    // all in the GDPR data-request handler, is forbidden (doctrine PRIV-3).
+    const count = (await salesForCustomer(shop, customerId).catch(() => [])).length;
     console.log(
-      `Won Toasts data for customer ${customerId} @ ${shop}:`,
-      JSON.stringify(rows),
+      `customers/data_request for ${shop}: ${count} social-proof record(s) held`,
     );
   }
   return new Response();

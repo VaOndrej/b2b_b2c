@@ -253,6 +253,8 @@ export function createToastConfigService(prisma: PrismaClient) {
         plan: d.plan === "pro" ? "pro" : "free",
         global: (d.global ?? null) as never,
         theme: (d.theme ?? null) as never,
+        byType: (d.byType ?? null) as never,
+        cartEvents: (d.cartEvents ?? null) as never,
         messages: (d.messages ?? null) as never,
         locales: (d.locales ?? null) as never,
         milestones: (d.milestones ?? null) as never,

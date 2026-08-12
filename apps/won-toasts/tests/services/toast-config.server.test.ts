@@ -274,6 +274,34 @@ test("locales persist and re-resolve; every save snapshots a restorable version"
   assert.equal((await service.getToastConfig(shop)).locales.defaultLocale, "de");
 });
 
+test("restore brings back per-type overrides AND per-event on/off (byType + cartEvents)", async () => {
+  const shop = "restore-pertype.myshopify.com";
+  // v1: distinct per-type look + a disabled cart event.
+  await service.updateToastConfig(shop, {
+    plan: "pro",
+    byType: { countdown: { theme: { colorBg: "#111111" } } },
+    cartEvents: { removed: false },
+  });
+  const v1Id = (await service.listConfigVersions(shop))[0].id;
+
+  // v2: change both dimensions.
+  await service.updateToastConfig(shop, {
+    byType: { countdown: { theme: { colorBg: "#999999" } } },
+    cartEvents: { removed: true },
+  });
+  assert.equal(
+    (await service.getToastConfig(shop)).byType.countdown?.theme?.colorBg,
+    "#999999",
+  );
+
+  // Restoring v1 must bring BOTH dimensions back — not silently keep the v2 state.
+  const restored = await service.restoreConfigVersion(shop, v1Id);
+  assert.ok(restored);
+  const cfg = await service.getToastConfig(shop);
+  assert.equal(cfg.byType.countdown?.theme?.colorBg, "#111111");
+  assert.equal(cfg.cartEvents.removed, false);
+});
+
 test("deleteShopData also purges the shop's version history", async () => {
   const shop = "purge.myshopify.com";
   await service.updateToastConfig(shop, { enabled: true });

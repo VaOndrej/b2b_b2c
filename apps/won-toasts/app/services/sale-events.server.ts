@@ -26,18 +26,30 @@ function normalizeShop(shop: string): string {
 }
 
 export function createSaleEventService(prisma: PrismaClient) {
-  async function record(shop: string, sale: AnonymizedSale): Promise<void> {
+  async function record(
+    shop: string,
+    sale: AnonymizedSale,
+    orderId: string | null = null,
+  ): Promise<void> {
     const normalizedShop = normalizeShop(shop);
-    await prisma.saleEvent.create({
-      data: {
-        shop: normalizedShop,
-        firstName: sale.firstName,
-        city: sale.city,
-        product: sale.productTitle,
-        customerId: sale.customerId,
-        at: new Date(sale.at),
-      },
-    });
+    const data = {
+      shop: normalizedShop,
+      firstName: sale.firstName,
+      city: sale.city,
+      product: sale.productTitle,
+      customerId: sale.customerId,
+      at: new Date(sale.at),
+    };
+    if (orderId) {
+      // WBH-2: one sale row per order even if the webhook redelivers.
+      await prisma.saleEvent.upsert({
+        where: { shop_orderId: { shop: normalizedShop, orderId } },
+        create: { ...data, orderId },
+        update: {},
+      });
+    } else {
+      await prisma.saleEvent.create({ data });
+    }
     await prisma.saleEvent
       .deleteMany({
         where: { shop: normalizedShop, at: { lt: new Date(Date.now() - RETENTION_MS) } },
