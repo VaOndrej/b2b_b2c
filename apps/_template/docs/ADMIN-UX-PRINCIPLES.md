@@ -402,6 +402,33 @@ proofu — je intuitivní (§10d).
 
 ---
 
+## 11. Jeden význam = jedna barva (konzistentní, nepřetížená sémantika)
+
+Každý vizuální kód nese **právě jeden význam** a ten vypadá **všude stejně**.
+Merchant se jazyk naučí jednou. Jakmile dva různé významy sdílí barvu — nebo se
+jeden význam kreslí dvěma trochu jinými způsoby — rozhraní přestává být čitelné.
+
+- **§11a — Tři kódy jsou ortogonální a NESMÍ kolidovat.** V Won suite: **modrá =
+  vybráno/aktivní** (na které kartě/tabu jsem), **jantarová = Pro/plán** (viz A2 +
+  brand token), **zelená = živé/zapnuto** (běží to). „Vybráno" ≠ „zapnuto" ≠
+  „prémiové" — tři otázky, tři barvy, nikdy nepřetěžuj. Čtvrtý význam = čtvrtý
+  záměrný kód, ne recyklace existujícího.
+- **§11b — Jedna selection afordance, jeden zdroj.** Každý picker (preset looky,
+  Toasts launcher, taby) zvýrazní vybranou položku **stejně** — modrý ring. Žije
+  v **jednom sdíleném helperu** (`selectionRing()` / `WON_SELECT`), nikdy
+  přepisovaný per-karta, ať se nerozdrolí na N skoro-stejných kopií (přesně ten bug,
+  co pravidlo odstartoval: dva pickery `2px`/`1.5px`, shadow `.16`/`.14`). Stejná
+  lekce jako §10b: sdílený kód je jediná záruka vizuální pravdy.
+- **§11c — Stejný význam, vzor se může lišit podle typu prvku.** Card grid a
+  segmentované taby jsou různé *vzory*; můžou selection kreslit jinak (ring vs.
+  vyvýšená pilulka), ale obojí čerpá ze **stejné selection barvy**. Sjednoť token,
+  ne nutně celý tvar.
+- **§11d — Stav je čitelný v klidu.** Vybráno / zapnuto / Pro musí být čitelné **bez
+  interakce** — slovo („On"/„Off"), barevná tečka, ring — nikdy odvozené z toho, co
+  chybí. Merchant nikdy nemá klikat, aby zjistil aktuální stav.
+
+---
+
 ## Řemeslné invarianty (nemění se)
 
 ### 1. Nativní Polaris, nikdy surové HTML

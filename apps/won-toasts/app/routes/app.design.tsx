@@ -24,7 +24,7 @@ import { AnimatedToastPreview } from "../components/AnimatedToastPreview";
 import { StorefrontPreview } from "../components/StorefrontPreview";
 import { ProFrame } from "../components/ProFrame";
 import { PlanBadge } from "../components/PlanBadge";
-import { WON_FONT } from "../lib/tokens";
+import { WON_FONT, selectionRing } from "../lib/tokens";
 import { PositionField } from "../components/PositionField";
 import { EffectProof, ProofChip } from "../components/EffectProof";
 import { SegmentedNav } from "../components/SegmentedNav";
@@ -337,12 +337,10 @@ function LookPresetCard({ id, label, active = false }: { id: keyof typeof PRESET
           textAlign: "left",
           padding: 10,
           borderRadius: 12,
-          border: active ? "2px solid #1a73e8" : "1px solid #d6dbe1",
-          background: active ? "#f2f7ff" : "#fff",
           cursor: "pointer",
           fontFamily: "inherit",
           display: "block",
-          boxShadow: active ? "0 2px 8px rgba(26,115,232,.16)" : "0 1px 2px rgba(0,0,0,.04)",
+          ...selectionRing(active),
         }}
       >
         {/* mini toast preview in the preset's own look */}

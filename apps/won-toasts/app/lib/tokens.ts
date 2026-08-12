@@ -21,3 +21,23 @@ export const WON_AMBER_TEXT = "#8A6410";
  */
 export const WON_FONT =
   'ShopifySans, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+// ── Selection accent (§11 — one meaning, one colour) ───────────────────────────
+// "This item is chosen/active" has ONE visual language across every picker, kept
+// deliberately distinct from WON_AMBER (Pro/plan) and status green (on/off) so a
+// merchant never confuses "selected" with "enabled" or "premium".
+export const WON_SELECT = "#1a73e8";
+
+/**
+ * The shared "this card is selected" ring. Every picker (preset looks, the Toasts
+ * launcher, any future one) spreads this so the highlight can't drift into N
+ * near-identical copies. `tint` softly fills the card; pass false when the card
+ * holds its own coloured content that a blue wash would fight.
+ */
+export function selectionRing(active: boolean, tint = true): import("react").CSSProperties {
+  return {
+    border: active ? `2px solid ${WON_SELECT}` : "1px solid #d6dbe1",
+    background: active && tint ? "#f2f7ff" : "#ffffff",
+    boxShadow: active ? "0 2px 8px rgba(26,115,232,.16)" : "0 1px 2px rgba(0,0,0,.04)",
+  };
+}

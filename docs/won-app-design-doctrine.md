@@ -127,6 +127,31 @@ in a distant preview panel.
   frame + chip primitive keeps every proof visually identical and cheap to add, so the
   pattern spreads without fragmenting.
 
+### §11 — One meaning, one colour (consistent, non-overloaded semantics)
+Each visual code carries **exactly one meaning**, and that meaning looks the **same
+everywhere**. A merchant learns the language once. The moment two different meanings
+share a colour — or one meaning is drawn two slightly different ways — the interface
+stops being legible.
+
+- **§11a — The three codes are orthogonal and must never collide.** In the Won suite:
+  **blue = selected/active** (which card/tab am I on), **amber = Pro/plan** (see A2 +
+  brand token), **green = live/on** (is this running). "Selected" is not "on" is not
+  "premium" — three questions, three colours, never overloaded. Adding a fourth meaning
+  means a fourth deliberate code, not reusing an existing one.
+- **§11b — One selection affordance, one source.** Every picker (preset looks, the
+  Toasts launcher, tabs) highlights the chosen item the *same* way — the blue ring.
+  It lives in **one shared helper** (`selectionRing()` / `WON_SELECT`), never re-typed
+  per card, so it can't drift into N almost-identical copies (the exact bug that seeded
+  this rule: two pickers at `2px`/`1.5px`, shadow `.16`/`.14`). Same lesson as §10b:
+  shared code is the only guarantee of visual truth.
+- **§11c — Same meaning, pattern may differ by control type.** A card grid and a
+  segmented tab bar are different *patterns*; they may render selection differently
+  (a ring vs. a raised pill), but both draw from the **same selection colour**. Unify
+  the token, not necessarily the whole shape.
+- **§11d — State is legible at rest.** Selected / on / Pro must be readable **without
+  interacting** — a word ("On"/"Off"), a coloured dot, the ring — never inferred from
+  what's missing. The merchant should never click to find out the current state.
+
 ---
 
 ## Architecture decisions (cross-cutting)

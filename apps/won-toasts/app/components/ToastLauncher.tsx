@@ -11,7 +11,7 @@
 // this replaces the SegmentedNav without changing the edit flow below it.
 
 import { PlanBadge } from "./PlanBadge";
-import { WON_FONT } from "../lib/tokens";
+import { WON_FONT, selectionRing } from "../lib/tokens";
 
 export interface LauncherItem {
   key: string;
@@ -84,12 +84,10 @@ export function ToastLauncher({
                         padding: "9px 12px",
                         minHeight: 68,
                         borderRadius: 12,
-                        border: active ? "1.5px solid #1a73e8" : "1px solid #d6dbe1",
-                        background: active ? "#f2f7ff" : "#ffffff",
-                        boxShadow: active ? "0 2px 8px rgba(26,115,232,.14)" : "0 1px 2px rgba(0,0,0,.04)",
                         cursor: "pointer",
                         fontFamily: "inherit",
                         transition: "border-color .15s ease, background .15s ease, box-shadow .15s ease",
+                        ...selectionRing(active),
                       }}
                     >
                       <span style={{ display: "flex", alignItems: "center", gap: 6, width: "100%" }}>

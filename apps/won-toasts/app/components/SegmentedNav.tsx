@@ -11,6 +11,7 @@
 // width:100% and would stretch full-width.
 
 import { PlanBadge } from "./PlanBadge";
+import { WON_SELECT } from "../lib/tokens";
 
 export interface SegmentItem {
   key: string;
@@ -78,7 +79,7 @@ export function SegmentedNav({
             {/* Active tab gets a small accent dot so the selected section is
                 unmistakable, not just a subtle background change. */}
             {active ? (
-              <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: 999, background: "#1a73e8", flex: "0 0 auto" }} />
+              <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: 999, background: WON_SELECT, flex: "0 0 auto" }} />
             ) : null}
             <span>{it.label}</span>
             {it.pro ? <PlanBadge tier="pro" /> : null}
