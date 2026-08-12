@@ -10,6 +10,7 @@ import {
 } from "@won/core/toasts/config.defaults";
 import { PRESET_LOOKS, applyLookPreset } from "@won/core/toasts/presets";
 import { ICON_EMOJI } from "@won/core/toasts/branding";
+import { capProof } from "@won/core/toasts/effect-proof";
 
 import { authenticate } from "../shopify.server";
 import {
@@ -25,6 +26,7 @@ import { ProFrame } from "../components/ProFrame";
 import { PlanBadge } from "../components/PlanBadge";
 import { WON_FONT } from "../lib/tokens";
 import { PositionField } from "../components/PositionField";
+import { EffectProof, ProofChip } from "../components/EffectProof";
 import { SegmentedNav } from "../components/SegmentedNav";
 import { useSavedToast } from "../lib/use-saved-toast";
 import { persistConfig } from "../lib/persist-config.server";
@@ -203,28 +205,89 @@ const DESIGN_SEGMENTS = [
   { key: "advanced", label: "Advanced" },
 ];
 
-// Tiny "before → after" illustration for the Merge lever, so the setting's effect
-// is visible, not just described (a burst of separate toasts becomes one "+N").
-const beforeAfter: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  flexWrap: "wrap",
-  fontSize: 12,
-  color: "#5b6472",
-  background: "#fff",
-  border: "1px solid #e6e9ee",
-  borderRadius: 8,
-  padding: "8px 10px",
-};
-const miniT: React.CSSProperties = {
-  width: 14,
-  height: 12,
-  borderRadius: 3,
-  background: "#f4a259",
-  opacity: 0.5,
-  display: "inline-block",
-};
+// Effect Proof illustrations for the Anti-spam levers (doctrine §10): each shows
+// the setting's effect on faithful toast chips, not just prose. Two distinct
+// accent items so the merchant reads them as different products.
+const ITEM_A = "#f4a259";
+const ITEM_B = "#5a6b8a";
+
+// Merge "+N": a burst of separate toasts becomes one combined toast.
+const MergeProof = (
+  <EffectProof
+    before={
+      <>
+        <ProofChip /><ProofChip /><ProofChip /><ProofChip />
+      </>
+    }
+    after={<ProofChip solid dot={ITEM_A} badge="+4" />}
+  />
+);
+
+// Group by: the SAME burst (two of one item + one other) collapses differently
+// depending on what counts as "the same thing". Reactive to the live select.
+function GroupByProof({ mode }: { mode: string }) {
+  const before = (
+    <>
+      <ProofChip dot={ITEM_A} /><ProofChip dot={ITEM_A} /><ProofChip dot={ITEM_B} />
+    </>
+  );
+  let after: React.ReactNode;
+  if (mode === "off") {
+    after = (
+      <>
+        <ProofChip solid dot={ITEM_A} /><ProofChip solid dot={ITEM_A} /><ProofChip solid dot={ITEM_B} />
+      </>
+    );
+  } else if (mode === "by-type") {
+    after = <ProofChip solid dot={ITEM_A} badge="×3" />;
+  } else {
+    // by-product / by-variant — repeats of the same item merge into one
+    after = (
+      <>
+        <ProofChip solid dot={ITEM_A} badge="×2" /><ProofChip solid dot={ITEM_B} />
+      </>
+    );
+  }
+  return <EffectProof before={before} after={after} />;
+}
+
+// Cap: how a per-session cap splits a burst into shown vs. quieted. The numbers
+// come from capProof so the proof matches the runtime gate (0 = no limit).
+function CapProof({ maxPerSession }: { maxPerSession: number }) {
+  const BURST = 6;
+  const p = capProof(maxPerSession, BURST);
+  const before = Array.from({ length: BURST }, (_, i) => <ProofChip key={i} width={11} />);
+  const after = (
+    <>
+      {Array.from({ length: p.shown }, (_, i) => (
+        <ProofChip key={i} width={11} solid />
+      ))}
+      {p.quiet > 0 ? <ProofChip ghost>{p.quiet} quiet</ProofChip> : null}
+    </>
+  );
+  return (
+    <EffectProof
+      before={before}
+      after={after}
+      beforeLabel={p.unlimited ? "No limit" : "A busy burst"}
+      afterLabel={p.unlimited ? "All show" : "Shopper sees"}
+    />
+  );
+}
+
+// Quiet: the master mute — a stream of toasts becomes silence.
+const QuietProof = (
+  <EffectProof
+    beforeLabel="Normal"
+    afterLabel="Quiet on"
+    before={
+      <>
+        <ProofChip /><ProofChip /><ProofChip />
+      </>
+    }
+    after={<span style={{ color: "#8892a0", fontStyle: "italic" }}>— silence —</span>}
+  />
+);
 
 // A preset is a look — so its picker should SHOW the look, not just name it
 // (doctrine §1 preview-first). Each card renders a tiny to-token toast swatch
@@ -379,11 +442,23 @@ export default function DesignRoute() {
     offsetTop: config.global.offsetTop,
     offsetInline: config.global.offsetInline,
   });
+  // Just the anti-spam values the Effect Proofs (§10) illustrate, kept live so the
+  // Without→With picture updates as the merchant changes Group-by / the cap.
+  const [liveRules, setLiveRules] = useState({
+    groupingMode: config.global.grouping.mode,
+    maxPerSession: config.global.frequency.maxPerSession,
+  });
   const sync = useCallback(() => {
     if (!formRef.current) return;
     const fd = new FormData(formRef.current);
     const patch = readThemeFields(fd);
     setTheme((prev) => ({ ...prev, ...patch, accent: { ...prev.accent, ...(patch.accent ?? {}) } }));
+    setLiveRules({
+      groupingMode:
+        (fd.get("grouping_mode") as typeof config.global.grouping.mode) ??
+        config.global.grouping.mode,
+      maxPerSession: Number(fd.get("maxPerSession")) || 0,
+    });
     setLive({
       durationMs:
         Math.round((Number(fd.get("durationSec")) || 0) * 1000) || config.global.durationMs,
@@ -416,6 +491,10 @@ export default function DesignRoute() {
   // updates the DB but the preview keeps the old look.
   useEffect(() => {
     setTheme(config.theme);
+    setLiveRules({
+      groupingMode: config.global.grouping.mode,
+      maxPerSession: config.global.frequency.maxPerSession,
+    });
     setLive({
       durationMs: config.global.durationMs,
       stackDirection: config.global.stackDirection,
@@ -678,16 +757,10 @@ export default function DesignRoute() {
                         <s-option value="by-type">Event type</s-option>
                         <s-option value="off">Don’t merge</s-option>
                       </s-select>
+                      <GroupByProof mode={liveRules.groupingMode} />
                       <s-number-field label="Merge changes within" name="burstWindowSec" value={String(g.grouping.burstWindowMs / 1000)} min={0} max={5} step={0.1} disabled={!isPro} details="Cart changes this many seconds apart merge into one toast." />
                       <s-switch label="Merge quantity changes into one “+N”" name="mergeDeltas" value="on" checked={g.grouping.mergeDeltas} disabled={!isPro} details="Two quick “+1”s become a single “+2”." />
-                      <div style={beforeAfter}>
-                        <span>Without</span>
-                        <span style={miniT} /><span style={miniT} /><span style={miniT} /><span style={miniT} />
-                        <span style={{ color: "#8892a0" }}>→</span>
-                        <span>With</span>
-                        <span style={{ ...miniT, width: 34, opacity: 0.9 }} />
-                        <strong style={{ color: "#2f9e6f" }}>+4</strong>
-                      </div>
+                      {MergeProof}
                     </s-stack>
                   </ProFrame>
                 </s-box>
@@ -702,6 +775,7 @@ export default function DesignRoute() {
                       <s-number-field label="Wait between repeats" name="cooldownSec" value={String(g.frequency.cooldownMs / 1000)} min={0} max={3600} step={1} details="Seconds to wait before showing the same type again." />
                       <s-number-field label="Hide a dismissed toast for" name="suppressAfterDismissMin" value={String(Math.round(g.frequency.suppressAfterDismissMs / 60000))} min={0} max={1440} step={1} details="Minutes to keep a toast hidden after a shopper closes it." />
                     </s-stack>
+                    <CapProof maxPerSession={liveRules.maxPerSession} />
                     <s-stack direction="inline" gap="small-300" alignItems="center">
                       <s-text color="subdued">Advanced caps</s-text>
                       <PlanBadge tier="pro" locked={!isPro} />
@@ -722,6 +796,7 @@ export default function DesignRoute() {
                       period without losing your settings.
                     </s-text>
                     <s-switch label="Quiet mode" name="quietMode" value="on" checked={g.frequency.quietMode} details="Turns all toasts off for every shopper until you switch it back on." />
+                    {QuietProof}
                   </s-stack>
                 </s-box>
               </s-stack>

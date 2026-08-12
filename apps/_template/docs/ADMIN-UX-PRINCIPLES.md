@@ -369,6 +369,39 @@ pod sebou. Oprava: primární viditelné, zbytek za disclosure s dobrým default
 
 ---
 
+## 10. Effect Proof — ukaž mechanismus, nepopisuj ho
+
+U nastavení, jehož **následek není intuitivní**, přilep malý inline vizuál
+**Bez → S** nakreslený na **věrné napodobenině toho samého primitivu, který vidí
+shopper** (u Toasts: toast-chip). Merchant má **vidět**, co ovládací prvek dělá,
+ne číst odstavec a představovat si to. Je to §1 (preview-first) aplikované na
+**jeden control** místo celé konfigurace — proof je **u bodu rozhodnutí**, ne
+v odděleném preview panelu.
+
+- **§10a — Ukaž mechanismus, ne popis.** Text říká „seskupí rychlé změny"; proof
+  ukáže `▪▪▪▪ → ▪ +4`. Jeden pohled nahradí větu i mentální model.
+- **§10b — Proof MUSÍ být pravdivý vůči runtime.** Fake-ale-poctivé: čísla/chování
+  se musí shodovat s tím, co engine reálně dělá (Cap proof zrcadlí storefront gate
+  `maxPerSession`, „0 = bez limitu"). Proof, který lže, je horší než žádný proof.
+  Sdílenou aritmetiku dej do enginu/core, ať admin a runtime nemůžou divergovat
+  (viz [Řemeslné invarianty → „na co existuje test"](#co-merchant-má-ověřit-na-storefrontu-na-to-musí-existovat-test)).
+- **§10c — Reaktivní, když následek závisí na hodnotě.** Když se dopad mění podle
+  hodnoty (cap 3 vs 10, group-by Produkt vs Typ), proof se aktualizuje živě při
+  psaní. Jinak statický.
+- **§10d — Jen tam, kde je následek neintuitivní.** Proof u triviálního on/off
+  (barva, „ukázat rámeček") je šum a porušuje §9. Vyhraď ho pro nastavení, která
+  by merchant jinak nastavil špatně nebo nepochopil (merge, grouping, capy, mute).
+- **§10e — Jeden sdílený primitiv, ne per-setting jednorázovky.** Jediný
+  `EffectProof` rám + chip primitivum drží všechny proofy vizuálně identické a
+  levné na přidání, takže se vzor šíří bez fragmentace.
+
+**Reálná aplikace (Won Toasts):** Anti-spam → Merge `▪▪▪▪ → ▪ +4`, Group-by
+(reaktivní: off/Produkt/Typ mění výsledek), Cap (reaktivní přes `capProof`
+z core, zrcadlí runtime), Quiet (`▪▪▪ → — ticho —`). Auto-dismiss záměrně BEZ
+proofu — je intuitivní (§10d).
+
+---
+
 ## Řemeslné invarianty (nemění se)
 
 ### 1. Nativní Polaris, nikdy surové HTML

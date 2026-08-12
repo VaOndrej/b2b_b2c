@@ -103,6 +103,30 @@ overwhelm"), turned on the merchant. It **tempers §7c**: first-class ≠ always
   state ("inherits global" / "customised", "1 currency set") so nothing important
   is invisible — only quiet.
 
+### §10 — Effect Proof (show the mechanism, don't describe it)
+Where a setting has a **non-obvious consequence**, glue a tiny inline **Without → With**
+illustration to it, drawn from a **faithful mock of the same primitive the shopper
+sees** (for Toasts: the toast chip). The merchant should *see* what the control does,
+not read a paragraph and imagine it. This is §1 (preview-first) applied to a single
+control instead of the whole config — the proof lives at the point of decision, not
+in a distant preview panel.
+
+- **§10a — Show the mechanism, not a description.** Prose says "groups rapid changes";
+  the proof shows `▪▪▪▪ → ▪ +4`. One glance replaces a sentence and a mental model.
+- **§10b — The proof must be TRUE to the runtime.** Fake-but-honest: the numbers/behaviour
+  must match what the engine actually does (e.g. the Cap proof mirrors the storefront's
+  `maxPerSession` gate, "0 = no limit"). A proof that lies is worse than no proof.
+  Put the shared arithmetic in the engine/core so admin and runtime can't drift.
+- **§10c — Reactive where the effect is value-dependent.** If the consequence changes
+  with the value (a cap of 3 vs 10, group-by Product vs Type), the proof updates live
+  as the merchant edits — otherwise it's static.
+- **§10d — Only where the consequence is non-obvious.** A proof on a trivial on/off
+  (a colour, "show border") is noise and violates §9. Reserve it for the settings a
+  merchant would otherwise get wrong or not understand (merge, grouping, caps, muting).
+- **§10e — One shared primitive, not per-setting one-offs.** A single `EffectProof`
+  frame + chip primitive keeps every proof visually identical and cheap to add, so the
+  pattern spreads without fragmenting.
+
 ---
 
 ## Architecture decisions (cross-cutting)
