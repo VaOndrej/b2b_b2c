@@ -19,6 +19,9 @@ const empty = (extra: Record<string, unknown> = {}) =>
   );
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  // SEC-2: appProxy verifies the HMAC over the ENTIRE query string, so a request
+  // that reaches here has an authentic `?shop=` — the fallback is safe (we prefer
+  // the session's shop, but the signed query param is not attacker-controlled).
   const context = await authenticate.public.appProxy(request);
   const url = new URL(request.url);
   const shop = context.session?.shop ?? url.searchParams.get("shop");

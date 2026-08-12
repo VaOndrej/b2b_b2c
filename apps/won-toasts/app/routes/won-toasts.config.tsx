@@ -15,6 +15,8 @@ import {
 import { getActiveExperiment, EXPERIMENTS_LIVE_TICK_WIRED } from "../services/experiments.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  // SEC-2: appProxy verifies the HMAC over the whole signed query, so `?shop=` is
+  // authentic here; prefer the session shop, fall back to the signed param.
   const context = await authenticate.public.appProxy(request);
   const url = new URL(request.url);
   const shop = context.session?.shop ?? url.searchParams.get("shop");

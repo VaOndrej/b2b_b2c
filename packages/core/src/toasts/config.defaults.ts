@@ -347,6 +347,19 @@ function hex(value: unknown): string | undefined {
  * are dropped (not defaulted) so the result can merge onto the shop's current
  * theme. Guardrail: colours must be valid hex; sizes are clamped to sane ranges.
  */
+// SEC-3 (defense-in-depth): merchant custom CSS is injected as <style> textContent
+// inside a shadow root, so it can't break out today — but a dangerous state must be
+// unrepresentable even if a future surface injects it differently. Valid CSS never
+// contains `<` or `>`, so stripping them fully prevents tag/`</style>` breakout;
+// we also neutralize the `javascript:` scheme and legacy CSS `expression()`.
+export function sanitizeCustomCss(raw: string): string {
+  return raw
+    .replace(/[<>]/g, "")
+    .replace(/javascript:/gi, "")
+    .replace(/expression\s*\(/gi, "")
+    .slice(0, 4000);
+}
+
 export function sanitizeTheme(input: unknown): Partial<ToastTheme> {
   if (!isPlainObject(input)) return {};
   const out: Partial<ToastTheme> = {};
@@ -425,7 +438,7 @@ export function sanitizeTheme(input: unknown): Partial<ToastTheme> {
   if (typeof input.showIcon === "boolean") out.showIcon = input.showIcon;
 
   if (typeof input.customCss === "string") {
-    out.customCss = input.customCss.slice(0, 4000);
+    out.customCss = sanitizeCustomCss(input.customCss);
   }
 
   return out;

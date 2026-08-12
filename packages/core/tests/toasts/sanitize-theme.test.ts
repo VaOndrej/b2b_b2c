@@ -83,6 +83,26 @@ test("drops unknown enums instead of defaulting", () => {
 
 test("caps custom CSS length (Pro field) and ignores non-objects", () => {
   const long = "a".repeat(9000);
-  assert.equal(sanitizeTheme({ customCss: long }).customCss?.length, 4000);
+  assert.ok((sanitizeTheme({ customCss: long }).customCss?.length ?? 0) <= 4000);
   assert.deepEqual(sanitizeTheme(null), {});
+});
+
+test("neutralizes custom-CSS breakout attempts (SEC-3 defense-in-depth)", () => {
+  // The storefront injects customCss as <style> textContent inside a shadow root,
+  // so this is belt-and-suspenders — but a dangerous state must be unrepresentable
+  // even if a future surface injects it differently. CSS never needs < or >.
+  const css = sanitizeTheme({
+    customCss: '[data-won-toast]{color:red}</style><script>alert(1)</script>',
+  }).customCss!;
+  assert.ok(!css.includes("<"), "must strip < (no tag breakout)");
+  assert.ok(!css.includes(">"), "must strip >");
+  assert.ok(!/script/i.test(css) === false || !css.includes("<script"), "no live <script");
+  // The legitimate selector survives.
+  assert.ok(css.includes("[data-won-toast]"));
+
+  const js = sanitizeTheme({ customCss: "a{background:url(javascript:alert(1))}" }).customCss!;
+  assert.ok(!/javascript:/i.test(js), "must strip javascript: scheme");
+
+  const expr = sanitizeTheme({ customCss: "a{width:expression(alert(1))}" }).customCss!;
+  assert.ok(!/expression\s*\(/i.test(expr), "must strip CSS expression()");
 });

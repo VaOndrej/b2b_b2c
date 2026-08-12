@@ -1876,6 +1876,10 @@
   }
 
   function boot() {
+    // SF-1: never run in the Theme Editor — wrapping fetch and firing cart/
+    // page-view toasts inside the editor preview is confusing and can interfere
+    // with the editor. The merchant sees toasts on the real storefront instead.
+    if (window.Shopify && window.Shopify.designMode) return;
     var embed = document.querySelector(EMBED_SELECTOR);
     if (embed) init(embed);
   }

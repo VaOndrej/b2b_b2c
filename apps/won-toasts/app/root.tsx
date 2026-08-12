@@ -1,1 +1,1 @@
-export { default } from "@won/app-kit/root";
+export { default, loader } from "@won/app-kit/root";

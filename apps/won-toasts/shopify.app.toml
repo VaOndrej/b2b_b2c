@@ -46,9 +46,11 @@ api_version = "2026-10"
   # uri = "/webhooks/orders/create"
 
 [access_scopes]
-# read_products: admin product data. read_themes: MVP6 app-embed detection
-# (theme settings_data.json). read_orders: MVP6 empty-store / cold-start hint.
-scopes = "read_products,write_products,read_themes,read_orders"
+# Minimum scopes (API-2). write_products: MVP popularity metafields (implies read).
+# read_themes: MVP6 app-embed detection (theme settings_data.json). read_orders:
+# order.summary + popularity (line-item product/quantity, createdAt).
+# (read_products removed — no standalone product read; write_products covers it.)
+scopes = "write_products,read_themes,read_orders"
 
 [auth]
 redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
