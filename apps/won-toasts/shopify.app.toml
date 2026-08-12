@@ -27,6 +27,13 @@ api_version = "2026-10"
   topics = [ "app/uninstalled" ]
   uri = "/webhooks/app/uninstalled"
 
+  # BILL-1: reconcile the stored plan when Shopify's subscription state changes
+  # (cancel/expire/freeze → Free), so a lapsed merchant can't keep Pro on the
+  # storefront until they next open the Plan page.
+  [[webhooks.subscriptions]]
+  topics = [ "app_subscriptions/update" ]
+  uri = "/webhooks/app_subscriptions/update"
+
   # MVP11 order.summary aggregate + MVP12 social proof read orders/create. That
   # topic carries protected customer data, so it needs "Protected customer data
   # access" approved in the Partner Dashboard (App → API access) before it can be
@@ -41,7 +48,7 @@ api_version = "2026-10"
 [access_scopes]
 # read_products: admin product data. read_themes: MVP6 app-embed detection
 # (theme settings_data.json). read_orders: MVP6 empty-store / cold-start hint.
-scopes = "read_products,read_themes,read_orders"
+scopes = "read_products,write_products,read_themes,read_orders"
 
 [auth]
 redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]

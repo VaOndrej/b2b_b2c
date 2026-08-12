@@ -12,7 +12,7 @@ import {
   getToastConfig,
   resolveConfigWithOverlay,
 } from "../services/toast-config.server";
-import { getActiveExperiment } from "../services/experiments.server";
+import { getActiveExperiment, EXPERIMENTS_LIVE_TICK_WIRED } from "../services/experiments.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const context = await authenticate.public.appProxy(request);
@@ -42,7 +42,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       | { variantPercent: number; config: ReturnType<typeof gateConfigForPlan> }
       | null = null;
     try {
-      const active = await getActiveExperiment(shop);
+      // Only serve a live variant/holdout when its auto-rollback tick is wired —
+      // otherwise a losing variant could run unmonitored (EXP-1). Gate at the
+      // serving choke-point so no shopper is exposed regardless of DB state.
+      const active = EXPERIMENTS_LIVE_TICK_WIRED ? await getActiveExperiment(shop) : null;
       if (active) {
         holdoutPercent = active.holdoutPercent ?? 0;
         const variantPercent = active.variantPercent ?? 0;

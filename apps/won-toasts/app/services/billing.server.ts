@@ -46,6 +46,21 @@ async function activeSubscriptions(admin: AdminGraphql): Promise<Subscription[]>
   return data?.data?.currentAppInstallation?.activeSubscriptions ?? [];
 }
 
+/**
+ * Derive the plan from an `app_subscriptions/update` webhook payload, so the
+ * stored plan reconciles the moment Shopify's subscription state changes — not
+ * only when the merchant happens to open the Plan page (doctrine BILL-1).
+ * Returns null when the update isn't for our Pro plan (ignore it). Any non-ACTIVE
+ * status (cancelled / expired / frozen / declined) resolves to "free" — default
+ * to Free on any uncertainty.
+ */
+export function planFromSubscriptionUpdate(payload: unknown): "pro" | "free" | null {
+  const sub = (payload as { app_subscription?: { name?: string; status?: string } })
+    ?.app_subscription;
+  if (!sub || sub.name !== PRO_PLAN_NAME) return null;
+  return sub.status === "ACTIVE" ? "pro" : "free";
+}
+
 /** Real plan from Shopify's active subscriptions. null if the query fails. */
 export async function checkActivePlan(
   admin: AdminGraphql,

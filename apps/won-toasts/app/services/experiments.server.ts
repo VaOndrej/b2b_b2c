@@ -14,6 +14,15 @@ function normalizeShop(shop: string): string {
   return s;
 }
 
+// SAFETY GATE (doctrine EXP-1 / AI-2): the live A/B guardrail tick — auto-promote
+// a winner, auto-rollback a loser — runs ONLY from the orders/create webhook
+// (guardrail.server → runExperimentGuardrails). While that webhook is unregistered
+// (commented out in shopify.app.toml, pending Protected Customer Data approval), a
+// served variant/holdout would have NO auto-rollback if it tanks conversion. So we
+// neither START nor SERVE live experiments until the tick is wired. Flip this to
+// true in the SAME change that re-enables the orders/create subscription.
+export const EXPERIMENTS_LIVE_TICK_WIRED = false;
+
 export interface StartExperimentInput {
   name: string;
   control: unknown;

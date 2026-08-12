@@ -16,6 +16,7 @@ import {
   listExperiments,
   startExperiment,
   decideExperiment,
+  EXPERIMENTS_LIVE_TICK_WIRED,
 } from "../services/experiments.server";
 import { readRollups } from "../services/analytics.server";
 
@@ -44,6 +45,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   return {
     pro: true as const,
+    liveTickWired: EXPERIMENTS_LIVE_TICK_WIRED,
     active: active
       ? {
           id: active.id,
@@ -69,6 +71,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
+
+  // Refuse to START a live experiment while its auto-rollback tick is off — a
+  // served variant/holdout would run unmonitored (EXP-1). The serving endpoint
+  // also gates this, so this is the honest "tell the merchant why" half.
+  if ((intent === "start_holdout" || intent === "apply_suggestion") && !EXPERIMENTS_LIVE_TICK_WIRED) {
+    return {
+      error:
+        "Experiments are paused: order tracking isn't enabled yet, so a losing variant couldn't auto-roll-back. They'll switch on once order tracking is live.",
+    };
+  }
 
   if (intent === "start_holdout") {
     const pct = Math.min(50, Math.max(1, Number(form.get("holdoutPercent")) || DEFAULT_HOLDOUT));
@@ -148,6 +160,7 @@ interface AiActionData {
     evidence: { impressions: number; metricKind: string; goal: string };
   }[];
   aiAvailable?: boolean;
+  error?: string;
 }
 
 // Actions that map to a config overlay (see @won/core suggestionToOverlay) and
@@ -184,6 +197,20 @@ export default function ExperimentsRoute() {
 
   return (
     <s-page heading="Experiments" inlineSize="large">
+      {!data.liveTickWired ? (
+        <s-section>
+          <s-banner tone="warning" heading="Experiments are paused">
+            Order tracking isn't enabled yet, so a losing variant couldn't
+            auto-roll-back. To keep your store safe, experiments won't start or
+            serve until order tracking is live.
+          </s-banner>
+        </s-section>
+      ) : null}
+      {ai?.error ? (
+        <s-section>
+          <s-banner tone="warning">{ai.error}</s-banner>
+        </s-section>
+      ) : null}
       <s-section heading="Holdout — the only honest proof of ROI">
         <s-paragraph>
           A holdout shows <strong>no toasts</strong> to a small, random share of
