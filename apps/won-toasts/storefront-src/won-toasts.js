@@ -331,6 +331,7 @@
       image: cartTheme.showImage ? ev.line.image : null,
       showIcon: cartTheme.showIcon,
       iconSet: cartTheme.iconSet,
+      iconEmojis: cartTheme.iconEmojis,
       semantic: semantic,
     };
   }
@@ -344,7 +345,7 @@
   function iconFor(p) {
     if (!p.showIcon || p.iconSet === "none") return null;
     if (p.iconSet === "emoji") {
-      var g = ICON_EMOJI[p.semantic] || ICON_EMOJI.info;
+      var g = (p.iconEmojis && p.iconEmojis[p.semantic]) || ICON_EMOJI[p.semantic] || ICON_EMOJI.info;
       var span = elem("span");
       span.setAttribute("data-won-toast-icon", "");
       span.setAttribute("data-emoji", "");

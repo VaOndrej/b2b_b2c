@@ -53,12 +53,13 @@ export function resolveBackground(
  * or `{ kind: "emoji", glyph }`.
  */
 export function resolveIcon(
-  theme: Pick<ToastTheme, "showIcon" | "iconSet">,
+  theme: Pick<ToastTheme, "showIcon" | "iconSet" | "iconEmojis">,
   semantic: ToastSemanticType,
 ): { kind: "none" } | { kind: "chip" } | { kind: "emoji"; glyph: string } {
   if (!theme.showIcon || theme.iconSet === "none") return { kind: "none" };
   if (theme.iconSet === "emoji") {
-    return { kind: "emoji", glyph: ICON_EMOJI[semantic] ?? ICON_EMOJI.info };
+    const custom = theme.iconEmojis?.[semantic]?.trim();
+    return { kind: "emoji", glyph: custom || ICON_EMOJI[semantic] || ICON_EMOJI.info };
   }
   return { kind: "chip" };
 }

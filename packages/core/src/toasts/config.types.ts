@@ -111,6 +111,9 @@ export interface ToastTheme {
   showDelta: boolean;
   showIcon: boolean;
   iconSet: IconSet;
+  /** Custom emoji per semantic event, used when `iconSet` is "emoji" — overrides
+   *  the built-in glyph. Blank/absent falls back to the default (ICON_EMOJI). */
+  iconEmojis?: Partial<Record<ToastSemanticType, string>>;
   fontMode: FontMode;
   /** Font family used when `fontMode` is "custom" (e.g. "Georgia, serif"). A safe
    *  CSS font-family list; ignored for "system"/"inherit-theme". */

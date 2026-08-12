@@ -9,6 +9,7 @@ import {
   sanitizeTheme,
 } from "@won/core/toasts/config.defaults";
 import { PRESET_LOOKS, applyLookPreset } from "@won/core/toasts/presets";
+import { ICON_EMOJI } from "@won/core/toasts/branding";
 
 import { authenticate } from "../shopify.server";
 import {
@@ -75,6 +76,14 @@ function readThemeFields(f: FormData) {
     showDelta: f.get("showDelta") === "on",
     showIcon: f.get("showIcon") === "on",
     iconSet: f.get("iconSet"),
+    iconEmojis: {
+      added: f.get("iconemoji_added"),
+      removed: f.get("iconemoji_removed"),
+      increased: f.get("iconemoji_increased"),
+      decreased: f.get("iconemoji_decreased"),
+      gift: f.get("iconemoji_gift"),
+      shipping: f.get("iconemoji_shipping"),
+    },
     fontMode: f.get("fontMode"),
     fontFamily: f.get("fontFamily"),
     customCss: f.get("customCss"),
@@ -284,14 +293,7 @@ function LookPresetCard({ id, label, active = false }: { id: keyof typeof PRESET
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#1b2027" }}>{label}</span>
-            {active ? (
-              <span style={{ fontSize: 10, fontWeight: 700, color: "#1a73e8", background: "#e7f0ff", borderRadius: 999, padding: "1px 6px", whiteSpace: "nowrap" }}>
-                Active
-              </span>
-            ) : null}
-          </span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#1b2027" }}>{label}</span>
           <span style={{ display: "flex", gap: 3 }}>
             {dots.map((d) => (
               <span key={d} style={{ width: 8, height: 8, borderRadius: 999, background: s.accents[d] ?? "#c3cad2" }} />
@@ -563,6 +565,25 @@ export default function DesignRoute() {
                         <s-option value="custom">Custom…</s-option>
                       </s-select>
                     </s-stack>
+                    {/* Icon picker (§2): choose an emoji per event when the icon
+                        style is Emoji. Blank falls back to the built-in glyph. */}
+                    <div style={{ display: theme.iconSet === "emoji" ? "block" : "none" }}>
+                      <s-stack direction="block" gap="small">
+                        <s-text color="subdued">Pick an emoji for each event — blank uses the default.</s-text>
+                        <s-stack direction="inline" gap="base">
+                          {EVENT_META.map((ev) => (
+                            <s-text-field
+                              key={ev.key}
+                              label={ev.title}
+                              name={`iconemoji_${ev.key}`}
+                              value={config.theme.iconEmojis?.[ev.key] ?? ""}
+                              placeholder={ICON_EMOJI[ev.key] ?? ""}
+                              maxLength={8}
+                            />
+                          ))}
+                        </s-stack>
+                      </s-stack>
+                    </div>
                     <div style={{ display: theme.fontMode === "custom" ? "block" : "none" }}>
                       <s-text-field label="Custom font family" name="fontFamily" value={config.theme.fontFamily} placeholder='Georgia, "Times New Roman", serif' details="A CSS font-family list. The font must already load on your storefront." />
                     </div>

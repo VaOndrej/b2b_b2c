@@ -121,7 +121,9 @@ export const DEFAULT_THEME: ToastTheme = {
   showPrice: true,
   showDelta: true,
   showIcon: true,
-  iconSet: "line",
+  // Icons off by default — cleaner out of the box; merchants opt into a dot or
+  // their own emoji per event in Design → Branding.
+  iconSet: "none",
   fontMode: "system",
   fontFamily: "",
   customCss: "",
@@ -391,6 +393,16 @@ export function sanitizeTheme(input: unknown): Partial<ToastTheme> {
   if (animationOut) out.animationOut = animationOut;
   const iconSet = oneOf(input.iconSet, ICON_SETS);
   if (iconSet) out.iconSet = iconSet;
+  if (isPlainObject(input.iconEmojis)) {
+    const iconEmojis: Partial<Record<ToastSemanticType, string>> = {};
+    for (const type of SEMANTIC_TYPES) {
+      const v = (input.iconEmojis as Record<string, unknown>)[type];
+      if (typeof v === "string" && v.trim()) {
+        iconEmojis[type] = v.replace(/[<>{}]/g, "").trim().slice(0, 12);
+      }
+    }
+    if (Object.keys(iconEmojis).length > 0) out.iconEmojis = iconEmojis;
+  }
   const fontMode = oneOf(input.fontMode, FONT_MODES);
   if (fontMode) out.fontMode = fontMode;
   if (typeof input.fontFamily === "string") {
