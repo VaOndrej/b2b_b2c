@@ -10,7 +10,8 @@
     "./root": "./src/root.tsx",
     "./auth": "./src/auth.tsx",
     "./admin-nav": "./src/admin-nav.tsx",
-    "./webhooks": "./src/webhooks.ts"
+    "./webhooks": "./src/webhooks.ts",
+    "./entitlement": "./src/entitlement.ts"
   },
   "dependencies": {
     "@react-router/node": "^7.12.0",

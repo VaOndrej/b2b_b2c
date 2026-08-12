@@ -10,8 +10,11 @@ existují** — hlavně E2E témata a produkty.
 > (SEC/WBH/BILL/DATA/API/REL/SF/PERF/PRIV/TEST/DEPLOY/OBS/MKT/…). Nová appka ji dědí;
 > cituj sekce (`doctrine §7b`, `WBH-3`) v kódu i PR. **Compliant-by-construction
 > (STORE-1):** scaffold z `apps/_template` už splňuje WBH-3 (compliance webhooky),
-> PRIV-2 (uninstall cleanup) a WBH-1 (HMAC) — neduplikuj je, jen doplň deletion
-> callbacky, když appka ukládá data. Brainstorming níže doktrínu konkretizuje.
+> PRIV-2 (uninstall cleanup), WBH-1 (HMAC) a PERF-1 (App Bridge v head) — neduplikuj
+> je, jen doplň deletion callbacky, když appka ukládá data. Pro **BILL-1** použij
+> `@won/app-kit/entitlement` `resolveEntitlement` (server-derived, default Free); pro
+> **DATA-2/3** vyjdi z `apps/_template/app/lib/config-schema.ts` (sanitizer + schema
+> version + tolerant reader). Brainstorming níže doktrínu konkretizuje.
 
 ## 0. Povinný brainstorming → rozpad na MVP (GATE)
 
