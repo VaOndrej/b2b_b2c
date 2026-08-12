@@ -1240,7 +1240,7 @@
     "[data-won-toast-delta]{font-weight:800;flex:0 0 auto;}" +
     "[data-won-toast] button{border:0;background:transparent;font:inherit;cursor:pointer;flex:0 0 auto;}" +
     "[data-won-toast-undo]{font-weight:700;text-decoration:underline;}" +
-    "[data-won-toast-close]{font-size:18px;line-height:1;color:#9aa4ad;padding:0 2px;}" +
+    "[data-won-toast-close]{font-size:18px;color:#9aa4ad;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;margin:-4px -4px -4px 0;}" +
     "@keyframes won-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}" +
     '[data-anim="fade"] [data-won-toast]{animation-name:won-fade}' +
     '[data-anim="pop"] [data-won-toast]{animation-name:won-pop}' +
