@@ -15,7 +15,7 @@
       </h2>
     {%- endif -%}
 
-    <won-compare class="won-compare" style="--won-cmp-pos: {{ s.start_position }}%;">
+    <won-compare class="won-compare" style="--won-cmp-pos: {{ s.start_position }}%; --won-cmp-ratio: {{ s.aspect_ratio | default: '16/10' }};">
       <div class="won-compare__frame">
         <div class="won-compare__layer won-compare__layer--after">
           {%- if s.after_image != blank -%}
@@ -43,7 +43,7 @@
   .won-compare-wrap { display: flex; flex-direction: column; gap: var(--won-space-4); }
   .won-compare__heading { font-size: var(--won-h-size-m, 1.6rem); max-width: var(--won-h-mw-m, 100%); }
   .won-compare { display: block; }
-  .won-compare__frame { position: relative; overflow: hidden; border-radius: var(--won-radius-md); aspect-ratio: 16 / 10; }
+  .won-compare__frame { position: relative; overflow: hidden; border-radius: var(--won-radius-md); aspect-ratio: var(--won-cmp-ratio, 16 / 10); }
   .won-compare__layer { position: absolute; inset: 0; }
   .won-compare__layer--before { inline-size: var(--won-cmp-pos, 50%); overflow: hidden; }
   .won-compare__layer--before .won-compare__img { inline-size: 100vw; max-inline-size: none; }
@@ -201,6 +201,34 @@
       "step": 5,
       "unit": "%",
       "default": 50
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "select",
+      "id": "aspect_ratio",
+      "label": "t:won.settings.cmp_aspect",
+      "options": [
+        {
+          "value": "16/10",
+          "label": "t:won.options.cmp_landscape"
+        },
+        {
+          "value": "16/9",
+          "label": "t:won.options.cmp_wide"
+        },
+        {
+          "value": "1/1",
+          "label": "t:won.options.cmp_square"
+        },
+        {
+          "value": "4/5",
+          "label": "t:won.options.cmp_portrait"
+        }
+      ],
+      "default": "16/10"
     },
     {
       "type": "header",

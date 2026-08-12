@@ -1,0 +1,42 @@
+{% doc %}
+won-trust — render Won Toasts popularity signals on the PDP (Phase 8 bridge):
+  • a visible "Bestseller" badge   ← product.metafields.won.bestseller
+  • the factual units-sold count as Product.additionalProperty
+                                    ← product.metafields.won.units_sold_30d
+
+The metafields are written by the Won Toasts app (Pro). Keyed by the canonical
+product URL so the count merges onto the product (same pattern as
+[[won-schema-engine]]). Shows / emits NOTHING when the metafields are absent
+(app not installed, Free plan, or product never sold) — never a fake claim. The
+badge label is a merchant setting (localisable), so no runtime locale key.
+
+@param {boolean} enabled - the section's show_bestseller toggle
+@param {object} product - the product object
+@param {string} label - the badge text (e.g. "Bestseller")
+@example
+{% render 'won-trust', enabled: section.settings.show_bestseller, product: product, label: section.settings.bestseller_label %}
+{% enddoc %}
+{%- liquid
+  assign units = product.metafields.won.units_sold_30d.value | default: 0
+  assign is_best = product.metafields.won.bestseller.value | default: false
+  assign badge = label | default: 'Bestseller'
+-%}
+{%- if enabled and product != blank -%}
+  {%- if is_best -%}
+    <span class="won-trust-badge">{{ badge }}</span>
+  {%- endif -%}
+  {%- if units > 0 -%}
+    {%- assign won_trust_url = product.url | prepend: shop.url -%}
+    {%- capture won_trust_json -%}{"@context":"https://schema.org","@type":"Product","@id":{{ won_trust_url | json }},"url":{{ won_trust_url | json }},"name":{{ product.title | json }},"additionalProperty":[{"@type":"PropertyValue","name":"Units sold (30 days)","value":{{ units | json }}}]}{%- endcapture -%}
+    <script type="application/ld+json">{{ won_trust_json | replace: '</', '<\/' }}</script>
+  {%- endif -%}
+{%- endif -%}
+
+{% stylesheet %}
+  .won-trust-badge {
+    display: inline-flex; align-items: center; gap: 0.4em;
+    padding: 0.25em 0.7em; border-radius: var(--won-radius-pill, 999px);
+    background: var(--won-accent); color: var(--won-accent-contrast, #fff);
+    font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em; line-height: 1.4;
+  }
+{% endstylesheet %}

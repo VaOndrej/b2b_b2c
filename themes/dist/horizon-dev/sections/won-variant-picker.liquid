@@ -71,6 +71,7 @@
       {%- if s.show_rating -%}
         {% render 'won-rating', product: product, schema: true %}
       {%- endif -%}
+      {% render 'won-trust', enabled: s.show_bestseller, product: product, label: s.bestseller_label %}
       {% render 'won-policy-schema', enabled: settings.won_return_enabled, days: settings.won_return_days, country: settings.won_return_country %}
 
       <div class="won-vp__pricing">
@@ -418,6 +419,20 @@
       "label": "t:won.settings.vp_show_rating",
       "info": "t:won.info.vp_show_rating",
       "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_bestseller",
+      "label": "t:won.settings.vp_show_bestseller",
+      "info": "t:won.info.vp_show_bestseller",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "bestseller_label",
+      "label": "t:won.settings.bestseller_label",
+      "default": "Bestseller",
+      "visible_if": "{{ section.settings.show_bestseller }}"
     },
     {
       "type": "range",

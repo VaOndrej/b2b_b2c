@@ -15,7 +15,12 @@ customise robots.txt, and won-base ships code, not templates). Serving a real
 {% render 'won-site-schema' %}
 {% enddoc %}
 {%- if request.page_type == 'index' -%}
-  {%- assign won_site_url = shop.url -%}
-  {%- capture won_site_json -%}{"@context":"https://schema.org","@type":"WebSite","name":{{ shop.name | json }},"url":{{ won_site_url | json }},"potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":{{ won_site_url | append: '/search?q={search_term_string}' | json }}},"query-input":"required name=search_term_string"}}{%- endcapture -%}
+  {%- comment -%}
+    The SearchAction urlTemplate must contain the literal token {search_term_string}.
+    Keep those braces as RAW capture text — never inside a {{ … }} expression (a
+    `{ }` inside an output tag breaks Liquid's lexer and 500s the page). shop.url is
+    a clean URL, so interpolating it un-escaped inside the JSON string is safe.
+  {%- endcomment -%}
+  {%- capture won_site_json -%}{"@context":"https://schema.org","@type":"WebSite","name":{{ shop.name | json }},"url":{{ shop.url | json }},"potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"{{ shop.url }}/search?q={search_term_string}"},"query-input":"required name=search_term_string"}}{%- endcapture -%}
   <script type="application/ld+json">{{ won_site_json | replace: '</', '<\/' }}</script>
 {%- endif -%}

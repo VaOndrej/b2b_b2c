@@ -70,6 +70,7 @@
       {%- if s.show_rating -%}
         {% render 'won-rating', product: product, schema: true %}
       {%- endif -%}
+      {% render 'won-trust', enabled: s.show_bestseller, product: product, label: s.bestseller_label %}
       {% render 'won-policy-schema', enabled: settings.won_return_enabled, days: settings.won_return_days, country: settings.won_return_country %}
 
       <div class="won-vp__pricing">
@@ -367,6 +368,8 @@
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "checkbox", "id": "show_title", "label": "t:won.settings.vp_show_title", "default": true },
     { "type": "checkbox", "id": "show_rating", "label": "t:won.settings.vp_show_rating", "info": "t:won.info.vp_show_rating", "default": true },
+    { "type": "checkbox", "id": "show_bestseller", "label": "t:won.settings.vp_show_bestseller", "info": "t:won.info.vp_show_bestseller", "default": true },
+    { "type": "text", "id": "bestseller_label", "label": "t:won.settings.bestseller_label", "default": "Bestseller", "visible_if": "{{ section.settings.show_bestseller }}" },
     { "type": "range", "id": "title_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 20, "max": 64, "step": 2, "unit": "px", "default": 34 },
     { "type": "range", "id": "title_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 16, "max": 48, "step": 2, "unit": "px", "default": 26 },
     { "type": "text", "id": "packs_label", "label": "t:won.settings.vp_packs_label", "visible_if": "{{ section.settings.layout == 'packs' }}" },

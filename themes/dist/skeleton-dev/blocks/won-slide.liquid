@@ -49,7 +49,7 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
           {{
             s.image
             | image_url: width: 1600
-            | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: 'lazy', alt: s.image.alt | default: ''
+            | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: 'lazy', alt: s.image_alt | default: s.image.alt | default: ''
           }}
         {%- else -%}
           <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="880" height="1100" loading="lazy">
@@ -78,10 +78,10 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     {%- if s.button_label != blank or s.button2_label != blank -%}
       <div class="won-slide__actions">
         {%- if s.button_label != blank and s.button_link != blank -%}
-          <a class="won-btn won-btn--{{ s.button_style }} won-slide__btn" href="{{ s.button_link }}">{{ s.button_label }}</a>
+          <a class="won-btn won-btn--{{ s.button_style }} won-slide__btn" href="{{ s.button_link }}"{% if s.buttons_new_tab %} target="_blank" rel="noopener"{% endif %}>{{ s.button_label }}</a>
         {%- endif -%}
         {%- if s.button2_label != blank and s.button2_link != blank -%}
-          <a class="won-btn won-btn--{{ s.button2_style }} won-slide__btn" href="{{ s.button2_link }}">{{ s.button2_label }}</a>
+          <a class="won-btn won-btn--{{ s.button2_style }} won-slide__btn" href="{{ s.button2_link }}"{% if s.buttons_new_tab %} target="_blank" rel="noopener"{% endif %}>{{ s.button2_label }}</a>
         {%- endif -%}
       </div>
     {%- endif -%}
@@ -214,6 +214,7 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     },
     { "type": "text", "id": "button2_label", "label": "t:won.settings.button2_label" },
     { "type": "url", "id": "button2_link", "label": "t:won.settings.button2_link" },
+    { "type": "checkbox", "id": "buttons_new_tab", "label": "t:won.settings.link_new_tab", "default": false },
     {
       "type": "select", "id": "button2_style", "label": "t:won.settings.button2_style",
       "options": [
@@ -233,6 +234,7 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
       "default": "none"
     },
     { "type": "image_picker", "id": "image", "label": "t:won.settings.image", "visible_if": "{{ block.settings.media_type == 'image' }}" },
+    { "type": "text", "id": "image_alt", "label": "t:won.settings.image_alt", "info": "t:won.info.image_alt", "visible_if": "{{ block.settings.media_type == 'image' }}" },
     { "type": "text", "id": "image_asset", "label": "t:won.settings.image_asset", "info": "t:won.info.image_asset", "visible_if": "{{ block.settings.media_type == 'image' }}" },
     { "type": "video", "id": "video", "label": "t:won.settings.video", "visible_if": "{{ block.settings.media_type == 'video' }}" },
     {

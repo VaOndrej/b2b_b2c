@@ -17,7 +17,8 @@ any section accepting theme blocks. Self-contained; no product data required.
       {%- if item != blank -%}
         <li class="won-highlights__item">
           {%- if s.show_icon -%}
-            {% render 'won-icon', name: s.icon | default: 'check', class: 'won-highlights__icon' %}
+            {%- assign icon_name = s.icon | default: 'check' -%}
+            {% render 'won-icon', name: icon_name, class: 'won-highlights__icon' %}
           {%- endif -%}
           <span>{{ item }}</span>
         </li>
