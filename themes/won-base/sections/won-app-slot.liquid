@@ -12,7 +12,7 @@
         {%- if s.heading != blank -%}<p class="won-app-slot__heading">{{ s.heading }}</p>{%- endif -%}
         {%- if s.text != blank -%}<div class="won-app-slot__text rte">{{ s.text }}</div>{%- endif -%}
         {%- if s.cta_label != blank -%}
-          <a class="won-btn won-btn--primary" {% if s.cta_url != blank %}href="{{ s.cta_url }}" target="_blank" rel="noopener"{% endif %}>{{ s.cta_label }}</a>
+          <a class="won-btn won-btn--primary" {% if s.cta_url != blank %}href="{{ s.cta_url }}"{% if s.cta_new_tab %} target="_blank" rel="noopener"{% endif %}{% endif %}>{{ s.cta_label }}</a>
         {%- endif -%}
       </div>
     {%- endif -%}
@@ -42,6 +42,7 @@
     { "type": "richtext", "id": "text", "label": "t:won.settings.text", "default": "t:won.defaults.app_slot_text" },
     { "type": "text", "id": "cta_label", "label": "t:won.settings.button_label", "default": "t:won.defaults.app_slot_cta" },
     { "type": "url", "id": "cta_url", "label": "t:won.settings.button_link" },
+    { "type": "checkbox", "id": "cta_new_tab", "label": "t:won.settings.button_new_tab", "info": "t:won.info.button_new_tab", "default": false },
     { "type": "header", "content": "t:won.headers.appearance" },
     { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
     {

@@ -27,6 +27,7 @@
       "stats": "Won Stats",
       "animation": "Won · Number animation",
       "policy_schema": "Won · AI / returns",
+      "product_trust": "Won Trust (PDP)",
       "contact": "Won Contact",
       "tabs": "Won Tabs",
       "tab": "Won Tab",
@@ -53,6 +54,7 @@
       "ann_freeship": "Free shipping (progress)"
     },
     "info": {
+      "button_new_tab": "Opens the button link in a new browser tab. Leave off for in-store links so shoppers keep their place; turn on only for links to another site.",
       "animate_values": "Numbers count up from zero to their final form the first time they scroll into view. Prefix, units and formatting (10,000+, 98%, €1.2M) are preserved. Values with no clear number (e.g. 24/7) are left as-is.",
       "emit_faq_schema": "Exposes the questions and answers to search and AI answer engines as FAQPage (machine-readable data). Only emitted from real question + answer pairs that are also visible on the page — Google requires parity with visible content. Turn on only for a genuine FAQ, not tabs/specs.",
       "emit_product_schema": "Exposes the table rows (specs / nutrition) to search and AI as product attributes (Product.additionalProperty). Attaches to the same product by URL. Safe to keep on — it's just extra machine data; only emitted from real name + value pairs on a product page.",
@@ -292,6 +294,7 @@
       "link_label": "Link label",
       "link_url": "Link URL",
       "link_new_tab": "Open link in a new tab",
+      "button_new_tab": "Open button link in a new tab",
       "image_alt": "Image alt text",
       "cmp_aspect": "Aspect ratio",
       "item_style": "Item style",
@@ -332,7 +335,6 @@
       "start_position": "Start position",
       "items": "Items (one per line)",
       "show_icon": "Show icon",
-      "icon": "Icon",
       "icon_style": "Expand icon",
       "rows_kv": "Rows (Label : Value, one per line)",
       "metafield_key": "Product metafield",

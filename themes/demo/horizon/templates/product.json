@@ -371,6 +371,10 @@
             "heading": "Kdy užívat",
             "steps": "Ráno : 1 odměrka do snídaně\nPo tréninku : 1 odměrka do 30 minut\nVečer : dle potřeby"
           }
+        },
+        "d_trust": {
+          "type": "won-product-trust",
+          "settings": {}
         }
       },
       "block_order": [
@@ -380,7 +384,8 @@
         "d_high",
         "d_param",
         "d_nutri",
-        "d_dose"
+        "d_dose",
+        "d_trust"
       ],
       "settings": {
         "media_type": "none",

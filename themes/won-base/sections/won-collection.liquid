@@ -102,7 +102,7 @@
   .won-facet__summary::after { content: '+'; float: inline-end; color: var(--won-muted); }
   .won-facet[open] .won-facet__summary::after { content: '−'; }
   .won-facet__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-block-size: 260px; overflow-y: auto; }
-  .won-facet__opt { display: flex; align-items: center; gap: var(--won-space-2); cursor: pointer; font-size: 0.92rem; min-block-size: 44px; /* WCAG 2.5.5 tap row */ }
+  .won-facet__opt { display: flex; align-items: center; gap: var(--won-space-2); cursor: pointer; font-size: 0.92rem; min-block-size: 44px; inline-size: 100%; /* WCAG 2.5.5 tap row — full-width so the tap target is >=44px in both axes */ }
   .won-facet__opt.is-empty { opacity: 0.4; cursor: default; }
   .won-facet__opt input { accent-color: var(--won-accent); }
   .won-facet__opt-label { flex: 1 1 auto; }

@@ -674,8 +674,91 @@
         </p>
       </section>
 
+      <!-- 12 — AI-SHOPPING-FIRST -->
+      <section class="block" aria-labelledby="s-ai">
+        <div class="block-heading">
+          <span class="block-number">12</span>
+          <h2 id="s-ai">AI-shopping-first: strojově čitelný storefront</h2>
+        </div>
+        <p class="body">
+          <strong>Teze:</strong> AI-nákupní plochy (ChatGPT Shopping, Perplexity, Google AI
+          Mode/Overviews, Gemini, agentic checkout) doporučují a nakupují podle toho, <strong>co si
+          dokážou přečíst</strong>. Základ (<code>Product</code> + <code>Offer</code> + cena a
+          <code>Organization</code>) emituje Horizon nativně. Ale <strong>won sekce dnes emitují
+          nulu strukturovaných dat</strong> — veškerý obsah, který obchod dělá přesvědčivým (FAQ,
+          srovnání, specs/dávkování/nutrice z metapolí, statistiky, hodnocení), je human-only a pro
+          stroje neviditelný. To je odlišovač, který krabicová témata nemají.
+        </p>
+        <p class="body">
+          Precedent už stojí: <span class="tag mint">shipped</span> <strong>count-up „Dynamic
+          numbers"</strong> ve <code>won-stats</code> je záměrně SSR-safe — finální hodnota je v DOMu,
+          takže ji crawler přečte i bez JS (progressive enhancement, ne JS-only). Stejný princip
+          platí pro celou vrstvu: <strong>čitelné bez JS, obohacené strukturovanými daty.</strong>
+        </p>
+
+        <div class="grid-2">
+          <div class="card accent-mint">
+            <h3>Tier 1 — theme-native, shippable</h3>
+            <ul class="clean">
+              <li><strong><code>won-schema</code> — JSON-LD „soul" engine.</strong> Jeden snippet,
+                per-sekci zapínaný (drží „no dead controls"). Emituje, co Horizon neví:
+                <strong>FAQPage</strong> z <code>won-accordion</code>/<code>won-panels</code>,
+                <strong>Product.additionalProperty</strong> ze spec/nutrition/dosage metapolí,
+                <strong>AggregateRating / MerchantReturnPolicy / OfferShippingDetails</strong>.</li>
+              <li><strong><code>llms.txt</code> (+ per-kolekce markdown).</strong> Kurátorská,
+                strojově čitelná mapa obchodu pro LLM crawlery (Shopify + OpenAI to standardizují).
+                Nejviditelnější „AI-first" vlajka a skvěle demovatelné.</li>
+              <li><strong>„AI answer line" metapole.</strong> Jedna kanonická věta na produkt (co to
+                je / pro koho) — renderuje se viditelně <em>a</em> krmí popis + schema. Napojení na
+                metafield-soul doktrínu.</li>
+            </ul>
+          </div>
+          <div class="card accent-amber">
+            <h3>Tier 2 — silné, s přesahem do app/platformy</h3>
+            <ul class="clean">
+              <li><strong><code>won-comparison</code> → čistá sémantika</strong> pro „X vs Y"
+                dotazy. Sémantický <code>&lt;table&gt;</code> + property matice, <strong>ne</strong>
+                fake schema (schema.org nemá typ „vs konkurent").</li>
+              <li><strong>Extraction hardening</strong> — pravá heading hierarchie,
+                <code>&lt;table&gt;</code> pro spec tabulky, alt-text disciplína, <code>&lt;dl&gt;</code>
+                pro stats (už máme). Levné, plošné.</li>
+              <li><strong>Agentic-commerce readiness (app-level, jen flag)</strong> — Shopify
+                Storefront MCP / Agentic Commerce Protocol / Universal Cart. Dělá <em>appka</em>;
+                téma dodá čistá data + <code>llms.txt</code>.</li>
+            </ul>
+          </div>
+        </div>
+
+        <p class="body" style="margin-top:16px"><strong>Fázový rozpad:</strong></p>
+        <ol class="clean">
+          <li><span class="tag mint">shipped</span> Count-up „Dynamic numbers" ve <code>won-stats</code> + sdílený <code>won-count-up.js</code> + globální default (compose krok 2e). SSR-safe precedent celé teze.</li>
+          <li><span class="tag mint">shipped</span> <strong><code>won-faq-schema</code></strong> — FAQPage JSON-LD z won-accordion (default ZAP) a won-panels/accordion (default VYP). Řádek se emituje sám (obchází content_for settings-limit), poctivostní guard (jen reálné Q+A), bezpečné escapování, toggle „no dead controls", cs/en, Theme Check zelený. Modul 1 <code>won-schema</code> enginu.</li>
+          <li><span class="tag mint">shipped</span> <strong><code>won-product-schema</code> (Fáze 2)</strong> — <code>Product.additionalProperty</code> z won-param-table + won-nutrition-table (manual i metapole, módy lines/kv). Vlastní Product node klíčovaný kanonickou URL (<code>@id</code>) → engine sloučí na produkt (fork vyřešen: žádná závislost na opaque Horizon <code>@id</code>). Self-emit per blok, toggle default ZAP, guard mimo PDP, 14/14 + Theme Check.</li>
+          <li><span class="tag mint">shipped</span> <strong>Fáze 3 — <code>AggregateRating</code></strong> — won-rating na PDP (won-variant-picker, toggle <code>show_rating</code>) emituje AggregateRating z <code>won.rating</code>/<code>won.rating_count</code> metapolí; viditelné hvězdičky = parity s obsahem; jen main product (ne karty).</li>
+          <li><span class="tag mint">shipped</span> <strong>Fáze 4 — <code>MerchantReturnPolicy</code></strong> — <code>won-policy-schema</code> z globálních nastavení (Won · AI / vrácení: dny + země), emit jednou na PDP. Compose krok 2e zobecněn na všechny <code>won-*-settings.json</code>. (OfferShippingDetails odloženo — chce reálné rate-data / Markets.)</li>
+          <li><span class="tag mint">shipped</span> <strong>Fáze 5 — <code>HowTo</code></strong> — <code>won-howto-schema</code> z won-dosage kroků (pozn.: Google zrušil HowTo rich results 2023 → dnes hlavně AI čitelnost). Article/Breadcrumb/Video přeskočeno (duplicita s nativním / low value).</li>
+          <li><span class="tag mint">shipped</span> <strong>Fáze 6 — extraction hardening</strong> — won-comparison už měl sémantický <code>&lt;table&gt;</code>; doplněn skrytý textový ekvivalent k ✓/✗ SVG (AI/čtečka teď buňku přečte, ne prázdno).</li>
+          <li><span class="tag mint">shipped</span> <strong>Fáze 7 — site schema</strong> — <code>won-site-schema</code> (<code>WebSite</code> + <code>SearchAction</code>, homepage-only, wired do &lt;head&gt; přes compose 2b). Doplňuje nativní Organization. <em>Pozn.: canonical <code>/llms.txt</code> NENÍ theme route (won-base neshipuje templates) → hosting je app/proxy věc, Fáze 8.</em></li>
+          <li><span class="tag mint">shipped</span> <strong>Fáze 8 — Toasts trust-data bridge</strong> (Pro-gated). Core <code>popularity.ts</code> (units sold + bestseller, 8/8 testů) → app writer (Admin API, throttle-safe, nový <code>write_products</code> scope) zapíše <code>won.units_sold_30d</code>/<code>won.bestseller</code> → theme <code>won-trust</code> na PDP: bestseller badge + počet do <code>additionalProperty</code>. Potvrzuje kanonický vzor „app → <code>won.*</code> metapole → téma" (detail v product-roadmap, Won Toasts karta). <strong>Živě ověřeno</strong> (badge + Units sold additionalProperty renderují, JSON-LD validní; zápis metapolí přes <code>shopify app execute</code>).</li>
+          <li><span class="tag mint">shipped</span> <strong>Coverage-gap fix — blok <code>won-product-trust</code>:</strong> F3 rating / F4 policy / F8 trust byly zapojené jen do <code>won-variant-picker</code> → na nativním Horizon PDP se nerenderovaly. Nový drop-in blok (reuse won-rating/won-trust/won-policy-schema) je přidatelný na jakýkoli PDP. Živě ověřeno na nativním PDP.</li>
+          <li><strong>„AI answer line"</strong> metapole + render + zapojení do schema/popisu.</li>
+          <li><strong>won-comparison sémantika</strong> + extraction hardening napříč sekcemi.</li>
+          <li><strong>Bridge do apps:</strong> Won Toasts jako <em>zdroj trust-dat</em> (prodejní velocity / popularita) → strojově čitelný signál pro <code>won-schema</code> místo pouhého human-only toastu. Viz <a href="product-roadmap.html">product-roadmap</a>.</li>
+        </ol>
+        <div class="verdict">
+          <strong>Doporučený headline:</strong> <code>won-schema</code> (FAQPage first) + <code>llms.txt</code>
+          jako „AI-first" dvojice — největší páka, čistě theme-level, obojí naživo předvedeš v Rich
+          Results / AI odpovědích. „AI answer line" jako merchant-facing soul field navrch.
+        </div>
+        <div class="verdict open">
+          <strong>Otevřené — testovací gate:</strong> jak ověřit AI-čitelnost v CI? Kandidáti:
+          MCP <code>validate_theme</code> + strukturální smoke test (parsuje vyrenderovaný JSON-LD),
+          Rich Results / schema validace, kontrola že finální obsah je v SSR HTML (jako count-up).
+        </div>
+      </section>
+
       <footer class="foot">
-        Won Storefront System — living dokument · poslední aktualizace 2026-08-04 ·
+        Won Storefront System — living dokument · poslední aktualizace 2026-08-11 ·
         zdroje: <a href="https://github.com/Shopify/horizon/blob/main/LICENSE.md">Horizon LICENSE</a> ·
         <a href="https://shopify.dev/docs/storefronts/themes/store/requirements">Theme Store requirements</a> ·
         <a href="https://github.com/Shopify/skeleton-theme">Skeleton theme</a>

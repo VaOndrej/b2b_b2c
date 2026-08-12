@@ -1333,6 +1333,51 @@
                 jednorázový toast, ne page-view spam.
               </p>
               <p class="guide-idea">
+                <strong>AI-first směr (trust-data bridge, ne AI-shopping-first):</strong>
+                nezaměňovat dvě teze. <em>AI-shopping-first</em> (čitelnost pro AI
+                kupce/agenty) je hra <strong>tématu</strong>, ne appky — social-proof toast
+                je human konverzní taktika, AI agent nezažívá FOMO a popup nevidí; jak roste
+                agentic nákup, adresovatelná plocha klasických toastů se <strong>zmenšuje</strong>
+                (reálné portfolio riziko, pojmenovat ho). Kde Toasts AI-first <em>dává</em>
+                smysl: (1) <strong>jako zdroj trust-dat</strong> — už vlastní proprietární
+                behaviorální/prodejní signály (velocity, recency, „N koupilo tento týden");
+                vystavit je jako <strong>strojově čitelný popularity/bestseller signál</strong>,
+                který krmí theme <code>won-schema</code> (JSON-LD) → toast přestává být jen
+                popup a stává se <strong>trust-data enginem</strong> AI-čitelného storefrontu
+                (moat propojující portfolio). (2) <strong>AI-powered app vrstva</strong> (LLM
+                pro merchanta, ne pro agenta) — už máš <code>ai-advisor-v2</code> + Insights
+                diagnózu; rozšířit o AI-psanou toast kopii per segment/locale. Zásada:
+                data <strong>duálního účelu</strong> (human toast <em>i</em> strojový signál),
+                čímž se appka pojistí proti agentic posunu. Napojení: theme-roadmap blok 12
+                (AI-shopping-first).
+              </p>
+              <p class="guide-idea">
+                <strong>Fáze 8 — trust-data bridge (ROZHODNUTO 2026-08-12):</strong> vlastní
+                <strong>Won Toasts</strong>, <strong>za Pro planem</strong>. Toasts vlastní prodejní
+                data (SaleEvent z orders webhooku), proto zapíše i signál — symetrické se
+                Stepper→<code>won.quantity_rules</code>. Mechanismus: čistý core engine
+                (<code>packages/core/src/toasts/popularity.ts</code>) spočítá per-produkt
+                <em>units sold za N dní</em> + odvozený <em>bestseller</em> (top % nad prahem, ne s 1
+                prodejem) → app writer přečte nedávné objednávky přes Admin API (<code>read_orders</code>,
+                throttle-safe) a zapíše <strong><code>won.units_sold_30d</code></strong> (number) +
+                <strong><code>won.bestseller</code></strong> (bool) přes <code>metafieldsSet</code> →
+                theme <code>won-schema</code> engine (F1–F8) to přečte SSR: faktický počet do
+                <code>additionalProperty</code>, bestseller jako viditelný badge (žádný fake schema
+                typ). Nový scope: <code>write_products</code> (re-consent). Jen agregované počty,
+                žádné PII.
+              </p>
+              <p class="guide-idea">
+                <strong>Obecný vzor „app → <code>won.*</code> metapole → téma (SSR/AI)":</strong> tohle
+                NENÍ nový most, je to <strong>kanonická konvence portfolia</strong> (Stepper Pro čte
+                <code>won.quantity_rules</code>, Tiers, Toasts…). Stejným způsobem může theme
+                <code>won-schema</code> engine krmit víc zdrojů: <em>reviews → <code>won.rating</code>
+                → AggregateRating</em>, <em>sklad → dostupnost</em>, <em>Toasts → popularity</em>,
+                <em>Tiers → B2B ceny</em>. AI-renderer (JSON-LD) je vždy <strong>téma</strong>; appky
+                jsou jen producenti signálu. <strong>Pozor na kolizi názvu:</strong> theme
+                <code>won-schema</code> engine (schema.org / JSON-LD) ≠ appka <strong>Won Schema</strong>
+                (metafield-type <em>migrátor</em>) — jiný koncept, stejné slovo.
+              </p>
+              <p class="guide-idea">
                 <strong>Konkurenční benchmark (ToastiBar = MPS / Channelwill
                 whitelabel):</strong> zralý veterán s ~11 typy live (sales, cart,
                 countdown, online/recent/product visitors, reviews, order
@@ -3833,6 +3878,12 @@
             <details class="app-guide">
               <summary>Návod k implementaci</summary>
               <p class="guide-idea">
+                <strong>⚠️ Kolize názvu:</strong> tahle appka <strong>Won Schema</strong> je
+                metafield-type <em>migrátor</em> (mění typy/klíče metapolí, Admin API, bez
+                storefrontu) — <strong>NENÍ</strong> to theme <code>won-schema</code> engine
+                (schema.org / JSON-LD pro AI, F1–F8 v theme-roadmap bloku 12). Zvážit přejmenování
+                jedné z nich (např. appka „Won Metafields" / „Won Migrator").
+                <br><br>
                 <strong>0 · Nápad (M·migrator):</strong> typ existující definice
                 metapole nejde změnit —
                 <code>MetafieldDefinitionUpdateInput</code> nemá pole

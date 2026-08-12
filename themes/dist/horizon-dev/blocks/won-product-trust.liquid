@@ -1,0 +1,44 @@
+{% doc %}
+won-product-trust — a drop-in PDP trust block for ANY product page, native
+Horizon or won. It renders the visible star rating + "Bestseller" badge and
+emits the matching structured data (AggregateRating, Product.additionalProperty
+units sold, MerchantReturnPolicy), so the AI/search trust signals work even when
+the PDP is NOT built from won-variant-picker.
+
+Thin wrapper — all logic lives in the shared snippets (single source of truth):
+won-rating (F3), won-trust (F8), won-policy-schema (F4). Add this block to a
+native product page; won-variant-picker PDPs already include these, so use ONE
+place, not both (each snippet self-guards but does not dedupe across two hosts).
+
+A theme block on a product template reads the current `product` (same as
+won-param-table). Off a product page, every snippet self-guards to nothing.
+@example
+{% content_for 'block', type: 'won-product-trust', id: 'trust' %}
+{% enddoc %}
+{%- assign s = block.settings -%}
+<div class="won-product-trust" {{ block.shopify_attributes }}>
+  {%- if s.show_rating -%}
+    {% render 'won-rating', product: product, schema: true %}
+  {%- endif -%}
+  {%- if s.show_bestseller -%}
+    {% render 'won-trust', enabled: true, product: product, label: s.bestseller_label %}
+  {%- endif -%}
+</div>
+{% render 'won-policy-schema', enabled: settings.won_return_enabled, days: settings.won_return_days, country: settings.won_return_country %}
+
+{% stylesheet %}
+  .won-product-trust { display: flex; flex-wrap: wrap; align-items: center; gap: var(--won-space-3); }
+  .won-product-trust:empty { display: none; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.product_trust",
+  "settings": [
+    { "type": "checkbox", "id": "show_rating", "label": "t:won.settings.vp_show_rating", "info": "t:won.info.vp_show_rating", "default": true },
+    { "type": "checkbox", "id": "show_bestseller", "label": "t:won.settings.vp_show_bestseller", "info": "t:won.info.vp_show_bestseller", "default": true },
+    { "type": "text", "id": "bestseller_label", "label": "t:won.settings.bestseller_label", "default": "Bestseller", "visible_if": "{{ block.settings.show_bestseller }}" }
+  ],
+  "presets": [{ "name": "t:won.names.product_trust" }]
+}
+{% endschema %}
