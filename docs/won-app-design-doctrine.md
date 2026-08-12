@@ -152,6 +152,80 @@ stops being legible.
   interacting** — a word ("On"/"Off"), a coloured dot, the ring — never inferred from
   what's missing. The merchant should never click to find out the current state.
 
+### §12 — Honest by construction (never fabricate what looks like proof)
+Anything that *reads to a shopper as a fact about the store* — social proof, scarcity,
+countdowns, "N people bought this", "only N left" — must trace to **real store data or
+not render at all**. This is both the suite's soul and a hard Shopify survival rule:
+fake urgency is a dark pattern that gets apps rejected and burns the merchant's trust
+with their own customers. Honesty is a **property of the architecture**, not a setting
+the merchant could switch off.
+
+- **§12a — No data, no component.** A feature that has nothing real to show hides
+  itself; it never invents a plausible number. Won's social-proof feed only turns on
+  once real orders cross a threshold (`coldStartReady(orderCount, minOrders)`), and it
+  stores only a real first name + city + product title from an actual order — never a
+  synthesised persona.
+- **§12b — Every claim is traceable.** "N orders this week", "only N left" read from
+  real order/inventory counts. If you can't point at the row that makes a claim true,
+  the claim doesn't ship. Auto-promotion of an A/B winner fires only on a *measurable*
+  engagement win, "never fabricated" (guardrail service).
+- **§12c — The merchant can't turn honesty off.** There is no "make the counter look
+  bigger" toggle. Copy can be edited (§4), the underlying fact cannot be faked. Design
+  the data path so a dishonest state is *unrepresentable*, not merely discouraged.
+
+### §13 — Never dead-end — link to the fix
+Any screen that **diagnoses, blocks, or demands an action** must carry the merchant to
+the **exact control** that resolves it — a deep link, not "go to settings and look".
+The merchant should never have to hunt for where a problem is fixed.
+
+- **§13a — Diagnosis ships its own fix link.** Won's Insights doesn't say "check your
+  triggers"; each diagnosis carries an `action: { label, href }` that lands on the
+  precise control ("Fix targeting" → `/app/targeting`, "Turn on the app embed" →
+  `/app`), often deep-linked to the right sub-section (`?seg=timing`).
+- **§13b — Empty states and locked features point forward too.** An empty report links
+  to what will populate it; a banner links to its own resolution. A dead-end is a bug.
+- **§13c — Deep-link to the segment, not the page.** When the fix is one control inside
+  a tabbed page, link straight to that tab/segment so the merchant lands on it, not on
+  a page where they still have to search.
+
+### §14 — Reversible & non-destructive by default
+Merchants operate on a **live store** and fear breaking it. Every powerful action must
+be reversible and must **say so**, and "turn it off" must never mean "lose the setup".
+
+- **§14a — Off ≠ erased.** Quiet mode mutes every toast without discarding a single
+  setting; disabling a feature preserves its configuration for when it's switched back.
+- **§14b — A way back is always visible.** "Reset to default design", saved config
+  versions with restore (`listConfigVersions` / `restoreConfigVersion`) — the merchant
+  can always undo a bad exploration. Depth is safe to explore only because it's safe to
+  undo.
+- **§14c — Destructive actions announce themselves.** Anything that truly loses data
+  says what will be lost before it happens; the default path is the safe one.
+
+### §15 — The empty state teaches, it doesn't apologise
+"Honest on empty" (§5) forbids fake data; §15 adds the positive duty: a first-run /
+empty surface is **prime onboarding real estate**. Instead of a sad "no data yet", show
+what the merchant will see once it fills, and the one step that gets them there.
+
+- **§15a — Show the shape of success.** Explain what the first real order/event will
+  populate (a sample-labelled preview, "this is where 'N sold today' will appear"),
+  so the value is legible before any data exists.
+- **§15b — One clear next step.** An empty state offers exactly one action that starts
+  the flow (turn on the embed, place a test order), never a shrug.
+
+### §16 — Plan-gating that sells, not just locks
+A2 says never block Free; §16 governs *how the locked thing looks*. A Pro feature a
+Free merchant can't use must still be **visible and show its value** — a preview, an
+Effect Proof, the real UI behind a soft lock — so the gate is an invitation, not a
+grey wall.
+
+- **§16a — Locked ≠ hidden.** Keep the feature on screen with its Pro marker
+  (`ProFrame` soft-lock + amber `PlanBadge`), so the merchant sees exactly what they'd
+  get. A hidden feature can't be desired.
+- **§16b — The amber is the only plan signal.** Plan state rides the one amber code
+  (§11a); the lock never borrows the selection blue or status green.
+- **§16c — Show, don't just tell, the upside.** Where possible let the preview/proof of
+  the locked feature run, so the value is felt, not just described in an upsell string.
+
 ---
 
 ## Architecture decisions (cross-cutting)

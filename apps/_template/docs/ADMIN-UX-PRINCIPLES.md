@@ -429,6 +429,84 @@ jeden význam kreslí dvěma trochu jinými způsoby — rozhraní přestává b
 
 ---
 
+## 12. Poctivost je vlastnost architektury, ne nastavení
+
+Cokoli, co **shopper čte jako fakt o obchodě** — social proof, scarcity, countdowny,
+„N lidí koupilo", „už jen N kusů" — se musí vystopovat k **reálným store datům, nebo
+se nezobrazí vůbec**. Je to duše suite i tvrdé Shopify pravidlo přežití: fake urgency
+je dark pattern → rejection z App Store + spálená důvěra merchanta u jeho zákazníků.
+Poctivost je **vlastnost architektury**, ne přepínač, který by merchant mohl vypnout.
+
+- **§12a — Žádná data, žádná komponenta.** Feature, která nemá co reálného ukázat, se
+  schová; nikdy si nevymyslí věrohodné číslo. Won social-proof feed se zapne až když
+  reálné objednávky překročí práh (`coldStartReady(orderCount, minOrders)`) a ukládá
+  jen reálné křestní jméno + město + název produktu z opravdové objednávky — nikdy
+  syntetickou personu.
+- **§12b — Každé tvrzení je dohledatelné.** „N objednávek tento týden", „už jen N"
+  čtou z reálných order/inventory počtů. Když nedokážeš ukázat na řádek, který dělá
+  tvrzení pravdivým, tvrzení neshipuje. Auto-promote A/B vítěze jede jen na
+  *měřitelné* engagement výhře, „never fabricated" (guardrail).
+- **§12c — Merchant nemůže poctivost vypnout.** Neexistuje přepínač „udělej počítadlo
+  větší". Copy jde upravit (§4), podkladový fakt zfalšovat ne. Datovou cestu navrhni
+  tak, aby byl nepoctivý stav **nereprezentovatelný**, ne jen nedoporučený.
+
+## 13. Nikdy slepá ulička — nalinkuj přímo k fixu
+
+Každá obrazovka, která **diagnostikuje, blokuje nebo vyžaduje akci**, musí merchanta
+dovést na **přesný control**, který to vyřeší — deep-link, ne „jděte do nastavení a
+hledejte". Merchant nikdy nemá lovit, kde se problém opravuje.
+
+- **§13a — Diagnóza si nese vlastní fix-link.** Won Insights neřekne „zkontroluj
+  triggery"; každá diagnóza nese `action: { label, href }` mířící na přesný control
+  („Fix targeting" → `/app/targeting`, „Turn on the app embed" → `/app`), často
+  deep-linknuto na správnou pod-sekci (`?seg=timing`).
+- **§13b — Prázdné stavy a locked features taky ukazují dopředu.** Prázdný report
+  linkuje na to, co ho naplní; banner linkuje na své vlastní řešení. Slepá ulička = bug.
+- **§13c — Deep-link na segment, ne na stránku.** Když je fix jeden control uvnitř
+  tabované stránky, linkuj rovnou na ten tab/segment, ať tam merchant přistane, ne na
+  stránku, kde pořád hledá.
+
+## 14. Reverzibilní a nedestruktivní by default
+
+Merchant pracuje na **živém obchodě** a bojí se, že ho rozbije. Každá mocná akce musí
+být vratná a musí to **říct**, a „vypnout" nikdy nesmí znamenat „ztratit setup".
+
+- **§14a — Off ≠ smazáno.** Quiet mode ztlumí všechny toasty bez zahození jediného
+  nastavení; vypnutí feature zachová její konfiguraci pro chvíli, kdy se zase zapne.
+- **§14b — Cesta zpět je vždy vidět.** „Reset to default design", uložené verze konfigu
+  s restore (`listConfigVersions` / `restoreConfigVersion`) — merchant vždy vrátí špatný
+  experiment. Hloubka je bezpečná na prozkoumání jen proto, že je bezpečná na vrácení.
+- **§14c — Destruktivní akce se ohlásí.** Cokoli, co opravdu ztratí data, řekne co se
+  ztratí, ještě než se to stane; výchozí cesta je ta bezpečná.
+
+## 15. Prázdný stav učí, neomlouvá se
+
+„Honest on empty" (§5) zakazuje fake data; §15 přidává pozitivní povinnost: first-run /
+prázdná plocha je **prvotřídní onboarding prostor**. Místo smutného „zatím žádná data"
+ukaž, co merchant uvidí, až se to naplní, a ten jeden krok, který ho tam dostane.
+
+- **§15a — Ukaž tvar úspěchu.** Vysvětli, co naplní první reálná objednávka/event
+  (sample-označený preview, „sem přijde 'N prodáno dnes'"), ať je hodnota čitelná ještě
+  před tím, než existují data.
+- **§15b — Jeden jasný další krok.** Prázdný stav nabídne přesně jednu akci, která flow
+  nastartuje (zapni embed, udělej test objednávku), nikdy pokrčení rameny.
+
+## 16. Plan-gate, který prodává, ne jen zamyká
+
+A2 říká „neblokuj Free"; §16 řídí, *jak locked věc vypadá*. Pro feature, kterou Free
+merchant nemůže použít, musí být pořád **vidět a ukazovat svou hodnotu** — preview,
+Effect Proof, reálné UI za měkkým zámkem — ať je gate pozvánka, ne šedá zeď.
+
+- **§16a — Locked ≠ schované.** Nech feature na obrazovce s Pro markerem (`ProFrame`
+  soft-lock + jantarový `PlanBadge`), ať merchant vidí přesně, co by dostal. Schovanou
+  feature si nelze přát.
+- **§16b — Jantarová je jediný plan signál.** Stav plánu jede na jednom jantarovém kódu
+  (§11a); zámek si nikdy nepůjčuje selection modrou ani status zelenou.
+- **§16c — Ukaž, neříkej jen, upside.** Kde to jde, nech preview/proof locked feature
+  běžet, ať je hodnota cítit, ne jen popsaná v upsell stringu.
+
+---
+
 ## Řemeslné invarianty (nemění se)
 
 ### 1. Nativní Polaris, nikdy surové HTML
