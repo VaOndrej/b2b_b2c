@@ -95,12 +95,37 @@
     z-index: 3;
   }
   .won-shop__pin:hover .won-shop__card,
-  .won-shop__pin:focus-within .won-shop__card { opacity: 1; visibility: visible; pointer-events: auto; }
+  .won-shop__pin:focus-within .won-shop__card,
+  .won-shop__pin.is-open .won-shop__card { opacity: 1; visibility: visible; pointer-events: auto; }
+  .won-shop__pin.is-open .won-shop__dot > span { transform: scale(1.12); }
   .won-shop__card-img { inline-size: 48px; block-size: 48px; object-fit: cover; border-radius: var(--won-radius-sm); flex: 0 0 auto; }
   .won-shop__card-info { display: flex; flex-direction: column; gap: 2px; text-align: start; }
   .won-shop__card-title { font-weight: 600; font-size: 0.9rem; line-height: 1.2; }
   .won-shop__card-price { color: var(--won-accent); font-weight: 700; font-size: 0.9rem; }
 {% endstylesheet %}
+
+{% javascript %}
+  // Touch tap-to-preview: on devices without hover, the first tap on a hotspot
+  // opens its product card; a second tap follows the link. Pointer devices keep
+  // the pure-CSS :hover reveal (this handler no-ops there).
+  (function () {
+    if (window.matchMedia('(hover: hover)').matches) return;
+    document.addEventListener('click', function (e) {
+      var dot = e.target.closest('.won-shop__dot');
+      var pin = dot ? dot.closest('.won-shop__pin') : null;
+      // Close any other open hotspot.
+      document.querySelectorAll('.won-shop__pin.is-open').forEach(function (p) {
+        if (p !== pin) p.classList.remove('is-open');
+      });
+      if (!dot) return;
+      // First tap reveals the card; a second tap on an already-open pin navigates.
+      if (!pin.classList.contains('is-open')) {
+        e.preventDefault();
+        pin.classList.add('is-open');
+      }
+    });
+  })();
+{% endjavascript %}
 
 {% schema %}
 {
