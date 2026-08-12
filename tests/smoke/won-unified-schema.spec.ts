@@ -115,3 +115,49 @@ test('hide_mobile / hide_desktop live only under the Visibility group', () => {
   }
   expect(offenders, offenders.join('\n')).toEqual([]);
 });
+
+// Shopify schema-validity rules that JSON.parse does NOT catch but the theme
+// upload rejects (learned the hard way 2026-08-12): every `range` setting must
+// span 3–101 steps and its default must land on the (min, step) grid; a `render`
+// tag argument may not carry a `|` filter. Scans composed sections AND blocks.
+const DIST_ROOT = join(process.cwd(), 'themes', 'dist', 'horizon-dev');
+
+function liquidFiles(sub: string): string[] {
+  const dir = join(DIST_ROOT, sub);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).filter((f) => f.startsWith('won-') && f.endsWith('.liquid')).map((f) => join(dir, f));
+}
+
+test('every range setting spans 3–101 steps with an on-grid default', () => {
+  const bad: string[] = [];
+  for (const file of [...liquidFiles('sections'), ...liquidFiles('blocks')]) {
+    const m = readFileSync(file, 'utf8').match(SCHEMA_RE);
+    if (!m) continue;
+    let schema: { settings?: Setting[]; blocks?: { settings?: Setting[] }[] };
+    try { schema = JSON.parse(m[1]); } catch { continue; }
+    const all: any[] = [...(schema.settings || [])];
+    for (const b of schema.blocks || []) all.push(...(b.settings || []));
+    const name = file.split('/').pop();
+    for (const s of all) {
+      if (!s || s.type !== 'range') continue;
+      const steps = (s.max - s.min) / s.step + 1;
+      if (steps < 3) bad.push(`${name}: range ${s.id} has ${steps} steps (<3)`);
+      else if (steps > 101) bad.push(`${name}: range ${s.id} has ${steps} steps (>101)`);
+      if (((s.default - s.min) / s.step) % 1 !== 0) bad.push(`${name}: range ${s.id} default ${s.default} is off the (min ${s.min}, step ${s.step}) grid`);
+    }
+  }
+  expect(bad, bad.join('\n')).toEqual([]);
+});
+
+test('no render tag passes a filtered argument', () => {
+  const bad: string[] = [];
+  const RENDER = /{%-?\s*render\s+[^%]*%}/g;
+  for (const file of [...liquidFiles('sections'), ...liquidFiles('blocks'), ...liquidFiles('snippets')]) {
+    const src = readFileSync(file, 'utf8');
+    let m: RegExpExecArray | null;
+    while ((m = RENDER.exec(src))) {
+      if (/:\s*[\w.]+\s*\|/.test(m[0])) bad.push(`${file.split('/').pop()}: ${m[0].slice(0, 80)}`);
+    }
+  }
+  expect(bad, bad.join('\n')).toEqual([]);
+});
