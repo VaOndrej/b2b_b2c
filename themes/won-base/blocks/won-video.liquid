@@ -6,7 +6,7 @@ optional heading. Self-contained; for PDP or any section accepting theme blocks.
 {% enddoc %}
 
 {%- assign s = block.settings -%}
-<div class="won-video" style="--won-video-ratio: {{ s.aspect }};" {{ block.shopify_attributes }}>
+<div class="won-video" style="--won-video-ratio: {{ s.aspect_ratio | default: s.aspect }};" {{ block.shopify_attributes }}>
   {%- if s.heading != blank -%}<p class="won-video__heading">{{ s.heading }}</p>{%- endif -%}
   <div class="won-video__frame">
     {%- if s.video_type == 'external' and s.video_url != blank -%}
@@ -44,7 +44,7 @@ optional heading. Self-contained; for PDP or any section accepting theme blocks.
     { "type": "video_url", "id": "video_url", "label": "t:won.settings.video_url", "accept": ["youtube", "vimeo"], "visible_if": "{{ block.settings.video_type == 'external' }}" },
     { "type": "header", "content": "t:won.headers.layout" },
     {
-      "type": "select", "id": "aspect", "label": "t:won.settings.card_aspect",
+      "type": "select", "id": "aspect_ratio", "label": "t:won.settings.card_aspect",
       "options": [
         { "value": "16/9", "label": "16:9" },
         { "value": "4/3", "label": "4:3" },

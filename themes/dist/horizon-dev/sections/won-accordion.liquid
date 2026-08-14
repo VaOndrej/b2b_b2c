@@ -1,3 +1,4 @@
+{%- comment -%} DEPRECATED: preset stripped, not in the Add-section picker. Superseded by won-panels (accordion / faq presets). Kept for back-compat rendering only — do not add new settings here. {%- endcomment -%}
 {%- assign s = section.settings -%}
 <section
   class="won-section color-{{ s.color_scheme }}"
@@ -22,9 +23,7 @@
             <div class="won-acc__contact">
               {%- if s.contact_heading != blank -%}<p class="won-acc__contact-heading">{{ s.contact_heading }}</p>{%- endif -%}
               {%- if s.contact_text != blank -%}<div class="rte">{{ s.contact_text }}</div>{%- endif -%}
-              {%- if s.contact_button_label != blank -%}
-                <a class="won-btn won-btn--secondary" {% if s.contact_button_link != blank %}href="{{ s.contact_button_link }}"{% endif %}>{{ s.contact_button_label }}</a>
-              {%- endif -%}
+              {% render 'won-button', label: s.contact_button_label, link: s.contact_button_link, style: 'secondary' %}
             </div>
           {%- endif -%}
         </div>

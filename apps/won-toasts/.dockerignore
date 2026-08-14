@@ -1,0 +1,18 @@
+# Context = repo root. Trim everything the app build doesn't need.
+# Keep: package.json/lock, packages/*, apps/*/package.json, apps/won-toasts/**.
+**/node_modules
+.git
+.github
+themes
+docs
+tmp
+**/test-results
+**/playwright-report
+**/dist
+**/build
+**/.env
+**/.env.*
+**/*.sqlite
+**/*.sqlite-journal
+**/*.log
+.DS_Store

@@ -1,0 +1,30 @@
+# Won Toasts — Fly.io. Deploy from the REPO ROOT:
+#   fly deploy -c apps/won-toasts/fly.toml
+#
+# Rename `app` to your real Fly app name and set `primary_region`.
+app = "won-toasts"
+primary_region = "fra"   # Frankfurt (EU). `fly platform regions` to list.
+
+[build]
+  dockerfile = "apps/won-toasts/Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+  HOST = "0.0.0.0"
+
+# Apply DB migrations once, before each release rolls out.
+[deploy]
+  release_command = "sh -c 'cd /repo/apps/won-toasts && npx prisma migrate deploy'"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # Shopify apps must stay reachable for OAuth + webhooks — keep one warm.
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"   # bump to 1gb if the build/runtime OOMs

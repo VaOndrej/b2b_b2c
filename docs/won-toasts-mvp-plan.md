@@ -746,3 +746,35 @@ experiment engine v MVP, headless podpora v MVP, per-zákazník ML personalizace
 (Detailní `pole → typ → default → admin control → MVP` per Behavior / Grouping /
 Appearance / Events / Targeting — viz git historie v1 tohoto souboru; v2 je
 přeskupila do vrstev `global` / `theme` / `rules`, hodnoty a defaulty zůstávají.)
+
+---
+
+## Definition of Done (2026-08-13)
+
+**Rámec:** Won Toasts je **pilot** — dokazuje build-harness (billing, app-block/embed,
+`@won/core`, GDPR webhooky, admin patterny), ne flagship. „Hotovo" definují **dvě brány +
+hands-off běh**, NE feature-parita s Vitals/Fera. Strategický kontext: [`severka.html`](severka.html)
+(Vlna 0). Kód projít review 2026-08-13 (reálný stav, ne paměť).
+
+**Skutečný diferenciátor Toasts** = poctivost + akční cart/milestone/free-ship vrstva +
+no-fabrication cold-start. NE social proof (komodita) ani experiment engine (přebudováno na pilot).
+
+### Done-linka (jediné reálné blokery)
+
+| MVP | Co | Stav |
+|---|---|---|
+| **F1 — Zelená release gate** | Červené E2E (a11y `role=status` + geometry overflow/pozice/touch-target) zelené. | **Fast gates ZELENÉ** (2026-08-13: core 290+18, app unit 75, contract build/parity/perf/theme-extension, typecheck — 0 fail, 0 skip). E2E **nelze ověřit headless** — vyžaduje živý `shopify theme dev` + `SHOPIFY_E2E_STOREFRONT_BASE_URL`. Red artefakty z 12.8. 17:04 zastaralé; HEAD 18:38 „all passing on fresh theme+app run". → **Akce: 1× spustit `test:e2e -w won-toasts` lokálně proti `b2b-b2c-store-development`** = autoritativní potvrzení F1. |
+| **F2 — Hands-off na reálném storu** | Nasadit na 1 klientský store, běžet týdny bez zásahu; ověřit **reálný billing charge flow** (v dev je bypass) + resolve configu + správné střílení toastů. | otevřené — nejpravdivější test „done". |
+| **F3 — Rozhodnout order-data linku** | Vědomě: (a) shipnout core BEZ live social proof/agregátů + Partner protected-data approval paralelně → `orders/create` zapnout po approvalu; NEBO (b) máš-li approval, odkomentovat webhook (`shopify.app.toml:45`) → social proof + agregáty poctivě naživo. Cold-start nikdy nefabrikuje (nakódováno). | **ROZHODNUTO 2026-08-13: cesta (a)** — shipnout core BEZ order-data featur (social proof + agregáty vypnuté, `orders/create` zůstává zakomentovaný, žádná PII scope navíc). Partner protected-data approval řešit paralelně; webhook odkomentovat, až approval přijde. **Social proof = fast-follow, ne done-blocker.** |
+
+### PARK — explicitně NE done-blockery (stop gold-platingu)
+
+- **Experimenty / holdout / A-B / auto-rollback + AI-advisor v2** — postaveno + otestováno, leží
+  mrtvé za zakomentovaným `orders/create` (`EXPERIMENTS_LIVE_TICK_WIRED=false`). **Zaparkovat** —
+  rozsvítí se až s reálným order-volume + důvodem. (Shoduje se s „Vědomě NEimplementovat: plný
+  enterprise experiment engine v MVP".)
+- **Akční CTA §4** (Vybrat dárek, +1 ks do slevy) — nice-to-have; **Undo stačí** jako důkaz akčního toastu.
+- **Extrakce billingu do `app-kit`** — až u **app #2** (extract-on-second-use), ne teď.
+- **ai-advisor v1** — už deferred, nech mrtvý / smaž.
+- **Housekeeping (ne blocker):** srovnat tento plán s kódem (plán tvrdí „per-currency práh NENÍ",
+  kód ho má; event-icon parity možná už opravena).

@@ -82,12 +82,8 @@
         {%- endif -%}
         {%- if s.button_label != blank or s.button2_label != blank -%}
           <div class="won-band__actions">
-            {%- if s.button_label != blank -%}
-              <a class="won-btn won-btn--{{ s.button_style }}" {% if s.button_link != blank %}href="{{ s.button_link }}"{% endif %}>{{ s.button_label }}</a>
-            {%- endif -%}
-            {%- if s.button2_label != blank -%}
-              <a class="won-btn won-btn--{{ s.button2_style }}" {% if s.button2_link != blank %}href="{{ s.button2_link }}"{% endif %}>{{ s.button2_label }}</a>
-            {%- endif -%}
+            {% render 'won-button', label: s.button_label, link: s.button_link, style: s.button_style, new_tab: s.buttons_new_tab %}
+            {% render 'won-button', label: s.button2_label, link: s.button2_link, style: s.button2_style, new_tab: s.buttons_new_tab %}
           </div>
         {%- endif -%}
         {% content_for 'blocks' %}
@@ -208,6 +204,7 @@
       ],
       "default": "secondary"
     },
+    { "type": "checkbox", "id": "buttons_new_tab", "label": "t:won.settings.button_new_tab", "info": "t:won.info.button_new_tab", "default": false },
     { "type": "header", "content": "t:won.headers.media" },
     {
       "type": "select", "id": "media_type", "label": "t:won.settings.media_type",

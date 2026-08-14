@@ -497,7 +497,6 @@
         "head_link_label": "Zobrazit vše",
         "head_link_url": "shopify://collections/automated-collection",
         "layout": "slider",
-        "columns": 4,
         "columns_tablet": 2,
         "columns_mobile": "1.2",
         "gap": 16,
@@ -509,7 +508,8 @@
         "show_progress": true,
         "color_scheme": "scheme-1",
         "padding_top": 48,
-        "padding_bottom": 48
+        "padding_bottom": 48,
+        "columns_desktop": 4
       }
     },
     "sticky": {

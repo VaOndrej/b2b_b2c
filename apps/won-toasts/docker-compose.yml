@@ -1,0 +1,23 @@
+# Local Postgres for `shopify app dev` (dev/prod parity — the app now runs on
+# Postgres, not SQLite). Start it with: docker compose up -d db
+# Then DATABASE_URL="postgresql://won:won@localhost:5432/won_toasts?schema=public"
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: won
+      POSTGRES_PASSWORD: won
+      POSTGRES_DB: won_toasts
+    ports:
+      - "5432:5432"
+    volumes:
+      - won_toasts_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U won -d won_toasts"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  won_toasts_pgdata:

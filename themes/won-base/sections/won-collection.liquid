@@ -6,7 +6,7 @@
   style="{% render 'won-spacing', settings: s %}"
   data-testid="won-collection-section"
 >
-  <div class="won-container won-collection">
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-collection">
     {%- if s.show_title -%}
       <div class="won-collection__head">
         <h1 class="won-heading won-collection__title">{{ collection.title }}</h1>
@@ -168,6 +168,14 @@
     { "type": "text", "id": "ppu_metafield", "label": "t:won.settings.ppu_metafield", "info": "t:won.info.ppu_metafield", "visible_if": "{{ section.settings.show_card_ppu }}" },
     { "type": "header", "content": "t:won.headers.appearance" },
     { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
+    {
+      "type": "select", "id": "section_width", "label": "t:won.settings.section_width", "info": "t:won.info.section_width",
+      "options": [
+        { "value": "page", "label": "t:won.options.width_page" },
+        { "value": "full", "label": "t:won.options.width_full" }
+      ],
+      "default": "page"
+    },
     { "type": "header", "content": "t:won.headers.spacing" },
     { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 40 },
     { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 }

@@ -46,11 +46,14 @@ api_version = "2026-10"
   # uri = "/webhooks/orders/create"
 
 [access_scopes]
-# Minimum scopes (API-2). write_products: MVP popularity metafields (implies read).
-# read_themes: MVP6 app-embed detection (theme settings_data.json). read_orders:
-# order.summary + popularity (line-item product/quantity, createdAt).
-# (read_products removed — no standalone product read; write_products covers it.)
-scopes = "write_products,read_themes,read_orders"
+# Minimum scopes (API-2). Path A launch (2026-08-13): only read_themes — MVP6
+# app-embed auto-detection from config/settings_data.json (gracefully optional;
+# without it the merchant enables the embed manually).
+# write_products + read_orders are DEFERRED together with every order/product-data
+# feature (order.summary, social proof, popularity metafields) — all of which need
+# "Protected customer data access" approved in the Partner Dashboard. Re-add both
+# once granted to light those up together (also uncomment the orders/create block).
+scopes = "read_themes"
 
 [auth]
 redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]

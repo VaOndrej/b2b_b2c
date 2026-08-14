@@ -10,7 +10,7 @@
     assign items_count = section.blocks.size
   endif
 
-  assign cols = s.columns
+  assign cols = s.columns_desktop | default: s.columns
   if items_count > 0 and items_count < cols
     assign cols = items_count
   endif
@@ -63,7 +63,7 @@
 
       {%- if s.layout == 'slider' -%}
         {%- if s.show_arrows -%}
-          <div class="won-carousel__arrows">
+          <div class="won-carousel__arrows" data-won-arrows>
             <button type="button" class="won-carousel__arrow" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
             <button type="button" class="won-carousel__arrow" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
           </div>
@@ -131,6 +131,7 @@
   }
 
   .won-carousel__arrows { display: flex; gap: var(--won-space-2); justify-content: flex-end; margin-top: var(--won-space-3); }
+  .won-carousel__arrows[hidden] { display: none; }
   .won-carousel__arrow {
     inline-size: 44px; block-size: 44px; border-radius: var(--won-radius-pill);
     border: 1px solid var(--won-border); background: var(--won-bg); color: var(--won-fg);
@@ -226,7 +227,7 @@
     { "type": "text", "id": "head_link_label", "label": "t:won.settings.head_link_label" },
     { "type": "url", "id": "head_link_url", "label": "t:won.settings.head_link_url" },
     { "type": "header", "content": "t:won.headers.layout" },
-    { "type": "range", "id": "columns", "label": "t:won.settings.columns_desktop", "min": 1, "max": 6, "step": 1, "default": 4 },
+    { "type": "range", "id": "columns_desktop", "label": "t:won.settings.columns_desktop", "min": 1, "max": 6, "step": 1, "default": 4 },
     { "type": "range", "id": "columns_tablet", "label": "t:won.settings.columns_tablet", "min": 1, "max": 4, "step": 1, "default": 2 },
     {
       "type": "select", "id": "columns_mobile", "label": "t:won.settings.columns_mobile",
@@ -287,18 +288,18 @@
     {
       "name": "t:won.presets.product_carousel",
       "category": "t:won.categories.products",
-      "settings": { "source": "collection", "layout": "slider", "columns": 4, "heading": "<p>Bestsellers</p>" }
+      "settings": { "source": "collection", "layout": "slider", "columns_desktop": 4, "heading": "<p>Bestsellers</p>" }
     },
     {
       "name": "t:won.presets.content_slider",
       "category": "t:won.categories.content",
-      "settings": { "source": "manual", "layout": "slider", "columns": 3 },
+      "settings": { "source": "manual", "layout": "slider", "columns_desktop": 3 },
       "blocks": [{ "type": "won-slide" }, { "type": "won-slide" }, { "type": "won-slide" }]
     },
     {
       "name": "t:won.presets.logo_marquee",
       "category": "t:won.categories.content",
-      "settings": { "source": "manual", "layout": "marquee", "columns": 6, "show_arrows": false, "show_progress": false },
+      "settings": { "source": "manual", "layout": "marquee", "columns_desktop": 6, "show_arrows": false, "show_progress": false },
       "blocks": [{ "type": "won-slide" }, { "type": "won-slide" }, { "type": "won-slide" }, { "type": "won-slide" }, { "type": "won-slide" }, { "type": "won-slide" }]
     }
   ]

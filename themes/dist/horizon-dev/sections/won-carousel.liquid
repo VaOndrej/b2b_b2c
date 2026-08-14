@@ -10,7 +10,7 @@
     assign items_count = section.blocks.size
   endif
 
-  assign cols = s.columns
+  assign cols = s.columns_desktop | default: s.columns
   if items_count > 0 and items_count < cols
     assign cols = items_count
   endif
@@ -64,7 +64,7 @@
 
       {%- if s.layout == 'slider' -%}
         {%- if s.show_arrows -%}
-          <div class="won-carousel__arrows">
+          <div class="won-carousel__arrows" data-won-arrows>
             <button type="button" class="won-carousel__arrow" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
             <button type="button" class="won-carousel__arrow" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
           </div>
@@ -132,6 +132,7 @@
   }
 
   .won-carousel__arrows { display: flex; gap: var(--won-space-2); justify-content: flex-end; margin-top: var(--won-space-3); }
+  .won-carousel__arrows[hidden] { display: none; }
   .won-carousel__arrow {
     inline-size: 44px; block-size: 44px; border-radius: var(--won-radius-pill);
     border: 1px solid var(--won-border); background: var(--won-bg); color: var(--won-fg);
@@ -354,7 +355,7 @@
     },
     {
       "type": "range",
-      "id": "columns",
+      "id": "columns_desktop",
       "label": "t:won.settings.columns_desktop",
       "min": 1,
       "max": 6,
@@ -867,7 +868,7 @@
       "settings": {
         "source": "collection",
         "layout": "slider",
-        "columns": 4,
+        "columns_desktop": 4,
         "heading": "<p>Bestsellers</p>"
       }
     },
@@ -877,7 +878,7 @@
       "settings": {
         "source": "manual",
         "layout": "slider",
-        "columns": 3
+        "columns_desktop": 3
       },
       "blocks": [
         {
@@ -897,10 +898,30 @@
       "settings": {
         "source": "manual",
         "layout": "marquee",
-        "columns": 6,
+        "columns_desktop": 6,
         "show_arrows": false,
         "show_progress": false
-      }
+      },
+      "blocks": [
+        {
+          "type": "won-slide"
+        },
+        {
+          "type": "won-slide"
+        },
+        {
+          "type": "won-slide"
+        },
+        {
+          "type": "won-slide"
+        },
+        {
+          "type": "won-slide"
+        },
+        {
+          "type": "won-slide"
+        }
+      ]
     }
   ]
 }

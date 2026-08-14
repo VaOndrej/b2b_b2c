@@ -11,7 +11,10 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  // Postgres (fan-out ready): survives restarts, multiple app instances, backups.
+  // Json fields map to native jsonb. Local dev uses the docker-compose Postgres
+  // (see docker-compose.yml); prod uses the managed Postgres DATABASE_URL.
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

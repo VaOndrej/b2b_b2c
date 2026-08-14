@@ -7,7 +7,7 @@
   data-testid="won-collection-section"
 >
   {% render 'won-guard', settings: s %}
-  <div class="won-container won-collection">
+  <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-collection">
     {%- if s.show_title -%}
       <div class="won-collection__head">
         <h1 class="won-heading won-collection__title">{{ collection.title }}</h1>
@@ -322,6 +322,23 @@
       "id": "color_scheme",
       "label": "t:won.settings.color_scheme",
       "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "t:won.settings.section_width",
+      "info": "t:won.info.section_width",
+      "options": [
+        {
+          "value": "page",
+          "label": "t:won.options.width_page"
+        },
+        {
+          "value": "full",
+          "label": "t:won.options.width_full"
+        }
+      ],
+      "default": "page"
     },
     {
       "type": "range",

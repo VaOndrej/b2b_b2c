@@ -12,7 +12,7 @@
     "predev": "npm run build:storefront",
     "dev": "shopify app dev --path .",
     "prisma:generate": "prisma generate",
-    "prisma:migrate:deploy": "node ./scripts/ensure-sqlite-db.mjs && prisma migrate deploy",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "setup": "npm run prisma:generate && npm run prisma:migrate:deploy",
     "start": "react-router-serve ./build/server/index.js",
     "config:link": "shopify app config link --path .",

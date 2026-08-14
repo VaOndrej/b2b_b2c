@@ -3,18 +3,36 @@
     "main": {
       "type": "won-collection",
       "settings": {
-        "show_title": true, "show_description": true,
-        "show_filters": true, "show_sort": true,
-        "columns_desktop": 4, "columns_tablet": 3, "columns_mobile": "2",
-        "per_page": 24, "card_aspect": "portrait",
-        "show_card_ppu": true, "ppu_base": "per_serving", "ppu_amount": 33,
-        "color_scheme": "scheme-1", "padding_top": 40, "padding_bottom": 56
+        "show_title": true,
+        "show_description": true,
+        "show_filters": true,
+        "show_sort": true,
+        "columns_desktop": 4,
+        "columns_tablet": 3,
+        "columns_mobile": "2",
+        "per_page": 24,
+        "card_aspect": "portrait",
+        "show_card_ppu": true,
+        "ppu_base": "per_serving",
+        "ppu_amount": 33,
+        "color_scheme": "scheme-1",
+        "padding_top": 40,
+        "padding_bottom": 56
       }
     },
     "newsletter": {
       "type": "won-newsletter",
-      "settings": { "heading": "<p>Nezmeškej akce</p>", "content_align": "center", "color_scheme": "scheme-2", "padding_top": 56, "padding_bottom": 56 }
+      "settings": {
+        "heading": "<p>Nezmeškej akce</p>",
+        "content_align": "center",
+        "color_scheme": "scheme-2",
+        "padding_top": 56,
+        "padding_bottom": 56
+      }
     }
   },
-  "order": ["main", "newsletter"]
+  "order": [
+    "main",
+    "newsletter"
+  ]
 }

@@ -16,10 +16,10 @@
             "media_type": "image",
             "image_asset": "won-promo-1.png",
             "media_position": "background",
-            "alignment": "left",
             "headline_annotation": "underline",
             "min_height": 420,
-            "corner_radius": 20
+            "corner_radius": 20,
+            "content_align": "left"
           }
         },
         "s2": {
@@ -35,9 +35,9 @@
             "media_type": "image",
             "image_asset": "won-promo-2.png",
             "media_position": "background",
-            "alignment": "left",
             "min_height": 420,
-            "corner_radius": 20
+            "corner_radius": 20,
+            "content_align": "left"
           }
         },
         "s3": {
@@ -53,9 +53,9 @@
             "media_type": "image",
             "image_asset": "won-promo-3.png",
             "media_position": "background",
-            "alignment": "left",
             "min_height": 420,
-            "corner_radius": 20
+            "corner_radius": 20,
+            "content_align": "left"
           }
         },
         "s4": {
@@ -70,9 +70,9 @@
             "button_style": "primary",
             "media_type": "none",
             "background_gradient": "linear-gradient(135deg, #fef3c7, #fbcfe8, #ddd6fe)",
-            "alignment": "left",
             "min_height": 420,
-            "corner_radius": 20
+            "corner_radius": 20,
+            "content_align": "left"
           }
         }
       },
@@ -159,8 +159,8 @@
       "settings": {
         "heading": "<p>Nakupuj přímo z fotky</p>",
         "image_asset": "won-hero-product.png",
-        "aspect_ratio": "wide",
-        "color_scheme": "scheme-1"
+        "color_scheme": "scheme-1",
+        "card_aspect": "landscape"
       }
     },
     "usp_marquee": {
@@ -220,10 +220,10 @@
             "button_link": "shopify://collections/vitaminy-mineraly",
             "button_style": "primary",
             "card_style": "minimal",
-            "alignment": "left",
             "inherit_color_scheme": false,
             "color_scheme": "scheme-5",
-            "toggle_overlay": false
+            "toggle_overlay": false,
+            "content_align": "left"
           }
         },
         "p2": {
@@ -240,10 +240,10 @@
             "button_link": "shopify://collections/kreatin-aminokyseliny",
             "button_style": "primary",
             "card_style": "minimal",
-            "alignment": "left",
             "inherit_color_scheme": false,
             "color_scheme": "scheme-5",
-            "toggle_overlay": false
+            "toggle_overlay": false,
+            "content_align": "left"
           }
         },
         "p3": {
@@ -260,10 +260,10 @@
             "button_link": "shopify://collections/proteiny",
             "button_style": "primary",
             "card_style": "minimal",
-            "alignment": "left",
             "inherit_color_scheme": false,
             "color_scheme": "scheme-5",
-            "toggle_overlay": false
+            "toggle_overlay": false,
+            "content_align": "left"
           }
         },
         "p4": {
@@ -280,10 +280,10 @@
             "button_link": "shopify://collections/kreatin-aminokyseliny",
             "button_style": "primary",
             "card_style": "minimal",
-            "alignment": "left",
             "inherit_color_scheme": false,
             "color_scheme": "scheme-5",
-            "toggle_overlay": false
+            "toggle_overlay": false,
+            "content_align": "left"
           }
         }
       },
@@ -297,7 +297,6 @@
         "source": "manual",
         "heading": "",
         "layout": "slider",
-        "columns": 4,
         "columns_tablet": 2,
         "columns_mobile": "1.15",
         "gap": 16,
@@ -306,7 +305,8 @@
         "show_progress": true,
         "color_scheme": "scheme-1",
         "padding_top": 28,
-        "padding_bottom": 12
+        "padding_bottom": 12,
+        "columns_desktop": 4
       }
     },
     "hero": {
@@ -332,8 +332,8 @@
             "media_position": "background",
             "toggle_overlay": false,
             "overlay_color": "#00000059",
-            "alignment": "left",
-            "min_height": 620
+            "min_height": 620,
+            "content_align": "left"
           }
         }
       },
@@ -470,7 +470,6 @@
         "head_link_label": "Zobrazit vše",
         "head_link_url": "shopify://collections/automated-collection",
         "layout": "slider",
-        "columns": 4,
         "columns_tablet": 2,
         "columns_mobile": "1.2",
         "gap": 16,
@@ -483,7 +482,8 @@
         "show_dots": true,
         "color_scheme": "scheme-1",
         "padding_top": 48,
-        "padding_bottom": 48
+        "padding_bottom": 48,
+        "columns_desktop": 4
       }
     },
     "cta": {
@@ -571,7 +571,6 @@
         "source": "manual",
         "heading": "<p>Co říkají zákazníci</p>",
         "layout": "slider",
-        "columns": 3,
         "columns_tablet": 2,
         "columns_mobile": "1.2",
         "gap": 16,
@@ -579,7 +578,8 @@
         "show_progress": true,
         "color_scheme": "scheme-1",
         "padding_top": 48,
-        "padding_bottom": 48
+        "padding_bottom": 48,
+        "columns_desktop": 3
       }
     },
     "faq": {
@@ -655,9 +655,9 @@
             "heading": "<p>NUTREND</p>",
             "text": "",
             "media_type": "none",
-            "alignment": "center",
             "min_height": 40,
-            "heading_size_desktop": 22
+            "heading_size_desktop": 22,
+            "content_align": "center"
           }
         },
         "b2": {
@@ -666,9 +666,9 @@
             "heading": "<p>Optimum</p>",
             "text": "",
             "media_type": "none",
-            "alignment": "center",
             "min_height": 40,
-            "heading_size_desktop": 22
+            "heading_size_desktop": 22,
+            "content_align": "center"
           }
         },
         "b3": {
@@ -677,9 +677,9 @@
             "heading": "<p>Amix</p>",
             "text": "",
             "media_type": "none",
-            "alignment": "center",
             "min_height": 40,
-            "heading_size_desktop": 22
+            "heading_size_desktop": 22,
+            "content_align": "center"
           }
         },
         "b4": {
@@ -688,9 +688,9 @@
             "heading": "<p>BioTech</p>",
             "text": "",
             "media_type": "none",
-            "alignment": "center",
             "min_height": 40,
-            "heading_size_desktop": 22
+            "heading_size_desktop": 22,
+            "content_align": "center"
           }
         },
         "b5": {
@@ -699,9 +699,9 @@
             "heading": "<p>GymBeam</p>",
             "text": "",
             "media_type": "none",
-            "alignment": "center",
             "min_height": 40,
-            "heading_size_desktop": 22
+            "heading_size_desktop": 22,
+            "content_align": "center"
           }
         },
         "b6": {
@@ -710,9 +710,9 @@
             "heading": "<p>Reflex</p>",
             "text": "",
             "media_type": "none",
-            "alignment": "center",
             "min_height": 40,
-            "heading_size_desktop": 22
+            "heading_size_desktop": 22,
+            "content_align": "center"
           }
         }
       },
@@ -727,14 +727,14 @@
       "settings": {
         "source": "manual",
         "layout": "marquee",
-        "columns": 6,
         "show_arrows": false,
         "show_progress": false,
         "show_dots": false,
         "heading": "<p>Značky, kterým věříme</p>",
         "color_scheme": "scheme-2",
         "padding_top": 24,
-        "padding_bottom": 24
+        "padding_bottom": 24,
+        "columns_desktop": 6
       }
     },
     "newsletter": {

@@ -38,7 +38,30 @@
   /* Motion */
   --won-dur: 240ms;
   --won-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* Minimum tap target (a11y floor for interactive controls — never smaller) */
+  --won-tap: 44px;
+
+  /* Shadow scale — mirrors won-style-vars.liquid shadow select (sm/md/lg) so an
+     inline --won-shadow override and these class-level shadows stay in sync. */
+  --won-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --won-shadow-md: 0 6px 18px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
+  --won-shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.16), 0 6px 14px rgba(0, 0, 0, 0.08);
+
+  /* Status colours (badges, add-to-cart confirm) */
+  --won-info: #1e66f5;
+  --won-success: #1e8e3e;
 }
+
+/* ── Breakpoint canon ────────────────────────────────────────────────────────
+   CSS custom properties can't be used inside @media, so this is the single
+   documented source of truth — every won @media MUST use one of these values,
+   never 768/1000/other ad-hoc boundaries:
+     mobile    < 750px   (main split; pair as max-width:749px / min-width:750px)
+     tablet-up ≥ 990px   (desktop padding, tablet→desktop column bumps)
+     wide-up   ≥ 1024px  (hover affordances, "fits"/centering)
+   Keep won-carousel.liquid / won-collection.liquid / won-tabbed-rail.liquid JS
+   `matchMedia` thresholds aligned to 750 / 990 / 1024. ──────────────────────── */
 
 .won-container {
   width: min(100% - (2 * var(--won-gutter)), var(--won-container-wide));
@@ -175,7 +198,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--won-space-2);
-  min-block-size: 44px; /* WCAG 2.5.5 tap target */
+  min-block-size: var(--won-tap); /* WCAG 2.5.5 tap target */
   padding: 0.7em 1.2em;
   border-radius: var(--won-radius-pill);
   font: inherit;
@@ -215,8 +238,8 @@
   background: color-mix(in oklab, var(--won-fg) 8%, var(--won-bg)); color: var(--won-fg);
 }
 .won-badge--sale { background: var(--won-accent); color: var(--won-accent-contrast); }
-.won-badge--new { background: #1e66f5; color: #fff; }
-.won-badge--eco { background: #1e8e3e; color: #fff; }
+.won-badge--new { background: var(--won-info); color: #fff; }
+.won-badge--eco { background: var(--won-success); color: #fff; }
 
 /* Product card — shared by carousel, PLP, search, cross-sell (see
    snippets/won-product-card). Quick-add pill: hover-reveal on desktop, always
@@ -248,19 +271,19 @@
   position: absolute; inset-block-end: var(--won-space-3); inset-inline-end: var(--won-space-3);
   display: inline-flex; align-items: center; justify-content: center; gap: var(--won-space-2);
   max-inline-size: calc(100% - 2 * var(--won-space-3));
-  min-block-size: 44px; /* WCAG 2.5.5 tap target */
+  min-block-size: var(--won-tap); /* WCAG 2.5.5 tap target */
   padding: 0.6em 1em; border: 0; border-radius: var(--won-radius-pill);
   background: var(--won-accent); color: var(--won-accent-contrast);
   font: inherit; font-weight: 600; font-size: 0.9rem; line-height: 1.1;
   text-decoration: none; cursor: pointer; white-space: nowrap;
-  box-shadow: 0 4px 14px color-mix(in oklab, var(--won-fg) 20%, transparent);
+  box-shadow: var(--won-shadow-md);
   opacity: 0; transform: translateY(8px); pointer-events: none;
   transition: opacity var(--won-dur) var(--won-ease), transform var(--won-dur) var(--won-ease), background var(--won-dur) var(--won-ease);
 }
 .won-pcard:hover .won-pcard__add,
 .won-pcard:focus-within .won-pcard__add { opacity: 1; transform: translateY(0); pointer-events: auto; }
 .won-pcard__add:disabled { cursor: default; }
-.won-pcard__add.is-added { background: color-mix(in oklab, var(--won-accent) 45%, #1e8e3e); }
+.won-pcard__add.is-added { background: color-mix(in oklab, var(--won-accent) 45%, var(--won-success)); }
 .won-pcard__add--soldout { background: var(--won-border); color: var(--won-fg); cursor: default; opacity: 1; transform: none; box-shadow: none; font-weight: 500; }
 @media (max-width: 1024px), (hover: none) { .won-pcard__add { opacity: 1; transform: none; pointer-events: auto; } }
 @media (prefers-reduced-motion: reduce) { .won-pcard__add { transition: background var(--won-dur) var(--won-ease); } }
@@ -285,7 +308,7 @@
   gap: var(--won-hero-gap, 16px);
 }
 .won-hero--grid .won-hero__track > .won-slide { min-height: var(--won-hero-min, 0px); }
-@media (max-width: 990px) { .won-hero--grid .won-hero__track { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 989px) and (min-width: 750px) { .won-hero--grid .won-hero__track { grid-template-columns: repeat(var(--won-hero-cols-md, 2), minmax(0, 1fr)); } }
 @media (max-width: 749px) { .won-hero--grid .won-hero__track { grid-template-columns: 1fr; } }
 
 /* Slider: one slide per view, horizontal snap; driven by shared won-carousel.js. */
@@ -327,8 +350,9 @@
 }
 
 .won-hero__arrows { position: absolute; inset-block-end: var(--won-space-4); inset-inline-end: var(--won-space-4); display: flex; gap: var(--won-space-2); z-index: 3; }
+.won-hero__arrows[hidden] { display: none; }
 .won-hero__arrow {
-  inline-size: 44px; block-size: 44px; border-radius: var(--won-radius-pill);
+  inline-size: var(--won-tap); block-size: var(--won-tap); border-radius: var(--won-radius-pill);
   border: 1px solid rgba(255, 255, 255, 0.5); background: rgba(0, 0, 0, 0.28); color: #fff;
   font-size: 1.4rem; line-height: 1; cursor: pointer; backdrop-filter: blur(4px);
 }
@@ -347,24 +371,24 @@
   .won-hero .won-slide__actions { justify-content: center; }
 }
 
-/* Tap-target floor (WCAG 2.5.5, 44px) for base-theme controls the won layer
-   sits alongside — native Horizon ships some controls a hair under 44px. */
+/* Tap-target floor (WCAG 2.5.5, var(--won-tap)) for base-theme controls the won layer
+   sits alongside — native Horizon ships some controls a hair under var(--won-tap). */
 .skip-to-content-link,
-.button { min-block-size: 44px; }
-/* Native Horizon icon controls that ship well under 44px — safe to enlarge the
+.button { min-block-size: var(--won-tap); }
+/* Native Horizon icon controls that ship well under var(--won-tap) — safe to enlarge the
    hit area without distorting layout (both are icon buttons with room around). */
-.slideshow-control { min-inline-size: 44px; min-block-size: 44px; }
-.search__reset-button { min-inline-size: 44px; min-block-size: 44px; display: inline-flex; align-items: center; justify-content: center; }
-/* Selects and text-like inputs floor to 44px tall — safe (no visual distortion).
+.slideshow-control { min-inline-size: var(--won-tap); min-block-size: var(--won-tap); }
+.search__reset-button { min-inline-size: var(--won-tap); min-block-size: var(--won-tap); display: inline-flex; align-items: center; justify-content: center; }
+/* Selects and text-like inputs floor to var(--won-tap) tall — safe (no visual distortion).
    Checkbox/radio/range are excluded: their tap target is the label, not the box. */
 select,
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not([type="color"]) {
-  min-block-size: 44px;
+  min-block-size: var(--won-tap);
 }
 /* Native Horizon grid-density switcher (2/3/4 columns) in the mobile facet drawer. */
-.column-options__option { min-block-size: 44px; min-inline-size: 44px; display: inline-flex; align-items: center; justify-content: center; }
+.column-options__option { min-block-size: var(--won-tap); min-inline-size: var(--won-tap); display: inline-flex; align-items: center; justify-content: center; }
 /* Native Horizon quantity stepper: the numeric field between −/+ ships ~36px wide. */
-.quantity-selector input[type="number"] { min-inline-size: 44px; }
-/* Won interactive controls that must meet the 44px tap floor. */
+.quantity-selector input[type="number"] { min-inline-size: var(--won-tap); }
+/* Won interactive controls that must meet the var(--won-tap) tap floor. */
 .won-collection__clear,
-.won-facet__summary { min-block-size: 44px; display: flex; align-items: center; }
+.won-facet__summary { min-block-size: var(--won-tap); display: flex; align-items: center; }

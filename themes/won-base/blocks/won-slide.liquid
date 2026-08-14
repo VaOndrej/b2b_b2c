@@ -36,7 +36,7 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     {% if has_gradient %}won-slide--gradient{% endif %}
     {% if s.headline_annotation != 'none' and s.headline_annotation != blank %}won-slide--annot-{{ s.headline_annotation }}{% endif %}
   "
-  style="{% render 'won-spacing', settings: s %}--won-slide-align: {{ s.alignment }};--won-radius-md: {{ s.corner_radius }}px;--won-radius-sm: {{ s.corner_radius }}px;{% if s.min_height > 0 %}--won-slide-min: {{ s.min_height }}px;{% endif %}{% if has_gradient %}--won-slide-bg: {{ s.background_gradient }};{% endif %}"
+  style="{% render 'won-spacing', settings: s %}--won-slide-align: {{ s.content_align | default: s.alignment }};--won-radius-md: {{ s.corner_radius }}px;--won-radius-sm: {{ s.corner_radius }}px;{% if s.min_height > 0 %}--won-slide-min: {{ s.min_height }}px;{% endif %}{% if has_gradient %}--won-slide-bg: {{ s.background_gradient }};{% endif %}"
   {{ block.shopify_attributes }}
 >
   {%- if has_media and s.media_position != 'none' -%}
@@ -46,11 +46,26 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
       {%- endif -%}
       {%- if s.media_type == 'image' -%}
         {%- if s.image != blank -%}
-          {{
-            s.image
-            | image_url: width: 1600
-            | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: 'lazy', alt: s.image_alt | default: s.image.alt | default: ''
-          }}
+          {%- comment -%} Separate mobile art (art-direction): a wide lifestyle crop
+             that works on desktop often loses its subject on a phone. When set,
+             image_mobile overrides below 750px; otherwise the desktop image is
+             used at all widths. Restores the native hero/slideshow capability. {%- endcomment -%}
+          {%- if s.image_mobile != blank -%}
+            <picture>
+              <source media="(max-width: 749px)" srcset="{{ s.image_mobile | image_url: width: 400 }} 400w, {{ s.image_mobile | image_url: width: 800 }} 800w, {{ s.image_mobile | image_url: width: 1100 }} 1100w" sizes="100vw">
+              {{
+                s.image
+                | image_url: width: 1600
+                | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: 'lazy', alt: s.image_alt | default: s.image.alt | default: ''
+              }}
+            </picture>
+          {%- else -%}
+            {{
+              s.image
+              | image_url: width: 1600
+              | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: 'lazy', alt: s.image_alt | default: s.image.alt | default: ''
+            }}
+          {%- endif -%}
         {%- else -%}
           <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="880" height="1100" loading="lazy">
         {%- endif -%}
@@ -77,12 +92,8 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     {%- endif -%}
     {%- if s.button_label != blank or s.button2_label != blank -%}
       <div class="won-slide__actions">
-        {%- if s.button_label != blank and s.button_link != blank -%}
-          <a class="won-btn won-btn--{{ s.button_style }} won-slide__btn" href="{{ s.button_link }}"{% if s.buttons_new_tab %} target="_blank" rel="noopener"{% endif %}>{{ s.button_label }}</a>
-        {%- endif -%}
-        {%- if s.button2_label != blank and s.button2_link != blank -%}
-          <a class="won-btn won-btn--{{ s.button2_style }} won-slide__btn" href="{{ s.button2_link }}"{% if s.buttons_new_tab %} target="_blank" rel="noopener"{% endif %}>{{ s.button2_label }}</a>
-        {%- endif -%}
+        {%- if s.button_link != blank -%}{% render 'won-button', label: s.button_label, link: s.button_link, style: s.button_style, new_tab: s.buttons_new_tab, class: 'won-slide__btn' %}{%- endif -%}
+        {%- if s.button2_link != blank -%}{% render 'won-button', label: s.button2_label, link: s.button2_link, style: s.button2_style, new_tab: s.buttons_new_tab, class: 'won-slide__btn' %}{%- endif -%}
       </div>
     {%- endif -%}
     {% content_for 'blocks' %}
@@ -234,6 +245,7 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
       "default": "none"
     },
     { "type": "image_picker", "id": "image", "label": "t:won.settings.image", "visible_if": "{{ block.settings.media_type == 'image' }}" },
+    { "type": "image_picker", "id": "image_mobile", "label": "t:won.settings.image_mobile", "info": "t:won.info.image_mobile", "visible_if": "{{ block.settings.media_type == 'image' }}" },
     { "type": "text", "id": "image_alt", "label": "t:won.settings.image_alt", "info": "t:won.info.image_alt", "visible_if": "{{ block.settings.media_type == 'image' }}" },
     { "type": "text", "id": "image_asset", "label": "t:won.settings.image_asset", "info": "t:won.info.image_asset", "visible_if": "{{ block.settings.media_type == 'image' }}" },
     { "type": "video", "id": "video", "label": "t:won.settings.video", "visible_if": "{{ block.settings.media_type == 'video' }}" },
@@ -250,7 +262,7 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     },
     { "type": "color_background", "id": "background_gradient", "label": "t:won.settings.background_gradient", "info": "t:won.info.background_gradient" },
     { "type": "header", "content": "t:won.headers.layout" },
-    { "type": "text_alignment", "id": "alignment", "label": "t:won.settings.alignment", "default": "left" },
+    { "type": "text_alignment", "id": "content_align", "label": "t:won.settings.content_align", "default": "left" },
     { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 0, "max": 800, "step": 20, "unit": "px", "default": 0, "info": "t:won.info.slide_min_height" },
     { "type": "header", "content": "t:won.headers.appearance" },
     {

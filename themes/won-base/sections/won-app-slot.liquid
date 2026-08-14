@@ -11,9 +11,7 @@
       <div class="won-app-slot__empty">
         {%- if s.heading != blank -%}<p class="won-app-slot__heading">{{ s.heading }}</p>{%- endif -%}
         {%- if s.text != blank -%}<div class="won-app-slot__text rte">{{ s.text }}</div>{%- endif -%}
-        {%- if s.cta_label != blank -%}
-          <a class="won-btn won-btn--primary" {% if s.cta_url != blank %}href="{{ s.cta_url }}"{% if s.cta_new_tab %} target="_blank" rel="noopener"{% endif %}{% endif %}>{{ s.cta_label }}</a>
-        {%- endif -%}
+        {% render 'won-button', label: s.cta_label, link: s.cta_url, style: 'primary', new_tab: s.cta_new_tab %}
       </div>
     {%- endif -%}
   </div>

@@ -54,7 +54,8 @@
       "ann_freeship": "Doprava zdarma (progress)"
     },
     "info": {
-      "button_new_tab": "Otevře odkaz tlačítka v nové záložce prohlížeče. Pro odkazy v rámci obchodu nech vypnuté, ať zákazník neztratí místo; zapni jen pro odkaz na jiný web.",
+      "image_mobile": "Samostatný ořez pod 750px. Použij, když se na úzkém telefonu ztrácí motiv z desktopového obrázku; nech prázdné a použije se všude desktopový.",
+                        "button_new_tab": "Otevře odkaz tlačítka v nové záložce prohlížeče. Pro odkazy v rámci obchodu nech vypnuté, ať zákazník neztratí místo; zapni jen pro odkaz na jiný web.",
       "animate_values": "Čísla se při scrollnutí do záběru „naběhnou“ z nuly do své finální podoby. Prefix, jednotky i formát (10 000+, 98 %, €1.2M) zůstanou zachované. Hodnoty bez jasného čísla (např. 24/7) se nechají být.",
       "emit_faq_schema": "Zpřístupní otázky a odpovědi vyhledávačům a AR/AI enginům jako FAQPage (strojově čitelná data). Emituje se jen z opravdových párů otázka + odpověď, které jsou i viditelné na stránce — Google vyžaduje shodu se zobrazeným obsahem. Zapni jen na skutečném FAQ, ne na tabech/specs.",
       "emit_product_schema": "Zpřístupní řádky tabulky (parametry / nutriční hodnoty) vyhledávačům a AI jako vlastnosti produktu (Product.additionalProperty). Připojí se ke stejnému produktu podle URL. Bezpečné zapnout — jde jen o strojová data navíc; emituje se jen z reálných párů název + hodnota na stránce produktu.",
@@ -256,6 +257,7 @@
       "button_style": "Styl tlačítka",
       "media_type": "Typ média",
       "image": "Obrázek",
+      "image_mobile": "Obrázek pro mobil (volitelné)",
       "image_asset": "Přibalený obrázek (název souboru)",
       "image_2": "Druhý obrázek",
       "image_asset_2": "Druhý přibalený obrázek (název souboru)",

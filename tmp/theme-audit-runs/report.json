@@ -76,6 +76,5134 @@
   },
   "suites": [
     {
+      "title": "smoke/customization-layer.spec.ts",
+      "file": "smoke/customization-layer.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "won sections are wired to the shared style-vars pipeline",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1373,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:08.403Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-9d781d002e0b04e8f97f",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 11,
+          "column": 1
+        },
+        {
+          "title": "won-tokens.css consumes the universal border/shadow/radius vars",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1123,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:10.352Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-9935fa11dba22d6000f2",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 24,
+          "column": 1
+        },
+        {
+          "title": "won-tokens.css consumes the Tier 2 typography + motion vars",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1322,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:11.480Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-0c9b64fea4d71b3d5825",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 52,
+          "column": 1
+        },
+        {
+          "title": "per-section bg/text color override wins over the color scheme",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1135,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:12.809Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-1696427387328f4b9f90",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 78,
+          "column": 1
+        },
+        {
+          "title": "won-tokens.css consumes the Tier 3 advanced overrides",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1201,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:13.950Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-a40559af64648c861e51",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 98,
+          "column": 1
+        },
+        {
+          "title": "editor coaching never leaks to the live storefront",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1798,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:15.158Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-d99a78ba20f034d89880",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 119,
+          "column": 1
+        },
+        {
+          "title": "responsive visibility var hides the section at the active breakpoint",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1136,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:16.963Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-fa466fefec84e5f8cffa",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 131,
+          "column": 1
+        },
+        {
+          "title": "won sections are wired to the shared style-vars pipeline",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1011,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:02.810Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-01a740e7de4d138ebd7e",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 11,
+          "column": 1
+        },
+        {
+          "title": "won-tokens.css consumes the universal border/shadow/radius vars",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 975,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:04.281Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-3c75219354984dda8f39",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 24,
+          "column": 1
+        },
+        {
+          "title": "won-tokens.css consumes the Tier 2 typography + motion vars",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1104,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:05.261Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-0dccc0f4c7fa0899526b",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 52,
+          "column": 1
+        },
+        {
+          "title": "per-section bg/text color override wins over the color scheme",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1226,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:06.369Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-cc82f27e641f14d15d1a",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 78,
+          "column": 1
+        },
+        {
+          "title": "won-tokens.css consumes the Tier 3 advanced overrides",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 949,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:07.598Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-dc86e91b769eb3e91c15",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 98,
+          "column": 1
+        },
+        {
+          "title": "editor coaching never leaks to the live storefront",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1923,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:08.552Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-98b5ec1a95da0cf6669c",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 119,
+          "column": 1
+        },
+        {
+          "title": "responsive visibility var hides the section at the active breakpoint",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 993,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:10.478Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "70000bf943c3316959ee-dd6b96b0f37e66d3a35a",
+          "file": "smoke/customization-layer.spec.ts",
+          "line": 131,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/storefront.spec.ts",
+      "file": "smoke/storefront.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "home — health + responsive",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 966,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:18.114Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-3e3ef33f7b82cb42da3f",
+          "file": "smoke/storefront.spec.ts",
+          "line": 89,
+          "column": 3
+        },
+        {
+          "title": "product — health + responsive",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 820,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:19.086Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-3ead0aee1dba4b4fac47",
+          "file": "smoke/storefront.spec.ts",
+          "line": 89,
+          "column": 3
+        },
+        {
+          "title": "collection — health + responsive",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 865,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:19.915Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-a227a41fbf0af65d420b",
+          "file": "smoke/storefront.spec.ts",
+          "line": 89,
+          "column": 3
+        },
+        {
+          "title": "cart — health + responsive",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 890,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:20.785Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-3599678b604e813db717",
+          "file": "smoke/storefront.spec.ts",
+          "line": 89,
+          "column": 3
+        },
+        {
+          "title": "search — health + responsive",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 931,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:21.679Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-836a1ac6a8475caa8adc",
+          "file": "smoke/storefront.spec.ts",
+          "line": 89,
+          "column": 3
+        },
+        {
+          "title": "sections — heading alignment matches body (no centered title over left content)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "the centered-title-over-left-body mismatch is a mobile-layout concern",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                    "line": 108,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 44,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:22.613Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "the centered-title-over-left-body mismatch is a mobile-layout concern",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                        "line": 108,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-5af5c93072985bd1aeff",
+          "file": "smoke/storefront.spec.ts",
+          "line": 106,
+          "column": 1
+        },
+        {
+          "title": "FAQ split — image column sits beside the accordion (image left, questions right)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 983,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:22.662Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-4686a89f1fe546bc3377",
+          "file": "smoke/storefront.spec.ts",
+          "line": 122,
+          "column": 1
+        },
+        {
+          "title": "won-panels FAQ — heading and questions always render",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 832,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:23.649Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-9df17e1dc0d938f3cdae",
+          "file": "smoke/storefront.spec.ts",
+          "line": 145,
+          "column": 1
+        },
+        {
+          "title": "hero peek — centred card with side peeks on desktop",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1342,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:24.485Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-a6a99fc1c9555779dba9",
+          "file": "smoke/storefront.spec.ts",
+          "line": 155,
+          "column": 1
+        },
+        {
+          "title": "band center-gutter — media flanks the centred copy on desktop",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 891,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:25.831Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-f48a7ed0868d0123c1a2",
+          "file": "smoke/storefront.spec.ts",
+          "line": 167,
+          "column": 1
+        },
+        {
+          "title": "tile badge — renders in the chosen corner (top-right)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 921,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:26.726Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-48c8e3daec06d3a4bedc",
+          "file": "smoke/storefront.spec.ts",
+          "line": 186,
+          "column": 1
+        },
+        {
+          "title": "slide annotation — headline gets a hand-drawn accent doodle",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 990,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:27.651Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-74260a681012a22054ee",
+          "file": "smoke/storefront.spec.ts",
+          "line": 198,
+          "column": 1
+        },
+        {
+          "title": "comparison — quality dots render (dots:N/M cell syntax)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 895,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:28.644Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-58dbca47ef0fb6500ba5",
+          "file": "smoke/storefront.spec.ts",
+          "line": 210,
+          "column": 1
+        },
+        {
+          "title": "tile icon — emoji renders before the label",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 904,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:29.544Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-84b666c772824ce1a084",
+          "file": "smoke/storefront.spec.ts",
+          "line": 221,
+          "column": 1
+        },
+        {
+          "title": "slide gradient — a photo-free slide paints its CSS gradient background",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1801,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:30.452Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-5e25764f88e5f0a32a35",
+          "file": "smoke/storefront.spec.ts",
+          "line": 228,
+          "column": 1
+        },
+        {
+          "title": "stats — optional icon renders on each stat",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 893,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:32.257Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-33a5c166f7db6d40f88c",
+          "file": "smoke/storefront.spec.ts",
+          "line": 236,
+          "column": 1
+        },
+        {
+          "title": "shoppable image — hotspot pins reveal a product card on focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 986,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:33.153Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-b13cb99f2d9c77590611",
+          "file": "smoke/storefront.spec.ts",
+          "line": 245,
+          "column": 1
+        },
+        {
+          "title": "shoppable image — a configured hotspot honours its separate mobile position",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 865,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:34.143Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-2590c69f5d3b60a0da8e",
+          "file": "smoke/storefront.spec.ts",
+          "line": 263,
+          "column": 1
+        },
+        {
+          "title": "tabbed rail — segmented tabs toggle their product panels",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 984,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:35.012Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-b4a30ac68a0dc6fddb9e",
+          "file": "smoke/storefront.spec.ts",
+          "line": 290,
+          "column": 1
+        },
+        {
+          "title": "carousel dots — page pager renders, is clickable, and tracks position",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1575,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:35.999Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-968a184861d499270ec5",
+          "file": "smoke/storefront.spec.ts",
+          "line": 305,
+          "column": 1
+        },
+        {
+          "title": "marquee — seamless loop is a duplicated, aria-hidden track",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1002,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:37.578Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-fa7de6762141be30625f",
+          "file": "smoke/storefront.spec.ts",
+          "line": 320,
+          "column": 1
+        },
+        {
+          "title": "home — block grids with mobile carousel become a real swipeable rail",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "the mobile carousel option only applies on phones",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                    "line": 337,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 40,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:38.583Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "the mobile carousel option only applies on phones",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                        "line": 337,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-81ef0704a734ea9ecbdb",
+          "file": "smoke/storefront.spec.ts",
+          "line": 335,
+          "column": 1
+        },
+        {
+          "title": "home — carousels honour their mobile mode",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "carousel geometry is a mobile concern",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                    "line": 357,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 47,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:38.627Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "carousel geometry is a mobile concern",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                        "line": 357,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-a543c5d1b47d99100adc",
+          "file": "smoke/storefront.spec.ts",
+          "line": 355,
+          "column": 1
+        },
+        {
+          "title": "marquee — track spans >= 2x the viewport so the loop never shows a blank gap",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1166,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:38.677Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-0eec51c39cdb316f83db",
+          "file": "smoke/storefront.spec.ts",
+          "line": 385,
+          "column": 1
+        },
+        {
+          "title": "hero peek — a neighbour peeks in on BOTH sides at the initial rest position",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3104,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:39.848Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-975a66d3f5985a2eb233",
+          "file": "smoke/storefront.spec.ts",
+          "line": 407,
+          "column": 1
+        },
+        {
+          "title": "hero carousel — loops endlessly, arrows never dead-end",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3276,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:42.957Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-6f7d413e7c2327fd9996",
+          "file": "smoke/storefront.spec.ts",
+          "line": 438,
+          "column": 1
+        },
+        {
+          "title": "won-carousel — mobile peek shows a neighbour on BOTH sides mid-scroll",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "mobile peek geometry is a phone concern",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                    "line": 469,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 53,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:46.237Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "mobile peek geometry is a phone concern",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                        "line": 469,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-0f903838e09e2a6bb3e4",
+          "file": "smoke/storefront.spec.ts",
+          "line": 467,
+          "column": 1
+        },
+        {
+          "title": "won-carousel marquee — the belt is duplicated and spans >= 2x the viewport",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 960,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:46.293Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-5332bdfa939cbe445958",
+          "file": "smoke/storefront.spec.ts",
+          "line": 497,
+          "column": 1
+        },
+        {
+          "title": "announcement bar — every message renders and the free-shipping progress is live",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1005,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:47.258Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-2a1aa5114c9090ab085d",
+          "file": "smoke/storefront.spec.ts",
+          "line": 527,
+          "column": 1
+        },
+        {
+          "title": "announcement bar — rotate shows exactly one message at a time (motion on)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 972,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:48.268Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-5334a20685eab7e9eeac",
+          "file": "smoke/storefront.spec.ts",
+          "line": 541,
+          "column": 1
+        },
+        {
+          "title": "sticky ATC — corner style floats as a small rounded card at the bottom-inline-end",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1030,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:49.246Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-ac77e88d52b74e0dfa46",
+          "file": "smoke/storefront.spec.ts",
+          "line": 559,
+          "column": 1
+        },
+        {
+          "title": "sticky ATC — center style floats as a centered pill, not full width",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 811,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:50.279Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-4e9e6623470bdb0d361f",
+          "file": "smoke/storefront.spec.ts",
+          "line": 588,
+          "column": 1
+        },
+        {
+          "title": "announcement bar — the close button dismisses it for the session",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1658,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:51.095Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-586bacc825a94c1632d8",
+          "file": "smoke/storefront.spec.ts",
+          "line": 611,
+          "column": 1
+        },
+        {
+          "title": "home — health + responsive",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 914,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:11.492Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-1a0422eef83859d4c3fd",
+          "file": "smoke/storefront.spec.ts",
+          "line": 89,
+          "column": 3
+        },
+        {
+          "title": "product — health + responsive",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 831,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:12.410Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-3cb7ef6eb1b6bc0a2e76",
+          "file": "smoke/storefront.spec.ts",
+          "line": 89,
+          "column": 3
+        },
+        {
+          "title": "collection — health + responsive",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 829,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:13.245Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-6b0c43537a7e5c458d46",
+          "file": "smoke/storefront.spec.ts",
+          "line": 89,
+          "column": 3
+        },
+        {
+          "title": "cart — health + responsive",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 764,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:14.077Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-e8edbc26afcd1e01c280",
+          "file": "smoke/storefront.spec.ts",
+          "line": 89,
+          "column": 3
+        },
+        {
+          "title": "search — health + responsive",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 900,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:14.845Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-981175339fe75f39ff3f",
+          "file": "smoke/storefront.spec.ts",
+          "line": 89,
+          "column": 3
+        },
+        {
+          "title": "sections — heading alignment matches body (no centered title over left content)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1087,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:15.749Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-a540ce277849e5bec1b7",
+          "file": "smoke/storefront.spec.ts",
+          "line": 106,
+          "column": 1
+        },
+        {
+          "title": "FAQ split — image column sits beside the accordion (image left, questions right)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "the split image+accordion layout is a >=990px concern",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                    "line": 124,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 43,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:16.840Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "the split image+accordion layout is a >=990px concern",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                        "line": 124,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-cfe2c883bd3434f695d8",
+          "file": "smoke/storefront.spec.ts",
+          "line": 122,
+          "column": 1
+        },
+        {
+          "title": "won-panels FAQ — heading and questions always render",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 815,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:16.887Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-4730413b9d29f0af48e9",
+          "file": "smoke/storefront.spec.ts",
+          "line": 145,
+          "column": 1
+        },
+        {
+          "title": "hero peek — centred card with side peeks on desktop",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "peek geometry is a desktop concern (mobile collapses to 1-up)",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                    "line": 157,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 42,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:17.707Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "peek geometry is a desktop concern (mobile collapses to 1-up)",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                        "line": 157,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-1577e2dc904ee29ec951",
+          "file": "smoke/storefront.spec.ts",
+          "line": 155,
+          "column": 1
+        },
+        {
+          "title": "band center-gutter — media flanks the centred copy on desktop",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "the gutter layout is a >=750px concern (mobile stacks)",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                    "line": 169,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 47,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:17.753Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "the gutter layout is a >=750px concern (mobile stacks)",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                        "line": 169,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-bff514ad6db24b284581",
+          "file": "smoke/storefront.spec.ts",
+          "line": 167,
+          "column": 1
+        },
+        {
+          "title": "tile badge — renders in the chosen corner (top-right)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 854,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:17.803Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-1bc89ab17048cae3cfd0",
+          "file": "smoke/storefront.spec.ts",
+          "line": 186,
+          "column": 1
+        },
+        {
+          "title": "slide annotation — headline gets a hand-drawn accent doodle",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1050,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:18.660Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-a17638b32fb808e87a79",
+          "file": "smoke/storefront.spec.ts",
+          "line": 198,
+          "column": 1
+        },
+        {
+          "title": "comparison — quality dots render (dots:N/M cell syntax)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 913,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:19.715Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-ab118d43c70f2ca5daaa",
+          "file": "smoke/storefront.spec.ts",
+          "line": 210,
+          "column": 1
+        },
+        {
+          "title": "tile icon — emoji renders before the label",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 882,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:20.632Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-2bbcaaf25b1aa4c0ffc5",
+          "file": "smoke/storefront.spec.ts",
+          "line": 221,
+          "column": 1
+        },
+        {
+          "title": "slide gradient — a photo-free slide paints its CSS gradient background",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 833,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:21.518Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-3a30d10c367792868fee",
+          "file": "smoke/storefront.spec.ts",
+          "line": 228,
+          "column": 1
+        },
+        {
+          "title": "stats — optional icon renders on each stat",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 815,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:22.359Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-153156cbe34f4302a01f",
+          "file": "smoke/storefront.spec.ts",
+          "line": 236,
+          "column": 1
+        },
+        {
+          "title": "shoppable image — hotspot pins reveal a product card on focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 864,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:23.178Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-ae20f97c736d62af97a6",
+          "file": "smoke/storefront.spec.ts",
+          "line": 245,
+          "column": 1
+        },
+        {
+          "title": "shoppable image — a configured hotspot honours its separate mobile position",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 799,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:24.047Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-9a1b40f772dfa09e2b8a",
+          "file": "smoke/storefront.spec.ts",
+          "line": 263,
+          "column": 1
+        },
+        {
+          "title": "tabbed rail — segmented tabs toggle their product panels",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 910,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:24.849Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-8dec49d90e78f75a7d67",
+          "file": "smoke/storefront.spec.ts",
+          "line": 290,
+          "column": 1
+        },
+        {
+          "title": "carousel dots — page pager renders, is clickable, and tracks position",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1487,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:25.762Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-571af523df3b2d08eb81",
+          "file": "smoke/storefront.spec.ts",
+          "line": 305,
+          "column": 1
+        },
+        {
+          "title": "marquee — seamless loop is a duplicated, aria-hidden track",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 838,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:27.252Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-ed3d76367f2c485309e1",
+          "file": "smoke/storefront.spec.ts",
+          "line": 320,
+          "column": 1
+        },
+        {
+          "title": "home — block grids with mobile carousel become a real swipeable rail",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1092,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:28.094Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-2db7780332bfc67f8f30",
+          "file": "smoke/storefront.spec.ts",
+          "line": 335,
+          "column": 1
+        },
+        {
+          "title": "home — carousels honour their mobile mode",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 935,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:29.189Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-5558fbfedb8203506fc0",
+          "file": "smoke/storefront.spec.ts",
+          "line": 355,
+          "column": 1
+        },
+        {
+          "title": "marquee — track spans >= 2x the viewport so the loop never shows a blank gap",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "short strips underfill at desktop width — that is where the gap shows",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                    "line": 387,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 55,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:30.128Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "short strips underfill at desktop width — that is where the gap shows",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                        "line": 387,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-bcfc102964d81ed98bcb",
+          "file": "smoke/storefront.spec.ts",
+          "line": 385,
+          "column": 1
+        },
+        {
+          "title": "hero peek — a neighbour peeks in on BOTH sides at the initial rest position",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "peek geometry is a desktop concern (mobile collapses to 1-up)",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                    "line": 409,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 47,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:30.186Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "peek geometry is a desktop concern (mobile collapses to 1-up)",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                        "line": 409,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-a3305ba607843ee110cd",
+          "file": "smoke/storefront.spec.ts",
+          "line": 407,
+          "column": 1
+        },
+        {
+          "title": "hero carousel — loops endlessly, arrows never dead-end",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "exercise the desktop loop (mobile collapses to 1-up, still loops)",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                    "line": 440,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 47,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:30.236Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "exercise the desktop loop (mobile collapses to 1-up, still loops)",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                        "line": 440,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-8a34ff05150efb3af9bc",
+          "file": "smoke/storefront.spec.ts",
+          "line": 438,
+          "column": 1
+        },
+        {
+          "title": "won-carousel — mobile peek shows a neighbour on BOTH sides mid-scroll",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1069,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:30.287Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-cdbb407353d6e73325d1",
+          "file": "smoke/storefront.spec.ts",
+          "line": 467,
+          "column": 1
+        },
+        {
+          "title": "won-carousel marquee — the belt is duplicated and spans >= 2x the viewport",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "measure the belt width at desktop",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                    "line": 499,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 57,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:31.359Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "measure the belt width at desktop",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+                        "line": 499,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-5d6a012e067995910b94",
+          "file": "smoke/storefront.spec.ts",
+          "line": 497,
+          "column": 1
+        },
+        {
+          "title": "announcement bar — every message renders and the free-shipping progress is live",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 870,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:31.420Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-85d7878615c959f7c46a",
+          "file": "smoke/storefront.spec.ts",
+          "line": 527,
+          "column": 1
+        },
+        {
+          "title": "announcement bar — rotate shows exactly one message at a time (motion on)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 792,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:32.293Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-6e5f651b851ab831d320",
+          "file": "smoke/storefront.spec.ts",
+          "line": 541,
+          "column": 1
+        },
+        {
+          "title": "sticky ATC — corner style floats as a small rounded card at the bottom-inline-end",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 802,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:33.089Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-bf299f8ef56026737774",
+          "file": "smoke/storefront.spec.ts",
+          "line": 559,
+          "column": 1
+        },
+        {
+          "title": "sticky ATC — center style floats as a centered pill, not full width",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 847,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:33.894Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-ae7ad83c8746065d3299",
+          "file": "smoke/storefront.spec.ts",
+          "line": 588,
+          "column": 1
+        },
+        {
+          "title": "announcement bar — the close button dismisses it for the session",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1548,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:34.745Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0b49b4cf85846dcc05b3-21fd8fedee7f41b0a260",
+          "file": "smoke/storefront.spec.ts",
+          "line": 611,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-carousel-arrows.spec.ts",
+      "file": "smoke/won-carousel-arrows.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "carousel arrows are visible only when the rail overflows",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1133,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:52.761Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6d55fedb568b0373b898-c0d1b6aa404a45189675",
+          "file": "smoke/won-carousel-arrows.spec.ts",
+          "line": 8,
+          "column": 1
+        },
+        {
+          "title": "carousel arrows are visible only when the rail overflows",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 954,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:36.302Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6d55fedb568b0373b898-9e27f92705cca674076f",
+          "file": "smoke/won-carousel-arrows.spec.ts",
+          "line": 8,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-carousel-controls.spec.ts",
+      "file": "smoke/won-carousel-controls.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "carousel pager controls render (and never show a dead/empty bar)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1819,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:53.902Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5051fe7a710974127a3b-a1c792f3570a0c4dc023",
+          "file": "smoke/won-carousel-controls.spec.ts",
+          "line": 19,
+          "column": 1
+        },
+        {
+          "title": "carousel pager controls render (and never show a dead/empty bar)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1568,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:37.265Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5051fe7a710974127a3b-46fb92b6bb974444b10e",
+          "file": "smoke/won-carousel-controls.spec.ts",
+          "line": 19,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-countup.spec.ts",
+      "file": "smoke/won-countup.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "won-stats opts into count-up: data attr, script tag, settings",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.731Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "979a310d19a69f13bffb-2dcb12ed9a8dfb6429f6",
+          "file": "smoke/won-countup.spec.ts",
+          "line": 18,
+          "column": 1
+        },
+        {
+          "title": "global animation fragment + compose step exist",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.735Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "979a310d19a69f13bffb-5cd6df6bda158e205198",
+          "file": "smoke/won-countup.spec.ts",
+          "line": 32,
+          "column": 1
+        },
+        {
+          "title": "parser keeps prefix/suffix and format; refuses ambiguous values",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.739Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "979a310d19a69f13bffb-9405164a5a05c8df92db",
+          "file": "smoke/won-countup.spec.ts",
+          "line": 60,
+          "column": 1
+        },
+        {
+          "title": "formatValue restores exact final text at the end of the run",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.744Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "979a310d19a69f13bffb-388932649968c06e531c",
+          "file": "smoke/won-countup.spec.ts",
+          "line": 98,
+          "column": 1
+        },
+        {
+          "title": "won-stats opts into count-up: data attr, script tag, settings",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.842Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "979a310d19a69f13bffb-765bf085a0403ce2a9f2",
+          "file": "smoke/won-countup.spec.ts",
+          "line": 18,
+          "column": 1
+        },
+        {
+          "title": "global animation fragment + compose step exist",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.845Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "979a310d19a69f13bffb-49c2a18560eff8a95b00",
+          "file": "smoke/won-countup.spec.ts",
+          "line": 32,
+          "column": 1
+        },
+        {
+          "title": "parser keeps prefix/suffix and format; refuses ambiguous values",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.849Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "979a310d19a69f13bffb-c2a2ddc212553b5ccf66",
+          "file": "smoke/won-countup.spec.ts",
+          "line": 60,
+          "column": 1
+        },
+        {
+          "title": "formatValue restores exact final text at the end of the run",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.854Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "979a310d19a69f13bffb-49c71f15a0917d106ce5",
+          "file": "smoke/won-countup.spec.ts",
+          "line": 98,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-cta-invariants.spec.ts",
+      "file": "smoke/won-cta-invariants.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "no won CTA hardcodes target=\"_blank\" — new-tab is always gated",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.751Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "75b6ac902a5b34ae81eb-a9a79e9d49f9c1a233e5",
+          "file": "smoke/won-cta-invariants.spec.ts",
+          "line": 35,
+          "column": 1
+        },
+        {
+          "title": "rewired sections render CTAs via won-button, not inline won-btn markup",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.759Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "75b6ac902a5b34ae81eb-c4e204e4a9a553e01378",
+          "file": "smoke/won-cta-invariants.spec.ts",
+          "line": 49,
+          "column": 1
+        },
+        {
+          "title": "every won-carousel preset needing blocks ships them (no empty section on insert)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.764Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "75b6ac902a5b34ae81eb-c532e0dd9b51fa1a0bfc",
+          "file": "smoke/won-cta-invariants.spec.ts",
+          "line": 59,
+          "column": 1
+        },
+        {
+          "title": "no won CTA hardcodes target=\"_blank\" — new-tab is always gated",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.862Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "75b6ac902a5b34ae81eb-ab1550b15b26e9c71919",
+          "file": "smoke/won-cta-invariants.spec.ts",
+          "line": 35,
+          "column": 1
+        },
+        {
+          "title": "rewired sections render CTAs via won-button, not inline won-btn markup",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.866Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "75b6ac902a5b34ae81eb-9337a9a0538ee95a7478",
+          "file": "smoke/won-cta-invariants.spec.ts",
+          "line": 49,
+          "column": 1
+        },
+        {
+          "title": "every won-carousel preset needing blocks ships them (no empty section on insert)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.870Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "75b6ac902a5b34ae81eb-8fc33183613504d2b6cf",
+          "file": "smoke/won-cta-invariants.spec.ts",
+          "line": 59,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-faq-schema.spec.ts",
+      "file": "smoke/won-faq-schema.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "won-faq-schema snippet: FAQPage, honesty guard, safe escaping, doc",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.771Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8410091e557ce005853c-0f24b6a6fcebe194ec52",
+          "file": "smoke/won-faq-schema.spec.ts",
+          "line": 14,
+          "column": 1
+        },
+        {
+          "title": "both FAQ row blocks self-emit the schema, gated by the section toggle",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.775Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8410091e557ce005853c-06a602f2a62066a50368",
+          "file": "smoke/won-faq-schema.spec.ts",
+          "line": 29,
+          "column": 1
+        },
+        {
+          "title": "smart defaults: accordion ON, panels OFF",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.778Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8410091e557ce005853c-b69520c89e7b967a7c25",
+          "file": "smoke/won-faq-schema.spec.ts",
+          "line": 46,
+          "column": 1
+        },
+        {
+          "title": "won-faq-schema snippet: FAQPage, honesty guard, safe escaping, doc",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.877Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8410091e557ce005853c-8fbd54cdf38dbf37fbeb",
+          "file": "smoke/won-faq-schema.spec.ts",
+          "line": 14,
+          "column": 1
+        },
+        {
+          "title": "both FAQ row blocks self-emit the schema, gated by the section toggle",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.881Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8410091e557ce005853c-74c28d4afb04362fe029",
+          "file": "smoke/won-faq-schema.spec.ts",
+          "line": 29,
+          "column": 1
+        },
+        {
+          "title": "smart defaults: accordion ON, panels OFF",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.885Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8410091e557ce005853c-8180d810dce99a4b336b",
+          "file": "smoke/won-faq-schema.spec.ts",
+          "line": 46,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-product-schema.spec.ts",
+      "file": "smoke/won-product-schema.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "won-product-schema snippet: Product + additionalProperty, canonical @id, guard, escaping",
+          "ok": true,
+          "tags": [
+            "id,"
+          ],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.785Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e785035233a5dd25d0a5-6e1657bd90adb02a9339",
+          "file": "smoke/won-product-schema.spec.ts",
+          "line": 15,
+          "column": 1
+        },
+        {
+          "title": "spec + nutrition tables self-emit with the right separator, gated by toggle",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.789Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e785035233a5dd25d0a5-5601e434cdf6a00ec5de",
+          "file": "smoke/won-product-schema.spec.ts",
+          "line": 34,
+          "column": 1
+        },
+        {
+          "title": "emit_schema toggle present and ON by default on both blocks",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.792Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e785035233a5dd25d0a5-8904ef26314c6b89fc14",
+          "file": "smoke/won-product-schema.spec.ts",
+          "line": 44,
+          "column": 1
+        },
+        {
+          "title": "won-product-schema snippet: Product + additionalProperty, canonical @id, guard, escaping",
+          "ok": true,
+          "tags": [
+            "id,"
+          ],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.891Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e785035233a5dd25d0a5-c909254684f73f44fc07",
+          "file": "smoke/won-product-schema.spec.ts",
+          "line": 15,
+          "column": 1
+        },
+        {
+          "title": "spec + nutrition tables self-emit with the right separator, gated by toggle",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.895Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e785035233a5dd25d0a5-36ed9ad8741de2110761",
+          "file": "smoke/won-product-schema.spec.ts",
+          "line": 34,
+          "column": 1
+        },
+        {
+          "title": "emit_schema toggle present and ON by default on both blocks",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.898Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e785035233a5dd25d0a5-13d569b3706e47751114",
+          "file": "smoke/won-product-schema.spec.ts",
+          "line": 44,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-product-trust.spec.ts",
+      "file": "smoke/won-product-trust.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "won-product-trust block reuses the shared snippets (no duplicated logic)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.798Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a97cf2a533f30f8ab8f5-18e90921cf57b4e79b93",
+          "file": "smoke/won-product-trust.spec.ts",
+          "line": 12,
+          "column": 1
+        },
+        {
+          "title": "name locale key resolves in both languages",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.802Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a97cf2a533f30f8ab8f5-cdbd0f3b84e4c2c0e7c4",
+          "file": "smoke/won-product-trust.spec.ts",
+          "line": 26,
+          "column": 1
+        },
+        {
+          "title": "won-product-trust block reuses the shared snippets (no duplicated logic)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.904Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a97cf2a533f30f8ab8f5-465877cda890ecd0a2d1",
+          "file": "smoke/won-product-trust.spec.ts",
+          "line": 12,
+          "column": 1
+        },
+        {
+          "title": "name locale key resolves in both languages",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.908Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a97cf2a533f30f8ab8f5-a46964af811aeb88de60",
+          "file": "smoke/won-product-trust.spec.ts",
+          "line": 26,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-schema-phases.spec.ts",
+      "file": "smoke/won-schema-phases.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "F3 AggregateRating: won-rating emits schema only on the PDP, gated",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.809Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cf005ea2de132e7de672-b5a9f981485226f22b0b",
+          "file": "smoke/won-schema-phases.spec.ts",
+          "line": 16,
+          "column": 1
+        },
+        {
+          "title": "F4 MerchantReturnPolicy: snippet + global settings + PDP wiring",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.812Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cf005ea2de132e7de672-2048466813e4a4a29e0a",
+          "file": "smoke/won-schema-phases.spec.ts",
+          "line": 28,
+          "column": 1
+        },
+        {
+          "title": "F5 HowTo: won-howto-schema from won-dosage, gated",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.816Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cf005ea2de132e7de672-84265488eb0c91c47ad7",
+          "file": "smoke/won-schema-phases.spec.ts",
+          "line": 50,
+          "column": 1
+        },
+        {
+          "title": "F6 comparison: yes/no cells carry a text equivalent for extraction",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.819Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cf005ea2de132e7de672-f57386241851fc5602cc",
+          "file": "smoke/won-schema-phases.spec.ts",
+          "line": 62,
+          "column": 1
+        },
+        {
+          "title": "F7 site schema: WebSite + SearchAction, homepage only, wired in <head>",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.822Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cf005ea2de132e7de672-3764acba0f891ddaf4a8",
+          "file": "smoke/won-schema-phases.spec.ts",
+          "line": 70,
+          "column": 1
+        },
+        {
+          "title": "F8 trust bridge: won-trust reads won.* metafields → badge + additionalProperty, gated",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.825Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cf005ea2de132e7de672-684cd6f5eb189251f34e",
+          "file": "smoke/won-schema-phases.spec.ts",
+          "line": 80,
+          "column": 1
+        },
+        {
+          "title": "F3 AggregateRating: won-rating emits schema only on the PDP, gated",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.915Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cf005ea2de132e7de672-a7cd3463befd4ac5a81f",
+          "file": "smoke/won-schema-phases.spec.ts",
+          "line": 16,
+          "column": 1
+        },
+        {
+          "title": "F4 MerchantReturnPolicy: snippet + global settings + PDP wiring",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.918Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cf005ea2de132e7de672-450902d015cd2b876c4d",
+          "file": "smoke/won-schema-phases.spec.ts",
+          "line": 28,
+          "column": 1
+        },
+        {
+          "title": "F5 HowTo: won-howto-schema from won-dosage, gated",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.921Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cf005ea2de132e7de672-e0458a32478e4e25c507",
+          "file": "smoke/won-schema-phases.spec.ts",
+          "line": 50,
+          "column": 1
+        },
+        {
+          "title": "F6 comparison: yes/no cells carry a text equivalent for extraction",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.925Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cf005ea2de132e7de672-e95c889306b52aeb65eb",
+          "file": "smoke/won-schema-phases.spec.ts",
+          "line": 62,
+          "column": 1
+        },
+        {
+          "title": "F7 site schema: WebSite + SearchAction, homepage only, wired in <head>",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.927Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cf005ea2de132e7de672-c5c640640ae832b9f91a",
+          "file": "smoke/won-schema-phases.spec.ts",
+          "line": 70,
+          "column": 1
+        },
+        {
+          "title": "F8 trust bridge: won-trust reads won.* metafields → badge + additionalProperty, gated",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.930Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cf005ea2de132e7de672-0fc41db0596e40792a14",
+          "file": "smoke/won-schema-phases.spec.ts",
+          "line": 80,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-settings-coverage.spec.ts",
+      "file": "smoke/won-settings-coverage.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "every won-* section setting (and child-block setting) is wired to the theme source",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.834Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ac11d8ade13da20b7074-dc4bd171f310495e9817",
+          "file": "smoke/won-settings-coverage.spec.ts",
+          "line": 104,
+          "column": 1
+        },
+        {
+          "title": "every won-* section setting (and child-block setting) is wired to the theme source",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.939Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ac11d8ade13da20b7074-f483d97f98bbc0c76b02",
+          "file": "smoke/won-settings-coverage.spec.ts",
+          "line": 104,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-settings-fixes.spec.ts",
+      "file": "smoke/won-settings-fixes.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "won-band: content align drives cross-axis alignment, not just text-align",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "base __content rule is clean of layout overrides on mobile",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-settings-fixes.spec.ts",
+                    "line": 23,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 42,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.847Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "base __content rule is clean of layout overrides on mobile",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-settings-fixes.spec.ts",
+                        "line": 23,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "d6f20ea32bd35073c0b0-cee0de9e584b5f2a34e2",
+          "file": "smoke/won-settings-fixes.spec.ts",
+          "line": 17,
+          "column": 1
+        },
+        {
+          "title": "won-slide: min height applies to a plain (non-overlayed) slide body",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1189,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:55.893Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d6f20ea32bd35073c0b0-c37abe63c399fd11db53",
+          "file": "smoke/won-settings-fixes.spec.ts",
+          "line": 35,
+          "column": 1
+        },
+        {
+          "title": "won-tabbed-rail: desktop heading size is consumed at >= 750px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1109,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:57.085Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d6f20ea32bd35073c0b0-3c9e17ad829d765c12d9",
+          "file": "smoke/won-settings-fixes.spec.ts",
+          "line": 56,
+          "column": 1
+        },
+        {
+          "title": "won-band: content align drives cross-axis alignment, not just text-align",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1118,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:38.959Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d6f20ea32bd35073c0b0-858f8dfc09ca762f6c4b",
+          "file": "smoke/won-settings-fixes.spec.ts",
+          "line": 17,
+          "column": 1
+        },
+        {
+          "title": "won-slide: min height applies to a plain (non-overlayed) slide body",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1310,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:40.080Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d6f20ea32bd35073c0b0-29b6297f26b97e9f1daf",
+          "file": "smoke/won-settings-fixes.spec.ts",
+          "line": 35,
+          "column": 1
+        },
+        {
+          "title": "won-tabbed-rail: desktop heading size is consumed at >= 750px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "desktop-only @media rule",
+                  "location": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-settings-fixes.spec.ts",
+                    "line": 57,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 39,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:41.394Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "desktop-only @media rule",
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-settings-fixes.spec.ts",
+                        "line": 57,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "d6f20ea32bd35073c0b0-082aca255003a8ddfd0e",
+          "file": "smoke/won-settings-fixes.spec.ts",
+          "line": 56,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-unified-behavior.spec.ts",
+      "file": "smoke/won-unified-behavior.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Visibility toggles hide the section at the correct breakpoint",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1179,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:58.202Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "61206da1e5aa5687a5b0-a008217b3f4acb69017c",
+          "file": "smoke/won-unified-behavior.spec.ts",
+          "line": 16,
+          "column": 1
+        },
+        {
+          "title": "Mode select drives a render class on the carousel",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1212,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:53:59.384Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "61206da1e5aa5687a5b0-4f6955fa5003ba37de7d",
+          "file": "smoke/won-unified-behavior.spec.ts",
+          "line": 49,
+          "column": 1
+        },
+        {
+          "title": "Infinite-scroll setting clones bookends only where its scope applies",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1658,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:00.600Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "61206da1e5aa5687a5b0-d8d2c17d75a626a45f19",
+          "file": "smoke/won-unified-behavior.spec.ts",
+          "line": 58,
+          "column": 1
+        },
+        {
+          "title": "Visibility toggles hide the section at the correct breakpoint",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 965,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:41.440Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "61206da1e5aa5687a5b0-b295c9fc04d4c93a17d6",
+          "file": "smoke/won-unified-behavior.spec.ts",
+          "line": 16,
+          "column": 1
+        },
+        {
+          "title": "Mode select drives a render class on the carousel",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1071,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:42.409Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "61206da1e5aa5687a5b0-d681f2b632472d568de8",
+          "file": "smoke/won-unified-behavior.spec.ts",
+          "line": 49,
+          "column": 1
+        },
+        {
+          "title": "Infinite-scroll setting clones bookends only where its scope applies",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1518,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:43.484Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "61206da1e5aa5687a5b0-7f4ce32b290d0bc8d596",
+          "file": "smoke/won-unified-behavior.spec.ts",
+          "line": 58,
+          "column": 1
+        }
+      ]
+    },
+    {
       "title": "smoke/won-unified-schema.spec.ts",
       "file": "smoke/won-unified-schema.spec.ts",
       "column": 0,
@@ -97,12 +5225,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1,
+                  "duration": 0,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-12T08:17:04.270Z",
+                  "startTime": "2026-08-13T15:54:02.279Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -131,12 +5259,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2,
+                  "duration": 0,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-12T08:17:04.280Z",
+                  "startTime": "2026-08-13T15:54:02.282Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -170,7 +5298,7 @@
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-12T08:17:04.292Z",
+                  "startTime": "2026-08-13T15:54:02.285Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -204,7 +5332,7 @@
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-12T08:17:04.298Z",
+                  "startTime": "2026-08-13T15:54:02.288Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -238,7 +5366,7 @@
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-12T08:17:04.301Z",
+                  "startTime": "2026-08-13T15:54:02.290Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -267,12 +5395,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 5,
+                  "duration": 2,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-12T08:17:04.304Z",
+                  "startTime": "2026-08-13T15:54:02.293Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -301,12 +5429,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3,
+                  "duration": 1,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-12T08:17:04.312Z",
+                  "startTime": "2026-08-13T15:54:02.297Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -318,16 +5446,254 @@
           "file": "smoke/won-unified-schema.spec.ts",
           "line": 152,
           "column": 1
+        },
+        {
+          "title": "composed theme has sections to audit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:45.015Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ea01a65b3f92b5991d16-3845cdf7a949e33eb7e3",
+          "file": "smoke/won-unified-schema.spec.ts",
+          "line": 55,
+          "column": 1
+        },
+        {
+          "title": "every won section orders its group headers canonically",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:45.018Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ea01a65b3f92b5991d16-f06fb9f63cd86d212a1f",
+          "file": "smoke/won-unified-schema.spec.ts",
+          "line": 59,
+          "column": 1
+        },
+        {
+          "title": "Visibility, when present, is the first group (after an optional About paragraph)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:45.021Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ea01a65b3f92b5991d16-9ec88d401b79591602c3",
+          "file": "smoke/won-unified-schema.spec.ts",
+          "line": 73,
+          "column": 1
+        },
+        {
+          "title": "a Mode group leads with an always-visible behavior select",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:45.023Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ea01a65b3f92b5991d16-6a5fe03e14989eb29eb1",
+          "file": "smoke/won-unified-schema.spec.ts",
+          "line": 90,
+          "column": 1
+        },
+        {
+          "title": "hide_mobile / hide_desktop live only under the Visibility group",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:45.026Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ea01a65b3f92b5991d16-3e2ada3254ac6b615ab9",
+          "file": "smoke/won-unified-schema.spec.ts",
+          "line": 104,
+          "column": 1
+        },
+        {
+          "title": "every range setting spans 3–101 steps with an on-grid default",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:45.029Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ea01a65b3f92b5991d16-c2c4a619a3218b445d21",
+          "file": "smoke/won-unified-schema.spec.ts",
+          "line": 131,
+          "column": 1
+        },
+        {
+          "title": "no render tag passes a filtered argument",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-13T15:54:45.035Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ea01a65b3f92b5991d16-4442ec4f74ed740ab850",
+          "file": "smoke/won-unified-schema.spec.ts",
+          "line": 152,
+          "column": 1
         }
       ]
     }
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-08-12T08:17:03.749Z",
-    "duration": 580.6560000000001,
-    "expected": 7,
-    "skipped": 0,
+    "startTime": "2026-08-13T15:53:07.813Z",
+    "duration": 97251.025,
+    "expected": 141,
+    "skipped": 13,
     "unexpected": 0,
     "flaky": 0
   }

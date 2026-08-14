@@ -590,9 +590,10 @@
         <p class="eyebrow">Katalog</p>
         <h1>Sedm suit, osmnáct appek</h1>
         <p class="lede">
-          Seřazeno tak, jak by šly nabízet. Karty se zeleným okrajem jsou
-          doporučené „stavět hned“. Cena, coupling, náročnost extrakce a
+          Seřazeno tak, jak by šly nabízet. Cena, coupling, náročnost extrakce a
           mapování na Shopify API jsou v každé kartě.
+          <strong>Pozn.: zelené odznaky „stavět hned“ na kartách jsou historické —
+          nahrazuje je build fronta v banneru níž (přesně 1 položka dopředu, gated).</strong>
           <strong
             >Společná zásada: každá Won appka se staví Shopify-native (embedded
             App Bridge + Polaris, theme app extension, managed billing, GDPR
@@ -840,6 +841,73 @@
               namířené na <em>cenu</em>, kterou vlastní Tiers. Kooperují,
               neslévají se.
             </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- BUILD QUEUE / TAXONOMY BANNER -->
+      <section class="buildq" aria-labelledby="buildq-title">
+        <style>
+          .buildq { margin: 8px 0 40px; padding: 26px 26px 22px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: linear-gradient(180deg, var(--surface-soft), var(--surface)); }
+          .bq-eyebrow { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mint); margin: 0 0 6px; }
+          .bq-title { margin: 0 0 10px; font-size: clamp(1.4rem, 3vw, 1.9rem); line-height: 1.12; text-wrap: balance; }
+          .bq-lede { margin: 0 0 20px; max-width: 74ch; color: var(--text-soft); }
+          .bq-lede strong { color: var(--text); }
+          .bq-queue { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin-bottom: 22px; }
+          @media (max-width: 760px) { .bq-queue { grid-template-columns: 1fr; } }
+          .bq-slot { border: 1px solid var(--line); border-radius: 12px; background: var(--page); padding: 16px 18px; }
+          .bq-slot .lab { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 8px; }
+          .bq-slot.now { border-color: var(--mint); }
+          .bq-slot.now .lab { color: var(--mint); }
+          .bq-slot h3 { margin: 0 0 6px; font-size: 1.1rem; }
+          .bq-slot p { margin: 0; font-size: 0.88rem; color: var(--text-muted); }
+          .bq-tax { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+          @media (max-width: 760px) { .bq-tax { grid-template-columns: 1fr; } }
+          .bq-cat { border-left: 3px solid var(--line-strong); padding: 4px 0 4px 14px; }
+          .bq-cat.listing { border-color: var(--mint); }
+          .bq-cat.feature { border-color: var(--amber); }
+          .bq-cat.defer { border-color: var(--text-muted); }
+          .bq-cat h4 { margin: 0 0 5px; font-size: 0.98rem; }
+          .bq-cat p { margin: 0; font-size: 0.86rem; color: var(--text-muted); }
+          .bq-cat strong { color: var(--text-soft); }
+        </style>
+        <p class="bq-eyebrow">Než začneš číst karty · 2</p>
+        <h2 id="buildq-title" class="bq-title">Katalog vize ≠ build fronta</h2>
+        <p class="bq-lede">
+          Těch osmnáct karet je <strong>katalog vize</strong>, ne fronta na stavění. Build fronta má
+          <strong>přesně jednu položku dopředu</strong>, gated. Appky <strong>vznikají jako theme
+          featury z klientské práce</strong> (won-base) a na placený listing se povýší, teprve když se
+          poptávka u klientů opakuje a fan-out ji zvaliduje. Detail: <a href="severka.html">severka</a>.
+        </p>
+        <div class="bq-queue">
+          <div class="bq-slot now">
+            <p class="lab">Build fronta · teď</p>
+            <h3>Won Toasts</h3>
+            <p>Pilot — dokazuje build-harness (billing, app-block, @won/core), ne flagship. „Hotovo“ = merchant-self-installable + harness znovupoužitelný + hands-off běh na reálném storu.</p>
+          </div>
+          <div class="bq-slot">
+            <p class="lab">Build fronta · další (gated)</p>
+            <h3>1× AOV appka</h3>
+            <p>Rewards nebo Companion — až po prvním fan-outu (Vlna 2 v severce). Nezakládat listing dřív.</p>
+          </div>
+          <div class="bq-slot">
+            <p class="lab">Zbytek</p>
+            <h3>Katalog</h3>
+            <p>Vize a pořadí, ne úkoly. Pořadí určí <strong>klientský pull</strong> (co pořád stavíš nativně znovu), ne tahle stránka.</p>
+          </div>
+        </div>
+        <div class="bq-tax">
+          <div class="bq-cat listing">
+            <h4>Reálný listing</h4>
+            <p><strong>Function</strong> (Tiers, Rewards — checkout, sdílený substrát, ale nejsložitější) + <strong>config/data</strong> (Toasts, Companion — lehčí). Sem míří peníze.</p>
+          </div>
+          <div class="bq-cat feature">
+            <h4>Theme featura (ne appka)</h4>
+            <p><strong>Pure-frontend</strong> (Badges) žije jako won-base blok zdarma — <strong>nikdy samostatný listing.</strong></p>
+          </div>
+          <div class="bq-cat defer">
+            <h4>Odloženo</h4>
+            <p>Čeká na fan-out signál. Multiplikovat listingy před validací = nejčastější smrt solo devu.</p>
           </div>
         </div>
       </section>

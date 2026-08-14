@@ -13,7 +13,7 @@
   {% render 'won-guard', settings: s %}
   <div
     class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-hero won-hero--grid"
-    style="--won-hero-min: {{ s.min_height }}px; --won-hero-gap: {{ s.gap }}px; --won-hero-cols: {{ s.columns }};"
+    style="--won-hero-min: {{ s.min_height }}px; --won-hero-gap: {{ s.gap }}px; --won-hero-cols: {{ s.columns_desktop | default: s.columns }}; --won-hero-cols-md: {{ s.columns_tablet | default: 2 }};"
   >
     <div class="won-hero__track">
       {% content_for 'blocks' %}
@@ -72,12 +72,22 @@
     },
     {
       "type": "range",
-      "id": "columns",
+      "id": "columns_desktop",
       "label": "t:won.settings.columns_desktop",
       "min": 2,
       "max": 6,
       "step": 1,
       "default": 4,
+      "info": "t:won.info.hero_grid_columns"
+    },
+    {
+      "type": "range",
+      "id": "columns_tablet",
+      "label": "t:won.settings.columns_tablet",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 2,
       "info": "t:won.info.hero_grid_columns"
     },
     {
@@ -429,7 +439,8 @@
       "name": "t:won.presets.hero_grid",
       "category": "t:won.categories.hero",
       "settings": {
-        "columns": 4,
+        "columns_desktop": 4,
+        "columns_tablet": 2,
         "gap": 16,
         "min_height": 360,
         "section_width": "page"
@@ -448,7 +459,7 @@
             "media_type": "image",
             "image_asset": "won-promo-1.png",
             "media_position": "background",
-            "alignment": "left",
+            "content_align": "left",
             "min_height": 360
           }
         },
@@ -465,7 +476,7 @@
             "media_type": "image",
             "image_asset": "won-promo-2.png",
             "media_position": "background",
-            "alignment": "left",
+            "content_align": "left",
             "min_height": 360
           }
         },
@@ -482,7 +493,7 @@
             "media_type": "image",
             "image_asset": "won-promo-3.png",
             "media_position": "background",
-            "alignment": "left",
+            "content_align": "left",
             "min_height": 360
           }
         },
@@ -499,7 +510,7 @@
             "media_type": "image",
             "image_asset": "won-promo-4.png",
             "media_position": "background",
-            "alignment": "left",
+            "content_align": "left",
             "min_height": 360
           }
         }

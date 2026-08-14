@@ -47,6 +47,10 @@
   --won-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
   --won-shadow-md: 0 6px 18px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
   --won-shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.16), 0 6px 14px rgba(0, 0, 0, 0.08);
+
+  /* Status colours (badges, add-to-cart confirm) */
+  --won-info: #1e66f5;
+  --won-success: #1e8e3e;
 }
 
 /* ── Breakpoint canon ────────────────────────────────────────────────────────
@@ -234,8 +238,8 @@
   background: color-mix(in oklab, var(--won-fg) 8%, var(--won-bg)); color: var(--won-fg);
 }
 .won-badge--sale { background: var(--won-accent); color: var(--won-accent-contrast); }
-.won-badge--new { background: #1e66f5; color: #fff; }
-.won-badge--eco { background: #1e8e3e; color: #fff; }
+.won-badge--new { background: var(--won-info); color: #fff; }
+.won-badge--eco { background: var(--won-success); color: #fff; }
 
 /* Product card — shared by carousel, PLP, search, cross-sell (see
    snippets/won-product-card). Quick-add pill: hover-reveal on desktop, always
@@ -279,7 +283,7 @@
 .won-pcard:hover .won-pcard__add,
 .won-pcard:focus-within .won-pcard__add { opacity: 1; transform: translateY(0); pointer-events: auto; }
 .won-pcard__add:disabled { cursor: default; }
-.won-pcard__add.is-added { background: color-mix(in oklab, var(--won-accent) 45%, #1e8e3e); }
+.won-pcard__add.is-added { background: color-mix(in oklab, var(--won-accent) 45%, var(--won-success)); }
 .won-pcard__add--soldout { background: var(--won-border); color: var(--won-fg); cursor: default; opacity: 1; transform: none; box-shadow: none; font-weight: 500; }
 @media (max-width: 1024px), (hover: none) { .won-pcard__add { opacity: 1; transform: none; pointer-events: auto; } }
 @media (prefers-reduced-motion: reduce) { .won-pcard__add { transition: background var(--won-dur) var(--won-ease); } }
@@ -304,7 +308,7 @@
   gap: var(--won-hero-gap, 16px);
 }
 .won-hero--grid .won-hero__track > .won-slide { min-height: var(--won-hero-min, 0px); }
-@media (max-width: 990px) { .won-hero--grid .won-hero__track { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 989px) and (min-width: 750px) { .won-hero--grid .won-hero__track { grid-template-columns: repeat(var(--won-hero-cols-md, 2), minmax(0, 1fr)); } }
 @media (max-width: 749px) { .won-hero--grid .won-hero__track { grid-template-columns: 1fr; } }
 
 /* Slider: one slide per view, horizontal snap; driven by shared won-carousel.js. */
@@ -346,6 +350,7 @@
 }
 
 .won-hero__arrows { position: absolute; inset-block-end: var(--won-space-4); inset-inline-end: var(--won-space-4); display: flex; gap: var(--won-space-2); z-index: 3; }
+.won-hero__arrows[hidden] { display: none; }
 .won-hero__arrow {
   inline-size: var(--won-tap); block-size: var(--won-tap); border-radius: var(--won-radius-pill);
   border: 1px solid rgba(255, 255, 255, 0.5); background: rgba(0, 0, 0, 0.28); color: #fff;

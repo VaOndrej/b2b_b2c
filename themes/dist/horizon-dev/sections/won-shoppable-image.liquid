@@ -9,12 +9,13 @@
 {%- liquid
   assign s = section.settings
   assign ar = '16 / 9'
-  case s.aspect_ratio
+  assign crop = s.card_aspect | default: s.aspect_ratio
+  case crop
     when 'square'
       assign ar = '1 / 1'
     when 'portrait'
       assign ar = '4 / 5'
-    when 'wide'
+    when 'landscape', 'wide', 'natural'
       assign ar = '16 / 9'
   endcase
 -%}
@@ -259,11 +260,11 @@
     },
     {
       "type": "select",
-      "id": "aspect_ratio",
+      "id": "card_aspect",
       "label": "t:won.settings.card_aspect",
       "options": [
         {
-          "value": "wide",
+          "value": "landscape",
           "label": "t:won.options.aspect_landscape"
         },
         {
@@ -275,7 +276,7 @@
           "label": "t:won.options.aspect_portrait"
         }
       ],
-      "default": "wide"
+      "default": "landscape"
     },
     {
       "type": "header",
@@ -609,10 +610,18 @@
       },
       "blocks": [
         {
-          "type": "hotspot"
+          "type": "hotspot",
+          "settings": {
+            "x": 32,
+            "y": 42
+          }
         },
         {
-          "type": "hotspot"
+          "type": "hotspot",
+          "settings": {
+            "x": 68,
+            "y": 60
+          }
         }
       ]
     }

@@ -68,9 +68,7 @@
               <div class="won-panels__contact">
                 {%- if s.contact_heading != blank -%}<p class="won-panels__contact-heading">{{ s.contact_heading }}</p>{%- endif -%}
                 {%- if s.contact_text != blank -%}<div class="rte">{{ s.contact_text }}</div>{%- endif -%}
-                {%- if s.contact_button_label != blank -%}
-                  <a class="won-btn won-btn--secondary" {% if s.contact_button_link != blank %}href="{{ s.contact_button_link }}"{% endif %}>{{ s.contact_button_label }}</a>
-                {%- endif -%}
+                {% render 'won-button', label: s.contact_button_label, link: s.contact_button_link, style: 'secondary' %}
               </div>
             {%- endif -%}
           {%- endif -%}
