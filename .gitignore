@@ -18,3 +18,7 @@ shpat.md
 # Playwright MCP session artifacts (console logs + page snapshots)
 .playwright-mcp/
 themes/bases/
+
+# Claude Code hook state (per-session, never committed)
+.claude/.ui-touched
+.claude/.gate-pass
