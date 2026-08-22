@@ -3,7 +3,7 @@
 // default look; Pro unlocks the design studio, advanced grouping, targeting,
 // custom CSS, unlimited milestones, analytics and brand removal.
 
-import { DEFAULT_THEME } from "./config.defaults.ts";
+import { DEFAULT_GROUPING, DEFAULT_THEME } from "./config.defaults.ts";
 import type { ToastAppConfig, ToastPlan } from "./config.types.ts";
 import { DEFAULT_TARGETING } from "./targeting.ts";
 import { notificationPlanFor } from "./notifications.ts";
@@ -39,6 +39,31 @@ export function isFeatureAllowed(plan: ToastPlan, feature: ProFeature): boolean 
 export const FREE_MILESTONE_LIMIT = 2;
 
 /**
+ * The per-session toast cap Free is held to.
+ *
+ * Deliberately NOT "Free has no cap" and NOT "capping is Pro". A shopper must
+ * never be floodable — that protection is quality, and Pro gates scope, never
+ * quality (see the file header). What Pro buys is CONTROL of the number,
+ * including raising it or setting 0 for unlimited. So Free gets a sane fixed
+ * ceiling it cannot raise, and the admin says so plainly instead of showing an
+ * editable field that the server would silently override (BILL-1).
+ */
+export const FREE_MAX_PER_SESSION = 5;
+
+/**
+ * The cap actually in force for a plan. The admin MUST render this rather than
+ * the stored value, or a Free merchant reads "no session cap" while the server
+ * is enforcing 5 — a header stating something the config doesn't guarantee
+ * (§17c).
+ */
+export function effectiveMaxPerSession(
+  plan: ToastPlan,
+  configured: number,
+): number {
+  return plan === "pro" ? configured : FREE_MAX_PER_SESSION;
+}
+
+/**
  * Return the config the storefront should actually use for this plan. On Free
  * we force the default look (no design studio), clear custom CSS, and cap active
  * milestones — but never touch behaviour that affects usability/accessibility.
@@ -63,7 +88,22 @@ export function gateConfigForPlan(config: ToastAppConfig): ToastAppConfig {
     // (the default is always kept), Pro ships many. Messages themselves stay
     // fully editable on Free — only the number of languages is a Pro scope.
     locales: capLocaleSettingsForPlan(config.locales, "free"),
-    // Free keeps global behaviour (position, duration, basic grouping).
+    // Free keeps global behaviour (position, duration, basic grouping) — but the
+    // per-session cap is pinned, so no Free store can flood a shopper by setting
+    // it to 0. Pro owns the number.
+    global: {
+      ...config.global,
+      // `advanced_grouping` is a Pro feature and the admin locks those fields —
+      // but the UI lock is only a courtesy (BILL-1). Without this, a store that
+      // downgraded from Pro kept being SERVED its tuned merge window, rate limit
+      // and dedupe settings forever. Free falls back to the defaults, which still
+      // merge sensibly: Pro buys control of the numbers, not merging itself.
+      grouping: DEFAULT_GROUPING,
+      frequency: {
+        ...config.global.frequency,
+        maxPerSession: FREE_MAX_PER_SESSION,
+      },
+    },
   };
 }
 

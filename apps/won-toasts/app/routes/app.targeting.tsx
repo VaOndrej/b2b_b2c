@@ -152,7 +152,7 @@ export default function TargetingRoute() {
             >
               <s-stack direction="block" gap="base">
                 {!isPro ? (
-                  <ProSell benefit="Aim toasts where they pay: only on product pages, only on mobile, only for guests — instead of showing everything to everyone." />
+                  <ProSell benefit="Show a toast only where it belongs — product pages only, mobile only, guests only — instead of the same toast on every page for every shopper." />
                 ) : null}
 
                 <s-stack direction="block" gap="small">

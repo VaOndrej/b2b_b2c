@@ -2,13 +2,20 @@ import { useEffect, type ReactNode } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Form, useActionData, useLoaderData, useNavigation } from "react-router";
 
-import { PRO_FEATURES } from "@won/core/toasts/tier";
+import {
+  FREE_MAX_PER_SESSION,
+  PRO_FEATURES,
+} from "@won/core/toasts/tier";
+import {
+  LOCALE_LIMIT_FREE,
+  LOCALE_LIMIT_PRO,
+} from "@won/core/toasts/locales";
 
 // Human labels for Pro feature keys (doctrine §4c — never render the raw enum
 // key or a `key.replace(/_/g," ")` of it).
 const FEATURE_LABELS: Record<string, string> = {
   design_studio: "Full design studio (custom colours, shape & motion)",
-  advanced_grouping: "Advanced anti-spam (merge, cap & rate limits)",
+  advanced_grouping: "Anti-spam tuning — merge rules, your own caps & rate limits",
   custom_css: "Custom CSS styling",
   targeting: "Page, device & customer targeting",
   unlimited_milestones: "Unlimited milestones",
@@ -28,18 +35,27 @@ function featureLabel(key: string): string {
 const EXTRA_PRO_FEATURES = [
   "Per-type look & behaviour (each toast styled on its own)",
   "Pro toast types — low-stock, cart activity, order summary, recent sales",
-  "Up to 20 languages (Free includes 2)",
+  `Up to ${String(LOCALE_LIMIT_PRO)} languages (Free covers ${String(LOCALE_LIMIT_FREE)})`,
+  "Merge tuning — what counts as “the same thing”, and how fast",
+  `Your own session limit — raise it past ${String(FREE_MAX_PER_SESSION)}, or turn it off`,
+  "Advanced caps — per-minute rate limiting and duplicate suppression",
 ];
 
 // What Free already includes — stated positively so the merchant sees Free isn't
 // crippled (doctrine: Pro gates scope, never quality).
+// Every line here is checked against what the code ACTUALLY serves on Free
+// (gateConfigForPlan). "Basic anti-spam — merge, cap & quiet mode" used to sit in
+// this list while merge tuning was Pro-locked in the admin and the session cap is
+// pinned server-side — a plan page that oversells Free is the same class of lie
+// as a summary that oversells a setting (§12).
 const FREE_FEATURES = [
   "All cart-event toasts (add, remove, update) — each on/off",
   "Countdown timer & announcements",
   "The default look, presets & live preview",
   "Free-shipping & gift milestones",
-  "Localization in 2 languages",
-  "Basic anti-spam — merge, cap & quiet mode",
+  `Localization in ${String(LOCALE_LIMIT_FREE)} languages`,
+  "Sensible merging out of the box — rapid cart changes become one toast",
+  `Shopper protection — max ${String(FREE_MAX_PER_SESSION)} toasts a visit, plus quiet mode`,
   "Exclusions — turn toasts off on any page",
 ];
 

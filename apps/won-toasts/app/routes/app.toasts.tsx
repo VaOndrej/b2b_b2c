@@ -709,26 +709,20 @@ export default function ToastsRoute() {
               title="Cart toasts"
               glyph="toast"
               summary={stateOf.cart}
-              hint="Shown automatically when the cart changes — no setup needed."
+              hint="Shown automatically when the cart changes — no setup needed. Turn each one on or off and edit what it says."
               on
             >
               <s-stack direction="block" gap="large">
-                <s-paragraph>
-                  Shown automatically when the cart changes. Turn each one on or off
-                  and edit what it says — all in one place. Add languages in{" "}
-                  <s-link href="/app/markets">Markets</s-link>.
-                </s-paragraph>
-
                 {/* Unified per-event control (doctrine §7c/§8b): toggle + wording +
-                    (for gift/shipping) their milestone settings inline. No Advanced. */}
+                    (for gift/shipping) their milestone settings inline. No Advanced.
+                    The section header already says what these are and that they need
+                    no setup — repeating it here (as three separate paragraphs) was
+                    the wall §17 is meant to remove. */}
                 <s-stack direction="block" gap="base">
-                  <s-text type="strong">Cart events</s-text>
                   <s-text color="subdued">
-                    Toggle each toast on or off and write its wording in your default
-                    language. Blank uses the built-in text. Translate into other
-                    languages on <s-link href="/app/markets">Markets</s-link>.
-                    Gift &amp; free shipping only <s-text type="strong">announce</s-text>{" "}
-                    a milestone — they never grant it.
+                    Blank wording uses the built-in text. Gift &amp; free shipping only{" "}
+                    <s-text type="strong">announce</s-text> a milestone — they never
+                    grant it. Translate on <s-link href="/app/markets">Markets</s-link>.
                   </s-text>
                   <MessageMatrix
                     theme={config.theme}

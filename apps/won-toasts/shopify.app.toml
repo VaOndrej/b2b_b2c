@@ -53,7 +53,13 @@ api_version = "2026-10"
 # feature (order.summary, social proof, popularity metafields) — all of which need
 # "Protected customer data access" approved in the Partner Dashboard. Re-add both
 # once granted to light those up together (also uncomment the orders/create block).
-scopes = "read_themes"
+#
+# read_locales (added 2026-08-22) backs the Markets page: the app reads the shop's
+# OWN languages via `shopLocales` instead of asking the merchant to re-pick them
+# from a 12-checkbox matrix that could silently disagree with their storefront.
+# It is a low-sensitivity scope (no customer data) — but it IS a scope change, so
+# every existing merchant re-consents on next open. Do not add scopes casually.
+scopes = "read_themes,read_locales"
 
 [auth]
 redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]

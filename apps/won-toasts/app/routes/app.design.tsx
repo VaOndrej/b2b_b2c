@@ -28,10 +28,11 @@ import {
 import { ToastPreview } from "../components/ToastPreview";
 import { AnimatedToastPreview } from "../components/AnimatedToastPreview";
 import { StorefrontPreview } from "../components/StorefrontPreview";
-import { PlanBadge } from "../components/PlanBadge";
 import { selectionRing } from "../lib/tokens";
 import { PositionField } from "../components/PositionField";
 import { EffectProof, ProofChip } from "../components/EffectProof";
+import { FREE_MAX_PER_SESSION, effectiveMaxPerSession } from "@won/core/toasts/tier";
+
 import { SegmentedNav } from "../components/SegmentedNav";
 import { WonBlock, WonSection } from "../components/WonSection";
 import { ProSell } from "../components/ProSell";
@@ -489,7 +490,10 @@ export default function DesignRoute() {
     autoDismiss: live.autoDismiss,
     pauseOnHover: live.pauseOnHover,
     grouping: { ...g.grouping, mode: liveRules.groupingMode },
-    frequency: { ...g.frequency, maxPerSession: liveRules.maxPerSession },
+    frequency: {
+      ...g.frequency,
+      maxPerSession: effectiveMaxPerSession(config.plan, liveRules.maxPerSession),
+    },
   };
   // Segment can be deep-linked (e.g. Insights suggestions → /app/design?seg=timing).
   const [searchParams] = useSearchParams();
@@ -765,24 +769,61 @@ export default function DesignRoute() {
                     </s-stack>
                 </WonBlock>
 
-                {/* CAP */}
+                {/* CAP — the shopper-protection half stays on Free (quality is
+                     never gated); what Pro buys is CONTROL of the number. */}
                 <WonBlock
                   title="Cap — how much is too much"
-                  summary="Hard limits so a shopper is never flooded. 0 means no limit."
+                  summary={
+                    isPro
+                      ? "Hard limits so a shopper is never flooded. 0 means no limit."
+                      : `Free protects shoppers with a fixed limit of ${FREE_MAX_PER_SESSION} toasts per visit. Pro lets you set your own.`
+                  }
                 >
                   <s-stack direction="block" gap="base">
                     <s-stack direction="inline" gap="base">
-                      <s-number-field label="Max toasts per session" name="maxPerSession" value={String(g.frequency.maxPerSession)} min={0} max={100} details="Caps how many a single visitor sees the whole visit." />
+                      {/* On Free this shows the number the SERVER actually enforces,
+                          not the stored one — an editable field the server would
+                          silently override is a lie (§17c / BILL-1). */}
+                      <s-number-field
+                        label="Max toasts per session"
+                        name="maxPerSession"
+                        value={String(effectiveMaxPerSession(config.plan, g.frequency.maxPerSession))}
+                        min={0}
+                        max={100}
+                        disabled={!isPro}
+                        details={
+                          isPro
+                            ? "Caps how many a single visitor sees the whole visit. 0 = no limit."
+                            : `Fixed at ${FREE_MAX_PER_SESSION} on Free so a visitor is never flooded.`
+                        }
+                      />
                       <s-number-field label="Wait between repeats" name="cooldownSec" value={String(g.frequency.cooldownMs / 1000)} min={0} max={3600} step={1} details="Seconds to wait before showing the same type again." />
                       <s-number-field label="Hide a dismissed toast for" name="suppressAfterDismissMin" value={String(Math.round(g.frequency.suppressAfterDismissMs / 60000))} min={0} max={1440} step={1} details="Minutes to keep a toast hidden after a shopper closes it." />
                     </s-stack>
-                    <CapProof maxPerSession={liveRules.maxPerSession} />
-                    <s-stack direction="inline" gap="small-300" alignItems="center">
-                      <s-text color="subdued">Advanced caps</s-text>
-                      <PlanBadge tier="pro" locked={!isPro} />
-                    </s-stack>
+                    <CapProof maxPerSession={effectiveMaxPerSession(config.plan, liveRules.maxPerSession)} />
+                  </s-stack>
+                </WonBlock>
+
+                {/* ADVANCED CAPS (Pro) — its own amber block, so plan state reads
+                     the same here as it does on Merge instead of being a grey
+                     label with a badge stuck to it. */}
+                <WonBlock
+                  title="Advanced caps"
+                  summary="Rate limiting and duplicate suppression, for stores with heavy cart traffic."
+                  pro
+                  locked={!isPro}
+                >
+                  <s-stack direction="block" gap="base">
+                    {!isPro ? (
+                      <ProSell benefit="Set your own session limit — raise it, or turn it off entirely — and add per-minute rate limiting for a busy store." />
+                    ) : null}
                     <s-stack direction="inline" gap="base">
-                      <s-number-field label="Max toasts per minute" name="rateLimitPerMin" value={String(g.grouping.rateLimitPerMin)} min={0} max={240} disabled={!isPro} details="Hard cap per minute across all shoppers." />
+                      {/* Verified against storefront-src/won-toasts.js: `emitTimes`
+                          is an in-page array in the shopper's own browser and resets
+                          on every page load. It is NOT a store-wide, cross-shopper
+                          limit — the old wording ("across all shoppers") promised
+                          something the runtime cannot do. */}
+                      <s-number-field label="Max toasts per minute" name="rateLimitPerMin" value={String(g.grouping.rateLimitPerMin)} min={0} max={240} disabled={!isPro} details="Per shopper, on the page they're viewing. Counts toasts in the last 60 seconds and skips the rest." />
                       <s-number-field label="Ignore repeats within" name="dedupeWindowSec" value={String(g.grouping.dedupeWindowMs / 1000)} min={0} max={10} step={0.1} disabled={!isPro} details="Identical toasts this close together are skipped." />
                     </s-stack>
                   </s-stack>
@@ -823,10 +864,6 @@ export default function DesignRoute() {
               locked={!isPro}
             >
               <s-stack direction="block" gap="base">
-                {!isPro ? (
-                  <ProSell benefit="Take the toast the last 10% of the way — a gradient edge, your own font, a mascot — without touching your theme." />
-                ) : null}
-
                 <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
                   <s-stack direction="block" gap="small">
                     <s-text type="strong">Want one toast to look different from the others?</s-text>
@@ -875,7 +912,11 @@ export default function DesignRoute() {
                   rows={10}
                   value={config.theme.customCss ?? ""}
                   disabled={!isPro}
-                  details="Everything you type here shows up in the preview immediately, so you are never editing blind."
+                  details={
+                    isPro
+                      ? "Everything you type here shows up in the preview immediately, so you are never editing blind."
+                      : "Read-only on Free. On Pro, everything you type here shows up in the preview immediately."
+                  }
                   placeholder={
                     "/* Cart toasts: a green edge */\n" +
                     '[data-won-type="cart"]{ border-left:4px solid #16a34a; }\n\n' +
@@ -887,6 +928,14 @@ export default function DesignRoute() {
                     "[data-won-persistent]{ --won-border:2px solid #111; }"
                   }
                 />
+
+                {/* The upsell belongs HERE, beside the greyed-out field — at the
+                    top of the section it scrolls off before the merchant reaches
+                    the box they can't type in, which reads as "broken", not
+                    "locked" (§16a). */}
+                {!isPro ? (
+                  <ProSell benefit="Take the toast the last 10% of the way — a gradient edge, your own font, a mascot — without touching your theme." />
+                ) : null}
               </s-stack>
             </WonSection>
             </div>
