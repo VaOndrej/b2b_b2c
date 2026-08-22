@@ -15,16 +15,27 @@
     if (!this.track) return;
     // Marquee mode is a self-contained continuous belt (no arrows/dots/drag);
     // it just needs its content duplicated so the -50% loop is seamless.
+    // One AbortController for every listener this component adds (incl. the
+    // window-level drag listeners) so disconnectedCallback tears them all down —
+    // otherwise the window pointermove/pointerup closures keep the element alive.
+    this._ac = new AbortController();
+    var signal = this._ac.signal;
     if (this.track.hasAttribute('data-marquee')) { this.setupMarquee(); return; }
     this.prevBtn = this.querySelector('[data-won-prev]');
     this.nextBtn = this.querySelector('[data-won-next]');
+    this.arrows = this.querySelector('[data-won-arrows]');
     this.progress = this.querySelector('[data-won-progress]');
     this.bar = this.querySelector('[data-won-progress-bar]');
     this.dots = this.querySelector('[data-won-dots]');
     this._onScroll = this.onScroll.bind(this);
-    this.track.addEventListener('scroll', this._onScroll, { passive: true });
-    if (this.prevBtn) this.prevBtn.addEventListener('click', () => this.scrollByItems(-1));
-    if (this.nextBtn) this.nextBtn.addEventListener('click', () => this.scrollByItems(1));
+    this.track.addEventListener('scroll', this._onScroll, { passive: true, signal: signal });
+    // Recompute overflow-gated controls (arrows/dots/progress) on resize too —
+    // crossing a breakpoint changes column count and thus whether the rail
+    // overflows, and resize does not fire scroll. Keeps the fit-aware invariant
+    // true at every breakpoint, not only the one the rail first rendered at.
+    window.addEventListener('resize', this._onScroll, { passive: true, signal: signal });
+    if (this.prevBtn) this.prevBtn.addEventListener('click', () => this.scrollByItems(-1), { signal: signal });
+    if (this.nextBtn) this.nextBtn.addEventListener('click', () => this.scrollByItems(1), { signal: signal });
     if (this.dots) this.buildDots();
     this.bindMouseDrag();
     this.onScroll();
@@ -37,13 +48,13 @@
       this._loopMq = this._loopMode === 'always' ? null
         : matchMedia(this._loopMode === 'mobile' ? '(max-width: 749px)' : '(min-width: 750px)');
       this._syncLoop = this.syncLoop.bind(this);
-      if (this._loopMq) this._loopMq.addEventListener('change', this._syncLoop);
+      if (this._loopMq) this._loopMq.addEventListener('change', this._syncLoop, { signal: signal });
       this._onSettle = () => {
         if (!this._loop) return;
         clearTimeout(this._settleTimer);
         this._settleTimer = setTimeout(() => this.wrapIfOnClone(), 130);
       };
-      this.track.addEventListener('scroll', this._onSettle, { passive: true });
+      this.track.addEventListener('scroll', this._onSettle, { passive: true, signal: signal });
       this.syncLoop();
     }
     const interval = parseInt(this.dataset.autoplay, 10);
@@ -51,15 +62,15 @@
       this._autoMs = interval * 1000;
       const start = () => { clearInterval(this._timer); this._timer = setInterval(() => this.autoAdvance(), this._autoMs); };
       // Pause on hover, RESUME on leave (previously it stopped for good).
-      this.addEventListener('pointerenter', () => clearInterval(this._timer));
-      this.addEventListener('pointerleave', start);
+      this.addEventListener('pointerenter', () => clearInterval(this._timer), { signal: signal });
+      this.addEventListener('pointerleave', start, { signal: signal });
       start();
     }
   }
   disconnectedCallback() {
-    if (this.track) this.track.removeEventListener('scroll', this._onScroll);
-    if (this._loopMq && this._syncLoop) this._loopMq.removeEventListener('change', this._syncLoop);
+    if (this._ac) this._ac.abort();
     if (this._io) this._io.disconnect();
+    cancelAnimationFrame(this._raf);
     clearTimeout(this._settleTimer);
     clearInterval(this._timer);
   }
@@ -203,9 +214,20 @@
     const active = w > 0 ? Math.round(Math.abs(this.track.scrollLeft) / w) : 0;
     this._dotEls.forEach((d, i) => d.setAttribute('aria-current', i === active ? 'true' : 'false'));
   }
+  // Coalesce scroll bursts into one layout read+write per frame (the handler
+  // reads scrollWidth/clientWidth then writes bar width/transform).
   onScroll() {
+    if (this._raf) return;
+    this._raf = requestAnimationFrame(() => { this._raf = 0; this.renderScroll(); });
+  }
+  renderScroll() {
     const max = this.track.scrollWidth - this.track.clientWidth;
     const ratio = max > 0 ? Math.min(1, Math.abs(this.track.scrollLeft) / max) : 0;
+    const scrollable = max > 1;
+    // Invariant: navigation must not render when there's nothing to scroll — gate
+    // arrows on real overflow (runtime, so it holds at every breakpoint), not just
+    // the desktop count-based `fits` class. A looping rail always scrolls.
+    if (this.arrows) this.arrows.hidden = !scrollable && !this._loop;
     this.updateDots();
     // The progress thumb must mirror the scroll: its width is the visible
     // fraction of the content, its offset is how far through that scroll we
@@ -240,9 +262,10 @@
       if (!dragging) return;
       dragging = false; this.classList.remove('is-dragging');
     };
-    this.track.addEventListener('pointerdown', down);
-    window.addEventListener('pointermove', move, { passive: true });
-    window.addEventListener('pointerup', up);
+    var signal = this._ac ? this._ac.signal : undefined;
+    this.track.addEventListener('pointerdown', down, { signal: signal });
+    window.addEventListener('pointermove', move, { passive: true, signal: signal });
+    window.addEventListener('pointerup', up, { signal: signal });
   }
 }
   customElements.define('won-carousel', WonCarousel);

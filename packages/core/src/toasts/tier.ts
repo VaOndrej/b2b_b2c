@@ -51,6 +51,32 @@ export const FREE_MILESTONE_LIMIT = 2;
 export const FREE_MAX_PER_SESSION = 5;
 
 /**
+ * How many per-currency free-shipping thresholds Free may keep.
+ *
+ * Same shape as the language limit: tiered by COUNT, not by quality. A store
+ * selling in one or two currencies is fully served on Free; a store selling in
+ * more is the one Pro is for.
+ */
+export const FREE_CURRENCY_LIMIT = 2;
+
+/**
+ * Keep at most `limit` currency thresholds, deterministically (alphabetical by
+ * ISO code) so the same two survive on every read — a cap that silently picked a
+ * different pair per request would make a shopper's free-shipping bar flicker.
+ */
+export function capCurrencyThresholds(
+  thresholds: Record<string, number> | undefined,
+  limit: number,
+): Record<string, number> | undefined {
+  if (!thresholds) return thresholds;
+  const codes = Object.keys(thresholds).sort();
+  if (codes.length <= limit) return thresholds;
+  const kept: Record<string, number> = {};
+  for (const code of codes.slice(0, limit)) kept[code] = thresholds[code];
+  return kept;
+}
+
+/**
  * The cap actually in force for a plan. The admin MUST render this rather than
  * the stored value, or a Free merchant reads "no session cap" while the server
  * is enforcing 5 — a header stating something the config doesn't guarantee
@@ -77,7 +103,12 @@ export function gateConfigForPlan(config: ToastAppConfig): ToastAppConfig {
     // Per-type look/behaviour overrides are a Pro scope (the design studio); Free
     // renders every type with the default look.
     byType: {},
-    milestones: config.milestones.slice(0, FREE_MILESTONE_LIMIT),
+    milestones: config.milestones
+      .slice(0, FREE_MILESTONE_LIMIT)
+      .map((m) => ({
+        ...m,
+        thresholds: capCurrencyThresholds(m.thresholds, FREE_CURRENCY_LIMIT),
+      })),
     targeting: DEFAULT_TARGETING, // targeting is a Pro feature
     // Free keeps countdown notifications (real deadline urgency) but not the
     // Pro-only page-view types. Quality is never gated — only scope.

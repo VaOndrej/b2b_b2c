@@ -70,8 +70,11 @@
 {% stylesheet %}
   .won-cmp-wrap { display: flex; flex-direction: column; gap: var(--won-space-5); }
   .won-cmp__heading { font-size: var(--won-h-size-m, 1.8rem); max-width: var(--won-h-mw-m, 100%); }
-  .won-cmp__scroll { overflow-x: auto; }
+  .won-cmp__scroll { overflow-x: auto; min-inline-size: 0; max-inline-size: 100%; }
   .won-cmp__table { inline-size: 100%; border-collapse: collapse; min-inline-size: 480px; table-layout: fixed; }
+  /* Mobile: let the table fit the viewport instead of forcing a 480px min that
+     leaks past the scroller into page-level horizontal scroll. Columns adapt. */
+  @media (max-width: 749px) { .won-cmp__table { min-inline-size: 0; } }
   .won-cmp__table th,
   .won-cmp__table td { padding: var(--won-space-3) var(--won-space-4); text-align: center; vertical-align: middle; border-block-end: 1px solid var(--won-border); }
   .won-cmp__table th:first-child,

@@ -1,0 +1,21 @@
+{%- comment -%}
+  won-button — shared CTA primitive. Single source of truth for won button markup
+  so new-tab, rel, aria and future analytics hooks live in ONE place instead of
+  copy-pasted <a class="won-btn"> across sections (theme-block-ux rule 5).
+
+  Params:
+    label    (required) — button text; renders nothing when blank.
+    link     — href; when blank the button renders with no href (styled label).
+    style    — 'primary' | 'secondary' (default 'primary') → won-btn--<style>.
+    new_tab  — truthy → target="_blank" rel="noopener" (never hardcode _blank).
+    class    — extra class(es) appended (e.g. 'won-slide__btn').
+    aria     — aria-label when the visible label needs augmenting.
+
+  Example:
+    {% render 'won-button', label: s.button_label, link: s.button_link,
+       style: s.button_style, new_tab: s.buttons_new_tab %}
+{%- endcomment -%}
+{%- liquid
+  assign btn_style = style | default: 'primary'
+-%}
+{%- if label != blank -%}<a class="won-btn won-btn--{{ btn_style }}{% if class != blank %} {{ class }}{% endif %}"{% if link != blank %} href="{{ link }}"{% if new_tab %} target="_blank" rel="noopener"{% endif %}{% endif %}{% if aria != blank %} aria-label="{{ aria | escape }}"{% endif %}>{{ label }}</a>{%- endif -%}

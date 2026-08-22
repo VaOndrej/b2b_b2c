@@ -27,6 +27,7 @@
       "stats": "Won Stats",
       "animation": "Won · Animace čísel",
       "policy_schema": "Won · AI / vrácení zboží",
+      "product_trust": "Won Trust (PDP)",
       "contact": "Won Contact",
       "tabs": "Won Tabs",
       "tab": "Won Tab",
@@ -53,6 +54,8 @@
       "ann_freeship": "Doprava zdarma (progress)"
     },
     "info": {
+      "image_mobile": "Samostatný ořez pod 750px. Použij, když se na úzkém telefonu ztrácí motiv z desktopového obrázku; nech prázdné a použije se všude desktopový.",
+      "button_new_tab": "Otevře odkaz tlačítka v nové záložce prohlížeče. Pro odkazy v rámci obchodu nech vypnuté, ať zákazník neztratí místo; zapni jen pro odkaz na jiný web.",
       "animate_values": "Čísla se při scrollnutí do záběru „naběhnou“ z nuly do své finální podoby. Prefix, jednotky i formát (10 000+, 98 %, €1.2M) zůstanou zachované. Hodnoty bez jasného čísla (např. 24/7) se nechají být.",
       "emit_faq_schema": "Zpřístupní otázky a odpovědi vyhledávačům a AR/AI enginům jako FAQPage (strojově čitelná data). Emituje se jen z opravdových párů otázka + odpověď, které jsou i viditelné na stránce — Google vyžaduje shodu se zobrazeným obsahem. Zapni jen na skutečném FAQ, ne na tabech/specs.",
       "emit_product_schema": "Zpřístupní řádky tabulky (parametry / nutriční hodnoty) vyhledávačům a AI jako vlastnosti produktu (Product.additionalProperty). Připojí se ke stejnému produktu podle URL. Bezpečné zapnout — jde jen o strojová data navíc; emituje se jen z reálných párů název + hodnota na stránce produktu.",
@@ -171,7 +174,9 @@
       "ann_dismissible": "Přidá křížek pro zavření; lišta zůstane skrytá po zbytek návštěvy.",
       "ann_icon": "Volitelná ikona/emoji před textem (např. 🚚, 🎉).",
       "ann_link": "Volitelně: udělej z celé zprávy odkaz (např. na novou kolekci).",
-      "show_side_media": "Přidá obrázek do postranního sloupce vedle nadpisu a kontaktu. Nadpis i otázky FAQ zůstávají vždy — tohle je nikdy neskryje."
+      "show_side_media": "Přidá obrázek do postranního sloupce vedle nadpisu a kontaktu. Nadpis i otázky FAQ zůstávají vždy — tohle je nikdy neskryje.",
+      "show_author": "Vypíše autora článku pod nadpisem. Prázdné pole autora se přeskočí, nezobrazí se prázdné místo.",
+      "show_reading_time": "Odhad z počtu slov (200 slov za minutu), zaokrouhleno nahoru na celou minutu."
     },
     "headers": {
       "ai_schema": "AI / vyhledávače (strukturovaná data)",
@@ -254,6 +259,7 @@
       "button_style": "Styl tlačítka",
       "media_type": "Typ média",
       "image": "Obrázek",
+      "image_mobile": "Obrázek pro mobil (volitelné)",
       "image_asset": "Přibalený obrázek (název souboru)",
       "image_2": "Druhý obrázek",
       "image_asset_2": "Druhý přibalený obrázek (název souboru)",
@@ -292,6 +298,7 @@
       "link_label": "Text odkazu",
       "link_url": "URL odkazu",
       "link_new_tab": "Otevřít odkaz v novém okně",
+      "button_new_tab": "Otevřít odkaz tlačítka v novém okně",
       "image_alt": "Alt text obrázku",
       "cmp_aspect": "Poměr stran",
       "item_style": "Styl položky",
@@ -314,7 +321,7 @@
       "consent_text": "Text souhlasu",
       "success_message": "Zpráva o úspěchu",
       "tile_size": "Velikost dlaždice",
-      "icon": "Ikona",
+      "icon": "Ikona / emoji",
       "product": "Produkt",
       "hotspot_x": "Vodorovná pozice",
       "hotspot_y": "Svislá pozice",
@@ -393,7 +400,10 @@
       "ann_display": "Zobrazení",
       "ann_interval": "Interval rotace",
       "ann_dismissible": "Zavíratelná lišta",
-      "show_side_media": "Obrázek v postranním sloupci"
+      "show_side_media": "Obrázek v postranním sloupci",
+      "arrow_style": "Styl šipek",
+      "show_author": "Zobrazit autora",
+      "show_reading_time": "Zobrazit dobu čtení"
     },
     "options": {
       "loop_off": "Vypnuto",
@@ -538,7 +548,11 @@
       "ann_rotate": "Rotace",
       "ann_single": "Jedna zpráva",
       "align_center": "Na střed",
-      "align_start": "Vlevo"
+      "align_start": "Vlevo",
+      "arrow_square": "Hranaté",
+      "arrow_minimal": "Bez pozadí",
+      "arrow_pill": "Kulaté",
+      "arrow_soft": "Jemně zaoblené"
     },
     "presets": {
       "product_carousel": "Won Carousel — produkty",
@@ -630,5 +644,9 @@
       "tab_content": "<p>Obsah záložky.</p>",
       "ann_message": "Doprava zdarma nad 1 500 Kč 🚚"
     }
+  },
+  "categories": {
+    "products": "Ostatní",
+    "layout": "Ostatní"
   }
 }

@@ -8,7 +8,9 @@ import {
   resolveToastConfig,
 } from "../../src/toasts/config.defaults.ts";
 import {
+  FREE_CURRENCY_LIMIT,
   FREE_MAX_PER_SESSION,
+  capCurrencyThresholds,
   effectiveMaxPerSession,
   gateConfigForPlan,
   isFeatureAllowed,
@@ -128,4 +130,35 @@ test("a downgraded store stops being served its Pro grouping (BILL-1)", () => {
   const pro = gateConfigForPlan({ ...wasPro, plan: "pro" });
   assert.equal(pro.global.grouping.mode, "by-type");
   assert.equal(pro.global.grouping.rateLimitPerMin, 240);
+});
+
+test("Free keeps at most FREE_CURRENCY_LIMIT per-currency thresholds", () => {
+  const config = resolveToastConfig({
+    plan: "free",
+    milestones: [
+      {
+        id: "ship",
+        kind: "free_shipping",
+        enabled: true,
+        thresholdCents: 100000,
+        thresholds: { CZK: 100000, EUR: 4000, GBP: 3500, USD: 4500 },
+        label: "free shipping",
+      },
+    ],
+  } as never);
+  const gated = gateConfigForPlan(config);
+  const kept = gated.milestones[0].thresholds ?? {};
+  assert.equal(Object.keys(kept).length, FREE_CURRENCY_LIMIT);
+  // Deterministic (alphabetical) — the same two every request, so a shopper's
+  // free-shipping bar can't flicker between reads.
+  assert.deepEqual(Object.keys(kept).sort(), ["CZK", "EUR"]);
+
+  const pro = gateConfigForPlan({ ...config, plan: "pro" });
+  assert.equal(Object.keys(pro.milestones[0].thresholds ?? {}).length, 4);
+});
+
+test("capCurrencyThresholds leaves a small set and undefined untouched", () => {
+  assert.equal(capCurrencyThresholds(undefined, 2), undefined);
+  const two = { EUR: 100, USD: 200 };
+  assert.equal(capCurrencyThresholds(two, 2), two);
 });

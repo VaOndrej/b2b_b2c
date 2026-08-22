@@ -84,6 +84,8 @@ interface NotificationBase {
 
 export interface CountdownNotification extends NotificationBase {
   type: "countdown";
+  /** Localized bodies; `message` (base) is the fallback for missing locales. */
+  messages?: Partial<Record<ToastLocale, string>>;
   /** Fixed deadline (ISO 8601). Takes precedence over evergreenMs. */
   endsAt?: string;
   /** Evergreen per-session duration in ms. */
@@ -92,12 +94,16 @@ export interface CountdownNotification extends NotificationBase {
 
 export interface StockLowNotification extends NotificationBase {
   type: "stock.low";
+  /** Localized bodies; `message` (base) is the fallback for missing locales. */
+  messages?: Partial<Record<ToastLocale, string>>;
   /** Show only when 0 < inventory < threshold. */
   threshold: number;
 }
 
 export interface CartActivityNotification extends NotificationBase {
   type: "cart.activity";
+  /** Localized bodies; `message` (base) is the fallback for missing locales. */
+  messages?: Partial<Record<ToastLocale, string>>;
   /** Aggregation window in hours for the "X people added" counter. */
   windowHours: number;
 }
@@ -255,15 +261,19 @@ export function sanitizeNotifications(input: unknown): NotificationRule[] {
     const frequency = sanitizeFrequency(raw.frequency);
     if (frequency) base.frequency = frequency;
 
+    // Per-locale bodies are shared by every type that carries merchant-written
+    // copy (A5 — locale-as-data). Sanitized once here rather than per branch.
+    const localized = sanitizeLocaleMap(raw.messages);
+
     let rule: NotificationRule;
     if (type === "countdown") {
       const endsAt = isoOrUndefined(raw.endsAt);
       const evergreenMs = clampInt(raw.evergreenMs, 1000, 30 * 86_400_000);
-      rule = { ...base, type, ...(endsAt ? { endsAt } : {}), ...(evergreenMs !== undefined ? { evergreenMs } : {}) };
+      rule = { ...base, type, ...(localized ? { messages: localized } : {}), ...(endsAt ? { endsAt } : {}), ...(evergreenMs !== undefined ? { evergreenMs } : {}) };
     } else if (type === "stock.low") {
-      rule = { ...base, type, threshold: clampInt(raw.threshold, 1, 100_000) ?? 1 };
+      rule = { ...base, type, ...(localized ? { messages: localized } : {}), threshold: clampInt(raw.threshold, 1, 100_000) ?? 1 };
     } else if (type === "cart.activity") {
-      rule = { ...base, type, windowHours: clampInt(raw.windowHours, 1, 168) ?? 24 };
+      rule = { ...base, type, ...(localized ? { messages: localized } : {}), windowHours: clampInt(raw.windowHours, 1, 168) ?? 24 };
     } else if (type === "order.summary") {
       // Orders "in the last N days" → window up to 30 days.
       rule = { ...base, type, windowHours: clampInt(raw.windowHours, 1, 720) ?? 24 };
@@ -276,8 +286,8 @@ export function sanitizeNotifications(input: unknown): NotificationRule[] {
         minOrders: clampInt(raw.minOrders, 0, 100_000) ?? 5,
       };
     } else {
-      // announcement: optional per-locale i18n bodies + A/B variants.
-      const messages = sanitizeLocaleMap(raw.messages);
+      // announcement: per-locale i18n bodies (above) + A/B variants.
+      const messages = localized;
       const variants = Array.isArray(raw.variants)
         ? raw.variants
             .filter((v): v is string => typeof v === "string" && v.trim().length > 0)

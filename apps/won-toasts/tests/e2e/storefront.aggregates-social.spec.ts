@@ -2,12 +2,10 @@ import {
   expect,
   mockAggregates,
   mockConfig,
-  mockSocial,
   openProduct,
   readyEmbed,
   settle,
   test,
-  toast,
   TOASTS_E2E_HANDLES,
 } from "./support/fixtures.ts";
 
@@ -73,64 +71,11 @@ test.describe("Won Toasts aggregates (MVP11)", () => {
   });
 });
 
-// SPEC-DRIVEN (MVP12, acceptance 2). The social-proof feed renders stored
-// (anonymized) sales. Marker [data-type='sale'].
-test.describe("Won Toasts social proof (MVP12)", () => {
-  test("renders a recent sale from the feed with name + city", async ({
-    page,
-  }) => {
-    await mockConfig(page, {
-      plan: "pro",
-      notifications: [
-        {
-          id: "sales",
-          type: "order.created",
-          enabled: true,
-          surface: "toast",
-          pages: ["product"],
-          message: "{name} from {city} bought {product}",
-          showName: true,
-          showCity: true,
-          minOrders: 1,
-        },
-      ],
-    });
-    await mockSocial(page, [
-      { firstName: "Anna", city: "Praha", product: "Blue Mug", at: recent(4) },
-    ]);
-    await openProduct(page, TOASTS_E2E_HANDLES.primary);
-    await readyEmbed(page);
-
-    const sale = toast(page, "sale");
-    await expect(sale).toHaveCount(1);
-    await expect(sale).toContainText("Anna");
-    await expect(sale).toContainText("Praha");
-    await expect(sale).toContainText("Blue Mug");
-  });
-
-  test("renders nothing when the feed is empty (cold-start honesty)", async ({
-    page,
-  }) => {
-    await mockConfig(page, {
-      plan: "pro",
-      notifications: [
-        {
-          id: "sales",
-          type: "order.created",
-          enabled: true,
-          surface: "toast",
-          pages: ["product"],
-          message: "{name} from {city} bought {product}",
-          showName: true,
-          showCity: true,
-          minOrders: 1,
-        },
-      ],
-    });
-    await mockSocial(page, []); // no stored sales → nothing to show
-    await openProduct(page, TOASTS_E2E_HANDLES.primary);
-    await readyEmbed(page);
-    await settle(page);
-    await expect(toast(page, "sale")).toHaveCount(0);
-  });
-});
+// The MVP12 social-proof specs were REMOVED 2026-08-22 together with the runtime
+// they covered. order.created reads SaleEvent rows that only the orders/create
+// webhook writes, and that webhook is off until Partner "Protected customer data
+// access" is approved — so the feature could not fire, the admin no longer offers
+// it, and renderSocialProof is gone from storefront-src/won-toasts.js.
+// Restoring the feature is a revert of that commit, which brings these specs back
+// with it. Cart-activity aggregates (above) are unaffected: they count cart-add
+// beacons the storefront itself sends, so they work without any order data.

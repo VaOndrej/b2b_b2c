@@ -1,3 +1,4 @@
+{%- comment -%} DEPRECATED: preset stripped, not in the Add-section picker. Superseded by won-grid (category_grid / category_mosaic / shop_by_goal). Kept for back-compat rendering only — do not add new settings here. {%- endcomment -%}
 {%- liquid
   assign s = section.settings
   assign count = section.blocks.size
@@ -182,13 +183,20 @@
       "default": 3
     },
     {
-      "type": "range",
+      "type": "select",
       "id": "columns_mobile",
       "label": "t:won.settings.columns_mobile",
-      "min": 1,
-      "max": 2,
-      "step": 1,
-      "default": 2
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        }
+      ],
+      "default": "2"
     },
     {
       "type": "range",

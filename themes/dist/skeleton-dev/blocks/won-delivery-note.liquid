@@ -8,7 +8,8 @@ section accepting theme blocks. Static and self-contained.
 {%- assign s = block.settings -%}
 <div class="won-delivery" {{ block.shopify_attributes }}>
   {%- if s.show_icon -%}
-    {% render 'won-icon', name: s.icon | default: 'truck', class: 'won-delivery__icon' %}
+    {%- assign icon_name = s.icon | default: 'truck' -%}
+    {% render 'won-icon', name: icon_name, class: 'won-delivery__icon' %}
   {%- endif -%}
   <div class="won-delivery__text rte">{{ s.note }}</div>
 </div>

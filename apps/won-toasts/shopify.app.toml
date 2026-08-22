@@ -59,7 +59,11 @@ api_version = "2026-10"
 # from a 12-checkbox matrix that could silently disagree with their storefront.
 # It is a low-sensitivity scope (no customer data) — but it IS a scope change, so
 # every existing merchant re-consents on next open. Do not add scopes casually.
-scopes = "read_themes,read_locales"
+#
+# read_shipping (added 2026-08-22) lets Markets offer "we found 1 000 Kč in your
+# shipping rates — use it?" instead of making the merchant copy the number across
+# by hand and never noticing when the two drift apart. Read-only, no customer data.
+scopes = "read_themes,read_locales,read_shipping"
 
 [auth]
 redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]

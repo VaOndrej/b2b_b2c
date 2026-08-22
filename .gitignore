@@ -22,3 +22,7 @@ themes/bases/
 # Claude Code hook state (per-session, never committed)
 .claude/.ui-touched
 .claude/.gate-pass
+
+# Publish intermediate: the generic deploy build. Reproducible with
+# `npm run theme:generic`; the deploy repo is where it actually lives.
+themes/dist/*-generic/

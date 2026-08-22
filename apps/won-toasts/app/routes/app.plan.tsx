@@ -34,7 +34,7 @@ function featureLabel(key: string): string {
 // what the plan actually unlocks, without inventing unenforced feature flags.
 const EXTRA_PRO_FEATURES = [
   "Per-type look & behaviour (each toast styled on its own)",
-  "Pro toast types — low-stock, cart activity, order summary, recent sales",
+  "Pro toast types — low-stock urgency and cart activity",
   `Up to ${String(LOCALE_LIMIT_PRO)} languages (Free covers ${String(LOCALE_LIMIT_FREE)})`,
   "Merge tuning — what counts as “the same thing”, and how fast",
   `Your own session limit — raise it past ${String(FREE_MAX_PER_SESSION)}, or turn it off`,

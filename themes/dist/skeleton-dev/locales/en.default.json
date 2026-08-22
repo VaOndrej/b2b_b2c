@@ -121,6 +121,9 @@
     "ship": {
       "remaining": "Add [amount] more for free shipping",
       "reached": "You’ve got free shipping 🎉"
+    },
+    "article": {
+      "reading_time": "{{ minutes }} min read"
     }
   }
 }

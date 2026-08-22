@@ -9,8 +9,12 @@ import {
   localeLimit,
   normalizeLocale,
 } from "@won/core/toasts/locales";
+import { FREE_CURRENCY_LIMIT } from "@won/core/toasts/tier";
 
-import type { NotificationRule } from "@won/core/toasts/notifications";
+import type {
+  NotificationRule,
+  NotificationType,
+} from "@won/core/toasts/notifications";
 
 import { authenticate } from "../shopify.server";
 import {
@@ -35,6 +39,21 @@ import { persistConfig } from "../lib/persist-config.server";
 const MKT_CURRENCY_ROWS = 50;
 
 /**
+ * Notification toasts whose wording the merchant writes, and which therefore need
+ * per-locale copy. Kept in one list so the editor and the action can't disagree
+ * about which types are translatable.
+ *
+ * order.summary / order.created are absent on purpose: they need the orders/create
+ * webhook, which is off, and the app no longer offers them.
+ */
+const TRANSLATABLE_RULES: { type: NotificationType; label: string }[] = [
+  { type: "announcement", label: "Announcement" },
+  { type: "countdown", label: "Countdown timer" },
+  { type: "stock.low", label: "Low-stock urgency" },
+  { type: "cart.activity", label: "Cart activity" },
+];
+
+/**
  * The shop's own languages, read from Shopify (`shopLocales`, scope read_locales).
  *
  * The page used to ask the merchant to re-declare their languages in a matrix of
@@ -49,6 +68,100 @@ const SHOP_LOCALES_QUERY = `#graphql
   query WonShopLocales {
     shopLocales { locale name primary published }
   }`;
+
+/**
+ * The shop's real free-shipping rules (scope read_shipping). Won only ANNOUNCES a
+ * milestone — the rule itself lives in Shopify shipping. Asking the merchant to
+ * retype the amount here guarantees the two drift apart silently, so we read the
+ * real one and offer it. Validated against Admin API 2026-04.
+ */
+const FREE_SHIPPING_QUERY = `#graphql
+  query WonFreeShipping {
+    deliveryProfiles(first: 5) {
+      nodes {
+        profileLocationGroups {
+          locationGroupZones(first: 10) {
+            nodes {
+              methodDefinitions(first: 20) {
+                nodes {
+                  active
+                  rateProvider {
+                    ... on DeliveryRateDefinition {
+                      price { amount currencyCode }
+                    }
+                  }
+                  methodConditions {
+                    field
+                    operator
+                    conditionCriteria {
+                      ... on MoneyV2 { amount currencyCode }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }`;
+
+/** A free-shipping threshold discovered in the shop's own shipping rates. */
+interface DiscoveredThreshold {
+  currency: string;
+  amount: number;
+}
+
+/**
+ * Pull "spend X and shipping is free" out of the delivery profiles: an ACTIVE
+ * method whose rate is 0 and which carries a minimum-subtotal condition.
+ *
+ * Deliberately conservative — anything it can't read with confidence is skipped
+ * rather than guessed at, because a wrong number here would make the app promise
+ * a shopper free shipping they don't get (§12).
+ */
+function discoverFreeShipping(payload: unknown): DiscoveredThreshold[] {
+  const out: DiscoveredThreshold[] = [];
+  const seen = new Set<string>();
+  const profiles =
+    (payload as { data?: { deliveryProfiles?: { nodes?: unknown[] } } })?.data
+      ?.deliveryProfiles?.nodes ?? [];
+  for (const profile of profiles) {
+    const groups = (profile as { profileLocationGroups?: unknown[] })?.profileLocationGroups ?? [];
+    for (const group of groups) {
+      const zones =
+        (group as { locationGroupZones?: { nodes?: unknown[] } })?.locationGroupZones?.nodes ?? [];
+      for (const zone of zones) {
+        const methods =
+          (zone as { methodDefinitions?: { nodes?: unknown[] } })?.methodDefinitions?.nodes ?? [];
+        for (const m of methods) {
+          const method = m as {
+            active?: boolean;
+            rateProvider?: { price?: { amount?: string; currencyCode?: string } };
+            methodConditions?: {
+              field?: string;
+              conditionCriteria?: { amount?: string; currencyCode?: string };
+            }[];
+          };
+          if (method.active === false) continue;
+          const price = Number(method.rateProvider?.price?.amount);
+          if (!Number.isFinite(price) || price !== 0) continue; // not free
+          for (const cond of method.methodConditions ?? []) {
+            if (cond?.field !== "TOTAL_PRICE") continue;
+            const amount = Number(cond.conditionCriteria?.amount);
+            const currency = cond.conditionCriteria?.currencyCode;
+            if (!Number.isFinite(amount) || amount <= 0 || !currency) continue;
+            const key = `${currency}:${amount}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push({ currency, amount: Math.round(amount * 100) });
+          }
+        }
+      }
+    }
+  }
+  return out.slice(0, 10);
+}
 
 interface ShopLocale {
   locale: string;
@@ -72,7 +185,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     shopLocales = [];
   }
 
-  return { config, shopLocales };
+  // Best-effort: the page is fully usable without it, so a missing scope or an
+  // unhappy API must never take Markets down (REL-1).
+  let discovered: DiscoveredThreshold[] = [];
+  try {
+    const res = await admin.graphql(FREE_SHIPPING_QUERY);
+    discovered = discoverFreeShipping(await res.json());
+  } catch {
+    discovered = [];
+  }
+
+  return { config, shopLocales, discovered };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -117,27 +240,35 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     locales.enabledLocales,
   );
 
-  // Announcement is the one notification with its own copy — its translations live
-  // here too. Update only that rule's per-locale messages, preserving everything
-  // else (the Toasts page owns its default message + other fields).
-  const annIndex = config.notifications.findIndex((n) => n.type === "announcement");
+  // Every notification whose wording the merchant writes gets its translations
+  // saved here. This page owns the NON-default locales only; the Toasts page owns
+  // each rule's default message and its other fields, so we merge rather than
+  // replace (a save here must never wipe the default copy).
   let notifications: NotificationRule[] | undefined;
-  const ann = annIndex >= 0 ? config.notifications[annIndex] : undefined;
-  if (ann && ann.type === "announcement") {
-    const annEdits: Record<string, string> = {};
-    for (const loc of editLocales) {
-      annEdits[loc] = String(f.get(`announcement_msg_${loc}`) ?? "");
-    }
-    const updated: NotificationRule = {
-      ...ann,
-      messages: updateAnnouncementTranslations(
-        ann.messages,
-        annEdits,
-        locales.defaultLocale,
-        locales.enabledLocales,
-      ),
-    };
-    notifications = config.notifications.map((n, i) => (i === annIndex ? updated : n));
+  const translatable = new Set<string>(
+    TRANSLATABLE_RULES.map((r) => r.type as string),
+  );
+  if (config.notifications.some((n) => translatable.has(n.type))) {
+    notifications = config.notifications.map((rule) => {
+      if (!translatable.has(rule.type)) return rule;
+      const edits: Record<string, string> = {};
+      for (const loc of editLocales) {
+        edits[loc] = String(f.get(`${rule.type}_msg_${loc}`) ?? "");
+      }
+      const current =
+        "messages" in rule
+          ? (rule.messages as Record<string, string> | undefined)
+          : undefined;
+      return {
+        ...rule,
+        messages: updateAnnouncementTranslations(
+          current,
+          edits,
+          locales.defaultLocale,
+          locales.enabledLocales,
+        ),
+      } as NotificationRule;
+    });
   }
 
   // Currencies: per-presentment-currency free-shipping thresholds. This page owns
@@ -167,7 +298,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function MarketsRoute() {
-  const { config, shopLocales } = useLoaderData<typeof loader>();
+  const { config, shopLocales, discovered } = useLoaderData<typeof loader>();
   const saveError = useSavedToast();
   const isPro = config.plan === "pro";
   const loc = config.locales;
@@ -239,12 +370,6 @@ export default function MarketsRoute() {
       ? "Base amount only — no per-currency thresholds set"
       : `${savedCurrencies} ${savedCurrencies === 1 ? "currency" : "currencies"} with their own threshold`;
 
-  // Announcement is the one notification with its own copy — translate it here too.
-  const announcement = config.notifications.find((n) => n.type === "announcement");
-  const annMessage =
-    announcement && "message" in announcement ? announcement.message : "";
-  const annMessages =
-    announcement && "messages" in announcement ? announcement.messages : undefined;
 
   return (
     <s-page heading="Markets" inlineSize="large">
@@ -384,27 +509,52 @@ export default function MarketsRoute() {
                 referenceLocale={loc.defaultLocale}
               />
 
-              {announcement ? (
-                <s-box padding="base" borderWidth="base" borderRadius="base">
-                  <s-stack direction="block" gap="small">
-                    <s-text type="strong">Announcement</s-text>
-                    <s-text color="subdued">
-                      Your default: “{annMessage || "(not set — write it on Toasts)"}”
-                    </s-text>
-                    <s-stack direction="inline" gap="base">
-                      {editLocales.map((lc) => (
-                        <s-text-field
-                          key={lc}
-                          label={languageName(lc)}
-                          name={`announcement_msg_${lc}`}
-                          value={annMessages?.[lc] ?? ""}
-                          placeholder={annMessage || undefined}
-                        />
-                      ))}
+              {/* Cart events are only half the merchant-written copy. The
+                  notification toasts carry their own wording and used to be
+                  English-only — the announcement row was even hidden entirely
+                  until the rule existed, so a merchant looking for it saw nothing
+                  and reasonably concluded it wasn't translatable (A5). */}
+              {TRANSLATABLE_RULES.map((meta) => {
+                const rule = config.notifications.find((n) => n.type === meta.type);
+                const base =
+                  rule && "message" in rule ? String(rule.message ?? "") : "";
+                const perLocale =
+                  rule && "messages" in rule
+                    ? (rule.messages as Record<string, string> | undefined)
+                    : undefined;
+                return (
+                  <s-box key={meta.type} padding="base" borderWidth="base" borderRadius="base">
+                    <s-stack direction="block" gap="small">
+                      <s-text type="strong">{meta.label}</s-text>
+                      {rule ? (
+                        <s-text color="subdued">
+                          Your default: “{base || "(not written yet)"}”
+                        </s-text>
+                      ) : (
+                        // Honest empty state instead of hiding the row (§15/§13b).
+                        <s-text color="subdued">
+                          Not set up yet — turn it on and write its wording on{" "}
+                          <s-link href="/app/toasts">Toasts</s-link>, then translate
+                          it here.
+                        </s-text>
+                      )}
+                      {rule ? (
+                        <s-stack direction="inline" gap="base">
+                          {editLocales.map((lc) => (
+                            <s-text-field
+                              key={lc}
+                              label={languageName(lc)}
+                              name={`${meta.type}_msg_${lc}`}
+                              value={perLocale?.[lc] ?? ""}
+                              placeholder={base || undefined}
+                            />
+                          ))}
+                        </s-stack>
+                      ) : null}
                     </s-stack>
-                  </s-stack>
-                </s-box>
-              ) : null}
+                  </s-box>
+                );
+              })}
             </s-stack>
           )}
         </WonSection>
@@ -413,9 +563,39 @@ export default function MarketsRoute() {
           title="Currencies"
           glyph="placement"
           summary={currencySummary}
-          hint="Included on every plan. Only needed if you sell in more than one currency."
+          hint={
+            isPro
+              ? "Only needed if you sell in more than one currency."
+              : `Free covers ${String(FREE_CURRENCY_LIMIT)} currencies. Only needed if you sell in more than one.`
+          }
         >
           <s-stack direction="block" gap="base">
+            {/* What Shopify actually charges — the merchant should not be copying
+                this across by hand and hoping it stays in sync (§12: Won only
+                ANNOUNCES the milestone, it never grants it). */}
+            {discovered.length > 0 ? (
+              <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
+                <s-stack direction="block" gap="small">
+                  <s-text type="strong">Found in your shipping rates</s-text>
+                  <s-text color="subdued">
+                    Your store gives free shipping from{" "}
+                    <s-text type="strong">
+                      {discovered
+                        .map((d) => `${(d.amount / 100).toLocaleString("en-US")} ${d.currency}`)
+                        .join(", ")}
+                    </s-text>
+                    . Use the same numbers below so the toast never promises free
+                    shipping a shopper doesn’t get.
+                  </s-text>
+                </s-stack>
+              </s-box>
+            ) : null}
+
+            {!isPro ? (
+              <ProSell
+                benefit={`Free covers ${String(FREE_CURRENCY_LIMIT)} currencies. Pro removes the limit, so every market you sell into gets its own honest threshold.`}
+              />
+            ) : null}
             <s-text color="subdued">
               Set your free-shipping threshold per currency so a shopper paying in
               EUR isn&apos;t measured against your base amount. The base amount +

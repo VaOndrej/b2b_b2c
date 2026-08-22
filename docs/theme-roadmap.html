@@ -417,10 +417,12 @@
         </div>
         <p class="body" style="margin-top:16px">
           Monorepo: <code>themes/won-base/</code> = originální IP knihovna (zdroj pravdy,
-          verzovaná, testovaná). <code>themes/clients/&lt;klient&gt;/</code> = Horizon
-          (netknutý) + won-base + klient config. Build krok won-base „vlepí" nad Horizon
-          (klient) nebo nad Skeleton (produkt). Stejná disciplína jako <code>won-</code>
-          prefixy u appek.
+          verzovaná, testovaná). Build krok won-base „vlepí" nad Horizon (klient) nebo nad
+          Skeleton (produkt). Stejná disciplína jako <code>won-</code> prefixy u appek.
+          Klientský motiv <strong>nežije v monorepu</strong> — je to samostatné private repo
+          (klon <code>won-theme-generic</code>), protože Shopify GitHub integrace se napojuje
+          jen na repo, jehož kořen je motiv. Viz
+          <code>docs/superpowers/specs/2026-08-22-git-deploy-model-decision.md</code>.
         </p>
         <div class="verdict open">
           Ověřit: <strong>smlouvy s klienty</strong> — smí se komponenty recyklovat
@@ -644,9 +646,19 @@
         <ul class="clean">
           <li><code>themes/won-base/</code> — zdroj pravdy, jen <strong>kód</strong> (liquid/js/css + <code>won-tokens</code> + <code>won-settings.schema.json</code> fragment + <code>manifest.json</code>)</li>
           <li><code>themes/bases/horizon/</code>, <code>bases/skeleton/</code> — čisté base, pinned vendor (netknuté)</li>
-          <li><code>themes/clients/&lt;klient&gt;/</code> — composed: base + won-base + klient settings</li>
-          <li><code>themes/build/compose.mjs</code> — base → overlay won-base → merge schema → <code>dist/&lt;target&gt;</code></li>
+          <li><code>themes/build/compose.mjs</code> — base → overlay won-base → merge schema → <code>dist/&lt;target&gt;</code>, plus <code>.won-manifest.json</code> (vrstva každého souboru)</li>
+          <li><code>themes/build/publish.mjs</code> — dist → deploy repo, respektuje vlastníka cesty (merchant data se nikdy nepřepíšou)</li>
+          <li><code>themes/build/promote.mjs</code> — deploy repo → <code>themes/won-base/</code> trojcestným merge; vendor a merchant data odmítne</li>
+          <li><code>themes/build/deploy-repo/</code> — starter kit, který publish sype do každého deploy repa (<code>AGENTS.md</code>, hook, paměť)</li>
         </ul>
+        <div class="verdict">
+          <strong>Klientský motiv není podsložka monorepa.</strong> <code>themes/clients/</code>
+          jako zdrojová vrstva <strong>padá</strong>: Shopify GitHub integrace chce motiv
+          v kořeni repa. Topologie je fork model —
+          <code>won-theme-generic</code> (upstream) → klon <code>won-theme-&lt;klient&gt;</code>
+          napojený na klientův store. Dolů <code>git merge upstream/main</code>, nahoru
+          <code>npm run theme:promote</code>.
+        </div>
         <div class="verdict">
           <strong>Oddělení kód vs. nastavení:</strong> <code>won-base</code> vlastní kód; nastavení a
           JSON šablony (<code>settings_data.json</code>, <code>templates/*.json</code>) jsou

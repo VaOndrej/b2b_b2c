@@ -789,7 +789,7 @@
 
     var timeEl = elem("span");
     timeEl.setAttribute("data-won-countdown-time", "");
-    var card = notifCard("countdown", timeEl, rule.message || "Ends in {countdown}");
+    var card = notifCard("countdown", timeEl, resolveLocalized(rule.messages, false) || rule.message || "Ends in {countdown}");
     card.setAttribute("data-won-countdown", "");
     function paint() {
       var r = pvRemaining(Date.now(), opts);
@@ -874,7 +874,7 @@
       var token = cartToken();
       var gr = "stock:" + rule.id;
       if (!govGate(token, govRuleOf(rule), gr, now, rule.id)) return;
-      var text = renderTemplate(rule.message || "Only {count} left", {
+      var text = renderTemplate(resolveLocalized(rule.messages, false) || rule.message || "Only {count} left", {
         count: inv,
       });
       var card = notifCard("stock", null, text);
@@ -906,70 +906,18 @@
     return String(template || "").replace(/\{count\}/g, String(count));
   }
 
-  // ---- social proof (mirror of @won/core/toasts/social-proof, MVP12) ----
-  function relTime(at) {
-    var diff = Date.now() - at;
-    if (!(diff > 0)) diff = 0;
-    var min = Math.floor(diff / 60000);
-    if (min < 1) return locale === "cs" ? "právě teď" : locale === "sk" ? "práve teraz" : "just now";
-    if (min < 60) return min + " min";
-    return Math.floor(min / 60) + " h";
-  }
-  function formatSale(tpl, sale) {
-    var t = String(tpl || "");
-    var name = (sale.firstName || "").trim();
-    var city = (sale.city || "").trim();
-    var product = (sale.product || "").trim();
-    if (!city) t = t.replace(/\s*from\s+\{city\}/gi, "");
-    return t
-      .replace(/\{name\}/g, name || "Someone")
-      .replace(/\{city\}/g, city)
-      .replace(/\{product\}/g, product || "an item")
-      .replace(/\{time\}/g, relTime(sale.at))
-      .replace(/\s{2,}/g, " ")
-      .trim();
-  }
-  function renderSocialProof(rule) {
-    window
-      .fetch("/apps/won-toasts/social", { headers: { Accept: "application/json" } })
-      .then(function (r) {
-        return r.json();
-      })
-      .then(function (data) {
-        var sales = (data && data.sales) || [];
-        if (!sales.length) return; // cold-start honest: nothing to show
-        var i = 0;
-        var token = cartToken();
-        var timer = null;
-        function pop() {
-          if (i >= sales.length) {
-            if (timer) clearInterval(timer);
-            return;
-          }
-          var sale = sales[i++];
-          var now = Date.now();
-          var gr = "sale:" + rule.id;
-          if (!govGate(token, govRuleOf(rule), gr, now, rule.id)) return;
-          var text = formatSale(
-            rule.message || "{name} from {city} bought {product}",
-            sale,
-          );
-          if (!text) return;
-          var card = notifCard("sale", null, text);
-          finalizeCard(card, {
-            persistent: false,
-            ruleId: rule.id,
-            onClose: function () {
-              govRecordDismiss(token, gr, Date.now());
-            },
-          });
-          govRecordEmit(token, govRuleOf(rule), now);
-        }
-        pop();
-        timer = setInterval(pop, Math.max(4000, (cfg.global.durationMs || 3500) + 1500));
-      })
-      .catch(function () {});
-  }
+  // Social proof (order.created) was REMOVED 2026-08-22, along with relTime and
+  // renderSocialProof. It reads SaleEvent rows that only the orders/create webhook
+  // writes, and that webhook stays commented out until Partner "Protected customer
+  // data access" is approved (shopify.app.toml + the F3 decision in
+  // docs/won-toasts-mvp-plan.md). Shipping ~6 kB of runtime that could never
+  // produce a toast cost every shopper download budget for nothing, and the admin
+  // no longer offers the toast, so the app cannot advertise what it can't do.
+  // Restoring it is a revert of this commit.
+  //
+  // NB: renderAnnouncement and renderAggregates sit BELOW this point. They were
+  // never part of social proof — the old section comment just happened to sit
+  // above them. Do not widen this deletion to the next section header.
 
   function renderAnnouncement(rule) {
     var token = cartToken();
@@ -1022,7 +970,7 @@
             now,
             (rule.windowHours || 24) * 3_600_000,
           );
-          var text = formatAggregateCount(rule.message || "{count}", count);
+          var text = formatAggregateCount(resolveLocalized(rule.messages, false) || rule.message || "{count}", count);
           if (!text) return; // honest: 0 → render nothing
           var token = cartToken();
           var gr = rule.type + ":" + rule.id;
@@ -1054,9 +1002,10 @@
       if (rule.type === "countdown") renderCountdown(rule);
       else if (rule.type === "stock.low") renderStockLow(rule);
       else if (rule.type === "announcement") renderAnnouncement(rule);
-      else if (rule.type === "order.created") renderSocialProof(rule);
-      else if (rule.type === "cart.activity" || rule.type === "order.summary")
-        aggRules.push(rule);
+      // cart.activity counts cart-add beacons the storefront itself sends, so it
+      // works today. order.created and order.summary both need orders/create and
+      // are not rendered at all — see the note above renderAnnouncement.
+      else if (rule.type === "cart.activity") aggRules.push(rule);
     });
     if (aggRules.length) renderAggregates(aggRules);
   }

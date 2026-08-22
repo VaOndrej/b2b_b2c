@@ -172,9 +172,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const r = buildRule(form, type);
     if (r) rules.push(r);
   }
-  for (const type of [
-    "stock.low", "cart.activity", "order.summary", "order.created",
-  ] as NotificationType[]) {
+  for (const type of ["stock.low", "cart.activity"] as NotificationType[]) {
     if (isPro) {
       const r = buildRule(form, type);
       if (r) rules.push(r);
@@ -182,6 +180,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const existing = config.notifications.find((n) => n.type === type);
       if (existing) rules.push(existing);
     }
+  }
+  // order.summary / order.created are no longer editable here (they need the
+  // orders/create webhook, which is off). Carry any stored rule through
+  // untouched so a save on this page never destroys configuration a merchant
+  // made before — turning a feature off must not erase its setup (§14a).
+  for (const type of ["order.summary", "order.created"] as NotificationType[]) {
+    const existing = config.notifications.find((n) => n.type === type);
+    if (existing) rules.push(existing);
   }
 
   // Announcement translations are owned by the Languages page — this page only
@@ -432,8 +438,6 @@ const RECIPES: RecipeMeta[] = [
   { key: "countdown", label: "Countdown timer", plan: "free", group: "urgency", blurb: "Put a real deadline on screen. It only ever counts to a date you set — it cannot invent one." },
   { key: "stock.low", label: "Low-stock urgency", plan: "pro", group: "urgency", blurb: "Say “only 3 left” when there really are 3 left. Reads your live inventory; silent when stock is healthy." },
   { key: "cart.activity", label: "Cart activity", plan: "pro", group: "social", blurb: "Show that other people are buying this right now, counted server-side from genuine add-to-cart events." },
-  { key: "order.summary", label: "Order summary", plan: "pro", group: "social", blurb: "Turn your real order volume into quiet reassurance — “18 orders this week”, straight from your orders." },
-  { key: "order.created", label: "Recent sales", plan: "pro", group: "social", blurb: "Let real orders speak: “Anna from Praha bought a Mug”. Stays off until you have enough orders to be honest." },
   { key: "announcement", label: "Announcement", plan: "free", group: "message", blurb: "Say anything in your own words — a sale, a shipping cutoff, a holiday note — without touching your theme." },
 ];
 
@@ -525,10 +529,6 @@ export default function ToastsRoute() {
     | Extract<NotificationRule, { type: "cart.activity" }> | undefined;
   const announcement = ruleOf(config, "announcement") as
     | Extract<NotificationRule, { type: "announcement" }> | undefined;
-  const orderSummary = ruleOf(config, "order.summary") as
-    | Extract<NotificationRule, { type: "order.summary" }> | undefined;
-  const social = ruleOf(config, "order.created") as
-    | Extract<NotificationRule, { type: "order.created" }> | undefined;
 
   const evergreenHours = countdown?.evergreenMs ? String(countdown.evergreenMs / 3_600_000) : "24";
   const ship = config.milestones.find((m) => m.kind === "free_shipping");
@@ -540,8 +540,6 @@ export default function ToastsRoute() {
     announcement: announcement?.enabled ?? false,
     "stock.low": stock?.enabled ?? false,
     "cart.activity": activity?.enabled ?? false,
-    "order.summary": orderSummary?.enabled ?? false,
-    "order.created": social?.enabled ?? false,
   };
 
   // What each live toast currently SAYS — the one thing about a running toast a
@@ -557,9 +555,6 @@ export default function ToastsRoute() {
       describeNotificationRule(announcement),
     "stock.low": stock?.message?.trim() || describeNotificationRule(stock),
     "cart.activity": activity?.message?.trim() || describeNotificationRule(activity),
-    "order.summary":
-      orderSummary?.message?.trim() || describeNotificationRule(orderSummary),
-    "order.created": social?.message?.trim() || describeNotificationRule(social),
   };
 
   const panel = (key: string): React.CSSProperties => ({
@@ -648,10 +643,6 @@ export default function ToastsRoute() {
         return <NotificationPreview type="stock.low" message={liveMsg("stock.low", stock?.message)} surface={liveSurface("stock.low", stock?.surface)} theme={pvTheme} customCss={isPro ? pvTheme.customCss : undefined} closeable={pvBeh.closeable} />;
       case "cart.activity":
         return <NotificationPreview type="cart.activity" message={liveMsg("cart.activity", activity?.message)} surface={liveSurface("cart.activity", activity?.surface)} theme={pvTheme} customCss={isPro ? pvTheme.customCss : undefined} closeable={pvBeh.closeable} />;
-      case "order.summary":
-        return <NotificationPreview type="order.summary" message={liveMsg("order.summary", orderSummary?.message)} surface={liveSurface("order.summary", orderSummary?.surface)} theme={pvTheme} customCss={isPro ? pvTheme.customCss : undefined} closeable={pvBeh.closeable} />;
-      case "order.created":
-        return <NotificationPreview type="order.created" message={liveMsg("order.created", social?.message)} surface={liveSurface("order.created", social?.surface)} theme={pvTheme} customCss={isPro ? pvTheme.customCss : undefined} closeable={pvBeh.closeable} />;
       default:
         return null;
     }
@@ -909,66 +900,8 @@ export default function ToastsRoute() {
           </div>
 
           {/* ---- Order summary (Pro) ---- */}
-          <div style={panel("order.summary")}>
-            <WonSection
-              title="Order summary"
-              glyph="target"
-              summary={describeNotificationRule(orderSummary)}
-              on={enabledOf["order.summary"]}
-              pro
-              locked={!isPro}
-            >
-              {!isPro ? (
-                <ProSell benefit="Turn your real order volume into quiet reassurance — “18 orders this week”, straight from your orders." />
-              ) : null}
-              <s-stack direction="block" gap="base">
-                <s-switch label="Show an order summary" name="order.summary_enabled" checked={orderSummary?.enabled ?? false} disabled={!isPro} />
-                <s-paragraph>“{"{count}"} orders this week” — counted from your real orders. Silent until there are orders in the window.</s-paragraph>
-                <s-number-field label="Look back over" name="order.summary_window_hours" value={String(orderSummary?.windowHours ?? 168)} min={1} max={720} disabled={!isPro} details="Hours of orders to count (168 = 7 days)." />
-                <MessageField name="order.summary_message" value={orderSummary?.message ?? "{count} orders this week"} tokens={["{count}"]} details="{count} is replaced by the real order count." disabled={!isPro} onInsert={insertToken} />
-                <Advanced>
-                  <SurfaceSelect type="order.summary" value={orderSummary?.surface ?? "toast"} />
-                  <PagePicker type="order.summary" pages={orderSummary?.pages ?? []} />
-                </Advanced>
-              </s-stack>
-              <TypeStyleFields typeKey="order.summary" config={config} isPro={isPro} />
-            </WonSection>
-          </div>
 
           {/* ---- Recent sales (Pro) ---- */}
-          <div style={panel("order.created")}>
-            <WonSection
-              title="Recent sales"
-              glyph="target"
-              summary={describeNotificationRule(social)}
-              on={enabledOf["order.created"]}
-              pro
-              locked={!isPro}
-            >
-              {!isPro ? (
-                <ProSell benefit="Let real orders speak — “Anna from Praha bought a Mug”, from genuine orders only, and silent until you have enough of them." />
-              ) : null}
-              <s-stack direction="block" gap="base">
-                <s-switch label="Show recent sales" name="order.created_enabled" checked={social?.enabled ?? false} disabled={!isPro} />
-                <s-paragraph>
-                  “Anna from Praha bought a Mug” — from <s-text type="strong">real orders only</s-text>,
-                  storing just a first name + city. Stays off until you have enough orders. Shoppers opt out with a{" "}
-                  <s-text type="strong">won_social_optout</s-text> order note.
-                </s-paragraph>
-                <s-stack direction="inline" gap="base">
-                  <s-checkbox label="Show first name" name="order.created_show_name" value="on" checked={social?.showName ?? true} disabled={!isPro} />
-                  <s-checkbox label="Show city" name="order.created_show_city" value="on" checked={social?.showCity ?? true} disabled={!isPro} />
-                </s-stack>
-                <s-number-field label="Minimum real orders before it turns on" name="order.created_min_orders" value={String(social?.minOrders ?? 5)} min={1} disabled={!isPro} details="Cold-start honesty: stays hidden until you have at least this many real orders." />
-                <MessageField name="order.created_message" value={social?.message ?? "{name} from {city} bought {product}"} tokens={["{name}", "{city}", "{product}", "{time}"]} details="Tokens are filled from the real order." disabled={!isPro} onInsert={insertToken} />
-                <Advanced>
-                  <SurfaceSelect type="order.created" value={social?.surface ?? "toast"} />
-                  <PagePicker type="order.created" pages={social?.pages ?? []} />
-                </Advanced>
-              </s-stack>
-              <TypeStyleFields typeKey="order.created" config={config} isPro={isPro} />
-            </WonSection>
-          </div>
 
           {!isPro ? (
             <s-section>

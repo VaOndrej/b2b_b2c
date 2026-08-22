@@ -23,9 +23,11 @@
    wrapped in an IIFE with an early return so several sections emitting the tag
    never double-initialise. */
 (function () {
-  if (typeof window !== 'undefined' && window.__wonCountUpBound) {
-    // Already initialised on this page — expose nothing new, just bail.
-  } else if (typeof window !== 'undefined') {
+  // Real double-load guard: several sections each emit this script tag, so on the
+  // 2nd+ execution bail entirely — otherwise each run adds its own
+  // DOMContentLoaded / shopify:section:load listener and re-scans the page.
+  if (typeof window !== 'undefined') {
+    if (window.__wonCountUpBound) return;
     window.__wonCountUpBound = true;
   }
 
@@ -177,6 +179,11 @@
       if (!cfg) continue;
       // Reduced motion or no observer: leave the final value in place.
       if (reducedMotion() || !obs) continue;
+      // Reserve the final rendered width BEFORE swapping in the (narrower) start
+      // value, so the count-up reflow never shifts neighbours (CLS). Measured
+      // once here; inline-block lets min-inline-size apply to inline elements too.
+      var w = el.getBoundingClientRect().width;
+      if (w > 0) { el.style.display = 'inline-block'; el.style.minInlineSize = Math.ceil(w) + 'px'; }
       el.textContent = formatValue(cfg.start, cfg.meta);
       el.__wonCountUpCfg = cfg;
       obs.observe(el);

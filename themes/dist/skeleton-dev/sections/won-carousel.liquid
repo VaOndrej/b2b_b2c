@@ -10,7 +10,7 @@
     assign items_count = section.blocks.size
   endif
 
-  assign cols = s.columns
+  assign cols = s.columns_desktop | default: s.columns
   if items_count > 0 and items_count < cols
     assign cols = items_count
   endif
@@ -44,10 +44,16 @@
     {%- endif -%}
 
     <won-carousel
-      class="won-carousel won-carousel--{{ s.layout }}{% if fits %} won-carousel--fits{% endif %}{% if s.columns_mobile contains '.' %} won-carousel--peek-mobile{% endif %}"
+      class="won-carousel won-carousel--{{ s.layout }}{% if fits %} won-carousel--fits{% endif %}{% if s.columns_mobile contains '.' %} won-carousel--peek-mobile{% endif %}{% if s.layout == 'grid' and s.mobile_carousel %} won-carousel--scroll-sm{% endif %}"
       {% if s.layout == 'slider' and s.autoplay %}data-autoplay="{{ s.autoplay_interval }}"{% endif %}
       {% if s.layout == 'slider' and s.loop != blank %}data-won-loop="{{ s.loop }}"{% endif %}
-      data-mobile-mode="{{ s.columns_mobile }}"
+      {%- comment -%}
+        With mobile_carousel on, the grid becomes an 82%-card rail on phones, so
+        columns_mobile no longer describes what renders. Report "peek" — the same
+        token won-grid emits for its own --scroll-sm rail — or the attribute lies
+        to the mobile-mode invariant in storefront.spec.ts.
+      {%- endcomment -%}
+      data-mobile-mode="{% if s.layout == 'grid' and s.mobile_carousel %}peek{% else %}{{ s.columns_mobile }}{% endif %}"
       style="--won-cols-lg: {{ cols }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-sm: {{ s.columns_mobile }}; --won-gap: {{ s.gap }}px;"
     >
       <div class="won-carousel__track" data-won-track {% if s.layout == 'marquee' %}data-marquee{% endif %}>
@@ -64,9 +70,9 @@
 
       {%- if s.layout == 'slider' -%}
         {%- if s.show_arrows -%}
-          <div class="won-carousel__arrows">
-            <button type="button" class="won-carousel__arrow" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
-            <button type="button" class="won-carousel__arrow" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
+          <div class="won-carousel__arrows" data-won-arrows>
+            <button type="button" class="won-carousel__arrow won-carousel__arrow--{{ s.arrow_style }}" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
+            <button type="button" class="won-carousel__arrow won-carousel__arrow--{{ s.arrow_style }}" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
           </div>
         {%- endif -%}
         {%- if s.show_progress -%}
@@ -121,6 +127,26 @@
     overflow: visible;
     scroll-snap-type: none;
   }
+  /* Grid layout that becomes a single swipeable rail on phones. Mirrors
+     won-grid's .won-grid--scroll-sm so the two sections behave identically.
+     Must out-specify .won-carousel--grid .won-carousel__track above, hence the
+     doubled class. */
+  @media (max-width: 749px) {
+    .won-carousel--scroll-sm.won-carousel--scroll-sm .won-carousel__track {
+      display: flex;
+      flex-wrap: nowrap;
+      grid-template-columns: none;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .won-carousel--scroll-sm .won-carousel__track::-webkit-scrollbar { display: none; }
+    .won-carousel--scroll-sm .won-carousel__track > * {
+      flex: 0 0 82%;
+      scroll-snap-align: start;
+    }
+  }
   .won-carousel.is-dragging .won-carousel__track { scroll-snap-type: none; scroll-behavior: auto; cursor: grabbing; }
   /* Fractional mobile columns (e.g. 1.2) = a peek rail. Centre-snap so the
      active card shows a neighbour on BOTH sides mid-scroll — start-snap pinned
@@ -132,12 +158,23 @@
   }
 
   .won-carousel__arrows { display: flex; gap: var(--won-space-2); justify-content: flex-end; margin-top: var(--won-space-3); }
+  .won-carousel__arrows[hidden] { display: none; }
   .won-carousel__arrow {
     inline-size: 44px; block-size: 44px; border-radius: var(--won-radius-pill);
     border: 1px solid var(--won-border); background: var(--won-bg); color: var(--won-fg);
     font-size: 1.4rem; line-height: 1; cursor: pointer;
   }
   .won-carousel__arrow:disabled { opacity: 0.35; cursor: default; }
+  /* `pill` is the default and MUST reproduce the base rule above (--won-radius-pill).
+     Any other default would silently reshape every carousel already in the wild. */
+  .won-carousel__arrow--pill { border-radius: var(--won-radius-pill); }
+  .won-carousel__arrow--soft { border-radius: var(--won-radius-sm); }
+  .won-carousel__arrow--square { border-radius: 0; }
+  .won-carousel__arrow--minimal {
+    border-radius: 0;
+    border-color: transparent;
+    background: transparent;
+  }
   .won-carousel__progress { margin-top: var(--won-space-3); block-size: 4px; background: var(--won-border); border-radius: var(--won-radius-pill); overflow: hidden; }
   .won-carousel__progress-bar { display: block; block-size: 100%; inline-size: 30%; background: var(--won-accent); border-radius: inherit; transform: translateX(0); }
   .won-carousel__dots { display: flex; gap: var(--won-space-1); justify-content: center; margin-top: var(--won-space-3); }
@@ -354,7 +391,7 @@
     },
     {
       "type": "range",
-      "id": "columns",
+      "id": "columns_desktop",
       "label": "t:won.settings.columns_desktop",
       "min": 1,
       "max": 6,
@@ -389,6 +426,14 @@
         }
       ],
       "default": "1"
+    },
+    {
+      "type": "checkbox",
+      "id": "mobile_carousel",
+      "label": "t:won.settings.mobile_carousel",
+      "info": "t:won.info.mobile_carousel",
+      "default": false,
+      "visible_if": "{{ section.settings.layout == 'grid' }}"
     },
     {
       "type": "range",
@@ -478,6 +523,31 @@
       "label": "t:won.settings.show_arrows",
       "default": true,
       "visible_if": "{{ section.settings.layout == 'slider' }}"
+    },
+    {
+      "type": "select",
+      "id": "arrow_style",
+      "label": "t:won.settings.arrow_style",
+      "options": [
+        {
+          "value": "pill",
+          "label": "t:won.options.arrow_pill"
+        },
+        {
+          "value": "soft",
+          "label": "t:won.options.arrow_soft"
+        },
+        {
+          "value": "square",
+          "label": "t:won.options.arrow_square"
+        },
+        {
+          "value": "minimal",
+          "label": "t:won.options.arrow_minimal"
+        }
+      ],
+      "default": "pill",
+      "visible_if": "{{ section.settings.layout == 'slider' and section.settings.show_arrows }}"
     },
     {
       "type": "checkbox",
@@ -867,7 +937,7 @@
       "settings": {
         "source": "collection",
         "layout": "slider",
-        "columns": 4,
+        "columns_desktop": 4,
         "heading": "<p>Bestsellers</p>"
       }
     },
@@ -877,7 +947,7 @@
       "settings": {
         "source": "manual",
         "layout": "slider",
-        "columns": 3
+        "columns_desktop": 3
       },
       "blocks": [
         {
@@ -897,10 +967,30 @@
       "settings": {
         "source": "manual",
         "layout": "marquee",
-        "columns": 6,
+        "columns_desktop": 6,
         "show_arrows": false,
         "show_progress": false
-      }
+      },
+      "blocks": [
+        {
+          "type": "won-slide"
+        },
+        {
+          "type": "won-slide"
+        },
+        {
+          "type": "won-slide"
+        },
+        {
+          "type": "won-slide"
+        },
+        {
+          "type": "won-slide"
+        },
+        {
+          "type": "won-slide"
+        }
+      ]
     }
   ]
 }

@@ -24,7 +24,11 @@
     "build:apps": "npm run build --workspaces --if-present",
     "validate:shopify": "shopify theme check --path apps/won-toasts/extensions/won-toasts-storefront",
     "test:smoke": "playwright test tests/smoke",
-    "seed:e2e-products": "node packages/testing/scripts/seed-e2e-products.mjs"
+    "seed:e2e-products": "node packages/testing/scripts/seed-e2e-products.mjs",
+    "theme:compose": "node themes/build/compose.mjs horizon && node themes/build/compose.mjs skeleton",
+    "theme:generic": "node themes/build/compose.mjs horizon --out themes/dist/horizon-generic",
+    "theme:publish": "npm run theme:generic && node themes/build/publish.mjs",
+    "theme:promote": "node themes/build/promote.mjs"
   },
   "devDependencies": {
     "@shopify/cli": "3.92.1"

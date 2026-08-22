@@ -1,0 +1,2652 @@
+{
+  "base": "horizon",
+  "demoOverlay": true,
+  "wonBaseFileCount": 74,
+  "files": {
+    ".cursor/rules/accordion-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e836ede50706c1e5"
+    },
+    ".cursor/rules/animation-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "d80ea2e91d21b22a"
+    },
+    ".cursor/rules/assets.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "00b2862fbc0b910f"
+    },
+    ".cursor/rules/blocks.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "25308a2bd6de69c0"
+    },
+    ".cursor/rules/breadcrumb-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "d4c2bdfea8e166b1"
+    },
+    ".cursor/rules/carousel-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2a47c7bd74027e1b"
+    },
+    ".cursor/rules/cart-drawer-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "679932141ef33748"
+    },
+    ".cursor/rules/chat-window-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "26abb5e7969a9441"
+    },
+    ".cursor/rules/color-contrast-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "73c9abac18dcabbe"
+    },
+    ".cursor/rules/color-swatch-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "72cf8b07222ade4a"
+    },
+    ".cursor/rules/combobox-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "fe271905de1ac5a3"
+    },
+    ".cursor/rules/css-standards.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e47e8c8677ad5b4b"
+    },
+    ".cursor/rules/disclosure-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "6c12643073fdd584"
+    },
+    ".cursor/rules/dropdown-navigation-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "06d99c1640627897"
+    },
+    ".cursor/rules/examples/block-example-group.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "95d263380273f90e"
+    },
+    ".cursor/rules/examples/block-example-text.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "80c572f2c0be1275"
+    },
+    ".cursor/rules/examples/section-example.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "79781bb8d28be0c3"
+    },
+    ".cursor/rules/examples/snippet-example.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b8279a3c35b03786"
+    },
+    ".cursor/rules/flip-card-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "24948da5f8d17e7c"
+    },
+    ".cursor/rules/focus-order-and-styles-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "90f0fc4935281c85"
+    },
+    ".cursor/rules/form-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "65d897dd3da611cb"
+    },
+    ".cursor/rules/global-accessibility-standards.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b7e14fc0cf84dbbd"
+    },
+    ".cursor/rules/heading-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "eefd44ff91da39d0"
+    },
+    ".cursor/rules/html-standards.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "05d28f27600fd83a"
+    },
+    ".cursor/rules/image-alt-text-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "996c77b120653688"
+    },
+    ".cursor/rules/javascript-standards.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e8dcaba7c2e0b0f3"
+    },
+    ".cursor/rules/landmark-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "0a87a2f4591d02e6"
+    },
+    ".cursor/rules/liquid.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b10c42ff096a3ad1"
+    },
+    ".cursor/rules/locales.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1ed441271e4e1f99"
+    },
+    ".cursor/rules/localization.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2cb0cb077efcd466"
+    },
+    ".cursor/rules/mobile-accessibility-standards.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "0bf38f61fbc7e9f2"
+    },
+    ".cursor/rules/modal-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "71c0639c9c971dec"
+    },
+    ".cursor/rules/product-card-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "719f64c4ffcb9f17"
+    },
+    ".cursor/rules/product-filter-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8c985a81430cc815"
+    },
+    ".cursor/rules/product-media-gallery-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "28f540e01bef8ac2"
+    },
+    ".cursor/rules/prompts-and-references.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "573bbf4f570be61b"
+    },
+    ".cursor/rules/sale-price-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1eb0bcd30675f00d"
+    },
+    ".cursor/rules/schemas.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "49659f43957abcef"
+    },
+    ".cursor/rules/sections.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "6ed436aeed76907d"
+    },
+    ".cursor/rules/slider-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a5476b451d1fd182"
+    },
+    ".cursor/rules/snippets.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "66ea9f026d774073"
+    },
+    ".cursor/rules/switch-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cf363f7a60b732e3"
+    },
+    ".cursor/rules/tab-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "82282b8a9c797435"
+    },
+    ".cursor/rules/table-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "02d921e4f9f4516a"
+    },
+    ".cursor/rules/templates.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "5108878f7b06752d"
+    },
+    ".cursor/rules/theme-settings.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a0024922642d6975"
+    },
+    ".cursor/rules/tooltip-accessibility.mdc": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "072fdebfe315c95a"
+    },
+    "LICENSE.md": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "bc30024e2b736b83"
+    },
+    "README.md": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "0e3005f6ad1de12e"
+    },
+    "assets/accordion-custom.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "daa20011b89ec0d6"
+    },
+    "assets/account-login-actions.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a15c885e7ca010b5"
+    },
+    "assets/anchored-popover.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "f021076d8321d95b"
+    },
+    "assets/announcement-bar.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9aedef562165209b"
+    },
+    "assets/auto-close-details.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ad1346312bafa09a"
+    },
+    "assets/base.css": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "0b350cacf7cfe0e9"
+    },
+    "assets/blog-posts-list.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "43f079c8eb383525"
+    },
+    "assets/cart-discount.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "7b911591eac2a6ec"
+    },
+    "assets/cart-drawer.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "11dfa2fde16ca320"
+    },
+    "assets/cart-icon.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "66f8ee19fae4dfa4"
+    },
+    "assets/cart-note.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "fa5c7f2db0b81a3c"
+    },
+    "assets/collection-links.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a885a9751c5f911f"
+    },
+    "assets/comparison-slider.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cf5e5e660851597e"
+    },
+    "assets/component-cart-items.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "46c9490f39ecc9a5"
+    },
+    "assets/component-cart-quantity-selector.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "abd5813bc8b0f870"
+    },
+    "assets/component-quantity-selector.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "37e2bd5e160d762f"
+    },
+    "assets/component.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "3798455f28383ddc"
+    },
+    "assets/copy-to-clipboard.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "afbfeedf77b83409"
+    },
+    "assets/dialog.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "3540b625a5d455fe"
+    },
+    "assets/disclosure-custom.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "059c4fef61b322f6"
+    },
+    "assets/drag-zoom-wrapper.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "878eb17c6c21c457"
+    },
+    "assets/events.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e6f780cb158cf3b1"
+    },
+    "assets/facets.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "5bcad402710c10fa"
+    },
+    "assets/floating-panel.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "dbd9701e878499ec"
+    },
+    "assets/fly-to-cart.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "aeecb013e2b9bca5"
+    },
+    "assets/focus.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "0234bc60da5d3a92"
+    },
+    "assets/gift-card-recipient-form.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "30ffc3be483c2da1"
+    },
+    "assets/global.d.ts": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "7f542cd04669f762"
+    },
+    "assets/header-drawer.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9bf8e10c85d7523f"
+    },
+    "assets/header-menu.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "80c19a6e10385a5b"
+    },
+    "assets/header.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "54a98efef920c77f"
+    },
+    "assets/icon-account.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "6ee8f46950cc6082"
+    },
+    "assets/icon-add-to-cart.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b7dd27d8b9294f47"
+    },
+    "assets/icon-arrow.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e7daa90e534d8c18"
+    },
+    "assets/icon-available.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b523955c0c16a3f0"
+    },
+    "assets/icon-caret.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "d30057e6101bacc4"
+    },
+    "assets/icon-cart.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cc038fcffd150775"
+    },
+    "assets/icon-checkmark-burst.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ff4295c1fc2531e8"
+    },
+    "assets/icon-checkmark.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "4b2b540366d424ee"
+    },
+    "assets/icon-chevron-left.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "742eb67e6abebc51"
+    },
+    "assets/icon-chevron-right.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b505e969ac9e91a3"
+    },
+    "assets/icon-close.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9c11934f9b901e9a"
+    },
+    "assets/icon-delete.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b3cc7672bb25e4b0"
+    },
+    "assets/icon-discount.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cabbb8aac44ad4a0"
+    },
+    "assets/icon-double-chevron.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8d5dc694853f7a4f"
+    },
+    "assets/icon-error.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "48aec29863543ba8"
+    },
+    "assets/icon-external.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2f1e993bdf9a530e"
+    },
+    "assets/icon-filter.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ccc3ef233e27e42b"
+    },
+    "assets/icon-filters-close.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "f510f6f9e63f456e"
+    },
+    "assets/icon-grid-default.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "90e1847647dfc155"
+    },
+    "assets/icon-grid-dense.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "c49efd36a3920f82"
+    },
+    "assets/icon-info.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "82c66a18c2282665"
+    },
+    "assets/icon-inventory.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2175e0674225ca3b"
+    },
+    "assets/icon-menu.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "59e0cfd7fddd916f"
+    },
+    "assets/icon-minus.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e71d25bfc33e5fe5"
+    },
+    "assets/icon-one-col-mobile.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "d80027f199929f52"
+    },
+    "assets/icon-orders.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "fc0669a9a18658dd"
+    },
+    "assets/icon-pause.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8705bb776a5f7569"
+    },
+    "assets/icon-play.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "930722b255311a84"
+    },
+    "assets/icon-plus.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e668fabfcdf3494f"
+    },
+    "assets/icon-reset.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "5ef29119fa747dc3"
+    },
+    "assets/icon-search.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "37dd3f8adcca1ad2"
+    },
+    "assets/icon-shopify.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "32623281ee4de727"
+    },
+    "assets/icon-unavailable.svg": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "5d818fc46da81e7e"
+    },
+    "assets/jsconfig.json": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cde48f38aaf7fe80"
+    },
+    "assets/jumbo-text.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "bede1a862b06f098"
+    },
+    "assets/layered-slideshow.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ae67490c432b9722"
+    },
+    "assets/local-pickup.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8faeba02146d2325"
+    },
+    "assets/localization.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a91ed232f7ebcbb5"
+    },
+    "assets/marquee.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2f0a9e09220c53ac"
+    },
+    "assets/media-gallery.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "5c7bbcb483f6654b"
+    },
+    "assets/media.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "3355a7d400b9e1eb"
+    },
+    "assets/morph.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "aae42435c1c03197"
+    },
+    "assets/overflow-list.css": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ed0fa7913f2b62d5"
+    },
+    "assets/overflow-list.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "460d7740e69b64fc"
+    },
+    "assets/paginated-list-aspect-ratio.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e7e077509bf3d61c"
+    },
+    "assets/paginated-list.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e7287e33145082e3"
+    },
+    "assets/performance.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "45537124b25b6fa5"
+    },
+    "assets/popover-polyfill.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "70ad95f196dbe03f"
+    },
+    "assets/predictive-search.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "50bdc4a90bd32d9e"
+    },
+    "assets/price-per-item.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "566045aac57f0119"
+    },
+    "assets/product-card-link.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "deb59350e8ee4b05"
+    },
+    "assets/product-card.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "6b15e7d2c52fd07a"
+    },
+    "assets/product-custom-property.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "aa8eda1e6d81ae64"
+    },
+    "assets/product-form.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "3f348d3e87e2688a"
+    },
+    "assets/product-hotspot.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "23e48e562caf32f2"
+    },
+    "assets/product-inventory.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b104fae5955b51a8"
+    },
+    "assets/product-price.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ee912bd20c8acf36"
+    },
+    "assets/product-recommendations.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "f136c0462a8d820b"
+    },
+    "assets/product-sku.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1eaf00b480796b79"
+    },
+    "assets/product-title-truncation.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "232e189de28ef153"
+    },
+    "assets/qr-code-generator.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a32a8f0ca1db47eb"
+    },
+    "assets/qr-code-image.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "705892728de22bc9"
+    },
+    "assets/quick-add.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "f11dc04848b400fa"
+    },
+    "assets/quick-order-list.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b6a249a8e7e3b164"
+    },
+    "assets/recently-viewed-products.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e9e2d9475c0ca242"
+    },
+    "assets/results-list.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "865be9c00b20fd5d"
+    },
+    "assets/rte-formatter.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a2b22f2d19a14641"
+    },
+    "assets/scrolling.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "6c59e812ae5e63d9"
+    },
+    "assets/search-page-input.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ce69d896f4a27663"
+    },
+    "assets/section-hydration.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b5ebb91fc61f8ad5"
+    },
+    "assets/section-renderer.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e695766789fddea6"
+    },
+    "assets/show-more.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "03cbeab23333bbcd"
+    },
+    "assets/slideshow.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "573f5f5239ee10b9"
+    },
+    "assets/sticky-add-to-cart.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "0f26fac36bfa1b8d"
+    },
+    "assets/template-giftcard.css": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b9a1c10bb90f434b"
+    },
+    "assets/theme-editor.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "76beed27d803012b"
+    },
+    "assets/utilities.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "baa445e5c0df5a68"
+    },
+    "assets/variant-picker.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a850d7c27d3ef17d"
+    },
+    "assets/video-background.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "99d24369ebd0a179"
+    },
+    "assets/view-transitions.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "77a36aaa2a974ced"
+    },
+    "assets/volume-pricing-info.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "16f5e02eba761cdb"
+    },
+    "assets/volume-pricing.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "4d83981b1106303a"
+    },
+    "assets/won-carousel.js": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "845ae58661546b7b"
+    },
+    "assets/won-cart.js": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "c8b4220fafc27325"
+    },
+    "assets/won-count-up.js": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "573a996d585fa2c6"
+    },
+    "assets/won-hero-product.png": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "420d691ee4715721"
+    },
+    "assets/won-hero-supplements.png": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "db9fc343bf8b93b4"
+    },
+    "assets/won-panels.js": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "5acc38b074d910fd"
+    },
+    "assets/won-promo-1.png": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "8917a3d592ab4d8e"
+    },
+    "assets/won-promo-2.png": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "cadac0104a03ae3a"
+    },
+    "assets/won-promo-3.png": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "a2f8eccdba4a7a86"
+    },
+    "assets/won-promo-4.png": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "34578bce267a9389"
+    },
+    "assets/won-tokens.css": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "37cd8d1ace65c46a"
+    },
+    "assets/zoom-dialog.js": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "78a5b381583b7a3b"
+    },
+    "blocks/_accordion-row.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9ed2edf584df1d2a"
+    },
+    "blocks/_announcement.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2b58dd87018a9379"
+    },
+    "blocks/_blog-post-card.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2064c70d0e1436cf"
+    },
+    "blocks/_blog-post-content.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "23e12ea90c6b5879"
+    },
+    "blocks/_blog-post-description.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2a3da8f7334839dd"
+    },
+    "blocks/_blog-post-featured-image.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "10506970c39f432a"
+    },
+    "blocks/_blog-post-image.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "412a6f7e19205d4f"
+    },
+    "blocks/_blog-post-info-text.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "33cd3c4274ccbf04"
+    },
+    "blocks/_card.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "4e4a9dc1a1b4a1b4"
+    },
+    "blocks/_carousel-content.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e729065d798b5f6b"
+    },
+    "blocks/_cart-products.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "3bed3b8240053203"
+    },
+    "blocks/_cart-summary.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e4f153d878a1fa03"
+    },
+    "blocks/_cart-title.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "fe40ef0677b9d58c"
+    },
+    "blocks/_collection-card-image.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "0bdf98247149c60f"
+    },
+    "blocks/_collection-card.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e5f3313ac3766696"
+    },
+    "blocks/_collection-image.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cce2b34d3f3d499c"
+    },
+    "blocks/_collection-info.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ecf26908f37bfeff"
+    },
+    "blocks/_collection-link.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8fe9d8d5c88b9810"
+    },
+    "blocks/_content-without-appearance.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "c9f22fee71f02d21"
+    },
+    "blocks/_content.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "c0eb2a10c10130ea"
+    },
+    "blocks/_divider.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "58f06b1feb49c155"
+    },
+    "blocks/_featured-blog-posts-card.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "225f192d9a028775"
+    },
+    "blocks/_featured-blog-posts-image.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ebb081bb8a753fd4"
+    },
+    "blocks/_featured-blog-posts-title.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "7fc390edca2e3083"
+    },
+    "blocks/_featured-product-gallery.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9b39d01cdd70a8c7"
+    },
+    "blocks/_featured-product-information-carousel.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "31ca86388e914e0d"
+    },
+    "blocks/_featured-product-price.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8a966f1714480532"
+    },
+    "blocks/_featured-product.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "393483cce2dc250b"
+    },
+    "blocks/_footer-social-icons.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "3934056ac864c9d0"
+    },
+    "blocks/_header-logo.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "352ae8ed41d7d2a6"
+    },
+    "blocks/_header-menu.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "67de0ed919007f48"
+    },
+    "blocks/_heading.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "c5da09e47fd20c85"
+    },
+    "blocks/_hotspot-product.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "da6104b0cdbe649c"
+    },
+    "blocks/_image.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "6ac979ff46e9d6d7"
+    },
+    "blocks/_inline-collection-title.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e41772b6ab795fa3"
+    },
+    "blocks/_inline-text.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e721d24e5efbfc10"
+    },
+    "blocks/_layered-slide.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a9517a700297f4ff"
+    },
+    "blocks/_marquee.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "289605a9fb53aa1c"
+    },
+    "blocks/_media-without-appearance.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e6da76f2941134a7"
+    },
+    "blocks/_media.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "46e572aeea31b94f"
+    },
+    "blocks/_product-card-gallery.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a099d61c06d861e6"
+    },
+    "blocks/_product-card-group.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "13defbe02548e6a6"
+    },
+    "blocks/_product-card.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "73839dfb81ffac90"
+    },
+    "blocks/_product-details.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b38e3c90d83f78c4"
+    },
+    "blocks/_product-list-button.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "aa1317c4825368a9"
+    },
+    "blocks/_product-list-content.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8c4b23688fb1dd76"
+    },
+    "blocks/_product-list-text.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "eed2b47de0794106"
+    },
+    "blocks/_product-media-gallery.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "0773608ccb700b2c"
+    },
+    "blocks/_search-input.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "af1ccfc44da5fd59"
+    },
+    "blocks/_slide.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1b2b89ff1955595b"
+    },
+    "blocks/_social-link.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cf2b95d6cb017f4e"
+    },
+    "blocks/accelerated-checkout.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cc0d323fa7b4a276"
+    },
+    "blocks/accordion.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "f2bd5ad74de21d4a"
+    },
+    "blocks/add-to-cart.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "fa229e8258a1c753"
+    },
+    "blocks/button.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "829a408be6a5c743"
+    },
+    "blocks/buy-buttons.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "46c9668b14d5d0bf"
+    },
+    "blocks/collection-card.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1856a0bf48563202"
+    },
+    "blocks/collection-title.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ac50961b0bec441d"
+    },
+    "blocks/comparison-slider.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1fa010ab945c6db4"
+    },
+    "blocks/contact-form-submit-button.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "0c56a1ef9ae4e5bb"
+    },
+    "blocks/contact-form.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "4b7a5764a956588e"
+    },
+    "blocks/custom-liquid.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "6bc93a78d1a57788"
+    },
+    "blocks/email-signup.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "54c45232298e97f2"
+    },
+    "blocks/featured-collection.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9538d7420d64a734"
+    },
+    "blocks/filters.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "438f1f2603ac56e6"
+    },
+    "blocks/follow-on-shop.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "79a0a3bba40ac6ea"
+    },
+    "blocks/footer-copyright.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a8b388fd5a680784"
+    },
+    "blocks/footer-policy-list.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "be453e37ca04283f"
+    },
+    "blocks/group.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "04532332aaf9678f"
+    },
+    "blocks/icon.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "c47a85cf73994630"
+    },
+    "blocks/image.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "d3a7752108654c88"
+    },
+    "blocks/jumbo-text.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "5a3dcdc1e5e9bacf"
+    },
+    "blocks/logo.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e0238114ec375be3"
+    },
+    "blocks/menu.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "41dd56003536d8f1"
+    },
+    "blocks/page-content.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "739714432d6f46fd"
+    },
+    "blocks/page.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "11e871af829212ab"
+    },
+    "blocks/payment-icons.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ce6e47b4007dbb53"
+    },
+    "blocks/popup-link.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "f9b63fafd392dc0a"
+    },
+    "blocks/price.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "fd328b9f855ab53a"
+    },
+    "blocks/product-card.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2a1ed40595295d72"
+    },
+    "blocks/product-custom-property.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "4ec357b4d55e91bb"
+    },
+    "blocks/product-description.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "524880f2c2935c57"
+    },
+    "blocks/product-inventory.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "298c3b7b5faed45c"
+    },
+    "blocks/product-recommendations.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "21594d57b13dea9a"
+    },
+    "blocks/product-title.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cb1a0187f113e048"
+    },
+    "blocks/quantity.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "60ddf20bf9ffdcb4"
+    },
+    "blocks/review.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "65b37978c81999d6"
+    },
+    "blocks/sku.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "97e50a78d2f98bb5"
+    },
+    "blocks/social-links.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "48b1cbc5d9556797"
+    },
+    "blocks/spacer.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "55ffce43eb455978"
+    },
+    "blocks/swatches.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "d6957b25a380bfa6"
+    },
+    "blocks/text.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "222728a3a857d29c"
+    },
+    "blocks/variant-picker.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "155c6d25421cf8f9"
+    },
+    "blocks/video.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9af3404c7b5bf2e8"
+    },
+    "blocks/won-accordion-row.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "56e784b9c163b9e7"
+    },
+    "blocks/won-delivery-note.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "8de5bac8678a0f24"
+    },
+    "blocks/won-dosage.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "42809e5c89c13a81"
+    },
+    "blocks/won-feature.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "00625ae16f9b68c4"
+    },
+    "blocks/won-highlights.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "33b77399bf738614"
+    },
+    "blocks/won-nutrition-table.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "0c8fa56b5a0adad2"
+    },
+    "blocks/won-panel.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "c6fb1d42cf4e9962"
+    },
+    "blocks/won-param-table.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "d685ae13dd89abc1"
+    },
+    "blocks/won-price-per-unit.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "468139e7a6a45986"
+    },
+    "blocks/won-product-trust.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "64062b35fb273f54"
+    },
+    "blocks/won-slide.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "3d765639fedd7cb8"
+    },
+    "blocks/won-stock-signal.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "493cacd5e42b6cb8"
+    },
+    "blocks/won-tab.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "83b41b21ec6bdd35"
+    },
+    "blocks/won-tile.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "c6c22a77297b4bd6"
+    },
+    "blocks/won-video.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "bb15e3dbf7eb98fa"
+    },
+    "config/settings_data.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "0ba271ef96d91d11"
+    },
+    "config/settings_schema.json": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "12129cf65194333a"
+    },
+    "layout/password.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "98af401d3a15e1bb"
+    },
+    "layout/theme.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a589b55d03175e08"
+    },
+    "locales/bg.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "91228e3af6cecad5"
+    },
+    "locales/cs.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "305b2534cfb79cc7"
+    },
+    "locales/cs.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "4c772d0fb4f4c840"
+    },
+    "locales/da.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "4b6bc7b6b4598aee"
+    },
+    "locales/da.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "bd8144d747002c9a"
+    },
+    "locales/de.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "a87ab2e1ca501d5f"
+    },
+    "locales/de.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "e964137510fba7da"
+    },
+    "locales/el.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "09de1acf2c989a97"
+    },
+    "locales/en.default.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "25dd3b5993a6ea72"
+    },
+    "locales/en.default.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "68c770e0f716e6bd"
+    },
+    "locales/es.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "683fb68138a99ea4"
+    },
+    "locales/es.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "0b25a2dbb8ffd74a"
+    },
+    "locales/fi.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "71c532a23b14bf7e"
+    },
+    "locales/fi.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "d94234e52696588b"
+    },
+    "locales/fr.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "27988901ad0a07e7"
+    },
+    "locales/fr.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "e9448115e85332b1"
+    },
+    "locales/hr.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "c2c4028ee8deeff6"
+    },
+    "locales/hu.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "588a8a514a5d0cb0"
+    },
+    "locales/id.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "7c10b96a7ccea176"
+    },
+    "locales/it.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "d6ad94db37e43f64"
+    },
+    "locales/it.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "93f8999b9c5b12d4"
+    },
+    "locales/ja.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "06531af14d48f3be"
+    },
+    "locales/ja.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "af11c1d764a665a0"
+    },
+    "locales/ko.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "258d7f84dedad0ff"
+    },
+    "locales/ko.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "fee5d30042a22ed6"
+    },
+    "locales/lt.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "2257913169fee487"
+    },
+    "locales/nb.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "d268ebb7a7cea0d4"
+    },
+    "locales/nb.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "dbda2c7e6bf4ceca"
+    },
+    "locales/nl.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "423a934857fcb2e0"
+    },
+    "locales/nl.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "390032a10398a52e"
+    },
+    "locales/pl.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "b15e6cde0660b184"
+    },
+    "locales/pl.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "3b88a610340b1e61"
+    },
+    "locales/pt-BR.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "36c5df8f9271c271"
+    },
+    "locales/pt-BR.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "f4774b7542622f77"
+    },
+    "locales/pt-PT.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "80dc91c7c12a2484"
+    },
+    "locales/pt-PT.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "2a3bb8eeed6423c7"
+    },
+    "locales/ro.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "fcde1a5e912f8168"
+    },
+    "locales/ru.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "5188b924722ba226"
+    },
+    "locales/sk.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "684f73cbb0475614"
+    },
+    "locales/sl.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "a463328cbbec11b4"
+    },
+    "locales/sv.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "a3d44b52660eeae0"
+    },
+    "locales/sv.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "931c6b3a02c0c417"
+    },
+    "locales/th.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "3f8291a217486ae4"
+    },
+    "locales/th.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "b697e6b7dd21b032"
+    },
+    "locales/tr.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "b2c7845d5f114eba"
+    },
+    "locales/tr.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "9344c87a68435425"
+    },
+    "locales/vi.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "17e7abbc626db5de"
+    },
+    "locales/zh-CN.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "9f90d061a3e56455"
+    },
+    "locales/zh-CN.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "bc91ecf45eb26b58"
+    },
+    "locales/zh-TW.json": {
+      "owner": "mixed",
+      "layer": "locale",
+      "sha": "294685772bf267fc"
+    },
+    "locales/zh-TW.schema.json": {
+      "owner": "compose",
+      "layer": "locale",
+      "sha": "625ba8580e990d10"
+    },
+    "release-notes.md": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8ec0db7604f6fe71"
+    },
+    "sections/_blocks.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "6288f9fd8dd63dcf"
+    },
+    "sections/carousel.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "967ed169f76066e4"
+    },
+    "sections/collection-links.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e815ff0c5eb776f8"
+    },
+    "sections/collection-list.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e7e088cb09cb5f5d"
+    },
+    "sections/custom-liquid.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "5dbacc2783493046"
+    },
+    "sections/divider.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "648eb3604ccca4d3"
+    },
+    "sections/featured-blog-posts.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "35957a959b93630b"
+    },
+    "sections/featured-product-information.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "18e7dbc6b7259b90"
+    },
+    "sections/featured-product.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "fc261c61131eb5d6"
+    },
+    "sections/footer-group.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "0a8fe1fd8af1e37b"
+    },
+    "sections/footer-utilities.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1c57987e6ee1f0fe"
+    },
+    "sections/footer.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "3cf0b4f442ac50c8"
+    },
+    "sections/header-announcements.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cd0fb0890a141ad5"
+    },
+    "sections/header-group.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "1632dd50a7a3d65e"
+    },
+    "sections/header.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a9894e0ce2404efc"
+    },
+    "sections/hero.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9898f3efd07041de"
+    },
+    "sections/layered-slideshow.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "5b69c4e09a3ab36a"
+    },
+    "sections/logo.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "73e76360d4e963c0"
+    },
+    "sections/main-404.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "19e3e95ba0581fee"
+    },
+    "sections/main-blog-post.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e7708ff30037567d"
+    },
+    "sections/main-blog.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "fdf28b412e1a4efc"
+    },
+    "sections/main-cart.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cf4d7c28e76e02f0"
+    },
+    "sections/main-collection-list.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "632c35e843342024"
+    },
+    "sections/main-collection.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "c4a67c51a04b7847"
+    },
+    "sections/main-page.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b1b66b399c1b355e"
+    },
+    "sections/marquee.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "810ec272626d0150"
+    },
+    "sections/media-with-content.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "73f20c26948f6150"
+    },
+    "sections/password-footer.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9eb79c9cbb89a86a"
+    },
+    "sections/password.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1eb974d8c202dd40"
+    },
+    "sections/predictive-search-empty.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8cadf42bf5abe791"
+    },
+    "sections/predictive-search.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "d39b5962b4d21aef"
+    },
+    "sections/product-hotspots.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9c8ef74431dfdd44"
+    },
+    "sections/product-information.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "38ddb690841e87e7"
+    },
+    "sections/product-list.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "c1f54fdfd934b7da"
+    },
+    "sections/product-recommendations.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b24784640db4d772"
+    },
+    "sections/quick-order-list.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "3d072a98adcef2a6"
+    },
+    "sections/search-header.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "651c9d568a221d65"
+    },
+    "sections/search-results.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "50ed99d58151768e"
+    },
+    "sections/section-rendering-product-card.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "bac4eab0d0664af7"
+    },
+    "sections/section.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cfe33e4c653a3714"
+    },
+    "sections/slideshow.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cf75b95c72e489a2"
+    },
+    "sections/won-accordion.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "c5b59531b6276855"
+    },
+    "sections/won-announcement-bar.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "0ce74d7dedc24e58"
+    },
+    "sections/won-app-slot.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "cdc646de5ac3c767"
+    },
+    "sections/won-articles.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "7e47df95e59422d3"
+    },
+    "sections/won-band.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "83867d16f28b08a5"
+    },
+    "sections/won-carousel.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "69bdf57157a0e3a7"
+    },
+    "sections/won-collection-tiles.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "b157de672b21a4c1"
+    },
+    "sections/won-collection.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "7a9000d7a943c567"
+    },
+    "sections/won-comparison.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "b3f5ef487459b2e5"
+    },
+    "sections/won-contact.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "d67ff9f4ce9f1565"
+    },
+    "sections/won-features.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "9104a122c1f4ef35"
+    },
+    "sections/won-footer.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "099f7a8ba7372250"
+    },
+    "sections/won-grid.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "ed3ef25165213455"
+    },
+    "sections/won-hero-carousel.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "91f61e1f8dde973a"
+    },
+    "sections/won-hero-grid.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "2639c6fe89080e60"
+    },
+    "sections/won-hero.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "57eeff77250b6d29"
+    },
+    "sections/won-marquee.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "709c96c387dfe3fb"
+    },
+    "sections/won-media-compare.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "0f1f2ff48e9fbd29"
+    },
+    "sections/won-newsletter.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "986e5aaa517edf37"
+    },
+    "sections/won-page-header.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "4e55aee57287c795"
+    },
+    "sections/won-panels.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "cf156592991123ea"
+    },
+    "sections/won-shoppable-image.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "e6a2adb91ee87353"
+    },
+    "sections/won-stats.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "99823f2025ac705c"
+    },
+    "sections/won-sticky-atc.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "5a65fa9467dd2942"
+    },
+    "sections/won-tabbed-rail.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "47d5131fb2873139"
+    },
+    "sections/won-tabs.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "a52c969d2e7e2153"
+    },
+    "sections/won-variant-picker.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "179076ca94f19c90"
+    },
+    "snippets/account-actions.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "40cd416fb98dba11"
+    },
+    "snippets/account-button.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a1616fc28e0eb3c0"
+    },
+    "snippets/add-to-cart-button.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ff5b667cd9c5bde6"
+    },
+    "snippets/background-media.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1ecb541b4ce5b51d"
+    },
+    "snippets/bento-grid.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "638f9bf1085e5743"
+    },
+    "snippets/blog-comment-form.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "6a31e45888d046f9"
+    },
+    "snippets/border-override.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b0f2a380d4a8e843"
+    },
+    "snippets/button.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "365b6a7b0e9ffb97"
+    },
+    "snippets/card-gallery.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1850985b98951a38"
+    },
+    "snippets/cart-bubble.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "85908fdd4f9dfb4c"
+    },
+    "snippets/cart-products.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9169d5062c872204"
+    },
+    "snippets/cart-summary.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8cc3ad3251aa46d9"
+    },
+    "snippets/checkbox.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "6afe2cbd2e076362"
+    },
+    "snippets/collection-card.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b71891202f9fff0f"
+    },
+    "snippets/color-schemes.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "716f0c192fa6654a"
+    },
+    "snippets/divider.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "cd7d385f48a3d7d2"
+    },
+    "snippets/editorial-blog-grid.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a4031d50900ecfc0"
+    },
+    "snippets/editorial-collection-grid.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2a725066495c452d"
+    },
+    "snippets/editorial-product-grid.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b3fb3204a3827d35"
+    },
+    "snippets/facets-actions.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9ca71d298e47d69d"
+    },
+    "snippets/filter-remove-buttons.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a76bd7185a1ed1f5"
+    },
+    "snippets/fonts.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "7f9c5a6a393d5e89"
+    },
+    "snippets/format-price.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "7a71cf3366bf18ec"
+    },
+    "snippets/gap-style.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "39a24b0cc2078480"
+    },
+    "snippets/gift-card-recipient-form.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8a0145e8563e29a9"
+    },
+    "snippets/grid-density-controls.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1227b5d0c274699e"
+    },
+    "snippets/group.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8939f3720f7a0cbd"
+    },
+    "snippets/header-actions.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "352f806359369213"
+    },
+    "snippets/header-drawer.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "21b94542653e1617"
+    },
+    "snippets/header-row.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "349fd132dec98ab6"
+    },
+    "snippets/icon-or-image.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ec06a30bc6dce2be"
+    },
+    "snippets/icon.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "ebdb5966e0a445f3"
+    },
+    "snippets/image.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "dd30c89691160b11"
+    },
+    "snippets/jumbo-text.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "4639502eae6f925f"
+    },
+    "snippets/layout-panel-style.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "0b5e1cef82d74c13"
+    },
+    "snippets/link-featured-image.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "c3c936818236ebb4"
+    },
+    "snippets/list-filter.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b723fa21bb90c3f3"
+    },
+    "snippets/localization-form.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "406109d3e31b5313"
+    },
+    "snippets/media.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "82172df2bd3af3ae"
+    },
+    "snippets/mega-menu-list.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b654ddd8356b345f"
+    },
+    "snippets/menu-font-styles.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "97e5038ee17a2b17"
+    },
+    "snippets/meta-tags.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "abcfdc2ba9e31c56"
+    },
+    "snippets/overflow-list.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e28d82031437e480"
+    },
+    "snippets/overlay.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1a3c3f820596d39c"
+    },
+    "snippets/pagination-controls.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "6784795fd719efd9"
+    },
+    "snippets/predictive-search-empty-state.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b61ecb41f58056d8"
+    },
+    "snippets/predictive-search-products-list.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "269e4b0e9887a959"
+    },
+    "snippets/predictive-search-resource-carousel.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2b827e951cc2149f"
+    },
+    "snippets/price-filter.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "05d2d6c291c8d733"
+    },
+    "snippets/price.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "9ab3e4df093cfcc9"
+    },
+    "snippets/product-card.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e76c3f2b29f7e869"
+    },
+    "snippets/product-grid.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "844c14d6e8a890f8"
+    },
+    "snippets/product-information-content.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "5b07e46dc6746fc8"
+    },
+    "snippets/product-media-gallery-content.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "af1780ac8ed9c8b4"
+    },
+    "snippets/product-media.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "f8e9fa0de3bade01"
+    },
+    "snippets/quantity-selector.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "fbb33555a09bf649"
+    },
+    "snippets/quick-add-modal.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "444c5f1ddd8c7f11"
+    },
+    "snippets/quick-add.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2534b1ca965bac81"
+    },
+    "snippets/resource-card.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "37f3fc494f6ba9f3"
+    },
+    "snippets/resource-image.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "5c4522241beda0ad"
+    },
+    "snippets/resource-list-carousel.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "87493637037697bc"
+    },
+    "snippets/resource-list.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "3f613d75b577bf55"
+    },
+    "snippets/scripts.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "3901c30d0bed6c70"
+    },
+    "snippets/search-modal.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "95693dd4ff964434"
+    },
+    "snippets/search.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "18223726a6967dd0"
+    },
+    "snippets/section.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "5d725cdedb92f9a8"
+    },
+    "snippets/size-style.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2e0b1f2d70cdd2a7"
+    },
+    "snippets/skip-to-content-link.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "1a7d9959ac964045"
+    },
+    "snippets/sku.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "e8d1f8c572603a24"
+    },
+    "snippets/slideshow-arrow.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "90e4e34cd03323aa"
+    },
+    "snippets/slideshow-arrows.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "b560ac465413ee39"
+    },
+    "snippets/slideshow-controls.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "4449b2fd76dad635"
+    },
+    "snippets/slideshow-slide.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "4971e93352867ca0"
+    },
+    "snippets/slideshow.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "765a94a168b7c5cb"
+    },
+    "snippets/sorting.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "636dc9350436331f"
+    },
+    "snippets/spacing-padding.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "8942159d6db4c304"
+    },
+    "snippets/spacing-style.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "4637b911ee7fa0ea"
+    },
+    "snippets/strikethrough-variant.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "16b649e2232aacdf"
+    },
+    "snippets/stylesheets.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2f5f46f0fce45fcb"
+    },
+    "snippets/submenu-font-styles.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "51b1cb21bbc7ead8"
+    },
+    "snippets/swatch.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "4c2f0bbe85c5d67b"
+    },
+    "snippets/tax-info.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a4b50d69231da028"
+    },
+    "snippets/text.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "768be8b845153c00"
+    },
+    "snippets/theme-editor.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "bb44bbcb9cc4c664"
+    },
+    "snippets/theme-styles-variables.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "4326bde2afe38650"
+    },
+    "snippets/typography-style.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "7c869c91de5871a8"
+    },
+    "snippets/unit-price.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "c27c0c965eed7a2f"
+    },
+    "snippets/util-autofill-img-size-attr.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "632727a39f286fc5"
+    },
+    "snippets/util-mega-menu-img-sizes-attr.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "f70b5b6bc92b09ec"
+    },
+    "snippets/util-product-grid-card-size.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "112b524b972c2547"
+    },
+    "snippets/util-product-media-sizes-attr.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "2bf22b1e8c8d8fe6"
+    },
+    "snippets/variant-main-picker.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "07f286d61e8c562d"
+    },
+    "snippets/variant-swatches.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "52f9e947ceecb85c"
+    },
+    "snippets/video.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "3d1360b5dd200bc7"
+    },
+    "snippets/volume-pricing-info.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "a52890a780bfaf77"
+    },
+    "snippets/won-badges.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "17c0201ad9603e71"
+    },
+    "snippets/won-button.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "45254c62ed78df78"
+    },
+    "snippets/won-faq-schema.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "9a5677ee5650cf63"
+    },
+    "snippets/won-guard.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "cf31a1054699b1e0"
+    },
+    "snippets/won-howto-schema.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "181c60bef4d908be"
+    },
+    "snippets/won-icon.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "cd360d7dae8c9a8c"
+    },
+    "snippets/won-policy-schema.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "e1970df62e95489a"
+    },
+    "snippets/won-product-card.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "99f348df4df1b387"
+    },
+    "snippets/won-product-schema.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "5fd0823cbed03072"
+    },
+    "snippets/won-rating.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "4b3e0858922e9a41"
+    },
+    "snippets/won-site-schema.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "24a794e0fe33422f"
+    },
+    "snippets/won-spacing.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "1419821ba63360f3"
+    },
+    "snippets/won-style-vars.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "b37fbb08a9d62ec1"
+    },
+    "snippets/won-trust.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "522e99ba612abe32"
+    },
+    "templates/404.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "fc2ff4b6d82b5b68"
+    },
+    "templates/article.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "9e7c3aa5e9e48c8c"
+    },
+    "templates/blog.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "917e6679fc81a62b"
+    },
+    "templates/cart.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "abf8b5ffc3747857"
+    },
+    "templates/collection.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "cf6deb1ffcc55174"
+    },
+    "templates/gift_card.liquid": {
+      "owner": "compose",
+      "layer": "vendor",
+      "sha": "59a297cef69c5705"
+    },
+    "templates/index.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "0feebe54d72d4e92"
+    },
+    "templates/list-collections.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "f8fa9877d31e20bf"
+    },
+    "templates/page.contact.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "744ffc93d8883e9f"
+    },
+    "templates/page.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "871618332ff001ae"
+    },
+    "templates/password.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "448f20479a8cb4de"
+    },
+    "templates/product.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "889a3ff98a4d264b"
+    },
+    "templates/search.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "18d3ac4dbaf75ffd"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import json; print(json.dumps({'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': 'DEPLOY REPO \u2014 tohle NENI obycejny Shopify motiv, je to slozeny vystup ze tri vrstev s ruznym vlastnikem. Nez sahnes na jakykoli soubor MUSIS:\\\\n1. Precist AGENTS.md (hranice vrstev + postup povyseni)\\\\n2. Precist .agents/memory/theme-map.md\\\\n3. U kazdeho souboru, ktery chces menit, overit jeho layer v .won-manifest.json \u2014 layer vendor se needituje NIKDY.\\\\nUdelej to ted, pred odpovedi na prvni prompt.'}}))\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

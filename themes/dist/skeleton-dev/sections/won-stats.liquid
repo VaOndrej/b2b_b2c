@@ -1,3 +1,4 @@
+{%- comment -%} DEPRECATED: preset stripped, not in the Add-section picker. Superseded by won-grid (stats_row / trust_band). Kept for back-compat rendering only — do not add new settings here. {%- endcomment -%}
 {%- liquid
   assign s = section.settings
   assign lines = s.stats | newline_to_br | split: '<br />'
@@ -154,13 +155,20 @@
       "default": 4
     },
     {
-      "type": "range",
+      "type": "select",
       "id": "columns_mobile",
       "label": "t:won.settings.columns_mobile",
-      "min": 1,
-      "max": 2,
-      "step": 1,
-      "default": 2
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        }
+      ],
+      "default": "2"
     },
     {
       "type": "text_alignment",
