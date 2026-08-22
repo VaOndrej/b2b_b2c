@@ -15,7 +15,7 @@ The meta-principle above everything else:
 > problem.
 
 This file has two parts:
-- **Part I — Product & Admin-UX** (`§1`–`§16`, `A1`–`A6`): how the app looks, reads,
+- **Part I — Product & Admin-UX** (`§1`–`§17`, `A1`–`A7`): how the app looks, reads,
   and feels to a merchant. Mature; the `§` numbers are **stable** because the
   codebase cites them in comments/PRs (`doctrine §7b`) — never renumber them.
 - **Part II — Engineering & Platform** (`SEC-`, `WBH-`, `DATA-`, …): how the app
@@ -57,7 +57,7 @@ not a second source of truth.
 
 # PART I — PRODUCT & ADMIN-UX
 
-## The principles (§1–§16)
+## The principles (§1–§17)
 
 ### §1 — Preview-first `[INV]`
 Every merchant-editable surface shows a **live preview** of the real result, not an
@@ -218,6 +218,44 @@ Free merchant can't use stays **visible and shows its value**.
   *↳ §16, A2, and §3g are three faces of one plan-gating system; A2 is the "never block"
   invariant, §16 the visual treatment, BILL-1 the server authority.*
 
+### §17 — A section leads with its state, not its schema `[WON]`
+A section header names the *thing*; that is not enough. Every section and every
+card carries three slots **before** its body:
+
+1. **Identity** — a glyph + the title.
+2. **State at rest** — one line of the **current configuration in human words**
+   ("Bottom right · 40 px from the edge · up to 3 at once"), plus its On/Off or
+   Pro marker. This is §11d applied one level up: the merchant learns what a
+   section is set to without opening it.
+3. **Consequence** — optionally, the §10 proof or a mini render of the primitive.
+
+*The failure mode this fixes:* a screen whose headings read `Look`, `Placement`,
+`Timing` over identical grey fields describes the **database schema**, not the
+merchant's store. It is the "engineer-out" default and it reads as flat and
+uninformative no matter how it is styled — the fix is information, not decoration.
+
+- **§17a — The summary comes from a shared formatter, never a hand-built string.**
+  `describePlacement(global)` lives in the engine beside the sanitizers. If each
+  route composed its own sentence, two screens would eventually describe one
+  config differently, and the next app would rewrite all of them. *(Same lesson
+  as §10b / §11b / DATA-4.)* Being pure functions, they are unit-tested.
+- **§17b — The summary is live.** It reflects what the merchant is typing, on the
+  same binding the preview uses (§2) — a stale state line is worse than none.
+- **§17c — The summary never claims more than the config guarantees.** With
+  auto-dismiss off, "Stays 5 s" is a lie: say "Stays until dismissed". Where a
+  Pro setting isn't applied on the merchant's plan, the header states what is
+  *actually in force* (§12).
+- **§17d — Collapsed still tells the truth.** A collapsed section shows slots 1–3
+  and hides only the body — which is what makes §9's progressive disclosure safe.
+  Collapsing hides, it **never unmounts**: hidden fields must keep submitting.
+- **§17e — Structure, not hue.** Identity glyphs are neutral. Blue is selection,
+  amber is Pro, green is live (§11a); a per-section colour would invent a fourth
+  meaning and collide with all three.
+- **§17f — A second column is opt-in.** A section may put its local consequence
+  beside its controls; one with no meaningful local consequence stays single
+  column, because a proof on a trivial toggle is noise (§10d).
+  *Example:* `WonSection` / `WonBlock` + `describe*()` (Won Toasts).
+
 ## Architecture decisions (cross-cutting) `[WON]` unless tagged
 
 ### A1 — One shared render layer; preview == storefront tokens `[INV]`
@@ -250,6 +288,19 @@ sophistication. Heavy lifting (measurement, experiments, AI, defaults) stays hid
 merchant sees few controls, one-click actions, honest insight cards, progressive
 disclosure. A single-primitive app must never feel like a data platform. *Reversibility
 of automated change: see §14 + AI-2.*
+
+### A7 — One section shell per app `[WON]`
+Exactly **one** component draws a section, and exactly one draws a block inside it.
+Every config surface renders *that* component. A visual difference between two
+sections is a **bug**, not a styling choice — the same rule A1 imposes on the
+preview, applied to the admin chrome around it.
+
+This is what makes §17 portable: the three slots are enforced by the shell's
+props, so a new screen cannot accidentally ship a bare heading, and a new app
+inherits the whole pattern by importing one component plus its formatters.
+Surface tokens (ink, line, wash, card shadow) live beside it, so restyling the
+entire admin is a change to a handful of values, not a sweep through routes.
+*Example:* `WonSection` + `WonBlock` + `lib/tokens.ts` (Won Toasts).
 
 ---
 
@@ -712,6 +763,16 @@ These back the `[PLAT]` rules. Re-verify against Shopify Dev docs when stale.
 Won-Toasts/theme project history; **a new app clones the doctrine, not this log** (start
 it empty). Newest first.
 
+- **2026-08-21 — §17 (a section leads with its state) + A7 (one section shell per app).**
+  Five separate merchant complaints — "the sections aren't sexy", "this list says
+  nothing", "Look & timing is hidden", "Custom CSS is badly explained", "unify
+  targeting" — turned out to share one cause: sections described their schema
+  instead of their state or their consequence. Added the three-slot section
+  (identity / state at rest / consequence), the `describe*()` formatters in
+  `@won/core` behind §17a, and `WonSection`/`WonBlock` as the single shell.
+  Also recorded two preview lies found while doing it: `NotificationPreview`
+  hand-drew its own card (A1) and rendered banner/inline shapes the storefront
+  runtime never produces (A4), and the close-up previews had no shop context.
 - **2026-08-12 — Restructured into the two-part Won App Doctrine.** Consolidated the
   design doctrine (§1–§16, A1–A6) and added Part II (Engineering & Platform: SEC/WBH/DATA/
   BILL/API/REL/SF/PERF/PRIV/TEST/DEPLOY/OBS/MKT/DEP/SHARE/AI/EXP/A11Y/STORE), added the

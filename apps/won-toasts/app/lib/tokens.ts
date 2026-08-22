@@ -41,3 +41,17 @@ export function selectionRing(active: boolean, tint = true): import("react").CSS
     boxShadow: active ? "0 2px 8px rgba(26,115,232,.16)" : "0 1px 2px rgba(0,0,0,.04)",
   };
 }
+
+// ── Section shell surface (§17 / A7) ──────────────────────────────────────────
+// The one card the whole admin is built from. Kept here, not in the component,
+// so a future Won app restyles every section by changing these five values.
+export const WON_INK = "#111418";
+export const WON_MUTED = "#5b6472";
+export const WON_FAINT = "#8892a0";
+export const WON_LINE = "#e3e7ec";
+export const WON_SURFACE = "#ffffff";
+/** Neutral wash behind glyphs, summaries and nested blocks. */
+export const WON_WASH = "#f5f7f9";
+/** Status green — "this is live" (§11d). The ONLY green in the admin. */
+export const WON_LIVE = "#1a8f4b";
+export const WON_CARD_SHADOW = "0 1px 2px rgba(20,28,45,.05), 0 6px 18px rgba(20,28,45,.05)";

@@ -1,53 +1,17 @@
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { after, before, test } from "node:test";
+import { after, test } from "node:test";
 
-import { PrismaClient } from "../../app/generated/prisma/client.ts";
 import { createAnalyticsService } from "../../app/services/analytics.server";
+import { createTestDatabase } from "../lib/test-db.ts";
 
-const testDirectory = mkdtempSync(path.join(tmpdir(), "won-toasts-analytics-"));
-const databasePath = path.join(testDirectory, "analytics.sqlite");
-const prisma = new PrismaClient({ datasourceUrl: `file:${databasePath}` });
+// The schema is built from schema.prisma by `prisma db push` (tests/lib/test-db.ts),
+// so this fixture can never drift from the real model the service writes to.
+const db = createTestDatabase("analytics");
+const prisma = db.prisma;
 const service = createAnalyticsService(prisma);
 
-before(async () => {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE "AnalyticsEvent" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "shop" TEXT NOT NULL,
-      "ruleId" TEXT NOT NULL,
-      "variant" INTEGER NOT NULL DEFAULT 0,
-      "type" TEXT NOT NULL,
-      "dims" JSONB,
-      "dwellMs" INTEGER,
-      "at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE "ToastRollup" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "shop" TEXT NOT NULL,
-      "date" TEXT NOT NULL,
-      "type" TEXT NOT NULL,
-      "device" TEXT NOT NULL DEFAULT 'unknown',
-      "pageType" TEXT NOT NULL DEFAULT 'unknown',
-      "customerState" TEXT NOT NULL DEFAULT 'unknown',
-      "abVariant" INTEGER NOT NULL DEFAULT 0,
-      "counters" JSONB NOT NULL,
-      "updatedAt" DATETIME NOT NULL
-    )
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE UNIQUE INDEX "ToastRollup_key" ON "ToastRollup"("shop","date","type","device","pageType","customerState","abVariant")`,
-  );
-});
-
 after(async () => {
-  await prisma.$disconnect();
-  await rm(testDirectory, { recursive: true, force: true });
+  await db.drop();
 });
 
 const at = Date.UTC(2026, 7, 10, 12, 0);

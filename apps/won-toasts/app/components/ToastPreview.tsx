@@ -10,6 +10,8 @@ import type {
   ToastSemanticType,
   ToastTheme,
 } from "@won/core/toasts/config.types";
+import { WON_FAINT, WON_FONT } from "../lib/tokens";
+import { PreviewStage } from "./PreviewStage";
 import { WonToastCard } from "./WonToastCard";
 
 // Live preview panel. It computes the SAME style tokens + presentation model as
@@ -24,6 +26,8 @@ import { WonToastCard } from "./WonToastCard";
 
 interface PreviewCard {
   type: ToastSemanticType;
+  /** Milestone cards render icon-less on the storefront — see `milestone()`. */
+  icon?: boolean;
   title: string;
   detail: string;
   delta: string;
@@ -82,6 +86,9 @@ function milestone(
     accent: accentFor(theme, type),
     showImage: theme.showImage,
     image: null,
+    // renderMilestoneToast() in the storefront runtime builds its card without
+    // calling iconFor(), so a milestone toast has no icon out there (A1).
+    icon: false,
   };
 }
 
@@ -111,41 +118,36 @@ export function ToastPreview({
     // No positioning here — the page that wants a sticky preview column wraps this
     // (Design/Toasts do). On a vertical stack (Overview) sticky would pin and
     // overlap the buttons below it.
-    <div>
-      <div
-        style={{
-          ...tokens,
-          // Backdrop always light — the preview never darkens the shop itself,
-          // only the toast card (merchant-review point 6).
-          background: "#eef1f4",
-          borderRadius: 14,
-          padding: 18,
-          display: "flex",
-          flexDirection: "column",
-          gap: `var(--won-gap)`,
-          minHeight: 180,
-        }}
-      >
+    <div style={{ fontFamily: WON_FONT }}>
+      {/* The shop's own header is part of the scene (A4). Without it this was a
+          grey void, and a top-anchored stack looked free to cover the shop's
+          navigation — a placement the runtime never produces. */}
+      <div style={tokens}>
         {/* Live custom CSS injected into the preview scope so the merchant isn't
-            editing blind (doctrine §3k). Hooks: [data-won-toast], [data-type]. */}
+            editing blind (doctrine §3k). Hooks: [data-won-toast], [data-type],
+            [data-won-type]. */}
         {customCss ? <style>{customCss}</style> : null}
-        {cards.map((c, i) => (
-          <WonToastCard
-            key={i}
-            theme={theme}
-            type={c.type}
-            title={c.title}
-            detail={c.detail}
-            delta={c.delta}
-            accent={c.accent}
-            image={c.image}
-            undo={c.undo}
-            closeable={closeable}
-          />
-        ))}
+        <PreviewStage minHeight={200}>
+          {cards.map((c, i) => (
+            <WonToastCard
+              key={i}
+              theme={theme}
+              type={c.type}
+              title={c.title}
+              detail={c.detail}
+              delta={c.delta}
+              accent={c.accent}
+              image={c.image}
+              undo={c.undo}
+              closeable={closeable}
+              icon={c.icon ?? true}
+              wonType="cart"
+            />
+          ))}
+        </PreviewStage>
       </div>
-      <p style={{ color: "#8892a0", fontSize: 12, marginTop: 8 }}>
-        Live preview · same render tokens as the storefront
+      <p style={{ color: WON_FAINT, fontSize: 12, marginTop: 8 }}>
+        Live preview · clears your shop header · same render tokens as the storefront
       </p>
     </div>
   );

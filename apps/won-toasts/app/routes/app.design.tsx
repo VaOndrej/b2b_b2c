@@ -9,6 +9,12 @@ import {
   sanitizeTheme,
 } from "@won/core/toasts/config.defaults";
 import { PRESET_LOOKS, applyLookPreset } from "@won/core/toasts/presets";
+import {
+  describeAntiSpam,
+  describeLook,
+  describePlacement,
+  describeTiming,
+} from "@won/core/toasts/describe";
 import { ICON_EMOJI } from "@won/core/toasts/branding";
 import { capProof } from "@won/core/toasts/effect-proof";
 
@@ -22,12 +28,13 @@ import {
 import { ToastPreview } from "../components/ToastPreview";
 import { AnimatedToastPreview } from "../components/AnimatedToastPreview";
 import { StorefrontPreview } from "../components/StorefrontPreview";
-import { ProFrame } from "../components/ProFrame";
 import { PlanBadge } from "../components/PlanBadge";
-import { WON_FONT, selectionRing } from "../lib/tokens";
+import { selectionRing } from "../lib/tokens";
 import { PositionField } from "../components/PositionField";
 import { EffectProof, ProofChip } from "../components/EffectProof";
 import { SegmentedNav } from "../components/SegmentedNav";
+import { WonBlock, WonSection } from "../components/WonSection";
+import { ProSell } from "../components/ProSell";
 import { useSavedToast } from "../lib/use-saved-toast";
 import { persistConfig } from "../lib/persist-config.server";
 import { EVENT_META } from "../lib/labels";
@@ -372,56 +379,6 @@ function LookPresetCard({ id, label, active = false }: { id: keyof typeof PRESET
 // can't restyle). Bolder + a touch larger + darker, so "Theme mode" reads as a
 // field UNDER "Colours", not a peer. One line, no extra chrome — hierarchy, not
 // more perceived settings.
-function GroupTitle({ children }: { children: React.ReactNode }) {
-  // inline-block so that inside a <summary> the title flows NEXT TO the
-  // disclosure triangle, not on the line below it.
-  return (
-    <span style={{ display: "inline-block", verticalAlign: "middle", fontFamily: WON_FONT, fontSize: 14, fontWeight: 700, color: "#1a1f24", letterSpacing: "-0.01em", lineHeight: 1.3 }}>
-      {children}
-    </span>
-  );
-}
-
-function Group({
-  title,
-  hint,
-  children,
-  collapsible = false,
-}: {
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-  collapsible?: boolean;
-}) {
-  // §9: advanced / rarely-touched groups collapse so the page reads calm on first
-  // paint (depth is opt-in). Hidden <details> fields still submit and still feed
-  // the live preview — collapsing changes visibility only.
-  if (collapsible) {
-    return (
-      <details>
-        <summary style={{ cursor: "pointer", padding: "4px 0" }}>
-          <GroupTitle>{title}</GroupTitle>
-        </summary>
-        <div style={{ marginTop: 8 }}>
-          <s-stack direction="block" gap="base">
-            {hint ? <s-text color="subdued">{hint}</s-text> : null}
-            {children}
-          </s-stack>
-        </div>
-      </details>
-    );
-  }
-  return (
-    <s-stack direction="block" gap="base">
-      <s-stack direction="block" gap="small">
-        <GroupTitle>{title}</GroupTitle>
-        {hint ? <s-text color="subdued">{hint}</s-text> : null}
-      </s-stack>
-      {children}
-    </s-stack>
-  );
-}
-
 export default function DesignRoute() {
   const { config, versions } = useLoaderData<typeof loader>();
   const saveError = useSavedToast();
@@ -436,6 +393,8 @@ export default function DesignRoute() {
     stackDirection: config.global.stackDirection,
     maxVisible: config.global.maxVisible,
     closeable: config.global.closeable,
+    autoDismiss: config.global.autoDismiss,
+    pauseOnHover: config.global.pauseOnHover,
     position: config.global.position,
     offsetTop: config.global.offsetTop,
     offsetInline: config.global.offsetInline,
@@ -464,6 +423,8 @@ export default function DesignRoute() {
         (fd.get("stackDirection") as "newest-top" | "newest-bottom") ?? config.global.stackDirection,
       maxVisible: Number(fd.get("maxVisible")) || config.global.maxVisible,
       closeable: fd.get("closeable") === "on",
+      autoDismiss: fd.get("autoDismiss") === "on",
+      pauseOnHover: fd.get("pauseOnHover") === "on",
       position: (fd.get("position") as typeof config.global.position) ?? config.global.position,
       offsetTop: Number(fd.get("offsetTop")) || 0,
       offsetInline: Number(fd.get("offsetInline")) || 0,
@@ -498,6 +459,8 @@ export default function DesignRoute() {
       stackDirection: config.global.stackDirection,
       maxVisible: config.global.maxVisible,
       closeable: config.global.closeable,
+      autoDismiss: config.global.autoDismiss,
+      pauseOnHover: config.global.pauseOnHover,
       position: config.global.position,
       offsetTop: config.global.offsetTop,
       offsetInline: config.global.offsetInline,
@@ -506,6 +469,28 @@ export default function DesignRoute() {
 
   const isCustom = theme.mode === "custom";
   const g = config.global;
+  // The header summaries must reflect what the merchant is typing RIGHT NOW
+  // (§2/§17), not the last saved value — so they read the same live state the
+  // preview does, merged over the saved config.
+  const cssLength = (config.theme.customCss ?? "").trim().length;
+  const cssSummary =
+    cssLength === 0
+      ? "No custom CSS — the Design settings above do all the styling"
+      : `${cssLength} characters of your own CSS`;
+  const liveGlobal = {
+    ...g,
+    position: live.position,
+    offsetTop: live.offsetTop,
+    offsetInline: live.offsetInline,
+    maxVisible: live.maxVisible,
+    stackDirection: live.stackDirection,
+    durationMs: live.durationMs,
+    closeable: live.closeable,
+    autoDismiss: live.autoDismiss,
+    pauseOnHover: live.pauseOnHover,
+    grouping: { ...g.grouping, mode: liveRules.groupingMode },
+    frequency: { ...g.frequency, maxPerSession: liveRules.maxPerSession },
+  };
   // Segment can be deep-linked (e.g. Insights suggestions → /app/design?seg=timing).
   const [searchParams] = useSearchParams();
   const [seg, setSeg] = useState(
@@ -534,8 +519,12 @@ export default function DesignRoute() {
           outside the main Form: each preset is its own mini-form and forms can't
           nest. */}
       {seg === "look" ? (
-        <s-section heading="Start from a look">
-          <s-paragraph>Pick a preset, then fine-tune below. Applying a preset saves immediately.</s-paragraph>
+        <WonSection
+          title="Start from a look"
+          glyph="look"
+          summary={describeLook(config.theme)}
+          hint="Pick a preset, then fine-tune below. Applying a preset saves immediately."
+        >
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
             {LOOK_PRESETS.map((p) => (
               <LookPresetCard key={p.id} id={p.id} label={p.label} active={matchesPreset(config.theme, p.id)} />
@@ -550,7 +539,7 @@ export default function DesignRoute() {
               <s-button type="submit" variant="secondary">Reset to default design</s-button>
             </Form>
           </s-stack>
-        </s-section>
+        </WonSection>
       ) : null}
 
       <div
@@ -570,9 +559,14 @@ export default function DesignRoute() {
           <s-stack direction="block" gap="large">
             {/* ---- LOOK ---- */}
             <div style={panel("look")}>
-            <s-section heading="Look">
+            <WonSection
+              title="Look"
+              glyph="look"
+              summary={describeLook(theme)}
+              hint="Colours, shape and motion — the look every toast inherits unless you override it per toast."
+            >
               <s-stack direction="block" gap="large">
-                <Group title="Colours">
+                <WonBlock title="Colours">
                   <s-select label="Theme mode" name="mode" value={theme.mode} details="System follows the shopper's light/dark; custom lets you set exact colours.">
                     <s-option value="system">System (auto light/dark)</s-option>
                     <s-option value="light">Light</s-option>
@@ -585,17 +579,17 @@ export default function DesignRoute() {
                       <s-color-field label="Text" name="colorText" value={config.theme.colorText} />
                     </s-stack>
                   </div>
-                </Group>
+                </WonBlock>
 
-                <Group title="Accent colour per event" hint="The coloured stripe on each toast — one per shopper action." collapsible>
+                <WonBlock title="Accent colour per event" summary="The coloured stripe on each toast — one per shopper action." collapsible>
                   <s-stack direction="inline" gap="base">
                     {EVENT_META.map((ev) => (
                       <s-color-field key={ev.key} label={ev.title} name={`accent_${ev.key}`} value={config.theme.accent[ev.key]} />
                     ))}
                   </s-stack>
-                </Group>
+                </WonBlock>
 
-                <Group title="Shape & motion" collapsible>
+                <WonBlock title="Shape & motion" collapsible>
                   <s-stack direction="inline" gap="base">
                     <s-number-field label="Corner radius" name="cornerRadius" value={String(config.theme.cornerRadius)} min={0} max={32} details="Roundness of the corners, in pixels (0 = square)." />
                     <s-number-field label="Toast width" name="width" value={String(config.theme.width)} min={240} max={480} details="How wide each toast is, in pixels." />
@@ -618,9 +612,9 @@ export default function DesignRoute() {
                       <s-option value="slide-scale">Slide + scale</s-option>
                     </s-select>
                   </s-stack>
-                </Group>
+                </WonBlock>
 
-                <Group title="Branding" hint="No-code styling between the on/off toggles and Custom CSS — a gradient fill, your own icons, a border, and the font." collapsible>
+                <WonBlock title="Branding" summary="No-code styling between the on/off toggles and Custom CSS — a gradient fill, your own icons, a border, and the font." collapsible>
                   <s-stack direction="block" gap="base">
                     <s-stack direction="inline" gap="base" alignItems="end">
                       <s-switch label="Gradient background" name="gradient" value="on" checked={config.theme.gradient} details="Fill the toast with a soft two-colour gradient instead of a flat colour." onChange={() => sync()} />
@@ -665,27 +659,32 @@ export default function DesignRoute() {
                       <s-text-field label="Custom font family" name="fontFamily" value={config.theme.fontFamily} placeholder='Georgia, "Times New Roman", serif' details="A CSS font-family list. The font must already load on your storefront." />
                     </div>
                   </s-stack>
-                </Group>
+                </WonBlock>
 
-                <Group title="Show / hide" hint="Pick what appears inside each toast. Product image = the item’s thumbnail; Quantity change = the “+N” badge; Event icon = a small coloured mark; Border/Backdrop blur = the frame around it." collapsible>
+                <WonBlock title="Show / hide" summary="Pick what appears inside each toast. Product image = the item’s thumbnail; Quantity change = the “+N” badge; Event icon = a small coloured mark; Border/Backdrop blur = the frame around it." collapsible>
                   <s-stack direction="inline" gap="base">
                     {TOGGLES.map(([key, label]) => (
                       <s-switch key={key} label={label} name={key} value="on" checked={Boolean(config.theme[key])} onChange={() => sync()} />
                     ))}
                   </s-stack>
-                </Group>
+                </WonBlock>
               </s-stack>
-            </s-section>
+            </WonSection>
             </div>
 
             {/* ---- PLACEMENT ---- */}
             <div style={panel("placement")}>
-            <s-section heading="Placement">
+            <WonSection
+              title="Placement"
+              glyph="placement"
+              summary={describePlacement(liveGlobal)}
+              hint="Where the stack sits on the shopper's screen, and how many pile up."
+            >
               <s-stack direction="block" gap="large">
-                <Group title="Where on screen" hint="Click a corner to place your toasts.">
+                <WonBlock title="Where on screen" summary="Click a corner to place your toasts.">
                   <PositionField name="position" defaultValue={g.position} />
-                </Group>
-                <Group title="Spacing & stacking">
+                </WonBlock>
+                <WonBlock title="Spacing & stacking">
                   <s-stack direction="inline" gap="base">
                     <s-number-field label="Offset from top/bottom" name="offsetTop" value={String(g.offsetTop)} min={0} max={400} details="Gap from the screen edge, in pixels." />
                     <s-number-field label="Offset from side" name="offsetInline" value={String(g.offsetInline)} min={0} max={400} details="Gap from the screen edge, in pixels." />
@@ -701,14 +700,19 @@ export default function DesignRoute() {
                       <s-option value="queue">Queue</s-option>
                     </s-select>
                   </s-stack>
-                </Group>
+                </WonBlock>
               </s-stack>
-            </s-section>
+            </WonSection>
             </div>
 
             {/* ---- TIMING & INTERACTION ---- */}
             <div style={panel("timing")}>
-            <s-section heading="Timing & interaction">
+            <WonSection
+              title="Timing & interaction"
+              glyph="timing"
+              summary={describeTiming(liveGlobal)}
+              hint="How long a toast stays and what happens when a shopper touches it."
+            >
               <s-stack direction="block" gap="base">
                 <s-number-field label="Stay on screen for" name="durationSec" value={String(g.durationMs / 1000)} min={1} max={60} step={0.5} details="Seconds each toast stays before it fades out." />
                 <s-select label="Click a toast to…" name="clickAction" value={g.clickAction} details="What happens when a shopper clicks the toast.">
@@ -716,11 +720,11 @@ export default function DesignRoute() {
                   <s-option value="go-to-product">Go to the product</s-option>
                   <s-option value="none">Do nothing</s-option>
                 </s-select>
-                <s-switch label="Auto-dismiss after the duration" name="autoDismiss" value="on" checked={g.autoDismiss} details="On: each toast fades out on its own after the time above. Off: it stays until the shopper closes it." />
-                <s-switch label="Pause auto-dismiss on hover" name="pauseOnHover" value="on" checked={g.pauseOnHover} details="While the shopper's cursor is over a toast, the countdown to fade out pauses — so it won't vanish mid-read. It resumes when they move away." />
+                <s-switch label="Auto-dismiss after the duration" name="autoDismiss" value="on" checked={g.autoDismiss} details="On: each toast fades out on its own after the time above. Off: it stays until the shopper closes it." onChange={() => sync()} />
+                <s-switch label="Pause auto-dismiss on hover" name="pauseOnHover" value="on" checked={g.pauseOnHover} details="While the shopper's cursor is over a toast, the countdown to fade out pauses — so it won't vanish mid-read. It resumes when they move away." onChange={() => sync()} />
                 <s-switch label="Show a close (×) button" name="closeable" value="on" checked={g.closeable} details="Adds an × in the corner so a shopper can dismiss a toast immediately." onChange={() => sync()} />
               </s-stack>
-            </s-section>
+            </WonSection>
             </div>
 
             {/* ---- ANTI-SPAM — three plain-language levers instead of four
@@ -730,25 +734,24 @@ export default function DesignRoute() {
                  changed. Governance stays global (per-type anti-spam makes no
                  sense — see per-type-look-behavior decision). ---- */}
             <div style={panel("rules")}>
-            <s-section heading="Anti-spam">
-              <s-stack direction="block" gap="large">
-                <s-text color="subdued">
-                  Three levers keep toasts from overwhelming a shopper — <s-text type="strong">merge</s-text> bursts,
-                  <s-text type="strong"> cap</s-text> the volume, or <s-text type="strong">quiet</s-text> everything.
-                  They apply across your whole store.
-                </s-text>
-
+            <WonSection
+              title="Anti-spam"
+              glyph="shield"
+              summary={describeAntiSpam(liveGlobal)}
+              hint="Three levers keep a shopper from being flooded — merge bursts, cap the volume, or mute everything."
+            >
+              <s-stack direction="block" gap="base">
                 {/* MERGE (Pro) */}
-                <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
-                  <ProFrame locked={!isPro}>
+                <WonBlock
+                  title="Merge — group rapid changes"
+                  summary="When a shopper changes the cart several times fast, show one combined toast instead of many."
+                  pro
+                  locked={!isPro}
+                >
                     <s-stack direction="block" gap="base">
-                      <s-stack direction="inline" gap="small-300" alignItems="center">
-                        <s-text type="strong">Merge — group rapid changes</s-text>
-                      </s-stack>
-                      <s-text color="subdued">
-                        When a shopper changes the cart several times fast, show one combined
-                        toast instead of many.
-                      </s-text>
+                      {!isPro ? (
+                        <ProSell benefit="Stop a five-item cart edit from firing five toasts — merge the burst into one, so a busy shopper sees a summary instead of a stack." />
+                      ) : null}
                       <s-select label="Group by" name="grouping_mode" value={g.grouping.mode} details="What counts as “the same thing” when merging." disabled={!isPro}>
                         <s-option value="by-product">Product</s-option>
                         <s-option value="by-variant">Variant</s-option>
@@ -760,14 +763,14 @@ export default function DesignRoute() {
                       <s-switch label="Merge quantity changes into one “+N”" name="mergeDeltas" value="on" checked={g.grouping.mergeDeltas} disabled={!isPro} details="Two quick “+1”s become a single “+2”." />
                       {MergeProof}
                     </s-stack>
-                  </ProFrame>
-                </s-box>
+                </WonBlock>
 
                 {/* CAP */}
-                <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
+                <WonBlock
+                  title="Cap — how much is too much"
+                  summary="Hard limits so a shopper is never flooded. 0 means no limit."
+                >
                   <s-stack direction="block" gap="base">
-                    <s-text type="strong">Cap — how much is too much</s-text>
-                    <s-text color="subdued">Hard limits so a shopper is never flooded. 0 means no limit.</s-text>
                     <s-stack direction="inline" gap="base">
                       <s-number-field label="Max toasts per session" name="maxPerSession" value={String(g.frequency.maxPerSession)} min={0} max={100} details="Caps how many a single visitor sees the whole visit." />
                       <s-number-field label="Wait between repeats" name="cooldownSec" value={String(g.frequency.cooldownMs / 1000)} min={0} max={3600} step={1} details="Seconds to wait before showing the same type again." />
@@ -783,81 +786,109 @@ export default function DesignRoute() {
                       <s-number-field label="Ignore repeats within" name="dedupeWindowSec" value={String(g.grouping.dedupeWindowMs / 1000)} min={0} max={10} step={0.1} disabled={!isPro} details="Identical toasts this close together are skipped." />
                     </s-stack>
                   </s-stack>
-                </s-box>
+                </WonBlock>
 
                 {/* QUIET */}
-                <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
+                <WonBlock
+                  title="Quiet — mute everything"
+                  summary="A master off switch: turn every toast off during a sale or a busy period without losing your settings. Nothing is erased — switch it back and everything returns."
+                >
                   <s-stack direction="block" gap="base">
-                    <s-text type="strong">Quiet — mute everything</s-text>
-                    <s-text color="subdued">
-                      A master off switch: turn every toast off during a sale or a busy
-                      period without losing your settings.
-                    </s-text>
                     <s-switch label="Quiet mode" name="quietMode" value="on" checked={g.frequency.quietMode} details="Turns all toasts off for every shopper until you switch it back on." />
                     {QuietProof}
                   </s-stack>
-                </s-box>
+                </WonBlock>
               </s-stack>
-            </s-section>
+            </WonSection>
             </div>
 
             {/* ---- ADVANCED (Custom CSS [Pro] + History below) ---- */}
             <div style={panel("advanced")}>
-            {/* ---- CUSTOM CSS (Pro) — go wild ---- */}
-            <s-section heading="Custom CSS">
-              <ProFrame locked={!isPro}>
-                <s-stack direction="block" gap="base">
-                  <s-text color="subdued">
-                    Go wild — inject your own CSS into the toast (rainbow borders,
-                    a mascot, whatever). It applies only inside the toast, never
-                    the rest of your storefront.
-                  </s-text>
+            {/* ---- CUSTOM CSS (Pro) ----
+                 The merchant's complaint was not "too little CSS" but "I can't
+                 tell what I'm allowed to change". So this documents the FULL
+                 surface, verified against the runtime: 7 hooks and 13 variables
+                 (styleTokensFor in @won/core + the attributes won-toasts.js
+                 actually sets), each with what it does — not a 4-item sample.
+                 It also answers the real question underneath ("how do I make my
+                 cart toast look different from my announcements?") by pointing
+                 at the no-code path FIRST (§4 — meet the goal, don't list
+                 selectors). */}
+            <WonSection
+              title="Custom CSS"
+              glyph="code"
+              summary={cssSummary}
+              hint="Applies inside the toast only — it can never touch the rest of your storefront."
+              pro
+              locked={!isPro}
+            >
+              <s-stack direction="block" gap="base">
+                {!isPro ? (
+                  <ProSell benefit="Take the toast the last 10% of the way — a gradient edge, your own font, a mascot — without touching your theme." />
+                ) : null}
 
-                  {/* Answers the #1 question merchants ask here: "how do I make my
-                      cart toast look different from my announcements?" — points to
-                      the no-code path first (per-type Look & timing), then the CSS
-                      hook. (doctrine §4 — meet the merchant's real goal, not just
-                      list selectors.) */}
-                  <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
-                    <s-stack direction="block" gap="small">
-                      <s-text type="strong">Want one toast type to look different?</s-text>
-                      <s-text color="subdued">
-                        e.g. your <s-text type="strong">cart</s-text> toast styled
-                        differently from your <s-text type="strong">announcements</s-text>.
-                        You usually don’t need CSS — open a toast on{" "}
-                        <s-link href="/app/toasts">Toasts</s-link> and use{" "}
-                        <s-text type="strong">“Look &amp; timing for this toast”</s-text>.
-                        For finer control, target it by type in the CSS below with{" "}
-                        <s-text type="strong">{'[data-won-type="cart"]'}</s-text>.
-                      </s-text>
-                    </s-stack>
-                  </s-box>
+                <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
+                  <s-stack direction="block" gap="small">
+                    <s-text type="strong">Want one toast to look different from the others?</s-text>
+                    <s-text color="subdued">
+                      You almost certainly don’t need CSS for that. Open the toast on{" "}
+                      <s-link href="/app/toasts">Toasts</s-link> and use{" "}
+                      <s-text type="strong">“Look &amp; timing for this toast”</s-text> —
+                      colours, size, shadow, animation and duration, per toast, no code.
+                      Use the CSS below only for what those controls don’t cover.
+                    </s-text>
+                  </s-stack>
+                </s-box>
 
-                  <s-text type="strong">Stable hooks</s-text>
-                  <s-text color="subdued">Two axes: what the shopper did, and which toast type it is.</s-text>
-                  <s-unordered-list>
-                    <s-list-item><s-text type="strong">[data-won-toast]</s-text> — each toast card</s-list-item>
-                    <s-list-item><s-text type="strong">{'[data-type="added"]'}</s-text> (removed / increased / decreased / gift / shipping) — the shopper <s-text type="strong">action</s-text></s-list-item>
-                    <s-list-item><s-text type="strong">{'[data-won-type="cart"]'}</s-text> (countdown / announcement / stock.low / …) — the toast <s-text type="strong">type</s-text></s-list-item>
-                    <s-list-item><s-text type="strong">[data-won-toasts-region]</s-text> — the container that holds the stack</s-list-item>
-                    <s-list-item>vars <s-text type="strong">--won-bg / --won-text / --won-radius / --won-shadow</s-text></s-list-item>
-                  </s-unordered-list>
-                  <s-text-area
-                    label="Custom CSS (max 4000 chars)"
-                    name="customCss"
-                    rows={8}
-                    value={config.theme.customCss ?? ""}
-                    disabled={!isPro}
-                    placeholder={
-                      "/* Give cart toasts a green edge… */\n" +
-                      '[data-won-type="cart"]{ border-left:4px solid #16a34a; }\n\n' +
-                      "/* …and make announcements stand out differently */\n" +
-                      '[data-won-type="announcement"]{ --won-bg:#111; --won-text:#fff; }'
-                    }
-                  />
-                </s-stack>
-              </ProFrame>
-            </s-section>
+                <s-text type="strong">What you can target</s-text>
+                <s-text color="subdued">
+                  Three axes: the <s-text type="strong">card</s-text>, which{" "}
+                  <s-text type="strong">toast type</s-text> it is, and what the{" "}
+                  <s-text type="strong">shopper did</s-text>.
+                </s-text>
+                <s-unordered-list>
+                  <s-list-item><s-text type="strong">[data-won-toast]</s-text> — one toast card. The wrapper for everything below.</s-list-item>
+                  <s-list-item><s-text type="strong">{'[data-won-type="cart"]'}</s-text> — the toast TYPE: cart, countdown, announcement, stock.low, cart.activity, order.summary, order.created.</s-list-item>
+                  <s-list-item><s-text type="strong">{'[data-type="added"]'}</s-text> — what the shopper DID: added, removed, increased, decreased, gift, shipping.</s-list-item>
+                  <s-list-item><s-text type="strong">[data-won-persistent]</s-text> — set on toasts that stay until dismissed, so you can style those differently.</s-list-item>
+                  <s-list-item><s-text type="strong">[data-won-toasts-region]</s-text> — the container holding the whole stack.</s-list-item>
+                  <s-list-item><s-text type="strong">[data-won-toast-icon]</s-text>, <s-text type="strong">[data-won-toast-delta]</s-text>, <s-text type="strong">[data-won-toast-close]</s-text> — the icon, the “+N” badge and the × button inside a card.</s-list-item>
+                </s-unordered-list>
+
+                <s-text type="strong">Variables you can override</s-text>
+                <s-text color="subdued">
+                  Set these instead of hard-coding values and your CSS keeps
+                  following the rest of your Design settings.
+                </s-text>
+                <s-unordered-list>
+                  <s-list-item><s-text type="strong">--won-bg</s-text>, <s-text type="strong">--won-text</s-text> — background and text colour.</s-list-item>
+                  <s-list-item><s-text type="strong">--won-border</s-text>, <s-text type="strong">--won-radius</s-text>, <s-text type="strong">--won-shadow</s-text> — the frame: outline, corner rounding, drop shadow.</s-list-item>
+                  <s-list-item><s-text type="strong">--won-width</s-text>, <s-text type="strong">--won-min-width</s-text>, <s-text type="strong">--won-max-width</s-text> — how wide a card may be.</s-list-item>
+                  <s-list-item><s-text type="strong">--won-pad</s-text>, <s-text type="strong">--won-gap</s-text> — padding inside a card, spacing between stacked cards.</s-list-item>
+                  <s-list-item><s-text type="strong">--won-font</s-text> — the font stack.</s-list-item>
+                  <s-list-item><s-text type="strong">--won-blur</s-text>, <s-text type="strong">--won-anim-ms</s-text> — backdrop blur strength and animation speed.</s-list-item>
+                </s-unordered-list>
+
+                <s-text-area
+                  label="Custom CSS (max 4000 chars)"
+                  name="customCss"
+                  rows={10}
+                  value={config.theme.customCss ?? ""}
+                  disabled={!isPro}
+                  details="Everything you type here shows up in the preview immediately, so you are never editing blind."
+                  placeholder={
+                    "/* Cart toasts: a green edge */\n" +
+                    '[data-won-type="cart"]{ border-left:4px solid #16a34a; }\n\n' +
+                    "/* Announcements: inverted, using the variables */\n" +
+                    '[data-won-type="announcement"]{ --won-bg:#111; --won-text:#fff; }\n\n' +
+                    "/* Removals: quieter than the rest */\n" +
+                    '[data-type="removed"]{ opacity:.9; }\n\n' +
+                    "/* Anything that stays until dismissed: a thicker frame */\n" +
+                    "[data-won-persistent]{ --won-border:2px solid #111; }"
+                  }
+                />
+              </s-stack>
+            </WonSection>
             </div>
           </s-stack>
         </Form>
@@ -911,7 +942,15 @@ export default function DesignRoute() {
           mini-forms stay outside the main Form (no nested forms). Snapshot per
           save; one-click rollback (replaces raw-JSON backup, doctrine §4b). */}
       {seg === "advanced" ? (
-      <s-section heading="History">
+      <WonSection
+        title="History"
+        glyph="history"
+        summary={
+          versions.length === 0
+            ? "No snapshots yet — the first one is kept the next time you save"
+            : `${versions.length} saved ${versions.length === 1 ? "version" : "versions"} you can roll back to`
+        }
+      >
         {versions.length === 0 ? (
           <s-paragraph>
             Every time you save, a snapshot is kept here so you can roll back.
@@ -933,7 +972,7 @@ export default function DesignRoute() {
             ))}
           </s-stack>
         )}
-      </s-section>
+      </WonSection>
       ) : null}
     </s-page>
   );

@@ -6,6 +6,7 @@ import type {
   ToastSemanticType,
   ToastTheme,
 } from "@won/core/toasts/config.types";
+import { HEADER_H, HEADER_SAFE, ShopHeaderBand } from "./PreviewStage";
 import { WonToastCard, WonToastKeyframes, animKeyframeName } from "./WonToastCard";
 
 // Schematic storefront preview. Instead of a floating list of toasts with an
@@ -23,11 +24,10 @@ import { WonToastCard, WonToastKeyframes, animKeyframeName } from "./WonToastCar
 
 type StackDirection = "newest-top" | "newest-bottom";
 
-// Height of the faux fixed shop header inside the mock viewport (preview px).
-const HEADER_H = 30;
-// Toasts anchored to the top start below the header + a small breathing gap.
-const HEADER_SAFE = HEADER_H + 8;
-
+// NB: every card here renders at size="sm", which draws no icon anyway — which
+// happens to match the storefront for the milestone/notification entries in the
+// scene (renderMilestoneToast/notifCard never call iconFor). Don't add icons to
+// the small size without checking that parity first.
 interface SceneCard {
   type: ToastSemanticType;
   title: string;
@@ -287,31 +287,9 @@ export function StorefrontPreview({
         {/* viewport (padding 0 so the fixed header + absolute toast stack anchor
             to the true top; page content is inset below the header instead). */}
         <div ref={vpRef} style={{ position: "relative", padding: 0, minHeight: 300, background: isDark ? "#0f1317" : "linear-gradient(180deg,#fff,#fafbfc)" }}>
-          {/* faux fixed shop header — sits ABOVE the toast stack (zIndex) so the
-              preview visibly proves toasts never cover the header. */}
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              height: HEADER_H,
-              zIndex: 3,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "0 12px",
-              background: isDark ? "rgba(18,22,27,.94)" : "rgba(255,255,255,.94)",
-              backdropFilter: "saturate(1.2) blur(2px)",
-              borderBottom: `1px solid ${isDark ? "#232a31" : "#eceff3"}`,
-              boxShadow: "0 1px 4px rgba(20,28,45,.06)",
-            }}
-          >
-            <span style={{ width: 34, height: 8, borderRadius: 4, background: isDark ? "#3a434d" : "#c9d0d9" }} />
-            <span style={{ flex: 1 }} />
-            <span style={{ width: 14, height: 8, borderRadius: 4, background: isDark ? "#2f373f" : "#dbe0e7" }} />
-            <span style={{ width: 14, height: 8, borderRadius: 4, background: isDark ? "#2f373f" : "#dbe0e7" }} />
-          </div>
+          {/* Shared faux fixed shop header (see PreviewStage): sits ABOVE the
+              toast stack so the preview visibly proves toasts never cover it. */}
+          <ShopHeaderBand />
 
           {/* faux product page, inset below the header */}
           <div style={{ padding: `${HEADER_H + 14}px 16px 16px` }}>

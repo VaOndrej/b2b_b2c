@@ -20,6 +20,11 @@ import type {
   ToastTypeOverride,
 } from "@won/core/toasts/config.types";
 import { cartEventEnabled } from "@won/core/toasts/config.defaults";
+import { impressionsByTypeKey } from "@won/core/toasts/analytics";
+import {
+  describeCartEvents,
+  describeNotificationRule,
+} from "@won/core/toasts/describe";
 import { resolveTypeBehavior, resolveTypeTheme } from "@won/core/toasts/type-style";
 
 import { authenticate } from "../shopify.server";
@@ -29,29 +34,43 @@ import {
 } from "../services/toast-config.server";
 import { NotificationPreview } from "../components/NotificationPreview";
 import { StorefrontPreview } from "../components/StorefrontPreview";
-import { ProFrame } from "../components/ProFrame";
+import { ProSell } from "../components/ProSell";
 import { ToastLauncher } from "../components/ToastLauncher";
+import { WonSection } from "../components/WonSection";
 import { MessageMatrix } from "../components/MessageMatrix";
 import { mergeMessages } from "../lib/localization";
 import { TypeStyleFields } from "../components/TypeStyleFields";
 import { useSavedToast } from "../lib/use-saved-toast";
 import { readTypeOverride } from "../lib/type-override";
 import { persistConfig } from "../lib/persist-config.server";
+import { summarizeAnalytics } from "../services/analytics.server";
 import { pageLabel } from "../lib/labels";
+
+/** Reporting window for the "shown N times" figures on the launcher cards. */
+const IMPRESSION_WINDOW_MS = 7 * 86_400_000;
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  return { config: await getToastConfig(session.shop) };
+  const config = await getToastConfig(session.shop);
+
+  // Real impressions per toast type, so the launcher answers "is this working?"
+  // and not just "does this exist" (A3). Analytics is a nice-to-have on this
+  // page: if the rollup read fails, the cards fall back to "Collecting data"
+  // rather than taking the whole screen down with them (REL-1).
+  let impressions: Record<string, number> = {};
+  try {
+    impressions = impressionsByTypeKey(
+      await summarizeAnalytics(session.shop, IMPRESSION_WINDOW_MS),
+    );
+  } catch {
+    impressions = {};
+  }
+
+  return { config, impressions };
 };
 
 // ---- data contract (kept identical to the old Recipes/Events actions) ----
 
-const SURFACES: NotificationSurface[] = [
-  "toast",
-  "banner",
-  "persistent-toast",
-  "inline",
-];
 const PICKABLE_PAGES: NotificationPage[] = NOTIFICATION_PAGES.filter(
   (p) => p !== "all",
 );
@@ -284,22 +303,41 @@ function PagePicker({ type, pages }: { type: NotificationType; pages: Notificati
   );
 }
 
+// What these values ACTUALLY do, verified against storefront-src/won-toasts.js:
+// `surface` feeds only isPersistentSurface(), so banner / persistent-toast /
+// inline all mean the same thing — "don't auto-dismiss, and stay exempt from the
+// max-visible cap". Every one of them renders through notifCard() into the same
+// toast region; there is no full-width bar and no in-page text.
+//
+// The labels used to promise those shapes ("Full-width banner", "Inline on the
+// page"), which is a claim the runtime cannot keep (§4 / §12). The three stored
+// values are kept as-is so no merchant's saved config changes, but the wording
+// now describes the behaviour they really select. Renaming, not removing: if
+// distinct shapes are built later, these labels become true again rather than
+// needing a data migration.
 const SURFACE_LABEL: Record<NotificationSurface, string> = {
-  toast: "Floating toast",
-  banner: "Full-width banner",
-  "persistent-toast": "Toast that stays until dismissed",
-  inline: "Inline on the page",
+  toast: "Fades out on its own",
+  banner: "Stays until dismissed",
+  "persistent-toast": "Stays until dismissed",
+  inline: "Stays until dismissed",
 };
 
 function SurfaceSelect({ type, value }: { type: NotificationType; value: NotificationSurface }) {
+  // Only the two behaviours the runtime actually distinguishes are offered.
+  // A stored legacy value (inline / banner) still resolves — it maps to the same
+  // "stays until dismissed" behaviour — so nothing a merchant saved is lost.
+  const offered: NotificationSurface[] =
+    value === "toast" || value === "persistent-toast"
+      ? ["toast", "persistent-toast"]
+      : ["toast", value];
   return (
     <s-select
-      label="How it appears"
+      label="How long it stays"
       name={`${type}_surface`}
       value={value}
-      details="Toast floats in a corner; banner spans the page width; inline sits in the page content."
+      details="A toast either fades out after your Timing setting, or waits for the shopper to close it. One that waits also doesn’t count towards “Max visible at once”."
     >
-      {SURFACES.map((s) => (
+      {offered.map((s) => (
         <s-option key={s} value={s}>{SURFACE_LABEL[s]}</s-option>
       ))}
     </s-select>
@@ -386,14 +424,17 @@ interface RecipeMeta {
   group: RecipeGroup;
 }
 
+// The blurb is shown ONLY while a toast is off, so it is the pitch, not the
+// spec: what turning this on does for the shopper, in the merchant's words (§4).
+// Once it's live the card shows real state instead (§17).
 const RECIPES: RecipeMeta[] = [
-  { key: "cart", label: "Cart toasts", plan: "free", group: "cart", blurb: "The add/remove/update toasts — the core of the app." },
-  { key: "countdown", label: "Countdown timer", plan: "free", group: "urgency", blurb: "A truthful sale or deadline timer." },
-  { key: "stock.low", label: "Low-stock urgency", plan: "pro", group: "urgency", blurb: "“Only N left” — from real inventory." },
-  { key: "cart.activity", label: "Cart activity", plan: "pro", group: "social", blurb: "“N people added this recently” — real counter." },
-  { key: "order.summary", label: "Order summary", plan: "pro", group: "social", blurb: "“N orders this week” — from real orders." },
-  { key: "order.created", label: "Recent sales", plan: "pro", group: "social", blurb: "“Anna from Praha bought …” — real orders only." },
-  { key: "announcement", label: "Announcement", plan: "free", group: "message", blurb: "Your own message — a sale, a shipping cutoff." },
+  { key: "cart", label: "Cart toasts", plan: "free", group: "cart", blurb: "Confirm every add, remove and quantity change, so a shopper never wonders whether it worked." },
+  { key: "countdown", label: "Countdown timer", plan: "free", group: "urgency", blurb: "Put a real deadline on screen. It only ever counts to a date you set — it cannot invent one." },
+  { key: "stock.low", label: "Low-stock urgency", plan: "pro", group: "urgency", blurb: "Say “only 3 left” when there really are 3 left. Reads your live inventory; silent when stock is healthy." },
+  { key: "cart.activity", label: "Cart activity", plan: "pro", group: "social", blurb: "Show that other people are buying this right now, counted server-side from genuine add-to-cart events." },
+  { key: "order.summary", label: "Order summary", plan: "pro", group: "social", blurb: "Turn your real order volume into quiet reassurance — “18 orders this week”, straight from your orders." },
+  { key: "order.created", label: "Recent sales", plan: "pro", group: "social", blurb: "Let real orders speak: “Anna from Praha bought a Mug”. Stays off until you have enough orders to be honest." },
+  { key: "announcement", label: "Announcement", plan: "free", group: "message", blurb: "Say anything in your own words — a sale, a shipping cutoff, a holiday note — without touching your theme." },
 ];
 
 const RECIPE_GROUPS: { id: RecipeGroup; title: string; caption: string }[] = [
@@ -403,8 +444,13 @@ const RECIPE_GROUPS: { id: RecipeGroup; title: string; caption: string }[] = [
   { id: "message", title: "Your own message", caption: "Say anything — a sale, a shipping cutoff." },
 ];
 
+/** Outcome family title per group id — derived, so the wording lives once. */
+const GROUP_TITLE: Record<string, string> = Object.fromEntries(
+  RECIPE_GROUPS.map((g) => [g.id, g.title]),
+);
+
 export default function ToastsRoute() {
-  const { config } = useLoaderData<typeof loader>();
+  const { config, impressions } = useLoaderData<typeof loader>();
   const saveError = useSavedToast();
   const isPro = config.plan === "pro";
 
@@ -498,6 +544,24 @@ export default function ToastsRoute() {
     "order.created": social?.enabled ?? false,
   };
 
+  // What each live toast currently SAYS — the one thing about a running toast a
+  // merchant can't read anywhere else on this page. Notification recipes show
+  // their own wording; Cart toasts have no single message, so they report which
+  // events are covered instead. Both come from the shared formatters (§17).
+  const stateOf: Record<string, string> = {
+    cart: describeCartEvents(config, cartEventEnabled),
+    countdown: countdown?.message?.trim() || describeNotificationRule(countdown),
+    announcement:
+      announcement?.messages?.[defaultLocale]?.trim() ||
+      announcement?.message?.trim() ||
+      describeNotificationRule(announcement),
+    "stock.low": stock?.message?.trim() || describeNotificationRule(stock),
+    "cart.activity": activity?.message?.trim() || describeNotificationRule(activity),
+    "order.summary":
+      orderSummary?.message?.trim() || describeNotificationRule(orderSummary),
+    "order.created": social?.message?.trim() || describeNotificationRule(social),
+  };
+
   const panel = (key: string): React.CSSProperties => ({
     display: selected === key ? "block" : "none",
   });
@@ -577,17 +641,17 @@ export default function ToastsRoute() {
           />
         );
       case "countdown":
-        return <NotificationPreview type="countdown" message={liveMsg("countdown", countdown?.message)} surface={liveSurface("countdown", countdown?.surface)} theme={pvTheme} />;
+        return <NotificationPreview type="countdown" message={liveMsg("countdown", countdown?.message)} surface={liveSurface("countdown", countdown?.surface)} theme={pvTheme} customCss={isPro ? pvTheme.customCss : undefined} closeable={pvBeh.closeable} />;
       case "announcement":
-        return <NotificationPreview type="announcement" message={annMsg} surface={liveSurface("announcement", announcement?.surface)} theme={pvTheme} />;
+        return <NotificationPreview type="announcement" message={annMsg} surface={liveSurface("announcement", announcement?.surface)} theme={pvTheme} customCss={isPro ? pvTheme.customCss : undefined} closeable={pvBeh.closeable} />;
       case "stock.low":
-        return <NotificationPreview type="stock.low" message={liveMsg("stock.low", stock?.message)} surface={liveSurface("stock.low", stock?.surface)} theme={pvTheme} />;
+        return <NotificationPreview type="stock.low" message={liveMsg("stock.low", stock?.message)} surface={liveSurface("stock.low", stock?.surface)} theme={pvTheme} customCss={isPro ? pvTheme.customCss : undefined} closeable={pvBeh.closeable} />;
       case "cart.activity":
-        return <NotificationPreview type="cart.activity" message={liveMsg("cart.activity", activity?.message)} surface={liveSurface("cart.activity", activity?.surface)} theme={pvTheme} />;
+        return <NotificationPreview type="cart.activity" message={liveMsg("cart.activity", activity?.message)} surface={liveSurface("cart.activity", activity?.surface)} theme={pvTheme} customCss={isPro ? pvTheme.customCss : undefined} closeable={pvBeh.closeable} />;
       case "order.summary":
-        return <NotificationPreview type="order.summary" message={liveMsg("order.summary", orderSummary?.message)} surface={liveSurface("order.summary", orderSummary?.surface)} theme={pvTheme} />;
+        return <NotificationPreview type="order.summary" message={liveMsg("order.summary", orderSummary?.message)} surface={liveSurface("order.summary", orderSummary?.surface)} theme={pvTheme} customCss={isPro ? pvTheme.customCss : undefined} closeable={pvBeh.closeable} />;
       case "order.created":
-        return <NotificationPreview type="order.created" message={liveMsg("order.created", social?.message)} surface={liveSurface("order.created", social?.surface)} theme={pvTheme} />;
+        return <NotificationPreview type="order.created" message={liveMsg("order.created", social?.message)} surface={liveSurface("order.created", social?.surface)} theme={pvTheme} customCss={isPro ? pvTheme.customCss : undefined} closeable={pvBeh.closeable} />;
       default:
         return null;
     }
@@ -597,11 +661,12 @@ export default function ToastsRoute() {
     <s-page heading="Toasts" inlineSize="large">
       <s-section>
         <s-paragraph>
-          Everything Won Toasts can show, grouped by what it does for shoppers.
-          Each toast below shows whether it’s <s-text type="strong">on</s-text>{" "}
-          right now — pick one to set it up. Every toast uses{" "}
-          <s-text type="strong">real data</s-text> and obeys your frequency &amp;
-          quiet-mode settings.
+          What’s running on your store, and what you could turn on next. Pick any
+          toast to set it up. Every one of them uses{" "}
+          <s-text type="strong">real data</s-text> — nothing here can invent a
+          number — and all of them obey your{" "}
+          <s-link href="/app/design?seg=rules">anti-spam and quiet-mode</s-link>{" "}
+          settings.
         </s-paragraph>
       </s-section>
 
@@ -613,21 +678,21 @@ export default function ToastsRoute() {
         </s-section>
       ) : null}
 
-      {/* Status-first, outcome-grouped launcher (Wave-0 decision): replaces the
-          flat SegmentedNav so the "list of toasts" leads with what's live and
-          what each toast is for. Selection still drives the editor panel below. */}
+      {/* Status-first launcher (§17 / A3): "what is running on my store, and
+          what could I turn on next?" — the live toasts lead, carrying what they
+          currently say and how often they actually showed. */}
       <ToastLauncher
-        groups={RECIPE_GROUPS.map((g) => ({
-          id: g.id,
-          title: g.title,
-          caption: g.caption,
-          items: RECIPES.filter((r) => r.group === g.id).map((r) => ({
-            key: r.key,
-            label: r.label,
-            blurb: r.blurb,
-            pro: r.plan === "pro",
-            on: enabledOf[r.key],
-          })),
+        items={RECIPES.map((r) => ({
+          key: r.key,
+          label: r.label,
+          blurb: r.blurb,
+          group: GROUP_TITLE[r.group] ?? r.group,
+          pro: r.plan === "pro",
+          on: enabledOf[r.key],
+          state: stateOf[r.key],
+          // undefined (not 0) when we have nothing for this type — the card then
+          // says "Collecting data" instead of claiming it showed zero times (§5).
+          impressions: impressions[r.key],
         }))}
         selected={selected}
         onSelect={setSelected}
@@ -640,7 +705,13 @@ export default function ToastsRoute() {
         <Form ref={formRef} method="post" data-save-bar>
           {/* ---- Cart toasts (Free) ---- */}
           <div style={panel("cart")}>
-            <s-section heading="Cart toasts">
+            <WonSection
+              title="Cart toasts"
+              glyph="toast"
+              summary={stateOf.cart}
+              hint="Shown automatically when the cart changes — no setup needed."
+              on
+            >
               <s-stack direction="block" gap="large">
                 <s-paragraph>
                   Shown automatically when the cart changes. Turn each one on or off
@@ -727,12 +798,18 @@ export default function ToastsRoute() {
                 </s-stack>
               </s-stack>
               <TypeStyleFields typeKey="cart" config={config} isPro={isPro} />
-            </s-section>
+            </WonSection>
           </div>
 
           {/* ---- Countdown (Free) ---- */}
           <div style={panel("countdown")}>
-            <s-section heading="Countdown timer">
+            <WonSection
+              title="Countdown timer"
+              glyph="timing"
+              summary={describeNotificationRule(countdown)}
+              hint="Only ever counts to a real deadline — the app cannot fake one."
+              on={enabledOf.countdown}
+            >
               <s-stack direction="block" gap="base">
                 <s-paragraph>A truthful sale or deadline timer — either a fixed end date for everyone, or a rolling window that restarts per visitor. It only ever counts to a real deadline.</s-paragraph>
                 <s-switch label="Show a countdown" name="countdown_enabled" checked={countdown?.enabled ?? false} />
@@ -754,12 +831,18 @@ export default function ToastsRoute() {
                 </Advanced>
               </s-stack>
               <TypeStyleFields typeKey="countdown" config={config} isPro={isPro} />
-            </s-section>
+            </WonSection>
           </div>
 
           {/* ---- Announcement (Free) ---- */}
           <div style={panel("announcement")}>
-            <s-section heading="Announcement">
+            <WonSection
+              title="Announcement"
+              glyph="toast"
+              summary={describeNotificationRule(announcement)}
+              hint="Your own words — a sale, a shipping cutoff, anything."
+              on={enabledOf.announcement}
+            >
               <s-stack direction="block" gap="base">
                 <s-switch label="Show an announcement" name="announcement_enabled" checked={announcement?.enabled ?? false} />
                 <s-paragraph>Your own message, written in your default language.</s-paragraph>
@@ -774,13 +857,22 @@ export default function ToastsRoute() {
                 </Advanced>
               </s-stack>
               <TypeStyleFields typeKey="announcement" config={config} isPro={isPro} />
-            </s-section>
+            </WonSection>
           </div>
 
           {/* ---- Low stock (Pro) ---- */}
           <div style={panel("stock.low")}>
-            <s-section heading="Low-stock urgency">
-              <ProFrame locked={!isPro}>
+            <WonSection
+              title="Low-stock urgency"
+              glyph="shield"
+              summary={describeNotificationRule(stock)}
+              on={enabledOf["stock.low"]}
+              pro
+              locked={!isPro}
+            >
+              {!isPro ? (
+                <ProSell benefit="Turn real inventory into honest urgency — “Only 3 left” appears only when there really are 3 left." />
+              ) : null}
               <s-stack direction="block" gap="base">
                 <s-switch label="Show low-stock nudges" name="stock.low_enabled" checked={stock?.enabled ?? false} disabled={!isPro} />
                 <s-paragraph>Shows “Only N left” only when real inventory is below your threshold. Out of stock never shouts.</s-paragraph>
@@ -791,15 +883,23 @@ export default function ToastsRoute() {
                   <PagePicker type="stock.low" pages={stock?.pages ?? ["product"]} />
                 </Advanced>
               </s-stack>
-              </ProFrame>
               <TypeStyleFields typeKey="stock.low" config={config} isPro={isPro} />
-            </s-section>
+            </WonSection>
           </div>
 
           {/* ---- Cart activity (Pro) ---- */}
           <div style={panel("cart.activity")}>
-            <s-section heading="Cart activity">
-              <ProFrame locked={!isPro}>
+            <WonSection
+              title="Cart activity"
+              glyph="target"
+              summary={describeNotificationRule(activity)}
+              on={enabledOf["cart.activity"]}
+              pro
+              locked={!isPro}
+            >
+              {!isPro ? (
+                <ProSell benefit="Show shoppers that other people are buying — counted server-side from real add-to-cart events, never invented." />
+              ) : null}
               <s-stack direction="block" gap="base">
                 <s-switch label="Show cart activity" name="cart.activity_enabled" checked={activity?.enabled ?? false} disabled={!isPro} />
                 <s-paragraph>“{"{count}"} people added this recently” — a real, server-side counter. Never fabricated.</s-paragraph>
@@ -810,15 +910,23 @@ export default function ToastsRoute() {
                   <PagePicker type="cart.activity" pages={activity?.pages ?? ["product"]} />
                 </Advanced>
               </s-stack>
-              </ProFrame>
               <TypeStyleFields typeKey="cart.activity" config={config} isPro={isPro} />
-            </s-section>
+            </WonSection>
           </div>
 
           {/* ---- Order summary (Pro) ---- */}
           <div style={panel("order.summary")}>
-            <s-section heading="Order summary">
-              <ProFrame locked={!isPro}>
+            <WonSection
+              title="Order summary"
+              glyph="target"
+              summary={describeNotificationRule(orderSummary)}
+              on={enabledOf["order.summary"]}
+              pro
+              locked={!isPro}
+            >
+              {!isPro ? (
+                <ProSell benefit="Turn your real order volume into quiet reassurance — “18 orders this week”, straight from your orders." />
+              ) : null}
               <s-stack direction="block" gap="base">
                 <s-switch label="Show an order summary" name="order.summary_enabled" checked={orderSummary?.enabled ?? false} disabled={!isPro} />
                 <s-paragraph>“{"{count}"} orders this week” — counted from your real orders. Silent until there are orders in the window.</s-paragraph>
@@ -829,15 +937,23 @@ export default function ToastsRoute() {
                   <PagePicker type="order.summary" pages={orderSummary?.pages ?? []} />
                 </Advanced>
               </s-stack>
-              </ProFrame>
               <TypeStyleFields typeKey="order.summary" config={config} isPro={isPro} />
-            </s-section>
+            </WonSection>
           </div>
 
           {/* ---- Recent sales (Pro) ---- */}
           <div style={panel("order.created")}>
-            <s-section heading="Recent sales (social proof)">
-              <ProFrame locked={!isPro}>
+            <WonSection
+              title="Recent sales"
+              glyph="target"
+              summary={describeNotificationRule(social)}
+              on={enabledOf["order.created"]}
+              pro
+              locked={!isPro}
+            >
+              {!isPro ? (
+                <ProSell benefit="Let real orders speak — “Anna from Praha bought a Mug”, from genuine orders only, and silent until you have enough of them." />
+              ) : null}
               <s-stack direction="block" gap="base">
                 <s-switch label="Show recent sales" name="order.created_enabled" checked={social?.enabled ?? false} disabled={!isPro} />
                 <s-paragraph>
@@ -856,9 +972,8 @@ export default function ToastsRoute() {
                   <PagePicker type="order.created" pages={social?.pages ?? []} />
                 </Advanced>
               </s-stack>
-              </ProFrame>
               <TypeStyleFields typeKey="order.created" config={config} isPro={isPro} />
-            </s-section>
+            </WonSection>
           </div>
 
           {!isPro ? (

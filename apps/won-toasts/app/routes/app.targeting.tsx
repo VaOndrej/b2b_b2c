@@ -5,13 +5,19 @@ import type { PageType } from "@won/core/toasts/targeting";
 import { PAGE_TYPES } from "@won/core/toasts/targeting";
 import { sanitizeExclusions } from "@won/core/toasts/exclusions";
 
+import {
+  describeExclusions,
+  describeTargeting,
+  joinSummary,
+} from "@won/core/toasts/describe";
+
 import { authenticate } from "../shopify.server";
 import {
   getToastConfig,
   updateToastConfig,
 } from "../services/toast-config.server";
-import { ProFrame } from "../components/ProFrame";
-import { PlanBadge } from "../components/PlanBadge";
+import { ProSell } from "../components/ProSell";
+import { WonBlock, WonSection } from "../components/WonSection";
 import { useSavedToast } from "../lib/use-saved-toast";
 import { persistConfig } from "../lib/persist-config.server";
 import { pageLabel } from "../lib/labels";
@@ -59,6 +65,11 @@ export default function TargetingRoute() {
   const isPro = config.plan === "pro";
   const t = config.targeting;
   const ex = config.exclusions;
+  // The header states what is ACTUALLY in force. On Free the Pro targeting is
+  // not applied server-side, so quoting it here would be a false claim (§12).
+  const summary = isPro
+    ? joinSummary([describeTargeting(t, pageLabel), describeExclusions(ex, pageLabel)])
+    : joinSummary(["Every page", describeExclusions(ex, pageLabel)]);
 
   return (
     <s-page heading="Targeting" inlineSize="large">
@@ -69,84 +80,79 @@ export default function TargetingRoute() {
           </s-banner>
         </s-section>
       ) : null}
-      {/* One visual section, not two cards (Wave-0 decision): "where toasts show"
-          is a single question. Free leads with the always-usable default (run
-          everywhere, turn off where needed); Pro narrows it down below a divider.
-          The two data models (exclusions Free, targeting Pro) stay separate and
-          are gated independently in the action + gateConfigForPlan — only the UI
-          merges. Free must never read as blocked. */}
+      {/* ONE question — "where do toasts show?" — answered by one section, with
+          the two data models kept separate underneath (exclusions Free, targeting
+          Pro; gated independently in the action and in gateConfigForPlan). A2:
+          Free must never read as blocked, so the always-usable control leads and
+          Pro extends it inline rather than walling it off. */}
       <Form method="post" data-save-bar>
-        <s-section heading="Where toasts show">
+        <WonSection
+          title="Where toasts show"
+          glyph="target"
+          summary={summary}
+          hint="By default toasts run on every page. Turn them off where they don’t belong, or narrow them to specific pages, devices and customers."
+        >
           <s-stack direction="block" gap="large">
-            <s-paragraph>
-              By default toasts run on <s-text type="strong">every page</s-text>.
-              Turn them off where they don’t belong (Free), or narrow them to
-              specific pages, devices and customers (Pro).
-            </s-paragraph>
+            {/* ---- Run everywhere, except… (Free, always usable) ---- */}
+            <WonBlock
+              title="Run everywhere, except…"
+              summary={describeExclusions(ex, pageLabel)}
+            >
+              <s-stack direction="block" gap="base">
+                <s-text color="subdued">
+                  Excluded pages and URLs stop{" "}
+                  <s-text type="strong">everything</s-text> — cart toasts and
+                  notifications alike.
+                </s-text>
 
-            {/* ---- Run everywhere, except… (Free) ---- */}
-            <s-stack direction="block" gap="base">
-              <s-stack direction="inline" gap="small">
-                <s-text type="strong">Run everywhere, except…</s-text>
-                <PlanBadge tier="free" />
-              </s-stack>
-              <s-text color="subdued">
-                Excluded pages and URLs stop{" "}
-                <s-text type="strong">everything</s-text> — cart toasts and
-                notifications alike.
-              </s-text>
-
-              <s-stack direction="block" gap="small">
-                <s-text type="strong">Whole page types</s-text>
-                <s-stack direction="inline" gap="base">
-                  {PAGES.map((p) => (
-                    <s-checkbox
-                      key={p}
-                      label={pageLabel(p)}
-                      name={`exclude_page_${p}`}
-                      value="on"
-                      checked={ex.pages.includes(p)}
-                    />
-                  ))}
+                <s-stack direction="block" gap="small">
+                  <s-text type="strong">Whole page types</s-text>
+                  <s-stack direction="inline" gap="base">
+                    {PAGES.map((p) => (
+                      <s-checkbox
+                        key={p}
+                        label={pageLabel(p)}
+                        name={`exclude_page_${p}`}
+                        value="on"
+                        checked={ex.pages.includes(p)}
+                      />
+                    ))}
+                  </s-stack>
                 </s-stack>
+
+                <s-text-area
+                  label="Specific URLs"
+                  name="exclude_urls"
+                  rows={5}
+                  value={ex.urls.join("\n")}
+                  placeholder={"/checkout*\n/pages/legal"}
+                  details="One pattern per line. Use * as a wildcard (e.g. /checkout*). Query strings and hashes are ignored."
+                />
+
+                <s-text color="subdued">
+                  You can also add{" "}
+                  <s-text type="strong">
+                    {'<meta name="won-toasts:active" content="false">'}
+                  </s-text>{" "}
+                  to any template to opt that page out with no config here.
+                </s-text>
               </s-stack>
+            </WonBlock>
 
-              <s-text-area
-                label="Specific URLs"
-                name="exclude_urls"
-                rows={5}
-                value={ex.urls.join("\n")}
-                placeholder={"/checkout*\n/pages/legal"}
-                details="One pattern per line. Use * as a wildcard (e.g. /checkout*). Query strings and hashes are ignored."
-              />
-
-              <s-text color="subdued">
-                You can also add{" "}
-                <s-text type="strong">
-                  {'<meta name="won-toasts:active" content="false">'}
-                </s-text>{" "}
-                to any template to opt that page out with no config here.
-              </s-text>
-            </s-stack>
-
-            {/* ---- Narrow it down (Pro), same card, below a divider ---- */}
-            <s-box borderWidth="base" />
-
-            <ProFrame locked={!isPro}>
-              <s-stack direction="block" gap="large">
-                <s-stack direction="inline" gap="small" alignItems="center">
-                  <s-text type="strong">Narrow it down</s-text>
-                  {/* This IS the page's Free-vs-Pro split, so the Pro marker earns
-                      its place here (it pairs with the Free badge above) even though
-                      the amber frame already hints at it. */}
-                  <PlanBadge tier="pro" locked={!isPro} />
-                </s-stack>
+            {/* ---- Narrow it down (Pro, layered inline BELOW the Free control) ---- */}
+            <WonBlock
+              title="Narrow it down"
+              summary={
+                isPro
+                  ? describeTargeting(t, pageLabel)
+                  : "On Free, toasts run everywhere except your exclusions above."
+              }
+              pro
+              locked={!isPro}
+            >
+              <s-stack direction="block" gap="base">
                 {!isPro ? (
-                  <s-paragraph>
-                    On Free, toasts run everywhere (minus your exclusions above).{" "}
-                    <s-link href="/app/plan">Upgrade to Pro</s-link> to target
-                    specific pages, devices and customers.
-                  </s-paragraph>
+                  <ProSell benefit="Aim toasts where they pay: only on product pages, only on mobile, only for guests — instead of showing everything to everyone." />
                 ) : null}
 
                 <s-stack direction="block" gap="small">
@@ -192,9 +198,9 @@ export default function TargetingRoute() {
                   <s-option value="logged-in">Logged-in only</s-option>
                 </s-select>
               </s-stack>
-            </ProFrame>
+            </WonBlock>
           </s-stack>
-        </s-section>
+        </WonSection>
       </Form>
     </s-page>
   );

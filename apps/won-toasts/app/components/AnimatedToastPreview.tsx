@@ -6,6 +6,8 @@ import type {
   ToastTheme,
 } from "@won/core/toasts/config.types";
 import { WonToastCard, WonToastKeyframes, animKeyframeName } from "./WonToastCard";
+import { WON_FAINT, WON_FONT } from "../lib/tokens";
+import { PreviewStage } from "./PreviewStage";
 import { previewTiming } from "../lib/preview-timing";
 
 // Animated live preview (doctrine §3e): loops through sample toasts that appear,
@@ -83,49 +85,46 @@ export function AnimatedToastPreview({
   }, [dwellMs, cap, spawnEvery]);
 
   const ordered = stackDirection === "newest-bottom" ? items : [...items].reverse();
-  // Backdrop always light — the preview shows the toast on a light storefront,
-  // never darkening the shop itself (merchant-review point 6).
-  const isDark = false;
 
   // The enter animation reflects the merchant's chosen entry style so the
   // animated preview isn't lying about which animation they picked.
   const animName = animKeyframeName(theme.animationIn);
 
+  // Same wording the merchant chose, not the enum (§4c).
+  const orderLabel =
+    stackDirection === "newest-bottom" ? "newest on bottom" : "newest on top";
+
   return (
-    <div>
+    <div style={{ fontFamily: WON_FONT }}>
       <WonToastKeyframes />
-      <div
-        style={{
-          ...tokens,
-          background: isDark ? "#0f1317" : "#eef1f4",
-          borderRadius: 14,
-          padding: 18,
-          display: "flex",
-          flexDirection: "column",
-          gap: `var(--won-gap)`,
-          minHeight: 220,
-          justifyContent: stackDirection === "newest-bottom" ? "flex-end" : "flex-start",
-          overflow: "hidden",
-        }}
-      >
+      {/* The stage carries the shop header and clamps the stack below it, so the
+          ANIMATED preview can't show a toast sliding over the navigation either
+          (A4 — the same guarantee the static and to-scale previews give). */}
+      <div style={tokens}>
         {customCss ? <style>{customCss}</style> : null}
-        {ordered.map((it) => (
-          <WonToastCard
-            key={it.id}
-            theme={theme}
-            type={it.sample.type}
-            title={it.sample.title}
-            detail={it.sample.detail}
-            delta={it.sample.delta}
-            accent={accentFor(theme, it.sample.type)}
-            closeable={closeable}
-            animName={animName}
-            leaving={it.leaving}
-          />
-        ))}
+        <PreviewStage
+          minHeight={240}
+          align={stackDirection === "newest-bottom" ? "end" : "start"}
+        >
+          {ordered.map((it) => (
+            <WonToastCard
+              key={it.id}
+              theme={theme}
+              type={it.sample.type}
+              title={it.sample.title}
+              detail={it.sample.detail}
+              delta={it.sample.delta}
+              accent={accentFor(theme, it.sample.type)}
+              closeable={closeable}
+              animName={animName}
+              leaving={it.leaving}
+              wonType="cart"
+            />
+          ))}
+        </PreviewStage>
       </div>
-      <p style={{ color: "#8892a0", fontSize: 12, marginTop: 8 }}>
-        Animated · toasts stay {labelSec}s · {stackDirection}
+      <p style={{ color: WON_FAINT, fontSize: 12, marginTop: 8 }}>
+        Animated · toasts stay {labelSec} s · {orderLabel}
       </p>
     </div>
   );

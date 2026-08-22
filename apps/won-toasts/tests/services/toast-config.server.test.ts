@@ -1,61 +1,17 @@
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { after, before, test } from "node:test";
+import { after, test } from "node:test";
 
-import { PrismaClient } from "../../app/generated/prisma/client.ts";
 import { createToastConfigService } from "../../app/services/toast-config.server";
+import { createTestDatabase } from "../lib/test-db.ts";
 
-const testDirectory = mkdtempSync(path.join(tmpdir(), "won-toasts-service-"));
-const databasePath = path.join(testDirectory, "service.sqlite");
-const prisma = new PrismaClient({ datasourceUrl: `file:${databasePath}` });
+// The schema is built from schema.prisma by `prisma db push` (tests/lib/test-db.ts),
+// so this fixture can never drift from the real model the service writes to.
+const db = createTestDatabase("config");
+const prisma = db.prisma;
 const service = createToastConfigService(prisma);
 
-before(async () => {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE "ToastAppConfig" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "shop" TEXT NOT NULL,
-      "version" INTEGER NOT NULL DEFAULT 1,
-      "enabled" BOOLEAN NOT NULL DEFAULT false,
-      "plan" TEXT NOT NULL DEFAULT 'free',
-      "global" TEXT,
-      "theme" TEXT,
-      "byType" TEXT,
-      "cartEvents" TEXT,
-      "messages" TEXT,
-      "locales" TEXT,
-      "milestones" TEXT,
-      "targeting" TEXT,
-      "notifications" TEXT,
-      "exclusions" TEXT,
-      "benchmarkOptOut" BOOLEAN NOT NULL DEFAULT false,
-      "industry" TEXT,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" DATETIME NOT NULL
-    )
-  `);
-  await prisma.$executeRawUnsafe(
-    'CREATE UNIQUE INDEX "ToastAppConfig_shop_key" ON "ToastAppConfig"("shop")',
-  );
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE "ConfigVersion" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "shop" TEXT NOT NULL,
-      "data" TEXT NOT NULL,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  await prisma.$executeRawUnsafe(
-    'CREATE INDEX "ConfigVersion_shop_createdAt_idx" ON "ConfigVersion"("shop", "createdAt")',
-  );
-});
-
 after(async () => {
-  await prisma.$disconnect();
-  await rm(testDirectory, { recursive: true, force: true });
+  await db.drop();
 });
 
 test("fresh shop resolves to the complete spec default config", async () => {

@@ -776,5 +776,17 @@ no-fabrication cold-start. NE social proof (komodita) ani experiment engine (př
 - **Akční CTA §4** (Vybrat dárek, +1 ks do slevy) — nice-to-have; **Undo stačí** jako důkaz akčního toastu.
 - **Extrakce billingu do `app-kit`** — až u **app #2** (extract-on-second-use), ne teď.
 - **ai-advisor v1** — už deferred, nech mrtvý / smaž.
-- **Housekeeping (ne blocker):** srovnat tento plán s kódem (plán tvrdí „per-currency práh NENÍ",
-  kód ho má; event-icon parity možná už opravena).
+- **Housekeeping (ne blocker): SROVNÁNO 2026-08-21.**
+  - *Per-currency práh:* plán tvrdil „NENÍ" — **kód ho má**. `milestones[].thresholds` drží práh
+    per presentment currency, edituje se na `/app/markets` („Currencies"), základní částka +
+    on/off zůstávají na Toasts. Tvrzení v plánu bylo zastaralé; tenhle řádek je oprava.
+  - *Event-icon parity:* **NEBYLA opravená** a byla horší, než jak ji plán popisoval. Storefront
+    staví tři různé karty: `cartCard` volá `iconFor()` a používá accent podle eventu;
+    `renderMilestoneToast` ikonu nekreslí; `notifCard` ikonu nekreslí **a** natvrdo používá
+    `accentFor("info")` pro všechny notifikační typy. Admin preview kreslil ikonu a accent podle
+    typu u všech tří → merchant ladil „Accent colour per event" na barvy, které shopper nikdy
+    neuvidí. **Opraveno v preview** (bez zásahu do runtime, tedy bez dopadu na F1) a zamčeno
+    kontraktem `tests/contracts/preview-storefront-parity.contract.test.ts`.
+  - *Otevřené rozhodnutí:* jestli místo toho doplnit ikony a per-type accent do storefront runtime.
+    To by byl zásah do `storefront-src/won-toasts.js` → **vyžaduje ruční doběh E2E (brána F1)** a
+    navíc naráží na perf budget (~18 B rezervy do 11 kB gz stropu).

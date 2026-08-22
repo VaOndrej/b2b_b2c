@@ -1,41 +1,17 @@
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { after, before, test } from "node:test";
+import { after, test } from "node:test";
 
-import { PrismaClient } from "../../app/generated/prisma/client.ts";
 import { createExperimentService } from "../../app/services/experiments.server";
+import { createTestDatabase } from "../lib/test-db.ts";
 
-const dir = mkdtempSync(path.join(tmpdir(), "won-toasts-exp-"));
-const prisma = new PrismaClient({ datasourceUrl: `file:${path.join(dir, "exp.sqlite")}` });
+// The schema is built from schema.prisma by `prisma db push` (tests/lib/test-db.ts),
+// so this fixture can never drift from the real model the service writes to.
+const db = createTestDatabase("experiments");
+const prisma = db.prisma;
 const service = createExperimentService(prisma);
 
-before(async () => {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE "Experiment" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "shop" TEXT NOT NULL,
-      "name" TEXT NOT NULL,
-      "status" TEXT NOT NULL DEFAULT 'running',
-      "control" JSONB NOT NULL,
-      "variant" JSONB NOT NULL,
-      "variantPercent" INTEGER NOT NULL DEFAULT 50,
-      "holdoutPercent" INTEGER NOT NULL DEFAULT 0,
-      "gatingMode" TEXT NOT NULL DEFAULT 'test_first',
-      "baseline" JSONB,
-      "audit" JSONB,
-      "source" TEXT NOT NULL DEFAULT 'manual',
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "decidedAt" DATETIME
-    )
-  `);
-});
-
 after(async () => {
-  await prisma.$disconnect();
-  await rm(dir, { recursive: true, force: true });
+  await db.drop();
 });
 
 const base = {

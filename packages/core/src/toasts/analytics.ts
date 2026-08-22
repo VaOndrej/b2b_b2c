@@ -80,3 +80,32 @@ export function summarizeByRule(
   }
   return out;
 }
+
+/**
+ * Fold per-rule counters into per-TOAST-TYPE impressions, so the admin can say
+ * "this toast showed 1 240 times in the last 7 days" next to the toast itself.
+ *
+ * The rule-id vocabulary the storefront beacons is wider than the type list:
+ * cart deltas arrive as `cart:<event>` and reward milestones as
+ * `milestone:<kind>`, and BOTH are configured on the Cart toasts panel — so both
+ * fold into the "cart" type. Notification rules beacon their own id, which is
+ * already the type key.
+ *
+ * Unknown ids are ignored rather than guessed at: a number attached to the wrong
+ * toast would be a false claim (§12b — every claim traceable).
+ */
+export function impressionsByTypeKey(
+  metrics: Record<string, RuleCounters>,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [ruleId, counters] of Object.entries(metrics ?? {})) {
+    const impressions = counters?.impressions ?? 0;
+    if (!impressions) continue;
+    const typeKey =
+      ruleId.startsWith("cart:") || ruleId.startsWith("milestone:")
+        ? "cart"
+        : ruleId;
+    out[typeKey] = (out[typeKey] ?? 0) + impressions;
+  }
+  return out;
+}

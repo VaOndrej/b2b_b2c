@@ -33,6 +33,16 @@ export interface WonToastCardProps {
    * as it does the storefront (which sets the same attribute). Defaults to "cart"
    * because every current preview surface shows cart toasts. */
   wonType?: string;
+  /**
+   * Whether this surface draws the event icon at all. Defaults to following the
+   * theme (`resolveIcon`), which is right for CART toasts. Pass `false` for
+   * surfaces the storefront renders WITHOUT an icon — milestone and notification
+   * cards go through `renderMilestoneToast` / `notifCard` in
+   * storefront-src/won-toasts.js, and neither calls `iconFor()`. Showing one in
+   * the preview would be a difference between preview and storefront, i.e. a bug
+   * by A1.
+   */
+  icon?: boolean;
   /** Enter animation keyframe name; omit for no enter animation. */
   animName?: string;
   /** Collapsing/leaving state for the animated surface. */
@@ -51,6 +61,7 @@ export function WonToastCard({
   undo,
   size = "md",
   wonType = "cart",
+  icon = true,
   animName,
   leaving,
 }: WonToastCardProps) {
@@ -112,7 +123,7 @@ export function WonToastCard({
 
       {/* Icons only render at md size — the storefront-scale card is too small to
           carry both an image and an icon legibly, matching the old behaviour. */}
-      {!sm && ic.kind !== "none" ? (
+      {icon && !sm && ic.kind !== "none" ? (
         ic.kind === "emoji" ? (
           <span aria-hidden="true" data-won-toast-icon="" data-emoji="" style={{ fontSize: 16, lineHeight: 1, flex: "0 0 auto" }}>
             {ic.glyph}
@@ -126,9 +137,13 @@ export function WonToastCard({
         <div style={{ fontWeight: 700, whiteSpace: sm ? "nowrap" : undefined, overflow: sm ? "hidden" : undefined, textOverflow: sm ? "ellipsis" : undefined }}>
           {title}
         </div>
-        <div style={{ color: "#8892a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {detail}
-        </div>
+        {/* Notification toasts often carry a single line of copy; rendering an
+            empty detail row would add a phantom gap under it. */}
+        {detail ? (
+          <div style={{ color: "#8892a0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {detail}
+          </div>
+        ) : null}
       </div>
 
       {theme.showDelta && delta ? (

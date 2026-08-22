@@ -23,6 +23,7 @@ import {
   ordersToSales,
   popularityToMetafields,
   type MetafieldInput,
+  type OrderNode,
 } from "./popularity-map";
 
 export type AdminGraphql = {
@@ -67,6 +68,21 @@ const isThrottled = (payload: unknown): boolean =>
   );
 
 /** Fetch recent orders within the window and flatten to sales. Paginated + capped. */
+/**
+ * The slice of the orders GraphQL response this function actually reads.
+ * Every field is optional on purpose: API-2 says tolerate partial results, so
+ * the type must not promise fields the API may omit. Malformed nodes are dropped
+ * downstream by ordersToSales, which is unit-tested for exactly that.
+ */
+interface OrdersPayload {
+  data?: {
+    orders?: {
+      edges?: ({ node?: OrderNode | null } | null)[];
+      pageInfo?: { hasNextPage?: boolean; endCursor?: string | null };
+    };
+  };
+}
+
 export async function fetchRecentOrderSales(
   admin: AdminGraphql,
   windowDays: number,
@@ -77,18 +93,18 @@ export async function fetchRecentOrderSales(
   const sales: ProductSale[] = [];
   let cursor: string | null = null;
   for (let page = 0; page < MAX_ORDER_PAGES; page++) {
-    let payload: any;
+    let payload: OrdersPayload | undefined;
     for (let attempt = 0; attempt < 4; attempt++) {
       const res = await admin.graphql(ORDERS_QUERY, { variables: { cursor, query } });
-      payload = await res.json();
+      payload = (await res.json()) as OrdersPayload;
       if (!isThrottled(payload)) break;
       await sleep(THROTTLE_PAUSE_MS * (attempt + 1)); // linear backoff
     }
     const conn = payload?.data?.orders;
     if (!conn) break;
-    sales.push(...ordersToSales((conn.edges ?? []).map((e: any) => e?.node)));
+    sales.push(...ordersToSales((conn.edges ?? []).map((e) => e?.node)));
     if (!conn.pageInfo?.hasNextPage) break;
-    cursor = conn.pageInfo.endCursor;
+    cursor = conn.pageInfo.endCursor ?? null;
   }
   return sales;
 }

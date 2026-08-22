@@ -238,7 +238,7 @@ export default function AnalyticsRoute() {
           </s-banner>
         ) : (
           <s-banner tone="info" heading="Turn on a holdout to prove ROI">
-            The only honest "Won earned you X" number comes from a holdout — a small
+            The only honest &ldquo;Won earned you X&rdquo; number comes from a holdout — a small
             share of visitors who see no toasts, so we can measure the real
             difference. Enable it in <s-link href="/app/experiments">Experiments</s-link>.
           </s-banner>
@@ -302,8 +302,8 @@ export default function AnalyticsRoute() {
         {optedOut ? (
           <>
             <s-paragraph>
-              You've opted out of anonymous benchmarks. No aggregate data is shared,
-              and you don't see how you compare.
+              You&rsquo;ve opted out of anonymous benchmarks. No aggregate data is shared,
+              and you don&rsquo;t see how you compare.
             </s-paragraph>
             <Form method="post">
               <input type="hidden" name="intent" value="benchmark_optout" />

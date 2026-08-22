@@ -91,6 +91,11 @@ module.exports = {
     },
   ],
   globals: {
-    shopify: "readonly"
+    // App Bridge, injected into the embedded admin.
+    shopify: "readonly",
+    // The STOREFRONT global Shopify injects on every shop page (Shopify.currency,
+    // Shopify.locale, …). Declared, not polyfilled: storefront-src/won-toasts.js
+    // only ever reads it behind a `window.Shopify &&` guard.
+    Shopify: "readonly",
   },
 };

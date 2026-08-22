@@ -200,8 +200,8 @@ export default function ExperimentsRoute() {
       {!data.liveTickWired ? (
         <s-section>
           <s-banner tone="warning" heading="Experiments are paused">
-            Order tracking isn't enabled yet, so a losing variant couldn't
-            auto-roll-back. To keep your store safe, experiments won't start or
+            Order tracking isn&rsquo;t enabled yet, so a losing variant couldn&rsquo;t
+            auto-roll-back. To keep your store safe, experiments won&rsquo;t start or
             serve until order tracking is live.
           </s-banner>
         </s-section>
@@ -215,7 +215,7 @@ export default function ExperimentsRoute() {
         <s-paragraph>
           A holdout shows <strong>no toasts</strong> to a small, random share of
           visitors. Comparing their orders against everyone else is the one
-          defensible way to say "Won earned you X" — everything else is an assist,
+          defensible way to say &ldquo;Won earned you X&rdquo; — everything else is an assist,
           not a proven cause. Safe and fully reversible.
         </s-paragraph>
         {active ? (

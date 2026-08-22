@@ -1,39 +1,19 @@
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { after, before, test } from "node:test";
+import { after, test } from "node:test";
 
 import { countWithinWindow } from "@won/core/toasts/aggregates";
 
-import { PrismaClient } from "../../app/generated/prisma/client.ts";
 import { createToastEventService } from "../../app/services/toast-events.server";
+import { createTestDatabase } from "../lib/test-db.ts";
 
-const testDirectory = mkdtempSync(path.join(tmpdir(), "won-toasts-events-"));
-const databasePath = path.join(testDirectory, "events.sqlite");
-const prisma = new PrismaClient({ datasourceUrl: `file:${databasePath}` });
+// The schema is built from schema.prisma by `prisma db push` (tests/lib/test-db.ts),
+// so this fixture can never drift from the real model the service writes to.
+const db = createTestDatabase("events");
+const prisma = db.prisma;
 const service = createToastEventService(prisma);
 
-before(async () => {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE "ToastEvent" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "shop" TEXT NOT NULL,
-      "kind" TEXT NOT NULL,
-      "quantity" INTEGER NOT NULL DEFAULT 1,
-      "at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "orderId" TEXT
-    )
-  `);
-  await prisma.$executeRawUnsafe(
-    'CREATE UNIQUE INDEX "ToastEvent_shop_orderId_key" ON "ToastEvent"("shop", "orderId")',
-  );
-});
-
 after(async () => {
-  await prisma.$disconnect();
-  await rm(testDirectory, { recursive: true, force: true });
+  await db.drop();
 });
 
 test("records real events and counts only those inside the window", async () => {

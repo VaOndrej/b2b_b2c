@@ -1,7 +1,7 @@
 # Admin UX standard pro Won appky (CZ) — ukazatel + řemeslné invarianty
 
 > **Zdroj pravdy je [`docs/won-app-design-doctrine.md`](../../../docs/won-app-design-doctrine.md) — „Won App Doctrine".**
-> Tento soubor **už neduplikuje** principy §1–§16 / A1–A6 / Part II (dřív tu byly
+> Tento soubor **už neduplikuje** principy §1–§17 / A1–A7 / Part II (dřív tu byly
 > celé česky a rozcházely se s canonicalem). Principy čti v canonicalu (anglicky,
 > otagované `[INV]/[PLAT]/[WON]/[APP]`). Tady zůstává jen **český onboarding** a
 > **řemeslné invarianty admin vrstvy** — konkrétní *implementace* pravidel, ne
@@ -91,6 +91,32 @@ sanitizuje a scopuje server-side (shadow/prefix), jinak je z escape hatche XSS.
 ### 9. Homepage: rychlé hledání — impl. §13
 Na přehledové stránce nabídni `s-search-field`, který indexuje nastavení a
 deep-linkuje na správnou stránku/pole.
+
+### 10. Jedna sekční skořápka + stavová hlavička — impl. §17 / A7
+Nikdy nepiš `<s-section heading="Look">` napřímo. Každá sekce i karta jde přes
+**jednu** komponentu (`WonSection`) a bloky uvnitř přes **jednu** (`WonBlock`).
+Sekce má tři sloty ještě před tělem:
+
+1. **identita** — neutrální glyf + název (barvu nech na §11a: modrá = vybráno,
+   amber = Pro, zelená = běží; per-sekční barva by byla čtvrtý význam),
+2. **stav v klidu** — jedna věta o **aktuální konfiguraci lidsky**
+   („Bottom right · 40 px from the edge · up to 3 at once"),
+3. **důsledek** — volitelně §10 proof nebo mini render primitivu.
+
+Stavovou větu **nikdy neskládej v routě**. Patří do `describe*()` v enginu vedle
+sanitizérů — jinak dvě obrazovky popíšou tentýž config jinak a další appka si to
+napíše znovu (stejná logika jako §10b / §11b / DATA-4). Jsou to čisté funkce,
+takže je pokryj unit testem.
+
+Tři pasti, na které se v Won Toasts narazilo:
+
+- **Summary musí být živé** (§17b) — čte tentýž stav jako preview, ne uloženou
+  hodnotu. Zastaralý stavový řádek je horší než žádný.
+- **Summary nesmí slíbit víc, než config garantuje** (§17c) — při vypnutém
+  auto-dismiss je „Stays 5 s" lež; napiš „Stays until dismissed". Na Free
+  necituj Pro nastavení, které se stejně neaplikuje.
+- **Sbalení skrývá, nikdy neodmountuje** (§17d) — `display:none`, ne podmíněný
+  render. Skrytá pole musí dál postovat, protože jeden Save Bar pokrývá celý form.
 
 ---
 Viz i `docs/nova-aplikace.md` (standing goals) a paměťovou poznámku

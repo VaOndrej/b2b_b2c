@@ -4,8 +4,21 @@
 # budget (and what Built for Shopify measures) is gzipped storefront weight,
 # enforced authoritatively by tests/contracts/perf-budget.contract.test.ts
 # (<= 11 kB gz). The shipped won-toasts.js is the esbuild-MINIFIED build of
-# storefront-src/won-toasts.js — ~26 kB raw / ~9.5 kB gz. This raw threshold is a
-# coarse proxy set with headroom; the gz test is the real gate.
+# storefront-src/won-toasts.js.
+#
+# MEASURED 2026-08-22: 31 093 B raw / 11 246 B gz (zlib.gzipSync, the same call
+# the perf contract makes) → 18 B under the 11 264 B ceiling. The older comment
+# here claimed "~26 kB raw / ~9.5 kB gz", which had drifted from reality by ~5 kB
+# raw and ~1.7 kB gz. Re-measure before quoting these numbers again:
+#   node -e 'const{readFileSync}=require("fs"),{gzipSync}=require("zlib");
+#   const b=readFileSync("assets/won-toasts.js");console.log(b.length,gzipSync(b).length)'
+#
+# WARNING (2026-08-22): raising this threshold only silences `npm run
+# validate:shopify`, which reads THIS file. `shopify app dev` does NOT read it and
+# checks against the 10 000 B default — it reports won-toasts.js as an error. So a
+# green validate:shopify is NOT evidence that Shopify's own tooling is happy.
+# Verified by running theme check on a copy of this directory with this file
+# removed: 1 error, "threshold (10000 B)".
 AssetSizeAppBlockJavaScript:
   enabled: true
   threshold_in_bytes: 35000

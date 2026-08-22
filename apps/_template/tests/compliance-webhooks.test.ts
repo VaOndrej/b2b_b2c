@@ -14,7 +14,7 @@ import {
 
 function fakeAuth(payload: unknown = {}) {
   return {
-    webhook: async (_req: Request) => ({
+    webhook: async () => ({
       shop: "test.myshopify.com",
       topic: "TEST",
       payload,
@@ -23,6 +23,15 @@ function fakeAuth(payload: unknown = {}) {
   };
 }
 const req = () => new Request("https://example.com/webhooks");
+
+/**
+ * The argument shape react-router hands a webhook action. Derived from the
+ * factory's own return type rather than re-declared, so a signature change in
+ * @won/app-kit surfaces here as a type error instead of being masked by a cast.
+ * Only `request` is read by these actions.
+ */
+type ActionArgs = Parameters<ReturnType<typeof createDataRequestAction>>[0];
+const actionArgs = () => ({ request: req() }) as ActionArgs;
 
 test("data_request acknowledges with 200 and never logs the payload (PRIV-3)", async () => {
   const logged: unknown[] = [];
@@ -33,7 +42,7 @@ test("data_request acknowledges with 200 and never logs the payload (PRIV-3)", a
       authenticate: fakeAuth({ customer: { id: 1, email: "a@b.c" } }),
       db: {},
     });
-    const res = await action({ request: req() } as any);
+    const res = await action(actionArgs());
     assert.equal(res.status, 200);
     // No log line may carry the payload object (which holds PII).
     const flat = JSON.stringify(logged);
@@ -52,7 +61,7 @@ test("customers/redact calls the app's redact callback with shop + payload", asy
       calls.push(args);
     },
   });
-  const res = await action({ request: req() } as any);
+  const res = await action(actionArgs());
   assert.equal(res.status, 200);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].shop, "test.myshopify.com");
@@ -66,13 +75,13 @@ test("customers/redact still acknowledges 200 even if the callback throws (idemp
       throw new Error("boom");
     },
   });
-  const res = await action({ request: req() } as any);
+  const res = await action(actionArgs());
   assert.equal(res.status, 200);
 });
 
 test("customers/redact is compliant with NO callback (PII-free app default)", async () => {
   const action = createCustomersRedactAction({ authenticate: fakeAuth(), db: {} });
-  const res = await action({ request: req() } as any);
+  const res = await action(actionArgs());
   assert.equal(res.status, 200);
 });
 
@@ -92,7 +101,7 @@ test("shop/redact clears sessions and runs the app's data deletion", async () =>
       deleted.push(shop);
     },
   });
-  const res = await action({ request: req() } as any);
+  const res = await action(actionArgs());
   assert.equal(res.status, 200);
   assert.deepEqual(deleted, ["test.myshopify.com"]);
   assert.equal(sessionsCleared, true);
