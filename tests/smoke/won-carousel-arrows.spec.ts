@@ -17,6 +17,12 @@ test('carousel arrows are visible only when the rail overflows', async ({ page }
       if (!track) return;
       // Marquee rails have no arrows container — skip.
       if (track.hasAttribute('data-marquee')) return;
+      // Arrows are a SLIDER affordance (the section only renders them for
+      // layout: slider). A grid carousel with mobile_carousel on also overflows
+      // on phones, but pages by swipe — exactly like won-grid's --scroll-sm
+      // rail, which has never had arrows either. Holding it to "overflow implies
+      // arrows" would demand a control the layout deliberately does not offer.
+      if (!el.classList.contains('won-carousel--slider')) return;
       const scrollable = track.scrollWidth - track.clientWidth > 1;
       const loop = !!el.querySelector('[data-won-track][data-won-loop]') || track.dataset.wonLoop === '1';
       const arrowsShown = !!arrows && !arrows.hidden && arrows.offsetParent !== null;

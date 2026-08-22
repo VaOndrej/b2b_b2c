@@ -10,10 +10,10 @@
     "footer": "Footer",
     "forms": "Forms",
     "header": "Header",
-    "layout": "Layout",
+    "layout": "Other",
     "links": "Links",
     "product": "Product",
-    "products": "Products",
+    "products": "Other",
     "product_list": "Featured collection",
     "other_sections": "Other",
     "storytelling": "Storytelling",
@@ -1282,7 +1282,9 @@
       "ann_dismissible": "Adds a close button; the bar stays hidden for the rest of the visit.",
       "ann_icon": "Optional icon/emoji before the text (e.g. 🚚, 🎉).",
       "ann_link": "Optional: make the whole message a link (e.g. to a new collection).",
-      "show_side_media": "Adds an image beside the heading and contact in the side column. The heading and the FAQ questions always stay — this never hides them."
+      "show_side_media": "Adds an image beside the heading and contact in the side column. The heading and the FAQ questions always stay — this never hides them.",
+      "show_author": "Prints the article author under the title. A blank author is skipped, so no empty slot appears.",
+      "show_reading_time": "Estimated from word count (200 words per minute), rounded up to a whole minute."
     },
     "headers": {
       "ai_schema": "AI / search (structured data)",
@@ -1506,7 +1508,10 @@
       "ann_display": "Display",
       "ann_interval": "Rotation interval",
       "ann_dismissible": "Dismissible bar",
-      "show_side_media": "Image in the side column"
+      "show_side_media": "Image in the side column",
+      "arrow_style": "Arrow style",
+      "show_author": "Show author",
+      "show_reading_time": "Show reading time"
     },
     "options": {
       "loop_off": "Off",
@@ -1651,7 +1656,11 @@
       "ann_rotate": "Rotate",
       "ann_single": "Single",
       "align_center": "Center",
-      "align_start": "Left"
+      "align_start": "Left",
+      "arrow_square": "Square",
+      "arrow_minimal": "Borderless",
+      "arrow_pill": "Round",
+      "arrow_soft": "Softly rounded"
     },
     "presets": {
       "product_carousel": "Won Carousel — products",

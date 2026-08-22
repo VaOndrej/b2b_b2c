@@ -486,6 +486,42 @@
         "columns_desktop": 4
       }
     },
+    "daily_grid": {
+      "type": "won-carousel",
+      "settings": {
+        "layout": "grid",
+        "source": "collection",
+        "collection": "automated-collection",
+        "columns_desktop": 4,
+        "columns_tablet": 2,
+        "columns_mobile": "2",
+        "gap": 16,
+        "color_scheme": "scheme-1",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "products_limit": 8,
+        "heading": "<p>Doplňky pro každý den</p>",
+        "mobile_carousel": true
+      }
+    },
+    "range_grid": {
+      "type": "won-carousel",
+      "settings": {
+        "layout": "grid",
+        "source": "collection",
+        "collection": "automated-collection",
+        "columns_desktop": 4,
+        "columns_tablet": 2,
+        "columns_mobile": "2",
+        "gap": 16,
+        "color_scheme": "scheme-1",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "products_limit": 4,
+        "heading": "<p>Celá řada</p>",
+        "mobile_carousel": false
+      }
+    },
     "cta": {
       "type": "won-band",
       "settings": {
@@ -643,7 +679,9 @@
         "padding_top": 56,
         "padding_bottom": 56,
         "source": "articles",
-        "article_layout": "grid"
+        "article_layout": "grid",
+        "show_author": true,
+        "show_reading_time": true
       }
     },
     "brand_marquee": {
@@ -768,6 +806,8 @@
     "categories",
     "trust",
     "bestsellers",
+    "daily_grid",
+    "range_grid",
     "peek_hero",
     "cta",
     "comparison",

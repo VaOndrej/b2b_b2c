@@ -1095,14 +1095,14 @@
     "footer": "Zápatí",
     "forms": "Formuláře",
     "header": "Záhlaví",
-    "layout": "Rozvržení",
+    "layout": "Ostatní",
     "links": "Odkazy",
     "product": "Produkt",
     "banners": "Banery",
     "collections": "Kolekce",
     "custom": "Vlastní",
     "decorative": "Dekorativní",
-    "products": "Produkty",
+    "products": "Ostatní",
     "other_sections": "Ostatní",
     "storytelling": "Vyprávění",
     "text": "Text"
@@ -1282,7 +1282,9 @@
       "ann_dismissible": "Přidá křížek pro zavření; lišta zůstane skrytá po zbytek návštěvy.",
       "ann_icon": "Volitelná ikona/emoji před textem (např. 🚚, 🎉).",
       "ann_link": "Volitelně: udělej z celé zprávy odkaz (např. na novou kolekci).",
-      "show_side_media": "Přidá obrázek do postranního sloupce vedle nadpisu a kontaktu. Nadpis i otázky FAQ zůstávají vždy — tohle je nikdy neskryje."
+      "show_side_media": "Přidá obrázek do postranního sloupce vedle nadpisu a kontaktu. Nadpis i otázky FAQ zůstávají vždy — tohle je nikdy neskryje.",
+      "show_author": "Vypíše autora článku pod nadpisem. Prázdné pole autora se přeskočí, nezobrazí se prázdné místo.",
+      "show_reading_time": "Odhad z počtu slov (200 slov za minutu), zaokrouhleno nahoru na celou minutu."
     },
     "headers": {
       "ai_schema": "AI / vyhledávače (strukturovaná data)",
@@ -1506,7 +1508,10 @@
       "ann_display": "Zobrazení",
       "ann_interval": "Interval rotace",
       "ann_dismissible": "Zavíratelná lišta",
-      "show_side_media": "Obrázek v postranním sloupci"
+      "show_side_media": "Obrázek v postranním sloupci",
+      "arrow_style": "Styl šipek",
+      "show_author": "Zobrazit autora",
+      "show_reading_time": "Zobrazit dobu čtení"
     },
     "options": {
       "loop_off": "Vypnuto",
@@ -1651,7 +1656,11 @@
       "ann_rotate": "Rotace",
       "ann_single": "Jedna zpráva",
       "align_center": "Na střed",
-      "align_start": "Vlevo"
+      "align_start": "Vlevo",
+      "arrow_square": "Hranaté",
+      "arrow_minimal": "Bez pozadí",
+      "arrow_pill": "Kulaté",
+      "arrow_soft": "Jemně zaoblené"
     },
     "presets": {
       "product_carousel": "Won Carousel — produkty",

@@ -415,6 +415,9 @@
     "ship": {
       "remaining": "Do dopravy zdarma zbývá [amount]",
       "reached": "Máš dopravu zdarma 🎉"
+    },
+    "article": {
+      "reading_time": "{{ minutes }} min čtení"
     }
   }
 }

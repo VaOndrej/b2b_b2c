@@ -65,6 +65,8 @@ const HIDE_NATIVE_SECTIONS = [
   'media-with-content', // -> won-band
   'collection-list', // -> won-collection / won-collection-tiles
   'collection-links', // -> won-collection-tiles
+  'product-list',    // -> won-carousel (layout: grid, source: collection)
+  'featured-blog-posts', // -> won-grid (source: articles)
 ];
 let prunedNative = 0;
 for (const name of HIDE_NATIVE_SECTIONS) {

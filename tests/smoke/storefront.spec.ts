@@ -365,6 +365,14 @@ test('home — carousels honour their mobile mode', async ({ page }, testInfo) =
 
   for (let i = 0; i < n; i++) {
     const car = carousels.nth(i);
+    // The single/peek/multiple contract measures cards along ONE horizontal
+    // rail. A layout: grid carousel without mobile_carousel is a wrapping grid,
+    // not a rail — every row shares the same x range, so "cards fully visible
+    // horizontally" counts the whole grid, not one row. Its rail-mode sibling
+    // (grid + mobile_carousel, which reports data-mobile-mode="peek") IS a rail
+    // and stays in scope.
+    const cls = (await car.getAttribute('class')) || '';
+    if (cls.includes('won-carousel--grid') && !cls.includes('won-carousel--scroll-sm')) continue;
     await car.scrollIntoViewIfNeeded();
     const track = car.locator('[data-won-track]');
     const mode = (await car.getAttribute('data-mobile-mode')) || '1';
