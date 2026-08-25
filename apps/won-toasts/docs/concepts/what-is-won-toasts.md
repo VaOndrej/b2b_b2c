@@ -5,12 +5,12 @@ layer: concept
 feature: core
 min_plan: free
 status: stable
-app_version: MVP0
+app_version: MVP14
 source: hand-written
 generated_from: null
 lang: en
-updated: 2026-08-04
-keywords: [overview, cart notifications, toast, what is, introduction]
+updated: 2026-08-23
+keywords: [overview, cart notifications, toast, what is, introduction, admin, pages, navigation]
 summary: Won Toasts shows lightweight cart notifications ("toasts") and progress toward shipping/gift milestones in your storefront.
 ---
 
@@ -19,7 +19,9 @@ summary: Won Toasts shows lightweight cart notifications ("toasts") and progress
 Won Toasts adds **lightweight cart notifications** ("toasts") to your storefront.
 When a shopper adds, removes, or changes items, a small message appears — with the
 product image, name, and quantity change — and can nudge them toward rewards like
-**free shipping** or a **free gift**.
+**free shipping** or a **free gift**. It also shows toasts you configure yourself:
+a countdown, an announcement, or honest urgency from live inventory and real
+cart activity.
 
 ## What a shopper sees
 
@@ -32,12 +34,16 @@ product image, name, and quantity change — and can nudge them toward rewards l
 
 Everything is configuration — there are no code changes. The admin has:
 
-- **Overview** — enable/disable the app, install check.
-- **Behavior** — position, duration, max visible, stacking, grouping/anti-spam.
-- **Appearance** — colors, radius, animation, light/dark, per-event accent.
-- **Events & messages** — message templates per event type and language.
-- **Targeting** *(Pro)* — where toasts show (page / device / customer).
-- **Plan** — Free vs Pro overview.
+- **Home** — turn the app on, enable the app embed, see reach at a glance.
+- **Toasts** — which recipes are on: cart toasts, milestones, countdown,
+  announcement, and the Pro urgency recipes.
+- **Design** — look (colours, shape, motion), placement, timing, anti-spam,
+  custom CSS.
+- **Markets** — languages, translations, per-currency thresholds.
+- **Targeting** — URL exclusions on every plan; page / device / customer
+  narrowing on Pro.
+- **Insights** *(Pro)* — impressions, interactions, holdout-proven ROI.
+- **Plan** — Free vs Pro, upgrade and cancel.
 
 ## Where it runs
 
@@ -52,4 +58,6 @@ Won Toasts **notifies, it does not grant.** A "free shipping" toast reflects you
 existing Shopify shipping settings; the app only shows progress toward them.
 
 Related: [cart-toasts](cart-toasts), [milestones](milestones),
-[plans-free-vs-pro](plans-free-vs-pro).
+[notifications-and-recipes](notifications-and-recipes),
+[plans-free-vs-pro](plans-free-vs-pro),
+[turn-on-won-toasts](../tasks/turn-on-won-toasts).

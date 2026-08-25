@@ -24,9 +24,14 @@ unlocks *more* customization and reach, it never removes basic usability.
 ## Free plan includes
 
 - All cart toasts (add / remove / increase / decrease) with Undo
+- Countdown timers and announcements
 - Up to **2** active milestones
-- Message templates in all supported languages
+- Up to **2** languages (Pro: up to 20)
+- Up to **2** per-currency free-shipping thresholds
+- Message templates, accessibility and the live preview — in full
 - The default appearance (light/dark/system)
+- A per-session cap of **5** toasts, fixed (Pro can raise
+  it or set 0 for unlimited) — a shopper is never floodable on any plan
 - Shows a small "Powered by Won" badge
 
 ## Pro plan unlocks
@@ -46,7 +51,12 @@ unlocks *more* customization and reach, it never removes basic usability.
 |---|---|---|
 | Cart toasts + Undo | ✅ | ✅ |
 | Languages & templates | ✅ | ✅ |
+| Countdown + announcement | ✅ | ✅ |
+| Low stock / cart activity | — | ✅ |
 | Active milestones | up to 2 | unlimited |
+| Languages | up to 2 | up to 20 |
+| Per-currency thresholds | up to 2 | unlimited |
+| Toasts per session | 5, fixed | merchant-controlled |
 | Design studio / custom CSS | — | ✅ |
 | Targeting (page/device/customer) | — | ✅ |
 | Analytics / experiments | — | ✅ |
