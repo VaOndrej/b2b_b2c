@@ -1,0 +1,13 @@
+won_hide_gift_cards=false HP raily      karet=34 giftOdkazů=2
+won_hide_gift_cards=false PLP           karet=9 giftOdkazů=2
+won_hide_gift_cards=false vyhledávání   karet=0 giftOdkazů=5
+won_hide_gift_cards=true  HP raily      karet=34 giftOdkazů=2
+won_hide_gift_cards=true  PLP           karet=9 giftOdkazů=2
+won_hide_gift_cards=true  vyhledávání   karet=0 giftOdkazů=5
+won_return enabled=false dnů=14  textNaPDP=true ldMerchantReturnPolicy=false ldDnů=—
+won_return enabled=true  dnů=0   textNaPDP=true ldMerchantReturnPolicy=false ldDnů=—
+won_return enabled=true  dnů=14  textNaPDP=true ldMerchantReturnPolicy=true ldDnů=14
+won_return enabled=true  dnů=90  textNaPDP=true ldMerchantReturnPolicy=true ldDnů=90
+won_countup_default_duration=400   prvků=0 duration=[]
+won_countup_default_duration=1600  prvků=0 duration=[]
+won_countup_default_duration=4000  prvků=0 duration=[]

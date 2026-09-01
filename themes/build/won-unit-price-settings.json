@@ -1,0 +1,13 @@
+{
+  "name": "t:won.global.unit_price",
+  "settings": [
+    { "type": "paragraph", "content": "t:won.global.unit_price_about" },
+    {
+      "type": "textarea",
+      "id": "won_unit_price_rules",
+      "label": "t:won.settings.unit_price_rules",
+      "info": "t:won.info.unit_price_rules",
+      "default": "won.net_weight_g | 100 | t:won.unit.per_100g\nwon.servings | 1 | t:won.unit.per_serving"
+    }
+  ]
+}

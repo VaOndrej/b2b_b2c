@@ -1,0 +1,32 @@
+{%- comment -%}
+  won-fx — resolves the theme-wide CTA effect settings into the class list every
+  won button wears. ONE place, so a new section cannot ship a button that quietly
+  sits outside the effect layer (which is exactly how the card quick-add ended up
+  with no hover state at all while `.won-btn` had one).
+
+  Render it INSIDE the class attribute of any interactive won CTA:
+
+    <a class="won-btn won-btn--primary {% render 'won-fx' %}" href="…">…</a>
+
+  Deliberately NOT on non-actions: a sold-out label must not animate as if it
+  could be clicked.
+
+  The effects themselves live in assets/won-tokens.css (§ CTA effect layer) and
+  are driven purely by these classes — no inline style, so the markup stays
+  cacheable and a store's whole button signature is four selects in the theme
+  editor (themes/build/won-effect-settings.json).
+{%- endcomment -%}
+{%- liquid
+  assign fx_hover = settings.won_btn_hover | default: 'lift'
+  assign fx_sheen = settings.won_btn_sheen | default: 'hover'
+  assign fx_press = settings.won_btn_press | default: 'sink'
+  assign fx_speed = settings.won_fx_speed | default: 'normal'
+  echo 'won-fx won-fx--hover-'
+  echo fx_hover
+  echo ' won-fx--sheen-'
+  echo fx_sheen
+  echo ' won-fx--press-'
+  echo fx_press
+  echo ' won-fx--speed-'
+  echo fx_speed
+-%}

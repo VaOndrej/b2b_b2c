@@ -364,7 +364,8 @@
       "add": "Add to cart",
       "added": "Added ✓",
       "choose": "Choose",
-      "soldout": "Sold out"
+      "soldout": "Sold out",
+      "decrease": "Remove one"
     },
     "unit": {
       "per_100g": "100 g",
@@ -404,6 +405,11 @@
     },
     "article": {
       "reading_time": "{{ minutes }} min read"
+    },
+    "breadcrumbs": {
+      "label": "Breadcrumb",
+      "home": "Home",
+      "search": "Search results"
     }
   }
 }

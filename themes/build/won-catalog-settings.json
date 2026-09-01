@@ -1,0 +1,13 @@
+{
+  "name": "t:won.global.catalog",
+  "settings": [
+    { "type": "paragraph", "content": "t:won.global.catalog_about" },
+    {
+      "type": "checkbox",
+      "id": "won_hide_gift_cards",
+      "label": "t:won.settings.hide_gift_cards",
+      "info": "t:won.info.hide_gift_cards",
+      "default": true
+    }
+  ]
+}

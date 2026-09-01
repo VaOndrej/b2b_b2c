@@ -11,6 +11,25 @@
 
 {%- liquid
   assign s = section.settings
+  # Rail controls: the theme-wide setting wins unless the merchant chose
+  # "Set per section" — same resolution as won-carousel, so a grid-turned-rail
+  # cannot drift from a real carousel.
+  assign g_arr = settings.won_rail_arrows | default: 'per_section'
+  assign rail_arrow_style = settings.won_rail_arrow_style | default: 'pill'
+  assign rail_tone = settings.won_rail_arrow_tone | default: 'auto'
+  if rail_tone == 'auto'
+    assign rail_tone = 'surface'
+  endif
+  assign want_arrows = true
+  if g_arr == 'never'
+    assign want_arrows = false
+  endif
+  assign want_progress = true
+  if settings.won_rail_indicator == 'none'
+    assign want_progress = false
+  elsif settings.won_rail_indicator == 'dots'
+    assign want_progress = false
+  endif
   assign src = s.source
 
   if src == 'articles'
@@ -40,6 +59,8 @@
   endif
 -%}
 
+{%- assign align_flex = 'flex-start' -%}
+{%- if s.content_align == 'center' -%}{%- assign align_flex = 'center' -%}{%- elsif s.content_align == 'right' -%}{%- assign align_flex = 'flex-end' -%}{%- endif -%}
 <section
   class="won-section color-{{ s.color_scheme }}"
   style="{% render 'won-style-vars', settings: s %}"
@@ -64,13 +85,36 @@
     {%- endif -%}
 
     {%- if src == 'blocks' -%}
+      {%- comment -%} With mobile_carousel the grid becomes a horizontal rail below
+        750px. It used to emit `data-won-track` while sitting OUTSIDE any
+        <won-carousel data-won-rail-indicator="{{ settings.won_rail_indicator | default: 'per_section' }}">, so it got the JS engine's marker but none of its behaviour:
+        it scrolled with no arrows, no bar and no keyboard support. Wrapping it in
+        the same custom element the carousel uses gives it the identical controls,
+        resolved from the identical theme-wide setting. {%- endcomment -%}
+      {%- if s.mobile_carousel -%}<won-carousel class="won-carousel won-carousel--grid-rail won-carousel--scroll-sm" data-mobile-mode="peek" data-won-rail-indicator="{{ settings.won_rail_indicator | default: 'per_section' }}">{%- endif -%}
       <div
         class="won-grid won-grid--blocks won-grid--{{ s.item_style }}{% if s.mosaic %} won-grid--mosaic{% endif %}{% if s.mobile_carousel %} won-grid--scroll-sm{% endif %}"
-        style="--won-cols-sm: {{ col_sm }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-lg: {{ cols }}; --won-gap: {{ s.gap }}px; --won-grid-align: {{ s.content_align }};"
+        style="--won-cols-sm: {{ col_sm }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-lg: {{ cols }}; --won-gap: {{ s.gap }}px; --won-grid-align: {{ s.content_align }}; --won-align-flex: {{ align_flex }}; --won-feature-title-lines: {{ s.feature_title_lines | default: 0 }};"
         {% if s.mobile_carousel %}data-won-track data-mobile-mode="peek"{% endif %}
       >
         {% content_for 'blocks' %}
       </div>
+      {%- if s.mobile_carousel -%}
+        {%- comment -%} Same single control row as won-carousel — a grid that turns
+           into a rail must not grow its own control layout. {%- endcomment -%}
+        <div class="won-rail__controls won-rail__controls--sm-only">
+          {%- if want_progress -%}
+            <div class="won-carousel__progress won-carousel__progress--sm-only" data-won-progress><span class="won-carousel__progress-bar" data-won-progress-bar></span></div>
+          {%- endif -%}
+          {%- if want_arrows -%}
+            <div class="won-carousel__arrows won-carousel__arrows--sm-only" data-won-arrows data-won-rail-tone="{{ settings.won_rail_arrow_tone | default: 'auto' }}">
+              <button type="button" class="won-carousel__arrow won-rail__arrow won-rail__arrow--{{ rail_arrow_style }} won-rail__arrow--{{ rail_tone }}" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
+              <button type="button" class="won-carousel__arrow won-rail__arrow won-rail__arrow--{{ rail_arrow_style }} won-rail__arrow--{{ rail_tone }}" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
+            </div>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+      {%- if s.mobile_carousel -%}</won-carousel>{%- endif -%}
 
     {%- elsif src == 'articles' -%}
       {%- if count > 0 -%}
@@ -118,7 +162,7 @@
     {%- else -%}
       <dl
         class="won-grid won-grid--stats"
-        style="--won-cols-sm: {{ col_sm }}; --won-cols-lg: {{ s.columns_desktop }}; --won-gap: {{ s.gap }}px; --won-grid-align: {{ s.content_align }};"
+        style="--won-cols-sm: {{ col_sm }}; --won-cols-lg: {{ s.columns_desktop }}; --won-gap: {{ s.gap }}px; --won-grid-align: {{ s.content_align }}; --won-align-flex: {{ align_flex }};"
       >
         {%- for line in lines -%}
           {%- assign row = line | strip -%}
@@ -208,7 +252,7 @@
     }
     .won-grid--scroll-sm::-webkit-scrollbar { display: none; }
     .won-grid--scroll-sm > * {
-      flex: 0 0 82%;
+      flex: 0 0 min(82%, var(--won-card-max, 380px));
       scroll-snap-align: start;
     }
   }
@@ -495,6 +539,17 @@
       "label": "t:won.settings.mosaic",
       "info": "t:won.info.mosaic",
       "default": false,
+      "visible_if": "{{ section.settings.source == 'blocks' }}"
+    },
+    {
+      "type": "range",
+      "id": "feature_title_lines",
+      "label": "t:won.settings.feature_title_lines",
+      "info": "t:won.info.feature_title_lines",
+      "min": 0,
+      "max": 4,
+      "step": 1,
+      "default": 2,
       "visible_if": "{{ section.settings.source == 'blocks' }}"
     },
     {

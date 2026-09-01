@@ -34,6 +34,15 @@
     // overflows, and resize does not fire scroll. Keeps the fit-aware invariant
     // true at every breakpoint, not only the one the rail first rendered at.
     window.addEventListener('resize', this._onScroll, { passive: true, signal: signal });
+    // A rail inside a hidden tab panel binds at ZERO width: it looks like it
+    // never overflows, so the fit-aware gate hides its controls, and revealing
+    // the tab fires neither scroll nor resize — the arrows stay hidden forever.
+    // ResizeObserver is the only signal for "this element just got a size", so
+    // it is what makes the engine safe to use inside panels at all.
+    if ('ResizeObserver' in window) {
+      this._ro = new ResizeObserver(this._onScroll);
+      this._ro.observe(this.track);
+    }
     if (this.prevBtn) this.prevBtn.addEventListener('click', () => this.scrollByItems(-1), { signal: signal });
     if (this.nextBtn) this.nextBtn.addEventListener('click', () => this.scrollByItems(1), { signal: signal });
     if (this.dots) this.buildDots();
@@ -68,6 +77,7 @@
     }
   }
   disconnectedCallback() {
+    if (this._ro) { this._ro.disconnect(); this._ro = null; }
     if (this._ac) this._ac.abort();
     if (this._io) this._io.disconnect();
     cancelAnimationFrame(this._raf);

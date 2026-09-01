@@ -34,29 +34,41 @@
     // overflows, and resize does not fire scroll. Keeps the fit-aware invariant
     // true at every breakpoint, not only the one the rail first rendered at.
     window.addEventListener('resize', this._onScroll, { passive: true, signal: signal });
+    // A rail inside a hidden tab panel binds at ZERO width: it looks like it
+    // never overflows, so the fit-aware gate hides its controls, and revealing
+    // the tab fires neither scroll nor resize — the arrows stay hidden forever.
+    // ResizeObserver is the only signal for "this element just got a size", so
+    // it is what makes the engine safe to use inside panels at all.
+    if ('ResizeObserver' in window) {
+      this._ro = new ResizeObserver(this._onScroll);
+      this._ro.observe(this.track);
+    }
     if (this.prevBtn) this.prevBtn.addEventListener('click', () => this.scrollByItems(-1), { signal: signal });
     if (this.nextBtn) this.nextBtn.addEventListener('click', () => this.scrollByItems(1), { signal: signal });
     if (this.dots) this.buildDots();
     this.bindMouseDrag();
     this.onScroll();
-    // Infinite loop: clone the end slides so the rail scrolls endlessly both
-    // ways and a neighbour always peeks in on BOTH sides — even resting on the
-    // first/last card (no empty outer spacer). data-won-loop = always | desktop
-    // | mobile picks the breakpoint where it's active.
+    // Looping = WRAP AROUND. 0 / 1 / 2 / 3, and next on 3 returns to 0.
+    //
+    // This used to clone the end slides into an endless belt. That cost three
+    // defects (a first click swallowed by the re-centre, a dead end at the seam
+    // because an edge clone cannot be centred, and a progress bar that teleported
+    // to the middle on every wrap) and it made the rail feel unfinished: the card
+    // you were about to reach was a clone whose media had not been requested yet.
+    // A finite track that rewinds has none of those problems and the bar measures
+    // something real again. data-won-loop = always | desktop | mobile.
     this._loopMode = this.dataset.wonLoop || '';
     if (this._loopMode) {
       this._loopMq = this._loopMode === 'always' ? null
         : matchMedia(this._loopMode === 'mobile' ? '(max-width: 749px)' : '(min-width: 750px)');
-      this._syncLoop = this.syncLoop.bind(this);
-      if (this._loopMq) this._loopMq.addEventListener('change', this._syncLoop, { signal: signal });
-      this._onSettle = () => {
-        if (!this._loop) return;
-        clearTimeout(this._settleTimer);
-        this._settleTimer = setTimeout(() => this.wrapIfOnClone(), 130);
+      this._syncLoop = () => {
+        this._loop = this._loopMq ? this._loopMq.matches : true;
+        this.renderScroll();
       };
-      this.track.addEventListener('scroll', this._onSettle, { passive: true, signal: signal });
-      this.syncLoop();
+      if (this._loopMq) this._loopMq.addEventListener('change', this._syncLoop, { signal: signal });
+      this._syncLoop();
     }
+
     const interval = parseInt(this.dataset.autoplay, 10);
     if (interval && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       this._autoMs = interval * 1000;
@@ -68,83 +80,12 @@
     }
   }
   disconnectedCallback() {
+    if (this._ro) { this._ro.disconnect(); this._ro = null; }
     if (this._ac) this._ac.abort();
     if (this._io) this._io.disconnect();
     cancelAnimationFrame(this._raf);
     clearTimeout(this._settleTimer);
     clearInterval(this._timer);
-  }
-  // Add/remove the bookend clones when the active breakpoint changes.
-  syncLoop() {
-    const want = this._loopMq ? this._loopMq.matches : true;
-    if (want && !this._loop) this.addBookends();
-    else if (!want && this._loop) this.removeBookends();
-  }
-  addBookends() {
-    const reals = Array.from(this.track.children).filter((c) => !c.dataset.wonClone);
-    if (reals.length < 2) return;
-    const clone = (src) => {
-      const c = src.cloneNode(true);
-      c.dataset.wonClone = '1';
-      c.setAttribute('aria-hidden', 'true');
-      c.style.scrollSnapAlign = 'none';
-      if (c.id) c.removeAttribute('id');
-      c.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
-      return c;
-    };
-    this._firstReal = reals[0];
-    this._lastReal = reals[reals.length - 1];
-    this._head = clone(this._lastReal);
-    this._tail = clone(this._firstReal);
-    this.track.insertBefore(this._head, this._firstReal);
-    this.track.appendChild(this._tail);
-    this.track.dataset.wonLoop = '1';
-    this._loop = true;
-    // Centre the first real slide as the rest position. A scroll set now can be
-    // dropped when the section is below the fold (content-visibility skips its
-    // render), so also re-centre the first time the carousel actually enters the
-    // viewport — that is exactly when it needs to look right.
-    this.centerOn(this._firstReal, 'auto');
-    if ('IntersectionObserver' in window) {
-      this._io = new IntersectionObserver((entries, obs) => {
-        if (entries.some((e) => e.isIntersecting)) { this.centerOn(this._firstReal, 'auto'); obs.disconnect(); }
-      }, { threshold: 0.01 });
-      this._io.observe(this);
-    }
-  }
-  removeBookends() {
-    if (this._io) { this._io.disconnect(); this._io = null; }
-    if (this._head) this._head.remove();
-    if (this._tail) this._tail.remove();
-    this._head = this._tail = null;
-    delete this.track.dataset.wonLoop;
-    this._loop = false;
-    this.track.scrollTo({ left: 0, behavior: 'auto' });
-  }
-  centerOn(el, behavior) {
-    const eb = this.track.getBoundingClientRect();
-    const rb = el.getBoundingClientRect();
-    const target = this.track.scrollLeft + (rb.left - eb.left) - (eb.width - rb.width) / 2;
-    if (behavior === 'auto') this.track.scrollLeft = target;
-    else this.track.scrollTo({ left: target, behavior: 'smooth' });
-  }
-  // Once scrolling settles on a clone, jump instantly to its real twin — the
-  // clone is identical, so the swap is invisible and the loop feels endless.
-  wrapIfOnClone() {
-    const eb = this.track.getBoundingClientRect();
-    const mid = eb.left + eb.width / 2;
-    let nearest = null, best = Infinity;
-    for (const k of this.track.children) {
-      const r = k.getBoundingClientRect();
-      const d = Math.abs((r.left + r.width / 2) - mid);
-      if (d < best) { best = d; nearest = k; }
-    }
-    if (!nearest || !nearest.dataset.wonClone) return;
-    const twin = nearest === this._head ? this._lastReal : this._firstReal;
-    const prev = this.track.style.scrollBehavior;
-    this.track.style.scrollBehavior = 'auto';
-    this.track.scrollLeft += twin.getBoundingClientRect().left - nearest.getBoundingClientRect().left;
-    this.track.style.scrollBehavior = prev;
   }
   // Wrap the items in a group and duplicate it, so the CSS -50% translate loops
   // seamlessly (the belt rendered its content only once before — the second half
@@ -168,23 +109,63 @@
     const gap = parseFloat(getComputedStyle(this.track).columnGap || getComputedStyle(this.track).gap) || 0;
     return first.getBoundingClientRect().width + gap;
   }
+  // Index of the slide the viewport is centred on. The ends of a rail cannot be
+  // read off scrollLeft: a centre-snap peek layout rests at 20px, not 0, and its
+  // last slide snaps 20px short of the maximum. The centred child is exact at
+  // every layout.
+  activeIndex() {
+    const kids = this.track.children;
+    if (!kids.length) return 0;
+    const mid = this.track.getBoundingClientRect().left + this.track.clientWidth / 2;
+    let active = 0, best = Infinity;
+    for (let i = 0; i < kids.length; i++) {
+      const b = kids[i].getBoundingClientRect();
+      const d = Math.abs((b.left + b.right) / 2 - mid);
+      if (d < best) { best = d; active = i; }
+    }
+    return active;
+  }
   scrollByItems(dir) {
+    const max = this.track.scrollWidth - this.track.clientWidth;
+    // The rewind is the whole loop: at an end, go to the other one. Smooth on
+    // purpose — the shopper sees it travel back, so it reads as "round again"
+    // rather than as the rail glitching.
+    if (this._loop && max > 1) {
+      const i = this.activeIndex();
+      const last = this.track.children.length - 1;
+      if (dir > 0 && (i >= last || Math.abs(this.track.scrollLeft) >= max - 2)) {
+        this.track.scrollTo({ left: 0, behavior: 'smooth' });
+        return;
+      }
+      if (dir < 0 && (i <= 0 || Math.abs(this.track.scrollLeft) <= 2)) {
+        this.track.scrollTo({ left: max, behavior: 'smooth' });
+        return;
+      }
+    }
     this.track.scrollBy({ left: dir * this.itemWidth(), behavior: 'smooth' });
   }
-  autoAdvance() {
-    // When looping, always step forward — wrapIfOnClone handles the seam, so
-    // there's no "jump back to 0" (that would undo the endless feel).
-    if (this._loop) { this.scrollByItems(1); return; }
-    const max = this.track.scrollWidth - this.track.clientWidth;
-    if (Math.abs(this.track.scrollLeft) >= max - 2) {
-      this.track.scrollTo({ left: 0, behavior: 'smooth' });
-    } else {
-      this.scrollByItems(1);
+  // Media for the neighbours of the slide on screen. Every slide ships `lazy`,
+  // which is right for a grid far down the page and wrong for a rail the shopper
+  // advances one click at a time: the next card arrived visibly empty. Promoting
+  // only the neighbours keeps the initial load untouched.
+  preloadNear() {
+    const kids = Array.from(this.track.children);
+    if (!kids.length) return;
+    const active = this.activeIndex();
+    for (let i = Math.max(0, active - 1); i <= Math.min(kids.length - 1, active + 2); i++) {
+      kids[i].querySelectorAll('img[loading="lazy"]').forEach((img) => { img.loading = 'eager'; });
     }
   }
-  // Page-based dots: one dot per viewport-width page (not per item), so the
-  // count stays small and each dot is a full 44px tap target. Hidden when the
-  // rail doesn't scroll (nothing to page through) — no dead control.
+  autoAdvance() {
+    // scrollByItems already rewinds at the end when the loop is on; without it,
+    // autoplay still needs to start over rather than sit on the last slide.
+    const max = this.track.scrollWidth - this.track.clientWidth;
+    if (!this._loop && Math.abs(this.track.scrollLeft) >= max - 2) {
+      this.track.scrollTo({ left: 0, behavior: 'smooth' });
+      return;
+    }
+    this.scrollByItems(1);
+  }
   pageCount() {
     const w = this.track.clientWidth;
     return w > 0 ? Math.max(1, Math.round(this.track.scrollWidth / w)) : 1;
@@ -229,6 +210,7 @@
     // the desktop count-based `fits` class. A looping rail always scrolls.
     if (this.arrows) this.arrows.hidden = !scrollable && !this._loop;
     this.updateDots();
+    this.preloadNear();
     // The progress thumb must mirror the scroll: its width is the visible
     // fraction of the content, its offset is how far through that scroll we
     // are. When nothing overflows, there's nothing to indicate — hide it.

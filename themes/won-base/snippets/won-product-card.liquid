@@ -2,8 +2,9 @@
   won-product-card — the one product card used everywhere (carousel, PLP, search,
   cross-sell). Badges + quick-add (global won-cart.js) + optional price-per-unit.
   Params: product (required), aspect ('square'|'portrait'|'landscape'|'natural'),
-  show_add (default true), show_badges (default true), show_ppu + ppu_base +
-  ppu_amount + ppu_metafield (per-unit price on the card).
+  show_add (default true), show_badges (default true), show_ppu + ppu_rules
+  (per-unit price on the card; the ladder lives in the theme setting
+  won_unit_price_rules, ppu_rules is an optional per-section override).
 {%- endcomment -%}
 {%- liquid
   assign aspect = aspect | default: 'portrait'
@@ -14,34 +15,23 @@
     assign show_badges = true
   endif
   assign pv = product.selected_or_first_available_variant
-
-  assign ppu_out = ''
-  if show_ppu and ppu_amount != blank
-    assign amt = ppu_amount
-    if ppu_metafield != blank
-      assign parts = ppu_metafield | split: '.'
-      assign mfv = product.metafields[parts[0]][parts[1]].value
-      if mfv != blank and mfv > 0
-        assign amt = mfv
-      endif
-    endif
-    if amt > 0
-      assign base = ppu_base | default: 'per_100g'
-      if base == 'per_kg'
-        assign up = pv.price | times: 1000 | divided_by: amt
-        assign ulabel = 'won.unit.per_kg' | t
-      elsif base == 'per_serving'
-        assign up = pv.price | divided_by: amt
-        assign ulabel = 'won.unit.per_serving' | t
-      else
-        assign up = pv.price | times: 100 | divided_by: amt
-        assign ulabel = 'won.unit.per_100g' | t
-      endif
-      assign ppu_out = up | money | append: ' / ' | append: ulabel
-    endif
-  endif
 -%}
-<div class="won-pcard">
+{%- capture ppu_out -%}
+  {%- if show_ppu -%}
+    {%- render 'won-unit-price', product: product, variant: pv, rules: ppu_rules, format: 'text' -%}
+  {%- endif -%}
+{%- endcapture -%}
+{%- liquid
+  assign ppu_out = ppu_out | strip
+
+  # Card quick-add is a theme-wide decision: the same control on every card,
+  # wherever the card is rendered (carousel, PLP, cross-sell).
+  assign card_add_mode = settings.won_card_add_mode | default: 'button'
+  assign card_add_align = settings.won_card_add_align | default: 'end'
+  assign card_add_reveal = settings.won_card_add_reveal | default: 'hover'
+  assign card_add_size = settings.won_card_add_size | default: 'regular'
+-%}
+<div class="won-pcard won-pcard--add-{{ card_add_align }} won-pcard--reveal-{{ card_add_reveal }} won-pcard--cta-{{ card_add_size }}">
   <div class="won-pcard__media won-pcard__media--{{ aspect }}">
     {%- if show_badges -%}<div class="won-pcard__badges">{% render 'won-badges', product: product %}</div>{%- endif -%}
     <a class="won-pcard__media-link{% unless product.featured_image %} won-pcard__media-link--placeholder{% endunless %}" href="{{ product.url }}" aria-label="{{ product.title | escape }}">
@@ -52,9 +42,41 @@
     {%- if show_add -%}
       {%- if product.available -%}
         {%- if product.has_only_default_variant or product.variants.size == 1 -%}
-          <button type="button" class="won-pcard__add" data-won-add data-variant-id="{{ pv.id }}" data-added-label="{{ 'won.cart.added' | t }}" aria-label="{{ 'won.cart.add' | t }}: {{ product.title | escape }}"><span class="won-pcard__add-label">{{ 'won.cart.add' | t }}</span></button>
+          {%- comment -%} Stepper mode keeps the same [data-won-add] button as its "+"
+             so the existing global cart handler still owns the first add; the − and
+             the count only appear once the line exists. That way quick-add stays one
+             tap, and changing your mind does not send you to the product page. {%- endcomment -%}
+          {%- if card_add_mode == 'stepper' -%}
+            <div class="won-pcard__add won-pcard__add--stepper {% render 'won-fx' %}" data-won-stepper>
+              <button type="button" class="won-pcard__step" data-won-step="-1" aria-label="{{ 'won.cart.decrease' | t }}: {{ product.title | escape }}" hidden>−</button>
+              <span class="won-pcard__qty" data-won-qty aria-live="polite" hidden>0</span>
+              {%- comment -%} Two labels, swapped by CSS off the box's
+                 data-won-qty-value: before the line exists the button must say
+                 what it does ("Add to cart"); once it exists it is the "+" of a
+                 − 1 + control and a word there reads as a second action. {%- endcomment -%}
+              <button type="button" class="won-pcard__step won-pcard__step--add" data-won-add data-won-step="1" data-variant-id="{{ pv.id }}" data-added-label="{{ 'won.cart.added' | t }}" aria-label="{{ 'won.cart.add' | t }}: {{ product.title | escape }}"><span class="won-pcard__add-label">{{ 'won.cart.add' | t }}</span><span class="won-pcard__plus" aria-hidden="true">+</span></button>
+            </div>
+          {%- else -%}
+            <button type="button" class="won-pcard__add {% render 'won-fx' %}" data-won-add data-variant-id="{{ pv.id }}" data-added-label="{{ 'won.cart.added' | t }}" aria-label="{{ 'won.cart.add' | t }}: {{ product.title | escape }}"><span class="won-pcard__add-label">{{ 'won.cart.add' | t }}</span></button>
+          {%- endif -%}
         {%- else -%}
-          <a class="won-pcard__add won-pcard__add--link" href="{{ product.url }}">{{ 'won.cart.choose' | t }}</a>
+          {%- comment -%} A card cannot add a multi-variant product to the cart — it does
+            not know which variant. Sending the shopper to the PDP for that is a full page
+            load out of the grid they were scanning; for impulse goods a modal keeps them
+            in the listing.
+            It stays a real <a href> either way: the link works with no JS, is crawlable
+            (SEO-001), and quick view is an enhancement layered on top of it. The dialog
+            itself is HORIZON's, already in layout/theme.liquid (conventions C8) — only the
+            trigger is ours, so the button keeps the card's CTA shape for free. {%- endcomment -%}
+          {%- assign choose_action = settings.won_card_choose_action | default: 'modal' -%}
+          <a
+            class="won-pcard__add won-pcard__add--link {% render 'won-fx' %}"
+            href="{{ product.url }}"
+            {% if choose_action == 'modal' %}data-won-quickview{% endif %}
+          >{{ 'won.cart.choose' | t }}</a>
+          {%- if choose_action == 'modal' -%}
+            <script src="{{ 'won-quick-view.js' | asset_url }}" defer></script>
+          {%- endif -%}
         {%- endif -%}
       {%- else -%}
         <span class="won-pcard__add won-pcard__add--soldout" aria-disabled="true">{{ 'won.cart.soldout' | t }}</span>

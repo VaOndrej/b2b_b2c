@@ -1,7 +1,13 @@
 {%- liquid
   assign s = section.settings
 -%}
-<footer class="won-section won-footer color-{{ s.color_scheme }}" style="{% render 'won-spacing', settings: s %}" data-testid="won-footer-section">
+{%- comment -%} won-section--start: the footer is a structured nav, so it takes the
+  documented whole-section opt-out from the mobile centering rule in won-tokens.css.
+  Without it only the <ul> opted out (via the element allow-list) while the column
+  TITLES and the brand block stayed centered — the column heading floating above
+  left-aligned links, and a 34ch brand box pinned left with centered text inside it.
+  That is exactly the mismatch that rule's own comment says must never happen. {%- endcomment -%}
+<footer class="won-section won-section--start won-footer color-{{ s.color_scheme }}" style="{% render 'won-spacing', settings: s %}" data-testid="won-footer-section">
   <div class="won-container won-footer__inner">
     <div class="won-footer__top">
       <div class="won-footer__brand">

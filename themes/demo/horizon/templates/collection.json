@@ -13,8 +13,6 @@
         "per_page": 24,
         "card_aspect": "portrait",
         "show_card_ppu": true,
-        "ppu_base": "per_serving",
-        "ppu_amount": 33,
         "color_scheme": "scheme-1",
         "padding_top": 40,
         "padding_bottom": 56

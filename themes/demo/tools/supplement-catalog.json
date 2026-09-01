@@ -1,0 +1,670 @@
+{
+  "_meta": {
+    "purpose": "Demo katalog pro dev store — obsah, který dává smysl doplňkům stravy. Nahrazuje zbytky snowboardových dat, na kterých nešel dělat obsahový audit (popisy prázdné, varianty 'Ice/Dawn/Powder').",
+    "applies_to": "b2b-b2c-store-development.myshopify.com",
+    "protected": "won-e2e-*, mg-e2e-*, gift-card — skript se jich nikdy nedotkne",
+    "fixtures_preserved": "status (draft/archived), inventory (out-of-stock, untracked) a selling plans se NEMĚNÍ — jsou to záměrné testovací stavy",
+    "option_axis": "Jedna osa na produkt. Prášky = Balení, kapsle = Počet kapslí, sety = Příchuť.",
+    "prices": "Vycházejí z dnešních cen jediné varianty; větší balení má nižší cenu za jednotku (to je pointa won-price-per-unit).",
+    "single_sku": "Zinek + Selen a Elektrolyty zůstávají bez variant schválně — demo potřebuje ukázat i quick-add / stepper na kartě, ne jen 'Vybrat'."
+  },
+  "products": [
+    {
+      "handle": "the-collection-snowboard-liquid",
+      "productType": "Protein",
+      "tags": [
+        "protein",
+        "syrovátka",
+        "regenerace",
+        "bestseller"
+      ],
+      "description": {
+        "lead": "Syrovátkový koncentrát s 21 g bílkovin v porci. Rozmíchá se ve vodě i v mléce bez hrudek a chutná jako kakao, ne jako doplněk.",
+        "bullets": [
+          "21 g bílkovin a 4,8 g BCAA v jedné porci",
+          "Bez umělých sladidel a bez palmového oleje",
+          "Rozpustnost testovaná ve studené vodě",
+          "Vyrobeno v EU, rozbor každé šarže"
+        ],
+        "dosage": "1 odměrku (30 g) do 250 ml vody nebo mléka, ideálně do 30 minut po tréninku."
+      },
+      "option": {
+        "name": "Balení",
+        "values": [
+          {
+            "name": "1 000 g",
+            "price": "749.95",
+            "sku": "WON-WHEY-CHOC-1000",
+            "net_weight_g": 1000,
+            "servings": 33
+          },
+          {
+            "name": "2 500 g",
+            "price": "1699.95",
+            "compareAtPrice": "1874.95",
+            "sku": "WON-WHEY-CHOC-2500",
+            "net_weight_g": 2500,
+            "servings": 83
+          }
+        ]
+      },
+      "metafields": {
+        "rating": "4.8",
+        "rating_count": "342",
+        "delivery": "Skladem, odesíláme dnes"
+      },
+      "nutrition": [
+        "Energie | 1611 kJ / 380 kcal | 483 kJ / 114 kcal",
+        "Bílkoviny | 70 g | 21 g",
+        "Sacharidy | 8,5 g | 2,6 g",
+        "z toho cukry | 6,2 g | 1,9 g",
+        "Tuky | 6,0 g | 1,8 g",
+        "Sůl | 0,45 g | 0,14 g"
+      ]
+    },
+    {
+      "handle": "the-collection-snowboard-oxygen",
+      "productType": "Protein",
+      "tags": [
+        "protein",
+        "syrovátka",
+        "regenerace"
+      ],
+      "description": {
+        "lead": "Stejná syrovátka jako čokoládová verze, jen jemnější — vanilka z pravého extraktu, ne aroma. Hodí se i do kaše a jogurtu.",
+        "bullets": [
+          "21 g bílkovin v porci",
+          "Bez umělých barviv",
+          "Neutrální chuť, snese kombinaci s ovocem",
+          "Vyrobeno v EU"
+        ],
+        "dosage": "1 odměrku (30 g) do 250 ml vody nebo mléka."
+      },
+      "option": {
+        "name": "Balení",
+        "values": [
+          {
+            "name": "1 000 g",
+            "price": "1025.00",
+            "sku": "WON-WHEY-VAN-1000",
+            "net_weight_g": 1000,
+            "servings": 33
+          },
+          {
+            "name": "2 500 g",
+            "price": "2299.00",
+            "compareAtPrice": "2562.50",
+            "sku": "WON-WHEY-VAN-2500",
+            "net_weight_g": 2500,
+            "servings": 83
+          }
+        ]
+      },
+      "metafields": {
+        "rating": "4.6",
+        "rating_count": "118",
+        "delivery": "Skladem, odesíláme dnes"
+      },
+      "nutrition": [
+        "Energie | 1598 kJ / 377 kcal | 479 kJ / 113 kcal",
+        "Bílkoviny | 70 g | 21 g",
+        "Sacharidy | 7,8 g | 2,3 g",
+        "Tuky | 5,8 g | 1,7 g"
+      ]
+    },
+    {
+      "handle": "the-collection-snowboard-hydrogen",
+      "productType": "Kreatin",
+      "tags": [
+        "kreatin",
+        "síla",
+        "výkon"
+      ],
+      "description": {
+        "lead": "Čistý kreatin monohydrát Creapure®. Nejlépe prozkoumaný doplněk na sílu a opakovaný výkon — bez příchutí a bez plnidel.",
+        "bullets": [
+          "100 % kreatin monohydrát, žádná plnidla",
+          "Mikronizovaný, lépe se rozmíchá",
+          "5 g v denní dávce",
+          "Bez nutnosti nasycovací fáze"
+        ],
+        "dosage": "5 g denně kdykoli během dne, s jídlem nebo po tréninku. Užívej průběžně, ne v cyklech."
+      },
+      "option": {
+        "name": "Balení",
+        "values": [
+          {
+            "name": "300 g",
+            "price": "600.00",
+            "sku": "WON-CREA-300",
+            "net_weight_g": 300,
+            "servings": 60
+          },
+          {
+            "name": "500 g",
+            "price": "899.00",
+            "compareAtPrice": "1000.00",
+            "sku": "WON-CREA-500",
+            "net_weight_g": 500,
+            "servings": 100
+          }
+        ]
+      },
+      "metafields": {
+        "rating": "4.7",
+        "rating_count": "205",
+        "delivery": "Skladem, odesíláme dnes"
+      },
+      "nutrition": [
+        "Kreatin monohydrát | 100 g | 5 000 mg",
+        "Energie | 0 kJ / 0 kcal | 0 kJ / 0 kcal"
+      ]
+    },
+    {
+      "handle": "the-complete-snowboard",
+      "productType": "Protein",
+      "tags": [
+        "protein",
+        "set",
+        "výhodné balení"
+      ],
+      "description": {
+        "lead": "Třísložkový protein — syrovátka pro rychlý nástup, kasein na noc, izolát pro čistotu. Jedno balení místo tří.",
+        "bullets": [
+          "24 g bílkovin ze tří zdrojů",
+          "Postupné uvolňování aminokyselin",
+          "Vhodné ráno i před spaním",
+          "5 příchutí, stejná receptura"
+        ],
+        "dosage": "1 odměrku (30 g) do 250 ml tekutiny, 1–2× denně."
+      },
+      "renameOption": {
+        "from": "Color",
+        "to": "Příchuť",
+        "values": {
+          "Ice": "Bez příchuti",
+          "Dawn": "Vanilka",
+          "Powder": "Čokoláda",
+          "Electric": "Slaný karamel",
+          "Sunset": "Jahoda"
+        }
+      },
+      "metafields": {
+        "rating": "4.9",
+        "rating_count": "512",
+        "delivery": "Skladem, odesíláme dnes",
+        "net_weight_g": "1000",
+        "servings": "33"
+      },
+      "nutrition": [
+        "Energie | 1620 kJ / 382 kcal | 486 kJ / 115 kcal",
+        "Bílkoviny | 80 g | 24 g",
+        "Sacharidy | 6,0 g | 1,8 g",
+        "Tuky | 4,5 g | 1,4 g"
+      ]
+    },
+    {
+      "handle": "the-multi-managed-snowboard",
+      "productType": "Aminokyseliny",
+      "tags": [
+        "bcaa",
+        "aminokyseliny",
+        "regenerace"
+      ],
+      "description": {
+        "lead": "BCAA v poměru 2:1:1 pro pití během tréninku. Kyselejší chuť, protože neobsahuje sladidla, která by ji zakryla.",
+        "bullets": [
+          "Leucin, izoleucin a valin 2:1:1",
+          "5 g v porci",
+          "Bez cukru, 0 kcal",
+          "Rozpustné ve studené vodě"
+        ],
+        "dosage": "1 odměrku (10 g) do 500 ml vody, popíjej během tréninku."
+      },
+      "option": {
+        "name": "Balení",
+        "values": [
+          {
+            "name": "400 g",
+            "price": "629.95",
+            "sku": "WON-BCAA-400",
+            "net_weight_g": 400,
+            "servings": 40
+          },
+          {
+            "name": "800 g",
+            "price": "1099.95",
+            "compareAtPrice": "1259.90",
+            "sku": "WON-BCAA-800",
+            "net_weight_g": 800,
+            "servings": 80
+          }
+        ]
+      },
+      "metafields": {
+        "rating": "4.6",
+        "rating_count": "128",
+        "delivery": "Doručení do 2 dnů"
+      },
+      "nutrition": [
+        "L-Leucin | 50 g | 2 500 mg",
+        "L-Izoleucin | 25 g | 1 250 mg",
+        "L-Valin | 25 g | 1 250 mg"
+      ]
+    },
+    {
+      "handle": "the-multi-location-snowboard",
+      "productType": "Vitamíny",
+      "tags": [
+        "vitamín d",
+        "imunita",
+        "kosti"
+      ],
+      "description": {
+        "lead": "Vitamín D3 s K2 ve formě MK-7. Dvojice, která patří k sobě — K2 pomáhá nasměrovat vápník do kostí. Od podzimu do jara ho z jídla nezískáš dost.",
+        "bullets": [
+          "2 000 IU vitamínu D3 v kapsli",
+          "75 µg vitamínu K2 jako MK-7",
+          "V oleji, kvůli vstřebatelnosti",
+          "Bez laktózy a lepku"
+        ],
+        "dosage": "1 kapsli denně s jídlem obsahujícím tuk."
+      },
+      "option": {
+        "name": "Počet kapslí",
+        "values": [
+          {
+            "name": "90 kapslí",
+            "price": "729.95",
+            "sku": "WON-D3K2-90",
+            "servings": 90
+          },
+          {
+            "name": "180 kapslí",
+            "price": "1249.95",
+            "compareAtPrice": "1459.90",
+            "sku": "WON-D3K2-180",
+            "servings": 180
+          }
+        ]
+      },
+      "metafields": {
+        "rating": "4.9",
+        "rating_count": "87",
+        "delivery": "Skladem, odesíláme dnes"
+      },
+      "nutrition": [
+        "Vitamín D3 (cholekalciferol) | — | 50 µg (2 000 IU)",
+        "Vitamín K2 (MK-7) | — | 75 µg"
+      ]
+    },
+    {
+      "handle": "the-compare-at-price-snowboard",
+      "productType": "Minerály",
+      "tags": [
+        "hořčík",
+        "regenerace",
+        "spánek",
+        "akce"
+      ],
+      "description": {
+        "lead": "Hořčík ve třech formách plus B6. Bisglycinát na vstřebatelnost, malát na energii, citrát na rychlý nástup — každá forma dělá něco jiného.",
+        "bullets": [
+          "375 mg hořčíku v denní dávce (100 % DDD)",
+          "Tři formy místo levného oxidu",
+          "B6 pro lepší využití hořčíku",
+          "Bez dráždění žaludku"
+        ],
+        "dosage": "2 kapsle večer, ideálně hodinu před spaním."
+      },
+      "option": {
+        "name": "Počet kapslí",
+        "values": [
+          {
+            "name": "60 kapslí",
+            "price": "785.95",
+            "compareAtPrice": "885.95",
+            "sku": "WON-MGB6-60",
+            "servings": 30
+          },
+          {
+            "name": "120 kapslí",
+            "price": "1349.95",
+            "compareAtPrice": "1571.90",
+            "sku": "WON-MGB6-120",
+            "servings": 60
+          }
+        ]
+      },
+      "metafields": {
+        "rating": "4.5",
+        "rating_count": "64",
+        "delivery": "Skladem, odesíláme dnes"
+      },
+      "nutrition": [
+        "Hořčík | — | 375 mg (100 % DDD)",
+        "Vitamín B6 | — | 1,4 mg (100 % DDD)"
+      ]
+    },
+    {
+      "handle": "the-3p-fulfilled-snowboard",
+      "productType": "Omega 3",
+      "tags": [
+        "omega 3",
+        "srdce",
+        "mozek"
+      ],
+      "description": {
+        "lead": "Rybí olej z drobných ryb z chladných vod, molekulárně destilovaný. Vysoký podíl EPA a DHA a žádná rybí pachuť po polknutí.",
+        "bullets": [
+          "1 000 mg rybího oleje v kapsli",
+          "330 mg EPA a 220 mg DHA",
+          "Testováno na těžké kovy",
+          "Certifikace udržitelného rybolovu"
+        ],
+        "dosage": "2 kapsle denně s jídlem."
+      },
+      "option": {
+        "name": "Počet kapslí",
+        "values": [
+          {
+            "name": "90 kapslí",
+            "price": "629.95",
+            "sku": "WON-OMEGA-90",
+            "servings": 45
+          },
+          {
+            "name": "180 kapslí",
+            "price": "1099.95",
+            "compareAtPrice": "1259.90",
+            "sku": "WON-OMEGA-180",
+            "servings": 90
+          }
+        ]
+      },
+      "metafields": {
+        "rating": "4.4",
+        "rating_count": "76",
+        "delivery": "Doručení do 2 dnů"
+      },
+      "nutrition": [
+        "Rybí olej | — | 2 000 mg",
+        "z toho EPA | — | 660 mg",
+        "z toho DHA | — | 440 mg"
+      ]
+    },
+    {
+      "handle": "the-videographer-snowboard",
+      "productType": "Pre-workout",
+      "tags": [
+        "pre-workout",
+        "energie",
+        "kofein"
+      ],
+      "description": {
+        "lead": "Pre-workout s kofeinem, beta-alaninem a citrulinem. Nabudí, ale nerozhodí — bez dávky, po které se třesou ruce.",
+        "bullets": [
+          "200 mg kofeinu v porci",
+          "3 g beta-alaninu pro delší sérii",
+          "6 g citrulin malátu pro prokrvení",
+          "Bez zbytečných plnidel"
+        ],
+        "dosage": "1 odměrku (10 g) do 300 ml vody 20 minut před tréninkem. Neužívej po 16. hodině."
+      },
+      "variantPrices": {
+        "500 g": {
+          "price": "549.95",
+          "compareAtPrice": "999.95",
+          "sku": "WON-PRE-500",
+          "net_weight_g": 500,
+          "servings": 50
+        },
+        "1 000 g": {
+          "price": "885.95",
+          "compareAtPrice": "999.95",
+          "sku": "WON-PRE-1000",
+          "net_weight_g": 1000,
+          "servings": 100
+        },
+        "2 500 g": {
+          "price": "1899.95",
+          "sku": "WON-PRE-2500",
+          "net_weight_g": 2500,
+          "servings": 250
+        }
+      },
+      "metafields": {
+        "rating": "4.7",
+        "rating_count": "231",
+        "delivery": "Skladem, odesíláme dnes"
+      },
+      "nutrition": [
+        "Kofein | — | 200 mg",
+        "Beta-alanin | — | 3 000 mg",
+        "Citrulin malát | — | 6 000 mg"
+      ]
+    },
+    {
+      "handle": "the-out-of-stock-snowboard",
+      "productType": "Tyčinky",
+      "tags": [
+        "tyčinka",
+        "svačina",
+        "protein"
+      ],
+      "description": {
+        "lead": "Proteinová tyčinka, která se dá dojíst. 20 g bílkovin, karamelová vrstva a mandle — bez křídové textury, kterou znáš z levných tyčinek.",
+        "bullets": [
+          "20 g bílkovin v tyčince",
+          "Bez přidaného cukru",
+          "12 kusů v balení",
+          "Vyrobeno v EU"
+        ],
+        "dosage": "1 tyčinka jako svačina nebo po tréninku."
+      },
+      "metafields": {
+        "rating": "4.3",
+        "rating_count": "58",
+        "delivery": "Momentálně vyprodáno",
+        "net_weight_g": "660",
+        "servings": "12"
+      },
+      "nutrition": [
+        "Energie | 1520 kJ / 361 kcal | 836 kJ / 199 kcal",
+        "Bílkoviny | 36 g | 20 g",
+        "Sacharidy | 34 g | 19 g",
+        "z toho cukry | 2,0 g | 1,1 g"
+      ]
+    },
+    {
+      "handle": "the-inventory-not-tracked-snowboard",
+      "productType": "Hydratace",
+      "tags": [
+        "elektrolyty",
+        "hydratace",
+        "vytrvalost"
+      ],
+      "description": {
+        "lead": "Elektrolyty pro dny, kdy voda nestačí — dlouhý trénink, horko, sauna. Sodík, hořčík a draslík v poměru, který tělo opravdu ztrácí potem.",
+        "bullets": [
+          "1 000 mg sodíku v porci",
+          "Bez cukru a bez sladidel",
+          "Rozpustné za studena",
+          "Vhodné i mimo trénink"
+        ],
+        "dosage": "1 odměrku (5 g) do 500–750 ml vody. Při zátěži nad hodinu opakuj."
+      },
+      "metafields": {
+        "rating": "4.6",
+        "rating_count": "94",
+        "delivery": "Skladem, odesíláme dnes",
+        "net_weight_g": "500",
+        "servings": "100"
+      },
+      "nutrition": [
+        "Sodík | — | 1 000 mg",
+        "Draslík | — | 200 mg",
+        "Hořčík | — | 60 mg"
+      ],
+      "singleVariant": {
+        "price": "599.95",
+        "sku": "WON-ELEC-500",
+        "_why": "Jednoduché SKU bez variant. Cena je v pásmu 200–800, aby produkt spadl do automatické kolekce, ze které čerpají raily na homepage — jinak by na demu nebyla ANI JEDNA karta s quick-addem: karta ho nabízí jen produktu s jedinou variantou a všechny ostatní teď mají velikosti."
+      }
+    },
+    {
+      "handle": "selling-plans-ski-wax",
+      "productType": "Vitamíny",
+      "tags": [
+        "multivitamín",
+        "denní",
+        "předplatné"
+      ],
+      "description": {
+        "lead": "Multivitamín na každý den se zaměřením na to, čeho má běžná strava málo — D, B12, hořčík a zinek. Ne dvacet položek po stopových dávkách.",
+        "bullets": [
+          "23 vitamínů a minerálů",
+          "Dávky odpovídají DDD, ne marketingu",
+          "1 kapsle denně",
+          "Dostupné i jako předplatné"
+        ],
+        "dosage": "1 kapsli ráno s jídlem."
+      },
+      "metafields": {
+        "rating": "4.4",
+        "rating_count": "141",
+        "delivery": "Skladem, odesíláme dnes",
+        "servings": "60"
+      },
+      "nutrition": [
+        "Vitamín D3 | — | 25 µg (500 % DDD)",
+        "Vitamín B12 | — | 2,5 µg (100 % DDD)",
+        "Zinek | — | 10 mg (100 % DDD)"
+      ]
+    },
+    {
+      "handle": "the-minimal-snowboard",
+      "productType": "Minerály",
+      "tags": [
+        "zinek",
+        "selen",
+        "imunita"
+      ],
+      "description": {
+        "lead": "Zinek a selen v jedné kapsli. Dvojice pro imunitu a hormonální rovnováhu, kterou většina multivitamínů dávkuje příliš nízko.",
+        "bullets": [
+          "25 mg zinku jako bisglycinát",
+          "55 µg selenu jako selenomethionin",
+          "Bez zbytečných plnidel",
+          "Vegan"
+        ],
+        "dosage": "1 kapsli denně s jídlem."
+      },
+      "metafields": {
+        "rating": "4.5",
+        "rating_count": "39",
+        "delivery": "Skladem, odesíláme dnes",
+        "servings": "90"
+      },
+      "nutrition": [
+        "Zinek | — | 25 mg (250 % DDD)",
+        "Selen | — | 55 µg (100 % DDD)"
+      ],
+      "singleVariant": {
+        "price": "649.95",
+        "sku": "WON-ZNSE-90",
+        "_why": "Jednoduché SKU bez variant. Cena je v pásmu 200–800, aby produkt spadl do automatické kolekce, ze které čerpají raily na homepage — jinak by na demu nebyla ANI JEDNA karta s quick-addem: karta ho nabízí jen produktu s jedinou variantou a všechny ostatní teď mají velikosti."
+      }
+    },
+    {
+      "handle": "the-hidden-snowboard",
+      "productType": "Aminokyseliny",
+      "tags": [
+        "glutamin",
+        "regenerace",
+        "střeva"
+      ],
+      "description": {
+        "lead": "L-Glutamin bez příchuti. Aminokyselina, kterou tělo při zátěži spotřebuje nejvíc — a nejčastěji se doplňuje v období velkého objemu tréninku.",
+        "bullets": [
+          "5 g v porci",
+          "Bez příchuti, dá se přidat do proteinu",
+          "Farmaceutická čistota",
+          "Vegan"
+        ],
+        "dosage": "5 g denně, po tréninku nebo před spaním."
+      },
+      "metafields": {
+        "rating": "4.2",
+        "rating_count": "27",
+        "delivery": "Doručení do 2 dnů",
+        "net_weight_g": "500",
+        "servings": "100"
+      },
+      "nutrition": [
+        "L-Glutamin | 100 g | 5 000 mg",
+        "Energie | 1700 kJ / 400 kcal | 85 kJ / 20 kcal"
+      ]
+    },
+    {
+      "handle": "the-draft-snowboard",
+      "productType": "Adaptogeny",
+      "tags": [
+        "ashwagandha",
+        "stres",
+        "spánek"
+      ],
+      "description": {
+        "lead": "Ashwagandha KSM-66® v dávce, která odpovídá studiím. Adaptogen na období, kdy je zátěže víc než odpočinku.",
+        "bullets": [
+          "600 mg KSM-66® v denní dávce",
+          "Standardizováno na 5 % withanolidů",
+          "Kořen, ne list",
+          "Vegan"
+        ],
+        "dosage": "2 kapsle večer."
+      },
+      "metafields": {
+        "rating": "4.6",
+        "rating_count": "112",
+        "delivery": "Doručení do 2 dnů",
+        "servings": "60"
+      },
+      "nutrition": [
+        "Ashwagandha KSM-66® | — | 600 mg",
+        "z toho withanolidy | — | 30 mg"
+      ]
+    },
+    {
+      "handle": "the-archived-snowboard",
+      "productType": "Kolagen",
+      "tags": [
+        "kolagen",
+        "klouby",
+        "pleť"
+      ],
+      "description": {
+        "lead": "Hydrolyzované kolagenní peptidy Peptan®. Krátké řetězce, které se vstřebají — na klouby, vazy a pleť.",
+        "bullets": [
+          "10 g peptidů v porci",
+          "Bez příchuti, rozpustné i ve studené vodě",
+          "Typ I a III",
+          "Bez cukru"
+        ],
+        "dosage": "10 g denně, kdykoli během dne."
+      },
+      "metafields": {
+        "rating": "4.7",
+        "rating_count": "203",
+        "delivery": "Doručení do 2 dnů",
+        "net_weight_g": "300",
+        "servings": "30"
+      },
+      "nutrition": [
+        "Energie | 1500 kJ / 358 kcal | 150 kJ / 36 kcal",
+        "Bílkoviny | 90 g | 9 g",
+        "Kolagenní peptidy | 95 g | 9 500 mg"
+      ]
+    }
+  ]
+}

@@ -40,7 +40,7 @@
             autocomplete="email"
             required
           >
-          <button type="submit" class="won-btn won-btn--primary">{{ s.button_label }}</button>
+          <button type="submit" class="won-btn won-btn--primary {% render 'won-fx' %}">{{ s.button_label }}</button>
         </div>
         {%- if s.consent_show and s.consent_text != blank -%}
           <label class="won-nl__consent">

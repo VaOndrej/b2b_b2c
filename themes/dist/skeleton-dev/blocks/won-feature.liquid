@@ -12,9 +12,17 @@ merchants can normalize mixed icon assets without code.
   style="--won-icon-size: {{ s.image_size }}px;--won-radius-md: {{ s.corner_radius }}px;{% if s.accent_override != blank %}--won-accent: {{ s.accent_override }};{% endif %}"
   {{ block.shopify_attributes }}
 >
+  {%- comment -%} An uploaded image wins; otherwise fall back to a curated inline
+     SVG from won-icon. Without this a trust/USP strip renders as four bare
+     bordered boxes of text unless the merchant uploads four icon files — which
+     is exactly what the demo looked like, and why it read as skippable. {%- endcomment -%}
   {%- if s.image != blank -%}
     <div class="won-feature__icon">
       {{ s.image | image_url: width: 320 | image_tag: class: 'won-feature__img', loading: 'lazy', alt: s.image_alt | default: s.image.alt | default: '' }}
+    </div>
+  {%- elsif s.icon != blank and s.icon != 'none' -%}
+    <div class="won-feature__icon won-feature__icon--glyph">
+      {% render 'won-icon', name: s.icon, class: 'won-feature__glyph' %}
     </div>
   {%- endif -%}
   <div class="won-feature__body">
@@ -32,13 +40,41 @@ merchants can normalize mixed icon assets without code.
 
 {% stylesheet %}
   .won-feature { display: flex; gap: var(--won-space-3); color: var(--won-fg); }
-  .won-feature--icon-top { flex-direction: column; }
-  .won-feature--icon-below { flex-direction: column-reverse; }
-  .won-feature--icon-left { flex-direction: row; align-items: flex-start; }
+  /* The icon must follow the section's content alignment. Without this the flex
+     default (stretch -> start on the cross axis) pinned the icon left while the
+     text below was centred by text-align — an icon visibly out of line with its
+     own label. --won-align-flex is the FLEX-mapped alignment the section emits;
+     the raw text_alignment value is invalid for align-items and would silently
+     do nothing. */
+  .won-feature--icon-top { flex-direction: column; align-items: var(--won-align-flex, flex-start); }
+  .won-feature--icon-below { flex-direction: column-reverse; align-items: var(--won-align-flex, flex-start); }
+  /* Icon beside the copy: the icon keeps its own line, the body takes the rest
+     and stays left-read regardless of the section's alignment — a centred
+     paragraph in a narrow right-hand column is unreadable. */
+  .won-feature--icon-left { flex-direction: row; align-items: flex-start; text-align: start; }
+  .won-feature--icon-left .won-feature__body { flex: 1 1 auto; min-inline-size: 0; text-align: start; }
   .won-feature__icon { flex: 0 0 auto; inline-size: var(--won-icon-size, 48px); block-size: var(--won-icon-size, 48px); border-radius: var(--won-radius-md, 0); overflow: hidden; }
+  /* The glyph variant is a tinted disc, not a bare stroke: a 24px outline on a
+     white card is as easy to scroll past as the text was. */
+  .won-feature__icon--glyph {
+    display: grid; place-items: center; border-radius: 50%; overflow: visible;
+    background: color-mix(in oklab, var(--won-accent) 12%, transparent);
+    color: var(--won-accent);
+  }
+  .won-feature__glyph { inline-size: 55%; block-size: 55%; display: block; }
   .won-feature__img { inline-size: 100%; block-size: 100%; object-fit: contain; }
   .won-feature__body { display: flex; flex-direction: column; gap: var(--won-space-2); }
-  .won-feature__title { margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
+  /* A USP row reads as a row only if every item's copy starts on the same line.
+     Headings wrap at different widths ("Vyrobeno v EU" on one line, "Testováno
+     laboratoří" on two), which pushed each description to its own height. The
+     containing section reserves a fixed number of heading lines
+     (--won-feature-title-lines, 0 = off) so the copy underneath lines up
+     whatever the heading does. `1lh` is the heading's own line box, so this
+     follows the font size instead of hardcoding pixels. */
+  .won-feature__title {
+    margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em;
+    min-block-size: calc(var(--won-feature-title-lines, 0) * 1lh);
+  }
   .won-feature__text { margin: 0; opacity: 0.9; }
   .won-feature__link { color: var(--won-accent); font-weight: 600; text-decoration: none; }
 {% endstylesheet %}
@@ -49,6 +85,18 @@ merchants can normalize mixed icon assets without code.
   "settings": [
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "image_picker", "id": "image", "label": "t:won.settings.image" },
+    {
+      "type": "select", "id": "icon", "label": "t:won.settings.icon", "info": "t:won.info.feature_icon", "default": "none",
+      "options": [
+        { "value": "none", "label": "t:won.options.none" },
+        { "value": "check", "label": "t:won.options.icon_check" }, { "value": "star", "label": "t:won.options.icon_star" },
+        { "value": "truck", "label": "t:won.options.icon_truck" }, { "value": "shield", "label": "t:won.options.icon_shield" },
+        { "value": "clock", "label": "t:won.options.icon_clock" }, { "value": "leaf", "label": "t:won.options.icon_leaf" },
+        { "value": "bolt", "label": "t:won.options.icon_bolt" }, { "value": "heart", "label": "t:won.options.icon_heart" },
+        { "value": "droplet", "label": "t:won.options.icon_droplet" }, { "value": "box", "label": "t:won.options.icon_box" },
+        { "value": "return", "label": "t:won.options.icon_return" }, { "value": "award", "label": "t:won.options.icon_award" }
+      ]
+    },
     { "type": "text", "id": "image_alt", "label": "t:won.settings.image_alt", "info": "t:won.info.image_alt" },
     { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.feature_heading" },
     { "type": "richtext", "id": "text", "label": "t:won.settings.text" },

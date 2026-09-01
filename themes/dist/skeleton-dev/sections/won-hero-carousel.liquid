@@ -1,11 +1,42 @@
 {%- comment -%}
   won-hero-carousel — hero as a full-bleed slider (one slide per view). Renders
   won-slide blocks in a swipeable track driven by the shared won-carousel.js
-  (<won-carousel> element via data-won-* hooks). Shares .won-hero styling with
+  (<won-carousel data-won-rail-indicator="{{ settings.won_rail_indicator | default: 'per_section' }}"> element via data-won-* hooks). Shares .won-hero styling with
   won-hero / won-hero-grid (won-tokens.css). content_for appears exactly once.
 {%- endcomment -%}
 
 {%- assign s = section.settings -%}
+{%- liquid
+  # Rail controls: the theme-wide setting wins unless the merchant chose
+  # "Set per section". One decision for the storefront instead of the same
+  # decision repeated — and drifting — in every section.
+  assign g_ind = settings.won_rail_indicator | default: 'per_section'
+  assign g_arr = settings.won_rail_arrows | default: 'per_section'
+  assign rail_arrow_style = settings.won_rail_arrow_style | default: 'pill'
+  assign rail_tone = settings.won_rail_arrow_tone | default: 'auto'
+  if rail_tone == 'auto'
+    assign rail_tone = 'overlay'
+  endif
+
+  assign want_arrows = s.show_arrows
+  if g_arr == 'always'
+    assign want_arrows = true
+  elsif g_arr == 'never'
+    assign want_arrows = false
+  endif
+
+  assign want_dots = s.show_dots
+  assign want_progress = s.show_progress
+  if g_ind != 'per_section'
+    assign want_dots = false
+    assign want_progress = false
+    if g_ind == 'dots'
+      assign want_dots = true
+    elsif g_ind == 'progress'
+      assign want_progress = true
+    endif
+  endif
+-%}
 <section
   class="won-section color-{{ s.color_scheme }}"
   style="{% render 'won-style-vars', settings: s %}"
@@ -19,18 +50,23 @@
     <won-carousel class="won-hero__carousel"{% if s.loop != blank %} data-won-loop="{{ s.loop }}"{% endif %}{% if s.autoplay %} data-autoplay="{{ s.autoplay_interval }}"{% endif %}><div class="won-hero__track" data-won-track>
         {% content_for 'blocks' %}
       </div>
-      {%- if s.show_arrows -%}
-        <div class="won-hero__arrows" data-won-arrows>
-          <button type="button" class="won-hero__arrow" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
-          <button type="button" class="won-hero__arrow" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
-        </div>
-      {%- endif -%}
-      {%- if s.show_progress -%}
-        <div class="won-hero__progress" data-won-progress><span class="won-hero__progress-bar" data-won-progress-bar></span></div>
-      {%- endif -%}
-      {%- if s.show_dots -%}
-        <div class="won-carousel__dots won-hero__dots" data-won-dots></div>
-      {%- endif -%}
+      {%- comment -%} The hero's controls float over the media, but they are still
+         ONE row: bar on the left of the band, arrows at its end — the same
+         reading order as every other rail in the theme. {%- endcomment -%}
+      <div class="won-rail__controls won-hero__controls">
+        {%- if want_progress -%}
+          <div class="won-hero__progress" data-won-progress><span class="won-hero__progress-bar" data-won-progress-bar></span></div>
+        {%- endif -%}
+        {%- if want_dots -%}
+          <div class="won-carousel__dots won-hero__dots" data-won-dots></div>
+        {%- endif -%}
+        {%- if want_arrows -%}
+          <div class="won-hero__arrows" data-won-arrows data-won-rail-tone="{{ settings.won_rail_arrow_tone | default: 'auto' }}">
+            <button type="button" class="won-hero__arrow won-rail__arrow won-rail__arrow--{{ rail_arrow_style }} won-rail__arrow--{{ rail_tone }}" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
+            <button type="button" class="won-hero__arrow won-rail__arrow won-rail__arrow--{{ rail_arrow_style }} won-rail__arrow--{{ rail_tone }}" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
+          </div>
+        {%- endif -%}
+      </div>
     </won-carousel>
   </div>
 </section>
@@ -169,13 +205,13 @@
       "type": "checkbox",
       "id": "show_progress",
       "label": "t:won.settings.show_progress",
-      "default": true
+      "default": false
     },
     {
       "type": "checkbox",
       "id": "show_dots",
       "label": "t:won.settings.show_dots",
-      "default": false
+      "default": true
     },
     {
       "type": "select",
@@ -566,7 +602,7 @@
             "button_link": "shopify://collections/all",
             "button_style": "primary",
             "media_type": "image",
-            "image_asset": "won-promo-1.png",
+            "image_asset": "won-promo-1.svg",
             "media_position": "background",
             "content_align": "left",
             "min_height": 520
@@ -583,7 +619,7 @@
             "button_link": "shopify://collections/all",
             "button_style": "primary",
             "media_type": "image",
-            "image_asset": "won-promo-2.png",
+            "image_asset": "won-promo-2.svg",
             "media_position": "background",
             "content_align": "left",
             "min_height": 520
@@ -600,7 +636,7 @@
             "button_link": "shopify://collections/all",
             "button_style": "primary",
             "media_type": "image",
-            "image_asset": "won-promo-3.png",
+            "image_asset": "won-promo-3.svg",
             "media_position": "background",
             "content_align": "left",
             "min_height": 520
@@ -617,7 +653,7 @@
             "button_link": "shopify://collections/all",
             "button_style": "primary",
             "media_type": "image",
-            "image_asset": "won-promo-4.png",
+            "image_asset": "won-promo-4.svg",
             "media_position": "background",
             "content_align": "left",
             "min_height": 520
@@ -650,7 +686,7 @@
             "button_link": "shopify://collections/all",
             "button_style": "primary",
             "media_type": "image",
-            "image_asset": "won-promo-1.png",
+            "image_asset": "won-promo-1.svg",
             "media_position": "background",
             "content_align": "left",
             "min_height": 460,
@@ -668,7 +704,7 @@
             "button_link": "shopify://collections/all",
             "button_style": "primary",
             "media_type": "image",
-            "image_asset": "won-promo-2.png",
+            "image_asset": "won-promo-2.svg",
             "media_position": "background",
             "content_align": "left",
             "min_height": 460,
@@ -686,7 +722,7 @@
             "button_link": "shopify://collections/all",
             "button_style": "primary",
             "media_type": "image",
-            "image_asset": "won-promo-3.png",
+            "image_asset": "won-promo-3.svg",
             "media_position": "background",
             "content_align": "left",
             "min_height": 460,
@@ -704,7 +740,7 @@
             "button_link": "shopify://collections/all",
             "button_style": "primary",
             "media_type": "image",
-            "image_asset": "won-promo-4.png",
+            "image_asset": "won-promo-4.svg",
             "media_position": "background",
             "content_align": "left",
             "min_height": 460,

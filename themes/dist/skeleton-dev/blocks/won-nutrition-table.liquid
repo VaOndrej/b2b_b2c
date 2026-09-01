@@ -55,7 +55,9 @@
   endif
 -%}
 <div class="won-nutri" {{ block.shopify_attributes }}>
-  {%- if s.heading != blank -%}<p class="won-nutri__heading">{{ s.heading }}</p>{%- endif -%}
+  {%- comment -%}Heading only when the block actually has content — an empty
+  metafield used to render a bare heading with nothing under it.{%- endcomment -%}
+  {%- if s.heading != blank and mode != 'none' -%}<p class="won-nutri__heading">{{ s.heading }}</p>{%- endif -%}
 
   {%- if mode == 'none' -%}
     {%- if request.design_mode and s.source == 'metafield' -%}

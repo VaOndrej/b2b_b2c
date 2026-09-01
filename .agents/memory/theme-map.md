@@ -88,3 +88,163 @@ Per-project architecture & file-finding facts. Keep terse. Shared lessons go to 
 - **promote.mjs** (nahoru, deploy repo → won-base): **NENÍ to `format-patch` + `git apply --directory`** — složená won sekce není svůj zdroj (2d jí vstřikuje style controls + won-style-vars + won-guard), takový patch by build output zapekl do zdroje. Je to **trojcestný merge** `git merge-file --diff3 <won-base zdroj> <recompose generic> <soubor v repu>`. Editace uvnitř vstřikovaného bloku → konflikt, správně (ten obsah vlastní `themes/build/won-style-controls.json`). Locales se povyšují **po klíčích**, jen pod `won.*`. Vendor a merchant data odmítne hlasitě.
 - **`locales/*.json` (bez `.schema`) merchant EDITUJE** přes Shopify Language Editor a GitHub integrace to commitne zpátky (nejde vypnout) → `owner: mixed`. `*.schema.json` řídí jen theme editor → zůstává compose-owned.
 - Detaily + ověřená matice chování: `docs/superpowers/specs/2026-08-22-git-deploy-model-decision.md` (sekce „Postaveno 2026-08-22").
+
+## Rail chrome + karta + PDP (2026-08-30, feedback 8)
+- **`.won-rail__controls`** (`won-tokens.css`) = jediná řada ovládání railu, používají ji
+  všechny čtyři railové sekce: won-carousel (slider + grid-rail), won-grid (mobile_carousel),
+  won-hero-carousel (absolutní pás přes médium), won-tabbed-rail. Pořadí v DOM = indikátor →
+  tečky → šipky; šipky drží `margin-inline-start:auto`. Prázdná řada mizí přes
+  `:not(:has(> *:not([hidden])))`, `--sm-only` varianta se skryje nad 750px.
+  **Nová sekce s railem renderuje ovládání DOVNITŘ téhle řady, ne jako sourozence.**
+- **`assets/won-cart.js`** posílá dvě události: vlastní `cart:refresh` a Horizonův
+  `cart:update` s `detail.data.itemCount` (bez něj se počítadlo v hlavičce nehne).
+  `syncSteppers(cart)` promítne košík do VŠECH `[data-won-stepper]` na stránce — stejný
+  produkt je na HP v několika railech. Klíč řádku (`data-won-line-key`) je jediný handle
+  pro `/cart/change.js`.
+- **`won_card_add_mode` default = `stepper`** (od 2026-08-30). Label „Do košíku" ⇄ „+"
+  přepíná CSS podle `[data-won-stepper][data-won-qty-value]`; stepper s množstvím zůstane
+  viditelný i v režimu reveal=hover.
+- **PDP galerie: `aspect_ratio` MUSÍ být `adapt`**, jinak Horizon ignoruje `media_fit` a
+  vnutí `media-fit-cover` (viz `visible_if` v `blocks/_product-media-gallery.liquid`).
+  Vzduch kolem packshotu dělá token `--won-media-inset` (6 %) v `won-tokens.css`, aplikovaný
+  jen na `.product-media-container.media-fit-contain`.
+- **PDP sloupec (demo `templates/product.json`)**: group (titul+cena+ppu) → popis produktu
+  (`text` blok s `{{ closest.product.description }}`) → stock signal → divider → varianty →
+  buy buttons → won-product-trust. `won-highlights` z demo šablony odstraněn (dubloval trust
+  strip hned pod sekcí), v pickeru zůstává.
+- **`feature_title_lines`** (won-grid, default 2) → `--won-feature-title-lines` →
+  `min-block-size: calc(N * 1lh)` na `.won-feature__title`. Drží začátky popisků USP stripu
+  na jednom řádku i když se nadpisy zalomí různě.
+- **Publikace do `won-theme-generic`**: `npm run theme:generic` →
+  `node themes/build/publish.mjs --repo ../../won-theme-generic --reseed-demo [--apply]`.
+  **`--reseed-demo` je pro generický upstream povinný** — bez něj publish nechá
+  `templates/*.json` a `settings_data.json` na hodnotách z prvního publishe (jsou
+  `owner: merchant`) a demo data zamrznou, i když se kód posune. Flag přepíše jen
+  soubory bajtově shodné se sha z minulého publishe; cokoli editovaného zůstane.
+  U klientského forku ho NEPOUŽÍVAT.
+- Dev server nad generickým repem: `cd ../../won-theme-generic && shopify theme dev
+  --store b2b-b2c-store-development.myshopify.com --port 9293` (9292 drží monorepo dist).
+  Dev theme id generiku: **161957216497**.
+
+## CTA efektová vrstva (2026-08-30)
+- `snippets/won-fx.liquid` → renderuje se **dovnitř class atributu** každé interaktivní
+  won CTA (`{% render 'won-fx' %}`); ze `settings.won_btn_hover/won_btn_sheen/
+  won_btn_press/won_fx_speed` poskládá `won-fx won-fx--hover-* --sheen-* --press-* --speed-*`.
+  Chování je v `won-tokens.css` (§ CTA effect layer). **Sold-out label ho NEDOSTÁVÁ** —
+  neakce se nesmí tvářit klikatelně.
+- Nastavení: `themes/build/won-effect-settings.json` (compose 2e injektuje automaticky).
+  Defaulty: hover `lift`, sheen `hover`, press `sink`, speed `normal`.
+- **`transform` patří výhradně efektové vrstvě.** Reveal quick-addu na kartě jede na
+  `translate` (`won-tokens.css`, `.won-pcard__add`) — když obojí psalo `transform`,
+  hover efekt a odhalení se navzájem rušily.
+- Efekt měnící barvu musí mít **zdvojený selektor** (`.won-fx.won-fx--hover-fill:hover`),
+  jinak prohraje se sekčním `{% stylesheet %}`, který se načítá později.
+- `<button type="submit">` nemůže jít přes `won-button.liquid` (ten renderuje `<a>`) —
+  newsletter, contact, collection, sticky-atc a variant-picker si třídy píšou ručně
+  a `{% render 'won-fx' %}` tam musí být doplněný ručně taky. Hlídá
+  `tests/smoke/won-cta-effects.spec.ts`.
+- **`snippets/won-rail-controls.liquid` = JEDINÁ implementace ovládání railu** (2026-08-30).
+  Params: `s` (settings sekce, jen pro `per_section`), `variant` `rail`|`hero`,
+  `sm_only`. Rendrují ho won-carousel (2×), won-grid, won-hero-carousel,
+  won-tabbed-rail. **Nová railová sekce ho renderuje, nedělá si vlastní resolution** —
+  hlídá `tests/smoke/won-rail-indicator-modes.spec.ts` (statický, bez serveru).
+  Matice `won_rail_indicator` ověřena runtime přes všechny 4 hodnoty:
+  progress/dots/none/per_section, všechny raily. Marquee (brand belt) záměrně bez
+  ovládání — je to pás, ne rail.
+  Indikátor **nemá šířkový cap** nikde (ani hero) — vyplní volnou šířku řady.
+
+## Demo katalog dev storu (2026-08-30)
+- Produkty jsou přejmenované Shopify snowboardy; **handly zůstávají snowboardové**
+  (`the-collection-snowboard-liquid` = Whey Protein). Nepřejmenovávat — visí na nich
+  demo šablony i testy.
+- Obsah dorovnán skriptem `themes/demo/tools/seed-supplement-catalog.mjs`
+  (data `supplement-catalog.json`, dry-run default, kroky `desc|options|prices|stock|meta`).
+  16 produktů: český popis (odstavec + odrážky + dávkování), osa variant
+  (Balení / Počet kapslí / Příchuť), ceny + SKU, sklad, metafieldy
+  `won.rating|rating_count|delivery|net_weight_g|servings` + `custom.nutrition`.
+  `net_weight_g` a `servings` jsou **per varianta** u produktů s osou.
+- Chráněno a nedotčeno: `won-e2e-*`, `mg-e2e-*`, `gift-card`, statusy draft/archived,
+  vyprodaný fixture (`the-out-of-stock-snowboard`) a netrackovaný
+  (`the-inventory-not-tracked-snowboard`).
+- **Store má 3 lokace**, online obsluhuje jen „Shop location" (87488004337).
+  „Snow City Warehouse" je neaktivní → `the-3p-fulfilled-snowboard` (Omega 3) je na
+  storefrontu nedostupný **odjakživa**, není to regrese.
+- Záloha katalogu před zásahem: `tmp/store-backup-2026-08-30.json`, stav po:
+  `tmp/store-after-2026-08-30.json` (`themes/demo/tools/dump-products.mjs`).
+
+## Jednotková cena (2026-08-31)
+- **Žebříček pravidel je JEDNO globální nastavení `won_unit_price_rules`** (textarea, skupina
+  „Cena za jednotku", fragment `themes/build/won-unit-price-settings.json`, injektuje compose 2e).
+  Syntax jedno pravidlo na řádek: `<metafield ns.key> | <za kolik jednotek> | <popisek>`.
+  Zkouší se shora dolů, vyhraje první metafield (VARIANTA → produkt) s kladným číslem.
+  Popisek s `t:` jde přes `| t`, jinak doslova → klient si přidá ml / kusy / prací dávky
+  ve svém jazyce bez zásahu do kódu. **Jen metafieldy, pevné množství je zakázané** (test).
+- Per-sekční `ppu_base`/`ppu_amount`/`ppu_metafield` ZRUŠENY → jedno volitelné `ppu_rules`
+  (override, prázdné = pravidla motivu). Konzumenti: won-price-per-unit (`rules`),
+  won-product-card (`ppu_rules`), won-carousel/won-collection (předávají dál), won-variant-picker.
+- Liquid nemá literál `\n` → `| newline_to_br | split: '<br />'`. Dynamický klíč `{{ var | t }}` funguje.
+- Zápis pravidel: **oddělovač je svislá čára `|`, ne lomítko**; řádek začínající `#` se ignoruje
+  (parkování pravidla, defenzivní — zakomentovaný řádek by neprošel tak jako tak).
+  Nápověda pro merchanta je v `won.global.unit_price_about` + `won.info.unit_price_rules`.
+- **publish.mjs doplňuje chybějící `won_*` globály po klíčích do existujícího
+  `config/settings_data.json`** (krok „won globals, additive", běží jako poslední, merchantovu
+  hodnotu nikdy nepřepíše, zachovává úvodní komentář souboru). Bez toho se na klientský store
+  nedostal ANI JEDEN z 16 won globálů — `owner: merchant` na souboru neznamená, že klíč,
+  který merchant nikdy neviděl, patří jemu. Hlídá `tests/smoke/won-publish-global-settings.spec.ts`.
+- Stejná díra může být u `templates/*.json` (sekce přidaná do demo šablony po prvním publishi).
+  Neprověřeno.
+
+- **`snippets/won-unit-price.liquid` = JEDINÁ implementace ceny za jednotku.** Rendrují ho
+  `blocks/won-price-per-unit`, `snippets/won-product-card` (`format: 'text'`) a
+  `sections/won-variant-picker` (per varianta, do JSON i do tabulky). Nová sekce ho renderuje,
+  nedělá si vlastní výpočet — hlídá `tests/smoke/won-unit-price-honesty.spec.ts` (klíče
+  `won.unit.*` smí být jen v tom jednom souboru).
+- **Metafield se čte `variant.metafields` a teprve pak `product.metafields`** — produkt s osou
+  Balení / Počet kapslí má hmotnost i porce na VARIANTĚ (seed to tak dělá záměrně, produktová
+  hodnota by lhala). Když nesedne žádné pravidlo, renderuje se **nic**.
+- **Referenční veličina nesmí mít nikde `default` ani zapečenou hodnotu** — ani ve schématu,
+  ani v curated `templates/*.json`. Dřív bylo `1000` ve 4 schématech a `33` ve 3 šablonách.
+- Katalog: **27 z 27 publikovaných variant** má reálné referenční množství (prášky
+  `won.net_weight_g` per varianta → za 100 g, kapsle `won.servings` → za porci).
+  `the-minimal/hidden/draft/archived-snowboard` jsou draft/archived fixtures → 404.
+- **Skenování storefrontu přes `theme dev` proxy tiše selhává během reloadu.** Sken bez
+  retry ukázal „chybí data" u produktů, které data mají. Katalogové skeny dělat s retry.
+- `shopify theme dev -e horizon` teď navazuje na dev theme **161957216497**, ne na
+  161463730417 uvedené výš. Ověřeno 2026-08-31.
+
+## Vrstva 3 — globální matice (2026-08-31)
+- **Každý `won_*` globální setting musí číst aspoň jedna sekce s presetem** (nebo sdílený
+  snippet). Deprecated soubory se nepočítají — merchant je nemůže vložit. Hlídá
+  `tests/smoke/won-countup-reachable.spec.ts`. Chytlo to `won_countup_default_duration`,
+  jehož jediný konzument byl `won-stats` po strhnutí presetů.
+- **`won-grid` source `stats` umí count-up** (`animate_values` + `animate_duration`,
+  0 = zdědit `won_countup_default_duration`). Absorpce `won-stats` do `won-grid` tuhle
+  schopnost původně vynechala. Preset `stats_row` má `animate_values: true`.
+- **Nekopírovat vzory z deprecated souborů** — `won-stats` používá `| script_tag`, což MCP
+  validate odmítne jako parser-blocking. Živé sekce načítají JS přes `<script src defer>`.
+- Naměřeno bez nálezu: Cards (`won_card_add_mode/align/reveal` × 2 viewporty, tap ≥ 44 px,
+  0 kolizí s badgem), Effects (13 hodnot ve 4 rodinách), Catalog (`won_hide_gift_cards`
+  false → 23 karet vč. gift-card, true → 22), Policy (`won_return_*` řídí
+  `MerchantReturnPolicy` v LD+JSON).
+- **Efektová vrstva měří `transform` a `::after`**, ne `translate`/`scale`/`::before`.
+  Sonda na špatné vlastnosti udělá tři falešná „mrtvá nastavení".
+- Pokrytí quick-addu visí na JEDNOM produktu (Elektrolyty); druhý single-SKU vrací 404.
+
+## Vrstva 1 — journey audit (2026-08-31)
+- **`blocks/won-breadcrumbs.liquid` + `snippets/won-breadcrumbs.liquid`** = drobečková navigace.
+  Snippet je jediná implementace (won-collection nepřijímá děti, proto ho renderuje přímo přes
+  `show_breadcrumbs`). Cesta se staví ZE STRÁNKY (`collection` → jinak první kolekce produktu),
+  poslední článek není odkaz. `BreadcrumbList` emituje jen jedna instance (`emit_schema`).
+- **`won-slide` má volbu `priority`** = `loading="eager" fetchpriority="high"`. Zapnutá na PRVNÍM
+  slidu hero presetů i v demu. Blok nemá jak poznat svou pozici, proto to říká merchant.
+  **LCP guard měří NEJVĚTŠÍ obrázek nad foldem, ne každý** — jinak by nutil eager i na slide,
+  který jen zasahuje ke spodní hraně.
+- **Quick view = Horizonův dialog, ne vlastní.** `#quick-add-dialog` je v `layout/theme.liquid`
+  na každé stránce. `QuickAddComponent` použít NELZE (bere URL z `closest('product-card')`).
+  `assets/won-quick-view.js` (60 řádků) jen fetchne `[data-product-grid-content]` z PDP, vloží
+  do `#quick-add-modal-content` a zavolá `showDialog()`. Globál `won_card_choose_action`
+  (modal | link), default modal. Tlačítko zůstává `<a href>` — funguje bez JS i na prostřední klik.
+- **Test ovládání odhalovaného na hover: hover KARTY + klik BEZ `force`.** `force: true` obchází
+  hit-test a projde, i kdyby prvek překrývala fotka.
+- Nepokryto z Vrstvy 1: search není v hlavičce (SRH-004/HP-004), výsledky vyhledávání používají
+  nativní Horizon kartu místo won karty.

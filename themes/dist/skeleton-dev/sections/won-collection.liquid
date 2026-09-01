@@ -74,6 +74,11 @@
         {%- else -%}
           <div class="won-collection__grid" style="--won-cols-lg: {{ s.columns_desktop }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-sm: {{ s.columns_mobile }};">
             {%- for product in collection.products -%}
+              {%- comment -%} Gift cards are a payment instrument, not part of the range: they
+                have no packshot, no unit price and no place in "all products". Skipped inside
+                the loop rather than filtered upstream, because Liquid cannot rebuild a
+                paginated collection — and `!= false` so an unset setting still hides them. {%- endcomment -%}
+              {%- if settings.won_hide_gift_cards != false and product.gift_card? -%}{%- continue -%}{%- endif -%}
               {% render 'won-product-card', product: product, aspect: s.card_aspect, show_ppu: s.show_card_ppu, ppu_base: s.ppu_base, ppu_amount: s.ppu_amount, ppu_metafield: s.ppu_metafield %}
             {%- endfor -%}
           </div>
@@ -116,7 +121,7 @@
   .won-collection__sort { display: inline-flex; align-items: center; gap: var(--won-space-2); font-size: 0.9rem; }
   .won-collection__sort select { padding: 0.4em 0.6em; border: 1px solid var(--won-border); border-radius: var(--won-radius-sm); font: inherit; background: var(--won-bg); color: var(--won-fg); }
   .won-collection__grid { display: grid; grid-template-columns: repeat(var(--won-cols-sm, 2), minmax(0, 1fr)); gap: var(--won-space-4); }
-  @media (min-width: 768px) { .won-collection__grid { grid-template-columns: repeat(var(--won-cols-md, 3), minmax(0, 1fr)); } }
+  @media (min-width: 750px) { .won-collection__grid { grid-template-columns: repeat(var(--won-cols-md, 3), minmax(0, 1fr)); } }
   @media (min-width: 1024px) { .won-collection__grid { grid-template-columns: repeat(var(--won-cols-lg, 4), minmax(0, 1fr)); } }
   .won-collection__empty { color: var(--won-muted); padding-block: var(--won-space-6); }
   .won-collection__pagination { margin-block-start: var(--won-space-5); display: flex; justify-content: center; gap: var(--won-space-3); }

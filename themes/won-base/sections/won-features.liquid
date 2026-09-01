@@ -8,6 +8,8 @@
   endif
 -%}
 
+{%- assign align_flex = 'flex-start' -%}
+{%- if s.content_align == 'center' -%}{%- assign align_flex = 'center' -%}{%- elsif s.content_align == 'right' -%}{%- assign align_flex = 'flex-end' -%}{%- endif -%}
 <section
   class="won-section color-{{ s.color_scheme }}"
   style="{% render 'won-spacing', settings: s %}"
@@ -25,10 +27,11 @@
 
     <div
       class="won-features won-features--{{ s.item_style }}"
-      style="--won-cols-lg: {{ cols }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-sm: {{ s.columns_mobile }}; --won-gap: {{ s.gap }}px; --won-features-align: {{ s.content_align }};"
+      style="--won-cols-lg: {{ cols }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-sm: {{ s.columns_mobile }}; --won-gap: {{ s.gap }}px; --won-features-align: {{ s.content_align }}; --won-align-flex: {{ align_flex }};"
     >
       {% content_for 'blocks' %}
     </div>
+      {% render 'won-section-cta', cfg: s %}
   </div>
 </section>
 
@@ -199,6 +202,19 @@
       "label": "t:won.settings.content_align",
       "default": "left"
     },
+    { "type": "header", "content": "t:won.headers.cta" },
+    { "type": "text", "id": "cta_button_label", "label": "t:won.settings.cta_button_label", "info": "t:won.info.section_cta" },
+    { "type": "url", "id": "cta_button_link", "label": "t:won.settings.cta_button_link" },
+    {
+      "type": "select", "id": "cta_button_style", "label": "t:won.settings.cta_button_style",
+      "options": [
+        { "value": "primary", "label": "t:won.options.btn_primary" },
+        { "value": "secondary", "label": "t:won.options.btn_secondary" }
+      ],
+      "default": "primary"
+    },
+    { "type": "checkbox", "id": "cta_button_new_tab", "label": "t:won.settings.button_new_tab", "info": "t:won.info.button_new_tab", "default": false },
+    { "type": "text", "id": "cta_note", "label": "t:won.settings.cta_note", "info": "t:won.info.cta_note" },
     {
       "type": "header",
       "content": "t:won.headers.appearance"

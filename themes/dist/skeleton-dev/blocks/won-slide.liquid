@@ -67,7 +67,28 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
             }}
           {%- endif -%}
         {%- else -%}
-          <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="880" height="1100" loading="lazy">
+          {%- comment -%} Same art-direction for PACKAGED assets. image_mobile only
+             covers the image_picker path, so a demo/preset slide built on
+             image_asset had no way to swap art on a phone — and a wide hero crop
+             loses its subject there: at 390px a 2400x1040 background shows only
+             the middle ~30% of its width.
+
+             width/height are the AUTHORING CONVENTION for packaged slide art
+             (16:10 landscape / 2:3 portrait), not a measurement — Liquid cannot
+             read the dimensions of a file in assets/. They exist because theme
+             check requires them, and they are harmless here: the media box is
+             sized entirely by CSS (`.won-slide__img { height: 100%; object-fit:
+             cover }`), so the intrinsic ratio never drives layout. Same approach
+             as won-shoppable-image. The previous 880x1100 matched no shipped
+             asset at all; render new slide art to these ratios. {%- endcomment -%}
+          {%- if s.image_asset_mobile != blank -%}
+            <picture>
+              <source media="(max-width: 749px)" srcset="{{ s.image_asset_mobile | asset_url }}" width="840" height="1240">
+              <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="1600" height="1000" loading="lazy">
+            </picture>
+          {%- else -%}
+            <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="1600" height="1000" loading="lazy">
+          {%- endif -%}
         {%- endif -%}
       {%- else -%}
         {{ s.video | video_tag: autoplay: true, loop: true, muted: true, controls: false, class: 'won-slide__video' }}
@@ -130,6 +151,14 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
   .won-slide--bordered:not(.won-slide--overlayed) .won-slide__body,
   .won-slide--elevated:not(.won-slide--overlayed) .won-slide__body { padding: var(--won-space-4); }
   .won-slide__media { position: relative; overflow: hidden; border-radius: var(--won-radius-sm); }
+  /* <picture> is display:inline with no height of its own, so an <img> inside it
+     resolves `height: 100%` against an auto-height parent -> auto, and the
+     width/height attributes' aspect-ratio silently decides the box instead. On a
+     390px hero that left a 44px strip of bare section background under the
+     image. Any art-directed slide (image_mobile or image_asset_mobile) needs
+     this; without it the <picture> path is subtly broken and the plain <img>
+     path is not, which is why it went unnoticed. */
+  .won-slide__media picture { display: block; width: 100%; height: 100%; }
   .won-slide__img,
   .won-slide__video { display: block; width: 100%; height: 100%; object-fit: cover; }
   .won-slide__overlay { position: absolute; inset: 0; z-index: 1; }
@@ -248,6 +277,7 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     { "type": "image_picker", "id": "image_mobile", "label": "t:won.settings.image_mobile", "info": "t:won.info.image_mobile", "visible_if": "{{ block.settings.media_type == 'image' }}" },
     { "type": "text", "id": "image_alt", "label": "t:won.settings.image_alt", "info": "t:won.info.image_alt", "visible_if": "{{ block.settings.media_type == 'image' }}" },
     { "type": "text", "id": "image_asset", "label": "t:won.settings.image_asset", "info": "t:won.info.image_asset", "visible_if": "{{ block.settings.media_type == 'image' }}" },
+    { "type": "text", "id": "image_asset_mobile", "label": "t:won.settings.image_asset_mobile", "info": "t:won.info.image_asset_mobile", "visible_if": "{{ block.settings.media_type == 'image' }}" },
     { "type": "video", "id": "video", "label": "t:won.settings.video", "visible_if": "{{ block.settings.media_type == 'video' }}" },
     {
       "type": "select", "id": "media_position", "label": "t:won.settings.media_position", "info": "t:won.info.media_position",

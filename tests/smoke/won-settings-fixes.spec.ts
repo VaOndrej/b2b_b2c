@@ -14,22 +14,43 @@ import { test, expect } from '@playwright/test';
 // (min-width:750px) .won-vp__title { font-size: var(--won-h-size-d) }` rule now
 // exists) alongside the settings-coverage gate.
 
-test('won-band: content align drives cross-axis alignment, not just text-align', async ({ page }, testInfo) => {
-  // align-items lives on .won-band__content. The bug: it read --won-band-align (a
-  // text_alignment value left|center|right), invalid for align-items → the block
-  // children (button row) never moved. The fix routes align-items through the
-  // mapped --won-band-flex. Tested on mobile, where no layout @media rule (>=750px
-  // forces center for overlay/gutter) interferes with the base __content rule.
+test('won-band: content align actually moves the button row, not just text', async ({ page }, testInfo) => {
+  // The original bug: align-items read --won-band-align (a text_alignment keyword,
+  // invalid for align-items) so the button row never moved. The mechanism has since
+  // changed — .won-band__content is now `align-items: stretch` on purpose, because a
+  // shrink-to-fit column collapsed every data block to its content width (params table
+  // at 138px inside a 1320px band). Alignment now travels through justify-content on
+  // the actions row and margin-inline on the capped-measure copy.
+  // So assert the OUTCOME the merchant sees, not the property that happens to carry it.
   test.skip(testInfo.project.name !== 'mobile', 'base __content rule is clean of layout overrides on mobile');
   await page.goto('/');
   await page.waitForSelector('.won-band__content', { state: 'attached' });
-  const alignItems = await page.evaluate(() => {
-    const el = document.querySelector<HTMLElement>('.won-band__content');
-    if (!el) return null;
-    el.style.setProperty('--won-band-flex', 'flex-end');
-    return getComputedStyle(el).alignItems;
+
+  const res = await page.evaluate(() => {
+    const content = document.querySelector<HTMLElement>('.won-band__content');
+    if (!content) return null;
+    const actions = content.querySelector<HTMLElement>('.won-band__actions');
+    const btn = actions?.firstElementChild as HTMLElement | undefined;
+    if (!actions || !btn) return { skipped: true as const };
+    // The row itself spans the column (it is a stretched block); what moves is the
+    // button inside it, which is exactly what a merchant sees.
+    const measure = (flex: string) => {
+      content.style.setProperty('--won-band-flex', flex);
+      const c = content.getBoundingClientRect();
+      const a = btn.getBoundingClientRect();
+      return { leftGap: a.left - c.left, rightGap: c.right - a.right };
+    };
+    return { skipped: false as const, start: measure('flex-start'), end: measure('flex-end') };
   });
-  expect(alignItems, 'align-items must consume --won-band-flex (mapped from content_align)').toBe('flex-end');
+
+  expect(res, 'no won-band on the home page').not.toBeNull();
+  if (res!.skipped) test.skip(true, 'the home band carries no button row');
+
+  // flex-start pins the row left; flex-end pins it right. Whichever edge is pinned
+  // has ~0 gap and the other has the leftover width — that is the visible effect.
+  expect(res!.start.leftGap, 'content_align:left must pin the button row to the left edge').toBeLessThan(2);
+  expect(res!.end.rightGap, 'content_align:right must pin the button row to the right edge').toBeLessThan(2);
+  expect(res!.end.leftGap, 'content_align:right must actually move the row, not just restyle it').toBeGreaterThan(2);
 });
 
 test('won-slide: min height applies to a plain (non-overlayed) slide body', async ({ page }) => {

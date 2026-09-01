@@ -43,13 +43,21 @@
   endif
 -%}
 
-{%- if unit_price > 0 -%}
-  <div class="won-ppu" {{ block.shopify_attributes }}>
-    {%- if s.prefix != blank -%}<span class="won-ppu__prefix">{{ s.prefix }}</span>{%- endif -%}
-    <span class="won-ppu__value">{{ unit_price | money }}</span>
-    <span class="won-ppu__unit">/ {{ unit_label }}</span>
-  </div>
-{%- endif -%}
+{%- comment -%}
+  The wrapper is NOT optional. Horizon swaps only the elements that ask for their
+  own updated markup on `variant:update`; without it this block keeps the first
+  variant's unit price while the price above it changes. See won-variant-reactive.js.
+{%- endcomment -%}
+<won-variant-reactive data-won-vr="ppu-{{ block.id }}">
+  {%- if unit_price > 0 -%}
+    <div class="won-ppu" {{ block.shopify_attributes }}>
+      {%- if s.prefix != blank -%}<span class="won-ppu__prefix">{{ s.prefix }}</span>{%- endif -%}
+      <span class="won-ppu__value">{{ unit_price | money }}</span>
+      <span class="won-ppu__unit">/ {{ unit_label }}</span>
+    </div>
+  {%- endif -%}
+</won-variant-reactive>
+<script src="{{ 'won-variant-reactive.js' | asset_url }}" defer></script>
 
 {% stylesheet %}
   .won-ppu {

@@ -2306,6 +2306,221 @@
     ]
   },
   {
+    "name": "t:won.global.cards",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "t:won.global.cards_about"
+      },
+      {
+        "type": "select",
+        "id": "won_card_add_mode",
+        "label": "t:won.settings.card_add_mode",
+        "info": "t:won.info.card_add_mode",
+        "options": [
+          {
+            "value": "button",
+            "label": "t:won.options.card_add_button"
+          },
+          {
+            "value": "stepper",
+            "label": "t:won.options.card_add_stepper"
+          }
+        ],
+        "default": "stepper"
+      },
+      {
+        "type": "select",
+        "id": "won_card_add_align",
+        "label": "t:won.settings.card_add_align",
+        "info": "t:won.info.card_add_align",
+        "options": [
+          {
+            "value": "start",
+            "label": "t:won.options.align_start"
+          },
+          {
+            "value": "center",
+            "label": "t:won.options.align_center"
+          },
+          {
+            "value": "end",
+            "label": "t:won.options.align_end"
+          }
+        ],
+        "default": "end"
+      },
+      {
+        "type": "select",
+        "id": "won_card_add_reveal",
+        "label": "t:won.settings.card_add_reveal",
+        "info": "t:won.info.card_add_reveal",
+        "options": [
+          {
+            "value": "hover",
+            "label": "t:won.options.reveal_hover"
+          },
+          {
+            "value": "always",
+            "label": "t:won.options.reveal_always"
+          }
+        ],
+        "default": "hover"
+      },
+      {
+        "type": "select",
+        "id": "won_card_add_size",
+        "label": "t:won.settings.card_add_size",
+        "info": "t:won.info.card_add_size",
+        "options": [
+          {
+            "value": "compact",
+            "label": "t:won.options.size_compact"
+          },
+          {
+            "value": "regular",
+            "label": "t:won.options.size_regular"
+          },
+          {
+            "value": "large",
+            "label": "t:won.options.size_large"
+          }
+        ],
+        "default": "regular"
+      },
+      {
+        "type": "select",
+        "id": "won_card_choose_action",
+        "label": "t:won.settings.card_choose_action",
+        "info": "t:won.info.card_choose_action",
+        "options": [
+          {
+            "value": "modal",
+            "label": "t:won.options.choose_modal"
+          },
+          {
+            "value": "link",
+            "label": "t:won.options.choose_link"
+          }
+        ],
+        "default": "modal"
+      }
+    ]
+  },
+  {
+    "name": "t:won.global.catalog",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "t:won.global.catalog_about"
+      },
+      {
+        "type": "checkbox",
+        "id": "won_hide_gift_cards",
+        "label": "t:won.settings.hide_gift_cards",
+        "info": "t:won.info.hide_gift_cards",
+        "default": true
+      }
+    ]
+  },
+  {
+    "name": "t:won.global.effects",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "t:won.global.effects_about"
+      },
+      {
+        "type": "select",
+        "id": "won_btn_hover",
+        "label": "t:won.settings.btn_hover",
+        "info": "t:won.info.btn_hover",
+        "options": [
+          {
+            "value": "none",
+            "label": "t:won.options.fx_none"
+          },
+          {
+            "value": "lift",
+            "label": "t:won.options.fx_lift"
+          },
+          {
+            "value": "grow",
+            "label": "t:won.options.fx_grow"
+          },
+          {
+            "value": "fill",
+            "label": "t:won.options.fx_fill"
+          },
+          {
+            "value": "outline",
+            "label": "t:won.options.fx_outline"
+          }
+        ],
+        "default": "lift"
+      },
+      {
+        "type": "select",
+        "id": "won_btn_sheen",
+        "label": "t:won.settings.btn_sheen",
+        "info": "t:won.info.btn_sheen",
+        "options": [
+          {
+            "value": "off",
+            "label": "t:won.options.fx_none"
+          },
+          {
+            "value": "hover",
+            "label": "t:won.options.sheen_hover"
+          },
+          {
+            "value": "loop",
+            "label": "t:won.options.sheen_loop"
+          }
+        ],
+        "default": "hover"
+      },
+      {
+        "type": "select",
+        "id": "won_btn_press",
+        "label": "t:won.settings.btn_press",
+        "info": "t:won.info.btn_press",
+        "options": [
+          {
+            "value": "none",
+            "label": "t:won.options.fx_none"
+          },
+          {
+            "value": "sink",
+            "label": "t:won.options.press_sink"
+          }
+        ],
+        "default": "sink"
+      },
+      {
+        "type": "select",
+        "id": "won_fx_speed",
+        "label": "t:won.settings.fx_speed",
+        "info": "t:won.info.fx_speed",
+        "options": [
+          {
+            "value": "fast",
+            "label": "t:won.options.speed_fast"
+          },
+          {
+            "value": "normal",
+            "label": "t:won.options.speed_normal"
+          },
+          {
+            "value": "slow",
+            "label": "t:won.options.speed_slow"
+          }
+        ],
+        "default": "normal"
+      }
+    ]
+  },
+  {
     "name": "t:won.names.policy_schema",
     "settings": [
       {
@@ -2335,6 +2550,123 @@
         "label": "t:won.settings.won_return_country",
         "info": "t:won.info.won_return_country",
         "default": "CZ"
+      }
+    ]
+  },
+  {
+    "name": "t:won.global.rails",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "t:won.global.rails_about"
+      },
+      {
+        "type": "select",
+        "id": "won_rail_indicator",
+        "label": "t:won.settings.rail_indicator",
+        "info": "t:won.info.rail_indicator",
+        "options": [
+          {
+            "value": "per_section",
+            "label": "t:won.options.rail_per_section"
+          },
+          {
+            "value": "progress",
+            "label": "t:won.options.rail_progress"
+          },
+          {
+            "value": "dots",
+            "label": "t:won.options.rail_dots"
+          },
+          {
+            "value": "none",
+            "label": "t:won.options.rail_none"
+          }
+        ],
+        "default": "progress"
+      },
+      {
+        "type": "select",
+        "id": "won_rail_arrows",
+        "label": "t:won.settings.rail_arrows",
+        "info": "t:won.info.rail_arrows",
+        "options": [
+          {
+            "value": "per_section",
+            "label": "t:won.options.rail_per_section"
+          },
+          {
+            "value": "always",
+            "label": "t:won.options.rail_arrows_always"
+          },
+          {
+            "value": "never",
+            "label": "t:won.options.rail_arrows_never"
+          }
+        ],
+        "default": "always"
+      },
+      {
+        "type": "select",
+        "id": "won_rail_arrow_style",
+        "label": "t:won.settings.rail_arrow_style",
+        "info": "t:won.info.rail_arrow_style",
+        "options": [
+          {
+            "value": "pill",
+            "label": "t:won.options.arrow_pill"
+          },
+          {
+            "value": "square",
+            "label": "t:won.options.arrow_square"
+          },
+          {
+            "value": "soft",
+            "label": "t:won.options.arrow_soft"
+          },
+          {
+            "value": "minimal",
+            "label": "t:won.options.arrow_minimal"
+          }
+        ],
+        "default": "pill"
+      },
+      {
+        "type": "select",
+        "id": "won_rail_arrow_tone",
+        "label": "t:won.settings.rail_arrow_tone",
+        "info": "t:won.info.rail_arrow_tone",
+        "options": [
+          {
+            "value": "auto",
+            "label": "t:won.options.tone_auto"
+          },
+          {
+            "value": "surface",
+            "label": "t:won.options.tone_surface"
+          },
+          {
+            "value": "overlay",
+            "label": "t:won.options.tone_overlay"
+          }
+        ],
+        "default": "auto"
+      }
+    ]
+  },
+  {
+    "name": "t:won.global.unit_price",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "t:won.global.unit_price_about"
+      },
+      {
+        "type": "textarea",
+        "id": "won_unit_price_rules",
+        "label": "t:won.settings.unit_price_rules",
+        "info": "t:won.info.unit_price_rules",
+        "default": "won.net_weight_g | 100 | t:won.unit.per_100g\nwon.servings | 1 | t:won.unit.per_serving"
       }
     ]
   }

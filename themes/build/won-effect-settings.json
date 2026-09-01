@@ -1,0 +1,55 @@
+{
+  "name": "t:won.global.effects",
+  "settings": [
+    { "type": "paragraph", "content": "t:won.global.effects_about" },
+    {
+      "type": "select",
+      "id": "won_btn_hover",
+      "label": "t:won.settings.btn_hover",
+      "info": "t:won.info.btn_hover",
+      "options": [
+        { "value": "none", "label": "t:won.options.fx_none" },
+        { "value": "lift", "label": "t:won.options.fx_lift" },
+        { "value": "grow", "label": "t:won.options.fx_grow" },
+        { "value": "fill", "label": "t:won.options.fx_fill" },
+        { "value": "outline", "label": "t:won.options.fx_outline" }
+      ],
+      "default": "lift"
+    },
+    {
+      "type": "select",
+      "id": "won_btn_sheen",
+      "label": "t:won.settings.btn_sheen",
+      "info": "t:won.info.btn_sheen",
+      "options": [
+        { "value": "off", "label": "t:won.options.fx_none" },
+        { "value": "hover", "label": "t:won.options.sheen_hover" },
+        { "value": "loop", "label": "t:won.options.sheen_loop" }
+      ],
+      "default": "hover"
+    },
+    {
+      "type": "select",
+      "id": "won_btn_press",
+      "label": "t:won.settings.btn_press",
+      "info": "t:won.info.btn_press",
+      "options": [
+        { "value": "none", "label": "t:won.options.fx_none" },
+        { "value": "sink", "label": "t:won.options.press_sink" }
+      ],
+      "default": "sink"
+    },
+    {
+      "type": "select",
+      "id": "won_fx_speed",
+      "label": "t:won.settings.fx_speed",
+      "info": "t:won.info.fx_speed",
+      "options": [
+        { "value": "fast", "label": "t:won.options.speed_fast" },
+        { "value": "normal", "label": "t:won.options.speed_normal" },
+        { "value": "slow", "label": "t:won.options.speed_slow" }
+      ],
+      "default": "normal"
+    }
+  ]
+}

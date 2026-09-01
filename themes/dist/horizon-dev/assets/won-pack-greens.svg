@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 700" width="600" height="700" role="img"><rect width="600" height="700" fill="#eff5ea"/>
+    <ellipse cx="300" cy="600.6" rx="132.48" ry="11.200000000000001" fill="#4c7539" fill-opacity="0.16"/>
+    <rect x="231" y="76.5" width="138" height="24.500000000000004" rx="2" fill="#4c7539"/>
+    <path d="M162,531.32
+             V132.6
+             L222.72,105
+             H377.28
+             L438,132.6
+             V531.32
+             Q438,581 388.32,581
+             H211.68
+             Q162,581 162,531.32 Z" fill="#5f8f4a"/>
+    <path d="M366.24,110.52
+             L438,132.6
+             V531.32
+             Q438,581 388.32,581
+             H366.24 Z" fill="#4c7539"/>
+    
+  <g>
+    <rect x="184.08" y="238.28000000000003" width="231.84" height="190.40000000000003" rx="6" fill="#ffffff"/>
+    <text x="300" y="287.78400000000005" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+          font-size="24.752000000000006" font-weight="700" letter-spacing="14.280000000000003" fill="#14171c">WON</text>
+    <rect x="253.632" y="304.9200000000001" width="92.736" height="3.4272000000000005" fill="#456b36"/>
+    <text x="300" y="354.42400000000004" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+          font-size="43.79200000000001" font-weight="800" fill="#14171c">Greens</text>
+    <rect x="235.08479999999997" y="373.46400000000006" width="129.83040000000003" height="32.36800000000001" rx="16.184000000000005"
+                 fill="#456b36" fill-opacity="0.14"/>
+           <text x="300" y="395.36" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+                 font-size="19.040000000000003" font-weight="700" letter-spacing="3.8080000000000007" fill="#456b36">DETOX</text>
+  </g>
+  </svg>

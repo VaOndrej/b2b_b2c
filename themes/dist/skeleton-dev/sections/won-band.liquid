@@ -31,10 +31,22 @@
   # content_align is a text_alignment control (left|center|right) — valid for
   # text-align, but align-items needs a flex keyword, so map it separately.
   assign flex_align = 'flex-start'
+  assign mi_s = '0'
+  assign mi_e = 'auto'
   if s.content_align == 'center'
     assign flex_align = 'center'
+    assign mi_s = 'auto'
+    assign mi_e = 'auto'
   elsif s.content_align == 'right'
     assign flex_align = 'flex-end'
+    assign mi_s = 'auto'
+    assign mi_e = '0'
+  endif
+  # Blocks flow into columns on desktop only; a data stack is never multi-column
+  # on mobile. Missing/0 keeps the historical single column.
+  assign cols_d = s.content_columns | default: 1
+  if cols_d < 1
+    assign cols_d = 1
   endif
 -%}
 
@@ -47,7 +59,7 @@
   <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %}">
     <div
       class="won-band won-band--{{ layout }} won-band--media-{{ s.media_position }}"
-      style="--won-band-align: {{ s.content_align }};--won-band-flex: {{ flex_align }};{% if s.min_height > 0 %}--won-band-min: {{ s.min_height }}px;{% endif %}"
+      style="--won-band-align: {{ s.content_align }};--won-band-flex: {{ flex_align }};--won-band-mi-s: {{ mi_s }};--won-band-mi-e: {{ mi_e }};--won-band-cols-d: {{ cols_d }};{% if s.min_height > 0 %}--won-band-min: {{ s.min_height }}px;{% endif %}"
     >
       {%- if has_media -%}
         <div class="won-band__media">
@@ -87,7 +99,7 @@
             {% render 'won-button', label: s.button2_label, link: s.button2_link, style: s.button2_style, new_tab: s.buttons_new_tab %}
           </div>
         {%- endif -%}
-        {% content_for 'blocks' %}
+        <div class="won-band__blocks">{% content_for 'blocks' %}</div>
       </div>
 
       {%- if is_gutter and has_media2 -%}
@@ -105,13 +117,28 @@
 
 {% stylesheet %}
   .won-band { display: flex; flex-direction: column; gap: var(--won-space-5); }
+  /* Blocks STRETCH, they never shrink to their content.
+     Why: with `align-items: flex-start` every theme block was a shrink-to-fit flex
+     item, so a params/nutrition table inside a 1320px band collapsed to ~138px and
+     read as a broken fragment. Alignment of the section's own copy is carried by
+     text-align + the margin-inline pair below, never by shrinking boxes. */
   .won-band__content {
     display: flex;
     flex-direction: column;
     gap: var(--won-space-4);
+    align-items: stretch;
     text-align: var(--won-band-align, left);
-    align-items: var(--won-band-flex, flex-start);
   }
+  /* Capped-measure elements follow content_align without shrinking their neighbours. */
+  .won-band__heading,
+  .won-band__body { margin-inline: var(--won-band-mi-s, 0) var(--won-band-mi-e, auto); }
+
+  /* Block flow. `content_columns` uses CSS multi-column, NOT grid: a grid row is as
+     tall as its tallest cell, so a stack of uneven data groups (2-line stock signal
+     next to a 6-row params table) leaves big holes. Column flow fills column 1 top to
+     bottom and wraps — no holes, and reading order stays column-major, which is what
+     a fact list wants. Always a single stack under 750px. */
+  .won-band__blocks { display: flex; flex-direction: column; gap: var(--won-space-4); }
   .won-band__eyebrow {
     margin: 0;
     font-family: var(--font-body--family, inherit);
@@ -125,7 +152,7 @@
     max-width: var(--won-h-mw-m, 100%);
   }
   .won-band__body { margin: 0; opacity: 0.92; max-width: 60ch; }
-  .won-band__actions { display: flex; flex-wrap: wrap; gap: var(--won-space-3); }
+  .won-band__actions { display: flex; flex-wrap: wrap; gap: var(--won-space-3); justify-content: var(--won-band-flex, flex-start); }
 
   .won-band__media { position: relative; overflow: hidden; border-radius: var(--won-radius-md); }
   .won-band__img,
@@ -155,6 +182,13 @@
   }
 
   @media (min-width: 750px) {
+    .won-band__blocks {
+      display: block;
+      columns: var(--won-band-cols-d, 1);
+      column-gap: var(--won-space-6);
+    }
+    .won-band__blocks > * { break-inside: avoid; margin-block-end: var(--won-space-5); }
+    .won-band__blocks > :last-child { margin-block-end: 0; }
     .won-band__heading { font-size: var(--won-h-size-d, 3rem); max-width: var(--won-h-mw-d, 60%); }
     .won-band--split { flex-direction: row; align-items: center; }
     .won-band--split.won-band--media-right { flex-direction: row-reverse; }
@@ -467,6 +501,16 @@
       "step": 20,
       "unit": "px",
       "default": 0
+    },
+    {
+      "type": "range",
+      "id": "content_columns",
+      "label": "t:won.settings.content_columns",
+      "info": "t:won.info.content_columns",
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "default": 1
     },
     {
       "type": "header",
@@ -803,7 +847,7 @@
         "button_label": "Learn more",
         "button_style": "secondary",
         "media_type": "image",
-        "image_asset": "won-hero-product.png",
+        "image_asset": "won-hero-product.svg",
         "media_position": "left",
         "content_align": "left",
         "min_height": 420,
@@ -821,8 +865,8 @@
         "button_label": "Shop now",
         "button_style": "primary",
         "media_type": "image",
-        "image_asset": "won-promo-1.png",
-        "image_asset_2": "won-promo-3.png",
+        "image_asset": "won-promo-1.svg",
+        "image_asset_2": "won-promo-3.svg",
         "media_position": "center_gutter",
         "content_align": "center",
         "min_height": 380,

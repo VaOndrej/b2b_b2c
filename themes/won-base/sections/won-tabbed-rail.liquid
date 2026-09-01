@@ -9,6 +9,8 @@
 {%- endcomment -%}
 
 {%- assign s = section.settings -%}
+{%- comment -%} Rail controls are resolved once, in snippets/won-rail-controls.liquid,
+  so a tab panel cannot drift from the rails beside it on the same page. {%- endcomment -%}
 <section
   class="won-section won-tabrail-sec color-{{ s.color_scheme }}"
   style="{% render 'won-spacing', settings: s %}"
@@ -42,13 +44,28 @@
             {{ block.shopify_attributes }}
           >
             {%- if col != blank and col.products.size > 0 -%}
-              <div class="won-tabrail__track">
+              {%- comment -%} Each tab panel IS a rail: `overflow-x: auto`, it really
+                scrolls, and it used to render no arrows, no bar and no engine marker —
+                so it looked like a carousel but could only be dragged. It stayed
+                JS-free because a hidden panel binds at zero width and the fit-aware
+                gate would hide the controls forever; won-carousel.js now observes its
+                track with a ResizeObserver, so revealing a tab re-measures and the
+                original objection no longer holds. {%- endcomment -%}
+              <won-carousel class="won-carousel won-carousel--tabrail" data-mobile-mode="{{ s.columns_mobile | default: '1.2' }}" data-won-rail-indicator="{{ settings.won_rail_indicator | default: 'per_section' }}">
+              <div class="won-tabrail__track{% if s.columns_mobile contains '.' %} won-tabrail--peek{% endif %}" data-won-track>
                 {%- for product in col.products limit: bs.products_limit -%}
+                  {%- comment -%} Gift cards are a payment instrument, not part of the range: they
+                    have no packshot, no unit price and no place in "all products". Skipped inside
+                    the loop rather than filtered upstream, because Liquid cannot rebuild a
+                    paginated collection — and `!= false` so an unset setting still hides them. {%- endcomment -%}
+                  {%- if settings.won_hide_gift_cards != false and product.gift_card? -%}{%- continue -%}{%- endif -%}
                   <div class="won-tabrail__item">
                     {% render 'won-product-card', product: product, aspect: s.card_aspect %}
                   </div>
                 {%- endfor -%}
               </div>
+              {% render 'won-rail-controls', s: s %}
+              </won-carousel>
             {%- else -%}
               <p class="won-tabrail__empty">{{ 'won.a11y.no_products' | t }}</p>
             {%- endif -%}
@@ -88,13 +105,41 @@
     scrollbar-width: none; --won-cols-cur: var(--won-cols-sm, 1); padding-bottom: 2px;
   }
   .won-tabrail__track::-webkit-scrollbar { display: none; }
+  /* Peek rail = STEJNÁ geometrie jako won-carousel. Vlastní basis z columns_mobile
+     dávala výhled na sousedа jen ~15 px, zatímco ostatní raily mají ~27 px —
+     tak mělký peek se čte jako oříznutí, ne jako „je toho víc". Fixní 76 % se
+     stropem --won-card-max je přesně to, co používá .won-carousel--peek-mobile. */
+  @media (max-width: 749px) {
+    .won-tabrail--peek .won-tabrail__item {
+      scroll-snap-align: center;
+      flex: 0 0 min(76%, var(--won-card-max, 380px));
+    }
+  }
   .won-tabrail__item {
+    /* Start-snap by default; a FRACTIONAL columns_mobile (1.2 = "show a bit of
+       the next one") is a peek rail, and a peek only reads as a peek when the
+       resting card is centred — start-snap pins it left and the neighbour on the
+       left never appears. Same rule and same feel as .won-carousel--peek-mobile,
+       so `1.2` means the same thing in every rail on the page. */
     scroll-snap-align: start;
     flex: 0 0 calc((100% - (var(--won-cols-cur) - 1) * var(--won-gap, 16px)) / var(--won-cols-cur));
   }
   .won-tabrail__empty { opacity: 0.7; }
   @media (prefers-reduced-motion: reduce) { .won-tabrail__track { scroll-behavior: auto; } }
-  @media (min-width: 768px) { .won-tabrail__track { --won-cols-cur: var(--won-cols-md, 2); } }
+  /* Ceiling on the rail item below the tablet breakpoint: a percentage basis
+     that suits a 390px phone makes a 746px-tall card on a 700px pane. Same fix
+     and same token as won-carousel / won-grid. */
+  @media (max-width: 749px) {
+    .won-tabrail__track > * {
+      flex-basis: min(
+        calc((100% - (var(--won-cols-cur) - 1) * var(--won-gap, 16px)) / var(--won-cols-cur)),
+        var(--won-card-max, 380px)
+      );
+    }
+  }
+  /* 750, not 768: the breakpoint canon shared with won-carousel, won-grid and
+     won-collection. A mismatched pair leaves a band where neither rule applies. */
+  @media (min-width: 750px) { .won-tabrail__track { --won-cols-cur: var(--won-cols-md, 2); } }
   @media (min-width: 1024px) { .won-tabrail__track { --won-cols-cur: var(--won-cols-lg, 4); } }
 {% endstylesheet %}
 

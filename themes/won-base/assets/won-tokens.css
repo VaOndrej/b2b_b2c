@@ -18,6 +18,16 @@
   --won-space-6: clamp(32px, 5vw, 64px);
   --won-space-7: clamp(48px, 7vw, 96px);
 
+  /* Widest a product card may get inside a swipeable rail.
+     Rail item widths are a PERCENTAGE of the container, and that percentage
+     applies across the whole 0-749px band — so on a 749px tablet a "76% peek"
+     card became 524px wide with a 655px tall image, while its title stayed at
+     the inherited 14px. Huge card, tiny text. The percentage is right for a
+     phone and wrong for everything above it, so it needs a ceiling. 380px is
+     above every phone container (390px viewport -> 358px container), so real
+     phones are untouched. */
+  --won-card-max: 380px;
+
   /* Radii */
   --won-radius-sm: 8px;
   --won-radius-md: 14px;
@@ -41,6 +51,10 @@
 
   /* Minimum tap target (a11y floor for interactive controls — never smaller) */
   --won-tap: 44px;
+
+  /* Air around a CONTAINed packshot inside its frame, as a share of the frame.
+     A percentage, not px, so it scales with the gallery on every breakpoint. */
+  --won-media-inset: 6%;
 
   /* Shadow scale — mirrors won-style-vars.liquid shadow select (sm/md/lg) so an
      inline --won-shadow override and these class-level shadows stay in sync. */
@@ -217,15 +231,128 @@
   color: var(--won-fg);
   border-color: var(--won-border);
 }
-.won-btn:hover {
-  transform: translateY(-1px);
+/* .won-btn's hover lives in the CTA effect layer below — a single hardcoded
+   `translateY(-1px)` here was a theme-wide look decision baked into code. */
+
+/* ------------------------------------------------------------------ *
+ * CTA effect layer                                                    *
+ * Every won CTA renders `{% render 'won-fx' %}` into its class list,  *
+ * which resolves four theme-wide selects (hover / sheen / press /     *
+ * speed) into modifier classes. All of the behaviour is here, so a    *
+ * store gets its own button signature from the theme editor and no    *
+ * section has to invent one. Guard: tests/smoke/won-cta-effects.      *
+ * ------------------------------------------------------------------ */
+.won-fx {
+  position: relative;
+  /* The sheen sweeps INSIDE the button, so it must be clipped to its shape. */
+  overflow: hidden;
+  transition:
+    transform var(--won-fx-dur, var(--won-dur)) var(--won-ease),
+    box-shadow var(--won-fx-dur, var(--won-dur)) var(--won-ease),
+    background-color var(--won-fx-dur, var(--won-dur)) var(--won-ease),
+    border-color var(--won-fx-dur, var(--won-dur)) var(--won-ease),
+    color var(--won-fx-dur, var(--won-dur)) var(--won-ease),
+    opacity var(--won-fx-dur, var(--won-dur)) var(--won-ease);
+}
+.won-fx--speed-fast { --won-fx-dur: 120ms; --won-fx-sheen-dur: 480ms; }
+.won-fx--speed-normal { --won-fx-dur: 240ms; --won-fx-sheen-dur: 750ms; }
+.won-fx--speed-slow { --won-fx-dur: 420ms; --won-fx-sheen-dur: 1200ms; }
+
+/* Hover. `transform` belongs to this layer alone — anything that also needs to
+   move an element (the card's quick-add reveal) uses the independent `translate`
+   property instead, so the two never fight over one declaration. */
+.won-fx--hover-lift:hover { transform: translateY(-2px); box-shadow: var(--won-shadow-md); }
+.won-fx--hover-grow:hover { transform: scale(1.04); }
+/* `fill` deepens the button's own surface. Each CTA can name the shade it should
+   deepen to; the default darkens the accent, which is right for a solid button
+   and wrong for a transparent one — hence the override on the secondary style. */
+/* Doubled class: a section stylesheet loads AFTER won-tokens.css, so a single
+   class would tie on specificity and lose to any section that paints its own
+   button background (won-sticky-atc does). */
+.won-fx.won-fx--hover-fill:hover { background-color: var(--won-fx-fill, color-mix(in oklab, var(--won-accent) 82%, #000)); }
+.won-btn--secondary { --won-fx-fill: color-mix(in oklab, var(--won-accent) 12%, transparent); }
+.won-fx.won-fx--hover-outline:hover {
+  background-color: transparent;
+  color: var(--won-accent);
+  border-color: currentColor;
+}
+/* Press. Pointer-device hover is optional; a press is not — this is the only
+   feedback a touch shopper gets before the network answers. */
+.won-fx--press-sink:active { transform: scale(0.97); }
+
+/* Sheen: a light sweep across the face of the button. */
+.won-fx--sheen-hover::after,
+.won-fx--sheen-loop::after {
+  content: "";
+  position: absolute;
+  inset-block: -50%;
+  inset-inline-start: -75%;
+  inline-size: 50%;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    color-mix(in oklab, var(--won-accent-contrast, #fff) 55%, transparent),
+    transparent
+  );
+  opacity: 0;
+}
+.won-fx--sheen-hover:hover::after,
+/* The card's quick-add only appears on card hover, so the sweep has to be armed
+   by the CARD — waiting for the pointer to land on the button itself means the
+   effect is usually never seen. */
+.won-pcard:hover .won-fx--sheen-hover::after {
+  animation: won-sheen var(--won-fx-sheen-dur, 750ms) var(--won-ease) 1;
+}
+.won-fx--sheen-loop::after {
+  animation: won-sheen var(--won-fx-sheen-dur, 750ms) var(--won-ease) infinite;
+  animation-delay: 1.2s;
+}
+/* Replayed on demand by won-cart.js once the CART has actually changed, so the
+   +/− of a stepper confirm themselves the same way the plain "Add to cart" does.
+   Tied to the answer, not to the click: a sweep on mousedown would promise a
+   change that may still fail. Only the sheen modes render an ::after, so a store
+   with the sweep turned off silently gets nothing here too.
+
+   Two details that both had to be right for this to run at all:
+     · the doubled `.won-fx` — the card-hover trigger below is a descendant
+       selector and out-specified a single class, so the replay never applied
+       while the card was hovered, which is the only time a stepper is visible;
+     · a SECOND keyframe name — a replay has to change the computed `animation`
+       value, and re-adding a class that resolves to the identical shorthand
+       restarts nothing, reflow or no reflow. */
+@keyframes won-sheen-replay {
+  0% { opacity: 0; transform: translateX(0) skewX(-18deg); }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(420%) skewX(-18deg); }
+}
+.won-fx.won-fx--sheen-hover.is-sheening::after,
+.won-fx.won-fx--sheen-loop.is-sheening::after {
+  animation: won-sheen-replay var(--won-fx-sheen-dur, 750ms) var(--won-ease) 1;
+}
+@keyframes won-sheen {
+  0% { opacity: 0; transform: translateX(0) skewX(-18deg); }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(420%) skewX(-18deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .won-btn,
-  .won-btn:hover {
+  .won-fx,
+  .won-fx:hover,
+  .won-fx:active {
     transition: none;
     transform: none;
+  }
+  /* Removing the layer entirely, not just pausing it: a stalled highlight sitting
+     on the button is worse than no highlight. */
+  .won-fx::after,
+  .won-pcard:hover .won-fx::after,
+  .won-fx.won-fx--sheen-hover.is-sheening::after,
+  .won-fx.won-fx--sheen-loop.is-sheening::after {
+    content: none;
+    animation: none;
   }
 }
 
@@ -253,7 +380,14 @@
 .won-pcard__badges { position: absolute; inset-block-start: var(--won-space-2); inset-inline-start: var(--won-space-2); z-index: 2; }
 .won-pcard__media-link { display: block; inline-size: 100%; block-size: 100%; }
 .won-pcard__media-link--placeholder { background: radial-gradient(120% 90% at 50% 0%, color-mix(in oklab, var(--won-accent) 18%, var(--won-surface)), var(--won-surface)); }
-.won-pcard__img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
+/* Packshots are CONTAINed, not cropped. A product card is a fixed-ratio box and
+   catalogue photography is not art-directed for it: a tall tub in a 4:5 frame
+   loses its cap and its base to `cover`, which is exactly what happened once the
+   Won packshots landed on the store. `contain` on the light surface shows the
+   whole product; the surface colour is what fills the leftover space.
+   `natural` is the merchant's explicit "use the image's own shape" option, so it
+   has no fixed box to fight and can fill it. */
+.won-pcard__img { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; }
 .won-pcard__media--natural .won-pcard__img { object-fit: cover; }
 .won-pcard__info { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--won-fg); }
 .won-pcard__title { font-weight: 600; }
@@ -267,25 +401,103 @@
 .won-rating__stars { position: relative; display: inline-block; color: var(--won-border); letter-spacing: 2px; }
 .won-rating__stars::before { content: '★★★★★'; position: absolute; inset-block-start: 0; inset-inline-start: 0; color: var(--won-accent); overflow: hidden; white-space: nowrap; inline-size: calc(var(--won-rating, 0) / 5 * 100%); }
 .won-rating__count, .won-rating__n { color: var(--won-muted); }
+/* Quick-add placement is a theme-wide choice (won_card_add_align): the button
+   was hard-pinned bottom-right, which fights a centred card layout and hides
+   under a badge in some designs. `inset-inline` is driven by the class instead. */
+.won-pcard--add-end .won-pcard__add { inset-inline-end: var(--won-space-3); inset-inline-start: auto; }
+.won-pcard--add-start .won-pcard__add { inset-inline-start: var(--won-space-3); inset-inline-end: auto; }
+.won-pcard--add-center .won-pcard__add { inset-inline: 0; margin-inline: auto; inline-size: fit-content; }
+/* "Always" opts out of the hover reveal entirely — on touch there is no hover,
+   and a merchant may simply want the control permanently visible. */
+.won-pcard--reveal-always .won-pcard__add { opacity: 1; translate: none; pointer-events: auto; }
+
+/* Stepper: the same pill, but it grows a − and a count once the line exists. */
+/* Doubled class on purpose: `.won-pcard__add` is declared LOWER in this file, so
+   at equal specificity its padding won and the stepper rendered 61px tall next to
+   a 44px "Choose" and "Sold out". The +/- buttons already carry the tap floor, so
+   this variant must not add block padding on top of them.
+   Guard: tests/smoke/won-card-cta-size.spec.ts */
+.won-pcard__add.won-pcard__add--stepper {
+  display: inline-flex; align-items: center; gap: var(--won-space-2);
+  /* The buttons INSIDE carry the 44px tap floor — the label-bearing one included,
+     so it is `.won-pcard__step--add` that sets this control's height. Padding on
+     the container would stack on top of that and made the stepper 61px next to a
+     44px "Choose". Height comes from the children here, never from padding. */
+  padding-block: 0;
+}
+/* Tight inline padding belongs to the stepper only once the +/- are ON SCREEN —
+   they carry their own 44px hit area, so the container must not pad them again.
+   Before the cart holds a line this same element shows a plain "Add to cart"
+   label, and it has to look exactly like "Choose" beside it: same padding, same
+   type, same corner. Keying on `data-won-qty-value` means the shape follows what
+   the control is actually showing, not what it could show. */
+.won-pcard__add.won-pcard__add--stepper[data-won-qty-value] { padding-inline: 0.35em; }
+.won-pcard__step {
+  /* Full --won-tap in BOTH axes. Trimming the height to make the pill look
+     tighter put the +/- at 36px, under the 44px floor the rest of the theme
+     holds (WCAG 2.5.5) — a control you cannot reliably hit is not a tighter
+     design, it is a broken one. */
+  min-inline-size: var(--won-tap); min-block-size: var(--won-tap);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; color: inherit; font: inherit; font-weight: 700;
+  font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 0 0.4em; border-radius: var(--won-radius-pill);
+}
+.won-pcard__step[hidden] { display: none; }
+.won-pcard__qty { min-inline-size: 1.5ch; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.won-pcard__qty[hidden] { display: none; }
+/* Label ⇄ "+" swap, driven by the same data attribute that carries the shown
+   quantity — so the glyph can never disagree with the number beside it. */
+[data-won-stepper]:not([data-won-qty-value]) .won-pcard__plus { display: none; }
+[data-won-stepper][data-won-qty-value] .won-pcard__add-label { display: none; }
+/* A quantity the shopper cannot see is not feedback: once a card holds a line,
+   its stepper stays on screen even where the theme reveals quick-add on hover. */
+.won-pcard--reveal-hover .won-pcard__add--stepper[data-won-qty-value] {
+  opacity: 1; translate: none; pointer-events: auto;
+}
+.won-pcard__add.is-error { background: var(--won-border); color: var(--won-fg); }
+
+
+/* Packshot breathing room — PDP gallery (native Horizon block).
+   A catalogue packshot rendered edge-to-edge inside its own frame reads as a
+   cropped photo: the lid of the tub touches the top of the box with no air at
+   all. Horizon has no padding control for the media, so the inset is a token
+   here. It applies ONLY where the media is CONTAINed — a `cover` image is meant
+   to fill its frame and padding would just expose the background behind it.
+   (Whether `contain` is honoured at all is a template decision: Horizon ignores
+   `media_fit` unless `aspect_ratio: adapt` + `constrain_to_viewport`.) */
+.product-media-container.media-fit-contain :is(img, .deferred-media__poster-image) {
+  box-sizing: border-box;
+  padding: var(--won-media-inset, 6%);
+}
+
+/* Size is a theme-wide decision (Won · Karty > "Velikost tlačítka"): one control
+   for Add to cart, the stepper, "Choose" and "Sold out", so they can never drift
+   apart again. The tap floor stays below all of them. */
+.won-pcard { --won-card-add-pad-y: 0.6em; --won-card-add-pad-x: 1em; --won-card-add-font: 0.9rem; }
+.won-pcard--cta-compact { --won-card-add-pad-y: 0.45em; --won-card-add-pad-x: 0.8em; --won-card-add-font: 0.82rem; }
+.won-pcard--cta-large { --won-card-add-pad-y: 0.8em; --won-card-add-pad-x: 1.35em; --won-card-add-font: 1rem; }
 .won-pcard__add {
-  position: absolute; inset-block-end: var(--won-space-3); inset-inline-end: var(--won-space-3);
+  position: absolute; inset-block-end: var(--won-space-3);
   display: inline-flex; align-items: center; justify-content: center; gap: var(--won-space-2);
   max-inline-size: calc(100% - 2 * var(--won-space-3));
   min-block-size: var(--won-tap); /* WCAG 2.5.5 tap target */
-  padding: 0.6em 1em; border: 0; border-radius: var(--won-radius-pill);
+  padding: var(--won-card-add-pad-y) var(--won-card-add-pad-x); border: 0; border-radius: var(--won-radius-pill);
   background: var(--won-accent); color: var(--won-accent-contrast);
-  font: inherit; font-weight: 600; font-size: 0.9rem; line-height: 1.1;
+  font: inherit; font-weight: 600; font-size: var(--won-card-add-font); line-height: 1.1;
   text-decoration: none; cursor: pointer; white-space: nowrap;
   box-shadow: var(--won-shadow-md);
-  opacity: 0; transform: translateY(8px); pointer-events: none;
-  transition: opacity var(--won-dur) var(--won-ease), transform var(--won-dur) var(--won-ease), background var(--won-dur) var(--won-ease);
+  /* The REVEAL slides on `translate`, never on `transform`: `transform` is owned
+     by the CTA effect layer, and when both wrote it the reveal and the hover
+     effect cancelled each other out at exactly the moment both apply. */
+  opacity: 0; translate: 0 8px; pointer-events: none;
+  transition: opacity var(--won-dur) var(--won-ease), translate var(--won-dur) var(--won-ease), background var(--won-dur) var(--won-ease);
 }
 .won-pcard:hover .won-pcard__add,
-.won-pcard:focus-within .won-pcard__add { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.won-pcard:focus-within .won-pcard__add { opacity: 1; translate: none; pointer-events: auto; }
 .won-pcard__add:disabled { cursor: default; }
 .won-pcard__add.is-added { background: color-mix(in oklab, var(--won-accent) 45%, var(--won-success)); }
-.won-pcard__add--soldout { background: var(--won-border); color: var(--won-fg); cursor: default; opacity: 1; transform: none; box-shadow: none; font-weight: 500; }
-@media (max-width: 1024px), (hover: none) { .won-pcard__add { opacity: 1; transform: none; pointer-events: auto; } }
+.won-pcard__add--soldout { background: var(--won-border); color: var(--won-fg); cursor: default; opacity: 1; translate: none; box-shadow: none; font-weight: 500; }
+@media (max-width: 1024px), (hover: none) { .won-pcard__add { opacity: 1; translate: none; pointer-events: auto; } }
 @media (prefers-reduced-motion: reduce) { .won-pcard__add { transition: background var(--won-dur) var(--won-ease); } }
 
 /* ------------------------------------------------------------------ *
@@ -298,8 +510,13 @@
 
 /* Single stage: one slide filling the width, height from the slide's min_height. */
 .won-hero--single .won-hero__track { display: flex; flex-direction: column; }
-.won-hero--single .won-hero__track > .won-slide { min-height: var(--won-hero-min, 0px); }
-.won-container--full .won-hero--single .won-hero__track > .won-slide { border-radius: 0; }
+/* NOTE on `.won-hero__track .won-slide` (descendant, never `>`): Shopify wraps
+   every theme block in its own div.shopify-block, so the slide is a GRANDchild of
+   the track. A direct-child selector here matches nothing and fails silently —
+   that is how the full-width hero kept its 14px corner radius and why these
+   min-heights did nothing. Guarded by tests/smoke/won-block-wrapper-selectors.spec.ts. */
+.won-hero--single .won-hero__track .won-slide { min-height: var(--won-hero-min, 0px); }
+.won-container--full .won-hero--single .won-hero__track .won-slide { border-radius: 0; }
 
 /* Grid: N hero tiles side by side (Aktin-style). Tablet 2-up, mobile stacked. */
 .won-hero--grid .won-hero__track {
@@ -307,7 +524,7 @@
   grid-template-columns: repeat(var(--won-hero-cols, 4), minmax(0, 1fr));
   gap: var(--won-hero-gap, 16px);
 }
-.won-hero--grid .won-hero__track > .won-slide { min-height: var(--won-hero-min, 0px); }
+.won-hero--grid .won-hero__track .won-slide { min-height: var(--won-hero-min, 0px); }
 @media (max-width: 989px) and (min-width: 750px) { .won-hero--grid .won-hero__track { grid-template-columns: repeat(var(--won-hero-cols-md, 2), minmax(0, 1fr)); } }
 @media (max-width: 749px) { .won-hero--grid .won-hero__track { grid-template-columns: 1fr; } }
 
@@ -323,46 +540,108 @@
   flex: 0 0 calc((100% - (var(--won-hero-peek, 1) - 1) * var(--won-hero-gap, 0px)) / var(--won-hero-peek, 1));
   min-height: var(--won-hero-min, 0px);
 }
-.won-container--full .won-hero--slider .won-hero__track > .won-slide { border-radius: 0; }
+.won-container--full .won-hero--slider .won-hero__track .won-slide { border-radius: 0; }
 .won-hero__carousel.is-dragging .won-hero__track { scroll-snap-type: none; scroll-behavior: auto; cursor: grabbing; }
 @media (min-width: 750px) { .won-hero--slider .won-hero__track > * { flex-basis: 100%; } }
-/* Desktop peek (koto-style): the active slide is centered and its siblings peek
-   in on both sides as rounded cards. Flex-item SPACERS (::before/::after) create
-   the leading/trailing room so the first/last card can reach the centre — using
-   them instead of padding-inline keeps the card's `%` basis measured against the
-   full track (padding would shrink the content box and the cards with it). */
+/* Desktop peek: the active slide is centred and its siblings peek in as rounded
+   cards — EXCEPT at the ends, where the rail simply starts and stops flush.
+   
+   There used to be flex SPACERS (::before/::after) here so the first and last card
+   could reach the centre. They bought the centring and paid for it with 238px of
+   dead space beside the first card, which is what the endless-clone loop was then
+   built to hide. Both are gone: no spacer, so the first card sits flush with the
+   start of the rail and its neighbour peeks in on the right — exactly like every
+   other rail on the page. Snapping still centres the cards in between; at the ends
+   the browser clamps to the edge, which is the behaviour we want.
+   Guard: storefront.spec.ts "hero peek — the first slide starts flush". */
 @media (min-width: 750px) {
-  .won-hero--peek.won-hero--slider .won-hero__track::before,
-  .won-hero--peek.won-hero--slider .won-hero__track::after {
-    content: "";
-    flex: 0 0 calc((100% - var(--won-hero-slide, 64%)) / 2);
-  }
   .won-hero--peek.won-hero--slider .won-hero__track > * {
     flex-basis: var(--won-hero-slide, 64%);
     scroll-snap-align: center;
   }
-  /* When the loop is live (won-carousel.js added bookend clones), the cloned
-     slides supply the leading/trailing room — drop the empty spacers so the
-     outer neighbour peeks in instead of blank space. */
-  .won-hero--peek.won-hero--slider .won-hero__track[data-won-loop]::before,
-  .won-hero--peek.won-hero--slider .won-hero__track[data-won-loop]::after { content: none; }
-  .won-hero--peek .won-hero__track > .won-slide { border-radius: var(--won-radius-md); overflow: hidden; }
+  /* The spacers stay even when the loop is live. Dropping them was the reason the
+     loop dead-ended: in a CENTRE-snap layout the outermost child can only reach
+     the middle if there is room beyond it, and clones do not provide that — they
+     ARE the outermost child. Without the spacers scrollLeft hit its maximum with
+     the last clone still off-centre, so wrapIfOnClone never fired and the rail
+     stopped advancing. The clones still do their job (a real neighbour peeks in
+     at both ends instead of blank space); the spacers only supply the travel. */
+  .won-hero--peek .won-hero__track .won-slide { border-radius: var(--won-radius-md); overflow: hidden; }
 }
 
-.won-hero__arrows { position: absolute; inset-block-end: var(--won-space-4); inset-inline-end: var(--won-space-4); display: flex; gap: var(--won-space-2); z-index: 3; }
-.won-hero__arrows[hidden] { display: none; }
-.won-hero__arrow {
-  inline-size: var(--won-tap); block-size: var(--won-tap); border-radius: var(--won-radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.5); background: rgba(0, 0, 0, 0.28); color: #fff;
-  font-size: 1.4rem; line-height: 1; cursor: pointer; backdrop-filter: blur(4px);
+/* ------------------------------------------------------------------ *
+ * Shared rail controls — ONE arrow, used by every rail in the theme.   *
+ *                                                                      *
+ * Reported as "each carousel block has a different scroll bar and      *
+ * different arrows". It was true: won-carousel drew an outlined light  *
+ * button on the theme background and won-hero-carousel drew a          *
+ * translucent dark one with a backdrop blur. Two components, two ideas *
+ * of the same control, on one page.                                    *
+ *                                                                      *
+ * Both now emit `.won-rail__arrow` plus a shape and a tone modifier    *
+ * resolved from the theme-wide setting, so they are identical BY       *
+ * CONSTRUCTION rather than by remembering to keep them in sync.        *
+ * Guarded by tests/smoke/won-rail-consistency.spec.ts.                 *
+ * ------------------------------------------------------------------ */
+.won-rail__arrow {
+  inline-size: var(--won-tap); block-size: var(--won-tap);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; line-height: 1; cursor: pointer; padding: 0;
+  border-width: 1px; border-style: solid;
+  border-radius: var(--won-radius-pill);
+  transition: opacity var(--won-dur) var(--won-ease);
 }
-.won-hero__arrow:disabled { opacity: 0.3; cursor: default; }
-.won-hero__progress {
-  position: absolute; inset-block-end: var(--won-space-3); inset-inline: 0; margin-inline: auto;
-  inline-size: min(200px, 40%); block-size: 4px; z-index: 3;
-  background: rgba(255, 255, 255, 0.35); border-radius: var(--won-radius-pill); overflow: hidden;
+.won-rail__arrow:disabled { opacity: 0.35; cursor: default; }
+/* Shape */
+.won-rail__arrow--pill { border-radius: var(--won-radius-pill); }
+.won-rail__arrow--soft { border-radius: var(--won-radius-sm); }
+.won-rail__arrow--square { border-radius: 0; }
+.won-rail__arrow--minimal { border-radius: 0; border-color: transparent; background: transparent; }
+/* Tone: `surface` sits on the page, `overlay` sits on top of media. */
+.won-rail__arrow--surface { border-color: var(--won-border); background: var(--won-bg); color: var(--won-fg); }
+.won-rail__arrow--overlay {
+  /* The plate has to carry a WHITE glyph whatever sits behind it. At 0.28 it did
+     that over a dark photo and nowhere else: composited over the page it lands on
+     light grey and the glyph measures 1.99:1, under the 3:1 AA floor for a UI
+     component. `overlay` is a value a merchant can pick theme-wide, so it must
+     survive a rail that is not over media. 0.55 composites to ~#737373 → 4.76:1
+     on white, and reads as a slightly firmer scrim over an image.
+     Guard: tests/smoke/won-rail-arrow-contrast.spec.ts */
+  border-color: rgba(255, 255, 255, 0.5); background: rgba(0, 0, 0, 0.55); color: #fff;
+  backdrop-filter: blur(4px);
 }
-.won-hero__progress-bar { display: block; block-size: 100%; inline-size: 30%; background: #fff; border-radius: inherit; }
+.won-rail__arrow--minimal.won-rail__arrow--surface,
+.won-rail__arrow--minimal.won-rail__arrow--overlay { border-color: transparent; background: transparent; }
+/* `minimal` deliberately drops the plate, so over media the white glyph has nothing
+   behind it and vanishes on a light photo. A scrim would contradict the setting the
+   merchant chose; a shadow keeps the glyph readable over any image and costs nothing
+   on the page, where the surface tone applies instead.
+   Guard: tests/smoke/won-rail-arrow-contrast.spec.ts */
+.won-rail__arrow--minimal.won-rail__arrow--overlay { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75); }
+
+/* One control ROW per rail — the scroll indicator and the arrows belong to the
+   same widget and must read as one. They used to be two stacked block-level
+   rows: the arrows right-aligned on their own line and the bar left-aligned on
+   the next, which is why the indicator looked like a stray dash under the first
+   card rather than like the rail's scrollbar. Order in the row is
+   indicator → arrows; `margin-inline-start: auto` on the arrows pins them to the
+   end whether or not an indicator is rendered. */
+.won-rail__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--won-space-4);
+  margin-top: var(--won-space-4);
+}
+.won-rail__controls > [data-won-arrows] { margin-inline-start: auto; }
+/* An empty row must not reserve its margin — every child can be hidden at once
+   (nothing overflows, or the merchant turned the controls off). */
+.won-rail__controls:not(:has(> *:not([hidden]))) { display: none; }
+/* A grid only IS a rail below the tablet breakpoint; above it the whole control
+   row goes with the scrolling, or it is chrome for something static. */
+@media (min-width: 750px) {
+  .won-rail__controls--sm-only { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) { .won-hero__track { scroll-behavior: auto; } }
 
 /* Durable rule: hero slides read centered on small screens. */
@@ -392,3 +671,13 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="
 /* Won interactive controls that must meet the var(--won-tap) tap floor. */
 .won-collection__clear,
 .won-facet__summary { min-block-size: var(--won-tap); display: flex; align-items: center; }
+
+/* Shared closing CTA for content sections. Most won sections made their case
+   (a comparison table, a stats band, a USP strip) and then left the shopper
+   with nowhere to go; this is the row that turns them conversional. Renders
+   only when the merchant sets both a label and a link. */
+.won-section-cta {
+  display: flex; flex-direction: column; align-items: var(--won-cta-justify, center);
+  gap: var(--won-space-2); margin-block-start: var(--won-space-5);
+}
+.won-section-cta__note { margin: 0; font-size: 0.85rem; opacity: 0.7; }

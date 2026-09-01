@@ -211,7 +211,11 @@ export async function assertCarousel(
   page: Page,
   container: Locator,
   items: Locator,
-  opts: { mode: CarouselMode; visibleItems?: number },
+  // `peekMax` overrides the default cap for a rail that aligns FLUSH rather than
+  // centring its active card: there the neighbour shows whatever width is left over,
+  // which is a function of the merchant's slide width, not a design slip. Kept as an
+  // explicit per-call override so the strict default still guards every other rail.
+  opts: { mode: CarouselMode; visibleItems?: number; peekMax?: number },
 ) {
   const box = await container.boundingBox();
   if (!box) throw new Error('carousel container has no box (not visible?)');
@@ -240,9 +244,10 @@ export async function assertCarousel(
     expect(fully.length, 'no full card in `peek` mode').toBeGreaterThanOrEqual(1);
     const peeks = rects.filter((r) => r && visibleFrac(r) > PEEK_MIN && visibleFrac(r) < SINGLE_VISIBLE_MIN);
     expect(peeks.length, 'no partially-peeking next card in `peek` mode').toBeGreaterThanOrEqual(1);
+    const cap = opts.peekMax ?? PEEK_MAX;
     for (const r of peeks) {
       const f = visibleFrac(r!);
-      expect(f, `peek fraction ${f.toFixed(2)} outside [${PEEK_MIN}, ${PEEK_MAX}]`).toBeLessThanOrEqual(PEEK_MAX);
+      expect(f, `peek fraction ${f.toFixed(2)} outside [${PEEK_MIN}, ${cap}]`).toBeLessThanOrEqual(cap);
     }
   } else {
     const fully = rects.filter((r) => r && visibleFrac(r) >= SINGLE_VISIBLE_MIN).length;

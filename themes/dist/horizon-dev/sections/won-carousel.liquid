@@ -1,5 +1,7 @@
 {%- liquid
   assign s = section.settings
+  # Rail controls (arrows / indicator / arrow look) are resolved once, in
+  # snippets/won-rail-controls.liquid — see the render below the track.
   assign items_count = 0
   if s.source == 'collection'
     assign items_count = s.collection.products.size
@@ -43,7 +45,7 @@
       </div>
     {%- endif -%}
 
-    <won-carousel
+    <won-carousel data-won-rail-indicator="{{ settings.won_rail_indicator | default: 'per_section' }}"
       class="won-carousel won-carousel--{{ s.layout }}{% if fits %} won-carousel--fits{% endif %}{% if s.columns_mobile contains '.' %} won-carousel--peek-mobile{% endif %}{% if s.layout == 'grid' and s.mobile_carousel %} won-carousel--scroll-sm{% endif %}"
       {% if s.layout == 'slider' and s.autoplay %}data-autoplay="{{ s.autoplay_interval }}"{% endif %}
       {% if s.layout == 'slider' and s.loop != blank %}data-won-loop="{{ s.loop }}"{% endif %}
@@ -59,8 +61,13 @@
       <div class="won-carousel__track" data-won-track {% if s.layout == 'marquee' %}data-marquee{% endif %}>
         {%- if s.source == 'collection' -%}
           {%- for product in s.collection.products limit: s.products_limit -%}
+            {%- comment -%} Gift cards are a payment instrument, not part of the range: they
+              have no packshot, no unit price and no place in "all products". Skipped inside
+              the loop rather than filtered upstream, because Liquid cannot rebuild a
+              paginated collection — and `!= false` so an unset setting still hides them. {%- endcomment -%}
+            {%- if settings.won_hide_gift_cards != false and product.gift_card? -%}{%- continue -%}{%- endif -%}
             <div class="won-carousel__item">
-              {% render 'won-product-card', product: product, aspect: s.card_aspect, show_ppu: s.show_card_ppu, ppu_base: s.ppu_base, ppu_amount: s.ppu_amount, ppu_metafield: s.ppu_metafield %}
+              {% render 'won-product-card', product: product, aspect: s.card_aspect, show_ppu: s.show_card_ppu, ppu_rules: s.ppu_rules %}
             </div>
           {%- endfor -%}
         {%- else -%}
@@ -68,19 +75,14 @@
         {%- endif -%}
       </div>
 
+      {%- comment -%} A grid with `mobile_carousel` DOES scroll horizontally below
+         750px, so it needs the same control row as a real slider — it just has to
+         disappear again above the breakpoint, where the grid stops scrolling. {%- endcomment -%}
+      {%- if s.layout == 'grid' and s.mobile_carousel -%}
+        {% render 'won-rail-controls', s: s, sm_only: true %}
+      {%- endif -%}
       {%- if s.layout == 'slider' -%}
-        {%- if s.show_arrows -%}
-          <div class="won-carousel__arrows" data-won-arrows>
-            <button type="button" class="won-carousel__arrow won-carousel__arrow--{{ s.arrow_style }}" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
-            <button type="button" class="won-carousel__arrow won-carousel__arrow--{{ s.arrow_style }}" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
-          </div>
-        {%- endif -%}
-        {%- if s.show_progress -%}
-          <div class="won-carousel__progress" data-won-progress><span class="won-carousel__progress-bar" data-won-progress-bar></span></div>
-        {%- endif -%}
-        {%- if s.show_dots -%}
-          <div class="won-carousel__dots" data-won-dots></div>
-        {%- endif -%}
+        {% render 'won-rail-controls', s: s %}
       {%- endif -%}
     </won-carousel>
   </div>
@@ -143,8 +145,19 @@
     }
     .won-carousel--scroll-sm .won-carousel__track::-webkit-scrollbar { display: none; }
     .won-carousel--scroll-sm .won-carousel__track > * {
-      flex: 0 0 82%;
+      flex: 0 0 min(82%, var(--won-card-max, 380px));
       scroll-snap-align: start;
+    }
+  }
+  /* Ceiling for the default N-column basis too: `columns_mobile: 1` means "one
+     card per swipe", not "a card as wide as a tablet". Scoped to the mobile band
+     so a 2-column desktop rail still fills its columns. */
+  @media (max-width: 749px) {
+    .won-carousel__track > * {
+      flex-basis: min(
+        calc((100% - (var(--won-cols-cur) - 1) * var(--won-gap, 16px)) / var(--won-cols-cur)),
+        var(--won-card-max, 380px)
+      );
     }
   }
   .won-carousel.is-dragging .won-carousel__track { scroll-snap-type: none; scroll-behavior: auto; cursor: grabbing; }
@@ -154,10 +167,10 @@
      a clearly visible sliver on each side (a 1.2-column basis minus the gap left
      only a few px — too subtle to read as "there's more"). */
   @media (max-width: 749px) {
-    .won-carousel--peek-mobile .won-carousel__track > * { scroll-snap-align: center; flex: 0 0 76%; }
+    .won-carousel--peek-mobile .won-carousel__track > * { scroll-snap-align: center; flex: 0 0 min(76%, var(--won-card-max, 380px)); }
   }
 
-  .won-carousel__arrows { display: flex; gap: var(--won-space-2); justify-content: flex-end; margin-top: var(--won-space-3); }
+  .won-carousel__arrows { display: flex; gap: var(--won-space-2); justify-content: flex-end; }
   .won-carousel__arrows[hidden] { display: none; }
   .won-carousel__arrow {
     inline-size: 44px; block-size: 44px; border-radius: var(--won-radius-pill);
@@ -175,9 +188,40 @@
     border-color: transparent;
     background: transparent;
   }
-  .won-carousel__progress { margin-top: var(--won-space-3); block-size: 4px; background: var(--won-border); border-radius: var(--won-radius-pill); overflow: hidden; }
-  .won-carousel__progress-bar { display: block; block-size: 100%; inline-size: 30%; background: var(--won-accent); border-radius: inherit; transform: translateX(0); }
-  .won-carousel__dots { display: flex; gap: var(--won-space-1); justify-content: center; margin-top: var(--won-space-3); }
+  /* The grid only scrolls below the tablet breakpoint, so its progress bar
+     must disappear with the scrolling — a full-width static bar under a
+     desktop grid is a dead control. */
+  /* Controls that exist only while the grid IS a rail. Above the breakpoint the
+     grid stops scrolling, so its arrows and bar must go with it — otherwise they
+     are dead controls on a static grid. */
+  @media (min-width: 750px) {
+    .won-carousel__progress--sm-only,
+    .won-carousel__arrows--sm-only { display: none; }
+  }
+  /* A scroll indicator must read as chrome, not as content. Full-container width in
+     solid accent made it the loudest horizontal element on the PDP — louder than the
+     prices in the cards it belongs to. Half the height, a muted fill, and a capped
+     width keep the affordance while returning the emphasis to the cards. */
+  .won-carousel__progress {
+    block-size: 2px;
+    /* The bar is a SCROLLBAR, so it spans the rail it describes: it takes every
+       pixel of the control row the arrows leave. A fixed cap made it a short dash
+       under the first card with a dead gap after it — and you cannot read "how far
+       along am I" off something that short, which is its only job. Prominence is
+       handled by being 2px and muted, not by being narrow.
+       Guard: tests/smoke/won-rail-indicator-scale.spec.ts */
+    flex: 1 1 auto;
+    inline-size: auto;
+    background: var(--won-border);
+    border-radius: var(--won-radius-pill);
+    overflow: hidden;
+  }
+  .won-carousel__progress-bar {
+    display: block; block-size: 100%; inline-size: 30%;
+    background: color-mix(in oklab, var(--won-fg) 55%, transparent);
+    border-radius: inherit; transform: translateX(0);
+  }
+  .won-carousel__dots { display: flex; gap: var(--won-space-1); justify-content: center; flex: 1 1 auto; }
   .won-carousel__dots[hidden] { display: none; }
   .won-carousel__dot {
     inline-size: 44px; block-size: 44px; padding: 0; border: 0; background: transparent;
@@ -201,10 +245,16 @@
     min-inline-size: 100cqi; justify-content: space-around;
   }
   .won-carousel__mq-group > * {
-    /* Size items from the container (100cqi = viewport), NOT % of the group:
-       the group's own width depends on min-inline-size:100cqi, so a %-of-group
-       basis would be circular and lay out inconsistently. */
-    flex: 0 0 calc((100cqi - (var(--won-cols-cur) - 1) * var(--won-gap, 16px)) / var(--won-cols-cur));
+    /* A marquee is a continuous BELT, not an "N per view" rail, so its items are
+       sized by their content and spread by the group's space-around — exactly
+       how the dedicated won-marquee section does it.
+       Sizing them as 100cqi / --won-cols-cur made the belt depend on the column
+       breakpoints, and the columns settings are per-layout: a marquee with only
+       columns_desktop set fell back to --won-cols-sm (1) below 1024px, so every
+       logo became a full viewport wide and the belt showed exactly one at a time
+       with a screenful of gap after it. */
+    flex: 0 0 auto;
+    max-inline-size: 100cqi;
     scroll-snap-align: none;
   }
   .won-carousel--marquee:hover .won-carousel__track[data-marquee] { animation-play-state: paused; }
@@ -217,7 +267,7 @@
 
   /* .won-pcard* styles are global (won-tokens.css) — shared by carousel + PLP. */
 
-  @media (min-width: 768px) {
+  @media (min-width: 750px) {
     .won-carousel__track { --won-cols-cur: var(--won-cols-md, 2); }
     .won-carousel__heading { font-size: var(--won-h-size-d, 2rem); max-width: var(--won-h-mw-d, 60%); }
   }
@@ -396,7 +446,8 @@
       "min": 1,
       "max": 6,
       "step": 1,
-      "default": 4
+      "default": 4,
+      "visible_if": "{{ section.settings.layout != 'marquee' }}"
     },
     {
       "type": "range",
@@ -405,7 +456,8 @@
       "min": 1,
       "max": 4,
       "step": 1,
-      "default": 2
+      "default": 2,
+      "visible_if": "{{ section.settings.layout != 'marquee' }}"
     },
     {
       "type": "select",
@@ -425,7 +477,8 @@
           "label": "2"
         }
       ],
-      "default": "1"
+      "default": "1",
+      "visible_if": "{{ section.settings.layout != 'marquee' }}"
     },
     {
       "type": "checkbox",
@@ -478,39 +531,10 @@
       "visible_if": "{{ section.settings.source == 'collection' }}"
     },
     {
-      "type": "select",
-      "id": "ppu_base",
-      "label": "t:won.settings.ppu_base",
-      "visible_if": "{{ section.settings.show_card_ppu }}",
-      "options": [
-        {
-          "value": "per_100g",
-          "label": "t:won.options.per_100g"
-        },
-        {
-          "value": "per_kg",
-          "label": "t:won.options.per_kg"
-        },
-        {
-          "value": "per_serving",
-          "label": "t:won.options.per_serving"
-        }
-      ],
-      "default": "per_100g"
-    },
-    {
-      "type": "number",
-      "id": "ppu_amount",
-      "label": "t:won.settings.ppu_amount",
-      "info": "t:won.info.ppu_amount",
-      "default": 1000,
-      "visible_if": "{{ section.settings.show_card_ppu }}"
-    },
-    {
-      "type": "text",
-      "id": "ppu_metafield",
-      "label": "t:won.settings.ppu_metafield",
-      "info": "t:won.info.ppu_metafield",
+      "type": "textarea",
+      "id": "ppu_rules",
+      "label": "t:won.settings.ppu_rules_override",
+      "info": "t:won.info.ppu_rules_override",
       "visible_if": "{{ section.settings.show_card_ppu }}"
     },
     {
@@ -553,8 +577,9 @@
       "type": "checkbox",
       "id": "show_progress",
       "label": "t:won.settings.show_progress",
+      "info": "t:won.info.show_progress",
       "default": true,
-      "visible_if": "{{ section.settings.layout == 'slider' }}"
+      "visible_if": "{{ section.settings.layout == 'slider' or section.settings.mobile_carousel }}"
     },
     {
       "type": "checkbox",

@@ -1,0 +1,14 @@
+won_card_add_mode=button    desktop  karet=9 sQuickAdd=9 viditelnych=1 stepper=0 tap>=44:9 spatne=[] prekryvBadge=0 pozice=end
+won_card_add_mode=button    mobil    karet=9 sQuickAdd=9 viditelnych=9 stepper=0 tap>=44:9 spatne=[] prekryvBadge=0 pozice=end
+won_card_add_mode=stepper   desktop  karet=9 sQuickAdd=9 viditelnych=1 stepper=1 tap>=44:9 spatne=[] prekryvBadge=0 pozice=end
+won_card_add_mode=stepper   mobil    karet=9 sQuickAdd=9 viditelnych=9 stepper=1 tap>=44:9 spatne=[] prekryvBadge=0 pozice=end
+won_card_add_align=start     desktop  karet=9 sQuickAdd=9 viditelnych=1 stepper=1 tap>=44:9 spatne=[] prekryvBadge=0 pozice=start
+won_card_add_align=start     mobil    karet=9 sQuickAdd=9 viditelnych=9 stepper=1 tap>=44:9 spatne=[] prekryvBadge=0 pozice=start
+won_card_add_align=center    desktop  karet=9 sQuickAdd=9 viditelnych=1 stepper=1 tap>=44:9 spatne=[] prekryvBadge=0 pozice=center
+won_card_add_align=center    mobil    karet=9 sQuickAdd=9 viditelnych=9 stepper=1 tap>=44:9 spatne=[] prekryvBadge=0 pozice=center
+won_card_add_align=end       desktop  karet=9 sQuickAdd=9 viditelnych=1 stepper=1 tap>=44:9 spatne=[] prekryvBadge=0 pozice=end
+won_card_add_align=end       mobil    karet=9 sQuickAdd=9 viditelnych=9 stepper=1 tap>=44:9 spatne=[] prekryvBadge=0 pozice=end
+won_card_add_reveal=hover     desktop  karet=9 sQuickAdd=9 viditelnych=1 stepper=1 tap>=44:9 spatne=[] prekryvBadge=0 pozice=end
+won_card_add_reveal=hover     mobil    karet=9 sQuickAdd=9 viditelnych=9 stepper=1 tap>=44:9 spatne=[] prekryvBadge=0 pozice=end
+won_card_add_reveal=always    desktop  karet=9 sQuickAdd=9 viditelnych=9 stepper=1 tap>=44:9 spatne=[] prekryvBadge=0 pozice=end
+won_card_add_reveal=always    mobil    karet=9 sQuickAdd=9 viditelnych=9 stepper=1 tap>=44:9 spatne=[] prekryvBadge=0 pozice=end

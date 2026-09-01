@@ -1,0 +1,60 @@
+
+### won_rail_arrow_style = square   (railů: 8)
+  promo_hero                  ovf=false bar=skryté  dots=—         sipky=hidden r=0px     bg=rgb(255, 255, 255)     won-rail__arrow--square won-rail__arrow--surface
+  categories                  ovf=false bar=skryté  dots=—         sipky=hidden r=0px     bg=rgb(255, 255, 255)     won-rail__arrow--square won-rail__arrow--surface
+  bestsellers                 ovf=true  bar=ano     dots=—         sipky=ano    r=0px     bg=rgb(255, 255, 255)     won-rail__arrow--square won-rail__arrow--surface
+  daily_grid                  ovf=false bar=skryté  dots=—         sipky=hidden r=0px     bg=rgb(255, 255, 255)     won-rail__arrow--square won-rail__arrow--surface
+  peek_hero                   ovf=true  bar=ano     dots=—         sipky=ano    r=0px     bg=rgba(0, 0, 0, 0.28)    won-rail__arrow--square won-rail__arrow--overlay
+  reviews                     ovf=false bar=skryté  dots=—         sipky=hidden r=0px     bg=rgb(255, 255, 255)     won-rail__arrow--square won-rail__arrow--surface
+  tabbed_rail                 ovf=true  bar=ano     dots=—         sipky=ano    r=0px     bg=rgb(255, 255, 255)     won-rail__arrow--square won-rail__arrow--surface
+  tabbed_rail                 ovf=true  bar=skryté  dots=—         sipky=hidden r=0px     bg=rgb(255, 255, 255)     won-rail__arrow--square won-rail__arrow--surface
+
+### won_rail_arrow_style = soft   (railů: 8)
+  promo_hero                  ovf=false bar=skryté  dots=—         sipky=hidden r=8px     bg=rgb(255, 255, 255)     won-rail__arrow--soft won-rail__arrow--surface
+  categories                  ovf=false bar=skryté  dots=—         sipky=hidden r=8px     bg=rgb(255, 255, 255)     won-rail__arrow--soft won-rail__arrow--surface
+  bestsellers                 ovf=true  bar=ano     dots=—         sipky=ano    r=8px     bg=rgb(255, 255, 255)     won-rail__arrow--soft won-rail__arrow--surface
+  daily_grid                  ovf=false bar=skryté  dots=—         sipky=hidden r=8px     bg=rgb(255, 255, 255)     won-rail__arrow--soft won-rail__arrow--surface
+  peek_hero                   ovf=true  bar=ano     dots=—         sipky=ano    r=8px     bg=rgba(0, 0, 0, 0.28)    won-rail__arrow--soft won-rail__arrow--overlay
+  reviews                     ovf=false bar=skryté  dots=—         sipky=hidden r=8px     bg=rgb(255, 255, 255)     won-rail__arrow--soft won-rail__arrow--surface
+  tabbed_rail                 ovf=true  bar=ano     dots=—         sipky=ano    r=8px     bg=rgb(255, 255, 255)     won-rail__arrow--soft won-rail__arrow--surface
+  tabbed_rail                 ovf=true  bar=skryté  dots=—         sipky=hidden r=8px     bg=rgb(255, 255, 255)     won-rail__arrow--soft won-rail__arrow--surface
+
+### won_rail_arrow_style = minimal   (railů: 8)
+  promo_hero                  ovf=false bar=skryté  dots=—         sipky=hidden r=0px     bg=rgba(0, 0, 0, 0)       won-rail__arrow--minimal won-rail__arrow--surface
+  categories                  ovf=false bar=skryté  dots=—         sipky=hidden r=0px     bg=rgba(0, 0, 0, 0)       won-rail__arrow--minimal won-rail__arrow--surface
+  bestsellers                 ovf=true  bar=ano     dots=—         sipky=ano    r=0px     bg=rgba(0, 0, 0, 0)       won-rail__arrow--minimal won-rail__arrow--surface
+  daily_grid                  ovf=false bar=skryté  dots=—         sipky=hidden r=0px     bg=rgba(0, 0, 0, 0)       won-rail__arrow--minimal won-rail__arrow--surface
+  peek_hero                   ovf=true  bar=ano     dots=—         sipky=ano    r=0px     bg=rgba(0, 0, 0, 0)       won-rail__arrow--minimal won-rail__arrow--overlay
+  reviews                     ovf=false bar=skryté  dots=—         sipky=hidden r=0px     bg=rgba(0, 0, 0, 0)       won-rail__arrow--minimal won-rail__arrow--surface
+  tabbed_rail                 ovf=true  bar=ano     dots=—         sipky=ano    r=0px     bg=rgba(0, 0, 0, 0)       won-rail__arrow--minimal won-rail__arrow--surface
+  tabbed_rail                 ovf=true  bar=skryté  dots=—         sipky=hidden r=0px     bg=rgba(0, 0, 0, 0)       won-rail__arrow--minimal won-rail__arrow--surface
+
+### won_rail_arrow_tone = auto   (railů: 8)
+  promo_hero                  ovf=false bar=skryté  dots=—         sipky=hidden r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  categories                  ovf=false bar=skryté  dots=—         sipky=hidden r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  bestsellers                 ovf=true  bar=ano     dots=—         sipky=ano    r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  daily_grid                  ovf=false bar=skryté  dots=—         sipky=hidden r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  peek_hero                   ovf=true  bar=ano     dots=—         sipky=ano    r=999px   bg=rgba(0, 0, 0, 0.28)    won-rail__arrow--pill won-rail__arrow--overlay
+  reviews                     ovf=false bar=skryté  dots=—         sipky=hidden r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  tabbed_rail                 ovf=true  bar=ano     dots=—         sipky=ano    r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  tabbed_rail                 ovf=true  bar=skryté  dots=—         sipky=hidden r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+
+### won_rail_arrow_tone = surface   (railů: 8)
+  promo_hero                  ovf=false bar=skryté  dots=—         sipky=hidden r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  categories                  ovf=false bar=skryté  dots=—         sipky=hidden r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  bestsellers                 ovf=true  bar=ano     dots=—         sipky=ano    r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  daily_grid                  ovf=false bar=skryté  dots=—         sipky=hidden r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  peek_hero                   ovf=true  bar=ano     dots=—         sipky=ano    r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  reviews                     ovf=false bar=skryté  dots=—         sipky=hidden r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  tabbed_rail                 ovf=true  bar=ano     dots=—         sipky=ano    r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+  tabbed_rail                 ovf=true  bar=skryté  dots=—         sipky=hidden r=999px   bg=rgb(255, 255, 255)     won-rail__arrow--pill won-rail__arrow--surface
+
+### won_rail_arrow_tone = overlay   (railů: 8)
+  promo_hero                  ovf=false bar=skryté  dots=—         sipky=hidden r=999px   bg=rgba(0, 0, 0, 0.28)    won-rail__arrow--pill won-rail__arrow--overlay
+  categories                  ovf=false bar=skryté  dots=—         sipky=hidden r=999px   bg=rgba(0, 0, 0, 0.28)    won-rail__arrow--pill won-rail__arrow--overlay
+  bestsellers                 ovf=true  bar=ano     dots=—         sipky=ano    r=999px   bg=rgba(0, 0, 0, 0.28)    won-rail__arrow--pill won-rail__arrow--overlay
+  daily_grid                  ovf=false bar=skryté  dots=—         sipky=hidden r=999px   bg=rgba(0, 0, 0, 0.28)    won-rail__arrow--pill won-rail__arrow--overlay
+  peek_hero                   ovf=true  bar=ano     dots=—         sipky=ano    r=999px   bg=rgba(0, 0, 0, 0.28)    won-rail__arrow--pill won-rail__arrow--overlay
+  reviews                     ovf=false bar=skryté  dots=—         sipky=hidden r=999px   bg=rgba(0, 0, 0, 0.28)    won-rail__arrow--pill won-rail__arrow--overlay
+  tabbed_rail                 ovf=true  bar=ano     dots=—         sipky=ano    r=999px   bg=rgba(0, 0, 0, 0.28)    won-rail__arrow--pill won-rail__arrow--overlay
+  tabbed_rail                 ovf=true  bar=skryté  dots=—         sipky=hidden r=999px   bg=rgba(0, 0, 0, 0.28)    won-rail__arrow--pill won-rail__arrow--overlay

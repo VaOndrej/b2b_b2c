@@ -4,19 +4,10 @@
   if product != blank and product.id != blank
     assign has_product = true
   endif
-  # Resolve per-unit reference amount (metafield override else manual).
-  assign ppu_amount = s.ppu_amount
-  if s.ppu_metafield != blank
-    assign parts = s.ppu_metafield | split: '.'
-    assign mf_value = product.metafields[parts[0]][parts[1]].value
-    if mf_value != blank and mf_value > 0
-      assign ppu_amount = mf_value
-    endif
-  endif
-  assign show_ppu = false
-  if s.show_price_per_unit and ppu_amount > 0
-    assign show_ppu = true
-  endif
+  # The reference amount is resolved per variant by won-unit-price; this section
+  # only decides whether to ask for one. A variant with no real amount renders
+  # nothing, so the column/label simply stays empty for that row.
+  assign show_ppu = s.show_price_per_unit
 -%}
 
 {%- unless has_product -%}
@@ -51,10 +42,8 @@
             "price": {{ v.price | money | json }},
             "compare": {% if v.compare_at_price > v.price %}{{ v.compare_at_price | money | json }}{% else %}null{% endif %}
             {%- if show_ppu -%}
-              , "ppu": {%- assign up = v.price | times: 100 | divided_by: ppu_amount -%}
-              {%- if s.ppu_base == 'per_kg' -%}{%- assign up = v.price | times: 1000 | divided_by: ppu_amount -%}{%- endif -%}
-              {%- if s.ppu_base == 'per_serving' -%}{%- assign up = v.price | divided_by: ppu_amount -%}{%- endif -%}
-              {{ up | money | json }}
+              {%- capture vppu -%}{%- render 'won-unit-price', product: product, variant: v, rules: s.ppu_rules, format: 'text' -%}{%- endcapture -%}
+              , "ppu": {{ vppu | strip | json }}
             {%- endif -%}
             {%- if s.dynamic_media and v.featured_image -%}
               , "image": {{ v.featured_image | image_url: width: 1200 | json }}
@@ -139,7 +128,7 @@
                   <tr{% unless v.available %} class="is-soldout"{% endunless %}>
                     <td>{{ v.title }}</td>
                     <td>{{ v.price | money }}</td>
-                    {%- if show_ppu -%}<td>{%- assign tup = v.price | times: 100 | divided_by: ppu_amount -%}{%- if s.ppu_base == 'per_kg' -%}{%- assign tup = v.price | times: 1000 | divided_by: ppu_amount -%}{%- endif -%}{%- if s.ppu_base == 'per_serving' -%}{%- assign tup = v.price | divided_by: ppu_amount -%}{%- endif -%}{{ tup | money }}</td>{%- endif -%}
+                    {%- if show_ppu -%}<td>{%- render 'won-unit-price', product: product, variant: v, rules: s.ppu_rules, format: 'text' -%}</td>{%- endif -%}
                     <td>{% if v.available %}<button type="button" class="won-vp__table-pick" data-won-pick="{{ v.id }}">{{ 'won.vp.choose' | t }}</button>{% else %}{{ 'won.cart.soldout' | t }}{% endif %}</td>
                   </tr>
                 {%- endfor -%}
@@ -157,7 +146,7 @@
             <button type="button" class="won-vp__qty-btn" data-won-qty-inc aria-label="+">+</button>
           </div>
         {%- endif -%}
-        <button type="button" class="won-btn won-btn--primary won-vp__atc" data-won-atc>
+        <button type="button" class="won-btn won-btn--primary {% render 'won-fx' %} won-vp__atc" data-won-atc>
           <span data-won-atc-label>{%- if s.atc_label != blank -%}{{ s.atc_label }}{%- else -%}{{ 'won.cart.add' | t }}{%- endif -%}</span>
         </button>
       </div>
@@ -317,7 +306,9 @@
       this.current = v;
       if (this.priceEl && v.price) this.priceEl.textContent = v.price;
       if (this.compareEl) { if (v.compare) { this.compareEl.textContent = v.compare; this.compareEl.removeAttribute('hidden'); } else this.compareEl.setAttribute('hidden',''); }
-      if (this.ppuEl) this.ppuEl.textContent = v.ppu ? ('/ ' + v.ppu) : '';
+      // `ppu` already carries its unit ("$8.11 / za porci"); an empty string
+      // means this variant has no real reference amount, so print nothing.
+      if (this.ppuEl) this.ppuEl.textContent = v.ppu || '';
       if (this.atcBtn) {
         this.atcBtn.disabled = !v.available;
         if (this.atcLabel) this.atcLabel.textContent = v.available ? this.defaultAtcText : (this.dataset.soldoutLabel || this.atcLabel.textContent);
@@ -575,39 +566,10 @@
       "default": false
     },
     {
-      "type": "select",
-      "id": "ppu_base",
-      "label": "t:won.settings.ppu_base",
-      "visible_if": "{{ section.settings.show_price_per_unit }}",
-      "options": [
-        {
-          "value": "per_100g",
-          "label": "t:won.options.per_100g"
-        },
-        {
-          "value": "per_kg",
-          "label": "t:won.options.per_kg"
-        },
-        {
-          "value": "per_serving",
-          "label": "t:won.options.per_serving"
-        }
-      ],
-      "default": "per_100g"
-    },
-    {
-      "type": "number",
-      "id": "ppu_amount",
-      "label": "t:won.settings.ppu_amount",
-      "info": "t:won.info.ppu_amount",
-      "default": 1000,
-      "visible_if": "{{ section.settings.show_price_per_unit }}"
-    },
-    {
-      "type": "text",
-      "id": "ppu_metafield",
-      "label": "t:won.settings.ppu_metafield",
-      "info": "t:won.info.ppu_metafield",
+      "type": "textarea",
+      "id": "ppu_rules",
+      "label": "t:won.settings.ppu_rules_override",
+      "info": "t:won.info.ppu_rules_override",
       "visible_if": "{{ section.settings.show_price_per_unit }}"
     },
     {

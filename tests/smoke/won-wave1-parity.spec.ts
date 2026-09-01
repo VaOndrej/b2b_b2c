@@ -38,15 +38,19 @@ test('grid carousel without mobile_carousel stays a stacked grid on mobile', asy
   await expect(plain).toHaveCSS('display', 'grid');
 });
 
+// The shape modifier moved from `won-carousel__arrow--*` to the shared
+// `won-rail__arrow--*` when arrows became one control across every rail (hero,
+// carousel and grid-turned-rail all render the same button now). The contract
+// this guards is unchanged: an arrow always declares its shape.
 test('carousel arrows carry their style modifier class', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'desktop-only contract');
 
   await page.goto('/');
-  const arrow = page.locator('.won-carousel__arrow').first();
+  const arrow = page.locator('.won-rail__arrow').first();
   await expect(arrow).toBeAttached();
 
   const className = await arrow.getAttribute('class');
-  expect(className).toMatch(/won-carousel__arrow--(pill|soft|square|minimal)/);
+  expect(className).toMatch(/won-rail__arrow--(pill|soft|square|minimal)/);
 });
 
 test('article cards render author and reading time when enabled', async ({ page }, testInfo) => {
@@ -104,7 +108,7 @@ test('default arrow style is visually identical to the pre-arrow_style look', as
   test.skip(testInfo.project.name !== 'desktop', 'desktop-only contract');
 
   await page.goto('/');
-  const arrow = page.locator('.won-carousel__arrow--pill').first();
+  const arrow = page.locator('.won-rail__arrow--pill').first();
   await expect(arrow).toBeAttached();
 
   const radius = await arrow.evaluate((el) => getComputedStyle(el).borderTopLeftRadius);

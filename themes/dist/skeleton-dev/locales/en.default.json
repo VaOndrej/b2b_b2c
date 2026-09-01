@@ -84,7 +84,8 @@
       "add": "Add to cart",
       "added": "Added ✓",
       "choose": "Choose",
-      "soldout": "Sold out"
+      "soldout": "Sold out",
+      "decrease": "Remove one"
     },
     "unit": {
       "per_100g": "100 g",

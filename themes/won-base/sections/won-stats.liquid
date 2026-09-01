@@ -36,6 +36,7 @@
         {%- endif -%}
       {%- endfor -%}
     </dl>
+      {% render 'won-section-cta', cfg: s %}
   </div>
 </section>
 
@@ -174,6 +175,19 @@
       "info": "t:won.info.animate_duration",
       "visible_if": "{{ section.settings.animate_values }}"
     },
+    { "type": "header", "content": "t:won.headers.cta" },
+    { "type": "text", "id": "cta_button_label", "label": "t:won.settings.cta_button_label", "info": "t:won.info.section_cta" },
+    { "type": "url", "id": "cta_button_link", "label": "t:won.settings.cta_button_link" },
+    {
+      "type": "select", "id": "cta_button_style", "label": "t:won.settings.cta_button_style",
+      "options": [
+        { "value": "primary", "label": "t:won.options.btn_primary" },
+        { "value": "secondary", "label": "t:won.options.btn_secondary" }
+      ],
+      "default": "primary"
+    },
+    { "type": "checkbox", "id": "cta_button_new_tab", "label": "t:won.settings.button_new_tab", "info": "t:won.info.button_new_tab", "default": false },
+    { "type": "text", "id": "cta_note", "label": "t:won.settings.cta_note", "info": "t:won.info.cta_note" },
     {
       "type": "header",
       "content": "t:won.headers.appearance"

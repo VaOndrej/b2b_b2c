@@ -1,0 +1,65 @@
+
+### won_btn_hover = none
+  klid   dur=0.24s, 0.24s, 0.24s, 0.24s, 0.24s, 0.24s anim=none(0s) translate=none scale=none
+  hover  — ŽÁDNÁ ZMĚNA
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru
+
+### won_btn_hover = lift
+  klid   dur=0.24s, 0.24s, 0.24s, 0.24s, 0.24s, 0.24s anim=none(0s) translate=none scale=none
+  hover  shadow:none→rgba(0, 0, 0, 0.1) 0px 6px 18p
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru
+
+### won_btn_hover = grow
+  klid   dur=0.24s, 0.24s, 0.24s, 0.24s, 0.24s, 0.24s anim=none(0s) translate=none scale=none
+  hover  — ŽÁDNÁ ZMĚNA
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru
+
+### won_btn_hover = fill
+  klid   dur=0.24s, 0.24s, 0.24s, 0.24s, 0.24s, 0.24s anim=none(0s) translate=none scale=none
+  hover  bg:rgb(255, 90, 60)→oklab(0.561301 0.142295 0.0907621)
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru
+
+### won_btn_hover = outline
+  klid   dur=0.24s, 0.24s, 0.24s, 0.24s, 0.24s, 0.24s anim=none(0s) translate=none scale=none
+  hover  bg:rgb(255, 90, 60)→rgba(0, 0, 0, 0) | color:rgb(255, 255, 255)→rgb(255, 90, 60) | border:rgba(0, 0, 0, 0)→rgb(255, 90, 60)
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru
+
+### won_btn_sheen = off
+  klid   dur=0.24s, 0.24s, 0.24s, 0.24s, 0.24s, 0.24s anim=none(0s) translate=none scale=none
+  hover  shadow:none→rgba(0, 0, 0, 0.1) 0px 6px 18p
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru
+
+### won_btn_sheen = hover
+  klid   dur=0.24s, 0.24s, 0.24s, 0.24s, 0.24s, 0.24s anim=none(0s) translate=none scale=none
+  hover  shadow:none→rgba(0, 0, 0, 0.1) 0px 6px 18p
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru
+
+### won_btn_sheen = loop
+  klid   dur=0.24s, 0.24s, 0.24s, 0.24s, 0.24s, 0.24s anim=none(0s) translate=none scale=none
+  hover  shadow:none→rgba(0, 0, 0, 0.1) 0px 6px 18p
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru
+
+### won_btn_press = none
+  klid   dur=0.24s, 0.24s, 0.24s, 0.24s, 0.24s, 0.24s anim=none(0s) translate=none scale=none
+  hover  shadow:none→rgba(0, 0, 0, 0.1) 0px 6px 18p
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru
+
+### won_btn_press = sink
+  klid   dur=0.24s, 0.24s, 0.24s, 0.24s, 0.24s, 0.24s anim=none(0s) translate=none scale=none
+  hover  shadow:none→rgba(0, 0, 0, 0.1) 0px 6px 18p
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru
+
+### won_fx_speed = fast
+  klid   dur=0.12s, 0.12s, 0.12s, 0.12s, 0.12s, 0.12s anim=none(0s) translate=none scale=none
+  hover  shadow:none→rgba(0, 0, 0, 0.1) 0px 6px 18p
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru
+
+### won_fx_speed = normal
+  klid   dur=0.24s, 0.24s, 0.24s, 0.24s, 0.24s, 0.24s anim=none(0s) translate=none scale=none
+  hover  shadow:none→rgba(0, 0, 0, 0.1) 0px 6px 18p
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru
+
+### won_fx_speed = slow
+  klid   dur=0.42s, 0.42s, 0.42s, 0.42s, 0.42s, 0.42s anim=none(0s) translate=none scale=none
+  hover  shadow:none→rgba(0, 0, 0, 0.1) 0px 6px 18p
+  press  — ŽÁDNÁ ZMĚNA oproti hoveru

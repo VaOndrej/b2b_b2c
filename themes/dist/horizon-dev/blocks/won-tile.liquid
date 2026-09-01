@@ -31,10 +31,21 @@ won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
   {% if tile_url != blank %}href="{{ tile_url }}"{% endif %}
   {{ block.shopify_attributes }}
 >
-  <div class="won-tile__media{% if tile_image == blank %} won-tile__media--placeholder{% endif %}">
-    {%- if s.toggle_overlay and tile_image != blank -%}<span class="won-tile__overlay" style="background: {{ s.overlay_color }};"></span>{%- endif -%}
+  {%- comment -%} `has_media` covers BOTH sources, or the placeholder class fights
+     the packaged image: an image_asset tile would render its art on top of the
+     empty-state gradient. {%- endcomment -%}
+  {%- assign has_media = false -%}
+  {%- if tile_image != blank or s.image_asset != blank -%}{%- assign has_media = true -%}{%- endif -%}
+  <div class="won-tile__media{% unless has_media %} won-tile__media--placeholder{% endunless %}">
+    {%- if s.toggle_overlay and has_media -%}<span class="won-tile__overlay" style="background: {{ s.overlay_color }};"></span>{%- endif -%}
     {%- if tile_image != blank -%}
       {{ tile_image | image_url: width: 1200 | image_tag: widths: '300, 500, 800, 1200', sizes: '(min-width: 750px) 33vw, 100vw', class: 'won-tile__img', loading: 'lazy', alt: tile_image.alt | default: tile_heading }}
+    {%- elsif s.image_asset != blank -%}
+      {%- comment -%} Packaged fallback, matching won-slide / won-band /
+         won-shoppable-image. Without it a category tile has no art until someone
+         uploads a collection image in the admin — which is why the demo's
+         category row was four blank gradients. {%- endcomment -%}
+      <img class="won-tile__img" src="{{ s.image_asset | asset_url }}" alt="{{ tile_heading | escape }}" width="1200" height="1500" loading="lazy">
     {%- endif -%}
     {%- if s.badge_text != blank -%}
       <span class="won-tile__badge won-tile__badge--{{ s.badge_position }} won-tile__badge--{{ s.badge_style }}">{{ s.badge_text }}</span>
@@ -97,6 +108,7 @@ won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "collection", "id": "collection", "label": "t:won.settings.collection", "info": "t:won.info.tile_collection" },
     { "type": "image_picker", "id": "image", "label": "t:won.settings.image" },
+    { "type": "text", "id": "image_asset", "label": "t:won.settings.image_asset", "info": "t:won.info.image_asset" },
     { "type": "inline_richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.tile_heading" },
     { "type": "text", "id": "icon", "label": "t:won.settings.icon", "info": "t:won.info.tile_icon" },
     { "type": "url", "id": "link_url", "label": "t:won.settings.link_url" },

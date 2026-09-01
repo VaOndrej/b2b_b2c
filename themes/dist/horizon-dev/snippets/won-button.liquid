@@ -18,4 +18,4 @@
 {%- liquid
   assign btn_style = style | default: 'primary'
 -%}
-{%- if label != blank -%}<a class="won-btn won-btn--{{ btn_style }}{% if class != blank %} {{ class }}{% endif %}"{% if link != blank %} href="{{ link }}"{% if new_tab %} target="_blank" rel="noopener"{% endif %}{% endif %}{% if aria != blank %} aria-label="{{ aria | escape }}"{% endif %}>{{ label }}</a>{%- endif -%}
+{%- if label != blank -%}<a class="won-btn won-btn--{{ btn_style }} {% render 'won-fx' %}{% if class != blank %} {{ class }}{% endif %}"{% if link != blank %} href="{{ link }}"{% if new_tab %} target="_blank" rel="noopener"{% endif %}{% endif %}{% if aria != blank %} aria-label="{{ aria | escape }}"{% endif %}>{{ label }}</a>{%- endif -%}

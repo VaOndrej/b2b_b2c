@@ -7,7 +7,11 @@
   assign pv = product.selected_or_first_available_variant
 -%}
 {%- if has_product -%}
-<section class="won-sticky-host won-sticky-host--scope-{{ s.device_scope | default: 'both' }}" data-testid="won-sticky-atc-section">
+{%- comment -%}The colour-scheme class is what puts the host theme's button and
+  surface variables in scope; without it `cta_style: theme` silently falls back to
+  the Won accent, because Horizon defines --color-primary-button-* on .color-<id>.
+{%- endcomment -%}
+<section class="won-sticky-host won-sticky-host--scope-{{ s.device_scope | default: 'both' }} color-{{ s.color_scheme | default: 'scheme-1' }}" data-testid="won-sticky-atc-section">
   <won-sticky-atc class="won-sticky won-sticky--{{ s.bar_style | default: 'full' }}" style="--won-radius-md: {{ s.corner_radius | default: 14 }}px; --won-sticky-offset: {{ s.offset_bottom | default: 12 }}px;" data-hidden>
     <div class="won-sticky__inner won-container">
       {%- if product.featured_image -%}
@@ -15,7 +19,7 @@
       {%- endif -%}
       <span class="won-sticky__title">{{ product.title }}</span>
       <span class="won-sticky__price" data-sticky-price>{{ pv.price | money }}</span>
-      <button type="button" class="won-btn won-btn--primary won-sticky__atc" data-won-add data-variant-id="{{ pv.id }}" data-added-label="{{ 'won.cart.added' | t }}">
+      <button type="button" class="won-btn won-btn--primary won-sticky__atc won-sticky__atc--{{ s.cta_style | default: 'theme' }}" data-won-add data-variant-id="{{ pv.id }}" data-added-label="{{ 'won.cart.added' | t }}">
         <span class="won-pcard__add-label">{%- if s.atc_label != blank -%}{{ s.atc_label }}{%- else -%}{{ 'won.cart.add' | t }}{%- endif -%}</span>
       </button>
     </div>
@@ -39,6 +43,25 @@
   .won-sticky__title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .won-sticky__price { font-weight: 700; color: var(--won-fg); margin-inline-start: auto; white-space: nowrap; }
   .won-sticky__atc { flex: 0 0 auto; }
+  /* The sticky bar repeats the SAME action as the buy box, so by default it must be
+     the same button. Two shapes and two colours for one action read as two different
+     offers. `theme` borrows the host theme's primary-button tokens (Horizon exposes
+     --color-primary-button-* and --style-border-radius-buttons-primary); every value
+     falls back to the won accent pill, so the section still renders standalone on
+     Skeleton or bare Liquid. `accent` keeps the Won pill for merchants who want the
+     bar to stand apart. */
+  /* Doubled selector (0,0,2,0): won-tokens.css loads after the section stylesheet,
+     so a single class would lose to .won-btn--primary on source order alone. */
+  .won-sticky .won-sticky__atc--theme {
+    background: var(--color-primary-button-background, var(--won-accent));
+    color: var(--color-primary-button-text, var(--won-accent-contrast));
+    border-color: var(--color-primary-button-border, transparent);
+    border-radius: var(--style-border-radius-buttons-primary, var(--won-radius-pill));
+  }
+  .won-sticky .won-sticky__atc--theme:hover {
+    background: var(--color-primary-button-hover-background, var(--won-accent));
+    color: var(--color-primary-button-hover-text, var(--won-accent-contrast));
+  }
   @media (min-width: 750px) {
     .won-sticky__price { margin-inline-start: 0; }
     .won-sticky__title { margin-inline-end: auto; }
@@ -150,6 +173,16 @@
     },
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "text", "id": "atc_label", "label": "t:won.settings.vp_atc_label" },
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
+    {
+      "type": "select", "id": "cta_style", "label": "t:won.settings.sticky_cta_style",
+      "info": "t:won.info.sticky_cta_style",
+      "options": [
+        { "value": "theme", "label": "t:won.options.cta_style_theme" },
+        { "value": "accent", "label": "t:won.options.cta_style_accent" }
+      ],
+      "default": "theme"
+    },
     { "type": "header", "content": "t:won.headers.appearance" },
     {
       "type": "range", "id": "corner_radius", "label": "t:won.settings.sticky_radius",

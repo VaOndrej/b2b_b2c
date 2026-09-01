@@ -12,8 +12,15 @@
 // Ownership rules (themes/build/layers.mjs is the source of truth):
 //   owner 'compose'  -> mirrored: created, updated, and DELETED when it leaves the build
 //   owner 'merchant' -> seeded only when absent; never updated, never deleted
+//                       (--reseed-demo refreshes the ones still untouched since the
+//                        last publish — for the GENERIC upstream, which has no merchant)
 //   owner 'mixed'    -> storefront locales: additive key merge, merchant values win
 //   unknown paths    -> client code; left alone and reported
+//
+// On top of the file rules, won_* GLOBAL settings are reconciled key-by-key into an
+// existing config/settings_data.json: missing ones get the schema default, existing
+// ones are never touched. Without it a setting added after the first publish stays
+// invisible on every live store.
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -30,12 +37,20 @@ const opt = (name, fallback = null) => {
   return i >= 0 ? argv[i + 1] : fallback;
 };
 const apply = argv.includes('--apply');
+// Merchant-owned demo data (templates/*.json, settings_data, section groups) is
+// seeded once and then belongs to the store. But the GENERIC upstream repo has no
+// merchant — its templates are the starter data, and leaving them frozen at the
+// first publish means a fork inherits a PDP from months ago while the code around
+// it moved on. --reseed-demo refreshes them, and only where the repo copy is still
+// byte-identical to what the previous publish put there. One edit in the repo and
+// that file is reported as drifted and left alone, exactly like a conflict.
+const reseedDemo = argv.includes('--reseed-demo');
 const base = opt('base', 'horizon');
 const repoArg = opt('repo');
 const buildArg = opt('build', join(themesRoot, 'dist', `${base}-generic`));
 
 if (!repoArg) {
-  console.error('usage: node themes/build/publish.mjs --repo <deploy-repo-path> [--base horizon] [--build <dir>] [--apply]');
+  console.error('usage: node themes/build/publish.mjs --repo <deploy-repo-path> [--base horizon] [--build <dir>] [--reseed-demo] [--apply]');
   process.exit(1);
 }
 const repoDir = resolve(process.cwd(), repoArg);
@@ -95,7 +110,7 @@ const scaffoldFiles = existsSync(scaffoldDir) ? listFiles(scaffoldDir) : [];
 const scaffoldPaths = new Set(scaffoldFiles);
 
 const repoFiles = new Set(listFiles(repoDir));
-const plan = { write: [], seed: [], mergeLocale: [], delete: [], keepMerchant: [], conflict: [], clientOnly: [], scaffold: [] };
+const plan = { write: [], seed: [], reseed: [], mergeLocale: [], delete: [], keepMerchant: [], conflict: [], clientOnly: [], scaffold: [] };
 
 // Scaffold entries go into the manifest too, so promote.mjs can carry an improved
 // AGENTS.md back into themes/build/deploy-repo/ instead of it rotting per-client.
@@ -117,7 +132,11 @@ for (const [rel, meta] of Object.entries(newManifest.files)) {
   const buildSha = meta.sha ?? sha(readFileSync(src));
 
   if (meta.owner === 'merchant') {
-    if (!exists) plan.seed.push(rel);
+    if (!exists) { plan.seed.push(rel); continue; }
+    const repoSha = sha(readFileSync(dst));
+    if (repoSha === buildSha) continue; // already in sync
+    const prevSeeded = oldManifest.files?.[rel]?.sha;
+    if (reseedDemo && prevSeeded && prevSeeded === repoSha) plan.reseed.push(rel);
     else plan.keepMerchant.push(rel);
     continue;
   }
@@ -174,7 +193,7 @@ for (const rel of plan.mergeLocale) {
 }
 
 if (apply) {
-  for (const rel of [...plan.write, ...plan.seed]) {
+  for (const rel of [...plan.write, ...plan.seed, ...plan.reseed]) {
     const from = scaffoldMeta[rel] ? join(scaffoldDir, rel) : join(buildDir, rel);
     const dst = join(repoDir, rel);
     mkdirSync(dirname(dst), { recursive: true });
@@ -192,18 +211,76 @@ if (apply) {
   );
 }
 
+// Global Won settings that a store does not have yet.
+//
+// config/settings_data.json is owner:merchant — seeded only when absent, because the
+// theme editor writes it back. Correct, and it has a hole: a global setting the theme
+// adds LATER never reaches a store that already has the file, and a schema `default`
+// only applies to keys MISSING from the file the storefront reads. Every won_* global
+// shipped since the first publish was therefore invisible on existing stores — the
+// unit-price rules would have switched unit prices off everywhere.
+//
+// So: add the won globals the store does not have, with the default the schema
+// declares, and never touch a value that is already there. Runs last on purpose —
+// after a --reseed-demo rewrite, which already brings the full build defaults.
+const settingsRel = 'config/settings_data.json';
+const settingsDst = join(repoDir, settingsRel);
+const schemaSrc = join(buildDir, 'config', 'settings_schema.json');
+const globalsAdded = [];
+let globalsSkipped = null;
+if (existsSync(settingsDst) && existsSync(schemaSrc)) {
+  const declared = {};
+  for (const group of JSON.parse(readFileSync(schemaSrc, 'utf8'))) {
+    for (const s of group?.settings ?? []) {
+      if (typeof s?.id === 'string' && s.id.startsWith('won_') && s.default !== undefined) declared[s.id] = s.default;
+    }
+  }
+  // Horizon prefixes this file with a comment block; JSON starts at the first brace.
+  const raw = readFileSync(settingsDst, 'utf8');
+  const at = raw.indexOf('{');
+  if (at < 0) {
+    globalsSkipped = `${settingsRel} has no JSON body`;
+  } else {
+    const head = raw.slice(0, at);
+    const data = JSON.parse(raw.slice(at));
+    // `current` is an object in Horizon; a theme using a named preset string has no
+    // per-key values to extend, so leave it alone rather than guess.
+    if (!data.current || typeof data.current !== 'object' || Array.isArray(data.current)) {
+      globalsSkipped = `${settingsRel} "current" is not a settings object`;
+    } else {
+      for (const [id, value] of Object.entries(declared)) {
+        if (id in data.current) continue;
+        data.current[id] = value;
+        globalsAdded.push(id);
+      }
+      if (globalsAdded.length && apply) {
+        writeFileSync(settingsDst, head + JSON.stringify(data, null, 2) + '\n');
+      }
+    }
+  }
+}
+
 const line = (label, arr) => console.log(`  ${label.padEnd(28)} ${arr.length}`);
 console.log(`\n${apply ? 'PUBLISH' : 'DRY RUN'}  ${relative(process.cwd(), buildDir)} -> ${relative(process.cwd(), repoDir)}  (base: ${newManifest.base}, demo overlay: ${newManifest.demoOverlay})`);
 line('write (compose-owned)', plan.write);
 line('delete (left the build)', plan.delete);
 line('seed (merchant, missing)', plan.seed);
+line('reseed (demo, untouched)', plan.reseed);
 line('keep (merchant, theirs)', plan.keepMerchant);
 console.log(`  ${'locale merge (additive)'.padEnd(28)} ${localeDetail.length} file(s), +${localeAdded} keys`);
+console.log(`  ${'won globals (additive)'.padEnd(28)} +${globalsAdded.length} keys`);
 line('scaffold (AGENTS.md et al.)', plan.scaffold);
 line('client-only (untouched)', plan.clientOnly);
 line('CONFLICT (edited in repo)', plan.conflict);
 
+if (plan.reseed.length) console.log('\n  reseeding demo data (still identical to the last publish):\n' + plan.reseed.map((r) => `    ~ ${r}`).join('\n'));
+if (!reseedDemo && plan.keepMerchant.length) {
+  console.log('\n  merchant-owned files kept as they are in the repo. If this is the GENERIC');
+  console.log('  upstream and its demo data should follow the build, re-run with --reseed-demo.');
+}
 if (localeDetail.length) console.log('\n  locales: ' + localeDetail.join(', '));
+if (globalsAdded.length) console.log('\n  won globals added to ' + settingsRel + ' (merchant values untouched):\n' + globalsAdded.map((k) => `    + ${k}`).join('\n'));
+if (globalsSkipped) console.log(`\n  won globals NOT reconciled: ${globalsSkipped}`);
 if (plan.delete.length) console.log('\n  deleting:\n' + plan.delete.map((r) => `    - ${r}`).join('\n'));
 if (plan.conflict.length) {
   console.log('\n  CONFLICT — these compose-owned files were edited inside the deploy repo:');

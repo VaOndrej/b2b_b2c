@@ -1,0 +1,165 @@
+{
+ "hp_1440": {
+  "searchFieldVisible": false,
+  "searchOnlyIcon": false,
+  "heroAboveFold": true,
+  "heroText": "SPORTOVNÍ VÝŽIVA · DOPRAVA ZDARMA NAD 1 500 KČ Palivo pro tvůj nejlepší výkon Čisté složení, testováno nezávislou labora",
+  "heroAutoplay": false,
+  "trustAboveFold": true,
+  "trustCount": 6,
+  "navLinks": [
+   "Home",
+   "Catalog",
+   "Contact",
+   "Home",
+   "Catalog",
+   "Contact",
+   "Orders",
+   "Profile",
+   "Orders",
+   "Profile",
+   "Continue shopping"
+  ],
+  "imgsTotal": 57,
+  "imgsWithoutDimensions": 0,
+  "heroImgLazy": true,
+  "heroImgFetchPriority": "none",
+  "nonAnchorNav": 0
+ },
+ "hp_390": {
+  "searchFieldVisible": false,
+  "searchOnlyIcon": false,
+  "heroAboveFold": true,
+  "heroText": "SPORTOVNÍ VÝŽIVA · DOPRAVA ZDARMA NAD 1 500 KČ Palivo pro tvůj nejlepší výkon Čisté složení, testováno nezávislou labora",
+  "heroAutoplay": false,
+  "trustAboveFold": true,
+  "trustCount": 6,
+  "navLinks": [
+   "Home",
+   "Catalog",
+   "Contact",
+   "Home",
+   "Catalog",
+   "Contact",
+   "Orders",
+   "Profile",
+   "Orders",
+   "Profile",
+   "Continue shopping"
+  ],
+  "imgsTotal": 57,
+  "imgsWithoutDimensions": 0,
+  "heroImgLazy": true,
+  "heroImgFetchPriority": "none",
+  "nonAnchorNav": 0
+ },
+ "plp_1440": {
+  "h1": "Automated Collection",
+  "productCountShown": true,
+  "cards": 9,
+  "cardHas": {
+   "image": true,
+   "title": true,
+   "price": true,
+   "rating": true,
+   "cta": true,
+   "ppu": true
+  },
+  "soldOutPosition": 1,
+  "filtersVisible": true,
+  "filterCounts": true,
+  "appliedChips": false,
+  "sortPresent": true,
+  "collectionDescription": false,
+  "titleTag": "Automated Collection – B2b_b2c_store_development"
+ },
+ "plp_390": {
+  "h1": "Automated Collection",
+  "productCountShown": true,
+  "cards": 9,
+  "cardHas": {
+   "image": true,
+   "title": true,
+   "price": true,
+   "rating": true,
+   "cta": true,
+   "ppu": true
+  },
+  "soldOutPosition": 1,
+  "filtersVisible": true,
+  "filterCounts": true,
+  "appliedChips": false,
+  "sortPresent": true,
+  "collectionDescription": false,
+  "titleTag": "Automated Collection – B2b_b2c_store_development"
+ },
+ "pdp_1440": {
+  "buySectionAboveFold": true,
+  "atcLabel": "Add to cart",
+  "atcAboveFold": true,
+  "galleryItems": 4,
+  "breadcrumbs": false,
+  "ratingAboveFold": true,
+  "reviewsWithText": false,
+  "trustInBuySection": true,
+  "shippingInfo": true,
+  "returnsInfo": true,
+  "descriptionHasList": true,
+  "stickyCta": true,
+  "variantInputs": 2,
+  "swatches": 0,
+  "ld": {
+   "product": true,
+   "offer": true,
+   "aggregateRating": true,
+   "breadcrumbList": false,
+   "priceCurrency": true,
+   "returnPolicy": false,
+   "shippingDetails": false
+  },
+  "titleTag": "Whey Protein — Čokoláda – B2b_b2c_store_development",
+  "h1": "Whey Protein — Čokoláda"
+ },
+ "pdp_390": {
+  "buySectionAboveFold": false,
+  "atcLabel": "Add to cart",
+  "atcAboveFold": false,
+  "galleryItems": 4,
+  "breadcrumbs": false,
+  "ratingAboveFold": false,
+  "reviewsWithText": false,
+  "trustInBuySection": true,
+  "shippingInfo": true,
+  "returnsInfo": true,
+  "descriptionHasList": true,
+  "stickyCta": true,
+  "variantInputs": 2,
+  "swatches": 0,
+  "ld": {
+   "product": true,
+   "offer": true,
+   "aggregateRating": true,
+   "breadcrumbList": false,
+   "priceCurrency": true,
+   "returnPolicy": false,
+   "shippingDetails": false
+  },
+  "titleTag": "Whey Protein — Čokoláda – B2b_b2c_store_development",
+  "h1": "Whey Protein — Čokoláda"
+ },
+ "search": {
+  "results": 0,
+  "hasFilters": true,
+  "hasSort": true
+ },
+ "searchEmpty": {
+  "results": 0,
+  "suggestsAlternatives": true,
+  "text": "Skip to content 🚚 Add $1,500.00 more for free shipping × Home Catalog Contact B2b_b2c_store_development USD Region and language selector Total items in cart: 0"
+ },
+ "cart": {
+  "freeShippingBar": false,
+  "paymentIcons": 6,
+  "saveForLater": false
+ }
+}

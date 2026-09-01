@@ -25,97 +25,220 @@
 {
   "name": "t:won.names.hero",
   "tag": "section",
-  "disabled_on": { "groups": ["header", "footer"] },
+  "disabled_on": {
+    "groups": [
+      "header",
+      "footer"
+    ]
+  },
   "max_blocks": 1,
-  "blocks": [{ "type": "won-slide" }, { "type": "@theme" }, { "type": "@app" }],
-  "settings": [
-    { "type": "paragraph", "content": "t:won.info.hero_about" },
-    { "type": "header", "content": "t:won.headers.layout" },
-    { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 0, "max": 800, "step": 20, "unit": "px", "default": 560, "info": "t:won.info.hero_min_height" },
-    { "type": "header", "content": "t:won.headers.appearance" },
-    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1" },
+  "blocks": [
     {
-      "type": "select", "id": "section_width", "label": "t:won.settings.section_width",
+      "type": "won-slide"
+    },
+    {
+      "type": "@theme"
+    },
+    {
+      "type": "@app"
+    }
+  ],
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:won.info.hero_about"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "range",
+      "id": "min_height",
+      "label": "t:won.settings.min_height",
+      "min": 0,
+      "max": 800,
+      "step": 20,
+      "unit": "px",
+      "default": 560,
+      "info": "t:won.info.hero_min_height"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "t:won.settings.section_width",
       "options": [
-        { "value": "page", "label": "t:won.options.width_page" },
-        { "value": "full", "label": "t:won.options.width_full" }
+        {
+          "value": "page",
+          "label": "t:won.options.width_page"
+        },
+        {
+          "value": "full",
+          "label": "t:won.options.width_full"
+        }
       ],
       "default": "full"
     },
-    { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" },
-    { "type": "header", "content": "t:won.headers.spacing" },
-    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 0 },
-    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 0 }
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_override"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    }
   ],
   "presets": [
     {
-      "name": "t:won.presets.hero_split", "category": "t:won.categories.hero",
-      "settings": { "min_height": 620, "section_width": "full", "color_scheme": "scheme-1" },
+      "name": "t:won.presets.hero_split",
+      "category": "t:won.categories.hero",
+      "settings": {
+        "min_height": 620,
+        "section_width": "full",
+        "color_scheme": "scheme-1"
+      },
       "blocks": [
         {
           "type": "won-slide",
           "settings": {
             "eyebrow": "Sports nutrition",
             "heading": "<p>Fuel your best performance</p>",
-            "heading_size_desktop": 64, "heading_max_width_desktop": 80,
+            "heading_size_desktop": 64,
+            "heading_max_width_desktop": 80,
             "text": "<p>Clean formulas, lab-tested. <strong>★ 4.9/5</strong> from 25,000+ athletes · fast delivery.</p>",
-            "button_label": "Shop now", "button_link": "shopify://collections/all", "button_style": "primary",
-            "button2_label": "Learn more", "button2_style": "secondary",
-            "media_type": "image", "image_asset": "won-hero-product.png", "media_position": "background",
-            "content_align": "left", "min_height": 620
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "button2_label": "Learn more",
+            "button2_style": "secondary",
+            "media_type": "image",
+            "image_asset": "won-hero-product.svg",
+            "media_position": "background",
+            "content_align": "left",
+            "min_height": 620,
+            "priority": true
           }
         }
       ]
     },
     {
-      "name": "t:won.presets.hero_overlay", "category": "t:won.categories.hero",
-      "settings": { "min_height": 560, "section_width": "full", "color_scheme": "scheme-1" },
+      "name": "t:won.presets.hero_overlay",
+      "category": "t:won.categories.hero",
+      "settings": {
+        "min_height": 560,
+        "section_width": "full",
+        "color_scheme": "scheme-1"
+      },
       "blocks": [
         {
           "type": "won-slide",
           "settings": {
             "eyebrow": "New season",
             "heading": "<p>Made for movement</p>",
-            "heading_size_desktop": 68, "heading_max_width_desktop": 70,
+            "heading_size_desktop": 68,
+            "heading_max_width_desktop": 70,
             "text": "<p>Everything you need to train, recover and feel your best.</p>",
-            "button_label": "Shop the collection", "button_link": "shopify://collections/all", "button_style": "primary",
-            "media_type": "image", "image_asset": "won-hero-supplements.png", "media_position": "background",
-            "toggle_overlay": true, "overlay_color": "#1c0a1859",
-            "content_align": "center", "min_height": 560
+            "button_label": "Shop the collection",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "media_type": "image",
+            "image_asset": "won-hero-supplements.svg",
+            "media_position": "background",
+            "toggle_overlay": true,
+            "overlay_color": "#1c0a1859",
+            "content_align": "center",
+            "min_height": 560,
+            "priority": true
           }
         }
       ]
     },
     {
-      "name": "t:won.presets.hero_minimal", "category": "t:won.categories.hero",
-      "settings": { "min_height": 0, "section_width": "page", "color_scheme": "scheme-1", "padding_top": 96, "padding_bottom": 96 },
+      "name": "t:won.presets.hero_minimal",
+      "category": "t:won.categories.hero",
+      "settings": {
+        "min_height": 0,
+        "section_width": "page",
+        "color_scheme": "scheme-1",
+        "padding_top": 96,
+        "padding_bottom": 96
+      },
       "blocks": [
         {
           "type": "won-slide",
           "settings": {
             "eyebrow": "Since 2014",
             "heading": "<p>Performance, simplified</p>",
-            "heading_size_desktop": 72, "heading_max_width_desktop": 60,
+            "heading_size_desktop": 72,
+            "heading_max_width_desktop": 60,
             "text": "<p>Clean supplements with nothing to hide. Free delivery over $60.</p>",
-            "button_label": "Explore products", "button_link": "shopify://collections/all", "button_style": "primary",
-            "button2_label": "Our story", "button2_style": "secondary",
-            "media_type": "none", "content_align": "center"
+            "button_label": "Explore products",
+            "button_link": "shopify://collections/all",
+            "button_style": "primary",
+            "button2_label": "Our story",
+            "button2_style": "secondary",
+            "media_type": "none",
+            "content_align": "center",
+            "priority": true
           }
         }
       ]
     },
     {
-      "name": "t:won.presets.cta_band", "category": "t:won.categories.hero",
-      "settings": { "min_height": 0, "section_width": "page", "color_scheme": "scheme-2", "padding_top": 72, "padding_bottom": 72 },
+      "name": "t:won.presets.cta_band",
+      "category": "t:won.categories.hero",
+      "settings": {
+        "min_height": 0,
+        "section_width": "page",
+        "color_scheme": "scheme-2",
+        "padding_top": 72,
+        "padding_bottom": 72
+      },
       "blocks": [
         {
           "type": "won-slide",
           "settings": {
             "eyebrow": "Loyalty club",
-            "heading": "<p>Join the club — get 10% off</p>", "heading_size_desktop": 44,
+            "heading": "<p>Join the club — get 10% off</p>",
+            "heading_size_desktop": 44,
             "text": "<p>Earn points on every order and unlock member-only prices.</p>",
-            "button_label": "Create account", "button_link": "/account/register", "button_style": "primary",
-            "media_type": "none", "content_align": "center"
+            "button_label": "Create account",
+            "button_link": "/account/register",
+            "button_style": "primary",
+            "media_type": "none",
+            "content_align": "center",
+            "priority": true
           }
         }
       ]

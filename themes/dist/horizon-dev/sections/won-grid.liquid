@@ -11,6 +11,9 @@
 
 {%- liquid
   assign s = section.settings
+  # Rail controls live in snippets/won-rail-controls.liquid (rendered below the
+  # grid when it becomes a rail), so a grid-turned-rail cannot drift from a
+  # real carousel — that drift is exactly how `dots` ended up unimplemented here.
   assign src = s.source
 
   if src == 'articles'
@@ -23,6 +26,14 @@
   elsif src == 'stats'
     assign lines = s.stats | newline_to_br | split: '<br />'
     assign count = lines.size
+    # Count-up: a section duration of 0 means "inherit the theme-wide default"
+    # (Won · Animace čísel), otherwise this section wins. Same contract as the
+    # deprecated won-stats this source absorbed — without it the global setting
+    # had no reachable consumer at all.
+    assign countup_duration = s.animate_duration
+    if countup_duration == 0
+      assign countup_duration = settings.won_countup_default_duration | default: 1600
+    endif
   else
     assign count = section.blocks.size
   endif
@@ -40,6 +51,8 @@
   endif
 -%}
 
+{%- assign align_flex = 'flex-start' -%}
+{%- if s.content_align == 'center' -%}{%- assign align_flex = 'center' -%}{%- elsif s.content_align == 'right' -%}{%- assign align_flex = 'flex-end' -%}{%- endif -%}
 <section
   class="won-section color-{{ s.color_scheme }}"
   style="{% render 'won-style-vars', settings: s %}"
@@ -64,13 +77,22 @@
     {%- endif -%}
 
     {%- if src == 'blocks' -%}
+      {%- comment -%} With mobile_carousel the grid becomes a horizontal rail below
+        750px. It used to emit `data-won-track` while sitting OUTSIDE any
+        <won-carousel data-won-rail-indicator="{{ settings.won_rail_indicator | default: 'per_section' }}">, so it got the JS engine's marker but none of its behaviour:
+        it scrolled with no arrows, no bar and no keyboard support. Wrapping it in
+        the same custom element the carousel uses gives it the identical controls,
+        resolved from the identical theme-wide setting. {%- endcomment -%}
+      {%- if s.mobile_carousel -%}<won-carousel class="won-carousel won-carousel--grid-rail won-carousel--scroll-sm" data-mobile-mode="peek" data-won-rail-indicator="{{ settings.won_rail_indicator | default: 'per_section' }}">{%- endif -%}
       <div
         class="won-grid won-grid--blocks won-grid--{{ s.item_style }}{% if s.mosaic %} won-grid--mosaic{% endif %}{% if s.mobile_carousel %} won-grid--scroll-sm{% endif %}"
-        style="--won-cols-sm: {{ col_sm }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-lg: {{ cols }}; --won-gap: {{ s.gap }}px; --won-grid-align: {{ s.content_align }};"
+        style="--won-cols-sm: {{ col_sm }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-lg: {{ cols }}; --won-gap: {{ s.gap }}px; --won-grid-align: {{ s.content_align }}; --won-align-flex: {{ align_flex }}; --won-feature-title-lines: {{ s.feature_title_lines | default: 0 }};"
         {% if s.mobile_carousel %}data-won-track data-mobile-mode="peek"{% endif %}
       >
         {% content_for 'blocks' %}
       </div>
+      {%- if s.mobile_carousel -%}{% render 'won-rail-controls', s: s, sm_only: true %}{%- endif -%}
+      {%- if s.mobile_carousel -%}</won-carousel>{%- endif -%}
 
     {%- elsif src == 'articles' -%}
       {%- if count > 0 -%}
@@ -118,7 +140,7 @@
     {%- else -%}
       <dl
         class="won-grid won-grid--stats"
-        style="--won-cols-sm: {{ col_sm }}; --won-cols-lg: {{ s.columns_desktop }}; --won-gap: {{ s.gap }}px; --won-grid-align: {{ s.content_align }};"
+        style="--won-cols-sm: {{ col_sm }}; --won-cols-lg: {{ s.columns_desktop }}; --won-gap: {{ s.gap }}px; --won-grid-align: {{ s.content_align }}; --won-align-flex: {{ align_flex }};"
       >
         {%- for line in lines -%}
           {%- assign row = line | strip -%}
@@ -129,7 +151,7 @@
             {%- assign icon = parts[2] | strip -%}
             <div class="won-grid__stat">
               {%- if icon != blank -%}<span class="won-grid__stat-icon" aria-hidden="true">{{ icon }}</span>{%- endif -%}
-              <dt class="won-grid__stat-value">{{ value }}</dt>
+              <dt class="won-grid__stat-value"{% if s.animate_values %} data-won-countup data-won-countup-duration="{{ countup_duration }}"{% endif %}>{{ value }}</dt>
               <dd class="won-grid__stat-label">{{ label }}</dd>
             </div>
           {%- endif -%}
@@ -138,6 +160,12 @@
     {%- endif -%}
   </div>
 </section>
+
+{%- comment -%} `script_tag` is parser-blocking (theme check); the rest of the
+  theme loads its behaviour with a deferred tag and so does this. {%- endcomment -%}
+{%- if src == 'stats' and s.animate_values -%}
+  <script src="{{ 'won-count-up.js' | asset_url }}" defer></script>
+{%- endif -%}
 
 {% stylesheet %}
   .won-grid-wrap { display: flex; flex-direction: column; gap: var(--won-space-5); }
@@ -208,7 +236,7 @@
     }
     .won-grid--scroll-sm::-webkit-scrollbar { display: none; }
     .won-grid--scroll-sm > * {
-      flex: 0 0 82%;
+      flex: 0 0 min(82%, var(--won-card-max, 380px));
       scroll-snap-align: start;
     }
   }
@@ -410,6 +438,26 @@
       "visible_if": "{{ section.settings.source == 'stats' }}"
     },
     {
+      "type": "checkbox",
+      "id": "animate_values",
+      "label": "t:won.settings.animate_values",
+      "info": "t:won.info.animate_values",
+      "default": false,
+      "visible_if": "{{ section.settings.source == 'stats' }}"
+    },
+    {
+      "type": "range",
+      "id": "animate_duration",
+      "label": "t:won.settings.animate_duration",
+      "min": 0,
+      "max": 4000,
+      "step": 100,
+      "unit": "ms",
+      "default": 0,
+      "info": "t:won.info.animate_duration",
+      "visible_if": "{{ section.settings.source == 'stats' and section.settings.animate_values }}"
+    },
+    {
       "type": "header",
       "content": "t:won.headers.layout"
     },
@@ -495,6 +543,17 @@
       "label": "t:won.settings.mosaic",
       "info": "t:won.info.mosaic",
       "default": false,
+      "visible_if": "{{ section.settings.source == 'blocks' }}"
+    },
+    {
+      "type": "range",
+      "id": "feature_title_lines",
+      "label": "t:won.settings.feature_title_lines",
+      "info": "t:won.info.feature_title_lines",
+      "min": 0,
+      "max": 4,
+      "step": 1,
+      "default": 2,
       "visible_if": "{{ section.settings.source == 'blocks' }}"
     },
     {
@@ -1012,7 +1071,8 @@
       "category": "t:won.categories.content",
       "settings": {
         "source": "stats",
-        "columns_desktop": 4
+        "columns_desktop": 4,
+        "animate_values": true
       }
     },
     {

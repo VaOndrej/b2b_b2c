@@ -16,7 +16,7 @@
             "slideshow_mobile_controls_style": "dots",
             "thumbnail_position": "bottom",
             "thumbnail_width": 64,
-            "aspect_ratio": "1",
+            "aspect_ratio": "adapt",
             "constrain_to_viewport": true,
             "media_fit": "contain",
             "media_radius": 8,
@@ -106,7 +106,7 @@
                     "width": "fit-content",
                     "max_width": "normal",
                     "alignment": "left",
-                    "type_preset": "h3",
+                    "type_preset": "h2",
                     "font": "var(--font-body--family)",
                     "font_size": "1rem",
                     "line_height": "normal",
@@ -145,11 +145,18 @@
                     "padding-inline-end": 0
                   },
                   "blocks": {}
+                },
+                "won_ppu": {
+                  "type": "won-price-per-unit",
+                  "settings": {
+                    "prefix": "Cena za jednotku:"
+                  }
                 }
               },
               "block_order": [
                 "text_xpVMaM",
-                "price_tVjtKg"
+                "price_tVjtKg",
+                "won_ppu"
               ]
             },
             "divider_VJhene": {
@@ -237,14 +244,34 @@
                 "padding-inline-end": 0
               },
               "blocks": {}
+            },
+            "won_stock": {
+              "type": "won-stock-signal",
+              "settings": {
+                "low_threshold": 10,
+                "delivery_fallback": "Doručení do 2 dnů"
+              }
+            },
+            "won_trust": {
+              "type": "won-product-trust",
+              "settings": {}
+            },
+            "won_crumbs": {
+              "type": "won-breadcrumbs",
+              "settings": {
+                "emit_schema": true
+              }
             }
           },
           "block_order": [
+            "won_crumbs",
             "group_icgrde",
+            "text_aEtTtq",
+            "won_stock",
             "divider_VJhene",
             "variant_picker_R3rGDr",
             "buy_buttons_eYQEYi",
-            "text_aEtTtq"
+            "won_trust"
           ]
         }
       },
@@ -252,9 +279,9 @@
         "content_width": "content-center-aligned",
         "enable_sticky_add_to_cart": false,
         "desktop_media_position": "left",
-        "equal_columns": false,
+        "equal_columns": true,
         "limit_details_width": false,
-        "gap": 48,
+        "gap": 40,
         "color_scheme": "",
         "padding-block-start": 0,
         "padding-block-end": 0
@@ -304,7 +331,7 @@
         "columns_mobile": "2",
         "item_style": "plain",
         "content_align": "center",
-        "color_scheme": "scheme-1",
+        "color_scheme": "scheme-2",
         "padding_top": 40,
         "padding_bottom": 24,
         "source": "blocks"
@@ -313,39 +340,6 @@
     "detail": {
       "type": "won-band",
       "blocks": {
-        "d_stock": {
-          "type": "won-stock-signal",
-          "settings": {
-            "low_threshold": 10,
-            "delivery_fallback": "Doručení do 2 dnů"
-          }
-        },
-        "d_ppu100": {
-          "type": "won-price-per-unit",
-          "settings": {
-            "base": "per_100g",
-            "amount_metafield": "won.net_weight_g",
-            "amount": 1000,
-            "prefix": "Cena za 100 g:"
-          }
-        },
-        "d_ppuserv": {
-          "type": "won-price-per-unit",
-          "settings": {
-            "base": "per_serving",
-            "amount_metafield": "won.servings",
-            "amount": 33,
-            "prefix": "Cena za porci:"
-          }
-        },
-        "d_high": {
-          "type": "won-highlights",
-          "settings": {
-            "heading": "Klíčové přednosti",
-            "items": "Doprava zdarma nad 1 500 Kč\nVyrobeno v EU\nTestováno nezávislou laboratoří",
-            "show_icon": true
-          }
-        },
         "d_param": {
           "type": "won-param-table",
           "settings": {
@@ -371,21 +365,12 @@
             "heading": "Kdy užívat",
             "steps": "Ráno : 1 odměrka do snídaně\nPo tréninku : 1 odměrka do 30 minut\nVečer : dle potřeby"
           }
-        },
-        "d_trust": {
-          "type": "won-product-trust",
-          "settings": {}
         }
       },
       "block_order": [
-        "d_stock",
-        "d_ppu100",
-        "d_ppuserv",
-        "d_high",
         "d_param",
         "d_nutri",
-        "d_dose",
-        "d_trust"
+        "d_dose"
       ],
       "settings": {
         "media_type": "none",
@@ -393,7 +378,9 @@
         "content_align": "left",
         "color_scheme": "scheme-1",
         "padding_top": 48,
-        "padding_bottom": 48
+        "padding_bottom": 48,
+        "heading": "",
+        "content_columns": 2
       }
     },
     "tabs": {
@@ -428,7 +415,7 @@
       ],
       "settings": {
         "heading": "<p>Podrobnosti</p>",
-        "color_scheme": "scheme-1",
+        "color_scheme": "scheme-2",
         "padding_top": 40,
         "padding_bottom": 40,
         "display": "tabs"
@@ -480,8 +467,8 @@
       ],
       "settings": {
         "heading": "<p>Časté dotazy</p>",
-        "layout": "stacked",
-        "color_scheme": "scheme-1",
+        "layout": "split",
+        "color_scheme": "scheme-2",
         "padding_top": 48,
         "padding_bottom": 48,
         "display": "accordion"
@@ -502,8 +489,6 @@
         "gap": 16,
         "card_aspect": "portrait",
         "show_card_ppu": true,
-        "ppu_base": "per_serving",
-        "ppu_amount": 33,
         "show_arrows": true,
         "show_progress": true,
         "color_scheme": "scheme-1",
@@ -514,9 +499,7 @@
     },
     "sticky": {
       "type": "won-sticky-atc",
-      "settings": {
-        "atc_label": "Do košíku"
-      }
+      "settings": {}
     }
   },
   "order": [

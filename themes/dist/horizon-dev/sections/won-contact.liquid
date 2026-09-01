@@ -48,7 +48,7 @@
               <label for="won-contact-body-{{ section.id }}">{{ 'won.contact.message' | t }}</label>
               <textarea id="won-contact-body-{{ section.id }}" name="contact[body]" rows="5" required></textarea>
             </div>
-            <button type="submit" class="won-btn won-btn--primary">{{ 'won.contact.send' | t }}</button>
+            <button type="submit" class="won-btn won-btn--primary {% render 'won-fx' %}">{{ 'won.contact.send' | t }}</button>
           {%- endif -%}
         {%- endform -%}
       </div>

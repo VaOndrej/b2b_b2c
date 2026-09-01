@@ -20,6 +20,9 @@
   assign delivery = product.metafields.won.delivery.value | default: s.delivery_fallback
   assign expiry = product.metafields.won.expiry.value
 -%}
+{%- comment -%}Availability is per-variant, so this block must re-render on
+  `variant:update` like the price does. See won-variant-reactive.js.{%- endcomment -%}
+<won-variant-reactive data-won-vr="stock-{{ block.id }}">
 {%- if state != 'none' -%}
   <div class="won-stock" {{ block.shopify_attributes }}>
     <span class="won-stock__row won-stock__row--{{ state }}">
@@ -40,6 +43,9 @@
     {%- endif -%}
   </div>
 {%- endif -%}
+</won-variant-reactive>
+<script src="{{ 'won-variant-reactive.js' | asset_url }}" defer></script>
+
 
 {% stylesheet %}
   .won-stock { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }

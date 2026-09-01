@@ -378,7 +378,8 @@
       "add": "Do košíku",
       "added": "Přidáno ✓",
       "choose": "Vybrat",
-      "soldout": "Vyprodáno"
+      "soldout": "Vyprodáno",
+      "decrease": "Odebrat jeden kus"
     },
     "unit": {
       "per_100g": "100 g",
@@ -418,6 +419,11 @@
     },
     "article": {
       "reading_time": "{{ minutes }} min čtení"
+    },
+    "breadcrumbs": {
+      "label": "Drobečková navigace",
+      "home": "Domů",
+      "search": "Výsledky hledání"
     }
   }
 }

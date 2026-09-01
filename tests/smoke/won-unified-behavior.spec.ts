@@ -55,7 +55,7 @@ test('Mode select drives a render class on the carousel', async ({ page }) => {
     .toMatch(/won-carousel--(slider|grid|marquee)/);
 });
 
-test('Infinite-scroll setting clones bookends only where its scope applies', async ({ page }) => {
+test('Infinite-scroll setting makes the rail wrap only where its scope applies', async ({ page }) => {
   await page.goto('/');
   const looped = page.locator('won-carousel[data-won-loop]').first();
   if ((await looped.count()) === 0) test.skip(true, 'no looping carousel configured on the homepage');
@@ -64,14 +64,48 @@ test('Infinite-scroll setting clones bookends only where its scope applies', asy
   const isMobile = (page.viewportSize()?.width ?? 0) <= 749;
   const applies = scope === 'always' || (scope === 'desktop' && !isMobile) || (scope === 'mobile' && isMobile);
 
-  // won-carousel.js clones the end slides (data-won-clone) so the rail never
-  // hits an empty end — but only for the breakpoints the merchant scoped it to.
-  await page.waitForTimeout(500);
-  const clones = await looped.locator('[data-won-clone]').count();
+  // Looping means the rail REWINDS: past the last slide it returns to the first.
+  // It used to mean cloned bookends; that is gone, so the observable contract is
+  // the behaviour, not the DOM bookkeeping — which is what it should have been.
+  //
+  // Wait for the component to say it has run, not for a stopwatch. A fixed 500ms
+  // was enough on an idle machine and not inside the full suite, so this went red
+  // once in a run where nothing about carousels had changed.
+  await expect(looped).toHaveAttribute('data-won-bound', '1');
+  await looped.scrollIntoViewIfNeeded();
+
+  const centred = () =>
+    looped.evaluate((el: HTMLElement) => {
+      const t = el.querySelector('[data-won-track]') as HTMLElement;
+      const kids = [...t.children];
+      const mid = t.getBoundingClientRect().left + t.clientWidth / 2;
+      let index = 0;
+      let best = Infinity;
+      kids.forEach((k, i) => {
+        const b = k.getBoundingClientRect();
+        const d = Math.abs((b.left + b.right) / 2 - mid);
+        if (d < best) { best = d; index = i; }
+      });
+      return { index, total: kids.length };
+    });
+
+  const before = await centred();
+  // Drive to the last slide, then one more click: that is where the two behaviours
+  // differ — a wrapping rail returns to the first, a bounded one stays put.
+  for (let i = 0; i < before.total - 1; i++) {
+    await looped.locator('[data-won-next]').click();
+    await page.waitForTimeout(850);
+  }
+  const atEnd = await centred();
+  expect(atEnd.index, 'the rail should have reached its last slide').toBe(before.total - 1);
+
+  await looped.locator('[data-won-next]').click();
+  await page.waitForTimeout(1100);
+  const after = await centred();
 
   if (applies) {
-    expect(clones, `loop scope "${scope}" must clone bookend slides on this viewport`).toBeGreaterThan(0);
+    expect(after.index, `loop scope "${scope}" must wrap back to the first slide on this viewport`).toBe(0);
   } else {
-    expect(clones, `loop scope "${scope}" must NOT clone on this viewport`).toBe(0);
+    expect(after.index, `loop scope "${scope}" must NOT wrap on this viewport`).toBe(before.total - 1);
   }
 });

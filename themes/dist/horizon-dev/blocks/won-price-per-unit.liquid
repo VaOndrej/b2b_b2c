@@ -1,55 +1,32 @@
 {% doc %}
-  won-price-per-unit — the "price intelligence" widget. Shows the unit price
-  (per 100 g / per kg / per serving) computed from the current product/variant
-  price and a reference amount. The amount comes from a metafield (auto, scales
-  to a large catalog) or a manual fallback (works with zero data-modelling).
-  Blank-safe: renders nothing off a product or without a usable amount.
+  won-price-per-unit — the "price intelligence" widget. Shows the unit price for
+  the CURRENT variant. Which metafield carries the reference amount, and what unit
+  the price is quoted per, is a catalogue-wide decision: it lives in the theme
+  setting "Cena za jednotku" and is resolved by snippets/won-unit-price.liquid.
+  Renders nothing when no rule matches the product.
   @example
   {% content_for 'block', type: 'won-price-per-unit', id: 'ppu' %}
 {% enddoc %}
 
 {%- liquid
   assign s = block.settings
-  assign variant = product.selected_or_first_available_variant
-  assign price = variant.price
-  if price == blank
-    assign price = product.price
-  endif
-
-  # Reference amount: metafield override (namespace.key) else the manual number.
-  assign amount = s.amount
-  if s.amount_metafield != blank
-    assign parts = s.amount_metafield | split: '.'
-    assign mf_value = product.metafields[parts[0]][parts[1]].value
-    if mf_value != blank and mf_value > 0
-      assign amount = mf_value
-    endif
-  endif
-
-  assign unit_price = 0
-  assign unit_label = ''
-  if price != blank and amount != blank and amount > 0
-    case s.base
-      when 'per_100g'
-        assign unit_price = price | times: 100 | divided_by: amount
-        assign unit_label = 'won.unit.per_100g' | t
-      when 'per_kg'
-        assign unit_price = price | times: 1000 | divided_by: amount
-        assign unit_label = 'won.unit.per_kg' | t
-      when 'per_serving'
-        assign unit_price = price | divided_by: amount
-        assign unit_label = 'won.unit.per_serving' | t
-    endcase
-  endif
 -%}
+{%- capture ppu -%}
+  {%- render 'won-unit-price', product: product, rules: s.rules, prefix: s.prefix -%}
+{%- endcapture -%}
+{%- assign ppu = ppu | strip -%}
 
-{%- if unit_price > 0 -%}
-  <div class="won-ppu" {{ block.shopify_attributes }}>
-    {%- if s.prefix != blank -%}<span class="won-ppu__prefix">{{ s.prefix }}</span>{%- endif -%}
-    <span class="won-ppu__value">{{ unit_price | money }}</span>
-    <span class="won-ppu__unit">/ {{ unit_label }}</span>
-  </div>
-{%- endif -%}
+{%- comment -%}
+  The wrapper is NOT optional. Horizon swaps only the elements that ask for their
+  own updated markup on `variant:update`; without it this block keeps the first
+  variant's unit price while the price above it changes. See won-variant-reactive.js.
+{%- endcomment -%}
+<won-variant-reactive data-won-vr="ppu-{{ block.id }}">
+  {%- if ppu != blank -%}
+    <div class="won-ppu" {{ block.shopify_attributes }}>{{ ppu }}</div>
+  {%- endif -%}
+</won-variant-reactive>
+<script src="{{ 'won-variant-reactive.js' | asset_url }}" defer></script>
 
 {% stylesheet %}
   .won-ppu {
@@ -64,19 +41,9 @@
 {
   "name": "t:won.names.price_per_unit",
   "settings": [
-    { "type": "header", "content": "t:won.headers.content" },
-    {
-      "type": "select", "id": "base", "label": "t:won.settings.ppu_base",
-      "options": [
-        { "value": "per_100g", "label": "t:won.options.per_100g" },
-        { "value": "per_kg", "label": "t:won.options.per_kg" },
-        { "value": "per_serving", "label": "t:won.options.per_serving" }
-      ],
-      "default": "per_100g"
-    },
-    { "type": "number", "id": "amount", "label": "t:won.settings.ppu_amount", "info": "t:won.info.ppu_amount", "default": 1000 },
-    { "type": "text", "id": "amount_metafield", "label": "t:won.settings.ppu_metafield", "info": "t:won.info.ppu_metafield" },
-    { "type": "text", "id": "prefix", "label": "t:won.settings.ppu_prefix" }
+    { "type": "paragraph", "content": "t:won.info.ppu_about" },
+    { "type": "text", "id": "prefix", "label": "t:won.settings.ppu_prefix" },
+    { "type": "textarea", "id": "rules", "label": "t:won.settings.ppu_rules_override", "info": "t:won.info.ppu_rules_override" }
   ],
   "presets": [{ "name": "t:won.names.price_per_unit" }]
 }

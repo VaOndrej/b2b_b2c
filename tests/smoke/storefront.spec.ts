@@ -18,12 +18,21 @@ const IGNORE = [
   /web-pixels?|web-pixels-manager|\/wpm|monorail|trekkie|shopify_pay|shop_pay|consent|sandbox/i,
   /shopifycloud|origin_trials|\/api\/collect|\/\.well-known\/|perf_kit|storefront\/load_feature/i,
   /google|gstatic|facebook|hotjar|klaviyo|judge\.me|recaptcha|doubleclick/i,
+  // shop.app is Shopify's OWN Shop Pay host. From a local `theme dev` origin it
+  // answers 403 / ERR_BLOCKED_BY_RESPONSE for the payment-sheet iframe on every
+  // page. The existing `shop_pay` pattern does not match the hostname, so this
+  // noise surfaced as nine identical "failed requests" across both viewports.
+  /(^|\/\/)shop\.app\//i,
   /favicon\.ico/i,
   /the (server|browser) responded with a status of 4\d\d.*(pixel|monorail|cdn\.shopify)/i,
   /Download the .* DevTools|preloaded using link preload but not used|Content Security Policy/i,
   // Generic browser mirror of a network failure — no URL to filter on; the
   // URL-bearing requestfailed/response listeners already catch real asset 404s.
+  // Same reasoning for the bare status form ("...responded with a status of 403 ()"):
+  // with no URL it cannot be attributed to the theme, and the request-level
+  // listeners above are the authority on which host actually failed.
   /^Failed to load resource: net::/i,
+  /^Failed to load resource: the server responded with a status of \d{3} \(\)$/i,
 ];
 const ignored = (s: string) => IGNORE.some((r) => r.test(s));
 
@@ -152,7 +161,13 @@ test('won-panels FAQ — heading and questions always render', async ({ page }) 
   await expect(questions.first()).toBeVisible();
 });
 
-test('hero peek — centred card with side peeks on desktop', async ({ page }, testInfo) => {
+// The hero aligns FLUSH at the ends now instead of centring its first card over an
+// empty spacer, so at rest the neighbour shows whatever width the active card leaves
+// over: with slide_width 64% that is 36/64 = 56% of a card, past the 35% cap written
+// for a centred peek. The rail invariants that still mean something here — one full
+// card, at least one partially visible neighbour, no page overflow — are asserted;
+// the cap is raised for this rail only, so every other carousel keeps the strict one.
+test('hero rail — a full card and a peeking neighbour on desktop', async ({ page }, testInfo) => {
   const isDesktop = (testInfo.project.use.viewport?.width ?? 0) >= 990;
   test.skip(!isDesktop, 'peek geometry is a desktop concern (mobile collapses to 1-up)');
 
@@ -160,8 +175,8 @@ test('hero peek — centred card with side peeks on desktop', async ({ page }, t
   const sec = page.locator('[data-testid="won-hero-carousel-section"]').first();
   await sec.scrollIntoViewIfNeeded();
   const track = sec.locator('[data-won-track]').first();
-  await settleScroll(track); // the peek loop centres itself when it enters view
-  await assertCarousel(page, track, track.locator('> *'), { mode: 'peek' });
+  await settleScroll(track);
+  await assertCarousel(page, track, track.locator('> *'), { mode: 'peek', peekMax: 0.6 });
 });
 
 test('band center-gutter — media flanks the centred copy on desktop', async ({ page }, testInfo) => {
@@ -302,9 +317,17 @@ test('tabbed rail — segmented tabs toggle their product panels', async ({ page
   expect(await panels.nth(1).locator('.won-pcard').count(), 'active tab shows product cards').toBeGreaterThan(0);
 });
 
+// Dots are now one of several theme-wide indicator choices (won_rail_indicator).
+// The demo ships "progress", so this asserts the dots MECHANISM wherever a rail
+// actually renders dots, and skips when the theme asked for a different
+// indicator — rather than asserting that the demo happens to use dots.
 test('carousel dots — page pager renders, is clickable, and tracks position', async ({ page }) => {
   await open(page, '/', 'main');
   const carousel = page.locator('won-carousel:has(.won-carousel__dots:not([hidden]))').first();
+  test.skip(
+    (await carousel.count()) === 0,
+    'no rail renders dots — the theme-wide indicator is set to something else'
+  );
   await carousel.scrollIntoViewIfNeeded();
   const dots = carousel.locator('.won-carousel__dot');
   expect(await dots.count(), 'a scrolling carousel with dots enabled shows >=2 page dots').toBeGreaterThanOrEqual(2);
@@ -373,6 +396,10 @@ test('home — carousels honour their mobile mode', async ({ page }, testInfo) =
     // and stays in scope.
     const cls = (await car.getAttribute('class')) || '';
     if (cls.includes('won-carousel--grid') && !cls.includes('won-carousel--scroll-sm')) continue;
+    // A rail inside an inactive tab panel is display:none: it has no geometry to
+    // assert, and scrollIntoViewIfNeeded on it just times out. Only the panel the
+    // shopper is looking at has a measurable contract.
+    if (!(await car.isVisible())) continue;
     await car.scrollIntoViewIfNeeded();
     const track = car.locator('[data-won-track]');
     const mode = (await car.getAttribute('data-mobile-mode')) || '1';
@@ -408,11 +435,20 @@ test('marquee — track spans >= 2x the viewport so the loop never shows a blank
   ).toBeGreaterThanOrEqual(dims.container * 2 - 4);
 });
 
-// Peek mode centres the active slide with a sibling peeking in on EACH side.
-// The old build showed an empty spacer on the outer side of the first slide —
-// "prostor vlevo prázdný". The peek loop wraps a clone in, so even resting on
-// the first slide (the initial view) a neighbour peeks in on BOTH sides.
-test('hero peek — a neighbour peeks in on BOTH sides at the initial rest position', async ({ page }, testInfo) => {
+// Peek mode centres the ACTIVE slide, and a neighbour peeks in from the side that
+// has one. At the ends there is no such side: a finite rail has nothing before its
+// first card and nothing after its last.
+//
+// That used to be solved by cloning the end slides so a neighbour always peeked in.
+// The clones cost more than they bought (a progress bar that teleported on every
+// wrap, media fetched for cards nobody reaches, three defects in a day), so the rail
+// is finite again and loops by rewinding.
+//
+// The dead space they were hiding is gone a different way: the first slide now sits
+// FLUSH with the start of the rail instead of being centred over an empty spacer, and
+// the last one flush with its end. So there is never a gap — the rail simply begins
+// where it begins, exactly like the Bestsellers rail below it.
+test('hero peek — the first slide starts flush and its neighbour peeks in', async ({ page }, testInfo) => {
   const isDesktop = (testInfo.project.use.viewport?.width ?? 0) >= 990;
   test.skip(!isDesktop, 'peek geometry is a desktop concern (mobile collapses to 1-up)');
 
@@ -421,23 +457,35 @@ test('hero peek — a neighbour peeks in on BOTH sides at the initial rest posit
   await sec.scrollIntoViewIfNeeded();
   const car = sec.locator('won-carousel').first();
   const track = sec.locator('[data-won-track]').first();
-  await settleScroll(track); // loop centres the first slide when it enters view
+  await settleScroll(track);
 
-  // 1) Initial rest = first slide centred: the fix must peek on BOTH sides.
+  // 1) No dead space at the start: the first card begins where the rail begins.
+  const gap = await track.evaluate((t: HTMLElement) => {
+    const first = t.firstElementChild as HTMLElement | null;
+    if (!first) return -1;
+    return Math.round(first.getBoundingClientRect().left - t.getBoundingClientRect().left);
+  });
+  expect(gap, `the first slide sits ${gap}px inside the rail — that gap is the empty spacer`).toBeLessThanOrEqual(2);
+
+  // 2) ...and the next card peeks in on the right, so it still reads as a rail.
   const start = await peekSidesOf(track);
-  expect(start.left, 'a slide must peek in on the LEFT of the first card (no empty spacer)').toBeGreaterThan(0);
   expect(start.right, 'a slide must peek in on the right of the first card').toBeGreaterThan(0);
+  expect(start.left, 'nothing precedes the first card, so nothing may peek on its left').toBe(0);
 
-  // 2) Drive to the last slide with the real Next control; the loop must keep a
-  //    peek on BOTH sides there too (previously the right side went empty).
-  const reals = await track.evaluate((t: HTMLElement) => Array.from(t.children).filter((c) => !(c as HTMLElement).dataset.wonClone).length);
-  for (let i = 0; i < reals - 1; i++) {
+  // 3) Mirror at the far end: flush with the rail's end, neighbour on the left.
+  const slides = await track.evaluate((t: HTMLElement) => t.children.length);
+  for (let i = 0; i < slides - 1; i++) {
     await car.locator('[data-won-next]').click();
     await settleScroll(track);
   }
   const end = await peekSidesOf(track);
-  expect(end.left, 'last slide must peek a neighbour on the left').toBeGreaterThan(0);
-  expect(end.right, 'last slide must still peek a neighbour on the RIGHT (loop wraps a clone in)').toBeGreaterThan(0);
+  expect(end.left, 'the last card must keep a neighbour peeking on its left').toBeGreaterThan(0);
+  const tailGap = await track.evaluate((t: HTMLElement) => {
+    const last = t.lastElementChild as HTMLElement | null;
+    if (!last) return -1;
+    return Math.round(t.getBoundingClientRect().right - last.getBoundingClientRect().right);
+  });
+  expect(tailGap, `the last slide stops ${tailGap}px short of the rail's end`).toBeLessThanOrEqual(2);
 });
 
 // #4: the hero carousel must scroll endlessly in BOTH directions — a merchant
@@ -484,12 +532,25 @@ test('won-carousel — mobile peek shows a neighbour on BOTH sides mid-scroll', 
   let checked = 0;
   for (let i = 0; i < n; i++) {
     const car = cars.nth(i);
+    // Tab panels other than the active one are display:none, so their rail has
+    // no geometry and scrollIntoViewIfNeeded on it just times out. Only what the
+    // shopper can actually see has a peek contract.
+    if (!(await car.isVisible())) continue;
     await car.scrollIntoViewIfNeeded();
     const track = car.locator('[data-won-track]').first();
     const scrolls = await track.evaluate((t: HTMLElement) => t.scrollWidth > t.clientWidth + 4);
     if (!scrolls) continue;
     // Rest on a middle card, then look for a peek on each side of centre.
-    await track.evaluate((t: HTMLElement) => { t.scrollLeft = Math.round((t.scrollWidth - t.clientWidth) / 2); });
+    // Musí to být SNAP pozice, ne aritmetický střed: rail má
+    // `scroll-snap-align: center` a `scroll-behavior: smooth`, takže skok na
+    // (scrollWidth - clientWidth) / 2 spustí doskok na nejbližší snap bod. Měření
+    // v půlce té animace ukáže jednoho souseda mimo viewport a test pak hlásí
+    // chybu na railu, který v klidu peekuje na obě strany správně.
+    await track.evaluate((t: HTMLElement) => {
+      const kids = Array.from(t.children) as HTMLElement[];
+      const mid = kids[Math.floor(kids.length / 2)];
+      if (mid) mid.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'instant' as ScrollBehavior });
+    });
     await settleScroll(track);
     const sides = await peekSidesOf(track);
     expect(sides.left, 'mid-scroll a neighbour must peek on the LEFT').toBeGreaterThan(0);

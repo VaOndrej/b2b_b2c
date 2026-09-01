@@ -14,12 +14,13 @@
             "button_link": "shopify://collections/all",
             "button_style": "primary",
             "media_type": "image",
-            "image_asset": "won-promo-1.png",
+            "image_asset": "won-promo-1.svg",
             "media_position": "background",
             "headline_annotation": "underline",
             "min_height": 420,
             "corner_radius": 20,
-            "content_align": "left"
+            "content_align": "left",
+            "priority": true
           }
         },
         "s2": {
@@ -33,7 +34,7 @@
             "button_link": "shopify://collections/all",
             "button_style": "primary",
             "media_type": "image",
-            "image_asset": "won-promo-2.png",
+            "image_asset": "won-promo-2.svg",
             "media_position": "background",
             "min_height": 420,
             "corner_radius": 20,
@@ -51,7 +52,7 @@
             "button_link": "shopify://collections/all",
             "button_style": "primary",
             "media_type": "image",
-            "image_asset": "won-promo-3.png",
+            "image_asset": "won-promo-3.svg",
             "media_position": "background",
             "min_height": 420,
             "corner_radius": 20,
@@ -93,7 +94,9 @@
         "autoplay": false,
         "color_scheme": "scheme-1",
         "padding_top": 24,
-        "padding_bottom": 24
+        "padding_bottom": 24,
+        "show_dots": true,
+        "loop": "always"
       }
     },
     "tabbed_rail": {
@@ -133,11 +136,11 @@
         "h1": {
           "type": "hotspot",
           "settings": {
-            "x": 28,
-            "y": 44,
+            "x": 33,
+            "y": 60,
             "custom_mobile_pos": true,
-            "x_mobile": 80,
-            "y_mobile": 20,
+            "x_mobile": 77,
+            "y_mobile": 42,
             "label": "Whey Protein",
             "link": "shopify://collections/all"
           }
@@ -145,9 +148,9 @@
         "h2": {
           "type": "hotspot",
           "settings": {
-            "x": 66,
+            "x": 72,
             "y": 58,
-            "label": "BCAA",
+            "label": "Kreatin",
             "link": "shopify://collections/all"
           }
         }
@@ -158,7 +161,7 @@
       ],
       "settings": {
         "heading": "<p>Nakupuj přímo z fotky</p>",
-        "image_asset": "won-hero-product.png",
+        "image_asset": "won-lifestyle-1.svg",
         "color_scheme": "scheme-1",
         "card_aspect": "landscape"
       }
@@ -210,7 +213,7 @@
           "type": "won-slide",
           "settings": {
             "media_type": "image",
-            "image_asset": "won-promo-1.png",
+            "image_asset": "won-promo-1.svg",
             "media_position": "background",
             "heading": "<p>Když voda nestačí 💧</p>",
             "heading_size_desktop": 34,
@@ -230,7 +233,7 @@
           "type": "won-slide",
           "settings": {
             "media_type": "image",
-            "image_asset": "won-promo-2.png",
+            "image_asset": "won-promo-2.svg",
             "media_position": "background",
             "heading": "<p>Kreatin −20 %</p>",
             "heading_size_desktop": 34,
@@ -250,7 +253,7 @@
           "type": "won-slide",
           "settings": {
             "media_type": "image",
-            "image_asset": "won-promo-3.png",
+            "image_asset": "won-promo-3.svg",
             "media_position": "background",
             "heading": "<p>Whey s 21 g proteinu 🥤</p>",
             "heading_size_desktop": 34,
@@ -270,7 +273,7 @@
           "type": "won-slide",
           "settings": {
             "media_type": "image",
-            "image_asset": "won-promo-4.png",
+            "image_asset": "won-promo-4.svg",
             "media_position": "background",
             "heading": "<p>Novinka: BCAA</p>",
             "heading_size_desktop": 34,
@@ -306,7 +309,8 @@
         "color_scheme": "scheme-1",
         "padding_top": 28,
         "padding_bottom": 12,
-        "columns_desktop": 4
+        "columns_desktop": 4,
+        "show_dots": false
       }
     },
     "hero": {
@@ -328,12 +332,14 @@
             "button2_link": "/account/register",
             "button2_style": "secondary",
             "media_type": "image",
-            "image_asset": "won-hero-product.png",
+            "image_asset": "won-hero-product.svg",
+            "image_asset_mobile": "won-hero-product-mobile.svg",
             "media_position": "background",
             "toggle_overlay": false,
             "overlay_color": "#00000059",
             "min_height": 620,
-            "content_align": "left"
+            "content_align": "left",
+            "priority": true
           }
         }
       },
@@ -361,7 +367,8 @@
             "link_url": "shopify://collections/proteiny",
             "badge_text": "Novinka",
             "badge_position": "top_right",
-            "badge_style": "accent"
+            "badge_style": "accent",
+            "image_asset": "won-cat-protein.svg"
           }
         },
         "c2": {
@@ -370,7 +377,8 @@
             "collection": "kreatin-aminokyseliny",
             "heading": "Kreatin & aminokyseliny",
             "icon": "⚡",
-            "link_url": "shopify://collections/kreatin-aminokyseliny"
+            "link_url": "shopify://collections/kreatin-aminokyseliny",
+            "image_asset": "won-cat-creatine.svg"
           }
         },
         "c3": {
@@ -379,7 +387,8 @@
             "collection": "vitaminy-mineraly",
             "heading": "Vitamíny & minerály",
             "icon": "🛡️",
-            "link_url": "shopify://collections/vitaminy-mineraly"
+            "link_url": "shopify://collections/vitaminy-mineraly",
+            "image_asset": "won-cat-vitamins.svg"
           }
         },
         "c4": {
@@ -388,7 +397,8 @@
             "collection": "zdravi-regenerace",
             "heading": "Zdraví & regenerace",
             "icon": "🌿",
-            "link_url": "shopify://collections/zdravi-regenerace"
+            "link_url": "shopify://collections/zdravi-regenerace",
+            "image_asset": "won-cat-health.svg"
           }
         }
       },
@@ -417,28 +427,40 @@
           "type": "won-feature",
           "settings": {
             "heading": "Doprava zdarma",
-            "text": "<p>Nad 1 500 Kč po celé ČR.</p>"
+            "text": "<p>Nad 1 500 Kč po celé ČR.</p>",
+            "icon": "truck",
+            "image_size": 44,
+            "image_position": "left"
           }
         },
         "t2": {
           "type": "won-feature",
           "settings": {
             "heading": "Vyrobeno v EU",
-            "text": "<p>Certifikované výrobní závody.</p>"
+            "text": "<p>Certifikované výrobní závody.</p>",
+            "icon": "leaf",
+            "image_size": 44,
+            "image_position": "left"
           }
         },
         "t3": {
           "type": "won-feature",
           "settings": {
             "heading": "Testováno laboratoří",
-            "text": "<p>Nezávislé rozbory každé šarže.</p>"
+            "text": "<p>Nezávislé rozbory každé šarže.</p>",
+            "icon": "shield",
+            "image_size": 44,
+            "image_position": "left"
           }
         },
         "t4": {
           "type": "won-feature",
           "settings": {
             "heading": "30 dní na vrácení",
-            "text": "<p>Bez udání důvodu.</p>"
+            "text": "<p>Bez udání důvodu.</p>",
+            "icon": "return",
+            "image_size": 44,
+            "image_position": "left"
           }
         }
       },
@@ -453,7 +475,7 @@
         "columns_tablet": 2,
         "columns_mobile": "2",
         "item_style": "bordered",
-        "content_align": "center",
+        "content_align": "left",
         "color_scheme": "scheme-1",
         "padding_top": 24,
         "padding_bottom": 24,
@@ -475,11 +497,9 @@
         "gap": 16,
         "card_aspect": "portrait",
         "show_card_ppu": true,
-        "ppu_base": "per_serving",
-        "ppu_amount": 33,
         "show_arrows": true,
-        "show_progress": false,
-        "show_dots": true,
+        "show_progress": true,
+        "show_dots": false,
         "color_scheme": "scheme-1",
         "padding_top": 48,
         "padding_bottom": 48,
@@ -501,7 +521,8 @@
         "padding_bottom": 56,
         "products_limit": 8,
         "heading": "<p>Doplňky pro každý den</p>",
-        "mobile_carousel": true
+        "mobile_carousel": true,
+        "show_progress": true
       }
     },
     "range_grid": {
@@ -534,8 +555,8 @@
         "button_style": "primary",
         "media_type": "image",
         "media_position": "center_gutter",
-        "image_asset": "won-promo-2.png",
-        "image_asset_2": "won-promo-4.png",
+        "image_asset": "won-promo-2.svg",
+        "image_asset_2": "won-promo-4.svg",
         "min_height": 340,
         "content_align": "center",
         "color_scheme": "scheme-2",
@@ -551,7 +572,11 @@
         "highlight_col": 2,
         "color_scheme": "scheme-1",
         "padding_top": 56,
-        "padding_bottom": 56
+        "padding_bottom": 56,
+        "cta_button_label": "Prohlédnout bestsellery",
+        "cta_button_link": "shopify://collections/all",
+        "cta_button_style": "primary",
+        "cta_note": "Nejprodávanější doplňky s nejlepším hodnocením."
       }
     },
     "stats": {
@@ -564,7 +589,10 @@
         "color_scheme": "scheme-1",
         "padding_top": 56,
         "padding_bottom": 56,
-        "source": "stats"
+        "source": "stats",
+        "cta_button_label": "Nakupovat teď",
+        "cta_button_link": "shopify://collections/all",
+        "cta_button_style": "primary"
       }
     },
     "reviews": {
@@ -615,7 +643,8 @@
         "color_scheme": "scheme-1",
         "padding_top": 48,
         "padding_bottom": 48,
-        "columns_desktop": 3
+        "columns_desktop": 3,
+        "show_dots": false
       }
     },
     "faq": {

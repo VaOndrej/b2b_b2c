@@ -1,0 +1,99 @@
+{%- comment -%}
+  won-rail-controls — THE control row for every horizontal rail in the theme.
+
+  It exists because there were four copies of "resolve the theme-wide rail
+  settings, then render arrows / a bar / dots", and two of them had quietly
+  drifted: won-grid and won-tabbed-rail never learned about the `dots` value, so
+  a merchant who picked Dots in the theme editor got a rail that scrolled with no
+  indicator at all. A setting that works on half the sections is worse than one
+  that does not exist, because nothing tells you which half.
+
+  Params:
+    s        — the section's own settings (optional). Only consulted when the
+               theme-wide value is "per_section"; a section with no toggles of
+               its own simply falls back to the progress bar.
+    sm_only  — true for a grid that is only a rail below 750px, so the whole row
+               disappears together with the scrolling.
+
+  There is no "floats over the media" variant. The hero had one, and it produced
+  two defects in a row: the row covered the slide's own CTA (64 % at 1440, 82 % at
+  390, and the arrows take pointer events, so the covered part was unclickable),
+  then in a peek layout it was positioned against the container and spilled onto
+  the neighbouring cards. Chrome belongs under the rail it describes.
+
+  Example:
+    {% render 'won-rail-controls', s: section.settings %}
+    {% render 'won-rail-controls', s: section.settings, sm_only: true %}
+{%- endcomment -%}
+{%- liquid
+  assign g_ind = settings.won_rail_indicator | default: 'per_section'
+  assign g_arr = settings.won_rail_arrows | default: 'per_section'
+  assign arrow_style = settings.won_rail_arrow_style | default: 'pill'
+  assign tone = settings.won_rail_arrow_tone | default: 'auto'
+  if tone == 'auto'
+    # Every control row now sits on the page, so `auto` is the page surface.
+    assign tone = 'surface'
+  endif
+
+  # Arrows. The theme-wide value is an upper AND a lower bound; only
+  # "per_section" hands the decision back to the section.
+  assign want_arrows = true
+  if g_arr == 'never'
+    assign want_arrows = false
+  elsif g_arr == 'per_section' and s.show_arrows == false
+    assign want_arrows = false
+  endif
+
+  # Indicator. Exactly one of the two can win, so `dots` cannot leave a stray bar
+  # behind and `none` cannot leave either.
+  assign want_dots = false
+  assign want_progress = false
+  if g_ind == 'dots'
+    assign want_dots = true
+  elsif g_ind == 'progress'
+    assign want_progress = true
+  elsif g_ind == 'per_section'
+    if s.show_dots == nil and s.show_progress == nil
+      # A section with no indicator toggles of its own still needs an
+      # affordance — a rail that scrolls with nothing to show for it is the bug
+      # this whole file exists to prevent.
+      assign want_progress = true
+    else
+      assign want_dots = s.show_dots
+      assign want_progress = s.show_progress
+    endif
+  endif
+
+  assign row_class = 'won-rail__controls'
+  if sm_only
+    assign row_class = row_class | append: ' won-rail__controls--sm-only'
+  endif
+  assign progress_class = 'won-carousel__progress'
+  assign progress_bar_class = 'won-carousel__progress-bar'
+  assign dots_class = 'won-carousel__dots'
+  assign arrows_class = 'won-carousel__arrows'
+  assign arrow_class = 'won-carousel__arrow'
+  if sm_only
+    assign progress_class = progress_class | append: ' won-carousel__progress--sm-only'
+    assign arrows_class = arrows_class | append: ' won-carousel__arrows--sm-only'
+  endif
+
+  assign arrow_classes = arrow_class | append: ' won-rail__arrow won-rail__arrow--' | append: arrow_style | append: ' won-rail__arrow--' | append: tone
+-%}
+{%- comment -%} Indicator first, arrows last: the row reads left-to-right and the
+  arrows are pinned to its end by `margin-inline-start: auto`, so the order holds
+  whether or not an indicator renders. {%- endcomment -%}
+<div class="{{ row_class }}">
+  {%- if want_progress -%}
+    <div class="{{ progress_class }}" data-won-progress><span class="{{ progress_bar_class }}" data-won-progress-bar></span></div>
+  {%- endif -%}
+  {%- if want_dots -%}
+    <div class="{{ dots_class }}" data-won-dots></div>
+  {%- endif -%}
+  {%- if want_arrows -%}
+    <div class="{{ arrows_class }}" data-won-arrows data-won-rail-tone="{{ settings.won_rail_arrow_tone | default: 'auto' }}">
+      <button type="button" class="{{ arrow_classes }}" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
+      <button type="button" class="{{ arrow_classes }}" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
+    </div>
+  {%- endif -%}
+</div>

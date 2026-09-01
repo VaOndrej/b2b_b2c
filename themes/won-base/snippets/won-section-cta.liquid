@@ -1,0 +1,47 @@
+{% doc %}
+Renders a section's closing call-to-action row.
+
+Most won sections were pure content: a comparison table, a stats band, a USP
+strip all made the case and then left the shopper with nowhere to go. This is the
+shared "and now buy" row — one markup, one set of setting ids, so a merchant
+learns it once and every section behaves the same.
+
+Renders NOTHING unless both a label and a link are set, so a section that has not
+been given a CTA stays exactly as it was (theme-block-ux rule 5: never a broken
+empty button).
+
+@param {object} cfg - the section's settings (pass `s`). NOT named `settings`:
+  that is Liquid's GLOBAL theme-settings object, and a parameter of the same name
+  does not shadow it — every lookup silently resolved against theme settings, the
+  keys were always blank, and the CTA never rendered anywhere.
+@param {string} [align] - 'start' | 'center' | 'end'; defaults to the section's content_align
+@example
+{% render 'won-section-cta', cfg: s %}
+{% enddoc %}
+{%- liquid
+  # `break` outside a for loop is not a guard — it is undefined behaviour in
+  # Liquid. Gate the markup with a plain if instead.
+  assign cta_label = cfg.cta_button_label
+  assign cta_link = cfg.cta_button_link
+  assign cta_align = align | default: cfg.content_align | default: 'center'
+  assign cta_flex = 'center'
+  if cta_align == 'left' or cta_align == 'start'
+    assign cta_flex = 'flex-start'
+  elsif cta_align == 'right' or cta_align == 'end'
+    assign cta_flex = 'flex-end'
+  endif
+-%}
+{%- if cta_label != blank and cta_link != blank -%}
+<div class="won-section-cta" style="--won-cta-justify: {{ cta_flex }};">
+  {% render 'won-button',
+    label: cta_label,
+    link: cta_link,
+    style: cfg.cta_button_style,
+    new_tab: cfg.cta_button_new_tab,
+    class: 'won-section-cta__btn'
+  %}
+  {%- if cfg.cta_note != blank -%}
+    <p class="won-section-cta__note">{{ cfg.cta_note }}</p>
+  {%- endif -%}
+</div>
+{%- endif -%}

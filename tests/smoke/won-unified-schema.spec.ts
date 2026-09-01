@@ -23,6 +23,9 @@ const SCHEMA_RE = /{%\s*schema\s*%}([\s\S]*?){%\s*endschema\s*%}/;
 const RANK: Record<string, number> = {
   visibility: 0, mode: 1, content: 2, source: 2, heading: 2, media: 3,
   layout: 4, price_per_unit: 5, ai_schema: 5, controls: 6, contact: 7,
+  // The closing call-to-action is the last thing the merchant WRITES, so it sits
+  // after the behaviour groups and before everything that only styles.
+  cta: 7,
   appearance: 8, spacing: 9, type_motion: 10, advanced: 11,
 };
 

@@ -1,0 +1,56 @@
+{
+  "name": "t:won.global.rails",
+  "settings": [
+    { "type": "paragraph", "content": "t:won.global.rails_about" },
+    {
+      "type": "select",
+      "id": "won_rail_indicator",
+      "label": "t:won.settings.rail_indicator",
+      "info": "t:won.info.rail_indicator",
+      "options": [
+        { "value": "per_section", "label": "t:won.options.rail_per_section" },
+        { "value": "progress", "label": "t:won.options.rail_progress" },
+        { "value": "dots", "label": "t:won.options.rail_dots" },
+        { "value": "none", "label": "t:won.options.rail_none" }
+      ],
+      "default": "progress"
+    },
+    {
+      "type": "select",
+      "id": "won_rail_arrows",
+      "label": "t:won.settings.rail_arrows",
+      "info": "t:won.info.rail_arrows",
+      "options": [
+        { "value": "per_section", "label": "t:won.options.rail_per_section" },
+        { "value": "always", "label": "t:won.options.rail_arrows_always" },
+        { "value": "never", "label": "t:won.options.rail_arrows_never" }
+      ],
+      "default": "always"
+    },
+    {
+      "type": "select",
+      "id": "won_rail_arrow_style",
+      "label": "t:won.settings.rail_arrow_style",
+      "info": "t:won.info.rail_arrow_style",
+      "options": [
+        { "value": "pill", "label": "t:won.options.arrow_pill" },
+        { "value": "square", "label": "t:won.options.arrow_square" },
+        { "value": "soft", "label": "t:won.options.arrow_soft" },
+        { "value": "minimal", "label": "t:won.options.arrow_minimal" }
+      ],
+      "default": "pill"
+    },
+    {
+      "type": "select",
+      "id": "won_rail_arrow_tone",
+      "label": "t:won.settings.rail_arrow_tone",
+      "info": "t:won.info.rail_arrow_tone",
+      "options": [
+        { "value": "auto", "label": "t:won.options.tone_auto" },
+        { "value": "surface", "label": "t:won.options.tone_surface" },
+        { "value": "overlay", "label": "t:won.options.tone_overlay" }
+      ],
+      "default": "auto"
+    }
+  ]
+}

@@ -41,7 +41,14 @@
     endif
   endif
 -%}
-<div class="won-pcard">
+{%- liquid
+  # Card quick-add is a theme-wide decision: the same control on every card,
+  # wherever the card is rendered (carousel, PLP, cross-sell).
+  assign card_add_mode = settings.won_card_add_mode | default: 'button'
+  assign card_add_align = settings.won_card_add_align | default: 'end'
+  assign card_add_reveal = settings.won_card_add_reveal | default: 'hover'
+-%}
+<div class="won-pcard won-pcard--add-{{ card_add_align }} won-pcard--reveal-{{ card_add_reveal }}">
   <div class="won-pcard__media won-pcard__media--{{ aspect }}">
     {%- if show_badges -%}<div class="won-pcard__badges">{% render 'won-badges', product: product %}</div>{%- endif -%}
     <a class="won-pcard__media-link{% unless product.featured_image %} won-pcard__media-link--placeholder{% endunless %}" href="{{ product.url }}" aria-label="{{ product.title | escape }}">
@@ -52,9 +59,25 @@
     {%- if show_add -%}
       {%- if product.available -%}
         {%- if product.has_only_default_variant or product.variants.size == 1 -%}
-          <button type="button" class="won-pcard__add" data-won-add data-variant-id="{{ pv.id }}" data-added-label="{{ 'won.cart.added' | t }}" aria-label="{{ 'won.cart.add' | t }}: {{ product.title | escape }}"><span class="won-pcard__add-label">{{ 'won.cart.add' | t }}</span></button>
+          {%- comment -%} Stepper mode keeps the same [data-won-add] button as its "+"
+             so the existing global cart handler still owns the first add; the − and
+             the count only appear once the line exists. That way quick-add stays one
+             tap, and changing your mind does not send you to the product page. {%- endcomment -%}
+          {%- if card_add_mode == 'stepper' -%}
+            <div class="won-pcard__add won-pcard__add--stepper {% render 'won-fx' %}" data-won-stepper>
+              <button type="button" class="won-pcard__step" data-won-step="-1" aria-label="{{ 'won.cart.decrease' | t }}: {{ product.title | escape }}" hidden>−</button>
+              <span class="won-pcard__qty" data-won-qty aria-live="polite" hidden>0</span>
+              {%- comment -%} Two labels, swapped by CSS off the box's
+                 data-won-qty-value: before the line exists the button must say
+                 what it does ("Add to cart"); once it exists it is the "+" of a
+                 − 1 + control and a word there reads as a second action. {%- endcomment -%}
+              <button type="button" class="won-pcard__step won-pcard__step--add" data-won-add data-won-step="1" data-variant-id="{{ pv.id }}" data-added-label="{{ 'won.cart.added' | t }}" aria-label="{{ 'won.cart.add' | t }}: {{ product.title | escape }}"><span class="won-pcard__add-label">{{ 'won.cart.add' | t }}</span><span class="won-pcard__plus" aria-hidden="true">+</span></button>
+            </div>
+          {%- else -%}
+            <button type="button" class="won-pcard__add {% render 'won-fx' %}" data-won-add data-variant-id="{{ pv.id }}" data-added-label="{{ 'won.cart.added' | t }}" aria-label="{{ 'won.cart.add' | t }}: {{ product.title | escape }}"><span class="won-pcard__add-label">{{ 'won.cart.add' | t }}</span></button>
+          {%- endif -%}
         {%- else -%}
-          <a class="won-pcard__add won-pcard__add--link" href="{{ product.url }}">{{ 'won.cart.choose' | t }}</a>
+          <a class="won-pcard__add won-pcard__add--link {% render 'won-fx' %}" href="{{ product.url }}">{{ 'won.cart.choose' | t }}</a>
         {%- endif -%}
       {%- else -%}
         <span class="won-pcard__add won-pcard__add--soldout" aria-disabled="true">{{ 'won.cart.soldout' | t }}</span>

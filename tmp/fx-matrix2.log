@@ -1,0 +1,61 @@
+
+### won_btn_hover = none
+  klid   dur=0.24s transform=none sheen=none/0s/1
+  hover  anim:none→won-sheen | animDur:0s→0.75s
+  press  transform:none→matrix(0.970009, 0, 0, 0.970009, 0, 0)
+
+### won_btn_hover = lift
+  klid   dur=0.24s transform=none sheen=none/0s/1
+  hover  transform:none→matrix(1, 0, 0, 1, 0, -2) | shadow:none→rgba(0, 0, 0, 0.1) 0px 6px | anim:none→won-sheen | animDur:0s→0.75s
+  press  transform:matrix(1, 0, 0, 1, 0, -2)→matrix(0.97, 0, 0, 0.97, 0, 0)
+
+### won_btn_hover = grow
+  klid   dur=0.24s transform=none sheen=none/0s/1
+  hover  transform:none→matrix(1.04, 0, 0, 1.04, 0, 0) | anim:none→won-sheen | animDur:0s→0.75s
+  press  transform:matrix(1.04, 0, 0, 1.04, 0, 0)→matrix(0.97, 0, 0, 0.97, 0, 0)
+
+### won_btn_hover = fill
+  klid   dur=0.24s transform=none sheen=none/0s/1
+  hover  bg:rgb(255, 90, 60)→oklab(0.561301 0.142295 0.0907621) | anim:none→won-sheen | animDur:0s→0.75s
+  press  transform:none→matrix(0.970008, 0, 0, 0.970008, 0, 0)
+
+### won_btn_hover = outline
+  klid   dur=0.24s transform=none sheen=none/0s/1
+  hover  bg:rgb(255, 90, 60)→rgba(0, 0, 0, 0) | color:rgb(255, 255, 255)→rgb(255, 90, 60) | border:rgba(0, 0, 0, 0)→rgb(255, 90, 60) | anim:none→won-sheen | animDur:0s→0.75s
+  press  transform:none→matrix(0.970007, 0, 0, 0.970007, 0, 0)
+
+### won_btn_sheen = off
+  klid   dur=0.24s transform=none sheen=none/0s/1
+  hover  transform:none→matrix(1, 0, 0, 1, 0, -2) | shadow:none→rgba(0, 0, 0, 0.1) 0px 6px
+  press  transform:matrix(1, 0, 0, 1, 0, -2)→matrix(0.97, 0, 0, 0.97, 0, 0)
+
+### won_btn_sheen = hover
+  klid   dur=0.24s transform=none sheen=none/0s/1
+  hover  transform:none→matrix(1, 0, 0, 1, 0, -2) | shadow:none→rgba(0, 0, 0, 0.1) 0px 6px | anim:none→won-sheen | animDur:0s→0.75s
+  press  transform:matrix(1, 0, 0, 1, 0, -2)→matrix(0.97, 0, 0, 0.97, 0, 0)
+
+### won_btn_sheen = loop
+  klid   dur=0.24s transform=none sheen=won-sheen/0.75s/infinite
+  hover  transform:none→matrix(1, 0, 0, 1, 0, -2) | shadow:none→rgba(0, 0, 0, 0.1) 0px 6px
+  press  transform:matrix(1, 0, 0, 1, 0, -2)→matrix(0.97, 0, 0, 0.97, 0, 0)
+won_btn_press=none: žádné CTA s efektovou vrstvou
+
+### won_btn_press = sink
+  klid   dur=0.24s transform=none sheen=none/0s/1
+  hover  transform:none→matrix(1, 0, 0, 1, 0, -2) | shadow:none→rgba(0, 0, 0, 0.1) 0px 6px | anim:none→won-sheen | animDur:0s→0.75s
+  press  transform:matrix(1, 0, 0, 1, 0, -2)→matrix(0.97, 0, 0, 0.97, 0, 0)
+
+### won_fx_speed = fast
+  klid   dur=0.12s transform=none sheen=none/0s/1
+  hover  transform:none→matrix(1, 0, 0, 1, 0, -2) | shadow:none→rgba(0, 0, 0, 0.1) 0px 6px | anim:none→won-sheen | animDur:0s→0.48s
+  press  transform:matrix(1, 0, 0, 1, 0, -2)→matrix(0.97, 0, 0, 0.97, 0, 0)
+
+### won_fx_speed = normal
+  klid   dur=0.24s transform=none sheen=none/0s/1
+  hover  transform:none→matrix(1, 0, 0, 1, 0, -2) | shadow:none→rgba(0, 0, 0, 0.1) 0px 6px | anim:none→won-sheen | animDur:0s→0.75s
+  press  transform:matrix(1, 0, 0, 1, 0, -2)→matrix(0.97, 0, 0, 0.97, 0, 0)
+
+### won_fx_speed = slow
+  klid   dur=0.42s transform=none sheen=none/0s/1
+  hover  transform:none→matrix(1, 0, 0, 1, 0, -2) | shadow:none→rgba(0, 0, 0, 0.1) 0px 6px | anim:none→won-sheen | animDur:0s→1.2s
+  press  transform:matrix(1, 0, 0, 1, 0, -2)→matrix(0.971747, 0, 0, 0.971747, 0, -0.116431)

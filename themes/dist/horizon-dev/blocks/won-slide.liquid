@@ -8,6 +8,18 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
 
 {%- liquid
   assign s = block.settings
+  # LCP: the hero's first slide IS the Largest Contentful Paint element, and
+  # `loading` is decided in the initial HTML — no client-side promotion can undo a
+  # late request. A theme block cannot know its own position, so the merchant says
+  # so explicitly; the hero presets tick it on their first slide.
+  assign img_loading = 'lazy'
+  assign img_priority = 'auto'
+  assign img_loading_attr = 'loading="lazy"'
+  if s.priority
+    assign img_loading = 'eager'
+    assign img_priority = 'high'
+    assign img_loading_attr = 'loading="eager" fetchpriority="high"'
+  endif
   assign has_media = false
   if s.media_type == 'image' and s.image != blank
     assign has_media = true
@@ -56,18 +68,39 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
               {{
                 s.image
                 | image_url: width: 1600
-                | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: 'lazy', alt: s.image_alt | default: s.image.alt | default: ''
+                | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: img_loading, fetchpriority: img_priority, alt: s.image_alt | default: s.image.alt | default: ''
               }}
             </picture>
           {%- else -%}
             {{
               s.image
               | image_url: width: 1600
-              | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: 'lazy', alt: s.image_alt | default: s.image.alt | default: ''
+              | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: img_loading, fetchpriority: img_priority, alt: s.image_alt | default: s.image.alt | default: ''
             }}
           {%- endif -%}
         {%- else -%}
-          <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="880" height="1100" loading="lazy">
+          {%- comment -%} Same art-direction for PACKAGED assets. image_mobile only
+             covers the image_picker path, so a demo/preset slide built on
+             image_asset had no way to swap art on a phone — and a wide hero crop
+             loses its subject there: at 390px a 2400x1040 background shows only
+             the middle ~30% of its width.
+
+             width/height are the AUTHORING CONVENTION for packaged slide art
+             (16:10 landscape / 2:3 portrait), not a measurement — Liquid cannot
+             read the dimensions of a file in assets/. They exist because theme
+             check requires them, and they are harmless here: the media box is
+             sized entirely by CSS (`.won-slide__img { height: 100%; object-fit:
+             cover }`), so the intrinsic ratio never drives layout. Same approach
+             as won-shoppable-image. The previous 880x1100 matched no shipped
+             asset at all; render new slide art to these ratios. {%- endcomment -%}
+          {%- if s.image_asset_mobile != blank -%}
+            <picture>
+              <source media="(max-width: 749px)" srcset="{{ s.image_asset_mobile | asset_url }}" width="840" height="1240">
+              <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="1600" height="1000" {{ img_loading_attr }}>
+            </picture>
+          {%- else -%}
+            <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="1600" height="1000" {{ img_loading_attr }}>
+          {%- endif -%}
         {%- endif -%}
       {%- else -%}
         {{ s.video | video_tag: autoplay: true, loop: true, muted: true, controls: false, class: 'won-slide__video' }}
@@ -130,6 +163,14 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
   .won-slide--bordered:not(.won-slide--overlayed) .won-slide__body,
   .won-slide--elevated:not(.won-slide--overlayed) .won-slide__body { padding: var(--won-space-4); }
   .won-slide__media { position: relative; overflow: hidden; border-radius: var(--won-radius-sm); }
+  /* <picture> is display:inline with no height of its own, so an <img> inside it
+     resolves `height: 100%` against an auto-height parent -> auto, and the
+     width/height attributes' aspect-ratio silently decides the box instead. On a
+     390px hero that left a 44px strip of bare section background under the
+     image. Any art-directed slide (image_mobile or image_asset_mobile) needs
+     this; without it the <picture> path is subtly broken and the plain <img>
+     path is not, which is why it went unnoticed. */
+  .won-slide__media picture { display: block; width: 100%; height: 100%; }
   .won-slide__img,
   .won-slide__video { display: block; width: 100%; height: 100%; object-fit: cover; }
   .won-slide__overlay { position: absolute; inset: 0; z-index: 1; }
@@ -203,96 +244,380 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
 {% schema %}
 {
   "name": "t:won.names.slide",
-  "blocks": [{ "type": "@theme" }, { "type": "@app" }],
-  "settings": [
-    { "type": "header", "content": "t:won.headers.content" },
-    { "type": "inline_richtext", "id": "eyebrow", "label": "t:won.settings.eyebrow" },
-    { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.slide_heading" },
-    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 16, "max": 96, "step": 2, "unit": "px", "default": 28 },
-    { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
-    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 14, "max": 64, "step": 2, "unit": "px", "default": 22 },
-    { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
-    { "type": "richtext", "id": "text", "label": "t:won.settings.text", "default": "t:won.defaults.slide_text" },
-    { "type": "text", "id": "button_label", "label": "t:won.settings.button_label" },
-    { "type": "url", "id": "button_link", "label": "t:won.settings.button_link" },
+  "blocks": [
     {
-      "type": "select", "id": "button_style", "label": "t:won.settings.button_style",
+      "type": "@theme"
+    },
+    {
+      "type": "@app"
+    }
+  ],
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:won.headers.content"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "eyebrow",
+      "label": "t:won.settings.eyebrow"
+    },
+    {
+      "type": "richtext",
+      "id": "heading",
+      "label": "t:won.settings.heading",
+      "default": "t:won.defaults.slide_heading"
+    },
+    {
+      "type": "range",
+      "id": "heading_size_desktop",
+      "label": "t:won.settings.heading_size_desktop",
+      "min": 16,
+      "max": 96,
+      "step": 2,
+      "unit": "px",
+      "default": 28
+    },
+    {
+      "type": "range",
+      "id": "heading_max_width_desktop",
+      "label": "t:won.settings.heading_max_width_desktop",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "label": "t:won.settings.heading_size_mobile",
+      "min": 14,
+      "max": 64,
+      "step": 2,
+      "unit": "px",
+      "default": 22
+    },
+    {
+      "type": "range",
+      "id": "heading_max_width_mobile",
+      "label": "t:won.settings.heading_max_width_mobile",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "richtext",
+      "id": "text",
+      "label": "t:won.settings.text",
+      "default": "t:won.defaults.slide_text"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "t:won.settings.button_label"
+    },
+    {
+      "type": "url",
+      "id": "button_link",
+      "label": "t:won.settings.button_link"
+    },
+    {
+      "type": "select",
+      "id": "button_style",
+      "label": "t:won.settings.button_style",
       "options": [
-        { "value": "primary", "label": "t:won.options.primary" },
-        { "value": "secondary", "label": "t:won.options.secondary" }
+        {
+          "value": "primary",
+          "label": "t:won.options.primary"
+        },
+        {
+          "value": "secondary",
+          "label": "t:won.options.secondary"
+        }
       ],
       "default": "primary"
     },
-    { "type": "text", "id": "button2_label", "label": "t:won.settings.button2_label" },
-    { "type": "url", "id": "button2_link", "label": "t:won.settings.button2_link" },
-    { "type": "checkbox", "id": "buttons_new_tab", "label": "t:won.settings.link_new_tab", "default": false },
     {
-      "type": "select", "id": "button2_style", "label": "t:won.settings.button2_style",
+      "type": "text",
+      "id": "button2_label",
+      "label": "t:won.settings.button2_label"
+    },
+    {
+      "type": "url",
+      "id": "button2_link",
+      "label": "t:won.settings.button2_link"
+    },
+    {
+      "type": "checkbox",
+      "id": "buttons_new_tab",
+      "label": "t:won.settings.link_new_tab",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "button2_style",
+      "label": "t:won.settings.button2_style",
       "options": [
-        { "value": "primary", "label": "t:won.options.primary" },
-        { "value": "secondary", "label": "t:won.options.secondary" }
+        {
+          "value": "primary",
+          "label": "t:won.options.primary"
+        },
+        {
+          "value": "secondary",
+          "label": "t:won.options.secondary"
+        }
       ],
       "default": "secondary"
     },
-    { "type": "header", "content": "t:won.headers.media" },
     {
-      "type": "select", "id": "media_type", "label": "t:won.settings.media_type",
+      "type": "header",
+      "content": "t:won.headers.media"
+    },
+    {
+      "type": "select",
+      "id": "media_type",
+      "label": "t:won.settings.media_type",
       "options": [
-        { "value": "none", "label": "t:won.options.none" },
-        { "value": "image", "label": "t:won.options.image" },
-        { "value": "video", "label": "t:won.options.video" }
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "image",
+          "label": "t:won.options.image"
+        },
+        {
+          "value": "video",
+          "label": "t:won.options.video"
+        }
       ],
       "default": "none"
     },
-    { "type": "image_picker", "id": "image", "label": "t:won.settings.image", "visible_if": "{{ block.settings.media_type == 'image' }}" },
-    { "type": "image_picker", "id": "image_mobile", "label": "t:won.settings.image_mobile", "info": "t:won.info.image_mobile", "visible_if": "{{ block.settings.media_type == 'image' }}" },
-    { "type": "text", "id": "image_alt", "label": "t:won.settings.image_alt", "info": "t:won.info.image_alt", "visible_if": "{{ block.settings.media_type == 'image' }}" },
-    { "type": "text", "id": "image_asset", "label": "t:won.settings.image_asset", "info": "t:won.info.image_asset", "visible_if": "{{ block.settings.media_type == 'image' }}" },
-    { "type": "video", "id": "video", "label": "t:won.settings.video", "visible_if": "{{ block.settings.media_type == 'video' }}" },
     {
-      "type": "select", "id": "media_position", "label": "t:won.settings.media_position", "info": "t:won.info.media_position",
+      "type": "image_picker",
+      "id": "image",
+      "label": "t:won.settings.image",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "priority",
+      "label": "t:won.settings.image_priority",
+      "info": "t:won.info.image_priority",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "image_mobile",
+      "label": "t:won.settings.image_mobile",
+      "info": "t:won.info.image_mobile",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "text",
+      "id": "image_alt",
+      "label": "t:won.settings.image_alt",
+      "info": "t:won.info.image_alt",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "text",
+      "id": "image_asset",
+      "label": "t:won.settings.image_asset",
+      "info": "t:won.info.image_asset",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "text",
+      "id": "image_asset_mobile",
+      "label": "t:won.settings.image_asset_mobile",
+      "info": "t:won.info.image_asset_mobile",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "video",
+      "id": "video",
+      "label": "t:won.settings.video",
+      "visible_if": "{{ block.settings.media_type == 'video' }}"
+    },
+    {
+      "type": "select",
+      "id": "media_position",
+      "label": "t:won.settings.media_position",
+      "info": "t:won.info.media_position",
       "options": [
-        { "value": "top", "label": "t:won.options.top" },
-        { "value": "left", "label": "t:won.options.left" },
-        { "value": "right", "label": "t:won.options.right" },
-        { "value": "background", "label": "t:won.options.background" }
+        {
+          "value": "top",
+          "label": "t:won.options.top"
+        },
+        {
+          "value": "left",
+          "label": "t:won.options.left"
+        },
+        {
+          "value": "right",
+          "label": "t:won.options.right"
+        },
+        {
+          "value": "background",
+          "label": "t:won.options.background"
+        }
       ],
       "default": "top",
       "visible_if": "{{ block.settings.media_type != 'none' }}"
     },
-    { "type": "color_background", "id": "background_gradient", "label": "t:won.settings.background_gradient", "info": "t:won.info.background_gradient" },
-    { "type": "header", "content": "t:won.headers.layout" },
-    { "type": "text_alignment", "id": "content_align", "label": "t:won.settings.content_align", "default": "left" },
-    { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 0, "max": 800, "step": 20, "unit": "px", "default": 0, "info": "t:won.info.slide_min_height" },
-    { "type": "header", "content": "t:won.headers.appearance" },
     {
-      "type": "select", "id": "card_style", "label": "t:won.settings.card_style", "info": "t:won.info.card_style",
+      "type": "color_background",
+      "id": "background_gradient",
+      "label": "t:won.settings.background_gradient",
+      "info": "t:won.info.background_gradient"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "text_alignment",
+      "id": "content_align",
+      "label": "t:won.settings.content_align",
+      "default": "left"
+    },
+    {
+      "type": "range",
+      "id": "min_height",
+      "label": "t:won.settings.min_height",
+      "min": 0,
+      "max": 800,
+      "step": 20,
+      "unit": "px",
+      "default": 0,
+      "info": "t:won.info.slide_min_height"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "select",
+      "id": "card_style",
+      "label": "t:won.settings.card_style",
+      "info": "t:won.info.card_style",
       "options": [
-        { "value": "minimal", "label": "t:won.options.minimal" },
-        { "value": "bordered", "label": "t:won.options.bordered" },
-        { "value": "elevated", "label": "t:won.options.elevated" }
+        {
+          "value": "minimal",
+          "label": "t:won.options.minimal"
+        },
+        {
+          "value": "bordered",
+          "label": "t:won.options.bordered"
+        },
+        {
+          "value": "elevated",
+          "label": "t:won.options.elevated"
+        }
       ],
       "default": "minimal"
     },
     {
-      "type": "select", "id": "headline_annotation", "label": "t:won.settings.headline_annotation", "info": "t:won.info.headline_annotation",
+      "type": "select",
+      "id": "headline_annotation",
+      "label": "t:won.settings.headline_annotation",
+      "info": "t:won.info.headline_annotation",
       "options": [
-        { "value": "none", "label": "t:won.options.annot_none" },
-        { "value": "underline", "label": "t:won.options.annot_underline" },
-        { "value": "circle", "label": "t:won.options.annot_circle" }
+        {
+          "value": "none",
+          "label": "t:won.options.annot_none"
+        },
+        {
+          "value": "underline",
+          "label": "t:won.options.annot_underline"
+        },
+        {
+          "value": "circle",
+          "label": "t:won.options.annot_circle"
+        }
       ],
       "default": "none"
     },
-    { "type": "range", "id": "corner_radius", "label": "t:won.settings.corner_radius", "min": 0, "max": 40, "step": 2, "unit": "px", "default": 14, "info": "t:won.info.corner_radius" },
-    { "type": "checkbox", "id": "inherit_color_scheme", "label": "t:won.settings.inherit_color_scheme", "info": "t:won.info.inherit_color_scheme", "default": true },
-    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1", "visible_if": "{{ block.settings.inherit_color_scheme == false }}" },
-    { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" },
-    { "type": "checkbox", "id": "toggle_overlay", "label": "t:won.settings.overlay", "info": "t:won.info.overlay", "default": false, "visible_if": "{{ block.settings.media_type != 'none' }}" },
-    { "type": "color", "id": "overlay_color", "label": "t:won.settings.overlay_color", "info": "t:won.info.overlay_color", "alpha": true, "default": "#00000059", "visible_if": "{{ block.settings.toggle_overlay }}" },
-    { "type": "header", "content": "t:won.headers.spacing" },
-    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 120, "step": 2, "unit": "px", "default": 0 },
-    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 120, "step": 2, "unit": "px", "default": 0 }
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14,
+      "info": "t:won.info.corner_radius"
+    },
+    {
+      "type": "checkbox",
+      "id": "inherit_color_scheme",
+      "label": "t:won.settings.inherit_color_scheme",
+      "info": "t:won.info.inherit_color_scheme",
+      "default": true
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-1",
+      "visible_if": "{{ block.settings.inherit_color_scheme == false }}"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_override"
+    },
+    {
+      "type": "checkbox",
+      "id": "toggle_overlay",
+      "label": "t:won.settings.overlay",
+      "info": "t:won.info.overlay",
+      "default": false,
+      "visible_if": "{{ block.settings.media_type != 'none' }}"
+    },
+    {
+      "type": "color",
+      "id": "overlay_color",
+      "label": "t:won.settings.overlay_color",
+      "info": "t:won.info.overlay_color",
+      "alpha": true,
+      "default": "#00000059",
+      "visible_if": "{{ block.settings.toggle_overlay }}"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 120,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 120,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    }
   ],
-  "presets": [{ "name": "t:won.names.slide" }]
+  "presets": [
+    {
+      "name": "t:won.names.slide"
+    }
+  ]
 }
 {% endschema %}

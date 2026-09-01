@@ -1,0 +1,3089 @@
+{
+  "shop": "b2b-b2c-store-development.myshopify.com",
+  "takenAt": "2026-08-31T10:27:18.161Z",
+  "products": [
+    {
+      "id": "gid://shopify/Product/9520132620529",
+      "handle": "the-inventory-not-tracked-snowboard",
+      "title": "Elektrolyty Hydratace",
+      "status": "ACTIVE",
+      "productType": "Hydratace",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [
+        "elektrolyty",
+        "hydratace",
+        "vytrvalost"
+      ],
+      "descriptionHtml": "<p>Elektrolyty pro dny, kdy voda nestačí — dlouhý trénink, horko, sauna. Sodík, hořčík a draslík v poměru, který tělo opravdu ztrácí potem.</p><ul>\n<li>1 000 mg sodíku v porci</li>\n<li>Bez cukru a bez sladidel</li>\n<li>Rozpustné za studena</li>\n<li>Vhodné i mimo trénink</li>\n</ul><p><strong>Dávkování:</strong> 1 odměrku (5 g) do 500–750 ml vody. Při zátěži nad hodinu opakuj.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/11872453361905",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/4917530067185",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.6"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "94"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Skladem, odesíláme dnes"
+          },
+          {
+            "namespace": "won",
+            "key": "net_weight_g",
+            "type": "number_integer",
+            "value": "500"
+          },
+          {
+            "namespace": "won",
+            "key": "servings",
+            "type": "number_integer",
+            "value": "100"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Sodík | — | 1 000 mg\",\"Draslík | — | 200 mg\",\"Hořčík | — | 60 mg\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934266769649",
+            "title": "Default Title",
+            "sku": "sku-untracked-1",
+            "price": "949.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030588657",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425004785",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-electrolytes.png?v=1788079579",
+              "altText": "Elektrolyty Hydratace"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520132653297",
+      "handle": "gift-card",
+      "title": "Gift Card",
+      "status": "ACTIVE",
+      "productType": "giftcard",
+      "vendor": "Snowboard Vendor",
+      "tags": [],
+      "descriptionHtml": "This is a gift card for the store",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/11872453394673",
+          "name": "Denominations",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/4917530362097",
+              "name": "$10"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/4917529346289",
+              "name": "$25"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/4917529379057",
+              "name": "$50"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/4917529411825",
+              "name": "$100"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": []
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934267064561",
+            "title": "$10",
+            "sku": null,
+            "price": "10.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Denominations",
+                "value": "$10"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030818033",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/47934267097329",
+            "title": "$25",
+            "sku": null,
+            "price": "25.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Denominations",
+                "value": "$25"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030850801",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/47934267130097",
+            "title": "$50",
+            "sku": null,
+            "price": "50.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Denominations",
+                "value": "$50"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030883569",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/47934267162865",
+            "title": "$100",
+            "sku": null,
+            "price": "100.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Denominations",
+                "value": "$100"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030916337",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/38714287423729",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/gift_card.png?v=1773737030",
+              "altText": "Gift card that shows text: Generated data gift card"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520132686065",
+      "handle": "the-minimal-snowboard",
+      "title": "Zinek + Selen",
+      "status": "ACTIVE",
+      "productType": "Minerály",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [
+        "imunita",
+        "selen",
+        "zinek"
+      ],
+      "descriptionHtml": "<p>Zinek a selen v jedné kapsli. Dvojice pro imunitu a hormonální rovnováhu, kterou většina multivitamínů dávkuje příliš nízko.</p><ul>\n<li>25 mg zinku jako bisglycinát</li>\n<li>55 µg selenu jako selenomethionin</li>\n<li>Bez zbytečných plnidel</li>\n<li>Vegan</li>\n</ul><p><strong>Dávkování:</strong> 1 kapsli denně s jídlem.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/11872453427441",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/4917530001649",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.5"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "39"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Skladem, odesíláme dnes"
+          },
+          {
+            "namespace": "won",
+            "key": "servings",
+            "type": "number_integer",
+            "value": "90"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Zinek | — | 25 mg (250 % DDD)\",\"Selen | — | 55 µg (100 % DDD)\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934266704113",
+            "title": "Default Title",
+            "sku": null,
+            "price": "885.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030490353",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425037553",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-vitamin.png?v=1788079580",
+              "altText": "Zinek + Selen"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520132718833",
+      "handle": "the-archived-snowboard",
+      "title": "Kolagen Peptidy",
+      "status": "ARCHIVED",
+      "productType": "Kolagen",
+      "vendor": "Snowboard Vendor",
+      "tags": [
+        "klouby",
+        "kolagen",
+        "pleť"
+      ],
+      "descriptionHtml": "<p>Hydrolyzované kolagenní peptidy Peptan®. Krátké řetězce, které se vstřebají — na klouby, vazy a pleť.</p><ul>\n<li>10 g peptidů v porci</li>\n<li>Bez příchuti, rozpustné i ve studené vodě</li>\n<li>Typ I a III</li>\n<li>Bez cukru</li>\n</ul><p><strong>Dávkování:</strong> 10 g denně, kdykoli během dne.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/11872453460209",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/4917530165489",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Energie | 1500 kJ / 358 kcal | 150 kJ / 36 kcal\",\"Bílkoviny | 90 g | 9 g\",\"Kolagenní peptidy | 95 g | 9 500 mg\"]"
+          },
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.7"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "203"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Doručení do 2 dnů"
+          },
+          {
+            "namespace": "won",
+            "key": "net_weight_g",
+            "type": "number_integer",
+            "value": "300"
+          },
+          {
+            "namespace": "won",
+            "key": "servings",
+            "type": "number_integer",
+            "value": "30"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934266867953",
+            "title": "Default Title",
+            "sku": null,
+            "price": "629.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030654193",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425070321",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-omega.png?v=1788079582",
+              "altText": "Kolagen Peptidy"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520132751601",
+      "handle": "the-collection-snowboard-hydrogen",
+      "title": "Kreatin Monohydrát",
+      "status": "ACTIVE",
+      "productType": "Kreatin",
+      "vendor": "Hydrogen Vendor",
+      "tags": [
+        "kreatin",
+        "síla",
+        "výkon"
+      ],
+      "descriptionHtml": "<p>Čistý kreatin monohydrát Creapure®. Nejlépe prozkoumaný doplněk na sílu a opakovaný výkon — bez příchutí a bez plnidel.</p><ul>\n<li>100 % kreatin monohydrát, žádná plnidla</li>\n<li>Mikronizovaný, lépe se rozmíchá</li>\n<li>5 g v denní dávce</li>\n<li>Bez nutnosti nasycovací fáze</li>\n</ul><p><strong>Dávkování:</strong> 5 g denně kdykoli během dne, s jídlem nebo po tréninku. Užívej průběžně, ne v cyklech.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12174961934577",
+          "name": "Balení",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5758872682737",
+              "name": "300 g"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5758872715505",
+              "name": "500 g"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "test_data",
+            "key": "binding_mount",
+            "type": "single_line_text_field",
+            "value": "Optimistic"
+          },
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.7"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "205"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Kreatin monohydrát | 100 g | 5 000 mg\",\"Energie | 0 kJ / 0 kcal | 0 kJ / 0 kcal\"]"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Skladem, odesíláme dnes"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934266736881",
+            "title": "300 g",
+            "sku": "WON-CREA-300",
+            "price": "600.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Balení",
+                "value": "300 g"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030523121",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48667293450481",
+            "title": "500 g",
+            "sku": "WON-CREA-500",
+            "price": "899.00",
+            "compareAtPrice": "1000.00",
+            "selectedOptions": [
+              {
+                "name": "Balení",
+                "value": "500 g"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50754272461041",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425103089",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-creatine.png?v=1788079583",
+              "altText": "Kreatin Monohydrát"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520132784369",
+      "handle": "the-hidden-snowboard",
+      "title": "Glutamin",
+      "status": "ACTIVE",
+      "productType": "Aminokyseliny",
+      "vendor": "Snowboard Vendor",
+      "tags": [
+        "glutamin",
+        "regenerace",
+        "střeva"
+      ],
+      "descriptionHtml": "<p>L-Glutamin bez příchuti. Aminokyselina, kterou tělo při zátěži spotřebuje nejvíc — a nejčastěji se doplňuje v období velkého objemu tréninku.</p><ul>\n<li>5 g v porci</li>\n<li>Bez příchuti, dá se přidat do proteinu</li>\n<li>Farmaceutická čistota</li>\n<li>Vegan</li>\n</ul><p><strong>Dávkování:</strong> 5 g denně, po tréninku nebo před spaním.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/11872453525745",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/4917530296561",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "test_data",
+            "key": "snowboard_weight",
+            "type": "weight",
+            "value": "{\"value\":8.0,\"unit\":\"POUNDS\"}"
+          },
+          {
+            "namespace": "global",
+            "key": "title_tag",
+            "type": "string",
+            "value": "Hidden Snowboard"
+          },
+          {
+            "namespace": "global",
+            "key": "description_tag",
+            "type": "string",
+            "value": "hidden snowboard winter sport snowboarding"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"L-Glutamin | 100 g | 5 000 mg\",\"Energie | 1700 kJ / 400 kcal | 85 kJ / 20 kcal\"]"
+          },
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.2"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "27"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Doručení do 2 dnů"
+          },
+          {
+            "namespace": "won",
+            "key": "net_weight_g",
+            "type": "number_integer",
+            "value": "500"
+          },
+          {
+            "namespace": "won",
+            "key": "servings",
+            "type": "number_integer",
+            "value": "100"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934266999025",
+            "title": "Default Title",
+            "sku": null,
+            "price": "749.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030981873",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425135857",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-bcaa.png?v=1788079585",
+              "altText": "Glutamin"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520132817137",
+      "handle": "the-compare-at-price-snowboard",
+      "title": "Magnesium + B6",
+      "status": "ACTIVE",
+      "productType": "Minerály",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [
+        "akce",
+        "hořčík",
+        "regenerace",
+        "spánek"
+      ],
+      "descriptionHtml": "<p>Hořčík ve třech formách plus B6. Bisglycinát na vstřebatelnost, malát na energii, citrát na rychlý nástup — každá forma dělá něco jiného.</p><ul>\n<li>375 mg hořčíku v denní dávce (100 % DDD)</li>\n<li>Tři formy místo levného oxidu</li>\n<li>B6 pro lepší využití hořčíku</li>\n<li>Bez dráždění žaludku</li>\n</ul><p><strong>Dávkování:</strong> 2 kapsle večer, ideálně hodinu před spaním.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12174962131185",
+          "name": "Počet kapslí",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5758872977649",
+              "name": "60 kapslí"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5758873010417",
+              "name": "120 kapslí"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.5"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "64"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Skladem, odesíláme dnes"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Hořčík | — | 375 mg (100 % DDD)\",\"Vitamín B6 | — | 1,4 mg (100 % DDD)\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934267031793",
+            "title": "60 kapslí",
+            "sku": "WON-MGB6-60",
+            "price": "785.95",
+            "compareAtPrice": "885.95",
+            "selectedOptions": [
+              {
+                "name": "Počet kapslí",
+                "value": "60 kapslí"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 10,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030949105",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48667293647089",
+            "title": "120 kapslí",
+            "sku": "WON-MGB6-120",
+            "price": "1349.95",
+            "compareAtPrice": "1571.90",
+            "selectedOptions": [
+              {
+                "name": "Počet kapslí",
+                "value": "120 kapslí"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50754272657649",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425168625",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-magnesium.png?v=1788079586",
+              "altText": "Magnesium + B6"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520132849905",
+      "handle": "the-out-of-stock-snowboard",
+      "title": "Proteinová tyčinka (12 ks)",
+      "status": "ACTIVE",
+      "productType": "Tyčinky",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [
+        "protein",
+        "svačina",
+        "tyčinka"
+      ],
+      "descriptionHtml": "<p>Proteinová tyčinka, která se dá dojíst. 20 g bílkovin, karamelová vrstva a mandle — bez křídové textury, kterou znáš z levných tyčinek.</p><ul>\n<li>20 g bílkovin v tyčince</li>\n<li>Bez přidaného cukru</li>\n<li>12 kusů v balení</li>\n<li>Vyrobeno v EU</li>\n</ul><p><strong>Dávkování:</strong> 1 tyčinka jako svačina nebo po tréninku.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/11872453558513",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/4917530099953",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.3"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "58"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Momentálně vyprodáno"
+          },
+          {
+            "namespace": "won",
+            "key": "net_weight_g",
+            "type": "number_integer",
+            "value": "660"
+          },
+          {
+            "namespace": "won",
+            "key": "servings",
+            "type": "number_integer",
+            "value": "12"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Energie | 1520 kJ / 361 kcal | 836 kJ / 199 kcal\",\"Bílkoviny | 36 g | 20 g\",\"Sacharidy | 34 g | 19 g\",\"z toho cukry | 2,0 g | 1,1 g\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934266802417",
+            "title": "Default Title",
+            "sku": null,
+            "price": "885.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030555889",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425201393",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-sticks.png?v=1788079588",
+              "altText": "Proteinová tyčinka (12 ks)"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520132882673",
+      "handle": "the-draft-snowboard",
+      "title": "Ashwagandha",
+      "status": "DRAFT",
+      "productType": "Adaptogeny",
+      "vendor": "Snowboard Vendor",
+      "tags": [
+        "ashwagandha",
+        "spánek",
+        "stres"
+      ],
+      "descriptionHtml": "<p>Ashwagandha KSM-66® v dávce, která odpovídá studiím. Adaptogen na období, kdy je zátěže víc než odpočinku.</p><ul>\n<li>600 mg KSM-66® v denní dávce</li>\n<li>Standardizováno na 5 % withanolidů</li>\n<li>Kořen, ne list</li>\n<li>Vegan</li>\n</ul><p><strong>Dávkování:</strong> 2 kapsle večer.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/11872453624049",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/4917530132721",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.6"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "112"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Doručení do 2 dnů"
+          },
+          {
+            "namespace": "won",
+            "key": "servings",
+            "type": "number_integer",
+            "value": "60"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Ashwagandha KSM-66® | — | 600 mg\",\"z toho withanolidy | — | 30 mg\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934266835185",
+            "title": "Default Title",
+            "sku": null,
+            "price": "2629.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 20,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030621425",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425234161",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-greens.png?v=1788079590",
+              "altText": "Ashwagandha"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520132915441",
+      "handle": "selling-plans-ski-wax",
+      "title": "Denní Multivitamín",
+      "status": "ACTIVE",
+      "productType": "Vitamíny",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [
+        "denní",
+        "multivitamín",
+        "předplatné"
+      ],
+      "descriptionHtml": "<p>Multivitamín na každý den se zaměřením na to, čeho má běžná strava málo — D, B12, hořčík a zinek. Ne dvacet položek po stopových dávkách.</p><ul>\n<li>23 vitamínů a minerálů</li>\n<li>Dávky odpovídají DDD, ne marketingu</li>\n<li>1 kapsle denně</li>\n<li>Dostupné i jako předplatné</li>\n</ul><p><strong>Dávkování:</strong> 1 kapsli ráno s jídlem.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/11872453656817",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/4917530198257",
+              "name": "Selling Plans Ski Wax"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/4917529673969",
+              "name": "Special Selling Plans Ski Wax"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/4917529706737",
+              "name": "Sample Selling Plans Ski Wax"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.4"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "141"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Skladem, odesíláme dnes"
+          },
+          {
+            "namespace": "won",
+            "key": "servings",
+            "type": "number_integer",
+            "value": "60"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Vitamín D3 | — | 25 µg (500 % DDD)\",\"Vitamín B12 | — | 2,5 µg (100 % DDD)\",\"Zinek | — | 10 mg (100 % DDD)\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934266900721",
+            "title": "Selling Plans Ski Wax",
+            "sku": null,
+            "price": "24.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Selling Plans Ski Wax"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 10,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030686961",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 2,
+                  "unit": "OUNCES"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/47934266933489",
+            "title": "Special Selling Plans Ski Wax",
+            "sku": null,
+            "price": "49.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Special Selling Plans Ski Wax"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 10,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030719729",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 2.5,
+                  "unit": "OUNCES"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/47934266966257",
+            "title": "Sample Selling Plans Ski Wax",
+            "sku": null,
+            "price": "9.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Sample Selling Plans Ski Wax"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 10,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030752497",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0.5,
+                  "unit": "OUNCES"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425332465",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-vitamin_e7db0c44-63ab-47c9-90f8-6799ae62846d.png?v=1788079590",
+              "altText": "Denní Multivitamín"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520132948209",
+      "handle": "the-complete-snowboard",
+      "title": "Protein Blend — Výhodný set",
+      "status": "ACTIVE",
+      "productType": "Protein",
+      "vendor": "Snowboard Vendor",
+      "tags": [
+        "protein",
+        "set",
+        "výhodné balení"
+      ],
+      "descriptionHtml": "<p>Třísložkový protein — syrovátka pro rychlý nástup, kasein na noc, izolát pro čistotu. Jedno balení místo tří.</p><ul>\n<li>24 g bílkovin ze tří zdrojů</li>\n<li>Postupné uvolňování aminokyselin</li>\n<li>Vhodné ráno i před spaním</li>\n<li>5 příchutí, stejná receptura</li>\n</ul><p><strong>Dávkování:</strong> 1 odměrku (30 g) do 250 ml tekutiny, 1–2× denně.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/11872453689585",
+          "name": "Příchuť",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/4917530525937",
+              "name": "Bez příchuti"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/4917529870577",
+              "name": "Vanilka"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/4917529903345",
+              "name": "Čokoláda"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/4917529936113",
+              "name": "Slaný karamel"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/4917529968881",
+              "name": "Jahoda"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "global",
+            "key": "title_tag",
+            "type": "string",
+            "value": "Complete Snowboard"
+          },
+          {
+            "namespace": "global",
+            "key": "description_tag",
+            "type": "string",
+            "value": "snowboard winter sport snowboarding"
+          },
+          {
+            "namespace": "test_data",
+            "key": "snowboard_length",
+            "type": "dimension",
+            "value": "{\"value\":159.0,\"unit\":\"CENTIMETERS\"}"
+          },
+          {
+            "namespace": "test_data",
+            "key": "snowboard_weight",
+            "type": "weight",
+            "value": "{\"value\":7.0,\"unit\":\"POUNDS\"}"
+          },
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.9"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "512"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Skladem, odesíláme dnes"
+          },
+          {
+            "namespace": "won",
+            "key": "net_weight_g",
+            "type": "number_integer",
+            "value": "1000"
+          },
+          {
+            "namespace": "won",
+            "key": "servings",
+            "type": "number_integer",
+            "value": "33"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Energie | 1620 kJ / 382 kcal | 486 kJ / 115 kcal\",\"Bílkoviny | 80 g | 24 g\",\"Sacharidy | 6,0 g | 1,8 g\",\"Tuky | 4,5 g | 1,4 g\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934267228401",
+            "title": "Bez příchuti",
+            "sku": null,
+            "price": "699.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Příchuť",
+                "value": "Bez příchuti"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 10,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997031014641",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 10,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/47934267261169",
+            "title": "Vanilka",
+            "sku": null,
+            "price": "699.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Příchuť",
+                "value": "Vanilka"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 10,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997031047409",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 10,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/47934267293937",
+            "title": "Čokoláda",
+            "sku": null,
+            "price": "699.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Příchuť",
+                "value": "Čokoláda"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 10,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997031080177",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 10,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/47934267326705",
+            "title": "Slaný karamel",
+            "sku": null,
+            "price": "699.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Příchuť",
+                "value": "Slaný karamel"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 10,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997031112945",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 10,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/47934267359473",
+            "title": "Jahoda",
+            "sku": null,
+            "price": "699.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Příchuť",
+                "value": "Jahoda"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 10,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997031145713",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 10,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425365233",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-whey.png?v=1788079592",
+              "altText": "Protein Blend — Výhodný set"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520132980977",
+      "handle": "the-videographer-snowboard",
+      "title": "Pre-Workout Energy",
+      "status": "ACTIVE",
+      "productType": "Pre-workout",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [
+        "energie",
+        "kofein",
+        "pre-workout"
+      ],
+      "descriptionHtml": "<p>Pre-workout s kofeinem, beta-alaninem a citrulinem. Nabudí, ale nerozhodí — bez dávky, po které se třesou ruce.</p><ul>\n<li>200 mg kofeinu v porci</li>\n<li>3 g beta-alaninu pro delší sérii</li>\n<li>6 g citrulin malátu pro prokrvení</li>\n<li>Bez zbytečných plnidel</li>\n</ul><p><strong>Dávkování:</strong> 1 odměrku (10 g) do 300 ml vody 20 minut před tréninkem. Neužívej po 16. hodině.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12174203191537",
+          "name": "Balení",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5755074248945",
+              "name": "500 g"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5755074281713",
+              "name": "1 000 g"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5755074314481",
+              "name": "2 500 g"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.7"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "231"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Skladem, odesíláme dnes"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Kofein | — | 200 mg\",\"Beta-alanin | — | 3 000 mg\",\"Citrulin malát | — | 6 000 mg\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934267195633",
+            "title": "500 g",
+            "sku": "WON-PRE-500",
+            "price": "549.95",
+            "compareAtPrice": "999.95",
+            "selectedOptions": [
+              {
+                "name": "Balení",
+                "value": "500 g"
+              }
+            ],
+            "inventoryPolicy": "CONTINUE",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997030785265",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48665842909425",
+            "title": "1 000 g",
+            "sku": "WON-PRE-1000",
+            "price": "885.95",
+            "compareAtPrice": "999.95",
+            "selectedOptions": [
+              {
+                "name": "Balení",
+                "value": "1 000 g"
+              }
+            ],
+            "inventoryPolicy": "CONTINUE",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50752728989937",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48665842942193",
+            "title": "2 500 g",
+            "sku": "WON-PRE-2500",
+            "price": "1899.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Balení",
+                "value": "2 500 g"
+              }
+            ],
+            "inventoryPolicy": "CONTINUE",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50752729022705",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425398001",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-electrolytes_01d5aa42-ea1a-482e-94fa-0366f244b4df.png?v=1788079593",
+              "altText": "Pre-Workout Energy"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520133013745",
+      "handle": "the-collection-snowboard-oxygen",
+      "title": "Whey Protein — Vanilka",
+      "status": "ACTIVE",
+      "productType": "Protein",
+      "vendor": "Hydrogen Vendor",
+      "tags": [
+        "protein",
+        "regenerace",
+        "syrovátka"
+      ],
+      "descriptionHtml": "<p>Stejná syrovátka jako čokoládová verze, jen jemnější — vanilka z pravého extraktu, ne aroma. Hodí se i do kaše a jogurtu.</p><ul>\n<li>21 g bílkovin v porci</li>\n<li>Bez umělých barviv</li>\n<li>Neutrální chuť, snese kombinaci s ovocem</li>\n<li>Vyrobeno v EU</li>\n</ul><p><strong>Dávkování:</strong> 1 odměrku (30 g) do 250 ml vody nebo mléka.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12174961901809",
+          "name": "Balení",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5758872617201",
+              "name": "1 000 g"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5758872649969",
+              "name": "2 500 g"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "test_data",
+            "key": "binding_mount",
+            "type": "single_line_text_field",
+            "value": "Optimistic"
+          },
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.6"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "118"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Skladem, odesíláme dnes"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Energie | 1598 kJ / 377 kcal | 479 kJ / 113 kcal\",\"Bílkoviny | 70 g | 21 g\",\"Sacharidy | 7,8 g | 2,3 g\",\"Tuky | 5,8 g | 1,7 g\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934267556081",
+            "title": "1 000 g",
+            "sku": "WON-WHEY-VAN-1000",
+            "price": "1025.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Balení",
+                "value": "1 000 g"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997031342321",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48667293417713",
+            "title": "2 500 g",
+            "sku": "WON-WHEY-VAN-2500",
+            "price": "2299.00",
+            "compareAtPrice": "2562.50",
+            "selectedOptions": [
+              {
+                "name": "Balení",
+                "value": "2 500 g"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50754272428273",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425430769",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-whey_329fcd2c-ee8c-4d47-878f-614d438e5443.png?v=1788079593",
+              "altText": "Whey Protein — Vanilka"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520133046513",
+      "handle": "the-multi-location-snowboard",
+      "title": "Vitamín D3 + K2",
+      "status": "ACTIVE",
+      "productType": "Vitamíny",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [
+        "imunita",
+        "kosti",
+        "vitamín d"
+      ],
+      "descriptionHtml": "<p>Vitamín D3 s K2 ve formě MK-7. Dvojice, která patří k sobě — K2 pomáhá nasměrovat vápník do kostí. Od podzimu do jara ho z jídla nezískáš dost.</p><ul>\n<li>2 000 IU vitamínu D3 v kapsli</li>\n<li>75 µg vitamínu K2 jako MK-7</li>\n<li>V oleji, kvůli vstřebatelnosti</li>\n<li>Bez laktózy a lepku</li>\n</ul><p><strong>Dávkování:</strong> 1 kapsli denně s jídlem obsahujícím tuk.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12174962065649",
+          "name": "Počet kapslí",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5758872879345",
+              "name": "90 kapslí"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5758872912113",
+              "name": "180 kapslí"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.9"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "87"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Skladem, odesíláme dnes"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Vitamín D3 (cholekalciferol) | — | 50 µg (2 000 IU)\",\"Vitamín K2 (MK-7) | — | 75 µg\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934267523313",
+            "title": "90 kapslí",
+            "sku": "WON-D3K2-90",
+            "price": "729.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Počet kapslí",
+                "value": "90 kapslí"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 100,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997031309553",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48667293581553",
+            "title": "180 kapslí",
+            "sku": "WON-D3K2-180",
+            "price": "1249.95",
+            "compareAtPrice": "1459.90",
+            "selectedOptions": [
+              {
+                "name": "Počet kapslí",
+                "value": "180 kapslí"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50754272592113",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425463537",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-vitamin_48c9d043-a047-42f9-bd8a-024b227318db.png?v=1788079594",
+              "altText": "Vitamín D3 + K2"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520133079281",
+      "handle": "the-multi-managed-snowboard",
+      "title": "BCAA Aminokyseliny",
+      "status": "ACTIVE",
+      "productType": "Aminokyseliny",
+      "vendor": "Multi-managed Vendor",
+      "tags": [
+        "aminokyseliny",
+        "bcaa",
+        "regenerace"
+      ],
+      "descriptionHtml": "<p>BCAA v poměru 2:1:1 pro pití během tréninku. Kyselejší chuť, protože neobsahuje sladidla, která by ji zakryla.</p><ul>\n<li>Leucin, izoleucin a valin 2:1:1</li>\n<li>5 g v porci</li>\n<li>Bez cukru, 0 kcal</li>\n<li>Rozpustné ve studené vodě</li>\n</ul><p><strong>Dávkování:</strong> 1 odměrku (10 g) do 500 ml vody, popíjej během tréninku.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12174962032881",
+          "name": "Balení",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5758872813809",
+              "name": "400 g"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5758872846577",
+              "name": "800 g"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "test_data",
+            "key": "snowboard_length",
+            "type": "dimension",
+            "value": "{\"value\":159.0,\"unit\":\"CENTIMETERS\"}"
+          },
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.6"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "128"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Doručení do 2 dnů"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"L-Leucin | 50 g | 2 500 mg\",\"L-Izoleucin | 25 g | 1 250 mg\",\"L-Valin | 25 g | 1 250 mg\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934267621617",
+            "title": "400 g",
+            "sku": "WON-BCAA-400",
+            "price": "629.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Balení",
+                "value": "400 g"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 100,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997031407857",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48667293548785",
+            "title": "800 g",
+            "sku": "WON-BCAA-800",
+            "price": "1099.95",
+            "compareAtPrice": "1259.90",
+            "selectedOptions": [
+              {
+                "name": "Balení",
+                "value": "800 g"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50754272559345",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425496305",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-bcaa_d6debaea-3696-42e3-b59c-7eca8a4b6bb4.png?v=1788079595",
+              "altText": "BCAA Aminokyseliny"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520133112049",
+      "handle": "the-3p-fulfilled-snowboard",
+      "title": "Omega 3 Rybí olej",
+      "status": "ACTIVE",
+      "productType": "Omega 3",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [
+        "mozek",
+        "omega 3",
+        "srdce"
+      ],
+      "descriptionHtml": "<p>Rybí olej z drobných ryb z chladných vod, molekulárně destilovaný. Vysoký podíl EPA a DHA a žádná rybí pachuť po polknutí.</p><ul>\n<li>1 000 mg rybího oleje v kapsli</li>\n<li>330 mg EPA a 220 mg DHA</li>\n<li>Testováno na těžké kovy</li>\n<li>Certifikace udržitelného rybolovu</li>\n</ul><p><strong>Dávkování:</strong> 2 kapsle denně s jídlem.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12174962196721",
+          "name": "Počet kapslí",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5758873075953",
+              "name": "90 kapslí"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5758873108721",
+              "name": "180 kapslí"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.4"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "76"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Doručení do 2 dnů"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Rybí olej | — | 2 000 mg\",\"z toho EPA | — | 660 mg\",\"z toho DHA | — | 440 mg\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934267588849",
+            "title": "90 kapslí",
+            "sku": "WON-OMEGA-90",
+            "price": "629.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Počet kapslí",
+                "value": "90 kapslí"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 20,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997031375089",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48667293712625",
+            "title": "180 kapslí",
+            "sku": "WON-OMEGA-180",
+            "price": "1099.95",
+            "compareAtPrice": "1259.90",
+            "selectedOptions": [
+              {
+                "name": "Počet kapslí",
+                "value": "180 kapslí"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50754272723185",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425529073",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-omega_263e90e2-2bf3-4e38-bbd6-066e2fd9b6c2.png?v=1788079596",
+              "altText": "Omega 3 Rybí olej"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9520133144817",
+      "handle": "the-collection-snowboard-liquid",
+      "title": "Whey Protein — Čokoláda",
+      "status": "ACTIVE",
+      "productType": "Protein",
+      "vendor": "Hydrogen Vendor",
+      "tags": [
+        "bestseller",
+        "protein",
+        "regenerace",
+        "syrovátka"
+      ],
+      "descriptionHtml": "<p>Syrovátkový koncentrát s 21 g bílkovin v porci. Rozmíchá se ve vodě i v mléce bez hrudek a chutná jako kakao, ne jako doplněk.</p><ul>\n<li>21 g bílkovin a 4,8 g BCAA v jedné porci</li>\n<li>Bez umělých sladidel a bez palmového oleje</li>\n<li>Rozpustnost testovaná ve studené vodě</li>\n<li>Vyrobeno v EU, rozbor každé šarže</li>\n</ul><p><strong>Dávkování:</strong> 1 odměrku (30 g) do 250 ml vody nebo mléka, ideálně do 30 minut po tréninku.</p>",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12174961115377",
+          "name": "Balení",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5758871240945",
+              "name": "1 000 g"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5758871273713",
+              "name": "2 500 g"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": [
+          {
+            "namespace": "test_data",
+            "key": "binding_mount",
+            "type": "single_line_text_field",
+            "value": "Optimistic"
+          },
+          {
+            "namespace": "won",
+            "key": "rating",
+            "type": "number_decimal",
+            "value": "4.8"
+          },
+          {
+            "namespace": "won",
+            "key": "rating_count",
+            "type": "number_integer",
+            "value": "342"
+          },
+          {
+            "namespace": "won",
+            "key": "delivery",
+            "type": "single_line_text_field",
+            "value": "Skladem, odesíláme dnes"
+          },
+          {
+            "namespace": "won",
+            "key": "net_weight_g",
+            "type": "number_integer",
+            "value": "1000"
+          },
+          {
+            "namespace": "won",
+            "key": "servings",
+            "type": "number_integer",
+            "value": "33"
+          },
+          {
+            "namespace": "custom",
+            "key": "nutrition",
+            "type": "list.single_line_text_field",
+            "value": "[\"Energie | 1611 kJ / 380 kcal | 483 kJ / 114 kcal\",\"Bílkoviny | 70 g | 21 g\",\"Sacharidy | 8,5 g | 2,6 g\",\"z toho cukry | 6,2 g | 1,9 g\",\"Tuky | 6,0 g | 1,8 g\",\"Sůl | 0,45 g | 0,14 g\"]"
+          }
+        ]
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/47934267687153",
+            "title": "1 000 g",
+            "sku": "WON-WHEY-CHOC-1000",
+            "price": "749.95",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Balení",
+                "value": "1 000 g"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/49997031473393",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48667292434673",
+            "title": "2 500 g",
+            "sku": "WON-WHEY-CHOC-2500",
+            "price": "1699.95",
+            "compareAtPrice": "1874.95",
+            "selectedOptions": [
+              {
+                "name": "Balení",
+                "value": "2 500 g"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 50,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50754271445233",
+              "tracked": true,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/40261425561841",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-whey_e7807115-5cf3-4ddf-a2b1-da3cc9d3985d.png?v=1788079597",
+              "altText": "Whey Protein — Čokoláda"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9665009811697",
+      "handle": "mg-e2e-hidden",
+      "title": "MG E2E · Hidden Product",
+      "status": "ACTIVE",
+      "productType": "",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [],
+      "descriptionHtml": "Dedikovaný e2e produkt — archetyp HIDDEN (skrytý v e2e katalogu).",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12040577941745",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5454080737521",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": []
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/48393748250865",
+            "title": "Default Title",
+            "sku": null,
+            "price": "19.90",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50475967938801",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/39837546086641",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/photo-1523275335684-37898b6baf30.jpg?v=1783701603",
+              "altText": "mg-e2e-hidden"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9665009877233",
+      "handle": "mg-e2e-moq-step",
+      "title": "MG E2E · MOQ + Step",
+      "status": "ACTIVE",
+      "productType": "",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [],
+      "descriptionHtml": "Dedikovaný e2e produkt — archetyp QUANTITY_MOQ_STEP (MOQ 6, step 3).",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12040578007281",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5454080803057",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": []
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/48393748283633",
+            "title": "Default Title",
+            "sku": null,
+            "price": "19.90",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50475967971569",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/39837546184945",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/photo-1542291026-7eec264c27ff.jpg?v=1783701604",
+              "altText": "mg-e2e-moq-step"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9665009910001",
+      "handle": "mg-e2e-max",
+      "title": "MG E2E · Max Quantity",
+      "status": "ACTIVE",
+      "productType": "",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [],
+      "descriptionHtml": "Dedikovaný e2e produkt — archetyp QUANTITY_MAX (max 3).",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12040578040049",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5454080835825",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": []
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/48393748349169",
+            "title": "Default Title",
+            "sku": null,
+            "price": "19.90",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50475968037105",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/39837546250481",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/photo-1505740420928-5e560c06d30e.jpg?v=1783701604",
+              "altText": "mg-e2e-max"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9665010139377",
+      "handle": "mg-e2e-variant-hidden",
+      "title": "MG E2E · Variant Hidden",
+      "status": "ACTIVE",
+      "productType": "",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [],
+      "descriptionHtml": "Dedikovaný e2e produkt — archetyp VARIANT_HIDDEN (skrytá konkrétní varianta).",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12040578269425",
+          "name": "Size",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5454081065201",
+              "name": "S"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5454081097969",
+              "name": "M"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5454081130737",
+              "name": "L"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": []
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/48393748578545",
+            "title": "S",
+            "sku": null,
+            "price": "19.90",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Size",
+                "value": "S"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50475968266481",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48393749561585",
+            "title": "M",
+            "sku": null,
+            "price": "19.90",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Size",
+                "value": "M"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50475969249521",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48393749594353",
+            "title": "L",
+            "sku": null,
+            "price": "19.90",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Size",
+                "value": "L"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50475969282289",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/39837546348785",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/photo-1560769629-975ec94e6a86.jpg?v=1783701605",
+              "altText": "mg-e2e-variant-hidden"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9665055129841",
+      "handle": "mg-e2e-collection-member",
+      "title": "MG E2E · Collection Member",
+      "status": "ACTIVE",
+      "productType": "",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [],
+      "descriptionHtml": "Dedikovaný e2e produkt — člen kolekce mg-e2e-collection (archetyp COLLECTION_MAX).",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12040626438385",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5454170226929",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": []
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/48393812607217",
+            "title": "Default Title",
+            "sku": null,
+            "price": "19.90",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50476032327921",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": [
+          {
+            "id": "gid://shopify/MediaImage/39837647569137",
+            "image": {
+              "url": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/photo-1526170375885-4d8ecf77b99f.jpg?v=1783703965",
+              "altText": "mg-e2e-collection-member"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9692429058289",
+      "handle": "won-e2e-simple-a",
+      "title": "Won E2E — Simple A",
+      "status": "ACTIVE",
+      "productType": "",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [],
+      "descriptionHtml": "",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12072356970737",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5542744391921",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": []
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/48468678902001",
+            "title": "Default Title",
+            "sku": null,
+            "price": "10.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50552640471281",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": []
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9692429091057",
+      "handle": "won-e2e-simple-b",
+      "title": "Won E2E — Simple B",
+      "status": "ACTIVE",
+      "productType": "",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [],
+      "descriptionHtml": "",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12072357003505",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5542744424689",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": []
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/48468678934769",
+            "title": "Default Title",
+            "sku": null,
+            "price": "12.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50552640504049",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": []
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9692429123825",
+      "handle": "won-e2e-two-variants",
+      "title": "Won E2E — Two Variants",
+      "status": "ACTIVE",
+      "productType": "",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [],
+      "descriptionHtml": "",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12072357036273",
+          "name": "Size",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5542744457457",
+              "name": "Small"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5542744490225",
+              "name": "Large"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": []
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/48468678967537",
+            "title": "Small",
+            "sku": null,
+            "price": "15.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Size",
+                "value": "Small"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50552640536817",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48468679000305",
+            "title": "Large",
+            "sku": null,
+            "price": "18.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Size",
+                "value": "Large"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50552640569585",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": []
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9692429156593",
+      "handle": "won-e2e-multiaxis",
+      "title": "Won E2E — Multi Axis",
+      "status": "ACTIVE",
+      "productType": "",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [],
+      "descriptionHtml": "",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12072357069041",
+          "name": "Size",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5542744522993",
+              "name": "S"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5542744555761",
+              "name": "M"
+            }
+          ]
+        },
+        {
+          "id": "gid://shopify/ProductOption/12072357101809",
+          "name": "Color",
+          "position": 2,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5542744588529",
+              "name": "Red"
+            },
+            {
+              "id": "gid://shopify/ProductOptionValue/5542744621297",
+              "name": "Blue"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": []
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/48468679033073",
+            "title": "S / Red",
+            "sku": null,
+            "price": "20.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Size",
+                "value": "S"
+              },
+              {
+                "name": "Color",
+                "value": "Red"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50552640602353",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48468679065841",
+            "title": "S / Blue",
+            "sku": null,
+            "price": "20.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Size",
+                "value": "S"
+              },
+              {
+                "name": "Color",
+                "value": "Blue"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50552640635121",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48468679098609",
+            "title": "M / Red",
+            "sku": null,
+            "price": "22.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Size",
+                "value": "M"
+              },
+              {
+                "name": "Color",
+                "value": "Red"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50552640667889",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/ProductVariant/48468679131377",
+            "title": "M / Blue",
+            "sku": null,
+            "price": "22.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Size",
+                "value": "M"
+              },
+              {
+                "name": "Color",
+                "value": "Blue"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50552640700657",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": []
+      }
+    },
+    {
+      "id": "gid://shopify/Product/9692429189361",
+      "handle": "won-e2e-spare",
+      "title": "Won E2E — Spare",
+      "status": "ACTIVE",
+      "productType": "",
+      "vendor": "B2b_b2c_store_development",
+      "tags": [],
+      "descriptionHtml": "",
+      "options": [
+        {
+          "id": "gid://shopify/ProductOption/12072357134577",
+          "name": "Title",
+          "position": 1,
+          "optionValues": [
+            {
+              "id": "gid://shopify/ProductOptionValue/5542744654065",
+              "name": "Default Title"
+            }
+          ]
+        }
+      ],
+      "metafields": {
+        "nodes": []
+      },
+      "variants": {
+        "nodes": [
+          {
+            "id": "gid://shopify/ProductVariant/48468679164145",
+            "title": "Default Title",
+            "sku": null,
+            "price": "9.00",
+            "compareAtPrice": null,
+            "selectedOptions": [
+              {
+                "name": "Title",
+                "value": "Default Title"
+              }
+            ],
+            "inventoryPolicy": "DENY",
+            "inventoryQuantity": 0,
+            "inventoryItem": {
+              "id": "gid://shopify/InventoryItem/50552640733425",
+              "tracked": false,
+              "measurement": {
+                "weight": {
+                  "value": 0,
+                  "unit": "POUNDS"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "media": {
+        "nodes": []
+      }
+    }
+  ]
+}

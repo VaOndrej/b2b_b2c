@@ -34,7 +34,8 @@
       "add": "Do košíku",
       "added": "Přidáno ✓",
       "choose": "Vybrat",
-      "soldout": "Vyprodáno"
+      "soldout": "Vyprodáno",
+      "decrease": "Odebrat jeden kus"
     },
     "unit": {
       "per_100g": "100 g",
