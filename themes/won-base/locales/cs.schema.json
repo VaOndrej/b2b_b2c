@@ -204,7 +204,10 @@
       "breadcrumbs_about": "Cesta od úvodní stránky sem — Domů / Kategorie / Produkt. Kdo sem přijde z Googlu, nemá jinou cestu nahoru do kategorie, a Google tu samou cestu ukáže pod svým výsledkem místo holé URL. Přidej to nahoru na produktovou nebo kategorijní stránku.",
       "breadcrumbs_schema": "Přidá značkování BreadcrumbList, ze kterého Google kreslí cestu pod výsledkem hledání. Nech zapnuté. Když blok vložíš na jednu stránku dvakrát, u druhého to vypni — dvě různé cesty pro jednu stránku si odporují.",
       "show_breadcrumbs": "Cesta Domů / Kategorie nad výpisem. Dá tomu, kdo přišel z Googlu, cestu nahoru do eshopu, a Google tu samou cestu vykreslí pod svým výsledkem.",
-      "card_choose_action": "Produkt s variantami nejde přidat rovnou z karty — karta neví, kterou variantu. „Rychlý náhled\" ukáže volby v okně nad výpisem, takže zákazník vybere a přidá, aniž by ztratil místo, kde byl. „Stránka produktu\" ho pošle na plnou stránku, což se hodí u zboží, které si lidé před koupí studují."
+      "card_choose_action": "Produkt s variantami nejde přidat rovnou z karty — karta neví, kterou variantu. „Rychlý náhled\" ukáže volby v okně nad výpisem, takže zákazník vybere a přidá, aniž by ztratil místo, kde byl. „Stránka produktu\" ho pošle na plnou stránku, což se hodí u zboží, které si lidé před koupí studují.",
+      "header_search_style": "Pro eshop s katalogem je správně plné pole. Samotná ikona dává smysl jen u velmi malého sortimentu nebo blogu, kde není co hledat.",
+      "header_search_placeholder": "Pojmenuj, co se dá hledat, např. „Hledat produkt, značku…\". Prázdné = výchozí text motivu.",
+      "header_search_width": "Nejvíc, na kolik pole na desktopu naroste. Na mobilu vždy zabere celý vlastní řádek pod logem."
     },
     "headers": {
       "ai_schema": "AI / vyhledávače (strukturovaná data)",
@@ -456,7 +459,10 @@
       "image_priority": "Načíst tenhle obrázek přednostně",
       "show_breadcrumbs": "Zobrazit drobečkovou navigaci",
       "emit_schema": "Strukturovaná data pro vyhledávače",
-      "card_choose_action": "Co dělá „Vybrat\""
+      "card_choose_action": "Co dělá „Vybrat\"",
+      "header_search_style": "Vyhledávání v hlavičce",
+      "header_search_placeholder": "Text v poli",
+      "header_search_width": "Šířka pole"
     },
     "options": {
       "loop_off": "Vypnuto",
@@ -639,7 +645,9 @@
       "size_regular": "Běžná",
       "size_large": "Větší",
       "choose_modal": "Otevřít rychlý náhled",
-      "choose_link": "Přejít na stránku produktu"
+      "choose_link": "Přejít na stránku produktu",
+      "search_field": "Plné pole (doporučeno)",
+      "search_icon": "Jen ikona lupy"
     },
     "presets": {
       "product_carousel": "Won Carousel — produkty",
@@ -741,7 +749,9 @@
       "effects": "Won — Efekty",
       "effects_about": "Rukopis, který sdílí každé tlačítko v motivu: co se stane při najetí myší, jestli přes něj přejede světlo a jak reaguje na stisk. Nastavíš to jednou tady a řídí se tím všechna Won tlačítka — dva eshopy na stejném motivu tak nemusí působit jako jeden. Pro návštěvníky, kteří si vyžádali omezený pohyb, se všechno automaticky vypne.",
       "unit_price": "Cena za jednotku",
-      "unit_price_about": "Určuje, jak se počítá cena za jednotku (např. 4,50 Kč / 100 g) — najednou pro všechny karty i produktové stránky. Jedno pravidlo na řádek, tři pole oddělená SVISLOU ČÁROU | (ne lomítkem): metafield | za kolik jednotek | popisek. Příklad: won.net_weight_g | 100 | t:won.unit.per_100g · won.volume_ml | 100 | 100 ml · won.washes | 1 | prací dávka · won.pieces | 1 | kus"
+      "unit_price_about": "Určuje, jak se počítá cena za jednotku (např. 4,50 Kč / 100 g) — najednou pro všechny karty i produktové stránky. Jedno pravidlo na řádek, tři pole oddělená SVISLOU ČÁROU | (ne lomítkem): metafield | za kolik jednotek | popisek. Příklad: won.net_weight_g | 100 | t:won.unit.per_100g · won.volume_ml | 100 | 100 ml · won.washes | 1 | prací dávka · won.pieces | 1 | kus",
+      "header_search": "Won — Vyhledávání v hlavičce",
+      "header_search_about": "Jestli má hlavička skutečné vyhledávací pole, nebo jen ikonu lupy. Pole, do kterého jde rovnou psát, je jeden z nejsilnějších konverzních prvků na stránce — kdo hledá, nakupuje výrazně častěji než kdo jen prochází."
     }
   },
   "categories": {

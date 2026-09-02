@@ -80,6 +80,9 @@
       "label": "Drobečková navigace",
       "home": "Domů",
       "search": "Výsledky hledání"
+    },
+    "content": {
+      "search_placeholder": "Hledat produkt, značku…"
     }
   }
 }

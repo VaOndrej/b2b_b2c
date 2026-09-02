@@ -204,7 +204,10 @@
       "breadcrumbs_about": "The path from the shop home to this page — Home / Category / Product. Someone who lands here from Google has no other way up into the category, and Google shows the same path under your result instead of a raw URL. Add it near the top of a product or collection page.",
       "breadcrumbs_schema": "Adds the BreadcrumbList markup Google reads to draw the path under your search result. Leave it on. If you place this block twice on one page, turn it off on the second one — two different paths for one page contradict each other.",
       "show_breadcrumbs": "The Home / Category path above the listing. It gives someone arriving from Google a way up into the shop, and Google draws the same path under your search result.",
-      "card_choose_action": "A product with variants cannot be added straight from the card — the card does not know which variant. \"Open a quick view\" shows the options in a window over the listing, so the shopper picks and adds without losing their place. \"Go to the product page\" sends them to the full page instead, which suits products people research before buying."
+      "card_choose_action": "A product with variants cannot be added straight from the card — the card does not know which variant. \"Open a quick view\" shows the options in a window over the listing, so the shopper picks and adds without losing their place. \"Go to the product page\" sends them to the full page instead, which suits products people research before buying.",
+      "header_search_style": "A full field is the right default for a catalogue. The icon is only sensible on a very small shop or a blog, where there is little to search.",
+      "header_search_placeholder": "Name what can be searched, e.g. \"Search products, brands…\". Leave empty to use the theme default.",
+      "header_search_width": "Widest the field grows on desktop. On mobile it always fills its own line under the logo."
     },
     "headers": {
       "ai_schema": "AI / search (structured data)",
@@ -456,7 +459,10 @@
       "image_priority": "Load this image first",
       "show_breadcrumbs": "Show breadcrumbs",
       "emit_schema": "Structured data for search engines",
-      "card_choose_action": "What \"Choose\" does"
+      "card_choose_action": "What \"Choose\" does",
+      "header_search_style": "Search in the header",
+      "header_search_placeholder": "Placeholder text",
+      "header_search_width": "Field width"
     },
     "options": {
       "loop_off": "Off",
@@ -639,7 +645,9 @@
       "size_regular": "Regular",
       "size_large": "Large",
       "choose_modal": "Open a quick view",
-      "choose_link": "Go to the product page"
+      "choose_link": "Go to the product page",
+      "search_field": "Full field (recommended)",
+      "search_icon": "Magnifier icon only"
     },
     "presets": {
       "product_carousel": "Won Carousel — products",
@@ -741,7 +749,9 @@
       "effects": "Won — Effects",
       "effects_about": "The signature every button in the theme shares: what happens on hover, whether a light sweeps across it, and how it reacts to a press. Set it once here and every Won call-to-action follows, so two stores built on this theme do not have to feel like the same store. All of it stands down automatically for shoppers who ask for reduced motion.",
       "unit_price": "Price per unit",
-      "unit_price_about": "Decides how the unit price (e.g. $4.50 / 100 g) is worked out, for every product card and product page at once. One rule per line, three fields separated by a VERTICAL BAR | (not a slash): metafield | how many units | label. Example: won.net_weight_g | 100 | t:won.unit.per_100g · won.volume_ml | 100 | 100 ml · won.washes | 1 | wash · won.pieces | 1 | piece"
+      "unit_price_about": "Decides how the unit price (e.g. $4.50 / 100 g) is worked out, for every product card and product page at once. One rule per line, three fields separated by a VERTICAL BAR | (not a slash): metafield | how many units | label. Example: won.net_weight_g | 100 | t:won.unit.per_100g · won.volume_ml | 100 | 100 ml · won.washes | 1 | wash · won.pieces | 1 | piece",
+      "header_search": "Won — Search in the header",
+      "header_search_about": "Whether the header carries a real search box or only a magnifier icon. A field a shopper can type into without hunting for it is one of the strongest conversion controls on the page — people who search buy far more often than people who browse."
     }
   },
   "categories": {

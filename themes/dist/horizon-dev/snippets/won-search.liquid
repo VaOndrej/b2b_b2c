@@ -1,0 +1,203 @@
+{%- doc -%}
+  Header search — a real field, or Horizon's magnifier icon.
+
+  HP-004 / SRH-004: a search box the shopper can type into without first
+  discovering and clicking an icon. `won_header_search_style` decides; `field`
+  is the default, `icon` hands the render straight back to Horizon's snippet so
+  the base behaviour is one setting away.
+
+  In `field` mode the modal is not rendered at all (compose patches
+  layout/theme.liquid), so there is exactly one search affordance on the page
+  and exactly one `#predictive-search-results` container.
+
+  @param {string} [style] - Horizon's resolved search style ('none' hides search).
+  @param {string} [class] - Extra classes for the wrapper (mobile:hidden / desktop:hidden).
+  @param {string} [uid] - Suffix that keeps ids unique between the desktop and mobile copies.
+
+  @example
+  {% render 'won-search', style: search_style, class: search_class, uid: 'desktop' %}
+{%- enddoc -%}
+
+{% liquid
+  assign won_search_mode = settings.won_header_search_style | default: 'field'
+  if style == 'none'
+    assign won_search_mode = 'none'
+  endif
+  assign won_search_uid = uid | default: 'header'
+  assign won_search_ph = settings.won_header_search_placeholder
+  if won_search_ph == blank
+    assign won_search_ph = 'won.content.search_placeholder' | t
+  endif
+  assign won_search_width = settings.won_header_search_width | default: 520
+%}
+
+{% case won_search_mode %}
+  {% when 'none' %}
+  {% when 'field' %}
+    <script
+      src="{{ 'predictive-search.js' | asset_url }}"
+      type="module"
+      fetchpriority="low"
+    ></script>
+
+    <predictive-search-component
+      class="won-header-search predictive-search color-{{ settings.popover_color_scheme }}{% if class != blank %} {{ class | strip }}{% endif %}"
+      style="--won-header-search-width: {{ won_search_width }}px; --product-corner-radius: {{ settings.product_corner_radius | default: 8 }}px; --card-corner-radius: {{ settings.card_corner_radius | default: 8 }}px;"
+      data-section-id="predictive-search"
+      data-testid="search-component--{{ won_search_uid }}"
+      role="search"
+      aria-label="{{ 'content.search_input_label' | t }}"
+    >
+      <form
+        action="{{ routes.search_url }}"
+        method="get"
+        role="search"
+        class="predictive-search-form won-header-search__form"
+        ref="form"
+        on:keydown="/onSearchKeyDown"
+      >
+        <div class="predictive-search-form__header won-header-search__bar">
+          <div class="predictive-search-form__header-inner">
+            <label
+              for="won-search-input-{{ won_search_uid }}"
+              class="visually-hidden"
+            >
+              {{- 'content.search_input_label' | t -}}
+            </label>
+            <input
+              class="search-input won-header-search__input"
+              id="won-search-input-{{ won_search_uid }}"
+              type="search"
+              name="q"
+              role="combobox"
+              aria-expanded="false"
+              aria-owns="predictive-search-results"
+              aria-controls="predictive-search-results"
+              aria-haspopup="listbox"
+              aria-autocomplete="list"
+              autocomplete="off"
+              value="{{ search.terms | escape }}"
+              placeholder="{{ won_search_ph | escape }}"
+              ref="searchInput"
+              on:input="/search"
+              on:keydown="/onSearchKeyDown"
+            >
+            {%- comment -%}
+              `type` keeps the results page and its count on products only —
+              sections/search-results.liquid renders `where: 'object_type', 'product'`
+              but counts every resource type. `options[prefix]` keeps partial words
+              ("prot" -> "protein") matching on the results page, not just in the dropdown.
+            {%- endcomment -%}
+            <input
+              name="type"
+              type="hidden"
+              value="product"
+            >
+            <input
+              name="options[prefix]"
+              type="hidden"
+              value="last"
+            >
+            <span class="svg-wrapper predictive-search__icon">
+              {{ 'icon-search.svg' | inline_asset_content }}
+            </span>
+            <button
+              type="button"
+              class="button-unstyled predictive-search__reset-button"
+              ref="resetButton"
+              hidden
+              on:click="/resetSearch"
+            >
+              {{ 'actions.clear' | t }}
+            </button>
+          </div>
+        </div>
+
+        <div class="predictive-search-form__content-wrapper won-header-search__dropdown">
+          <div
+            class="predictive-search-form__content"
+            tabindex="-1"
+            ref="predictiveSearchResults"
+          ></div>
+        </div>
+      </form>
+    </predictive-search-component>
+  {% else %}
+    {% render 'search', style: style, class: class %}
+{% endcase %}
+
+{% stylesheet %}
+  .won-header-search {
+    --search-border-radius: var(--style-border-radius-inputs);
+    --search-border-width: var(--style-border-width-inputs);
+
+    display: flex;
+    width: 100%;
+    align-items: center;
+  }
+
+  /* Its own full-width line under the logo, inside the sticky header. The 44px
+     mobile bookend grid leaves no room for a field beside the logo. */
+  @media screen and (max-width: 749px) {
+    .header__columns:has(.won-header-search) {
+      grid-template-areas:
+        'leftA leftB center rightA rightB'
+        'search search search search search';
+      row-gap: var(--gap-2xs, 0.5rem);
+      padding-block-end: var(--padding-xs, 0.5rem);
+    }
+
+    /* The mobile header grid is wider than the viewport whenever the shop name
+       does not fit its 1fr track (Horizon behaviour — the cart bookend overflows
+       with it). Pin this row to the viewport so the field and its dropdown never
+       inherit that overflow. */
+    .won-header-search {
+      grid-area: search;
+      box-sizing: border-box;
+      justify-self: start;
+      /* the base gives predictive-search-component `margin-inline: auto`, which
+         re-centres it inside the over-wide grid area — cancel it here */
+      margin-inline: 0;
+      width: 100vw;
+      max-width: 100vw;
+      padding-inline: var(--page-margin, 1rem);
+    }
+  }
+
+  @media screen and (min-width: 750px) {
+    .won-header-search {
+      max-width: var(--won-header-search-width, 520px);
+    }
+
+    .header__row--bottom .won-header-search {
+      margin-inline: auto;
+    }
+  }
+
+  .won-header-search .won-header-search__bar {
+    position: relative;
+    width: 100%;
+  }
+
+  .won-header-search .won-header-search__input {
+    min-height: var(--won-tap, 44px);
+  }
+
+  /* The dropdown is a result of typing, never furniture: it appears once real
+     results exist and while the shopper is still in it (hover keeps it alive so
+     a click on a result lands before blur can close it). */
+  .won-header-search .predictive-search-form__content-wrapper {
+    display: none;
+    max-height: 70dvh;
+    box-shadow: var(--shadow-popover);
+  }
+
+  .won-header-search:has([data-search-results]):is(:focus-within, :hover)
+    .predictive-search-form__content-wrapper {
+    display: flex;
+  }
+
+  .won-header-search .predictive-search-form__content {
+    max-height: 70dvh;
+  }
+{% endstylesheet %}

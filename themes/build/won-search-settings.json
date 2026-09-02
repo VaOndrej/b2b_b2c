@@ -1,0 +1,36 @@
+{
+  "name": "t:won.global.header_search",
+  "settings": [
+    { "type": "paragraph", "content": "t:won.global.header_search_about" },
+    {
+      "type": "select",
+      "id": "won_header_search_style",
+      "label": "t:won.settings.header_search_style",
+      "info": "t:won.info.header_search_style",
+      "options": [
+        { "value": "field", "label": "t:won.options.search_field" },
+        { "value": "icon", "label": "t:won.options.search_icon" }
+      ],
+      "default": "field"
+    },
+    {
+      "type": "text",
+      "id": "won_header_search_placeholder",
+      "label": "t:won.settings.header_search_placeholder",
+      "info": "t:won.info.header_search_placeholder",
+      "visible_if": "{{ settings.won_header_search_style == 'field' }}"
+    },
+    {
+      "type": "range",
+      "id": "won_header_search_width",
+      "label": "t:won.settings.header_search_width",
+      "info": "t:won.info.header_search_width",
+      "min": 240,
+      "max": 720,
+      "step": 20,
+      "unit": "px",
+      "default": 520,
+      "visible_if": "{{ settings.won_header_search_style == 'field' }}"
+    }
+  ]
+}

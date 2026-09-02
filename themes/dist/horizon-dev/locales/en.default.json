@@ -410,6 +410,9 @@
       "label": "Breadcrumb",
       "home": "Home",
       "search": "Search results"
+    },
+    "content": {
+      "search_placeholder": "Search products, brands…"
     }
   }
 }

@@ -10,10 +10,10 @@
           font-size="21.32676" font-weight="700" letter-spacing="12.303899999999999" fill="#14171c">WON</text>
     <rect x="227.76" y="328.37420000000003" width="84.48000000000002" height="2.952936" fill="#8a6f45"/>
     <text x="270" y="371.02772000000004" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-          font-size="37.73196" font-weight="800" fill="#14171c">Sticks</text>
+          font-size="37.73196" font-weight="800" fill="#14171c">Tyčinka</text>
     <rect x="210.86399999999998" y="387.43292" width="118.27200000000002" height="27.888840000000002" rx="13.944420000000001"
                  fill="#8a6f45" fill-opacity="0.14"/>
            <text x="270" y="406.2989" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-                 font-size="16.4052" font-weight="700" letter-spacing="3.28104" fill="#8a6f45">20 KS</text>
+                 font-size="13.278206896551728" font-weight="700" letter-spacing="3.28104" fill="#8a6f45">PROTEIN · 12 KS</text>
   </g>
   </svg>

@@ -22,6 +22,7 @@
 
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
+import { PRODUCT_ART, COLLECTION_ART } from './scenes/pack-catalog.mjs';
 
 const SHOP = process.env.SHOP || 'b2b-b2c-store-development.myshopify.com';
 const TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
@@ -35,34 +36,7 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-/** Product title (as re-skinned by reskin-products.mjs) → packshot file. */
-const PRODUCT_ART = {
-  'Whey Protein — Čokoláda': 'won-pack-whey.png',
-  'Whey Protein — Vanilka': 'won-pack-whey.png',
-  'Protein Blend — Výhodný set': 'won-pack-whey.png',
-  'Kreatin Monohydrát': 'won-pack-creatine.png',
-  'BCAA Aminokyseliny': 'won-pack-bcaa.png',
-  'Recovery Amino': 'won-pack-bcaa.png',
-  'Glutamin': 'won-pack-bcaa.png',
-  'Vitamín D3 + K2': 'won-pack-vitamin.png',
-  'Denní Multivitamín': 'won-pack-vitamin.png',
-  'Zinek + Selen': 'won-pack-vitamin.png',
-  'Magnesium + B6': 'won-pack-magnesium.png',
-  'Omega 3 Rybí olej': 'won-pack-omega.png',
-  'Kolagen Peptidy': 'won-pack-omega.png',
-  'Ashwagandha': 'won-pack-greens.png',
-  'Elektrolyty Hydratace': 'won-pack-electrolytes.png',
-  'Pre-Workout Energy': 'won-pack-electrolytes.png',
-  'Proteinová tyčinka (12 ks)': 'won-pack-sticks.png',
-};
 
-/** Collection handle → category art. */
-const COLLECTION_ART = {
-  proteiny: 'won-cat-protein.png',
-  'kreatin-aminokyseliny': 'won-cat-creatine.png',
-  'vitaminy-mineraly': 'won-cat-vitamins.png',
-  'zdravi-regenerace': 'won-cat-health.png',
-};
 
 // Never touch the app's e2e fixtures or the gift card.
 const PROTECT = (h) => /^won-e2e-|^mg-e2e-|^gift-card$/.test(h || '');

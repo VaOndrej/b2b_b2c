@@ -22,7 +22,11 @@ test('data blocks inside a band fill their content column', async ({ page }) => 
 
   const offenders = await page.evaluate(() => {
     const bad: { block: string; w: number; colW: number }[] = [];
-    for (const content of document.querySelectorAll<HTMLElement>('.won-band__content')) {
+    // Any container that lays out theme blocks, not just a band: the PDP's fact
+    // tables moved into won-panels tab panels (2026-09-02), and a table that
+    // collapses to its content width there is the same defect. A hidden panel
+    // measures 0 and is skipped by the width guard below.
+    for (const content of document.querySelectorAll<HTMLElement>('.won-band__content, .won-panels__panel-blocks')) {
       const colW = content.getBoundingClientRect().width;
       if (colW < 1) continue;
       for (const wrap of content.children) {

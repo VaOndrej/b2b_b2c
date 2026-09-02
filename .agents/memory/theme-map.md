@@ -246,5 +246,53 @@ Per-project architecture & file-finding facts. Keep terse. Shared lessons go to 
   (modal | link), default modal. Tlačítko zůstává `<a href>` — funguje bez JS i na prostřední klik.
 - **Test ovládání odhalovaného na hover: hover KARTY + klik BEZ `force`.** `force: true` obchází
   hit-test a projde, i kdyby prvek překrývala fotka.
-- Nepokryto z Vrstvy 1: search není v hlavičce (SRH-004/HP-004), výsledky vyhledávání používají
-  nativní Horizon kartu místo won karty.
+- **Search v hlavičce = compose krok 2f + `snippets/won-search.liquid`.** Base Horizon umí jen
+  ikonu (`search_style = 'modal'` natvrdo). Konvence C7 zakazuje přepsat `snippets/search.liquid`,
+  takže compose přepojí obě volací místa v `header.liquid` na `won-search`; ten podle globálu
+  `won_header_search_style` (`field` default | `icon`) vykreslí pole, nebo předá render zpět
+  Horizonu. V režimu `field` compose zároveň vypne `render 'search-modal'` v `layout/theme.liquid` —
+  jinak jsou na stránce dvě vyhledávání a po dotazu dvě `#predictive-search-results`.
+- **`predictive-search-component` funguje i mimo dialog** (`get dialog()` → `null`, dialogové větve
+  jsou `if (dialog)`), takže našeptávač jde použít inline v hlavičce.
+- **`{% stylesheet %}` se kompiluje pro celý motiv do `compiled_assets/styles.css`**, ne podle toho,
+  co se na stránce vykreslí. Vypnout render base snippetu je bezpečné — jeho CSS zůstane.
+- **Mobilní grid hlavičky Horizonu je širší než viewport** (`44 44 1fr 44 44` = 401 px na 390);
+  proto je oříznutá ikona košíku. Vlastní prvek v tom gridu potřebuje `width: 100vw` a
+  `margin-inline: 0`.
+- **Výsledky vyhledávání = won karta (compose krok 2g).** `sections/search-results.liquid`
+  vykresluje `content_for 'block', type: '_product-card'`; compose to v dist mění na
+  `render 'won-product-card'`. Mění se jen dlaždice — filtry, řazení, stránkování a
+  `ref="cards[]"` (počítá ho `results-list.js`) zůstávají Horizonovy. Stejné volání mají i
+  `product-recommendations`, `product-list`, `main-collection` — ty demo šablony nepoužívají.
+- **Sonda „dlaždice ve výpisu" v testech musí být scopovaná na `#MainContent`.** Mobilní menu
+  drawer i predictive dropdown renderují `resource-card` s odkazem na produkt a cenou.
+- **Jedno vyhledávací pole na stránku (compose 2h) a `options[prefix]=last` všude (2i).**
+  `sections/search-header.liquid` renderuje `_search-input` staticky, takže s polem v hlavičce
+  byla na `/search` dvě; 2h ho schová, když je hlavička v režimu `field`. 2i doplní
+  `options[prefix]=last` do `blocks/_search-input.liquid` — bez něj `/search` matchuje jen celá
+  slova, takže „krea" z hlavičky produkt najde a ze stránkového pole ne.
+- **compose staví do `<dist>.staging` a syncuje jen změněný obsah (krok 6).** `cpSync` přes celý
+  cíl dával všem 554 souborům nové mtime, `shopify theme dev` je všechny nahrával a Shopify
+  vracelo `THROTTLED`; dev server pak servíroval „Failed to Upload Theme Files" a sám se
+  nezotavil. Log hlásí `sync: N file(s) written` — normální změna je jednotky souborů.
+- **Dots = slidy, ne stránky.** `won-carousel.js` `buildDots()` počítá `track.children.length`
+  a `scrollToIndex(i)` míří deltou z `getBoundingClientRect()` podle `scroll-snap-align`.
+  Demo má indikátor na progress baru, takže tečky na storefrontu nejsou — guard proto staví
+  syntetický rail (`tests/smoke/won-rail-dots.spec.ts`).
+- **Packshoty: 1 produkt = 1 packshot.** Jméno je vysázené v obrázku, takže sdílený art tiskne
+  cizí jméno. Obě tabulky (kresba + přiřazení) žijí v `themes/demo/tools/scenes/pack-catalog.mjs`,
+  hlídá je `tests/smoke/won-packshot-labels.spec.ts`. `fitFont()` v `pack-svg.mjs` zmenší label,
+  který by přetekl plotnu. Nahráno na dev store 2026-09-02 (16 produktů + 4 kolekce).
+  **Admin token je v `shpat.md` v kořeni repa** (v `.gitignore`), načítat přes
+  `export SHOPIFY_ADMIN_TOKEN="$(grep -o 'shpat_[A-Za-z0-9]*' shpat.md)"`.
+  `seed-store-images.mjs --apply` je **destruktivní** — `replaceProductMedia()` napřed volá
+  `productDeleteMedia` na všechna stávající media produktu.
+- **C3 gate proběhl 2026-09-02:** `shopify theme push -e horizon --development --json` → exit 0,
+  „Theme upload complete". Shopify přijal i novou skupinu `won-search-settings` s `visible_if`.
+
+## PDP: jedna detailní zóna (2026-09-02)
+
+- **Bylo**: sekce `detail` (won-band, `content_columns: 2`) s Parametry / Nutričními hodnotami / Kdy užívat, bez nadpisu, a hned pod ní sekce `tabs` s nadpisem **Podrobnosti**. Dvě detailní zóny; CSS multi-column navíc přelilo `won-dosage` pod nutriční tabulku a nechalo 127 px prázdna vedle.
+- **Je**: sekce `detail` z `templates/product.json` **smazána**. Záložky Podrobnosti = Popis · Parametry · Nutriční hodnoty · Použití · Skladování. `won-param-table` a `won-nutrition-table` jsou **vnořené bloky** v panelu (jejich vlastní `heading` je prázdný, název nese záložka), `won-dosage` je vnořený v panelu *Použití* pod jeho textem.
+- **`blocks/won-panel.liquid` nově přijímá vnořené bloky** (`@theme`, `@app`) — precedens `blocks/won-slide.liquid`. Slot je `.won-panels__panel-blocks`, `:empty { display: none }`, protože `content_for 'blocks'` vždy vyrenderuje obal. **Pozor: `content_for 'blocks'` smí být v souboru jen jednou**, takže tabs/accordion větve se otevírají a zavírají kolem jediného slotu (viz regression-log 2026-09-02).
+- Stráž: `tests/smoke/won-pdp-detail-zone.spec.ts` (fakta v jedné sekci, která má nadpis; přepnutí záložky skutečně skryje předchozí panel). `won-pdp-composition.spec.ts` má rozšířený selektor o `.won-panels__panel-blocks`, jinak by jeho kontrola šířky na PDP zvakuovatěla.

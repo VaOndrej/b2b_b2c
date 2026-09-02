@@ -22,8 +22,25 @@ const esc = (s = '') =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** Shared type block on a white label plate. Sizes are in user units. */
+/**
+ * Shrink a font size until the string fits the plate. The label is set in one
+ * fixed size, so a longer product name than the family was designed around
+ * ("Ashwagandha" on a pouch) simply painted over the edge of the pack. Widths
+ * are estimated from the glyph average of bold Helvetica — exact enough to keep
+ * text inside the plate, and it returns `size` untouched whenever the string
+ * already fits, so packs that were fine stay byte-identical.
+ */
+function fitFont(text, size, maxWidth, tracking = 0) {
+  const width = (fs) => text.length * (fs * 0.58 + tracking);
+  if (width(size) <= maxWidth) return size;
+  return Math.max(size * 0.55, (maxWidth / text.length - tracking) / 0.58);
+}
+
 function labelPlate({ x, y, w, h, brand, name, sub, ink, accent, r = 6 }) {
   const cx = x + w / 2;
+  const nameSize = fitFont(name, h * 0.23, w * 0.86);
+  const subText = sub ? sub.toUpperCase() : '';
+  const subSize = sub ? fitFont(subText, h * 0.1, w * 0.78, h * 0.02) : 0;
   return `
   <g>
     <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="#ffffff"/>
@@ -31,13 +48,13 @@ function labelPlate({ x, y, w, h, brand, name, sub, ink, accent, r = 6 }) {
           font-size="${h * 0.13}" font-weight="700" letter-spacing="${h * 0.075}" fill="${ink}">${esc(brand)}</text>
     <rect x="${cx - w * 0.2}" y="${y + h * 0.35}" width="${w * 0.4}" height="${Math.max(1.5, h * 0.018)}" fill="${accent}"/>
     <text x="${cx}" y="${y + h * 0.61}" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-          font-size="${h * 0.23}" font-weight="800" fill="${ink}">${esc(name)}</text>
+          font-size="${nameSize}" font-weight="800" fill="${ink}">${esc(name)}</text>
     ${
       sub
         ? `<rect x="${cx - w * 0.28}" y="${y + h * 0.71}" width="${w * 0.56}" height="${h * 0.17}" rx="${h * 0.085}"
                  fill="${accent}" fill-opacity="0.14"/>
            <text x="${cx}" y="${y + h * 0.825}" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-                 font-size="${h * 0.1}" font-weight="700" letter-spacing="${h * 0.02}" fill="${accent}">${esc(sub.toUpperCase())}</text>`
+                 font-size="${subSize}" font-weight="700" letter-spacing="${h * 0.02}" fill="${accent}">${esc(subText)}</text>`
         : ''
     }
   </g>`;

@@ -1,7 +1,7 @@
 {
   "base": "horizon",
   "demoOverlay": true,
-  "wonBaseFileCount": 97,
+  "wonBaseFileCount": 107,
   "files": {
     ".cursor/rules/accordion-accessibility.mdc": {
       "owner": "compose",
@@ -816,7 +816,7 @@
     "assets/won-carousel.js": {
       "owner": "compose",
       "layer": "won",
-      "sha": "9179d1d4afccf900"
+      "sha": "d7a6ba30b2f27b9f"
     },
     "assets/won-cart.js": {
       "owner": "compose",
@@ -831,7 +831,7 @@
     "assets/won-cat-health.svg": {
       "owner": "compose",
       "layer": "won",
-      "sha": "4a98305fd4f48233"
+      "sha": "fbab24381249d14b"
     },
     "assets/won-cat-protein.svg": {
       "owner": "compose",
@@ -861,17 +861,27 @@
     "assets/won-hero-supplements.svg": {
       "owner": "compose",
       "layer": "won",
-      "sha": "e45d31d4441cd278"
+      "sha": "bda2f521dab32797"
     },
     "assets/won-lifestyle-1.svg": {
       "owner": "compose",
       "layer": "won",
-      "sha": "04fa3d77d19dd1e7"
+      "sha": "329ee0f9bcab67b2"
+    },
+    "assets/won-pack-ashwagandha.svg": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "397583b67371b4c8"
     },
     "assets/won-pack-bcaa.svg": {
       "owner": "compose",
       "layer": "won",
       "sha": "ff44dc98304edfb0"
+    },
+    "assets/won-pack-collagen.svg": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "234198cccf1c3474"
     },
     "assets/won-pack-creatine.svg": {
       "owner": "compose",
@@ -881,7 +891,12 @@
     "assets/won-pack-electrolytes.svg": {
       "owner": "compose",
       "layer": "won",
-      "sha": "59d9a1fc4aeabab4"
+      "sha": "37f4e8aac3a57f6d"
+    },
+    "assets/won-pack-glutamine.svg": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "8ce675826a7f702b"
     },
     "assets/won-pack-greens.svg": {
       "owner": "compose",
@@ -891,27 +906,57 @@
     "assets/won-pack-magnesium.svg": {
       "owner": "compose",
       "layer": "won",
-      "sha": "ce63d6c087d4b41a"
+      "sha": "eb4767f7ee188387"
+    },
+    "assets/won-pack-multivitamin.svg": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "3fb4a6b2dba51d8b"
     },
     "assets/won-pack-omega.svg": {
       "owner": "compose",
       "layer": "won",
       "sha": "a51700fac1bbe037"
     },
+    "assets/won-pack-preworkout.svg": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "d7d54ed75ad49ee0"
+    },
+    "assets/won-pack-protein-blend.svg": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "e2ab59827c3ae021"
+    },
+    "assets/won-pack-recovery.svg": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "70b9f7b4a8800669"
+    },
     "assets/won-pack-sticks.svg": {
       "owner": "compose",
       "layer": "won",
-      "sha": "4cad1feb88f14a21"
+      "sha": "f1b91814942e86da"
     },
     "assets/won-pack-vitamin.svg": {
       "owner": "compose",
       "layer": "won",
       "sha": "4e3c09918a495f27"
     },
+    "assets/won-pack-whey-vanilla.svg": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "53f3f059181fe2cb"
+    },
     "assets/won-pack-whey.svg": {
       "owner": "compose",
       "layer": "won",
       "sha": "40e966c367f60c0e"
+    },
+    "assets/won-pack-zinc.svg": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "e31bc610228a5c7d"
     },
     "assets/won-panels.js": {
       "owner": "compose",
@@ -921,7 +966,7 @@
     "assets/won-promo-1.svg": {
       "owner": "compose",
       "layer": "won",
-      "sha": "af870a863f5890cd"
+      "sha": "3c69d6e21c967409"
     },
     "assets/won-promo-2.svg": {
       "owner": "compose",
@@ -1201,7 +1246,7 @@
     "blocks/_search-input.liquid": {
       "owner": "compose",
       "layer": "vendor",
-      "sha": "af1ccfc44da5fd59"
+      "sha": "dd1cbc3ddff88502"
     },
     "blocks/_slide.liquid": {
       "owner": "compose",
@@ -1466,7 +1511,7 @@
     "blocks/won-panel.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "c6fb1d42cf4e9962"
+      "sha": "44876b02498dad39"
     },
     "blocks/won-param-table.liquid": {
       "owner": "compose",
@@ -1516,7 +1561,7 @@
     "config/settings_schema.json": {
       "owner": "compose",
       "layer": "vendor",
-      "sha": "c9276a8aa99fca5a"
+      "sha": "4efc42324ea66a5e"
     },
     "layout/password.liquid": {
       "owner": "compose",
@@ -1526,7 +1571,7 @@
     "layout/theme.liquid": {
       "owner": "compose",
       "layer": "vendor",
-      "sha": "a589b55d03175e08"
+      "sha": "e40a06f4d59adb50"
     },
     "locales/bg.json": {
       "owner": "mixed",
@@ -1536,12 +1581,12 @@
     "locales/cs.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "8abe58593d7b5f47"
+      "sha": "9b7a7337031afbda"
     },
     "locales/cs.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "9768c218a17628bd"
+      "sha": "87f3912fc76ec647"
     },
     "locales/da.json": {
       "owner": "mixed",
@@ -1571,12 +1616,12 @@
     "locales/en.default.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "c91358c4b1d734dc"
+      "sha": "ce75cc5ce826ecd6"
     },
     "locales/en.default.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "8989b8f64cc619ca"
+      "sha": "c5a1b9d783ea5cc7"
     },
     "locales/es.json": {
       "owner": "mixed",
@@ -1861,7 +1906,7 @@
     "sections/header.liquid": {
       "owner": "compose",
       "layer": "vendor",
-      "sha": "a9894e0ce2404efc"
+      "sha": "3a1fcdff746b1b73"
     },
     "sections/hero.liquid": {
       "owner": "compose",
@@ -1971,12 +2016,12 @@
     "sections/search-header.liquid": {
       "owner": "compose",
       "layer": "vendor",
-      "sha": "651c9d568a221d65"
+      "sha": "bd294d6519aa4799"
     },
     "sections/search-results.liquid": {
       "owner": "compose",
       "layer": "vendor",
-      "sha": "50ed99d58151768e"
+      "sha": "0351f2a140d162c2"
     },
     "sections/section-rendering-product-card.liquid": {
       "owner": "compose",
@@ -2668,6 +2713,11 @@
       "layer": "won",
       "sha": "4b3e0858922e9a41"
     },
+    "snippets/won-search.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "bd3a78bd83176c4f"
+    },
     "snippets/won-section-cta.liquid": {
       "owner": "compose",
       "layer": "won",
@@ -2756,7 +2806,7 @@
     "templates/product.json": {
       "owner": "merchant",
       "layer": "data",
-      "sha": "8b1dc44b2ce5408a"
+      "sha": "885689fcab26c4ae"
     },
     "templates/search.json": {
       "owner": "merchant",

@@ -16,27 +16,11 @@ import { writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FORMS, sceneSvg } from './scenes/pack-svg.mjs';
+import { PACKS } from './scenes/pack-catalog.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const assetsDir = join(here, '..', '..', 'won-base', 'assets');
 
-/**
- * One restrained family, keyed to the theme's brand token (--won-accent
- * #ff5a3c). `bg` is a very light tint of the pack colour so the card reads as a
- * deliberate set rather than as products photographed by four different people —
- * that inconsistency is what made the old placeholders look unfinished.
- */
-const PACKS = {
-  'won-pack-whey': { form: 'tub', name: 'Whey', sub: 'Čokoláda', body: '#8a5a3c', cap: '#5f3c27', dark: '#6d4630', accent: '#8a5a3c', bg: '#f6efe9' },
-  'won-pack-creatine': { form: 'tub', name: 'Kreatin', sub: 'Monohydrát', body: '#2b323c', cap: '#171c23', dark: '#1e242c', accent: '#ff5a3c', bg: '#eceef1' },
-  'won-pack-bcaa': { form: 'tub', name: 'BCAA', sub: 'Recovery', body: '#e8563a', cap: '#b8402a', dark: '#c2452d', accent: '#b8402a', bg: '#fdeee9' },
-  'won-pack-vitamin': { form: 'tub', name: 'D3 + K2', sub: '90 kapslí', body: '#e0a52e', cap: '#b07f1c', dark: '#c08f22', accent: '#a8761a', bg: '#fdf5e4' },
-  'won-pack-magnesium': { form: 'tub', name: 'Magnesium', sub: 'B6', body: '#5b6bb5', cap: '#3f4c8a', dark: '#4a5799', accent: '#4a5799', bg: '#eef0f9' },
-  'won-pack-omega': { form: 'tub', name: 'Omega 3', sub: 'Rybí olej', body: '#3f7f74', cap: '#2b5c54', dark: '#33685f', accent: '#2b5c54', bg: '#eaf3f1' },
-  'won-pack-electrolytes': { form: 'tub', name: 'Elektrolyty', sub: 'Hydratace', body: '#3d6d8f', cap: '#2a4f69', dark: '#325b78', accent: '#2a4f69', bg: '#eaf1f6' },
-  'won-pack-greens': { form: 'pouch', name: 'Greens', sub: 'Detox', body: '#5f8f4a', cap: '#456b36', dark: '#4c7539', accent: '#456b36', bg: '#eff5ea' },
-  'won-pack-sticks': { form: 'box', name: 'Sticks', sub: '20 ks', body: '#d8cdb8', cap: '#b3a68d', dark: '#b3a68d', accent: '#8a6f45', bg: '#f7f3ea' },
-};
 // guard against a typo silently shipping a broken fill
 for (const [k, v] of Object.entries(PACKS)) {
   for (const key of ['body', 'cap', 'dark', 'accent', 'bg']) {

@@ -337,52 +337,6 @@
         "source": "blocks"
       }
     },
-    "detail": {
-      "type": "won-band",
-      "blocks": {
-        "d_param": {
-          "type": "won-param-table",
-          "settings": {
-            "heading": "Parametry",
-            "rows": "Hmotnost : 1 000 g\nPorce : 33\nPříchuť : Čokoláda\nForma : Prášek"
-          }
-        },
-        "d_nutri": {
-          "type": "won-nutrition-table",
-          "settings": {
-            "heading": "Nutriční hodnoty",
-            "source": "metafield",
-            "metafield_key": "custom.nutrition",
-            "label_nutrient": "Živina",
-            "label_col1": "Na 100 g",
-            "label_col2": "Na porci (10 g)",
-            "rows": "Energie | 380 kcal | 76 kcal\nBílkoviny | 24 g | 4,8 g\nSacharidy | 60 g | 12 g\nTuky | 6 g | 1,2 g"
-          }
-        },
-        "d_dose": {
-          "type": "won-dosage",
-          "settings": {
-            "heading": "Kdy užívat",
-            "steps": "Ráno : 1 odměrka do snídaně\nPo tréninku : 1 odměrka do 30 minut\nVečer : dle potřeby"
-          }
-        }
-      },
-      "block_order": [
-        "d_param",
-        "d_nutri",
-        "d_dose"
-      ],
-      "settings": {
-        "media_type": "none",
-        "section_width": "page",
-        "content_align": "left",
-        "color_scheme": "scheme-1",
-        "padding_top": 48,
-        "padding_bottom": 48,
-        "heading": "",
-        "content_columns": 2
-      }
-    },
     "tabs": {
       "type": "won-panels",
       "blocks": {
@@ -393,12 +347,67 @@
             "content": "<p>Prémiový syrovátkový protein pro každodenní regeneraci i výkon.</p>"
           }
         },
+        "t_param": {
+          "type": "won-panel",
+          "settings": {
+            "title": "Parametry",
+            "content": ""
+          },
+          "blocks": {
+            "d_param": {
+              "type": "won-param-table",
+              "settings": {
+                "heading": "",
+                "rows": "Hmotnost : 1 000 g\nPorce : 33\nPříchuť : Čokoláda\nForma : Prášek"
+              }
+            }
+          },
+          "block_order": [
+            "d_param"
+          ]
+        },
+        "t_nutri": {
+          "type": "won-panel",
+          "settings": {
+            "title": "Nutriční hodnoty",
+            "content": ""
+          },
+          "blocks": {
+            "d_nutri": {
+              "type": "won-nutrition-table",
+              "settings": {
+                "heading": "",
+                "source": "metafield",
+                "metafield_key": "custom.nutrition",
+                "label_nutrient": "Živina",
+                "label_col1": "Na 100 g",
+                "label_col2": "Na porci (10 g)",
+                "rows": "Energie | 380 kcal | 76 kcal\nBílkoviny | 24 g | 4,8 g\nSacharidy | 60 g | 12 g\nTuky | 6 g | 1,2 g"
+              }
+            }
+          },
+          "block_order": [
+            "d_nutri"
+          ]
+        },
         "t2": {
           "type": "won-panel",
           "settings": {
             "title": "Použití",
             "content": "<p>Rozmíchej 1 odměrku (30 g) ve 250 ml vody nebo mléka.</p>"
-          }
+          },
+          "blocks": {
+            "d_dose": {
+              "type": "won-dosage",
+              "settings": {
+                "heading": "Kdy užívat",
+                "steps": "Ráno : 1 odměrka do snídaně\nPo tréninku : 1 odměrka do 30 minut\nVečer : dle potřeby"
+              }
+            }
+          },
+          "block_order": [
+            "d_dose"
+          ]
         },
         "t3": {
           "type": "won-panel",
@@ -410,6 +419,8 @@
       },
       "block_order": [
         "t1",
+        "t_param",
+        "t_nutri",
         "t2",
         "t3"
       ],
@@ -505,7 +516,6 @@
   "order": [
     "main",
     "usp",
-    "detail",
     "tabs",
     "comparison",
     "faq",

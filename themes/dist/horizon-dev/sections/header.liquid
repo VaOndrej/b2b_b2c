@@ -90,7 +90,7 @@
     endif
   endif
   capture search
-    render 'search', style: search_style, class: search_class
+    render 'won-search', style: search_style, class: search_class, uid: 'desktop'
   endcapture
 
   # Skip mobile search under specific conditions:
@@ -104,7 +104,7 @@
   if section.settings.search_row == 'bottom' or search_style != 'none' and skip_mobile_search == false
     # Mobile search duplicate for when search is not in the right order for mobile layout
     capture mobile_search
-      render 'search', class: 'desktop:hidden', style: search_style
+      render 'won-search', class: 'desktop:hidden', style: search_style, uid: 'mobile'
     endcapture
   endif
 

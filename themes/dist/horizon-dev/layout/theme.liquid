@@ -111,7 +111,7 @@
 
     {% sections 'footer-group' %}
 
-    {% render 'search-modal' %}
+    {% unless settings.won_header_search_style == 'field' %}{% render 'search-modal' %}{% endunless %}
 
     {% if settings.quick_add or settings.mobile_quick_add %}
       {% render 'quick-add-modal' %}

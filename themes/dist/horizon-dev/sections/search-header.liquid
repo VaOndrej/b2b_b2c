@@ -18,7 +18,7 @@
     {% endcapture %}
 
     {% content_for 'block', id: 'heading', type: '_heading', text: heading_text %}
-    {% content_for 'block', id: 'search', type: '_search-input' %}
+    {% unless settings.won_header_search_style == 'field' %}{% content_for 'block', id: 'search', type: '_search-input' %}{% endunless %}
   </div>
 </div>
 

@@ -41,7 +41,14 @@ const target = positional[0] || 'horizon';
 const applyDemo = !flags.has('--no-demo');
 const baseDir = join(themesRoot, 'bases', target);
 const wonBase = join(themesRoot, 'won-base');
-const outDir = outOverride ? resolve(process.cwd(), outOverride) : join(themesRoot, 'dist', `${target}-dev`);
+const finalDir = outOverride ? resolve(process.cwd(), outOverride) : join(themesRoot, 'dist', `${target}-dev`);
+// Compose builds into a staging directory and syncs only what actually changed
+// into `finalDir` (step 6). Wiping and re-copying the destination gives all ~550
+// files a new mtime; `shopify theme dev` watches mtimes, not content, so one
+// compose queues ~550 uploads, Shopify answers THROTTLED on `themeFilesUpsert`,
+// and the dev server then serves "Failed to Upload Theme Files" until it is
+// restarted. Every step below still writes to `outDir` and knows nothing about this.
+const outDir = `${finalDir}.staging`;
 
 if (!existsSync(baseDir)) {
   console.error(`Base theme not found: ${baseDir}`);
@@ -273,6 +280,128 @@ if (existsSync(schemaFile)) {
   console.warn('2e: config/settings_schema.json not found — Won global groups not injected');
 }
 
+// 2f. Header search — hand the base header's search slot to won-search.
+// HP-004 / SRH-004 want a field a shopper can type into, not a magnifier that
+// opens a dialog; Horizon hardcodes `search_style = 'modal'`. Rather than
+// shadowing `snippets/search.liquid` (forbidden by convention C7), compose
+// re-points the two call sites at `won-search`, which either renders the field
+// or renders Horizon's own snippet back. In field mode the modal would be a
+// second, redundant search on the page — and would duplicate
+// `#predictive-search-results` — so its render in the layout is gated too.
+// Idempotent; both anchors must match or the build fails loudly rather than
+// silently shipping an icon-only header.
+const headerFile = join(outDir, 'sections', 'header.liquid');
+if (!existsSync(headerFile)) {
+  console.warn('2f: sections/header.liquid not found — header search left as the base has it');
+} else {
+  let header = readFileSync(headerFile, 'utf8');
+  const swaps = [
+    [
+      "render 'search', style: search_style, class: search_class",
+      "render 'won-search', style: search_style, class: search_class, uid: 'desktop'",
+    ],
+    [
+      "render 'search', class: 'desktop:hidden', style: search_style",
+      "render 'won-search', class: 'desktop:hidden', style: search_style, uid: 'mobile'",
+    ],
+  ];
+  let swapped = 0;
+  for (const [from, to] of swaps) {
+    if (header.includes(to)) { swapped++; continue; }
+    if (!header.includes(from)) {
+      throw new Error(`2f: header.liquid no longer contains "${from}" — the base search wiring moved; re-derive the patch`);
+    }
+    header = header.replace(from, () => to);
+    swapped++;
+  }
+  writeFileSync(headerFile, header);
+  console.log(`2f: routed ${swapped} header search call site(s) through won-search`);
+
+  const layoutSearch = join(outDir, 'layout', 'theme.liquid');
+  if (existsSync(layoutSearch)) {
+    let l = readFileSync(layoutSearch, 'utf8');
+    const modal = "{% render 'search-modal' %}";
+    const gated = "{% unless settings.won_header_search_style == 'field' %}{% render 'search-modal' %}{% endunless %}";
+    if (!l.includes(gated)) {
+      if (!l.includes(modal)) {
+        throw new Error('2f: layout/theme.liquid no longer renders search-modal — re-derive the gate');
+      }
+      l = l.replace(modal, () => gated);
+      writeFileSync(layoutSearch, l);
+    }
+  }
+}
+
+// 2g. Search results — same card as every other listing.
+// `sections/search-results.liquid` renders Horizon's own tile
+// (`content_for 'block', type: '_product-card'`), while collections go through
+// won-collection -> won-product-card. That leaves the shopper who typed a product
+// name — the one with the clearest intent — on the poorest card: no rating, no
+// price per unit, no add without a page load. Only the tile is swapped; Horizon
+// keeps filters, pagination and infinite scroll, and `ref="cards[]"` on the <li>
+// (which results-list.js counts) is untouched.
+const searchResultsFile = join(outDir, 'sections', 'search-results.liquid');
+if (!existsSync(searchResultsFile)) {
+  console.warn('2g: sections/search-results.liquid not found — search keeps the base card');
+} else {
+  let sr = readFileSync(searchResultsFile, 'utf8');
+  const nativeCard = "{% content_for 'block', type: '_product-card', id: 'product-card', closest.product: product %}";
+  const wonCard = "{% render 'won-product-card', product: product, aspect: 'portrait', show_ppu: true %}";
+  if (!sr.includes(wonCard)) {
+    if (!sr.includes(nativeCard)) {
+      throw new Error('2g: search-results.liquid no longer renders the _product-card block — re-derive the swap');
+    }
+    sr = sr.replace(nativeCard, () => wonCard);
+    writeFileSync(searchResultsFile, sr);
+    console.log('2g: search results now render won-product-card');
+  }
+}
+
+// 2h. One search box per page. `sections/search-header.liquid` renders the
+// `_search-input` block statically, so with a field already in the sticky header
+// the search page paints two identical boxes 150px apart — on the one page where
+// the shopper is already hunting. Gated on the same setting as the modal: in
+// `icon` mode the page field is the only way to search and must stay.
+const searchHeaderFile = join(outDir, 'sections', 'search-header.liquid');
+if (!existsSync(searchHeaderFile)) {
+  console.warn('2h: sections/search-header.liquid not found — search page keeps its own field');
+} else {
+  let sh = readFileSync(searchHeaderFile, 'utf8');
+  const pageField = "{% content_for 'block', id: 'search', type: '_search-input' %}";
+  const gatedField =
+    "{% unless settings.won_header_search_style == 'field' %}" + pageField + '{% endunless %}';
+  if (!sh.includes(gatedField)) {
+    if (!sh.includes(pageField)) {
+      throw new Error('2h: search-header.liquid no longer renders the _search-input block — re-derive the gate');
+    }
+    sh = sh.replace(pageField, () => gatedField);
+    writeFileSync(searchHeaderFile, sh);
+    console.log('2h: search page field gated behind the icon-only header');
+  }
+}
+
+// 2i. Every search form must ask for partial words. Storefront `/search` matches
+// whole tokens unless `options[prefix]=last` is in the query, and
+// `assets/search-page-input.js` only handles Escape — Enter is a plain native
+// submit. Without this the page field answers "krea" with nothing while the
+// header field finds Kreatin: same query, same shop, two answers.
+const searchInputBlock = join(outDir, 'blocks', '_search-input.liquid');
+if (!existsSync(searchInputBlock)) {
+  console.warn('2i: blocks/_search-input.liquid not found — page search keeps whole-token matching');
+} else {
+  let si = readFileSync(searchInputBlock, 'utf8');
+  const typeInput = '      name="type"\n      value="product"\n      type="hidden"\n    >';
+  const withPrefix = typeInput + '\n    <input\n      name="options[prefix]"\n      value="last"\n      type="hidden"\n    >';
+  if (!si.includes('options[prefix]')) {
+    if (!si.includes(typeInput)) {
+      throw new Error('2i: _search-input.liquid no longer carries the hidden type input — re-derive the patch');
+    }
+    si = si.replace(typeInput, () => withPrefix);
+    writeFileSync(searchInputBlock, si);
+    console.log('2i: page search form now asks for partial-word matching');
+  }
+}
+
 // 2b. Wire the shared won token/utility stylesheet into the base layout <head>.
 // won-tokens.css holds the global :root design tokens and shared classes
 // (.won-container, .won-section, .won-heading, .won-btn) that every won section
@@ -412,5 +541,64 @@ writeFileSync(
 const layerCounts = {};
 for (const v of Object.values(manifestFiles)) layerCounts[v.layer] = (layerCounts[v.layer] || 0) + 1;
 
-console.log(`composed ${target}: ${overlaid} code files overlaid, ${prunedNative} native duplicate sections hidden from picker, ${styledSections} sections given the shared style controls, ${mergedLocales} locale files merged, ${demoFiles} demo data files applied -> ${outDir}`);
+// 6. Sync staging -> destination, writing only the files that actually differ.
+// Preserving the mtime of an unchanged file is the whole point: see the note on
+// `outDir` above, and tests/smoke/won-compose-idempotence.spec.ts.
+function syncTree(from, to) {
+  let written = 0;
+  let removed = 0;
+  const wanted = new Set();
+
+  const copyInto = (rel) => {
+    const srcDir = rel ? join(from, rel) : from;
+    for (const entry of readdirSync(srcDir)) {
+      const childRel = rel ? join(rel, entry) : entry;
+      const src = join(from, childRel);
+      const dest = join(to, childRel);
+      if (statSync(src).isDirectory()) {
+        mkdirSync(dest, { recursive: true });
+        copyInto(childRel);
+        continue;
+      }
+      wanted.add(childRel);
+      const next = readFileSync(src);
+      if (existsSync(dest)) {
+        const current = readFileSync(dest);
+        if (current.equals(next)) continue;
+      }
+      mkdirSync(dirname(dest), { recursive: true });
+      writeFileSync(dest, next);
+      written++;
+    }
+  };
+
+  const prune = (rel) => {
+    const dir = rel ? join(to, rel) : to;
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir)) {
+      const childRel = rel ? join(rel, entry) : entry;
+      const abs = join(to, childRel);
+      if (statSync(abs).isDirectory()) {
+        prune(childRel);
+        if (readdirSync(abs).length === 0) rmSync(abs, { recursive: true, force: true });
+        continue;
+      }
+      if (!wanted.has(childRel)) {
+        rmSync(abs, { force: true });
+        removed++;
+      }
+    }
+  };
+
+  mkdirSync(to, { recursive: true });
+  copyInto('');
+  prune('');
+  return { written, removed };
+}
+
+const synced = syncTree(outDir, finalDir);
+rmSync(outDir, { recursive: true, force: true });
+
+console.log(`composed ${target}: ${overlaid} code files overlaid, ${prunedNative} native duplicate sections hidden from picker, ${styledSections} sections given the shared style controls, ${mergedLocales} locale files merged, ${demoFiles} demo data files applied -> ${finalDir}`);
+console.log(`sync: ${synced.written} file(s) written, ${synced.removed} removed (unchanged files keep their mtime, so the dev server does not re-upload them)`);
 console.log(`manifest: ${Object.keys(manifestFiles).length} files classified (${Object.entries(layerCounts).sort().map(([k, v]) => `${k} ${v}`).join(', ')}) -> ${MANIFEST_FILE}`);

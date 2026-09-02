@@ -4,11 +4,20 @@ mode-aware from the parent section's `display` setting: a tab panel (for the
 won-tabset element to wire) when display=tabs, or a native <details> row when
 display=accordion. Exclusive-open in accordion mode is driven by the section's
 allow_multiple via a shared name attribute.
+Accepts nested theme blocks, so a panel can hold a params/nutrition table instead
+of (or besides) its rich text — that is what keeps a PDP to ONE detail zone.
 @example
 {% content_for 'block', type: 'won-panel', id: 'panel-1' %}
 {% enddoc %}
 
 {%- assign s = block.settings -%}
+{%- comment -%}
+  `content_for 'blocks'` may appear EXACTLY ONCE per file — Shopify rejects a
+  second occurrence at upload time even when the two sit in mutually exclusive
+  Liquid branches ("Duplicate entries for content_for 'blocks'", 2026-09-02).
+  So the mode branches open and close AROUND the single slot, the same shape
+  won-panels.liquid uses for its tabs/accordion wrappers.
+{%- endcomment -%}
 {%- if section.settings.display == 'tabs' -%}
   <div
     class="won-panels__panel"
@@ -19,8 +28,7 @@ allow_multiple via a shared name attribute.
     {{ block.shopify_attributes }}
   >
     {%- if s.title != blank -%}<h3 class="won-panels__panel-title">{{ s.title }}</h3>{%- endif -%}
-    <div class="rte">{{ s.content }}</div>
-  </div>
+    {%- if s.content != blank -%}<div class="rte">{{ s.content }}</div>{%- endif -%}
 {%- else -%}
   <details
     class="won-panels__row"
@@ -32,10 +40,27 @@ allow_multiple via a shared name attribute.
       <span class="won-panels__q">{{ s.title }}</span>
       <span class="won-panels__icon" aria-hidden="true"></span>
     </summary>
-    <div class="won-panels__answer rte">{{ s.content }}</div>
+    {%- if s.content != blank -%}<div class="won-panels__answer rte">{{ s.content }}</div>{%- endif -%}
+{%- endif -%}
+
+    <div class="won-panels__panel-blocks">{% content_for 'blocks' %}</div>
+
+{%- if section.settings.display == 'tabs' -%}
+  </div>
+{%- else -%}
   </details>
   {%- render 'won-faq-schema', enabled: section.settings.emit_faq_schema, question: s.title, answer: s.content -%}
 {%- endif -%}
+
+{% stylesheet %}
+  /* Nested-block slot. `content_for 'blocks'` always emits its wrapper, so an
+     empty slot must not pay for a gap — hence :empty rather than a Liquid guard
+     (the slot's emptiness is only known after the blocks render). */
+  .won-panels__panel-blocks { display: grid; gap: var(--won-space-5); }
+  .won-panels__panel-blocks:empty { display: none; }
+  .won-panels__panel > .rte + .won-panels__panel-blocks,
+  .won-panels__answer + .won-panels__panel-blocks { margin-block-start: var(--won-space-4); }
+{% endstylesheet %}
 
 {% schema %}
 {
@@ -47,6 +72,7 @@ allow_multiple via a shared name attribute.
     { "type": "header", "content": "t:won.headers.controls" },
     { "type": "checkbox", "id": "open", "label": "t:won.settings.open_by_default", "info": "t:won.info.panel_open", "default": false }
   ],
+  "blocks": [{ "type": "@theme" }, { "type": "@app" }],
   "presets": [{ "name": "t:won.names.panel" }]
 }
 {% endschema %}

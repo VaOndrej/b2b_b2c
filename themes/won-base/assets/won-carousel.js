@@ -166,24 +166,37 @@
     }
     this.scrollByItems(1);
   }
-  pageCount() {
-    const w = this.track.clientWidth;
-    return w > 0 ? Math.max(1, Math.round(this.track.scrollWidth / w)) : 1;
+  // A dot is a promise: "there are this many stops, and this is the one you are
+  // on." The rail snaps per slide, so the stops ARE the slides. Counting pages
+  // (round(scrollWidth / clientWidth)) is only true when the slides tile the
+  // track exactly; in the peek layout the theme ships, four slides gave three
+  // dots and a dot click landed between two cards for the snap to yank away.
+  scrollToIndex(i) {
+    const child = this.track.children[i];
+    if (!child) return;
+    // Measured, not computed from offsetLeft: spacers, gaps and whichever
+    // element happens to be the offsetParent all drop out of a rect delta.
+    const t = this.track.getBoundingClientRect();
+    const c = child.getBoundingClientRect();
+    const align = getComputedStyle(child).scrollSnapAlign.split(' ').pop();
+    const delta =
+      align === 'center'
+        ? c.left + c.width / 2 - (t.left + this.track.clientWidth / 2)
+        : c.left - t.left;
+    this.track.scrollTo({ left: this.track.scrollLeft + delta, behavior: 'smooth' });
   }
   buildDots() {
-    const pages = this.pageCount();
-    this.dots.hidden = pages <= 1;
-    if (pages <= 1) { this.dots.innerHTML = ''; this._dotEls = []; return; }
+    const stops = this.track.children.length;
+    this.dots.hidden = stops <= 1;
+    if (stops <= 1) { this.dots.innerHTML = ''; this._dotEls = []; return; }
     this.dots.innerHTML = '';
     this._dotEls = [];
-    for (let i = 0; i < pages; i++) {
+    for (let i = 0; i < stops; i++) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'won-carousel__dot';
       b.setAttribute('aria-label', String(i + 1));
-      b.addEventListener('click', () => {
-        this.track.scrollTo({ left: i * this.track.clientWidth, behavior: 'smooth' });
-      });
+      b.addEventListener('click', () => this.scrollToIndex(i));
       this.dots.appendChild(b);
       this._dotEls.push(b);
     }
@@ -191,8 +204,9 @@
   }
   updateDots() {
     if (!this._dotEls || !this._dotEls.length) return;
-    const w = this.track.clientWidth;
-    const active = w > 0 ? Math.round(Math.abs(this.track.scrollLeft) / w) : 0;
+    // Same "which slide is at rest" answer the arrows and the loop already use,
+    // so the dot and the rail can never disagree about where the shopper is.
+    const active = this.activeIndex();
     this._dotEls.forEach((d, i) => d.setAttribute('aria-current', i === active ? 'true' : 'false'));
   }
   // Coalesce scroll bursts into one layout read+write per frame (the handler
