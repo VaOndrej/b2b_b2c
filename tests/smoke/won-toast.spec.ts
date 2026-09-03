@@ -67,9 +67,9 @@ test('repeat taps on one card rewrite one toast rather than stacking', async ({ 
   await expect(page.locator(ITEM)).toHaveCount(1);
   const count = await page.evaluate(async () => (await (await fetch('/cart.js')).json()).item_count);
   expect(count, 'five taps must land as five').toBe(5);
-  // The batch arrives as one cart, so the wording has to carry the resulting
-  // quantity — "added" alone would under-report what just happened.
-  await expect(page.locator(ITEM).first()).toContainText(String(count));
+  // The message states how many are in the cart NOW — not how many the last tap
+  // moved — so the number must equal the cart, whatever the batching did.
+  await expect(page.locator(ITEM).first().locator('.won-toast__qty')).toHaveText(String(count));
 });
 
 test('a burst across different cards is capped at the configured maximum', async ({ page }) => {
@@ -118,12 +118,13 @@ test('the toast is two lines, and a decrease reads differently from an increase'
   const toast = page.locator(ITEM).first();
   await expect(toast.locator('.won-toast__title')).not.toBeEmpty();
   await expect(toast.locator('.won-toast__label')).not.toBeEmpty();
-  await expect(toast.locator('.won-toast__delta')).toHaveText('+1');
+  // The number is the resulting quantity in the cart, not the size of the change.
+  await expect(toast.locator('.won-toast__qty')).toHaveText('1');
   await expect(toast).toHaveAttribute('data-type', 'added');
 
-  const added = await toast.locator('.won-toast__delta').evaluate((el) => getComputedStyle(el).color);
+  const added = await toast.locator('.won-toast__qty').evaluate((el) => getComputedStyle(el).color);
 
-  // Now the other direction. Colour must not be the ONLY difference — the sign
+  // Now the other direction. Colour must not be the ONLY difference — the number
   // and the wording carry it too — but it must actually differ.
   const minus = page.locator('[data-won-stepper]').first().locator('[data-won-step="-1"]');
   await page.mouse.move(box.x + 18, box.y + box.height / 2);
@@ -131,8 +132,10 @@ test('the toast is two lines, and a decrease reads differently from an increase'
   await minus.click();
   await expect(page.locator(ITEM).first()).toHaveAttribute('data-type', /decreased|removed/);
 
-  const down = page.locator(ITEM).first().locator('.won-toast__delta');
-  await expect(down).toHaveText('\u22121');
+  // Taking the last one out is a removal, and a removal shows no number at all —
+  // "0 in cart" describes arithmetic, not a cart.
+  const down = page.locator(ITEM).first().locator('.won-toast__qty');
+  await expect(down).toBeHidden();
   const removedColour = await down.evaluate((el) => getComputedStyle(el).color);
   expect(removedColour, 'a decrease must not look like an increase').not.toBe(added);
 });

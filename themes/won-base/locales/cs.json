@@ -88,10 +88,10 @@
       "region_label": "Oznámení košíku",
       "dismiss": "Zavřít oznámení",
       "action": {
-        "added": "Přidáno do košíku",
-        "increased": "Přidáno",
-        "decreased": "Odebráno",
-        "removed": "Odebráno z košíku"
+        "added": "v košíku",
+        "increased": "v košíku",
+        "decreased": "v košíku",
+        "removed": "Produkt odebrán z košíku"
       }
     }
   }

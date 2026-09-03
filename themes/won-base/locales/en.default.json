@@ -88,10 +88,10 @@
       "region_label": "Cart notifications",
       "dismiss": "Dismiss notification",
       "action": {
-        "added": "Added to cart",
-        "increased": "Added",
-        "decreased": "Removed",
-        "removed": "Removed from cart"
+        "added": "in cart",
+        "increased": "in cart",
+        "decreased": "in cart",
+        "removed": "Product removed from cart"
       }
     }
   }

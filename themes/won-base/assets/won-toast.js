@@ -72,11 +72,12 @@
     return '<img class="won-toast__media" src="' + sized + '" alt="" loading="lazy">';
   }
 
-  /* "+2" / "−1", with a real minus sign rather than a hyphen. The sign is the
-     fastest part of the message to read, and on a decrease it is the only part
-     that distinguishes it from an increase at a glance. */
-  function deltaLabel(delta) {
-    return (delta > 0 ? '+' : '\u2212') + Math.abs(delta);
+  /* What the shopper wants to know is how many they now have, not how many the
+     last tap moved. A removal is the one case with no number worth showing —
+     "0 in cart" is a fact about arithmetic, not about their cart — so it says
+     the product is gone and nothing else. */
+  function quantityLabel(type, qty) {
+    return type === 'removed' ? '' : String(qty);
   }
 
   function dismiss(id) {
@@ -103,7 +104,7 @@
     while (ids.length > MAX) dismiss(ids.shift());
   }
 
-  function show(id, type, title, label, delta, image) {
+  function show(id, type, title, label, qty, image) {
     var el = open[id];
 
     /* A toast can be torn out from under us — a section morph replaces the
@@ -137,7 +138,7 @@
       '<span class="won-toast__body">' +
       '<span class="won-toast__title"></span>' +
       '<span class="won-toast__action">' +
-      '<span class="won-toast__delta"></span>' +
+      '<span class="won-toast__qty"></span>' +
       '<span class="won-toast__label"></span>' +
       '</span>' +
       '</span>' +
@@ -145,7 +146,10 @@
       (region.dataset.dismiss || '') +
       '">&times;</button>';
     el.querySelector('.won-toast__title').textContent = title;
-    el.querySelector('.won-toast__delta').textContent = deltaLabel(delta);
+    var chip = el.querySelector('.won-toast__qty');
+    chip.textContent = quantityLabel(type, qty);
+    /* An empty chip would still claim the gap next to the label. */
+    chip.hidden = !chip.textContent;
     el.querySelector('.won-toast__label').textContent = label;
     el.querySelector('.won-toast__close').addEventListener('click', function () {
       dismiss(id);
@@ -190,7 +194,6 @@
           title: title,
           image: image,
           qty: line.quantity,
-          delta: line.quantity - before,
         });
       }
     });
@@ -206,7 +209,6 @@
         title: seen[id].title,
         image: seen[id].image,
         qty: 0,
-        delta: -seen[id].qty,
       });
     });
 
@@ -221,7 +223,7 @@
       /* The label is the second line only — the product name has a line of its
          own — but a merchant is still free to put {{ product }} or
          {{ quantity }} back into it, so both are honoured. */
-      show(c.id, c.type, c.title, fill(tpl, c.title, c.qty), c.delta, c.image);
+      show(c.id, c.type, c.title, fill(tpl, c.title, c.qty), c.qty, c.image);
     });
   }
 

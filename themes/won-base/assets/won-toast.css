@@ -120,9 +120,10 @@
   text-overflow: ellipsis;
 }
 
-/* The second line carries the whole message: sign, amount, and what happened.
-   Colour is the fastest of the three to read, so it does the same job the words
-   do — never the only carrier of meaning, always the first one noticed. */
+/* The second line carries the whole message: how many are in the cart now, and
+   what just happened to them. Colour is the fastest part to read, so it does the
+   same job the words do — never the only carrier of meaning, always the first
+   one noticed. */
 .won-toast__action {
   display: flex;
   align-items: baseline;
@@ -133,18 +134,24 @@
   opacity: 0.9;
 }
 
-.won-toast__delta {
+.won-toast__qty {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-.won-toast[data-type='added'] .won-toast__delta,
-.won-toast[data-type='increased'] .won-toast__delta {
+/* A removal has no quantity worth showing, and an empty chip would still claim
+   the gap the flex row gives it. */
+.won-toast__qty[hidden] {
+  display: none;
+}
+
+.won-toast[data-type='added'] .won-toast__qty,
+.won-toast[data-type='increased'] .won-toast__qty {
   color: var(--won-success, #1e8e3e);
 }
 
-.won-toast[data-type='decreased'] .won-toast__delta,
-.won-toast[data-type='removed'] .won-toast__delta {
+.won-toast[data-type='decreased'] .won-toast__qty,
+.won-toast[data-type='removed'] .won-toast__qty {
   color: var(--won-danger, #c5221f);
 }
 
