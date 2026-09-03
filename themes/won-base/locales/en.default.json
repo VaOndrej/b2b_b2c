@@ -85,12 +85,14 @@
       "search_placeholder": "Search products, brands…"
     },
     "toast": {
-      "added": "{{ product }} added to cart",
-      "increased": "{{ product }} — {{ quantity }} in cart",
-      "decreased": "{{ product }} — {{ quantity }} in cart",
-      "removed": "{{ product }} removed",
       "region_label": "Cart notifications",
-      "dismiss": "Dismiss notification"
+      "dismiss": "Dismiss notification",
+      "action": {
+        "added": "Added to cart",
+        "increased": "Added",
+        "decreased": "Removed",
+        "removed": "Removed from cart"
+      }
     }
   }
 }

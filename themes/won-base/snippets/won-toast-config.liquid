@@ -6,9 +6,14 @@
   Off means off, not hidden.
 
   Texts come from locales so a merchant can reword them in the language editor
-  and a translation app can localise them. `{{ product }}` / `{{ quantity }}`
-  survive the `t` filter unsubstituted on purpose — won-toast.js fills them in
-  once it knows which line changed.
+  and a translation app can localise them. They are the SECOND line only — the
+  product name has a line of its own — which is why they live under
+  `won.toast.action.*` rather than the flat keys the first version used: publish
+  never overwrites a merchant's locale value, so a changed string shape has to
+  arrive as a new key or it would render the product name twice.
+
+  `{{ product }}` / `{{ quantity }}` survive the `t` filter unsubstituted on
+  purpose, so a merchant who wants either of them back can still put it in.
 {%- endcomment -%}
 
 {%- if settings.won_toast_enabled -%}
@@ -18,10 +23,10 @@
     data-duration="{{ settings.won_toast_duration | default: 4 }}"
     data-max="{{ settings.won_toast_max | default: 3 }}"
     data-media="{% if settings.won_toast_media %}1{% else %}0{% endif %}"
-    data-text-added="{{ 'won.toast.added' | t | escape }}"
-    data-text-increased="{{ 'won.toast.increased' | t | escape }}"
-    data-text-decreased="{{ 'won.toast.decreased' | t | escape }}"
-    data-text-removed="{{ 'won.toast.removed' | t | escape }}"
+    data-text-added="{{ 'won.toast.action.added' | t | escape }}"
+    data-text-increased="{{ 'won.toast.action.increased' | t | escape }}"
+    data-text-decreased="{{ 'won.toast.action.decreased' | t | escape }}"
+    data-text-removed="{{ 'won.toast.action.removed' | t | escape }}"
     data-label="{{ 'won.toast.region_label' | t | escape }}"
     data-dismiss="{{ 'won.toast.dismiss' | t | escape }}"
     {%- comment -%}

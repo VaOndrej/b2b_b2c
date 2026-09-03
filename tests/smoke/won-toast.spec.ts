@@ -106,6 +106,50 @@ test('emptying the cart reports removals, one per variant', async ({ page }) => 
   await expect(page.locator('[data-won-toast-item][data-type="removed"]')).toHaveCount(1);
 });
 
+test('the toast is two lines, and a decrease reads differently from an increase', async ({ page }) => {
+  test.skip((await page.locator(REGION).count()) === 0, 'toasts are switched off');
+  test.skip((await page.locator('[data-won-stepper]').count()) === 0, 'no stepper on this page');
+
+  const box = await tapPlus(page);
+  await expect(page.locator(ITEM)).toHaveCount(1);
+
+  // Line one names the product, line two says what happened to it. They are
+  // separate elements so the name can be truncated without eating the message.
+  const toast = page.locator(ITEM).first();
+  await expect(toast.locator('.won-toast__title')).not.toBeEmpty();
+  await expect(toast.locator('.won-toast__label')).not.toBeEmpty();
+  await expect(toast.locator('.won-toast__delta')).toHaveText('+1');
+  await expect(toast).toHaveAttribute('data-type', 'added');
+
+  const added = await toast.locator('.won-toast__delta').evaluate((el) => getComputedStyle(el).color);
+
+  // Now the other direction. Colour must not be the ONLY difference — the sign
+  // and the wording carry it too — but it must actually differ.
+  const minus = page.locator('[data-won-stepper]').first().locator('[data-won-step="-1"]');
+  await page.mouse.move(box.x + 18, box.y + box.height / 2);
+  await page.waitForTimeout(150);
+  await minus.click();
+  await expect(page.locator(ITEM).first()).toHaveAttribute('data-type', /decreased|removed/);
+
+  const down = page.locator(ITEM).first().locator('.won-toast__delta');
+  await expect(down).toHaveText('\u22121');
+  const removedColour = await down.evaluate((el) => getComputedStyle(el).color);
+  expect(removedColour, 'a decrease must not look like an increase').not.toBe(added);
+});
+
+test('the thumbnail spans the full height of the toast', async ({ page }) => {
+  test.skip((await page.locator(REGION).count()) === 0, 'toasts are switched off');
+  test.skip(await page.locator(REGION).getAttribute('data-media') !== '1', 'thumbnails are switched off');
+  test.skip((await page.locator('[data-won-stepper]').count()) === 0, 'no stepper on this page');
+
+  await tapPlus(page);
+  await expect(page.locator(ITEM)).toHaveCount(1);
+  const toast = await page.locator(ITEM).first().boundingBox();
+  const media = await page.locator(ITEM).first().locator('.won-toast__media').boundingBox();
+  // Within a pixel of the card's own height, borders included.
+  expect(Math.abs(media!.height - toast!.height), 'the thumbnail must run edge to edge').toBeLessThanOrEqual(3);
+});
+
 test('while toasts are on, the cart drawer does not open by itself', async ({ page }) => {
   test.skip((await page.locator(REGION).count()) === 0, 'toasts are switched off');
   await expect(page.locator('cart-drawer-component[auto-open]')).toHaveCount(0);

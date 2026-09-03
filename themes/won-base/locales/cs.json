@@ -85,12 +85,14 @@
       "search_placeholder": "Hledat produkt, značku…"
     },
     "toast": {
-      "added": "{{ product }} v košíku",
-      "increased": "{{ product }} — {{ quantity }} ks",
-      "decreased": "{{ product }} — {{ quantity }} ks",
-      "removed": "{{ product }} odebráno",
       "region_label": "Oznámení košíku",
-      "dismiss": "Zavřít oznámení"
+      "dismiss": "Zavřít oznámení",
+      "action": {
+        "added": "Přidáno do košíku",
+        "increased": "Přidáno",
+        "decreased": "Odebráno",
+        "removed": "Odebráno z košíku"
+      }
     }
   }
 }

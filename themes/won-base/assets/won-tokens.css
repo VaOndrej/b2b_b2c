@@ -65,6 +65,7 @@
   /* Status colours (badges, add-to-cart confirm) */
   --won-info: #1e66f5;
   --won-success: #1e8e3e;
+  --won-danger: #c5221f;
 }
 
 /* ── Breakpoint canon ────────────────────────────────────────────────────────

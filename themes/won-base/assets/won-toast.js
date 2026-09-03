@@ -63,10 +63,20 @@
 
   /* ----------------------------------------------------------- rendering -- */
 
+  /* The thumbnail spans the toast's full height, so its height is whatever the
+     text next to it comes to — no width/height attributes, because fixing them
+     here would fight the stretch. */
   function thumb(url) {
     if (!WANT_MEDIA || !url) return '';
-    var sized = url.indexOf('?') === -1 ? url + '?width=96' : url + '&width=96';
-    return '<img class="won-toast__media" src="' + sized + '" alt="" width="48" height="48" loading="lazy">';
+    var sized = url.indexOf('?') === -1 ? url + '?width=160' : url + '&width=160';
+    return '<img class="won-toast__media" src="' + sized + '" alt="" loading="lazy">';
+  }
+
+  /* "+2" / "−1", with a real minus sign rather than a hyphen. The sign is the
+     fastest part of the message to read, and on a decrease it is the only part
+     that distinguishes it from an increase at a glance. */
+  function deltaLabel(delta) {
+    return (delta > 0 ? '+' : '\u2212') + Math.abs(delta);
   }
 
   function dismiss(id) {
@@ -93,7 +103,7 @@
     while (ids.length > MAX) dismiss(ids.shift());
   }
 
-  function show(id, type, text, image) {
+  function show(id, type, title, label, delta, image) {
     var el = open[id];
 
     /* A toast can be torn out from under us — a section morph replaces the
@@ -119,14 +129,24 @@
     }
 
     el._wonStamp = Date.now();
+    /* The type drives the colour of the second line, so it belongs on the
+       element rather than only in the words. */
     el.dataset.type = type;
     el.innerHTML =
       thumb(image) +
-      '<span class="won-toast__text"></span>' +
+      '<span class="won-toast__body">' +
+      '<span class="won-toast__title"></span>' +
+      '<span class="won-toast__action">' +
+      '<span class="won-toast__delta"></span>' +
+      '<span class="won-toast__label"></span>' +
+      '</span>' +
+      '</span>' +
       '<button class="won-toast__close" type="button" aria-label="' +
       (region.dataset.dismiss || '') +
       '">&times;</button>';
-    el.querySelector('.won-toast__text').textContent = text;
+    el.querySelector('.won-toast__title').textContent = title;
+    el.querySelector('.won-toast__delta').textContent = deltaLabel(delta);
+    el.querySelector('.won-toast__label').textContent = label;
     el.querySelector('.won-toast__close').addEventListener('click', function () {
       dismiss(id);
     });
@@ -163,7 +183,16 @@
 
       var before = seen[id] ? seen[id].qty : 0;
       var type = classify(before, line.quantity);
-      if (type) changes.push({ id: id, type: type, title: title, image: image, qty: line.quantity });
+      if (type) {
+        changes.push({
+          id: id,
+          type: type,
+          title: title,
+          image: image,
+          qty: line.quantity,
+          delta: line.quantity - before,
+        });
+      }
     });
 
     /* Lines that vanished from the payload are removals — the only place where
@@ -171,22 +200,28 @@
     Object.keys(seen).forEach(function (id) {
       if (next[id]) return;
       if (!seen[id].qty) return;
-      changes.push({ id: id, type: 'removed', title: seen[id].title, image: seen[id].image, qty: 0 });
+      changes.push({
+        id: id,
+        type: 'removed',
+        title: seen[id].title,
+        image: seen[id].image,
+        qty: 0,
+        delta: -seen[id].qty,
+      });
     });
 
     seen = next;
 
     changes.forEach(function (c) {
-      /* Taps are batched, so a first appearance can land as five at once. Saying
-         only "added to cart" would then under-report what just happened — the
-         quantity wording is the honest one whenever more than one arrived. */
-      var type = c.type === 'added' && c.qty > 1 ? 'increased' : c.type;
-      var tpl = template(type);
+      var tpl = template(c.type);
       /* A change whose text the merchant removed is silently skipped; the rest
          of the batch still speaks. */
       if (!tpl) return;
       if (!c.title) return;
-      show(c.id, type, fill(tpl, c.title, c.qty), c.image);
+      /* The label is the second line only — the product name has a line of its
+         own — but a merchant is still free to put {{ product }} or
+         {{ quantity }} back into it, so both are honoured. */
+      show(c.id, c.type, c.title, fill(tpl, c.title, c.qty), c.delta, c.image);
     });
   }
 
