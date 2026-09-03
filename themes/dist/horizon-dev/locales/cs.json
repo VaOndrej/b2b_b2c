@@ -427,6 +427,16 @@
     },
     "content": {
       "search_placeholder": "Hledat produkt, značku…"
+    },
+    "toast": {
+      "region_label": "Oznámení košíku",
+      "dismiss": "Zavřít oznámení",
+      "action": {
+        "added": "v košíku",
+        "increased": "v košíku",
+        "decreased": "v košíku",
+        "removed": "Produkt odebrán z košíku"
+      }
     }
   }
 }

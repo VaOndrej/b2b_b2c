@@ -65,6 +65,7 @@
   /* Status colours (badges, add-to-cart confirm) */
   --won-info: #1e66f5;
   --won-success: #1e8e3e;
+  --won-danger: #c5221f;
 }
 
 /* ── Breakpoint canon ────────────────────────────────────────────────────────
@@ -455,6 +456,41 @@
   opacity: 1; translate: none; pointer-events: auto;
 }
 .won-pcard__add.is-error { background: var(--won-border); color: var(--won-fg); }
+[data-won-stepper].is-error { background: var(--won-border); color: var(--won-fg); }
+
+/* Optimistic feedback for the stepper (assets/won-cart.js writes the new count
+   before the cart has confirmed it, so the tap needs an acknowledgement of its
+   own — and up and down must read differently on a control where +/- sit a few
+   pixels apart).
+
+   The count is NEVER faded in. An earlier version started the bump at opacity
+   .35 and dimmed the number while the request was in flight; measured on the
+   real stylesheet, that left it unreadable for the first ~190ms of every tap and
+   then flickered (animation out-ranks a plain declaration, so it went dim →
+   bright → dim → bright). It reads as lag on a control that has already updated.
+   So: movement only, full contrast on the first frame.
+   Guard: tests/smoke/won-card-quick-add.spec.ts */
+@keyframes won-qty-bump-up   { 0% { transform: translateY(28%);  } 100% { transform: none; } }
+@keyframes won-qty-bump-down { 0% { transform: translateY(-28%); } 100% { transform: none; } }
+.won-pcard__qty.is-bump-up   { animation: won-qty-bump-up 140ms var(--won-ease) 1; }
+.won-pcard__qty.is-bump-down { animation: won-qty-bump-down 140ms var(--won-ease) 1; }
+/* In-flight state is worth nothing to a shopper whose number is already correct,
+   so it shows only on the one control that is genuinely still unsafe: the "-",
+   which must not invite a tap that would race the previous one to a wrong
+   quantity. */
+[data-won-stepper].is-syncing .won-pcard__step[data-won-step="-1"] { opacity: .6; }
+
+/* The pill grows a - and a count once it holds a line. It grows to its LEADING
+   side, never around the "+": the trailing edge is pinned where the label's was,
+   measured by won-cart.js while the pill was still empty. Without this the
+   control re-lays out around its own centre on every change - worst with
+   `--add-center`, where adding a - and a number shoves the whole pill sideways
+   under a pointer that has not moved. */
+[data-won-stepper][data-won-qty-value] {
+  inset-inline-end: var(--won-pill-end, var(--won-space-3));
+  inset-inline-start: auto;
+  margin-inline: 0;
+}
 
 
 /* Packshot breathing room — PDP gallery (native Horizon block).

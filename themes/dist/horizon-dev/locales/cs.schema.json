@@ -1315,7 +1315,9 @@
       "card_choose_action": "Produkt s variantami nejde přidat rovnou z karty — karta neví, kterou variantu. „Rychlý náhled\" ukáže volby v okně nad výpisem, takže zákazník vybere a přidá, aniž by ztratil místo, kde byl. „Stránka produktu\" ho pošle na plnou stránku, což se hodí u zboží, které si lidé před koupí studují.",
       "header_search_style": "Pro eshop s katalogem je správně plné pole. Samotná ikona dává smysl jen u velmi malého sortimentu nebo blogu, kde není co hledat.",
       "header_search_placeholder": "Pojmenuj, co se dá hledat, např. „Hledat produkt, značku…\". Prázdné = výchozí text motivu.",
-      "header_search_width": "Nejvíc, na kolik pole na desktopu naroste. Na mobilu vždy zabere celý vlastní řádek pod logem."
+      "header_search_width": "Nejvíc, na kolik pole na desktopu naroste. Na mobilu vždy zabere celý vlastní řádek pod logem.",
+      "toast_enabled": "Vypnuté se vůbec nevykreslí a drawer se zase otevírá sám.",
+      "toast_max": "Starší hlášky odcházejí dřív, než jich naskáče víc."
     },
     "headers": {
       "ai_schema": "AI / vyhledávače (strukturovaná data)",
@@ -1570,7 +1572,12 @@
       "card_choose_action": "Co dělá „Vybrat\"",
       "header_search_style": "Vyhledávání v hlavičce",
       "header_search_placeholder": "Text v poli",
-      "header_search_width": "Šířka pole"
+      "header_search_width": "Šířka pole",
+      "toast_enabled": "Zobrazovat toasty",
+      "toast_position": "Pozice",
+      "toast_duration": "Jak dlouho zůstane",
+      "toast_max": "Nejvýš najednou",
+      "toast_media": "Miniatura produktu"
     },
     "options": {
       "loop_off": "Vypnuto",
@@ -1755,7 +1762,11 @@
       "choose_modal": "Otevřít rychlý náhled",
       "choose_link": "Přejít na stránku produktu",
       "search_field": "Plné pole (doporučeno)",
-      "search_icon": "Jen ikona lupy"
+      "search_icon": "Jen ikona lupy",
+      "toast_top_right": "Vpravo nahoře",
+      "toast_top_left": "Vlevo nahoře",
+      "toast_bottom_right": "Vpravo dole",
+      "toast_bottom_left": "Vlevo dole"
     },
     "presets": {
       "product_carousel": "Won Carousel — produkty",
@@ -1859,7 +1870,9 @@
       "unit_price": "Cena za jednotku",
       "unit_price_about": "Určuje, jak se počítá cena za jednotku (např. 4,50 Kč / 100 g) — najednou pro všechny karty i produktové stránky. Jedno pravidlo na řádek, tři pole oddělená SVISLOU ČÁROU | (ne lomítkem): metafield | za kolik jednotek | popisek. Příklad: won.net_weight_g | 100 | t:won.unit.per_100g · won.volume_ml | 100 | 100 ml · won.washes | 1 | prací dávka · won.pieces | 1 | kus",
       "header_search": "Won — Vyhledávání v hlavičce",
-      "header_search_about": "Jestli má hlavička skutečné vyhledávací pole, nebo jen ikonu lupy. Pole, do kterého jde rovnou psát, je jeden z nejsilnějších konverzních prvků na stránce — kdo hledá, nakupuje výrazně častěji než kdo jen prochází."
+      "header_search_about": "Jestli má hlavička skutečné vyhledávací pole, nebo jen ikonu lupy. Pole, do kterého jde rovnou psát, je jeden z nejsilnějších konverzních prvků na stránce — kdo hledá, nakupuje výrazně častěji než kdo jen prochází.",
+      "toasts": "Won — Toasty",
+      "toasts_about": "Hlášky, které potvrdí změnu v košíku, aniž by přerušily nakupování. Když jsou zapnuté, košíkový drawer se přestane otevírat sám."
     }
   }
 }

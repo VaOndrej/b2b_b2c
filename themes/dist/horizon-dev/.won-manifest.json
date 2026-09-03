@@ -1,7 +1,7 @@
 {
   "base": "horizon",
   "demoOverlay": true,
-  "wonBaseFileCount": 107,
+  "wonBaseFileCount": 110,
   "files": {
     ".cursor/rules/accordion-accessibility.mdc": {
       "owner": "compose",
@@ -821,7 +821,7 @@
     "assets/won-cart.js": {
       "owner": "compose",
       "layer": "won",
-      "sha": "cb71d6df94bd614d"
+      "sha": "7baa16635e83dc23"
     },
     "assets/won-cat-creatine.svg": {
       "owner": "compose",
@@ -988,10 +988,20 @@
       "layer": "won",
       "sha": "d84e6e5fa18240c8"
     },
+    "assets/won-toast.css": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "fd2b9087e46929bf"
+    },
+    "assets/won-toast.js": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "c904d5c055f015b8"
+    },
     "assets/won-tokens.css": {
       "owner": "compose",
       "layer": "won",
-      "sha": "6180fd2ddec5f1c9"
+      "sha": "56f475a2007d1208"
     },
     "assets/won-variant-reactive.js": {
       "owner": "compose",
@@ -1561,7 +1571,7 @@
     "config/settings_schema.json": {
       "owner": "compose",
       "layer": "vendor",
-      "sha": "4efc42324ea66a5e"
+      "sha": "fb582855368da4ba"
     },
     "layout/password.liquid": {
       "owner": "compose",
@@ -1571,7 +1581,7 @@
     "layout/theme.liquid": {
       "owner": "compose",
       "layer": "vendor",
-      "sha": "e40a06f4d59adb50"
+      "sha": "2c006284bc568404"
     },
     "locales/bg.json": {
       "owner": "mixed",
@@ -1581,12 +1591,12 @@
     "locales/cs.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "9b7a7337031afbda"
+      "sha": "46cf9c676b766d5c"
     },
     "locales/cs.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "87f3912fc76ec647"
+      "sha": "793eaa89bc5c5385"
     },
     "locales/da.json": {
       "owner": "mixed",
@@ -1616,12 +1626,12 @@
     "locales/en.default.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "ce75cc5ce826ecd6"
+      "sha": "6770c797c856bab3"
     },
     "locales/en.default.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "c5a1b9d783ea5cc7"
+      "sha": "2ac1ac0db7d46fc3"
     },
     "locales/es.json": {
       "owner": "mixed",
@@ -2046,7 +2056,7 @@
     "sections/won-announcement-bar.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "0ce74d7dedc24e58"
+      "sha": "05fc601e5ac81ad8"
     },
     "sections/won-app-slot.liquid": {
       "owner": "compose",
@@ -2737,6 +2747,11 @@
       "owner": "compose",
       "layer": "won",
       "sha": "b37fbb08a9d62ec1"
+    },
+    "snippets/won-toast-config.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "6944fbe49a779cbc"
     },
     "snippets/won-trust.liquid": {
       "owner": "compose",

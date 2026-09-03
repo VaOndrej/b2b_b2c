@@ -2700,6 +2700,72 @@
     ]
   },
   {
+    "name": "t:won.global.toasts",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "t:won.global.toasts_about"
+      },
+      {
+        "type": "checkbox",
+        "id": "won_toast_enabled",
+        "label": "t:won.settings.toast_enabled",
+        "info": "t:won.info.toast_enabled",
+        "default": true
+      },
+      {
+        "type": "select",
+        "id": "won_toast_position",
+        "label": "t:won.settings.toast_position",
+        "options": [
+          {
+            "value": "top_right",
+            "label": "t:won.options.toast_top_right"
+          },
+          {
+            "value": "top_left",
+            "label": "t:won.options.toast_top_left"
+          },
+          {
+            "value": "bottom_right",
+            "label": "t:won.options.toast_bottom_right"
+          },
+          {
+            "value": "bottom_left",
+            "label": "t:won.options.toast_bottom_left"
+          }
+        ],
+        "default": "top_right"
+      },
+      {
+        "type": "range",
+        "id": "won_toast_duration",
+        "label": "t:won.settings.toast_duration",
+        "min": 2,
+        "max": 8,
+        "step": 1,
+        "unit": "s",
+        "default": 4
+      },
+      {
+        "type": "range",
+        "id": "won_toast_max",
+        "label": "t:won.settings.toast_max",
+        "info": "t:won.info.toast_max",
+        "min": 1,
+        "max": 5,
+        "step": 1,
+        "default": 3
+      },
+      {
+        "type": "checkbox",
+        "id": "won_toast_media",
+        "label": "t:won.settings.toast_media",
+        "default": true
+      }
+    ]
+  },
+  {
     "name": "t:won.global.unit_price",
     "settings": [
       {

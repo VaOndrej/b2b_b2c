@@ -413,6 +413,16 @@
     },
     "content": {
       "search_placeholder": "Search products, brands…"
+    },
+    "toast": {
+      "region_label": "Cart notifications",
+      "dismiss": "Dismiss notification",
+      "action": {
+        "added": "in cart",
+        "increased": "in cart",
+        "decreased": "in cart",
+        "removed": "Product removed from cart"
+      }
     }
   }
 }
