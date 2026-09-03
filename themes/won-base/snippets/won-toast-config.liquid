@@ -1,0 +1,38 @@
+{%- comment -%}
+  won-toast-config — the only bridge between theme settings and won-toast.js.
+
+  Renders nothing at all when toasts are off: no region, no data, and therefore
+  no listener (won-toast.js activates on the region, not on DOMContentLoaded).
+  Off means off, not hidden.
+
+  Texts come from locales so a merchant can reword them in the language editor
+  and a translation app can localise them. `{{ product }}` / `{{ quantity }}`
+  survive the `t` filter unsubstituted on purpose — won-toast.js fills them in
+  once it knows which line changed.
+{%- endcomment -%}
+
+{%- if settings.won_toast_enabled -%}
+  <div
+    class="won-toast-region won-toast-region--{{ settings.won_toast_position | default: 'top_right' }}"
+    data-won-toast
+    data-duration="{{ settings.won_toast_duration | default: 4 }}"
+    data-max="{{ settings.won_toast_max | default: 3 }}"
+    data-media="{% if settings.won_toast_media %}1{% else %}0{% endif %}"
+    data-text-added="{{ 'won.toast.added' | t | escape }}"
+    data-text-increased="{{ 'won.toast.increased' | t | escape }}"
+    data-text-decreased="{{ 'won.toast.decreased' | t | escape }}"
+    data-text-removed="{{ 'won.toast.removed' | t | escape }}"
+    data-label="{{ 'won.toast.region_label' | t | escape }}"
+    data-dismiss="{{ 'won.toast.dismiss' | t | escape }}"
+    {%- comment -%}
+      The cart as the page was rendered. Without a baseline the first change
+      would have nothing to diff against and would have to guess its own type;
+      with it, the very first tap is already classified correctly — and it costs
+      no request, because Liquid has the cart in hand anyway.
+    {%- endcomment -%}
+    data-initial="{% for line in cart.items %}{{ line.variant_id }}:{{ line.quantity }}{% unless forloop.last %},{% endunless %}{% endfor %}"
+    role="status"
+    aria-live="polite"
+    aria-label="{{ 'won.toast.region_label' | t | escape }}"
+  ></div>
+{%- endif -%}

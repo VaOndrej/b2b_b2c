@@ -207,7 +207,9 @@
       "card_choose_action": "A product with variants cannot be added straight from the card — the card does not know which variant. \"Open a quick view\" shows the options in a window over the listing, so the shopper picks and adds without losing their place. \"Go to the product page\" sends them to the full page instead, which suits products people research before buying.",
       "header_search_style": "A full field is the right default for a catalogue. The icon is only sensible on a very small shop or a blog, where there is little to search.",
       "header_search_placeholder": "Name what can be searched, e.g. \"Search products, brands…\". Leave empty to use the theme default.",
-      "header_search_width": "Widest the field grows on desktop. On mobile it always fills its own line under the logo."
+      "header_search_width": "Widest the field grows on desktop. On mobile it always fills its own line under the logo.",
+      "toast_enabled": "Turned off, nothing is rendered and the drawer opens by itself again.",
+      "toast_max": "Older messages leave before more can pile up."
     },
     "headers": {
       "ai_schema": "AI / search (structured data)",
@@ -462,7 +464,12 @@
       "card_choose_action": "What \"Choose\" does",
       "header_search_style": "Search in the header",
       "header_search_placeholder": "Placeholder text",
-      "header_search_width": "Field width"
+      "header_search_width": "Field width",
+      "toast_enabled": "Show toasts",
+      "toast_position": "Position",
+      "toast_duration": "How long it stays",
+      "toast_max": "Most at once",
+      "toast_media": "Product thumbnail"
     },
     "options": {
       "loop_off": "Off",
@@ -647,7 +654,11 @@
       "choose_modal": "Open a quick view",
       "choose_link": "Go to the product page",
       "search_field": "Full field (recommended)",
-      "search_icon": "Magnifier icon only"
+      "search_icon": "Magnifier icon only",
+      "toast_top_right": "Top right",
+      "toast_top_left": "Top left",
+      "toast_bottom_right": "Bottom right",
+      "toast_bottom_left": "Bottom left"
     },
     "presets": {
       "product_carousel": "Won Carousel — products",
@@ -751,7 +762,9 @@
       "unit_price": "Price per unit",
       "unit_price_about": "Decides how the unit price (e.g. $4.50 / 100 g) is worked out, for every product card and product page at once. One rule per line, three fields separated by a VERTICAL BAR | (not a slash): metafield | how many units | label. Example: won.net_weight_g | 100 | t:won.unit.per_100g · won.volume_ml | 100 | 100 ml · won.washes | 1 | wash · won.pieces | 1 | piece",
       "header_search": "Won — Search in the header",
-      "header_search_about": "Whether the header carries a real search box or only a magnifier icon. A field a shopper can type into without hunting for it is one of the strongest conversion controls on the page — people who search buy far more often than people who browse."
+      "header_search_about": "Whether the header carries a real search box or only a magnifier icon. A field a shopper can type into without hunting for it is one of the strongest conversion controls on the page — people who search buy far more often than people who browse.",
+      "toasts": "Won — Toasts",
+      "toasts_about": "Messages that confirm a cart change without interrupting browsing. While they are on, the cart drawer stops opening by itself."
     }
   },
   "categories": {

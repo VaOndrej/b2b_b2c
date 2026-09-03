@@ -1,0 +1,144 @@
+/* won-toast — presentation only. Every behavioural decision lives in
+   won-toast.js; this file decides where the region sits, what a card looks
+   like, and how it arrives.
+
+   The region is `pointer-events: none` and each card turns them back on. A
+   toast is feedback, not furniture: it must never intercept a tap aimed at the
+   product card underneath it. */
+
+.won-toast-region {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: var(--won-space-2, 10px);
+  width: min(360px, calc(100vw - 2 * var(--won-space-3, 16px)));
+  padding: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+/* Logical properties throughout, so an RTL storefront mirrors "right" without
+   a second set of rules.
+
+   Top-anchored toasts clear the header rather than covering it. The one thing a
+   shopper looks at after adding to the cart is the cart badge — a message that
+   hides it defeats itself. `--won-toast-top` is measured from the live header by
+   won-toast.js; the fallback covers the frame before the first measurement. */
+.won-toast-region--top_right,
+.won-toast-region--top_left {
+  inset-block-start: calc(var(--won-toast-top, var(--header-height, 60px)) + var(--won-space-3, 16px));
+}
+
+.won-toast-region--top_right {
+  inset-inline-end: var(--won-space-3, 16px);
+}
+.won-toast-region--top_left {
+  inset-inline-start: var(--won-space-3, 16px);
+}
+.won-toast-region--bottom_right {
+  inset-block-end: var(--won-space-4, 20px);
+  inset-inline-end: var(--won-space-3, 16px);
+  flex-direction: column-reverse;
+}
+.won-toast-region--bottom_left {
+  inset-block-end: var(--won-space-4, 20px);
+  inset-inline-start: var(--won-space-3, 16px);
+  flex-direction: column-reverse;
+}
+
+.won-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--won-space-2, 10px);
+  box-sizing: border-box;
+  padding: var(--won-space-2, 10px) var(--won-space-3, 14px);
+  border: 1px solid var(--won-border, rgba(0, 0, 0, 0.14));
+  border-radius: var(--won-radius-md, 14px);
+  background: var(--won-bg, #fff);
+  box-shadow: var(--won-shadow-md, 0 6px 18px rgba(0, 0, 0, 0.1));
+  color: var(--won-fg, #14171c);
+  pointer-events: auto;
+
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity var(--won-dur, 240ms) var(--won-ease, ease), transform var(--won-dur, 240ms) var(--won-ease, ease);
+}
+
+.won-toast.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.won-toast.is-leaving {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* A bottom-anchored toast should slide down on the way out, not up into the
+   stack it is leaving. */
+.won-toast-region--bottom_right .won-toast,
+.won-toast-region--bottom_left .won-toast {
+  transform: translateY(6px);
+}
+.won-toast-region--bottom_right .won-toast.is-in,
+.won-toast-region--bottom_left .won-toast.is-in {
+  transform: none;
+}
+
+.won-toast__media {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--won-radius-sm, 8px);
+  object-fit: cover;
+  background: var(--won-surface, #f5f5f5);
+}
+
+/* Two lines, then an ellipsis. A long product name is allowed to wrap once —
+   beyond that the toast would start behaving like a layout element. */
+.won-toast__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.won-toast__close {
+  flex: 0 0 auto;
+  /* 44px of hit box, 24px of ink. Sizes are border-box theme-wide, so the
+     transparent border is subtracted from the visual, not added to the target:
+     the tap area stays honest without the card looking like it has a button
+     bolted on. */
+  box-sizing: border-box;
+  inline-size: 44px;
+  block-size: 44px;
+  border: 10px solid transparent;
+  background-clip: padding-box;
+  background: none;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--won-muted, currentColor);
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.won-toast__close:hover,
+.won-toast__close:focus-visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .won-toast,
+  .won-toast.is-in,
+  .won-toast.is-leaving {
+    transition: opacity 1ms linear;
+    transform: none;
+  }
+}

@@ -83,9 +83,19 @@ test('stepper quantity follows the cart', async ({ page }) => {
   await minus.click();
   await expect(qty).toHaveText('1', { timeout: 10_000 });
 
-  const cart = await page.evaluate(async () =>
-    (await fetch('/cart.js', { headers: { Accept: 'application/json' } })).json()
-  );
-  const total = (cart.items || []).reduce((n: number, i: { quantity: number }) => n + i.quantity, 0);
-  expect(total, 'the cart itself must agree with what the card shows').toBe(1);
+  // The card is deliberately ahead of the network: taps are batched and the
+  // number moves on the tap, not on the response. So the cart is polled until it
+  // settles rather than read the instant the display stops moving — the
+  // assertion is that the two AGREE, not that the server is synchronous.
+  await expect
+    .poll(
+      async () => {
+        const cart = await page.evaluate(async () =>
+          (await fetch('/cart.js', { headers: { Accept: 'application/json' } })).json()
+        );
+        return (cart.items || []).reduce((n: number, i: { quantity: number }) => n + i.quantity, 0);
+      },
+      { message: 'the cart itself must agree with what the card shows', timeout: 10_000 }
+    )
+    .toBe(1);
 });

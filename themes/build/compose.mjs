@@ -410,7 +410,9 @@ if (!existsSync(searchInputBlock)) {
 // integration happens here at compose time. Idempotent; targets both bases.
 const wonHead = [
   "{{ 'won-tokens.css' | asset_url | stylesheet_tag }}",
+  "{{ 'won-toast.css' | asset_url | stylesheet_tag }}",
   "<script src=\"{{ 'won-cart.js' | asset_url }}\" defer></script>",
+  "<script src=\"{{ 'won-toast.js' | asset_url }}\" defer></script>",
   "{% render 'won-site-schema' %}",
 ].join('\n  ');
 const layoutFile = join(outDir, 'layout', 'theme.liquid');
@@ -418,8 +420,17 @@ if (existsSync(layoutFile)) {
   let layout = readFileSync(layoutFile, 'utf8');
   if (!layout.includes('won-tokens.css')) {
     layout = layout.replace(/<\/head>/i, `  ${wonHead}\n  </head>`);
-    writeFileSync(layoutFile, layout);
   }
+  // The toast region is fixed-positioned but still has to live in the body, and
+  // it belongs to the layout rather than to a section: `sections/header-group.json`
+  // is owner: merchant / layer: data, so publish never rewrites it — a toast added
+  // there would never reach an existing storefront, and a merchant could delete it
+  // by accident. The snippet renders nothing when toasts are switched off, so the
+  // unconditional render costs an off storefront one no-op include.
+  if (!layout.includes('won-toast-config')) {
+    layout = layout.replace(/<\/body>/i, `  {% render 'won-toast-config' %}\n  </body>`);
+  }
+  writeFileSync(layoutFile, layout);
 } else {
   console.warn('warning: layout/theme.liquid not found; won assets not wired');
 }
