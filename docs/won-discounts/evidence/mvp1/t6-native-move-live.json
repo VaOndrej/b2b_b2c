@@ -1,0 +1,389 @@
+{
+  "name": "native-move-live",
+  "live": true,
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "startedAt": "2026-09-28T18:47:40.998Z",
+  "steps": [
+    {
+      "at": "2026-09-28T18:47:41.035Z",
+      "name": "sweep leftovers of an earlier run"
+    },
+    {
+      "at": "2026-09-28T18:47:48.358Z",
+      "name": "create the native test discount",
+      "detail": {
+        "title": "WON-TEST-NATIVE",
+        "code": "WONTESTNATIVE",
+        "product": "gid://shopify/Product/9692429058289"
+      }
+    },
+    {
+      "at": "2026-09-28T18:48:26.916Z",
+      "name": "detect",
+      "detail": {
+        "movable": 1,
+        "notMovable": 0,
+        "expired": 3,
+        "found": true
+      }
+    },
+    {
+      "at": "2026-09-28T18:48:36.099Z",
+      "name": "dialog preview",
+      "detail": {
+        "losses": [
+          "Historie použití zůstane v Shopify. Won počítá od nuly."
+        ],
+        "warnings": [
+          "Prodáváš-li předplatné: v Shopify na něj sleva neplatila. Won předplatné nerozlišuje, bude platit i na něj."
+        ],
+        "rule": {
+          "id": "native-2204320104689",
+          "enabled": true,
+          "name": "WON-TEST-NATIVE",
+          "method": "code",
+          "value": {
+            "kind": "percentage",
+            "percent": 10
+          },
+          "target": {
+            "kind": "products",
+            "productIds": [
+              "gid://shopify/Product/9692429058289"
+            ],
+            "variantIds": []
+          },
+          "origin": {
+            "nativeId": "gid://shopify/DiscountCodeNode/2204320104689"
+          },
+          "schedule": {
+            "startsAt": "2026-09-28T14:46:48-04:00"
+          },
+          "codes": [
+            "WONTESTNATIVE"
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T18:49:35.914Z",
+      "name": "move",
+      "detail": {
+        "ok": true,
+        "backupId": "cmullpcpl0000snugmrlexmcd",
+        "ruleId": "native-2204320104689",
+        "alreadyMoved": false,
+        "losses": [
+          "Historie použití zůstane v Shopify. Won počítá od nuly."
+        ],
+        "warnings": [
+          "Prodáváš-li předplatné: v Shopify na něj sleva neplatila. Won předplatné nerozlišuje, bude platit i na něj."
+        ]
+      }
+    },
+    {
+      "at": "2026-09-28T18:50:46.055Z",
+      "name": "undo",
+      "detail": {
+        "ok": true,
+        "alreadyRestored": false,
+        "nativeId": "gid://shopify/DiscountCodeNode/2204320432369",
+        "notRestored": [
+          "Počet použití se nevrátí. Shopify počítá od nuly."
+        ]
+      }
+    }
+  ],
+  "observations": [
+    {
+      "label": "native before the move",
+      "codes": [
+        "WONTESTNATIVE"
+      ],
+      "expectation": "code WONTESTNATIVE applicable, 10 % on the line (native discount)",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 12068,
+      "windowStart": "2026-09-28T18:47:58.367Z",
+      "windowEnd": "2026-09-28T18:48:10.435Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 19620,
+        "total_discount": 2180,
+        "totalDiscountPercent": 10,
+        "discount_codes": [
+          {
+            "code": "WONTESTNATIVE",
+            "applicable": true
+          }
+        ],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 19620,
+            "total_discount": 2180,
+            "line_level_discount_allocations": [
+              {
+                "amount": 2180,
+                "percentOfLine": 10,
+                "title": "WONTESTNATIVE",
+                "type": "discount_code",
+                "key": "<stripped>",
+                "value": "10.0",
+                "value_type": "percentage"
+              }
+            ]
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 2180,
+        "discount_codes": [
+          {
+            "code": "WONTESTNATIVE",
+            "applicable": true
+          }
+        ],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          [
+            {
+              "amount": 2180,
+              "discount_application": {
+                "allocation_method": "each",
+                "created_at": "2026-09-28T18:48:10.330Z",
+                "description": null,
+                "key": "<stripped>",
+                "target_selection": "entitled",
+                "target_type": "line_item",
+                "title": "WONTESTNATIVE",
+                "total_allocated_amount": 2180,
+                "type": "discount_code",
+                "value": "10.0",
+                "value_type": "percentage"
+              }
+            }
+          ]
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T18:48:02.295Z",
+          "elapsedMs": 3928,
+          "matched": true,
+          "cart": "discount 2180/21800 (10%) codes[WONTESTNATIVE:applicable] allocations[L0:WONTESTNATIVE=10%]"
+        },
+        {
+          "at": "2026-09-28T18:48:10.435Z",
+          "elapsedMs": 12068,
+          "matched": true,
+          "cart": "discount 2180/21800 (10%) codes[WONTESTNATIVE:applicable] allocations[L0:WONTESTNATIVE=10%]"
+        }
+      ],
+      "functionRuns": []
+    },
+    {
+      "label": "Won after the move",
+      "codes": [
+        "WONTESTNATIVE"
+      ],
+      "expectation": "code WONTESTNATIVE applicable, the Won rule gives the same 10 %",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 10646,
+      "windowStart": "2026-09-28T18:49:45.294Z",
+      "windowEnd": "2026-09-28T18:49:55.940Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 19620,
+        "total_discount": 2180,
+        "totalDiscountPercent": 10,
+        "discount_codes": [
+          {
+            "code": "WONTESTNATIVE",
+            "applicable": true
+          }
+        ],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 19620,
+            "total_discount": 2180,
+            "line_level_discount_allocations": [
+              {
+                "amount": 2180,
+                "percentOfLine": 10,
+                "title": "WONTESTNATIVE",
+                "type": "discount_code",
+                "key": "<stripped>",
+                "value": "10.0",
+                "value_type": "percentage"
+              }
+            ]
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 2180,
+        "discount_codes": [
+          {
+            "code": "WONTESTNATIVE",
+            "applicable": true
+          }
+        ],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          [
+            {
+              "amount": 2180,
+              "discount_application": {
+                "allocation_method": "each",
+                "created_at": "2026-09-28T18:49:55.829Z",
+                "description": null,
+                "key": "<stripped>",
+                "target_selection": "entitled",
+                "target_type": "line_item",
+                "title": "WONTESTNATIVE",
+                "total_allocated_amount": 2180,
+                "type": "discount_code",
+                "value": "10.0",
+                "value_type": "percentage"
+              }
+            }
+          ]
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T18:49:47.596Z",
+          "elapsedMs": 2302,
+          "matched": true,
+          "cart": "discount 2180/21800 (10%) codes[WONTESTNATIVE:applicable] allocations[L0:WONTESTNATIVE=10%]"
+        },
+        {
+          "at": "2026-09-28T18:49:55.940Z",
+          "elapsedMs": 10646,
+          "matched": true,
+          "cart": "discount 2180/21800 (10%) codes[WONTESTNATIVE:applicable] allocations[L0:WONTESTNATIVE=10%]"
+        }
+      ],
+      "functionRuns": []
+    },
+    {
+      "label": "native after the undo",
+      "codes": [
+        "WONTESTNATIVE"
+      ],
+      "expectation": "code WONTESTNATIVE applicable, the native discount gives 10 % again",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 10506,
+      "windowStart": "2026-09-28T18:50:53.576Z",
+      "windowEnd": "2026-09-28T18:51:04.082Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 19620,
+        "total_discount": 2180,
+        "totalDiscountPercent": 10,
+        "discount_codes": [
+          {
+            "code": "WONTESTNATIVE",
+            "applicable": true
+          }
+        ],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 19620,
+            "total_discount": 2180,
+            "line_level_discount_allocations": [
+              {
+                "amount": 2180,
+                "percentOfLine": 10,
+                "title": "WONTESTNATIVE",
+                "type": "discount_code",
+                "key": "<stripped>",
+                "value": "10.0",
+                "value_type": "percentage"
+              }
+            ]
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 2180,
+        "discount_codes": [
+          {
+            "code": "WONTESTNATIVE",
+            "applicable": true
+          }
+        ],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          [
+            {
+              "amount": 2180,
+              "discount_application": {
+                "allocation_method": "each",
+                "created_at": "2026-09-28T18:51:03.972Z",
+                "description": null,
+                "key": "<stripped>",
+                "target_selection": "entitled",
+                "target_type": "line_item",
+                "title": "WONTESTNATIVE",
+                "total_allocated_amount": 2180,
+                "type": "discount_code",
+                "value": "10.0",
+                "value_type": "percentage"
+              }
+            }
+          ]
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T18:50:55.811Z",
+          "elapsedMs": 2235,
+          "matched": true,
+          "cart": "discount 2180/21800 (10%) codes[WONTESTNATIVE:applicable] allocations[L0:WONTESTNATIVE=10%]"
+        },
+        {
+          "at": "2026-09-28T18:51:04.081Z",
+          "elapsedMs": 10505,
+          "matched": true,
+          "cart": "discount 2180/21800 (10%) codes[WONTESTNATIVE:applicable] allocations[L0:WONTESTNATIVE=10%]"
+        }
+      ],
+      "functionRuns": []
+    }
+  ],
+  "cleanup": [
+    {
+      "phase": "cleanup",
+      "deletedNative": "gid://shopify/DiscountCodeNode/2204320432369",
+      "userErrors": []
+    },
+    {
+      "phase": "cleanup",
+      "deletedBackupRows": 1
+    }
+  ],
+  "storefrontVariant": {
+    "id": 48468678902001,
+    "price": 21800
+  },
+  "finishedAt": "2026-09-28T18:51:25.595Z",
+  "_note": "scripts/native/move-live.mjs --live, 2026-09-28; discount-application keys stripped. Run log: t6-native-move-live.log.txt"
+}

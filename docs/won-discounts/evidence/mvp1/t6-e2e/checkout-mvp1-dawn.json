@@ -1,0 +1,82 @@
+{
+  "at": "2026-09-28T18:45:39.496Z",
+  "theme": "Dawn",
+  "checkoutPath": "/checkouts/cn/<token>/cs-cz/thank-you",
+  "codeCarriedIntoCheckout": false,
+  "cart": {
+    "currency": "CZK",
+    "original_total_price": 21800,
+    "items_subtotal_price": 19620,
+    "total_price": 16677,
+    "discount_codes": [
+      {
+        "code": "WONE2E15",
+        "applicable": true
+      }
+    ]
+  },
+  "expected": {
+    "lineDiscount": 2180,
+    "orderDiscount": 2943,
+    "subtotalAfterLines": 19620,
+    "total": 16677,
+    "planTotals": {
+      "subtotal": 21800,
+      "productDiscount": 2180,
+      "orderDiscount": 2943,
+      "total": 16677
+    },
+    "rules": [
+      {
+        "ruleId": "e2e-mvp1-auto-10",
+        "state": "applied",
+        "amount": 2180
+      },
+      {
+        "ruleId": "e2e-mvp1-code-15",
+        "state": "applied",
+        "amount": 2943
+      }
+    ]
+  },
+  "thankYou": {
+    "lineDiscount": -2180,
+    "subtotal": 19620,
+    "orderDiscount": -2943,
+    "shipping": 65300,
+    "tax": 0,
+    "total": 81977
+  },
+  "thankYouSummaryRows": [
+    {
+      "label": "Mezisoučet",
+      "value": "196,20 Kč",
+      "amount": 19620
+    },
+    {
+      "label": "Sleva na objednávku",
+      "value": "",
+      "amount": null
+    },
+    {
+      "label": "WONE2E15",
+      "value": "− 29,43 Kč",
+      "amount": -2943
+    },
+    {
+      "label": "Expedice",
+      "value": "653,00 Kč",
+      "amount": 65300
+    },
+    {
+      "label": "Celkem",
+      "value": "819,77 Kč",
+      "amount": 81977
+    },
+    {
+      "label": "CELKOVÁ ÚSPORA51,23 Kč",
+      "value": "",
+      "amount": null
+    }
+  ]
+}

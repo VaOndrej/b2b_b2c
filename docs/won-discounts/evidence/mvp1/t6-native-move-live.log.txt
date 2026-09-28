@@ -1,0 +1,30 @@
+# native move + undo — LIVE on b2b-b2c-store-development.myshopify.com
+▶ sweep leftovers of an earlier run
+▶ create the native test discount
+  ✓ cart native before the move: code WONTESTNATIVE applicable, 10 % on the line (native discount)
+▶ detect
+  ✓ the test discount is detected as movable
+  ✓ detected as 10 % with its code
+▶ dialog preview
+  ✓ preview ready
+▶ move
+  ✓ move succeeded
+  ✓ the native discount is deleted
+  ✓ the Won rule is in the config (10 %, same code)
+  ✓ the code WONTESTNATIVE now lives on a Won node (gid://shopify/DiscountCodeNode/2204320202993)
+  ✓ cart Won after the move: code WONTESTNATIVE applicable, the Won rule gives the same 10 %
+▶ undo
+  ✓ undo succeeded
+  ✓ the native discount is back with the code WONTESTNATIVE
+  ✓ restored with the same value (10 %) and product
+  ✓ the Won rule is gone from the config
+  ✓ cart native after the undo: code WONTESTNATIVE applicable, the native discount gives 10 % again
+▶ cleanup
+  ✓ storefront cart (codes removed, cart cleared)
+  ✓ test native discount
+  ✓ test rule in the config
+  ✓ test discount again (after the rule released its code)
+  ✓ backup rows of this run
+Evidence: <scratchpad>/native/native-move-live-1790621485595.json
+✔ native move + undo LIVE passed
+exit 0

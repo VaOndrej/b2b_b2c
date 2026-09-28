@@ -1,0 +1,53 @@
+{
+  "at": "2026-09-28T18:45:47.083Z",
+  "theme": "Dawn",
+  "cartTotal": 16677,
+  "expected": {
+    "lineDiscount": 2180,
+    "orderDiscount": 2943,
+    "total": 16677
+  },
+  "observed": {
+    "lineDiscount": -2180,
+    "subtotal": 19620,
+    "orderDiscount": -2943,
+    "total": 16677
+  },
+  "rows": [
+    {
+      "label": "Mezisoučet",
+      "value": "196,20 Kč",
+      "amount": 19620
+    },
+    {
+      "label": "Sleva na objednávku",
+      "value": "",
+      "amount": null
+    },
+    {
+      "label": "WONE2E15",
+      "value": "− 29,43 Kč",
+      "amount": -2943
+    },
+    {
+      "label": "Expedice",
+      "value": "$0.00",
+      "amount": 0
+    },
+    {
+      "label": "Daně",
+      "value": "$0.00",
+      "amount": 0
+    },
+    {
+      "label": "Celkem",
+      "value": "166,77 Kč",
+      "amount": 16677
+    },
+    {
+      "label": "CELKOVÁ ÚSPORA51,23 Kč",
+      "value": "",
+      "amount": null
+    }
+  ]
+}

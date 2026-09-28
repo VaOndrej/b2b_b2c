@@ -1,0 +1,232 @@
+{
+  "note": "scripts/e2e/seed-mvp1.mjs through the canonical saveAndSync (app/lib/sync/save-and-sync.server.ts) with the CLI AdminClient and the app DB (prisma/dev.sqlite). Before the seed the shop had no stored config (no row) and no Won node.",
+  "seed": {
+    "name": "seed-mvp1",
+    "store": "b2b-b2c-store-development.myshopify.com",
+    "at": "2026-09-28T18:18:16.258Z",
+    "product": {
+      "handle": "won-e2e-simple-a",
+      "id": "gid://shopify/Product/9692429058289"
+    },
+    "rules": [
+      {
+        "id": "e2e-mvp1-auto-10",
+        "name": "E2E auto 10 %",
+        "method": "automatic",
+        "enabled": true
+      },
+      {
+        "id": "e2e-mvp1-code-15",
+        "name": "E2E kód",
+        "method": "code",
+        "enabled": true
+      }
+    ],
+    "autoRule": "e2e-mvp1-auto-10",
+    "result": {
+      "save": {
+        "ok": true,
+        "versionId": "cmulklb7s0000snuleldh4hb6",
+        "functionConfigBytes": 753,
+        "issues": []
+      },
+      "sync": {
+        "ok": true,
+        "steps": [
+          {
+            "step": "shop.read",
+            "ok": true,
+            "detail": "gid://shopify/Shop/78971076849, shop time 2026-09-28T14:17:36 (America/New_York)"
+          },
+          {
+            "step": "node.create:auto",
+            "ok": true,
+            "detail": "created \"Won Discounts\""
+          },
+          {
+            "step": "node.create:code:e2e-mvp1-code-15",
+            "ok": true,
+            "detail": "created \"E2E kód\" with code WONE2E15"
+          },
+          {
+            "step": "products.scope",
+            "ok": true,
+            "detail": "1 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date"
+          },
+          {
+            "step": "products.set",
+            "ok": true,
+            "detail": "1 product(s) updated"
+          },
+          {
+            "step": "shop_config.write",
+            "ok": true,
+            "detail": "753 B written"
+          },
+          {
+            "step": "shop_config.verify",
+            "ok": true,
+            "detail": "read back and verified (753 B)"
+          }
+        ],
+        "errors": [],
+        "pending": [],
+        "runId": "cmulkm5vl0004snulz7c4ih7w"
+      },
+      "warnings": []
+    },
+    "syncRun": {
+      "runId": "cmulkm5vl0004snulz7c4ih7w",
+      "ok": true,
+      "startedAt": "2026-09-28T18:17:36.521Z",
+      "finishedAt": "2026-09-28T18:18:16.257Z",
+      "errorCount": 0,
+      "steps": [
+        {
+          "step": "shop.read",
+          "ok": true,
+          "detail": "gid://shopify/Shop/78971076849, shop time 2026-09-28T14:17:36 (America/New_York)"
+        },
+        {
+          "step": "node.create:auto",
+          "ok": true,
+          "detail": "created \"Won Discounts\""
+        },
+        {
+          "step": "node.create:code:e2e-mvp1-code-15",
+          "ok": true,
+          "detail": "created \"E2E kód\" with code WONE2E15"
+        },
+        {
+          "step": "products.scope",
+          "ok": true,
+          "detail": "1 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date"
+        },
+        {
+          "step": "products.set",
+          "ok": true,
+          "detail": "1 product(s) updated"
+        },
+        {
+          "step": "shop_config.write",
+          "ok": true,
+          "detail": "753 B written"
+        },
+        {
+          "step": "shop_config.verify",
+          "ok": true,
+          "detail": "read back and verified (753 B)"
+        }
+      ],
+      "pending": []
+    },
+    "wonNodes": [
+      {
+        "key": "auto",
+        "role": "automatic",
+        "ruleId": null,
+        "discountNodeId": "gid://shopify/DiscountAutomaticNode/2204315517169"
+      },
+      {
+        "key": "code:e2e-mvp1-code-15",
+        "role": "code",
+        "ruleId": "e2e-mvp1-code-15",
+        "discountNodeId": "gid://shopify/DiscountCodeNode/2204315549937"
+      }
+    ]
+  },
+  "cleanup": {
+    "name": "seed-mvp1-cleanup",
+    "store": "b2b-b2c-store-development.myshopify.com",
+    "at": "2026-09-28T18:47:33.078Z",
+    "restored": [],
+    "result": {
+      "save": {
+        "ok": true,
+        "versionId": "cmulln0vc0000sno52dcwva4q",
+        "functionConfigBytes": 427,
+        "issues": []
+      },
+      "sync": {
+        "ok": true,
+        "steps": [
+          {
+            "step": "shop.read",
+            "ok": true,
+            "detail": "gid://shopify/Shop/78971076849, shop time 2026-09-28T14:46:56 (America/New_York)"
+          },
+          {
+            "step": "node.delete:code:e2e-mvp1-code-15",
+            "ok": true,
+            "detail": "deleted \"E2E kód\" (its rule was deleted)"
+          },
+          {
+            "step": "products.scope",
+            "ok": true,
+            "detail": "0 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date"
+          },
+          {
+            "step": "products.clear",
+            "ok": true,
+            "detail": "1 product(s) no longer targeted, cleared"
+          },
+          {
+            "step": "shop_config.write",
+            "ok": true,
+            "detail": "427 B written"
+          },
+          {
+            "step": "shop_config.verify",
+            "ok": true,
+            "detail": "read back and verified (427 B)"
+          }
+        ],
+        "errors": [],
+        "pending": [],
+        "runId": "cmullntg50001sno58y4f0zh7"
+      },
+      "warnings": []
+    },
+    "syncRun": {
+      "runId": "cmullntg50001sno58y4f0zh7",
+      "ok": true,
+      "startedAt": "2026-09-28T18:46:56.043Z",
+      "finishedAt": "2026-09-28T18:47:33.076Z",
+      "errorCount": 0,
+      "steps": [
+        {
+          "step": "shop.read",
+          "ok": true,
+          "detail": "gid://shopify/Shop/78971076849, shop time 2026-09-28T14:46:56 (America/New_York)"
+        },
+        {
+          "step": "node.delete:code:e2e-mvp1-code-15",
+          "ok": true,
+          "detail": "deleted \"E2E kód\" (its rule was deleted)"
+        },
+        {
+          "step": "products.scope",
+          "ok": true,
+          "detail": "0 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date"
+        },
+        {
+          "step": "products.clear",
+          "ok": true,
+          "detail": "1 product(s) no longer targeted, cleared"
+        },
+        {
+          "step": "shop_config.write",
+          "ok": true,
+          "detail": "427 B written"
+        },
+        {
+          "step": "shop_config.verify",
+          "ok": true,
+          "detail": "read back and verified (427 B)"
+        }
+      ],
+      "pending": [],
+      "configVersionId": "cmulln0vc0000sno52dcwva4q"
+    }
+  }
+}

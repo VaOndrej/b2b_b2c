@@ -1,0 +1,48 @@
+{
+  "at": "2026-09-28T18:45:15.934Z",
+  "theme": "Dawn",
+  "currency": "CZK",
+  "auto": {
+    "total_price": 19620,
+    "allocations": [
+      {
+        "title": "E2E auto 10 %",
+        "amount": 2180
+      }
+    ],
+    "planTotals": {
+      "subtotal": 21800,
+      "productDiscount": 2180,
+      "orderDiscount": 0,
+      "total": 19620
+    }
+  },
+  "code": {
+    "discount_codes": [
+      {
+        "code": "WONE2E15",
+        "applicable": true
+      }
+    ],
+    "items_subtotal_price": 19620,
+    "cart_level": [
+      {
+        "title": "WONE2E15",
+        "amount": 2943,
+        "value": "15.0"
+      }
+    ],
+    "total_price": 16677,
+    "planTotals": {
+      "subtotal": 21800,
+      "productDiscount": 2180,
+      "orderDiscount": 2943,
+      "total": 16677
+    },
+    "planOrder": {
+      "amount": 2943,
+      "base": 19620,
+      "message": "E2E kód"
+    }
+  }
+}
