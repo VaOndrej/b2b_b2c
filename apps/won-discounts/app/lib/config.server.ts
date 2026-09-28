@@ -14,9 +14,11 @@ import {
   type ConfigIssue,
   type WonDiscountsConfig,
 } from "@won/core/discounts/config";
-import { encodeFunctionConfigWorstCase, FUNCTION_CONFIG_BUDGET_BYTES } from "@won/core/discounts/function-config";
+import { FUNCTION_CONFIG_BUDGET_BYTES } from "@won/core/discounts/function-config";
+import { buildShopFunctionConfigWorstCase } from "@won/core/discounts/function-payload";
 
 import type { PrismaClient } from "../generated/prisma/client";
+import { checkActiveCodeRuleLimit, checkCodeHashCollisions } from "./config-guards.server";
 
 /** How long ConfigVersion rows are kept before being pruned (support/rollback window). */
 export const CONFIG_HISTORY_RETENTION_DAYS = 90;
@@ -63,6 +65,31 @@ export type SaveConfigResult =
       reason: "config_too_large";
       bytes: number;
       limit: number;
+      config: WonDiscountsConfig;
+      issues: ConfigIssue[];
+    }
+  | {
+      /**
+       * More active code rules than MAX_ACTIVE_CODE_RULES (C2 fallback: one
+       * Shopify node per code rule, Shopify caps active discount functions per
+       * store): nothing was written. `issues` carries the human-readable reason.
+       */
+      ok: false;
+      reason: "too_many_code_rules";
+      count: number;
+      limit: number;
+      config: WonDiscountsConfig;
+      issues: ConfigIssue[];
+    }
+  | {
+      /**
+       * Two codes (or a code and a known native code) share the 8-hex hash the
+       * discount function matches codes by: nothing was written. `issues`
+       * names the codes.
+       */
+      ok: false;
+      reason: "code_hash_collision";
+      collisions: string[][];
       config: WonDiscountsConfig;
       issues: ConfigIssue[];
     }
@@ -119,6 +146,10 @@ function isRetryableWriteError(error: unknown): boolean {
 /**
  * Sanitize `input` and persist it as the shop's current config, recording a
  * ConfigVersion snapshot in the same transaction. Refuses (writes nothing) when
+ *   - more code rules are active than MAX_ACTIVE_CODE_RULES (config-guards,
+ *     C2 fallback: each is its own Shopify node, Shopify caps them per store),
+ *   - two codes (or a code and a known native code, `options.otherCodes`) share
+ *     the hash the discount function matches codes by (config-guards),
  *   - the config's function payload is over the C3 budget in ANY state the
  *     sync writes over time (each live campaign as the current one, or none) —
  *     the discount function could not read it and every Won discount would
@@ -137,9 +168,37 @@ function isRetryableWriteError(error: unknown): boolean {
  * is then retried and takes the guarded-update path (same for a write
  * conflict, P2034), so concurrent saves are last-write-wins, never an error.
  */
-export async function saveConfig(db: PrismaClient, shop: string, input: unknown): Promise<SaveConfigResult> {
+export interface SaveConfigOptions {
+  /** Codes of the shop's other (native) discounts, when known: checked for hash collisions too. */
+  otherCodes?: readonly string[];
+}
+
+export async function saveConfig(
+  db: PrismaClient,
+  shop: string,
+  input: unknown,
+  options: SaveConfigOptions = {},
+): Promise<SaveConfigResult> {
   const { config, issues } = sanitizeConfig(input);
-  const encoded = encodeFunctionConfigWorstCase(config);
+  const codeRules = checkActiveCodeRuleLimit(config);
+  if (!codeRules.ok) {
+    return {
+      ok: false,
+      reason: "too_many_code_rules",
+      count: codeRules.count,
+      limit: codeRules.limit,
+      config,
+      issues: [...issues, codeRules.issue],
+    };
+  }
+  const collisions = checkCodeHashCollisions(config, options.otherCodes);
+  if (!collisions.ok) {
+    return { ok: false, reason: "code_hash_collision", collisions: collisions.collisions, config, issues: [...issues, collisions.issue] };
+  }
+  // Measured on the payload the sync actually writes (the MVP 1 shop
+  // function_config, C7): rule targets ship as {kind} only — their id lists
+  // live in product metafields — so only this builder's size matters.
+  const encoded = buildShopFunctionConfigWorstCase(config);
   if (!encoded.fits) {
     return {
       ok: false,

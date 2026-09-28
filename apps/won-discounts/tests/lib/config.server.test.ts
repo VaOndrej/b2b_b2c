@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
 import { CONFIG_LIMITS, DEFAULT_CONFIG, sanitizeConfig, SCHEMA_VERSION } from "@won/core/discounts/config";
-import { encodeFunctionConfig, FUNCTION_CONFIG_BUDGET_BYTES } from "@won/core/discounts/function-config";
+import { FUNCTION_CONFIG_BUDGET_BYTES } from "@won/core/discounts/function-config";
+import { buildShopFunctionConfig } from "@won/core/discounts/function-payload";
 
 import {
   CONFIG_HISTORY_RETENTION_DAYS,
@@ -423,8 +424,12 @@ function configOverBudgetOnlyForLaterCampaign() {
     },
     campaigns,
   });
+  // Measured on the payload the sync writes (MVP 1 shop function_config); the
+  // selected campaign follows `now` (current, else next): before "a" → "a",
+  // between the two windows → the long-id one.
+  const nowSelecting = (campaignId: string) => (campaignId === "a" ? "2026-12-31T00:00:00" : "2027-03-01T00:00:00");
   const bytesFor = (input: unknown, campaignId: string) =>
-    encodeFunctionConfig(sanitizeConfig(input).config, { campaignId }).bytes;
+    buildShopFunctionConfig(sanitizeConfig(input).config, { now: nowSelecting(campaignId), shopTimezone: "UTC" }).bytes;
   // Grow the rule names until the long-id state is just over the budget.
   let nameLength = 0;
   while (bytesFor(build(nameLength), longId) <= FUNCTION_CONFIG_BUDGET_BYTES) nameLength += 20;
@@ -432,7 +437,11 @@ function configOverBudgetOnlyForLaterCampaign() {
   const input = build(nameLength);
   assert.ok(bytesFor(input, longId) > FUNCTION_CONFIG_BUDGET_BYTES);
   assert.ok(bytesFor(input, "a") <= FUNCTION_CONFIG_BUDGET_BYTES, "the state at save time fits");
-  assert.equal(encodeFunctionConfig(sanitizeConfig(input).config).fits, true, "the old check would accept it");
+  assert.equal(
+    buildShopFunctionConfig(sanitizeConfig(input).config, { now: "2026-12-31T00:00:00", shopTimezone: "UTC" }).fits,
+    true,
+    "measuring only the state at save time would accept it",
+  );
   return input;
 }
 

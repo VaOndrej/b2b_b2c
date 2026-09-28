@@ -1,0 +1,42 @@
+{
+  "modules": {
+    "codes": {
+      "rules": [
+        {
+          "id": "sample-auto",
+          "name": "Sample 5 % on the order",
+          "method": "automatic",
+          "enabled": true,
+          "value": {
+            "kind": "percentage",
+            "percent": 5
+          },
+          "target": {
+            "kind": "order"
+          }
+        },
+        {
+          "id": "sample-code",
+          "name": "Sample newsletter code",
+          "method": "code",
+          "enabled": true,
+          "codes": [
+            "WONSAMPLE10",
+            "WONSAMPLE-B"
+          ],
+          "value": {
+            "kind": "percentage",
+            "percent": 10
+          },
+          "target": {
+            "kind": "order"
+          },
+          "limits": {
+            "usageLimit": 50,
+            "oncePerCustomer": true
+          }
+        }
+      ]
+    }
+  }
+}
