@@ -1,0 +1,212 @@
+
+> test:smoke
+> playwright test tests/smoke --reporter=line
+
+(node:72146) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 400 tests using 1 worker
+
+[1A[2K(node:72147) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:72147) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:72147) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/400] [desktop] › tests/smoke/customization-layer.spec.ts:11:1 › won sections are wired to the shared style-vars pipeline
+[1A[2K[2/400] [desktop] › tests/smoke/customization-layer.spec.ts:24:1 › won-tokens.css consumes the universal border/shadow/radius vars
+[1A[2K[3/400] [desktop] › tests/smoke/customization-layer.spec.ts:52:1 › won-tokens.css consumes the Tier 2 typography + motion vars
+[1A[2K[4/400] [desktop] › tests/smoke/customization-layer.spec.ts:78:1 › per-section bg/text color override wins over the color scheme
+[1A[2K[5/400] [desktop] › tests/smoke/customization-layer.spec.ts:98:1 › won-tokens.css consumes the Tier 3 advanced overrides
+[1A[2K[6/400] [desktop] › tests/smoke/customization-layer.spec.ts:119:1 › editor coaching never leaks to the live storefront
+[1A[2K[7/400] [desktop] › tests/smoke/customization-layer.spec.ts:131:1 › responsive visibility var hides the section at the active breakpoint
+[1A[2K[8/400] [desktop] › tests/smoke/storefront.spec.ts:98:3 › home — health + responsive
+[1A[2K[9/400] [desktop] › tests/smoke/storefront.spec.ts:98:3 › product — health + responsive
+[1A[2K[10/400] [desktop] › tests/smoke/storefront.spec.ts:98:3 › collection — health + responsive
+[1A[2K[11/400] [desktop] › tests/smoke/storefront.spec.ts:98:3 › cart — health + responsive
+[1A[2K[12/400] [desktop] › tests/smoke/storefront.spec.ts:98:3 › search — health + responsive
+[1A[2K[13/400] [desktop] › tests/smoke/storefront.spec.ts:115:1 › sections — heading alignment matches body (no centered title over left content)
+[1A[2K[14/400] [desktop] › tests/smoke/storefront.spec.ts:131:1 › FAQ split — image column sits beside the accordion (image left, questions right)
+[1A[2K[15/400] [desktop] › tests/smoke/storefront.spec.ts:154:1 › won-panels FAQ — heading and questions always render
+[1A[2K[16/400] [desktop] › tests/smoke/storefront.spec.ts:170:1 › hero rail — a full card and a peeking neighbour on desktop
+[1A[2K[17/400] [desktop] › tests/smoke/storefront.spec.ts:182:1 › band center-gutter — media flanks the centred copy on desktop
+[1A[2K[18/400] [desktop] › tests/smoke/storefront.spec.ts:201:1 › tile badge — renders in the chosen corner (top-right)
+[1A[2K[19/400] [desktop] › tests/smoke/storefront.spec.ts:213:1 › slide annotation — headline gets a hand-drawn accent doodle
+[1A[2K[20/400] [desktop] › tests/smoke/storefront.spec.ts:225:1 › comparison — quality dots render (dots:N/M cell syntax)
+[1A[2K[21/400] [desktop] › tests/smoke/storefront.spec.ts:236:1 › tile icon — emoji renders before the label
+[1A[2K[22/400] [desktop] › tests/smoke/storefront.spec.ts:243:1 › slide gradient — a photo-free slide paints its CSS gradient background
+[1A[2K[23/400] [desktop] › tests/smoke/storefront.spec.ts:251:1 › stats — optional icon renders on each stat
+[1A[2K[24/400] [desktop] › tests/smoke/storefront.spec.ts:260:1 › shoppable image — hotspot pins reveal a product card on focus
+[1A[2K[25/400] [desktop] › tests/smoke/storefront.spec.ts:278:1 › shoppable image — a configured hotspot honours its separate mobile position
+[1A[2K[26/400] [desktop] › tests/smoke/storefront.spec.ts:305:1 › tabbed rail — segmented tabs toggle their product panels
+[1A[2K[27/400] [desktop] › tests/smoke/storefront.spec.ts:324:1 › carousel dots — page pager renders, is clickable, and tracks position
+[1A[2K[28/400] [desktop] › tests/smoke/storefront.spec.ts:343:1 › marquee — seamless loop is a duplicated, aria-hidden track
+[1A[2K[29/400] [desktop] › tests/smoke/storefront.spec.ts:358:1 › home — block grids with mobile carousel become a real swipeable rail
+[1A[2K[30/400] [desktop] › tests/smoke/storefront.spec.ts:378:1 › home — carousels honour their mobile mode
+[1A[2K[31/400] [desktop] › tests/smoke/storefront.spec.ts:420:1 › marquee — track spans >= 2x the viewport so the loop never shows a blank gap
+[1A[2K[32/400] [desktop] › tests/smoke/storefront.spec.ts:451:1 › hero peek — the first slide starts flush and its neighbour peeks in
+[1A[2K[33/400] [desktop] › tests/smoke/storefront.spec.ts:494:1 › hero carousel — loops endlessly, arrows never dead-end
+[1A[2K[34/400] [desktop] › tests/smoke/storefront.spec.ts:523:1 › won-carousel — mobile peek shows a neighbour on BOTH sides mid-scroll
+[1A[2K[35/400] [desktop] › tests/smoke/storefront.spec.ts:566:1 › won-carousel marquee — the belt is duplicated and spans >= 2x the viewport
+[1A[2K[36/400] [desktop] › tests/smoke/storefront.spec.ts:596:1 › announcement bar — every message renders and the free-shipping progress is live
+[1A[2K[37/400] [desktop] › tests/smoke/storefront.spec.ts:610:1 › announcement bar — rotate shows exactly one message at a time (motion on)
+[1A[2K[38/400] [desktop] › tests/smoke/storefront.spec.ts:628:1 › sticky ATC — corner style floats as a small rounded card at the bottom-inline-end
+[1A[2K[39/400] [desktop] › tests/smoke/storefront.spec.ts:657:1 › sticky ATC — center style floats as a centered pill, not full width
+[1A[2K[40/400] [desktop] › tests/smoke/storefront.spec.ts:680:1 › announcement bar — the close button dismisses it for the session
+[1A[2K[41/400] [desktop] › tests/smoke/won-block-wrapper-selectors.spec.ts:46:1 › no CSS selector treats a theme block as a direct child
+[1A[2K[42/400] [desktop] › tests/smoke/won-breadcrumbs.spec.ts:26:3 › PDP shows a breadcrumb trail
+[1A[2K[43/400] [desktop] › tests/smoke/won-breadcrumbs.spec.ts:57:3 › PDP emits BreadcrumbList matching what is on screen
+[1A[2K[44/400] [desktop] › tests/smoke/won-breadcrumbs.spec.ts:26:3 › collection shows a breadcrumb trail
+[1A[2K[45/400] [desktop] › tests/smoke/won-breadcrumbs.spec.ts:57:3 › collection emits BreadcrumbList matching what is on screen
+[1A[2K[46/400] [desktop] › tests/smoke/won-card-choose-action.spec.ts:34:1 › the theme offers a choose-action setting, defaulting to the modal
+[1A[2K[47/400] [desktop] › tests/smoke/won-card-choose-action.spec.ts:50:1 › Choose opens the quick-view dialog without leaving the listing
+[1A[2K[48/400] [desktop] › tests/smoke/won-card-choose-action.spec.ts:93:1 › Choose keeps the card CTA shape whichever mode is active
+[1A[2K[49/400] [desktop] › tests/smoke/won-card-cta-size.spec.ts:22:1 › every card quick-add variant renders at the same height
+[1A[2K[50/400] [desktop] › tests/smoke/won-card-cta-size.spec.ts:74:1 › card quick-add variants share one shape in their label state
+[1A[2K[51/400] [desktop] › tests/smoke/won-card-quick-add.spec.ts:20:1 › card declares its quick-add placement and reveal
+[1A[2K[52/400] [desktop] › tests/smoke/won-card-quick-add.spec.ts:29:1 › quick-add control is reachable and correctly sized for touch
+[1A[2K[53/400] [desktop] › tests/smoke/won-card-quick-add.spec.ts:45:1 › stepper quantity follows the cart
+[1A[2K[54/400] [desktop] › tests/smoke/won-card-scale.spec.ts:58:1 › rail cards never outgrow the card ceiling
+[1A[2K[55/400] [desktop] › tests/smoke/won-card-scale.spec.ts:68:1 › card title stays legible relative to the card it sits on
+[1A[2K[56/400] [desktop] › tests/smoke/won-card-scale.spec.ts:81:1 › no dead zone: the 750px rail is not a single full-width column
+[1A[2K[57/400] [desktop] › tests/smoke/won-carousel-arrows.spec.ts:8:1 › carousel arrows are visible only when the rail overflows
+[1A[2K[58/400] [desktop] › tests/smoke/won-carousel-controls.spec.ts:19:1 › carousel pager controls render (and never show a dead/empty bar)
+[1A[2K[59/400] [desktop] › tests/smoke/won-category-labels.spec.ts:15:3 › composed cs.schema.json has no duplicate picker category labels
+[1A[2K[60/400] [desktop] › tests/smoke/won-category-labels.spec.ts:15:3 › composed en.default.schema.json has no duplicate picker category labels
+[1A[2K[61/400] [desktop] › tests/smoke/won-compose-idempotence.spec.ts:24:1 › a second compose does not rewrite files it did not change
+[1A[2K[62/400] [desktop] › tests/smoke/won-countup-reachable.spec.ts:59:1 › every global theme setting is read by a section a merchant can insert
+[1A[2K[63/400] [desktop] › tests/smoke/won-countup.spec.ts:18:1 › won-stats opts into count-up: data attr, script tag, settings
+[1A[2K[64/400] [desktop] › tests/smoke/won-countup.spec.ts:32:1 › global animation fragment + compose step exist
+[1A[2K[65/400] [desktop] › tests/smoke/won-countup.spec.ts:60:1 › parser keeps prefix/suffix and format; refuses ambiguous values
+[1A[2K[66/400] [desktop] › tests/smoke/won-countup.spec.ts:98:1 › formatValue restores exact final text at the end of the run
+[1A[2K[67/400] [desktop] › tests/smoke/won-cta-effects.spec.ts:33:1 › every won CTA opts into the shared effect layer
+[1A[2K[68/400] [desktop] › tests/smoke/won-cta-effects.spec.ts:60:1 › the whole theme resolves ONE effect per family
+[1A[2K[69/400] [desktop] › tests/smoke/won-cta-effects.spec.ts:88:1 › card quick-add visibly reacts to hover
+[1A[2K[70/400] [desktop] › tests/smoke/won-cta-effects.spec.ts:119:1 › sheen is a real animation when the theme asks for it
+[1A[2K[71/400] [desktop] › tests/smoke/won-cta-effects.spec.ts:144:1 › effects stand down under prefers-reduced-motion
+[1A[2K[72/400] [desktop] › tests/smoke/won-cta-invariants.spec.ts:35:1 › no won CTA hardcodes target="_blank" — new-tab is always gated
+[1A[2K[73/400] [desktop] › tests/smoke/won-cta-invariants.spec.ts:49:1 › rewired sections render CTAs via won-button, not inline won-btn markup
+[1A[2K[74/400] [desktop] › tests/smoke/won-cta-invariants.spec.ts:59:1 › every won-carousel preset needing blocks ships them (no empty section on insert)
+[1A[2K[75/400] [desktop] › tests/smoke/won-editorial.spec.ts:14:3 › editorial PDP › composes reusable columns, cards and native purchase controls
+[1A[2K[76/400] [desktop] › tests/smoke/won-editorial.spec.ts:83:3 › editorial PDP › disclosures work by keyboard and remain independent of purchase state
+[1A[2K[77/400] [desktop] › tests/smoke/won-editorial.spec.ts:104:3 › editorial PDP › native variant changes update price and submit the selected item
+[1A[2K[78/400] [desktop] › tests/smoke/won-faq-schema.spec.ts:14:1 › won-faq-schema snippet: FAQPage, honesty guard, safe escaping, doc
+[1A[2K[79/400] [desktop] › tests/smoke/won-faq-schema.spec.ts:29:1 › both FAQ row blocks self-emit the schema, gated by the section toggle
+[1A[2K[80/400] [desktop] › tests/smoke/won-faq-schema.spec.ts:46:1 › smart defaults: accordion ON, panels OFF
+[1A[2K[81/400] [desktop] › tests/smoke/won-feedback-8.spec.ts:50:1 › rail progress bar and arrows share one control row
+[1A[2K[82/400] [desktop] › tests/smoke/won-feedback-8.spec.ts:93:1 › quick add updates the header cart count
+[1A[2K[83/400] [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists
+[1A[2K  1) [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+
+    Error: stepping down to zero must empty the line in the real cart
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m0[39m
+    Received: [31m2[39m
+
+      158 |
+      159 |   const left = await page.evaluate(async () => (await (await fetch('/cart.js')).json()).item_count);
+    > 160 |   expect(left, 'stepping down to zero must empty the line in the real cart').toBe(0);
+          |                                                                              ^
+      161 | });
+      162 |
+      163 | /* ------------------------------------------------------------------ *
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:160:78
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/error-context.md
+
+
+[1A[2K(node:72736) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:72736) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:72736) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[84/400] [desktop] › tests/smoke/won-feedback-8.spec.ts:172:1 › won-feature rows align their body text across the row
+[1A[2K[85/400] [desktop] › tests/smoke/won-feedback-8.spec.ts:221:1 › PDP main media shows the whole packshot with breathing room
+[1A[2K[86/400] [desktop] › tests/smoke/won-feedback-8.spec.ts:252:1 › PDP puts the product description under the price, and ships no highlights block
+[1A[2K[87/400] [desktop] › tests/smoke/won-header-search.spec.ts:58:3 › home — the header shows a usable search field, not just an icon
+[1A[2K[88/400] [desktop] › tests/smoke/won-header-search.spec.ts:86:3 › home — the search field accepts typing and stays reachable when scrolled
+[1A[2K[89/400] [desktop] › tests/smoke/won-header-search.spec.ts:58:3 › collection — the header shows a usable search field, not just an icon
+[1A[2K[90/400] [desktop] › tests/smoke/won-header-search.spec.ts:86:3 › collection — the search field accepts typing and stays reachable when scrolled
+[1A[2K[91/400] [desktop] › tests/smoke/won-header-search.spec.ts:58:3 › PDP — the header shows a usable search field, not just an icon
+[1A[2K[92/400] [desktop] › tests/smoke/won-header-search.spec.ts:86:3 › PDP — the search field accepts typing and stays reachable when scrolled
+[1A[2K[93/400] [desktop] › tests/smoke/won-header-search.spec.ts:116:1 › submitting the header field lands on the search results page for products
+[1A[2K[94/400] [desktop] › tests/smoke/won-hidden-natives.spec.ts:14:3 › product-list is hidden from the section picker but still renders
+[1A[2K[95/400] [desktop] › tests/smoke/won-hidden-natives.spec.ts:14:3 › featured-blog-posts is hidden from the section picker but still renders
+[1A[2K[96/400] [desktop] › tests/smoke/won-hidden-natives.spec.ts:35:3 › quick-order-list stays visible in the picker
+[1A[2K[97/400] [desktop] › tests/smoke/won-hidden-natives.spec.ts:35:3 › featured-product stays visible in the picker
+[1A[2K[98/400] [desktop] › tests/smoke/won-hidden-natives.spec.ts:35:3 › featured-product-information stays visible in the picker
+[1A[2K[99/400] [desktop] › tests/smoke/won-hidden-natives.spec.ts:35:3 › custom-liquid stays visible in the picker
+[1A[2K[100/400] [desktop] › tests/smoke/won-hidden-natives.spec.ts:35:3 › divider stays visible in the picker
+[1A[2K[101/400] [desktop] › tests/smoke/won-lcp-priority.spec.ts:19:1 › the LCP image loads eagerly and asks for priority
+[1A[2K[102/400] [desktop] › tests/smoke/won-listing-parity.spec.ts:62:1 › a product looks the same in search results as it does in a collection
+[1A[2K[103/400] [desktop] › tests/smoke/won-no-raw-liquid.spec.ts:24:5 › no raw Liquid in the rendered page › / renders no Liquid delimiters
+[1A[2K[104/400] [desktop] › tests/smoke/won-no-raw-liquid.spec.ts:24:5 › no raw Liquid in the rendered page › /collections/automated-collection renders no Liquid delimiters
+[1A[2K[105/400] [desktop] › tests/smoke/won-no-raw-liquid.spec.ts:24:5 › no raw Liquid in the rendered page › /pages/contact renders no Liquid delimiters
+[1A[2K[106/400] [desktop] › tests/smoke/won-packshot-labels.spec.ts:31:1 › no packshot is shared by two products
+[1A[2K[107/400] [desktop] › tests/smoke/won-packshot-labels.spec.ts:44:1 › every packshot exists and prints the name of the product wearing it
+[1A[2K[108/400] [desktop] › tests/smoke/won-pdp-composition.spec.ts:20:1 › data blocks inside a band fill their content column
+[1A[2K[109/400] [desktop] › tests/smoke/won-pdp-composition.spec.ts:50:1 › the product title is the largest heading on the PDP
+[1A[2K[110/400] [desktop] › tests/smoke/won-pdp-composition.spec.ts:72:1 › no schema placeholder copy leaks onto the storefront
+[1A[2K[111/400] [desktop] › tests/smoke/won-pdp-composition.spec.ts:82:1 › a data block with no rows renders no orphan heading
+[1A[2K[112/400] [desktop] › tests/smoke/won-pdp-composition.spec.ts:100:1 › product media is never smaller than the buy box column
+[1A[2K[113/400] [desktop] › tests/smoke/won-pdp-composition.spec.ts:136:1 › the sticky bar repeats the buy box CTA, it does not restyle it
+[1A[2K[114/400] [desktop] › tests/smoke/won-pdp-detail-zone.spec.ts:34:1 › product facts live in one section, the one that announces them
+[1A[2K[115/400] [desktop] › tests/smoke/won-pdp-detail-zone.spec.ts:66:1 › a fact nested in a tab panel is hidden until its tab is picked
+[1A[2K[116/400] [desktop] › tests/smoke/won-product-schema.spec.ts:15:1 › won-product-schema snippet: Product + additionalProperty, canonical @id, guard, escaping
+[1A[2K[117/400] [desktop] › tests/smoke/won-product-schema.spec.ts:34:1 › spec + nutrition tables self-emit with the right separator, gated by toggle
+[1A[2K[118/400] [desktop] › tests/smoke/won-product-schema.spec.ts:44:1 › emit_schema toggle present and ON by default on both blocks
+[1A[2K[119/400] [desktop] › tests/smoke/won-product-trust.spec.ts:12:1 › won-product-trust block reuses the shared snippets (no duplicated logic)
+[1A[2K[120/400] [desktop] › tests/smoke/won-product-trust.spec.ts:26:1 › name locale key resolves in both languages
+[1A[2K[121/400] [desktop] › tests/smoke/won-publish-global-settings.spec.ts:45:1 › publish seeds new won globals into an existing settings_data, without overwriting merchant values
+[1A[2K[122/400] [desktop] › tests/smoke/won-rail-affordance.spec.ts:87:5 › rails on / @390px expose controls exactly when they overflow
+[1A[2K[123/400] [desktop] › tests/smoke/won-rail-affordance.spec.ts:87:5 › rails on / @700px expose controls exactly when they overflow
+[1A[2K[124/400] [desktop] › tests/smoke/won-rail-affordance.spec.ts:87:5 › rails on / @1440px expose controls exactly when they overflow
+[1A[2K[125/400] [desktop] › tests/smoke/won-rail-affordance.spec.ts:87:5 › rails on /collections/automated-collection @390px expose controls exactly when they overflow
+[1A[2K[126/400] [desktop] › tests/smoke/won-rail-affordance.spec.ts:87:5 › rails on /collections/automated-collection @700px expose controls exactly when they overflow
+[1A[2K[127/400] [desktop] › tests/smoke/won-rail-affordance.spec.ts:87:5 › rails on /collections/automated-collection @1440px expose controls exactly when they overflow
+[1A[2K[128/400] [desktop] › tests/smoke/won-rail-affordance.spec.ts:111:1 › every arrow pair actually scrolls its rail
+[1A[2K[129/400] [desktop] › tests/smoke/won-rail-arrow-contrast.spec.ts:43:1 › rail arrows on the page meet AA contrast in every tone
+[1A[2K[130/400] [desktop] › tests/smoke/won-rail-arrow-contrast.spec.ts:133:1 › a rail arrow with no plate carries a text shadow over media
+[1A[2K[131/400] [desktop] › tests/smoke/won-rail-arrow-contrast.spec.ts:191:1 › rail chrome never covers an interactive element
+[1A[2K  2) [desktop] › tests/smoke/won-rail-arrow-contrast.spec.ts:191:1 › rail chrome never covers an interactive element 
+
+    Test was interrupted.
+
+    Error: page.waitForTimeout: Test ended.
+
+      191 | test('rail chrome never covers an interactive element', async ({ page }) => {
+      192 |   await page.goto('/', { waitUntil: 'load' });
+    > 193 |   await page.waitForTimeout(2000);
+          |              ^
+      194 |
+      195 |   const collisions = await page.evaluate(() => {
+      196 |     const vis = (el: Element) => {
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-rail-arrow-contrast.spec.ts:193:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-won-rail-arrow-contr-8cb65-vers-an-interactive-element-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[1A[2K  1 failed
+    [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+  1 interrupted
+    [desktop] › tests/smoke/won-rail-arrow-contrast.spec.ts:191:1 › rail chrome never covers an interactive element 
+  11 skipped
+  269 did not run
+  118 passed (5.0m)

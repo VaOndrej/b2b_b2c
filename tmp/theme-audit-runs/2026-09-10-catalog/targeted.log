@@ -1,0 +1,95 @@
+{
+  qa157: [
+    {
+      tag: 'ARTICLE',
+      class: '\n' +
+        '    won-slide\n' +
+        '    won-slide--minimal\n' +
+        '    won-slide--standard\n' +
+        '    won-slide--media-top\n' +
+        '    color-scheme-1\n' +
+        '    \n' +
+        '    \n' +
+        '    \n' +
+        '  ',
+      width: 1320,
+      color: 'rgba(0, 0, 0, 0.81)',
+      bg: 'rgba(0, 0, 0, 0)'
+    },
+    {
+      tag: 'IMG',
+      class: 'won-slide__img',
+      width: 1320,
+      color: 'rgba(0, 0, 0, 0.81)',
+      bg: 'rgba(0, 0, 0, 0)'
+    },
+    {
+      tag: 'DIV',
+      class: 'won-slide__body',
+      width: 1320,
+      color: 'rgba(0, 0, 0, 0.81)',
+      bg: 'rgba(0, 0, 0, 0)'
+    },
+    {
+      tag: 'H3',
+      class: 'won-heading won-slide__heading',
+      width: 1320,
+      color: 'rgba(0, 0, 0, 0.81)',
+      bg: 'rgba(0, 0, 0, 0)'
+    },
+    {
+      tag: 'DIV',
+      class: 'won-slide__text rte',
+      width: 1320,
+      color: 'rgba(0, 0, 0, 0.81)',
+      bg: 'rgba(0, 0, 0, 0)'
+    }
+  ],
+  qa158: [
+    {
+      tag: 'IMG',
+      class: 'won-compare__img',
+      width: 1320,
+      color: 'rgba(0, 0, 0, 0.81)',
+      bg: 'rgba(0, 0, 0, 0)'
+    },
+    {
+      tag: 'IMG',
+      class: 'won-compare__img',
+      width: 1440,
+      color: 'rgba(0, 0, 0, 0.81)',
+      bg: 'rgba(0, 0, 0, 0)'
+    }
+  ],
+  compareKeyboard: '51',
+  video: {
+    text: 'Liquid error (blocks/won-video line 13): external_video_tag does not support VideoUrlDrop',
+    iframes: [],
+    html: 'Liquid error (blocks/won-video line 13): external_video_tag does not support VideoUrlDrop\n'
+  },
+  identity: {
+    shop: 'b2b-b2c-store-development.myshopify.com',
+    theme: {
+      name: 'Development (249968-Ondrej--MacBook-Air)',
+      id: 161957216497,
+      schema_name: 'Horizon',
+      schema_version: '3.2.1',
+      theme_store_id: null,
+      role: 'development',
+      handle: 'null',
+      style: [Object]
+    }
+  },
+  initialPrice: 'Sale price \n$549.95 \nRegular price \n$999.95',
+  selected: {
+    expected: 48665842909425,
+    actual: '48665842909425',
+    price: 'Sale price \n$885.95 \nRegular price \n$999.95',
+    expectedPrice: 88595
+  },
+  cartAdded: true,
+  cartRestoreStatus: 200,
+  cartRestored: [],
+  cartBefore: [],
+  soldOut: { disabled: true, label: 'Sold out' }
+}

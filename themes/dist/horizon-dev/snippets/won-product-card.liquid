@@ -2,12 +2,13 @@
   won-product-card — the one product card used everywhere (carousel, PLP, search,
   cross-sell). Badges + quick-add (global won-cart.js) + optional price-per-unit.
   Params: product (required), aspect ('square'|'portrait'|'landscape'|'natural'),
-  show_add (default true), show_badges (default true), show_ppu + ppu_rules
+  layout ('card' default | 'row'), show_add (default true), show_badges (default true), show_ppu + ppu_rules
   (per-unit price on the card; the ladder lives in the theme setting
   won_unit_price_rules, ppu_rules is an optional per-section override).
 {%- endcomment -%}
 {%- liquid
   assign aspect = aspect | default: 'portrait'
+  assign layout = layout | default: 'card'
   if show_add == nil
     assign show_add = true
   endif
@@ -31,14 +32,7 @@
   assign card_add_reveal = settings.won_card_add_reveal | default: 'hover'
   assign card_add_size = settings.won_card_add_size | default: 'regular'
 -%}
-<div class="won-pcard won-pcard--add-{{ card_add_align }} won-pcard--reveal-{{ card_add_reveal }} won-pcard--cta-{{ card_add_size }}">
-  <div class="won-pcard__media won-pcard__media--{{ aspect }}">
-    {%- if show_badges -%}<div class="won-pcard__badges">{% render 'won-badges', product: product %}</div>{%- endif -%}
-    <a class="won-pcard__media-link{% unless product.featured_image %} won-pcard__media-link--placeholder{% endunless %}" href="{{ product.url }}" aria-label="{{ product.title | escape }}">
-      {%- if product.featured_image -%}
-        {{ product.featured_image | image_url: width: 800 | image_tag: widths: '200, 300, 400, 600, 800', sizes: '(min-width: 1024px) 25vw, 60vw', class: 'won-pcard__img', loading: 'lazy', alt: product.featured_image.alt | default: product.title }}
-      {%- endif -%}
-    </a>
+{%- capture card_action -%}
     {%- if show_add -%}
       {%- if product.available -%}
         {%- if product.has_only_default_variant or product.variants.size == 1 -%}
@@ -82,8 +76,20 @@
         <span class="won-pcard__add won-pcard__add--soldout" aria-disabled="true">{{ 'won.cart.soldout' | t }}</span>
       {%- endif -%}
     {%- endif -%}
+{%- endcapture -%}
+{%- if layout == 'row' -%}<div class="won-pcard-row-shell">{%- endif -%}
+<div class="won-pcard{% if layout == 'row' %} won-pcard--row{% endif %} won-pcard--add-{{ card_add_align }} won-pcard--reveal-{{ card_add_reveal }} won-pcard--cta-{{ card_add_size }}">
+  <div class="won-pcard__media won-pcard__media--{{ aspect }}">
+    {%- if show_badges and layout != 'row' -%}<div class="won-pcard__badges">{% render 'won-badges', product: product %}</div>{%- endif -%}
+    <a class="won-pcard__media-link{% unless product.featured_image %} won-pcard__media-link--placeholder{% endunless %}" href="{{ product.url }}" aria-label="{{ product.title | escape }}">
+      {%- if product.featured_image -%}
+        {{ product.featured_image | image_url: width: 800 | image_tag: widths: '200, 300, 400, 600, 800', sizes: '(min-width: 1024px) 25vw, 60vw', class: 'won-pcard__img', loading: 'lazy', alt: product.featured_image.alt | default: product.title }}
+      {%- endif -%}
+    </a>
+    {%- unless layout == 'row' -%}{{ card_action }}{%- endunless -%}
   </div>
   <a class="won-pcard__info" href="{{ product.url }}">
+    {%- if show_badges and layout == 'row' -%}<div class="won-pcard__row-badges">{% render 'won-badges', product: product %}</div>{%- endif -%}
     <div class="won-pcard__title">{{ product.title }}</div>
     {% render 'won-rating', product: product %}
     <div class="won-pcard__price">
@@ -96,4 +102,6 @@
     </div>
     {%- if ppu_out != blank -%}<div class="won-pcard__ppu">{{ ppu_out }}</div>{%- endif -%}
   </a>
+  {%- if layout == 'row' -%}{{ card_action }}{%- endif -%}
 </div>
+{%- if layout == 'row' -%}</div>{%- endif -%}

@@ -13,7 +13,7 @@
 {%- endcomment -%}
 <section class="won-sticky-host won-sticky-host--scope-{{ s.device_scope | default: 'both' }} color-{{ s.color_scheme | default: 'scheme-1' }}" data-testid="won-sticky-atc-section">
   <won-sticky-atc class="won-sticky won-sticky--{{ s.bar_style | default: 'full' }}" style="--won-radius-md: {{ s.corner_radius | default: 14 }}px; --won-sticky-offset: {{ s.offset_bottom | default: 12 }}px;" data-hidden>
-    <div class="won-sticky__inner won-container">
+    <div class="won-sticky__inner{% unless s.bar_style == 'center' or s.bar_style == 'corner' %} won-container{% endunless %}">
       {%- if product.featured_image -%}
         <img class="won-sticky__thumb" src="{{ product.featured_image | image_url: width: 120 }}" alt="" width="48" height="48" loading="lazy">
       {%- endif -%}
@@ -91,11 +91,15 @@
   }
   .won-sticky--corner {
     inset-inline-start: auto; inset-inline-end: var(--won-space-3);
-    inline-size: auto;
+    inline-size: fit-content;
     max-inline-size: min(360px, calc(100% - var(--won-space-4)));
   }
   .won-sticky--center .won-sticky__inner,
-  .won-sticky--corner .won-sticky__inner { padding-inline: var(--won-space-3); }
+  .won-sticky--corner .won-sticky__inner {
+    padding-inline: var(--won-space-3); min-inline-size: 0; flex-wrap: wrap;
+  }
+  .won-sticky--corner .won-sticky__atc { flex: 1 1 auto; min-inline-size: var(--won-tap, 44px); white-space: normal; }
+  .won-sticky--center .won-sticky__title { min-inline-size: 0; }
   /* Center is a COMPACT pill (task: "kompaktní verze uprostřed") — drop the
      thumbnail so it stays a tidy pill, name + price + Add, even on a phone. */
   .won-sticky--center .won-sticky__thumb { display: none; }

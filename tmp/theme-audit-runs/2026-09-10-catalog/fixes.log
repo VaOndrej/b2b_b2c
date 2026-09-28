@@ -1,0 +1,22 @@
+
+> test:smoke
+> playwright test tests/smoke --grep QA verified fixes --project=desktop --reporter=line
+
+(node:77198) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+[1A[2K(node:77209) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:77209) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:77209) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/2] [desktop] › tests/smoke/won-qa-fixes.spec.ts:6:3 › QA verified fixes › identical comparison images stay registered when the divider moves
+[1A[2K[2/2] [desktop] › tests/smoke/won-qa-fixes.spec.ts:25:3 › QA verified fixes › external URL video renders the provider iframe without a Liquid exception
+[1A[2K  2 passed (27.3s)

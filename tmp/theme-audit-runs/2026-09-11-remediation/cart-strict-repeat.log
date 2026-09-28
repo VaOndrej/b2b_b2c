@@ -1,0 +1,474 @@
+(node:35419) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 12 tests using 1 worker
+
+[1A[2K(node:35422) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:35422) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:35422) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/12] [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists
+[1A[2K  1) [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+
+    Error: Won must announce a committed cart containing 1 items
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m1[39m
+    Received: [31m0[39m
+
+    Call Log:
+    - Timeout 15000ms exceeded while waiting on the predicate
+
+       at support/cart-state.ts:104
+
+      102 |
+      103 | export async function expectCommittedCart(page: Page, count: number) {
+    > 104 |   await expect
+          |   ^
+      105 |     .poll(
+      106 |       async () =>
+      107 |         page.evaluate(() => {
+        at expectCommittedCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:104:3)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:147:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/error-context.md
+
+
+[1A[2K(node:35449) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:35449) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:35449) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[2/12] [desktop] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K  2) [desktop] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: response.text: Test timeout of 60000ms exceeded.
+
+      213 |     release();
+      214 |     const response = await firstResponse;
+    > 215 |     expect(response.ok(), `held cart update HTTP ${response.status()}: ${response.ok() ? '' : await response.text()}`).toBeTruthy();
+          |                                                                                                              ^
+      216 |     expect((await response.json()).item_count, 'the held first add must really persist one item').toBe(1);
+      217 |     const cart = await expectCommittedCart(page, 0);
+      218 |     expect(cart.items).toEqual([]);
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:215:110
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop/error-context.md
+
+
+[1A[2K(node:35659) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:35659) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:35659) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[3/12] [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists
+[1A[2K  3) [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+
+    Error: Won must announce a committed cart containing 1 items
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m1[39m
+    Received: [31m0[39m
+
+    Call Log:
+    - Timeout 15000ms exceeded while waiting on the predicate
+
+       at support/cart-state.ts:104
+
+      102 |
+      103 | export async function expectCommittedCart(page: Page, count: number) {
+    > 104 |   await expect
+          |   ^
+      105 |     .poll(
+      106 |       async () =>
+      107 |         page.evaluate(() => {
+        at expectCommittedCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:104:3)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:147:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop-repeat1/error-context.md
+
+
+[1A[2K(node:35715) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:35715) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:35715) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[4/12] [desktop] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K  4) [desktop] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: response.text: Test timeout of 60000ms exceeded.
+
+      213 |     release();
+      214 |     const response = await firstResponse;
+    > 215 |     expect(response.ok(), `held cart update HTTP ${response.status()}: ${response.ok() ? '' : await response.text()}`).toBeTruthy();
+          |                                                                                                              ^
+      216 |     expect((await response.json()).item_count, 'the held first add must really persist one item').toBe(1);
+      217 |     const cart = await expectCommittedCart(page, 0);
+      218 |     expect(cart.items).toEqual([]);
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:215:110
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop-repeat1/error-context.md
+
+
+[1A[2K(node:35783) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:35783) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:35783) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[5/12] [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists
+[1A[2K  5) [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+
+    Error: cart mutations are restricted to the b2b development store
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m"b2b-b2c-store-development.myshopify.com"[39m
+    Received: [31mundefined[39m
+
+       at support/cart-state.ts:58
+
+      56 |     await page.evaluate(() => (window as any).Shopify?.shop),
+      57 |     'cart mutations are restricted to the b2b development store',
+    > 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+         |     ^
+      59 |   const initial = await page.request.get('/cart.js');
+      60 |   expect(
+      61 |     initial.ok(),
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop-repeat2/error-context.md
+
+
+[1A[2K(node:35792) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:35792) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:35792) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[6/12] [desktop] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K  6) [desktop] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: response.text: Test timeout of 60000ms exceeded.
+
+      213 |     release();
+      214 |     const response = await firstResponse;
+    > 215 |     expect(response.ok(), `held cart update HTTP ${response.status()}: ${response.ok() ? '' : await response.text()}`).toBeTruthy();
+          |                                                                                                              ^
+      216 |     expect((await response.json()).item_count, 'the held first add must really persist one item').toBe(1);
+      217 |     const cart = await expectCommittedCart(page, 0);
+      218 |     expect(cart.items).toEqual([]);
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:215:110
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop-repeat2/error-context.md
+
+
+[1A[2K(node:35964) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:35964) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:35964) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[7/12] [mobile] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists
+[1A[2K  7) [mobile] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+
+    Error: cart mutations are restricted to the b2b development store
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m"b2b-b2c-store-development.myshopify.com"[39m
+    Received: [31mundefined[39m
+
+       at support/cart-state.ts:58
+
+      56 |     await page.evaluate(() => (window as any).Shopify?.shop),
+      57 |     'cart mutations are restricted to the b2b development store',
+    > 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+         |     ^
+      59 |   const initial = await page.request.get('/cart.js');
+      60 |   expect(
+      61 |     initial.ok(),
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile/error-context.md
+
+
+[1A[2K(node:35973) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:35973) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:35973) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[8/12] [mobile] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K  8) [mobile] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight 
+
+    Error: cart mutations are restricted to the b2b development store
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m"b2b-b2c-store-development.myshopify.com"[39m
+    Received: [31mundefined[39m
+
+       at support/cart-state.ts:58
+
+      56 |     await page.evaluate(() => (window as any).Shopify?.shop),
+      57 |     'cart mutations are restricted to the b2b development store',
+    > 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+         |     ^
+      59 |   const initial = await page.request.get('/cart.js');
+      60 |   expect(
+      61 |     initial.ok(),
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:173:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile/error-context.md
+
+
+[1A[2K(node:35983) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:35983) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:35983) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[9/12] [mobile] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists
+[1A[2K  9) [mobile] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+
+    Error: cart mutations are restricted to the b2b development store
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m"b2b-b2c-store-development.myshopify.com"[39m
+    Received: [31mundefined[39m
+
+       at support/cart-state.ts:58
+
+      56 |     await page.evaluate(() => (window as any).Shopify?.shop),
+      57 |     'cart mutations are restricted to the b2b development store',
+    > 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+         |     ^
+      59 |   const initial = await page.request.get('/cart.js');
+      60 |   expect(
+      61 |     initial.ok(),
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat1/error-context.md
+
+
+[1A[2K(node:35990) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:35990) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:35990) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[10/12] [mobile] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K  10) [mobile] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight 
+
+    Error: cart mutations are restricted to the b2b development store
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m"b2b-b2c-store-development.myshopify.com"[39m
+    Received: [31mundefined[39m
+
+       at support/cart-state.ts:58
+
+      56 |     await page.evaluate(() => (window as any).Shopify?.shop),
+      57 |     'cart mutations are restricted to the b2b development store',
+    > 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+         |     ^
+      59 |   const initial = await page.request.get('/cart.js');
+      60 |   expect(
+      61 |     initial.ok(),
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:173:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat1/error-context.md
+
+
+[1A[2K(node:35997) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:35997) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:35997) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[11/12] [mobile] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists
+[1A[2K  11) [mobile] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+
+    Error: cart mutations are restricted to the b2b development store
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m"b2b-b2c-store-development.myshopify.com"[39m
+    Received: [31mundefined[39m
+
+       at support/cart-state.ts:58
+
+      56 |     await page.evaluate(() => (window as any).Shopify?.shop),
+      57 |     'cart mutations are restricted to the b2b development store',
+    > 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+         |     ^
+      59 |   const initial = await page.request.get('/cart.js');
+      60 |   expect(
+      61 |     initial.ok(),
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat2/error-context.md
+
+
+[1A[2K(node:36004) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:36004) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:36004) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[12/12] [mobile] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K  12) [mobile] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight 
+
+    Error: cart mutations are restricted to the b2b development store
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m"b2b-b2c-store-development.myshopify.com"[39m
+    Received: [31mundefined[39m
+
+       at support/cart-state.ts:58
+
+      56 |     await page.evaluate(() => (window as any).Shopify?.shop),
+      57 |     'cart mutations are restricted to the b2b development store',
+    > 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+         |     ^
+      59 |   const initial = await page.request.get('/cart.js');
+      60 |   expect(
+      61 |     initial.ok(),
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:173:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat2/error-context.md
+
+
+[1A[2K  12 failed
+    [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+    [desktop] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight 
+    [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+    [desktop] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight 
+    [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+    [desktop] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight 
+    [mobile] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+    [mobile] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight 
+    [mobile] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+    [mobile] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight 
+    [mobile] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+    [mobile] › tests/smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight 

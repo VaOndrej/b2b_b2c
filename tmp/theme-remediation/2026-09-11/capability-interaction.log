@@ -1,0 +1,44 @@
+
+> test:smoke
+> playwright test tests/smoke --grep Won remediation capabilities.*(quick view|shared cart) --project=desktop --output=tmp/theme-remediation/2026-09-11/capability-interaction-results --reporter=line
+
+(node:28498) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+[1A[2K(node:28499) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28499) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28499) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/2] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:142:3 › Won remediation capabilities › row multi-variant action opens the existing quick view
+[1A[2K[2/2] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:166:3 › Won remediation capabilities › row quick add uses the shared cart and unavailable rows cannot add
+[1A[2K  1) [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:166:3 › Won remediation capabilities › row quick add uses the shared cart and unavailable rows cannot add 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: page.evaluate: Target page, context or browser has been closed
+
+      207 |     ).toHaveCount(0);
+      208 |   });
+    > 209 | });
+          |    ^
+      210 |
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-remediation-capabilities.spec.ts:209:20
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-remediation/2026-09-11/capability-interaction-results/smoke-won-remediation-capa-b1763-unavailable-rows-cannot-add-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-remediation/2026-09-11/capability-interaction-results/smoke-won-remediation-capa-b1763-unavailable-rows-cannot-add-desktop/error-context.md
+
+
+[1A[2K  1 failed
+    [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:166:3 › Won remediation capabilities › row quick add uses the shared cart and unavailable rows cannot add 
+  1 passed (1.1m)

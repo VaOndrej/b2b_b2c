@@ -342,5 +342,10 @@
       "default_title": "Tytuł domyślny",
       "sticky_add_to_cart": "Pasek szybkiego dodawania do koszyka"
     }
+  },
+  "won": {
+    "vp": {
+      "hide_table": "Hide variants table"
+    }
   }
 }

@@ -1106,5 +1106,21 @@
     "other_sections": "その他",
     "storytelling": "ストーリーテリング",
     "text": "テキスト"
+  },
+  "won": {
+    "options": {
+      "product_layout_card": "Card",
+      "product_layout_row": "Row",
+      "video_adaptive": "Adaptive (hosted media; external 16:9)",
+      "video_cover": "Fill (crop)",
+      "video_contain": "Fit whole video"
+    },
+    "settings": {
+      "column_ratio": "Column ratio",
+      "video_fit": "Hosted video fit"
+    },
+    "info": {
+      "video_fit": "Cover or contain applies to hosted video. External players control their own image fit. Adaptive uses hosted media dimensions; external videos use 16:9."
+    }
   }
 }

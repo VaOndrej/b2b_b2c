@@ -118,7 +118,7 @@
         {%- endfor -%}
 
         {%- if s.show_table -%}
-          <button type="button" class="won-vp__table-toggle" data-won-table-toggle aria-expanded="false">{{ 'won.vp.show_table' | t }}</button>
+          <button type="button" class="won-vp__table-toggle" data-won-table-toggle data-show-label="{{ 'won.vp.show_table' | t | escape }}" data-hide-label="{{ 'won.vp.hide_table' | t | escape }}" aria-expanded="false">{{ 'won.vp.show_table' | t }}</button>
           <div class="won-vp__table-wrap" data-won-table hidden>
             <table class="won-vp__table">
               <thead><tr><th>{{ 'won.vp.variant' | t }}</th><th>{{ 'won.vp.price' | t }}</th>{% if show_ppu %}<th>{{ 'won.vp.unit' | t }}</th>{% endif %}<th></th></tr></thead>
@@ -166,8 +166,10 @@
   .won-vp__legend { font-weight: 600; margin-block-end: var(--won-space-2); }
   .won-vp__option, .won-vp__packs { border: 0; padding: 0; margin: 0; }
   .won-vp__swatches { display: flex; flex-wrap: wrap; gap: var(--won-space-2); }
+  .won-vp__swatch { display: inline-flex; min-block-size: var(--won-tap); min-inline-size: var(--won-tap); cursor: pointer; }
   .won-vp__swatch input { position: absolute; opacity: 0; pointer-events: none; }
   .won-vp__swatch-label {
+    min-block-size: var(--won-tap); min-inline-size: var(--won-tap);
     display: inline-flex; align-items: center; justify-content: center;
     padding: 0.5em 0.9em; border: 1px solid var(--won-border); border-radius: var(--won-radius-pill);
     cursor: pointer; transition: border-color var(--won-dur) var(--won-ease), background var(--won-dur) var(--won-ease);
@@ -177,7 +179,7 @@
 
   /* Native-swatch chips (driven by product option_value.swatch: color or image) */
   .won-vp__swatches--chips { gap: var(--won-space-3); align-items: flex-start; }
-  .won-vp__swatches--chips .won-vp__swatch { flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+  .won-vp__swatches--chips .won-vp__swatch { min-block-size: var(--won-tap); min-inline-size: var(--won-tap); flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
   .won-vp__chip {
     display: block; inline-size: 34px; block-size: 34px;
     background-size: cover; background-position: center;
@@ -211,16 +213,16 @@
   .won-vp__pack-title { font-weight: 600; }
   .won-vp__pack-price s { color: var(--won-muted); opacity: 0.6; }
 
-  .won-vp__table-toggle { align-self: flex-start; background: none; border: 0; color: var(--won-accent); font: inherit; font-weight: 600; cursor: pointer; padding: 0; text-decoration: underline; }
+  .won-vp__table-toggle { min-block-size: var(--won-tap); min-inline-size: var(--won-tap); align-self: flex-start; background: none; border: 0; color: var(--won-accent); font: inherit; font-weight: 600; cursor: pointer; padding: 0; text-decoration: underline; }
   .won-vp__table-wrap { overflow-x: auto; }
   .won-vp__table { inline-size: 100%; border-collapse: collapse; font-size: 0.9rem; }
   .won-vp__table th, .won-vp__table td { text-align: start; padding: var(--won-space-2) var(--won-space-3); border-block-end: 1px solid var(--won-border); }
   .won-vp__table tr.is-soldout { opacity: 0.5; }
-  .won-vp__table-pick { background: none; border: 1px solid var(--won-border); border-radius: var(--won-radius-pill); padding: 0.3em 0.8em; font: inherit; cursor: pointer; }
+  .won-vp__table-pick { min-block-size: var(--won-tap); min-inline-size: var(--won-tap); background: none; border: 1px solid var(--won-border); border-radius: var(--won-radius-pill); padding: 0.3em 0.8em; font: inherit; cursor: pointer; }
 
   .won-vp__buy { display: flex; align-items: stretch; gap: var(--won-space-3); flex-wrap: wrap; }
   .won-vp__qty { display: inline-flex; align-items: center; border: 1px solid var(--won-border); border-radius: var(--won-radius-pill); overflow: hidden; }
-  .won-vp__qty-btn { inline-size: 40px; block-size: 44px; border: 0; background: transparent; font-size: 1.2rem; cursor: pointer; color: var(--won-fg); }
+  .won-vp__qty-btn { inline-size: var(--won-tap); block-size: var(--won-tap); flex: 0 0 var(--won-tap); border: 0; background: transparent; font-size: 1.2rem; cursor: pointer; color: var(--won-fg); }
   .won-vp__qty-input { inline-size: 44px; block-size: 44px; border: 0; text-align: center; font: inherit; -moz-appearance: textfield; appearance: textfield; background: transparent; color: var(--won-fg); }
   .won-vp__qty-input::-webkit-outer-spin-button, .won-vp__qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .won-vp__atc { flex: 1 1 auto; min-inline-size: 200px; }
@@ -252,7 +254,7 @@
         const pick = e.target.closest('[data-won-pick]');
         if (pick) { e.preventDefault(); this.selectById(pick.getAttribute('data-won-pick')); }
         const toggle = e.target.closest('[data-won-table-toggle]');
-        if (toggle) { const t = this.querySelector('[data-won-table]'); const open = t.hasAttribute('hidden'); if (open) t.removeAttribute('hidden'); else t.setAttribute('hidden',''); toggle.setAttribute('aria-expanded', String(open)); }
+        if (toggle) { const t = this.querySelector('[data-won-table]'); const open = t.hasAttribute('hidden'); if (open) t.removeAttribute('hidden'); else t.setAttribute('hidden',''); toggle.setAttribute('aria-expanded', String(open)); toggle.textContent = open ? toggle.dataset.hideLabel : toggle.dataset.showLabel; }
         if (e.target.closest('[data-won-qty-inc]')) this.stepQty(1);
         if (e.target.closest('[data-won-qty-dec]')) this.stepQty(-1);
       });

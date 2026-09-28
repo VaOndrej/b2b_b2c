@@ -9,6 +9,7 @@
       "link_no_label": "Je tu odkaz bez textu tlačítka — tlačítko se nezobrazí."
     },
     "a11y": {
+      "video": "Video",
       "previous": "Předchozí",
       "next": "Další",
       "compare": "Posuvník porovnání",
@@ -50,7 +51,8 @@
       "price": "Cena",
       "unit": "Za jednotku",
       "choose": "Vybrat",
-      "quantity": "Množství"
+      "quantity": "Množství",
+      "hide_table": "Skrýt tabulku variant"
     },
     "plp": {
       "products": "produktů",
@@ -93,6 +95,19 @@
         "decreased": "v košíku",
         "removed": "Produkt odebrán z košíku"
       }
+    },
+    "product_card": {
+      "select_product": "Vyberte produkt v editoru motivu."
+    },
+    "product": {
+      "vendor": "Značka",
+      "type": "Typ"
+    },
+    "promo": {
+      "invalid": "Slevový kód není platný.",
+      "failed": "Slevu se nepodařilo uplatnit. Zkuste to prosím znovu.",
+      "applied": "Sleva uplatněna",
+      "remove": "Odebrat slevu"
     }
   }
 }

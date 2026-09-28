@@ -1,0 +1,83 @@
+{
+  "url": "/products/the-videographer-snowboard?view=won-qa-product-30",
+  "width": 768,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@d761896cw652752b9p53817278m7665fce0/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/products/the-videographer-snowboard?view=won-qa-product-30",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=c4905c06-4679-49bc-b9f5-0526ac87f06c&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "https://error-analytics-sessions-production.shopifysvc.com/observeonly",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "httpAttempts": [
+      200
+    ],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "qa174",
+      "type": "won-sticky-atc",
+      "variant": "desktop device scope",
+      "label": "won-sticky-atc · desktop device scope",
+      "context": "product",
+      "limitations": [],
+      "url": "/products/the-videographer-snowboard?view=won-qa-product-30",
+      "sectionId": "qa174",
+      "selector": "[id$=\"__qa174\"]",
+      "template": "product.won-qa-product-30.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa174-768.png"
+      ],
+      "text": "Pre-Workout Energy\n$549.95\nAdd to cart",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=120",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 963,
+        "width": 768,
+        "height": 61
+      }
+    }
+  ]
+}

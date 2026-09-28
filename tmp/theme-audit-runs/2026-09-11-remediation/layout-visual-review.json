@@ -1,0 +1,90 @@
+{
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "cases": [
+    {
+      "id": "qa019",
+      "width": 390,
+      "screenshot": "qa019-390.png",
+      "visual": "reviewed",
+      "notes": "Large image visible. Mobile stacks; tablet spans both columns; desktop large left tile aligns with four small right tiles. No blank media or overlap."
+    },
+    {
+      "id": "qa019",
+      "width": 768,
+      "screenshot": "qa019-768.png",
+      "visual": "reviewed",
+      "notes": "Large image visible. Mobile stacks; tablet spans both columns; desktop large left tile aligns with four small right tiles. No blank media or overlap."
+    },
+    {
+      "id": "qa019",
+      "width": 1440,
+      "screenshot": "qa019-1440.png",
+      "visual": "reviewed",
+      "notes": "Large image visible. Mobile stacks; tablet spans both columns; desktop large left tile aligns with four small right tiles. No blank media or overlap."
+    },
+    {
+      "id": "qa120",
+      "width": 390,
+      "screenshot": "qa120-390.png",
+      "visual": "reviewed",
+      "notes": "Bottom badge and long title occupy separate rows in shared overlay. All text readable; three lines at390, two at768, one at1440."
+    },
+    {
+      "id": "qa120",
+      "width": 768,
+      "screenshot": "qa120-768.png",
+      "visual": "reviewed",
+      "notes": "Bottom badge and long title occupy separate rows in shared overlay. All text readable; three lines at390, two at768, one at1440."
+    },
+    {
+      "id": "qa120",
+      "width": 1440,
+      "screenshot": "qa120-1440.png",
+      "visual": "reviewed",
+      "notes": "Bottom badge and long title occupy separate rows in shared overlay. All text readable; three lines at390, two at768, one at1440."
+    },
+    {
+      "id": "qa135",
+      "width": 390,
+      "screenshot": "qa135-390.png",
+      "visual": "reviewed",
+      "notes": "Compact price plus CTA fully contained inside rounded shell; CTA uncut after reveal transition completes."
+    },
+    {
+      "id": "qa135",
+      "width": 768,
+      "screenshot": "qa135-768.png",
+      "visual": "reviewed",
+      "notes": "Compact price plus CTA fully contained inside rounded shell; CTA uncut after reveal transition completes."
+    },
+    {
+      "id": "qa135",
+      "width": 1440,
+      "screenshot": "qa135-1440.png",
+      "visual": "reviewed",
+      "notes": "Compact price plus CTA fully contained inside rounded shell; CTA uncut after reveal transition completes."
+    },
+    {
+      "id": "qa008",
+      "width": 390,
+      "screenshot": "qa008-390.png",
+      "visual": "reviewed against 2026-09-10 baseline",
+      "notes": "Marquee intrinsic content sizing restored. Matches original visual composition; 390 and 768 readable full card,1440 moving belt clips neighboring cards as before. Wrapper/body containment normal; all CTA boxes>=44px; mobile page invariant passes."
+    },
+    {
+      "id": "qa008",
+      "width": 768,
+      "screenshot": "qa008-768.png",
+      "visual": "reviewed against 2026-09-10 baseline",
+      "notes": "Marquee intrinsic content sizing restored. Matches original visual composition; 390 and 768 readable full card,1440 moving belt clips neighboring cards as before. Wrapper/body containment normal; all CTA boxes>=44px; mobile page invariant passes."
+    },
+    {
+      "id": "qa008",
+      "width": 1440,
+      "screenshot": "qa008-1440.png",
+      "visual": "reviewed against 2026-09-10 baseline",
+      "notes": "Marquee intrinsic content sizing restored. Matches original visual composition; 390 and 768 readable full card,1440 moving belt clips neighboring cards as before. Wrapper/body containment normal; all CTA boxes>=44px; mobile page invariant passes."
+    }
+  ],
+  "checks": "Nine layout tests passed initially. Final screenshot run passed six non-corner checks; two corner navigations hit transient Shopify verification. Dedicated final corner run passed all three after navigation recovered. No product source change between runs. Marquee-specific three new regression tests passed after root containment exception; screenshot comparison to all three original audit widths complete."
+}

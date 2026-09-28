@@ -328,5 +328,10 @@
       "success_moderated": "ความคิดเห็นถูกโพสต์แล้ว กำลังรอการตรวจสอบ",
       "success": "ความคิดเห็นถูกโพสต์แล้ว"
     }
+  },
+  "won": {
+    "vp": {
+      "hide_table": "Hide variants table"
+    }
   }
 }

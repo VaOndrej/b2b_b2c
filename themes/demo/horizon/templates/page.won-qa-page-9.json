@@ -1,0 +1,978 @@
+{
+  "sections": {
+    "qa106label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa106: won-feature · presentation=numbered</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa106": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "numbered",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "number_label": "01",
+            "statistic_value": "75%"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa107label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa107: won-feature · presentation=statistic</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa107": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "statistic",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "number_label": "01",
+            "statistic_value": "75%"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa108label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa108: won-feature · image_position=top</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa108": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "number_label": "01",
+            "statistic_value": "75%"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa109label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa109: won-feature · image_position=left</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa109": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "left",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "number_label": "01",
+            "statistic_value": "75%"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa110label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa110: won-feature · image_position=below</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa110": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "below",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "number_label": "01",
+            "statistic_value": "75%"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa111label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa111: won-feature · icon_style=disc</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa111": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "",
+            "number_label": "01",
+            "statistic_value": "75%"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa112label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa112: won-feature · icon_style=bare</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa112": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "bare",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "",
+            "number_label": "01",
+            "statistic_value": "75%"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa113label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa113: won-panel · row_style=plain</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa113": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-panel",
+          "settings": {
+            "row_style": "plain",
+            "title": "QA question — how does this example work?",
+            "content": "<p>Demonstration answer with enough content to check expansion, keyboard focus, spacing and line length. This is illustrative information.</p>",
+            "open": false
+          },
+          "blocks": {
+            "b1": {
+              "type": "won-feature",
+              "settings": {
+                "presentation": "standard",
+                "icon": "leaf",
+                "heading": "QA sample benefit",
+                "link_new_tab": false,
+                "image_size": 48,
+                "image_position": "top",
+                "icon_style": "disc",
+                "statistic_size": 96,
+                "corner_radius": 14,
+                "image": "shopify://shop_images/won-pack-preworkout.png"
+              }
+            }
+          },
+          "block_order": [
+            "b1"
+          ]
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa114label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa114: won-panel · row_style=editorial</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa114": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-panel",
+          "settings": {
+            "row_style": "editorial",
+            "title": "QA question — how does this example work?",
+            "content": "<p>Demonstration answer with enough content to check expansion, keyboard focus, spacing and line length. This is illustrative information.</p>",
+            "open": false
+          },
+          "blocks": {
+            "b1": {
+              "type": "won-feature",
+              "settings": {
+                "presentation": "standard",
+                "icon": "leaf",
+                "heading": "QA sample benefit",
+                "link_new_tab": false,
+                "image_size": 48,
+                "image_position": "top",
+                "icon_style": "disc",
+                "statistic_size": 96,
+                "corner_radius": 14,
+                "image": "shopify://shop_images/won-pack-preworkout.png"
+              }
+            }
+          },
+          "block_order": [
+            "b1"
+          ]
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa115label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa115: won-panel · row_style=boxed</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa115": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-panel",
+          "settings": {
+            "row_style": "boxed",
+            "title": "QA question — how does this example work?",
+            "content": "<p>Demonstration answer with enough content to check expansion, keyboard focus, spacing and line length. This is illustrative information.</p>",
+            "open": false
+          },
+          "blocks": {
+            "b1": {
+              "type": "won-feature",
+              "settings": {
+                "presentation": "standard",
+                "icon": "leaf",
+                "heading": "QA sample benefit",
+                "link_new_tab": false,
+                "image_size": 48,
+                "image_position": "top",
+                "icon_style": "disc",
+                "statistic_size": 96,
+                "corner_radius": 14,
+                "image": "shopify://shop_images/won-pack-preworkout.png"
+              }
+            }
+          },
+          "block_order": [
+            "b1"
+          ]
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa116label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa116: won-tile · label_position=overlay</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa116": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "QA sample category",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa117label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa117: won-tile · label_position=below</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa117": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "QA sample category",
+            "tile_size": "small",
+            "label_position": "below",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    }
+  },
+  "order": [
+    "qa106label",
+    "qa106",
+    "qa107label",
+    "qa107",
+    "qa108label",
+    "qa108",
+    "qa109label",
+    "qa109",
+    "qa110label",
+    "qa110",
+    "qa111label",
+    "qa111",
+    "qa112label",
+    "qa112",
+    "qa113label",
+    "qa113",
+    "qa114label",
+    "qa114",
+    "qa115label",
+    "qa115",
+    "qa116label",
+    "qa116",
+    "qa117label",
+    "qa117"
+  ]
+}

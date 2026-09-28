@@ -1,0 +1,58 @@
+(node:29770) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 12 tests using 1 worker
+
+[1A[2K(node:29778) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:29778) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:29778) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/12] [desktop] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists
+[1A[2K  1) [desktop] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  locator('.won-pcard:has([data-won-stepper])').first().locator('span[data-won-qty]')
+    Expected: [32m"2"[39m
+    Received: [31m"1"[39m
+    Timeout:  15000ms
+
+    Call log:
+    [2m  - Expect "toHaveText" with timeout 15000ms[22m
+    [2m  - waiting for locator('.won-pcard:has([data-won-stepper])').first().locator('span[data-won-qty]')[22m
+    [2m    3 × locator resolved to <span data-won-qty="" aria-live="polite" class="won-pcard__qty is-bump-up">1</span>[22m
+    [2m      - unexpected value "1"[22m
+    [2m    2 × locator resolved to <span data-won-qty="" aria-live="polite" class="won-pcard__qty">1</span>[22m
+    [2m      - unexpected value "1"[22m
+    [2m    14 × locator resolved to <span hidden="" data-won-qty="" aria-live="polite" class="won-pcard__qty">1</span>[22m
+    [2m       - unexpected value "1"[22m
+
+
+      145 |   // "Added" confirmation timer.
+      146 |   await add.click();
+    > 147 |   await expect(qty).toHaveText("2");
+          |                     ^
+      148 |
+      149 |   await minus.click();
+      150 |   await expect(qty).toHaveText("1");
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:147:21
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-final-decrement-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-final-decrement-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/error-context.md
+
+
+[1A[2K[31mTesting stopped early after 1 maximum allowed failures.[39m
+
+[1A[2K  1 failed
+    [desktop] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists 
+  11 did not run
+  1 error was not a part of any test, see above for details

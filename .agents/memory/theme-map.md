@@ -52,6 +52,11 @@ Per-project architecture & file-finding facts. Keep terse. Shared lessons go to 
 - Playwright harness: `playwright.config.ts` (desktop 1440 + mobile 390, workers 1), specs in
   `tests/smoke/`, shared invariants in `tests/support/responsive-invariants.ts`
   (`assertResponsiveSane`, `assertCarousel`, `assertHeadingBodyAlignment`). Run: `npm run test:smoke`.
+- Remote storefront tests must enter through `tests/support/storefront-environment.ts` and cart
+  mutations through `tests/support/cart-state.ts`. The guard records status/redirect/title/body,
+  expected shop + theme id + Won marker, and separates `ENV_429`, auth/challenge, Shopify 5xx,
+  theme mismatch, and navigation failures from product assertions. Keep release runs at one worker,
+  zero retries, and stop on the first failure; never hide Shopify throttling with automatic retries.
 - **Settings-coverage gate (`tests/smoke/won-settings-coverage.spec.ts`, no server):** DOKTRÍNA „žádné mrtvé nastavení" — každé schema `id` v každé SHOWN won sekci (i v jejích child blocích, mimo shared style-controls) MUSÍ být referencované někde ve zdroji (sections+blocks+snippets+assets), jinak test padne. Platí do budoucna: nový won blok / nové nastavení nesmí shipnout jako toggle bez efektu. Corpus MUSÍ zahrnovat `blocks/` (bloky čtou `section.settings.<id>`) a heuristika pokrývá dynamické klíče (`'option'|append:pos|append:'_style'` → `s[key]`). Red-proofed. 271 nastavení, 0 mrtvých k 2026-08-11.
 - **Statická reference ≠ viditelný efekt.** Content-dependent controly (carousel `show_dots`/`show_progress`/`show_arrows` se schovají, když se rail vejde na 1 stránku — JS `buildDots` `pages<=1`) jsou zapojené, ale vizuálně inertní v části konfigurací → merchant má dojem „toggle nic nedělá". Ty ověřuj behaviorálně: `tests/smoke/won-carousel-controls.spec.ts` (kontrakt: zobrazený pager není nikdy prázdný + non-vacuous overflow). Demo má funkční příklad teček = Bestsellery carousel (collection source, 8 produktů, columns 4 → 2 stránky).
 - **Behaviorální settings-audit 2026-08-11** (workflow, 157 effectful settings × 14 sekcí, adversarial verify) našel + opravil **4 chain-bugy, které statika NECHYTLA** (id referencované, ale konzument rozbitý), fixy v `tests/smoke/won-settings-fixes.spec.ts`:

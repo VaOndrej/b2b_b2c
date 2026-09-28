@@ -328,5 +328,10 @@
       "success_moderated": "Kommentaren blev indsendt og afventer moderering",
       "success": "Kommentaren blev indsendt"
     }
+  },
+  "won": {
+    "vp": {
+      "hide_table": "Hide variants table"
+    }
   }
 }

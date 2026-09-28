@@ -1,0 +1,19 @@
+(node:31099) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 3 tests using 1 worker
+
+[1A[2K(node:31119) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:31119) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:31119) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/3] [desktop] › tests/smoke/won-remediation-editorial.spec.ts:29:5 › Won remediation editorial › table state labels and real picker targets at 390
+[1A[2K[2/3] [desktop] › tests/smoke/won-remediation-editorial.spec.ts:29:5 › Won remediation editorial › table state labels and real picker targets at 768
+[1A[2K[3/3] [desktop] › tests/smoke/won-remediation-editorial.spec.ts:29:5 › Won remediation editorial › table state labels and real picker targets at 1440
+[1A[2K  3 passed (4.9s)

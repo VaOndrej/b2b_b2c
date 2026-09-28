@@ -43,6 +43,21 @@ function cssSources(): { file: string; css: string }[] {
   return out;
 }
 
+// :has() anchored on Shopify's actual wrapper deliberately describes its
+// direct block child. Keep rejecting section > block, including inside :has().
+const withoutValidWrapperHas = (selector: string) => selector.replace(
+  /\.shopify-block:has\(\s*>\s*\.won-[\w-]+\s*\)/g,
+  '.shopify-block',
+);
+
+test('wrapper guard distinguishes real Shopify parents from section parents', () => {
+  const directSlide = />\s*\.won-slide(?![\w-])/;
+  expect(directSlide.test(withoutValidWrapperHas('.shopify-block:has(> .won-slide)'))).toBe(false);
+  expect(directSlide.test(withoutValidWrapperHas('.won-track > .won-slide'))).toBe(true);
+  expect(directSlide.test(withoutValidWrapperHas('.won-track:has(> .won-slide)'))).toBe(true);
+  expect(directSlide.test(withoutValidWrapperHas('.shopify-block:has(> .won-slide), .won-track > .won-slide'))).toBe(true);
+});
+
 test('no CSS selector treats a theme block as a direct child', () => {
   const blocks = blockClassNames();
   expect(blocks.length, 'there should be won-* theme blocks to guard').toBeGreaterThan(0);
@@ -57,7 +72,7 @@ test('no CSS selector treats a theme block as a direct child', () => {
       if (line.trimStart().startsWith('/*') || line.trimStart().startsWith('*')) return;
       for (const b of blocks) {
         const re = new RegExp(`>\\s*\\.${b}(?![\\w-])`);
-        if (re.test(line)) offenders.push(`${file}:${i + 1}  ${line.trim()}`);
+        if (re.test(withoutValidWrapperHas(line))) offenders.push(`${file}:${i + 1}  ${line.trim()}`);
       }
     });
   }

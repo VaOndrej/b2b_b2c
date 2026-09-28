@@ -1,0 +1,23 @@
+╭─ info ───────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│  Using applicable flags from horizon environment:                            │
+│                                                                              │
+│    • path: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/themes/dist/h  │
+│      orizon-dev                                                              │
+│    • store: b2b-b2c-store-development.myshopify.com                          │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭─ error ──────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│  Failed to access local storage (set): RangeError: Maximum call stack size   │
+│  exceeded                                                                    │
+│                                                                              │
+│  Check that you have write permissions for /Users/ondrej/Library/Preference  │
+│  s/shopify-cli-theme-conf-nodejs/config.json                                 │
+│                                                                              │
+│  To resolve this, remove the Shopify CLI preferences folder: `rm -rf         │
+│  /Users/ondrej/Library/Preferences/shopify-cli-theme-conf-nodejs`            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+

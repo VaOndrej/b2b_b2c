@@ -1,0 +1,47 @@
+{
+  "cases": 176,
+  "rows": 528,
+  "visuallyReviewed": 525,
+  "captureStatuses": {
+    "captured-not-reviewed": 525,
+    "expected-hidden": 3
+  },
+  "screenshots": 601,
+  "visualStatuses": {
+    "visual-pass": 142,
+    "visually-acceptable": 128,
+    "pass": 49,
+    "empty-state": 9,
+    "limited": 19,
+    "issue": 26,
+    "pass-with-notes": 11,
+    "finding": 6,
+    "partial-content": 6,
+    "fixture-issue": 4,
+    "visual-pass-after-fix": 6,
+    "fixed-visually": 6,
+    "configuration": 3,
+    "visual-observation": 3,
+    "fixed-fixture": 4,
+    "reviewed": 96,
+    "visual-fail": 3,
+    "visual-pass-with-local-overflow": 1,
+    "fallback-state": 1,
+    "explicit-empty-state": 2,
+    "expected-hidden": 3
+  },
+  "responsive": {
+    "pass": 23,
+    "fail": 7
+  },
+  "pageErrors": [
+    {
+      "url": "/pages/contact?view=won-qa-page-5",
+      "width": 390,
+      "errors": [
+        "Section sections--22663889748209__header_section not found in the section rendering response"
+      ]
+    }
+  ],
+  "failedAssets": []
+}

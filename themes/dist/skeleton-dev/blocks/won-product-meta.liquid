@@ -1,0 +1,64 @@
+{% doc %}
+  Product badge and metadata, composed around the native product heading.
+  Use a badge-only instance before the heading and a metadata-only instance
+  after it when the heading should separate these two pieces of information.
+  Vendor and type always come from the current Shopify product.
+{% enddoc %}
+{%- liquid
+  assign s = block.settings
+  assign product_resource = closest.product | default: product
+-%}
+<div
+  class="won-product-meta"
+  style="{% if s.badge_background != blank %}--won-meta-badge-bg: {{ s.badge_background }};{% endif %}{% if s.badge_color != blank %}--won-meta-badge-fg: {{ s.badge_color }};{% endif %}"
+  {{ block.shopify_attributes }}
+>
+  {%- if s.badge_text != blank -%}
+    <span class="won-product-meta__badge">{{ s.badge_text | escape }}</span>
+  {%- endif -%}
+  {%- if product_resource != blank -%}
+    <dl class="won-product-meta__list">
+      {%- if s.show_vendor and product_resource.vendor != blank -%}
+        <div><dt>{{ 'won.product.vendor' | t }}</dt><dd>{{ product_resource.vendor | escape }}</dd></div>
+      {%- endif -%}
+      {%- if s.show_type and product_resource.type != blank -%}
+        <div><dt>{{ 'won.product.type' | t }}</dt><dd>{{ product_resource.type | escape }}</dd></div>
+      {%- endif -%}
+    </dl>
+  {%- endif -%}
+</div>
+
+{% stylesheet %}
+  .won-product-meta { display: grid; gap: var(--won-space-2); min-inline-size: 0; }
+  .won-product-meta:empty, .won-product-meta__list:empty { display: none; }
+  .won-product-meta__badge {
+    justify-self: start;
+    max-inline-size: 100%;
+    padding: var(--won-space-1) var(--won-space-2);
+    border-radius: var(--won-radius-pill);
+    background: var(--won-meta-badge-bg, var(--won-accent));
+    color: var(--won-meta-badge-fg, var(--won-accent-contrast));
+    font-size: 0.75rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  .won-product-meta__list { display: flex; flex-wrap: wrap; gap: var(--won-space-2) var(--won-space-3); margin: 0; font-size: 0.8rem; }
+  .won-product-meta__list > div { display: flex; flex-wrap: wrap; gap: var(--won-space-1); min-inline-size: 0; }
+  .won-product-meta__list dt { opacity: 0.7; }
+  .won-product-meta__list dt::after { content: ':'; }
+  .won-product-meta__list dd { margin: 0; overflow-wrap: anywhere; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.product_meta",
+  "settings": [
+    { "type": "text", "id": "badge_text", "label": "t:won.settings.badge_text" },
+    { "type": "color", "id": "badge_background", "label": "t:won.settings.product_badge_background", "visible_if": "{{ block.settings.badge_text != blank }}" },
+    { "type": "color", "id": "badge_color", "label": "t:won.settings.product_badge_color", "visible_if": "{{ block.settings.badge_text != blank }}" },
+    { "type": "checkbox", "id": "show_vendor", "label": "t:won.settings.product_show_vendor", "default": true },
+    { "type": "checkbox", "id": "show_type", "label": "t:won.settings.product_show_type", "default": true }
+  ],
+  "presets": [{ "name": "t:won.names.product_meta" }]
+}
+{% endschema %}

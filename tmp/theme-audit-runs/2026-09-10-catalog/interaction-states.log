@@ -1,0 +1,206 @@
+[
+  {
+    id: 'qa169',
+    width: 390,
+    before: 0,
+    later: 0,
+    loopMode: 'always',
+    end: 1870,
+    nextDisabledAtEnd: false,
+    afterNext: 0
+  },
+  {
+    id: 'qa170',
+    width: 390,
+    before: 0,
+    later: 0,
+    loopMode: 'mobile',
+    end: 1870,
+    nextDisabledAtEnd: false,
+    afterNext: 0
+  },
+  {
+    id: 'qa171',
+    width: 390,
+    before: 0,
+    later: 748,
+    loopMode: 'always',
+    end: 1870,
+    nextDisabledAtEnd: false,
+    afterNext: 0
+  },
+  {
+    id: 'qa172',
+    width: 390,
+    before: 0,
+    later: 0,
+    loopMode: null,
+    end: 1870,
+    nextDisabledAtEnd: true,
+    afterNext: 1870
+  },
+  {
+    id: 'qa043',
+    width: 390,
+    hotspot: { opacity: '1', visibility: 'visible' },
+    focus: true
+  },
+  {
+    id: 'qa145',
+    width: 390,
+    hotspot: { opacity: '0.999604', visibility: 'visible' },
+    focus: true
+  },
+  {
+    id: 'qa146',
+    width: 390,
+    hotspot: { opacity: '0.990774', visibility: 'visible' },
+    focus: true
+  },
+  { id: 'qa156', width: 390, tableVisible: true },
+  {
+    id: 'qa169',
+    width: 768,
+    before: 0,
+    later: 0,
+    loopMode: 'always',
+    end: 1445,
+    nextDisabledAtEnd: false,
+    afterNext: 0
+  },
+  {
+    id: 'qa170',
+    width: 768,
+    before: 0,
+    later: 0,
+    loopMode: 'mobile',
+    end: 1445,
+    nextDisabledAtEnd: true,
+    afterNext: 1445
+  },
+  {
+    id: 'qa171',
+    width: 768,
+    before: 0,
+    later: 723,
+    loopMode: 'always',
+    end: 1445,
+    nextDisabledAtEnd: false,
+    afterNext: 0
+  },
+  {
+    id: 'qa172',
+    width: 768,
+    before: 0,
+    later: 0,
+    loopMode: null,
+    end: 1445,
+    nextDisabledAtEnd: true,
+    afterNext: 1445
+  },
+  {
+    id: 'qa043',
+    width: 768,
+    hotspot: { opacity: '1', visibility: 'visible' },
+    focus: true
+  },
+  {
+    id: 'qa145',
+    width: 768,
+    hotspot: { opacity: '1', visibility: 'visible' },
+    focus: true
+  },
+  {
+    id: 'qa146',
+    width: 768,
+    hotspot: { opacity: '1', visibility: 'visible' },
+    focus: true
+  },
+  { id: 'qa156', width: 768, tableVisible: true },
+  {
+    id: 'qa169',
+    width: 1440,
+    before: 0,
+    later: 0,
+    loopMode: 'always',
+    end: 668,
+    nextDisabledAtEnd: false,
+    afterNext: 0
+  },
+  {
+    id: 'qa170',
+    width: 1440,
+    before: 0,
+    later: 0,
+    loopMode: 'mobile',
+    end: 668,
+    nextDisabledAtEnd: true,
+    afterNext: 668
+  },
+  {
+    id: 'qa171',
+    width: 1440,
+    before: 0,
+    later: 334,
+    loopMode: 'always',
+    end: 6,
+    nextDisabledAtEnd: false,
+    afterNext: 334
+  },
+  {
+    id: 'qa172',
+    width: 1440,
+    before: 0,
+    later: 0,
+    loopMode: null,
+    end: 668,
+    nextDisabledAtEnd: true,
+    afterNext: 668
+  },
+  {
+    id: 'qa043',
+    width: 1440,
+    hotspot: { opacity: '1', visibility: 'visible' },
+    focus: true
+  },
+  {
+    id: 'qa145',
+    width: 1440,
+    hotspot: { opacity: '1', visibility: 'visible' },
+    focus: true
+  },
+  {
+    id: 'qa146',
+    width: 1440,
+    hotspot: { opacity: '1', visibility: 'visible' },
+    focus: true
+  },
+  { id: 'qa156', width: 1440, tableVisible: true },
+  { id: 'qa128', buttons: [ [Object], [Object], [Object], [Object] ] },
+  {
+    id: 'qa128',
+    error: 'locator.click: Timeout 10000ms exceeded.\n' +
+      'Call log:\n' +
+      "\x1B[2m  - waiting for getByRole('button', { name: /play/i }).first()\x1B[22m\n"
+  },
+  { id: 'qa175', buttons: [] },
+  {
+    id: 'qa175',
+    afterPlay: [ [Object] ],
+    body: 'Playing in picture-in-picture\n' +
+      'Embed\n' +
+      'Rights issue\n' +
+      'We’re having trouble authorizing playback for this video.\n' +
+      'Send Error Log\n' +
+      'Reload Player\n' +
+      'Pause\n' +
+      '00:00\n' +
+      '00:00\n' +
+      'CC/subtitles\n' +
+      'Settings\n' +
+      'Speed\n' +
+      'Transcript\n' +
+      'Picture-in-Picture\n' +
+      'Fullscreen'
+  }
+]

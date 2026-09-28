@@ -6,7 +6,7 @@ section accepting theme blocks. Static and self-contained.
 {% enddoc %}
 
 {%- assign s = block.settings -%}
-<div class="won-delivery" {{ block.shopify_attributes }}>
+<div class="won-delivery{% if s.appearance == 'plain' %} won-delivery--plain{% endif %}" {{ block.shopify_attributes }}>
   {%- if s.show_icon -%}
     {%- assign icon_name = s.icon | default: 'truck' -%}
     {% render 'won-icon', name: icon_name, class: 'won-delivery__icon' %}
@@ -20,6 +20,9 @@ section accepting theme blocks. Static and self-contained.
   .won-delivery__text { font-size: 0.92rem; }
   .won-delivery__text > :first-child { margin-block-start: 0; }
   .won-delivery__text > :last-child { margin-block-end: 0; }
+  .won-delivery--plain { padding: 0; background: transparent; border-radius: 0; align-items: flex-start; }
+  .won-delivery--plain .won-delivery__icon { inline-size: 16px; block-size: 16px; margin-block-start: 0.15em; color: currentColor; }
+  .won-delivery--plain .won-delivery__text { min-inline-size: 0; font-size: 0.8rem; overflow-wrap: anywhere; }
 {% endstylesheet %}
 
 {% schema %}
@@ -29,6 +32,13 @@ section accepting theme blocks. Static and self-contained.
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "richtext", "id": "note", "label": "t:won.settings.note", "default": "t:won.defaults.delivery_note" },
     { "type": "checkbox", "id": "show_icon", "label": "t:won.settings.show_icon", "default": true },
+    {
+      "type": "select", "id": "appearance", "label": "t:won.settings.delivery_appearance", "default": "card",
+      "options": [
+        { "value": "card", "label": "t:won.options.delivery_card" },
+        { "value": "plain", "label": "t:won.options.delivery_plain" }
+      ]
+    },
     {
       "type": "select", "id": "icon", "label": "t:won.settings.icon", "default": "truck", "visible_if": "{{ block.settings.show_icon }}",
       "options": [

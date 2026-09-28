@@ -1,0 +1,204 @@
+{
+  "stats": {
+    "startTime": "2026-09-11T07:32:38.783Z",
+    "duration": 227970.965,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 12,
+    "flaky": 0
+  },
+  "categories": {
+    "confirmed_cart_update_http429": 5,
+    "storefront_generic_error_http_unknown": 1,
+    "storefront_unauthorized_json_http_unknown": 5,
+    "storefront_render502_error_page": 1
+  },
+  "held_error_body_timeouts": 3,
+  "conclusion": "0 passed / 12 failed. No successful strict decrement verification. Five direct update429 proofs; seven runs blocked at storefront identity because error pages were served. Three held cases received429headers but timed out while reading diagnostic error body.",
+  "tests": [
+    {
+      "project": "desktop",
+      "title": "card quick-add renders a stepper once the line exists",
+      "status": "failed",
+      "errors": [
+        "Error: Won must announce a committed cart containing 1 items\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 1\nReceived: 0\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate\n\n   at support/cart-state.ts:104\n\n  102 |\n  103 | export async function expectCommittedCart(page: Page, count: number) {\n> 104 |   await expect\n      |   ^\n  105 |     .poll(\n  106 |       async () =>\n  107 |         page.evaluate(() => {\n    at expectCommittedCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:104:3)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:147:3"
+      ],
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111962279,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "category": "confirmed_cart_update_http429",
+      "error_body_read_timeout": false
+    },
+    {
+      "project": "desktop",
+      "title": "card decrement reaches zero when earlier update is still in flight",
+      "status": "timedOut",
+      "errors": [
+        "Test timeout of 60000ms exceeded.",
+        "Error: response.text: Test timeout of 60000ms exceeded.\n\n  213 |     release();\n  214 |     const response = await firstResponse;\n> 215 |     expect(response.ok(), `held cart update HTTP ${response.status()}: ${response.ok() ? '' : await response.text()}`).toBeTruthy();\n      |                                                                                                              ^\n  216 |     expect((await response.json()).item_count, 'the held first add must really persist one item').toBe(1);\n  217 |     const cart = await expectCommittedCart(page, 0);\n  218 |     expect(cart.items).toEqual([]);\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:215:110"
+      ],
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111981878,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "category": "confirmed_cart_update_http429",
+      "error_body_read_timeout": true
+    },
+    {
+      "project": "desktop",
+      "title": "card quick-add renders a stepper once the line exists",
+      "status": "failed",
+      "errors": [
+        "Error: Won must announce a committed cart containing 1 items\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 1\nReceived: 0\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate\n\n   at support/cart-state.ts:104\n\n  102 |\n  103 | export async function expectCommittedCart(page: Page, count: number) {\n> 104 |   await expect\n      |   ^\n  105 |     .poll(\n  106 |       async () =>\n  107 |         page.evaluate(() => {\n    at expectCommittedCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:104:3)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:147:3"
+      ],
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop-repeat1/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789112041059,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "category": "confirmed_cart_update_http429",
+      "error_body_read_timeout": false
+    },
+    {
+      "project": "desktop",
+      "title": "card decrement reaches zero when earlier update is still in flight",
+      "status": "timedOut",
+      "errors": [
+        "Test timeout of 60000ms exceeded.",
+        "Error: response.text: Test timeout of 60000ms exceeded.\n\n  213 |     release();\n  214 |     const response = await firstResponse;\n> 215 |     expect(response.ok(), `held cart update HTTP ${response.status()}: ${response.ok() ? '' : await response.text()}`).toBeTruthy();\n      |                                                                                                              ^\n  216 |     expect((await response.json()).item_count, 'the held first add must really persist one item').toBe(1);\n  217 |     const cart = await expectCommittedCart(page, 0);\n  218 |     expect(cart.items).toEqual([]);\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:215:110"
+      ],
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop-repeat1/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789112060523,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "category": "confirmed_cart_update_http429",
+      "error_body_read_timeout": true
+    },
+    {
+      "project": "desktop",
+      "title": "card quick-add renders a stepper once the line exists",
+      "status": "failed",
+      "errors": [
+        "Error: cart mutations are restricted to the b2b development store\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: \"b2b-b2c-store-development.myshopify.com\"\nReceived: undefined\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3"
+      ],
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop-repeat2/error-context.md",
+      "http_evidence": [],
+      "category": "storefront_generic_error_http_unknown",
+      "context_excerpt": "There was a problem loading this website",
+      "error_body_read_timeout": false
+    },
+    {
+      "project": "desktop",
+      "title": "card decrement reaches zero when earlier update is still in flight",
+      "status": "timedOut",
+      "errors": [
+        "Test timeout of 60000ms exceeded.",
+        "Error: response.text: Test timeout of 60000ms exceeded.\n\n  213 |     release();\n  214 |     const response = await firstResponse;\n> 215 |     expect(response.ok(), `held cart update HTTP ${response.status()}: ${response.ok() ? '' : await response.text()}`).toBeTruthy();\n      |                                                                                                              ^\n  216 |     expect((await response.json()).item_count, 'the held first add must really persist one item').toBe(1);\n  217 |     const cart = await expectCommittedCart(page, 0);\n  218 |     expect(cart.items).toEqual([]);\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:215:110"
+      ],
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop-repeat2/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789112123674,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "category": "confirmed_cart_update_http429",
+      "error_body_read_timeout": true
+    },
+    {
+      "project": "mobile",
+      "title": "card quick-add renders a stepper once the line exists",
+      "status": "failed",
+      "errors": [
+        "Error: cart mutations are restricted to the b2b development store\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: \"b2b-b2c-store-development.myshopify.com\"\nReceived: undefined\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3"
+      ],
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile/error-context.md",
+      "http_evidence": [],
+      "category": "storefront_unauthorized_json_http_unknown",
+      "context_excerpt": "{\"error\":\"unauthorized\"}",
+      "error_body_read_timeout": false
+    },
+    {
+      "project": "mobile",
+      "title": "card decrement reaches zero when earlier update is still in flight",
+      "status": "failed",
+      "errors": [
+        "Error: cart mutations are restricted to the b2b development store\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: \"b2b-b2c-store-development.myshopify.com\"\nReceived: undefined\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:173:3"
+      ],
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile/error-context.md",
+      "http_evidence": [],
+      "category": "storefront_render502_error_page",
+      "context_excerpt": "Failed to render storefront with status 502 (Bad Gateway).",
+      "error_body_read_timeout": false
+    },
+    {
+      "project": "mobile",
+      "title": "card quick-add renders a stepper once the line exists",
+      "status": "failed",
+      "errors": [
+        "Error: cart mutations are restricted to the b2b development store\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: \"b2b-b2c-store-development.myshopify.com\"\nReceived: undefined\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3"
+      ],
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat1/error-context.md",
+      "http_evidence": [],
+      "category": "storefront_unauthorized_json_http_unknown",
+      "context_excerpt": "{\"error\":\"unauthorized\"}",
+      "error_body_read_timeout": false
+    },
+    {
+      "project": "mobile",
+      "title": "card decrement reaches zero when earlier update is still in flight",
+      "status": "failed",
+      "errors": [
+        "Error: cart mutations are restricted to the b2b development store\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: \"b2b-b2c-store-development.myshopify.com\"\nReceived: undefined\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:173:3"
+      ],
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat1/error-context.md",
+      "http_evidence": [],
+      "category": "storefront_unauthorized_json_http_unknown",
+      "context_excerpt": "{\"error\":\"unauthorized\"}",
+      "error_body_read_timeout": false
+    },
+    {
+      "project": "mobile",
+      "title": "card quick-add renders a stepper once the line exists",
+      "status": "failed",
+      "errors": [
+        "Error: cart mutations are restricted to the b2b development store\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: \"b2b-b2c-store-development.myshopify.com\"\nReceived: undefined\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3"
+      ],
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat2/error-context.md",
+      "http_evidence": [],
+      "category": "storefront_unauthorized_json_http_unknown",
+      "context_excerpt": "{\"error\":\"unauthorized\"}",
+      "error_body_read_timeout": false
+    },
+    {
+      "project": "mobile",
+      "title": "card decrement reaches zero when earlier update is still in flight",
+      "status": "failed",
+      "errors": [
+        "Error: cart mutations are restricted to the b2b development store\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: \"b2b-b2c-store-development.myshopify.com\"\nReceived: undefined\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:173:3"
+      ],
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat2/error-context.md",
+      "http_evidence": [],
+      "category": "storefront_unauthorized_json_http_unknown",
+      "context_excerpt": "{\"error\":\"unauthorized\"}",
+      "error_body_read_timeout": false
+    }
+  ]
+}

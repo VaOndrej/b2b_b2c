@@ -342,5 +342,10 @@
       "default_title": "Predvolený názov",
       "sticky_add_to_cart": "Panel rýchleho pridania do košíka"
     }
+  },
+  "won": {
+    "vp": {
+      "hide_table": "Skryť tabuľku variant"
+    }
   }
 }

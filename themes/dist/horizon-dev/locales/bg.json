@@ -328,5 +328,10 @@
       "success_moderated": "Коментарът е публикуван, в очакване на модериране",
       "success": "Коментарът е публикуван"
     }
+  },
+  "won": {
+    "vp": {
+      "hide_table": "Hide variants table"
+    }
   }
 }

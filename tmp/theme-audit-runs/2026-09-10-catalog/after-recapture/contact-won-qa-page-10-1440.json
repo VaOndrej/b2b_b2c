@@ -1,0 +1,76 @@
+{
+  "url": "/pages/contact?view=won-qa-page-10",
+  "width": 1440,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-10",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=a2ae63dd-6815-4181-9338-8a11b3d2f900&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      }
+    ],
+    "failedAssets": [],
+    "httpAttempts": [
+      200
+    ],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "qa128",
+      "type": "won-video",
+      "variant": "video_type=external",
+      "label": "won-video · video_type=external",
+      "context": "page",
+      "limitations": [
+        "Hosted video resource unavailable; external embed availability requires network verification"
+      ],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa128",
+      "selector": "[id$=\"__qa128\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa128-1440.png"
+      ],
+      "text": "",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 84.453125,
+        "width": 1440,
+        "height": 854.5
+      }
+    }
+  ]
+}

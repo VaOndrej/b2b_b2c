@@ -1,0 +1,148 @@
+{
+  "reviewed": [
+    {
+      "id": "qa043",
+      "width": 390,
+      "screenshots": [
+        "states-qa043-390.png"
+      ],
+      "verdict": "pass",
+      "notes": "Otevřená hotspot karta je celá uvnitř média i viewportu; obrázek, dvouřádkový název a cena čitelné, bez ořezu. Mobilní otevřený stav. Screenshot samotný nerozlišuje způsob otevření a nedokládá navigaci z karty."
+    },
+    {
+      "id": "qa043",
+      "width": 768,
+      "screenshots": [
+        "states-qa043-768.png"
+      ],
+      "verdict": "pass",
+      "notes": "Otevřená hotspot karta je celá uvnitř média i viewportu; obrázek, dvouřádkový název a cena čitelné, bez ořezu. Viditelný focus ring na hotspotu. Screenshot samotný nerozlišuje způsob otevření a nedokládá navigaci z karty."
+    },
+    {
+      "id": "qa043",
+      "width": 1440,
+      "screenshots": [
+        "states-qa043-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Otevřená hotspot karta je celá uvnitř média i viewportu; obrázek, dvouřádkový název a cena čitelné, bez ořezu. Viditelný focus ring na hotspotu. Screenshot samotný nerozlišuje způsob otevření a nedokládá navigaci z karty."
+    },
+    {
+      "id": "qa145",
+      "width": 390,
+      "screenshots": [
+        "states-qa145-390.png"
+      ],
+      "verdict": "pass",
+      "notes": "Otevřená hotspot karta je celá uvnitř média i viewportu; obrázek, dvouřádkový název a cena čitelné, bez ořezu. Mobilní otevřený stav. Screenshot samotný nerozlišuje způsob otevření a nedokládá navigaci z karty."
+    },
+    {
+      "id": "qa145",
+      "width": 768,
+      "screenshots": [
+        "states-qa145-768.png"
+      ],
+      "verdict": "pass",
+      "notes": "Otevřená hotspot karta je celá uvnitř média i viewportu; obrázek, dvouřádkový název a cena čitelné, bez ořezu. Viditelný focus ring na hotspotu. Screenshot samotný nerozlišuje způsob otevření a nedokládá navigaci z karty."
+    },
+    {
+      "id": "qa145",
+      "width": 1440,
+      "screenshots": [
+        "states-qa145-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Otevřená hotspot karta je celá uvnitř média i viewportu; obrázek, dvouřádkový název a cena čitelné, bez ořezu. Viditelný focus ring na hotspotu. Sticky hlavička překrývá horní část fotografie, samotnou kartu ani cenu nezakrývá. Screenshot samotný nerozlišuje způsob otevření a nedokládá navigaci z karty."
+    },
+    {
+      "id": "qa146",
+      "width": 390,
+      "screenshots": [
+        "states-qa146-390.png"
+      ],
+      "verdict": "pass",
+      "notes": "Otevřená hotspot karta je celá uvnitř média i viewportu; obrázek, dvouřádkový název a cena čitelné, bez ořezu. Mobilní otevřený stav. Screenshot samotný nerozlišuje způsob otevření a nedokládá navigaci z karty."
+    },
+    {
+      "id": "qa146",
+      "width": 768,
+      "screenshots": [
+        "states-qa146-768.png"
+      ],
+      "verdict": "pass",
+      "notes": "Otevřená hotspot karta je celá uvnitř média i viewportu; obrázek, dvouřádkový název a cena čitelné, bez ořezu. Viditelný focus ring na hotspotu. Sticky hlavička překrývá horní část fotografie, samotnou kartu ani cenu nezakrývá. Screenshot samotný nerozlišuje způsob otevření a nedokládá navigaci z karty."
+    },
+    {
+      "id": "qa146",
+      "width": 1440,
+      "screenshots": [
+        "states-qa146-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Otevřená hotspot karta je celá uvnitř média i viewportu; obrázek, dvouřádkový název a cena čitelné, bez ořezu. Viditelný focus ring na hotspotu. Sticky hlavička překrývá horní část fotografie, samotnou kartu ani cenu nezakrývá. Screenshot samotný nerozlišuje způsob otevření a nedokládá navigaci z karty."
+    },
+    {
+      "id": "qa156",
+      "width": 390,
+      "screenshots": [
+        "states-qa156-390.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Otevřená tabulka variant má viditelné tři řádky, ceny, ceny za jednotku, Choose, množství a Add to cart, bez přesahu. Poslední balení 2 500 g se zalomí do dvou řádků; jednotkové ceny také, zůstávají čitelné. Odkaz i v otevřeném stavu říká Show variants table."
+    },
+    {
+      "id": "qa156",
+      "width": 768,
+      "screenshots": [
+        "states-qa156-768.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Otevřená tabulka variant má viditelné tři řádky, ceny, ceny za jednotku, Choose, množství a Add to cart, bez přesahu. Řádky a hodnoty jsou zarovnané a čitelné. Odkaz i v otevřeném stavu říká Show variants table."
+    },
+    {
+      "id": "qa156",
+      "width": 1440,
+      "screenshots": [
+        "states-qa156-1440.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Otevřená tabulka variant má viditelné tři řádky, ceny, ceny za jednotku, Choose, množství a Add to cart, bez přesahu. Řádky a hodnoty jsou zarovnané a čitelné. Odkaz i v otevřeném stavu říká Show variants table."
+    },
+    {
+      "id": "qa175",
+      "width": 1440,
+      "screenshots": [
+        "states-qa175-play.png"
+      ],
+      "verdict": "blocked-external",
+      "notes": "Po pokusu o spuštění přehrávač zobrazuje Rights issue a We're having trouble authorizing playback for this video. Viditelné Send Error Log a Reload Player. Playback nelze označit za úspěšně ověřený; screenshot nedokládá příčinu mimo autorizační hlášku přehrávače."
+    }
+  ],
+  "findings": [
+    {
+      "id": "variant-table-toggle-label",
+      "priority": "P3",
+      "cases": [
+        "qa156"
+      ],
+      "screenshots": [
+        "states-qa156-390.png",
+        "states-qa156-768.png",
+        "states-qa156-1440.png"
+      ],
+      "description": "Otevřená tabulka stále používá text Show variants table; label neodpovídá aktuálnímu viditelnému stavu."
+    },
+    {
+      "id": "external-video-playback-rights",
+      "priority": "P2",
+      "classification": "external-resource-blocker",
+      "cases": [
+        "qa175"
+      ],
+      "screenshots": [
+        "states-qa175-play.png"
+      ],
+      "description": "Externí video po spuštění končí autorizační chybou Rights issue. Dostupné UI přehrávače není důkaz úspěšného playbacku."
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+(node:30242) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 466 tests using 1 worker
+
+[1A[2K(node:30243) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:30243) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:30243) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/466] [desktop] › tests/smoke/customization-layer.spec.ts:11:1 › won sections are wired to the shared style-vars pipeline
+[1A[2K[2/466] [desktop] › tests/smoke/customization-layer.spec.ts:24:1 › won-tokens.css consumes the universal border/shadow/radius vars
+[1A[2K[3/466] [desktop] › tests/smoke/customization-layer.spec.ts:52:1 › won-tokens.css consumes the Tier 2 typography + motion vars
+[1A[2K[4/466] [desktop] › tests/smoke/customization-layer.spec.ts:78:1 › per-section bg/text color override wins over the color scheme
+[1A[2K  1) [desktop] › tests/smoke/customization-layer.spec.ts:78:1 › per-section bg/text color override wins over the color scheme 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: page.waitForSelector: Test timeout of 60000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('.won-section')[22m
+
+
+      78 | test('per-section bg/text color override wins over the color scheme', async ({ page }) => {
+      79 |   await page.goto('/');
+    > 80 |   await page.waitForSelector('.won-section', { state: 'attached' });
+         |              ^
+      81 |
+      82 |   const computed = await page.evaluate(() => {
+      83 |     const el = document.querySelector<HTMLElement>('.won-section');
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/customization-layer.spec.ts:80:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/full-results/smoke-customization-layer--27d4b--wins-over-the-color-scheme-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/full-results/smoke-customization-layer--27d4b--wins-over-the-color-scheme-desktop/error-context.md
+
+
+[1A[2K(node:30436) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:30436) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:30436) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[5/466] [desktop] › tests/smoke/customization-layer.spec.ts:98:1 › won-tokens.css consumes the Tier 3 advanced overrides
+[1A[2K  2) [desktop] › tests/smoke/customization-layer.spec.ts:98:1 › won-tokens.css consumes the Tier 3 advanced overrides 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: page.waitForSelector: Test timeout of 60000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('.won-section')[22m
+
+
+       98 | test('won-tokens.css consumes the Tier 3 advanced overrides', async ({ page }) => {
+       99 |   await page.goto('/');
+    > 100 |   await page.waitForSelector('.won-section', { state: 'attached' });
+          |              ^
+      101 |
+      102 |   const computed = await page.evaluate(() => {
+      103 |     const el = document.querySelector<HTMLElement>('.won-section');
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/customization-layer.spec.ts:100:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/full-results/smoke-customization-layer--db9f4-e-Tier-3-advanced-overrides-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/full-results/smoke-customization-layer--db9f4-e-Tier-3-advanced-overrides-desktop/error-context.md
+
+
+[1A[2K(node:30554) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:30554) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:30554) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[6/466] [desktop] › tests/smoke/customization-layer.spec.ts:119:1 › editor coaching never leaks to the live storefront
+[1A[2K  3) [desktop] › tests/smoke/customization-layer.spec.ts:119:1 › editor coaching never leaks to the live storefront 
+
+    Test was interrupted.
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9292/products/the-collection-snowboard-hydrogen
+    Call log:
+    [2m  - navigating to "http://127.0.0.1:9292/products/the-collection-snowboard-hydrogen", waiting until "load"[22m
+
+
+      122 |   // never see a merchant coaching note.
+      123 |   for (const path of ['/', '/products/the-collection-snowboard-hydrogen']) {
+    > 124 |     await page.goto(path);
+          |                ^
+      125 |     await page.waitForSelector('main', { state: 'attached' });
+      126 |     const leaked = await page.locator('.won-editor-note, .won-editor-notes').count();
+      127 |     expect(leaked, `coaching note leaked on ${path}`).toBe(0);
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/customization-layer.spec.ts:124:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/full-results/smoke-customization-layer--41b86-eaks-to-the-live-storefront-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[1A[2K  2 failed
+    [desktop] › tests/smoke/customization-layer.spec.ts:78:1 › per-section bg/text color override wins over the color scheme 
+    [desktop] › tests/smoke/customization-layer.spec.ts:98:1 › won-tokens.css consumes the Tier 3 advanced overrides 
+  1 interrupted
+    [desktop] › tests/smoke/customization-layer.spec.ts:119:1 › editor coaching never leaks to the live storefront 
+  460 did not run
+  3 passed (2.2m)

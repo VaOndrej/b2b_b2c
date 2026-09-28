@@ -1,0 +1,459 @@
+{
+  "url": "/pages/contact?view=won-qa-page-7",
+  "width": 1440,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Access to script at 'http://cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-5059b83f.js' from origin 'http://127.0.0.1:9292' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "Failed to load resource: net::ERR_FAILED",
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-5059b83f.js",
+        "error": "net::ERR_FAILED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-7",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=5e3e6f5d-3da0-4d3e-a187-9c169ea32a1f&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "qa082",
+      "type": "won-grid",
+      "variant": "item_style=card",
+      "label": "won-grid · item_style=card",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-7",
+      "sectionId": "qa082",
+      "selector": "[id$=\"__qa082\"]",
+      "template": "page.won-qa-page-7.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa082-1440.png"
+      ],
+      "text": "QA sample benefit\nQA sample benefit\nQA sample benefit\nQA sample benefit",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 249.125,
+        "width": 1440,
+        "height": 266.4375
+      }
+    },
+    {
+      "id": "qa083",
+      "type": "won-grid",
+      "variant": "item_style=bordered",
+      "label": "won-grid · item_style=bordered",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-7",
+      "sectionId": "qa083",
+      "selector": "[id$=\"__qa083\"]",
+      "template": "page.won-qa-page-7.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa083-1440.png"
+      ],
+      "text": "QA sample benefit\nQA sample benefit\nQA sample benefit\nQA sample benefit",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 626.34375,
+        "width": 1440,
+        "height": 268.4375
+      }
+    },
+    {
+      "id": "qa084",
+      "type": "won-grid",
+      "variant": "article_layout=featured",
+      "label": "won-grid · article_layout=featured",
+      "context": "page",
+      "limitations": [
+        "Requires existing news blog articles"
+      ],
+      "url": "/pages/contact?view=won-qa-page-7",
+      "sectionId": "qa084",
+      "selector": "[id$=\"__qa084\"]",
+      "template": "page.won-qa-page-7.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa084-1440.png"
+      ],
+      "text": "22. 8. 2026\nKreatin: co o něm víme po třiceti letech výzkumu\nNejlépe prozkoumaný doplněk na trhu. Co se potvrdilo, co se nepotvrdilo a co pořád nevíme.\n22. 8. 2026\nProtein po tréninku: kdy a kolik\nAnabolické okno není tak úzké, jak se říkalo. Co z toho plyne pro běžný trénink.\n22. 8. 2026\nJak číst etikety doplňků stravy\nCo na etiketě opravdu rozhoduje a co je jen marketing.",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 25.5625,
+        "width": 1440,
+        "height": 998.203125
+      }
+    },
+    {
+      "id": "qa085",
+      "type": "won-panels",
+      "variant": "row_style=plain",
+      "label": "won-panels · row_style=plain",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-7",
+      "sectionId": "qa085",
+      "selector": "[id$=\"__qa085\"]",
+      "template": "page.won-qa-page-7.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa085-1440.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa085-1440-expanded.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\nQA question — how does this example work?\nQA question — how does this example work?\nQA question — how does this example work?\nQA question — how does this example work?",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 289.546875,
+        "width": 1440,
+        "height": 445.15625
+      }
+    },
+    {
+      "id": "qa086",
+      "type": "won-panels",
+      "variant": "row_style=editorial",
+      "label": "won-panels · row_style=editorial",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-7",
+      "sectionId": "qa086",
+      "selector": "[id$=\"__qa086\"]",
+      "template": "page.won-qa-page-7.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa086-1440.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa086-1440-expanded.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\nQA question — how does this example work?\nQA question — how does this example work?\nQA question — how does this example work?\nQA question — how does this example work?",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 465.484375,
+        "width": 1440,
+        "height": 558.34375
+      }
+    },
+    {
+      "id": "qa087",
+      "type": "won-panels",
+      "variant": "row_style=boxed",
+      "label": "won-panels · row_style=boxed",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-7",
+      "sectionId": "qa087",
+      "selector": "[id$=\"__qa087\"]",
+      "template": "page.won-qa-page-7.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa087-1440.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa087-1440-expanded.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\nQA question — how does this example work?\nQA question — how does this example work?\nQA question — how does this example work?\nQA question — how does this example work?",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 287.609375,
+        "width": 1440,
+        "height": 449.15625
+      }
+    },
+    {
+      "id": "qa088",
+      "type": "won-panels",
+      "variant": "icon_style=plus",
+      "label": "won-panels · icon_style=plus",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-7",
+      "sectionId": "qa088",
+      "selector": "[id$=\"__qa088\"]",
+      "template": "page.won-qa-page-7.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa088-1440.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa088-1440-expanded.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\nQA question — how does this example work?\nQA question — how does this example work?\nQA question — how does this example work?\nQA question — how does this example work?",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 578.546875,
+        "width": 1440,
+        "height": 445.15625
+      }
+    },
+    {
+      "id": "qa089",
+      "type": "won-panels",
+      "variant": "icon_style=chevron",
+      "label": "won-panels · icon_style=chevron",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-7",
+      "sectionId": "qa089",
+      "selector": "[id$=\"__qa089\"]",
+      "template": "page.won-qa-page-7.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa089-1440.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa089-1440-expanded.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\nQA question — how does this example work?\nQA question — how does this example work?\nQA question — how does this example work?\nQA question — how does this example work?",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 289.484375,
+        "width": 1440,
+        "height": 445.15625
+      }
+    },
+    {
+      "id": "qa090",
+      "type": "won-panels",
+      "variant": "split_position=end",
+      "label": "won-panels · split_position=end",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-7",
+      "sectionId": "qa090",
+      "selector": "[id$=\"__qa090\"]",
+      "template": "page.won-qa-page-7.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa090-1440.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa090-1440-expanded.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\nQA question — how does this example work?\nQA question — how does this example work?\nQA question — how does this example work?\nQA question — how does this example work?",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 214.421875,
+        "width": 1440,
+        "height": 809.1875
+      }
+    },
+    {
+      "id": "qa091",
+      "type": "won-slide",
+      "variant": "visualization=standard",
+      "label": "won-slide · visualization=standard",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-7",
+      "sectionId": "qa091",
+      "selector": "[id$=\"__qa091\"]",
+      "template": "page.won-qa-page-7.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa091-1440.png"
+      ],
+      "text": "QA sample — practical information\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": -389.609375,
+        "width": 1440,
+        "height": 1803.1875
+      }
+    },
+    {
+      "id": "qa092",
+      "type": "won-slide",
+      "variant": "visualization=testimonial",
+      "label": "won-slide · visualization=testimonial",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-7",
+      "sectionId": "qa092",
+      "selector": "[id$=\"__qa092\"]",
+      "template": "page.won-qa-page-7.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa092-1440.png"
+      ],
+      "text": "QA sample — practical information\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nQA fictional example\n\nView demo product",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 309.359375,
+        "width": 1440,
+        "height": 405.96875
+      }
+    },
+    {
+      "id": "qa093",
+      "type": "won-slide",
+      "variant": "visualization=expert",
+      "label": "won-slide · visualization=expert",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-7",
+      "sectionId": "qa093",
+      "selector": "[id$=\"__qa093\"]",
+      "template": "page.won-qa-page-7.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa093-1440.png"
+      ],
+      "text": "Demonstration portrait\nQA sample — practical information\n\nQA example role\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 0.109375,
+        "width": 1440,
+        "height": 2063.578125
+      }
+    }
+  ]
+}

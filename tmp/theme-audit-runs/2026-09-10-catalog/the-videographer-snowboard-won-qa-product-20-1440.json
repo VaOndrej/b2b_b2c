@@ -1,0 +1,75 @@
+{
+  "url": "/products/the-videographer-snowboard?view=won-qa-product-20",
+  "width": 1440,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/products/the-videographer-snowboard?view=won-qa-product-20",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=32238bf6-447f-4569-9d6c-93f3bdc14da1&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "https://error-analytics-sessions-production.shopifysvc.com/observeonly",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "qa136",
+      "type": "won-variant-picker",
+      "variant": "layout=axes",
+      "label": "won-variant-picker · layout=axes",
+      "context": "product",
+      "limitations": [],
+      "url": "/products/the-videographer-snowboard?view=won-qa-product-20",
+      "sectionId": "qa136",
+      "selector": "[id$=\"__qa136\"]",
+      "template": "product.won-qa-product-20.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa136-1440.png"
+      ],
+      "text": "Pre-Workout Energy\n★★★★★\n4.7(231)\n4.7 / 5, 231\n$549.95\n$999.95\nBalení\n500 g\n1 000 g\n2 500 g\n−\n+\nAdd to cart",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 330.703125,
+        "width": 1440,
+        "height": 362.859375
+      }
+    }
+  ]
+}

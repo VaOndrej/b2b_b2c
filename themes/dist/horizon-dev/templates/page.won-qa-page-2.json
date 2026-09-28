@@ -1,0 +1,1683 @@
+{
+  "sections": {
+    "qa014label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa014: won-grid · preset: Won · Editorial columns</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa014": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 2,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-group",
+          "settings": {
+            "heading_size_desktop": 36,
+            "heading_max_width_desktop": 100,
+            "heading_size_mobile": 26,
+            "heading_max_width_mobile": 100,
+            "columns_desktop": 1,
+            "column_ratio": "1:1",
+            "columns_mobile": "1",
+            "gap": "4",
+            "content_align": "left",
+            "inherit_color_scheme": true,
+            "color_scheme": "scheme-1",
+            "heading": "<p>Benefits worth exploring</p>"
+          },
+          "blocks": {
+            "b1": {
+              "type": "won-feature",
+              "settings": {
+                "presentation": "numbered",
+                "icon": "check",
+                "heading": "QA sample benefit",
+                "link_new_tab": false,
+                "image_size": 48,
+                "image_position": "left",
+                "icon_style": "bare",
+                "statistic_size": 96,
+                "corner_radius": 14,
+                "image": "shopify://shop_images/won-pack-preworkout.png",
+                "number_label": "01"
+              }
+            },
+            "b2": {
+              "type": "won-feature",
+              "settings": {
+                "presentation": "numbered",
+                "icon": "check",
+                "heading": "QA sample benefit",
+                "link_new_tab": false,
+                "image_size": 48,
+                "image_position": "left",
+                "icon_style": "bare",
+                "statistic_size": 96,
+                "corner_radius": 14,
+                "image": "shopify://shop_images/won-pack-preworkout.png",
+                "number_label": "02"
+              }
+            },
+            "b3": {
+              "type": "won-feature",
+              "settings": {
+                "presentation": "numbered",
+                "icon": "check",
+                "heading": "QA sample benefit",
+                "link_new_tab": false,
+                "image_size": 48,
+                "image_position": "left",
+                "icon_style": "bare",
+                "statistic_size": 96,
+                "corner_radius": 14,
+                "image": "shopify://shop_images/won-pack-preworkout.png",
+                "number_label": "03"
+              }
+            },
+            "b4": {
+              "type": "won-feature",
+              "settings": {
+                "presentation": "numbered",
+                "icon": "check",
+                "heading": "QA sample benefit",
+                "link_new_tab": false,
+                "image_size": 48,
+                "image_position": "left",
+                "icon_style": "bare",
+                "statistic_size": 96,
+                "corner_radius": 14,
+                "image": "shopify://shop_images/won-pack-preworkout.png",
+                "number_label": "04"
+              }
+            }
+          },
+          "block_order": [
+            "b1",
+            "b2",
+            "b3",
+            "b4"
+          ]
+        },
+        "b2": {
+          "type": "won-group",
+          "settings": {
+            "heading_size_desktop": 36,
+            "heading_max_width_desktop": 100,
+            "heading_size_mobile": 26,
+            "heading_max_width_mobile": 100,
+            "columns_desktop": 1,
+            "column_ratio": "1:1",
+            "columns_mobile": "1",
+            "gap": "4",
+            "content_align": "left",
+            "inherit_color_scheme": true,
+            "color_scheme": "scheme-1",
+            "heading": "<p>An expert perspective</p>"
+          },
+          "blocks": {
+            "b1": {
+              "type": "won-slide",
+              "settings": {
+                "visualization": "expert",
+                "heading": "<p>QA sample — practical information</p>",
+                "heading_size_desktop": 28,
+                "heading_max_width_desktop": 100,
+                "heading_size_mobile": 22,
+                "heading_max_width_mobile": 100,
+                "text": "<p>Demonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.</p>",
+                "review_rating": 0,
+                "button_style": "primary",
+                "buttons_new_tab": false,
+                "button2_style": "secondary",
+                "media_type": "image",
+                "priority": false,
+                "media_position": "top",
+                "content_align": "left",
+                "min_height": 0,
+                "card_style": "minimal",
+                "headline_annotation": "none",
+                "corner_radius": 14,
+                "inherit_color_scheme": true,
+                "color_scheme": "scheme-1",
+                "toggle_overlay": false,
+                "overlay_color": "#00000059",
+                "padding_top": 0,
+                "padding_bottom": 0,
+                "image": "shopify://shop_images/won-pack-preworkout.png",
+                "image_asset": "",
+                "button_label": "View demo product",
+                "button_link": "/products/the-videographer-snowboard",
+                "reviewer": "QA fictional example",
+                "expert_role": "QA example role",
+                "media_caption": "Demonstration portrait",
+                "image_mobile": "shopify://shop_images/won-pack-preworkout.png"
+              }
+            }
+          },
+          "block_order": [
+            "b1"
+          ]
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2"
+      ]
+    },
+    "qa015label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa015: won-grid · preset: Won Features — USP row</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa015": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 4,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "center",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news"
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "none",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b2": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "none",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b3": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "none",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b4": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "none",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3",
+        "b4"
+      ]
+    },
+    "qa016label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa016: won-grid · preset: Won Features — benefit cards</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa016": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 3,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "card",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news"
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "none",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b2": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "none",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b3": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "none",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3"
+      ]
+    },
+    "qa017label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa017: won-grid · preset: Won Features — trust badges</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa017": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 4,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "bordered",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "center",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news"
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "none",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b2": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "none",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b3": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "none",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b4": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "none",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3",
+        "b4"
+      ]
+    },
+    "qa018label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa018: won-grid · preset: Won Collection Tiles — grid</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa018": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 4,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 16,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news"
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "QA sample category",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample"
+          }
+        },
+        "b2": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "QA sample category",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample"
+          }
+        },
+        "b3": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "QA sample category",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample"
+          }
+        },
+        "b4": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "QA sample category",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3",
+        "b4"
+      ]
+    },
+    "qa019label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa019: won-grid · preset: Won Collection Tiles — mosaic</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa019": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 4,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 16,
+        "item_style": "plain",
+        "mosaic": true,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news"
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "QA sample category",
+            "tile_size": "large",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample"
+          }
+        },
+        "b2": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "QA sample category",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample"
+          }
+        },
+        "b3": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "QA sample category",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample"
+          }
+        },
+        "b4": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "QA sample category",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample"
+          }
+        },
+        "b5": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "QA sample category",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3",
+        "b4",
+        "b5"
+      ]
+    },
+    "qa020label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa020: won-grid · preset: Won Grid — shop by goal</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa020": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 4,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 16,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "center",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news"
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "Sport & výkon",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample",
+            "icon": "💪"
+          }
+        },
+        "b2": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "Imunita",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample",
+            "icon": "🛡️"
+          }
+        },
+        "b3": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "Spánek",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample",
+            "icon": "😴"
+          }
+        },
+        "b4": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "Mentální výkon",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "automated-collection",
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample",
+            "icon": "🧠"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3",
+        "b4"
+      ]
+    },
+    "qa021label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa021: won-grid · preset: Stats — number row</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa021": {
+      "type": "won-grid",
+      "settings": {
+        "source": "stats",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": true,
+        "animate_duration": 0,
+        "columns_desktop": 4,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news"
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b2": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b3": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b4": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3",
+        "b4"
+      ]
+    },
+    "qa022label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa022: won-grid · preset: Won Grid — trust band</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa022": {
+      "type": "won-grid",
+      "settings": {
+        "source": "stats",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "500 tis.+ : spokojených zákazníků : 👥\n10 000+ : recenzí : ★\n24 h : expedice : ⚡\n100% : testováno : ✅",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 4,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "center",
+        "color_scheme": "scheme-2",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news"
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b2": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b3": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b4": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3",
+        "b4"
+      ]
+    },
+    "qa023label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa023: won-grid · preset: Won Articles — grid</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa023": {
+      "type": "won-grid",
+      "settings": {
+        "source": "articles",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 3,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news"
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b2": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b3": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b4": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3",
+        "b4"
+      ]
+    },
+    "qa024label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa024: won-grid · preset: Won Articles — featured</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa024": {
+      "type": "won-grid",
+      "settings": {
+        "source": "articles",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 5,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 3,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "featured",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news"
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b2": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b3": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "b4": {
+          "type": "won-feature",
+          "settings": {
+            "presentation": "standard",
+            "icon": "check",
+            "heading": "QA sample benefit",
+            "link_new_tab": false,
+            "image_size": 48,
+            "image_position": "top",
+            "icon_style": "disc",
+            "statistic_size": 96,
+            "corner_radius": 14,
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3",
+        "b4"
+      ]
+    },
+    "qa025label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa025: won-hero-carousel · preset: Won Hero – carousel</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa025": {
+      "type": "won-hero-carousel",
+      "settings": {
+        "layout": "fill",
+        "min_height": 520,
+        "slide_width": 64,
+        "columns_mobile": "1",
+        "gap": 0,
+        "show_arrows": true,
+        "show_progress": true,
+        "show_dots": true,
+        "loop": "desktop",
+        "autoplay": true,
+        "autoplay_interval": 6,
+        "color_scheme": "scheme-1",
+        "section_width": "full",
+        "padding_top": 0,
+        "padding_bottom": 0
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-slide",
+          "settings": {
+            "visualization": "standard",
+            "heading": "<p>When water isn't enough</p>",
+            "heading_size_desktop": 52,
+            "heading_max_width_desktop": 100,
+            "heading_size_mobile": 22,
+            "heading_max_width_mobile": 100,
+            "text": "<p>Replace key minerals lost in the heat.</p>",
+            "review_rating": 0,
+            "button_style": "primary",
+            "buttons_new_tab": false,
+            "button2_style": "secondary",
+            "media_type": "image",
+            "priority": true,
+            "media_position": "background",
+            "content_align": "left",
+            "min_height": 520,
+            "card_style": "minimal",
+            "headline_annotation": "none",
+            "corner_radius": 14,
+            "inherit_color_scheme": true,
+            "color_scheme": "scheme-1",
+            "toggle_overlay": false,
+            "overlay_color": "#00000059",
+            "padding_top": 0,
+            "padding_bottom": 0,
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "image_asset": "won-promo-1.svg",
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "reviewer": "QA fictional example",
+            "expert_role": "QA example role",
+            "media_caption": "Demonstration portrait",
+            "image_mobile": "shopify://shop_images/won-pack-preworkout.png",
+            "eyebrow": "Hydration"
+          }
+        },
+        "b2": {
+          "type": "won-slide",
+          "settings": {
+            "visualization": "standard",
+            "heading": "<p>Creatine −20%</p>",
+            "heading_size_desktop": 52,
+            "heading_max_width_desktop": 100,
+            "heading_size_mobile": 22,
+            "heading_max_width_mobile": 100,
+            "text": "<p>Strength and performance, every day.</p>",
+            "review_rating": 0,
+            "button_style": "primary",
+            "buttons_new_tab": false,
+            "button2_style": "secondary",
+            "media_type": "image",
+            "priority": false,
+            "media_position": "background",
+            "content_align": "left",
+            "min_height": 520,
+            "card_style": "minimal",
+            "headline_annotation": "none",
+            "corner_radius": 14,
+            "inherit_color_scheme": true,
+            "color_scheme": "scheme-1",
+            "toggle_overlay": false,
+            "overlay_color": "#00000059",
+            "padding_top": 0,
+            "padding_bottom": 0,
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "image_asset": "won-promo-2.svg",
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "reviewer": "QA fictional example",
+            "expert_role": "QA example role",
+            "media_caption": "Demonstration portrait",
+            "image_mobile": "shopify://shop_images/won-pack-preworkout.png",
+            "eyebrow": "Deal"
+          }
+        },
+        "b3": {
+          "type": "won-slide",
+          "settings": {
+            "visualization": "standard",
+            "heading": "<p>Whey with 21g protein</p>",
+            "heading_size_desktop": 52,
+            "heading_max_width_desktop": 100,
+            "heading_size_mobile": 22,
+            "heading_max_width_mobile": 100,
+            "text": "<p>Selected flavours at a great price.</p>",
+            "review_rating": 0,
+            "button_style": "primary",
+            "buttons_new_tab": false,
+            "button2_style": "secondary",
+            "media_type": "image",
+            "priority": false,
+            "media_position": "background",
+            "content_align": "left",
+            "min_height": 520,
+            "card_style": "minimal",
+            "headline_annotation": "none",
+            "corner_radius": 14,
+            "inherit_color_scheme": true,
+            "color_scheme": "scheme-1",
+            "toggle_overlay": false,
+            "overlay_color": "#00000059",
+            "padding_top": 0,
+            "padding_bottom": 0,
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "image_asset": "won-promo-3.svg",
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "reviewer": "QA fictional example",
+            "expert_role": "QA example role",
+            "media_caption": "Demonstration portrait",
+            "image_mobile": "shopify://shop_images/won-pack-preworkout.png",
+            "eyebrow": "Bestseller"
+          }
+        },
+        "b4": {
+          "type": "won-slide",
+          "settings": {
+            "visualization": "standard",
+            "heading": "<p>New: BCAA</p>",
+            "heading_size_desktop": 52,
+            "heading_max_width_desktop": 100,
+            "heading_size_mobile": 22,
+            "heading_max_width_mobile": 100,
+            "text": "<p>Recovery after every workout.</p>",
+            "review_rating": 0,
+            "button_style": "primary",
+            "buttons_new_tab": false,
+            "button2_style": "secondary",
+            "media_type": "image",
+            "priority": false,
+            "media_position": "background",
+            "content_align": "left",
+            "min_height": 520,
+            "card_style": "minimal",
+            "headline_annotation": "none",
+            "corner_radius": 14,
+            "inherit_color_scheme": true,
+            "color_scheme": "scheme-1",
+            "toggle_overlay": false,
+            "overlay_color": "#00000059",
+            "padding_top": 0,
+            "padding_bottom": 0,
+            "image": "shopify://shop_images/won-pack-preworkout.png",
+            "image_asset": "won-promo-4.svg",
+            "button_label": "Shop now",
+            "button_link": "shopify://collections/all",
+            "reviewer": "QA fictional example",
+            "expert_role": "QA example role",
+            "media_caption": "Demonstration portrait",
+            "image_mobile": "shopify://shop_images/won-pack-preworkout.png",
+            "eyebrow": "New"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3",
+        "b4"
+      ]
+    }
+  },
+  "order": [
+    "qa014label",
+    "qa014",
+    "qa015label",
+    "qa015",
+    "qa016label",
+    "qa016",
+    "qa017label",
+    "qa017",
+    "qa018label",
+    "qa018",
+    "qa019label",
+    "qa019",
+    "qa020label",
+    "qa020",
+    "qa021label",
+    "qa021",
+    "qa022label",
+    "qa022",
+    "qa023label",
+    "qa023",
+    "qa024label",
+    "qa024",
+    "qa025label",
+    "qa025"
+  ]
+}

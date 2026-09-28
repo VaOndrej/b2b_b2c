@@ -1,0 +1,2208 @@
+{
+  "reviewed": [
+    {
+      "id": "qa001",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa001-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa002",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa002-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "App shell populated, but no actual app block content."
+      ]
+    },
+    {
+      "id": "qa003",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa003-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Media-text heading at768 splits ingredients into ingredient + lone s; narrow heading max width within half column."
+      ]
+    },
+    {
+      "id": "qa004",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa004-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa005",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa005-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Split review text squeezed beside image in each of two tablet columns; choppy short lines and very tall card."
+      ]
+    },
+    {
+      "id": "qa006",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa006-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa007",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa007-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa008",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa008-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Logo-marquee preset displays a single enormous card/image with title and CTA, not a readable logo rail; fixture/content vs layout cause needs diagnosis."
+      ]
+    },
+    {
+      "id": "qa009",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa009-768-expanded.png",
+        "screenshots/qa009-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Re-inspected latest collector capture. Populated layout, text, product cards and controls remain readable; no new overlap. Default-open collection disclosure also inspected in expanded screenshot."
+      ],
+      "recaptureReviewed": true,
+      "collectorRecaptureReviewed": true
+    },
+    {
+      "id": "qa010",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa010-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa011",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa011-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed rendered component; labels, controls and layout readable. Interactive behavior recorded by primary runner."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa012",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa012-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed rendered component; labels, controls and layout readable. Interactive behavior recorded by primary runner."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa013",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa013-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa014",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa014-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa015",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa015-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa016",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa016-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa017",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa017-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa018",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa018-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa019",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa019-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Large first mosaic tile remains invisible. Primary agent confirmed zero-height wrapper; screenshot blank upper-left cell is a real rendering defect."
+      ]
+    },
+    {
+      "id": "qa020",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa020-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa021",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa021-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Numeric layout visible but screenshot catches mid-animation values (5k+, 2.3star,12h,48%); final values not visually verified."
+      ]
+    },
+    {
+      "id": "qa022",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa022-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa023",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa023-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Real article text visible; article images absent and placeholders shown."
+      ]
+    },
+    {
+      "id": "qa024",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa024-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Featured article structure visible; all article media placeholders, no crop coverage."
+      ]
+    },
+    {
+      "id": "qa025",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa025-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa026",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa026-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa027",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa027-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa028",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa028-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa029",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa029-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa030",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa030-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Hero minimal heading wraps punctuation to start of second line: Performance / , simplified."
+      ]
+    },
+    {
+      "id": "qa031",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa031-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa032",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa032-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa033",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa033-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa034",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa034-768.png"
+      ],
+      "verdict": "fixed-visually",
+      "notes": [
+        "Rechecked after fix: identical halves align, label/bottle edges continuous."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Before/after image halves are differently scaled; centre join breaks identical product label."
+      ]
+    },
+    {
+      "id": "qa035",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa035-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa036",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa036-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa037",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa037-768.png"
+      ],
+      "verdict": "configuration",
+      "notes": [
+        "Black page-header heading over darkened product photo is difficult to read; default scheme1 + image/overlay configuration."
+      ]
+    },
+    {
+      "id": "qa038",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa038-768-expanded.png",
+        "screenshots/qa038-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa039",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa039-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa040",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa040-768-expanded.png",
+        "screenshots/qa040-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa041",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa041-768-expanded.png",
+        "screenshots/qa041-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "FAQ split preset has empty contact content; visible full-width FAQ is not proof of split contact rendering."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa042",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa042-768-expanded.png",
+        "screenshots/qa042-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa043",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa043-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa044",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa044-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed rendered component; labels, controls and layout readable. Interactive behavior recorded by primary runner."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa045",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa045-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Re-inspected latest collector capture. Populated layout, text, product cards and controls remain readable; no new overlap. Behavior/peek semantics are established by the corrected collector, not inferred from a still image."
+      ],
+      "recaptureReviewed": true,
+      "collectorRecaptureReviewed": true
+    },
+    {
+      "id": "qa046",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa046-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa047",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa047-768-expanded.png",
+        "screenshots/qa047-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa048",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa048-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa049",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa049-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa050",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa050-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa051",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa051-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa052",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa052-768-expanded.png",
+        "screenshots/qa052-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa053",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa053-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa054",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa054-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa055",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa055-768.png",
+        "screenshots/qa055-768-expanded.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa056",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa056-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa057",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa057-768.png"
+      ],
+      "verdict": "fixed-fixture",
+      "notes": [
+        "After clearing invalid rule override, $109.99 /100g is visible and readable."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Blank PPU due invalid QA rule syntax; queued fixture correction, not positive coverage."
+      ]
+    },
+    {
+      "id": "qa058",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa058-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa059",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa059-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa060",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa060-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa061",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa061-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa062",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa062-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa063",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa063-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa064",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa064-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa065",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa065-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa066",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa066-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Hosted video absent; Shopify placeholder only, no playback coverage."
+      ]
+    },
+    {
+      "id": "qa067",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa067-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Band left media tablet heading constricted to narrow strip; information and considered break midword."
+      ]
+    },
+    {
+      "id": "qa068",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa068-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Band right media tablet heading constricted to narrow strip; information and considered break midword."
+      ]
+    },
+    {
+      "id": "qa069",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa069-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Band center-gutter heading breaks multiple words into fragments; excessive height and cropped side images."
+      ]
+    },
+    {
+      "id": "qa070",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa070-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa071",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa071-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa072",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa072-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Band video setting without actual hosted video renders text-only; not video coverage."
+      ]
+    },
+    {
+      "id": "qa073",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa073-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Re-inspected latest collector capture. Populated layout, text, product cards and controls remain readable; no new overlap. Behavior/peek semantics are established by the corrected collector, not inferred from a still image."
+      ],
+      "collectorRecaptureReviewed": true
+    },
+    {
+      "id": "qa074",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa074-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa075",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa075-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Re-inspected latest collector capture. Populated layout, text, product cards and controls remain readable; no new overlap. Behavior/peek semantics are established by the corrected collector, not inferred from a still image."
+      ],
+      "collectorRecaptureReviewed": true
+    },
+    {
+      "id": "qa076",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa076-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa077",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa077-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa078",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa078-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa079",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa079-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa080",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa080-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa081",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa081-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa082",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa082-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa083",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa083-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa084",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa084-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Featured articles populate titles/excerpts but no real article image exists."
+      ]
+    },
+    {
+      "id": "qa085",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa085-768.png",
+        "screenshots/qa085-768-expanded.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa086",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa086-768.png",
+        "screenshots/qa086-768-expanded.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa087",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa087-768.png",
+        "screenshots/qa087-768-expanded.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa088",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa088-768.png",
+        "screenshots/qa088-768-expanded.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa089",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa089-768.png",
+        "screenshots/qa089-768-expanded.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa090",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa090-768.png",
+        "screenshots/qa090-768-expanded.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa091",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa091-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa092",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa092-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Testimonial in narrow tablet grid cell retains side-by-side image/text; heading fragments and image heavily cropped."
+      ]
+    },
+    {
+      "id": "qa093",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa093-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa094",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa094-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa095",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa095-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Side image and text remain two columns inside half-width tablet card: cramped copy."
+      ]
+    },
+    {
+      "id": "qa096",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa096-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Side image and text remain two columns inside half-width tablet card: cramped copy."
+      ]
+    },
+    {
+      "id": "qa097",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa097-768.png"
+      ],
+      "verdict": "configuration",
+      "notes": [
+        "White body copy over light product-photo region is low contrast; overlay setting needed."
+      ]
+    },
+    {
+      "id": "qa098",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa098-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa099",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa099-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa100",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa100-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa101",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa101-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa102",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa102-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Circle annotation not visible in captured heading; underline sibling visible. Needs mask/stacking diagnosis."
+      ]
+    },
+    {
+      "id": "qa103",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa103-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa104",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa104-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Video selected without hosted resource: text-only card, not playback coverage."
+      ]
+    },
+    {
+      "id": "qa105",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa105-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa106",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa106-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa107",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa107-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa108",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa108-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa109",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa109-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa110",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa110-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa111",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa111-768.png"
+      ],
+      "verdict": "fixed-fixture",
+      "notes": [
+        "Rechecked real check SVG with tinted disc; distinct style visible."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Image takes precedence over SVG; disc glyph style not demonstrated. Queued correction."
+      ]
+    },
+    {
+      "id": "qa112",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa112-768.png"
+      ],
+      "verdict": "fixed-fixture",
+      "notes": [
+        "Rechecked real bare check SVG, larger stroke and no disc; distinct style visible."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Image takes precedence over SVG; bare glyph style not demonstrated. Queued correction."
+      ]
+    },
+    {
+      "id": "qa113",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa113-768.png",
+        "screenshots/qa113-768-expanded.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa114",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa114-768.png",
+        "screenshots/qa114-768-expanded.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa115",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa115-768.png",
+        "screenshots/qa115-768-expanded.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa116",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa116-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa117",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa117-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa118",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa118-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa119",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa119-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa120",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa120-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Bottom-left badge overlaps overlay category label."
+      ]
+    },
+    {
+      "id": "qa121",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa121-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa122",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa122-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa123",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa123-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa124",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa124-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa125",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa125-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa126",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa126-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa127",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa127-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Hosted video missing; placeholder only."
+      ]
+    },
+    {
+      "id": "qa128",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa128-768.png"
+      ],
+      "verdict": "fixed-visually",
+      "notes": [
+        "YouTube embed poster and play control now rendered; previous Liquid error gone. Playback completion not established by screenshot."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Literal Liquid error: external_video_tag does not support VideoUrlDrop."
+      ]
+    },
+    {
+      "id": "qa129",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa129-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Aspect16/9 placeholder visible; no video."
+      ]
+    },
+    {
+      "id": "qa130",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa130-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Aspect4/3 placeholder visible; no video."
+      ]
+    },
+    {
+      "id": "qa131",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa131-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Aspect1/1 placeholder visible; no video."
+      ]
+    },
+    {
+      "id": "qa132",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa132-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed rendered component; labels, controls and layout readable. Interactive behavior recorded by primary runner."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa133",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa133-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed rendered component; labels, controls and layout readable. Interactive behavior recorded by primary runner."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa134",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa134-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Centre floating bar visible with intentionally truncated product title; button fits."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Viewed rendered component; labels, controls and layout readable. Interactive behavior recorded by primary runner."
+      ]
+    },
+    {
+      "id": "qa135",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa135-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Clipped CTA confirmed as real viewport overflow by primary agent: button right edge773.72px at768px viewport, consistent with observed screenshot."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Corner sticky CTA right edge/text clipped in captured screenshot; inspect viewport geometry to distinguish actual widget overflow from capture clipping."
+      ]
+    },
+    {
+      "id": "qa136",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa136-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa137",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa137-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa138",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa138-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa139",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa139-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Swatch selector labels render but product weight values have no real color swatches; swatch-color effect not covered."
+      ]
+    },
+    {
+      "id": "qa140",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa140-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa141",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa141-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa142",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa142-768.png"
+      ],
+      "verdict": "fixed-visually",
+      "notes": [
+        "Identical comparison halves now align."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Identical comparison images visibly misaligned at centre."
+      ]
+    },
+    {
+      "id": "qa143",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa143-768.png"
+      ],
+      "verdict": "fixed-visually",
+      "notes": [
+        "Identical comparison halves now align."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Identical comparison images visibly misaligned at centre."
+      ]
+    },
+    {
+      "id": "qa144",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa144-768.png"
+      ],
+      "verdict": "fixed-visually",
+      "notes": [
+        "Identical comparison halves now align."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Identical comparison images visibly misaligned at centre."
+      ]
+    },
+    {
+      "id": "qa145",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa145-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa146",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa146-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa147",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa147-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa148",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa148-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa149",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa149-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Real product nutrition metafield rows render caffeine, beta-alanine and citrulline; table aligned and readable."
+      ]
+    },
+    {
+      "id": "qa150",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa150-768.png"
+      ],
+      "verdict": "limited",
+      "notes": [
+        "Empty product specification metafield: blank component, no populated table coverage."
+      ]
+    },
+    {
+      "id": "qa151",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa151-768.png"
+      ],
+      "verdict": "explicit-empty-state",
+      "notes": [
+        "Missing testimonial image placeholder renders safely, but tablet text very narrow and wraps information midword."
+      ]
+    },
+    {
+      "id": "qa152",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa152-768.png"
+      ],
+      "verdict": "explicit-empty-state",
+      "notes": [
+        "Missing image/content tile shows gradient and badge only; intended negative fixture, not populated coverage."
+      ]
+    },
+    {
+      "id": "qa153",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa153-768.png",
+        "screenshots/qa153-768-expanded.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Two nested columns inside tablet half-width wrapper yield very narrow disclosure text. Distinguish fixture composition from component defect."
+      ]
+    },
+    {
+      "id": "qa154",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa154-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa155",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa155-768.png",
+        "screenshots/qa155-768-expanded.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa156",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa156-768.png"
+      ],
+      "verdict": "fixed-fixture",
+      "notes": [
+        "PPU now visible alongside price; variant table trigger, quantity and purchase action readable."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Variant table trigger and native controls visible; PPU omitted by invalid fixture rules, queued correction."
+      ]
+    },
+    {
+      "id": "qa157",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa157-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Independent light-scheme minimal slide retains black text over dark parent background; heading/body barely legible."
+      ]
+    },
+    {
+      "id": "qa158",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa158-768.png"
+      ],
+      "verdict": "fixed-visually",
+      "notes": [
+        "Rechecked identical Polaroid photo: lens/body edges continuous at centre, previous scaling seam removed."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Identical photo comparison has noticeable misalignment at the centre edge."
+      ]
+    },
+    {
+      "id": "qa159",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa159-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed rendered component; labels, controls and layout readable. Interactive behavior recorded by primary runner."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa160",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa160-768-expanded.png",
+        "screenshots/qa160-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa161",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa161-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa162",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa162-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Numbered benefits now show real heart/leaf/shield/bolt SVGs, with clear color markers; expert photo and caption contained."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Editorial two-column benefits and expert image/caption readable; current icons are product images, queued proper SVG variant recapture."
+      ]
+    },
+    {
+      "id": "qa163",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa163-768.png"
+      ],
+      "verdict": "configuration",
+      "notes": [
+        "Real award/leaf/shield icons shown; fine white text on cyan is weak contrast, no clipping."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "White/cyan content readable only weakly in fine body text; product-image markers are fixture placeholders, queued SVG correction."
+      ]
+    },
+    {
+      "id": "qa164",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa164-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Real pink check icons beside each benefit, readable 2-column layout."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ]
+    },
+    {
+      "id": "qa165",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa165-768.png"
+      ],
+      "verdict": "issue",
+      "notes": [
+        "Real SVG icons now present but nested tablet columns still produce very narrow and tall text strips."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Editorial nested composition columns produce ~70px reading strips on tablet and extremely tall fragmented benefit text."
+      ]
+    },
+    {
+      "id": "qa166",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa166-768-expanded.png",
+        "screenshots/qa166-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa167",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa167-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Viewed populated component; no obvious clipping or overlap in this screenshot. Interaction results are recorded separately."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa168",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa168-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Peek rail clearly reveals next card; image/title/body/CTA contained. Mobile1.15 effect itself belongs to390 verification."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Viewed rendered component; labels, controls and layout readable. Interactive behavior recorded by primary runner."
+      ]
+    },
+    {
+      "id": "qa169",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa169-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Loop-always rail screenshot has readable two-card tablet layout; loop operation needs behavior evidence."
+      ],
+      "recaptureReviewed": true,
+      "previousObservation": [
+        "Viewed rendered component; labels, controls and layout readable. Interactive behavior recorded by primary runner."
+      ]
+    },
+    {
+      "id": "qa170",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa170-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Loop-mobile fixture at768 has readable two-card rail; scope behavior needs interaction evidence."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa171",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa171-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Re-inspected latest collector capture. Populated layout, text, product cards and controls remain readable; no new overlap. Behavior/peek semantics are established by the corrected collector, not inferred from a still image."
+      ],
+      "recaptureReviewed": true,
+      "collectorRecaptureReviewed": true
+    },
+    {
+      "id": "qa172",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa172-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Autoplay-off screenshot shows cards1/2, readable layout."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa174",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa174-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Desktop-scoped compact sticky bar visible at768, readable product/price/action."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa175",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa175-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Vimeo paper-plane poster and native controls rendered; playback completion not established by screenshot."
+      ],
+      "recaptureReviewed": true
+    },
+    {
+      "id": "qa176",
+      "width": 768,
+      "screenshots": [
+        "screenshots/qa176-768.png"
+      ],
+      "verdict": "visually-acceptable",
+      "notes": [
+        "Elevated independent light scheme supplies light card surface on dark parent; black copy readable. Contrasts with minimal qa157 issue."
+      ],
+      "recaptureReviewed": true
+    }
+  ],
+  "findings": [
+    {
+      "id": "tablet-heading-width",
+      "severity": "P2",
+      "cases": [
+        "qa003",
+        "qa030",
+        "qa067",
+        "qa068",
+        "qa069"
+      ],
+      "category": "preset/configuration and responsive typography",
+      "description": "At768 large desktop heading sizes and percentage max-width combine with narrow columns to force midword/punctuation breaks.",
+      "status": "open / classification stated in finding"
+    },
+    {
+      "id": "tablet-split-review",
+      "severity": "P2",
+      "cases": [
+        "qa005",
+        "qa092"
+      ],
+      "category": "missing responsive capability",
+      "description": "Split testimonial does not collapse based on its available card width; tablet two-column embedding creates very narrow reading columns.",
+      "status": "open / classification stated in finding"
+    },
+    {
+      "id": "mosaic-large-missing",
+      "severity": "P1",
+      "cases": [
+        "qa019"
+      ],
+      "category": "implementation",
+      "description": "Large first mosaic tile invisible; primary agent measured wrapper height0, explaining blank upper-left cell.",
+      "status": "confirmed open defect"
+    },
+    {
+      "id": "compare-misalignment",
+      "severity": "P1",
+      "cases": [
+        "qa034"
+      ],
+      "category": "implementation",
+      "description": "Identical image halves misaligned at centre.",
+      "status": "fixed and visually rechecked at768"
+    },
+    {
+      "id": "logo-marquee-full-card",
+      "severity": "P2",
+      "cases": [
+        "qa008"
+      ],
+      "category": "configuration/layout requires diagnosis",
+      "description": "Named logo marquee shows a single full-width content card.",
+      "status": "open / classification stated in finding"
+    },
+    {
+      "id": "page-header-contrast",
+      "severity": "P2",
+      "cases": [
+        "qa037"
+      ],
+      "category": "configuration",
+      "description": "Dark text over darkened photo is unreadable.",
+      "status": "open / classification stated in finding"
+    },
+    {
+      "id": "article-content-gap",
+      "severity": "P3",
+      "cases": [
+        "qa023",
+        "qa024",
+        "qa084"
+      ],
+      "category": "missing content",
+      "description": "Article text real but all article media absent.",
+      "status": "open / classification stated in finding"
+    },
+    {
+      "id": "light-child-dark-parent",
+      "severity": "P1",
+      "cases": [
+        "qa157"
+      ],
+      "category": "implementation/configuration boundary",
+      "description": "Independent light-scheme minimal slide emits black text but no light background, causing black-on-dark parent text.",
+      "status": "open / classification stated in finding"
+    },
+    {
+      "id": "tile-bottom-badge-overlap",
+      "severity": "P2",
+      "cases": [
+        "qa120"
+      ],
+      "category": "implementation",
+      "description": "Bottom-left badge overlaps category title.",
+      "status": "open / classification stated in finding"
+    },
+    {
+      "id": "circle-annotation-absent",
+      "severity": "P2",
+      "cases": [
+        "qa102"
+      ],
+      "category": "implementation requires diagnosis",
+      "description": "Circle annotation absent while underline is rendered.",
+      "status": "open / classification stated in finding"
+    },
+    {
+      "id": "external-video-liquid-error",
+      "severity": "P1",
+      "cases": [
+        "qa128"
+      ],
+      "category": "implementation",
+      "description": "Live Liquid external_video_tag rejects VideoUrlDrop.",
+      "status": "fixed and visually rechecked at768"
+    },
+    {
+      "id": "nested-tablet-columns",
+      "severity": "P2",
+      "cases": [
+        "qa153",
+        "qa165"
+      ],
+      "category": "missing responsive capability/configuration",
+      "description": "Nested columns respond to viewport instead of available parent width; very narrow text strips result.",
+      "status": "open / classification stated in finding"
+    },
+    {
+      "id": "sticky-corner-clipped",
+      "severity": "P2",
+      "cases": [
+        "qa135"
+      ],
+      "category": "implementation",
+      "description": "CTA truly exceeds768 viewport: measured right edge773.72px; visual clipping is not screenshot artifact.",
+      "status": "confirmed open defect"
+    }
+  ],
+  "unreviewed": [
+    {
+      "id": "qa173",
+      "width": 768,
+      "reason": "Mobile-only sticky hidden at768; no component screenshot exists. Expected hidden state is primary runner geometry/CSS evidence, not screenshot viewing."
+    }
+  ],
+  "counts": {
+    "reviewedCases": 175,
+    "unreviewedOrIntentionallyHidden": 1,
+    "reviewedScreenshotFiles": 196
+  }
+}

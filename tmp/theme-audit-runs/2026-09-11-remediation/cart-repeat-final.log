@@ -1,0 +1,173 @@
+(node:25110) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 60 tests using 1 worker
+
+[1A[2K(node:25111) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:25111) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:25111) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/60] [desktop] › tests/smoke/won-feedback-8.spec.ts:127:1 › card quick-add renders a stepper once the line exists
+[1A[2K[2/60] [desktop] › tests/smoke/won-feedback-8.spec.ts:171:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K[3/60] [desktop] › tests/smoke/won-toast.spec.ts:49:1 › adding to the cart shows one toast naming the product
+[1A[2K[4/60] [desktop] › tests/smoke/won-toast.spec.ts:70:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K[5/60] [desktop] › tests/smoke/won-toast.spec.ts:98:1 › a burst across different cards is capped at the configured maximum
+[1A[2K[6/60] [desktop] › tests/smoke/won-toast.spec.ts:122:1 › emptying the cart reports removals, one per variant
+[1A[2K[7/60] [desktop] › tests/smoke/won-toast.spec.ts:157:1 › the toast is two lines, and a decrease reads differently from an increase
+[1A[2K[8/60] [desktop] › tests/smoke/won-toast.spec.ts:208:1 › the thumbnail spans the full height of the toast
+[1A[2K[9/60] [desktop] › tests/smoke/won-toast.spec.ts:237:1 › while toasts are on, the cart drawer does not open by itself
+[1A[2K[10/60] [desktop] › tests/smoke/won-toast.spec.ts:247:1 › a top-anchored toast clears the header
+[1A[2K(node:25373) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:25373) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:25373) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[11/60] [desktop] › tests/smoke/won-feedback-8.spec.ts:127:1 › card quick-add renders a stepper once the line exists
+[1A[2K[12/60] [desktop] › tests/smoke/won-feedback-8.spec.ts:171:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K[13/60] [desktop] › tests/smoke/won-toast.spec.ts:49:1 › adding to the cart shows one toast naming the product
+[1A[2K[14/60] [desktop] › tests/smoke/won-toast.spec.ts:70:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K[15/60] [desktop] › tests/smoke/won-toast.spec.ts:98:1 › a burst across different cards is capped at the configured maximum
+[1A[2K[16/60] [desktop] › tests/smoke/won-toast.spec.ts:122:1 › emptying the cart reports removals, one per variant
+[1A[2K[17/60] [desktop] › tests/smoke/won-toast.spec.ts:157:1 › the toast is two lines, and a decrease reads differently from an increase
+[1A[2K[18/60] [desktop] › tests/smoke/won-toast.spec.ts:208:1 › the thumbnail spans the full height of the toast
+[1A[2K[19/60] [desktop] › tests/smoke/won-toast.spec.ts:237:1 › while toasts are on, the cart drawer does not open by itself
+[1A[2K  1) [desktop] › tests/smoke/won-toast.spec.ts:237:1 › while toasts are on, the cart drawer does not open by itself 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveAttribute[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  locator('[data-won-stepper]').first()
+    Expected: [32m"0"[39m
+    Received: [31m""[39m
+    Timeout:  15000ms
+
+    Call log:
+    [2m  - Expect "toHaveAttribute" with timeout 15000ms[22m
+    [2m  - waiting for locator('[data-won-stepper]').first()[22m
+    [2m    18 × locator resolved to <div data-won-stepper="" class="won-pcard__add won-pcard__add--stepper won-fx won-fx--hover-lift won-fx--sheen-hover won-fx--press-sink won-fx--speed-normal">…</div>[22m
+    [2m       - unexpected value "null"[22m
+
+
+       at support/cart-state.ts:36
+
+      34 |       'b2b-b2c-store-development.myshopify.com');
+      35 |   const cleared = await page.request.post("/cart/clear.js");
+    > 36 |   expect(cleared.ok(), "cart setup must succeed").toBeTruthy();
+         |                                                            ^
+      37 |   expect((await cleared.json()).item_count).toBe(0);
+      38 |   await page.reload({ waitUntil: "load" });
+      39 |   await expect(page.locator("[data-won-stepper]").first()).toHaveAttribute(
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:36:60)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:46:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-won-toast-while-toas-bdee4-wer-does-not-open-by-itself-desktop-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-won-toast-while-toas-bdee4-wer-does-not-open-by-itself-desktop-repeat1/error-context.md
+
+
+[1A[2K(node:26124) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:26124) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:26124) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[20/60] [desktop] › tests/smoke/won-toast.spec.ts:247:1 › a top-anchored toast clears the header
+[1A[2K(node:26137) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:26137) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:26137) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[21/60] [desktop] › tests/smoke/won-feedback-8.spec.ts:127:1 › card quick-add renders a stepper once the line exists
+[1A[2K[22/60] [desktop] › tests/smoke/won-feedback-8.spec.ts:171:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K[23/60] [desktop] › tests/smoke/won-toast.spec.ts:49:1 › adding to the cart shows one toast naming the product
+[1A[2K[24/60] [desktop] › tests/smoke/won-toast.spec.ts:70:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K[25/60] [desktop] › tests/smoke/won-toast.spec.ts:98:1 › a burst across different cards is capped at the configured maximum
+[1A[2K[26/60] [desktop] › tests/smoke/won-toast.spec.ts:122:1 › emptying the cart reports removals, one per variant
+[1A[2K[27/60] [desktop] › tests/smoke/won-toast.spec.ts:157:1 › the toast is two lines, and a decrease reads differently from an increase
+[1A[2K[28/60] [desktop] › tests/smoke/won-toast.spec.ts:208:1 › the thumbnail spans the full height of the toast
+[1A[2K[29/60] [desktop] › tests/smoke/won-toast.spec.ts:237:1 › while toasts are on, the cart drawer does not open by itself
+[1A[2K[30/60] [desktop] › tests/smoke/won-toast.spec.ts:247:1 › a top-anchored toast clears the header
+[1A[2K(node:26487) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:26487) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:26487) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[31/60] [mobile] › tests/smoke/won-feedback-8.spec.ts:127:1 › card quick-add renders a stepper once the line exists
+[1A[2K[32/60] [mobile] › tests/smoke/won-feedback-8.spec.ts:171:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K[33/60] [mobile] › tests/smoke/won-toast.spec.ts:49:1 › adding to the cart shows one toast naming the product
+[1A[2K[34/60] [mobile] › tests/smoke/won-toast.spec.ts:70:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K[35/60] [mobile] › tests/smoke/won-toast.spec.ts:98:1 › a burst across different cards is capped at the configured maximum
+[1A[2K[36/60] [mobile] › tests/smoke/won-toast.spec.ts:122:1 › emptying the cart reports removals, one per variant
+[1A[2K[37/60] [mobile] › tests/smoke/won-toast.spec.ts:157:1 › the toast is two lines, and a decrease reads differently from an increase
+[1A[2K[38/60] [mobile] › tests/smoke/won-toast.spec.ts:208:1 › the thumbnail spans the full height of the toast
+[1A[2K[39/60] [mobile] › tests/smoke/won-toast.spec.ts:237:1 › while toasts are on, the cart drawer does not open by itself
+[1A[2K[40/60] [mobile] › tests/smoke/won-toast.spec.ts:247:1 › a top-anchored toast clears the header
+[1A[2K(node:26701) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:26701) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:26701) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[41/60] [mobile] › tests/smoke/won-feedback-8.spec.ts:127:1 › card quick-add renders a stepper once the line exists
+[1A[2K[42/60] [mobile] › tests/smoke/won-feedback-8.spec.ts:171:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K[43/60] [mobile] › tests/smoke/won-toast.spec.ts:49:1 › adding to the cart shows one toast naming the product
+[1A[2K[44/60] [mobile] › tests/smoke/won-toast.spec.ts:70:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K[45/60] [mobile] › tests/smoke/won-toast.spec.ts:98:1 › a burst across different cards is capped at the configured maximum
+[1A[2K[46/60] [mobile] › tests/smoke/won-toast.spec.ts:122:1 › emptying the cart reports removals, one per variant
+[1A[2K[47/60] [mobile] › tests/smoke/won-toast.spec.ts:157:1 › the toast is two lines, and a decrease reads differently from an increase
+[1A[2K[48/60] [mobile] › tests/smoke/won-toast.spec.ts:208:1 › the thumbnail spans the full height of the toast
+[1A[2K[49/60] [mobile] › tests/smoke/won-toast.spec.ts:237:1 › while toasts are on, the cart drawer does not open by itself
+[1A[2K[50/60] [mobile] › tests/smoke/won-toast.spec.ts:247:1 › a top-anchored toast clears the header
+[1A[2K(node:26742) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:26742) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:26742) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[51/60] [mobile] › tests/smoke/won-feedback-8.spec.ts:127:1 › card quick-add renders a stepper once the line exists
+[1A[2K[52/60] [mobile] › tests/smoke/won-feedback-8.spec.ts:171:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K[53/60] [mobile] › tests/smoke/won-toast.spec.ts:49:1 › adding to the cart shows one toast naming the product
+[1A[2K[54/60] [mobile] › tests/smoke/won-toast.spec.ts:70:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K[55/60] [mobile] › tests/smoke/won-toast.spec.ts:98:1 › a burst across different cards is capped at the configured maximum
+[1A[2K[56/60] [mobile] › tests/smoke/won-toast.spec.ts:122:1 › emptying the cart reports removals, one per variant
+[1A[2K[57/60] [mobile] › tests/smoke/won-toast.spec.ts:157:1 › the toast is two lines, and a decrease reads differently from an increase
+[1A[2K[58/60] [mobile] › tests/smoke/won-toast.spec.ts:208:1 › the thumbnail spans the full height of the toast
+[1A[2K[59/60] [mobile] › tests/smoke/won-toast.spec.ts:237:1 › while toasts are on, the cart drawer does not open by itself
+[1A[2K[60/60] [mobile] › tests/smoke/won-toast.spec.ts:247:1 › a top-anchored toast clears the header
+[1A[2K  1 failed
+    [desktop] › tests/smoke/won-toast.spec.ts:237:1 › while toasts are on, the cart drawer does not open by itself 
+  59 passed (5.7m)

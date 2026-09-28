@@ -2,11 +2,13 @@
   won-product-card — the one product card used everywhere (carousel, PLP, search,
   cross-sell). Badges + quick-add (global won-cart.js) + optional price-per-unit.
   Params: product (required), aspect ('square'|'portrait'|'landscape'|'natural'),
-  show_add (default true), show_badges (default true), show_ppu + ppu_base +
-  ppu_amount + ppu_metafield (per-unit price on the card).
+  layout ('card' default | 'row'), show_add (default true), show_badges (default true), show_ppu + ppu_rules
+  (per-unit price on the card; the ladder lives in the theme setting
+  won_unit_price_rules, ppu_rules is an optional per-section override).
 {%- endcomment -%}
 {%- liquid
   assign aspect = aspect | default: 'portrait'
+  assign layout = layout | default: 'card'
   if show_add == nil
     assign show_add = true
   endif
@@ -14,48 +16,23 @@
     assign show_badges = true
   endif
   assign pv = product.selected_or_first_available_variant
-
-  assign ppu_out = ''
-  if show_ppu and ppu_amount != blank
-    assign amt = ppu_amount
-    if ppu_metafield != blank
-      assign parts = ppu_metafield | split: '.'
-      assign mfv = product.metafields[parts[0]][parts[1]].value
-      if mfv != blank and mfv > 0
-        assign amt = mfv
-      endif
-    endif
-    if amt > 0
-      assign base = ppu_base | default: 'per_100g'
-      if base == 'per_kg'
-        assign up = pv.price | times: 1000 | divided_by: amt
-        assign ulabel = 'won.unit.per_kg' | t
-      elsif base == 'per_serving'
-        assign up = pv.price | divided_by: amt
-        assign ulabel = 'won.unit.per_serving' | t
-      else
-        assign up = pv.price | times: 100 | divided_by: amt
-        assign ulabel = 'won.unit.per_100g' | t
-      endif
-      assign ppu_out = up | money | append: ' / ' | append: ulabel
-    endif
-  endif
 -%}
+{%- capture ppu_out -%}
+  {%- if show_ppu -%}
+    {%- render 'won-unit-price', product: product, variant: pv, rules: ppu_rules, format: 'text' -%}
+  {%- endif -%}
+{%- endcapture -%}
 {%- liquid
+  assign ppu_out = ppu_out | strip
+
   # Card quick-add is a theme-wide decision: the same control on every card,
   # wherever the card is rendered (carousel, PLP, cross-sell).
   assign card_add_mode = settings.won_card_add_mode | default: 'button'
   assign card_add_align = settings.won_card_add_align | default: 'end'
   assign card_add_reveal = settings.won_card_add_reveal | default: 'hover'
+  assign card_add_size = settings.won_card_add_size | default: 'regular'
 -%}
-<div class="won-pcard won-pcard--add-{{ card_add_align }} won-pcard--reveal-{{ card_add_reveal }}">
-  <div class="won-pcard__media won-pcard__media--{{ aspect }}">
-    {%- if show_badges -%}<div class="won-pcard__badges">{% render 'won-badges', product: product %}</div>{%- endif -%}
-    <a class="won-pcard__media-link{% unless product.featured_image %} won-pcard__media-link--placeholder{% endunless %}" href="{{ product.url }}" aria-label="{{ product.title | escape }}">
-      {%- if product.featured_image -%}
-        {{ product.featured_image | image_url: width: 800 | image_tag: widths: '200, 300, 400, 600, 800', sizes: '(min-width: 1024px) 25vw, 60vw', class: 'won-pcard__img', loading: 'lazy', alt: product.featured_image.alt | default: product.title }}
-      {%- endif -%}
-    </a>
+{%- capture card_action -%}
     {%- if show_add -%}
       {%- if product.available -%}
         {%- if product.has_only_default_variant or product.variants.size == 1 -%}
@@ -77,14 +54,42 @@
             <button type="button" class="won-pcard__add {% render 'won-fx' %}" data-won-add data-variant-id="{{ pv.id }}" data-added-label="{{ 'won.cart.added' | t }}" aria-label="{{ 'won.cart.add' | t }}: {{ product.title | escape }}"><span class="won-pcard__add-label">{{ 'won.cart.add' | t }}</span></button>
           {%- endif -%}
         {%- else -%}
-          <a class="won-pcard__add won-pcard__add--link {% render 'won-fx' %}" href="{{ product.url }}">{{ 'won.cart.choose' | t }}</a>
+          {%- comment -%} A card cannot add a multi-variant product to the cart — it does
+            not know which variant. Sending the shopper to the PDP for that is a full page
+            load out of the grid they were scanning; for impulse goods a modal keeps them
+            in the listing.
+            It stays a real <a href> either way: the link works with no JS, is crawlable
+            (SEO-001), and quick view is an enhancement layered on top of it. The dialog
+            itself is HORIZON's, already in layout/theme.liquid (conventions C8) — only the
+            trigger is ours, so the button keeps the card's CTA shape for free. {%- endcomment -%}
+          {%- assign choose_action = settings.won_card_choose_action | default: 'modal' -%}
+          <a
+            class="won-pcard__add won-pcard__add--link {% render 'won-fx' %}"
+            href="{{ product.url }}"
+            {% if choose_action == 'modal' %}data-won-quickview{% endif %}
+          >{{ 'won.cart.choose' | t }}</a>
+          {%- if choose_action == 'modal' -%}
+            <script src="{{ 'won-quick-view.js' | asset_url }}" defer></script>
+          {%- endif -%}
         {%- endif -%}
       {%- else -%}
         <span class="won-pcard__add won-pcard__add--soldout" aria-disabled="true">{{ 'won.cart.soldout' | t }}</span>
       {%- endif -%}
     {%- endif -%}
+{%- endcapture -%}
+{%- if layout == 'row' -%}<div class="won-pcard-row-shell">{%- endif -%}
+<div class="won-pcard{% if layout == 'row' %} won-pcard--row{% endif %} won-pcard--add-{{ card_add_align }} won-pcard--reveal-{{ card_add_reveal }} won-pcard--cta-{{ card_add_size }}">
+  <div class="won-pcard__media won-pcard__media--{{ aspect }}">
+    {%- if show_badges and layout != 'row' -%}<div class="won-pcard__badges">{% render 'won-badges', product: product %}</div>{%- endif -%}
+    <a class="won-pcard__media-link{% unless product.featured_image %} won-pcard__media-link--placeholder{% endunless %}" href="{{ product.url }}" aria-label="{{ product.title | escape }}">
+      {%- if product.featured_image -%}
+        {{ product.featured_image | image_url: width: 800 | image_tag: widths: '200, 300, 400, 600, 800', sizes: '(min-width: 1024px) 25vw, 60vw', class: 'won-pcard__img', loading: 'lazy', alt: product.featured_image.alt | default: product.title }}
+      {%- endif -%}
+    </a>
+    {%- unless layout == 'row' -%}{{ card_action }}{%- endunless -%}
   </div>
   <a class="won-pcard__info" href="{{ product.url }}">
+    {%- if show_badges and layout == 'row' -%}<div class="won-pcard__row-badges">{% render 'won-badges', product: product %}</div>{%- endif -%}
     <div class="won-pcard__title">{{ product.title }}</div>
     {% render 'won-rating', product: product %}
     <div class="won-pcard__price">
@@ -97,4 +102,6 @@
     </div>
     {%- if ppu_out != blank -%}<div class="won-pcard__ppu">{{ ppu_out }}</div>{%- endif -%}
   </a>
+  {%- if layout == 'row' -%}{{ card_action }}{%- endif -%}
 </div>
+{%- if layout == 'row' -%}</div>{%- endif -%}

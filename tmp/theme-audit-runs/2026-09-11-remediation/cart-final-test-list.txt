@@ -1,0 +1,16 @@
+Listing tests:
+  [desktop] › smoke/won-feedback-8.spec.ts:53:1 › rail progress bar and arrows share one control row
+  [desktop] › smoke/won-feedback-8.spec.ts:96:1 › quick add updates the header cart count
+  [desktop] › smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists
+  [desktop] › smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight
+  [desktop] › smoke/won-feedback-8.spec.ts:234:1 › won-feature rows align their body text across the row
+  [desktop] › smoke/won-feedback-8.spec.ts:283:1 › PDP main media shows the whole packshot with breathing room
+  [desktop] › smoke/won-feedback-8.spec.ts:314:1 › PDP puts the product description under the price, and ships no highlights block
+  [mobile] › smoke/won-feedback-8.spec.ts:53:1 › rail progress bar and arrows share one control row
+  [mobile] › smoke/won-feedback-8.spec.ts:96:1 › quick add updates the header cart count
+  [mobile] › smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists
+  [mobile] › smoke/won-feedback-8.spec.ts:169:1 › card decrement reaches zero when earlier update is still in flight
+  [mobile] › smoke/won-feedback-8.spec.ts:234:1 › won-feature rows align their body text across the row
+  [mobile] › smoke/won-feedback-8.spec.ts:283:1 › PDP main media shows the whole packshot with breathing room
+  [mobile] › smoke/won-feedback-8.spec.ts:314:1 › PDP puts the product description under the price, and ships no highlights block
+Total: 14 tests in 1 file

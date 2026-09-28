@@ -1,0 +1,204 @@
+{
+  "config": {
+    "configFile": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/playwright.config.ts",
+    "rootDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 1,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-release-gate/matrix-editorial-cart-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-release-gate/matrix-editorial-cart-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "mobile",
+        "name": "mobile",
+        "testDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "smoke/won-editorial.spec.ts",
+      "file": "smoke/won-editorial.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "editorial PDP",
+          "file": "smoke/won-editorial.spec.ts",
+          "line": 20,
+          "column": 6,
+          "specs": [
+            {
+              "title": "native variant changes update price and submit the selected item",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 16661,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveAttribute\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-won-stepper]').first()\nExpected: \u001b[32m\"0\"\u001b[39m\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toHaveAttribute\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-won-stepper]').first()\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveAttribute\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-won-stepper]').first()\nExpected: \u001b[32m\"0\"\u001b[39m\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toHaveAttribute\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-won-stepper]').first()\u001b[22m\n\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:156:62)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts:115:5",
+                        "location": {
+                          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                          "column": 62,
+                          "line": 156
+                        },
+                        "snippet": "\u001b[90m   at \u001b[39msupport/cart-state.ts:156\n\n  154 |   }\n  155 |   try {\n> 156 |     await expect(page.locator(\"[data-won-stepper]\").first()).toHaveAttribute(\n      |                                                              ^\n  157 |       \"data-won-rendered-qty\",\n  158 |       \"0\",\n  159 |     );"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                            "column": 62,
+                            "line": 156
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveAttribute\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('[data-won-stepper]').first()\nExpected: \u001b[32m\"0\"\u001b[39m\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toHaveAttribute\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for locator('[data-won-stepper]').first()\u001b[22m\n\n\n   at support/cart-state.ts:156\n\n  154 |   }\n  155 |   try {\n> 156 |     await expect(page.locator(\"[data-won-stepper]\").first()).toHaveAttribute(\n      |                                                              ^\n  157 |       \"data-won-rendered-qty\",\n  158 |       \"0\",\n  159 |     );\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:156:62)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts:115:5"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-11T10:02:26.874Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "cart-initialization-diagnostics",
+                          "contentType": "application/json",
+                          "body": "ewogICJuZXR3b3JrIjogWwogICAgewogICAgICAiYXQiOiAxNzg5MTIwOTQ4MjYxLAogICAgICAibWV0aG9kIjogIkdFVCIsCiAgICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2Nkbi9zaG9wL3QvMTQvYXNzZXRzL2ZseS10by1jYXJ0LmpzP3Y9MTI5OTcxNzUzNjczNDU4NjkzODgxNzg4MzM2MjUwIiwKICAgICAgInN0YXR1cyI6IDIwMCwKICAgICAgInJldHJ5QWZ0ZXIiOiBudWxsLAogICAgICAiY29udGVudFR5cGUiOiAiYXBwbGljYXRpb24vamF2YXNjcmlwdCIKICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDgyNjgsCiAgICAgICJjb25zb2xlRXJyb3IiOiAiQWNjZXNzIHRvIHNjcmlwdCBhdCAnaHR0cDovL2Nkbi5zaG9waWZ5LmNvbS9zaG9waWZ5Y2xvdWQvc3RvcmVmcm9udC9hc3NldHMvc3RvcmVmcm9udC9vcmlnaW5fdHJpYWxzLTUwNTliODNmLmpzJyBmcm9tIG9yaWdpbiAnaHR0cDovLzEyNy4wLjAuMTo5MjkyJyBoYXMgYmVlbiBibG9ja2VkIGJ5IENPUlMgcG9saWN5OiBObyAnQWNjZXNzLUNvbnRyb2wtQWxsb3ctT3JpZ2luJyBoZWFkZXIgaXMgcHJlc2VudCBvbiB0aGUgcmVxdWVzdGVkIHJlc291cmNlLiIKICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDgyNjgsCiAgICAgICJ1cmwiOiAiaHR0cDovL2Nkbi5zaG9waWZ5LmNvbS9zaG9waWZ5Y2xvdWQvc3RvcmVmcm9udC9hc3NldHMvc3RvcmVmcm9udC9vcmlnaW5fdHJpYWxzLTUwNTliODNmLmpzIiwKICAgICAgImZhaWx1cmUiOiB7CiAgICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9GQUlMRUQiCiAgICAgIH0KICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDgyNjgsCiAgICAgICJjb25zb2xlRXJyb3IiOiAiRmFpbGVkIHRvIGxvYWQgcmVzb3VyY2U6IG5ldDo6RVJSX0ZBSUxFRCIKICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDgyNzIsCiAgICAgICJtZXRob2QiOiAiR0VUIiwKICAgICAgInVybCI6ICJodHRwOi8vMTI3LjAuMC4xOjkyOTIvY2RuL3Nob3AvdC8xNC9hc3NldHMvc3RpY2t5LWFkZC10by1jYXJ0LmpzP3Y9NDg5NTY5MjUzMzkyNzY3MzcwOTE3ODgxODY4MTUiLAogICAgICAic3RhdHVzIjogMjAwLAogICAgICAicmV0cnlBZnRlciI6IG51bGwsCiAgICAgICJjb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qYXZhc2NyaXB0IgogICAgfSwKICAgIHsKICAgICAgImF0IjogMTc4OTEyMDk0ODI3MiwKICAgICAgIm1ldGhvZCI6ICJHRVQiLAogICAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jZG4vc2hvcC90LzE0L2Fzc2V0cy93b24tY2FydC5qcz92PTE0MzE2NzAwNjQ2MTgyOTAwMjIxMTc4ODQyMjY2NSIsCiAgICAgICJzdGF0dXMiOiAyMDAsCiAgICAgICJyZXRyeUFmdGVyIjogbnVsbCwKICAgICAgImNvbnRlbnRUeXBlIjogImFwcGxpY2F0aW9uL2phdmFzY3JpcHQiCiAgICB9LAogICAgewogICAgICAiYXQiOiAxNzg5MTIwOTQ4Mzg2LAogICAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi93ZWItcGl4ZWxzQGQ3NjE4OTZjdzY1Mjc1MmI5cDUzODE3Mjc4bTc2NjVmY2UwL2N1c3RvbS93ZWItcGl4ZWwtc2hvcGlmeS1jdXN0b20tcGl4ZWxAMDUyMC9zYW5kYm94L21vZGVybi9wcm9kdWN0cy90aGUtdmlkZW9ncmFwaGVyLXNub3dib2FyZD92aWV3PXdvbi1xYS1lZGl0b3JpYWwiLAogICAgICAiZmFpbHVyZSI6IHsKICAgICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICAgIH0KICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDg0NzYsCiAgICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2FwaS9jb2xsZWN0IiwKICAgICAgImZhaWx1cmUiOiB7CiAgICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgICB9CiAgICB9LAogICAgewogICAgICAiYXQiOiAxNzg5MTIwOTQ4NTY2LAogICAgICAidXJsIjogImh0dHBzOi8vc2hvcC5hcHAvcGF5L2hvcD9hbmFseXRpY3NfdHJhY2VfaWQ9YTBlZDU5NDMtMmFkZC00ZDhhLWFmMjQtNzA5YzAxYjM1NmM3JnRhcmdldF9vcmlnaW49aHR0cCUzQSUyRiUyRjEyNy4wLjAuMSUzQTkyOTImY2xpZW50X2hhbmRsZT1iMmItYjJjLXN0b3JlLWRldmVsb3BtZW50Lm15c2hvcGlmeS5jb20iLAogICAgICAiZmFpbHVyZSI6IHsKICAgICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0JMT0NLRURfQllfUkVTUE9OU0UiCiAgICAgIH0KICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDg1NjYsCiAgICAgICJjb25zb2xlRXJyb3IiOiAiRnJhbWluZyAnaHR0cHM6Ly9zaG9wLmFwcC8nIHZpb2xhdGVzIHRoZSBmb2xsb3dpbmcgQ29udGVudCBTZWN1cml0eSBQb2xpY3kgZGlyZWN0aXZlOiBcImZyYW1lLWFuY2VzdG9ycyAnc2VsZicgaHR0cHM6Ly9zaG9wLmFwcCBodHRwczovL2FkbWluLnNob3BpZnkuY29tXCIuIFRoZSByZXF1ZXN0IGhhcyBiZWVuIGJsb2NrZWQuXG4iCiAgICB9LAogICAgewogICAgICAiYXQiOiAxNzg5MTIwOTQ4NTY3LAogICAgICAiY29uc29sZUVycm9yIjogIkZhaWxlZCB0byBsb2FkIHJlc291cmNlOiB0aGUgc2VydmVyIHJlc3BvbmRlZCB3aXRoIGEgc3RhdHVzIG9mIDQwMyAoKSIKICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDg3MTUsCiAgICAgICJ1cmwiOiAiaHR0cHM6Ly9tb25vcmFpbC1lZGdlLnNob3BpZnlzdmMuY29tL3YxL3Byb2R1Y2UiLAogICAgICAiZmFpbHVyZSI6IHsKICAgICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICAgIH0KICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDg3MTgsCiAgICAgICJ1cmwiOiAiaHR0cHM6Ly9tb25vcmFpbC1lZGdlLnNob3BpZnlzdmMuY29tL3YxL3Byb2R1Y2UiLAogICAgICAiZmFpbHVyZSI6IHsKICAgICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICAgIH0KICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDg3MjMsCiAgICAgICJ1cmwiOiAiaHR0cHM6Ly9tb25vcmFpbC1lZGdlLnNob3BpZnlzdmMuY29tL3YxL3Byb2R1Y2UiLAogICAgICAiZmFpbHVyZSI6IHsKICAgICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICAgIH0KICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDg3MjQsCiAgICAgICJ1cmwiOiAiaHR0cHM6Ly9tb25vcmFpbC1lZGdlLnNob3BpZnlzdmMuY29tL3YxL3Byb2R1Y2UiLAogICAgICAiZmFpbHVyZSI6IHsKICAgICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICAgIH0KICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDg3MjQsCiAgICAgICJ1cmwiOiAiaHR0cHM6Ly9tb25vcmFpbC1lZGdlLnNob3BpZnlzdmMuY29tL3YxL3Byb2R1Y2UiLAogICAgICAiZmFpbHVyZSI6IHsKICAgICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICAgIH0KICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDg3MzEsCiAgICAgICJ1cmwiOiAiaHR0cHM6Ly9tb25vcmFpbC1lZGdlLnNob3BpZnlzdmMuY29tL3YxL3Byb2R1Y2UiLAogICAgICAiZmFpbHVyZSI6IHsKICAgICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICAgIH0KICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDg3MzQsCiAgICAgICJ1cmwiOiAiaHR0cHM6Ly9tb25vcmFpbC1lZGdlLnNob3BpZnlzdmMuY29tL3YxL3Byb2R1Y2UiLAogICAgICAiZmFpbHVyZSI6IHsKICAgICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICAgIH0KICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDg4MjEsCiAgICAgICJsYWJlbCI6ICJpbml0aWFsIGNhcnQgcmVhZCIsCiAgICAgICJtZXRob2QiOiAiR0VUIiwKICAgICAgInVybCI6ICJodHRwOi8vMTI3LjAuMC4xOjkyOTIvY2FydC5qcyIsCiAgICAgICJzdGF0dXMiOiAyMDAsCiAgICAgICJyZXRyeUFmdGVyIjogbnVsbCwKICAgICAgImNvbnRlbnRUeXBlIjogInRleHQvamF2YXNjcmlwdDsgY2hhcnNldD11dGYtOCIsCiAgICAgICJib2R5RXhjZXJwdCI6ICJ7XCJ0b2tlblwiOlwiZGU1NjcwNDA0YWY5N2E3ODUzMDMxYmUzYTBlMjQwMmVcIixcIm5vdGVcIjpudWxsLFwiYXR0cmlidXRlc1wiOnt9LFwib3JpZ2luYWxfdG90YWxfcHJpY2VcIjowLFwidG90YWxfcHJpY2VcIjowLFwidG90YWxfZGlzY291bnRcIjowLFwidG90YWxfd2VpZ2h0XCI6MC4wLFwiaXRlbV9jb3VudFwiOjAsXCJpdGVtc1wiOltdLFwicmVxdWlyZXNfc2hpcHBpbmdcIjpmYWxzZSxcImN1cnJlbmN5XCI6XCJVU0RcIixcIml0ZW1zX3N1YnRvdGFsX3ByaWNlXCI6MCxcImNhcnRfbGV2ZWxfZGlzY291bnRfYXBwbGljYXRpb25zXCI6W10sXCJkaXNjb3VudF9jb2Rlc1wiOltdfSIKICAgIH0sCiAgICB7CiAgICAgICJhdCI6IDE3ODkxMjA5NDg5MDIsCiAgICAgICJ1cmwiOiAiaHR0cHM6Ly9lcnJvci1hbmFseXRpY3Mtc2Vzc2lvbnMtcHJvZHVjdGlvbi5zaG9waWZ5c3ZjLmNvbS9vYnNlcnZlb25seSIsCiAgICAgICJmYWlsdXJlIjogewogICAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfQUJPUlRFRCIKICAgICAgfQogICAgfQogIF0sCiAgInJ1bnRpbWUiOiB7CiAgICAiYm91bmQiOiB0cnVlLAogICAgImF2YWlsYWJsZSI6IHRydWUKICB9Cn0="
+                        },
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-release-gate/matrix-editorial-cart-results/smoke-won-editorial-editor-5ba79-nd-submit-the-selected-item-desktop/test-failed-1.png"
+                        },
+                        {
+                          "name": "cart-request-diagnostics",
+                          "contentType": "application/json",
+                          "body": "WwogIHsKICAgICJhdCI6IDE3ODkxMjA5NDgyNjEsCiAgICAibWV0aG9kIjogIkdFVCIsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jZG4vc2hvcC90LzE0L2Fzc2V0cy9mbHktdG8tY2FydC5qcz92PTEyOTk3MTc1MzY3MzQ1ODY5Mzg4MTc4ODMzNjI1MCIsCiAgICAic3RhdHVzIjogMjAwLAogICAgInJldHJ5QWZ0ZXIiOiBudWxsLAogICAgImNvbnRlbnRUeXBlIjogImFwcGxpY2F0aW9uL2phdmFzY3JpcHQiCiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTIwOTQ4MjY4LAogICAgImNvbnNvbGVFcnJvciI6ICJBY2Nlc3MgdG8gc2NyaXB0IGF0ICdodHRwOi8vY2RuLnNob3BpZnkuY29tL3Nob3BpZnljbG91ZC9zdG9yZWZyb250L2Fzc2V0cy9zdG9yZWZyb250L29yaWdpbl90cmlhbHMtNTA1OWI4M2YuanMnIGZyb20gb3JpZ2luICdodHRwOi8vMTI3LjAuMC4xOjkyOTInIGhhcyBiZWVuIGJsb2NrZWQgYnkgQ09SUyBwb2xpY3k6IE5vICdBY2Nlc3MtQ29udHJvbC1BbGxvdy1PcmlnaW4nIGhlYWRlciBpcyBwcmVzZW50IG9uIHRoZSByZXF1ZXN0ZWQgcmVzb3VyY2UuIgogIH0sCiAgewogICAgImF0IjogMTc4OTEyMDk0ODI2OCwKICAgICJ1cmwiOiAiaHR0cDovL2Nkbi5zaG9waWZ5LmNvbS9zaG9waWZ5Y2xvdWQvc3RvcmVmcm9udC9hc3NldHMvc3RvcmVmcm9udC9vcmlnaW5fdHJpYWxzLTUwNTliODNmLmpzIiwKICAgICJmYWlsdXJlIjogewogICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0ZBSUxFRCIKICAgIH0KICB9LAogIHsKICAgICJhdCI6IDE3ODkxMjA5NDgyNjgsCiAgICAiY29uc29sZUVycm9yIjogIkZhaWxlZCB0byBsb2FkIHJlc291cmNlOiBuZXQ6OkVSUl9GQUlMRUQiCiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTIwOTQ4MjcyLAogICAgIm1ldGhvZCI6ICJHRVQiLAogICAgInVybCI6ICJodHRwOi8vMTI3LjAuMC4xOjkyOTIvY2RuL3Nob3AvdC8xNC9hc3NldHMvc3RpY2t5LWFkZC10by1jYXJ0LmpzP3Y9NDg5NTY5MjUzMzkyNzY3MzcwOTE3ODgxODY4MTUiLAogICAgInN0YXR1cyI6IDIwMCwKICAgICJyZXRyeUFmdGVyIjogbnVsbCwKICAgICJjb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qYXZhc2NyaXB0IgogIH0sCiAgewogICAgImF0IjogMTc4OTEyMDk0ODI3MiwKICAgICJtZXRob2QiOiAiR0VUIiwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2Nkbi9zaG9wL3QvMTQvYXNzZXRzL3dvbi1jYXJ0LmpzP3Y9MTQzMTY3MDA2NDYxODI5MDAyMjExNzg4NDIyNjY1IiwKICAgICJzdGF0dXMiOiAyMDAsCiAgICAicmV0cnlBZnRlciI6IG51bGwsCiAgICAiY29udGVudFR5cGUiOiAiYXBwbGljYXRpb24vamF2YXNjcmlwdCIKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMjA5NDgzODYsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi93ZWItcGl4ZWxzQGQ3NjE4OTZjdzY1Mjc1MmI5cDUzODE3Mjc4bTc2NjVmY2UwL2N1c3RvbS93ZWItcGl4ZWwtc2hvcGlmeS1jdXN0b20tcGl4ZWxAMDUyMC9zYW5kYm94L21vZGVybi9wcm9kdWN0cy90aGUtdmlkZW9ncmFwaGVyLXNub3dib2FyZD92aWV3PXdvbi1xYS1lZGl0b3JpYWwiLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfQUJPUlRFRCIKICAgIH0KICB9LAogIHsKICAgICJhdCI6IDE3ODkxMjA5NDg0NzYsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9hcGkvY29sbGVjdCIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTEyMDk0ODU2NiwKICAgICJ1cmwiOiAiaHR0cHM6Ly9zaG9wLmFwcC9wYXkvaG9wP2FuYWx5dGljc190cmFjZV9pZD1hMGVkNTk0My0yYWRkLTRkOGEtYWYyNC03MDljMDFiMzU2YzcmdGFyZ2V0X29yaWdpbj1odHRwJTNBJTJGJTJGMTI3LjAuMC4xJTNBOTI5MiZjbGllbnRfaGFuZGxlPWIyYi1iMmMtc3RvcmUtZGV2ZWxvcG1lbnQubXlzaG9waWZ5LmNvbSIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9CTE9DS0VEX0JZX1JFU1BPTlNFIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTEyMDk0ODU2NiwKICAgICJjb25zb2xlRXJyb3IiOiAiRnJhbWluZyAnaHR0cHM6Ly9zaG9wLmFwcC8nIHZpb2xhdGVzIHRoZSBmb2xsb3dpbmcgQ29udGVudCBTZWN1cml0eSBQb2xpY3kgZGlyZWN0aXZlOiBcImZyYW1lLWFuY2VzdG9ycyAnc2VsZicgaHR0cHM6Ly9zaG9wLmFwcCBodHRwczovL2FkbWluLnNob3BpZnkuY29tXCIuIFRoZSByZXF1ZXN0IGhhcyBiZWVuIGJsb2NrZWQuXG4iCiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTIwOTQ4NTY3LAogICAgImNvbnNvbGVFcnJvciI6ICJGYWlsZWQgdG8gbG9hZCByZXNvdXJjZTogdGhlIHNlcnZlciByZXNwb25kZWQgd2l0aCBhIHN0YXR1cyBvZiA0MDMgKCkiCiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTIwOTQ4NzE1LAogICAgInVybCI6ICJodHRwczovL21vbm9yYWlsLWVkZ2Uuc2hvcGlmeXN2Yy5jb20vdjEvcHJvZHVjZSIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTEyMDk0ODcxOCwKICAgICJ1cmwiOiAiaHR0cHM6Ly9tb25vcmFpbC1lZGdlLnNob3BpZnlzdmMuY29tL3YxL3Byb2R1Y2UiLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfQUJPUlRFRCIKICAgIH0KICB9LAogIHsKICAgICJhdCI6IDE3ODkxMjA5NDg3MjMsCiAgICAidXJsIjogImh0dHBzOi8vbW9ub3JhaWwtZWRnZS5zaG9waWZ5c3ZjLmNvbS92MS9wcm9kdWNlIiwKICAgICJmYWlsdXJlIjogewogICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICB9CiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTIwOTQ4NzI0LAogICAgInVybCI6ICJodHRwczovL21vbm9yYWlsLWVkZ2Uuc2hvcGlmeXN2Yy5jb20vdjEvcHJvZHVjZSIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTEyMDk0ODcyNCwKICAgICJ1cmwiOiAiaHR0cHM6Ly9tb25vcmFpbC1lZGdlLnNob3BpZnlzdmMuY29tL3YxL3Byb2R1Y2UiLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfQUJPUlRFRCIKICAgIH0KICB9LAogIHsKICAgICJhdCI6IDE3ODkxMjA5NDg3MzEsCiAgICAidXJsIjogImh0dHBzOi8vbW9ub3JhaWwtZWRnZS5zaG9waWZ5c3ZjLmNvbS92MS9wcm9kdWNlIiwKICAgICJmYWlsdXJlIjogewogICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICB9CiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTIwOTQ4NzM0LAogICAgInVybCI6ICJodHRwczovL21vbm9yYWlsLWVkZ2Uuc2hvcGlmeXN2Yy5jb20vdjEvcHJvZHVjZSIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTEyMDk0ODgyMSwKICAgICJsYWJlbCI6ICJpbml0aWFsIGNhcnQgcmVhZCIsCiAgICAibWV0aG9kIjogIkdFVCIsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jYXJ0LmpzIiwKICAgICJzdGF0dXMiOiAyMDAsCiAgICAicmV0cnlBZnRlciI6IG51bGwsCiAgICAiY29udGVudFR5cGUiOiAidGV4dC9qYXZhc2NyaXB0OyBjaGFyc2V0PXV0Zi04IiwKICAgICJib2R5RXhjZXJwdCI6ICJ7XCJ0b2tlblwiOlwiZGU1NjcwNDA0YWY5N2E3ODUzMDMxYmUzYTBlMjQwMmVcIixcIm5vdGVcIjpudWxsLFwiYXR0cmlidXRlc1wiOnt9LFwib3JpZ2luYWxfdG90YWxfcHJpY2VcIjowLFwidG90YWxfcHJpY2VcIjowLFwidG90YWxfZGlzY291bnRcIjowLFwidG90YWxfd2VpZ2h0XCI6MC4wLFwiaXRlbV9jb3VudFwiOjAsXCJpdGVtc1wiOltdLFwicmVxdWlyZXNfc2hpcHBpbmdcIjpmYWxzZSxcImN1cnJlbmN5XCI6XCJVU0RcIixcIml0ZW1zX3N1YnRvdGFsX3ByaWNlXCI6MCxcImNhcnRfbGV2ZWxfZGlzY291bnRfYXBwbGljYXRpb25zXCI6W10sXCJkaXNjb3VudF9jb2Rlc1wiOltdfSIKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMjA5NDg5MDIsCiAgICAidXJsIjogImh0dHBzOi8vZXJyb3ItYW5hbHl0aWNzLXNlc3Npb25zLXByb2R1Y3Rpb24uc2hvcGlmeXN2Yy5jb20vb2JzZXJ2ZW9ubHkiLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfQUJPUlRFRCIKICAgIH0KICB9Cl0="
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-release-gate/matrix-editorial-cart-results/smoke-won-editorial-editor-5ba79-nd-submit-the-selected-item-desktop/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                        "column": 62,
+                        "line": 156
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "aeca7c5395bce89aad02-e13f09bf699293a1c840",
+              "file": "smoke/won-editorial.spec.ts",
+              "line": 111,
+              "column": 3
+            },
+            {
+              "title": "native variant changes update price and submit the selected item",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile",
+                  "projectName": "mobile",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "aeca7c5395bce89aad02-760c87c462a0d0109518",
+              "file": "smoke/won-editorial.spec.ts",
+              "line": 111,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "message": "\u001b[31mTesting stopped early after 1 maximum allowed failures.\u001b[39m"
+    }
+  ],
+  "stats": {
+    "startTime": "2026-09-11T10:02:26.270Z",
+    "duration": 17713.582,
+    "expected": 0,
+    "skipped": 1,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

@@ -8,6 +8,25 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
 
 {%- liquid
   assign s = block.settings
+  assign visualization = s.visualization | default: 'standard'
+  assign media_position = s.media_position
+  if visualization == 'testimonial'
+    assign media_position = 'left'
+  elsif visualization == 'expert'
+    assign media_position = 'top'
+  endif
+  # LCP: the hero's first slide IS the Largest Contentful Paint element, and
+  # `loading` is decided in the initial HTML — no client-side promotion can undo a
+  # late request. A theme block cannot know its own position, so the merchant says
+  # so explicitly; the hero presets tick it on their first slide.
+  assign img_loading = 'lazy'
+  assign img_priority = 'auto'
+  assign img_loading_attr = 'loading="lazy"'
+  if s.priority
+    assign img_loading = 'eager'
+    assign img_priority = 'high'
+    assign img_loading_attr = 'loading="eager" fetchpriority="high"'
+  endif
   assign has_media = false
   if s.media_type == 'image' and s.image != blank
     assign has_media = true
@@ -16,8 +35,11 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
   elsif s.media_type == 'video' and s.video != blank
     assign has_media = true
   endif
+  if visualization != 'standard' and s.media_type == 'image'
+    assign has_media = true
+  endif
   assign is_bg = false
-  if s.media_position == 'background' and has_media
+  if media_position == 'background' and has_media
     assign is_bg = true
   endif
   assign has_gradient = false
@@ -30,7 +52,8 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
   class="
     won-slide
     won-slide--{{ s.card_style }}
-    won-slide--media-{{ s.media_position }}
+    won-slide--{{ visualization }}
+    won-slide--media-{{ media_position }}
     {% if s.inherit_color_scheme == false %}color-{{ s.color_scheme }}{% endif %}
     {% if is_bg %}won-slide--overlayed{% endif %}
     {% if has_gradient %}won-slide--gradient{% endif %}
@@ -39,8 +62,8 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
   style="{% render 'won-spacing', settings: s %}--won-slide-align: {{ s.content_align | default: s.alignment }};--won-radius-md: {{ s.corner_radius }}px;--won-radius-sm: {{ s.corner_radius }}px;{% if s.min_height > 0 %}--won-slide-min: {{ s.min_height }}px;{% endif %}{% if has_gradient %}--won-slide-bg: {{ s.background_gradient }};{% endif %}"
   {{ block.shopify_attributes }}
 >
-  {%- if has_media and s.media_position != 'none' -%}
-    <div class="won-slide__media won-slide__media--{{ s.media_position }}">
+  {%- if has_media and media_position != 'none' -%}
+    <div class="won-slide__media won-slide__media--{{ media_position }}">
       {%- if s.toggle_overlay -%}
         <span class="won-slide__overlay" style="background: {{ s.overlay_color }};"></span>
       {%- endif -%}
@@ -56,17 +79,17 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
               {{
                 s.image
                 | image_url: width: 1600
-                | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: 'lazy', alt: s.image_alt | default: s.image.alt | default: ''
+                | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: img_loading, fetchpriority: img_priority, alt: s.image_alt | default: s.image.alt | default: ''
               }}
             </picture>
           {%- else -%}
             {{
               s.image
               | image_url: width: 1600
-              | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: 'lazy', alt: s.image_alt | default: s.image.alt | default: ''
+              | image_tag: widths: '400, 600, 800, 1200, 1600', sizes: '(min-width: 1024px) 33vw, 100vw', class: 'won-slide__img', loading: img_loading, fetchpriority: img_priority, alt: s.image_alt | default: s.image.alt | default: ''
             }}
           {%- endif -%}
-        {%- else -%}
+        {%- elsif s.image_asset != blank -%}
           {%- comment -%} Same art-direction for PACKAGED assets. image_mobile only
              covers the image_picker path, so a demo/preset slide built on
              image_asset had no way to swap art on a phone — and a wide hero crop
@@ -84,14 +107,19 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
           {%- if s.image_asset_mobile != blank -%}
             <picture>
               <source media="(max-width: 749px)" srcset="{{ s.image_asset_mobile | asset_url }}" width="840" height="1240">
-              <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="1600" height="1000" loading="lazy">
+              <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="1600" height="1000" {{ img_loading_attr }}>
             </picture>
           {%- else -%}
-            <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="1600" height="1000" loading="lazy">
+            <img class="won-slide__img" src="{{ s.image_asset | asset_url }}" alt="" width="1600" height="1000" {{ img_loading_attr }}>
           {%- endif -%}
+        {%- else -%}
+          {{ 'image' | placeholder_svg_tag: 'won-slide__img won-slide__placeholder' }}
         {%- endif -%}
       {%- else -%}
         {{ s.video | video_tag: autoplay: true, loop: true, muted: true, controls: false, class: 'won-slide__video' }}
+      {%- endif -%}
+      {%- if visualization == 'expert' and s.media_caption != blank -%}
+        <div class="won-slide__media-caption">{{ s.media_caption }}</div>
       {%- endif -%}
     </div>
   {%- endif -%}
@@ -108,8 +136,24 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
         {{- s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' | strip -}}
       </h3>
     {%- endif -%}
+    {%- if visualization == 'expert' and s.expert_role != blank -%}
+      <p class="won-slide__role">{{ s.expert_role | escape }}</p>
+    {%- endif -%}
     {%- if s.text != blank -%}
       <div class="won-slide__text rte">{{ s.text }}</div>
+    {%- endif -%}
+    {%- if visualization == 'testimonial' -%}
+      {%- if s.review_rating > 0 or s.reviewer != blank -%}
+        <div class="won-slide__reviewer">
+          {%- if s.review_rating > 0 -%}
+            <div class="won-rating">
+              <span class="won-rating__stars" style="--won-rating: {{ s.review_rating }};" aria-hidden="true">★★★★★</span>
+              <span class="won-visually-hidden">{{ s.review_rating }} / 5</span>
+            </div>
+          {%- endif -%}
+          {%- if s.reviewer != blank -%}<p class="won-slide__reviewer-name">{{ s.reviewer | escape }}</p>{%- endif -%}
+        </div>
+      {%- endif -%}
     {%- endif -%}
     {%- if s.button_label != blank or s.button2_label != blank -%}
       <div class="won-slide__actions">
@@ -122,7 +166,9 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
 </article>
 
 {% stylesheet %}
+  .shopify-block:has(> .won-slide) { container: won-slide-slot / inline-size; }
   .won-slide {
+    min-inline-size: 0;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -183,7 +229,7 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
   .won-slide--overlayed .won-slide__heading,
   .won-slide--overlayed .won-slide__text { color: #fff; }
   .won-slide--overlayed .won-btn--secondary { color: #fff; border-color: rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.08); text-shadow: none; }
-  .won-slide__body { display: flex; flex-direction: column; gap: var(--won-space-3); align-items: var(--won-slide-align, flex-start); min-height: var(--won-slide-min, 0); }
+  .won-slide__body { container: won-copy / inline-size; min-inline-size: 0; display: flex; flex-direction: column; gap: var(--won-space-3); align-items: var(--won-slide-align, flex-start); min-height: var(--won-slide-min, 0); }
   .won-slide__eyebrow {
     margin: 0; font-family: var(--font-body--family, inherit);
     font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase;
@@ -207,8 +253,9 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     -webkit-mask: var(--won-annot-underline) no-repeat center / 100% 100%;
     mask: var(--won-annot-underline) no-repeat center / 100% 100%;
   }
+  .won-slide--annot-circle .won-slide__heading { isolation: isolate; inline-size: fit-content; padding: 1em 2em; }
   .won-slide--annot-circle .won-slide__heading::before {
-    content: ""; position: absolute; inset: -0.28em -0.55em; z-index: -1; pointer-events: none;
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
     background: var(--won-accent);
     -webkit-mask: var(--won-annot-circle) no-repeat center / 100% 100%;
     mask: var(--won-annot-circle) no-repeat center / 100% 100%;
@@ -218,8 +265,13 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     --won-annot-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 100' preserveAspectRatio='none'%3E%3Cpath d='M150 6 C 44 6 10 30 14 52 C 18 80 92 96 162 94 C 252 92 292 64 286 40 C 280 16 210 5 138 9' fill='none' stroke='black' stroke-width='4'/%3E%3C/svg%3E");
   }
 
-  @media (min-width: 768px) {
-    .won-slide__heading { font-size: var(--won-h-size-d, 1.8rem); max-width: var(--won-h-mw-d, 100%); }
+  @media (min-width: 750px) {
+    .won-slide__heading {
+      font-size: min(var(--won-h-size-d, 1.8rem), max(var(--won-h-size-m, 1.4rem), 6cqw));
+      max-inline-size: min(100%, max(var(--won-h-mw-d, 100%), 18ch));
+    }
+  }
+  @container won-slide-slot (min-width: 36rem) {
     .won-slide--media-left { flex-direction: row; align-items: center; }
     .won-slide--media-right { flex-direction: row-reverse; align-items: center; }
     .won-slide--media-left .won-slide__media,
@@ -227,102 +279,470 @@ with card-style axis and color-scheme cascade. Accepts nested theme/app blocks.
     .won-slide--media-left .won-slide__body,
     .won-slide--media-right .won-slide__body { flex: 1 1 50%; }
   }
+  /* Opt-in editorial cards: existing slides retain their original layout. */
+  .won-slide__placeholder { background: var(--won-surface); }
+  .won-slide--testimonial { gap: 0; background: var(--won-bg); }
+  .won-slide--testimonial[class*="color-"], .won-slide--expert[class*="color-"] { --won-fg: var(--color-foreground); --won-bg: var(--color-background); --won-muted: var(--color-foreground); --won-surface: color-mix(in oklab, var(--won-fg) 4%, var(--won-bg)); color: var(--won-fg); }
+  .won-slide--testimonial .won-slide__media { border-radius: 0; aspect-ratio: 4 / 3; }
+  .won-slide--testimonial .won-slide__body {
+    padding: var(--won-space-5); min-width: 0; flex: 1; justify-content: center;
+  }
+  .won-slide__reviewer { display: flex; flex-direction: column; gap: var(--won-space-2); margin-block-start: auto; padding-block-start: var(--won-space-3); }
+  .won-slide__reviewer-name { margin: 0; font-weight: 700; }
+  .won-slide__role { margin: 0; color: var(--won-muted); }
+  .won-slide--expert .won-slide__media { display: grid; aspect-ratio: 3 / 4; }
+  .won-slide--expert .won-slide__media > picture,
+  .won-slide--expert .won-slide__media > img,
+  .won-slide--expert .won-slide__media > svg,
+  .won-slide--expert .won-slide__media > video { grid-area: 1 / 1; min-height: 0; }
+  .won-slide__media-caption {
+    grid-area: 1 / 1; align-self: end; position: relative; z-index: 2;
+    margin: var(--won-space-4); padding: var(--won-space-3);
+    border-radius: var(--won-radius-sm); background: var(--won-surface); color: var(--won-fg);
+    font-family: var(--font-heading--family, inherit); font-weight: 700; line-height: 1.2;
+  }
+  @container won-slide-slot (min-width: 36rem) {
+    .won-slide--testimonial { flex-direction: row; align-items: stretch; }
+    .won-slide--testimonial .won-slide__media { flex: 0 0 50%; aspect-ratio: auto; }
+    .won-slide--testimonial .won-slide__media > picture,
+    .won-slide--testimonial .won-slide__media > img,
+    .won-slide--testimonial .won-slide__media > video { position: absolute; inset: 0; }
+    .won-slide--testimonial .won-slide__body { flex: 1 1 50%; }
+  }
+  /* An independent scheme owns a matching surface. Inherited minimal slides
+     remain transparent, without the shadow/border of an elevated card. */
+  .won-slide--minimal[class*="color-"]:not(.won-slide--gradient):not(.won-slide--overlayed) {
+    background: var(--color-background, var(--won-bg));
+  }
+  .won-slide--standard.won-slide--minimal[class*="color-"]:not(.won-slide--overlayed) > .won-slide__body { padding: var(--won-space-4); }
 {% endstylesheet %}
 
 {% schema %}
 {
   "name": "t:won.names.slide",
-  "blocks": [{ "type": "@theme" }, { "type": "@app" }],
-  "settings": [
-    { "type": "header", "content": "t:won.headers.content" },
-    { "type": "inline_richtext", "id": "eyebrow", "label": "t:won.settings.eyebrow" },
-    { "type": "richtext", "id": "heading", "label": "t:won.settings.heading", "default": "t:won.defaults.slide_heading" },
-    { "type": "range", "id": "heading_size_desktop", "label": "t:won.settings.heading_size_desktop", "min": 16, "max": 96, "step": 2, "unit": "px", "default": 28 },
-    { "type": "range", "id": "heading_max_width_desktop", "label": "t:won.settings.heading_max_width_desktop", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
-    { "type": "range", "id": "heading_size_mobile", "label": "t:won.settings.heading_size_mobile", "min": 14, "max": 64, "step": 2, "unit": "px", "default": 22 },
-    { "type": "range", "id": "heading_max_width_mobile", "label": "t:won.settings.heading_max_width_mobile", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 100 },
-    { "type": "richtext", "id": "text", "label": "t:won.settings.text", "default": "t:won.defaults.slide_text" },
-    { "type": "text", "id": "button_label", "label": "t:won.settings.button_label" },
-    { "type": "url", "id": "button_link", "label": "t:won.settings.button_link" },
+  "blocks": [
     {
-      "type": "select", "id": "button_style", "label": "t:won.settings.button_style",
+      "type": "@theme"
+    },
+    {
+      "type": "@app"
+    }
+  ],
+  "settings": [
+    {
+      "type": "select",
+      "id": "visualization",
+      "label": "t:won.settings.slide_visualization",
       "options": [
-        { "value": "primary", "label": "t:won.options.primary" },
-        { "value": "secondary", "label": "t:won.options.secondary" }
+        {
+          "value": "standard",
+          "label": "t:won.options.slide_standard"
+        },
+        {
+          "value": "testimonial",
+          "label": "t:won.options.slide_testimonial"
+        },
+        {
+          "value": "expert",
+          "label": "t:won.options.slide_expert"
+        }
+      ],
+      "default": "standard"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.content"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "eyebrow",
+      "label": "t:won.settings.eyebrow"
+    },
+    {
+      "type": "richtext",
+      "id": "heading",
+      "label": "t:won.settings.heading",
+      "default": "t:won.defaults.slide_heading"
+    },
+    {
+      "type": "range",
+      "id": "heading_size_desktop",
+      "label": "t:won.settings.heading_size_desktop",
+      "min": 16,
+      "max": 96,
+      "step": 2,
+      "unit": "px",
+      "default": 28
+    },
+    {
+      "type": "range",
+      "id": "heading_max_width_desktop",
+      "label": "t:won.settings.heading_max_width_desktop",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "label": "t:won.settings.heading_size_mobile",
+      "min": 14,
+      "max": 64,
+      "step": 2,
+      "unit": "px",
+      "default": 22
+    },
+    {
+      "type": "range",
+      "id": "heading_max_width_mobile",
+      "label": "t:won.settings.heading_max_width_mobile",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "richtext",
+      "id": "text",
+      "label": "t:won.settings.text",
+      "default": "t:won.defaults.slide_text"
+    },
+    {
+      "type": "text",
+      "id": "reviewer",
+      "label": "t:won.settings.reviewer",
+      "visible_if": "{{ block.settings.visualization == 'testimonial' }}"
+    },
+    {
+      "type": "range",
+      "id": "review_rating",
+      "label": "t:won.settings.review_rating",
+      "info": "t:won.info.review_rating",
+      "min": 0,
+      "max": 5,
+      "step": 0.5,
+      "default": 0,
+      "visible_if": "{{ block.settings.visualization == 'testimonial' }}"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "media_caption",
+      "label": "t:won.settings.media_caption",
+      "visible_if": "{{ block.settings.visualization == 'expert' }}"
+    },
+    {
+      "type": "text",
+      "id": "expert_role",
+      "label": "t:won.settings.expert_role",
+      "visible_if": "{{ block.settings.visualization == 'expert' }}"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "t:won.settings.button_label"
+    },
+    {
+      "type": "url",
+      "id": "button_link",
+      "label": "t:won.settings.button_link"
+    },
+    {
+      "type": "select",
+      "id": "button_style",
+      "label": "t:won.settings.button_style",
+      "options": [
+        {
+          "value": "primary",
+          "label": "t:won.options.primary"
+        },
+        {
+          "value": "secondary",
+          "label": "t:won.options.secondary"
+        }
       ],
       "default": "primary"
     },
-    { "type": "text", "id": "button2_label", "label": "t:won.settings.button2_label" },
-    { "type": "url", "id": "button2_link", "label": "t:won.settings.button2_link" },
-    { "type": "checkbox", "id": "buttons_new_tab", "label": "t:won.settings.link_new_tab", "default": false },
     {
-      "type": "select", "id": "button2_style", "label": "t:won.settings.button2_style",
+      "type": "text",
+      "id": "button2_label",
+      "label": "t:won.settings.button2_label"
+    },
+    {
+      "type": "url",
+      "id": "button2_link",
+      "label": "t:won.settings.button2_link"
+    },
+    {
+      "type": "checkbox",
+      "id": "buttons_new_tab",
+      "label": "t:won.settings.link_new_tab",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "button2_style",
+      "label": "t:won.settings.button2_style",
       "options": [
-        { "value": "primary", "label": "t:won.options.primary" },
-        { "value": "secondary", "label": "t:won.options.secondary" }
+        {
+          "value": "primary",
+          "label": "t:won.options.primary"
+        },
+        {
+          "value": "secondary",
+          "label": "t:won.options.secondary"
+        }
       ],
       "default": "secondary"
     },
-    { "type": "header", "content": "t:won.headers.media" },
     {
-      "type": "select", "id": "media_type", "label": "t:won.settings.media_type",
+      "type": "header",
+      "content": "t:won.headers.media"
+    },
+    {
+      "type": "select",
+      "id": "media_type",
+      "label": "t:won.settings.media_type",
       "options": [
-        { "value": "none", "label": "t:won.options.none" },
-        { "value": "image", "label": "t:won.options.image" },
-        { "value": "video", "label": "t:won.options.video" }
+        {
+          "value": "none",
+          "label": "t:won.options.none"
+        },
+        {
+          "value": "image",
+          "label": "t:won.options.image"
+        },
+        {
+          "value": "video",
+          "label": "t:won.options.video"
+        }
       ],
       "default": "none"
     },
-    { "type": "image_picker", "id": "image", "label": "t:won.settings.image", "visible_if": "{{ block.settings.media_type == 'image' }}" },
-    { "type": "image_picker", "id": "image_mobile", "label": "t:won.settings.image_mobile", "info": "t:won.info.image_mobile", "visible_if": "{{ block.settings.media_type == 'image' }}" },
-    { "type": "text", "id": "image_alt", "label": "t:won.settings.image_alt", "info": "t:won.info.image_alt", "visible_if": "{{ block.settings.media_type == 'image' }}" },
-    { "type": "text", "id": "image_asset", "label": "t:won.settings.image_asset", "info": "t:won.info.image_asset", "visible_if": "{{ block.settings.media_type == 'image' }}" },
-    { "type": "text", "id": "image_asset_mobile", "label": "t:won.settings.image_asset_mobile", "info": "t:won.info.image_asset_mobile", "visible_if": "{{ block.settings.media_type == 'image' }}" },
-    { "type": "video", "id": "video", "label": "t:won.settings.video", "visible_if": "{{ block.settings.media_type == 'video' }}" },
     {
-      "type": "select", "id": "media_position", "label": "t:won.settings.media_position", "info": "t:won.info.media_position",
+      "type": "image_picker",
+      "id": "image",
+      "label": "t:won.settings.image",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "priority",
+      "label": "t:won.settings.image_priority",
+      "info": "t:won.info.image_priority",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "image_mobile",
+      "label": "t:won.settings.image_mobile",
+      "info": "t:won.info.image_mobile",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "text",
+      "id": "image_alt",
+      "label": "t:won.settings.image_alt",
+      "info": "t:won.info.image_alt",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "text",
+      "id": "image_asset",
+      "label": "t:won.settings.image_asset",
+      "info": "t:won.info.image_asset",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "text",
+      "id": "image_asset_mobile",
+      "label": "t:won.settings.image_asset_mobile",
+      "info": "t:won.info.image_asset_mobile",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "video",
+      "id": "video",
+      "label": "t:won.settings.video",
+      "visible_if": "{{ block.settings.media_type == 'video' }}"
+    },
+    {
+      "type": "select",
+      "id": "media_position",
+      "label": "t:won.settings.media_position",
+      "info": "t:won.info.media_position",
       "options": [
-        { "value": "top", "label": "t:won.options.top" },
-        { "value": "left", "label": "t:won.options.left" },
-        { "value": "right", "label": "t:won.options.right" },
-        { "value": "background", "label": "t:won.options.background" }
+        {
+          "value": "top",
+          "label": "t:won.options.top"
+        },
+        {
+          "value": "left",
+          "label": "t:won.options.left"
+        },
+        {
+          "value": "right",
+          "label": "t:won.options.right"
+        },
+        {
+          "value": "background",
+          "label": "t:won.options.background"
+        }
       ],
       "default": "top",
-      "visible_if": "{{ block.settings.media_type != 'none' }}"
+      "visible_if": "{{ block.settings.media_type != 'none' and block.settings.visualization == 'standard' }}"
     },
-    { "type": "color_background", "id": "background_gradient", "label": "t:won.settings.background_gradient", "info": "t:won.info.background_gradient" },
-    { "type": "header", "content": "t:won.headers.layout" },
-    { "type": "text_alignment", "id": "content_align", "label": "t:won.settings.content_align", "default": "left" },
-    { "type": "range", "id": "min_height", "label": "t:won.settings.min_height", "min": 0, "max": 800, "step": 20, "unit": "px", "default": 0, "info": "t:won.info.slide_min_height" },
-    { "type": "header", "content": "t:won.headers.appearance" },
     {
-      "type": "select", "id": "card_style", "label": "t:won.settings.card_style", "info": "t:won.info.card_style",
+      "type": "color_background",
+      "id": "background_gradient",
+      "label": "t:won.settings.background_gradient",
+      "info": "t:won.info.background_gradient"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.layout"
+    },
+    {
+      "type": "text_alignment",
+      "id": "content_align",
+      "label": "t:won.settings.content_align",
+      "default": "left"
+    },
+    {
+      "type": "range",
+      "id": "min_height",
+      "label": "t:won.settings.min_height",
+      "min": 0,
+      "max": 800,
+      "step": 20,
+      "unit": "px",
+      "default": 0,
+      "info": "t:won.info.slide_min_height"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.appearance"
+    },
+    {
+      "type": "select",
+      "id": "card_style",
+      "label": "t:won.settings.card_style",
+      "info": "t:won.info.card_style",
       "options": [
-        { "value": "minimal", "label": "t:won.options.minimal" },
-        { "value": "bordered", "label": "t:won.options.bordered" },
-        { "value": "elevated", "label": "t:won.options.elevated" }
+        {
+          "value": "minimal",
+          "label": "t:won.options.minimal"
+        },
+        {
+          "value": "bordered",
+          "label": "t:won.options.bordered"
+        },
+        {
+          "value": "elevated",
+          "label": "t:won.options.elevated"
+        }
       ],
       "default": "minimal"
     },
     {
-      "type": "select", "id": "headline_annotation", "label": "t:won.settings.headline_annotation", "info": "t:won.info.headline_annotation",
+      "type": "select",
+      "id": "headline_annotation",
+      "label": "t:won.settings.headline_annotation",
+      "info": "t:won.info.headline_annotation",
       "options": [
-        { "value": "none", "label": "t:won.options.annot_none" },
-        { "value": "underline", "label": "t:won.options.annot_underline" },
-        { "value": "circle", "label": "t:won.options.annot_circle" }
+        {
+          "value": "none",
+          "label": "t:won.options.annot_none"
+        },
+        {
+          "value": "underline",
+          "label": "t:won.options.annot_underline"
+        },
+        {
+          "value": "circle",
+          "label": "t:won.options.annot_circle"
+        }
       ],
       "default": "none"
     },
-    { "type": "range", "id": "corner_radius", "label": "t:won.settings.corner_radius", "min": 0, "max": 40, "step": 2, "unit": "px", "default": 14, "info": "t:won.info.corner_radius" },
-    { "type": "checkbox", "id": "inherit_color_scheme", "label": "t:won.settings.inherit_color_scheme", "info": "t:won.info.inherit_color_scheme", "default": true },
-    { "type": "color_scheme", "id": "color_scheme", "label": "t:won.settings.color_scheme", "default": "scheme-1", "visible_if": "{{ block.settings.inherit_color_scheme == false }}" },
-    { "type": "color", "id": "accent_override", "label": "t:won.settings.accent_override" },
-    { "type": "checkbox", "id": "toggle_overlay", "label": "t:won.settings.overlay", "info": "t:won.info.overlay", "default": false, "visible_if": "{{ block.settings.media_type != 'none' }}" },
-    { "type": "color", "id": "overlay_color", "label": "t:won.settings.overlay_color", "info": "t:won.info.overlay_color", "alpha": true, "default": "#00000059", "visible_if": "{{ block.settings.toggle_overlay }}" },
-    { "type": "header", "content": "t:won.headers.spacing" },
-    { "type": "range", "id": "padding_top", "label": "t:won.settings.padding_top", "min": 0, "max": 120, "step": 2, "unit": "px", "default": 0 },
-    { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 120, "step": 2, "unit": "px", "default": 0 }
+    {
+      "type": "range",
+      "id": "corner_radius",
+      "label": "t:won.settings.corner_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 14,
+      "info": "t:won.info.corner_radius"
+    },
+    {
+      "type": "checkbox",
+      "id": "inherit_color_scheme",
+      "label": "t:won.settings.inherit_color_scheme",
+      "info": "t:won.info.inherit_color_scheme",
+      "default": true
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-1",
+      "visible_if": "{{ block.settings.inherit_color_scheme == false }}"
+    },
+    {
+      "type": "color",
+      "id": "accent_override",
+      "label": "t:won.settings.accent_override"
+    },
+    {
+      "type": "checkbox",
+      "id": "toggle_overlay",
+      "label": "t:won.settings.overlay",
+      "info": "t:won.info.overlay",
+      "default": false,
+      "visible_if": "{{ block.settings.media_type != 'none' }}"
+    },
+    {
+      "type": "color",
+      "id": "overlay_color",
+      "label": "t:won.settings.overlay_color",
+      "info": "t:won.info.overlay_color",
+      "alpha": true,
+      "default": "#00000059",
+      "visible_if": "{{ block.settings.toggle_overlay }}"
+    },
+    {
+      "type": "header",
+      "content": "t:won.headers.spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "t:won.settings.padding_top",
+      "min": 0,
+      "max": 120,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "t:won.settings.padding_bottom",
+      "min": 0,
+      "max": 120,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    }
   ],
-  "presets": [{ "name": "t:won.names.slide" }]
+  "presets": [
+    {
+      "name": "t:won.names.slide"
+    }
+  ]
 }
 {% endschema %}

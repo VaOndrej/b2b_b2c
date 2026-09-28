@@ -135,8 +135,12 @@
       // Live free-shipping progress (any free_shipping block).
       this.ship = this.querySelector('[data-annbar-ship]');
       if (this.ship) {
-        this._refresh = this.refreshShip.bind(this);
-        document.addEventListener('won:cart:added', this._refresh);
+        /* ONE event, and the cart comes WITH it. Subscribing to both fired this
+           twice for every add — measured on the dev store: two identical
+           /cart.js in the same millisecond — and each one re-read a cart the
+           event was already carrying. `cart:refresh` is the base-agnostic one
+           every won cart write emits, so it is the one to keep. */
+        this._refresh = (e) => this.refreshShip(e && e.detail && e.detail.cart);
         document.addEventListener('cart:refresh', this._refresh);
       }
 
@@ -151,10 +155,7 @@
     }
     disconnectedCallback() {
       clearInterval(this._timer);
-      if (this._refresh) {
-        document.removeEventListener('won:cart:added', this._refresh);
-        document.removeEventListener('cart:refresh', this._refresh);
-      }
+      if (this._refresh) document.removeEventListener('cart:refresh', this._refresh);
     }
     hideBar() {
       var sec = this.closest('.won-section');
@@ -169,11 +170,11 @@
       try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: currency || 'USD' }).format(cents / 100); }
       catch (e) { return (cents / 100).toFixed(2); }
     }
-    async refreshShip() {
+    async refreshShip(cart) {
       var threshold = parseInt(this.ship.dataset.threshold, 10) || 0;
       if (!threshold) return;
       try {
-        var cart = await (await fetch('/cart.js')).json();
+        if (!cart || typeof cart.total_price !== 'number') cart = await (await fetch('/cart.js')).json();
         var total = cart.total_price;
         var pct = Math.min(100, Math.round((total / threshold) * 100));
         var fill = this.ship.querySelector('[data-annbar-ship-fill]');

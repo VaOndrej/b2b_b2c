@@ -1,34 +1,7 @@
 {%- liquid
   assign s = section.settings
-  # Rail controls: the theme-wide setting wins unless the merchant chose
-  # "Set per section". One decision for the storefront instead of the same
-  # decision repeated — and drifting — in every section.
-  assign g_ind = settings.won_rail_indicator | default: 'per_section'
-  assign g_arr = settings.won_rail_arrows | default: 'per_section'
-  assign rail_arrow_style = settings.won_rail_arrow_style | default: 'pill'
-  assign rail_tone = settings.won_rail_arrow_tone | default: 'auto'
-  if rail_tone == 'auto'
-    assign rail_tone = 'surface'
-  endif
-
-  assign want_arrows = s.show_arrows
-  if g_arr == 'always'
-    assign want_arrows = true
-  elsif g_arr == 'never'
-    assign want_arrows = false
-  endif
-
-  assign want_dots = s.show_dots
-  assign want_progress = s.show_progress
-  if g_ind != 'per_section'
-    assign want_dots = false
-    assign want_progress = false
-    if g_ind == 'dots'
-      assign want_dots = true
-    elsif g_ind == 'progress'
-      assign want_progress = true
-    endif
-  endif
+  # Rail controls (arrows / indicator / arrow look) are resolved once, in
+  # snippets/won-rail-controls.liquid — see the render below the track.
   assign items_count = 0
   if s.source == 'collection'
     assign items_count = s.collection.products.size
@@ -94,7 +67,7 @@
               paginated collection — and `!= false` so an unset setting still hides them. {%- endcomment -%}
             {%- if settings.won_hide_gift_cards != false and product.gift_card? -%}{%- continue -%}{%- endif -%}
             <div class="won-carousel__item">
-              {% render 'won-product-card', product: product, aspect: s.card_aspect, show_ppu: s.show_card_ppu, ppu_base: s.ppu_base, ppu_amount: s.ppu_amount, ppu_metafield: s.ppu_metafield %}
+              {% render 'won-product-card', product: product, aspect: s.card_aspect, show_ppu: s.show_card_ppu, ppu_rules: s.ppu_rules %}
             </div>
           {%- endfor -%}
         {%- else -%}
@@ -103,44 +76,13 @@
       </div>
 
       {%- comment -%} A grid with `mobile_carousel` DOES scroll horizontally below
-         750px, but the whole controls block was gated on `layout == 'slider'`, so
-         it scrolled with no arrows, no dots and no progress bar — a rail with no
-         affordance at all. Give that case the progress bar (arrows are a
-         pointer-device control; the grid only scrolls on touch widths). {%- endcomment -%}
-      {%- assign scrolls_on_mobile = false -%}
-      {%- if s.layout == 'grid' and s.mobile_carousel -%}{%- assign scrolls_on_mobile = true -%}{%- endif -%}
-      {%- comment -%} One control ROW, not a stack. The bar and the arrows were two
-         separate block-level rows, so the indicator ended up orphaned at the
-         bottom-left while the arrows sat a row above on the right — it read as a
-         stray line rather than as the rail's own scrollbar. {%- endcomment -%}
-      {%- if scrolls_on_mobile -%}
-        <div class="won-rail__controls won-rail__controls--sm-only">
-          {%- if want_progress -%}
-            <div class="won-carousel__progress won-carousel__progress--sm-only" data-won-progress><span class="won-carousel__progress-bar" data-won-progress-bar></span></div>
-          {%- endif -%}
-          {%- if want_arrows -%}
-            <div class="won-carousel__arrows won-carousel__arrows--sm-only" data-won-arrows data-won-rail-tone="{{ settings.won_rail_arrow_tone | default: 'auto' }}">
-              <button type="button" class="won-carousel__arrow won-rail__arrow won-rail__arrow--{{ rail_arrow_style }} won-rail__arrow--{{ rail_tone }}" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
-              <button type="button" class="won-carousel__arrow won-rail__arrow won-rail__arrow--{{ rail_arrow_style }} won-rail__arrow--{{ rail_tone }}" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
-            </div>
-          {%- endif -%}
-        </div>
+         750px, so it needs the same control row as a real slider — it just has to
+         disappear again above the breakpoint, where the grid stops scrolling. {%- endcomment -%}
+      {%- if s.layout == 'grid' and s.mobile_carousel -%}
+        {% render 'won-rail-controls', s: s, sm_only: true %}
       {%- endif -%}
       {%- if s.layout == 'slider' -%}
-        <div class="won-rail__controls">
-          {%- if want_progress -%}
-            <div class="won-carousel__progress" data-won-progress><span class="won-carousel__progress-bar" data-won-progress-bar></span></div>
-          {%- endif -%}
-          {%- if want_dots -%}
-            <div class="won-carousel__dots" data-won-dots></div>
-          {%- endif -%}
-          {%- if want_arrows -%}
-            <div class="won-carousel__arrows" data-won-arrows data-won-rail-tone="{{ settings.won_rail_arrow_tone | default: 'auto' }}">
-              <button type="button" class="won-carousel__arrow won-rail__arrow won-rail__arrow--{{ rail_arrow_style }} won-rail__arrow--{{ rail_tone }}" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
-              <button type="button" class="won-carousel__arrow won-rail__arrow won-rail__arrow--{{ rail_arrow_style }} won-rail__arrow--{{ rail_tone }}" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
-            </div>
-          {%- endif -%}
-        </div>
+        {% render 'won-rail-controls', s: s %}
       {%- endif -%}
     </won-carousel>
   </div>
@@ -262,12 +204,14 @@
      width keep the affordance while returning the emphasis to the cards. */
   .won-carousel__progress {
     block-size: 2px;
-    /* Inside the control row the bar is the flexible member: it takes the space
-       the arrows leave, up to a cap, so it reads as the rail's own scrollbar
-       instead of a stray dash under the first card. */
+    /* The bar is a SCROLLBAR, so it spans the rail it describes: it takes every
+       pixel of the control row the arrows leave. A fixed cap made it a short dash
+       under the first card with a dead gap after it — and you cannot read "how far
+       along am I" off something that short, which is its only job. Prominence is
+       handled by being 2px and muted, not by being narrow.
+       Guard: tests/smoke/won-rail-indicator-scale.spec.ts */
     flex: 1 1 auto;
     inline-size: auto;
-    max-inline-size: 240px;
     background: var(--won-border);
     border-radius: var(--won-radius-pill);
     overflow: hidden;
@@ -313,6 +257,10 @@
     max-inline-size: 100cqi;
     scroll-snap-align: none;
   }
+  /* Marquee items own their intrinsic width. Size containment would erase
+     that contribution and collapse content-sized cards/CTA to a narrow strip. */
+  .won-carousel__mq-group > .shopify-block:has(> .won-slide),
+  .won-carousel--marquee .won-slide__body { container-type: normal; }
   .won-carousel--marquee:hover .won-carousel__track[data-marquee] { animation-play-state: paused; }
   @keyframes won-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) {
@@ -587,39 +535,10 @@
       "visible_if": "{{ section.settings.source == 'collection' }}"
     },
     {
-      "type": "select",
-      "id": "ppu_base",
-      "label": "t:won.settings.ppu_base",
-      "visible_if": "{{ section.settings.show_card_ppu }}",
-      "options": [
-        {
-          "value": "per_100g",
-          "label": "t:won.options.per_100g"
-        },
-        {
-          "value": "per_kg",
-          "label": "t:won.options.per_kg"
-        },
-        {
-          "value": "per_serving",
-          "label": "t:won.options.per_serving"
-        }
-      ],
-      "default": "per_100g"
-    },
-    {
-      "type": "number",
-      "id": "ppu_amount",
-      "label": "t:won.settings.ppu_amount",
-      "info": "t:won.info.ppu_amount",
-      "default": 1000,
-      "visible_if": "{{ section.settings.show_card_ppu }}"
-    },
-    {
-      "type": "text",
-      "id": "ppu_metafield",
-      "label": "t:won.settings.ppu_metafield",
-      "info": "t:won.info.ppu_metafield",
+      "type": "textarea",
+      "id": "ppu_rules",
+      "label": "t:won.settings.ppu_rules_override",
+      "info": "t:won.info.ppu_rules_override",
       "visible_if": "{{ section.settings.show_card_ppu }}"
     },
     {
@@ -1041,6 +960,42 @@
     }
   ],
   "presets": [
+    {
+      "name": "t:won.presets.split_reviews",
+      "category": "t:won.categories.content",
+      "settings": {
+        "source": "manual",
+        "layout": "grid",
+        "columns_desktop": 2,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": true
+      },
+      "blocks": [
+        {
+          "type": "won-slide",
+          "settings": {
+            "visualization": "testimonial",
+            "card_style": "plain",
+            "inherit_color_scheme": false,
+            "color_scheme": "scheme-1",
+            "heading_size_desktop": 20,
+            "heading_size_mobile": 20
+          }
+        },
+        {
+          "type": "won-slide",
+          "settings": {
+            "visualization": "testimonial",
+            "card_style": "plain",
+            "inherit_color_scheme": false,
+            "color_scheme": "scheme-1",
+            "heading_size_desktop": 20,
+            "heading_size_mobile": 20
+          }
+        }
+      ]
+    },
     {
       "name": "t:won.presets.product_carousel",
       "category": "t:won.categories.products",

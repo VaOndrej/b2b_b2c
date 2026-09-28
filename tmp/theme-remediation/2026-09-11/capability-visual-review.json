@@ -1,0 +1,150 @@
+{
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "reviewer": "capability_remediation",
+  "results": [
+    {
+      "id": "qa180",
+      "width": 390,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa180-390.png",
+      "reviewed": true,
+      "verdict": "pass",
+      "notes": "Readable product row, natural CTA placement, media/content separated; real controls verified >=44px."
+    },
+    {
+      "id": "qa181",
+      "width": 390,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa181-390.png",
+      "reviewed": true,
+      "verdict": "pass",
+      "notes": "Readable product row, natural CTA placement, media/content separated; real controls verified >=44px."
+    },
+    {
+      "id": "qa182",
+      "width": 390,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa182-390.png",
+      "reviewed": true,
+      "verdict": "pass",
+      "notes": "Readable product row, natural CTA placement, media/content separated; real controls verified >=44px."
+    },
+    {
+      "id": "qa183",
+      "width": 390,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa183-390-provider-ready.png",
+      "reviewed": true,
+      "verdict": "pass-frame-only",
+      "notes": "Provider UI visible; portrait9:16 for183/184, external adaptive16:9 for185. iframe own image fitting differs by provider; hosted fit/playback unverified."
+    },
+    {
+      "id": "qa184",
+      "width": 390,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa184-390-provider-ready.png",
+      "reviewed": true,
+      "verdict": "pass-frame-only",
+      "notes": "Provider UI visible; portrait9:16 for183/184, external adaptive16:9 for185. iframe own image fitting differs by provider; hosted fit/playback unverified."
+    },
+    {
+      "id": "qa185",
+      "width": 390,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa185-390-provider-ready.png",
+      "reviewed": true,
+      "verdict": "pass-frame-only",
+      "notes": "Provider UI visible; portrait9:16 for183/184, external adaptive16:9 for185. iframe own image fitting differs by provider; hosted fit/playback unverified."
+    },
+    {
+      "id": "qa180",
+      "width": 768,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa180-768.png",
+      "reviewed": true,
+      "verdict": "pass",
+      "notes": "Readable product row, natural CTA placement, media/content separated; real controls verified >=44px."
+    },
+    {
+      "id": "qa181",
+      "width": 768,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa181-768.png",
+      "reviewed": true,
+      "verdict": "pass",
+      "notes": "Readable product row, natural CTA placement, media/content separated; real controls verified >=44px."
+    },
+    {
+      "id": "qa182",
+      "width": 768,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa182-768.png",
+      "reviewed": true,
+      "verdict": "pass",
+      "notes": "Readable product row, natural CTA placement, media/content separated; real controls verified >=44px."
+    },
+    {
+      "id": "qa183",
+      "width": 768,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa183-768-provider-ready.png",
+      "reviewed": true,
+      "verdict": "pass-frame-only",
+      "notes": "Provider UI visible; portrait9:16 for183/184, external adaptive16:9 for185. iframe own image fitting differs by provider; hosted fit/playback unverified."
+    },
+    {
+      "id": "qa184",
+      "width": 768,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa184-768-provider-ready.png",
+      "reviewed": true,
+      "verdict": "pass-frame-only",
+      "notes": "Provider UI visible; portrait9:16 for183/184, external adaptive16:9 for185. iframe own image fitting differs by provider; hosted fit/playback unverified."
+    },
+    {
+      "id": "qa185",
+      "width": 768,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa185-768-provider-ready.png",
+      "reviewed": true,
+      "verdict": "pass-frame-only",
+      "notes": "Provider UI visible; portrait9:16 for183/184, external adaptive16:9 for185. iframe own image fitting differs by provider; hosted fit/playback unverified."
+    },
+    {
+      "id": "qa180",
+      "width": 1440,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa180-1440.png",
+      "reviewed": true,
+      "verdict": "pass",
+      "notes": "Readable product row, natural CTA placement, media/content separated; real controls verified >=44px."
+    },
+    {
+      "id": "qa181",
+      "width": 1440,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa181-1440.png",
+      "reviewed": true,
+      "verdict": "pass",
+      "notes": "Readable product row, natural CTA placement, media/content separated; real controls verified >=44px."
+    },
+    {
+      "id": "qa182",
+      "width": 1440,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa182-1440.png",
+      "reviewed": true,
+      "verdict": "pass",
+      "notes": "Readable product row, natural CTA placement, media/content separated; real controls verified >=44px."
+    },
+    {
+      "id": "qa183",
+      "width": 1440,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa183-1440-provider-ready.png",
+      "reviewed": true,
+      "verdict": "pass-frame-only",
+      "notes": "Provider UI visible; portrait9:16 for183/184, external adaptive16:9 for185. iframe own image fitting differs by provider; hosted fit/playback unverified."
+    },
+    {
+      "id": "qa184",
+      "width": 1440,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa184-1440-provider-ready.png",
+      "reviewed": true,
+      "verdict": "pass-frame-only",
+      "notes": "Provider UI visible; portrait9:16 for183/184, external adaptive16:9 for185. iframe own image fitting differs by provider; hosted fit/playback unverified."
+    },
+    {
+      "id": "qa185",
+      "width": 1440,
+      "screenshot": "tmp/theme-remediation/2026-09-11/qa185-1440-provider-ready.png",
+      "reviewed": true,
+      "verdict": "pass-frame-only",
+      "notes": "Provider UI visible; portrait9:16 for183/184, external adaptive16:9 for185. iframe own image fitting differs by provider; hosted fit/playback unverified."
+    }
+  ]
+}

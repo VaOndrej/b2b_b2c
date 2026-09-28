@@ -1,0 +1,25 @@
+(node:27961) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 9 tests using 1 worker
+
+[1A[2K(node:27978) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:27978) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:27978) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/9] [desktop] › tests/smoke/won-remediation-editorial.spec.ts:13:5 › Won remediation editorial › column ratios preserve width and DOM order at 390
+[1A[2K[2/9] [desktop] › tests/smoke/won-remediation-editorial.spec.ts:29:5 › Won remediation editorial › table state labels and real picker targets at 390
+[1A[2K[3/9] [desktop] › tests/smoke/won-remediation-editorial.spec.ts:46:5 › Won remediation editorial › independent light surfaces and visible circle at 390
+[1A[2K[4/9] [desktop] › tests/smoke/won-remediation-editorial.spec.ts:13:5 › Won remediation editorial › column ratios preserve width and DOM order at 768
+[1A[2K[5/9] [desktop] › tests/smoke/won-remediation-editorial.spec.ts:29:5 › Won remediation editorial › table state labels and real picker targets at 768
+[1A[2K[6/9] [desktop] › tests/smoke/won-remediation-editorial.spec.ts:46:5 › Won remediation editorial › independent light surfaces and visible circle at 768
+[1A[2K[7/9] [desktop] › tests/smoke/won-remediation-editorial.spec.ts:13:5 › Won remediation editorial › column ratios preserve width and DOM order at 1440
+[1A[2K[8/9] [desktop] › tests/smoke/won-remediation-editorial.spec.ts:29:5 › Won remediation editorial › table state labels and real picker targets at 1440
+[1A[2K[9/9] [desktop] › tests/smoke/won-remediation-editorial.spec.ts:46:5 › Won remediation editorial › independent light surfaces and visible circle at 1440
+[1A[2K  9 passed (22.2s)

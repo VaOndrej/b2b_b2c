@@ -1,0 +1,480 @@
+{
+  "config": {
+    "configFile": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/playwright.config.ts",
+    "rootDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-release-gate/environment-guard-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-release-gate/environment-guard-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "mobile",
+        "name": "mobile",
+        "testDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "smoke/storefront-environment.spec.ts",
+      "file": "smoke/storefront-environment.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "storefront environment guard accepts only the expected normal storefront",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T09:57:11.146Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "da69d7301f99c35c0614-26a2bca0796f681b6bec",
+          "file": "smoke/storefront-environment.spec.ts",
+          "line": 22,
+          "column": 1
+        },
+        {
+          "title": "storefront environment guard identifies ENV_429",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T09:57:11.156Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "da69d7301f99c35c0614-65a32524aa13c89d9b65",
+          "file": "smoke/storefront-environment.spec.ts",
+          "line": 51,
+          "column": 3
+        },
+        {
+          "title": "storefront environment guard identifies ENV_AUTH",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 3,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"ENV_AUTH\"\u001b[39m\nReceived: \u001b[31m\"NORMAL_STOREFRONT\"\u001b[39m",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"ENV_AUTH\"\u001b[39m\nReceived: \u001b[31m\"NORMAL_STOREFRONT\"\u001b[39m\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront-environment.spec.ts:52:50",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront-environment.spec.ts",
+                      "column": 50,
+                      "line": 52
+                    },
+                    "snippet": "  50 | ] as const) {\n  51 |   test(`storefront environment guard identifies ${expected}`, () => {\n> 52 |     expect(classifyStorefrontSnapshot(snapshot)).toBe(expected);\n     |                                                  ^\n  53 |   });\n  54 | }\n  55 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront-environment.spec.ts",
+                        "column": 50,
+                        "line": 52
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"ENV_AUTH\"\u001b[39m\nReceived: \u001b[31m\"NORMAL_STOREFRONT\"\u001b[39m\n\n  50 | ] as const) {\n  51 |   test(`storefront environment guard identifies ${expected}`, () => {\n> 52 |     expect(classifyStorefrontSnapshot(snapshot)).toBe(expected);\n     |                                                  ^\n  53 |   });\n  54 | }\n  55 |\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront-environment.spec.ts:52:50"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T09:57:11.160Z",
+                  "annotations": [],
+                  "attachments": [],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront-environment.spec.ts",
+                    "column": 50,
+                    "line": 52
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "da69d7301f99c35c0614-1ea33e1ae8174edd6b57",
+          "file": "smoke/storefront-environment.spec.ts",
+          "line": 51,
+          "column": 3
+        },
+        {
+          "title": "storefront environment guard identifies ENV_CHALLENGE",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T09:57:11.789Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "da69d7301f99c35c0614-94be949c07b8e3a94a75",
+          "file": "smoke/storefront-environment.spec.ts",
+          "line": 51,
+          "column": 3
+        },
+        {
+          "title": "storefront environment guard identifies ENV_SHOPIFY_ERROR",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T09:57:11.798Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "da69d7301f99c35c0614-4362c96c5cef88079265",
+          "file": "smoke/storefront-environment.spec.ts",
+          "line": 51,
+          "column": 3
+        },
+        {
+          "title": "storefront environment guard accepts only the expected normal storefront",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T09:57:12.297Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "da69d7301f99c35c0614-79699a6bd6568fedb6c2",
+          "file": "smoke/storefront-environment.spec.ts",
+          "line": 22,
+          "column": 1
+        },
+        {
+          "title": "storefront environment guard identifies ENV_429",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T09:57:12.306Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "da69d7301f99c35c0614-aca75a42a19ee0a81e04",
+          "file": "smoke/storefront-environment.spec.ts",
+          "line": 51,
+          "column": 3
+        },
+        {
+          "title": "storefront environment guard identifies ENV_AUTH",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 4,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"ENV_AUTH\"\u001b[39m\nReceived: \u001b[31m\"NORMAL_STOREFRONT\"\u001b[39m",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"ENV_AUTH\"\u001b[39m\nReceived: \u001b[31m\"NORMAL_STOREFRONT\"\u001b[39m\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront-environment.spec.ts:52:50",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront-environment.spec.ts",
+                      "column": 50,
+                      "line": 52
+                    },
+                    "snippet": "  50 | ] as const) {\n  51 |   test(`storefront environment guard identifies ${expected}`, () => {\n> 52 |     expect(classifyStorefrontSnapshot(snapshot)).toBe(expected);\n     |                                                  ^\n  53 |   });\n  54 | }\n  55 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront-environment.spec.ts",
+                        "column": 50,
+                        "line": 52
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"ENV_AUTH\"\u001b[39m\nReceived: \u001b[31m\"NORMAL_STOREFRONT\"\u001b[39m\n\n  50 | ] as const) {\n  51 |   test(`storefront environment guard identifies ${expected}`, () => {\n> 52 |     expect(classifyStorefrontSnapshot(snapshot)).toBe(expected);\n     |                                                  ^\n  53 |   });\n  54 | }\n  55 |\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront-environment.spec.ts:52:50"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T09:57:12.321Z",
+                  "annotations": [],
+                  "attachments": [],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront-environment.spec.ts",
+                    "column": 50,
+                    "line": 52
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "da69d7301f99c35c0614-70d678421ec90317d3fd",
+          "file": "smoke/storefront-environment.spec.ts",
+          "line": 51,
+          "column": 3
+        },
+        {
+          "title": "storefront environment guard identifies ENV_CHALLENGE",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T09:57:12.820Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "da69d7301f99c35c0614-bf3d6ea927f984a30d9f",
+          "file": "smoke/storefront-environment.spec.ts",
+          "line": 51,
+          "column": 3
+        },
+        {
+          "title": "storefront environment guard identifies ENV_SHOPIFY_ERROR",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T09:57:12.830Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "da69d7301f99c35c0614-0b83f583529fb6f54537",
+          "file": "smoke/storefront-environment.spec.ts",
+          "line": 51,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-11T09:57:10.467Z",
+    "duration": 2385.7250000000004,
+    "expected": 8,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

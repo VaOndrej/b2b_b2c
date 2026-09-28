@@ -1,0 +1,111 @@
+{%- comment -%}
+  won-unit-price — the ONE place the theme turns a price into a unit price.
+
+  A unit price is a claim about a reference amount the shop actually knows. When
+  that amount cannot be read, this snippet renders NOTHING: an invented number
+  under a "/ 100 g" label is worse than no number at all (EshopAudit PRC-001).
+
+  THE LADDER lives in one global theme setting, `won_unit_price_rules`, so a
+  client can extend it without touching code. One rule per line:
+
+      won.net_weight_g | 100 | t:won.unit.per_100g
+      won.volume_ml    | 100 | 100 ml
+      won.washes       | 1   | prací dávka
+      # a line starting with '#' is parked and skipped
+
+  <metafield namespace.key> | <how many units the price is quoted per> | <label>
+
+  Rules are tried in order; the first whose metafield yields a positive number
+  wins, and unit price = price x <units> / <metafield value>. A `t:` label goes
+  through the locale files, anything else prints literally — that is what makes
+  the list universal rather than "grams and servings".
+
+  Only metafield paths are accepted. A literal amount would apply one made-up
+  quantity to the whole catalogue, which is the defect this snippet exists to stop.
+
+  Each rule is read PER VARIANT first, then per product. That order is not
+  optional: a product with a size or count axis carries its weight/servings on the
+  variant precisely because a product-level value would lie, so reading only
+  `product.metafields` comes back blank on every such product.
+
+  Params:
+    product  (required)
+    variant  optional; defaults to the selected/first available variant
+    rules    optional per-section override of the global ladder, same syntax
+    prefix   optional label, markup format only
+    format   'markup' (default) | 'text'
+{%- endcomment -%}
+{%- liquid
+  assign wup_variant = variant | default: product.selected_or_first_available_variant
+  assign wup_price = wup_variant.price
+  if wup_price == blank
+    assign wup_price = product.price
+  endif
+
+  assign wup_src = rules
+  if wup_src == blank
+    assign wup_src = settings.won_unit_price_rules
+  endif
+  # Liquid has no newline literal to split on; this is the canonical workaround.
+  assign wup_lines = wup_src | newline_to_br | split: '<br />'
+
+  assign wup_value = 0
+  assign wup_label = ''
+
+  for wup_line in wup_lines
+    # A '#' line is a parked rule, documented in the setting's help text.
+    assign wup_trimmed = wup_line | strip
+    if wup_trimmed == blank
+      continue
+    endif
+    assign wup_first = wup_trimmed | slice: 0
+    if wup_first == '#'
+      continue
+    endif
+    assign wup_parts = wup_line | split: '|'
+    if wup_parts.size < 3
+      continue
+    endif
+    assign wup_path = wup_parts[0] | strip
+    assign wup_per = wup_parts[1] | strip | plus: 0
+    assign wup_raw_label = wup_parts[2] | strip
+    if wup_path == blank or wup_per <= 0 or wup_raw_label == blank
+      continue
+    endif
+
+    assign wup_nk = wup_path | split: '.'
+    if wup_nk.size < 2
+      continue
+    endif
+    assign wup_ns = wup_nk[0]
+    assign wup_key = wup_nk[1]
+    assign wup_raw = wup_variant.metafields[wup_ns][wup_key].value
+    if wup_raw == blank
+      assign wup_raw = product.metafields[wup_ns][wup_key].value
+    endif
+    # `| plus: 0` coerces a text metafield to a number and a missing one to 0,
+    # so a string value never silently fails a `> 0` comparison.
+    assign wup_amount = wup_raw | plus: 0
+    if wup_amount <= 0
+      continue
+    endif
+
+    assign wup_value = wup_price | times: wup_per | divided_by: wup_amount
+    if wup_raw_label contains 't:'
+      assign wup_key_label = wup_raw_label | remove_first: 't:'
+      assign wup_label = wup_key_label | t
+    else
+      assign wup_label = wup_raw_label
+    endif
+    break
+  endfor
+-%}
+{%- if wup_value > 0 and wup_label != blank -%}
+  {%- if format == 'text' -%}
+    {{- wup_value | money }} / {{ wup_label -}}
+  {%- else -%}
+    {%- if prefix != blank -%}<span class="won-ppu__prefix">{{ prefix }}</span>{%- endif -%}
+    <span class="won-ppu__value">{{ wup_value | money }}</span>
+    <span class="won-ppu__unit">/ {{ wup_label }}</span>
+  {%- endif -%}
+{%- endif -%}

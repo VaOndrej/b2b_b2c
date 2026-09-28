@@ -52,7 +52,11 @@
       "announcement_bar": "Won Announcement bar",
       "ann_message": "Message",
       "ann_freeship": "Free shipping (progress)",
-      "breadcrumbs": "Breadcrumbs"
+      "breadcrumbs": "Breadcrumbs",
+      "group": "Won · Content group",
+      "product_card": "Won · Product card",
+      "product_meta": "Won · Product metadata",
+      "product_offer": "Won · Product offer frame"
     },
     "info": {
       "image_mobile": "A separate crop shown below 750px. Use when the desktop image loses its subject on a narrow phone; leave empty to reuse the desktop image everywhere.",
@@ -209,7 +213,10 @@
       "header_search_placeholder": "Name what can be searched, e.g. \"Search products, brands…\". Leave empty to use the theme default.",
       "header_search_width": "Widest the field grows on desktop. On mobile it always fills its own line under the logo.",
       "toast_enabled": "Turned off, nothing is rendered and the drawer opens by itself again.",
-      "toast_max": "Older messages leave before more can pile up."
+      "toast_max": "Older messages leave before more can pile up.",
+      "review_rating": "Set to 0 to hide the rating.",
+      "product_offer": "Add the native variant picker inside this block. The badge is editable marketing copy; configure actual discounts in Shopify.",
+      "video_fit": "Cover or contain applies to hosted video. External players control their own image fit. Adaptive uses hosted media dimensions; external videos use 16:9."
     },
     "headers": {
       "ai_schema": "AI / search (structured data)",
@@ -469,7 +476,31 @@
       "toast_position": "Position",
       "toast_duration": "How long it stays",
       "toast_max": "Most at once",
-      "toast_media": "Product thumbnail"
+      "toast_media": "Product thumbnail",
+      "row_style": "Disclosure style",
+      "feature_presentation": "Presentation",
+      "feature_number": "Number or step label",
+      "feature_statistic_value": "Statistic value",
+      "feature_icon_style": "Icon style",
+      "feature_statistic_size": "Statistic size",
+      "feature_marker_color": "Number or statistic color",
+      "slide_visualization": "Content visualization",
+      "reviewer": "Reviewer name",
+      "review_rating": "Rating",
+      "media_caption": "Image caption",
+      "expert_role": "Role or qualification",
+      "product_badge_background": "Badge background",
+      "product_badge_color": "Badge text color",
+      "product_show_vendor": "Show brand",
+      "product_show_type": "Show product type",
+      "product_outline_options": "Highlight variant options",
+      "product_outline_color": "Variant outline color",
+      "show_add": "Show add-to-cart action",
+      "show_badges": "Show badges",
+      "delivery_appearance": "Delivery row style",
+      "tile_label_position": "Label position",
+      "column_ratio": "Column ratio",
+      "video_fit": "Hosted video fit"
     },
     "options": {
       "loop_off": "Off",
@@ -658,7 +689,31 @@
       "toast_top_right": "Top right",
       "toast_top_left": "Top left",
       "toast_bottom_right": "Bottom right",
-      "toast_bottom_left": "Bottom left"
+      "toast_bottom_left": "Bottom left",
+      "group_gap_small": "Compact",
+      "group_gap_medium": "Regular",
+      "group_gap_large": "Spacious",
+      "panel_inherit": "Use section style",
+      "panel_plain": "Simple row",
+      "panel_editorial": "Large editorial row",
+      "panel_boxed": "Bordered card",
+      "feature_standard": "Icon and text",
+      "feature_numbered": "Numbered benefit",
+      "feature_statistic": "Statistic",
+      "feature_icon_disc": "Tinted disc",
+      "feature_icon_bare": "Bare icon",
+      "slide_standard": "Standard card",
+      "slide_testimonial": "Split testimonial",
+      "slide_expert": "Expert profile",
+      "delivery_card": "Inset card",
+      "delivery_plain": "Plain row",
+      "tile_label_overlay": "Over image",
+      "tile_label_below": "Below image",
+      "product_layout_card": "Card",
+      "product_layout_row": "Row",
+      "video_adaptive": "Adaptive (hosted media; external 16:9)",
+      "video_cover": "Fill (crop)",
+      "video_contain": "Fit whole video"
     },
     "presets": {
       "product_carousel": "Won Carousel — products",
@@ -700,7 +755,10 @@
       "hero_grid_4": "Won Hero – tiles (4)",
       "hero_grid_3": "Won Hero – tiles (3)",
       "hero_carousel": "Won Hero – carousel",
-      "hero_peek": "Won Hero – peek carousel"
+      "hero_peek": "Won Hero – peek carousel",
+      "faq_grid": "Won · Two-column FAQ",
+      "editorial_columns": "Won · Editorial columns",
+      "split_reviews": "Won · Split reviews"
     },
     "categories": {
       "products": "Products",
@@ -748,7 +806,9 @@
       "contact_success": "Thanks — we'll be in touch soon.",
       "tab_title": "Tab",
       "tab_content": "<p>Tab content.</p>",
-      "ann_message": "Free shipping over $75 🚚"
+      "ann_message": "Free shipping over $75 🚚",
+      "editorial_benefits": "<p>Benefits worth exploring</p>",
+      "editorial_expert": "<p>An expert perspective</p>"
     },
     "global": {
       "rails": "Won — Carousels & rails",

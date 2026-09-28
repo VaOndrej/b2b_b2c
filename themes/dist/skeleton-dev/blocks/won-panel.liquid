@@ -4,11 +4,26 @@ mode-aware from the parent section's `display` setting: a tab panel (for the
 won-tabset element to wire) when display=tabs, or a native <details> row when
 display=accordion. Exclusive-open in accordion mode is driven by the section's
 allow_multiple via a shared name attribute.
+Accepts nested theme blocks, so a panel can hold a params/nutrition table instead
+of (or besides) its rich text — that is what keeps a PDP to ONE detail zone.
 @example
 {% content_for 'block', type: 'won-panel', id: 'panel-1' %}
 {% enddoc %}
 
-{%- assign s = block.settings -%}
+{%- liquid
+  assign s = block.settings
+  assign row_style = s.row_style | default: 'inherit'
+  if row_style == 'inherit'
+    assign row_style = section.settings.row_style | default: 'plain'
+  endif
+-%}
+{%- comment -%}
+  `content_for 'blocks'` may appear EXACTLY ONCE per file — Shopify rejects a
+  second occurrence at upload time even when the two sit in mutually exclusive
+  Liquid branches ("Duplicate entries for content_for 'blocks'", 2026-09-02).
+  So the mode branches open and close AROUND the single slot, the same shape
+  won-panels.liquid uses for its tabs/accordion wrappers.
+{%- endcomment -%}
 {%- if section.settings.display == 'tabs' -%}
   <div
     class="won-panels__panel"
@@ -19,11 +34,10 @@ allow_multiple via a shared name attribute.
     {{ block.shopify_attributes }}
   >
     {%- if s.title != blank -%}<h3 class="won-panels__panel-title">{{ s.title }}</h3>{%- endif -%}
-    <div class="rte">{{ s.content }}</div>
-  </div>
+    {%- if s.content != blank -%}<div class="rte">{{ s.content }}</div>{%- endif -%}
 {%- else -%}
   <details
-    class="won-panels__row"
+    class="won-panels__row won-panel--{{ row_style }}{% if row_style != 'plain' %} won-panels--chevron{% endif %}"
     {% if s.open %}open{% endif %}
     {%- unless section.settings.allow_multiple %} name="won-panels-{{ section.id }}"{% endunless %}
     {{ block.shopify_attributes }}
@@ -32,21 +46,89 @@ allow_multiple via a shared name attribute.
       <span class="won-panels__q">{{ s.title }}</span>
       <span class="won-panels__icon" aria-hidden="true"></span>
     </summary>
-    <div class="won-panels__answer rte">{{ s.content }}</div>
+    {%- if s.content != blank -%}<div class="won-panels__answer rte">{{ s.content }}</div>{%- endif -%}
+{%- endif -%}
+
+    <div class="won-panels__panel-blocks">{% content_for 'blocks' %}</div>
+
+{%- if section.settings.display == 'tabs' -%}
+  </div>
+{%- else -%}
   </details>
   {%- render 'won-faq-schema', enabled: section.settings.emit_faq_schema, question: s.title, answer: s.content -%}
 {%- endif -%}
+
+{% stylesheet %}
+  /* Accordion (absorbs won-accordion + won-accordion-row). */
+  .won-panels__row { border-bottom: 1px solid var(--won-border); }
+  .won-panels__summary {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--won-space-3);
+    padding: var(--won-space-4) 0; cursor: pointer; font-weight: 600; list-style: none;
+  }
+  .won-panels__summary::-webkit-details-marker { display: none; }
+  .won-panels__icon { position: relative; flex: 0 0 auto; inline-size: 16px; block-size: 16px; }
+  .won-panels__icon::before,
+  .won-panels__icon::after {
+    content: ""; position: absolute; inset-block-start: 50%; inset-inline-start: 0;
+    inline-size: 16px; block-size: 2px; background: var(--won-accent);
+    transform: translateY(-50%); transition: transform var(--won-dur) var(--won-ease);
+  }
+  .won-panels__icon::after { transform: translateY(-50%) rotate(90deg); }
+  .won-panels__row[open] .won-panels__icon::after { transform: translateY(-50%) rotate(0deg); }
+  /* Chevron variant (.won-panels--chevron): a caret instead of a plus/minus. */
+  .won-panels--chevron .won-panels__icon::before { display: none; }
+  .won-panels--chevron .won-panels__icon::after {
+    inline-size: 9px; block-size: 9px; background: none;
+    border-inline-end: 2px solid var(--won-accent); border-block-end: 2px solid var(--won-accent);
+    inset-inline-start: 3px; transform: translateY(-75%) rotate(45deg);
+  }
+  .won-panels--chevron .won-panels__row[open] .won-panels__icon::after { transform: translateY(-25%) rotate(-135deg); }
+  .won-panels__answer { padding-block-end: var(--won-space-4); opacity: 0.92; }
+  @media (prefers-reduced-motion: reduce) {
+    .won-panels__icon::before, .won-panels__icon::after { transition: none; }
+  }
+
+  /* Mobile reads centered like the rest of the page: the question centers with
+     the +/- icon pinned to the right edge (absolute, out of the flex flow), the
+     contact block and answers center too. Desktop keeps question-left + icon-right. */
+  @media (max-width: 749px) {
+    .won-panels__summary { justify-content: center; position: relative; padding-inline: 28px; }
+    .won-panels__icon { position: absolute; inset-inline-end: 0; inset-block-start: 50%; transform: translateY(-50%); }
+    .won-panels__contact { align-items: center; }
+    .won-panels__answer { text-align: center; }
+  }
+
+
+  /* Nested-block slot. `content_for 'blocks'` always emits its wrapper, so an
+     empty slot must not pay for a gap — hence :empty rather than a Liquid guard
+     (the slot's emptiness is only known after the blocks render). */
+  .won-panels__panel-blocks { display: grid; gap: var(--won-space-5); }
+  .won-panels__panel-blocks:empty { display: none; }
+  .won-panels__panel > .rte + .won-panels__panel-blocks,
+  .won-panels__answer + .won-panels__panel-blocks { margin-block-start: var(--won-space-4); }
+  .won-panels__row.won-panels--chevron[open] .won-panels__icon::after { transform: translateY(-25%) rotate(-135deg); }
+  .won-panel--editorial .won-panels__summary { min-block-size: var(--won-tap); font-family: var(--font-heading--family, inherit); font-weight: var(--font-heading--weight, 800); font-size: clamp(1.25rem, 2.2vw, 2rem); text-align: start; }
+  .won-panel--boxed { border: 1px solid var(--won-border); padding-inline: var(--won-space-3); }
+  .won-panel--boxed .won-panels__summary { min-block-size: var(--won-tap); text-align: start; }
+  .won-panel--editorial .won-panels__answer, .won-panel--boxed .won-panels__answer { text-align: start; }
+  @media (max-width: 749px) {
+    .won-panel--editorial .won-panels__summary, .won-panel--boxed .won-panels__summary { justify-content: space-between; padding-inline-start: 0; }
+  }
+{% endstylesheet %}
 
 {% schema %}
 {
   "name": "t:won.names.panel",
   "settings": [
+    {"type": "select", "id": "row_style", "label": "t:won.settings.row_style", "default": "inherit", "options": [{"value": "inherit", "label": "t:won.options.panel_inherit"}, {"value": "plain", "label": "t:won.options.panel_plain"}, {"value": "editorial", "label": "t:won.options.panel_editorial"}, {"value": "boxed", "label": "t:won.options.panel_boxed"}]},
+
     { "type": "header", "content": "t:won.headers.content" },
     { "type": "inline_richtext", "id": "title", "label": "t:won.settings.title", "default": "t:won.defaults.tab_title" },
     { "type": "richtext", "id": "content", "label": "t:won.settings.content", "default": "t:won.defaults.tab_content" },
     { "type": "header", "content": "t:won.headers.controls" },
     { "type": "checkbox", "id": "open", "label": "t:won.settings.open_by_default", "info": "t:won.info.panel_open", "default": false }
   ],
+  "blocks": [{ "type": "@theme" }, { "type": "@app" }],
   "presets": [{ "name": "t:won.names.panel" }]
 }
 {% endschema %}

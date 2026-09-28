@@ -1,0 +1,96 @@
+{
+  "stats": {
+    "startTime": "2026-09-11T07:32:38.783Z",
+    "duration": 227970.965,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 12,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "title": "card quick-add renders a stepper once the line exists",
+      "project": "desktop",
+      "status": "failed",
+      "error": "Error: Won must announce a committed cart containing 1 items",
+      "http_errors": []
+    },
+    {
+      "title": "card decrement reaches zero when earlier update is still in flight",
+      "project": "desktop",
+      "status": "timedOut",
+      "error": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+      "http_errors": []
+    },
+    {
+      "title": "card quick-add renders a stepper once the line exists",
+      "project": "desktop",
+      "status": "failed",
+      "error": "Error: Won must announce a committed cart containing 1 items",
+      "http_errors": []
+    },
+    {
+      "title": "card decrement reaches zero when earlier update is still in flight",
+      "project": "desktop",
+      "status": "timedOut",
+      "error": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+      "http_errors": []
+    },
+    {
+      "title": "card quick-add renders a stepper once the line exists",
+      "project": "desktop",
+      "status": "failed",
+      "error": "Error: cart mutations are restricted to the b2b development store",
+      "http_errors": []
+    },
+    {
+      "title": "card decrement reaches zero when earlier update is still in flight",
+      "project": "desktop",
+      "status": "timedOut",
+      "error": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+      "http_errors": []
+    },
+    {
+      "title": "card quick-add renders a stepper once the line exists",
+      "project": "mobile",
+      "status": "failed",
+      "error": "Error: cart mutations are restricted to the b2b development store",
+      "http_errors": []
+    },
+    {
+      "title": "card decrement reaches zero when earlier update is still in flight",
+      "project": "mobile",
+      "status": "failed",
+      "error": "Error: cart mutations are restricted to the b2b development store",
+      "http_errors": []
+    },
+    {
+      "title": "card quick-add renders a stepper once the line exists",
+      "project": "mobile",
+      "status": "failed",
+      "error": "Error: cart mutations are restricted to the b2b development store",
+      "http_errors": []
+    },
+    {
+      "title": "card decrement reaches zero when earlier update is still in flight",
+      "project": "mobile",
+      "status": "failed",
+      "error": "Error: cart mutations are restricted to the b2b development store",
+      "http_errors": []
+    },
+    {
+      "title": "card quick-add renders a stepper once the line exists",
+      "project": "mobile",
+      "status": "failed",
+      "error": "Error: cart mutations are restricted to the b2b development store",
+      "http_errors": []
+    },
+    {
+      "title": "card decrement reaches zero when earlier update is still in flight",
+      "project": "mobile",
+      "status": "failed",
+      "error": "Error: cart mutations are restricted to the b2b development store",
+      "http_errors": []
+    }
+  ]
+}

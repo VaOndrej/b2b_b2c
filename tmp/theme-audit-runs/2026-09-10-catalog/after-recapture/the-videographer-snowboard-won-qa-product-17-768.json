@@ -1,0 +1,111 @@
+{
+  "url": "/products/the-videographer-snowboard?view=won-qa-product-17",
+  "width": 768,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/products/the-videographer-snowboard?view=won-qa-product-17",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=a969b1ce-85e6-4342-8d58-9398a6d77fe4&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://error-analytics-sessions-production.shopifysvc.com/observeonly",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "httpAttempts": [
+      200
+    ],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "qa133",
+      "type": "won-sticky-atc",
+      "variant": "bar_style=minimal",
+      "label": "won-sticky-atc · bar_style=minimal",
+      "context": "product",
+      "limitations": [],
+      "url": "/products/the-videographer-snowboard?view=won-qa-product-17",
+      "sectionId": "qa133",
+      "selector": "[id$=\"__qa133\"]",
+      "template": "product.won-qa-product-17.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa133-768.png"
+      ],
+      "text": "$549.95\nAdd to cart",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=120",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 963,
+        "width": 768,
+        "height": 61
+      }
+    }
+  ]
+}

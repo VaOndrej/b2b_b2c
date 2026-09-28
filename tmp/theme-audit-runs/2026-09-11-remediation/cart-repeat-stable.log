@@ -1,0 +1,1129 @@
+(node:27620) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 60 tests using 1 worker
+
+[1A[2K(node:27621) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:27621) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:27621) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/60] [desktop] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists
+[1A[2K[2/60] [desktop] › tests/smoke/won-feedback-8.spec.ts:164:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K[3/60] [desktop] › tests/smoke/won-toast.spec.ts:46:1 › adding to the cart shows one toast naming the product
+[1A[2K[4/60] [desktop] › tests/smoke/won-toast.spec.ts:56:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K[5/60] [desktop] › tests/smoke/won-toast.spec.ts:74:1 › a burst across different cards is capped at the configured maximum
+[1A[2K[6/60] [desktop] › tests/smoke/won-toast.spec.ts:90:1 › emptying the cart reports removals, one per variant
+[1A[2K[7/60] [desktop] › tests/smoke/won-toast.spec.ts:107:1 › the toast is two lines, and a decrease reads differently from an increase
+[1A[2K[8/60] [desktop] › tests/smoke/won-toast.spec.ts:140:1 › the thumbnail spans the full height of the toast
+[1A[2K[9/60] [desktop] › tests/smoke/won-toast.spec.ts:153:1 › while toasts are on, the cart drawer does not open by itself
+[1A[2K[10/60] [desktop] › tests/smoke/won-toast.spec.ts:158:1 › a top-anchored toast clears the header
+[1A[2K(node:28013) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28013) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28013) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[11/60] [desktop] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists
+[1A[2K[12/60] [desktop] › tests/smoke/won-feedback-8.spec.ts:164:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K[13/60] [desktop] › tests/smoke/won-toast.spec.ts:46:1 › adding to the cart shows one toast naming the product
+[1A[2K[14/60] [desktop] › tests/smoke/won-toast.spec.ts:56:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K  1) [desktop] › tests/smoke/won-toast.spec.ts:56:1 › repeat taps on one card rewrite one toast rather than stacking 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveAttribute[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-won-stepper]').first()
+    Expected: [32m"0"[39m
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toHaveAttribute" with timeout 15000ms[22m
+    [2m  - waiting for locator('[data-won-stepper]').first()[22m
+
+
+       at support/cart-state.ts:63
+
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+    > 63 |     await expect(page.locator('[data-won-stepper]').first()).toHaveAttribute(
+         |                                                              ^
+      64 |       'data-won-rendered-qty',
+      65 |       '0',
+      66 |     );
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:63:62)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-repeat-tap-dbb6b--toast-rather-than-stacking-desktop-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-repeat-tap-dbb6b--toast-rather-than-stacking-desktop-repeat1/error-context.md
+
+
+[1A[2K(node:28263) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28263) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28263) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[15/60] [desktop] › tests/smoke/won-toast.spec.ts:74:1 › a burst across different cards is capped at the configured maximum
+[1A[2K[16/60] [desktop] › tests/smoke/won-toast.spec.ts:90:1 › emptying the cart reports removals, one per variant
+[1A[2K[17/60] [desktop] › tests/smoke/won-toast.spec.ts:107:1 › the toast is two lines, and a decrease reads differently from an increase
+[1A[2K[18/60] [desktop] › tests/smoke/won-toast.spec.ts:140:1 › the thumbnail spans the full height of the toast
+[1A[2K[19/60] [desktop] › tests/smoke/won-toast.spec.ts:153:1 › while toasts are on, the cart drawer does not open by itself
+[1A[2K[20/60] [desktop] › tests/smoke/won-toast.spec.ts:158:1 › a top-anchored toast clears the header
+[1A[2K(node:28359) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28359) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28359) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[21/60] [desktop] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists
+[1A[2K[22/60] [desktop] › tests/smoke/won-feedback-8.spec.ts:164:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K[23/60] [desktop] › tests/smoke/won-toast.spec.ts:46:1 › adding to the cart shows one toast naming the product
+[1A[2K[24/60] [desktop] › tests/smoke/won-toast.spec.ts:56:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K[25/60] [desktop] › tests/smoke/won-toast.spec.ts:74:1 › a burst across different cards is capped at the configured maximum
+[1A[2K[26/60] [desktop] › tests/smoke/won-toast.spec.ts:90:1 › emptying the cart reports removals, one per variant
+[1A[2K[27/60] [desktop] › tests/smoke/won-toast.spec.ts:107:1 › the toast is two lines, and a decrease reads differently from an increase
+[1A[2K[28/60] [desktop] › tests/smoke/won-toast.spec.ts:140:1 › the thumbnail spans the full height of the toast
+[1A[2K[29/60] [desktop] › tests/smoke/won-toast.spec.ts:153:1 › while toasts are on, the cart drawer does not open by itself
+[1A[2K[30/60] [desktop] › tests/smoke/won-toast.spec.ts:158:1 › a top-anchored toast clears the header
+[1A[2K(node:28631) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28631) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28631) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[31/60] [mobile] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists
+[1A[2K[32/60] [mobile] › tests/smoke/won-feedback-8.spec.ts:164:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K[33/60] [mobile] › tests/smoke/won-toast.spec.ts:46:1 › adding to the cart shows one toast naming the product
+[1A[2K[34/60] [mobile] › tests/smoke/won-toast.spec.ts:56:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K[35/60] [mobile] › tests/smoke/won-toast.spec.ts:74:1 › a burst across different cards is capped at the configured maximum
+[1A[2K  2) [mobile] › tests/smoke/won-toast.spec.ts:74:1 › a burst across different cards is capped at the configured maximum 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-a-burst-ac-2c582-d-at-the-configured-maximum-mobile/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-a-burst-ac-2c582-d-at-the-configured-maximum-mobile/error-context.md
+
+
+[1A[2K(node:28734) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28734) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28734) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[36/60] [mobile] › tests/smoke/won-toast.spec.ts:90:1 › emptying the cart reports removals, one per variant
+[1A[2K  3) [mobile] › tests/smoke/won-toast.spec.ts:90:1 › emptying the cart reports removals, one per variant 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-emptying-t-2ee85-ts-removals-one-per-variant-mobile/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-emptying-t-2ee85-ts-removals-one-per-variant-mobile/error-context.md
+
+
+[1A[2K(node:28743) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28743) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28743) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[37/60] [mobile] › tests/smoke/won-toast.spec.ts:107:1 › the toast is two lines, and a decrease reads differently from an increase
+[1A[2K  4) [mobile] › tests/smoke/won-toast.spec.ts:107:1 › the toast is two lines, and a decrease reads differently from an increase 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-the-toast--83fb6-ifferently-from-an-increase-mobile/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-the-toast--83fb6-ifferently-from-an-increase-mobile/error-context.md
+
+
+[1A[2K(node:28766) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28766) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28766) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[38/60] [mobile] › tests/smoke/won-toast.spec.ts:140:1 › the thumbnail spans the full height of the toast
+[1A[2K  5) [mobile] › tests/smoke/won-toast.spec.ts:140:1 › the thumbnail spans the full height of the toast 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-the-thumbn-a4b4a-he-full-height-of-the-toast-mobile/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-the-thumbn-a4b4a-he-full-height-of-the-toast-mobile/error-context.md
+
+
+[1A[2K(node:28773) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28773) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28773) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[39/60] [mobile] › tests/smoke/won-toast.spec.ts:153:1 › while toasts are on, the cart drawer does not open by itself
+[1A[2K  6) [mobile] › tests/smoke/won-toast.spec.ts:153:1 › while toasts are on, the cart drawer does not open by itself 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-while-toas-bdee4-wer-does-not-open-by-itself-mobile/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-while-toas-bdee4-wer-does-not-open-by-itself-mobile/error-context.md
+
+
+[1A[2K(node:28780) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28780) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28780) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[40/60] [mobile] › tests/smoke/won-toast.spec.ts:158:1 › a top-anchored toast clears the header
+[1A[2K  7) [mobile] › tests/smoke/won-toast.spec.ts:158:1 › a top-anchored toast clears the header ───────
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-a-top-anchored-toast-clears-the-header-mobile/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-a-top-anchored-toast-clears-the-header-mobile/error-context.md
+
+
+[1A[2K(node:28789) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28789) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28789) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[41/60] [mobile] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists
+[1A[2K  8) [mobile] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:124:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat1/error-context.md
+
+
+[1A[2K(node:28803) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28803) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28803) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[42/60] [mobile] › tests/smoke/won-feedback-8.spec.ts:164:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K  9) [mobile] › tests/smoke/won-feedback-8.spec.ts:164:1 › card decrement reaches zero when earlier update is still in flight 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:168:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat1/error-context.md
+
+
+[1A[2K(node:28812) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28812) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28812) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[43/60] [mobile] › tests/smoke/won-toast.spec.ts:46:1 › adding to the cart shows one toast naming the product
+[1A[2K  10) [mobile] › tests/smoke/won-toast.spec.ts:46:1 › adding to the cart shows one toast naming the product 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-adding-to--cd1de-ne-toast-naming-the-product-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-adding-to--cd1de-ne-toast-naming-the-product-mobile-repeat1/error-context.md
+
+
+[1A[2K(node:28819) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28819) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28819) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[44/60] [mobile] › tests/smoke/won-toast.spec.ts:56:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K  11) [mobile] › tests/smoke/won-toast.spec.ts:56:1 › repeat taps on one card rewrite one toast rather than stacking 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-repeat-tap-dbb6b--toast-rather-than-stacking-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-repeat-tap-dbb6b--toast-rather-than-stacking-mobile-repeat1/error-context.md
+
+
+[1A[2K(node:28826) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28826) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28826) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[45/60] [mobile] › tests/smoke/won-toast.spec.ts:74:1 › a burst across different cards is capped at the configured maximum
+[1A[2K  12) [mobile] › tests/smoke/won-toast.spec.ts:74:1 › a burst across different cards is capped at the configured maximum 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-a-burst-ac-2c582-d-at-the-configured-maximum-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-a-burst-ac-2c582-d-at-the-configured-maximum-mobile-repeat1/error-context.md
+
+
+[1A[2K(node:28835) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28835) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28835) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[46/60] [mobile] › tests/smoke/won-toast.spec.ts:90:1 › emptying the cart reports removals, one per variant
+[1A[2K  13) [mobile] › tests/smoke/won-toast.spec.ts:90:1 › emptying the cart reports removals, one per variant 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-emptying-t-2ee85-ts-removals-one-per-variant-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-emptying-t-2ee85-ts-removals-one-per-variant-mobile-repeat1/error-context.md
+
+
+[1A[2K(node:28849) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28849) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28849) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[47/60] [mobile] › tests/smoke/won-toast.spec.ts:107:1 › the toast is two lines, and a decrease reads differently from an increase
+[1A[2K  14) [mobile] › tests/smoke/won-toast.spec.ts:107:1 › the toast is two lines, and a decrease reads differently from an increase 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-the-toast--83fb6-ifferently-from-an-increase-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-the-toast--83fb6-ifferently-from-an-increase-mobile-repeat1/error-context.md
+
+
+[1A[2K(node:28865) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28865) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28865) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[48/60] [mobile] › tests/smoke/won-toast.spec.ts:140:1 › the thumbnail spans the full height of the toast
+[1A[2K  15) [mobile] › tests/smoke/won-toast.spec.ts:140:1 › the thumbnail spans the full height of the toast 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-the-thumbn-a4b4a-he-full-height-of-the-toast-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-the-thumbn-a4b4a-he-full-height-of-the-toast-mobile-repeat1/error-context.md
+
+
+[1A[2K(node:28889) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28889) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28889) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[49/60] [mobile] › tests/smoke/won-toast.spec.ts:153:1 › while toasts are on, the cart drawer does not open by itself
+[1A[2K  16) [mobile] › tests/smoke/won-toast.spec.ts:153:1 › while toasts are on, the cart drawer does not open by itself 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-while-toas-bdee4-wer-does-not-open-by-itself-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-while-toas-bdee4-wer-does-not-open-by-itself-mobile-repeat1/error-context.md
+
+
+[1A[2K(node:28900) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28900) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28900) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[50/60] [mobile] › tests/smoke/won-toast.spec.ts:158:1 › a top-anchored toast clears the header
+[1A[2K  17) [mobile] › tests/smoke/won-toast.spec.ts:158:1 › a top-anchored toast clears the header ──────
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-a-top-anchored-toast-clears-the-header-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-a-top-anchored-toast-clears-the-header-mobile-repeat1/error-context.md
+
+
+[1A[2K(node:28910) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28910) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28910) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[51/60] [mobile] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists
+[1A[2K  18) [mobile] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:124:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat2/error-context.md
+
+
+[1A[2K(node:28918) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28918) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28918) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[52/60] [mobile] › tests/smoke/won-feedback-8.spec.ts:164:1 › card decrement reaches zero when earlier update is still in flight
+[1A[2K  19) [mobile] › tests/smoke/won-feedback-8.spec.ts:164:1 › card decrement reaches zero when earlier update is still in flight 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:168:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat2/error-context.md
+
+
+[1A[2K(node:28946) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28946) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28946) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[53/60] [mobile] › tests/smoke/won-toast.spec.ts:46:1 › adding to the cart shows one toast naming the product
+[1A[2K  20) [mobile] › tests/smoke/won-toast.spec.ts:46:1 › adding to the cart shows one toast naming the product 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-adding-to--cd1de-ne-toast-naming-the-product-mobile-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-adding-to--cd1de-ne-toast-naming-the-product-mobile-repeat2/error-context.md
+
+
+[1A[2K(node:28962) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28962) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28962) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[54/60] [mobile] › tests/smoke/won-toast.spec.ts:56:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K  21) [mobile] › tests/smoke/won-toast.spec.ts:56:1 › repeat taps on one card rewrite one toast rather than stacking 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-repeat-tap-dbb6b--toast-rather-than-stacking-mobile-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-repeat-tap-dbb6b--toast-rather-than-stacking-mobile-repeat2/error-context.md
+
+
+[1A[2K(node:28970) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28970) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28970) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[55/60] [mobile] › tests/smoke/won-toast.spec.ts:74:1 › a burst across different cards is capped at the configured maximum
+[1A[2K  22) [mobile] › tests/smoke/won-toast.spec.ts:74:1 › a burst across different cards is capped at the configured maximum 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-a-burst-ac-2c582-d-at-the-configured-maximum-mobile-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-a-burst-ac-2c582-d-at-the-configured-maximum-mobile-repeat2/error-context.md
+
+
+[1A[2K(node:28981) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28981) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28981) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[56/60] [mobile] › tests/smoke/won-toast.spec.ts:90:1 › emptying the cart reports removals, one per variant
+[1A[2K  23) [mobile] › tests/smoke/won-toast.spec.ts:90:1 › emptying the cart reports removals, one per variant 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-emptying-t-2ee85-ts-removals-one-per-variant-mobile-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-emptying-t-2ee85-ts-removals-one-per-variant-mobile-repeat2/error-context.md
+
+
+[1A[2K(node:28996) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28996) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28996) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[57/60] [mobile] › tests/smoke/won-toast.spec.ts:107:1 › the toast is two lines, and a decrease reads differently from an increase
+[1A[2K  24) [mobile] › tests/smoke/won-toast.spec.ts:107:1 › the toast is two lines, and a decrease reads differently from an increase 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-the-toast--83fb6-ifferently-from-an-increase-mobile-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-the-toast--83fb6-ifferently-from-an-increase-mobile-repeat2/error-context.md
+
+
+[1A[2K(node:29007) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:29007) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:29007) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[58/60] [mobile] › tests/smoke/won-toast.spec.ts:140:1 › the thumbnail spans the full height of the toast
+[1A[2K  25) [mobile] › tests/smoke/won-toast.spec.ts:140:1 › the thumbnail spans the full height of the toast 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-the-thumbn-a4b4a-he-full-height-of-the-toast-mobile-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-the-thumbn-a4b4a-he-full-height-of-the-toast-mobile-repeat2/error-context.md
+
+
+[1A[2K(node:29015) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:29015) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:29015) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[59/60] [mobile] › tests/smoke/won-toast.spec.ts:153:1 › while toasts are on, the cart drawer does not open by itself
+[1A[2K  26) [mobile] › tests/smoke/won-toast.spec.ts:153:1 › while toasts are on, the cart drawer does not open by itself 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-while-toas-bdee4-wer-does-not-open-by-itself-mobile-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-while-toas-bdee4-wer-does-not-open-by-itself-mobile-repeat2/error-context.md
+
+
+[1A[2K(node:29038) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:29038) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:29038) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[60/60] [mobile] › tests/smoke/won-toast.spec.ts:158:1 › a top-anchored toast clears the header
+[1A[2K  27) [mobile] › tests/smoke/won-toast.spec.ts:158:1 › a top-anchored toast clears the header ──────
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:43:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-a-top-anchored-toast-clears-the-header-mobile-repeat2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/cart-test-results/smoke-won-toast-a-top-anchored-toast-clears-the-header-mobile-repeat2/error-context.md
+
+
+[1A[2K  27 failed
+    [desktop] › tests/smoke/won-toast.spec.ts:56:1 › repeat taps on one card rewrite one toast rather than stacking 
+    [mobile] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists 
+    [mobile] › tests/smoke/won-feedback-8.spec.ts:164:1 › card decrement reaches zero when earlier update is still in flight 
+    [mobile] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists 
+    [mobile] › tests/smoke/won-feedback-8.spec.ts:164:1 › card decrement reaches zero when earlier update is still in flight 
+    [mobile] › tests/smoke/won-toast.spec.ts:74:1 › a burst across different cards is capped at the configured maximum 
+    [mobile] › tests/smoke/won-toast.spec.ts:90:1 › emptying the cart reports removals, one per variant 
+    [mobile] › tests/smoke/won-toast.spec.ts:107:1 › the toast is two lines, and a decrease reads differently from an increase 
+    [mobile] › tests/smoke/won-toast.spec.ts:140:1 › the thumbnail spans the full height of the toast 
+    [mobile] › tests/smoke/won-toast.spec.ts:153:1 › while toasts are on, the cart drawer does not open by itself 
+    [mobile] › tests/smoke/won-toast.spec.ts:158:1 › a top-anchored toast clears the header ────────
+    [mobile] › tests/smoke/won-toast.spec.ts:46:1 › adding to the cart shows one toast naming the product 
+    [mobile] › tests/smoke/won-toast.spec.ts:56:1 › repeat taps on one card rewrite one toast rather than stacking 
+    [mobile] › tests/smoke/won-toast.spec.ts:74:1 › a burst across different cards is capped at the configured maximum 
+    [mobile] › tests/smoke/won-toast.spec.ts:90:1 › emptying the cart reports removals, one per variant 
+    [mobile] › tests/smoke/won-toast.spec.ts:107:1 › the toast is two lines, and a decrease reads differently from an increase 
+    [mobile] › tests/smoke/won-toast.spec.ts:140:1 › the thumbnail spans the full height of the toast 
+    [mobile] › tests/smoke/won-toast.spec.ts:153:1 › while toasts are on, the cart drawer does not open by itself 
+    [mobile] › tests/smoke/won-toast.spec.ts:158:1 › a top-anchored toast clears the header ────────
+    [mobile] › tests/smoke/won-toast.spec.ts:46:1 › adding to the cart shows one toast naming the product 
+    [mobile] › tests/smoke/won-toast.spec.ts:56:1 › repeat taps on one card rewrite one toast rather than stacking 
+    [mobile] › tests/smoke/won-toast.spec.ts:74:1 › a burst across different cards is capped at the configured maximum 
+    [mobile] › tests/smoke/won-toast.spec.ts:90:1 › emptying the cart reports removals, one per variant 
+    [mobile] › tests/smoke/won-toast.spec.ts:107:1 › the toast is two lines, and a decrease reads differently from an increase 
+    [mobile] › tests/smoke/won-toast.spec.ts:140:1 › the thumbnail spans the full height of the toast 
+    [mobile] › tests/smoke/won-toast.spec.ts:153:1 › while toasts are on, the cart drawer does not open by itself 
+    [mobile] › tests/smoke/won-toast.spec.ts:158:1 › a top-anchored toast clears the header ────────
+  33 passed (4.3m)

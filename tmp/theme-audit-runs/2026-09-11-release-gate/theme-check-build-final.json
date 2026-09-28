@@ -1,0 +1,44 @@
+{
+  "compose": {
+    "command": "npm run theme:compose",
+    "exit_code": 0,
+    "horizon": {
+      "written": 0,
+      "removed": 0
+    },
+    "skeleton": {
+      "written": 2,
+      "removed": 0,
+      "generated_files_synchronized": [
+        "themes/dist/skeleton-dev/assets/won-toast.js",
+        "themes/dist/skeleton-dev/.won-manifest.json"
+      ]
+    }
+  },
+  "theme_check": {
+    "horizon": {
+      "baseline": 16189,
+      "final": 16189,
+      "new": 0,
+      "removed": 0,
+      "files_with_offenses": 64
+    },
+    "skeleton": {
+      "baseline": 97,
+      "final": 97,
+      "new": 0,
+      "removed": 0,
+      "files_with_offenses": 4
+    }
+  },
+  "test_discovery": {
+    "command": "npx playwright test tests/smoke --list",
+    "exit_code": 0,
+    "tests": 484,
+    "files": 54
+  },
+  "formatting": {
+    "prettier_touched_harness": "pass",
+    "scoped_diff_check": "pass"
+  }
+}

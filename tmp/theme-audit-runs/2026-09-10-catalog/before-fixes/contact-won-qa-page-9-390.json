@@ -1,0 +1,431 @@
+{
+  "url": "/pages/contact?view=won-qa-page-9",
+  "width": 390,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-9",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=0e546514-b8c9-4bc8-9579-faf42a325a3d&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      }
+    ],
+    "failedAssets": [],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    },
+    "responsive": "pass"
+  },
+  "results": [
+    {
+      "id": "qa106",
+      "type": "won-feature",
+      "variant": "presentation=numbered",
+      "label": "won-feature · presentation=numbered",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa106",
+      "selector": "[id$=\"__qa106\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa106-390.png"
+      ],
+      "text": "01\nQA sample benefit",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 355.578125,
+        "width": 390,
+        "height": 126.375
+      }
+    },
+    {
+      "id": "qa107",
+      "type": "won-feature",
+      "variant": "presentation=statistic",
+      "label": "won-feature · presentation=statistic",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa107",
+      "selector": "[id$=\"__qa107\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa107-390.png"
+      ],
+      "text": "75%\nQA sample benefit",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 621.734375,
+        "width": 390,
+        "height": 222
+      }
+    },
+    {
+      "id": "qa108",
+      "type": "won-feature",
+      "variant": "image_position=top",
+      "label": "won-feature · image_position=top",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa108",
+      "selector": "[id$=\"__qa108\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa108-390.png"
+      ],
+      "text": "QA sample benefit",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 332.515625,
+        "width": 390,
+        "height": 178.8125
+      }
+    },
+    {
+      "id": "qa109",
+      "type": "won-feature",
+      "variant": "image_position=left",
+      "label": "won-feature · image_position=left",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa109",
+      "selector": "[id$=\"__qa109\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa109-390.png"
+      ],
+      "text": "QA sample benefit",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 652.109375,
+        "width": 390,
+        "height": 126.375
+      }
+    },
+    {
+      "id": "qa110",
+      "type": "won-feature",
+      "variant": "image_position=below",
+      "label": "won-feature · image_position=below",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa110",
+      "selector": "[id$=\"__qa110\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa110-390.png"
+      ],
+      "text": "QA sample benefit",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 332.265625,
+        "width": 390,
+        "height": 178.8125
+      }
+    },
+    {
+      "id": "qa111",
+      "type": "won-feature",
+      "variant": "icon_style=disc",
+      "label": "won-feature · icon_style=disc",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa111",
+      "selector": "[id$=\"__qa111\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa111-390.png"
+      ],
+      "text": "QA sample benefit",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 651.859375,
+        "width": 390,
+        "height": 178.8125
+      }
+    },
+    {
+      "id": "qa112",
+      "type": "won-feature",
+      "variant": "icon_style=bare",
+      "label": "won-feature · icon_style=bare",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa112",
+      "selector": "[id$=\"__qa112\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa112-390.png"
+      ],
+      "text": "QA sample benefit",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 332.453125,
+        "width": 390,
+        "height": 178.8125
+      }
+    },
+    {
+      "id": "qa113",
+      "type": "won-panel",
+      "variant": "row_style=plain",
+      "label": "won-panel · row_style=plain",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa113",
+      "selector": "[id$=\"__qa113\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa113-390.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa113-390-expanded.png"
+      ],
+      "text": "QA question — how does this example work?",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 630.046875,
+        "width": 390,
+        "height": 156.15625
+      }
+    },
+    {
+      "id": "qa114",
+      "type": "won-panel",
+      "variant": "row_style=editorial",
+      "label": "won-panel · row_style=editorial",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa114",
+      "selector": "[id$=\"__qa114\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa114-390.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa114-390-expanded.png"
+      ],
+      "text": "QA question — how does this example work?",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 668.984375,
+        "width": 390,
+        "height": 175.375
+      }
+    },
+    {
+      "id": "qa115",
+      "type": "won-panel",
+      "variant": "row_style=boxed",
+      "label": "won-panel · row_style=boxed",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa115",
+      "selector": "[id$=\"__qa115\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa115-390.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa115-390-expanded.png"
+      ],
+      "text": "QA question — how does this example work?",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 687.140625,
+        "width": 390,
+        "height": 157.15625
+      }
+    },
+    {
+      "id": "qa116",
+      "type": "won-tile",
+      "variant": "label_position=overlay",
+      "label": "won-tile · label_position=overlay",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa116",
+      "selector": "[id$=\"__qa116\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa116-390.png"
+      ],
+      "text": "QA sample\nQA sample category",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 288.078125,
+        "width": 390,
+        "height": 555.703125
+      }
+    },
+    {
+      "id": "qa117",
+      "type": "won-tile",
+      "variant": "label_position=below",
+      "label": "won-tile · label_position=below",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa117",
+      "selector": "[id$=\"__qa117\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa117-390.png"
+      ],
+      "text": "QA sample\nQA sample category",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 125.5625,
+        "width": 390,
+        "height": 593.296875
+      }
+    }
+  ]
+}

@@ -1,0 +1,238 @@
+{
+  "config": {
+    "configFile": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/playwright.config.ts",
+    "rootDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 1,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-release-gate/cart-harness-targeted-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-release-gate/cart-harness-targeted-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "mobile",
+        "name": "mobile",
+        "testDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "smoke/won-card-quick-add.spec.ts",
+      "file": "smoke/won-card-quick-add.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "stepper quantity follows the cart",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 1734,
+                  "error": {
+                    "message": "Error: initial cart read must return JSON, received text/javascript; charset=utf-8\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m",
+                    "stack": "Error: initial cart read must return JSON, received text/javascript; charset=utf-8\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n    at cartApiJson (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:80:5)\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:146:23)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-card-quick-add.spec.ts:64:3",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                      "column": 5,
+                      "line": 80
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39msupport/cart-state.ts:80\n\n  78 |     headers[\"content-type\"]?.includes(\"json\"),\n  79 |     `${label} must return JSON, received ${headers[\"content-type\"] ?? \"no content type\"}`,\n> 80 |   ).toBeTruthy();\n     |     ^\n  81 |   try {\n  82 |     return JSON.parse(body) as CartSnapshot;\n  83 |   } catch {"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                        "column": 5,
+                        "line": 80
+                      },
+                      "message": "Error: initial cart read must return JSON, received text/javascript; charset=utf-8\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeTruthy\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mfalse\u001b[39m\n\n   at support/cart-state.ts:80\n\n  78 |     headers[\"content-type\"]?.includes(\"json\"),\n  79 |     `${label} must return JSON, received ${headers[\"content-type\"] ?? \"no content type\"}`,\n> 80 |   ).toBeTruthy();\n     |     ^\n  81 |   try {\n  82 |     return JSON.parse(body) as CartSnapshot;\n  83 |   } catch {\n    at cartApiJson (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:80:5)\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:146:23)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-card-quick-add.spec.ts:64:3"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T09:57:54.179Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-release-gate/cart-harness-targeted-results/smoke-won-card-quick-add-stepper-quantity-follows-the-cart-desktop/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "WwogIHsKICAgICJhdCI6IDE3ODkxMjA2NzU1NTQsCiAgICAibWV0aG9kIjogIkdFVCIsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jZG4vc2hvcC90LzE0L2Fzc2V0cy9mbHktdG8tY2FydC5qcz92PTEyOTk3MTc1MzY3MzQ1ODY5Mzg4MTc4ODMzNjI1MCIsCiAgICAic3RhdHVzIjogMjAwLAogICAgInJldHJ5QWZ0ZXIiOiBudWxsLAogICAgImNvbnRlbnRUeXBlIjogImFwcGxpY2F0aW9uL2phdmFzY3JpcHQiCiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTIwNjc1NTYwLAogICAgImNvbnNvbGVFcnJvciI6ICJBY2Nlc3MgdG8gc2NyaXB0IGF0ICdodHRwOi8vY2RuLnNob3BpZnkuY29tL3Nob3BpZnljbG91ZC9zdG9yZWZyb250L2Fzc2V0cy9zdG9yZWZyb250L29yaWdpbl90cmlhbHMtNTA1OWI4M2YuanMnIGZyb20gb3JpZ2luICdodHRwOi8vMTI3LjAuMC4xOjkyOTInIGhhcyBiZWVuIGJsb2NrZWQgYnkgQ09SUyBwb2xpY3k6IE5vICdBY2Nlc3MtQ29udHJvbC1BbGxvdy1PcmlnaW4nIGhlYWRlciBpcyBwcmVzZW50IG9uIHRoZSByZXF1ZXN0ZWQgcmVzb3VyY2UuIgogIH0sCiAgewogICAgImF0IjogMTc4OTEyMDY3NTU2MiwKICAgICJ1cmwiOiAiaHR0cDovL2Nkbi5zaG9waWZ5LmNvbS9zaG9waWZ5Y2xvdWQvc3RvcmVmcm9udC9hc3NldHMvc3RvcmVmcm9udC9vcmlnaW5fdHJpYWxzLTUwNTliODNmLmpzIiwKICAgICJmYWlsdXJlIjogewogICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0ZBSUxFRCIKICAgIH0KICB9LAogIHsKICAgICJhdCI6IDE3ODkxMjA2NzU1NjIsCiAgICAiY29uc29sZUVycm9yIjogIkZhaWxlZCB0byBsb2FkIHJlc291cmNlOiBuZXQ6OkVSUl9GQUlMRUQiCiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTIwNjc1NjIyLAogICAgIm1ldGhvZCI6ICJHRVQiLAogICAgInVybCI6ICJodHRwOi8vMTI3LjAuMC4xOjkyOTIvY2RuL3Nob3AvdC8xNC9hc3NldHMvd29uLWNhcnQuanM/dj0xNDMxNjcwMDY0NjE4MjkwMDIyMTE3ODg0MjI2NjUiLAogICAgInN0YXR1cyI6IDIwMCwKICAgICJyZXRyeUFmdGVyIjogbnVsbCwKICAgICJjb250ZW50VHlwZSI6ICJhcHBsaWNhdGlvbi9qYXZhc2NyaXB0IgogIH0sCiAgewogICAgImF0IjogMTc4OTEyMDY3NTcxOCwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL3dlYi1waXhlbHNAZDc2MTg5NmN3NjUyNzUyYjlwNTM4MTcyNzhtNzY2NWZjZTAvY3VzdG9tL3dlYi1waXhlbC1zaG9waWZ5LWN1c3RvbS1waXhlbEAwNTIwL3NhbmRib3gvbW9kZXJuLyIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTEyMDY3NTgxOCwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2FwaS9jb2xsZWN0IiwKICAgICJmYWlsdXJlIjogewogICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICB9CiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTIwNjc1ODgxLAogICAgInVybCI6ICJodHRwczovL3Nob3AuYXBwL3BheS9ob3A/YW5hbHl0aWNzX3RyYWNlX2lkPTBlYWE1YjYwLWE4ZTktNGQxMS1iZTYwLWVkZDZiODZiYjk1ZSZ0YXJnZXRfb3JpZ2luPWh0dHAlM0ElMkYlMkYxMjcuMC4wLjElM0E5MjkyJmNsaWVudF9oYW5kbGU9YjJiLWIyYy1zdG9yZS1kZXZlbG9wbWVudC5teXNob3BpZnkuY29tIiwKICAgICJmYWlsdXJlIjogewogICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0JMT0NLRURfQllfUkVTUE9OU0UiCiAgICB9CiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTIwNjc1ODgyLAogICAgImNvbnNvbGVFcnJvciI6ICJGcmFtaW5nICdodHRwczovL3Nob3AuYXBwLycgdmlvbGF0ZXMgdGhlIGZvbGxvd2luZyBDb250ZW50IFNlY3VyaXR5IFBvbGljeSBkaXJlY3RpdmU6IFwiZnJhbWUtYW5jZXN0b3JzICdzZWxmJyBodHRwczovL3Nob3AuYXBwIGh0dHBzOi8vYWRtaW4uc2hvcGlmeS5jb21cIi4gVGhlIHJlcXVlc3QgaGFzIGJlZW4gYmxvY2tlZC5cbiIKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMjA2NzU4ODMsCiAgICAiY29uc29sZUVycm9yIjogIkZhaWxlZCB0byBsb2FkIHJlc291cmNlOiB0aGUgc2VydmVyIHJlc3BvbmRlZCB3aXRoIGEgc3RhdHVzIG9mIDQwMyAoKSIKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMjA2NzU5NzAsCiAgICAibWV0aG9kIjogIkdFVCIsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jYXJ0LmpzIiwKICAgICJzdGF0dXMiOiAyMDAsCiAgICAicmV0cnlBZnRlciI6IG51bGwsCiAgICAiY29udGVudFR5cGUiOiAidGV4dC9qYXZhc2NyaXB0OyBjaGFyc2V0PXV0Zi04IgogIH0sCiAgewogICAgImF0IjogMTc4OTEyMDY3NjEyMCwKICAgICJsYWJlbCI6ICJpbml0aWFsIGNhcnQgcmVhZCIsCiAgICAibWV0aG9kIjogIkdFVCIsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jYXJ0LmpzIiwKICAgICJzdGF0dXMiOiAyMDAsCiAgICAicmV0cnlBZnRlciI6IG51bGwsCiAgICAiY29udGVudFR5cGUiOiAidGV4dC9qYXZhc2NyaXB0OyBjaGFyc2V0PXV0Zi04IiwKICAgICJib2R5RXhjZXJwdCI6ICJ7XCJ0b2tlblwiOlwiNjRlYmE1NGI3Yjg1MDYwNjdiYzllNTI3M2UzYjNkMTBcIixcIm5vdGVcIjpudWxsLFwiYXR0cmlidXRlc1wiOnt9LFwib3JpZ2luYWxfdG90YWxfcHJpY2VcIjowLFwidG90YWxfcHJpY2VcIjowLFwidG90YWxfZGlzY291bnRcIjowLFwidG90YWxfd2VpZ2h0XCI6MC4wLFwiaXRlbV9jb3VudFwiOjAsXCJpdGVtc1wiOltdLFwicmVxdWlyZXNfc2hpcHBpbmdcIjpmYWxzZSxcImN1cnJlbmN5XCI6XCJVU0RcIixcIml0ZW1zX3N1YnRvdGFsX3ByaWNlXCI6MCxcImNhcnRfbGV2ZWxfZGlzY291bnRfYXBwbGljYXRpb25zXCI6W10sXCJkaXNjb3VudF9jb2Rlc1wiOltdfSIKICB9Cl0="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-release-gate/cart-harness-targeted-results/smoke-won-card-quick-add-stepper-quantity-follows-the-cart-desktop/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                    "column": 5,
+                    "line": 80
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "7a62eabd1e89b61452ca-c8ede1175c7ea146d083",
+          "file": "smoke/won-card-quick-add.spec.ts",
+          "line": 62,
+          "column": 1
+        },
+        {
+          "title": "stepper quantity follows the cart",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "7a62eabd1e89b61452ca-bcad02ae4162cdda4e37",
+          "file": "smoke/won-card-quick-add.spec.ts",
+          "line": 62,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-rail-indicator-scale.spec.ts",
+      "file": "smoke/won-rail-indicator-scale.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "stepping the quantity replays the sheen",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "e0c187b89507117b1ab7-a2ee89de427b50763612",
+          "file": "smoke/won-rail-indicator-scale.spec.ts",
+          "line": 132,
+          "column": 1
+        },
+        {
+          "title": "stepping the quantity replays the sheen",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "e0c187b89507117b1ab7-587ebd8d22af26c1d44d",
+          "file": "smoke/won-rail-indicator-scale.spec.ts",
+          "line": 132,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "message": "\u001b[31mTesting stopped early after 1 maximum allowed failures.\u001b[39m"
+    }
+  ],
+  "stats": {
+    "startTime": "2026-09-11T09:57:53.589Z",
+    "duration": 2752.278,
+    "expected": 0,
+    "skipped": 3,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

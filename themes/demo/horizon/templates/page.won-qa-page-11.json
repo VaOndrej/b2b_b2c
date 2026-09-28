@@ -1,0 +1,768 @@
+{
+  "sections": {
+    "qa130label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa130: won-video · aspect_ratio=4/3</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa130": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-video",
+          "settings": {
+            "video_type": "hosted",
+            "aspect_ratio": "4/3",
+            "fit": "cover"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa131label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa131: won-video · aspect_ratio=1/1</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa131": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-video",
+          "settings": {
+            "video_type": "hosted",
+            "aspect_ratio": "1/1",
+            "fit": "cover"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa141label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa141: won-announcement-bar · display=single</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa141": {
+      "type": "won-announcement-bar",
+      "settings": {
+        "display": "single",
+        "alignment": "center",
+        "interval": 5,
+        "dismissible": false,
+        "color_scheme": "scheme-2",
+        "padding_top": 10,
+        "padding_bottom": 10
+      },
+      "blocks": {
+        "m": {
+          "type": "message",
+          "settings": {
+            "text": "QA sample announcement",
+            "link": "/collections/automated-collection"
+          }
+        },
+        "s": {
+          "type": "free_shipping",
+          "settings": {
+            "threshold": 1500
+          }
+        }
+      },
+      "block_order": [
+        "m",
+        "s"
+      ]
+    },
+    "qa142label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa142: won-media-compare · aspect_ratio=16/9</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa142": {
+      "type": "won-media-compare",
+      "settings": {
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "before_label": "Before",
+        "after_label": "After",
+        "start_position": 50,
+        "aspect_ratio": "16/9",
+        "cta_button_style": "primary",
+        "cta_button_new_tab": false,
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "before_image": "shopify://shop_images/won-pack-preworkout.png",
+        "after_image": "shopify://shop_images/won-pack-preworkout.png"
+      }
+    },
+    "qa143label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa143: won-media-compare · aspect_ratio=1/1</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa143": {
+      "type": "won-media-compare",
+      "settings": {
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "before_label": "Before",
+        "after_label": "After",
+        "start_position": 50,
+        "aspect_ratio": "1/1",
+        "cta_button_style": "primary",
+        "cta_button_new_tab": false,
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "before_image": "shopify://shop_images/won-pack-preworkout.png",
+        "after_image": "shopify://shop_images/won-pack-preworkout.png"
+      }
+    },
+    "qa144label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa144: won-media-compare · aspect_ratio=4/5</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa144": {
+      "type": "won-media-compare",
+      "settings": {
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "before_label": "Before",
+        "after_label": "After",
+        "start_position": 50,
+        "aspect_ratio": "4/5",
+        "cta_button_style": "primary",
+        "cta_button_new_tab": false,
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "before_image": "shopify://shop_images/won-pack-preworkout.png",
+        "after_image": "shopify://shop_images/won-pack-preworkout.png"
+      }
+    },
+    "qa145label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa145: won-shoppable-image · card_aspect=square</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa145": {
+      "type": "won-shoppable-image",
+      "settings": {
+        "card_aspect": "square",
+        "cta_button_style": "primary",
+        "cta_button_new_tab": false,
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "corner_radius": 14,
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "image": "shopify://shop_images/won-pack-preworkout.png"
+      },
+      "blocks": {
+        "a": {
+          "type": "hotspot",
+          "settings": {
+            "product": "the-videographer-snowboard",
+            "x": 30,
+            "y": 50,
+            "custom_mobile_pos": true,
+            "x_mobile": 35,
+            "y_mobile": 65
+          }
+        },
+        "b": {
+          "type": "hotspot",
+          "settings": {
+            "product": "the-collection-snowboard-hydrogen",
+            "x": 78,
+            "y": 45
+          }
+        }
+      },
+      "block_order": [
+        "a",
+        "b"
+      ]
+    },
+    "qa146label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa146: won-shoppable-image · card_aspect=portrait</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa146": {
+      "type": "won-shoppable-image",
+      "settings": {
+        "card_aspect": "portrait",
+        "cta_button_style": "primary",
+        "cta_button_new_tab": false,
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "corner_radius": 14,
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "image": "shopify://shop_images/won-pack-preworkout.png"
+      },
+      "blocks": {
+        "a": {
+          "type": "hotspot",
+          "settings": {
+            "product": "the-videographer-snowboard",
+            "x": 30,
+            "y": 50,
+            "custom_mobile_pos": true,
+            "x_mobile": 35,
+            "y_mobile": 65
+          }
+        },
+        "b": {
+          "type": "hotspot",
+          "settings": {
+            "product": "the-collection-snowboard-hydrogen",
+            "x": 78,
+            "y": 45
+          }
+        }
+      },
+      "block_order": [
+        "a",
+        "b"
+      ]
+    },
+    "qa147label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa147: won-product-card · aspect=square</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa147": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-product-card",
+          "settings": {
+            "layout": "card",
+            "aspect": "square",
+            "show_add": true,
+            "show_badges": true,
+            "product": "the-videographer-snowboard"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa148label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa148: won-product-card · aspect=landscape</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa148": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-product-card",
+          "settings": {
+            "layout": "card",
+            "aspect": "landscape",
+            "show_add": true,
+            "show_badges": true,
+            "product": "the-videographer-snowboard"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa151label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa151: won-slide · missing image</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa151": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-slide",
+          "settings": {
+            "visualization": "testimonial",
+            "heading": "<p>QA sample — practical information</p>",
+            "heading_size_desktop": 28,
+            "heading_max_width_desktop": 100,
+            "heading_size_mobile": 22,
+            "heading_max_width_mobile": 100,
+            "text": "<p>Demonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.</p>",
+            "review_rating": 0,
+            "button_style": "primary",
+            "buttons_new_tab": false,
+            "button2_style": "secondary",
+            "media_type": "image",
+            "priority": false,
+            "media_position": "top",
+            "content_align": "left",
+            "min_height": 0,
+            "card_style": "minimal",
+            "headline_annotation": "none",
+            "corner_radius": 14,
+            "inherit_color_scheme": true,
+            "color_scheme": "scheme-1",
+            "toggle_overlay": false,
+            "overlay_color": "#00000059",
+            "padding_top": 0,
+            "padding_bottom": 0,
+            "image": "",
+            "image_asset": "",
+            "button_label": "View demo product",
+            "button_link": "/products/the-videographer-snowboard",
+            "reviewer": "QA fictional example",
+            "expert_role": "QA example role",
+            "media_caption": "Demonstration portrait",
+            "image_mobile": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    },
+    "qa152label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa152: won-tile · missing image/content</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa152": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading_size_desktop": 34,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 24,
+        "heading_max_width_mobile": 100,
+        "articles_limit": 3,
+        "show_date": true,
+        "show_excerpt": true,
+        "show_author": false,
+        "show_reading_time": false,
+        "stats": "10k+ : Happy customers\n4.8★ : Average rating\n24h : Dispatch\n100% : Lab tested",
+        "animate_values": false,
+        "animate_duration": 0,
+        "columns_desktop": 1,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": false,
+        "gap": 24,
+        "item_style": "plain",
+        "mosaic": false,
+        "feature_title_lines": 2,
+        "article_layout": "grid",
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 56,
+        "padding_bottom": 56,
+        "blog": "news",
+        "heading": ""
+      },
+      "blocks": {
+        "b1": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "",
+            "tile_size": "small",
+            "label_position": "overlay",
+            "badge_position": "top_right",
+            "badge_style": "accent",
+            "corner_radius": 14,
+            "toggle_overlay": true,
+            "overlay_color": "#0000001a",
+            "collection": "",
+            "image": "",
+            "link_url": "/collections/automated-collection",
+            "badge_text": "QA sample",
+            "image_asset": ""
+          }
+        }
+      },
+      "block_order": [
+        "b1"
+      ]
+    }
+  },
+  "order": [
+    "qa130label",
+    "qa130",
+    "qa131label",
+    "qa131",
+    "qa141label",
+    "qa141",
+    "qa142label",
+    "qa142",
+    "qa143label",
+    "qa143",
+    "qa144label",
+    "qa144",
+    "qa145label",
+    "qa145",
+    "qa146label",
+    "qa146",
+    "qa147label",
+    "qa147",
+    "qa148label",
+    "qa148",
+    "qa151label",
+    "qa151",
+    "qa152label",
+    "qa152"
+  ]
+}

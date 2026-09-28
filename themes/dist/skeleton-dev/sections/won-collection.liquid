@@ -8,6 +8,7 @@
 >
   {% render 'won-guard', settings: s %}
   <div class="won-container{% if s.section_width == 'full' %} won-container--full{% endif %} won-collection">
+    {%- if s.show_breadcrumbs -%}{% render 'won-breadcrumbs' %}{%- endif -%}
     {%- if s.show_title -%}
       <div class="won-collection__head">
         <h1 class="won-heading won-collection__title">{{ collection.title }}</h1>
@@ -50,7 +51,7 @@
               {%- endcase -%}
             </details>
           {%- endfor -%}
-          <noscript><button type="submit" class="won-btn won-btn--primary">{{ 'won.plp.apply' | t }}</button></noscript>
+          <noscript><button type="submit" class="won-btn won-btn--primary {% render 'won-fx' %}">{{ 'won.plp.apply' | t }}</button></noscript>
         </form>
       {%- endif -%}
 
@@ -79,7 +80,7 @@
                 the loop rather than filtered upstream, because Liquid cannot rebuild a
                 paginated collection — and `!= false` so an unset setting still hides them. {%- endcomment -%}
               {%- if settings.won_hide_gift_cards != false and product.gift_card? -%}{%- continue -%}{%- endif -%}
-              {% render 'won-product-card', product: product, aspect: s.card_aspect, show_ppu: s.show_card_ppu, ppu_base: s.ppu_base, ppu_amount: s.ppu_amount, ppu_metafield: s.ppu_metafield %}
+              {% render 'won-product-card', product: product, aspect: s.card_aspect, show_ppu: s.show_card_ppu, ppu_rules: s.ppu_rules %}
             {%- endfor -%}
           </div>
           {%- if paginate.pages > 1 -%}
@@ -278,44 +279,22 @@
     },
     {
       "type": "checkbox",
+      "id": "show_breadcrumbs",
+      "label": "t:won.settings.show_breadcrumbs",
+      "info": "t:won.info.show_breadcrumbs",
+      "default": true
+    },
+    {
+      "type": "checkbox",
       "id": "show_card_ppu",
       "label": "t:won.settings.vp_show_ppu",
       "default": false
     },
     {
-      "type": "select",
-      "id": "ppu_base",
-      "label": "t:won.settings.ppu_base",
-      "visible_if": "{{ section.settings.show_card_ppu }}",
-      "options": [
-        {
-          "value": "per_100g",
-          "label": "t:won.options.per_100g"
-        },
-        {
-          "value": "per_kg",
-          "label": "t:won.options.per_kg"
-        },
-        {
-          "value": "per_serving",
-          "label": "t:won.options.per_serving"
-        }
-      ],
-      "default": "per_100g"
-    },
-    {
-      "type": "number",
-      "id": "ppu_amount",
-      "label": "t:won.settings.ppu_amount",
-      "info": "t:won.info.ppu_amount",
-      "default": 1000,
-      "visible_if": "{{ section.settings.show_card_ppu }}"
-    },
-    {
-      "type": "text",
-      "id": "ppu_metafield",
-      "label": "t:won.settings.ppu_metafield",
-      "info": "t:won.info.ppu_metafield",
+      "type": "textarea",
+      "id": "ppu_rules",
+      "label": "t:won.settings.ppu_rules_override",
+      "info": "t:won.info.ppu_rules_override",
       "visible_if": "{{ section.settings.show_card_ppu }}"
     },
     {

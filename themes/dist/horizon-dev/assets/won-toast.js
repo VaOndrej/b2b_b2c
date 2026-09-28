@@ -80,11 +80,20 @@
     return type === 'removed' ? '' : String(qty);
   }
 
-  function dismiss(id) {
+  /* `now` skips the exit animation. A toast that times out or that the shopper
+     closes has a slot to spare and can afford to fade; one evicted by the cap
+     does not — it still holds its place in the stack while it fades, so a burst
+     across six cards paints six toasts for a fifth of a second on a cap of
+     three. The cap has to hold in the layout, not only in `open`. */
+  function dismiss(id, now) {
     var el = open[id];
     if (!el) return;
     delete open[id];
     clearTimeout(el._wonTimer);
+    if (now) {
+      if (el.parentNode) el.parentNode.removeChild(el);
+      return;
+    }
     el.classList.add('is-leaving');
     /* Let the exit animation run, but never let a stuck transition leak an
        element: the timeout removes it either way. */
@@ -101,7 +110,7 @@
     ids.sort(function (a, b) {
       return open[a]._wonStamp - open[b]._wonStamp;
     });
-    while (ids.length > MAX) dismiss(ids.shift());
+    while (ids.length > MAX) dismiss(ids.shift(), true);
   }
 
   function show(id, type, title, label, qty, image) {

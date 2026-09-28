@@ -1,0 +1,694 @@
+{
+  "url": "/pages/contact?view=won-qa-page-6",
+  "width": 390,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-6",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=3fa67135-3475-4fcf-9005-f07d7d8400ca&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    },
+    "responsive": "pass"
+  },
+  "results": [
+    {
+      "id": "qa070",
+      "type": "won-band",
+      "variant": "media_position=background",
+      "label": "won-band · media_position=background",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-6",
+      "sectionId": "qa070",
+      "selector": "[id$=\"__qa070\"]",
+      "template": "page.won-qa-page-6.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa070-390.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\n\nDemonstration content with a longer paragraph to check balanced image and text proportions on smaller screens.\n\nExplore demo",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 285.578125,
+        "width": 390,
+        "height": 558.375
+      }
+    },
+    {
+      "id": "qa071",
+      "type": "won-band",
+      "variant": "media_type=none",
+      "label": "won-band · media_type=none",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-6",
+      "sectionId": "qa071",
+      "selector": "[id$=\"__qa071\"]",
+      "template": "page.won-qa-page-6.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa071-390.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\n\nDemonstration content with a longer paragraph to check balanced image and text proportions on smaller screens.\n\nExplore demo",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 250.734375,
+        "width": 390,
+        "height": 343.109375
+      }
+    },
+    {
+      "id": "qa072",
+      "type": "won-band",
+      "variant": "media_type=video",
+      "label": "won-band · media_type=video",
+      "context": "page",
+      "limitations": [
+        "Hosted video resource unavailable; external embed availability requires network verification"
+      ],
+      "url": "/pages/contact?view=won-qa-page-6",
+      "sectionId": "qa072",
+      "selector": "[id$=\"__qa072\"]",
+      "template": "page.won-qa-page-6.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa072-390.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\n\nDemonstration content with a longer paragraph to check balanced image and text proportions on smaller screens.\n\nExplore demo",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 500.625,
+        "width": 390,
+        "height": 343.109375
+      }
+    },
+    {
+      "id": "qa073",
+      "type": "won-carousel",
+      "variant": "layout=grid",
+      "label": "won-carousel · layout=grid",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-6",
+      "sectionId": "qa073",
+      "selector": "[id$=\"__qa073\"]",
+      "template": "page.won-qa-page-6.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "carousel-content",
+          "overflow": false,
+          "mode": "1"
+        },
+        {
+          "name": "carousel-invariant",
+          "error": "expected 1 cards per row\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m6\u001b[39m"
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa073-390.png"
+      ],
+      "text": "QA card 1 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 2 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 3 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 4 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 5 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 6 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": -1456.515625,
+        "width": 390,
+        "height": 3757.625
+      }
+    },
+    {
+      "id": "qa074",
+      "type": "won-carousel",
+      "variant": "columns_mobile=1",
+      "label": "won-carousel · columns_mobile=1",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-6",
+      "sectionId": "qa074",
+      "selector": "[id$=\"__qa074\"]",
+      "template": "page.won-qa-page-6.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "carousel-content",
+          "overflow": true,
+          "mode": "1"
+        },
+        {
+          "name": "carousel-invariant",
+          "pass": true
+        },
+        {
+          "name": "carousel-scroll",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa074-390.png"
+      ],
+      "text": "QA card 1 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 2 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 3 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 4 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 5 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 6 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\n‹\n›",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 50.890625,
+        "width": 390,
+        "height": 742.6875
+      }
+    },
+    {
+      "id": "qa075",
+      "type": "won-carousel",
+      "variant": "columns_mobile=1.2",
+      "label": "won-carousel · columns_mobile=1.2",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-6",
+      "sectionId": "qa075",
+      "selector": "[id$=\"__qa075\"]",
+      "template": "page.won-qa-page-6.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "carousel-content",
+          "overflow": true,
+          "mode": "1.2"
+        },
+        {
+          "name": "carousel-invariant",
+          "error": "expected 1.2 cards per row\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1.2\u001b[39m\nReceived: \u001b[31m1\u001b[39m"
+        },
+        {
+          "name": "carousel-scroll",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa075-390.png"
+      ],
+      "text": "QA card 1 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 2 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 3 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 4 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 5 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 6 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\n‹\n›",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 77.359375,
+        "width": 390,
+        "height": 688.953125
+      }
+    },
+    {
+      "id": "qa076",
+      "type": "won-carousel",
+      "variant": "columns_mobile=2",
+      "label": "won-carousel · columns_mobile=2",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-6",
+      "sectionId": "qa076",
+      "selector": "[id$=\"__qa076\"]",
+      "template": "page.won-qa-page-6.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "carousel-content",
+          "overflow": true,
+          "mode": "2"
+        },
+        {
+          "name": "carousel-invariant",
+          "pass": true
+        },
+        {
+          "name": "carousel-scroll",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa076-390.png"
+      ],
+      "text": "QA card 1 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 2 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 3 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 4 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 5 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 6 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\n‹\n›",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 90.09375,
+        "width": 390,
+        "height": 664.109375
+      }
+    },
+    {
+      "id": "qa077",
+      "type": "won-carousel",
+      "variant": "arrow_style=pill",
+      "label": "won-carousel · arrow_style=pill",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-6",
+      "sectionId": "qa077",
+      "selector": "[id$=\"__qa077\"]",
+      "template": "page.won-qa-page-6.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "carousel-content",
+          "overflow": true,
+          "mode": "1"
+        },
+        {
+          "name": "carousel-invariant",
+          "pass": true
+        },
+        {
+          "name": "carousel-scroll",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa077-390.png"
+      ],
+      "text": "QA card 1 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 2 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 3 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 4 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 5 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 6 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\n‹\n›",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 51.015625,
+        "width": 390,
+        "height": 742.6875
+      }
+    },
+    {
+      "id": "qa078",
+      "type": "won-carousel",
+      "variant": "arrow_style=soft",
+      "label": "won-carousel · arrow_style=soft",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-6",
+      "sectionId": "qa078",
+      "selector": "[id$=\"__qa078\"]",
+      "template": "page.won-qa-page-6.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "carousel-content",
+          "overflow": true,
+          "mode": "1"
+        },
+        {
+          "name": "carousel-invariant",
+          "pass": true
+        },
+        {
+          "name": "carousel-scroll",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa078-390.png"
+      ],
+      "text": "QA card 1 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 2 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 3 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 4 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 5 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 6 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\n‹\n›",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 50.484375,
+        "width": 390,
+        "height": 742.6875
+      }
+    },
+    {
+      "id": "qa079",
+      "type": "won-carousel",
+      "variant": "arrow_style=square",
+      "label": "won-carousel · arrow_style=square",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-6",
+      "sectionId": "qa079",
+      "selector": "[id$=\"__qa079\"]",
+      "template": "page.won-qa-page-6.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "carousel-content",
+          "overflow": true,
+          "mode": "1"
+        },
+        {
+          "name": "carousel-invariant",
+          "pass": true
+        },
+        {
+          "name": "carousel-scroll",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa079-390.png"
+      ],
+      "text": "QA card 1 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 2 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 3 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 4 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 5 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 6 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\n‹\n›",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 50.953125,
+        "width": 390,
+        "height": 742.6875
+      }
+    },
+    {
+      "id": "qa080",
+      "type": "won-carousel",
+      "variant": "arrow_style=minimal",
+      "label": "won-carousel · arrow_style=minimal",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-6",
+      "sectionId": "qa080",
+      "selector": "[id$=\"__qa080\"]",
+      "template": "page.won-qa-page-6.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "carousel-content",
+          "overflow": true,
+          "mode": "1"
+        },
+        {
+          "name": "carousel-invariant",
+          "pass": true
+        },
+        {
+          "name": "carousel-scroll",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa080-390.png"
+      ],
+      "text": "QA card 1 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 2 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 3 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 4 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 5 — short title\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\nQA card 6 — a longer title demonstrating multiline wrapping\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product\n‹\n›",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 50.421875,
+        "width": 390,
+        "height": 742.6875
+      }
+    },
+    {
+      "id": "qa081",
+      "type": "won-grid",
+      "variant": "item_style=plain",
+      "label": "won-grid · item_style=plain",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-6",
+      "sectionId": "qa081",
+      "selector": "[id$=\"__qa081\"]",
+      "template": "page.won-qa-page-6.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa081-390.png"
+      ],
+      "text": "QA sample benefit\nQA sample benefit\nQA sample benefit\nQA sample benefit",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 145.859375,
+        "width": 390,
+        "height": 552.125
+      }
+    }
+  ]
+}

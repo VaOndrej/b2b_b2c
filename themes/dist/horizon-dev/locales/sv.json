@@ -328,5 +328,10 @@
       "default_title": "Standardtitel",
       "sticky_add_to_cart": "Fält för att lägga till snabbt i varukorgen"
     }
+  },
+  "won": {
+    "vp": {
+      "hide_table": "Hide variants table"
+    }
   }
 }

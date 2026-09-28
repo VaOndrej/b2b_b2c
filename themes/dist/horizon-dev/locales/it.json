@@ -335,5 +335,10 @@
       "default_title": "Titolo predefinito",
       "sticky_add_to_cart": "Barra per l'aggiunta rapida al carrello"
     }
+  },
+  "won": {
+    "vp": {
+      "hide_table": "Hide variants table"
+    }
   }
 }

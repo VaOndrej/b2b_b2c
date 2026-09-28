@@ -1,0 +1,59 @@
+
+> test:smoke
+> playwright test tests/smoke --grep card quick-add renders a stepper once the line exists|a burst across different cards is capped at the configured maximum --project=desktop --reporter=line
+
+(node:81339) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+[1A[2K(node:81340) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:81340) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:81340) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/2] [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists
+[1A[2K  1) [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+
+    Error: stepping down to zero must empty the line in the real cart
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m0[39m
+    Received: [31m2[39m
+
+      158 |
+      159 |   const left = await page.evaluate(async () => (await (await fetch('/cart.js')).json()).item_count);
+    > 160 |   expect(left, 'stepping down to zero must empty the line in the real cart').toBe(0);
+          |                                                                              ^
+      161 | });
+      162 |
+      163 | /* ------------------------------------------------------------------ *
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:160:78
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/error-context.md
+
+
+[1A[2K(node:81354) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:81354) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:81354) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[2/2] [desktop] › tests/smoke/won-toast.spec.ts:75:1 › a burst across different cards is capped at the configured maximum
+[1A[2K  1 failed
+    [desktop] › tests/smoke/won-feedback-8.spec.ts:122:1 › card quick-add renders a stepper once the line exists 
+  1 passed (25.5s)

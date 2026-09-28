@@ -1,0 +1,27 @@
+/* A row is the same shared card with its existing purchase control in flow.
+   Its own container, rather than the viewport, decides if the CTA fits beside
+   the content (nested editorial groups can be narrow on a wide display). */
+.won-pcard-row-shell { container: won-product-row / inline-size; min-inline-size: 0; }
+.won-pcard--row {
+  display: grid;
+  grid-template-columns: clamp(4.5rem, 24%, 7rem) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--won-space-3);
+  row-gap: var(--won-space-2);
+}
+.won-pcard--row > .won-pcard__media { grid-column: 1; grid-row: 1 / span 2; align-self: start; }
+.won-pcard--row > .won-pcard__info { grid-column: 2; min-inline-size: 0; }
+.won-pcard--row .won-pcard__title { overflow-wrap: anywhere; }
+.won-pcard__row-badges { display: flex; flex-wrap: wrap; gap: var(--won-space-1); }
+.won-pcard--row > .won-pcard__add {
+  position: static; grid-column: 2; justify-self: start;
+  inset: auto; margin: 0; inline-size: fit-content; max-inline-size: 100%;
+  min-inline-size: var(--won-tap); min-block-size: var(--won-tap);
+  white-space: normal; text-align: center;
+  opacity: 1; translate: none; pointer-events: auto;
+}
+@container won-product-row (min-width: 34rem) {
+  .won-pcard--row { grid-template-columns: 7rem minmax(0, 1fr) minmax(0, auto); }
+  .won-pcard--row > .won-pcard__media { grid-row: 1; }
+  .won-pcard--row > .won-pcard__add { grid-column: 3; grid-row: 1; }
+}

@@ -1,0 +1,528 @@
+{
+  "config": {
+    "configFile": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/playwright.config.ts",
+    "rootDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/editorial-existing-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/editorial-existing-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "mobile",
+        "name": "mobile",
+        "testDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "smoke/won-editorial.spec.ts",
+      "file": "smoke/won-editorial.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "editorial PDP",
+          "file": "smoke/won-editorial.spec.ts",
+          "line": 11,
+          "column": 6,
+          "specs": [
+            {
+              "title": "composes reusable columns, cards and native purchase controls",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2203,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-11T07:36:44.885Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "aeca7c5395bce89aad02-1bdf3e0f9d303b3e52e8",
+              "file": "smoke/won-editorial.spec.ts",
+              "line": 16,
+              "column": 3
+            },
+            {
+              "title": "disclosures work by keyboard and remain independent of purchase state",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5073,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-11T07:36:47.531Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "aeca7c5395bce89aad02-5b2bfc06515e8625f9b6",
+              "file": "smoke/won-editorial.spec.ts",
+              "line": 85,
+              "column": 3
+            },
+            {
+              "title": "native variant changes update price and submit the selected item",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 17971,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts:135:7",
+                        "location": {
+                          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts",
+                          "column": 7,
+                          "line": 135
+                        },
+                        "snippet": "  133 |     try {\n  134 |       await form.locator('button[type=\"submit\"]').click();\n> 135 |       await expect\n      |       ^\n  136 |         .poll(async () => {\n  137 |           const cart = await (await page.request.get(\"/cart.js\")).json();\n  138 |           return ("
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts",
+                            "column": 7,
+                            "line": 135
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate\n\n  133 |     try {\n  134 |       await form.locator('button[type=\"submit\"]').click();\n> 135 |       await expect\n      |       ^\n  136 |         .poll(async () => {\n  137 |           const cart = await (await page.request.get(\"/cart.js\")).json();\n  138 |           return (\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts:135:7"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-11T07:36:52.609Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/editorial-existing-results/smoke-won-editorial-editor-5ba79-nd-submit-the-selected-item-desktop/test-failed-1.png"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/editorial-existing-results/smoke-won-editorial-editor-5ba79-nd-submit-the-selected-item-desktop/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts",
+                        "column": 7,
+                        "line": 135
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "aeca7c5395bce89aad02-e13f09bf699293a1c840",
+              "file": "smoke/won-editorial.spec.ts",
+              "line": 106,
+              "column": 3
+            },
+            {
+              "title": "composes reusable columns, cards and native purchase controls",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile",
+                  "projectName": "mobile",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1154,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-11T07:37:18.115Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "aeca7c5395bce89aad02-3192dfe3090d314b2336",
+              "file": "smoke/won-editorial.spec.ts",
+              "line": 16,
+              "column": 3
+            },
+            {
+              "title": "disclosures work by keyboard and remain independent of purchase state",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile",
+                  "projectName": "mobile",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3550,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-11T07:37:19.627Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "aeca7c5395bce89aad02-d50c7061344198bbc533",
+              "file": "smoke/won-editorial.spec.ts",
+              "line": 85,
+              "column": 3
+            },
+            {
+              "title": "native variant changes update price and submit the selected item",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile",
+                  "projectName": "mobile",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 4586,
+                      "error": {
+                        "message": "SyntaxError: Unexpected token '<', \"<!--\n  The\"... is not valid JSON",
+                        "stack": "SyntaxError: Unexpected token '<', \"<!--\n  The\"... is not valid JSON\n    at Object.generator (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts:137:24)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts:135:7",
+                        "location": {
+                          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts",
+                          "column": 24,
+                          "line": 137
+                        },
+                        "snippet": "  135 |       await expect\n  136 |         .poll(async () => {\n> 137 |           const cart = await (await page.request.get(\"/cart.js\")).json();\n      |                        ^\n  138 |           return (\n  139 |             cart.items.find((i: any) => i.variant_id === target.id)?.quantity ||\n  140 |             0"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts",
+                            "column": 24,
+                            "line": 137
+                          },
+                          "message": "SyntaxError: Unexpected token '<', \"<!--\n  The\"... is not valid JSON\n\n  135 |       await expect\n  136 |         .poll(async () => {\n> 137 |           const cart = await (await page.request.get(\"/cart.js\")).json();\n      |                        ^\n  138 |           return (\n  139 |             cart.items.find((i: any) => i.variant_id === target.id)?.quantity ||\n  140 |             0\n    at Object.generator (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts:137:24)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts:135:7"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-11T07:37:23.184Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/editorial-existing-results/smoke-won-editorial-editor-5ba79-nd-submit-the-selected-item-mobile/test-failed-1.png"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/editorial-existing-results/smoke-won-editorial-editor-5ba79-nd-submit-the-selected-item-mobile/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts",
+                        "column": 24,
+                        "line": 137
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "aeca7c5395bce89aad02-760c87c462a0d0109518",
+              "file": "smoke/won-editorial.spec.ts",
+              "line": 106,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "smoke/won-qa-fixes.spec.ts",
+      "file": "smoke/won-qa-fixes.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "QA verified fixes",
+          "file": "smoke/won-qa-fixes.spec.ts",
+          "line": 4,
+          "column": 6,
+          "specs": [
+            {
+              "title": "identical comparison images stay registered when the divider moves",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4800,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-11T07:37:11.318Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8cfe4bbd0d70f33c029e-ba85f7987faf001a2e9f",
+              "file": "smoke/won-qa-fixes.spec.ts",
+              "line": 9,
+              "column": 3
+            },
+            {
+              "title": "external URL video renders the provider iframe without a Liquid exception",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 953,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-11T07:37:16.508Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8cfe4bbd0d70f33c029e-022eafa278f0ae62e2f4",
+              "file": "smoke/won-qa-fixes.spec.ts",
+              "line": 44,
+              "column": 3
+            },
+            {
+              "title": "identical comparison images stay registered when the divider moves",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile",
+                  "projectName": "mobile",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2977,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-11T07:37:28.520Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8cfe4bbd0d70f33c029e-e1117c7dd21575da0c86",
+              "file": "smoke/won-qa-fixes.spec.ts",
+              "line": 9,
+              "column": 3
+            },
+            {
+              "title": "external URL video renders the provider iframe without a Liquid exception",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile",
+                  "projectName": "mobile",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 953,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-11T07:37:31.886Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8cfe4bbd0d70f33c029e-f4001efad91d386777c4",
+              "file": "smoke/won-qa-fixes.spec.ts",
+              "line": 44,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-11T07:36:44.202Z",
+    "duration": 48684.868,
+    "expected": 8,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

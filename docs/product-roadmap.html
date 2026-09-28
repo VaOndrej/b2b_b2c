@@ -3453,6 +3453,62 @@
               bannery. Ne další accordion, ale content OS pro
               doplňky/nutraceutika.
             </p>
+            <p class="description">
+              <strong>2026-09-10 · Won theme:</strong> v <code>themes/won-base</code>
+              jsou volitelné PDP vizualizace: recenze s obrázkem, profil odborníka,
+              číslované benefity a statistiky, vnořené sloupce, produktové karty a
+              dvousloupcové FAQ. Využívají nativní produktový formulář Horizonu;
+              nejde o dokončenou aplikaci Content Studio ani nový datový model.
+              Ukázková skladba je v <code>examples/product.editorial.json</code>.
+              Desktop/mobil, rozbalování, změna varianty a vložení do košíku
+              ověřeny na dev storu. Skeleton build je odblokovaný: patch
+              vyhledávání v hlavičce je Horizon-only a na bázi bez search slotu
+              se přeskočí.
+            </p>
+            <p class="description">
+              <strong>2026-09-11 · Won theme:</strong> limit nativních cart toastů
+              (<code>assets/won-toast.js</code>) drží nově i v layoutu, ne jen
+              v interní mapě: toast vyhozený limitem mizí okamžitě, místo aby si
+              220 ms držel místo ve stohu kvůli odchozí animaci. Burst přes šest
+              karet vykresloval při limitu 3 špičkově 6 toastů, teď 3 (měřeno
+              <code>MutationObserver</code>em na dev storu). Odchozí animace
+              zůstává pro doběh času i pro zavření křížkem.
+            </p>
+            <p class="description">
+              <strong>2026-09-10 · Vizuální audit:</strong> znovupoužitelný QA
+              katalog má 176 případů ve 30 alternativních šablonách; storefront
+              kontrola proběhla na 390, 768 a 1440 px výhradně na b2b dev storu.
+              Opraven je render externího videa a měřítko before/after obrázků.
+              Otevřené zůstávají mosaic dlaždice, přesah corner sticky CTA,
+              kolize badge, dotykové cíle a některé tabletové konfigurace.
+              Chybějící hosted video a app obsah nejsou ověřené.
+              Podrobné důkazy a omezení obsahuje
+              <a href="audits/2026-09-10-won-visual-audit.md">vizuální audit</a>;
+              nejde o uzavřený release gate.
+            </p>
+            <p class="description">
+              <strong>2026-09-11 · Implementované opravy:</strong> mosaic,
+              bottom badge, corner CTA, picker, anotace a barevné kontrakty
+              jsou opravené. Přibyly poměry sloupců, řádkové produktové karty
+              a video fit/portrait/adaptive. Editorial je ověřený na390/768/1440;
+              Horizon i Skeleton mají nulový přírůstek Theme Check nálezů.
+              Košíková regrese čeká na potvrzený stav místo optimistického DOM.
+              Závěrečný gate a limity Shopify preview jsou uvedené v
+              <a href="audits/2026-09-11-won-remediation.md">engineering reportu</a>.
+            </p>
+            <p class="description">
+              <strong>2026-09-11 · Forenzní release gate:</strong> žádná
+              produktová regrese Won nebyla potvrzena. Původních 25 selhání je
+              klasifikováno jako 1 chyba testovacího guardu, 20 potvrzených
+              selhání Shopify prostředí a 4 historicky nerozhodnutelné případy
+              bez HTTP instrumentace. Zpřísněný košíkový harness a cílená matice
+              prošly 26/26 včetně 10/10 desktop a 10/10 mobil decrementu. Finální
+              plný běh však Shopify CLI přerušilo po 348 průchodech: zalogovalo
+              429 při hot reloadu a lokální preview skončilo. Stav proto zůstává
+              <strong>blokovaný prostředím</strong>, ne zelený ani označený jako
+              produktová chyba. Detaily jsou v témže
+              <a href="audits/2026-09-11-won-remediation.md">engineering reportu</a>.
+            </p>
             <div class="tags">
               <span class="tag source">T · Therabeast</span>
               <span class="tag">coupling <strong>střední</strong></span>

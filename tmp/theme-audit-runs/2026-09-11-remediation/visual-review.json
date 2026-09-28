@@ -1,0 +1,747 @@
+{
+  "reviewed": 81,
+  "method": "Actual rendered screenshots inspected in contact sheets; final circle images independently inspected after padding adjustment. Full-page responsive collector flags are separate signals, not silently converted to passes.",
+  "cases": [
+    {
+      "id": "qa067",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa067-768.png"
+      ]
+    },
+    {
+      "id": "qa068",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa068-768.png"
+      ]
+    },
+    {
+      "id": "qa069",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa069-768.png"
+      ]
+    },
+    {
+      "id": "qa095",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa095-1440.png"
+      ]
+    },
+    {
+      "id": "qa096",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa096-1440.png"
+      ]
+    },
+    {
+      "id": "qa101",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": "tmp/theme-audit-runs/2026-09-11-remediation/annotation-final/screenshots/qa101-1440.png"
+    },
+    {
+      "id": "qa102",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": "tmp/theme-audit-runs/2026-09-11-remediation/annotation-final/screenshots/qa102-1440.png"
+    },
+    {
+      "id": "qa067",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa067-1440.png"
+      ]
+    },
+    {
+      "id": "qa068",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa068-1440.png"
+      ]
+    },
+    {
+      "id": "qa069",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa069-1440.png"
+      ]
+    },
+    {
+      "id": "qa176",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa176-390.png"
+      ]
+    },
+    {
+      "id": "qa177",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa177-1440.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa177-1440-expanded.png"
+      ]
+    },
+    {
+      "id": "qa178",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa178-1440.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa178-1440-expanded.png"
+      ]
+    },
+    {
+      "id": "qa179",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa179-1440.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa179-1440-expanded.png"
+      ]
+    },
+    {
+      "id": "qa095",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa095-390.png"
+      ]
+    },
+    {
+      "id": "qa096",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa096-390.png"
+      ]
+    },
+    {
+      "id": "qa101",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": "tmp/theme-audit-runs/2026-09-11-remediation/annotation-final/screenshots/qa101-390.png"
+    },
+    {
+      "id": "qa102",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": "tmp/theme-audit-runs/2026-09-11-remediation/annotation-final/screenshots/qa102-390.png"
+    },
+    {
+      "id": "qa156",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa156-1440.png"
+      ]
+    },
+    {
+      "id": "qa030",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa030-1440.png"
+      ]
+    },
+    {
+      "id": "qa030",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa030-390.png"
+      ]
+    },
+    {
+      "id": "qa176",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa176-1440.png"
+      ]
+    },
+    {
+      "id": "qa067",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa067-390.png"
+      ]
+    },
+    {
+      "id": "qa068",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa068-390.png"
+      ]
+    },
+    {
+      "id": "qa069",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa069-390.png"
+      ]
+    },
+    {
+      "id": "qa030",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa030-768.png"
+      ]
+    },
+    {
+      "id": "qa176",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa176-768.png"
+      ]
+    },
+    {
+      "id": "qa095",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa095-768.png"
+      ]
+    },
+    {
+      "id": "qa096",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa096-768.png"
+      ]
+    },
+    {
+      "id": "qa101",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": "tmp/theme-audit-runs/2026-09-11-remediation/annotation-final/screenshots/qa101-768.png"
+    },
+    {
+      "id": "qa102",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": "tmp/theme-audit-runs/2026-09-11-remediation/annotation-final/screenshots/qa102-768.png"
+    },
+    {
+      "id": "qa003",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa003-390.png"
+      ]
+    },
+    {
+      "id": "qa005",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa005-390.png"
+      ]
+    },
+    {
+      "id": "qa177",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa177-768.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa177-768-expanded.png"
+      ]
+    },
+    {
+      "id": "qa178",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa178-768.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa178-768-expanded.png"
+      ]
+    },
+    {
+      "id": "qa179",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa179-768.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa179-768-expanded.png"
+      ]
+    },
+    {
+      "id": "qa092",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa092-1440.png"
+      ]
+    },
+    {
+      "id": "qa159",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa159-1440.png"
+      ]
+    },
+    {
+      "id": "qa160",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa160-1440.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa160-1440-expanded.png"
+      ]
+    },
+    {
+      "id": "qa161",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa161-1440.png"
+      ]
+    },
+    {
+      "id": "qa162",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa162-1440.png"
+      ]
+    },
+    {
+      "id": "qa163",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa163-1440.png"
+      ]
+    },
+    {
+      "id": "qa164",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa164-1440.png"
+      ]
+    },
+    {
+      "id": "qa165",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa165-1440.png"
+      ]
+    },
+    {
+      "id": "qa166",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa166-1440.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa166-1440-expanded.png"
+      ]
+    },
+    {
+      "id": "qa167",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa167-1440.png"
+      ]
+    },
+    {
+      "id": "qa153",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa153-768.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa153-768-expanded.png"
+      ]
+    },
+    {
+      "id": "qa157",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa157-768.png"
+      ]
+    },
+    {
+      "id": "qa153",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa153-1440.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa153-1440-expanded.png"
+      ]
+    },
+    {
+      "id": "qa157",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa157-1440.png"
+      ]
+    },
+    {
+      "id": "qa159",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa159-768.png"
+      ]
+    },
+    {
+      "id": "qa160",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa160-768.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa160-768-expanded.png"
+      ]
+    },
+    {
+      "id": "qa161",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa161-768.png"
+      ]
+    },
+    {
+      "id": "qa162",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa162-768.png"
+      ]
+    },
+    {
+      "id": "qa163",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa163-768.png"
+      ]
+    },
+    {
+      "id": "qa164",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa164-768.png"
+      ]
+    },
+    {
+      "id": "qa165",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa165-768.png"
+      ]
+    },
+    {
+      "id": "qa166",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa166-768.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa166-768-expanded.png"
+      ]
+    },
+    {
+      "id": "qa167",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa167-768.png"
+      ]
+    },
+    {
+      "id": "qa156",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa156-390.png"
+      ]
+    },
+    {
+      "id": "qa092",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa092-768.png"
+      ]
+    },
+    {
+      "id": "qa003",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa003-1440.png"
+      ]
+    },
+    {
+      "id": "qa005",
+      "viewport": 1440,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa005-1440.png"
+      ]
+    },
+    {
+      "id": "qa177",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa177-390.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa177-390-expanded.png"
+      ]
+    },
+    {
+      "id": "qa178",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa178-390.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa178-390-expanded.png"
+      ]
+    },
+    {
+      "id": "qa179",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa179-390.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa179-390-expanded.png"
+      ]
+    },
+    {
+      "id": "qa003",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa003-768.png"
+      ]
+    },
+    {
+      "id": "qa005",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa005-768.png"
+      ]
+    },
+    {
+      "id": "qa156",
+      "viewport": 768,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa156-768.png"
+      ]
+    },
+    {
+      "id": "qa092",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa092-390.png"
+      ]
+    },
+    {
+      "id": "qa159",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa159-390.png"
+      ]
+    },
+    {
+      "id": "qa160",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa160-390.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa160-390-expanded.png"
+      ]
+    },
+    {
+      "id": "qa161",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa161-390.png"
+      ]
+    },
+    {
+      "id": "qa162",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa162-390.png"
+      ]
+    },
+    {
+      "id": "qa163",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa163-390.png"
+      ]
+    },
+    {
+      "id": "qa164",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa164-390.png"
+      ]
+    },
+    {
+      "id": "qa165",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa165-390.png"
+      ]
+    },
+    {
+      "id": "qa166",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa166-390.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa166-390-expanded.png"
+      ]
+    },
+    {
+      "id": "qa167",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa167-390.png"
+      ]
+    },
+    {
+      "id": "qa153",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa153-390.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa153-390-expanded.png"
+      ]
+    },
+    {
+      "id": "qa157",
+      "viewport": 390,
+      "review": "visually inspected",
+      "result": "pass",
+      "screenshot": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa157-390.png"
+      ]
+    }
+  ],
+  "superseded_evidence": {
+    "qa101/qa102": "annotation-final/",
+    "qa156 mobile": "tap-final/",
+    "marquee QA008": "layout-visual-review.json"
+  },
+  "additional_review": "Marquee QA008 reviewed at390/768/1440 against audit baseline; all actual CTA>=44; shared mobile page invariant passed. Final picker targets3/3passed; mobile full-page invariant passed."
+}

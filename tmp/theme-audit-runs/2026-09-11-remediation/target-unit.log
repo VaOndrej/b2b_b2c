@@ -1,0 +1,34 @@
+(node:30902) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 8 tests using 1 worker
+
+[1A[2K(node:30903) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:30903) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:30903) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/8] [desktop] › tests/smoke/responsive-targets.spec.ts:5:3 › Responsive meaningful hit areas › a visible 44px label represents a hidden native radio
+[1A[2K[2/8] [desktop] › tests/smoke/responsive-targets.spec.ts:15:3 › Responsive meaningful hit areas › a 20px label remains an undersized hit area
+[1A[2K[3/8] [desktop] › tests/smoke/responsive-targets.spec.ts:23:3 › Responsive meaningful hit areas › controls inside a hidden panel are not measured
+[1A[2K[4/8] [desktop] › tests/smoke/responsive-targets.spec.ts:29:3 › Responsive meaningful hit areas › separated tiny radio and label cannot pass via empty space
+[1A[2K(node:30913) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:30913) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:30913) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[5/8] [mobile] › tests/smoke/responsive-targets.spec.ts:5:3 › Responsive meaningful hit areas › a visible 44px label represents a hidden native radio
+[1A[2K[6/8] [mobile] › tests/smoke/responsive-targets.spec.ts:15:3 › Responsive meaningful hit areas › a 20px label remains an undersized hit area
+[1A[2K[7/8] [mobile] › tests/smoke/responsive-targets.spec.ts:23:3 › Responsive meaningful hit areas › controls inside a hidden panel are not measured
+[1A[2K[8/8] [mobile] › tests/smoke/responsive-targets.spec.ts:29:3 › Responsive meaningful hit areas › separated tiny radio and label cannot pass via empty space
+[1A[2K  8 passed (2.4s)

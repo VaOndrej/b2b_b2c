@@ -74,7 +74,7 @@
         </div>
       {%- endif -%}
 
-      {%- if is_tabs -%}<won-tabset class="won-panels__tabset"><div class="won-panels__nav" role="tablist"></div><div class="won-panels__panels">{%- else -%}<div class="won-panels__rows{% if s.icon_style == 'chevron' %} won-panels--chevron{% endif %}">{%- endif -%}
+      {%- if is_tabs -%}<won-tabset class="won-panels__tabset"><div class="won-panels__nav" role="tablist"></div><div class="won-panels__panels">{%- else -%}<div style="--won-panel-columns: {{ s.accordion_columns | default: 1 }};" class="won-panels__rows{% if s.icon_style == 'chevron' %} won-panels--chevron{% endif %}">{%- endif -%}
         {% content_for 'blocks' %}
       {%- if is_tabs -%}</div></won-tabset>{%- else -%}</div>{%- endif -%}
     </div>
@@ -111,45 +111,6 @@
   won-tabset[data-won-bound] .won-panels__panel-title { display: none; }
   won-tabset[data-won-bound] .won-panels__panel + .won-panels__panel { margin-block-start: 0; }
 
-  /* Accordion (absorbs won-accordion + won-accordion-row). */
-  .won-panels__row { border-bottom: 1px solid var(--won-border); }
-  .won-panels__summary {
-    display: flex; align-items: center; justify-content: space-between; gap: var(--won-space-3);
-    padding: var(--won-space-4) 0; cursor: pointer; font-weight: 600; list-style: none;
-  }
-  .won-panels__summary::-webkit-details-marker { display: none; }
-  .won-panels__icon { position: relative; flex: 0 0 auto; inline-size: 16px; block-size: 16px; }
-  .won-panels__icon::before,
-  .won-panels__icon::after {
-    content: ""; position: absolute; inset-block-start: 50%; inset-inline-start: 0;
-    inline-size: 16px; block-size: 2px; background: var(--won-accent);
-    transform: translateY(-50%); transition: transform var(--won-dur) var(--won-ease);
-  }
-  .won-panels__icon::after { transform: translateY(-50%) rotate(90deg); }
-  .won-panels__row[open] .won-panels__icon::after { transform: translateY(-50%) rotate(0deg); }
-  /* Chevron variant (.won-panels--chevron): a caret instead of a plus/minus. */
-  .won-panels--chevron .won-panels__icon::before { display: none; }
-  .won-panels--chevron .won-panels__icon::after {
-    inline-size: 9px; block-size: 9px; background: none;
-    border-inline-end: 2px solid var(--won-accent); border-block-end: 2px solid var(--won-accent);
-    inset-inline-start: 3px; transform: translateY(-75%) rotate(45deg);
-  }
-  .won-panels--chevron .won-panels__row[open] .won-panels__icon::after { transform: translateY(-25%) rotate(-135deg); }
-  .won-panels__answer { padding-block-end: var(--won-space-4); opacity: 0.92; }
-  @media (prefers-reduced-motion: reduce) {
-    .won-panels__icon::before, .won-panels__icon::after { transition: none; }
-  }
-
-  /* Mobile reads centered like the rest of the page: the question centers with
-     the +/- icon pinned to the right edge (absolute, out of the flex flow), the
-     contact block and answers center too. Desktop keeps question-left + icon-right. */
-  @media (max-width: 749px) {
-    .won-panels__summary { justify-content: center; position: relative; padding-inline: 28px; }
-    .won-panels__icon { position: absolute; inset-inline-end: 0; inset-block-start: 50%; transform: translateY(-50%); }
-    .won-panels__contact { align-items: center; }
-    .won-panels__answer { text-align: center; }
-  }
-
   @media (min-width: 750px) {
     .won-panels__heading { font-size: var(--won-h-size-d, 2rem); max-width: var(--won-h-mw-d, 100%); }
   }
@@ -162,6 +123,11 @@
     /* an image side column earns a bit more room and isn't sticky-cropped */
     .won-panels--split.won-panels--media .won-panels__head { flex-basis: 40%; position: static; }
   }
+  .won-panels__rows { min-inline-size: 0; display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
+  .won-panels__rows > * { min-inline-size: 0; }
+  @media (min-width: 750px) {
+    .won-panels__rows { grid-template-columns: repeat(var(--won-panel-columns, 1), minmax(0, 1fr)); }
+  }
 {% endstylesheet %}
 
 {% schema %}
@@ -172,6 +138,9 @@
   "max_blocks": 30,
   "blocks": [{ "type": "won-panel" }, { "type": "@theme" }, { "type": "@app" }],
   "settings": [
+    {"type": "select", "id": "row_style", "label": "t:won.settings.row_style", "default": "plain", "options": [{"value": "plain", "label": "t:won.options.panel_plain"}, {"value": "editorial", "label": "t:won.options.panel_editorial"}, {"value": "boxed", "label": "t:won.options.panel_boxed"}], "visible_if": "{{ section.settings.display == 'accordion' }}"},
+    {"type": "select", "id": "accordion_columns", "label": "t:won.settings.columns_desktop", "default": "1", "options": [{"value": "1", "label": "1"}, {"value": "2", "label": "2"}], "visible_if": "{{ section.settings.display == 'accordion' }}"},
+
     { "type": "paragraph", "content": "t:won.info.panels_about" },
     { "type": "header", "content": "t:won.headers.mode" },
     {
@@ -241,6 +210,8 @@
     { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 48 }
   ],
   "presets": [
+    {"name": "t:won.presets.faq_grid", "category": "t:won.categories.content", "settings": {"display": "accordion", "layout": "stacked", "row_style": "boxed", "icon_style": "chevron", "accordion_columns": "2"}, "blocks": [{"type": "won-panel"}, {"type": "won-panel"}, {"type": "won-panel"}, {"type": "won-panel"}, {"type": "won-panel"}, {"type": "won-panel"}]},
+
     {
       "name": "t:won.presets.tabs", "category": "t:won.categories.content",
       "settings": { "display": "tabs" },

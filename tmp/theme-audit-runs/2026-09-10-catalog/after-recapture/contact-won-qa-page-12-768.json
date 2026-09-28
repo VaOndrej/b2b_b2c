@@ -1,0 +1,83 @@
+{
+  "url": "/pages/contact?view=won-qa-page-12",
+  "width": 768,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-12",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=07b8155a-d796-430b-95a3-9c721a653208&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "httpAttempts": [
+      200
+    ],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "qa158",
+      "type": "won-media-compare",
+      "variant": "identical images alignment",
+      "label": "won-media-compare · identical images alignment",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-12",
+      "sectionId": "qa158",
+      "selector": "[id$=\"__qa158\"]",
+      "template": "page.won-qa-page-12.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa158-768.png"
+      ],
+      "text": "After\nBefore",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/photo-1526170375885-4d8ecf77b99f.jpg?v=1783703965&width=900",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/photo-1526170375885-4d8ecf77b99f.jpg?v=1783703965&width=900",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 251.828125,
+        "width": 768,
+        "height": 519.953125
+      }
+    }
+  ]
+}

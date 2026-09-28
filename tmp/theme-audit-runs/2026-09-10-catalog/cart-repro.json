@@ -1,0 +1,58 @@
+[
+  {
+    "width": 390,
+    "id": "47934266769649",
+    "before": 0,
+    "observations": [
+      {
+        "delay": 0,
+        "itemCount": 0,
+        "qtyVisible": false
+      },
+      {
+        "delay": 500,
+        "itemCount": 0,
+        "qtyVisible": false
+      },
+      {
+        "delay": 1500,
+        "itemCount": 0,
+        "qtyVisible": false
+      },
+      {
+        "delay": 3000,
+        "itemCount": 0,
+        "qtyVisible": false
+      }
+    ],
+    "restored": true
+  },
+  {
+    "width": 1440,
+    "id": "47934266769649",
+    "before": 0,
+    "observations": [
+      {
+        "delay": 0,
+        "itemCount": 0,
+        "qtyVisible": false
+      },
+      {
+        "delay": 500,
+        "itemCount": 0,
+        "qtyVisible": false
+      },
+      {
+        "delay": 1500,
+        "itemCount": 0,
+        "qtyVisible": false
+      },
+      {
+        "delay": 3000,
+        "itemCount": 0,
+        "qtyVisible": false
+      }
+    ],
+    "restored": true
+  }
+]

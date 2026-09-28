@@ -43,6 +43,10 @@
     assign cols = count
   endif
 
+  # A smaller desktop composition must not gain empty tracks at tablet width.
+  # Keep a merchant's lower tablet count, bounded by available desktop tracks.
+  assign cols_tablet = s.columns_tablet | at_most: cols
+
   assign col_sm = 1
   if src == 'stats'
     assign col_sm = 2
@@ -85,7 +89,7 @@
       {%- if s.mobile_carousel -%}<won-carousel class="won-carousel won-carousel--grid-rail won-carousel--scroll-sm" data-mobile-mode="peek" data-won-rail-indicator="{{ settings.won_rail_indicator | default: 'per_section' }}">{%- endif -%}
       <div
         class="won-grid won-grid--blocks won-grid--{{ s.item_style }}{% if s.mosaic %} won-grid--mosaic{% endif %}{% if s.mobile_carousel %} won-grid--scroll-sm{% endif %}"
-        style="--won-cols-sm: {{ col_sm }}; --won-cols-md: {{ s.columns_tablet }}; --won-cols-lg: {{ cols }}; --won-gap: {{ s.gap }}px; --won-grid-align: {{ s.content_align }}; --won-align-flex: {{ align_flex }}; --won-feature-title-lines: {{ s.feature_title_lines | default: 0 }};"
+        style="--won-cols-sm: {{ col_sm }}; --won-cols-md: {{ cols_tablet }}; --won-cols-lg: {{ cols }}; --won-gap: {{ s.gap }}px; --won-grid-align: {{ s.content_align }}; --won-align-flex: {{ align_flex }}; --won-feature-title-lines: {{ s.feature_title_lines | default: 0 }};"
         {% if s.mobile_carousel %}data-won-track data-mobile-mode="peek"{% endif %}
       >
         {% content_for 'blocks' %}
@@ -95,9 +99,15 @@
 
     {%- elsif src == 'articles' -%}
       {%- if count > 0 -%}
+        {%- comment -%} Články umí stejný mobilní rail jako bloky. Dřív ho měla jen
+          `blocks` větev, takže blog na mobilu vždycky stackoval karty pod sebe
+          (tři články = 1 222 px). Wrapper i ovládání jsou schválně identické
+          s blokovou větví výše, ať se chovají stejně. {%- endcomment -%}
+        {%- if s.mobile_carousel -%}<won-carousel class="won-carousel won-carousel--grid-rail won-carousel--scroll-sm" data-mobile-mode="peek" data-won-rail-indicator="{{ settings.won_rail_indicator | default: 'per_section' }}">{%- endif -%}
         <div
-          class="won-grid won-grid--articles won-grid--art-{{ s.article_layout }}"
-          style="--won-cols-sm: 1; --won-cols-md: {{ s.columns_tablet }}; --won-cols-lg: {{ cols }}; --won-gap: {{ s.gap }}px;"
+          class="won-grid won-grid--articles won-grid--art-{{ s.article_layout }}{% if s.mobile_carousel %} won-grid--scroll-sm{% endif %}"
+          style="--won-cols-sm: 1; --won-cols-md: {{ cols_tablet }}; --won-cols-lg: {{ cols }}; --won-gap: {{ s.gap }}px;"
+          {% if s.mobile_carousel %}data-won-track data-mobile-mode="peek"{% endif %}
         >
           {%- for article in articles limit: s.articles_limit -%}
             <a class="won-grid__article {% if s.article_layout == 'featured' and forloop.first %}won-grid__article--lead{% endif %}" href="{{ article.url }}">
@@ -132,6 +142,8 @@
             </a>
           {%- endfor -%}
         </div>
+        {%- if s.mobile_carousel -%}{% render 'won-rail-controls', s: s, sm_only: true %}{%- endif -%}
+        {%- if s.mobile_carousel -%}</won-carousel>{%- endif -%}
       {%- else -%}
         <p class="won-grid__empty">{{ 'won.a11y.no_articles' | t }}</p>
       {%- endif -%}
@@ -179,7 +191,7 @@
     grid-template-columns: repeat(var(--won-cols-sm, 1), minmax(0, 1fr));
   }
   /* Block-grid item styles (absorbs won-features plain/card/bordered). */
-  .won-grid--blocks > * { text-align: var(--won-grid-align, left); }
+  .won-grid--blocks > * { min-inline-size: 0; text-align: var(--won-grid-align, left); }
   .won-grid--card > * { background: var(--won-surface); border-radius: var(--won-radius-md); padding: var(--won-space-4); }
   .won-grid--bordered > * { border: 1px solid var(--won-border); border-radius: var(--won-radius-md); padding: var(--won-space-4); }
 
@@ -243,12 +255,19 @@
   @media (min-width: 750px) {
     .won-grid { grid-template-columns: repeat(var(--won-cols-md, 2), minmax(0, 1fr)); }
     .won-grid__heading { font-size: var(--won-h-size-d, 2rem); max-width: var(--won-h-mw-d, 100%); }
+    /* Shopify theme blocks add a wrapper: it, not the tile anchor, owns the
+       grid placement. Limit the span to the configured column count. */
+    .won-grid--mosaic > :is(.won-tile--large, .shopify-block:has(> .won-tile--large)) {
+      grid-column: span min(2, var(--won-cols-md, 2)); grid-row: span 2;
+    }
+    .won-grid--mosaic > .shopify-block:has(> .won-tile) { display: grid; }
     .won-grid--art-featured .won-grid__article--lead { grid-column: span 2; }
     .won-grid--art-featured .won-grid__article--lead .won-grid__article-media { aspect-ratio: 21 / 9; }
   }
   @media (min-width: 990px) {
     .won-grid { grid-template-columns: repeat(var(--won-cols-lg, 4), minmax(0, 1fr)); }
     .won-grid--mosaic { grid-auto-flow: dense; }
+    .won-grid--mosaic > :is(.won-tile--large, .shopify-block:has(> .won-tile--large)) { grid-column: span min(2, var(--won-cols-lg, 4)); }
   }
 {% endstylesheet %}
 
@@ -298,7 +317,7 @@
       ],
       "default": "1"
     },
-    { "type": "checkbox", "id": "mobile_carousel", "label": "t:won.settings.mobile_carousel", "info": "t:won.info.mobile_carousel", "default": false, "visible_if": "{{ section.settings.source == 'blocks' }}" },
+    { "type": "checkbox", "id": "mobile_carousel", "label": "t:won.settings.mobile_carousel", "info": "t:won.info.mobile_carousel", "default": false, "visible_if": "{{ section.settings.source == 'blocks' or section.settings.source == 'articles' }}" },
     { "type": "range", "id": "gap", "label": "t:won.settings.gap", "min": 4, "max": 64, "step": 2, "unit": "px", "default": 24 },
     {
       "type": "select", "id": "item_style", "label": "t:won.settings.item_style", "visible_if": "{{ section.settings.source == 'blocks' }}",
@@ -335,6 +354,7 @@
     { "type": "range", "id": "padding_bottom", "label": "t:won.settings.padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 }
   ],
   "presets": [
+    {"name": "t:won.presets.editorial_columns", "category": "t:won.categories.content", "settings": {"source": "blocks", "columns_desktop": 2, "columns_tablet": 2, "columns_mobile": "1", "item_style": "plain", "heading": ""}, "blocks": [{"type": "won-group", "settings": {"heading": "t:won.defaults.editorial_benefits"}, "blocks": [{"type": "won-feature", "settings": {"presentation": "numbered", "number_label": "01", "icon_style": "bare", "icon": "check", "image_position": "left"}}, {"type": "won-feature", "settings": {"presentation": "numbered", "number_label": "02", "icon_style": "bare", "icon": "check", "image_position": "left"}}, {"type": "won-feature", "settings": {"presentation": "numbered", "number_label": "03", "icon_style": "bare", "icon": "check", "image_position": "left"}}, {"type": "won-feature", "settings": {"presentation": "numbered", "number_label": "04", "icon_style": "bare", "icon": "check", "image_position": "left"}}]}, {"type": "won-group", "settings": {"heading": "t:won.defaults.editorial_expert"}, "blocks": [{"type": "won-slide", "settings": {"visualization": "expert", "card_style": "plain"}}]}]},
     {
       "name": "t:won.presets.usp_row", "category": "t:won.categories.content",
       "settings": { "source": "blocks", "columns_desktop": 4, "item_style": "plain", "content_align": "center" },

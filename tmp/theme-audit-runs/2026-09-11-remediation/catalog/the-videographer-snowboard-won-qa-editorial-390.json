@@ -1,0 +1,404 @@
+{
+  "url": "/products/the-videographer-snowboard?view=won-qa-editorial",
+  "width": 390,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Access to script at 'http://cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-5059b83f.js' from origin 'http://127.0.0.1:9292' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "Failed to load resource: net::ERR_FAILED",
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-5059b83f.js",
+        "error": "net::ERR_FAILED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@d761896cw652752b9p53817278m7665fce0/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/products/the-videographer-snowboard?view=won-qa-editorial",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=52829ced-7bb7-4fbb-9364-eb384d50217f&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://error-analytics-sessions-production.shopifysvc.com/observeonly",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/event/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/event/collect",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "httpAttempts": [
+      200
+    ],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    },
+    "responsive": "pass"
+  },
+  "results": [
+    {
+      "id": "qa159",
+      "type": "product-information",
+      "label": "Editorial composition · main",
+      "variant": "editorial real media",
+      "context": "product",
+      "url": "/products/the-videographer-snowboard?view=won-qa-editorial",
+      "sectionId": "main",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__main\"]",
+      "template": "product.won-qa-editorial.json",
+      "limitations": [],
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa159-390.png"
+      ],
+      "text": "Skip to product information\nHome\nAutomated Collection\nPre-Workout Energy\nPre-Workout Energy\nBrand\nB2b_b2c_store_development\nType\nPre-workout\n\nPre-workout s kofeinem, beta-alaninem a citrulinem. Nabudí, ale nerozhodí — bez dávky, po které se třesou ruce.\n\n200 mg kofeinu v porci\n3 g beta-alaninu pro delší sérii\n6 g citrulin malátu pro prokrvení\nBez zbytečných plnidel\n\nDávkování: 1 odměrku (10 g) do 300 ml vody 20 minut před tréninkem. Neužívej po 16. hodině.\n\nBalení\n500 g\n1 000 g\n2 500 g\nSale price \n$549.95 \nRegular price \n$999.95\nPer unit:\n$109.99\n/ 100 g\nDecrease quantity\nIncrease quantity\nAdd to cart\nBuy it now\nIn stock\n🚚 Skladem, odesíláme dnes\n★★★★★\n4.7(231)\n4.7 / 5, 231",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=832",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=832",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=832",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": -0.421875,
+        "width": 390,
+        "height": 1192.109375
+      }
+    },
+    {
+      "id": "qa160",
+      "type": "won-grid",
+      "label": "Editorial composition · bundles_details",
+      "variant": "editorial real media",
+      "context": "product",
+      "url": "/products/the-videographer-snowboard?view=won-qa-editorial",
+      "sectionId": "bundles_details",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__bundles_details\"]",
+      "template": "product.won-qa-editorial.json",
+      "limitations": [],
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa160-390.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa160-390-expanded.png"
+      ],
+      "text": "Complete your selection\nPre-Workout Energy\n★★★★★\n4.7(231)\n4.7 / 5, 231\n$549.95 $999.95\nChoose\nKreatin Monohydrát\n★★★★★\n4.7(205)\n4.7 / 5, 205\n$600.00 $1,000.00\nChoose\nHow to use\nMaterials and composition\nWho it is for",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=300",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-creatine.png?v=1788345206&width=300",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 104.46875,
+        "width": 390,
+        "height": 635.84375
+      }
+    },
+    {
+      "id": "qa161",
+      "type": "won-carousel",
+      "label": "Editorial composition · reviews",
+      "variant": "editorial real media",
+      "context": "product",
+      "url": "/products/the-videographer-snowboard?view=won-qa-editorial",
+      "sectionId": "reviews",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__reviews\"]",
+      "template": "product.won-qa-editorial.json",
+      "limitations": [],
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "carousel-content",
+          "overflow": true,
+          "mode": "1"
+        },
+        {
+          "name": "carousel-invariant",
+          "pass": true
+        },
+        {
+          "name": "carousel-scroll",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa161-390.png"
+      ],
+      "text": "Stories from everyday use\nRead all reviews\nExample review headline 1\n\nReplace this sample with a genuine customer review, and add an approved customer image.\n\nQA fictional example\n\nExample review headline 2\n\nReplace this sample with a genuine customer review, and add an approved customer image.\n\nQA fictional example\n\n‹\n›",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/photo-1526170375885-4d8ecf77b99f.jpg?v=1783703965&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/photo-1526170375885-4d8ecf77b99f.jpg?v=1783703965&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 86.09375,
+        "width": 390,
+        "height": 671.046875
+      }
+    },
+    {
+      "id": "qa162",
+      "type": "won-grid",
+      "label": "Editorial composition · benefits_expert",
+      "variant": "editorial real media",
+      "context": "product",
+      "url": "/products/the-videographer-snowboard?view=won-qa-editorial",
+      "sectionId": "benefits_expert",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__benefits_expert\"]",
+      "template": "product.won-qa-editorial.json",
+      "limitations": [],
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa162-390.png"
+      ],
+      "text": "Four benefits worth exploring\n01\nEveryday comfort\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\n02\nThoughtful materials\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\n03\nReliable protection\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\n04\nEasy to use\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\nAn expert perspective\nQA demonstration image\nExpert name\n\nRole or qualification\n\nAdd an approved expert quotation relevant to this product. Replace all example content before publishing.",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/photo-1526170375885-4d8ecf77b99f.jpg?v=1783703965&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": -246.078125,
+        "width": 390,
+        "height": 1336.84375
+      }
+    },
+    {
+      "id": "qa163",
+      "type": "won-grid",
+      "label": "Editorial composition · trust",
+      "variant": "editorial real media",
+      "context": "product",
+      "url": "/products/the-videographer-snowboard?view=won-qa-editorial",
+      "sectionId": "trust",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__trust\"]",
+      "template": "product.won-qa-editorial.json",
+      "limitations": [],
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa163-390.png"
+      ],
+      "text": "Your verified standard\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\nYour material promise\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\nYour service commitment\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 99.546875,
+        "width": 390,
+        "height": 645.40625
+      }
+    },
+    {
+      "id": "qa164",
+      "type": "won-grid",
+      "label": "Editorial composition · reasons",
+      "variant": "editorial real media",
+      "context": "product",
+      "url": "/products/the-videographer-snowboard?view=won-qa-editorial",
+      "sectionId": "reasons",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__reasons\"]",
+      "template": "product.won-qa-editorial.json",
+      "limitations": [],
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa164-390.png"
+      ],
+      "text": "Why choose this product?\nA clear everyday purpose\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\nThoughtful design details\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\nSimple to incorporate into your routine\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\nStraightforward product information\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\nSupport when you need it\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 40.734375,
+        "width": 390,
+        "height": 763.078125
+      }
+    },
+    {
+      "id": "qa165",
+      "type": "won-grid",
+      "label": "Editorial composition · composition",
+      "variant": "editorial real media",
+      "context": "product",
+      "url": "/products/the-videographer-snowboard?view=won-qa-editorial",
+      "sectionId": "composition",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__composition\"]",
+      "template": "product.won-qa-editorial.json",
+      "limitations": [],
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa165-390.png"
+      ],
+      "text": "What makes the composition distinctive?\n\nExplain the product composition in plain language. Connect this copy to product information or maintain it in the theme editor.\n\n17\nKey components\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\nStructure\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\nComfort\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\nProtection\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.\n\nFinish\n\nQA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": -21.40625,
+        "width": 390,
+        "height": 887.359375
+      }
+    },
+    {
+      "id": "qa166",
+      "type": "won-grid",
+      "label": "Editorial composition · faq",
+      "variant": "editorial real media",
+      "context": "product",
+      "url": "/products/the-videographer-snowboard?view=won-qa-editorial",
+      "sectionId": "faq",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__faq\"]",
+      "template": "product.won-qa-editorial.json",
+      "limitations": [],
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa166-390.png",
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa166-390-expanded.png"
+      ],
+      "text": "Need to know more?\nWho is this product suitable for?\nHow should I use it?\nHow do I care for it?\nCan I use it every day?\nWhich option should I choose?\nWhere can I find more information?",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 113.734375,
+        "width": 390,
+        "height": 615.921875
+      }
+    },
+    {
+      "id": "qa167",
+      "type": "won-grid",
+      "label": "Editorial composition · editorial",
+      "variant": "editorial real media",
+      "context": "product",
+      "url": "/products/the-videographer-snowboard?view=won-qa-editorial",
+      "sectionId": "editorial",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__editorial\"]",
+      "template": "product.won-qa-editorial.json",
+      "limitations": [],
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa167-390.png"
+      ],
+      "text": "Explore more stories\nGetting started\nChoosing your essentials\nEveryday inspiration\nCare and maintenance",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 66.4375,
+        "width": 390,
+        "height": 710.609375
+      }
+    }
+  ]
+}

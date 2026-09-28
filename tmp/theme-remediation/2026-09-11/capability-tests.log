@@ -1,0 +1,96 @@
+
+> test:smoke
+> playwright test tests/smoke --grep Won remediation capabilities --project=desktop --output=tmp/theme-remediation/2026-09-11/capability-test-results --reporter=line
+
+(node:27509) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 8 tests using 1 worker
+
+[1A[2K(node:27510) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:27510) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:27510) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:42:5 › Won remediation capabilities › product rows have natural CTA placement and real tap targets at 390
+[1A[2K[2/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:89:5 › Won remediation capabilities › video portrait and adaptive fallback retain a usable player at 390
+[1A[2K[3/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:42:5 › Won remediation capabilities › product rows have natural CTA placement and real tap targets at 768
+[1A[2K[4/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:89:5 › Won remediation capabilities › video portrait and adaptive fallback retain a usable player at 768
+[1A[2K[5/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:42:5 › Won remediation capabilities › product rows have natural CTA placement and real tap targets at 1440
+[1A[2K[6/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:89:5 › Won remediation capabilities › video portrait and adaptive fallback retain a usable player at 1440
+[1A[2K[7/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:139:3 › Won remediation capabilities › row multi-variant action opens the existing quick view
+[1A[2K  1) [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:139:3 › Won remediation capabilities › row multi-variant action opens the existing quick view 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveAttribute[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('#quick-add-dialog dialog')
+    Expected: [32m""[39m
+    Error: strict mode violation: locator('#quick-add-dialog dialog') resolved to 2 elements:
+        1) <dialog open="" ref="dialog" scroll-lock="" class="quick-add-modal dialog-modal color-scheme-1">…</dialog> aka getByRole('dialog')
+        2) <dialog ref="dialog" scroll-lock="" on:keydown="/handleKeyDown">…</dialog> aka getByTestId('product-information-media').locator('dialog')
+
+    Call log:
+    [2m  - Expect "toHaveAttribute" with timeout 15000ms[22m
+    [2m  - waiting for locator('#quick-add-dialog dialog')[22m
+    [2m    4 × locator resolved to <dialog ref="dialog" scroll-lock="" class="quick-add-modal dialog-modal color-scheme-1">…</dialog>[22m
+    [2m      - unexpected value "null"[22m
+
+
+      149 |     await expect(action).toHaveAttribute("data-won-quickview", "");
+      150 |     await action.click();
+    > 151 |     await expect(page.locator("#quick-add-dialog dialog")).toHaveAttribute(
+          |                                                            ^
+      152 |       "open",
+      153 |       "",
+      154 |     );
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-remediation-capabilities.spec.ts:151:60
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-remediation/2026-09-11/capability-test-results/smoke-won-remediation-capa-8778b-ens-the-existing-quick-view-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-remediation/2026-09-11/capability-test-results/smoke-won-remediation-capa-8778b-ens-the-existing-quick-view-desktop/error-context.md
+
+
+[1A[2K(node:27732) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:27732) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:27732) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[8/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:165:3 › Won remediation capabilities › row quick add uses the shared cart and unavailable rows cannot add
+[1A[2K  2) [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:165:3 › Won remediation capabilities › row quick add uses the shared cart and unavailable rows cannot add 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: apiRequestContext.post: Test timeout of 60000ms exceeded.
+
+      194 |       expect((await page.request.post("/cart/clear.js")).ok()).toBeTruthy();
+      195 |     }
+    > 196 |     const unavailable = rowCases().find((c) =>
+          |                                  ^
+      197 |       /sold|unavailable/.test(c.variant),
+      198 |     );
+      199 |     expect(unavailable).toBeDefined();
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-remediation-capabilities.spec.ts:196:34
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-remediation/2026-09-11/capability-test-results/smoke-won-remediation-capa-b1763-unavailable-rows-cannot-add-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-remediation/2026-09-11/capability-test-results/smoke-won-remediation-capa-b1763-unavailable-rows-cannot-add-desktop/error-context.md
+
+
+[1A[2K  2 failed
+    [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:139:3 › Won remediation capabilities › row multi-variant action opens the existing quick view 
+    [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:165:3 › Won remediation capabilities › row quick add uses the shared cart and unavailable rows cannot add 
+  6 passed (1.7m)

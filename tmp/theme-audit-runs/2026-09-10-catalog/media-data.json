@@ -1,0 +1,125 @@
+[
+  {
+    "handle": "the-videographer-snowboard",
+    "media": [
+      {
+        "alt": "Pre-Workout Energy",
+        "id": 40286348771569,
+        "position": 1,
+        "preview_image": {
+          "aspect_ratio": 0.857,
+          "height": 1633,
+          "width": 1400,
+          "src": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-preworkout.png?v=1788345217"
+        },
+        "aspect_ratio": 0.857,
+        "height": 1633,
+        "media_type": "image",
+        "src": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-preworkout.png?v=1788345217",
+        "width": 1400
+      }
+    ],
+    "variants": [
+      {
+        "id": 47934267195633,
+        "title": "500 g",
+        "available": true,
+        "price": 54995
+      },
+      {
+        "id": 48665842909425,
+        "title": "1 000 g",
+        "available": true,
+        "price": 88595
+      },
+      {
+        "id": 48665842942193,
+        "title": "2 500 g",
+        "available": true,
+        "price": 189995
+      }
+    ]
+  },
+  {
+    "handle": "the-complete-snowboard",
+    "media": [
+      {
+        "alt": "Protein Blend — Výhodný set",
+        "id": 40286348738801,
+        "position": 1,
+        "preview_image": {
+          "aspect_ratio": 0.857,
+          "height": 1633,
+          "width": 1400,
+          "src": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-protein-blend.png?v=1788345215"
+        },
+        "aspect_ratio": 0.857,
+        "height": 1633,
+        "media_type": "image",
+        "src": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-protein-blend.png?v=1788345215",
+        "width": 1400
+      }
+    ],
+    "variants": [
+      {
+        "id": 47934267228401,
+        "title": "Bez příchuti",
+        "available": true,
+        "price": 69995
+      },
+      {
+        "id": 47934267261169,
+        "title": "Vanilka",
+        "available": true,
+        "price": 69995
+      },
+      {
+        "id": 47934267293937,
+        "title": "Čokoláda",
+        "available": true,
+        "price": 69995
+      },
+      {
+        "id": 47934267326705,
+        "title": "Slaný karamel",
+        "available": true,
+        "price": 69995
+      },
+      {
+        "id": 47934267359473,
+        "title": "Jahoda",
+        "available": true,
+        "price": 69995
+      }
+    ]
+  },
+  {
+    "handle": "the-out-of-stock-snowboard",
+    "media": [
+      {
+        "alt": "Proteinová tyčinka (12 ks)",
+        "id": 40286348640497,
+        "position": 1,
+        "preview_image": {
+          "aspect_ratio": 0.857,
+          "height": 1633,
+          "width": 1400,
+          "src": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-sticks.png?v=1788345210"
+        },
+        "aspect_ratio": 0.857,
+        "height": 1633,
+        "media_type": "image",
+        "src": "https://cdn.shopify.com/s/files/1/0789/7107/6849/files/won-pack-sticks.png?v=1788345210",
+        "width": 1400
+      }
+    ],
+    "variants": [
+      {
+        "id": 47934266802417,
+        "title": "Default Title",
+        "available": false,
+        "price": 88595
+      }
+    ]
+  }
+]

@@ -1,0 +1,90 @@
+
+> test:smoke
+> playwright test tests/smoke --grep Won remediation layout --project=desktop --reporter=line --output tmp/theme-audit-runs/2026-09-11-remediation/layout-test-output
+
+(node:28151) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 9 tests using 1 worker
+
+[1A[2K(node:28162) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28162) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28162) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/9] [desktop] › tests/smoke/won-remediation-layout.spec.ts:21:5 › Won remediation layout › mosaic media and its actual grid item at 390
+[1A[2K[2/9] [desktop] › tests/smoke/won-remediation-layout.spec.ts:55:5 › Won remediation layout › bottom badge and long overlay title have separate flow boxes at 390
+[1A[2K[3/9] [desktop] › tests/smoke/won-remediation-layout.spec.ts:92:5 › Won remediation layout › corner sticky fits its shell and viewport at 390
+[1A[2K  1) [desktop] › tests/smoke/won-remediation-layout.spec.ts:92:5 › Won remediation layout › corner sticky fits its shell and viewport at 390 
+
+    Error: page.evaluate: TypeError: Cannot read properties of undefined (reading 'shop')
+        at eval (eval at evaluate (:290:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:292:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at eval (eval at evaluate (:290:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:292:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at open (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-remediation-layout.spec.ts:10:21)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-remediation-layout.spec.ts:96:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/layout-test-output/smoke-won-remediation-layo-c9cd8-s-shell-and-viewport-at-390-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/layout-test-output/smoke-won-remediation-layo-c9cd8-s-shell-and-viewport-at-390-desktop/error-context.md
+
+
+[1A[2K(node:28178) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28178) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28178) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[4/9] [desktop] › tests/smoke/won-remediation-layout.spec.ts:21:5 › Won remediation layout › mosaic media and its actual grid item at 768
+[1A[2K[5/9] [desktop] › tests/smoke/won-remediation-layout.spec.ts:55:5 › Won remediation layout › bottom badge and long overlay title have separate flow boxes at 768
+[1A[2K[6/9] [desktop] › tests/smoke/won-remediation-layout.spec.ts:92:5 › Won remediation layout › corner sticky fits its shell and viewport at 768
+[1A[2K  2) [desktop] › tests/smoke/won-remediation-layout.spec.ts:92:5 › Won remediation layout › corner sticky fits its shell and viewport at 768 
+
+    Error: page.evaluate: TypeError: Cannot read properties of undefined (reading 'shop')
+        at eval (eval at evaluate (:290:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:292:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at eval (eval at evaluate (:290:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:292:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at open (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-remediation-layout.spec.ts:10:21)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-remediation-layout.spec.ts:96:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/layout-test-output/smoke-won-remediation-layo-306f9-s-shell-and-viewport-at-768-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/layout-test-output/smoke-won-remediation-layo-306f9-s-shell-and-viewport-at-768-desktop/error-context.md
+
+
+[1A[2K(node:28206) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28206) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28206) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[7/9] [desktop] › tests/smoke/won-remediation-layout.spec.ts:21:5 › Won remediation layout › mosaic media and its actual grid item at 1440
+[1A[2K[8/9] [desktop] › tests/smoke/won-remediation-layout.spec.ts:55:5 › Won remediation layout › bottom badge and long overlay title have separate flow boxes at 1440
+[1A[2K[9/9] [desktop] › tests/smoke/won-remediation-layout.spec.ts:92:5 › Won remediation layout › corner sticky fits its shell and viewport at 1440
+[1A[2K  2 failed
+    [desktop] › tests/smoke/won-remediation-layout.spec.ts:92:5 › Won remediation layout › corner sticky fits its shell and viewport at 390 
+    [desktop] › tests/smoke/won-remediation-layout.spec.ts:92:5 › Won remediation layout › corner sticky fits its shell and viewport at 768 
+  7 passed (15.6s)

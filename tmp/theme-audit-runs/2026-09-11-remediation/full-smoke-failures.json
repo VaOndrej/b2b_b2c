@@ -1,0 +1,1417 @@
+{
+  "stats": {
+    "startTime": "2026-09-11T07:14:16.598Z",
+    "duration": 1071709.164,
+    "expected": 408,
+    "skipped": 39,
+    "unexpected": 25,
+    "flaky": 0
+  },
+  "failure_categories": {
+    "static_wrapper_guard_false_positive_corrected_after_run": 1,
+    "storefront_connection_challenge": 1,
+    "cart_failure_http_not_instrumented_unresolved": 4,
+    "confirmed_cart_write_http_429": 15,
+    "confirmed_cart_read_http_503": 3,
+    "storefront_error_page_http_unknown": 1
+  },
+  "skip_categories": {
+    "existing_viewport_condition": 18,
+    "existing_setting_or_fixture_condition": 11,
+    "existing_opt_in_editorial_env_off": 6,
+    "existing_opt_in_qa_env_off": 4
+  },
+  "all_39_skip_calls_preexist": true,
+  "decrement_pass_caveat": "The four green decrement entries in this full run predate positive-commit/held-response-success guards. Zero could also be a rollback after HTTP429; they are NOT final evidence that writes/decrements succeeded. Strict rerun is owned by root.",
+  "failures": [
+    {
+      "project": "desktop",
+      "file": "smoke/won-block-wrapper-selectors.spec.ts",
+      "line": 46,
+      "title": "no CSS selector treats a theme block as a direct child",
+      "status": "failed",
+      "error": "Error: These selectors can never match — Shopify inserts div.shopify-block between a section container and its theme block. Use a descendant selector (drop the \">\") instead:\nsections/won-carousel.liquid:170  .won-carousel__mq-group > .shopify-block:has(> .won-slide),\nsections/won-grid.liquid:83  .won-grid--mosaic > .shopify-block:has(> .won-tile) { display: grid; }\nblocks/won-slide.liquid:2  .shopify-block:has(> .won-slide) { container: won-slide-slot / inline-size; }\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 5\n\n- Array []\n+ Array [\n+   \"sections/won-carousel.liquid:170  .won-carousel__mq-group > .shopify-block:has(> .won-slide),\",\n+   \"sections/won-grid.liquid:83  .won-grid--mosaic > .shopify-block:has(> .won-tile) { display: grid; }\",\n+   \"blocks/won-slide.liquid:2  .shopify-block:has(> .won-slide) { container: won-slide-slot / inline-size; }\",",
+      "http_evidence": [],
+      "evidence_attachments": [],
+      "category": "static_wrapper_guard_false_positive_corrected_after_run"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-breadcrumbs.spec.ts",
+      "line": 26,
+      "title": "collection shows a breadcrumb trail",
+      "status": "failed",
+      "error": "Error: collection has no breadcrumb navigation at all (NAV-001 / PDP-008)\n\nexpect(received).not.toBeNull()\n\nReceived: null",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-breadcrumbs-collection-shows-a-breadcrumb-trail-mobile/error-context.md",
+      "http_evidence": [],
+      "evidence_attachments": [],
+      "category": "storefront_connection_challenge",
+      "context_excerpt": "Your connection needs to be verified before you can proceed"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-card-quick-add.spec.ts",
+      "line": 45,
+      "title": "stepper quantity follows the cart",
+      "status": "failed",
+      "error": "Error: the cart itself must agree with what the card shows\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 1\nReceived: 0\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-card-quick-add-stepper-quantity-follows-the-cart-desktop/error-context.md",
+      "http_evidence": [],
+      "evidence_attachments": [],
+      "category": "cart_failure_http_not_instrumented_unresolved"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-card-quick-add.spec.ts",
+      "line": 45,
+      "title": "stepper quantity follows the cart",
+      "status": "failed",
+      "error": "Error: the cart itself must agree with what the card shows\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 1\nReceived: 0\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-card-quick-add-stepper-quantity-follows-the-cart-mobile/error-context.md",
+      "http_evidence": [],
+      "evidence_attachments": [],
+      "category": "cart_failure_http_not_instrumented_unresolved"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-feedback-8.spec.ts",
+      "line": 96,
+      "title": "quick add updates the header cart count",
+      "status": "failed",
+      "error": "Error: header cart count must react to a card quick-add (no reload)\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 1\nReceived: 0\n\nCall Log:\n- Timeout 8000ms exceeded while waiting on the predicate",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-feedback-8-quick-add-updates-the-header-cart-count-desktop/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789110990524,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789110990524,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-feedback-8.spec.ts",
+      "line": 96,
+      "title": "quick add updates the header cart count",
+      "status": "failed",
+      "error": "Error: header cart count must react to a card quick-add (no reload)\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 1\nReceived: 0\n\nCall Log:\n- Timeout 8000ms exceeded while waiting on the predicate",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-feedback-8-quick-add-updates-the-header-cart-count-mobile/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111529720,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111529720,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-rail-indicator-scale.spec.ts",
+      "line": 99,
+      "title": "stepping the quantity replays the sheen",
+      "status": "failed",
+      "error": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  locator('.won-pcard:has([data-won-stepper])').first().locator('span[data-won-qty]')\nExpected: \"2\"\nReceived: \"1\"\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveText\" with timeout 15000ms\n  - waiting for locator('.won-pcard:has([data-won-stepper])').first().locator('span[data-won-qty]')\n    3 × locator resolved to <span data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty is-bump-up\">1</span>\n      - unexpected value \"1\"\n    - locator resolved to <span data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty\">1</span>\n    - unexpected value \"1\"\n    - locator resolved to <span hidden=\"\" data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty is-bump-down\">1</span>\n    14 × unexpected value \"1\"\n       - locator resolved to <span hidden=\"\" data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty\">1</span>\n    - unexpected valu",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-rail-indicator-s-0336c--quantity-replays-the-sheen-desktop/error-context.md",
+      "http_evidence": [],
+      "evidence_attachments": [],
+      "category": "cart_failure_http_not_instrumented_unresolved"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-rail-indicator-scale.spec.ts",
+      "line": 99,
+      "title": "stepping the quantity replays the sheen",
+      "status": "failed",
+      "error": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  locator('.won-pcard:has([data-won-stepper])').first().locator('span[data-won-qty]')\nExpected: \"2\"\nReceived: \"1\"\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveText\" with timeout 15000ms\n  - waiting for locator('.won-pcard:has([data-won-stepper])').first().locator('span[data-won-qty]')\n    3 × locator resolved to <span data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty is-bump-up\">1</span>\n      - unexpected value \"1\"\n    - locator resolved to <span data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty\">1</span>\n    - unexpected value \"1\"\n    - locator resolved to <span hidden=\"\" data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty is-bump-down\">1</span>\n    14 × unexpected value \"1\"\n       - locator resolved to <span hidden=\"\" data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty\">1</span>\n    - unexpected valu",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-rail-indicator-s-0336c--quantity-replays-the-sheen-mobile/error-context.md",
+      "http_evidence": [],
+      "evidence_attachments": [],
+      "category": "cart_failure_http_not_instrumented_unresolved"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-remediation-capabilities.spec.ts",
+      "line": 171,
+      "title": "row quick add uses the shared cart and unavailable rows cannot add",
+      "status": "failed",
+      "error": "AggregateError: Row cart action and cleanup both failed",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-remediation-capa-b1763-unavailable-rows-cannot-add-desktop/error-context.md",
+      "http_evidence": [
+        {
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "row-cart-response-evidence",
+          "http_failures": [
+            {
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-remediation-capabilities.spec.ts",
+      "line": 171,
+      "title": "row quick add uses the shared cart and unavailable rows cannot add",
+      "status": "failed",
+      "error": "AggregateError: Row cart action and cleanup both failed",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-remediation-capa-b1763-unavailable-rows-cannot-add-mobile/error-context.md",
+      "http_evidence": [
+        {
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "row-cart-response-evidence",
+          "http_failures": [
+            {
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 48,
+      "title": "adding to the cart shows one toast naming the product",
+      "status": "failed",
+      "error": "Error: expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('[data-won-toast-item]')\nExpected: 1\nReceived: 0\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveCount\" with timeout 15000ms\n  - waiting for locator('[data-won-toast-item]')\n    19 × locator resolved to 0 elements\n       - unexpected value \"0\"\n",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-adding-to--cd1de-ne-toast-naming-the-product-desktop/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111246650,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111246650,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 58,
+      "title": "repeat taps on one card rewrite one toast rather than stacking",
+      "status": "failed",
+      "error": "Error: Won must announce a committed cart containing 5 items\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 5\nReceived: 0\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-repeat-tap-dbb6b--toast-rather-than-stacking-desktop/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111264256,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111264256,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 76,
+      "title": "a burst across different cards is capped at the configured maximum",
+      "status": "failed",
+      "error": "Error: Won must announce a committed cart containing 6 items\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 6\nReceived: 0\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-a-burst-ac-2c582-d-at-the-configured-maximum-desktop/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111281965,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        },
+        {
+          "at": 1789111282724,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        },
+        {
+          "at": 1789111283539,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        },
+        {
+          "at": 1789111284325,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111281965,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            },
+            {
+              "at": 1789111282724,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            },
+            {
+              "at": 1789111283539,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            },
+            {
+              "at": 1789111284325,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 92,
+      "title": "emptying the cart reports removals, one per variant",
+      "status": "failed",
+      "error": "Error: Won must announce a committed cart containing 1 items\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 1\nReceived: 0\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-emptying-t-2ee85-ts-removals-one-per-variant-desktop/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111302007,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111302007,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 109,
+      "title": "the toast is two lines, and a decrease reads differently from an increase",
+      "status": "failed",
+      "error": "Error: expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('[data-won-toast-item]')\nExpected: 1\nReceived: 0\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveCount\" with timeout 15000ms\n  - waiting for locator('[data-won-toast-item]')\n    19 × locator resolved to 0 elements\n       - unexpected value \"0\"\n",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-the-toast--83fb6-ifferently-from-an-increase-desktop/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111319581,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111319581,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 142,
+      "title": "the thumbnail spans the full height of the toast",
+      "status": "failed",
+      "error": "Error: expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('[data-won-toast-item]')\nExpected: 1\nReceived: 0\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveCount\" with timeout 15000ms\n  - waiting for locator('[data-won-toast-item]')\n    19 × locator resolved to 0 elements\n       - unexpected value \"0\"\n",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-the-thumbn-a4b4a-he-full-height-of-the-toast-desktop/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111337375,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111337375,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 160,
+      "title": "a top-anchored toast clears the header",
+      "status": "failed",
+      "error": "Error: expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('[data-won-toast-item]')\nExpected: 1\nReceived: 0\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveCount\" with timeout 15000ms\n  - waiting for locator('[data-won-toast-item]')\n    19 × locator resolved to 0 elements\n       - unexpected value \"0\"\n",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-a-top-anchored-toast-clears-the-header-desktop/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111356514,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111356514,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 48,
+      "title": "adding to the cart shows one toast naming the product",
+      "status": "failed",
+      "error": "Error: expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('[data-won-toast-item]')\nExpected: 1\nReceived: 0\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveCount\" with timeout 15000ms\n  - waiting for locator('[data-won-toast-item]')\n    19 × locator resolved to 0 elements\n       - unexpected value \"0\"\n",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-adding-to--cd1de-ne-toast-naming-the-product-mobile/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111789660,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111789660,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 58,
+      "title": "repeat taps on one card rewrite one toast rather than stacking",
+      "status": "failed",
+      "error": "Error: Won must announce a committed cart containing 5 items\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 5\nReceived: 0\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-repeat-tap-dbb6b--toast-rather-than-stacking-mobile/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111807327,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111807327,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 76,
+      "title": "a burst across different cards is capped at the configured maximum",
+      "status": "failed",
+      "error": "Error: initial cart read must succeed (HTTP 503): <!--\n  The source of truth for this generic error page is https://github.com/Shopify/error-pages.\n  Please do not edit this file directly.\n-->\n<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n    <meta name=\"referrer\" content=\"never\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>Something went wrong</title>\n    <style>\n      * {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      html {\n        font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n        background: #F1F1F1;\n        font-size: 62.5%;\n        color: #303030;\n        min-height: 100%;\n      }\n      body {\n        padding: 0;\n        margin: 0;\n        line-height: 2.7rem;\n      }\n      a {\n        color: #303030;\n        border-bottom: 1px solid #303030;\n        text-decorati",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-a-burst-ac-2c582-d-at-the-configured-maximum-mobile/error-context.md",
+      "http_evidence": [],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": []
+        }
+      ],
+      "category": "confirmed_cart_read_http_503"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 92,
+      "title": "emptying the cart reports removals, one per variant",
+      "status": "failed",
+      "error": "Error: Won must announce a committed cart containing 1 items\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 1\nReceived: 0\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-emptying-t-2ee85-ts-removals-one-per-variant-mobile/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111827100,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111827100,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 109,
+      "title": "the toast is two lines, and a decrease reads differently from an increase",
+      "status": "failed",
+      "error": "Error: expect(locator).toHaveAttribute(expected) failed\n\nLocator:  locator('[data-won-stepper]').first()\nExpected: \"0\"\nReceived: \"\"\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveAttribute\" with timeout 15000ms\n  - waiting for locator('[data-won-stepper]').first()\n    19 × locator resolved to <div data-won-stepper=\"\" class=\"won-pcard__add won-pcard__add--stepper won-fx won-fx--hover-lift won-fx--sheen-hover won-fx--press-sink won-fx--speed-normal\">…</div>\n       - unexpected value \"null\"\n",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-the-toast--83fb6-ifferently-from-an-increase-mobile/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111843551,
+          "url": "http://127.0.0.1:9292/cart.js",
+          "status": 503
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-initialization-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111843551,
+              "url": "http://127.0.0.1:9292/cart.js",
+              "status": 503
+            }
+          ]
+        },
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111843551,
+              "url": "http://127.0.0.1:9292/cart.js",
+              "status": 503
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_read_http_503"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 142,
+      "title": "the thumbnail spans the full height of the toast",
+      "status": "failed",
+      "error": "Error: expect(locator).toHaveCount(expected) failed\n\nLocator:  locator('[data-won-toast-item]')\nExpected: 1\nReceived: 0\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveCount\" with timeout 15000ms\n  - waiting for locator('[data-won-toast-item]')\n    19 × locator resolved to 0 elements\n       - unexpected value \"0\"\n",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-the-thumbn-a4b4a-he-full-height-of-the-toast-mobile/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111861872,
+          "url": "http://127.0.0.1:9292/cart/update.js",
+          "status": 429
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111861872,
+              "url": "http://127.0.0.1:9292/cart/update.js",
+              "status": 429
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_write_http_429"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 155,
+      "title": "while toasts are on, the cart drawer does not open by itself",
+      "status": "failed",
+      "error": "Error: cart mutations are restricted to the b2b development store\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: \"b2b-b2c-store-development.myshopify.com\"\nReceived: undefined",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-while-toas-bdee4-wer-does-not-open-by-itself-mobile/error-context.md",
+      "http_evidence": [],
+      "evidence_attachments": [
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": []
+        }
+      ],
+      "category": "storefront_error_page_http_unknown",
+      "context_excerpt": "There was a problem loading this website"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-toast.spec.ts",
+      "line": 160,
+      "title": "a top-anchored toast clears the header",
+      "status": "failed",
+      "error": "Error: expect(locator).toHaveAttribute(expected) failed\n\nLocator:  locator('[data-won-stepper]').first()\nExpected: \"0\"\nReceived: \"\"\nTimeout:  15000ms\n\nCall log:\n  - Expect \"toHaveAttribute\" with timeout 15000ms\n  - waiting for locator('[data-won-stepper]').first()\n    19 × locator resolved to <div data-won-stepper=\"\" class=\"won-pcard__add won-pcard__add--stepper won-fx won-fx--hover-lift won-fx--sheen-hover won-fx--press-sink won-fx--speed-normal\">…</div>\n       - unexpected value \"null\"\n",
+      "context_path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/full-complete-results/smoke-won-toast-a-top-anchored-toast-clears-the-header-mobile/error-context.md",
+      "http_evidence": [
+        {
+          "at": 1789111879783,
+          "url": "http://127.0.0.1:9292/cart.js",
+          "status": 503
+        }
+      ],
+      "evidence_attachments": [
+        {
+          "name": "cart-initialization-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111879783,
+              "url": "http://127.0.0.1:9292/cart.js",
+              "status": 503
+            }
+          ]
+        },
+        {
+          "name": "cart-request-diagnostics",
+          "http_failures": [
+            {
+              "at": 1789111879783,
+              "url": "http://127.0.0.1:9292/cart.js",
+              "status": 503
+            }
+          ]
+        }
+      ],
+      "category": "confirmed_cart_read_http_503"
+    }
+  ],
+  "skips": [
+    {
+      "project": "desktop",
+      "file": "smoke/storefront.spec.ts",
+      "line": 115,
+      "title": "sections — heading alignment matches body (no centered title over left content)",
+      "status": "skipped",
+      "reasons": [
+        "the centered-title-over-left-body mismatch is a mobile-layout concern"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 117,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/storefront.spec.ts",
+      "line": 324,
+      "title": "carousel dots — page pager renders, is clickable, and tracks position",
+      "status": "skipped",
+      "reasons": [
+        "no rail renders dots — the theme-wide indicator is set to something else"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 327,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_setting_or_fixture_condition"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/storefront.spec.ts",
+      "line": 358,
+      "title": "home — block grids with mobile carousel become a real swipeable rail",
+      "status": "skipped",
+      "reasons": [
+        "the mobile carousel option only applies on phones"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 360,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/storefront.spec.ts",
+      "line": 378,
+      "title": "home — carousels honour their mobile mode",
+      "status": "skipped",
+      "reasons": [
+        "carousel geometry is a mobile concern"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 380,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/storefront.spec.ts",
+      "line": 523,
+      "title": "won-carousel — mobile peek shows a neighbour on BOTH sides mid-scroll",
+      "status": "skipped",
+      "reasons": [
+        "mobile peek geometry is a phone concern"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 525,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/storefront.spec.ts",
+      "line": 131,
+      "title": "FAQ split — image column sits beside the accordion (image left, questions right)",
+      "status": "skipped",
+      "reasons": [
+        "the split image+accordion layout is a >=990px concern"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 133,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/storefront.spec.ts",
+      "line": 170,
+      "title": "hero rail — a full card and a peeking neighbour on desktop",
+      "status": "skipped",
+      "reasons": [
+        "peek geometry is a desktop concern (mobile collapses to 1-up)"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 172,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/storefront.spec.ts",
+      "line": 182,
+      "title": "band center-gutter — media flanks the centred copy on desktop",
+      "status": "skipped",
+      "reasons": [
+        "the gutter layout is a >=750px concern (mobile stacks)"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 184,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/storefront.spec.ts",
+      "line": 324,
+      "title": "carousel dots — page pager renders, is clickable, and tracks position",
+      "status": "skipped",
+      "reasons": [
+        "no rail renders dots — the theme-wide indicator is set to something else"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 327,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_setting_or_fixture_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/storefront.spec.ts",
+      "line": 420,
+      "title": "marquee — track spans >= 2x the viewport so the loop never shows a blank gap",
+      "status": "skipped",
+      "reasons": [
+        "short strips underfill at desktop width — that is where the gap shows"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 422,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/storefront.spec.ts",
+      "line": 451,
+      "title": "hero peek — the first slide starts flush and its neighbour peeks in",
+      "status": "skipped",
+      "reasons": [
+        "peek geometry is a desktop concern (mobile collapses to 1-up)"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 453,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/storefront.spec.ts",
+      "line": 494,
+      "title": "hero carousel — loops endlessly, arrows never dead-end",
+      "status": "skipped",
+      "reasons": [
+        "exercise the desktop loop (mobile collapses to 1-up, still loops)"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 496,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/storefront.spec.ts",
+      "line": 566,
+      "title": "won-carousel marquee — the belt is duplicated and spans >= 2x the viewport",
+      "status": "skipped",
+      "reasons": [
+        "measure the belt width at desktop"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/storefront.spec.ts",
+          "line": 568,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-editorial.spec.ts",
+      "line": 14,
+      "title": "composes reusable columns, cards and native purchase controls",
+      "status": "skipped",
+      "reasons": [
+        "Requires the optional editorial template fixture"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts",
+          "line": 10,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_opt_in_editorial_env_off"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-editorial.spec.ts",
+      "line": 83,
+      "title": "disclosures work by keyboard and remain independent of purchase state",
+      "status": "skipped",
+      "reasons": [
+        "Requires the optional editorial template fixture"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts",
+          "line": 10,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_opt_in_editorial_env_off"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-editorial.spec.ts",
+      "line": 104,
+      "title": "native variant changes update price and submit the selected item",
+      "status": "skipped",
+      "reasons": [
+        "Requires the optional editorial template fixture"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts",
+          "line": 10,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_opt_in_editorial_env_off"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-editorial.spec.ts",
+      "line": 14,
+      "title": "composes reusable columns, cards and native purchase controls",
+      "status": "skipped",
+      "reasons": [
+        "Requires the optional editorial template fixture"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts",
+          "line": 10,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_opt_in_editorial_env_off"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-editorial.spec.ts",
+      "line": 83,
+      "title": "disclosures work by keyboard and remain independent of purchase state",
+      "status": "skipped",
+      "reasons": [
+        "Requires the optional editorial template fixture"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts",
+          "line": 10,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_opt_in_editorial_env_off"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-editorial.spec.ts",
+      "line": 104,
+      "title": "native variant changes update price and submit the selected item",
+      "status": "skipped",
+      "reasons": [
+        "Requires the optional editorial template fixture"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts",
+          "line": 10,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_opt_in_editorial_env_off"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-qa-fixes.spec.ts",
+      "line": 9,
+      "title": "identical comparison images stay registered when the divider moves",
+      "status": "skipped",
+      "reasons": [
+        "Requires the source QA catalogue"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-qa-fixes.spec.ts",
+          "line": 5,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_opt_in_qa_env_off"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-qa-fixes.spec.ts",
+      "line": 44,
+      "title": "external URL video renders the provider iframe without a Liquid exception",
+      "status": "skipped",
+      "reasons": [
+        "Requires the source QA catalogue"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-qa-fixes.spec.ts",
+          "line": 5,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_opt_in_qa_env_off"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-qa-fixes.spec.ts",
+      "line": 9,
+      "title": "identical comparison images stay registered when the divider moves",
+      "status": "skipped",
+      "reasons": [
+        "Requires the source QA catalogue"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-qa-fixes.spec.ts",
+          "line": 5,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_opt_in_qa_env_off"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-qa-fixes.spec.ts",
+      "line": 44,
+      "title": "external URL video renders the provider iframe without a Liquid exception",
+      "status": "skipped",
+      "reasons": [
+        "Requires the source QA catalogue"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-qa-fixes.spec.ts",
+          "line": 5,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_opt_in_qa_env_off"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-rail-affordance.spec.ts",
+      "line": 87,
+      "title": "rails on /collections/automated-collection @390px expose controls exactly when they overflow",
+      "status": "skipped",
+      "reasons": [
+        "no rails on /collections/automated-collection"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-rail-affordance.spec.ts",
+          "line": 90,
+          "column": 12
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_setting_or_fixture_condition"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-rail-affordance.spec.ts",
+      "line": 87,
+      "title": "rails on /collections/automated-collection @700px expose controls exactly when they overflow",
+      "status": "skipped",
+      "reasons": [
+        "no rails on /collections/automated-collection"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-rail-affordance.spec.ts",
+          "line": 90,
+          "column": 12
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_setting_or_fixture_condition"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-rail-affordance.spec.ts",
+      "line": 87,
+      "title": "rails on /collections/automated-collection @1440px expose controls exactly when they overflow",
+      "status": "skipped",
+      "reasons": [
+        "no rails on /collections/automated-collection"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-rail-affordance.spec.ts",
+          "line": 90,
+          "column": 12
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_setting_or_fixture_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-rail-affordance.spec.ts",
+      "line": 87,
+      "title": "rails on /collections/automated-collection @390px expose controls exactly when they overflow",
+      "status": "skipped",
+      "reasons": [
+        "no rails on /collections/automated-collection"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-rail-affordance.spec.ts",
+          "line": 90,
+          "column": 12
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_setting_or_fixture_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-rail-affordance.spec.ts",
+      "line": 87,
+      "title": "rails on /collections/automated-collection @700px expose controls exactly when they overflow",
+      "status": "skipped",
+      "reasons": [
+        "no rails on /collections/automated-collection"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-rail-affordance.spec.ts",
+          "line": 90,
+          "column": 12
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_setting_or_fixture_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-rail-affordance.spec.ts",
+      "line": 87,
+      "title": "rails on /collections/automated-collection @1440px expose controls exactly when they overflow",
+      "status": "skipped",
+      "reasons": [
+        "no rails on /collections/automated-collection"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-rail-affordance.spec.ts",
+          "line": 90,
+          "column": 12
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_setting_or_fixture_condition"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-rail-consistency.spec.ts",
+      "line": 111,
+      "title": "arrow colour is uniform unless the theme leaves it on auto",
+      "status": "skipped",
+      "reasons": [
+        "arrow tone is \"auto\" — colour is meant to adapt to what sits behind the button"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-rail-consistency.spec.ts",
+          "line": 115,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_setting_or_fixture_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-rail-consistency.spec.ts",
+      "line": 111,
+      "title": "arrow colour is uniform unless the theme leaves it on auto",
+      "status": "skipped",
+      "reasons": [
+        "arrow tone is \"auto\" — colour is meant to adapt to what sits behind the button"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-rail-consistency.spec.ts",
+          "line": 115,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_setting_or_fixture_condition"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-settings-fixes.spec.ts",
+      "line": 17,
+      "title": "won-band: content align actually moves the button row, not just text",
+      "status": "skipped",
+      "reasons": [
+        "base __content rule is clean of layout overrides on mobile"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-settings-fixes.spec.ts",
+          "line": 25,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-settings-fixes.spec.ts",
+      "line": 77,
+      "title": "won-tabbed-rail: desktop heading size is consumed at >= 750px",
+      "status": "skipped",
+      "reasons": [
+        "desktop-only @media rule"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-settings-fixes.spec.ts",
+          "line": 78,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-unified-behavior.spec.ts",
+      "line": 58,
+      "title": "Infinite-scroll setting makes the rail wrap only where its scope applies",
+      "status": "skipped",
+      "reasons": [
+        "no looping carousel configured on the homepage"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-unified-behavior.spec.ts",
+          "line": 61,
+          "column": 42
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_setting_or_fixture_condition"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-wave1-parity.spec.ts",
+      "line": 14,
+      "title": "grid carousel with mobile_carousel scrolls horizontally on mobile",
+      "status": "skipped",
+      "reasons": [
+        "mobile-only contract"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-wave1-parity.spec.ts",
+          "line": 15,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "desktop",
+      "file": "smoke/won-wave1-parity.spec.ts",
+      "line": 32,
+      "title": "grid carousel without mobile_carousel stays a stacked grid on mobile",
+      "status": "skipped",
+      "reasons": [
+        "mobile-only contract"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-wave1-parity.spec.ts",
+          "line": 33,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-wave1-parity.spec.ts",
+      "line": 45,
+      "title": "carousel arrows carry their style modifier class",
+      "status": "skipped",
+      "reasons": [
+        "desktop-only contract"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-wave1-parity.spec.ts",
+          "line": 46,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-wave1-parity.spec.ts",
+      "line": 56,
+      "title": "article cards render author and reading time when enabled",
+      "status": "skipped",
+      "reasons": [
+        "desktop-only contract"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-wave1-parity.spec.ts",
+          "line": 57,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    },
+    {
+      "project": "mobile",
+      "file": "smoke/won-wave1-parity.spec.ts",
+      "line": 107,
+      "title": "default arrow style is visually identical to the pre-arrow_style look",
+      "status": "skipped",
+      "reasons": [
+        "desktop-only contract"
+      ],
+      "skip_locations": [
+        {
+          "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-wave1-parity.spec.ts",
+          "line": 108,
+          "column": 8
+        }
+      ],
+      "all_skip_calls_in_file_preexist": true,
+      "category": "existing_viewport_condition"
+    }
+  ]
+}

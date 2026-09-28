@@ -1,0 +1,108 @@
+{% doc %}
+  won-breadcrumbs — THE trail from the shop root to the current page, plus the
+  BreadcrumbList markup for the SERP. One implementation: the `won-breadcrumbs`
+  block renders it inside a product column, and a section that cannot host theme
+  blocks (won-collection) renders it directly.
+
+  The trail is built from the PAGE, never from settings: on a product it uses
+  `collection` when the shopper arrived through one and the product's first
+  collection otherwise, so the crumb matches the journey. The last crumb is the
+  current page and is not a link — a link to where you already are is noise.
+
+  @param {boolean} [emit_schema] - emit BreadcrumbList JSON-LD (default true).
+    ONE per page: two nodes describing one page contradict each other.
+  @param {string} [attrs] - extra attributes for the nav element (shopify_attributes)
+  @example
+  {% render 'won-breadcrumbs' %}
+  {% render 'won-breadcrumbs', emit_schema: false %}
+{% enddoc %}
+
+{%- liquid
+  # Build the trail as two parallel arrays; Liquid has no array-of-hash literal.
+  assign crumb_names = ''
+  assign crumb_urls = ''
+
+  case request.page_type
+    when 'product'
+      assign parent = collection
+      if parent == blank
+        assign parent = product.collections.first
+      endif
+      if parent != blank
+        assign crumb_names = parent.title
+        assign crumb_urls = parent.url
+      endif
+      assign current = product.title
+    when 'collection'
+      assign current = collection.title
+    when 'article'
+      assign crumb_names = blog.title
+      assign crumb_urls = blog.url
+      assign current = article.title
+    when 'blog'
+      assign current = blog.title
+    when 'page'
+      assign current = page.title
+    when 'search'
+      assign current = 'won.breadcrumbs.search' | t
+    else
+      assign current = page_title
+  endcase
+-%}
+{%- if current != blank -%}
+  <nav class="won-breadcrumbs" aria-label="{{ 'won.breadcrumbs.label' | t }}"{% if attrs %} {{ attrs }}{% endif %}>
+    <ol class="won-breadcrumbs__list">
+      <li class="won-breadcrumbs__item">
+        <a class="won-breadcrumbs__link" href="{{ routes.root_url }}">{{ 'won.breadcrumbs.home' | t }}</a>
+      </li>
+      {%- if crumb_names != blank -%}
+        <li class="won-breadcrumbs__item">
+          <a class="won-breadcrumbs__link" href="{{ crumb_urls }}">{{ crumb_names }}</a>
+        </li>
+      {%- endif -%}
+      {%- comment -%} The current page is the destination, not a link. {%- endcomment -%}
+      <li class="won-breadcrumbs__item">
+        <span class="won-breadcrumbs__current" aria-current="page">{{ current }}</span>
+      </li>
+    </ol>
+  </nav>
+
+  {%- if emit_schema != false -%}
+    {%- comment -%} One BreadcrumbList per page: markup that disagrees with the
+      page is worse than none, and two nodes contradict each other by definition.
+      A second instance of this block renders its trail without re-emitting.
+    {%- endcomment -%}
+    {%- assign position = 0 -%}
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {%- assign position = position | plus: 1 -%}
+          {
+            "@type": "ListItem",
+            "position": {{ position }},
+            "name": {{ 'won.breadcrumbs.home' | t | json }},
+            "item": {{ shop.url | append: routes.root_url | json }}
+          }
+          {%- if crumb_names != blank -%}
+            {%- assign position = position | plus: 1 -%}
+            ,{
+              "@type": "ListItem",
+              "position": {{ position }},
+              "name": {{ crumb_names | json }},
+              "item": {{ shop.url | append: crumb_urls | json }}
+            }
+          {%- endif -%}
+          {%- assign position = position | plus: 1 -%}
+          ,{
+            "@type": "ListItem",
+            "position": {{ position }},
+            "name": {{ current | json }}
+          }
+        ]
+      }
+    </script>
+  {%- endif -%}
+{%- endif -%}
+

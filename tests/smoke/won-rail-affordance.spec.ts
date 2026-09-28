@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from "@playwright/test";
+import { gotoStorefront } from "../support/storefront-environment";
 
 // Rail affordance — a GENERIC invariant over every horizontal scroller.
 //
@@ -16,7 +17,7 @@ import { test, expect, type Page } from '@playwright/test';
 //
 // Runs at three widths because a rail's overflow is width-dependent by nature.
 
-const PAGES = ['/', '/collections/automated-collection'];
+const PAGES = ["/", "/collections/automated-collection"];
 const WIDTHS = [390, 700, 1440];
 
 type Rail = {
@@ -28,7 +29,7 @@ type Rail = {
 };
 
 async function railsOn(page: Page, path: string): Promise<Rail[]> {
-  await page.goto(path, { waitUntil: 'load' });
+  await gotoStorefront(page, path);
   await page.evaluate(async () => {
     window.scrollTo(0, document.body.scrollHeight);
     await new Promise((r) => setTimeout(r, 1800));
@@ -38,9 +39,14 @@ async function railsOn(page: Page, path: string): Promise<Rail[]> {
   return page.evaluate(() => {
     const visible = (el: Element | null) => {
       if (!el) return false;
-      if ((el as HTMLElement).hasAttribute('hidden')) return false;
+      if ((el as HTMLElement).hasAttribute("hidden")) return false;
       const cs = getComputedStyle(el);
-      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+      if (
+        cs.display === "none" ||
+        cs.visibility === "hidden" ||
+        Number(cs.opacity) === 0
+      )
+        return false;
       const r = el.getBoundingClientRect();
       return r.width > 0 && r.height > 0;
     };
@@ -53,30 +59,30 @@ async function railsOn(page: Page, path: string): Promise<Rail[]> {
     // that — `overflow-x: auto`, no marker, no controls, and this spec reported
     // green. A test that only sees the sections that remembered to raise their
     // hand cannot catch the section that forgot.
-    const all = [...document.querySelectorAll<HTMLElement>('body *')];
+    const all = [...document.querySelectorAll<HTMLElement>("body *")];
     return all
       .filter((el) => {
         const cs = getComputedStyle(el);
         if (!/(auto|scroll)/.test(cs.overflowX)) return false;
-        if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+        if (cs.display === "none" || cs.visibility === "hidden") return false;
         const r = el.getBoundingClientRect();
-        if (r.width === 0 || r.height === 0) return false;   // collapsed / inactive tab panel
+        if (r.width === 0 || r.height === 0) return false; // collapsed / inactive tab panel
         return el.scrollWidth > el.clientWidth + 1;
       })
       .map((t, i) => {
         // Controls may sit beside the track (won-carousel) or further out in the
         // section, so widen the search until something plausible contains both.
         const root =
-          (t.closest('won-carousel') as HTMLElement | null) ||
-          (t.closest('[data-testid]') as HTMLElement | null) ||
+          (t.closest("won-carousel") as HTMLElement | null) ||
+          (t.closest("[data-testid]") as HTMLElement | null) ||
           t.parentElement!;
-        const sec = t.closest('[data-testid]') as HTMLElement | null;
+        const sec = t.closest("[data-testid]") as HTMLElement | null;
         return {
-          id: `${sec?.dataset.testid || 'unknown'}#${i}`,
+          id: `${sec?.dataset.testid || "unknown"}#${i}`,
           overflows: true,
-          hasArrows: visible(root.querySelector('[data-won-arrows]')),
-          hasDots: visible(root.querySelector('[data-won-dots]')),
-          hasProgress: visible(root.querySelector('[data-won-progress]')),
+          hasArrows: visible(root.querySelector("[data-won-arrows]")),
+          hasDots: visible(root.querySelector("[data-won-dots]")),
+          hasProgress: visible(root.querySelector("[data-won-progress]")),
         };
       });
   });
@@ -84,53 +90,59 @@ async function railsOn(page: Page, path: string): Promise<Rail[]> {
 
 for (const path of PAGES) {
   for (const width of WIDTHS) {
-    test(`rails on ${path} @${width}px expose controls exactly when they overflow`, async ({ page }) => {
+    test(`rails on ${path} @${width}px expose controls exactly when they overflow`, async ({
+      page,
+    }) => {
       await page.setViewportSize({ width, height: 900 });
       const rails = await railsOn(page, path);
       test.skip(rails.length === 0, `no rails on ${path}`);
 
       const mute = rails.filter(
-        (r) => r.overflows && !r.hasArrows && !r.hasDots && !r.hasProgress
+        (r) => r.overflows && !r.hasArrows && !r.hasDots && !r.hasProgress,
       );
       expect(
         mute.map((r) => r.id),
-        `these rails scroll sideways but offer the shopper no way to move them (no arrows, dots or progress bar)`
+        `these rails scroll sideways but offer the shopper no way to move them (no arrows, dots or progress bar)`,
       ).toEqual([]);
 
       const dead = rails.filter(
-        (r) => !r.overflows && (r.hasArrows || r.hasDots || r.hasProgress)
+        (r) => !r.overflows && (r.hasArrows || r.hasDots || r.hasProgress),
       );
       expect(
         dead.map((r) => r.id),
-        `these rails fit on screen yet still render navigation — a dead control the shopper can click with no effect`
+        `these rails fit on screen yet still render navigation — a dead control the shopper can click with no effect`,
       ).toEqual([]);
     });
   }
 }
 
-test('every arrow pair actually scrolls its rail', async ({ page }, testInfo) => {
+test("every arrow pair actually scrolls its rail", async ({
+  page,
+}, testInfo) => {
   const width = testInfo.project.use.viewport?.width ?? 1440;
   await page.setViewportSize({ width, height: 900 });
-  await railsOn(page, '/');
+  await railsOn(page, "/");
 
-  const arrowed = page.locator('won-carousel:has([data-won-arrows]:not([hidden]))');
+  const arrowed = page.locator(
+    "won-carousel:has([data-won-arrows]:not([hidden]))",
+  );
   const n = await arrowed.count();
-  test.skip(n === 0, 'no arrowed rail at this width');
+  test.skip(n === 0, "no arrowed rail at this width");
 
   for (let i = 0; i < n; i++) {
     const rail = arrowed.nth(i);
-    const track = rail.locator('[data-won-track]');
+    const track = rail.locator("[data-won-track]");
     if (!(await track.count())) continue;
     await rail.scrollIntoViewIfNeeded();
     const before = await track.evaluate((t) => (t as HTMLElement).scrollLeft);
-    const next = rail.locator('[data-won-next]');
+    const next = rail.locator("[data-won-next]");
     if (!(await next.count()) || !(await next.first().isEnabled())) continue;
     await next.first().click();
     await page.waitForTimeout(600);
     const after = await track.evaluate((t) => (t as HTMLElement).scrollLeft);
     expect(
       Math.abs(after - before),
-      `rail #${i}: clicking the next arrow moved the track by ${Math.abs(after - before)}px`
+      `rail #${i}: clicking the next arrow moved the track by ${Math.abs(after - before)}px`,
     ).toBeGreaterThan(20);
   }
 });

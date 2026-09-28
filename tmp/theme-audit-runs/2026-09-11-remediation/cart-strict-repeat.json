@@ -1,0 +1,956 @@
+{
+  "config": {
+    "configFile": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/playwright.config.ts",
+    "rootDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results",
+        "repeatEach": 3,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results",
+        "repeatEach": 3,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "mobile",
+        "name": "mobile",
+        "testDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "smoke/won-feedback-8.spec.ts",
+      "file": "smoke/won-feedback-8.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "card quick-add renders a stepper once the line exists",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 17184,
+                  "error": {
+                    "message": "Error: Won must announce a committed cart containing 1 items\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate",
+                    "stack": "Error: Won must announce a committed cart containing 1 items\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate\n    at expectCommittedCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:104:3)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:147:3",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                      "column": 3,
+                      "line": 104
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39msupport/cart-state.ts:104\n\n  102 |\n  103 | export async function expectCommittedCart(page: Page, count: number) {\n> 104 |   await expect\n      |   ^\n  105 |     .poll(\n  106 |       async () =>\n  107 |         page.evaluate(() => {"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                        "column": 3,
+                        "line": 104
+                      },
+                      "message": "Error: Won must announce a committed cart containing 1 items\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate\n\n   at support/cart-state.ts:104\n\n  102 |\n  103 | export async function expectCommittedCart(page: Page, count: number) {\n> 104 |   await expect\n      |   ^\n  105 |     .poll(\n  106 |       async () =>\n  107 |         page.evaluate(() => {\n    at expectCommittedCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:104:3)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:147:3"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:32:39.307Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "WwogIHsKICAgICJhdCI6IDE3ODkxMTE5NjA3MDcsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jZG4vc2hvcC90LzE0L2Fzc2V0cy9mbHktdG8tY2FydC5qcz92PTEyOTk3MTc1MzY3MzQ1ODY5Mzg4MTc4ODMzNjI1MCIsCiAgICAic3RhdHVzIjogMjAwCiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTExOTYwNzM3LAogICAgInVybCI6ICJodHRwOi8vY2RuLnNob3BpZnkuY29tL3Nob3BpZnljbG91ZC9zdG9yZWZyb250L2Fzc2V0cy9zdG9yZWZyb250L29yaWdpbl90cmlhbHMtNTA1OWI4M2YuanMiLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfRkFJTEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMTk2MDczNywKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2Nkbi9zaG9wL3QvMTQvYXNzZXRzL3dvbi1jYXJ0LmpzP3Y9MTQzMTY3MDA2NDYxODI5MDAyMjExNzg4NDIyNjY1IiwKICAgICJzdGF0dXMiOiAyMDAKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTE5NjA4NzIsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi93ZWItcGl4ZWxzQGQ3NjE4OTZjdzY1Mjc1MmI5cDUzODE3Mjc4bTc2NjVmY2UwL2N1c3RvbS93ZWItcGl4ZWwtc2hvcGlmeS1jdXN0b20tcGl4ZWxAMDUyMC9zYW5kYm94L21vZGVybi8iLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfQUJPUlRFRCIKICAgIH0KICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTE5NjA5NjMsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9hcGkvY29sbGVjdCIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMTk2MTA2NCwKICAgICJ1cmwiOiAiaHR0cHM6Ly9zaG9wLmFwcC9wYXkvaG9wP2FuYWx5dGljc190cmFjZV9pZD1jODk0ZGFhZC1iMjRhLTRmNDItOGUwZi04YTJlYjYyOTQwNDMmdGFyZ2V0X29yaWdpbj1odHRwJTNBJTJGJTJGMTI3LjAuMC4xJTNBOTI5MiZjbGllbnRfaGFuZGxlPWIyYi1iMmMtc3RvcmUtZGV2ZWxvcG1lbnQubXlzaG9waWZ5LmNvbSIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9CTE9DS0VEX0JZX1JFU1BPTlNFIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMTk2MTMzNCwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQuanMiLAogICAgInN0YXR1cyI6IDIwMAogIH0sCiAgewogICAgImF0IjogMTc4OTExMTk2MjI3OSwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQvdXBkYXRlLmpzIiwKICAgICJzdGF0dXMiOiA0MjkKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTE5NjI1MzMsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jYXJ0LmpzIiwKICAgICJzdGF0dXMiOiAyMDAKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTE5NjU5NjksCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9hcGkvY29sbGVjdCIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0KXQ=="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                    "column": 3,
+                    "line": 104
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-7374b052378b0a6d869c",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 122,
+          "column": 1
+        },
+        {
+          "title": "card decrement reaches zero when earlier update is still in flight",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 60121,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts",
+                        "column": 110,
+                        "line": 215
+                      },
+                      "message": "Error: response.text: Test timeout of 60000ms exceeded.\n\n  213 |     release();\n  214 |     const response = await firstResponse;\n> 215 |     expect(response.ok(), `held cart update HTTP ${response.status()}: ${response.ok() ? '' : await response.text()}`).toBeTruthy();\n      |                                                                                                              ^\n  216 |     expect((await response.json()).item_count, 'the held first add must really persist one item').toBe(1);\n  217 |     const cart = await expectCommittedCart(page, 0);\n  218 |     expect(cart.items).toEqual([]);\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:215:110"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:32:57.583Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "WwogIHsKICAgICJhdCI6IDE3ODkxMTE5Nzg1NTYsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jZG4vc2hvcC90LzE0L2Fzc2V0cy9mbHktdG8tY2FydC5qcz92PTEyOTk3MTc1MzY3MzQ1ODY5Mzg4MTc4ODMzNjI1MCIsCiAgICAic3RhdHVzIjogMjAwCiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTExOTc4NTYwLAogICAgInVybCI6ICJodHRwOi8vMTI3LjAuMC4xOjkyOTIvY2RuL3Nob3AvdC8xNC9hc3NldHMvd29uLWNhcnQuanM/dj0xNDMxNjcwMDY0NjE4MjkwMDIyMTE3ODg0MjI2NjUiLAogICAgInN0YXR1cyI6IDIwMAogIH0sCiAgewogICAgImF0IjogMTc4OTExMTk3ODYyMSwKICAgICJ1cmwiOiAiaHR0cDovL2Nkbi5zaG9waWZ5LmNvbS9zaG9waWZ5Y2xvdWQvc3RvcmVmcm9udC9hc3NldHMvc3RvcmVmcm9udC9vcmlnaW5fdHJpYWxzLTUwNTliODNmLmpzIiwKICAgICJmYWlsdXJlIjogewogICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0ZBSUxFRCIKICAgIH0KICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTE5Nzg2NjYsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi93ZWItcGl4ZWxzQGQ3NjE4OTZjdzY1Mjc1MmI5cDUzODE3Mjc4bTc2NjVmY2UwL2N1c3RvbS93ZWItcGl4ZWwtc2hvcGlmeS1jdXN0b20tcGl4ZWxAMDUyMC9zYW5kYm94L21vZGVybi8iLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfQUJPUlRFRCIKICAgIH0KICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTE5Nzg3OTYsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9hcGkvY29sbGVjdCIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMTk3ODg1NiwKICAgICJ1cmwiOiAiaHR0cHM6Ly9zaG9wLmFwcC9wYXkvaG9wP2FuYWx5dGljc190cmFjZV9pZD0wNjIyNjNlMS05Y2JjLTQwYjktOTBkOC0xNzIwMWJkOTdhOWUmdGFyZ2V0X29yaWdpbj1odHRwJTNBJTJGJTJGMTI3LjAuMC4xJTNBOTI5MiZjbGllbnRfaGFuZGxlPWIyYi1iMmMtc3RvcmUtZGV2ZWxvcG1lbnQubXlzaG9waWZ5LmNvbSIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9CTE9DS0VEX0JZX1JFU1BPTlNFIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMTk3ODk2OCwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQuanMiLAogICAgInN0YXR1cyI6IDIwMAogIH0sCiAgewogICAgImF0IjogMTc4OTExMTk4MTg3OCwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQvdXBkYXRlLmpzIiwKICAgICJzdGF0dXMiOiA0MjkKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTE5ODIxMDUsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jYXJ0LmpzIiwKICAgICJzdGF0dXMiOiAyMDAKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTE5ODM4MDQsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9hcGkvY29sbGVjdCIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMjAxMzgyMywKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2FwaS9jb2xsZWN0IiwKICAgICJmYWlsdXJlIjogewogICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICB9CiAgfQpd"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop/error-context.md"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-63b55a5d784d28f78f6c",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 169,
+          "column": 1
+        },
+        {
+          "title": "card quick-add renders a stepper once the line exists",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 16749,
+                  "error": {
+                    "message": "Error: Won must announce a committed cart containing 1 items\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate",
+                    "stack": "Error: Won must announce a committed cart containing 1 items\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate\n    at expectCommittedCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:104:3)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:147:3",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                      "column": 3,
+                      "line": 104
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39msupport/cart-state.ts:104\n\n  102 |\n  103 | export async function expectCommittedCart(page: Page, count: number) {\n> 104 |   await expect\n      |   ^\n  105 |     .poll(\n  106 |       async () =>\n  107 |         page.evaluate(() => {"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                        "column": 3,
+                        "line": 104
+                      },
+                      "message": "Error: Won must announce a committed cart containing 1 items\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m1\u001b[39m\nReceived: \u001b[31m0\u001b[39m\n\nCall Log:\n- Timeout 15000ms exceeded while waiting on the predicate\n\n   at support/cart-state.ts:104\n\n  102 |\n  103 | export async function expectCommittedCart(page: Page, count: number) {\n> 104 |   await expect\n      |   ^\n  105 |     .poll(\n  106 |       async () =>\n  107 |         page.evaluate(() => {\n    at expectCommittedCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:104:3)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:147:3"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:33:58.587Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop-repeat1/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "WwogIHsKICAgICJhdCI6IDE3ODkxMTIwMzk2OTAsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jZG4vc2hvcC90LzE0L2Fzc2V0cy9mbHktdG8tY2FydC5qcz92PTEyOTk3MTc1MzY3MzQ1ODY5Mzg4MTc4ODMzNjI1MCIsCiAgICAic3RhdHVzIjogMjAwCiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTEyMDM5NzQ5LAogICAgInVybCI6ICJodHRwOi8vY2RuLnNob3BpZnkuY29tL3Nob3BpZnljbG91ZC9zdG9yZWZyb250L2Fzc2V0cy9zdG9yZWZyb250L29yaWdpbl90cmlhbHMtNTA1OWI4M2YuanMiLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfRkFJTEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMjAzOTc1MywKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2Nkbi9zaG9wL3QvMTQvYXNzZXRzL3dvbi1jYXJ0LmpzP3Y9MTQzMTY3MDA2NDYxODI5MDAyMjExNzg4NDIyNjY1IiwKICAgICJzdGF0dXMiOiAyMDAKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTIwMzk4MTgsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi93ZWItcGl4ZWxzQGQ3NjE4OTZjdzY1Mjc1MmI5cDUzODE3Mjc4bTc2NjVmY2UwL2N1c3RvbS93ZWItcGl4ZWwtc2hvcGlmeS1jdXN0b20tcGl4ZWxAMDUyMC9zYW5kYm94L21vZGVybi8iLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfQUJPUlRFRCIKICAgIH0KICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTIwMzk5MzgsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9hcGkvY29sbGVjdCIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMjA0MDAwNiwKICAgICJ1cmwiOiAiaHR0cHM6Ly9zaG9wLmFwcC9wYXkvaG9wP2FuYWx5dGljc190cmFjZV9pZD04ZmUyNTliMi0wZGUyLTRlZTgtYmI3Mi03Y2MzNzNlOWExYzcmdGFyZ2V0X29yaWdpbj1odHRwJTNBJTJGJTJGMTI3LjAuMC4xJTNBOTI5MiZjbGllbnRfaGFuZGxlPWIyYi1iMmMtc3RvcmUtZGV2ZWxvcG1lbnQubXlzaG9waWZ5LmNvbSIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9CTE9DS0VEX0JZX1JFU1BPTlNFIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMjA0MDA4NSwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQuanMiLAogICAgInN0YXR1cyI6IDIwMAogIH0sCiAgewogICAgImF0IjogMTc4OTExMjA0MTA1OSwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQvdXBkYXRlLmpzIiwKICAgICJzdGF0dXMiOiA0MjkKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTIwNDEzMDksCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jYXJ0LmpzIiwKICAgICJzdGF0dXMiOiAyMDAKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTIwNDQ5MzksCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9hcGkvY29sbGVjdCIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0KXQ=="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop-repeat1/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                    "column": 3,
+                    "line": 104
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-b11442d89320b1872f77",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 122,
+          "column": 1
+        },
+        {
+          "title": "card decrement reaches zero when earlier update is still in flight",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 60130,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts",
+                        "column": 110,
+                        "line": 215
+                      },
+                      "message": "Error: response.text: Test timeout of 60000ms exceeded.\n\n  213 |     release();\n  214 |     const response = await firstResponse;\n> 215 |     expect(response.ok(), `held cart update HTTP ${response.status()}: ${response.ok() ? '' : await response.text()}`).toBeTruthy();\n      |                                                                                                              ^\n  216 |     expect((await response.json()).item_count, 'the held first add must really persist one item').toBe(1);\n  217 |     const cart = await expectCommittedCart(page, 0);\n  218 |     expect(cart.items).toEqual([]);\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:215:110"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:34:16.391Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop-repeat1/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "WwogIHsKICAgICJhdCI6IDE3ODkxMTIwNTc1MjUsCiAgICAidXJsIjogImh0dHA6Ly9jZG4uc2hvcGlmeS5jb20vc2hvcGlmeWNsb3VkL3N0b3JlZnJvbnQvYXNzZXRzL3N0b3JlZnJvbnQvb3JpZ2luX3RyaWFscy01MDU5YjgzZi5qcyIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9GQUlMRUQiCiAgICB9CiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTEyMDU3NTI4LAogICAgInVybCI6ICJodHRwOi8vMTI3LjAuMC4xOjkyOTIvY2RuL3Nob3AvdC8xNC9hc3NldHMvZmx5LXRvLWNhcnQuanM/dj0xMjk5NzE3NTM2NzM0NTg2OTM4ODE3ODgzMzYyNTAiLAogICAgInN0YXR1cyI6IDIwMAogIH0sCiAgewogICAgImF0IjogMTc4OTExMjA1NzYwMywKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2Nkbi9zaG9wL3QvMTQvYXNzZXRzL3dvbi1jYXJ0LmpzP3Y9MTQzMTY3MDA2NDYxODI5MDAyMjExNzg4NDIyNjY1IiwKICAgICJzdGF0dXMiOiAyMDAKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTIwNTc2MzUsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi93ZWItcGl4ZWxzQGQ3NjE4OTZjdzY1Mjc1MmI5cDUzODE3Mjc4bTc2NjVmY2UwL2N1c3RvbS93ZWItcGl4ZWwtc2hvcGlmeS1jdXN0b20tcGl4ZWxAMDUyMC9zYW5kYm94L21vZGVybi8iLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfQUJPUlRFRCIKICAgIH0KICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTIwNTc3ODksCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9hcGkvY29sbGVjdCIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMjA1NzgzNCwKICAgICJ1cmwiOiAiaHR0cHM6Ly9zaG9wLmFwcC9wYXkvaG9wP2FuYWx5dGljc190cmFjZV9pZD1kZTRiMTQ3OC01Mjg0LTRlMzktYTRhOS02ZWY2NTBhMGNjMjkmdGFyZ2V0X29yaWdpbj1odHRwJTNBJTJGJTJGMTI3LjAuMC4xJTNBOTI5MiZjbGllbnRfaGFuZGxlPWIyYi1iMmMtc3RvcmUtZGV2ZWxvcG1lbnQubXlzaG9waWZ5LmNvbSIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9CTE9DS0VEX0JZX1JFU1BPTlNFIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMjA1ODA2MywKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQuanMiLAogICAgInN0YXR1cyI6IDIwMAogIH0sCiAgewogICAgImF0IjogMTc4OTExMjA2MDUyMywKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQvdXBkYXRlLmpzIiwKICAgICJzdGF0dXMiOiA0MjkKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTIwNjE0MDgsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jYXJ0LmpzIiwKICAgICJzdGF0dXMiOiAyMDAKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTIwNjI3ODYsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9hcGkvY29sbGVjdCIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMjA5MjgxMSwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2FwaS9jb2xsZWN0IiwKICAgICJmYWlsdXJlIjogewogICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICB9CiAgfQpd"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop-repeat1/error-context.md"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-0c0dab4f79c93768314e",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 169,
+          "column": 1
+        },
+        {
+          "title": "card quick-add renders a stepper once the line exists",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 520,
+                  "error": {
+                    "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m",
+                    "stack": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                      "column": 5,
+                      "line": 58
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39msupport/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                        "column": 5,
+                        "line": 58
+                      },
+                      "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:35:17.522Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop-repeat2/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop-repeat2/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                    "column": 5,
+                    "line": 58
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-8bd55b7895996847abdf",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 122,
+          "column": 1
+        },
+        {
+          "title": "card decrement reaches zero when earlier update is still in flight",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 60109,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts",
+                        "column": 110,
+                        "line": 215
+                      },
+                      "message": "Error: response.text: Test timeout of 60000ms exceeded.\n\n  213 |     release();\n  214 |     const response = await firstResponse;\n> 215 |     expect(response.ok(), `held cart update HTTP ${response.status()}: ${response.ok() ? '' : await response.text()}`).toBeTruthy();\n      |                                                                                                              ^\n  216 |     expect((await response.json()).item_count, 'the held first add must really persist one item').toBe(1);\n  217 |     const cart = await expectCommittedCart(page, 0);\n  218 |     expect(cart.items).toEqual([]);\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:215:110"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:35:18.937Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop-repeat2/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "WwogIHsKICAgICJhdCI6IDE3ODkxMTIxMjAwMjQsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jZG4vc2hvcC90LzE0L2Fzc2V0cy9mbHktdG8tY2FydC5qcz92PTEyOTk3MTc1MzY3MzQ1ODY5Mzg4MTc4ODMzNjI1MCIsCiAgICAic3RhdHVzIjogMjAwCiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTEyMTIwMDM2LAogICAgInVybCI6ICJodHRwOi8vY2RuLnNob3BpZnkuY29tL3Nob3BpZnljbG91ZC9zdG9yZWZyb250L2Fzc2V0cy9zdG9yZWZyb250L29yaWdpbl90cmlhbHMtNTA1OWI4M2YuanMiLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfRkFJTEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMjEyMDEwNywKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2Nkbi9zaG9wL3QvMTQvYXNzZXRzL3dvbi1jYXJ0LmpzP3Y9MTQzMTY3MDA2NDYxODI5MDAyMjExNzg4NDIyNjY1IiwKICAgICJzdGF0dXMiOiAyMDAKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTIxMjAxNTcsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi93ZWItcGl4ZWxzQGQ3NjE4OTZjdzY1Mjc1MmI5cDUzODE3Mjc4bTc2NjVmY2UwL2N1c3RvbS93ZWItcGl4ZWwtc2hvcGlmeS1jdXN0b20tcGl4ZWxAMDUyMC9zYW5kYm94L21vZGVybi8iLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfQUJPUlRFRCIKICAgIH0KICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTIxMjAyNzYsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9hcGkvY29sbGVjdCIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMjEyMDM1OCwKICAgICJ1cmwiOiAiaHR0cHM6Ly9zaG9wLmFwcC9wYXkvaG9wP2FuYWx5dGljc190cmFjZV9pZD00ODg5NDQ0Yy1lMzNmLTRjYTAtODdmZi1iYzljZGQwOGZmMjMmdGFyZ2V0X29yaWdpbj1odHRwJTNBJTJGJTJGMTI3LjAuMC4xJTNBOTI5MiZjbGllbnRfaGFuZGxlPWIyYi1iMmMtc3RvcmUtZGV2ZWxvcG1lbnQubXlzaG9waWZ5LmNvbSIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9CTE9DS0VEX0JZX1JFU1BPTlNFIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMjEyMDc5NSwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQuanMiLAogICAgInN0YXR1cyI6IDIwMAogIH0sCiAgewogICAgImF0IjogMTc4OTExMjEyMzY3NCwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQvdXBkYXRlLmpzIiwKICAgICJzdGF0dXMiOiA0MjkKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTIxMjUyNzQsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9hcGkvY29sbGVjdCIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMjEyNTQ5MSwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQuanMiLAogICAgInN0YXR1cyI6IDIwMAogIH0sCiAgewogICAgImF0IjogMTc4OTExMjE1NTI5OCwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2FwaS9jb2xsZWN0IiwKICAgICJmYWlsdXJlIjogewogICAgICAiZXJyb3JUZXh0IjogIm5ldDo6RVJSX0FCT1JURUQiCiAgICB9CiAgfQpd"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-desktop-repeat2/error-context.md"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-4baf0c9035a0a0419f22",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 169,
+          "column": 1
+        },
+        {
+          "title": "card quick-add renders a stepper once the line exists",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 315,
+                  "error": {
+                    "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m",
+                    "stack": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                      "column": 5,
+                      "line": 58
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39msupport/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                        "column": 5,
+                        "line": 58
+                      },
+                      "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:36:20.046Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                    "column": 5,
+                    "line": 58
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-58a645d9777be212eb7b",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 122,
+          "column": 1
+        },
+        {
+          "title": "card decrement reaches zero when earlier update is still in flight",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 7,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 389,
+                  "error": {
+                    "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m",
+                    "stack": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:173:3",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                      "column": 5,
+                      "line": 58
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39msupport/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                        "column": 5,
+                        "line": 58
+                      },
+                      "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:173:3"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:36:21.397Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                    "column": 5,
+                    "line": 58
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-bb02f6ac5fb211c3d601",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 169,
+          "column": 1
+        },
+        {
+          "title": "card quick-add renders a stepper once the line exists",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 8,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 181,
+                  "error": {
+                    "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m",
+                    "stack": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                      "column": 5,
+                      "line": 58
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39msupport/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                        "column": 5,
+                        "line": 58
+                      },
+                      "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:36:22.755Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat1/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat1/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                    "column": 5,
+                    "line": 58
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-c0c9c0a169abd3a0dfe9",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 122,
+          "column": 1
+        },
+        {
+          "title": "card decrement reaches zero when earlier update is still in flight",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 9,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 197,
+                  "error": {
+                    "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m",
+                    "stack": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:173:3",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                      "column": 5,
+                      "line": 58
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39msupport/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                        "column": 5,
+                        "line": 58
+                      },
+                      "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:173:3"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:36:23.955Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat1/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat1/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                    "column": 5,
+                    "line": 58
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-8ee5cd86e9b1f3d4e804",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 169,
+          "column": 1
+        },
+        {
+          "title": "card quick-add renders a stepper once the line exists",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 10,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 196,
+                  "error": {
+                    "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m",
+                    "stack": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                      "column": 5,
+                      "line": 58
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39msupport/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                        "column": 5,
+                        "line": 58
+                      },
+                      "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:126:3"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:36:25.081Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat2/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-mobile-repeat2/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                    "column": 5,
+                    "line": 58
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-b174912e11652dae9862",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 122,
+          "column": 1
+        },
+        {
+          "title": "card decrement reaches zero when earlier update is still in flight",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 11,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 294,
+                  "error": {
+                    "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m",
+                    "stack": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:173:3",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                      "column": 5,
+                      "line": 58
+                    },
+                    "snippet": "\u001b[90m   at \u001b[39msupport/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                        "column": 5,
+                        "line": 58
+                      },
+                      "message": "Error: cart mutations are restricted to the b2b development store\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"b2b-b2c-store-development.myshopify.com\"\u001b[39m\nReceived: \u001b[31mundefined\u001b[39m\n\n   at support/cart-state.ts:58\n\n  56 |     await page.evaluate(() => (window as any).Shopify?.shop),\n  57 |     'cart mutations are restricted to the b2b development store',\n> 58 |   ).toBe('b2b-b2c-store-development.myshopify.com');\n     |     ^\n  59 |   const initial = await page.request.get('/cart.js');\n  60 |   expect(\n  61 |     initial.ok(),\n    at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:58:5)\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:173:3"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:36:26.150Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat2/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-strict-results/smoke-won-feedback-8-card--b3ec8-r-update-is-still-in-flight-mobile-repeat2/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts",
+                    "column": 5,
+                    "line": 58
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-172af8de35d292009843",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 169,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-11T07:32:38.783Z",
+    "duration": 227970.965,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 12,
+    "flaky": 0
+  }
+}

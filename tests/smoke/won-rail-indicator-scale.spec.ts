@@ -1,4 +1,12 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from "@playwright/test";
+import {
+  attachCartDiagnostics,
+  expectCommittedCart,
+  observeCommittedCart,
+  openEmptyCart,
+} from "../support/cart-state";
+
+test.afterEach(async ({ page }) => attachCartDiagnostics(page));
 
 // The scroll indicator is a SCROLLBAR, so it has to be measured against the thing
 // it describes. A 240px cap left it as a short dash under the first card with a
@@ -19,24 +27,34 @@ async function settle(page: Page) {
   });
 }
 
-test('the scroll indicator spans the free width of its control row', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'load' });
+test("the scroll indicator spans the free width of its control row", async ({
+  page,
+}) => {
+  await page.goto("/", { waitUntil: "load" });
   await settle(page);
 
   const rails = await page.evaluate(() => {
     const shown = (el: Element | null) => {
-      if (!el || (el as HTMLElement).hasAttribute('hidden')) return false;
+      if (!el || (el as HTMLElement).hasAttribute("hidden")) return false;
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
-      return r.width > 0 && r.height > 0 && cs.display !== 'none';
+      return r.width > 0 && r.height > 0 && cs.display !== "none";
     };
-    const out: { id: string; row: number; bar: number; arrows: number; overlay: boolean }[] = [];
-    document.querySelectorAll('.won-rail__controls').forEach((row) => {
-      const bar = row.querySelector('[data-won-progress]');
+    const out: {
+      id: string;
+      row: number;
+      bar: number;
+      arrows: number;
+      overlay: boolean;
+    }[] = [];
+    document.querySelectorAll(".won-rail__controls").forEach((row) => {
+      const bar = row.querySelector("[data-won-progress]");
       if (!shown(bar)) return;
-      const arrows = row.querySelector('[data-won-arrows]');
+      const arrows = row.querySelector("[data-won-arrows]");
       out.push({
-        id: (row.closest('[data-testid]') as HTMLElement | null)?.dataset.testid ?? 'rail',
+        id:
+          (row.closest("[data-testid]") as HTMLElement | null)?.dataset
+            .testid ?? "rail",
         row: row.getBoundingClientRect().width,
         bar: bar!.getBoundingClientRect().width,
         arrows: shown(arrows) ? arrows!.getBoundingClientRect().width : 0,
@@ -46,7 +64,7 @@ test('the scroll indicator spans the free width of its control row', async ({ pa
     return out;
   });
 
-  test.skip(rails.length === 0, 'no rail shows an indicator at this width');
+  test.skip(rails.length === 0, "no rail shows an indicator at this width");
 
   for (const r of rails) {
     if (r.overlay) continue;
@@ -56,25 +74,40 @@ test('the scroll indicator spans the free width of its control row', async ({ pa
     const free = r.row - r.arrows;
     expect(
       r.bar,
-      `${r.id}: indicator is ${Math.round(r.bar)}px inside a ${Math.round(r.row)}px row (${Math.round(r.arrows)}px of arrows)`
+      `${r.id}: indicator is ${Math.round(r.bar)}px inside a ${Math.round(r.row)}px row (${Math.round(r.arrows)}px of arrows)`,
     ).toBeGreaterThan(free - 40);
   }
 });
 
-test('the indicator thumb is proportional to how much is on screen', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'load' });
+test("the indicator thumb is proportional to how much is on screen", async ({
+  page,
+}) => {
+  await page.goto("/", { waitUntil: "load" });
   await settle(page);
 
   const rails = await page.evaluate(() => {
-    const out: { id: string; track: number; thumb: number; visibleFrac: number }[] = [];
-    document.querySelectorAll('won-carousel').forEach((rail) => {
-      const box = rail.querySelector('[data-won-progress]') as HTMLElement | null;
-      const thumb = rail.querySelector('[data-won-progress-bar]') as HTMLElement | null;
-      const track = rail.querySelector('[data-won-track]') as HTMLElement | null;
-      if (!box || !thumb || !track || box.hasAttribute('hidden')) return;
+    const out: {
+      id: string;
+      track: number;
+      thumb: number;
+      visibleFrac: number;
+    }[] = [];
+    document.querySelectorAll("won-carousel").forEach((rail) => {
+      const box = rail.querySelector(
+        "[data-won-progress]",
+      ) as HTMLElement | null;
+      const thumb = rail.querySelector(
+        "[data-won-progress-bar]",
+      ) as HTMLElement | null;
+      const track = rail.querySelector(
+        "[data-won-track]",
+      ) as HTMLElement | null;
+      if (!box || !thumb || !track || box.hasAttribute("hidden")) return;
       if (!(track.scrollWidth > track.clientWidth + 1)) return;
       out.push({
-        id: (rail.closest('[data-testid]') as HTMLElement | null)?.dataset.testid ?? 'rail',
+        id:
+          (rail.closest("[data-testid]") as HTMLElement | null)?.dataset
+            .testid ?? "rail",
         track: box.getBoundingClientRect().width,
         thumb: thumb.getBoundingClientRect().width,
         visibleFrac: track.clientWidth / track.scrollWidth,
@@ -83,7 +116,7 @@ test('the indicator thumb is proportional to how much is on screen', async ({ pa
     return out;
   });
 
-  test.skip(rails.length === 0, 'no overflowing rail with an indicator here');
+  test.skip(rails.length === 0, "no overflowing rail with an indicator here");
 
   for (const r of rails) {
     // The thumb IS the answer to "how much of this rail am I seeing" — it has to
@@ -91,31 +124,33 @@ test('the indicator thumb is proportional to how much is on screen', async ({ pa
     const expected = r.track * r.visibleFrac;
     expect(
       Math.abs(r.thumb - expected),
-      `${r.id}: thumb ${Math.round(r.thumb)}px vs expected ${Math.round(expected)}px on a ${Math.round(r.track)}px track`
+      `${r.id}: thumb ${Math.round(r.thumb)}px vs expected ${Math.round(expected)}px on a ${Math.round(r.track)}px track`,
     ).toBeLessThanOrEqual(Math.max(26, expected * 0.15));
   }
 });
 
-test('stepping the quantity replays the sheen', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'load' });
-  await page.evaluate(() => fetch('/cart/clear.js', { method: 'POST' }));
-  await page.reload({ waitUntil: 'load' });
+test("stepping the quantity replays the sheen", async ({ page }) => {
+  await observeCommittedCart(page);
+  await openEmptyCart(page, "/");
   await settle(page);
 
-  const card = page.locator('.won-pcard:has([data-won-stepper])').first();
+  const card = page.locator(".won-pcard:has([data-won-stepper])").first();
   await card.scrollIntoViewIfNeeded();
   await card.hover();
   await page.waitForTimeout(600);
 
-  const pill = card.locator('.won-pcard__add--stepper');
-  const mode = await pill.evaluate((el) => el.className.match(/won-fx--sheen-([a-z]+)/)?.[1] ?? 'off');
-  test.skip(mode === 'off', 'theme has the sheen turned off');
+  const pill = card.locator(".won-pcard__add--stepper");
+  const mode = await pill.evaluate(
+    (el) => el.className.match(/won-fx--sheen-([a-z]+)/)?.[1] ?? "off",
+  );
+  test.skip(mode === "off", "theme has the sheen turned off");
 
-  const add = card.locator('[data-won-add]');
+  const add = card.locator("[data-won-add]");
   const minus = card.locator('[data-won-step="-1"]');
 
   await add.click();
-  await expect(card.locator('span[data-won-qty]')).toHaveText('1');
+  await expect(card.locator("span[data-won-qty]")).toHaveText("1");
+  await expectCommittedCart(page, 1);
   // Let the hover-arrival sweep finish so what we record next can only have come
   // from the click itself.
   await page.waitForTimeout(1600);
@@ -123,19 +158,29 @@ test('stepping the quantity replays the sheen', async ({ page }) => {
   const record = () =>
     pill.evaluate((el) => {
       (window as unknown as { __sheen: string[] }).__sheen = [];
-      el.addEventListener('animationstart', (e) => {
-        (window as unknown as { __sheen: string[] }).__sheen.push((e as AnimationEvent).animationName);
+      el.addEventListener("animationstart", (e) => {
+        (window as unknown as { __sheen: string[] }).__sheen.push(
+          (e as AnimationEvent).animationName,
+        );
       });
     });
-  const seen = () => page.evaluate(() => (window as unknown as { __sheen: string[] }).__sheen ?? []);
+  const seen = () =>
+    page.evaluate(
+      () => (window as unknown as { __sheen: string[] }).__sheen ?? [],
+    );
 
   await record();
   await add.click();
-  await expect(card.locator('span[data-won-qty]')).toHaveText('2');
-  await expect.poll(seen, { message: 'the "+" must confirm with a sweep', timeout: 4000 }).toEqual(expect.arrayContaining([expect.stringMatching(/^won-sheen/)]));
+  await expect(card.locator("span[data-won-qty]")).toHaveText("2");
+  await expect
+    .poll(seen, { message: 'the "+" must confirm with a sweep', timeout: 4000 })
+    .toEqual(expect.arrayContaining([expect.stringMatching(/^won-sheen/)]));
 
   await record();
   await minus.click();
-  await expect(card.locator('span[data-won-qty]')).toHaveText('1');
-  await expect.poll(seen, { message: 'the "−" must confirm with a sweep', timeout: 4000 }).toEqual(expect.arrayContaining([expect.stringMatching(/^won-sheen/)]));
+  await expect(card.locator("span[data-won-qty]")).toHaveText("1");
+  await expect
+    .poll(seen, { message: 'the "−" must confirm with a sweep', timeout: 4000 })
+    .toEqual(expect.arrayContaining([expect.stringMatching(/^won-sheen/)]));
+  await expectCommittedCart(page, 1);
 });

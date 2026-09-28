@@ -1,0 +1,692 @@
+{
+  "reviewed": [
+    {
+      "id": "qa001",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa001-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa002",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa002-1440.png"
+      ],
+      "verdict": "limited",
+      "notes": "Čitelný CTA shell bez skutečného app bloku; integrace neověřena."
+    },
+    {
+      "id": "qa003",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa003-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa004",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa004-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa005",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa005-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa006",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa006-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa007",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa007-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa008",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa008-1440.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Marquee má velká média a jednorádkové odstavce oříznuté hranami pásu; vhodnost sizingu obsahových karet omezená."
+    },
+    {
+      "id": "qa009",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa009-1440.png",
+        "screenshots/qa009-1440-expanded.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa010",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa010-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa011",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa011-1440.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Final screenshot visually reviewed: form controls and labels readable; minimal spacing between fields and submit button. Submission not tested."
+    },
+    {
+      "id": "qa012",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa012-1440.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Final screenshot visually reviewed: form controls and labels readable; minimal spacing between fields and submit button. Submission not tested."
+    },
+    {
+      "id": "qa013",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa013-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa014",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa014-1440.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Čitelné dva sloupce; vysoký portrét vytváří prázdno pod levými benefity."
+    },
+    {
+      "id": "qa015",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa015-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa016",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa016-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa017",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa017-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa018",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa018-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa019",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa019-1440.png"
+      ],
+      "verdict": "finding",
+      "notes": "Mosaic má prázdnou první buňku, tři dlaždice nahoře a čtvrtou vlevo dole. Chybí velká vedoucí dlaždice."
+    },
+    {
+      "id": "qa020",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa020-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa021",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa021-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa022",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa022-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa023",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa023-1440.png"
+      ],
+      "verdict": "limited",
+      "notes": "Naplněné titulky, data a excerpt; fotografie článků jsou placeholdery."
+    },
+    {
+      "id": "qa024",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa024-1440.png"
+      ],
+      "verdict": "limited",
+      "notes": "Featured layout s naplněnými texty, fotografie jsou placeholdery."
+    },
+    {
+      "id": "qa025",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa025-1440.png"
+      ],
+      "verdict": "finding",
+      "notes": "Bílý text má nízký kontrast proti světlému obrázku."
+    },
+    {
+      "id": "qa026",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa026-1440.png"
+      ],
+      "verdict": "finding",
+      "notes": "Peek dalšího slidu je viditelný; bílý text má slabý kontrast."
+    },
+    {
+      "id": "qa027",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa027-1440.png"
+      ],
+      "verdict": "finding",
+      "notes": "Bílé titulky přes bílý štítek produktové fotografie se obtížně čtou."
+    },
+    {
+      "id": "qa028",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa028-1440.png"
+      ],
+      "verdict": "finding",
+      "notes": "Headline a CTA se vejdou; světlý text je slabě čitelný na světlém obrázku."
+    },
+    {
+      "id": "qa029",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa029-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa030",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa030-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa031",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa031-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa032",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa032-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa033",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa033-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa034",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa034-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Final recapture visually reviewed: comparison image geometry aligns across the divider; earlier offset fixed."
+    },
+    {
+      "id": "qa035",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa035-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa036",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa036-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa037",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa037-1440.png"
+      ],
+      "verdict": "finding",
+      "notes": "Černý hlavní nadpis splývá s černým textem fotografie; tmavý overlay čitelnost zhoršuje."
+    },
+    {
+      "id": "qa038",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa038-1440.png",
+        "screenshots/qa038-1440-expanded.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa039",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa039-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa040",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa040-1440.png",
+        "screenshots/qa040-1440-expanded.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa041",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa041-1440.png",
+        "screenshots/qa041-1440-expanded.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa042",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa042-1440.png",
+        "screenshots/qa042-1440-expanded.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa043",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa043-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa044",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa044-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Final screenshot visually reviewed: product image, title, price and Add to cart aligned in one desktop row. Click behavior not established by screenshot."
+    },
+    {
+      "id": "qa045",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa045-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa046",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa046-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa047",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa047-1440.png",
+        "screenshots/qa047-1440-expanded.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa048",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa048-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Actual screenshot visually reviewed: content and spacing readable, no visible overlap. Interaction not established by screenshot."
+    },
+    {
+      "id": "qa049",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa049-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa050",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa050-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa051",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa051-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa052",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa052-1440.png",
+        "screenshots/qa052-1440-expanded.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí.",
+      "finalRecaptureReviewed": true
+    },
+    {
+      "id": "qa053",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa053-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa054",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa054-1440.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Data čitelná; hlavičky vlevo a hodnoty vpravo jsou při full width velmi vzdálené."
+    },
+    {
+      "id": "qa055",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa055-1440.png",
+        "screenshots/qa055-1440-expanded.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa056",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa056-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa057",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa057-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Final recapture visually reviewed: unit price $109.99 / 100 g is rendered and legible; earlier empty fixture replaced."
+    },
+    {
+      "id": "qa058",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa058-1440.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Samostatná full-width karta s vysokou portrétní fotografií; text a cena pod ní čitelné. Listový kontext qa006/009."
+    },
+    {
+      "id": "qa059",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa059-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Actual screenshot visually reviewed: content and spacing readable, no visible overlap. Interaction not established by screenshot."
+    },
+    {
+      "id": "qa060",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa060-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Actual screenshot visually reviewed: content and spacing readable, no visible overlap. Interaction not established by screenshot."
+    },
+    {
+      "id": "qa061",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa061-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Actual screenshot visually reviewed: content and spacing readable, no visible overlap. Interaction not established by screenshot."
+    },
+    {
+      "id": "qa062",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa062-1440.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Samostatný slide má vysoké portrétní médium; text a CTA pod ním čitelné."
+    },
+    {
+      "id": "qa063",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa063-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Actual screenshot visually reviewed: content and spacing readable, no visible overlap. Interaction not established by screenshot."
+    },
+    {
+      "id": "qa064",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa064-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    },
+    {
+      "id": "qa065",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa065-1440.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Samostatná tile má vysoké full-width médium; caption čitelný."
+    },
+    {
+      "id": "qa066",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa066-1440.png"
+      ],
+      "verdict": "limited",
+      "notes": "Pouze statický placeholder, žádný playback ani přehrávač. Video není pozitivně pokryté."
+    },
+    {
+      "id": "qa067",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa067-1440.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Médium vlevo, pět řádků headline vpravo bez kolize."
+    },
+    {
+      "id": "qa068",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa068-1440.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Médium vpravo, headline vlevo bez kolize."
+    },
+    {
+      "id": "qa069",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa069-1440.png"
+      ],
+      "verdict": "pass-with-notes",
+      "notes": "Obě média po stranách, šest řádků headline uprostřed bez kolize."
+    },
+    {
+      "id": "qa070",
+      "width": 1440,
+      "screenshots": [
+        "screenshots/qa070-1440.png"
+      ],
+      "verdict": "pass",
+      "notes": "Vizuálně prohlédnut skutečný screenshot; text, mezery, rozměry a média bez zjevné kolize. Snímek sám nedokládá funkčnost interakcí."
+    }
+  ],
+  "findings": [
+    {
+      "id": "desktop-mosaic",
+      "priority": "P2",
+      "cases": [
+        "qa019"
+      ],
+      "description": "Mosaic má prázdnou první buňku, tři dlaždice nahoře a čtvrtou vlevo dole. Chybí velká vedoucí dlaždice."
+    },
+    {
+      "id": "desktop-page-header-contrast",
+      "priority": "P2",
+      "cases": [
+        "qa037"
+      ],
+      "description": "Černý hlavní nadpis splývá s černým textem fotografie; tmavý overlay čitelnost zhoršuje."
+    },
+    {
+      "id": "desktop-hero-contrast",
+      "priority": "P2",
+      "cases": [
+        "qa025",
+        "qa026",
+        "qa027",
+        "qa028"
+      ],
+      "description": "Bílé titulky přes bílý štítek produktové fotografie se obtížně čtou."
+    }
+  ],
+  "resolvedFindings": [
+    {
+      "id": "desktop-compare-alignment",
+      "case": "qa034",
+      "status": "fixed-and-visually-rechecked",
+      "screenshot": "screenshots/qa034-1440.png"
+    }
+  ]
+}

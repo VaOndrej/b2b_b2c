@@ -5,12 +5,30 @@ optional heading. Self-contained; for PDP or any section accepting theme blocks.
 {% content_for 'block', type: 'won-video', id: 'video' %}
 {% enddoc %}
 
-{%- assign s = block.settings -%}
-<div class="won-video" style="--won-video-ratio: {{ s.aspect_ratio | default: s.aspect }};" {{ block.shopify_attributes }}>
+{%- liquid
+  assign s = block.settings
+  assign video_ratio = s.aspect_ratio | default: s.aspect | default: '16/9'
+  if video_ratio == 'adaptive'
+    assign video_ratio = '16/9'
+    unless s.video_type == 'external'
+      assign video_ratio = s.video.aspect_ratio | default: video_ratio
+    endunless
+  endif
+-%}
+<div class="won-video" style="--won-video-ratio: {{ video_ratio }}; --won-video-fit: {{ s.fit | default: 'cover' }};" {{ block.shopify_attributes }}>
   {%- if s.heading != blank -%}<p class="won-video__heading">{{ s.heading }}</p>{%- endif -%}
   <div class="won-video__frame">
     {%- if s.video_type == 'external' and s.video_url != blank -%}
-      {{ s.video_url | external_video_tag: class: 'won-video__el', loading: 'lazy' }}
+      {%- assign video_title = s.heading | strip_html -%}
+      {%- if video_title == blank -%}{%- assign video_title = 'won.a11y.video' | t -%}{%- endif -%}
+      <iframe
+        class="won-video__el"
+        src="{% if s.video_url.type == 'youtube' %}https://www.youtube.com/embed/{{ s.video_url.id | escape }}{% else %}https://player.vimeo.com/video/{{ s.video_url.id | escape }}{% endif %}"
+        title="{{ video_title | escape }}"
+        loading="lazy"
+        allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+      ></iframe>
     {%- elsif s.video != blank -%}
       {{ s.video | video_tag: controls: true, class: 'won-video__el', image_size: '1200x' }}
     {%- else -%}
@@ -23,7 +41,7 @@ optional heading. Self-contained; for PDP or any section accepting theme blocks.
   .won-video__heading { margin: 0 0 var(--won-space-3); font-weight: 700; }
   .won-video__frame { position: relative; aspect-ratio: var(--won-video-ratio, 16/9); border-radius: var(--won-radius-md); overflow: hidden; background: var(--won-surface); }
   .won-video__el,
-  .won-video__frame iframe { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; border: 0; }
+  .won-video__frame iframe { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: var(--won-video-fit, cover); border: 0; }
 {% endstylesheet %}
 
 {% schema %}
@@ -48,9 +66,21 @@ optional heading. Self-contained; for PDP or any section accepting theme blocks.
       "options": [
         { "value": "16/9", "label": "16:9" },
         { "value": "4/3", "label": "4:3" },
-        { "value": "1/1", "label": "1:1" }
+        { "value": "1/1", "label": "1:1" },
+        { "value": "9/16", "label": "9:16" },
+        { "value": "adaptive", "label": "t:won.options.video_adaptive" }
       ],
       "default": "16/9"
+    },
+    {
+      "type": "select", "id": "fit", "label": "t:won.settings.video_fit",
+      "info": "t:won.info.video_fit",
+      "visible_if": "{{ block.settings.video_type == 'hosted' }}",
+      "options": [
+        { "value": "cover", "label": "t:won.options.video_cover" },
+        { "value": "contain", "label": "t:won.options.video_contain" }
+      ],
+      "default": "cover"
     }
   ],
   "presets": [{ "name": "t:won.names.video" }]

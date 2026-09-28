@@ -1,0 +1,918 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#MainContent"
+  - generic [ref=e3]:
+    - generic [ref=e7]:
+      - generic [ref=e10]:
+        - generic [ref=e11]: 🚚
+        - generic [ref=e12]: Add $1,500.00 more for free shipping
+      - button "Close" [ref=e14] [cursor=pointer]:
+        - generic [ref=e15]: ×
+    - banner:
+      - generic [ref=e16]:
+        - heading "B2b_b2c_store_development" [level=1] [ref=e17]
+        - generic [ref=e19]:
+          - navigation [ref=e23]:
+            - list [ref=e26]:
+              - generic:
+                - link "Home" [ref=e27] [cursor=pointer]:
+                  - /url: /
+                  - generic [ref=e28]: Home
+                - link "Catalog" [ref=e29] [cursor=pointer]:
+                  - /url: /collections/all
+                  - generic [ref=e30]: Catalog
+                - link "Contact" [ref=e31] [cursor=pointer]:
+                  - /url: /pages/contact
+                  - generic [ref=e32]: Contact
+          - link "B2b_b2c_store_development" [ref=e34] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e35]: B2b_b2c_store_development
+          - generic [ref=e36]:
+            - button "USD Region and language selector" [ref=e38] [cursor=pointer]:
+              - generic [ref=e39]: USD
+              - generic [ref=e40]: Region and language selector
+              - generic:
+                - img
+            - search "Search" [ref=e41]:
+              - search [ref=e42]:
+                - generic [ref=e44]:
+                  - generic [ref=e45]: Search
+                  - combobox "Search" [ref=e46]
+                  - generic:
+                    - img
+            - generic [ref=e47]:
+              - button "Account" [ref=e49] [cursor=pointer]:
+                - img [ref=e51]
+              - button "Cart" [ref=e55] [cursor=pointer]:
+                - generic [ref=e56]:
+                  - generic:
+                    - img
+                  - generic [ref=e57]:
+                    - status:
+                      - generic [ref=e59]: "Total items in cart: 0"
+  - main [ref=e60]:
+    - article [ref=e66]:
+      - generic [ref=e69]:
+        - paragraph [ref=e70]: Sportovní výživa · Doprava zdarma nad 1 500 Kč
+        - heading "Palivo pro tvůj nejlepší výkon" [level=3] [ref=e71]
+        - paragraph [ref=e73]:
+          - text: Čisté složení, testováno nezávislou laboratoří.
+          - strong [ref=e74]: ★ 4,9/5
+          - text: od 25 000+ zákazníků · doručení do 2 dnů.
+        - generic [ref=e75]:
+          - link "Nakupovat teď" [ref=e76] [cursor=pointer]:
+            - /url: /collections/automated-collection
+          - link "Získat 10 % na první nákup" [ref=e77] [cursor=pointer]:
+            - /url: /account/register
+    - generic [ref=e81]:
+      - generic [ref=e82]:
+        - generic [ref=e83]: Doprava zdarma nad 1 500 Kč
+        - generic [ref=e84]: •
+        - generic [ref=e85]: Doručení do 24 hodin
+        - generic [ref=e86]: •
+        - generic [ref=e87]: 100% clean složení
+        - generic [ref=e88]: •
+        - generic [ref=e89]: Poradenství zdarma
+        - generic [ref=e90]: •
+      - generic [ref=e91]:
+        - generic [ref=e92]: Doprava zdarma nad 1 500 Kč
+        - generic [ref=e93]: •
+        - generic [ref=e94]: Doručení do 24 hodin
+        - generic [ref=e95]: •
+        - generic [ref=e96]: 100% clean složení
+        - generic [ref=e97]: •
+        - generic [ref=e98]: Poradenství zdarma
+        - generic [ref=e99]: •
+    - generic [ref=e104]:
+      - article [ref=e106]:
+        - generic [ref=e108]:
+          - heading "Když voda nestačí 💧" [level=3] [ref=e109]
+          - paragraph [ref=e111]: Doplň klíčové minerály v horku
+          - link "Koupit" [ref=e113] [cursor=pointer]:
+            - /url: /collections/vitaminy-mineraly
+      - article [ref=e115]:
+        - generic [ref=e117]:
+          - heading "Kreatin −20 %" [level=3] [ref=e118]
+          - paragraph [ref=e120]: Síla a výkon každý den
+          - link "Koupit" [ref=e122] [cursor=pointer]:
+            - /url: /collections/kreatin-aminokyseliny
+      - article [ref=e124]:
+        - generic [ref=e126]:
+          - heading "Whey s 21 g proteinu 🥤" [level=3] [ref=e127]
+          - paragraph [ref=e129]: Vybrané příchutě teď výhodně
+          - link "Koupit" [ref=e131] [cursor=pointer]:
+            - /url: /collections/proteiny
+      - article [ref=e133]:
+        - generic [ref=e135]:
+          - 'heading "Novinka: BCAA" [level=3] [ref=e136]'
+          - paragraph [ref=e138]: Regenerace po tréninku
+          - link "Koupit" [ref=e140] [cursor=pointer]:
+            - /url: /collections/kreatin-aminokyseliny
+    - generic [ref=e143]:
+      - heading "Objevte nabídku" [level=2] [ref=e145]
+      - generic [ref=e147]:
+        - link "Proteiny Novinka Proteiny" [ref=e149] [cursor=pointer]:
+          - /url: /collections/proteiny
+          - generic [ref=e150]:
+            - img "Proteiny" [ref=e152]
+            - generic [ref=e153]: Novinka
+          - generic [ref=e155]: 💪Proteiny
+        - link "Kreatin & aminokyseliny Kreatin & aminokyseliny" [ref=e157] [cursor=pointer]:
+          - /url: /collections/kreatin-aminokyseliny
+          - img "Kreatin & aminokyseliny" [ref=e160]
+          - generic [ref=e162]: ⚡Kreatin & aminokyseliny
+        - link "Vitamíny & minerály Vitamíny & minerály" [ref=e164] [cursor=pointer]:
+          - /url: /collections/vitaminy-mineraly
+          - img "Vitamíny & minerály" [ref=e167]
+          - generic [ref=e169]: 🛡️Vitamíny & minerály
+        - link "Zdraví & regenerace Zdraví & regenerace" [ref=e171] [cursor=pointer]:
+          - /url: /collections/zdravi-regenerace
+          - img "Zdraví & regenerace" [ref=e174]
+          - generic [ref=e176]: 🌿Zdraví & regenerace
+    - generic [ref=e180]:
+      - generic [ref=e182]:
+        - img [ref=e184]
+        - generic [ref=e188]:
+          - heading "Doprava zdarma" [level=3] [ref=e189]
+          - paragraph [ref=e191]: Nad 1 500 Kč po celé ČR.
+      - generic [ref=e193]:
+        - img [ref=e195]
+        - generic [ref=e198]:
+          - heading "Vyrobeno v EU" [level=3] [ref=e199]
+          - paragraph [ref=e201]: Certifikované výrobní závody.
+      - generic [ref=e203]:
+        - img [ref=e205]
+        - generic [ref=e208]:
+          - heading "Testováno laboratoří" [level=3] [ref=e209]
+          - paragraph [ref=e211]: Nezávislé rozbory každé šarže.
+      - generic [ref=e213]:
+        - img [ref=e215]
+        - generic [ref=e218]:
+          - heading "30 dní na vrácení" [level=3] [ref=e219]
+          - paragraph [ref=e221]: Bez udání důvodu.
+    - generic [ref=e224]:
+      - generic [ref=e225]:
+        - heading "Bestsellery" [level=2] [ref=e226]
+        - link "Zobrazit vše" [ref=e227] [cursor=pointer]:
+          - /url: /collections/automated-collection
+      - generic [ref=e228]:
+        - generic [ref=e229]:
+          - generic [ref=e231]:
+            - generic [ref=e232]:
+              - link "Elektrolyty Hydratace" [ref=e233] [cursor=pointer]:
+                - /url: /products/the-inventory-not-tracked-snowboard
+                - img "Elektrolyty Hydratace" [ref=e234]
+              - 'button "Add to cart: Elektrolyty Hydratace" [ref=e236] [cursor=pointer]':
+                - generic [ref=e237]: Add to cart
+            - link "Elektrolyty Hydratace 4.6(94) 4.6 / 5, 94 $599.95 $119.99 / 100 g" [ref=e238] [cursor=pointer]:
+              - /url: /products/the-inventory-not-tracked-snowboard
+              - generic [ref=e239]: Elektrolyty Hydratace
+              - generic "4.6 / 5" [ref=e240]:
+                - generic [ref=e241]: ★★★★★ ★★★★★
+                - generic [ref=e242]: 4.6(94)
+                - generic [ref=e243]: 4.6 / 5, 94
+              - generic [ref=e244]: $599.95
+              - generic [ref=e245]: $119.99 / 100 g
+          - generic [ref=e247]:
+            - generic [ref=e248]:
+              - link "Omega 3 Rybí olej" [ref=e249] [cursor=pointer]:
+                - /url: /products/the-3p-fulfilled-snowboard
+                - img "Omega 3 Rybí olej" [ref=e250]
+              - generic: Sold out
+            - link "Omega 3 Rybí olej 4.4(76) 4.4 / 5, 76 $629.95 $1,259.90 $13.99 / serving" [ref=e251] [cursor=pointer]:
+              - /url: /products/the-3p-fulfilled-snowboard
+              - generic [ref=e252]: Omega 3 Rybí olej
+              - generic "4.4 / 5" [ref=e253]:
+                - generic [ref=e254]: ★★★★★ ★★★★★
+                - generic [ref=e255]: 4.4(76)
+                - generic [ref=e256]: 4.4 / 5, 76
+              - generic [ref=e257]: $629.95 $1,259.90
+              - generic [ref=e258]: $13.99 / serving
+          - generic [ref=e260]:
+            - generic [ref=e261]:
+              - link "Pre-Workout Energy" [ref=e262] [cursor=pointer]:
+                - /url: /products/the-videographer-snowboard
+                - img "Pre-Workout Energy" [ref=e263]
+              - link "Choose":
+                - /url: /products/the-videographer-snowboard
+            - link "Pre-Workout Energy 4.7(231) 4.7 / 5, 231 $549.95 $999.95 $109.99 / 100 g" [ref=e264] [cursor=pointer]:
+              - /url: /products/the-videographer-snowboard
+              - generic [ref=e265]: Pre-Workout Energy
+              - generic "4.7 / 5" [ref=e266]:
+                - generic [ref=e267]: ★★★★★ ★★★★★
+                - generic [ref=e268]: 4.7(231)
+                - generic [ref=e269]: 4.7 / 5, 231
+              - generic [ref=e270]: $549.95 $999.95
+              - generic [ref=e271]: $109.99 / 100 g
+          - generic [ref=e273]:
+            - generic [ref=e274]:
+              - link "Whey Protein — Čokoláda" [ref=e275] [cursor=pointer]:
+                - /url: /products/the-collection-snowboard-liquid
+                - img "Whey Protein — Čokoláda" [ref=e276]
+              - link "Choose":
+                - /url: /products/the-collection-snowboard-liquid
+            - link "Whey Protein — Čokoláda 4.8(342) 4.8 / 5, 342 $749.95 $1,874.95 $74.99 / 100 g" [ref=e277] [cursor=pointer]:
+              - /url: /products/the-collection-snowboard-liquid
+              - generic [ref=e278]: Whey Protein — Čokoláda
+              - generic "4.8 / 5" [ref=e279]:
+                - generic [ref=e280]: ★★★★★ ★★★★★
+                - generic [ref=e281]: 4.8(342)
+                - generic [ref=e282]: 4.8 / 5, 342
+              - generic [ref=e283]: $749.95 $1,874.95
+              - generic [ref=e284]: $74.99 / 100 g
+          - generic [ref=e286]:
+            - generic [ref=e287]:
+              - link "BCAA Aminokyseliny" [ref=e288] [cursor=pointer]:
+                - /url: /products/the-multi-managed-snowboard
+                - img "BCAA Aminokyseliny" [ref=e289]
+              - link "Choose":
+                - /url: /products/the-multi-managed-snowboard
+            - link "BCAA Aminokyseliny 4.6(128) 4.6 / 5, 128 $629.95 $1,259.90 $157.48 / 100 g" [ref=e290] [cursor=pointer]:
+              - /url: /products/the-multi-managed-snowboard
+              - generic [ref=e291]: BCAA Aminokyseliny
+              - generic "4.6 / 5" [ref=e292]:
+                - generic [ref=e293]: ★★★★★ ★★★★★
+                - generic [ref=e294]: 4.6(128)
+                - generic [ref=e295]: 4.6 / 5, 128
+              - generic [ref=e296]: $629.95 $1,259.90
+              - generic [ref=e297]: $157.48 / 100 g
+          - generic [ref=e299]:
+            - generic [ref=e300]:
+              - link "Vitamín D3 + K2" [ref=e301] [cursor=pointer]:
+                - /url: /products/the-multi-location-snowboard
+                - img "Vitamín D3 + K2" [ref=e302]
+              - link "Choose":
+                - /url: /products/the-multi-location-snowboard
+            - link "Vitamín D3 + K2 4.9(87) 4.9 / 5, 87 $729.95 $1,459.90 $8.11 / serving" [ref=e303] [cursor=pointer]:
+              - /url: /products/the-multi-location-snowboard
+              - generic [ref=e304]: Vitamín D3 + K2
+              - generic "4.9 / 5" [ref=e305]:
+                - generic [ref=e306]: ★★★★★ ★★★★★
+                - generic [ref=e307]: 4.9(87)
+                - generic [ref=e308]: 4.9 / 5, 87
+              - generic [ref=e309]: $729.95 $1,459.90
+              - generic [ref=e310]: $8.11 / serving
+          - generic [ref=e312]:
+            - generic [ref=e313]:
+              - link "Protein Blend — Výhodný set" [ref=e314] [cursor=pointer]:
+                - /url: /products/the-complete-snowboard
+                - img "Protein Blend — Výhodný set" [ref=e315]
+              - link "Choose":
+                - /url: /products/the-complete-snowboard
+            - link "Protein Blend — Výhodný set 4.9(512) 4.9 / 5, 512 $699.95 $69.99 / 100 g" [ref=e316] [cursor=pointer]:
+              - /url: /products/the-complete-snowboard
+              - generic [ref=e317]: Protein Blend — Výhodný set
+              - generic "4.9 / 5" [ref=e318]:
+                - generic [ref=e319]: ★★★★★ ★★★★★
+                - generic [ref=e320]: 4.9(512)
+                - generic [ref=e321]: 4.9 / 5, 512
+              - generic [ref=e322]: $699.95
+              - generic [ref=e323]: $69.99 / 100 g
+          - generic [ref=e325]:
+            - generic [ref=e326]:
+              - link "Magnesium + B6" [ref=e327] [cursor=pointer]:
+                - /url: /products/the-compare-at-price-snowboard
+                - img "Magnesium + B6" [ref=e328]
+              - link "Choose":
+                - /url: /products/the-compare-at-price-snowboard
+            - link "Magnesium + B6 4.5(64) 4.5 / 5, 64 $785.95 $885.95 $26.19 / serving" [ref=e329] [cursor=pointer]:
+              - /url: /products/the-compare-at-price-snowboard
+              - generic [ref=e330]: Magnesium + B6
+              - generic "4.5 / 5" [ref=e331]:
+                - generic [ref=e332]: ★★★★★ ★★★★★
+                - generic [ref=e333]: 4.5(64)
+                - generic [ref=e334]: 4.5 / 5, 64
+              - generic [ref=e335]: $785.95 $885.95
+              - generic [ref=e336]: $26.19 / serving
+        - generic [ref=e340]:
+          - button "Previous" [disabled] [ref=e341]:
+            - generic [ref=e342]: ‹
+          - button "Next" [ref=e343] [cursor=pointer]:
+            - generic [ref=e344]: ›
+    - generic [ref=e347]:
+      - heading "Doplňky pro každý den" [level=2] [ref=e349]
+      - generic [ref=e351]:
+        - generic [ref=e353]:
+          - generic [ref=e354]:
+            - link "Elektrolyty Hydratace" [ref=e355] [cursor=pointer]:
+              - /url: /products/the-inventory-not-tracked-snowboard
+              - img "Elektrolyty Hydratace" [ref=e356]
+            - generic:
+              - 'button "Add to cart: Elektrolyty Hydratace"':
+                - generic: Add to cart
+          - link "Elektrolyty Hydratace 4.6(94) 4.6 / 5, 94 $599.95" [ref=e357] [cursor=pointer]:
+            - /url: /products/the-inventory-not-tracked-snowboard
+            - generic [ref=e358]: Elektrolyty Hydratace
+            - generic "4.6 / 5" [ref=e359]:
+              - generic [ref=e360]: ★★★★★ ★★★★★
+              - generic [ref=e361]: 4.6(94)
+              - generic [ref=e362]: 4.6 / 5, 94
+            - generic [ref=e363]: $599.95
+        - generic [ref=e365]:
+          - generic [ref=e366]:
+            - link "Omega 3 Rybí olej" [ref=e367] [cursor=pointer]:
+              - /url: /products/the-3p-fulfilled-snowboard
+              - img "Omega 3 Rybí olej" [ref=e368]
+            - generic: Sold out
+          - link "Omega 3 Rybí olej 4.4(76) 4.4 / 5, 76 $629.95 $1,259.90" [ref=e369] [cursor=pointer]:
+            - /url: /products/the-3p-fulfilled-snowboard
+            - generic [ref=e370]: Omega 3 Rybí olej
+            - generic "4.4 / 5" [ref=e371]:
+              - generic [ref=e372]: ★★★★★ ★★★★★
+              - generic [ref=e373]: 4.4(76)
+              - generic [ref=e374]: 4.4 / 5, 76
+            - generic [ref=e375]: $629.95 $1,259.90
+        - generic [ref=e377]:
+          - generic [ref=e378]:
+            - link "Pre-Workout Energy" [ref=e379] [cursor=pointer]:
+              - /url: /products/the-videographer-snowboard
+              - img "Pre-Workout Energy" [ref=e380]
+            - link "Choose":
+              - /url: /products/the-videographer-snowboard
+          - link "Pre-Workout Energy 4.7(231) 4.7 / 5, 231 $549.95 $999.95" [ref=e381] [cursor=pointer]:
+            - /url: /products/the-videographer-snowboard
+            - generic [ref=e382]: Pre-Workout Energy
+            - generic "4.7 / 5" [ref=e383]:
+              - generic [ref=e384]: ★★★★★ ★★★★★
+              - generic [ref=e385]: 4.7(231)
+              - generic [ref=e386]: 4.7 / 5, 231
+            - generic [ref=e387]: $549.95 $999.95
+        - generic [ref=e389]:
+          - generic [ref=e390]:
+            - link "Whey Protein — Čokoláda" [ref=e391] [cursor=pointer]:
+              - /url: /products/the-collection-snowboard-liquid
+              - img "Whey Protein — Čokoláda" [ref=e392]
+            - link "Choose":
+              - /url: /products/the-collection-snowboard-liquid
+          - link "Whey Protein — Čokoláda 4.8(342) 4.8 / 5, 342 $749.95 $1,874.95" [ref=e393] [cursor=pointer]:
+            - /url: /products/the-collection-snowboard-liquid
+            - generic [ref=e394]: Whey Protein — Čokoláda
+            - generic "4.8 / 5" [ref=e395]:
+              - generic [ref=e396]: ★★★★★ ★★★★★
+              - generic [ref=e397]: 4.8(342)
+              - generic [ref=e398]: 4.8 / 5, 342
+            - generic [ref=e399]: $749.95 $1,874.95
+        - generic [ref=e401]:
+          - generic [ref=e402]:
+            - link "BCAA Aminokyseliny" [ref=e403] [cursor=pointer]:
+              - /url: /products/the-multi-managed-snowboard
+              - img "BCAA Aminokyseliny" [ref=e404]
+            - link "Choose":
+              - /url: /products/the-multi-managed-snowboard
+          - link "BCAA Aminokyseliny 4.6(128) 4.6 / 5, 128 $629.95 $1,259.90" [ref=e405] [cursor=pointer]:
+            - /url: /products/the-multi-managed-snowboard
+            - generic [ref=e406]: BCAA Aminokyseliny
+            - generic "4.6 / 5" [ref=e407]:
+              - generic [ref=e408]: ★★★★★ ★★★★★
+              - generic [ref=e409]: 4.6(128)
+              - generic [ref=e410]: 4.6 / 5, 128
+            - generic [ref=e411]: $629.95 $1,259.90
+        - generic [ref=e413]:
+          - generic [ref=e414]:
+            - link "Vitamín D3 + K2" [ref=e415] [cursor=pointer]:
+              - /url: /products/the-multi-location-snowboard
+              - img "Vitamín D3 + K2" [ref=e416]
+            - link "Choose":
+              - /url: /products/the-multi-location-snowboard
+          - link "Vitamín D3 + K2 4.9(87) 4.9 / 5, 87 $729.95 $1,459.90" [ref=e417] [cursor=pointer]:
+            - /url: /products/the-multi-location-snowboard
+            - generic [ref=e418]: Vitamín D3 + K2
+            - generic "4.9 / 5" [ref=e419]:
+              - generic [ref=e420]: ★★★★★ ★★★★★
+              - generic [ref=e421]: 4.9(87)
+              - generic [ref=e422]: 4.9 / 5, 87
+            - generic [ref=e423]: $729.95 $1,459.90
+        - generic [ref=e425]:
+          - generic [ref=e426]:
+            - link "Protein Blend — Výhodný set" [ref=e427] [cursor=pointer]:
+              - /url: /products/the-complete-snowboard
+              - img "Protein Blend — Výhodný set" [ref=e428]
+            - link "Choose":
+              - /url: /products/the-complete-snowboard
+          - link "Protein Blend — Výhodný set 4.9(512) 4.9 / 5, 512 $699.95" [ref=e429] [cursor=pointer]:
+            - /url: /products/the-complete-snowboard
+            - generic [ref=e430]: Protein Blend — Výhodný set
+            - generic "4.9 / 5" [ref=e431]:
+              - generic [ref=e432]: ★★★★★ ★★★★★
+              - generic [ref=e433]: 4.9(512)
+              - generic [ref=e434]: 4.9 / 5, 512
+            - generic [ref=e435]: $699.95
+        - generic [ref=e437]:
+          - generic [ref=e438]:
+            - link "Magnesium + B6" [ref=e439] [cursor=pointer]:
+              - /url: /products/the-compare-at-price-snowboard
+              - img "Magnesium + B6" [ref=e440]
+            - link "Choose":
+              - /url: /products/the-compare-at-price-snowboard
+          - link "Magnesium + B6 4.5(64) 4.5 / 5, 64 $785.95 $885.95" [ref=e441] [cursor=pointer]:
+            - /url: /products/the-compare-at-price-snowboard
+            - generic [ref=e442]: Magnesium + B6
+            - generic "4.5 / 5" [ref=e443]:
+              - generic [ref=e444]: ★★★★★ ★★★★★
+              - generic [ref=e445]: 4.5(64)
+              - generic [ref=e446]: 4.5 / 5, 64
+            - generic [ref=e447]: $785.95 $885.95
+    - generic [ref=e450]:
+      - heading "Celá řada" [level=2] [ref=e452]
+      - generic [ref=e454]:
+        - generic [ref=e456]:
+          - generic [ref=e457]:
+            - link "Elektrolyty Hydratace" [ref=e458] [cursor=pointer]:
+              - /url: /products/the-inventory-not-tracked-snowboard
+              - img "Elektrolyty Hydratace" [ref=e459]
+            - generic:
+              - 'button "Add to cart: Elektrolyty Hydratace"':
+                - generic: Add to cart
+          - link "Elektrolyty Hydratace 4.6(94) 4.6 / 5, 94 $599.95" [ref=e460] [cursor=pointer]:
+            - /url: /products/the-inventory-not-tracked-snowboard
+            - generic [ref=e461]: Elektrolyty Hydratace
+            - generic "4.6 / 5" [ref=e462]:
+              - generic [ref=e463]: ★★★★★ ★★★★★
+              - generic [ref=e464]: 4.6(94)
+              - generic [ref=e465]: 4.6 / 5, 94
+            - generic [ref=e466]: $599.95
+        - generic [ref=e468]:
+          - generic [ref=e469]:
+            - link "Omega 3 Rybí olej" [ref=e470] [cursor=pointer]:
+              - /url: /products/the-3p-fulfilled-snowboard
+              - img "Omega 3 Rybí olej" [ref=e471]
+            - generic: Sold out
+          - link "Omega 3 Rybí olej 4.4(76) 4.4 / 5, 76 $629.95 $1,259.90" [ref=e472] [cursor=pointer]:
+            - /url: /products/the-3p-fulfilled-snowboard
+            - generic [ref=e473]: Omega 3 Rybí olej
+            - generic "4.4 / 5" [ref=e474]:
+              - generic [ref=e475]: ★★★★★ ★★★★★
+              - generic [ref=e476]: 4.4(76)
+              - generic [ref=e477]: 4.4 / 5, 76
+            - generic [ref=e478]: $629.95 $1,259.90
+        - generic [ref=e480]:
+          - generic [ref=e481]:
+            - link "Pre-Workout Energy" [ref=e482] [cursor=pointer]:
+              - /url: /products/the-videographer-snowboard
+              - img "Pre-Workout Energy" [ref=e483]
+            - link "Choose":
+              - /url: /products/the-videographer-snowboard
+          - link "Pre-Workout Energy 4.7(231) 4.7 / 5, 231 $549.95 $999.95" [ref=e484] [cursor=pointer]:
+            - /url: /products/the-videographer-snowboard
+            - generic [ref=e485]: Pre-Workout Energy
+            - generic "4.7 / 5" [ref=e486]:
+              - generic [ref=e487]: ★★★★★ ★★★★★
+              - generic [ref=e488]: 4.7(231)
+              - generic [ref=e489]: 4.7 / 5, 231
+            - generic [ref=e490]: $549.95 $999.95
+        - generic [ref=e492]:
+          - generic [ref=e493]:
+            - link "Whey Protein — Čokoláda" [ref=e494] [cursor=pointer]:
+              - /url: /products/the-collection-snowboard-liquid
+              - img "Whey Protein — Čokoláda" [ref=e495]
+            - link "Choose":
+              - /url: /products/the-collection-snowboard-liquid
+          - link "Whey Protein — Čokoláda 4.8(342) 4.8 / 5, 342 $749.95 $1,874.95" [ref=e496] [cursor=pointer]:
+            - /url: /products/the-collection-snowboard-liquid
+            - generic [ref=e497]: Whey Protein — Čokoláda
+            - generic "4.8 / 5" [ref=e498]:
+              - generic [ref=e499]: ★★★★★ ★★★★★
+              - generic [ref=e500]: 4.8(342)
+              - generic [ref=e501]: 4.8 / 5, 342
+            - generic [ref=e502]: $749.95 $1,874.95
+    - generic [ref=e506]:
+      - generic [ref=e507]:
+        - article [ref=e509]:
+          - generic [ref=e511]:
+            - paragraph [ref=e512]: Hydratace
+            - heading "Když voda nestačí 💧" [level=3] [ref=e513]
+            - paragraph [ref=e515]: Doplň klíčové minerály v horku.
+            - link "Koupit" [ref=e517] [cursor=pointer]:
+              - /url: /collections/all
+        - article [ref=e519]:
+          - generic [ref=e521]:
+            - paragraph [ref=e522]: Akce
+            - heading "Kreatin −20 %" [level=3] [ref=e523]
+            - paragraph [ref=e525]: Síla a výkon každý den.
+            - link "Koupit" [ref=e527] [cursor=pointer]:
+              - /url: /collections/all
+        - article [ref=e529]:
+          - generic [ref=e531]:
+            - paragraph [ref=e532]: Bestseller
+            - heading "Whey s 21 g proteinu 🥤" [level=3] [ref=e533]
+            - paragraph [ref=e535]: Vybrané příchutě za skvělou cenu.
+            - link "Koupit" [ref=e537] [cursor=pointer]:
+              - /url: /collections/all
+        - article [ref=e539]:
+          - generic [ref=e540]:
+            - paragraph [ref=e541]: Novinka
+            - 'heading "Novinka: BCAA" [level=3] [ref=e542]'
+            - paragraph [ref=e544]: Regenerace po každém tréninku.
+            - link "Koupit" [ref=e546] [cursor=pointer]:
+              - /url: /collections/all
+      - generic [ref=e550]:
+        - button "Previous" [ref=e551] [cursor=pointer]:
+          - generic [ref=e552]: ‹
+        - button "Next" [ref=e553] [cursor=pointer]:
+          - generic [ref=e554]: ›
+    - generic [ref=e560]:
+      - paragraph [ref=e561]: Věrnostní klub
+      - heading "Získej 10 % na první nákup" [level=2] [ref=e562]
+      - paragraph [ref=e564]: Přihlas se do klubu a sbírej body za každou objednávku.
+      - link "Založit účet" [ref=e566] [cursor=pointer]:
+        - /url: /account/register
+    - generic [ref=e570]:
+      - heading "Proč zvolit Won" [level=2] [ref=e571]
+      - table [ref=e573]:
+        - rowgroup [ref=e574]:
+          - row "Funkce Won Běžná značka" [ref=e575]:
+            - columnheader "Funkce" [ref=e576]
+            - columnheader "Won" [ref=e577]
+            - columnheader "Běžná značka" [ref=e578]
+        - rowgroup [ref=e579]:
+          - row "Čisté složení yes no" [ref=e580]:
+            - rowheader "Čisté složení" [ref=e581]
+            - cell "yes" [ref=e582]:
+              - img [ref=e583]
+              - generic [ref=e585]: "yes"
+            - cell "no" [ref=e586]:
+              - img [ref=e587]
+              - generic [ref=e589]: "no"
+          - row "Kvalita složení 4/4 2/4" [ref=e590]:
+            - rowheader "Kvalita složení" [ref=e591]
+            - cell "4/4" [ref=e592]:
+              - img "4/4" [ref=e593]
+            - cell "2/4" [ref=e598]:
+              - img "2/4" [ref=e599]
+          - row "Testováno laboratoří yes no" [ref=e604]:
+            - rowheader "Testováno laboratoří" [ref=e605]
+            - cell "yes" [ref=e606]:
+              - img [ref=e607]
+              - generic [ref=e609]: "yes"
+            - cell "no" [ref=e610]:
+              - img [ref=e611]
+              - generic [ref=e613]: "no"
+          - row "Poradenství zdarma yes no" [ref=e614]:
+            - rowheader "Poradenství zdarma" [ref=e615]
+            - cell "yes" [ref=e616]:
+              - img [ref=e617]
+              - generic [ref=e619]: "yes"
+            - cell "no" [ref=e620]:
+              - img [ref=e621]
+              - generic [ref=e623]: "no"
+          - row "Doprava zdarma nad 1 500 Kč yes no" [ref=e624]:
+            - rowheader "Doprava zdarma nad 1 500 Kč" [ref=e625]
+            - cell "yes" [ref=e626]:
+              - img [ref=e627]
+              - generic [ref=e629]: "yes"
+            - cell "no" [ref=e630]:
+              - img [ref=e631]
+              - generic [ref=e633]: "no"
+      - generic [ref=e634]:
+        - link "Prohlédnout bestsellery" [ref=e635] [cursor=pointer]:
+          - /url: /collections/all
+        - paragraph [ref=e636]: Nejprodávanější doplňky s nejlepším hodnocením.
+    - generic [ref=e639]:
+      - heading "Čísla, kterým věříte" [level=2] [ref=e641]
+      - generic [ref=e642]:
+        - generic [ref=e643]:
+          - generic [ref=e644]: 👥
+          - term [ref=e645]: 25 000+
+          - definition [ref=e646]: spokojených zákazníků
+        - generic [ref=e647]:
+          - generic [ref=e648]: ★
+          - term [ref=e649]: 4,9/5
+          - definition [ref=e650]: průměrné hodnocení
+        - generic [ref=e651]:
+          - generic [ref=e652]: 🏅
+          - term [ref=e653]: 12 let
+          - definition [ref=e654]: na trhu
+        - generic [ref=e655]:
+          - generic [ref=e656]: 🔁
+          - term [ref=e657]: 98 %
+          - definition [ref=e658]: opakovaných nákupů
+    - generic [ref=e661]:
+      - heading "Co říkají zákazníci" [level=2] [ref=e663]
+      - generic [ref=e665]:
+        - article [ref=e667]:
+          - generic [ref=e668]:
+            - heading "★★★★★ Jana" [level=3] [ref=e669]
+            - paragraph [ref=e671]: Nejlepší protein, co jsem zkoušela. Rychlé dodání.
+        - article [ref=e673]:
+          - generic [ref=e674]:
+            - heading "★★★★★ Petr" [level=3] [ref=e675]
+            - paragraph [ref=e677]: Konečně čisté složení bez zbytečností. Doporučuji.
+        - article [ref=e679]:
+          - generic [ref=e680]:
+            - heading "★★★★★ Marek" [level=3] [ref=e681]
+            - paragraph [ref=e683]: Poradna mi pomohla vybrat. Super přístup.
+    - generic [ref=e686]:
+      - heading "Prohlédni si nabídku" [level=2] [ref=e687]
+      - generic [ref=e688]:
+        - tablist [ref=e689]:
+          - tab "Bestsellery" [selected] [ref=e690] [cursor=pointer]
+          - tab "Novinky" [ref=e691] [cursor=pointer]
+        - generic [ref=e692]:
+          - tabpanel "Bestsellery" [ref=e693]:
+            - generic [ref=e694]:
+              - generic [ref=e695]:
+                - generic [ref=e697]:
+                  - generic [ref=e698]:
+                    - link "Elektrolyty Hydratace" [ref=e699] [cursor=pointer]:
+                      - /url: /products/the-inventory-not-tracked-snowboard
+                      - img "Elektrolyty Hydratace" [ref=e700]
+                    - generic:
+                      - 'button "Add to cart: Elektrolyty Hydratace"':
+                        - generic: Add to cart
+                  - link "Elektrolyty Hydratace 4.6(94) 4.6 / 5, 94 $599.95" [ref=e701] [cursor=pointer]:
+                    - /url: /products/the-inventory-not-tracked-snowboard
+                    - generic [ref=e702]: Elektrolyty Hydratace
+                    - generic "4.6 / 5" [ref=e703]:
+                      - generic [ref=e704]: ★★★★★ ★★★★★
+                      - generic [ref=e705]: 4.6(94)
+                      - generic [ref=e706]: 4.6 / 5, 94
+                    - generic [ref=e707]: $599.95
+                - generic [ref=e709]:
+                  - generic [ref=e710]:
+                    - link "Omega 3 Rybí olej" [ref=e711] [cursor=pointer]:
+                      - /url: /products/the-3p-fulfilled-snowboard
+                      - img "Omega 3 Rybí olej" [ref=e712]
+                    - generic: Sold out
+                  - link "Omega 3 Rybí olej 4.4(76) 4.4 / 5, 76 $629.95 $1,259.90" [ref=e713] [cursor=pointer]:
+                    - /url: /products/the-3p-fulfilled-snowboard
+                    - generic [ref=e714]: Omega 3 Rybí olej
+                    - generic "4.4 / 5" [ref=e715]:
+                      - generic [ref=e716]: ★★★★★ ★★★★★
+                      - generic [ref=e717]: 4.4(76)
+                      - generic [ref=e718]: 4.4 / 5, 76
+                    - generic [ref=e719]: $629.95 $1,259.90
+                - generic [ref=e721]:
+                  - generic [ref=e722]:
+                    - link "Pre-Workout Energy" [ref=e723] [cursor=pointer]:
+                      - /url: /products/the-videographer-snowboard
+                      - img "Pre-Workout Energy" [ref=e724]
+                    - link "Choose":
+                      - /url: /products/the-videographer-snowboard
+                  - link "Pre-Workout Energy 4.7(231) 4.7 / 5, 231 $549.95 $999.95" [ref=e725] [cursor=pointer]:
+                    - /url: /products/the-videographer-snowboard
+                    - generic [ref=e726]: Pre-Workout Energy
+                    - generic "4.7 / 5" [ref=e727]:
+                      - generic [ref=e728]: ★★★★★ ★★★★★
+                      - generic [ref=e729]: 4.7(231)
+                      - generic [ref=e730]: 4.7 / 5, 231
+                    - generic [ref=e731]: $549.95 $999.95
+                - generic [ref=e733]:
+                  - generic [ref=e734]:
+                    - link "Whey Protein — Čokoláda" [ref=e735] [cursor=pointer]:
+                      - /url: /products/the-collection-snowboard-liquid
+                      - img "Whey Protein — Čokoláda" [ref=e736]
+                    - link "Choose":
+                      - /url: /products/the-collection-snowboard-liquid
+                  - link "Whey Protein — Čokoláda 4.8(342) 4.8 / 5, 342 $749.95 $1,874.95" [ref=e737] [cursor=pointer]:
+                    - /url: /products/the-collection-snowboard-liquid
+                    - generic [ref=e738]: Whey Protein — Čokoláda
+                    - generic "4.8 / 5" [ref=e739]:
+                      - generic [ref=e740]: ★★★★★ ★★★★★
+                      - generic [ref=e741]: 4.8(342)
+                      - generic [ref=e742]: 4.8 / 5, 342
+                    - generic [ref=e743]: $749.95 $1,874.95
+                - generic [ref=e745]:
+                  - generic [ref=e746]:
+                    - link "BCAA Aminokyseliny" [ref=e747] [cursor=pointer]:
+                      - /url: /products/the-multi-managed-snowboard
+                      - img "BCAA Aminokyseliny" [ref=e748]
+                    - link "Choose":
+                      - /url: /products/the-multi-managed-snowboard
+                  - link "BCAA Aminokyseliny 4.6(128) 4.6 / 5, 128 $629.95 $1,259.90" [ref=e749] [cursor=pointer]:
+                    - /url: /products/the-multi-managed-snowboard
+                    - generic [ref=e750]: BCAA Aminokyseliny
+                    - generic "4.6 / 5" [ref=e751]:
+                      - generic [ref=e752]: ★★★★★ ★★★★★
+                      - generic [ref=e753]: 4.6(128)
+                      - generic [ref=e754]: 4.6 / 5, 128
+                    - generic [ref=e755]: $629.95 $1,259.90
+                - generic [ref=e757]:
+                  - generic [ref=e758]:
+                    - link "Vitamín D3 + K2" [ref=e759] [cursor=pointer]:
+                      - /url: /products/the-multi-location-snowboard
+                      - img "Vitamín D3 + K2" [ref=e760]
+                    - link "Choose":
+                      - /url: /products/the-multi-location-snowboard
+                  - link "Vitamín D3 + K2 4.9(87) 4.9 / 5, 87 $729.95 $1,459.90" [ref=e761] [cursor=pointer]:
+                    - /url: /products/the-multi-location-snowboard
+                    - generic [ref=e762]: Vitamín D3 + K2
+                    - generic "4.9 / 5" [ref=e763]:
+                      - generic [ref=e764]: ★★★★★ ★★★★★
+                      - generic [ref=e765]: 4.9(87)
+                      - generic [ref=e766]: 4.9 / 5, 87
+                    - generic [ref=e767]: $729.95 $1,459.90
+                - generic [ref=e769]:
+                  - generic [ref=e770]:
+                    - link "Protein Blend — Výhodný set" [ref=e771] [cursor=pointer]:
+                      - /url: /products/the-complete-snowboard
+                      - img "Protein Blend — Výhodný set" [ref=e772]
+                    - link "Choose":
+                      - /url: /products/the-complete-snowboard
+                  - link "Protein Blend — Výhodný set 4.9(512) 4.9 / 5, 512 $699.95" [ref=e773] [cursor=pointer]:
+                    - /url: /products/the-complete-snowboard
+                    - generic [ref=e774]: Protein Blend — Výhodný set
+                    - generic "4.9 / 5" [ref=e775]:
+                      - generic [ref=e776]: ★★★★★ ★★★★★
+                      - generic [ref=e777]: 4.9(512)
+                      - generic [ref=e778]: 4.9 / 5, 512
+                    - generic [ref=e779]: $699.95
+                - generic [ref=e781]:
+                  - generic [ref=e782]:
+                    - link "Magnesium + B6" [ref=e783] [cursor=pointer]:
+                      - /url: /products/the-compare-at-price-snowboard
+                      - img "Magnesium + B6" [ref=e784]
+                    - link "Choose":
+                      - /url: /products/the-compare-at-price-snowboard
+                  - link "Magnesium + B6 4.5(64) 4.5 / 5, 64 $785.95 $885.95" [ref=e785] [cursor=pointer]:
+                    - /url: /products/the-compare-at-price-snowboard
+                    - generic [ref=e786]: Magnesium + B6
+                    - generic "4.5 / 5" [ref=e787]:
+                      - generic [ref=e788]: ★★★★★ ★★★★★
+                      - generic [ref=e789]: 4.5(64)
+                      - generic [ref=e790]: 4.5 / 5, 64
+                    - generic [ref=e791]: $785.95 $885.95
+              - generic [ref=e795]:
+                - button "Previous" [disabled] [ref=e796]:
+                  - generic [ref=e797]: ‹
+                - button "Next" [ref=e798] [cursor=pointer]:
+                  - generic [ref=e799]: ›
+          - text: ★★★★★ ★★★★★ ★★★★★ ★★★★★ ★★★★★ ★★★★★
+    - generic [ref=e803]:
+      - generic [ref=e804]:
+        - img [ref=e806]
+        - heading "Časté dotazy" [level=2] [ref=e810]
+        - generic [ref=e811]:
+          - paragraph [ref=e812]: Nenašli jste odpověď?
+          - paragraph [ref=e814]: Ozvěte se, rádi poradíme.
+          - link "Kontaktovat" [ref=e815] [cursor=pointer]:
+            - /url: /pages/contact
+      - generic [ref=e816]:
+        - group [ref=e818]:
+          - generic "Jak rychle doručujete?" [ref=e819] [cursor=pointer]:
+            - generic [ref=e820]: Jak rychle doručujete?
+          - paragraph [ref=e823]: Objednávky odesíláme do 24 hodin, doručení 1–2 dny.
+        - group [ref=e825]:
+          - generic "Jsou produkty testované?" [ref=e826] [cursor=pointer]:
+            - generic [ref=e827]: Jsou produkty testované?
+        - group [ref=e830]:
+          - generic "Můžu zboží vrátit?" [ref=e831] [cursor=pointer]:
+            - generic [ref=e832]: Můžu zboží vrátit?
+    - generic [ref=e836]:
+      - generic [ref=e837]:
+        - heading "Z našeho blogu" [level=2] [ref=e838]
+        - link "Všechny články" [ref=e839] [cursor=pointer]:
+          - /url: /blogs/news
+      - generic [ref=e840]:
+        - 'link "22. 8. 2026 MUDr. Petra Nováková·3 min read Kreatin: co o něm víme po třiceti letech výzkumu Nejlépe prozkoumaný doplněk na trhu. Co se potvrdilo, co se nepotvrdilo a co pořád nevíme." [ref=e841] [cursor=pointer]':
+          - /url: /blogs/news/kreatin-co-o-nem-vime-po-tricet-letech
+          - img [ref=e843]
+          - generic [ref=e847]:
+            - generic [ref=e848]: 22. 8. 2026
+            - generic [ref=e849]: MUDr. Petra Nováková·3 min read
+            - generic [ref=e850]: "Kreatin: co o něm víme po třiceti letech výzkumu"
+            - generic [ref=e851]: Nejlépe prozkoumaný doplněk na trhu. Co se potvrdilo, co se nepotvrdilo a co pořád nevíme.
+        - 'link "22. 8. 2026 Jan Dvořák·1 min read Protein po tréninku: kdy a kolik Anabolické okno není tak úzké, jak se říkalo. Co z toho plyne pro běžný trénink." [ref=e852] [cursor=pointer]':
+          - /url: /blogs/news/protein-po-treninku-kdy-a-kolik
+          - img [ref=e854]
+          - generic [ref=e858]:
+            - generic [ref=e859]: 22. 8. 2026
+            - generic [ref=e860]: Jan Dvořák·1 min read
+            - generic [ref=e861]: "Protein po tréninku: kdy a kolik"
+            - generic [ref=e862]: Anabolické okno není tak úzké, jak se říkalo. Co z toho plyne pro běžný trénink.
+        - link "22. 8. 2026 Tereza Marková·1 min read Jak číst etikety doplňků stravy Co na etiketě opravdu rozhoduje a co je jen marketing." [ref=e863] [cursor=pointer]:
+          - /url: /blogs/news/jak-cist-etikety-doplnku
+          - img [ref=e865]
+          - generic [ref=e869]:
+            - generic [ref=e870]: 22. 8. 2026
+            - generic [ref=e871]: Tereza Marková·1 min read
+            - generic [ref=e872]: Jak číst etikety doplňků stravy
+            - generic [ref=e873]: Co na etiketě opravdu rozhoduje a co je jen marketing.
+    - generic [ref=e876]:
+      - heading "Nakupuj přímo z fotky" [level=2] [ref=e877]
+      - generic [ref=e878]:
+        - link "Whey Protein" [ref=e880] [cursor=pointer]:
+          - /url: /collections/all
+          - generic [ref=e881]: +
+        - link "Kreatin" [ref=e883] [cursor=pointer]:
+          - /url: /collections/all
+          - generic [ref=e884]: +
+    - generic [ref=e887]:
+      - heading "Značky, kterým věříme" [level=2] [ref=e889]
+      - generic [ref=e891]:
+        - generic [ref=e892]:
+          - article [ref=e894]:
+            - heading "NUTREND" [level=3] [ref=e896]
+          - article [ref=e898]:
+            - heading "Optimum" [level=3] [ref=e900]
+          - article [ref=e902]:
+            - heading "Amix" [level=3] [ref=e904]
+          - article [ref=e906]:
+            - heading "BioTech" [level=3] [ref=e908]
+          - article [ref=e910]:
+            - heading "GymBeam" [level=3] [ref=e912]
+          - article [ref=e914]:
+            - heading "Reflex" [level=3] [ref=e916]
+        - generic [ref=e917]:
+          - article [ref=e919]:
+            - heading [level=3] [ref=e921]: NUTREND
+          - article [ref=e923]:
+            - heading [level=3] [ref=e925]: Optimum
+          - article [ref=e927]:
+            - heading [level=3] [ref=e929]: Amix
+          - article [ref=e931]:
+            - heading [level=3] [ref=e933]: BioTech
+          - article [ref=e935]:
+            - heading [level=3] [ref=e937]: GymBeam
+          - article [ref=e939]:
+            - heading [level=3] [ref=e941]: Reflex
+    - generic [ref=e944]:
+      - heading "Přihlas se k newsletteru" [level=2] [ref=e945]
+      - paragraph [ref=e947]: Tipy na trénink a exkluzivní slevy.
+      - generic [ref=e948]:
+        - generic [ref=e949]:
+          - textbox "your@email.com" [ref=e950]
+          - button "Subscribe" [ref=e951] [cursor=pointer]
+        - generic [ref=e952] [cursor=pointer]:
+          - checkbox "I agree to receive marketing emails and accept the privacy policy." [ref=e953]
+          - generic [ref=e954]:
+            - text: I agree to receive marketing emails and accept the
+            - link "privacy policy" [ref=e955]:
+              - /url: /policies/privacy-policy
+            - text: .
+      - paragraph [ref=e957]: PDF průvodce zdarma · Bez spamu
+    - generic [ref=e961]:
+      - paragraph [ref=e962]: Doporučené právě pro tebe
+      - paragraph [ref=e964]: Sem se připojí Won Companion — personalizovaný cross-sell přes app blok.
+      - generic [ref=e965] [cursor=pointer]: Prozkoumat aplikace
+  - generic [ref=e968]:
+    - generic [ref=e969]:
+      - generic [ref=e970]:
+        - paragraph [ref=e971]: Won
+        - paragraph [ref=e973]: Sportovní výživa s čistým složením a poctivým poradenstvím.
+        - generic [ref=e974]:
+          - img [ref=e975]
+          - img [ref=e980]
+          - img [ref=e987]
+          - img [ref=e992]
+          - img [ref=e998]
+          - img [ref=e1002]
+      - generic [ref=e1011]:
+        - navigation "Kategorie" [ref=e1012]:
+          - paragraph [ref=e1013]: Kategorie
+          - list [ref=e1014]:
+            - listitem [ref=e1015]:
+              - link "Proteiny" [ref=e1016] [cursor=pointer]:
+                - /url: /collections/proteiny
+            - listitem [ref=e1017]:
+              - link "Kreatin & aminokyseliny" [ref=e1018] [cursor=pointer]:
+                - /url: /collections/kreatin-aminokyseliny
+            - listitem [ref=e1019]:
+              - link "Vitamíny & minerály" [ref=e1020] [cursor=pointer]:
+                - /url: /collections/vitaminy-mineraly
+            - listitem [ref=e1021]:
+              - link "Zdraví & regenerace" [ref=e1022] [cursor=pointer]:
+                - /url: /collections/zdravi-regenerace
+        - navigation "Informace" [ref=e1023]:
+          - paragraph [ref=e1024]: Informace
+          - list [ref=e1025]:
+            - listitem [ref=e1026]:
+              - link "O nás" [ref=e1027] [cursor=pointer]:
+                - /url: /pages/about
+            - listitem [ref=e1028]:
+              - link "Blog" [ref=e1029] [cursor=pointer]:
+                - /url: /blogs/news
+            - listitem [ref=e1030]:
+              - link "Časté dotazy" [ref=e1031] [cursor=pointer]:
+                - /url: /pages/faq
+            - listitem [ref=e1032]:
+              - link "Kontakt" [ref=e1033] [cursor=pointer]:
+                - /url: /pages/contact
+        - navigation "Zákaznický servis" [ref=e1034]:
+          - paragraph [ref=e1035]: Zákaznický servis
+          - list [ref=e1036]:
+            - listitem [ref=e1037]:
+              - link "Doprava a platba" [ref=e1038] [cursor=pointer]:
+                - /url: /pages/shipping
+            - listitem [ref=e1039]:
+              - link "Vrácení zboží" [ref=e1040] [cursor=pointer]:
+                - /url: /policies/refund-policy
+            - listitem [ref=e1041]:
+              - link "Reklamace" [ref=e1042] [cursor=pointer]:
+                - /url: /pages/claims
+            - listitem [ref=e1043]:
+              - link "Věrnostní klub" [ref=e1044] [cursor=pointer]:
+                - /url: /account/register
+    - generic [ref=e1045]:
+      - paragraph [ref=e1046]: © 2026 B2b_b2c_store_development · Všechna práva vyhrazena.
+      - list [ref=e1047]:
+        - listitem [ref=e1048]:
+          - link "Obchodní podmínky" [ref=e1049] [cursor=pointer]:
+            - /url: /policies/terms-of-service
+        - listitem [ref=e1050]:
+          - link "Ochrana soukromí" [ref=e1051] [cursor=pointer]:
+            - /url: /policies/privacy-policy
+  - status "Cart notifications"
+```

@@ -1,0 +1,107 @@
+{
+  "url": "/pages/contact?view=won-qa-page-9",
+  "width": 390,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Access to script at 'http://cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-5059b83f.js' from origin 'http://127.0.0.1:9292' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "Failed to load resource: net::ERR_FAILED",
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-5059b83f.js",
+        "error": "net::ERR_FAILED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-9",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=cfef9df2-9b26-4afc-906b-79583f892188&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      }
+    ],
+    "failedAssets": [],
+    "httpAttempts": [
+      200
+    ],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    },
+    "responsive": "pass"
+  },
+  "results": [
+    {
+      "id": "qa111",
+      "type": "won-feature",
+      "variant": "icon_style=disc",
+      "label": "won-feature · icon_style=disc",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa111",
+      "selector": "[id$=\"__qa111\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa111-390.png"
+      ],
+      "text": "QA sample benefit",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 332.859375,
+        "width": 390,
+        "height": 178.8125
+      }
+    },
+    {
+      "id": "qa112",
+      "type": "won-feature",
+      "variant": "icon_style=bare",
+      "label": "won-feature · icon_style=bare",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-9",
+      "sectionId": "qa112",
+      "selector": "[id$=\"__qa112\"]",
+      "template": "page.won-qa-page-9.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa112-390.png"
+      ],
+      "text": "QA sample benefit",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 652.453125,
+        "width": 390,
+        "height": 178.8125
+      }
+    }
+  ]
+}

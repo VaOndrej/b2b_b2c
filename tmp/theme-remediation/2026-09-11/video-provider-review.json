@@ -1,0 +1,68 @@
+{
+  "results": [
+    {
+      "id": "qa183",
+      "width": 390,
+      "ready": true,
+      "path": "tmp/theme-remediation/2026-09-11/qa183-390-provider-ready.png",
+      "provider": "https://www.youtube.com/embed/_9VUPq3SxOc"
+    },
+    {
+      "id": "qa184",
+      "width": 390,
+      "ready": true,
+      "path": "tmp/theme-remediation/2026-09-11/qa184-390-provider-ready.png",
+      "provider": "https://player.vimeo.com/video/76979871"
+    },
+    {
+      "id": "qa185",
+      "width": 390,
+      "ready": true,
+      "path": "tmp/theme-remediation/2026-09-11/qa185-390-provider-ready.png",
+      "provider": "https://www.youtube.com/embed/_9VUPq3SxOc"
+    },
+    {
+      "id": "qa183",
+      "width": 768,
+      "ready": true,
+      "path": "tmp/theme-remediation/2026-09-11/qa183-768-provider-ready.png",
+      "provider": "https://www.youtube.com/embed/_9VUPq3SxOc"
+    },
+    {
+      "id": "qa184",
+      "width": 768,
+      "ready": true,
+      "path": "tmp/theme-remediation/2026-09-11/qa184-768-provider-ready.png",
+      "provider": "https://player.vimeo.com/video/76979871"
+    },
+    {
+      "id": "qa185",
+      "width": 768,
+      "ready": true,
+      "path": "tmp/theme-remediation/2026-09-11/qa185-768-provider-ready.png",
+      "provider": "https://www.youtube.com/embed/_9VUPq3SxOc"
+    },
+    {
+      "id": "qa183",
+      "width": 1440,
+      "ready": true,
+      "path": "tmp/theme-remediation/2026-09-11/qa183-1440-provider-ready.png",
+      "provider": "https://www.youtube.com/embed/_9VUPq3SxOc"
+    },
+    {
+      "id": "qa184",
+      "width": 1440,
+      "ready": true,
+      "path": "tmp/theme-remediation/2026-09-11/qa184-1440-provider-ready.png",
+      "provider": "https://player.vimeo.com/video/76979871"
+    },
+    {
+      "id": "qa185",
+      "width": 1440,
+      "ready": true,
+      "path": "tmp/theme-remediation/2026-09-11/qa185-1440-provider-ready.png",
+      "provider": "https://www.youtube.com/embed/_9VUPq3SxOc"
+    }
+  ],
+  "issues": []
+}

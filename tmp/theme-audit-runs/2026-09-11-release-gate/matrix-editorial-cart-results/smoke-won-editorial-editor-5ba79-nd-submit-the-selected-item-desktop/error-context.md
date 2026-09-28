@@ -1,0 +1,447 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#MainContent"
+  - generic [ref=e3]:
+    - generic [ref=e7]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: ✨
+        - link "Nová kolekce Hydratace je tu 💧" [ref=e11] [cursor=pointer]:
+          - /url: /collections/all
+      - button "Close" [ref=e12] [cursor=pointer]:
+        - generic [ref=e13]: ×
+    - banner [ref=e14]:
+      - generic [ref=e17]:
+        - navigation [ref=e21]:
+          - list [ref=e24]:
+            - generic:
+              - link "Home" [ref=e25] [cursor=pointer]:
+                - /url: /
+                - generic [ref=e26]: Home
+              - link "Catalog" [ref=e27] [cursor=pointer]:
+                - /url: /collections/all
+                - generic [ref=e28]: Catalog
+              - link "Contact" [ref=e29] [cursor=pointer]:
+                - /url: /pages/contact
+                - generic [ref=e30]: Contact
+        - link "B2b_b2c_store_development" [ref=e32] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e33]: B2b_b2c_store_development
+        - generic [ref=e34]:
+          - button "USD Region and language selector" [ref=e36] [cursor=pointer]:
+            - generic [ref=e37]: USD
+            - generic [ref=e38]: Region and language selector
+            - generic:
+              - img
+          - search "Search" [ref=e39]:
+            - search [ref=e40]:
+              - generic [ref=e42]:
+                - generic [ref=e43]: Search
+                - combobox "Search" [ref=e44]
+                - generic:
+                  - img
+          - generic [ref=e45]:
+            - button "Account" [ref=e47] [cursor=pointer]:
+              - img [ref=e49]
+            - button "Cart" [ref=e53] [cursor=pointer]:
+              - generic [ref=e54]:
+                - generic:
+                  - img
+                - generic [ref=e55]:
+                  - status:
+                    - generic [ref=e57]: "Total items in cart: 0"
+  - main [ref=e58]:
+    - generic [ref=e63]:
+      - heading "QA editorial · main" [level=1] [ref=e64]
+      - paragraph [ref=e66]: Demonstration composition and fictional example copy — not product claims.
+    - generic [ref=e69]:
+      - link "Skip to product information" [ref=e70] [cursor=pointer]:
+        - /url: "#ProductInformation-template--22737006657777__main"
+      - generic [ref=e71]:
+        - list [ref=e74]:
+          - listitem [ref=e75]:
+            - button "Zoom" [ref=e76]:
+              - generic [ref=e77]: Open image in full screen
+            - img "Pre-Workout Energy" [ref=e79]
+        - generic [ref=e82]:
+          - navigation "Breadcrumb" [ref=e84]:
+            - list [ref=e85]:
+              - listitem [ref=e86]:
+                - link "Home" [ref=e87] [cursor=pointer]:
+                  - /url: /
+              - listitem [ref=e88]:
+                - text: /
+                - link "Automated Collection" [ref=e89] [cursor=pointer]:
+                  - /url: /collections/automated-collection
+              - listitem [ref=e90]:
+                - text: /
+                - generic [ref=e91]: Pre-Workout Energy
+          - heading "Pre-Workout Energy" [level=1] [ref=e95]
+          - generic [ref=e98]:
+            - generic [ref=e99]:
+              - term [ref=e100]: "Brand:"
+              - definition [ref=e101]: B2b_b2c_store_development
+            - generic [ref=e102]:
+              - term [ref=e103]: "Type:"
+              - definition [ref=e104]: Pre-workout
+          - generic [ref=e105]:
+            - paragraph [ref=e106]: Pre-workout s kofeinem, beta-alaninem a citrulinem. Nabudí, ale nerozhodí — bez dávky, po které se třesou ruce.
+            - list [ref=e107]:
+              - listitem [ref=e108]: 200 mg kofeinu v porci
+              - listitem [ref=e109]: 3 g beta-alaninu pro delší sérii
+              - listitem [ref=e110]: 6 g citrulin malátu pro prokrvení
+              - listitem [ref=e111]: Bez zbytečných plnidel
+            - paragraph [ref=e112]:
+              - strong [ref=e113]: "Dávkování:"
+              - text: 1 odměrku (10 g) do 300 ml vody 20 minut před tréninkem. Neužívej po 16. hodině.
+          - group "Balení" [ref=e119]:
+            - generic [ref=e120]: Balení
+            - generic [ref=e121] [cursor=pointer]:
+              - radio "500 g" [checked] [ref=e122]
+              - generic: 500 g
+            - generic [ref=e123] [cursor=pointer]:
+              - radio "1 000 g" [ref=e124]
+              - generic: 1 000 g
+            - generic [ref=e125] [cursor=pointer]:
+              - radio "2 500 g" [ref=e126]
+              - generic: 2 500 g
+          - generic [ref=e128]:
+            - group [ref=e129]:
+              - generic [ref=e130]: Sale price
+              - text: $549.95
+            - group [ref=e131]:
+              - generic [ref=e132]: Regular price
+              - text: $999.95
+          - generic [ref=e135]:
+            - generic [ref=e136]: "Per unit:"
+            - generic [ref=e137]: $109.99
+            - generic [ref=e138]: / 100 g
+          - generic [ref=e140]:
+            - status [ref=e141]
+            - generic [ref=e143]:
+              - generic [ref=e145]:
+                - button "Decrease quantity" [disabled] [ref=e146] [cursor=pointer]:
+                  - generic [ref=e147]: Decrease quantity
+                  - generic:
+                    - img
+                - spinbutton "Quantity" [ref=e148]: "1"
+                - button "Increase quantity" [ref=e149] [cursor=pointer]:
+                  - generic [ref=e150]: Increase quantity
+                  - generic:
+                    - img
+              - button "Add to cart" [ref=e153] [cursor=pointer]:
+                - generic [ref=e154]:
+                  - generic:
+                    - img
+                  - generic [ref=e156]: Add to cart
+                - generic [ref=e157]:
+                  - generic:
+                    - img
+              - button "Buy it now" [ref=e162] [cursor=pointer]
+          - generic [ref=e165]:
+            - generic [ref=e166]: In stock
+            - generic [ref=e168]: 🚚 Skladem, odesíláme dnes
+          - generic "4.7 / 5" [ref=e171]:
+            - generic [ref=e172]: ★★★★★ ★★★★★
+            - generic [ref=e173]: 4.7(231)
+            - generic [ref=e174]: 4.7 / 5, 231
+    - generic [ref=e179]:
+      - heading "QA editorial · bundles_details" [level=1] [ref=e180]
+      - paragraph [ref=e182]: Demonstration composition and fictional example copy — not product claims.
+    - generic [ref=e186]:
+      - generic [ref=e188]:
+        - heading "Complete your selection" [level=2] [ref=e189]
+        - generic [ref=e190]:
+          - generic [ref=e194]:
+            - link "Pre-Workout Energy" [ref=e196] [cursor=pointer]:
+              - /url: /products/the-videographer-snowboard
+              - img "Pre-Workout Energy" [ref=e197]
+            - link "Pre-Workout Energy 4.7(231) 4.7 / 5, 231 $549.95 $999.95" [ref=e198] [cursor=pointer]:
+              - /url: /products/the-videographer-snowboard
+              - generic [ref=e199]: Pre-Workout Energy
+              - generic "4.7 / 5" [ref=e200]:
+                - generic [ref=e201]: ★★★★★ ★★★★★
+                - generic [ref=e202]: 4.7(231)
+                - generic [ref=e203]: 4.7 / 5, 231
+              - generic [ref=e204]: $549.95 $999.95
+            - link "Choose" [ref=e205] [cursor=pointer]:
+              - /url: /products/the-videographer-snowboard
+          - generic [ref=e209]:
+            - link "Kreatin Monohydrát" [ref=e211] [cursor=pointer]:
+              - /url: /products/the-collection-snowboard-hydrogen
+              - img "Kreatin Monohydrát" [ref=e212]
+            - link "Kreatin Monohydrát 4.7(205) 4.7 / 5, 205 $600.00 $1,000.00" [ref=e213] [cursor=pointer]:
+              - /url: /products/the-collection-snowboard-hydrogen
+              - generic [ref=e214]: Kreatin Monohydrát
+              - generic "4.7 / 5" [ref=e215]:
+                - generic [ref=e216]: ★★★★★ ★★★★★
+                - generic [ref=e217]: 4.7(205)
+                - generic [ref=e218]: 4.7 / 5, 205
+              - generic [ref=e219]: $600.00 $1,000.00
+            - link "Choose" [ref=e220] [cursor=pointer]:
+              - /url: /products/the-collection-snowboard-hydrogen
+      - generic [ref=e223]:
+        - group [ref=e225]:
+          - generic "How to use" [ref=e226] [cursor=pointer]:
+            - generic [ref=e227]: How to use
+        - group [ref=e230]:
+          - generic "Materials and composition" [ref=e231] [cursor=pointer]:
+            - generic [ref=e232]: Materials and composition
+        - group [ref=e235]:
+          - generic "Who it is for" [ref=e236] [cursor=pointer]:
+            - generic [ref=e237]: Who it is for
+    - generic [ref=e243]:
+      - heading "QA editorial · reviews" [level=1] [ref=e244]
+      - paragraph [ref=e246]: Demonstration composition and fictional example copy — not product claims.
+    - generic [ref=e249]:
+      - generic [ref=e250]:
+        - heading "Stories from everyday use" [level=2] [ref=e251]
+        - generic [ref=e252]: Read all reviews
+      - generic [ref=e254]:
+        - article [ref=e256]:
+          - generic [ref=e259]:
+            - heading "Example review headline 1" [level=3] [ref=e260]
+            - paragraph [ref=e262]: Replace this sample with a genuine customer review, and add an approved customer image.
+            - paragraph [ref=e264]: QA fictional example
+        - article [ref=e266]:
+          - generic [ref=e269]:
+            - heading "Example review headline 2" [level=3] [ref=e270]
+            - paragraph [ref=e272]: Replace this sample with a genuine customer review, and add an approved customer image.
+            - paragraph [ref=e274]: QA fictional example
+    - generic [ref=e279]:
+      - heading "QA editorial · benefits_expert" [level=1] [ref=e280]
+      - paragraph [ref=e282]: Demonstration composition and fictional example copy — not product claims.
+    - generic [ref=e289]:
+      - generic [ref=e291]:
+        - heading "Four benefits worth exploring" [level=2] [ref=e292]
+        - generic [ref=e293]:
+          - generic [ref=e295]:
+            - generic [ref=e296]: "01"
+            - img [ref=e298]
+            - generic [ref=e300]:
+              - heading "Everyday comfort" [level=3] [ref=e301]
+              - paragraph [ref=e303]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+          - generic [ref=e305]:
+            - generic [ref=e306]: "02"
+            - img [ref=e308]
+            - generic [ref=e311]:
+              - heading "Thoughtful materials" [level=3] [ref=e312]
+              - paragraph [ref=e314]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+          - generic [ref=e316]:
+            - generic [ref=e317]: "03"
+            - img [ref=e319]
+            - generic [ref=e322]:
+              - heading "Reliable protection" [level=3] [ref=e323]
+              - paragraph [ref=e325]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+          - generic [ref=e327]:
+            - generic [ref=e328]: "04"
+            - img [ref=e330]
+            - generic [ref=e332]:
+              - heading "Easy to use" [level=3] [ref=e333]
+              - paragraph [ref=e335]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+      - generic [ref=e337]:
+        - heading "An expert perspective" [level=2] [ref=e338]
+        - article [ref=e341]:
+          - generic [ref=e344]: QA demonstration image
+          - generic [ref=e345]:
+            - heading "Expert name" [level=3] [ref=e346]
+            - paragraph [ref=e347]: Role or qualification
+            - paragraph [ref=e349]: Add an approved expert quotation relevant to this product. Replace all example content before publishing.
+    - generic [ref=e354]:
+      - heading "QA editorial · trust" [level=1] [ref=e355]
+      - paragraph [ref=e357]: Demonstration composition and fictional example copy — not product claims.
+    - generic [ref=e361]:
+      - generic [ref=e363]:
+        - img [ref=e365]
+        - generic [ref=e368]:
+          - heading "Your verified standard" [level=3] [ref=e369]
+          - paragraph [ref=e371]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+      - generic [ref=e373]:
+        - img [ref=e375]
+        - generic [ref=e378]:
+          - heading "Your material promise" [level=3] [ref=e379]
+          - paragraph [ref=e381]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+      - generic [ref=e383]:
+        - img [ref=e385]
+        - generic [ref=e388]:
+          - heading "Your service commitment" [level=3] [ref=e389]
+          - paragraph [ref=e391]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+    - generic [ref=e396]:
+      - heading "QA editorial · reasons" [level=1] [ref=e397]
+      - paragraph [ref=e399]: Demonstration composition and fictional example copy — not product claims.
+    - generic [ref=e402]:
+      - heading "Why choose this product?" [level=2] [ref=e404]
+      - generic [ref=e405]:
+        - generic [ref=e407]:
+          - img [ref=e409]
+          - generic [ref=e411]:
+            - heading "A clear everyday purpose" [level=3] [ref=e412]
+            - paragraph [ref=e414]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+        - generic [ref=e416]:
+          - img [ref=e418]
+          - generic [ref=e420]:
+            - heading "Thoughtful design details" [level=3] [ref=e421]
+            - paragraph [ref=e423]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+        - generic [ref=e425]:
+          - img [ref=e427]
+          - generic [ref=e429]:
+            - heading "Simple to incorporate into your routine" [level=3] [ref=e430]
+            - paragraph [ref=e432]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+        - generic [ref=e434]:
+          - img [ref=e436]
+          - generic [ref=e438]:
+            - heading "Straightforward product information" [level=3] [ref=e439]
+            - paragraph [ref=e441]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+        - generic [ref=e443]:
+          - img [ref=e445]
+          - generic [ref=e447]:
+            - heading "Support when you need it" [level=3] [ref=e448]
+            - paragraph [ref=e450]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+    - generic [ref=e455]:
+      - heading "QA editorial · composition" [level=1] [ref=e456]
+      - paragraph [ref=e458]: Demonstration composition and fictional example copy — not product claims.
+    - generic [ref=e461]:
+      - heading "What makes the composition distinctive?" [level=2] [ref=e463]
+      - generic [ref=e464]:
+        - generic [ref=e467]:
+          - article [ref=e469]:
+            - paragraph [ref=e472]: Explain the product composition in plain language. Connect this copy to product information or maintain it in the theme editor.
+          - generic [ref=e474]:
+            - generic [ref=e475]: "17"
+            - generic [ref=e476]:
+              - heading "Key components" [level=3] [ref=e477]
+              - paragraph [ref=e479]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+        - generic [ref=e482]:
+          - generic [ref=e484]:
+            - img [ref=e486]
+            - generic [ref=e489]:
+              - heading "Structure" [level=3] [ref=e490]
+              - paragraph [ref=e492]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+          - generic [ref=e494]:
+            - img [ref=e496]
+            - generic [ref=e498]:
+              - heading "Comfort" [level=3] [ref=e499]
+              - paragraph [ref=e501]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+          - generic [ref=e503]:
+            - img [ref=e505]
+            - generic [ref=e508]:
+              - heading "Protection" [level=3] [ref=e509]
+              - paragraph [ref=e511]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+          - generic [ref=e513]:
+            - img [ref=e515]
+            - generic [ref=e517]:
+              - heading "Finish" [level=3] [ref=e518]
+              - paragraph [ref=e520]: QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.
+    - generic [ref=e525]:
+      - heading "QA editorial · faq" [level=1] [ref=e526]
+      - paragraph [ref=e528]: Demonstration composition and fictional example copy — not product claims.
+    - generic [ref=e531]:
+      - heading "Need to know more?" [level=2] [ref=e533]
+      - generic [ref=e534]:
+        - group [ref=e536]:
+          - generic "Who is this product suitable for?" [ref=e537] [cursor=pointer]:
+            - generic [ref=e538]: Who is this product suitable for?
+        - group [ref=e541]:
+          - generic "How should I use it?" [ref=e542] [cursor=pointer]:
+            - generic [ref=e543]: How should I use it?
+        - group [ref=e546]:
+          - generic "How do I care for it?" [ref=e547] [cursor=pointer]:
+            - generic [ref=e548]: How do I care for it?
+        - group [ref=e551]:
+          - generic "Can I use it every day?" [ref=e552] [cursor=pointer]:
+            - generic [ref=e553]: Can I use it every day?
+        - group [ref=e556]:
+          - generic "Which option should I choose?" [ref=e557] [cursor=pointer]:
+            - generic [ref=e558]: Which option should I choose?
+        - group [ref=e561]:
+          - generic "Where can I find more information?" [ref=e562] [cursor=pointer]:
+            - generic [ref=e563]: Where can I find more information?
+    - generic [ref=e569]:
+      - heading "QA editorial · editorial" [level=1] [ref=e570]
+      - paragraph [ref=e572]: Demonstration composition and fictional example copy — not product claims.
+    - generic [ref=e575]:
+      - heading "Explore more stories" [level=2] [ref=e577]
+      - generic [ref=e578]:
+        - generic [ref=e580]:
+          - img "Pre-Workout Energy" [ref=e582]
+          - generic [ref=e584]: Getting started
+        - generic [ref=e586]:
+          - img "Pre-Workout Energy" [ref=e588]
+          - generic [ref=e590]: Choosing your essentials
+        - generic [ref=e592]:
+          - img "Pre-Workout Energy" [ref=e594]
+          - generic [ref=e596]: Everyday inspiration
+        - generic [ref=e598]:
+          - img "Pre-Workout Energy" [ref=e600]
+          - generic [ref=e602]: Care and maintenance
+  - generic [ref=e605]:
+    - generic [ref=e606]:
+      - generic [ref=e607]:
+        - paragraph [ref=e608]: Won
+        - paragraph [ref=e610]: Sportovní výživa s čistým složením a poctivým poradenstvím.
+        - generic [ref=e611]:
+          - img [ref=e612]
+          - img [ref=e617]
+          - img [ref=e624]
+          - img [ref=e629]
+          - img [ref=e635]
+          - img [ref=e639]
+      - generic [ref=e648]:
+        - navigation "Kategorie" [ref=e649]:
+          - paragraph [ref=e650]: Kategorie
+          - list [ref=e651]:
+            - listitem [ref=e652]:
+              - link "Proteiny" [ref=e653] [cursor=pointer]:
+                - /url: /collections/proteiny
+            - listitem [ref=e654]:
+              - link "Kreatin & aminokyseliny" [ref=e655] [cursor=pointer]:
+                - /url: /collections/kreatin-aminokyseliny
+            - listitem [ref=e656]:
+              - link "Vitamíny & minerály" [ref=e657] [cursor=pointer]:
+                - /url: /collections/vitaminy-mineraly
+            - listitem [ref=e658]:
+              - link "Zdraví & regenerace" [ref=e659] [cursor=pointer]:
+                - /url: /collections/zdravi-regenerace
+        - navigation "Informace" [ref=e660]:
+          - paragraph [ref=e661]: Informace
+          - list [ref=e662]:
+            - listitem [ref=e663]:
+              - link "O nás" [ref=e664] [cursor=pointer]:
+                - /url: /pages/about
+            - listitem [ref=e665]:
+              - link "Blog" [ref=e666] [cursor=pointer]:
+                - /url: /blogs/news
+            - listitem [ref=e667]:
+              - link "Časté dotazy" [ref=e668] [cursor=pointer]:
+                - /url: /pages/faq
+            - listitem [ref=e669]:
+              - link "Kontakt" [ref=e670] [cursor=pointer]:
+                - /url: /pages/contact
+        - navigation "Zákaznický servis" [ref=e671]:
+          - paragraph [ref=e672]: Zákaznický servis
+          - list [ref=e673]:
+            - listitem [ref=e674]:
+              - link "Doprava a platba" [ref=e675] [cursor=pointer]:
+                - /url: /pages/shipping
+            - listitem [ref=e676]:
+              - link "Vrácení zboží" [ref=e677] [cursor=pointer]:
+                - /url: /policies/refund-policy
+            - listitem [ref=e678]:
+              - link "Reklamace" [ref=e679] [cursor=pointer]:
+                - /url: /pages/claims
+            - listitem [ref=e680]:
+              - link "Věrnostní klub" [ref=e681] [cursor=pointer]:
+                - /url: /account/register
+    - generic [ref=e682]:
+      - paragraph [ref=e683]: © 2026 B2b_b2c_store_development · Všechna práva vyhrazena.
+      - list [ref=e684]:
+        - listitem [ref=e685]:
+          - link "Obchodní podmínky" [ref=e686] [cursor=pointer]:
+            - /url: /policies/terms-of-service
+        - listitem [ref=e687]:
+          - link "Ochrana soukromí" [ref=e688] [cursor=pointer]:
+            - /url: /policies/privacy-policy
+  - status "Cart notifications"
+```

@@ -293,6 +293,13 @@ if (existsSync(schemaFile)) {
 const headerFile = join(outDir, 'sections', 'header.liquid');
 if (!existsSync(headerFile)) {
   console.warn('2f: sections/header.liquid not found — header search left as the base has it');
+} else if (
+  !readFileSync(headerFile, 'utf8').includes("render 'search'") &&
+  !readFileSync(headerFile, 'utf8').includes("render 'won-search'")
+) {
+  // Skeleton's header has no search slot at all — there is nothing to re-point.
+  // Only a base that renders the search snippet must match the anchors below.
+  console.warn('2f: base header renders no search snippet — Won search wiring skipped');
 } else {
   let header = readFileSync(headerFile, 'utf8');
   const swaps = [
@@ -402,6 +409,47 @@ if (!existsSync(searchInputBlock)) {
   }
 }
 
+// 2j. Stop loading the native cart discount-code component.
+// snippets/cart-summary.liquid renders a "Discount code" field whose Apply button
+// posts to /cart/update.js with a `discount` list — the classic Shopify
+// discount-code protocol, with its own applicable/shipping error branches. This
+// theme's promo mechanism is a private line-item property (`_promo_code`) matched
+// by an AUTOMATIC Shopify Discount Function, so the two would be two mechanisms
+// bound to one control. Not loading assets/cart-discount.js is the removal:
+// <cart-discount-component> is never defined, so none of that code can run and
+// there is nothing to intercept. The markup stays, the asset stays, and no CSS
+// keys off the element name, so the field is unchanged on screen —
+// won-promo-code.js supplies the behaviour. Re-enabling is deleting this step.
+const scriptsFile = join(outDir, 'snippets', 'scripts.liquid');
+if (!existsSync(scriptsFile)) {
+  console.warn('2j: snippets/scripts.liquid not found — native cart discount script left as is');
+} else {
+  let sc = readFileSync(scriptsFile, 'utf8');
+  const nativeDiscountScript =
+    "{% if settings.show_add_discount_code %}\n" +
+    "  <script\n" +
+    "    src=\"{{ 'cart-discount.js' | asset_url }}\"\n" +
+    "    type=\"module\"\n" +
+    "    fetchpriority=\"low\"\n" +
+    "  ></script>\n" +
+    "{% endif %}";
+  const replacement =
+    "{% comment %}\n" +
+    "  cart-discount.js is deliberately NOT loaded: the discount field is driven by\n" +
+    "  won-promo-code.js and the _promo_code line-item property, not by Shopify\n" +
+    "  discount codes. Removed by themes/build/compose.mjs step 2j.\n" +
+    "{% endcomment %}";
+  if (sc.includes(nativeDiscountScript)) {
+    sc = sc.replace(nativeDiscountScript, () => replacement);
+    writeFileSync(scriptsFile, sc);
+    console.log('2j: native cart discount-code component no longer loaded');
+  } else if (!sc.includes('cart-discount.js')) {
+    console.log('2j: base does not load cart-discount.js — nothing to remove');
+  } else {
+    throw new Error('2j: scripts.liquid loads cart-discount.js in an unexpected shape — re-derive the patch');
+  }
+}
+
 // 2b. Wire the shared won token/utility stylesheet into the base layout <head>.
 // won-tokens.css holds the global :root design tokens and shared classes
 // (.won-container, .won-section, .won-heading, .won-btn) that every won section
@@ -413,6 +461,7 @@ const wonHead = [
   "{{ 'won-toast.css' | asset_url | stylesheet_tag }}",
   "<script src=\"{{ 'won-cart.js' | asset_url }}\" defer></script>",
   "<script src=\"{{ 'won-toast.js' | asset_url }}\" defer></script>",
+  "<script src=\"{{ 'won-promo-code.js' | asset_url }}\" defer></script>",
   "{% render 'won-site-schema' %}",
 ].join('\n  ');
 const layoutFile = join(outDir, 'layout', 'theme.liquid');
@@ -429,6 +478,14 @@ if (existsSync(layoutFile)) {
   // unconditional render costs an off storefront one no-op include.
   if (!layout.includes('won-toast-config')) {
     layout = layout.replace(/<\/body>/i, `  {% render 'won-toast-config' %}\n  </body>`);
+  }
+  // won-promo-config carries the promo identifier and its strings to
+  // won-promo-code.js, which takes over the behaviour of Horizon's existing cart
+  // discount field. Same reasoning as the toast region: it belongs to the layout,
+  // not to a section, because sections/*-group.json is merchant data that publish
+  // never rewrites. The snippet renders nothing when the discount field is off.
+  if (!layout.includes('won-promo-config')) {
+    layout = layout.replace(/<\/body>/i, `  {% render 'won-promo-config' %}\n  </body>`);
   }
   writeFileSync(layoutFile, layout);
 } else {
@@ -466,6 +523,20 @@ if (existsSync(wonLocales)) {
     const target = join(outDir, 'locales', file);
     const base = existsSync(target) ? readJson(target) : {};
     writeFileSync(target, JSON.stringify(deepMerge(base, fragment), null, 2) + '\n');
+    mergedLocales++;
+  }
+}
+
+// Optional additions enrich languages already supported by the chosen base.
+// They must not create incomplete language packs in a smaller base (Skeleton).
+const existingLocaleAdditions = join(wonLocales, 'existing');
+if (existsSync(existingLocaleAdditions)) {
+  for (const file of readdirSync(existingLocaleAdditions)) {
+    if (!file.endsWith('.json')) continue;
+    const localeTarget = join(outDir, 'locales', file);
+    if (!existsSync(localeTarget)) continue;
+    const fragment = readJson(join(existingLocaleAdditions, file));
+    writeFileSync(localeTarget, JSON.stringify(deepMerge(readJson(localeTarget), fragment), null, 2) + '\n');
     mergedLocales++;
   }
 }

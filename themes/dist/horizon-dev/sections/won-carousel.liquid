@@ -257,6 +257,10 @@
     max-inline-size: 100cqi;
     scroll-snap-align: none;
   }
+  /* Marquee items own their intrinsic width. Size containment would erase
+     that contribution and collapse content-sized cards/CTA to a narrow strip. */
+  .won-carousel__mq-group > .shopify-block:has(> .won-slide),
+  .won-carousel--marquee .won-slide__body { container-type: normal; }
   .won-carousel--marquee:hover .won-carousel__track[data-marquee] { animation-play-state: paused; }
   @keyframes won-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) {
@@ -956,6 +960,42 @@
     }
   ],
   "presets": [
+    {
+      "name": "t:won.presets.split_reviews",
+      "category": "t:won.categories.content",
+      "settings": {
+        "source": "manual",
+        "layout": "grid",
+        "columns_desktop": 2,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "mobile_carousel": true
+      },
+      "blocks": [
+        {
+          "type": "won-slide",
+          "settings": {
+            "visualization": "testimonial",
+            "card_style": "plain",
+            "inherit_color_scheme": false,
+            "color_scheme": "scheme-1",
+            "heading_size_desktop": 20,
+            "heading_size_mobile": 20
+          }
+        },
+        {
+          "type": "won-slide",
+          "settings": {
+            "visualization": "testimonial",
+            "card_style": "plain",
+            "inherit_color_scheme": false,
+            "color_scheme": "scheme-1",
+            "heading_size_desktop": 20,
+            "heading_size_mobile": 20
+          }
+        }
+      ]
+    },
     {
       "name": "t:won.presets.product_carousel",
       "category": "t:won.categories.products",

@@ -123,6 +123,8 @@
      read as a broken fragment. Alignment of the section's own copy is carried by
      text-align + the margin-inline pair below, never by shrinking boxes. */
   .won-band__content {
+    container: won-copy / inline-size;
+    min-inline-size: 0;
     display: flex;
     flex-direction: column;
     gap: var(--won-space-4);
@@ -189,7 +191,7 @@
     }
     .won-band__blocks > * { break-inside: avoid; margin-block-end: var(--won-space-5); }
     .won-band__blocks > :last-child { margin-block-end: 0; }
-    .won-band__heading { font-size: var(--won-h-size-d, 3rem); max-width: var(--won-h-mw-d, 60%); }
+    .won-band__heading { font-size: min(var(--won-h-size-d, 3rem), max(var(--won-h-size-m, 2rem), 6cqw)); max-inline-size: min(100%, max(var(--won-h-mw-d, 60%), 18ch)); }
     .won-band--split { flex-direction: row; align-items: center; }
     .won-band--split.won-band--media-right { flex-direction: row-reverse; }
     .won-band--split .won-band__media,

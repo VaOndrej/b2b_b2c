@@ -161,6 +161,44 @@
           }
         ],
         "default": "hover"
+      },
+      {
+        "type": "select",
+        "id": "won_card_add_size",
+        "label": "t:won.settings.card_add_size",
+        "info": "t:won.info.card_add_size",
+        "options": [
+          {
+            "value": "compact",
+            "label": "t:won.options.size_compact"
+          },
+          {
+            "value": "regular",
+            "label": "t:won.options.size_regular"
+          },
+          {
+            "value": "large",
+            "label": "t:won.options.size_large"
+          }
+        ],
+        "default": "regular"
+      },
+      {
+        "type": "select",
+        "id": "won_card_choose_action",
+        "label": "t:won.settings.card_choose_action",
+        "info": "t:won.info.card_choose_action",
+        "options": [
+          {
+            "value": "modal",
+            "label": "t:won.options.choose_modal"
+          },
+          {
+            "value": "link",
+            "label": "t:won.options.choose_link"
+          }
+        ],
+        "default": "modal"
       }
     ]
   },
@@ -408,6 +446,133 @@
           }
         ],
         "default": "auto"
+      }
+    ]
+  },
+  {
+    "name": "t:won.global.header_search",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "t:won.global.header_search_about"
+      },
+      {
+        "type": "select",
+        "id": "won_header_search_style",
+        "label": "t:won.settings.header_search_style",
+        "info": "t:won.info.header_search_style",
+        "options": [
+          {
+            "value": "field",
+            "label": "t:won.options.search_field"
+          },
+          {
+            "value": "icon",
+            "label": "t:won.options.search_icon"
+          }
+        ],
+        "default": "field"
+      },
+      {
+        "type": "text",
+        "id": "won_header_search_placeholder",
+        "label": "t:won.settings.header_search_placeholder",
+        "info": "t:won.info.header_search_placeholder",
+        "visible_if": "{{ settings.won_header_search_style == 'field' }}"
+      },
+      {
+        "type": "range",
+        "id": "won_header_search_width",
+        "label": "t:won.settings.header_search_width",
+        "info": "t:won.info.header_search_width",
+        "min": 240,
+        "max": 720,
+        "step": 20,
+        "unit": "px",
+        "default": 520,
+        "visible_if": "{{ settings.won_header_search_style == 'field' }}"
+      }
+    ]
+  },
+  {
+    "name": "t:won.global.toasts",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "t:won.global.toasts_about"
+      },
+      {
+        "type": "checkbox",
+        "id": "won_toast_enabled",
+        "label": "t:won.settings.toast_enabled",
+        "info": "t:won.info.toast_enabled",
+        "default": true
+      },
+      {
+        "type": "select",
+        "id": "won_toast_position",
+        "label": "t:won.settings.toast_position",
+        "options": [
+          {
+            "value": "top_right",
+            "label": "t:won.options.toast_top_right"
+          },
+          {
+            "value": "top_left",
+            "label": "t:won.options.toast_top_left"
+          },
+          {
+            "value": "bottom_right",
+            "label": "t:won.options.toast_bottom_right"
+          },
+          {
+            "value": "bottom_left",
+            "label": "t:won.options.toast_bottom_left"
+          }
+        ],
+        "default": "top_right"
+      },
+      {
+        "type": "range",
+        "id": "won_toast_duration",
+        "label": "t:won.settings.toast_duration",
+        "min": 2,
+        "max": 8,
+        "step": 1,
+        "unit": "s",
+        "default": 4
+      },
+      {
+        "type": "range",
+        "id": "won_toast_max",
+        "label": "t:won.settings.toast_max",
+        "info": "t:won.info.toast_max",
+        "min": 1,
+        "max": 5,
+        "step": 1,
+        "default": 3
+      },
+      {
+        "type": "checkbox",
+        "id": "won_toast_media",
+        "label": "t:won.settings.toast_media",
+        "default": true
+      }
+    ]
+  },
+  {
+    "name": "t:won.global.unit_price",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "t:won.global.unit_price_about"
+      },
+      {
+        "type": "textarea",
+        "id": "won_unit_price_rules",
+        "label": "t:won.settings.unit_price_rules",
+        "info": "t:won.info.unit_price_rules",
+        "default": "won.net_weight_g | 100 | t:won.unit.per_100g\nwon.servings | 1 | t:won.unit.per_serving"
       }
     ]
   }

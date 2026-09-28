@@ -1,0 +1,19 @@
+(node:30175) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 3 tests using 1 worker
+
+[1A[2K(node:30176) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:30176) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:30176) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/3] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 390 /pages/contact?view=won-qa-page-8
+[1A[2K[2/3] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 768 /pages/contact?view=won-qa-page-8
+[1A[2K[3/3] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 1440 /pages/contact?view=won-qa-page-8
+[1A[2K  3 passed (5.6s)

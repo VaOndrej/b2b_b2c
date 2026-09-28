@@ -1,0 +1,41 @@
+{% doc %}
+  won-breadcrumbs — the path from the shop root to where the shopper is, plus the
+  BreadcrumbList markup that puts that path under the title in the SERP.
+
+  Three rules were uncovered without it: NAV-001 (a trail on every category and
+  PDP), PDP-008 (mandatory on a PDP) and SD-004 (BreadcrumbList markup). Someone
+  landing on a product from search had no way up into its category.
+
+  The trail itself lives in snippets/won-breadcrumbs.liquid so a section that
+  cannot host theme blocks renders the same one.
+  @example
+  {% content_for 'block', type: 'won-breadcrumbs', id: 'crumbs' %}
+{% enddoc %}
+
+{% render 'won-breadcrumbs', emit_schema: block.settings.emit_schema, attrs: block.shopify_attributes %}
+
+{% stylesheet %}
+  .won-breadcrumbs { font-size: 0.85rem; color: var(--won-muted); }
+  .won-breadcrumbs__list {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4em;
+    margin: 0; padding: 0; list-style: none;
+  }
+  .won-breadcrumbs__item { display: inline-flex; align-items: center; gap: 0.4em; }
+  /* The separator is decoration, so it lives in CSS where a screen reader skips
+     it — the list semantics already say "these are steps". */
+  .won-breadcrumbs__item + .won-breadcrumbs__item::before { content: "/"; opacity: 0.45; }
+  .won-breadcrumbs__link { color: inherit; text-decoration: none; }
+  .won-breadcrumbs__link:hover { text-decoration: underline; }
+  .won-breadcrumbs__current { color: var(--won-fg); }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.breadcrumbs",
+  "settings": [
+    { "type": "paragraph", "content": "t:won.info.breadcrumbs_about" },
+    { "type": "checkbox", "id": "emit_schema", "label": "t:won.settings.emit_schema", "info": "t:won.info.breadcrumbs_schema", "default": true }
+  ],
+  "presets": [{ "name": "t:won.names.breadcrumbs" }]
+}
+{% endschema %}

@@ -9,24 +9,8 @@
 {%- endcomment -%}
 
 {%- assign s = section.settings -%}
-{%- liquid
-  # Rail controls resolved exactly as in won-carousel / won-grid, so a tab panel
-  # cannot drift from the rails beside it on the same page.
-  assign g_arr = settings.won_rail_arrows | default: 'per_section'
-  assign rail_arrow_style = settings.won_rail_arrow_style | default: 'pill'
-  assign rail_tone = settings.won_rail_arrow_tone | default: 'auto'
-  if rail_tone == 'auto'
-    assign rail_tone = 'surface'
-  endif
-  assign want_arrows = true
-  if g_arr == 'never'
-    assign want_arrows = false
-  endif
-  assign want_progress = true
-  if settings.won_rail_indicator == 'none' or settings.won_rail_indicator == 'dots'
-    assign want_progress = false
-  endif
--%}
+{%- comment -%} Rail controls are resolved once, in snippets/won-rail-controls.liquid,
+  so a tab panel cannot drift from the rails beside it on the same page. {%- endcomment -%}
 <section
   class="won-section won-tabrail-sec color-{{ s.color_scheme }}"
   style="{% render 'won-style-vars', settings: s %}"
@@ -81,18 +65,7 @@
                   </div>
                 {%- endfor -%}
               </div>
-              {%- comment -%} Same single control row as every other rail. {%- endcomment -%}
-              <div class="won-rail__controls">
-                {%- if want_progress -%}
-                  <div class="won-carousel__progress" data-won-progress><span class="won-carousel__progress-bar" data-won-progress-bar></span></div>
-                {%- endif -%}
-                {%- if want_arrows -%}
-                  <div class="won-carousel__arrows" data-won-arrows data-won-rail-tone="{{ settings.won_rail_arrow_tone | default: 'auto' }}">
-                    <button type="button" class="won-carousel__arrow won-rail__arrow won-rail__arrow--{{ rail_arrow_style }} won-rail__arrow--{{ rail_tone }}" data-won-prev aria-label="{{ 'won.a11y.previous' | t }}"><span aria-hidden="true">‹</span></button>
-                    <button type="button" class="won-carousel__arrow won-rail__arrow won-rail__arrow--{{ rail_arrow_style }} won-rail__arrow--{{ rail_tone }}" data-won-next aria-label="{{ 'won.a11y.next' | t }}"><span aria-hidden="true">›</span></button>
-                  </div>
-                {%- endif -%}
-              </div>
+              {% render 'won-rail-controls', s: s %}
               </won-carousel>
             {%- else -%}
               <p class="won-tabrail__empty">{{ 'won.a11y.no_products' | t }}</p>
@@ -133,8 +106,15 @@
     scrollbar-width: none; --won-cols-cur: var(--won-cols-sm, 1); padding-bottom: 2px;
   }
   .won-tabrail__track::-webkit-scrollbar { display: none; }
+  /* Peek rail = STEJNÁ geometrie jako won-carousel. Vlastní basis z columns_mobile
+     dávala výhled na sousedа jen ~15 px, zatímco ostatní raily mají ~27 px —
+     tak mělký peek se čte jako oříznutí, ne jako „je toho víc". Fixní 76 % se
+     stropem --won-card-max je přesně to, co používá .won-carousel--peek-mobile. */
   @media (max-width: 749px) {
-    .won-tabrail--peek .won-tabrail__item { scroll-snap-align: center; }
+    .won-tabrail--peek .won-tabrail__item {
+      scroll-snap-align: center;
+      flex: 0 0 min(76%, var(--won-card-max, 380px));
+    }
   }
   .won-tabrail__item {
     /* Start-snap by default; a FRACTIONAL columns_mobile (1.2 = "show a bit of

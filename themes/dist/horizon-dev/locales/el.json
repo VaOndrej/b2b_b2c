@@ -328,5 +328,10 @@
       "success_moderated": "Το σχόλιο δημοσιεύτηκε, εν αναμονή τροποποίησης",
       "success": "Το σχόλιο δημοσιεύτηκε"
     }
+  },
+  "won": {
+    "vp": {
+      "hide_table": "Hide variants table"
+    }
   }
 }

@@ -1,0 +1,167 @@
+{
+  "config": {
+    "configFile": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/playwright.config.ts",
+    "rootDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 1,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-http-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-http-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "mobile",
+        "name": "mobile",
+        "testDir": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "smoke/won-feedback-8.spec.ts",
+      "file": "smoke/won-feedback-8.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "card quick-add renders a stepper once the line exists",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 19165,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('.won-pcard:has([data-won-stepper])').first().locator('span[data-won-qty]')\nExpected: \u001b[32m\"2\"\u001b[39m\nReceived: \u001b[31m\"1\"\u001b[39m\nTimeout:  15000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for locator('.won-pcard:has([data-won-stepper])').first().locator('span[data-won-qty]')\u001b[22m\n\u001b[2m    3 × locator resolved to <span data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty is-bump-up\">1</span>\u001b[22m\n\u001b[2m      - unexpected value \"1\"\u001b[22m\n\u001b[2m    - locator resolved to <span data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty\">1</span>\u001b[22m\n\u001b[2m    - unexpected value \"1\"\u001b[22m\n\u001b[2m    - locator resolved to <span hidden=\"\" data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty is-bump-down\">1</span>\u001b[22m\n\u001b[2m    14 × unexpected value \"1\"\u001b[22m\n\u001b[2m       - locator resolved to <span hidden=\"\" data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty\">1</span>\u001b[22m\n\u001b[2m    - unexpected value \"1\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('.won-pcard:has([data-won-stepper])').first().locator('span[data-won-qty]')\nExpected: \u001b[32m\"2\"\u001b[39m\nReceived: \u001b[31m\"1\"\u001b[39m\nTimeout:  15000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for locator('.won-pcard:has([data-won-stepper])').first().locator('span[data-won-qty]')\u001b[22m\n\u001b[2m    3 × locator resolved to <span data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty is-bump-up\">1</span>\u001b[22m\n\u001b[2m      - unexpected value \"1\"\u001b[22m\n\u001b[2m    - locator resolved to <span data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty\">1</span>\u001b[22m\n\u001b[2m    - unexpected value \"1\"\u001b[22m\n\u001b[2m    - locator resolved to <span hidden=\"\" data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty is-bump-down\">1</span>\u001b[22m\n\u001b[2m    14 × unexpected value \"1\"\u001b[22m\n\u001b[2m       - locator resolved to <span hidden=\"\" data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty\">1</span>\u001b[22m\n\u001b[2m    - unexpected value \"1\"\u001b[22m\n\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:149:21",
+                    "location": {
+                      "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts",
+                      "column": 21,
+                      "line": 149
+                    },
+                    "snippet": "  147 |   // \"Added\" confirmation timer.\n  148 |   await add.click();\n> 149 |   await expect(qty).toHaveText(\"2\");\n      |                     ^\n  150 |\n  151 |   await minus.click();\n  152 |   await expect(qty).toHaveText(\"1\");"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts",
+                        "column": 21,
+                        "line": 149
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('.won-pcard:has([data-won-stepper])').first().locator('span[data-won-qty]')\nExpected: \u001b[32m\"2\"\u001b[39m\nReceived: \u001b[31m\"1\"\u001b[39m\nTimeout:  15000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveText\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for locator('.won-pcard:has([data-won-stepper])').first().locator('span[data-won-qty]')\u001b[22m\n\u001b[2m    3 × locator resolved to <span data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty is-bump-up\">1</span>\u001b[22m\n\u001b[2m      - unexpected value \"1\"\u001b[22m\n\u001b[2m    - locator resolved to <span data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty\">1</span>\u001b[22m\n\u001b[2m    - unexpected value \"1\"\u001b[22m\n\u001b[2m    - locator resolved to <span hidden=\"\" data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty is-bump-down\">1</span>\u001b[22m\n\u001b[2m    14 × unexpected value \"1\"\u001b[22m\n\u001b[2m       - locator resolved to <span hidden=\"\" data-won-qty=\"\" aria-live=\"polite\" class=\"won-pcard__qty\">1</span>\u001b[22m\n\u001b[2m    - unexpected value \"1\"\u001b[22m\n\n\n  147 |   // \"Added\" confirmation timer.\n  148 |   await add.click();\n> 149 |   await expect(qty).toHaveText(\"2\");\n      |                     ^\n  150 |\n  151 |   await minus.click();\n  152 |   await expect(qty).toHaveText(\"1\");\n    at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts:149:21"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-11T07:02:11.099Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-http-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/test-failed-1.png"
+                    },
+                    {
+                      "name": "cart-request-diagnostics",
+                      "contentType": "application/json",
+                      "body": "WwogIHsKICAgICJhdCI6IDE3ODkxMTAxMzI2MDksCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jZG4vc2hvcC90LzE0L2Fzc2V0cy9mbHktdG8tY2FydC5qcz92PTEyOTk3MTc1MzY3MzQ1ODY5Mzg4MTc4ODMzNjI1MCIsCiAgICAic3RhdHVzIjogMjAwCiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTEwMTMyNjE2LAogICAgInVybCI6ICJodHRwOi8vY2RuLnNob3BpZnkuY29tL3Nob3BpZnljbG91ZC9zdG9yZWZyb250L2Fzc2V0cy9zdG9yZWZyb250L29yaWdpbl90cmlhbHMtNTA1OWI4M2YuanMiLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfRkFJTEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMDEzMjYxNywKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2Nkbi9zaG9wL3QvMTQvYXNzZXRzL3dvbi1jYXJ0LmpzP3Y9MTQzMTY3MDA2NDYxODI5MDAyMjExNzg4NDIyNjY1IiwKICAgICJzdGF0dXMiOiAyMDAKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTAxMzI3NTgsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi93ZWItcGl4ZWxzQGQ3NjE4OTZjdzY1Mjc1MmI5cDUzODE3Mjc4bTc2NjVmY2UwL2N1c3RvbS93ZWItcGl4ZWwtc2hvcGlmeS1jdXN0b20tcGl4ZWxAMDUyMC9zYW5kYm94L21vZGVybi8iLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfQUJPUlRFRCIKICAgIH0KICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTAxMzI4NTAsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9hcGkvY29sbGVjdCIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9BQk9SVEVEIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMDEzMjkwNywKICAgICJ1cmwiOiAiaHR0cHM6Ly9zaG9wLmFwcC9wYXkvaG9wP2FuYWx5dGljc190cmFjZV9pZD1iYTBjMmJkZS03YzQzLTRlZDUtYWYwYy04Mjk2MzRmZTJjZWYmdGFyZ2V0X29yaWdpbj1odHRwJTNBJTJGJTJGMTI3LjAuMC4xJTNBOTI5MiZjbGllbnRfaGFuZGxlPWIyYi1iMmMtc3RvcmUtZGV2ZWxvcG1lbnQubXlzaG9waWZ5LmNvbSIsCiAgICAiZmFpbHVyZSI6IHsKICAgICAgImVycm9yVGV4dCI6ICJuZXQ6OkVSUl9CTE9DS0VEX0JZX1JFU1BPTlNFIgogICAgfQogIH0sCiAgewogICAgImF0IjogMTc4OTExMDEzMzAwNSwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQuanMiLAogICAgInN0YXR1cyI6IDIwMAogIH0sCiAgewogICAgImF0IjogMTc4OTExMDEzNDAxMCwKICAgICJ1cmwiOiAiaHR0cDovLzEyNy4wLjAuMTo5MjkyL2NhcnQvdXBkYXRlLmpzIiwKICAgICJzdGF0dXMiOiA0MjkKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTAxMzQyNDAsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jYXJ0LmpzIiwKICAgICJzdGF0dXMiOiAyMDAKICB9LAogIHsKICAgICJhdCI6IDE3ODkxMTAxMzU5NzgsCiAgICAidXJsIjogImh0dHA6Ly8xMjcuMC4wLjE6OTI5Mi9jYXJ0L3VwZGF0ZS5qcyIsCiAgICAic3RhdHVzIjogNDI5CiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTEwMTM2MjE2LAogICAgInVybCI6ICJodHRwOi8vMTI3LjAuMC4xOjkyOTIvY2FydC5qcyIsCiAgICAic3RhdHVzIjogMjAwCiAgfSwKICB7CiAgICAiYXQiOiAxNzg5MTEwMTM3ODcyLAogICAgInVybCI6ICJodHRwOi8vMTI3LjAuMC4xOjkyOTIvYXBpL2NvbGxlY3QiLAogICAgImZhaWx1cmUiOiB7CiAgICAgICJlcnJvclRleHQiOiAibmV0OjpFUlJfQUJPUlRFRCIKICAgIH0KICB9Cl0="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/theme-audit-runs/2026-09-11-remediation/cart-http-results/smoke-won-feedback-8-card--742bf-tepper-once-the-line-exists-desktop/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-feedback-8.spec.ts",
+                    "column": 21,
+                    "line": 149
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3281b067a066499e0c3a-7374b052378b0a6d869c",
+          "file": "smoke/won-feedback-8.spec.ts",
+          "line": 122,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "message": "\u001b[31mTesting stopped early after 1 maximum allowed failures.\u001b[39m"
+    }
+  ],
+  "stats": {
+    "startTime": "2026-09-11T07:02:10.503Z",
+    "duration": 20257.351,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

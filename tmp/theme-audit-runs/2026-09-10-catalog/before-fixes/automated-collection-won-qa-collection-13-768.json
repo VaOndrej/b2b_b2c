@@ -1,0 +1,114 @@
+{
+  "url": "/collections/automated-collection?view=won-qa-collection-13",
+  "width": 768,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=08e345c9-66d6-4b28-9f49-419f60f64cdf&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/collections/automated-collection?view=won-qa-collection-13",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "qa009",
+      "type": "won-collection",
+      "variant": "preset: Won Collection (PLP)",
+      "label": "won-collection · preset: Won Collection (PLP)",
+      "context": "collection",
+      "limitations": [],
+      "url": "/collections/automated-collection?view=won-qa-collection-13",
+      "sectionId": "qa009",
+      "selector": "[id$=\"__qa009\"]",
+      "template": "collection.won-qa-collection-13.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": false
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa009-768.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa009-768-expanded.png"
+      ],
+      "text": "Home\nAutomated Collection\nAutomated Collection\nFilters\nClear all\nAvailability\nIn stock\n8\nOut of stock\n1\nPrice\n–\n9 products\nSort\nFeatured\nMost relevant\nBest selling\nAlphabetically, A-Z\nAlphabetically, Z-A\nPrice, low to high\nPrice, high to low\nDate, old to new\nDate, new to old\nAdd to cart\nElektrolyty Hydratace\n★★★★★\n4.6(94)\n4.6 / 5, 94\n$599.95\nSold out\nOmega 3 Rybí olej\n★★★★★\n4.4(76)\n4.4 / 5, 76\n$629.95 $1,259.90\nChoose\nPre-Workout Energy\n★★★★★\n4.7(231)\n4.7 / 5, 231\n$549.95 $999.95\nChoose\nWhey Protein — Čokoláda\n★★★★★\n4.8(342)\n4.8 / 5, 342\n$749.95 $1,874.95\nChoose\nBCAA Aminokyseliny\n★★★★★\n4.6(128)\n4.6 / 5, 128\n$629.95 $1,259.90\nChoose\nVitamín D3 + K2\n★★★★★\n4.9(87)\n4.9 / 5, 87\n$729.95 $1,459.90\nChoose\nProtein Blend — Výhodný set\n★★★★★\n4.9(512)\n4.9 / 5, 512\n$699.95\nChoose\nMagnesium + B6\n★★★★★\n4.5(64)\n4.5 / 5, 64\n$785.95 $885.95\nChoose\nKreatin Monohydrát\n★★★★★\n4.7(205)\n4.7 / 5, 205\n$600.00 $1,000.00",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=600",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-omega.png?v=1788345222&width=600",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-whey.png?v=1788345224&width=600",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-bcaa.png?v=1788345221&width=600",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-vitamin.png?v=1788345219&width=600",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-protein-blend.png?v=1788345215&width=600",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-magnesium.png?v=1788345209&width=600",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-creatine.png?v=1788345206&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 0.125,
+        "width": 768,
+        "height": 1678.859375
+      }
+    }
+  ]
+}

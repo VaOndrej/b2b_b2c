@@ -1,0 +1,156 @@
+[
+  {
+    "width": 390,
+    "shop": "b2b-b2c-store-development.myshopify.com",
+    "immediate": {
+      "count": 0,
+      "hidden": true
+    },
+    "eventual": 0,
+    "events": [
+      {
+        "at": 1969,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart.js",
+        "count": 0
+      },
+      {
+        "at": 2007,
+        "type": "request",
+        "url": "http://127.0.0.1:9292/cart/clear.js",
+        "body": null
+      },
+      {
+        "at": 5054,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart.js",
+        "count": 0
+      },
+      {
+        "at": 5490,
+        "type": "request",
+        "url": "http://127.0.0.1:9292/cart/update.js",
+        "body": "{\"updates\":{\"47934266769649\":2},\"sections\":\"sections--22663889748209__header_section\",\"sections_url\":\"/\"}"
+      },
+      {
+        "at": 6151,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart.js",
+        "count": 0
+      },
+      {
+        "at": 6986,
+        "type": "request",
+        "url": "http://127.0.0.1:9292/cart/update.js",
+        "body": "{\"updates\":{\"47934266769649\":0},\"sections\":\"sections--22663889748209__header_section\",\"sections_url\":\"/\"}"
+      },
+      {
+        "at": 6994,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart/update.js",
+        "count": 2
+      },
+      {
+        "at": 7618,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart/update.js",
+        "count": 0
+      },
+      {
+        "at": 7852,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart.js",
+        "count": 0
+      }
+    ]
+  },
+  {
+    "width": 1440,
+    "shop": "b2b-b2c-store-development.myshopify.com",
+    "immediate": {
+      "count": 1,
+      "hidden": true
+    },
+    "eventual": 0,
+    "events": [
+      {
+        "at": 989,
+        "type": "request",
+        "url": "http://127.0.0.1:9292/cart/clear.js",
+        "body": null
+      },
+      {
+        "at": 1125,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart.js",
+        "count": 0
+      },
+      {
+        "at": 3145,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart.js",
+        "count": 0
+      },
+      {
+        "at": 3781,
+        "type": "request",
+        "url": "http://127.0.0.1:9292/cart/update.js",
+        "body": "{\"updates\":{\"47934266769649\":1},\"sections\":\"sections--22663889748209__header_section\",\"sections_url\":\"/\"}"
+      },
+      {
+        "at": 4696,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart/update.js",
+        "count": 1
+      },
+      {
+        "at": 5955,
+        "type": "request",
+        "url": "http://127.0.0.1:9292/cart/update.js",
+        "body": "{\"updates\":{\"47934266769649\":2},\"sections\":\"sections--22663889748209__header_section\",\"sections_url\":\"/\"}"
+      },
+      {
+        "at": 6839,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart/update.js",
+        "count": 2
+      },
+      {
+        "at": 7656,
+        "type": "request",
+        "url": "http://127.0.0.1:9292/cart/update.js",
+        "body": "{\"updates\":{\"47934266769649\":1},\"sections\":\"sections--22663889748209__header_section\",\"sections_url\":\"/\"}"
+      },
+      {
+        "at": 8379,
+        "type": "request",
+        "url": "http://127.0.0.1:9292/cart/update.js",
+        "body": "{\"updates\":{\"47934266769649\":0},\"sections\":\"sections--22663889748209__header_section\",\"sections_url\":\"/\"}"
+      },
+      {
+        "at": 8387,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart/update.js",
+        "count": 1
+      },
+      {
+        "at": 8520,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart.js",
+        "count": 1
+      },
+      {
+        "at": 9095,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart/update.js",
+        "count": 0
+      },
+      {
+        "at": 9410,
+        "type": "response",
+        "url": "http://127.0.0.1:9292/cart.js",
+        "count": 0
+      }
+    ]
+  }
+]

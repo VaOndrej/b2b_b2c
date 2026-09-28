@@ -117,13 +117,11 @@
   type="module"
   fetchpriority="low"
 ></script>
-{% if settings.show_add_discount_code %}
-  <script
-    src="{{ 'cart-discount.js' | asset_url }}"
-    type="module"
-    fetchpriority="low"
-  ></script>
-{% endif %}
+{% comment %}
+  cart-discount.js is deliberately NOT loaded: the discount field is driven by
+  won-promo-code.js and the _promo_code line-item property, not by Shopify
+  discount codes. Removed by themes/build/compose.mjs step 2j.
+{% endcomment %}
 
 <script
   src="{{ 'dialog.js' | asset_url }}"

@@ -1,6 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { observeCommittedCart, openEmptyCart, expectCommittedCart, attachCartDiagnostics } from '../support/cart-state';
+
+test.afterEach(async ({ page }) => attachCartDiagnostics(page));
 
 // Feedback round 8 (Ondřej, 30. 8. 2026) — one spec per reported defect, all
 // written as GENERIC invariants so the next section/block that repeats the
@@ -90,74 +93,133 @@ test('rail progress bar and arrows share one control row', async ({ page }) => {
  * 2. Quick add is visible in the host theme's UI                      *
  * ------------------------------------------------------------------ */
 
-test('quick add updates the header cart count', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'load' });
-  await page.evaluate(() => fetch('/cart/clear.js', { method: 'POST' }));
-  await page.reload({ waitUntil: 'load' });
-  await settle(page);
+test("quick add updates the header cart count", async ({ page }) => {
+  await observeCommittedCart(page);
+  await openEmptyCart(page, "/");
 
   const countInHeader = () =>
     page.evaluate(() => {
-      const icon = document.querySelector('cart-icon');
-      const m = (icon?.textContent ?? '').match(/(\d+)\s*$/);
+      const icon = document.querySelector("cart-icon");
+      const m = (icon?.textContent ?? "").match(/(\d+)\s*$/);
       return m ? Number(m[1]) : NaN;
     });
 
-  expect(await countInHeader(), 'cart must start empty').toBe(0);
+  expect(await countInHeader(), "cart must start empty").toBe(0);
 
-  const card = page.locator('.won-pcard:has([data-won-add])').first();
+  const card = page.locator(".won-pcard:has([data-won-add])").first();
   await card.scrollIntoViewIfNeeded();
   await card.hover();
-  await page.waitForTimeout(600);
-  await card.locator('[data-won-add]').click();
+  await card.locator("[data-won-add]").click();
 
   await expect
     .poll(countInHeader, {
-      message: 'header cart count must react to a card quick-add (no reload)',
+      message: "header cart count must react to a card quick-add (no reload)",
       timeout: 8000,
     })
     .toBe(1);
 });
 
-test('card quick-add renders a stepper once the line exists', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'load' });
-  await page.evaluate(() => fetch('/cart/clear.js', { method: 'POST' }));
-  await page.reload({ waitUntil: 'load' });
-  await settle(page);
+test("card quick-add renders a stepper once the line exists", async ({
+  page,
+}) => {
+  await observeCommittedCart(page);
+  await openEmptyCart(page, "/");
 
-  const card = page.locator('.won-pcard:has([data-won-stepper])').first();
+  const card = page.locator(".won-pcard:has([data-won-stepper])").first();
   await expect(
     card,
-    'the theme ships the stepper as its card quick-add — a card must declare one'
+    "the theme ships the stepper as its card quick-add — a card must declare one",
   ).toBeAttached();
 
-  const add = card.locator('[data-won-add]');
-  const qty = card.locator('span[data-won-qty]');
+  const add = card.locator("[data-won-add]");
+  const qty = card.locator("span[data-won-qty]");
   const minus = card.locator('[data-won-step="-1"]');
 
   await card.scrollIntoViewIfNeeded();
   // A real click, never `force`: the reported defect was "it does not work",
   // so the control has to be genuinely hittable, not merely present.
   await card.hover();
-  await page.waitForTimeout(600);
   await add.click();
-  await expect(qty).toHaveText('1');
+  await expect(qty).toHaveText("1");
   await expect(minus).toBeVisible();
+  // Prove a real line exists before testing its removal: rollback after a
+  // refused add must not masquerade as successful decrement-to-empty.
+  await expectCommittedCart(page, 1);
 
   // A second tap must reach 2 — the "+" must not stay locked behind the
   // "Added" confirmation timer.
   await add.click();
-  await expect(qty).toHaveText('2');
+  await expect(qty).toHaveText("2");
 
   await minus.click();
-  await expect(qty).toHaveText('1');
+  await expect(qty).toHaveText("1");
 
   await minus.click();
   await expect(qty).toBeHidden();
   await expect(minus).toBeHidden();
 
-  const left = await page.evaluate(async () => (await (await fetch('/cart.js')).json()).item_count);
-  expect(left, 'stepping down to zero must empty the line in the real cart').toBe(0);
+  // The hidden quantity above is optimistic. Wait for the runtime's committed
+  // batch before reading Shopify; neither signal replaces the other.
+  const cart = await expectCommittedCart(page, 0);
+  expect(cart.items, "stepping down to zero must remove the real line").toEqual(
+    [],
+  );
+});
+
+test("card decrement reaches zero when earlier update is still in flight", async ({
+  page,
+}) => {
+  await observeCommittedCart(page);
+  await openEmptyCart(page, "/");
+  const card = page.locator(".won-pcard:has([data-won-stepper])").first();
+  const add = card.locator("[data-won-add]");
+  const minus = card.locator('[data-won-step="-1"]');
+  const qty = card.locator("span[data-won-qty]");
+  let release!: () => void;
+  let arrived!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const firstRequest = new Promise<void>((resolve) => {
+    arrived = resolve;
+  });
+  // Hold only the first genuine Shopify request until the shopper has changed
+  // their mind. This exercises the batch loop without a clock-dependent delay.
+  await page.route(
+    "**/cart/update.js",
+    async (route) => {
+      arrived();
+      await held;
+      await route.continue();
+    },
+    { times: 1 },
+  );
+  try {
+    await card.hover();
+    await add.click();
+    await firstRequest;
+    // This response cannot arrive until release(): require actual successful
+    // persistence, not merely the empty cart obtained after a rejected write.
+    const firstResponse = page.waitForResponse((response) =>
+      response.request().method() === 'POST' && /\/cart\/update\.js(?:\?|$)/.test(response.url()),
+    );
+    await expect(qty).toHaveText("1");
+    await add.click();
+    await expect(qty).toHaveText("2");
+    await minus.click();
+    await expect(qty).toHaveText("1");
+    await minus.click();
+    await expect(qty).toBeHidden();
+    release();
+    const response = await firstResponse;
+    expect(response.ok(), `held cart update HTTP ${response.status()}`).toBeTruthy();
+    expect((await response.json()).item_count, 'the held first add must really persist one item').toBe(1);
+    const cart = await expectCommittedCart(page, 0);
+    expect(cart.items).toEqual([]);
+    await expect(minus).toBeHidden();
+  } finally {
+    release();
+  }
 });
 
 /* ------------------------------------------------------------------ *

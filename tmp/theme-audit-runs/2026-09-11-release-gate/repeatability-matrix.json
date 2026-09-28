@@ -1,0 +1,111 @@
+{
+  "retries": 0,
+  "workers": 1,
+  "stop_on_first_failure": true,
+  "runs": [
+    {
+      "case": "cart decrement lifecycle",
+      "project": "desktop",
+      "iterations": 10,
+      "pass": 10,
+      "product_fail": 0,
+      "test_fail": 0,
+      "env_429": 0,
+      "env_auth": 0,
+      "other_env": 0,
+      "evidence": "matrix-decrement-desktop.json"
+    },
+    {
+      "case": "cart decrement lifecycle",
+      "project": "mobile",
+      "iterations": 10,
+      "pass": 10,
+      "product_fail": 0,
+      "test_fail": 0,
+      "env_429": 0,
+      "env_auth": 0,
+      "other_env": 0,
+      "evidence": "matrix-decrement-mobile.json"
+    },
+    {
+      "case": "row card add/remove lifecycle",
+      "project": "desktop",
+      "iterations": 1,
+      "pass": 1,
+      "product_fail": 0,
+      "test_fail": 0,
+      "env_429": 0,
+      "env_auth": 0,
+      "other_env": 0,
+      "evidence": "matrix-row-lifecycle.json"
+    },
+    {
+      "case": "row card add/remove lifecycle",
+      "project": "mobile",
+      "iterations": 1,
+      "pass": 1,
+      "product_fail": 0,
+      "test_fail": 0,
+      "env_429": 0,
+      "env_auth": 0,
+      "other_env": 0,
+      "evidence": "matrix-row-lifecycle.json"
+    },
+    {
+      "case": "toast burst",
+      "project": "desktop",
+      "iterations": 1,
+      "pass": 1,
+      "product_fail": 0,
+      "test_fail": 0,
+      "env_429": 0,
+      "env_auth": 0,
+      "other_env": 0,
+      "evidence": "matrix-toast-burst.json"
+    },
+    {
+      "case": "toast burst",
+      "project": "mobile",
+      "iterations": 1,
+      "pass": 1,
+      "product_fail": 0,
+      "test_fail": 0,
+      "env_429": 0,
+      "env_auth": 0,
+      "other_env": 0,
+      "evidence": "matrix-toast-burst.json"
+    },
+    {
+      "case": "editorial native variant/cart verification",
+      "project": "desktop",
+      "iterations": 1,
+      "pass": 1,
+      "product_fail": 0,
+      "test_fail": 0,
+      "env_429": 0,
+      "env_auth": 0,
+      "other_env": 0,
+      "evidence": "matrix-editorial-cart-final.json"
+    },
+    {
+      "case": "editorial native variant/cart verification",
+      "project": "mobile",
+      "iterations": 1,
+      "pass": 1,
+      "product_fail": 0,
+      "test_fail": 0,
+      "env_429": 0,
+      "env_auth": 0,
+      "other_env": 0,
+      "evidence": "matrix-editorial-cart-final.json"
+    }
+  ],
+  "summary": {
+    "pass": 26,
+    "product_fail": 0,
+    "test_fail": 0,
+    "env_429": 0,
+    "env_auth": 0,
+    "other_env": 0
+  }
+}

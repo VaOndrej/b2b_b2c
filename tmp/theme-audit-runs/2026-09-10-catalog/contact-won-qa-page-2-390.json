@@ -1,0 +1,520 @@
+{
+  "url": "/pages/contact?view=won-qa-page-2",
+  "width": 390,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-2",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=959d980e-5731-45b9-bd1f-888b1ec8b115&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    },
+    "responsive": "pass"
+  },
+  "results": [
+    {
+      "id": "qa014",
+      "type": "won-grid",
+      "variant": "preset: Won · Editorial columns",
+      "label": "won-grid · preset: Won · Editorial columns",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-2",
+      "sectionId": "qa014",
+      "selector": "[id$=\"__qa014\"]",
+      "template": "page.won-qa-page-2.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa014-390.png"
+      ],
+      "text": "Benefits worth exploring\n01\nQA sample benefit\n02\nQA sample benefit\n03\nQA sample benefit\n04\nQA sample benefit\nAn expert perspective\nDemonstration portrait\nQA sample — practical information\n\nQA example role\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": -0.421875,
+        "width": 390,
+        "height": 1114.640625
+      }
+    },
+    {
+      "id": "qa015",
+      "type": "won-grid",
+      "variant": "preset: Won Features — USP row",
+      "label": "won-grid · preset: Won Features — USP row",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-2",
+      "sectionId": "qa015",
+      "selector": "[id$=\"__qa015\"]",
+      "template": "page.won-qa-page-2.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa015-390.png"
+      ],
+      "text": "QA sample benefit\nQA sample benefit\nQA sample benefit\nQA sample benefit",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 146,
+        "width": 390,
+        "height": 552.125
+      }
+    },
+    {
+      "id": "qa016",
+      "type": "won-grid",
+      "variant": "preset: Won Features — benefit cards",
+      "label": "won-grid · preset: Won Features — benefit cards",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-2",
+      "sectionId": "qa016",
+      "selector": "[id$=\"__qa016\"]",
+      "template": "page.won-qa-page-2.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa016-390.png"
+      ],
+      "text": "QA sample benefit\nQA sample benefit\nQA sample benefit",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 319.90625,
+        "width": 390,
+        "height": 523.6875
+      }
+    },
+    {
+      "id": "qa017",
+      "type": "won-grid",
+      "variant": "preset: Won Features — trust badges",
+      "label": "won-grid · preset: Won Features — trust badges",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-2",
+      "sectionId": "qa017",
+      "selector": "[id$=\"__qa017\"]",
+      "template": "page.won-qa-page-2.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa017-390.png"
+      ],
+      "text": "QA sample benefit\nQA sample benefit\nQA sample benefit\nQA sample benefit",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 78.375,
+        "width": 390,
+        "height": 688.125
+      }
+    },
+    {
+      "id": "qa018",
+      "type": "won-grid",
+      "variant": "preset: Won Collection Tiles — grid",
+      "label": "won-grid · preset: Won Collection Tiles — grid",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-2",
+      "sectionId": "qa018",
+      "selector": "[id$=\"__qa018\"]",
+      "template": "page.won-qa-page-2.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa018-390.png"
+      ],
+      "text": "QA sample\nQA sample category\nQA sample\nQA sample category\nQA sample\nQA sample category\nQA sample\nQA sample category",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": -595.71875,
+        "width": 390,
+        "height": 2035.6875
+      }
+    },
+    {
+      "id": "qa019",
+      "type": "won-grid",
+      "variant": "preset: Won Collection Tiles — mosaic",
+      "label": "won-grid · preset: Won Collection Tiles — mosaic",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-2",
+      "sectionId": "qa019",
+      "selector": "[id$=\"__qa019\"]",
+      "template": "page.won-qa-page-2.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa019-390.png"
+      ],
+      "text": "QA sample\nQA sample category\nQA sample\nQA sample category\nQA sample\nQA sample category\nQA sample\nQA sample category\nQA sample\nQA sample category",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": -842.25,
+        "width": 390,
+        "height": 2529.015625
+      }
+    },
+    {
+      "id": "qa020",
+      "type": "won-grid",
+      "variant": "preset: Won Grid — shop by goal",
+      "label": "won-grid · preset: Won Grid — shop by goal",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-2",
+      "sectionId": "qa020",
+      "selector": "[id$=\"__qa020\"]",
+      "template": "page.won-qa-page-2.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa020-390.png"
+      ],
+      "text": "QA sample\n💪Sport & výkon\nQA sample\n🛡️Imunita\nQA sample\n😴Spánek\nQA sample\n🧠Mentální výkon",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": -595.453125,
+        "width": 390,
+        "height": 2035.6875
+      }
+    },
+    {
+      "id": "qa021",
+      "type": "won-grid",
+      "variant": "preset: Stats — number row",
+      "label": "won-grid · preset: Stats — number row",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-2",
+      "sectionId": "qa021",
+      "selector": "[id$=\"__qa021\"]",
+      "template": "page.won-qa-page-2.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa021-390.png"
+      ],
+      "text": "2k+\nHappy customers\n1.1★\nAverage rating\n6h\nDispatch\n23%\nLab tested",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 312.015625,
+        "width": 390,
+        "height": 219.15625
+      }
+    },
+    {
+      "id": "qa022",
+      "type": "won-grid",
+      "variant": "preset: Won Grid — trust band",
+      "label": "won-grid · preset: Won Grid — trust band",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-2",
+      "sectionId": "qa022",
+      "selector": "[id$=\"__qa022\"]",
+      "template": "page.won-qa-page-2.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa022-390.png"
+      ],
+      "text": "👥\n500 tis.+\nspokojených zákazníků\n★\n10 000+\nrecenzí\n⚡\n24 h\nexpedice\n✅\n100%\ntestováno",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 547.953125,
+        "width": 390,
+        "height": 295.96875
+      }
+    },
+    {
+      "id": "qa023",
+      "type": "won-grid",
+      "variant": "preset: Won Articles — grid",
+      "label": "won-grid · preset: Won Articles — grid",
+      "context": "page",
+      "limitations": [
+        "Requires existing news blog articles"
+      ],
+      "url": "/pages/contact?view=won-qa-page-2",
+      "sectionId": "qa023",
+      "selector": "[id$=\"__qa023\"]",
+      "template": "page.won-qa-page-2.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa023-390.png"
+      ],
+      "text": "22. 8. 2026\nKreatin: co o něm víme po třiceti letech výzkumu\nNejlépe prozkoumaný doplněk na trhu. Co se potvrdilo, co se nepotvrdilo a co pořád nevíme.\n22. 8. 2026\nProtein po tréninku: kdy a kolik\nAnabolické okno není tak úzké, jak se říkalo. Co z toho plyne pro běžný trénink.\n22. 8. 2026\nJak číst etikety doplňků stravy\nCo na etiketě opravdu rozhoduje a co je jen marketing.",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": -189.296875,
+        "width": 390,
+        "height": 1222.1875
+      }
+    },
+    {
+      "id": "qa024",
+      "type": "won-grid",
+      "variant": "preset: Won Articles — featured",
+      "label": "won-grid · preset: Won Articles — featured",
+      "context": "page",
+      "limitations": [
+        "Requires existing news blog articles"
+      ],
+      "url": "/pages/contact?view=won-qa-page-2",
+      "sectionId": "qa024",
+      "selector": "[id$=\"__qa024\"]",
+      "template": "page.won-qa-page-2.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa024-390.png"
+      ],
+      "text": "22. 8. 2026\nKreatin: co o něm víme po třiceti letech výzkumu\nNejlépe prozkoumaný doplněk na trhu. Co se potvrdilo, co se nepotvrdilo a co pořád nevíme.\n22. 8. 2026\nProtein po tréninku: kdy a kolik\nAnabolické okno není tak úzké, jak se říkalo. Co z toho plyne pro běžný trénink.\n22. 8. 2026\nJak číst etikety doplňků stravy\nCo na etiketě opravdu rozhoduje a co je jen marketing.",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": -189.359375,
+        "width": 390,
+        "height": 1222.1875
+      }
+    },
+    {
+      "id": "qa025",
+      "type": "won-hero-carousel",
+      "variant": "preset: Won Hero – carousel",
+      "label": "won-hero-carousel · preset: Won Hero – carousel",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-2",
+      "sectionId": "qa025",
+      "selector": "[id$=\"__qa025\"]",
+      "template": "page.won-qa-page-2.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "carousel-content",
+          "overflow": true,
+          "mode": null
+        },
+        {
+          "name": "carousel-invariant",
+          "pass": true
+        },
+        {
+          "name": "carousel-scroll",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa025-390.png"
+      ],
+      "text": "HYDRATION\n\nWhen water isn't enough\n\nReplace key minerals lost in the heat.\n\nShop now\n\nDEAL\n\nCreatine −20%\n\nStrength and performance, every day.\n\nShop now\n\nBESTSELLER\n\nWhey with 21g protein\n\nSelected flavours at a great price.\n\nShop now\n\nNEW\n\nNew: BCAA\n\nRecovery after every workout.\n\nShop now\n‹\n›",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 111.609375,
+        "width": 390,
+        "height": 620
+      }
+    }
+  ]
+}

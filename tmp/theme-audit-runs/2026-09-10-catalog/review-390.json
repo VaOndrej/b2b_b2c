@@ -1,0 +1,1977 @@
+{
+  "reviewed": [
+    {
+      "id": "qa001",
+      "width": 390,
+      "screenshots": [
+        "screenshots/qa001-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Krátké podtržené oznámení čitelné; pouze statický screenshot, rotace/dismiss mimo snímek."
+    },
+    {
+      "id": "qa002",
+      "width": 390,
+      "screenshots": [
+        "screenshots/qa002-390.png"
+      ],
+      "verdict": "empty-state",
+      "notes": "Čitelná app shell s CTA, explicitně bez nainstalovaného app bloku. Není coverage skutečné aplikace."
+    },
+    {
+      "id": "qa003",
+      "width": 390,
+      "screenshots": [
+        "screenshots/qa003-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Znovu prohlédnuto po odstranění sticky capture překryvu. Média, text a CTA čitelné; delší mobilní kompozice bez viditelné kolize."
+    },
+    {
+      "id": "qa004",
+      "width": 390,
+      "screenshots": [
+        "screenshots/qa004-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Znovu prohlédnuto po odstranění sticky capture překryvu. Média, text a CTA čitelné; delší mobilní kompozice bez viditelné kolize."
+    },
+    {
+      "id": "qa005",
+      "width": 390,
+      "screenshots": [
+        "screenshots/qa005-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Znovu prohlédnuto po odstranění sticky capture překryvu. Média, text a CTA čitelné; delší mobilní kompozice bez viditelné kolize."
+    },
+    {
+      "id": "qa006",
+      "width": 390,
+      "screenshots": [
+        "screenshots/qa006-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Prohlédnutá viditelná karta, text, CTA a případné rail ovládání jsou čitelné, bez viditelné kolize. Dynamické chování se hodnotí samostatně."
+    },
+    {
+      "id": "qa007",
+      "width": 390,
+      "screenshots": [
+        "screenshots/qa007-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Prohlédnutá viditelná karta, text, CTA a případné rail ovládání jsou čitelné, bez viditelné kolize. Dynamické chování se hodnotí samostatně."
+    },
+    {
+      "id": "qa008",
+      "width": 390,
+      "screenshots": [
+        "screenshots/qa008-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Prohlédnutá viditelná karta, text, CTA a případné rail ovládání jsou čitelné, bez viditelné kolize. Dynamické chování se hodnotí samostatně."
+    },
+    {
+      "id": "qa010",
+      "width": 390,
+      "label": "won-comparison · preset: Won Comparison",
+      "screenshots": [
+        "screenshots/qa010-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa013",
+      "width": 390,
+      "label": "won-footer · preset: Won Footer",
+      "screenshots": [
+        "screenshots/qa013-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa014",
+      "width": 390,
+      "label": "won-grid · preset: Won · Editorial columns",
+      "screenshots": [
+        "screenshots/qa014-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa015",
+      "width": 390,
+      "label": "won-grid · preset: Won Features — USP row",
+      "screenshots": [
+        "screenshots/qa015-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa016",
+      "width": 390,
+      "label": "won-grid · preset: Won Features — benefit cards",
+      "screenshots": [
+        "screenshots/qa016-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa017",
+      "width": 390,
+      "label": "won-grid · preset: Won Features — trust badges",
+      "screenshots": [
+        "screenshots/qa017-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa018",
+      "width": 390,
+      "label": "won-grid · preset: Won Collection Tiles — grid",
+      "screenshots": [
+        "screenshots/qa018-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa019",
+      "width": 390,
+      "label": "won-grid · preset: Won Collection Tiles — mosaic",
+      "screenshots": [
+        "screenshots/qa019-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa020",
+      "width": 390,
+      "label": "won-grid · preset: Won Grid — shop by goal",
+      "screenshots": [
+        "screenshots/qa020-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa021",
+      "width": 390,
+      "label": "won-grid · preset: Stats — number row",
+      "screenshots": [
+        "screenshots/qa021-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Statistický grid čitelný; capture během count-up zobrazuje mezihodnoty, neověřuje koncové hodnoty."
+    },
+    {
+      "id": "qa022",
+      "width": 390,
+      "label": "won-grid · preset: Won Grid — trust band",
+      "screenshots": [
+        "screenshots/qa022-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa023",
+      "width": 390,
+      "label": "won-grid · preset: Won Articles — grid",
+      "screenshots": [
+        "screenshots/qa023-390.png"
+      ],
+      "verdict": "partial-content",
+      "notes": "Články mají čitelné titulky, datum a text; všechna média jsou placeholders, ne populated image coverage."
+    },
+    {
+      "id": "qa024",
+      "width": 390,
+      "label": "won-grid · preset: Won Articles — featured",
+      "screenshots": [
+        "screenshots/qa024-390.png"
+      ],
+      "verdict": "partial-content",
+      "notes": "Články mají čitelné titulky, datum a text; všechna média jsou placeholders, ne populated image coverage."
+    },
+    {
+      "id": "qa025",
+      "width": 390,
+      "label": "won-hero-carousel · preset: Won Hero – carousel",
+      "screenshots": [
+        "screenshots/qa025-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa026",
+      "width": 390,
+      "label": "won-hero-carousel · preset: Won Hero – peek carousel",
+      "screenshots": [
+        "screenshots/qa026-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa027",
+      "width": 390,
+      "label": "won-hero-grid · preset: Won Hero – tiles",
+      "screenshots": [
+        "screenshots/qa027-390.png"
+      ],
+      "verdict": "fixture-issue",
+      "notes": "Bílý eyebrow se ztrácí přes bílou etiketu packshotu; před schválením kontrastu zvolit vhodný background/overlay. Není důkaz nemožnosti konfigurace."
+    },
+    {
+      "id": "qa028",
+      "width": 390,
+      "label": "won-hero · preset: Hero — split",
+      "screenshots": [
+        "screenshots/qa028-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa029",
+      "width": 390,
+      "label": "won-hero · preset: Hero — overlay",
+      "screenshots": [
+        "screenshots/qa029-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa030",
+      "width": 390,
+      "label": "won-hero · preset: Hero — minimal",
+      "screenshots": [
+        "screenshots/qa030-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa031",
+      "width": 390,
+      "label": "won-hero · preset: Hero — CTA",
+      "screenshots": [
+        "screenshots/qa031-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa032",
+      "width": 390,
+      "label": "won-marquee · preset: Won Marquee — USP strip",
+      "screenshots": [
+        "screenshots/qa032-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa033",
+      "width": 390,
+      "label": "won-marquee · preset: Won Marquee — deals strip",
+      "screenshots": [
+        "screenshots/qa033-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa034",
+      "width": 390,
+      "label": "won-media-compare · preset: Won Before / After",
+      "screenshots": [
+        "screenshots/qa034-390.png"
+      ],
+      "verdict": "visual-pass-after-fix",
+      "notes": "Znovu prohlédnuto po opravě: obě poloviny stejného obrázku nyní navazují bez změny velikosti/posunu. Bílá dělící čára je záměrná.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-fail",
+        "notes": "Before/after stejný obrázek není v registraci: nápis WON/Pre-Workout se na děliči rozchází, obraz má rozdílné proporce."
+      }
+    },
+    {
+      "id": "qa035",
+      "width": 390,
+      "label": "won-newsletter · preset: Won Newsletter — signup",
+      "screenshots": [
+        "screenshots/qa035-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa036",
+      "width": 390,
+      "label": "won-newsletter · preset: Won Newsletter — lead magnet",
+      "screenshots": [
+        "screenshots/qa036-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa037",
+      "width": 390,
+      "label": "won-page-header · preset: Won Page Header",
+      "screenshots": [
+        "screenshots/qa037-390.png"
+      ],
+      "verdict": "fixture-issue",
+      "notes": "Tmavý nadpis přes tmavý obraz a jeho etiketu je nečitelný; ověřit schéma/text overlay konfiguraci."
+    },
+    {
+      "id": "qa053",
+      "width": 390,
+      "label": "won-highlights · default",
+      "screenshots": [
+        "screenshots/qa053-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa054",
+      "width": 390,
+      "label": "won-nutrition-table · default",
+      "screenshots": [
+        "screenshots/qa054-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa055",
+      "width": 390,
+      "label": "won-panel · default",
+      "screenshots": [
+        "screenshots/qa055-390-expanded.png",
+        "screenshots/qa055-390.png"
+      ],
+      "verdict": "visual-observation",
+      "notes": "Closed/open a focus prohlédnuty. Summary vlevo, rozbalený text uprostřed, vnořený benefit vlevo: nekonzistentní zarovnání v jedné disclosure."
+    },
+    {
+      "id": "qa056",
+      "width": 390,
+      "label": "won-param-table · default",
+      "screenshots": [
+        "screenshots/qa056-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa058",
+      "width": 390,
+      "label": "won-product-card · default",
+      "screenshots": [
+        "screenshots/qa058-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa062",
+      "width": 390,
+      "label": "won-slide · default",
+      "screenshots": [
+        "screenshots/qa062-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa064",
+      "width": 390,
+      "label": "won-tab · default",
+      "screenshots": [
+        "screenshots/qa064-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa065",
+      "width": 390,
+      "label": "won-tile · default",
+      "screenshots": [
+        "screenshots/qa065-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa066",
+      "width": 390,
+      "label": "won-video · default",
+      "screenshots": [
+        "screenshots/qa066-390.png"
+      ],
+      "verdict": "empty-state",
+      "notes": "Pouze lifestyle SVG placeholder v poměrném rámu; skutečné hosted/external video tím není ověřeno."
+    },
+    {
+      "id": "qa067",
+      "width": 390,
+      "label": "won-band · media_position=left",
+      "screenshots": [
+        "screenshots/qa067-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa068",
+      "width": 390,
+      "label": "won-band · media_position=right",
+      "screenshots": [
+        "screenshots/qa068-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa069",
+      "width": 390,
+      "label": "won-band · media_position=center_gutter",
+      "screenshots": [
+        "screenshots/qa069-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části tohoto snímku prohlédnuty. Text/média/CTA bez zjevné kolize či ořezu obsahu; dynamické chování vyhodnocuje runner zvlášť."
+    },
+    {
+      "id": "qa070",
+      "width": 390,
+      "label": "won-band · media_position=background",
+      "screenshots": [
+        "screenshots/qa070-390.png"
+      ],
+      "verdict": "fixture-issue",
+      "notes": "Text přes bílou etiketu a kontrastní packshot je místy špatně čitelný; nevhodné demo pozadí/overlay, nutné odlišit od chyby komponenty."
+    },
+    {
+      "id": "qa071",
+      "width": 390,
+      "label": "won-band · media_type=none",
+      "screenshots": [
+        "screenshots/qa071-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Záměrná varianta media_type=none; text a CTA čitelné bez kolize, absence média odpovídá nastavení."
+    },
+    {
+      "id": "qa072",
+      "width": 390,
+      "label": "won-band · media_type=video",
+      "screenshots": [
+        "screenshots/qa072-390.png"
+      ],
+      "verdict": "partial-content",
+      "notes": "Viditelná pouze textová část a CTA bez média; nepovažovat za pozitivní coverage video/obrázku."
+    },
+    {
+      "id": "qa073",
+      "width": 390,
+      "label": "won-carousel · layout=grid",
+      "screenshots": [
+        "screenshots/qa073-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Poslední snímek znovu prohlédnut celý ve třech segmentech v původní šířce: šest plných karet tvoří dlouhý mobilní stack; dlouhé titulky a těla se zalamují bez kolize. Je to statický grid, absence rail scrollu není chyba.",
+      "reviewRound": "final-collector-diagnostics"
+    },
+    {
+      "id": "qa074",
+      "width": 390,
+      "label": "won-carousel · columns_mobile=1",
+      "screenshots": [
+        "screenshots/qa074-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa075",
+      "width": 390,
+      "label": "won-carousel · columns_mobile=1.2",
+      "screenshots": [
+        "screenshots/qa075-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Poslední numerický peek snímek znovu prohlédnut: první karta čitelná, soused záměrně částečně viditelný vpravo; CTA i šipky bez kolize. Peek není horizontální overflow stránky.",
+      "reviewRound": "final-collector-diagnostics"
+    },
+    {
+      "id": "qa076",
+      "width": 390,
+      "label": "won-carousel · columns_mobile=2",
+      "screenshots": [
+        "screenshots/qa076-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa077",
+      "width": 390,
+      "label": "won-carousel · arrow_style=pill",
+      "screenshots": [
+        "screenshots/qa077-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa078",
+      "width": 390,
+      "label": "won-carousel · arrow_style=soft",
+      "screenshots": [
+        "screenshots/qa078-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa079",
+      "width": 390,
+      "label": "won-carousel · arrow_style=square",
+      "screenshots": [
+        "screenshots/qa079-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa080",
+      "width": 390,
+      "label": "won-carousel · arrow_style=minimal",
+      "screenshots": [
+        "screenshots/qa080-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa081",
+      "width": 390,
+      "label": "won-grid · item_style=plain",
+      "screenshots": [
+        "screenshots/qa081-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa082",
+      "width": 390,
+      "label": "won-grid · item_style=card",
+      "screenshots": [
+        "screenshots/qa082-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa083",
+      "width": 390,
+      "label": "won-grid · item_style=bordered",
+      "screenshots": [
+        "screenshots/qa083-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa084",
+      "width": 390,
+      "label": "won-grid · article_layout=featured",
+      "screenshots": [
+        "screenshots/qa084-390.png"
+      ],
+      "verdict": "partial-content",
+      "notes": "Články mají čitelné texty a datum, ale všechna média jsou placeholders."
+    },
+    {
+      "id": "qa085",
+      "width": 390,
+      "label": "won-panels · row_style=plain",
+      "screenshots": [
+        "screenshots/qa085-390-expanded.png",
+        "screenshots/qa085-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa086",
+      "width": 390,
+      "label": "won-panels · row_style=editorial",
+      "screenshots": [
+        "screenshots/qa086-390-expanded.png",
+        "screenshots/qa086-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa087",
+      "width": 390,
+      "label": "won-panels · row_style=boxed",
+      "screenshots": [
+        "screenshots/qa087-390-expanded.png",
+        "screenshots/qa087-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa088",
+      "width": 390,
+      "label": "won-panels · icon_style=plus",
+      "screenshots": [
+        "screenshots/qa088-390-expanded.png",
+        "screenshots/qa088-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa089",
+      "width": 390,
+      "label": "won-panels · icon_style=chevron",
+      "screenshots": [
+        "screenshots/qa089-390-expanded.png",
+        "screenshots/qa089-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa090",
+      "width": 390,
+      "label": "won-panels · split_position=end",
+      "screenshots": [
+        "screenshots/qa090-390-expanded.png",
+        "screenshots/qa090-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa091",
+      "width": 390,
+      "label": "won-slide · visualization=standard",
+      "screenshots": [
+        "screenshots/qa091-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa092",
+      "width": 390,
+      "label": "won-slide · visualization=testimonial",
+      "screenshots": [
+        "screenshots/qa092-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa093",
+      "width": 390,
+      "label": "won-slide · visualization=expert",
+      "screenshots": [
+        "screenshots/qa093-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa094",
+      "width": 390,
+      "label": "won-slide · media_position=top",
+      "screenshots": [
+        "screenshots/qa094-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa095",
+      "width": 390,
+      "label": "won-slide · media_position=left",
+      "screenshots": [
+        "screenshots/qa095-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa096",
+      "width": 390,
+      "label": "won-slide · media_position=right",
+      "screenshots": [
+        "screenshots/qa096-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa097",
+      "width": 390,
+      "label": "won-slide · media_position=background",
+      "screenshots": [
+        "screenshots/qa097-390.png"
+      ],
+      "verdict": "fixture-issue",
+      "notes": "Text přes bílou etiketu a kontrastní packshot je místy špatně čitelný; nevhodné demo pozadí/overlay, nutné odlišit od chyby komponenty."
+    },
+    {
+      "id": "qa098",
+      "width": 390,
+      "label": "won-slide · card_style=minimal",
+      "screenshots": [
+        "screenshots/qa098-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa099",
+      "width": 390,
+      "label": "won-slide · card_style=bordered",
+      "screenshots": [
+        "screenshots/qa099-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa100",
+      "width": 390,
+      "label": "won-slide · card_style=elevated",
+      "screenshots": [
+        "screenshots/qa100-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa101",
+      "width": 390,
+      "label": "won-slide · headline_annotation=underline",
+      "screenshots": [
+        "screenshots/qa101-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa102",
+      "width": 390,
+      "label": "won-slide · headline_annotation=circle",
+      "screenshots": [
+        "screenshots/qa102-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa103",
+      "width": 390,
+      "label": "won-slide · media_type=none",
+      "screenshots": [
+        "screenshots/qa103-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Záměrná varianta media_type=none; text a CTA čitelné bez kolize, absence média odpovídá nastavení."
+    },
+    {
+      "id": "qa104",
+      "width": 390,
+      "label": "won-slide · media_type=video",
+      "screenshots": [
+        "screenshots/qa104-390.png"
+      ],
+      "verdict": "partial-content",
+      "notes": "Viditelná pouze textová část a CTA bez média; nepovažovat za pozitivní coverage video/obrázku."
+    },
+    {
+      "id": "qa105",
+      "width": 390,
+      "label": "won-feature · presentation=standard",
+      "screenshots": [
+        "screenshots/qa105-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa106",
+      "width": 390,
+      "label": "won-feature · presentation=numbered",
+      "screenshots": [
+        "screenshots/qa106-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa107",
+      "width": 390,
+      "label": "won-feature · presentation=statistic",
+      "screenshots": [
+        "screenshots/qa107-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa108",
+      "width": 390,
+      "label": "won-feature · image_position=top",
+      "screenshots": [
+        "screenshots/qa108-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa109",
+      "width": 390,
+      "label": "won-feature · image_position=left",
+      "screenshots": [
+        "screenshots/qa109-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa110",
+      "width": 390,
+      "label": "won-feature · image_position=below",
+      "screenshots": [
+        "screenshots/qa110-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa111",
+      "width": 390,
+      "label": "won-feature · icon_style=disc",
+      "screenshots": [
+        "screenshots/qa111-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-pass",
+        "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+      }
+    },
+    {
+      "id": "qa112",
+      "width": 390,
+      "label": "won-feature · icon_style=bare",
+      "screenshots": [
+        "screenshots/qa112-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-pass",
+        "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+      }
+    },
+    {
+      "id": "qa113",
+      "width": 390,
+      "label": "won-panel · row_style=plain",
+      "screenshots": [
+        "screenshots/qa113-390-expanded.png",
+        "screenshots/qa113-390.png"
+      ],
+      "verdict": "visual-observation",
+      "notes": "Prohlédnut closed/open/focus. Summary a vnořený benefit vlevo, answer centrovaný: nekonzistentní zarovnání jedné disclosure."
+    },
+    {
+      "id": "qa114",
+      "width": 390,
+      "label": "won-panel · row_style=editorial",
+      "screenshots": [
+        "screenshots/qa114-390-expanded.png",
+        "screenshots/qa114-390.png"
+      ],
+      "verdict": "visual-observation",
+      "notes": "Prohlédnut closed/open/focus. Summary a vnořený benefit vlevo, answer centrovaný: nekonzistentní zarovnání jedné disclosure."
+    },
+    {
+      "id": "qa115",
+      "width": 390,
+      "label": "won-panel · row_style=boxed",
+      "screenshots": [
+        "screenshots/qa115-390-expanded.png",
+        "screenshots/qa115-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa116",
+      "width": 390,
+      "label": "won-tile · label_position=overlay",
+      "screenshots": [
+        "screenshots/qa116-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa117",
+      "width": 390,
+      "label": "won-tile · label_position=below",
+      "screenshots": [
+        "screenshots/qa117-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa118",
+      "width": 390,
+      "label": "won-tile · badge_position=top_left",
+      "screenshots": [
+        "screenshots/qa118-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa119",
+      "width": 390,
+      "label": "won-tile · badge_position=top_right",
+      "screenshots": [
+        "screenshots/qa119-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa120",
+      "width": 390,
+      "label": "won-tile · badge_position=bottom_left",
+      "screenshots": [
+        "screenshots/qa120-390.png"
+      ],
+      "verdict": "visual-fail",
+      "notes": "Badge bottom-left překrývá začátek overlay názvu QA sample category ve stejném rohu."
+    },
+    {
+      "id": "qa121",
+      "width": 390,
+      "label": "won-tile · badge_position=bottom_right",
+      "screenshots": [
+        "screenshots/qa121-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa122",
+      "width": 390,
+      "label": "won-tile · badge_style=accent",
+      "screenshots": [
+        "screenshots/qa122-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa123",
+      "width": 390,
+      "label": "won-tile · badge_style=dark",
+      "screenshots": [
+        "screenshots/qa123-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa124",
+      "width": 390,
+      "label": "won-tile · badge_style=light",
+      "screenshots": [
+        "screenshots/qa124-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa125",
+      "width": 390,
+      "label": "won-delivery-note · appearance=card",
+      "screenshots": [
+        "screenshots/qa125-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa126",
+      "width": 390,
+      "label": "won-delivery-note · appearance=plain",
+      "screenshots": [
+        "screenshots/qa126-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa127",
+      "width": 390,
+      "label": "won-video · video_type=hosted",
+      "screenshots": [
+        "screenshots/qa127-390.png"
+      ],
+      "verdict": "empty-state",
+      "notes": "Pouze SVG placeholder videa; poměr rámu prohlédnut, skutečné video není ověřeno."
+    },
+    {
+      "id": "qa128",
+      "width": 390,
+      "label": "won-video · video_type=external",
+      "screenshots": [
+        "screenshots/qa128-390.png"
+      ],
+      "verdict": "visual-pass-after-fix",
+      "notes": "Nyní skutečný YouTube embed s thumbnail, titulkem a play control; Liquid chyba zmizela. Screenshot sám nedokazuje spuštěné přehrávání.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-fail",
+        "notes": "Viditelný Liquid error: external_video_tag does not support VideoUrlDrop. Přehrávač se nevykreslil."
+      }
+    },
+    {
+      "id": "qa129",
+      "width": 390,
+      "label": "won-video · aspect_ratio=16/9",
+      "screenshots": [
+        "screenshots/qa129-390.png"
+      ],
+      "verdict": "empty-state",
+      "notes": "Pouze SVG placeholder videa; poměr rámu prohlédnut, skutečné video není ověřeno."
+    },
+    {
+      "id": "qa130",
+      "width": 390,
+      "label": "won-video · aspect_ratio=4/3",
+      "screenshots": [
+        "screenshots/qa130-390.png"
+      ],
+      "verdict": "empty-state",
+      "notes": "Pouze SVG placeholder videa; poměr rámu prohlédnut, skutečné video není ověřeno."
+    },
+    {
+      "id": "qa131",
+      "width": 390,
+      "label": "won-video · aspect_ratio=1/1",
+      "screenshots": [
+        "screenshots/qa131-390.png"
+      ],
+      "verdict": "empty-state",
+      "notes": "Pouze SVG placeholder videa; poměr rámu prohlédnut, skutečné video není ověřeno."
+    },
+    {
+      "id": "qa141",
+      "width": 390,
+      "label": "won-announcement-bar · display=single",
+      "screenshots": [
+        "screenshots/qa141-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa142",
+      "width": 390,
+      "label": "won-media-compare · aspect_ratio=16/9",
+      "screenshots": [
+        "screenshots/qa142-390.png"
+      ],
+      "verdict": "visual-pass-after-fix",
+      "notes": "Znovu prohlédnuto po opravě: obě poloviny stejného obrázku nyní navazují bez změny velikosti/posunu. Bílá dělící čára je záměrná.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-fail",
+        "notes": "Before/after obrázky stejného motivu mají u děliče rozdílné proporce/posun; registrace není správná."
+      }
+    },
+    {
+      "id": "qa143",
+      "width": 390,
+      "label": "won-media-compare · aspect_ratio=1/1",
+      "screenshots": [
+        "screenshots/qa143-390.png"
+      ],
+      "verdict": "visual-pass-after-fix",
+      "notes": "Znovu prohlédnuto po opravě: obě poloviny stejného obrázku nyní navazují bez změny velikosti/posunu. Bílá dělící čára je záměrná.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-fail",
+        "notes": "Before/after obrázky stejného motivu mají u děliče rozdílné proporce/posun; registrace není správná."
+      }
+    },
+    {
+      "id": "qa144",
+      "width": 390,
+      "label": "won-media-compare · aspect_ratio=4/5",
+      "screenshots": [
+        "screenshots/qa144-390.png"
+      ],
+      "verdict": "visual-pass-after-fix",
+      "notes": "Znovu prohlédnuto po opravě: obě poloviny stejného obrázku nyní navazují bez změny velikosti/posunu. Bílá dělící čára je záměrná.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-fail",
+        "notes": "Before/after obrázky stejného motivu mají u děliče rozdílné proporce/posun; registrace není správná."
+      }
+    },
+    {
+      "id": "qa145",
+      "width": 390,
+      "label": "won-shoppable-image · card_aspect=square",
+      "screenshots": [
+        "screenshots/qa145-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa146",
+      "width": 390,
+      "label": "won-shoppable-image · card_aspect=portrait",
+      "screenshots": [
+        "screenshots/qa146-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa147",
+      "width": 390,
+      "label": "won-product-card · aspect=square",
+      "screenshots": [
+        "screenshots/qa147-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa148",
+      "width": 390,
+      "label": "won-product-card · aspect=landscape",
+      "screenshots": [
+        "screenshots/qa148-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa151",
+      "width": 390,
+      "label": "won-slide · missing image",
+      "screenshots": [
+        "screenshots/qa151-390.png"
+      ],
+      "verdict": "empty-state",
+      "notes": "Testimonial s chybějícím obrázkem: viditelný neutrální placeholder, text/CTA čitelné."
+    },
+    {
+      "id": "qa152",
+      "width": 390,
+      "label": "won-tile · missing image/content",
+      "screenshots": [
+        "screenshots/qa152-390.png"
+      ],
+      "verdict": "empty-state",
+      "notes": "Prázdná tile s gradientním pozadím a QA badge; žádný obrázek ani titulek, nejde o populated coverage."
+    },
+    {
+      "id": "qa153",
+      "width": 390,
+      "label": "won-group · nested independent scheme",
+      "screenshots": [
+        "screenshots/qa153-390-expanded.png",
+        "screenshots/qa153-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa154",
+      "width": 390,
+      "label": "won-carousel · collection grid mobile snap",
+      "screenshots": [
+        "screenshots/qa154-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa155",
+      "width": 390,
+      "label": "won-panels · multiple open editorial",
+      "screenshots": [
+        "screenshots/qa155-390-expanded.png",
+        "screenshots/qa155-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Všechny viditelné části snímku prohlédnuty; text, obraz, CTA a dostupné ovládání bez zjevné kolize. Dynamické chování se vyhodnocuje zvlášť."
+    },
+    {
+      "id": "qa157",
+      "width": 390,
+      "label": "won-slide · standard light child in dark parent",
+      "screenshots": [
+        "screenshots/qa157-390.png"
+      ],
+      "verdict": "visual-fail",
+      "notes": "Černý nadpis a text slidu na tmavě šedém rodičovském pozadí jsou téměř nečitelné. Vlastní schéma zřejmě nepromítlo Won tokeny."
+    },
+    {
+      "id": "qa158",
+      "width": 390,
+      "label": "won-media-compare · identical images alignment",
+      "screenshots": [
+        "screenshots/qa158-390.png"
+      ],
+      "verdict": "visual-pass-after-fix",
+      "notes": "Znovu prohlédnuto po opravě: obě poloviny stejného obrázku nyní navazují bez změny velikosti/posunu. Bílá dělící čára je záměrná.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-fail",
+        "notes": "Before/after obrázky stejného motivu mají u děliče rozdílné proporce/posun; registrace není správná."
+      }
+    },
+    {
+      "id": "qa046",
+      "width": 390,
+      "label": "won-variant-picker · preset: Won Variant picker",
+      "screenshots": [
+        "screenshots/qa046-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Viditelné produktové údaje, selected volba, ceny a CTA čitelné bez zjevné kolize; skutečný nákup/variant change je samostatná interakční kontrola."
+    },
+    {
+      "id": "qa048",
+      "width": 390,
+      "label": "won-breadcrumbs · default",
+      "screenshots": [
+        "screenshots/qa048-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Viditelné produktové údaje, selected volba, ceny a CTA čitelné bez zjevné kolize; skutečný nákup/variant change je samostatná interakční kontrola."
+    },
+    {
+      "id": "qa057",
+      "width": 390,
+      "label": "won-price-per-unit · default",
+      "screenshots": [
+        "screenshots/qa057-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Jednotková cena nyní viditelná a čitelná: $109.99 / 100 g. Změny variant ověřuje samostatná interakční evidence.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "empty-state",
+        "notes": "Úplně prázdný bílý snímek; žádná jednotková cena nebyla viditelná. Není pozitivní PPU coverage."
+      }
+    },
+    {
+      "id": "qa059",
+      "width": 390,
+      "label": "won-product-meta · default",
+      "screenshots": [
+        "screenshots/qa059-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Viditelné produktové údaje, selected volba, ceny a CTA čitelné bez zjevné kolize; skutečný nákup/variant change je samostatná interakční kontrola."
+    },
+    {
+      "id": "qa060",
+      "width": 390,
+      "label": "won-product-offer · default",
+      "screenshots": [
+        "screenshots/qa060-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Viditelné produktové údaje, selected volba, ceny a CTA čitelné bez zjevné kolize; skutečný nákup/variant change je samostatná interakční kontrola."
+    },
+    {
+      "id": "qa136",
+      "width": 390,
+      "label": "won-variant-picker · layout=axes",
+      "screenshots": [
+        "screenshots/qa136-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Viditelné produktové údaje, selected volba, ceny a CTA čitelné bez zjevné kolize; skutečný nákup/variant change je samostatná interakční kontrola."
+    },
+    {
+      "id": "qa137",
+      "width": 390,
+      "label": "won-variant-picker · layout=packs",
+      "screenshots": [
+        "screenshots/qa137-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Viditelné produktové údaje, selected volba, ceny a CTA čitelné bez zjevné kolize; skutečný nákup/variant change je samostatná interakční kontrola."
+    },
+    {
+      "id": "qa138",
+      "width": 390,
+      "label": "won-variant-picker · option1_style=buttons",
+      "screenshots": [
+        "screenshots/qa138-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Viditelné produktové údaje, selected volba, ceny a CTA čitelné bez zjevné kolize; skutečný nákup/variant change je samostatná interakční kontrola."
+    },
+    {
+      "id": "qa139",
+      "width": 390,
+      "label": "won-variant-picker · option1_style=swatches",
+      "screenshots": [
+        "screenshots/qa139-390.png"
+      ],
+      "verdict": "fallback-state",
+      "notes": "Swatch varianta zde vykresluje textové 500g/1000g/2500g pills, chybějí barevná swatch data; barevné swatche neověřeny."
+    },
+    {
+      "id": "qa140",
+      "width": 390,
+      "label": "won-variant-picker · option1_style=dropdown",
+      "screenshots": [
+        "screenshots/qa140-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Viditelné produktové údaje, selected volba, ceny a CTA čitelné bez zjevné kolize; skutečný nákup/variant change je samostatná interakční kontrola."
+    },
+    {
+      "id": "qa156",
+      "width": 390,
+      "label": "won-variant-picker · table quantity PPU",
+      "screenshots": [
+        "screenshots/qa156-390.png"
+      ],
+      "verdict": "partial-content",
+      "notes": "Cena, PPU $109.99 / 100 g, varianty, quantity a CTA čitelné. Tabulka v tomto snímku zavřená; otevřenou tabulku nelze z něj schválit.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "partial-content",
+        "notes": "Cena/picker/quantity/Show variants table jsou čitelné, ale nevidím PPU a tabulka je zavřená. Není plná coverage otevřené tabulky/PPU."
+      }
+    },
+    {
+      "id": "qa061",
+      "width": 390,
+      "label": "won-product-trust · default",
+      "screenshots": [
+        "screenshots/qa061-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Viditelné části snímku prohlédnuty; hierarchie, delší text a případná média/CTA čitelné bez zjevné kolize."
+    },
+    {
+      "id": "qa063",
+      "width": 390,
+      "label": "won-stock-signal · default",
+      "screenshots": [
+        "screenshots/qa063-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Viditelné části snímku prohlédnuty; hierarchie, delší text a případná média/CTA čitelné bez zjevné kolize."
+    },
+    {
+      "id": "qa149",
+      "width": 390,
+      "label": "won-nutrition-table · source=metafield",
+      "screenshots": [
+        "screenshots/qa149-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Viditelné části snímku prohlédnuty; hierarchie, delší text a případná média/CTA čitelné bez zjevné kolize."
+    },
+    {
+      "id": "qa150",
+      "width": 390,
+      "label": "won-param-table · source=metafield",
+      "screenshots": [
+        "screenshots/qa150-390.png"
+      ],
+      "verdict": "empty-state",
+      "notes": "Úplně prázdný bílý blok, nelze prohlásit populated data coverage."
+    },
+    {
+      "id": "qa160",
+      "width": 390,
+      "label": "Editorial composition · bundles_details",
+      "screenshots": [
+        "screenshots/qa160-390-expanded.png",
+        "screenshots/qa160-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-pass",
+        "notes": "Viditelné části snímku prohlédnuty; hierarchie, delší text a případná média/CTA čitelné bez zjevné kolize."
+      }
+    },
+    {
+      "id": "qa161",
+      "width": 390,
+      "label": "Editorial composition · reviews",
+      "screenshots": [
+        "screenshots/qa161-390.png"
+      ],
+      "verdict": "visual-fail",
+      "notes": "Znovu prohlédnuto: testimonial čitelný, ale enabled pravé rail tlačítko stále bílý kruh bez viditelného chevronu.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-fail",
+        "notes": "Testimonial karta čitelná, ale rail šipky jsou bílé/nezřetelné uvnitř bílých disků na cyan rodiči. Enabled pravá šipka nemá viditelný směr."
+      }
+    },
+    {
+      "id": "qa162",
+      "width": 390,
+      "label": "Editorial composition · benefits_expert",
+      "screenshots": [
+        "screenshots/qa162-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-pass",
+        "notes": "Viditelné části snímku prohlédnuty; hierarchie, delší text a případná média/CTA čitelné bez zjevné kolize."
+      }
+    },
+    {
+      "id": "qa163",
+      "width": 390,
+      "label": "Editorial composition · trust",
+      "screenshots": [
+        "screenshots/qa163-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-pass",
+        "notes": "Viditelné části snímku prohlédnuty; hierarchie, delší text a případná média/CTA čitelné bez zjevné kolize."
+      }
+    },
+    {
+      "id": "qa164",
+      "width": 390,
+      "label": "Editorial composition · reasons",
+      "screenshots": [
+        "screenshots/qa164-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-pass",
+        "notes": "Viditelné části snímku prohlédnuty; hierarchie, delší text a případná média/CTA čitelné bez zjevné kolize."
+      }
+    },
+    {
+      "id": "qa165",
+      "width": 390,
+      "label": "Editorial composition · composition",
+      "screenshots": [
+        "screenshots/qa165-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-pass",
+        "notes": "Viditelné části snímku prohlédnuty; hierarchie, delší text a případná média/CTA čitelné bez zjevné kolize."
+      }
+    },
+    {
+      "id": "qa166",
+      "width": 390,
+      "label": "Editorial composition · faq",
+      "screenshots": [
+        "screenshots/qa166-390-expanded.png",
+        "screenshots/qa166-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-pass",
+        "notes": "Viditelné části snímku prohlédnuty; hierarchie, delší text a případná média/CTA čitelné bez zjevné kolize."
+      }
+    },
+    {
+      "id": "qa167",
+      "width": 390,
+      "label": "Editorial composition · editorial",
+      "screenshots": [
+        "screenshots/qa167-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final",
+      "previousReview": {
+        "verdict": "visual-pass",
+        "notes": "Viditelné části snímku prohlédnuty; hierarchie, delší text a případná média/CTA čitelné bez zjevné kolize."
+      }
+    },
+    {
+      "id": "qa009",
+      "width": 390,
+      "label": "won-collection · preset: Won Collection (PLP)",
+      "screenshots": [
+        "screenshots/qa009-390-expanded.png",
+        "screenshots/qa009-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Poslední PNG a expanded PNG znovu prohlédnuty celé ve dvou segmentech. Availability je v obou otevřené; expanded přidává viditelný focus. Devět produktů, variantové CTA, sold-out, ceny i filtry jsou čitelné bez kolize. Default-open stav není selhání disclosure.",
+      "reviewRound": "final-collector-diagnostics"
+    },
+    {
+      "id": "qa011",
+      "width": 390,
+      "label": "won-contact · preset: Won Contact",
+      "screenshots": [
+        "screenshots/qa011-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa012",
+      "width": 390,
+      "label": "won-contact · preset: Won Contact — split",
+      "screenshots": [
+        "screenshots/qa012-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa038",
+      "width": 390,
+      "label": "won-panels · preset: Won · Two-column FAQ",
+      "screenshots": [
+        "screenshots/qa038-390-expanded.png",
+        "screenshots/qa038-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa039",
+      "width": 390,
+      "label": "won-panels · preset: Won Tabs",
+      "screenshots": [
+        "screenshots/qa039-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa040",
+      "width": 390,
+      "label": "won-panels · preset: Won Accordion — FAQ",
+      "screenshots": [
+        "screenshots/qa040-390-expanded.png",
+        "screenshots/qa040-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa041",
+      "width": 390,
+      "label": "won-panels · preset: Won Accordion — FAQ split",
+      "screenshots": [
+        "screenshots/qa041-390-expanded.png",
+        "screenshots/qa041-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa042",
+      "width": 390,
+      "label": "won-panels · preset: Won Accordion — FAQ with image",
+      "screenshots": [
+        "screenshots/qa042-390-expanded.png",
+        "screenshots/qa042-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa043",
+      "width": 390,
+      "label": "won-shoppable-image · preset: Won — shoppable image",
+      "screenshots": [
+        "screenshots/qa043-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa044",
+      "width": 390,
+      "label": "won-sticky-atc · preset: Won Sticky add-to-cart",
+      "screenshots": [
+        "screenshots/qa044-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa045",
+      "width": 390,
+      "label": "won-tabbed-rail · preset: Won — tabbed product rail",
+      "screenshots": [
+        "screenshots/qa045-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Poslední snímek tabbed railu znovu prohlédnut: první tab selected, produktová karta a očekávaný peek souseda, cena/CTA i oba směry šipek čitelné. Screenshot samotný neprokazuje druhý tab.",
+      "reviewRound": "final-collector-diagnostics"
+    },
+    {
+      "id": "qa047",
+      "width": 390,
+      "label": "won-accordion-row · default",
+      "screenshots": [
+        "screenshots/qa047-390-expanded.png",
+        "screenshots/qa047-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa049",
+      "width": 390,
+      "label": "won-delivery-note · default",
+      "screenshots": [
+        "screenshots/qa049-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa050",
+      "width": 390,
+      "label": "won-dosage · default",
+      "screenshots": [
+        "screenshots/qa050-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa051",
+      "width": 390,
+      "label": "won-feature · default",
+      "screenshots": [
+        "screenshots/qa051-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa052",
+      "width": 390,
+      "label": "won-group · default",
+      "screenshots": [
+        "screenshots/qa052-390-expanded.png",
+        "screenshots/qa052-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa132",
+      "width": 390,
+      "label": "won-sticky-atc · bar_style=compact",
+      "screenshots": [
+        "screenshots/qa132-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa133",
+      "width": 390,
+      "label": "won-sticky-atc · bar_style=minimal",
+      "screenshots": [
+        "screenshots/qa133-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa134",
+      "width": 390,
+      "label": "won-sticky-atc · bar_style=center",
+      "screenshots": [
+        "screenshots/qa134-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa135",
+      "width": 390,
+      "label": "won-sticky-atc · bar_style=corner",
+      "screenshots": [
+        "screenshots/qa135-390.png"
+      ],
+      "verdict": "visual-pass-with-local-overflow",
+      "notes": "Prohlédnutý corner screenshot těsně ořezává pravý okraj CTA. Podle doplněného měření hlavního auditora CTA přesahuje vlastní box o3px, ale na390 končí x381 a zůstává ve viewportu. Jde zde o lokální přesah/capture crop; skutečný viewport overflow na768 je evidován v tablet auditu.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa159",
+      "width": 390,
+      "label": "Editorial composition · main",
+      "screenshots": [
+        "screenshots/qa159-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "PDP média, dlouhý popis, varianty, cena, PPU, quantity, nákupní CTA, stock a rating vizuálně prohlédnuty; bez viditelné kolize. Screenshot má jeden obrázek, nikoli důkaz multi-media galerie.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa168",
+      "width": 390,
+      "label": "won-hero-carousel · mobile peek 1.15",
+      "screenshots": [
+        "screenshots/qa168-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa169",
+      "width": 390,
+      "label": "won-carousel · loop always",
+      "screenshots": [
+        "screenshots/qa169-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa170",
+      "width": 390,
+      "label": "won-carousel · loop mobile",
+      "screenshots": [
+        "screenshots/qa170-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa171",
+      "width": 390,
+      "label": "won-carousel · autoplay on",
+      "screenshots": [
+        "screenshots/qa171-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Poslední snímek znovu prohlédnut: jedna plná první karta s čitelným titulkem, tělem, CTA a rail ovládáním. Scroll/loop diagnostika se hodnotí z interakčního výsledku.",
+      "reviewRound": "final-collector-diagnostics"
+    },
+    {
+      "id": "qa172",
+      "width": 390,
+      "label": "won-carousel · autoplay off",
+      "screenshots": [
+        "screenshots/qa172-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa173",
+      "width": 390,
+      "label": "won-sticky-atc · mobile device scope",
+      "screenshots": [
+        "screenshots/qa173-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Nový/opravený390 snímek skutečně prohlédnut včetně všech dostupných expanded stavů; text, média, pole a ovládání čitelné bez zjevné kolize. Interakční funkčnost se hodnotí samostatně.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa175",
+      "width": 390,
+      "label": "won-video · external Vimeo sample",
+      "screenshots": [
+        "screenshots/qa175-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Skutečný Vimeo player s posterem, play a timeline v rámu; žádný viditelný Liquid error. Playback je samostatná interakční kontrola.",
+      "reviewRound": "recapture-final"
+    },
+    {
+      "id": "qa176",
+      "width": 390,
+      "label": "won-slide · elevated light child in dark parent",
+      "screenshots": [
+        "screenshots/qa176-390.png"
+      ],
+      "verdict": "visual-pass",
+      "notes": "Elevated světlý child uvnitř tmavého rodiče je čitelný: vlastní světlá plocha, tmavé písmo, jasná CTA; bez viditelného problému dědění.",
+      "reviewRound": "recapture-final"
+    }
+  ],
+  "findings": [
+    {
+      "id": "compare-registration",
+      "classification": "implementation-bug",
+      "cases": [
+        "qa034"
+      ],
+      "description": "Before/after stejný obrázek není v registraci: nápis WON/Pre-Workout se na děliči rozchází, obraz má rozdílné proporce.",
+      "status": "resolved-in-recapture",
+      "resolutionEvidence": [
+        "qa034",
+        "qa128",
+        "qa142",
+        "qa143",
+        "qa144",
+        "qa158"
+      ]
+    },
+    {
+      "id": "overlay-fixture-contrast",
+      "classification": "fixture-configuration",
+      "cases": [
+        "qa027",
+        "qa037"
+      ],
+      "description": "Text překrývá kontrastní etiketu v nevhodném demo backgroundu."
+    },
+    {
+      "id": "disclosure-alignment",
+      "classification": "visual-inconsistency",
+      "cases": [
+        "qa055"
+      ],
+      "description": "Closed/open a focus prohlédnuty. Summary vlevo, rozbalený text uprostřed, vnořený benefit vlevo: nekonzistentní zarovnání v jedné disclosure."
+    },
+    {
+      "id": "tile-bottom-badge-overlap",
+      "classification": "implementation-bug",
+      "cases": [
+        "qa120"
+      ],
+      "description": "Badge bottom-left překrývá začátek overlay názvu QA sample category ve stejném rohu."
+    },
+    {
+      "id": "external-video-liquid-error",
+      "classification": "implementation-bug",
+      "cases": [
+        "qa128"
+      ],
+      "description": "Viditelný Liquid error: external_video_tag does not support VideoUrlDrop. Přehrávač se nevykreslil.",
+      "status": "resolved-in-recapture",
+      "resolutionEvidence": [
+        "qa034",
+        "qa128",
+        "qa142",
+        "qa143",
+        "qa144",
+        "qa158"
+      ]
+    },
+    {
+      "id": "nested-slide-colors",
+      "classification": "implementation-bug",
+      "cases": [
+        "qa157"
+      ],
+      "description": "Černý nadpis a text slidu na tmavě šedém rodičovském pozadí jsou téměř nečitelné. Vlastní schéma zřejmě nepromítlo Won tokeny."
+    },
+    {
+      "id": "editorial-rail-arrow-contrast",
+      "classification": "visual-bug-needs-style-proof",
+      "cases": [
+        "qa161"
+      ],
+      "description": "Šipky na cyan testimonial railu vizuálně zanikají uvnitř bílých disků.",
+      "status": "still-visible-in-recapture"
+    }
+  ],
+  "notReviewed": [
+    {
+      "id": "qa174",
+      "width": 390,
+      "label": "won-sticky-atc · desktop device scope",
+      "verdict": "expected-hidden-not-visually-reviewed",
+      "screenshots": [],
+      "notes": "Desktop-only sticky widget je na390 očekávaně skrytý dle manifestu a DOM evidence the-videographer-snowboard-won-qa-product-30-390.json. Žádný PNG nebyl pořízen, není vizuálně schválen; nejedná se o vizuální chybu."
+    }
+  ],
+  "reviewMethod": "Každý uvedený screenshot skutečně prohlédnut přes view_image, většinou v kontaktním archu původní390 šířky. Dlouhé qa073 rozděleny do detailů; qa161 také individuálně. První capture se sticky překryvem znovu prohlédnuta po jeho odstranění. Historické verdikty ostatních case ponechány."
+}

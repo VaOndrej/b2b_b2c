@@ -1,0 +1,68 @@
+{
+  "url": "/products/the-videographer-snowboard?view=won-qa-product-25",
+  "width": 1440,
+  "httpStatus": 200,
+  "signals": {
+    "console": [],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/products/the-videographer-snowboard?view=won-qa-product-25",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://error-analytics-sessions-production.shopifysvc.com/observeonly",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "qa156",
+      "type": "won-variant-picker",
+      "variant": "table quantity PPU",
+      "label": "won-variant-picker · table quantity PPU",
+      "context": "product",
+      "limitations": [],
+      "url": "/products/the-videographer-snowboard?view=won-qa-product-25",
+      "sectionId": "qa156",
+      "selector": "[id$=\"__qa156\"]",
+      "template": "product.won-qa-product-25.json",
+      "width": 1440,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa156-1440.png"
+      ],
+      "text": "Pre-Workout Energy\n★★★★★\n4.7(231)\n4.7 / 5, 231\n$549.95\n$999.95\nBalení\n500 g\n1 000 g\n2 500 g\nShow variants table\n−\n+\nAdd to cart",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 307.703125,
+        "width": 1440,
+        "height": 409.25
+      }
+    }
+  ]
+}

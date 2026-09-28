@@ -1,0 +1,23 @@
+
+> test:smoke
+> playwright test tests/smoke --grep corner sticky fits --project=desktop --reporter=line --output tmp/theme-audit-runs/2026-09-11-remediation/layout-test-output
+
+(node:28374) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 3 tests using 1 worker
+
+[1A[2K(node:28384) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28384) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28384) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/3] [desktop] › tests/smoke/won-remediation-layout.spec.ts:92:5 › Won remediation layout › corner sticky fits its shell and viewport at 390
+[1A[2K[2/3] [desktop] › tests/smoke/won-remediation-layout.spec.ts:92:5 › Won remediation layout › corner sticky fits its shell and viewport at 768
+[1A[2K[3/3] [desktop] › tests/smoke/won-remediation-layout.spec.ts:92:5 › Won remediation layout › corner sticky fits its shell and viewport at 1440
+[1A[2K  3 passed (6.5s)

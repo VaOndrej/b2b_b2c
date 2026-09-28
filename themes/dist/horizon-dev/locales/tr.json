@@ -328,5 +328,10 @@
       "default_title": "Varsayılan Başlık",
       "sticky_add_to_cart": "Sepete hızlı ekle çubuğu"
     }
+  },
+  "won": {
+    "vp": {
+      "hide_table": "Hide variants table"
+    }
   }
 }

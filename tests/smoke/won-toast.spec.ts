@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { observeCommittedCart, openEmptyCart, expectCommittedCart, attachCartDiagnostics } from '../support/cart-state';
+
+test.afterEach(async ({ page }) => attachCartDiagnostics(page));
 
 // Won toasts — the native cart message.
 //
@@ -27,20 +30,19 @@ const ITEM = '[data-won-toast-item]';
  *  hover, which is exactly the miss a shopper cannot reproduce. */
 async function tapPlus(page: import('@playwright/test').Page, nth = 0) {
   const stepper = page.locator('[data-won-stepper]').nth(nth);
+  // Reveal hover-only quick add through the real card, then let Playwright wait
+  // for the control to stabilize. The burst still clicks one fixed point.
+  await stepper.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " won-pcard ")][1]').hover();
   await stepper.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(200);
-  const hover = await stepper.boundingBox();
-  await page.mouse.move(hover!.x + hover!.width - 18, hover!.y + hover!.height / 2);
-  await page.waitForTimeout(120);
+  await stepper.locator('[data-won-add]').hover();
   const box = await stepper.boundingBox();
   await page.mouse.click(box!.x + box!.width - 18, box!.y + box!.height / 2);
   return box!;
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/collections/all', { waitUntil: 'load' });
-  await page.evaluate(() => fetch('/cart/clear.js', { method: 'POST' }));
-  await page.waitForTimeout(400);
+  await observeCommittedCart(page);
+  await openEmptyCart(page, '/collections/all');
 });
 
 test('adding to the cart shows one toast naming the product', async ({ page }) => {
@@ -60,12 +62,11 @@ test('repeat taps on one card rewrite one toast rather than stacking', async ({ 
   const box = await tapPlus(page);
   for (let i = 0; i < 4; i++) {
     await page.mouse.click(box.x + box.width - 18, box.y + box.height / 2);
-    await page.waitForTimeout(110);
   }
-  await page.waitForTimeout(1600);
+  const cart = await expectCommittedCart(page, 5);
 
   await expect(page.locator(ITEM)).toHaveCount(1);
-  const count = await page.evaluate(async () => (await (await fetch('/cart.js')).json()).item_count);
+  const count = cart.item_count;
   expect(count, 'five taps must land as five').toBe(5);
   // The message states how many are in the cart NOW — not how many the last tap
   // moved — so the number must equal the cart, whatever the batching did.
@@ -80,9 +81,8 @@ test('a burst across different cards is capped at the configured maximum', async
   const max = Number(await page.locator(REGION).getAttribute('data-max')) || 3;
   for (let i = 0; i < 6; i++) {
     await tapPlus(page, i);
-    await page.waitForTimeout(140);
   }
-  await page.waitForTimeout(1800);
+  await expectCommittedCart(page, 6);
 
   const shown = await page.locator(ITEM).count();
   expect(shown, `six cards produced ${shown} toasts, cap is ${max}`).toBeLessThanOrEqual(max);
@@ -94,14 +94,14 @@ test('emptying the cart reports removals, one per variant', async ({ page }) => 
   test.skip((await page.locator('[data-won-stepper]').count()) === 0, 'no stepper on this page');
 
   await tapPlus(page);
-  await page.waitForTimeout(1000);
+  await expectCommittedCart(page, 1);
   await page.evaluate(() => document.querySelectorAll('[data-won-toast-item]').forEach((e) => e.remove()));
   await page.evaluate(() =>
     fetch('/cart/clear.js', { method: 'POST' })
       .then((r) => r.json())
       .then((cart) => document.dispatchEvent(new CustomEvent('cart:refresh', { detail: { cart } })))
   );
-  await page.waitForTimeout(900);
+  await expectCommittedCart(page, 0);
 
   await expect(page.locator('[data-won-toast-item][data-type="removed"]')).toHaveCount(1);
 });
@@ -128,7 +128,6 @@ test('the toast is two lines, and a decrease reads differently from an increase'
   // and the wording carry it too — but it must actually differ.
   const minus = page.locator('[data-won-stepper]').first().locator('[data-won-step="-1"]');
   await page.mouse.move(box.x + 18, box.y + box.height / 2);
-  await page.waitForTimeout(150);
   await minus.click();
   await expect(page.locator(ITEM).first()).toHaveAttribute('data-type', /decreased|removed/);
 

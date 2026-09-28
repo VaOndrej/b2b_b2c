@@ -25,7 +25,10 @@
 
     {{ content_for_header }}
     {{ 'won-tokens.css' | asset_url | stylesheet_tag }}
+  {{ 'won-toast.css' | asset_url | stylesheet_tag }}
   <script src="{{ 'won-cart.js' | asset_url }}" defer></script>
+  <script src="{{ 'won-toast.js' | asset_url }}" defer></script>
+  <script src="{{ 'won-promo-code.js' | asset_url }}" defer></script>
   {% render 'won-site-schema' %}
   </head>
 
@@ -35,5 +38,7 @@
     {{ content_for_layout }}
 
     {% sections 'footer-group' %}
+    {% render 'won-toast-config' %}
+    {% render 'won-promo-config' %}
   </body>
 </html>

@@ -335,5 +335,10 @@
       "success_moderated": "O comentário foi publicado, aguardando moderação",
       "success": "Comentário publicado"
     }
+  },
+  "won": {
+    "vp": {
+      "hide_table": "Hide variants table"
+    }
   }
 }

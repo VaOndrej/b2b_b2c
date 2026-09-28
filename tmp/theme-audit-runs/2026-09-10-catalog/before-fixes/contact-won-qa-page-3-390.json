@@ -1,0 +1,452 @@
+{
+  "url": "/pages/contact?view=won-qa-page-3",
+  "width": 390,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-3",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=d3eb7474-07bd-47fe-8159-a77944b68008&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    },
+    "responsive": "pass"
+  },
+  "results": [
+    {
+      "id": "qa026",
+      "type": "won-hero-carousel",
+      "variant": "preset: Won Hero – peek carousel",
+      "label": "won-hero-carousel · preset: Won Hero – peek carousel",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-3",
+      "sectionId": "qa026",
+      "selector": "[id$=\"__qa026\"]",
+      "template": "page.won-qa-page-3.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "carousel-content",
+          "overflow": true,
+          "mode": null
+        },
+        {
+          "name": "carousel-invariant",
+          "pass": true
+        },
+        {
+          "name": "carousel-scroll",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa026-390.png"
+      ],
+      "text": "HYDRATION\n\nWhen water isn't enough\n\nReplace key minerals lost in the heat.\n\nShop now\n\nDEAL\n\nCreatine −20%\n\nStrength and performance, every day.\n\nShop now\n\nBESTSELLER\n\nWhey with 21g protein\n\nSelected flavours at a great price.\n\nShop now\n\nNEW\n\nNew: BCAA\n\nRecovery after every workout.\n\nShop now\n‹\n›",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=800",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=800",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=800",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=800",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 283.578125,
+        "width": 390,
+        "height": 560
+      }
+    },
+    {
+      "id": "qa027",
+      "type": "won-hero-grid",
+      "variant": "preset: Won Hero – tiles",
+      "label": "won-hero-grid · preset: Won Hero – tiles",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-3",
+      "sectionId": "qa027",
+      "selector": "[id$=\"__qa027\"]",
+      "template": "page.won-qa-page-3.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa027-390.png"
+      ],
+      "text": "HYDRATION\n\nElectrolytes\n\nMinerals for hot days\n\nShop\n\nDEAL\n\nCreatine −20%\n\nStrength every day\n\nShop\n\nBESTSELLER\n\nWhey protein\n\n21 g per serving\n\nShop\n\nNEW\n\nBCAA\n\nRecovery after training\n\nShop",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=800",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=800",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=800",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=800",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": -341.640625,
+        "width": 390,
+        "height": 1528
+      }
+    },
+    {
+      "id": "qa028",
+      "type": "won-hero",
+      "variant": "preset: Hero — split",
+      "label": "won-hero · preset: Hero — split",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-3",
+      "sectionId": "qa028",
+      "selector": "[id$=\"__qa028\"]",
+      "template": "page.won-qa-page-3.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa028-390.png"
+      ],
+      "text": "SPORTS NUTRITION\n\nFuel your best performance\n\nClean formulas, lab-tested. ★ 4.9/5 from 25,000+ athletes · fast delivery.\n\nShop now",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=800",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 92.140625,
+        "width": 390,
+        "height": 660
+      }
+    },
+    {
+      "id": "qa029",
+      "type": "won-hero",
+      "variant": "preset: Hero — overlay",
+      "label": "won-hero · preset: Hero — overlay",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-3",
+      "sectionId": "qa029",
+      "selector": "[id$=\"__qa029\"]",
+      "template": "page.won-qa-page-3.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa029-390.png"
+      ],
+      "text": "NEW SEASON\n\nMade for movement\n\nEverything you need to train, recover and feel your best.\n\nShop the collection",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=800",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 121.921875,
+        "width": 390,
+        "height": 600
+      }
+    },
+    {
+      "id": "qa030",
+      "type": "won-hero",
+      "variant": "preset: Hero — minimal",
+      "label": "won-hero · preset: Hero — minimal",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-3",
+      "sectionId": "qa030",
+      "selector": "[id$=\"__qa030\"]",
+      "template": "page.won-qa-page-3.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa030-390.png"
+      ],
+      "text": "SINCE 2014\n\nPerformance, simplified\n\nClean supplements with nothing to hide. Free delivery over $60.\n\nExplore products",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 269.703125,
+        "width": 390,
+        "height": 303.8125
+      }
+    },
+    {
+      "id": "qa031",
+      "type": "won-hero",
+      "variant": "preset: Hero — CTA",
+      "label": "won-hero · preset: Hero — CTA",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-3",
+      "sectionId": "qa031",
+      "selector": "[id$=\"__qa031\"]",
+      "template": "page.won-qa-page-3.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa031-390.png"
+      ],
+      "text": "LOYALTY CLUB\n\nJoin the club — get 10% off\n\nEarn points on every order and unlock member-only prices.\n\nCreate account",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 573.296875,
+        "width": 390,
+        "height": 270.21875
+      }
+    },
+    {
+      "id": "qa032",
+      "type": "won-marquee",
+      "variant": "preset: Won Marquee — USP strip",
+      "label": "won-marquee · preset: Won Marquee — USP strip",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-3",
+      "sectionId": "qa032",
+      "selector": "[id$=\"__qa032\"]",
+      "template": "page.won-qa-page-3.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa032-390.png"
+      ],
+      "text": "QA demonstration 1\n•\n•\nQA demonstration 3\n•\nQA demonstration 4\n•\nQA demonstration 5\n•\nQA demonstration 6\n•\nQA demonstration 1\n•\n•\nQA demonstration 3\n•\nQA demonstration 4\n•\nQA demonstration 5\n•\nQA demonstration 6\n•",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=160",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=160",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 388.296875,
+        "width": 390,
+        "height": 68
+      }
+    },
+    {
+      "id": "qa033",
+      "type": "won-marquee",
+      "variant": "preset: Won Marquee — deals strip",
+      "label": "won-marquee · preset: Won Marquee — deals strip",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-3",
+      "sectionId": "qa033",
+      "selector": "[id$=\"__qa033\"]",
+      "template": "page.won-qa-page-3.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa033-390.png"
+      ],
+      "text": "QA demonstration 1\n★\n★\nQA demonstration 3\n★\nQA demonstration 4\n★\nQA demonstration 5\n★\nQA demonstration 6\n★\nQA demonstration 1\n★\n★\nQA demonstration 3\n★\nQA demonstration 4\n★\nQA demonstration 5\n★\nQA demonstration 6\n★",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=160",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=160",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 597.078125,
+        "width": 390,
+        "height": 68
+      }
+    },
+    {
+      "id": "qa034",
+      "type": "won-media-compare",
+      "variant": "preset: Won Before / After",
+      "label": "won-media-compare · preset: Won Before / After",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-3",
+      "sectionId": "qa034",
+      "selector": "[id$=\"__qa034\"]",
+      "template": "page.won-qa-page-3.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa034-390.png"
+      ],
+      "text": "After\nBefore",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 541.859375,
+        "width": 390,
+        "height": 302.125
+      }
+    },
+    {
+      "id": "qa035",
+      "type": "won-newsletter",
+      "variant": "preset: Won Newsletter — signup",
+      "label": "won-newsletter · preset: Won Newsletter — signup",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-3",
+      "sectionId": "qa035",
+      "selector": "[id$=\"__qa035\"]",
+      "template": "page.won-qa-page-3.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa035-390.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\nSubscribe\nI agree to receive marketing emails and accept the privacy policy.",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 287.765625,
+        "width": 390,
+        "height": 268.15625
+      }
+    },
+    {
+      "id": "qa036",
+      "type": "won-newsletter",
+      "variant": "preset: Won Newsletter — lead magnet",
+      "label": "won-newsletter · preset: Won Newsletter — lead magnet",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-3",
+      "sectionId": "qa036",
+      "selector": "[id$=\"__qa036\"]",
+      "template": "page.won-qa-page-3.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa036-390.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\nSubscribe\nI agree to receive marketing emails and accept the privacy policy.\n\nPDF zdarma · Bez spamu",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 536.703125,
+        "width": 390,
+        "height": 307.203125
+      }
+    },
+    {
+      "id": "qa037",
+      "type": "won-page-header",
+      "variant": "preset: Won Page Header",
+      "label": "won-page-header · preset: Won Page Header",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-3",
+      "sectionId": "qa037",
+      "selector": "[id$=\"__qa037\"]",
+      "template": "page.won-qa-page-3.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa037-390.png"
+      ],
+      "text": "QA sample — clear information for a considered choice",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=800",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 237.65625,
+        "width": 390,
+        "height": 368
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+(node:27680) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 30 tests using 1 worker
+
+[1A[2K(node:27682) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:27682) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:27682) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 390 /pages/contact?view=won-qa-page-1
+[1A[2K[2/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 390 /pages/contact?view=won-qa-page-3
+[1A[2K[3/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 390 /pages/contact?view=won-qa-page-5
+[1A[2K[4/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 390 /pages/contact?view=won-qa-page-7
+[1A[2K[5/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 390 /pages/contact?view=won-qa-page-8
+[1A[2K[6/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 390 /pages/contact?view=won-qa-page-12
+[1A[2K[7/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-25
+[1A[2K[8/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-editorial
+[1A[2K[9/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 390 /pages/contact?view=won-qa-page-28
+[1A[2K[10/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 390 /pages/contact?view=won-qa-page-31
+[1A[2K[11/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 768 /pages/contact?view=won-qa-page-1
+[1A[2K[12/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 768 /pages/contact?view=won-qa-page-3
+[1A[2K[13/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 768 /pages/contact?view=won-qa-page-5
+[1A[2K[14/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 768 /pages/contact?view=won-qa-page-7
+[1A[2K[15/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 768 /pages/contact?view=won-qa-page-8
+[1A[2K[16/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 768 /pages/contact?view=won-qa-page-12
+[1A[2K[17/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-25
+[1A[2K[18/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-editorial
+[1A[2K[19/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 768 /pages/contact?view=won-qa-page-28
+[1A[2K[20/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 768 /pages/contact?view=won-qa-page-31
+[1A[2K[21/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 1440 /pages/contact?view=won-qa-page-1
+[1A[2K[22/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 1440 /pages/contact?view=won-qa-page-3
+[1A[2K[23/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 1440 /pages/contact?view=won-qa-page-5
+[1A[2K[24/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 1440 /pages/contact?view=won-qa-page-7
+[1A[2K[25/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 1440 /pages/contact?view=won-qa-page-8
+[1A[2K[26/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 1440 /pages/contact?view=won-qa-page-12
+[1A[2K[27/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-25
+[1A[2K[28/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-editorial
+[1A[2K[29/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 1440 /pages/contact?view=won-qa-page-28
+[1A[2K[30/30] [desktop] › tests/smoke/won-qa-catalog.spec.ts:27:5 › QA catalogue 1440 /pages/contact?view=won-qa-page-31
+[1A[2K  30 passed (56.9s)

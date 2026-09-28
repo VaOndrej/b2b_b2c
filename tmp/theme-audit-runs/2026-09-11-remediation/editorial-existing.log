@@ -1,0 +1,107 @@
+(node:36051) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 10 tests using 1 worker
+
+[1A[2K(node:36052) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:36052) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:36052) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/10] [desktop] › tests/smoke/won-editorial.spec.ts:16:3 › editorial PDP › composes reusable columns, cards and native purchase controls
+[1A[2K[2/10] [desktop] › tests/smoke/won-editorial.spec.ts:85:3 › editorial PDP › disclosures work by keyboard and remain independent of purchase state
+[1A[2K[3/10] [desktop] › tests/smoke/won-editorial.spec.ts:106:3 › editorial PDP › native variant changes update price and submit the selected item
+[1A[2K  1) [desktop] › tests/smoke/won-editorial.spec.ts:106:3 › editorial PDP › native variant changes update price and submit the selected item 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m1[39m
+    Received: [31m0[39m
+
+    Call Log:
+    - Timeout 15000ms exceeded while waiting on the predicate
+
+      133 |     try {
+      134 |       await form.locator('button[type="submit"]').click();
+    > 135 |       await expect
+          |       ^
+      136 |         .poll(async () => {
+      137 |           const cart = await (await page.request.get("/cart.js")).json();
+      138 |           return (
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts:135:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/editorial-existing-results/smoke-won-editorial-editor-5ba79-nd-submit-the-selected-item-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/editorial-existing-results/smoke-won-editorial-editor-5ba79-nd-submit-the-selected-item-desktop/error-context.md
+
+
+[1A[2K(node:36076) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:36076) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:36076) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[4/10] [desktop] › tests/smoke/won-qa-fixes.spec.ts:9:3 › QA verified fixes › identical comparison images stay registered when the divider moves
+[1A[2K[5/10] [desktop] › tests/smoke/won-qa-fixes.spec.ts:44:3 › QA verified fixes › external URL video renders the provider iframe without a Liquid exception
+[1A[2K(node:36092) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:36092) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:36092) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[6/10] [mobile] › tests/smoke/won-editorial.spec.ts:16:3 › editorial PDP › composes reusable columns, cards and native purchase controls
+[1A[2K[7/10] [mobile] › tests/smoke/won-editorial.spec.ts:85:3 › editorial PDP › disclosures work by keyboard and remain independent of purchase state
+[1A[2K[8/10] [mobile] › tests/smoke/won-editorial.spec.ts:106:3 › editorial PDP › native variant changes update price and submit the selected item
+[1A[2K  2) [mobile] › tests/smoke/won-editorial.spec.ts:106:3 › editorial PDP › native variant changes update price and submit the selected item 
+
+    SyntaxError: Unexpected token '<', "<!--
+      The"... is not valid JSON
+
+      135 |       await expect
+      136 |         .poll(async () => {
+    > 137 |           const cart = await (await page.request.get("/cart.js")).json();
+          |                        ^
+      138 |           return (
+      139 |             cart.items.find((i: any) => i.variant_id === target.id)?.quantity ||
+      140 |             0
+        at Object.generator (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts:137:24)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-editorial.spec.ts:135:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/editorial-existing-results/smoke-won-editorial-editor-5ba79-nd-submit-the-selected-item-mobile/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/editorial-existing-results/smoke-won-editorial-editor-5ba79-nd-submit-the-selected-item-mobile/error-context.md
+
+
+[1A[2K(node:36128) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:36128) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:36128) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[9/10] [mobile] › tests/smoke/won-qa-fixes.spec.ts:9:3 › QA verified fixes › identical comparison images stay registered when the divider moves
+[1A[2K[10/10] [mobile] › tests/smoke/won-qa-fixes.spec.ts:44:3 › QA verified fixes › external URL video renders the provider iframe without a Liquid exception
+[1A[2K  2 failed
+    [desktop] › tests/smoke/won-editorial.spec.ts:106:3 › editorial PDP › native variant changes update price and submit the selected item 
+    [mobile] › tests/smoke/won-editorial.spec.ts:106:3 › editorial PDP › native variant changes update price and submit the selected item 
+  8 passed (48.7s)

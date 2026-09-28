@@ -1,0 +1,151 @@
+{
+  "url": "/pages/contact?view=won-qa-page-5",
+  "width": 768,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Access to script at 'http://cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-5059b83f.js' from origin 'http://127.0.0.1:9292' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "Failed to load resource: net::ERR_FAILED",
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-5059b83f.js",
+        "error": "net::ERR_FAILED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@d761896cw652752b9p53817278m7665fce0/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-5",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=ed5ff210-fd2e-4513-856c-c1c4bf676418&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      }
+    ],
+    "failedAssets": [],
+    "httpAttempts": [
+      200
+    ],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "qa067",
+      "type": "won-band",
+      "variant": "media_position=left",
+      "label": "won-band · media_position=left",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa067",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__qa067\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa067-768.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\n\nDemonstration content with a longer paragraph to check balanced image and text proportions on smaller screens.\n\nExplore demo",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 274.03125,
+        "width": 768,
+        "height": 476.53125
+      }
+    },
+    {
+      "id": "qa068",
+      "type": "won-band",
+      "variant": "media_position=right",
+      "label": "won-band · media_position=right",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa068",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__qa068\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa068-768.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\n\nDemonstration content with a longer paragraph to check balanced image and text proportions on smaller screens.\n\nExplore demo",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 547.34375,
+        "width": 768,
+        "height": 476.53125
+      }
+    },
+    {
+      "id": "qa069",
+      "type": "won-band",
+      "variant": "media_position=center_gutter",
+      "label": "won-band · media_position=center_gutter",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa069",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__qa069\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa069-768.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\n\nDemonstration content with a longer paragraph to check balanced image and text proportions on smaller screens.\n\nExplore demo",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 292.65625,
+        "width": 768,
+        "height": 438.375
+      }
+    }
+  ]
+}

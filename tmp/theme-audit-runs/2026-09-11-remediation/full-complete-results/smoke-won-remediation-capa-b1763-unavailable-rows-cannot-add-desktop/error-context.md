@@ -1,0 +1,306 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#MainContent"
+  - generic [ref=e3]:
+    - generic [ref=e7]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: ✨
+        - link "Nová kolekce Hydratace je tu 💧" [ref=e11] [cursor=pointer]:
+          - /url: /collections/all
+      - button "Close" [ref=e12] [cursor=pointer]:
+        - generic [ref=e13]: ×
+    - banner [ref=e14]:
+      - generic [ref=e17]:
+        - navigation [ref=e21]:
+          - list [ref=e24]:
+            - generic:
+              - link "Home" [ref=e25] [cursor=pointer]:
+                - /url: /
+                - generic [ref=e26]: Home
+              - link "Catalog" [ref=e27] [cursor=pointer]:
+                - /url: /collections/all
+                - generic [ref=e28]: Catalog
+              - link "Contact" [ref=e29] [cursor=pointer]:
+                - /url: /pages/contact
+                - generic [ref=e30]: Contact
+        - link "B2b_b2c_store_development" [ref=e32] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e33]: B2b_b2c_store_development
+        - generic [ref=e34]:
+          - button "USD Region and language selector" [ref=e36] [cursor=pointer]:
+            - generic [ref=e37]: USD
+            - generic [ref=e38]: Region and language selector
+            - generic:
+              - img
+          - search "Search" [ref=e39]:
+            - search [ref=e40]:
+              - generic [ref=e42]:
+                - generic [ref=e43]: Search
+                - combobox "Search" [ref=e44]
+                - generic:
+                  - img
+          - generic [ref=e45]:
+            - button "Account" [ref=e47] [cursor=pointer]:
+              - img [ref=e49]
+            - button "Cart" [ref=e53] [cursor=pointer]:
+              - generic [ref=e54]:
+                - generic:
+                  - img
+                - generic [ref=e55]:
+                  - status:
+                    - generic [ref=e57]: "Total items in cart: 0"
+  - main [ref=e58]:
+    - generic [ref=e63]:
+      - 'heading "QA qa177: won-group · column ratio 1:1" [level=1] [ref=e64]'
+      - paragraph [ref=e66]: Demonstration content — visual audit fixture, not customer claims.
+    - generic [ref=e73]:
+      - heading "QA sample benefit" [level=3] [ref=e78]
+      - group [ref=e80]:
+        - generic "QA question — how does this example work?" [ref=e81] [cursor=pointer]:
+          - generic [ref=e82]: QA question — how does this example work?
+    - generic [ref=e88]:
+      - 'heading "QA qa178: won-group · column ratio 2:3" [level=1] [ref=e89]'
+      - paragraph [ref=e91]: Demonstration content — visual audit fixture, not customer claims.
+    - generic [ref=e98]:
+      - heading "QA sample benefit" [level=3] [ref=e103]
+      - group [ref=e105]:
+        - generic "QA question — how does this example work?" [ref=e106] [cursor=pointer]:
+          - generic [ref=e107]: QA question — how does this example work?
+    - generic [ref=e113]:
+      - 'heading "QA qa179: won-group · column ratio 3:2" [level=1] [ref=e114]'
+      - paragraph [ref=e116]: Demonstration content — visual audit fixture, not customer claims.
+    - generic [ref=e123]:
+      - heading "QA sample benefit" [level=3] [ref=e128]
+      - group [ref=e130]:
+        - generic "QA question — how does this example work?" [ref=e131] [cursor=pointer]:
+          - generic [ref=e132]: QA question — how does this example work?
+    - generic [ref=e138]:
+      - 'heading "QA qa180: won-product-card · row single variant" [level=1] [ref=e139]'
+      - paragraph [ref=e141]: Demonstration content — visual audit fixture, not customer claims.
+    - generic [ref=e149]:
+      - link "Elektrolyty Hydratace" [ref=e151] [cursor=pointer]:
+        - /url: /products/the-inventory-not-tracked-snowboard
+        - img "Elektrolyty Hydratace" [ref=e152]
+      - link "Elektrolyty Hydratace 4.6(94) 4.6 / 5, 94 $599.95" [ref=e153] [cursor=pointer]:
+        - /url: /products/the-inventory-not-tracked-snowboard
+        - generic [ref=e154]: Elektrolyty Hydratace
+        - generic "4.6 / 5" [ref=e155]:
+          - generic [ref=e156]: ★★★★★ ★★★★★
+          - generic [ref=e157]: 4.6(94)
+          - generic [ref=e158]: 4.6 / 5, 94
+        - generic [ref=e159]: $599.95
+      - 'button "Add to cart: Elektrolyty Hydratace" [active] [ref=e161] [cursor=pointer]':
+        - generic [ref=e162]: Add to cart
+    - generic [ref=e167]:
+      - 'heading "QA qa181: won-product-card · row multi variant" [level=1] [ref=e168]'
+      - paragraph [ref=e170]: Demonstration content — visual audit fixture, not customer claims.
+    - generic [ref=e178]:
+      - link "Pre-Workout Energy" [ref=e180] [cursor=pointer]:
+        - /url: /products/the-videographer-snowboard
+        - img "Pre-Workout Energy" [ref=e181]
+      - link "Pre-Workout Energy 4.7(231) 4.7 / 5, 231 $549.95 $999.95" [ref=e182] [cursor=pointer]:
+        - /url: /products/the-videographer-snowboard
+        - generic [ref=e183]: Pre-Workout Energy
+        - generic "4.7 / 5" [ref=e184]:
+          - generic [ref=e185]: ★★★★★ ★★★★★
+          - generic [ref=e186]: 4.7(231)
+          - generic [ref=e187]: 4.7 / 5, 231
+        - generic [ref=e188]: $549.95 $999.95
+      - link "Choose" [ref=e189] [cursor=pointer]:
+        - /url: /products/the-videographer-snowboard
+    - generic [ref=e194]:
+      - 'heading "QA qa182: won-product-card · row soldout" [level=1] [ref=e195]'
+      - paragraph [ref=e197]: Demonstration content — visual audit fixture, not customer claims.
+    - generic [ref=e205]:
+      - link "Proteinová tyčinka (12 ks)" [ref=e207] [cursor=pointer]:
+        - /url: /products/the-out-of-stock-snowboard
+        - img "Proteinová tyčinka (12 ks)" [ref=e208]
+      - link "Proteinová tyčinka (12 ks) 4.3(58) 4.3 / 5, 58 $885.95" [ref=e209] [cursor=pointer]:
+        - /url: /products/the-out-of-stock-snowboard
+        - generic [ref=e210]: Proteinová tyčinka (12 ks)
+        - generic "4.3 / 5" [ref=e211]:
+          - generic [ref=e212]: ★★★★★ ★★★★★
+          - generic [ref=e213]: 4.3(58)
+          - generic [ref=e214]: 4.3 / 5, 58
+        - generic [ref=e215]: $885.95
+      - generic [ref=e216]: Sold out
+    - generic [ref=e221]:
+      - 'heading "QA qa183: won-video · portrait contain external" [level=1] [ref=e222]'
+      - paragraph [ref=e224]: Demonstration content — visual audit fixture, not customer claims.
+    - iframe [ref=e232]:
+      - generic [active] [ref=f1e1]:
+        - generic "YouTube Video Player" [ref=f1e3]
+        - generic [ref=f1e5]:
+          - generic:
+            - generic:
+              - button "Play video" [ref=f1e10] [cursor=pointer]
+              - button "Hide player controls" [ref=f1e12] [cursor=pointer]
+              - generic [ref=f1e14]:
+                - generic [ref=f1e19]:
+                  - generic [ref=f1e20]:
+                    - link "Share your brand story by adding a video to your store" [ref=f1e21] [cursor=pointer]:
+                      - /url: https://www.youtube.com/watch?v=_9VUPq3SxOc
+                    - link "Shopify" [ref=f1e22] [cursor=pointer]:
+                      - /url: /channel/UCIv38OrggTu3vNkCAo96-CQ
+                      - generic [ref=f1e23]: Shopify
+                  - generic [ref=f1e24]:
+                    - button [ref=f1e25] [cursor=pointer]
+                    - generic [ref=f1e27]:
+                      - generic: Shopify
+                      - generic: 488K subscribers
+                - generic [ref=f1e28]:
+                  - button "Share" [ref=f1e31] [cursor=pointer]:
+                    - generic [ref=f1e35]:
+                      - img
+                  - link "Watch on YouTube" [ref=f1e42] [cursor=pointer]:
+                    - /url: https://www.youtube.com/watch?v=_9VUPq3SxOc
+                    - generic [ref=f1e45]:
+                      - text: Watch on
+                      - img [ref=f1e47]:
+                        - generic [ref=f1e49]:
+                          - img
+    - generic [ref=e237]:
+      - 'heading "QA qa184: won-video · portrait cover external" [level=1] [ref=e238]'
+      - paragraph [ref=e240]: Demonstration content — visual audit fixture, not customer claims.
+    - iframe [ref=e248]:
+      - generic [ref=f2e4]:
+        - generic:
+          - generic:
+            - img
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - img
+          - generic:
+            - img
+            - generic: Playing in picture-in-picture
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Embed
+                - button "Embed" [ref=f2e11] [cursor=pointer]:
+                  - img
+          - generic:
+            - button "Play" [ref=f2e13] [cursor=pointer]:
+              - img [ref=f2e14]
+              - generic:
+                - generic: Play
+            - generic [ref=f2e17]:
+              - generic [ref=f2e18]:
+                - slider "Progress Bar" [ref=f2e19] [cursor=pointer]
+                - generic:
+                  - generic:
+                    - generic: 00:00
+                - generic [ref=f2e24]: 01:02
+              - generic [ref=f2e25]:
+                - generic:
+                  - generic [ref=f2e26]:
+                    - button "Mute" [ref=f2e28] [cursor=pointer]:
+                      - img [ref=f2e29]
+                    - slider "Volume (use up/down arrow keys to change)"
+                  - button "CC/subtitles" [ref=f2e31] [cursor=pointer]:
+                    - img [ref=f2e32]
+                    - generic:
+                      - generic: CC/subtitles
+                  - button "Settings" [ref=f2e34] [cursor=pointer]:
+                    - img [ref=f2e35]
+                    - generic:
+                      - generic: Settings
+                  - button "Speed" [ref=f2e37] [cursor=pointer]:
+                    - img [ref=f2e38]
+                    - generic:
+                      - generic: Speed
+                  - button "Transcript" [ref=f2e41] [cursor=pointer]:
+                    - img [ref=f2e42]
+                    - generic:
+                      - generic: Transcript
+                  - button "Picture-in-Picture" [ref=f2e44] [cursor=pointer]:
+                    - img [ref=f2e45]
+                    - generic:
+                      - generic: Picture-in-Picture
+                  - button "Fullscreen" [ref=f2e47] [cursor=pointer]:
+                    - img [ref=f2e48]
+                    - generic:
+                      - generic: Fullscreen
+                - link "Watch on Vimeo" [ref=f2e50] [cursor=pointer]:
+                  - /url: https://vimeo.com/76979871?fl=pl&fe=vl
+                  - img [ref=f2e51]
+    - generic [ref=e253]:
+      - 'heading "QA qa185: won-video · adaptive external" [level=1] [ref=e254]'
+      - paragraph [ref=e256]: Demonstration content — visual audit fixture, not customer claims.
+    - iframe [ref=e264]
+  - generic [ref=e267]:
+    - generic [ref=e268]:
+      - generic [ref=e269]:
+        - paragraph [ref=e270]: Won
+        - paragraph [ref=e272]: Sportovní výživa s čistým složením a poctivým poradenstvím.
+        - generic [ref=e273]:
+          - img [ref=e274]
+          - img [ref=e279]
+          - img [ref=e286]
+          - img [ref=e291]
+          - img [ref=e297]
+          - img [ref=e301]
+      - generic [ref=e310]:
+        - navigation "Kategorie" [ref=e311]:
+          - paragraph [ref=e312]: Kategorie
+          - list [ref=e313]:
+            - listitem [ref=e314]:
+              - link "Proteiny" [ref=e315] [cursor=pointer]:
+                - /url: /collections/proteiny
+            - listitem [ref=e316]:
+              - link "Kreatin & aminokyseliny" [ref=e317] [cursor=pointer]:
+                - /url: /collections/kreatin-aminokyseliny
+            - listitem [ref=e318]:
+              - link "Vitamíny & minerály" [ref=e319] [cursor=pointer]:
+                - /url: /collections/vitaminy-mineraly
+            - listitem [ref=e320]:
+              - link "Zdraví & regenerace" [ref=e321] [cursor=pointer]:
+                - /url: /collections/zdravi-regenerace
+        - navigation "Informace" [ref=e322]:
+          - paragraph [ref=e323]: Informace
+          - list [ref=e324]:
+            - listitem [ref=e325]:
+              - link "O nás" [ref=e326] [cursor=pointer]:
+                - /url: /pages/about
+            - listitem [ref=e327]:
+              - link "Blog" [ref=e328] [cursor=pointer]:
+                - /url: /blogs/news
+            - listitem [ref=e329]:
+              - link "Časté dotazy" [ref=e330] [cursor=pointer]:
+                - /url: /pages/faq
+            - listitem [ref=e331]:
+              - link "Kontakt" [ref=e332] [cursor=pointer]:
+                - /url: /pages/contact
+        - navigation "Zákaznický servis" [ref=e333]:
+          - paragraph [ref=e334]: Zákaznický servis
+          - list [ref=e335]:
+            - listitem [ref=e336]:
+              - link "Doprava a platba" [ref=e337] [cursor=pointer]:
+                - /url: /pages/shipping
+            - listitem [ref=e338]:
+              - link "Vrácení zboží" [ref=e339] [cursor=pointer]:
+                - /url: /policies/refund-policy
+            - listitem [ref=e340]:
+              - link "Reklamace" [ref=e341] [cursor=pointer]:
+                - /url: /pages/claims
+            - listitem [ref=e342]:
+              - link "Věrnostní klub" [ref=e343] [cursor=pointer]:
+                - /url: /account/register
+    - generic [ref=e344]:
+      - paragraph [ref=e345]: © 2026 B2b_b2c_store_development · Všechna práva vyhrazena.
+      - list [ref=e346]:
+        - listitem [ref=e347]:
+          - link "Obchodní podmínky" [ref=e348] [cursor=pointer]:
+            - /url: /policies/terms-of-service
+        - listitem [ref=e349]:
+          - link "Ochrana soukromí" [ref=e350] [cursor=pointer]:
+            - /url: /policies/privacy-policy
+  - status "Cart notifications"
+```

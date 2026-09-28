@@ -20,13 +20,17 @@ won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
   if tile_url == blank and col != blank
     assign tile_url = col.url
   endif
+  assign bottom_overlay_badge = false
+  if s.label_position != 'below' and s.badge_position contains 'bottom'
+    assign bottom_overlay_badge = true
+  endif
   assign tile_heading = s.heading
   if tile_heading == blank and col != blank
     assign tile_heading = col.title
   endif
 -%}
 <a
-  class="won-tile won-tile--{{ s.tile_size }}"
+  class="won-tile won-tile--{{ s.tile_size }} won-tile--label-{{ s.label_position | default: 'overlay' }}"
   style="--won-radius-md: {{ s.corner_radius }}px;"
   {% if tile_url != blank %}href="{{ tile_url }}"{% endif %}
   {{ block.shopify_attributes }}
@@ -47,28 +51,32 @@ won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
          category row was four blank gradients. {%- endcomment -%}
       <img class="won-tile__img" src="{{ s.image_asset | asset_url }}" alt="{{ tile_heading | escape }}" width="1200" height="1500" loading="lazy">
     {%- endif -%}
-    {%- if s.badge_text != blank -%}
+    {%- if s.badge_text != blank and bottom_overlay_badge == false -%}
       <span class="won-tile__badge won-tile__badge--{{ s.badge_position }} won-tile__badge--{{ s.badge_style }}">{{ s.badge_text }}</span>
     {%- endif -%}
   </div>
+  <div class="won-tile__content">
+    {%- if s.badge_text != blank and bottom_overlay_badge -%}
+      <span class="won-tile__badge won-tile__badge--{{ s.badge_position }} won-tile__badge--{{ s.badge_style }}">{{ s.badge_text }}</span>
+    {%- endif -%}
   {%- if tile_heading != blank or s.icon != blank -%}
     <span class="won-tile__label">
       {%- if s.icon != blank -%}<span class="won-tile__icon" aria-hidden="true">{{ s.icon }}</span>{%- endif -%}
       {{- tile_heading -}}
     </span>
   {%- endif -%}
+  </div>
 </a>
 
 {% stylesheet %}
-  .won-tile { position: relative; display: block; border-radius: var(--won-radius-md); overflow: hidden; text-decoration: none; color: #fff; }
-  .won-tile__media { position: relative; aspect-ratio: 3 / 4; }
+  .won-tile { position: relative; display: grid; min-inline-size: 0; border-radius: var(--won-radius-md); overflow: hidden; text-decoration: none; color: #fff; }
+  .won-tile__media { position: relative; grid-area: 1 / 1; min-inline-size: 0; aspect-ratio: 3 / 4; }
   /* No image → clean branded gradient card (no vendor silhouette), so category
      tiles look intentional before the merchant uploads artwork. */
   .won-tile__media--placeholder {
     background:
       radial-gradient(120% 80% at 50% 0%, color-mix(in oklab, var(--won-accent) 22%, var(--won-surface)), var(--won-surface));
   }
-  .won-tile--large { grid-column: span 2; grid-row: span 2; }
   .won-tile__img { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
   .won-tile__overlay { position: absolute; inset: 0; z-index: 1; }
   .won-tile__badge {
@@ -83,21 +91,27 @@ won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
   .won-tile__badge--bottom_right { inset-block-end: 0; inset-inline-end: 0; }
   .won-tile__badge--dark { background: color-mix(in oklab, #000 78%, transparent); color: #fff; }
   .won-tile__badge--light { background: var(--won-bg); color: var(--won-fg); box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
-  .won-tile__label {
-    position: absolute; inset-block-end: 0; inset-inline: 0; z-index: 2;
-    padding: var(--won-space-4);
-    font-size: 1.2rem; font-weight: 700;
+  /* Media and overlay content share a grid cell. The bottom content remains in
+     flow, so a badge and wrapped title can grow together without overlapping. */
+  .won-tile__content {
+    grid-area: 1 / 1; align-self: end; z-index: 2;
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: var(--won-space-2); padding: var(--won-space-4);
+    min-inline-size: 0;
     background: linear-gradient(to top, color-mix(in oklab, #000 55%, transparent), transparent);
   }
+  .won-tile__content .won-tile__badge { position: static; margin: 0; max-inline-size: 100%; overflow-wrap: anywhere; }
+  .won-tile__content .won-tile__badge--bottom_right { align-self: flex-end; }
+  .won-tile__label { display: block; font-size: 1.2rem; font-weight: 700; overflow-wrap: anywhere; }
   .won-tile__icon { margin-inline-end: 0.4em; }
-  /* On the imageless gradient the label sits on a light surface — use dark ink
-     and no scrim so it stays legible. */
-  .won-tile__media--placeholder .won-tile__label {
-    color: var(--won-fg);
-    background: none;
-  }
-  @media (min-width: 750px) {
-    .won-tile--large .won-tile__media { aspect-ratio: auto; block-size: 100%; }
+  .won-tile__media--placeholder + .won-tile__content { color: var(--won-fg); background: none; }
+  .won-tile--label-below { display: flex; flex-direction: column; min-inline-size: 0; border-radius: 0; overflow: visible; color: var(--won-fg); }
+  .won-tile--label-below .won-tile__media { overflow: hidden; border-radius: var(--won-radius-md); }
+  .won-tile--label-below .won-tile__media--placeholder { background: var(--won-surface); }
+  .won-tile--label-below .won-tile__content { align-self: stretch; padding: var(--won-space-3) 0 0; background: none; }
+  .won-tile--label-below .won-tile__label {
+    position: static; display: block; padding: 0;
+    background: none; color: inherit; font-size: 1rem; text-align: start; overflow-wrap: anywhere;
   }
 {% endstylesheet %}
 
@@ -121,6 +135,13 @@ won-collection-tiles. Size axis lets one tile go large for a mosaic layout.
         { "value": "large", "label": "t:won.options.tile_large" }
       ],
       "default": "small"
+    },
+    {
+      "type": "select", "id": "label_position", "label": "t:won.settings.tile_label_position", "default": "overlay",
+      "options": [
+        { "value": "overlay", "label": "t:won.options.tile_label_overlay" },
+        { "value": "below", "label": "t:won.options.tile_label_below" }
+      ]
     },
     { "type": "header", "content": "t:won.headers.appearance" },
     {

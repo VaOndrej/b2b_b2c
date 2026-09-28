@@ -1,0 +1,57 @@
+
+> test:smoke
+> playwright test tests/smoke --grep Won remediation capabilities --project=desktop --output=tmp/theme-remediation/2026-09-11/capability-final-results --reporter=line
+
+(node:28945) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 8 tests using 1 worker
+
+[1A[2K(node:28952) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:28952) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:28952) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:50:5 › Won remediation capabilities › product rows have natural CTA placement and real tap targets at 390
+[1A[2K[2/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:97:5 › Won remediation capabilities › video portrait and adaptive fallback retain a usable player at 390
+[1A[2K[3/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:50:5 › Won remediation capabilities › product rows have natural CTA placement and real tap targets at 768
+[1A[2K[4/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:97:5 › Won remediation capabilities › video portrait and adaptive fallback retain a usable player at 768
+[1A[2K[5/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:50:5 › Won remediation capabilities › product rows have natural CTA placement and real tap targets at 1440
+[1A[2K[6/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:97:5 › Won remediation capabilities › video portrait and adaptive fallback retain a usable player at 1440
+[1A[2K[7/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:147:3 › Won remediation capabilities › row multi-variant action opens the existing quick view
+[1A[2K[8/8] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:171:3 › Won remediation capabilities › row quick add uses the shared cart and unavailable rows cannot add
+[1A[2K  1) [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:171:3 › Won remediation capabilities › row quick add uses the shared cart and unavailable rows cannot add 
+
+    Error: cart setup must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+       at support/cart-state.ts:59
+
+      57 |   ).toBe('b2b-b2c-store-development.myshopify.com');
+      58 |   const cleared = await page.request.post('/cart/clear.js');
+    > 59 |   expect(cleared.ok(), 'cart setup must succeed').toBeTruthy();
+         |                                                   ^
+      60 |   expect((await cleared.json()).item_count).toBe(0);
+      61 |   await page.reload({ waitUntil: 'load' });
+      62 |   try {
+        at openEmptyCart (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/support/cart-state.ts:59:51)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-remediation-capabilities.spec.ts:177:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-remediation/2026-09-11/capability-final-results/smoke-won-remediation-capa-b1763-unavailable-rows-cannot-add-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-remediation/2026-09-11/capability-final-results/smoke-won-remediation-capa-b1763-unavailable-rows-cannot-add-desktop/error-context.md
+
+
+[1A[2K  1 failed
+    [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:171:3 › Won remediation capabilities › row quick add uses the shared cart and unavailable rows cannot add 
+  7 passed (20.8s)

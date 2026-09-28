@@ -1,0 +1,410 @@
+{
+  "url": "/pages/contact?view=won-qa-page-5",
+  "width": 768,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Access to script at 'http://cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-5059b83f.js' from origin 'http://127.0.0.1:9292' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "Failed to load resource: net::ERR_FAILED",
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-5059b83f.js",
+        "error": "net::ERR_FAILED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-5",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=e91517fe-4b25-4960-ac58-05563446499d&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "qa053",
+      "type": "won-highlights",
+      "variant": "default",
+      "label": "won-highlights · default",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa053",
+      "selector": "[id$=\"__qa053\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa053-768.png"
+      ],
+      "text": "Free shipping over 50 €\nMade in the EU\nThird-party lab tested",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 239.125,
+        "width": 768,
+        "height": 161.546875
+      }
+    },
+    {
+      "id": "qa054",
+      "type": "won-nutrition-table",
+      "variant": "default",
+      "label": "won-nutrition-table · default",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa054",
+      "selector": "[id$=\"__qa054\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa054-768.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\n\nNUTRIENT\tPER 100 G\tPER SERVING\nEnergy\t380 kcal\t76 kcal\nProtein\t24 g\t4.8 g\nCarbohydrate\t60 g\t12 g",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 501.453125,
+        "width": 768,
+        "height": 290.796875
+      }
+    },
+    {
+      "id": "qa055",
+      "type": "won-panel",
+      "variant": "default",
+      "label": "won-panel · default",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa055",
+      "selector": "[id$=\"__qa055\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "keyboard-disclosure",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa055-768.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa055-768-expanded.png"
+      ],
+      "text": "QA question — how does this example work?",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=320",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 890.03125,
+        "width": 768,
+        "height": 133.765625
+      }
+    },
+    {
+      "id": "qa056",
+      "type": "won-param-table",
+      "variant": "default",
+      "label": "won-param-table · default",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa056",
+      "selector": "[id$=\"__qa056\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa056-768.png"
+      ],
+      "text": "Weight\n500 g\nServings\n20\nFlavor\nChocolate",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 803.578125,
+        "width": 768,
+        "height": 220.546875
+      }
+    },
+    {
+      "id": "qa058",
+      "type": "won-product-card",
+      "variant": "default",
+      "label": "won-product-card · default",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa058",
+      "selector": "[id$=\"__qa058\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa058-768.png"
+      ],
+      "text": "Choose\nPre-Workout Energy\n★★★★★\n4.7(231)\n4.7 / 5, 231\n$549.95 $999.95",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 219.90625,
+        "width": 768,
+        "height": 583.484375
+      }
+    },
+    {
+      "id": "qa062",
+      "type": "won-slide",
+      "variant": "default",
+      "label": "won-slide · default",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa062",
+      "selector": "[id$=\"__qa062\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa062-768.png"
+      ],
+      "text": "QA sample — practical information\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nView demo product",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=800",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 339.171875,
+        "width": 768,
+        "height": 685.140625
+      }
+    },
+    {
+      "id": "qa064",
+      "type": "won-tab",
+      "variant": "default",
+      "label": "won-tab · default",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa064",
+      "selector": "[id$=\"__qa064\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa064-768.png"
+      ],
+      "text": "QA question — how does this example work?\n\nDemonstration answer with enough content to check expansion, keyboard focus, spacing and line length. This is illustrative information.",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 382.09375,
+        "width": 768,
+        "height": 259.109375
+      }
+    },
+    {
+      "id": "qa065",
+      "type": "won-tile",
+      "variant": "default",
+      "label": "won-tile · default",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa065",
+      "selector": "[id$=\"__qa065\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa065-768.png"
+      ],
+      "text": "QA sample\nQA sample category",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=300",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 490.984375,
+        "width": 768,
+        "height": 533.390625
+      }
+    },
+    {
+      "id": "qa066",
+      "type": "won-video",
+      "variant": "default",
+      "label": "won-video · default",
+      "context": "page",
+      "limitations": [
+        "Hosted video resource unavailable; external embed availability requires network verification"
+      ],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa066",
+      "selector": "[id$=\"__qa066\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa066-768.png"
+      ],
+      "text": "",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 377.15625,
+        "width": 768,
+        "height": 270.328125
+      }
+    },
+    {
+      "id": "qa067",
+      "type": "won-band",
+      "variant": "media_position=left",
+      "label": "won-band · media_position=left",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa067",
+      "selector": "[id$=\"__qa067\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa067-768.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\n\nDemonstration content with a longer paragraph to check balanced image and text proportions on smaller screens.\n\nExplore demo",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 232.265625,
+        "width": 768,
+        "height": 791.890625
+      }
+    },
+    {
+      "id": "qa068",
+      "type": "won-band",
+      "variant": "media_position=right",
+      "label": "won-band · media_position=right",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa068",
+      "selector": "[id$=\"__qa068\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa068-768.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\n\nDemonstration content with a longer paragraph to check balanced image and text proportions on smaller screens.\n\nExplore demo",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 115.9375,
+        "width": 768,
+        "height": 791.890625
+      }
+    },
+    {
+      "id": "qa069",
+      "type": "won-band",
+      "variant": "media_position=center_gutter",
+      "label": "won-band · media_position=center_gutter",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-5",
+      "sectionId": "qa069",
+      "selector": "[id$=\"__qa069\"]",
+      "template": "page.won-qa-page-5.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa069-768.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\n\nDemonstration content with a longer paragraph to check balanced image and text proportions on smaller screens.\n\nExplore demo",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 170.609375,
+        "width": 768,
+        "height": 853.484375
+      }
+    }
+  ]
+}

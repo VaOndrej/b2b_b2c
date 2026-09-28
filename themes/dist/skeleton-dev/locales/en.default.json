@@ -59,6 +59,7 @@
       "link_no_label": "There's a link with no button text — the button won't show."
     },
     "a11y": {
+      "video": "Video",
       "previous": "Previous",
       "next": "Next",
       "compare": "Comparison slider",
@@ -100,7 +101,8 @@
       "price": "Price",
       "unit": "Per unit",
       "choose": "Choose",
-      "quantity": "Quantity"
+      "quantity": "Quantity",
+      "hide_table": "Hide variants table"
     },
     "plp": {
       "products": "products",
@@ -125,6 +127,37 @@
     },
     "article": {
       "reading_time": "{{ minutes }} min read"
+    },
+    "breadcrumbs": {
+      "label": "Breadcrumb",
+      "home": "Home",
+      "search": "Search results"
+    },
+    "content": {
+      "search_placeholder": "Search products, brands…"
+    },
+    "toast": {
+      "region_label": "Cart notifications",
+      "dismiss": "Dismiss notification",
+      "action": {
+        "added": "in cart",
+        "increased": "in cart",
+        "decreased": "in cart",
+        "removed": "Product removed from cart"
+      }
+    },
+    "product_card": {
+      "select_product": "Select a product in the theme editor."
+    },
+    "product": {
+      "vendor": "Brand",
+      "type": "Type"
+    },
+    "promo": {
+      "invalid": "This discount code is not valid.",
+      "failed": "The discount could not be applied. Please try again.",
+      "applied": "Discount applied",
+      "remove": "Remove discount"
     }
   }
 }

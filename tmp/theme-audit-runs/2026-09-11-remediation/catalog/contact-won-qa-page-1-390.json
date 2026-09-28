@@ -1,0 +1,134 @@
+{
+  "url": "/pages/contact?view=won-qa-page-1",
+  "width": 390,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Access to script at 'http://cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-5059b83f.js' from origin 'http://127.0.0.1:9292' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "Failed to load resource: net::ERR_FAILED",
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors https://b2b-b2c-store-development.myshopify.com https://b2b-b2c-store-development.account.myshopify.com https://shopify.com\". The request has been blocked.\n"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-5059b83f.js",
+        "error": "net::ERR_FAILED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@d761896cw652752b9p53817278m7665fce0/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-1",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=79bfed6e-a4a4-42ce-b19b-15ddba4068e5&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      }
+    ],
+    "failedAssets": [],
+    "httpAttempts": [
+      200
+    ],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    },
+    "responsive": "control tap targets < 44px: a.won-btn, a.won-btn, a.won-btn, a.won-btn, a.won-btn, a.won-btn, a.won-btn, a.won-btn\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  -  1\u001b[39m\n\u001b[31m+ Received  + 10\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   \"a.won-btn\",\u001b[39m\n\u001b[31m+   \"a.won-btn\",\u001b[39m\n\u001b[31m+   \"a.won-btn\",\u001b[39m\n\u001b[31m+   \"a.won-btn\",\u001b[39m\n\u001b[31m+   \"a.won-btn\",\u001b[39m\n\u001b[31m+   \"a.won-btn\",\u001b[39m\n\u001b[31m+   \"a.won-btn\",\u001b[39m\n\u001b[31m+   \"a.won-btn\",\u001b[39m\n\u001b[31m+ ]\u001b[39m"
+  },
+  "results": [
+    {
+      "id": "qa003",
+      "type": "won-band",
+      "variant": "preset: Band — media + text",
+      "label": "won-band · preset: Band — media + text",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-1",
+      "sectionId": "qa003",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__qa003\"]",
+      "template": "page.won-qa-page-1.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa003-390.png"
+      ],
+      "text": "WHY WON\n\nMade with clean ingredients\n\nEvery batch is tested by an independent lab. No fillers, no compromises.\n\nLearn more",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=600",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 39.203125,
+        "width": 390,
+        "height": 764.9375
+      }
+    },
+    {
+      "id": "qa005",
+      "type": "won-carousel",
+      "variant": "preset: Won · Split reviews",
+      "label": "won-carousel · preset: Won · Split reviews",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-1",
+      "sectionId": "qa005",
+      "selector": "[id^=\"shopify-section-\"][id$=\"__qa005\"]",
+      "template": "page.won-qa-page-1.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "carousel-content",
+          "overflow": true,
+          "mode": "peek"
+        },
+        {
+          "name": "carousel-invariant",
+          "pass": true
+        },
+        {
+          "name": "carousel-scroll",
+          "pass": true
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-11-remediation/catalog/screenshots/qa005-390.png"
+      ],
+      "text": "QA sample — practical information\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nQA fictional example\n\nView demo product\nQA sample — practical information\n\nDemonstration content only. This longer description checks wrapping, reading rhythm and the space around the call to action.\n\nQA fictional example\n\nView demo product\n‹\n›",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        },
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 99.015625,
+        "width": 390,
+        "height": 645.296875
+      }
+    }
+  ]
+}

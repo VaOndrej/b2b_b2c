@@ -1,0 +1,8 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - heading "Your connection needs to be verified before you can proceed" [level=1] [ref=e5]
+  - generic:
+    - main
+```

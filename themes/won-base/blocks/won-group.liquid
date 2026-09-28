@@ -1,0 +1,217 @@
+{% doc %}
+Won group — nestable editorial columns using the same Won blocks as sections.
+Keeps each column's content together instead of flowing it across CSS columns.
+@example
+{% content_for 'block', type: 'won-group', id: 'content' %}
+{% enddoc %}
+{%- liquid
+  assign s = block.settings
+  assign column_ratio = s.column_ratio | default: '1:1'
+  assign ratio_columns = 'minmax(0, 1fr) minmax(0, 1fr)'
+  if column_ratio == '2:3'
+    assign ratio_columns = 'minmax(0, 2fr) minmax(0, 3fr)'
+  elsif column_ratio == '3:2'
+    assign ratio_columns = 'minmax(0, 3fr) minmax(0, 2fr)'
+  endif
+  assign align_flex = 'flex-start'
+  if s.content_align == 'center'
+    assign align_flex = 'center'
+  elsif s.content_align == 'right'
+    assign align_flex = 'flex-end'
+  endif
+-%}
+<div data-columns="{{ s.columns_desktop }}" class="won-group{% unless s.inherit_color_scheme %} color-{{ s.color_scheme }}{% endunless %}"
+  style="--won-group-ratio: {{ ratio_columns }}; --won-group-cols: {{ s.columns_desktop }}; --won-group-cols-m: {{ s.columns_mobile }}; --won-group-gap: var(--won-space-{{ s.gap }}); --won-group-align: {{ s.content_align }}; --won-grid-align: {{ s.content_align }}; --won-align-flex: {{ align_flex }};"
+  {{ block.shopify_attributes }}>
+  {%- if s.heading != blank -%}
+    <h2 class="won-heading won-group__heading" style="--won-h-size-m: {{ s.heading_size_mobile }}px; --won-h-size-d: {{ s.heading_size_desktop }}px; --won-h-mw-m: {{ s.heading_max_width_mobile }}%; --won-h-mw-d: {{ s.heading_max_width_desktop }}%;">{{ s.heading | replace: '</p><p>', '<br>' | remove: '<p>' | remove: '</p>' }}</h2>
+  {%- endif -%}
+  {%- if s.text != blank -%}<div class="won-group__intro rte">{{ s.text }}</div>{%- endif -%}
+  <div class="won-group__items">{% content_for 'blocks' %}</div>
+</div>
+{% stylesheet %}
+  .won-group { container: won-group / inline-size; min-inline-size: 0; display: flex; flex-direction: column; gap: var(--won-space-4); color: inherit; text-align: var(--won-group-align, start); }
+  .won-group[class*="color-"] { --won-fg: var(--color-foreground); --won-bg: var(--color-background); --won-muted: var(--color-foreground); --won-border: color-mix(in oklab, var(--won-fg) 14%, transparent); --won-surface: color-mix(in oklab, var(--won-fg) 4%, var(--won-bg)); color: var(--won-fg); }
+  .won-group__heading { font-size: var(--won-h-size-m); max-width: var(--won-h-mw-m); text-align: inherit; }
+  .won-group__intro { overflow-wrap: anywhere; }
+  .won-group__items { display: grid; grid-template-columns: repeat(var(--won-group-cols-m, 1), minmax(0, 1fr)); gap: var(--won-group-gap); align-items: start; }
+  .won-group__items > * { min-inline-size: 0; }
+  @media (min-width: 750px) {
+    .won-group__heading { font-size: var(--won-h-size-d); max-width: var(--won-h-mw-d); }
+    .won-group__items { /* The selected count is a maximum: nested columns keep a readable measure. */
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, max(15rem, calc((100% - (var(--won-group-cols, 1) - 1) * var(--won-group-gap)) / var(--won-group-cols, 1)))), 1fr)); }
+  }
+  @container won-group (min-width: 36rem) {
+    .won-group[data-columns="2"] > .won-group__items { grid-template-columns: var(--won-group-ratio); }
+  }
+  @media (max-width: 749px) {
+    .won-group[data-columns="2"] > .won-group__items { grid-template-columns: minmax(0, 1fr); }
+  }
+  .won-group__heading { max-inline-size: min(100%, max(var(--won-h-mw-m, 100%), 18ch)); }
+  @media (min-width: 750px) {
+    .won-group__heading {
+      font-size: min(var(--won-h-size-d, 36px), max(var(--won-h-size-m, 26px), 5cqw));
+      max-inline-size: min(100%, max(var(--won-h-mw-d, 100%), 18ch));
+    }
+  }
+{% endstylesheet %}
+{% schema %}
+{
+  "name": "t:won.names.group",
+  "blocks": [
+    {
+      "type": "@theme"
+    },
+    {
+      "type": "@app"
+    }
+  ],
+  "settings": [
+    {
+      "type": "richtext",
+      "id": "heading",
+      "label": "t:won.settings.heading"
+    },
+    {
+      "type": "range",
+      "id": "heading_size_desktop",
+      "label": "t:won.settings.heading_size_desktop",
+      "min": 20,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "heading_max_width_desktop",
+      "label": "t:won.settings.heading_max_width_desktop",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "label": "t:won.settings.heading_size_mobile",
+      "min": 16,
+      "max": 56,
+      "step": 2,
+      "unit": "px",
+      "default": 26
+    },
+    {
+      "type": "range",
+      "id": "heading_max_width_mobile",
+      "label": "t:won.settings.heading_max_width_mobile",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "richtext",
+      "id": "text",
+      "label": "t:won.settings.text"
+    },
+    {
+      "type": "range",
+      "id": "columns_desktop",
+      "label": "t:won.settings.columns_desktop",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 1
+    },
+    {
+      "type": "select",
+      "id": "column_ratio",
+      "label": "t:won.settings.column_ratio",
+      "default": "1:1",
+      "options": [
+        {
+          "value": "1:1",
+          "label": "1:1"
+        },
+        {
+          "value": "2:3",
+          "label": "2:3"
+        },
+        {
+          "value": "3:2",
+          "label": "3:2"
+        }
+      ],
+      "visible_if": "{{ block.settings.columns_desktop == 2 }}"
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "t:won.settings.columns_mobile",
+      "default": "1",
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "gap",
+      "label": "t:won.settings.gap",
+      "default": "4",
+      "options": [
+        {
+          "value": "2",
+          "label": "t:won.options.group_gap_small"
+        },
+        {
+          "value": "4",
+          "label": "t:won.options.group_gap_medium"
+        },
+        {
+          "value": "5",
+          "label": "t:won.options.group_gap_large"
+        }
+      ]
+    },
+    {
+      "type": "text_alignment",
+      "id": "content_align",
+      "label": "t:won.settings.content_align",
+      "default": "left"
+    },
+    {
+      "type": "checkbox",
+      "id": "inherit_color_scheme",
+      "label": "t:won.settings.inherit_color_scheme",
+      "default": true
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:won.settings.color_scheme",
+      "default": "scheme-1",
+      "visible_if": "{{ block.settings.inherit_color_scheme == false }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:won.names.group",
+      "blocks": [
+        {
+          "type": "won-feature"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

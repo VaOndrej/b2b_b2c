@@ -1,0 +1,1017 @@
+{
+  "reviewed": [
+    {
+      "id": "qa071",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa071-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa072",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa072-1440.png"
+      ],
+      "verdict": "issue",
+      "notes": "Hosted media unavailable; only text fallback."
+    },
+    {
+      "id": "qa073",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa073-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa074",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa074-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa075",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa075-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa076",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa076-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa077",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa077-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa078",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa078-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa079",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa079-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa080",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa080-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa081",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa081-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa082",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa082-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa083",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa083-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa084",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa084-1440.png"
+      ],
+      "verdict": "issue",
+      "notes": "Real articles, missing article images."
+    },
+    {
+      "id": "qa085",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa085-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa085-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa086",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa086-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa086-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa087",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa087-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa087-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa088",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa088-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa088-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa089",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa089-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa089-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa090",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa090-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa090-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa091",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa091-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa092",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa092-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa093",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa093-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa094",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa094-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa095",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa095-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa096",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa096-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa097",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa097-1440.png"
+      ],
+      "verdict": "issue",
+      "notes": "White overlay text on light product label; configuration contrast failure."
+    },
+    {
+      "id": "qa098",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa098-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa099",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa099-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa100",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa100-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa101",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa101-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa102",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa102-1440.png"
+      ],
+      "verdict": "issue",
+      "notes": "Circle annotation not visible."
+    },
+    {
+      "id": "qa103",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa103-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa104",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa104-1440.png"
+      ],
+      "verdict": "issue",
+      "notes": "Hosted video unavailable; only text fallback."
+    },
+    {
+      "id": "qa105",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa105-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa106",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa106-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa107",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa107-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa108",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa108-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa109",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa109-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa110",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa110-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa111",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa111-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Opravená QA konfigurace: disc ikona skutečně viditelná.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa112",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa112-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Opravená QA konfigurace: bare ikona skutečně viditelná.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa113",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa113-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa113-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa114",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa114-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa114-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa115",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa115-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa115-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa116",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa116-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa117",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa117-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa118",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa118-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa119",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa119-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa120",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa120-1440.png"
+      ],
+      "verdict": "issue",
+      "notes": "Bottom-left badge overlaps title."
+    },
+    {
+      "id": "qa121",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa121-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa122",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa122-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa123",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa123-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa124",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa124-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa125",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa125-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa126",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa126-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto: layout, media crop, text and controls without another obvious visual defect in this fixture."
+    },
+    {
+      "id": "qa127",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa127-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Explicit empty/placeholder media state only; populated content not verified."
+    },
+    {
+      "id": "qa128",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa128-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "YouTube player s posterem a play tlačítkem, bez Liquid chyby. Playback samostatně.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa129",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa129-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Explicit empty/placeholder media state only; populated content not verified."
+    },
+    {
+      "id": "qa130",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa130-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Explicit empty/placeholder media state only; populated content not verified."
+    },
+    {
+      "id": "qa131",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa131-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Explicit empty/placeholder media state only; populated content not verified."
+    },
+    {
+      "id": "qa132",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa132-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa133",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa133-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa134",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa134-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Kompaktní název zkrácen ellipsis, CTA čitelné.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa135",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa135-1440.png"
+      ],
+      "verdict": "issue",
+      "notes": "Pravý okraj CTA oříznut ve výřezu; příčina vyžaduje page geometrii.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa136",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa136-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa137",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa137-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa138",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa138-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa139",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa139-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Pouze textový fallback: produkt nemá barevnou option.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa140",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa140-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa141",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa141-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa142",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa142-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Po opravě jsou obě vrstvy obrazu plynule zarovnané.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa143",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa143-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Po opravě jsou obě vrstvy obrazu plynule zarovnané.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa144",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa144-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Po opravě jsou obě vrstvy obrazu plynule zarovnané.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa145",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa145-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa146",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa146-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa147",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa147-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa148",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa148-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa149",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa149-1440.png"
+      ],
+      "verdict": "issue",
+      "notes": "Reálná nutriční data; numerické buňky vzdálené od levě zarovnaných záhlaví.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa150",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa150-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Prázdný metafield: pouze prázdný stav, obsah neověřen.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa151",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa151-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Záměrná ukázka chybějícího obrázku/obsahu, pouze fallback.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa152",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa152-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Záměrná ukázka chybějícího obrázku/obsahu, pouze fallback.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa153",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa153-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa153-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa154",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa154-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa155",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa155-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa155-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vizuálně prohlédnuto po finálním buildu; bez další zjevné vizuální závady v této ukázce.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa156",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa156-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "PPU $109.99/100g viditelné, variants-table toggle zavřený.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa157",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa157-1440.png"
+      ],
+      "verdict": "issue",
+      "notes": "Černý text světlého transparentního child bloku na tmavém rodiči nečitelný.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa158",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa158-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Po opravě je stejný fotoaparát plynule zarovnaný u dělítka.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa159",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa159-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Nativní PDP s reálným produktem, cena a CTA čitelné; navazující interakce ověřeny zvlášť.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa160",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa160-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa160-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Dva produkty + disclosures; otevřený stav a focus viditelné.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa161",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa161-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Desktop ukazuje dvě čitelné review karty; mobile/tablet šipky mají samostatný nález.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa162",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa162-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Benefity a profil v poměru1:1 vytvářejí velké prázdno pod benefity; doporučená varianta poměru sloupců.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa163",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa163-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Tři trust benefity s čitelnými ikonami na cyan pozadí.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa164",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa164-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Dva sloupce benefits, ikony a dlouhý text drží zarovnání.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa165",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa165-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Desktop složené skupiny fungují, mezilehlý viewport má samostatný nález úzkých sloupců.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa166",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa166-1440-expanded.png",
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa166-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Dvousloupcové FAQ včetně skutečně prohlédnutého expanded focus stavu.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa167",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa167-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Čtyři editorial karty s médii a čitelnými krátkými názvy.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa168",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa168-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Peek layout s viditelným okrajem další karty a navigací.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa169",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa169-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Loop always varianta: čtyři karty a viditelné ovládání; behavior zvlášť.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa170",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa170-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Loop mobile: desktop karty a disabled prev vizuálně rozlišeny.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa171",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa171-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Autoplay-on snímek již ukazuje karty3–6.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa172",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa172-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Autoplay-off snímek ukazuje karty1–4.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa174",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa174-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Desktop-only sticky viditelný, cena a CTA čitelné.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa175",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa175-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Vimeo poster a ovládání vykresleno; playback zvlášť.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    },
+    {
+      "id": "qa176",
+      "width": 1440,
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa176-1440.png"
+      ],
+      "verdict": "reviewed",
+      "notes": "Elevated child má vlastní světlý povrch a čitelný černý text na tmavém rodiči.",
+      "reviewMethod": "Actual visual inspection via desktop-delta contact sheet"
+    }
+  ],
+  "findings": [],
+  "notVisuallyReviewed": [
+    {
+      "id": "qa173",
+      "width": 1440,
+      "reason": "Mobile-only sticky expected hidden; no screenshot."
+    }
+  ]
+}

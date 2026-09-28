@@ -40,6 +40,7 @@
   {{ 'won-toast.css' | asset_url | stylesheet_tag }}
   <script src="{{ 'won-cart.js' | asset_url }}" defer></script>
   <script src="{{ 'won-toast.js' | asset_url }}" defer></script>
+  <script src="{{ 'won-promo-code.js' | asset_url }}" defer></script>
   {% render 'won-site-schema' %}
   </head>
 
@@ -119,5 +120,6 @@
       {% render 'quick-add-modal' %}
     {% endif %}
     {% render 'won-toast-config' %}
+    {% render 'won-promo-config' %}
   </body>
 </html>

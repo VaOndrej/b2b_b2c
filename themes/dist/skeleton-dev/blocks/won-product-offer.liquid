@@ -1,0 +1,78 @@
+{% doc %}
+  Marketing frame for native purchase controls. Add the base theme's variant
+  picker as a child; its product/variant behavior stays owned by that theme.
+  This block neither calculates discounts nor changes product form state.
+{% enddoc %}
+{%- assign s = block.settings -%}
+<div
+  class="won-product-offer{% if s.outline_options %} won-product-offer--outline{% endif %}"
+  style="{% if s.outline_color != blank %}--won-offer-outline: {{ s.outline_color }};{% endif %}{% if s.badge_background != blank %}--won-offer-badge-bg: {{ s.badge_background }};{% endif %}{% if s.badge_color != blank %}--won-offer-badge-fg: {{ s.badge_color }};{% endif %}"
+  {{ block.shopify_attributes }}
+>
+  {%- if s.badge_text != blank -%}
+    <div class="won-product-offer__badge">{{ s.badge_text }}</div>
+  {%- endif -%}
+  <div class="won-product-offer__controls">{% content_for 'blocks' %}</div>
+</div>
+
+{% stylesheet %}
+  .won-product-offer { inline-size: 100%; min-inline-size: 0; }
+  .won-product-offer__badge {
+    position: relative;
+    z-index: 3;
+    inline-size: fit-content;
+    max-inline-size: min(100%, 24rem);
+    margin-inline-start: auto;
+    margin-block-end: calc(-1 * var(--won-space-2));
+    padding: var(--won-space-1) var(--won-space-2);
+    border-radius: var(--won-radius-pill);
+    background: var(--won-offer-badge-bg, var(--won-accent));
+    color: var(--won-offer-badge-fg, var(--won-accent-contrast));
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  .won-product-offer__controls { min-inline-size: 0; }
+  .won-product-offer--outline variant-picker {
+    --color-selected-variant-border: var(--won-offer-outline, var(--won-accent));
+    --color-selected-variant-background: var(--won-bg);
+    --color-selected-variant-text: var(--won-fg);
+    inline-size: 100%;
+  }
+  .won-product-offer--outline .variant-option--buttons:not(.variant-option--swatches) {
+    --options-border-width: 2px;
+    --options-border-radius: var(--won-radius-sm);
+    inline-size: 100%;
+  }
+  .won-product-offer--outline .variant-option__button-label:not(.variant-option__button-label--has-swatch) {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    min-block-size: var(--won-tap);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .won-product-offer--outline .variant-option__select-wrapper {
+    border-color: var(--won-offer-outline, var(--won-accent));
+    border-width: 2px;
+    border-radius: var(--won-radius-sm);
+    min-block-size: var(--won-tap);
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:won.names.product_offer",
+  "settings": [
+    { "type": "paragraph", "content": "t:won.info.product_offer" },
+    { "type": "inline_richtext", "id": "badge_text", "label": "t:won.settings.badge_text" },
+    { "type": "color", "id": "badge_background", "label": "t:won.settings.product_badge_background", "visible_if": "{{ block.settings.badge_text != blank }}" },
+    { "type": "color", "id": "badge_color", "label": "t:won.settings.product_badge_color", "visible_if": "{{ block.settings.badge_text != blank }}" },
+    { "type": "checkbox", "id": "outline_options", "label": "t:won.settings.product_outline_options", "default": true },
+    { "type": "color", "id": "outline_color", "label": "t:won.settings.product_outline_color", "visible_if": "{{ block.settings.outline_options }}" }
+  ],
+  "blocks": [{ "type": "@theme" }, { "type": "@app" }],
+  "presets": [{ "name": "t:won.names.product_offer" }]
+}
+{% endschema %}

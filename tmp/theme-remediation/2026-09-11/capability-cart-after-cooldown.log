@@ -1,0 +1,47 @@
+
+> test:smoke
+> playwright test tests/smoke --grep row quick add uses the shared cart --project=desktop --max-failures=1 --output=tmp/theme-remediation/2026-09-11/capability-cart-after-cooldown-results --reporter=line
+
+(node:31879) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+[1A[2K(node:31882) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:31882) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:31882) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/1] [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:171:3 › Won remediation capabilities › row quick add uses the shared cart and unavailable rows cannot add
+[1A[2K  1) [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:171:3 › Won remediation capabilities › row quick add uses the shared cart and unavailable rows cannot add 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mfalse[39m
+
+      192 |     } finally {
+      193 |       const cleared = await page.request.post("/cart/clear.js");
+    > 194 |       expect(cleared.ok()).toBeTruthy();
+          |                            ^
+      195 |       expect((await cleared.json()).item_count).toBe(0);
+      196 |     }
+      197 |     const unavailable = rowCases().find((c) =>
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-remediation-capabilities.spec.ts:194:28
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-remediation/2026-09-11/capability-cart-after-cooldown-results/smoke-won-remediation-capa-b1763-unavailable-rows-cannot-add-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-remediation/2026-09-11/capability-cart-after-cooldown-results/smoke-won-remediation-capa-b1763-unavailable-rows-cannot-add-desktop/error-context.md
+
+
+[1A[2K[31mTesting stopped early after 1 maximum allowed failures.[39m
+
+[1A[2K  1 failed
+    [desktop] › tests/smoke/won-remediation-capabilities.spec.ts:171:3 › Won remediation capabilities › row quick add uses the shared cart and unavailable rows cannot add 
+  1 error was not a part of any test, see above for details

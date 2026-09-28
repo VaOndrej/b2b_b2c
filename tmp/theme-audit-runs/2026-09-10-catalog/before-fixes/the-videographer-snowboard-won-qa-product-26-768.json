@@ -1,0 +1,265 @@
+{
+  "url": "/products/the-videographer-snowboard?view=won-qa-product-26",
+  "width": 768,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/products/the-videographer-snowboard?view=won-qa-product-26",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=fe0329fc-eea4-461a-8dc4-8fa5f4e7a254&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://monorail-edge.shopifysvc.com/v1/produce",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://error-analytics-sessions-production.shopifysvc.com/observeonly",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "qa048",
+      "type": "won-breadcrumbs",
+      "variant": "default",
+      "label": "won-breadcrumbs · default",
+      "context": "product",
+      "limitations": [],
+      "url": "/products/the-videographer-snowboard?view=won-qa-product-26",
+      "sectionId": "qa048",
+      "selector": "[id$=\"__qa048\"]",
+      "template": "product.won-qa-product-26.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa048-768.png"
+      ],
+      "text": "Home\nAutomated Collection\nPre-Workout Energy",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 462,
+        "width": 768,
+        "height": 100.125
+      }
+    },
+    {
+      "id": "qa057",
+      "type": "won-price-per-unit",
+      "variant": "default",
+      "label": "won-price-per-unit · default",
+      "context": "product",
+      "limitations": [],
+      "url": "/products/the-videographer-snowboard?view=won-qa-product-26",
+      "sectionId": "qa057",
+      "selector": "[id$=\"__qa057\"]",
+      "template": "product.won-qa-product-26.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa057-768.png"
+      ],
+      "text": "",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 662.90625,
+        "width": 768,
+        "height": 78.375
+      }
+    },
+    {
+      "id": "qa059",
+      "type": "won-product-meta",
+      "variant": "default",
+      "label": "won-product-meta · default",
+      "context": "product",
+      "limitations": [],
+      "url": "/products/the-videographer-snowboard?view=won-qa-product-26",
+      "sectionId": "qa059",
+      "selector": "[id$=\"__qa059\"]",
+      "template": "product.won-qa-product-26.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa059-768.png"
+      ],
+      "text": "QA sample\nBrand\nB2b_b2c_store_development\nType\nPre-workout",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 842.0625,
+        "width": 768,
+        "height": 162.5
+      }
+    },
+    {
+      "id": "qa060",
+      "type": "won-product-offer",
+      "variant": "default",
+      "label": "won-product-offer · default",
+      "context": "product",
+      "limitations": [],
+      "url": "/products/the-videographer-snowboard?view=won-qa-product-26",
+      "sectionId": "qa060",
+      "selector": "[id$=\"__qa060\"]",
+      "template": "product.won-qa-product-26.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa060-768.png"
+      ],
+      "text": "QA example offer — no discount applied\nBalení\n500 g\n1 000 g\n2 500 g",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 428.34375,
+        "width": 768,
+        "height": 167.15625
+      }
+    },
+    {
+      "id": "qa061",
+      "type": "won-product-trust",
+      "variant": "default",
+      "label": "won-product-trust · default",
+      "context": "product",
+      "limitations": [],
+      "url": "/products/the-videographer-snowboard?view=won-qa-product-26",
+      "sectionId": "qa061",
+      "selector": "[id$=\"__qa061\"]",
+      "template": "product.won-qa-product-26.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa061-768.png"
+      ],
+      "text": "★★★★★\n4.7(231)\n4.7 / 5, 231",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 696.28125,
+        "width": 768,
+        "height": 100.125
+      }
+    },
+    {
+      "id": "qa063",
+      "type": "won-stock-signal",
+      "variant": "default",
+      "label": "won-stock-signal · default",
+      "context": "product",
+      "limitations": [],
+      "url": "/products/the-videographer-snowboard?view=won-qa-product-26",
+      "sectionId": "qa063",
+      "selector": "[id$=\"__qa063\"]",
+      "template": "product.won-qa-product-26.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa063-768.png"
+      ],
+      "text": "In stock\n🚚 Skladem, odesíláme dnes",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 895.1875,
+        "width": 768,
+        "height": 128.46875
+      }
+    },
+    {
+      "id": "qa149",
+      "type": "won-nutrition-table",
+      "variant": "source=metafield",
+      "label": "won-nutrition-table · source=metafield",
+      "context": "product",
+      "limitations": [
+        "Existing product metafield availability not established"
+      ],
+      "url": "/products/the-videographer-snowboard?view=won-qa-product-26",
+      "sectionId": "qa149",
+      "selector": "[id$=\"__qa149\"]",
+      "template": "product.won-qa-product-26.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa149-768.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\n\nNUTRIENT\tPER 100 G\tPER SERVING\nKofein\t—\t200 mg\nBeta-alanin\t—\t3 000 mg\nCitrulin malát\t—\t6 000 mg",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 366.4375,
+        "width": 768,
+        "height": 290.796875
+      }
+    },
+    {
+      "id": "qa150",
+      "type": "won-param-table",
+      "variant": "source=metafield",
+      "label": "won-param-table · source=metafield",
+      "context": "product",
+      "limitations": [
+        "Existing product metafield availability not established"
+      ],
+      "url": "/products/the-videographer-snowboard?view=won-qa-product-26",
+      "sectionId": "qa150",
+      "selector": "[id$=\"__qa150\"]",
+      "template": "product.won-qa-product-26.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa150-768.png"
+      ],
+      "text": "",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 758.015625,
+        "width": 768,
+        "height": 78.375
+      }
+    }
+  ]
+}

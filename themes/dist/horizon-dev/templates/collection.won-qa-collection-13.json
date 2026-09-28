@@ -1,0 +1,48 @@
+{
+  "sections": {
+    "qa009label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA qa009: won-collection · preset: Won Collection (PLP)</p>",
+        "heading_size_desktop": 24,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 20,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration content — visual audit fixture, not customer claims.</p>"
+      }
+    },
+    "qa009": {
+      "type": "won-collection",
+      "settings": {
+        "show_title": true,
+        "show_description": true,
+        "show_filters": true,
+        "show_sort": true,
+        "columns_desktop": 4,
+        "columns_tablet": 3,
+        "columns_mobile": "2",
+        "per_page": 24,
+        "card_aspect": "portrait",
+        "show_breadcrumbs": true,
+        "show_card_ppu": false,
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 40,
+        "padding_bottom": 56
+      }
+    }
+  },
+  "order": [
+    "qa009label",
+    "qa009"
+  ]
+}

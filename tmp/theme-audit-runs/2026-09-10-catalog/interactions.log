@@ -1,0 +1,560 @@
+[
+  {
+    "id": "qa011",
+    "width": 390,
+    "emailRejectsInvalid": true,
+    "emailAcceptsValid": true,
+    "submission": "not attempted"
+  },
+  {
+    "id": "qa012",
+    "width": 390,
+    "emailRejectsInvalid": true,
+    "emailAcceptsValid": true,
+    "submission": "not attempted"
+  },
+  {
+    "id": "qa035",
+    "width": 390,
+    "emailRejectsInvalid": true,
+    "emailAcceptsValid": true,
+    "submission": "not attempted"
+  },
+  {
+    "id": "qa036",
+    "width": 390,
+    "emailRejectsInvalid": true,
+    "emailAcceptsValid": true,
+    "submission": "not attempted"
+  },
+  {
+    "id": "qa168",
+    "width": 390,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 339,
+    "later": 339,
+    "autoplayAttribute": null,
+    "loop": null
+  },
+  {
+    "id": "qa169",
+    "width": 390,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 374,
+    "later": 374,
+    "autoplayAttribute": null,
+    "loop": null
+  },
+  {
+    "id": "qa170",
+    "width": 390,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 374,
+    "later": 374,
+    "autoplayAttribute": null,
+    "loop": null
+  },
+  {
+    "id": "qa171",
+    "width": 390,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 374,
+    "later": 374,
+    "autoplayAttribute": "2",
+    "loop": null
+  },
+  {
+    "id": "qa172",
+    "width": 390,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 374,
+    "later": 374,
+    "autoplayAttribute": null,
+    "loop": null
+  },
+  {
+    "id": "qa135",
+    "width": 390,
+    "visible": true,
+    "geometry": [
+      {
+        "class": "won-sticky won-sticky--corner is-visible",
+        "x": 162.484375,
+        "right": 378,
+        "width": 215.515625,
+        "display": "block"
+      },
+      {
+        "class": "won-sticky__inner won-container",
+        "x": 179.484375,
+        "right": 361,
+        "width": 181.515625,
+        "display": "flex"
+      },
+      {
+        "class": "won-btn won-btn--primary won-fx won-fx--hover-lift won-fx--sheen-hover won-fx--press-sink won-fx--speed-normal won-sticky__atc won-sticky__atc--theme",
+        "x": 269.8125,
+        "right": 381,
+        "width": 111.1875,
+        "display": "flex"
+      }
+    ]
+  },
+  {
+    "id": "qa173",
+    "width": 390,
+    "visible": true,
+    "geometry": [
+      {
+        "class": "won-sticky won-sticky--compact is-visible",
+        "x": 0,
+        "right": 390,
+        "width": 390,
+        "display": "block"
+      },
+      {
+        "class": "won-sticky__inner won-container",
+        "x": 16,
+        "right": 374,
+        "width": 358,
+        "display": "flex"
+      },
+      {
+        "class": "won-btn won-btn--primary won-fx won-fx--hover-lift won-fx--sheen-hover won-fx--press-sink won-fx--speed-normal won-sticky__atc won-sticky__atc--theme",
+        "x": 262.8125,
+        "right": 374,
+        "width": 111.1875,
+        "display": "flex"
+      }
+    ]
+  },
+  {
+    "id": "qa174",
+    "width": 390,
+    "visible": false,
+    "geometry": [
+      {
+        "class": "won-sticky won-sticky--compact is-visible",
+        "x": 0,
+        "right": 0,
+        "width": 0,
+        "display": "none"
+      },
+      {
+        "class": "won-sticky__inner won-container",
+        "x": 0,
+        "right": 0,
+        "width": 0,
+        "display": "flex"
+      },
+      {
+        "class": "won-btn won-btn--primary won-fx won-fx--hover-lift won-fx--sheen-hover won-fx--press-sink won-fx--speed-normal won-sticky__atc won-sticky__atc--theme",
+        "x": 0,
+        "right": 0,
+        "width": 0,
+        "display": "flex"
+      }
+    ]
+  },
+  {
+    "id": "qa019",
+    "width": 390,
+    "grid": [
+      {
+        "parent": "<div id=\"shopify-block-AWUh1Zm5Kai85TDNzO__b1\" class=\"shopify-block\">\n<a class=\"won-tile won-tile--large won-tile--label-overlay\" style=\"--won-radius-md: 14px;\" href=\"/collections/",
+        "width": 358,
+        "height": 477.328125,
+        "parentDisplay": "block",
+        "media": [
+          {
+            "w": 358,
+            "h": 477,
+            "natural": 390
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "qa011",
+    "width": 768,
+    "emailRejectsInvalid": true,
+    "emailAcceptsValid": true,
+    "submission": "not attempted"
+  },
+  {
+    "id": "qa012",
+    "width": 768,
+    "emailRejectsInvalid": true,
+    "emailAcceptsValid": true,
+    "submission": "not attempted"
+  },
+  {
+    "id": "qa035",
+    "width": 768,
+    "emailRejectsInvalid": true,
+    "emailAcceptsValid": true,
+    "submission": "not attempted"
+  },
+  {
+    "id": "qa036",
+    "width": 768,
+    "emailRejectsInvalid": true,
+    "emailAcceptsValid": true,
+    "submission": "not attempted"
+  },
+  {
+    "id": "qa168",
+    "width": 768,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 353,
+    "later": 353,
+    "autoplayAttribute": null,
+    "loop": null
+  },
+  {
+    "id": "qa169",
+    "width": 768,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 361,
+    "later": 361,
+    "autoplayAttribute": null,
+    "loop": null
+  },
+  {
+    "id": "qa170",
+    "width": 768,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 361,
+    "later": 361,
+    "autoplayAttribute": null,
+    "loop": null
+  },
+  {
+    "id": "qa171",
+    "width": 768,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 361,
+    "later": 361,
+    "autoplayAttribute": "2",
+    "loop": null
+  },
+  {
+    "id": "qa172",
+    "width": 768,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 361,
+    "later": 361,
+    "autoplayAttribute": null,
+    "loop": null
+  },
+  {
+    "id": "qa135",
+    "width": 768,
+    "visible": true,
+    "geometry": [
+      {
+        "class": "won-sticky won-sticky--corner is-visible",
+        "x": 540.484375,
+        "right": 756,
+        "width": 215.515625,
+        "display": "block"
+      },
+      {
+        "class": "won-sticky__inner won-container",
+        "x": 572.203125,
+        "right": 724.265625,
+        "width": 152.0625,
+        "display": "flex"
+      },
+      {
+        "class": "won-btn won-btn--primary won-fx won-fx--hover-lift won-fx--sheen-hover won-fx--press-sink won-fx--speed-normal won-sticky__atc won-sticky__atc--theme",
+        "x": 662.53125,
+        "right": 773.71875,
+        "width": 111.1875,
+        "display": "flex"
+      }
+    ]
+  },
+  {
+    "id": "qa173",
+    "width": 768,
+    "visible": false,
+    "geometry": [
+      {
+        "class": "won-sticky won-sticky--compact is-visible",
+        "x": 0,
+        "right": 0,
+        "width": 0,
+        "display": "none"
+      },
+      {
+        "class": "won-sticky__inner won-container",
+        "x": 0,
+        "right": 0,
+        "width": 0,
+        "display": "flex"
+      },
+      {
+        "class": "won-btn won-btn--primary won-fx won-fx--hover-lift won-fx--sheen-hover won-fx--press-sink won-fx--speed-normal won-sticky__atc won-sticky__atc--theme",
+        "x": 0,
+        "right": 0,
+        "width": 0,
+        "display": "flex"
+      }
+    ]
+  },
+  {
+    "id": "qa174",
+    "width": 768,
+    "visible": true,
+    "geometry": [
+      {
+        "class": "won-sticky won-sticky--compact is-visible",
+        "x": 0,
+        "right": 768,
+        "width": 768,
+        "display": "block"
+      },
+      {
+        "class": "won-sticky__inner won-container",
+        "x": 30.71875,
+        "right": 737.265625,
+        "width": 706.546875,
+        "display": "flex"
+      },
+      {
+        "class": "won-btn won-btn--primary won-fx won-fx--hover-lift won-fx--sheen-hover won-fx--press-sink won-fx--speed-normal won-sticky__atc won-sticky__atc--theme",
+        "x": 626.078125,
+        "right": 737.265625,
+        "width": 111.1875,
+        "display": "flex"
+      }
+    ]
+  },
+  {
+    "id": "qa019",
+    "width": 768,
+    "grid": [
+      {
+        "parent": "<div id=\"shopify-block-AWUh1Zm5Kai85TDNzO__b1\" class=\"shopify-block\">\n<a class=\"won-tile won-tile--large won-tile--label-overlay\" style=\"--won-radius-md: 14px;\" href=\"/collections/",
+        "width": 345.265625,
+        "height": 0,
+        "parentDisplay": "block",
+        "media": [
+          {
+            "w": 345,
+            "h": 0,
+            "natural": 253
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "qa011",
+    "width": 1440,
+    "emailRejectsInvalid": true,
+    "emailAcceptsValid": true,
+    "submission": "not attempted"
+  },
+  {
+    "id": "qa012",
+    "width": 1440,
+    "emailRejectsInvalid": true,
+    "emailAcceptsValid": true,
+    "submission": "not attempted"
+  },
+  {
+    "id": "qa035",
+    "width": 1440,
+    "emailRejectsInvalid": true,
+    "emailAcceptsValid": true,
+    "submission": "not attempted"
+  },
+  {
+    "id": "qa036",
+    "width": 1440,
+    "emailRejectsInvalid": true,
+    "emailAcceptsValid": true,
+    "submission": "not attempted"
+  },
+  {
+    "id": "qa168",
+    "width": 1440,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 662,
+    "later": 662,
+    "autoplayAttribute": null,
+    "loop": null
+  },
+  {
+    "id": "qa169",
+    "width": 1440,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 334,
+    "later": 334,
+    "autoplayAttribute": null,
+    "loop": null
+  },
+  {
+    "id": "qa170",
+    "width": 1440,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 334,
+    "later": 334,
+    "autoplayAttribute": null,
+    "loop": null
+  },
+  {
+    "id": "qa171",
+    "width": 1440,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 334,
+    "later": 334,
+    "autoplayAttribute": "2",
+    "loop": null
+  },
+  {
+    "id": "qa172",
+    "width": 1440,
+    "nextVisible": true,
+    "nextMoves": true,
+    "prevVisible": true,
+    "post": 334,
+    "later": 334,
+    "autoplayAttribute": null,
+    "loop": null
+  },
+  {
+    "id": "qa135",
+    "width": 1440,
+    "visible": true,
+    "geometry": [
+      {
+        "class": "won-sticky won-sticky--corner is-visible",
+        "x": 1184.484375,
+        "right": 1422,
+        "width": 237.515625,
+        "display": "block"
+      },
+      {
+        "class": "won-sticky__inner won-container",
+        "x": 1233.484375,
+        "right": 1373,
+        "width": 139.515625,
+        "display": "flex"
+      },
+      {
+        "class": "won-btn won-btn--primary won-fx won-fx--hover-lift won-fx--sheen-hover won-fx--press-sink won-fx--speed-normal won-sticky__atc won-sticky__atc--theme",
+        "x": 1339.8125,
+        "right": 1451,
+        "width": 111.1875,
+        "display": "flex"
+      }
+    ]
+  },
+  {
+    "id": "qa173",
+    "width": 1440,
+    "visible": false,
+    "geometry": [
+      {
+        "class": "won-sticky won-sticky--compact is-visible",
+        "x": 0,
+        "right": 0,
+        "width": 0,
+        "display": "none"
+      },
+      {
+        "class": "won-sticky__inner won-container",
+        "x": 0,
+        "right": 0,
+        "width": 0,
+        "display": "flex"
+      },
+      {
+        "class": "won-btn won-btn--primary won-fx won-fx--hover-lift won-fx--sheen-hover won-fx--press-sink won-fx--speed-normal won-sticky__atc won-sticky__atc--theme",
+        "x": 0,
+        "right": 0,
+        "width": 0,
+        "display": "flex"
+      }
+    ]
+  },
+  {
+    "id": "qa174",
+    "width": 1440,
+    "visible": true,
+    "geometry": [
+      {
+        "class": "won-sticky won-sticky--compact is-visible",
+        "x": 0,
+        "right": 1440,
+        "width": 1440,
+        "display": "block"
+      },
+      {
+        "class": "won-sticky__inner won-container",
+        "x": 60,
+        "right": 1380,
+        "width": 1320,
+        "display": "flex"
+      },
+      {
+        "class": "won-btn won-btn--primary won-fx won-fx--hover-lift won-fx--sheen-hover won-fx--press-sink won-fx--speed-normal won-sticky__atc won-sticky__atc--theme",
+        "x": 1268.8125,
+        "right": 1380,
+        "width": 111.1875,
+        "display": "flex"
+      }
+    ]
+  },
+  {
+    "id": "qa019",
+    "width": 1440,
+    "grid": [
+      {
+        "parent": "<div id=\"shopify-block-AWUh1Zm5Kai85TDNzO__b1\" class=\"shopify-block\">\n<a class=\"won-tile won-tile--large won-tile--label-overlay\" style=\"--won-radius-md: 14px;\" href=\"/collections/",
+        "width": 318,
+        "height": 0,
+        "parentDisplay": "block",
+        "media": [
+          {
+            "w": 318,
+            "h": 0,
+            "natural": 475
+          }
+        ]
+      }
+    ]
+  }
+]

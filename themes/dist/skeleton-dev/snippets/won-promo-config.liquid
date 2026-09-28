@@ -1,0 +1,29 @@
+{%- comment -%}
+  won-promo-config — the only bridge between the theme and won-promo-code.js.
+
+  POC scope: a single promo identifier written as a private line-item property
+  that an AUTOMATIC Shopify Discount Function matches on. The identifier is NOT
+  a Shopify discount code and is never redeemed through /discount/<code>.
+
+  Rendered only where the native discount field exists (`show_add_discount_code`),
+  because the script takes that field over rather than adding one — with the
+  field switched off there is nothing to take over, and won-promo-code.js stays
+  inert without this element.
+
+  Texts live in locales so a merchant can reword them in the language editor.
+  The identifier itself deliberately does NOT: it has to match the Function's
+  line-group condition exactly, and a merchant editing it in the language editor
+  would silently break the match with no feedback anywhere.
+{%- endcomment -%}
+
+{%- if settings.show_add_discount_code -%}
+  <div
+    data-won-promo
+    data-code="tomii_smolka_35"
+    data-invalid="{{ 'won.promo.invalid' | t | escape }}"
+    data-failed="{{ 'won.promo.failed' | t | escape }}"
+    data-applied="{{ 'won.promo.applied' | t | escape }}"
+    data-remove="{{ 'won.promo.remove' | t | escape }}"
+    hidden
+  ></div>
+{%- endif -%}

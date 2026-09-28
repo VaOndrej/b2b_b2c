@@ -1,0 +1,204 @@
+/* won-toast — presentation only. Every behavioural decision lives in
+   won-toast.js; this file decides where the region sits, what a card looks
+   like, and how it arrives.
+
+   The region is `pointer-events: none` and each card turns them back on. A
+   toast is feedback, not furniture: it must never intercept a tap aimed at the
+   product card underneath it. */
+
+.won-toast-region {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: var(--won-space-2, 10px);
+  width: min(360px, calc(100vw - 2 * var(--won-space-3, 16px)));
+  padding: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+/* Logical properties throughout, so an RTL storefront mirrors "right" without
+   a second set of rules.
+
+   Top-anchored toasts clear the header rather than covering it. The one thing a
+   shopper looks at after adding to the cart is the cart badge — a message that
+   hides it defeats itself. `--won-toast-top` is measured from the live header by
+   won-toast.js; the fallback covers the frame before the first measurement. */
+.won-toast-region--top_right,
+.won-toast-region--top_left {
+  inset-block-start: calc(var(--won-toast-top, var(--header-height, 60px)) + var(--won-space-3, 16px));
+}
+
+.won-toast-region--top_right {
+  inset-inline-end: var(--won-space-3, 16px);
+}
+.won-toast-region--top_left {
+  inset-inline-start: var(--won-space-3, 16px);
+}
+.won-toast-region--bottom_right {
+  inset-block-end: var(--won-space-4, 20px);
+  inset-inline-end: var(--won-space-3, 16px);
+  flex-direction: column-reverse;
+}
+.won-toast-region--bottom_left {
+  inset-block-end: var(--won-space-4, 20px);
+  inset-inline-start: var(--won-space-3, 16px);
+  flex-direction: column-reverse;
+}
+
+.won-toast {
+  display: flex;
+  align-items: stretch;
+  box-sizing: border-box;
+  /* No padding on the card: the thumbnail runs the full height of the toast,
+     edge to edge, and the padding lives on the text column instead. */
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--won-border, rgba(0, 0, 0, 0.14));
+  border-radius: var(--won-radius-md, 14px);
+  background: var(--won-bg, #fff);
+  box-shadow: var(--won-shadow-md, 0 6px 18px rgba(0, 0, 0, 0.1));
+  color: var(--won-fg, #14171c);
+  pointer-events: auto;
+
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity var(--won-dur, 240ms) var(--won-ease, ease), transform var(--won-dur, 240ms) var(--won-ease, ease);
+}
+
+.won-toast.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.won-toast.is-leaving {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* A bottom-anchored toast should slide down on the way out, not up into the
+   stack it is leaving. */
+.won-toast-region--bottom_right .won-toast,
+.won-toast-region--bottom_left .won-toast {
+  transform: translateY(6px);
+}
+.won-toast-region--bottom_right .won-toast.is-in,
+.won-toast-region--bottom_left .won-toast.is-in {
+  transform: none;
+}
+
+/* Full height of the card, whatever height the two lines come to — so it reads
+   as one object rather than as an icon parked next to some text. */
+.won-toast__media {
+  flex: 0 0 auto;
+  align-self: stretch;
+  inline-size: 56px;
+  block-size: auto;
+  object-fit: cover;
+  background: var(--won-surface, #f5f5f5);
+}
+
+.won-toast__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--won-space-2, 10px) var(--won-space-3, 14px);
+}
+
+/* One line for the name. It is the thing being talked about, not the message,
+   so it never grows to two lines and pushes the message out of the corner of
+   the eye. */
+.won-toast__title {
+  font-size: 0.9375rem;
+  line-height: 1.3;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The second line carries the whole message: how many are in the cart now, and
+   what just happened to them. Colour is the fastest part to read, so it does the
+   same job the words do — never the only carrier of meaning, always the first
+   one noticed. */
+.won-toast__action {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  color: var(--won-muted, currentColor);
+  opacity: 0.9;
+}
+
+.won-toast__qty {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A removal has no quantity worth showing, and an empty chip would still claim
+   the gap the flex row gives it. */
+.won-toast__qty[hidden] {
+  display: none;
+}
+
+.won-toast[data-type='added'] .won-toast__qty,
+.won-toast[data-type='increased'] .won-toast__qty {
+  color: var(--won-success, #1e8e3e);
+}
+
+.won-toast[data-type='decreased'] .won-toast__qty,
+.won-toast[data-type='removed'] .won-toast__qty {
+  color: var(--won-danger, #c5221f);
+}
+
+/* A hairline in the same colour on the leading edge, so the direction of the
+   change survives being seen out of the corner of the eye. */
+.won-toast[data-type='added'],
+.won-toast[data-type='increased'] {
+  border-inline-start: 3px solid var(--won-success, #1e8e3e);
+}
+
+.won-toast[data-type='decreased'],
+.won-toast[data-type='removed'] {
+  border-inline-start: 3px solid var(--won-danger, #c5221f);
+}
+
+.won-toast__close {
+  flex: 0 0 auto;
+  align-self: center;
+  margin-inline-end: 2px;
+  /* 44px of hit box, 24px of ink. Sizes are border-box theme-wide, so the
+     transparent border is subtracted from the visual, not added to the target:
+     the tap area stays honest without the card looking like it has a button
+     bolted on. */
+  box-sizing: border-box;
+  inline-size: 44px;
+  block-size: 44px;
+  border: 10px solid transparent;
+  background-clip: padding-box;
+  background: none;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--won-muted, currentColor);
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.won-toast__close:hover,
+.won-toast__close:focus-visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .won-toast,
+  .won-toast.is-in,
+  .won-toast.is-leaving {
+    transition: opacity 1ms linear;
+    transform: none;
+  }
+}

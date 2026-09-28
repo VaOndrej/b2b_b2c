@@ -1,0 +1,228 @@
+(node:31286) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 466 tests using 1 worker
+
+[1A[2K(node:31287) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:31287) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:31287) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/466] [desktop] › tests/smoke/customization-layer.spec.ts:11:1 › won sections are wired to the shared style-vars pipeline
+[1A[2K[2/466] [desktop] › tests/smoke/customization-layer.spec.ts:24:1 › won-tokens.css consumes the universal border/shadow/radius vars
+[1A[2K[3/466] [desktop] › tests/smoke/customization-layer.spec.ts:52:1 › won-tokens.css consumes the Tier 2 typography + motion vars
+[1A[2K  1) [desktop] › tests/smoke/customization-layer.spec.ts:52:1 › won-tokens.css consumes the Tier 2 typography + motion vars 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: page.waitForSelector: Test timeout of 60000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('.won-section')[22m
+
+
+      52 | test('won-tokens.css consumes the Tier 2 typography + motion vars', async ({ page }) => {
+      53 |   await page.goto('/');
+    > 54 |   await page.waitForSelector('.won-section', { state: 'attached' });
+         |              ^
+      55 |
+      56 |   const computed = await page.evaluate(() => {
+      57 |     const el = document.querySelector<HTMLElement>('.won-section');
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/customization-layer.spec.ts:54:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/full-final-results/smoke-customization-layer--34670-er-2-typography-motion-vars-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/full-final-results/smoke-customization-layer--34670-er-2-typography-motion-vars-desktop/error-context.md
+
+
+[1A[2K(node:31444) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:31444) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:31444) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[4/466] [desktop] › tests/smoke/customization-layer.spec.ts:78:1 › per-section bg/text color override wins over the color scheme
+[1A[2K[5/466] [desktop] › tests/smoke/customization-layer.spec.ts:98:1 › won-tokens.css consumes the Tier 3 advanced overrides
+[1A[2K[6/466] [desktop] › tests/smoke/customization-layer.spec.ts:119:1 › editor coaching never leaks to the live storefront
+[1A[2K[7/466] [desktop] › tests/smoke/customization-layer.spec.ts:131:1 › responsive visibility var hides the section at the active breakpoint
+[1A[2K[8/466] [desktop] › tests/smoke/responsive-targets.spec.ts:5:3 › Responsive meaningful hit areas › a visible 44px label represents a hidden native radio
+[1A[2K[9/466] [desktop] › tests/smoke/responsive-targets.spec.ts:15:3 › Responsive meaningful hit areas › a 20px label remains an undersized hit area
+[1A[2K[10/466] [desktop] › tests/smoke/responsive-targets.spec.ts:23:3 › Responsive meaningful hit areas › controls inside a hidden panel are not measured
+[1A[2K[11/466] [desktop] › tests/smoke/responsive-targets.spec.ts:29:3 › Responsive meaningful hit areas › separated tiny radio and label cannot pass via empty space
+[1A[2K[12/466] [desktop] › tests/smoke/storefront.spec.ts:98:3 › home — health + responsive
+[1A[2K[13/466] [desktop] › tests/smoke/storefront.spec.ts:98:3 › product — health + responsive
+[1A[2K[14/466] [desktop] › tests/smoke/storefront.spec.ts:98:3 › collection — health + responsive
+[1A[2K[15/466] [desktop] › tests/smoke/storefront.spec.ts:98:3 › cart — health + responsive
+[1A[2K[16/466] [desktop] › tests/smoke/storefront.spec.ts:98:3 › search — health + responsive
+[1A[2K[17/466] [desktop] › tests/smoke/storefront.spec.ts:115:1 › sections — heading alignment matches body (no centered title over left content)
+[1A[2K[18/466] [desktop] › tests/smoke/storefront.spec.ts:131:1 › FAQ split — image column sits beside the accordion (image left, questions right)
+[1A[2K[19/466] [desktop] › tests/smoke/storefront.spec.ts:154:1 › won-panels FAQ — heading and questions always render
+[1A[2K[20/466] [desktop] › tests/smoke/storefront.spec.ts:170:1 › hero rail — a full card and a peeking neighbour on desktop
+[1A[2K[21/466] [desktop] › tests/smoke/storefront.spec.ts:182:1 › band center-gutter — media flanks the centred copy on desktop
+[1A[2K[22/466] [desktop] › tests/smoke/storefront.spec.ts:201:1 › tile badge — renders in the chosen corner (top-right)
+[1A[2K[23/466] [desktop] › tests/smoke/storefront.spec.ts:213:1 › slide annotation — headline gets a hand-drawn accent doodle
+[1A[2K[24/466] [desktop] › tests/smoke/storefront.spec.ts:225:1 › comparison — quality dots render (dots:N/M cell syntax)
+[1A[2K[25/466] [desktop] › tests/smoke/storefront.spec.ts:236:1 › tile icon — emoji renders before the label
+[1A[2K[26/466] [desktop] › tests/smoke/storefront.spec.ts:243:1 › slide gradient — a photo-free slide paints its CSS gradient background
+[1A[2K[27/466] [desktop] › tests/smoke/storefront.spec.ts:251:1 › stats — optional icon renders on each stat
+[1A[2K[28/466] [desktop] › tests/smoke/storefront.spec.ts:260:1 › shoppable image — hotspot pins reveal a product card on focus
+[1A[2K[29/466] [desktop] › tests/smoke/storefront.spec.ts:278:1 › shoppable image — a configured hotspot honours its separate mobile position
+[1A[2K[30/466] [desktop] › tests/smoke/storefront.spec.ts:305:1 › tabbed rail — segmented tabs toggle their product panels
+[1A[2K[31/466] [desktop] › tests/smoke/storefront.spec.ts:324:1 › carousel dots — page pager renders, is clickable, and tracks position
+[1A[2K[32/466] [desktop] › tests/smoke/storefront.spec.ts:343:1 › marquee — seamless loop is a duplicated, aria-hidden track
+[1A[2K[33/466] [desktop] › tests/smoke/storefront.spec.ts:358:1 › home — block grids with mobile carousel become a real swipeable rail
+[1A[2K[34/466] [desktop] › tests/smoke/storefront.spec.ts:378:1 › home — carousels honour their mobile mode
+[1A[2K[35/466] [desktop] › tests/smoke/storefront.spec.ts:420:1 › marquee — track spans >= 2x the viewport so the loop never shows a blank gap
+[1A[2K[36/466] [desktop] › tests/smoke/storefront.spec.ts:451:1 › hero peek — the first slide starts flush and its neighbour peeks in
+[1A[2K[37/466] [desktop] › tests/smoke/storefront.spec.ts:494:1 › hero carousel — loops endlessly, arrows never dead-end
+[1A[2K[38/466] [desktop] › tests/smoke/storefront.spec.ts:523:1 › won-carousel — mobile peek shows a neighbour on BOTH sides mid-scroll
+[1A[2K[39/466] [desktop] › tests/smoke/storefront.spec.ts:566:1 › won-carousel marquee — the belt is duplicated and spans >= 2x the viewport
+[1A[2K[40/466] [desktop] › tests/smoke/storefront.spec.ts:596:1 › announcement bar — every message renders and the free-shipping progress is live
+[1A[2K[41/466] [desktop] › tests/smoke/storefront.spec.ts:610:1 › announcement bar — rotate shows exactly one message at a time (motion on)
+[1A[2K[42/466] [desktop] › tests/smoke/storefront.spec.ts:628:1 › sticky ATC — corner style floats as a small rounded card at the bottom-inline-end
+[1A[2K[43/466] [desktop] › tests/smoke/storefront.spec.ts:657:1 › sticky ATC — center style floats as a centered pill, not full width
+[1A[2K[44/466] [desktop] › tests/smoke/storefront.spec.ts:680:1 › announcement bar — the close button dismisses it for the session
+[1A[2K[45/466] [desktop] › tests/smoke/won-block-wrapper-selectors.spec.ts:46:1 › no CSS selector treats a theme block as a direct child
+[1A[2K  2) [desktop] › tests/smoke/won-block-wrapper-selectors.spec.ts:46:1 › no CSS selector treats a theme block as a direct child 
+
+    Error: These selectors can never match — Shopify inserts div.shopify-block between a section container and its theme block. Use a descendant selector (drop the ">") instead:
+    sections/won-grid.liquid:83  .won-grid--mosaic > .shopify-block:has(> .won-tile) { display: grid; }
+    blocks/won-slide.liquid:2  .shopify-block:has(> .won-slide) { container: won-slide-slot / inline-size; }
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 4[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "sections/won-grid.liquid:83  .won-grid--mosaic > .shopify-block:has(> .won-tile) { display: grid; }",[39m
+    [31m+   "blocks/won-slide.liquid:2  .shopify-block:has(> .won-slide) { container: won-slide-slot / inline-size; }",[39m
+    [31m+ ][39m
+
+      66 |     offenders,
+      67 |     `These selectors can never match — Shopify inserts div.shopify-block between a section container and its theme block. Use a descendant selector (drop the ">") instead:\n${offenders.join('\n')}`
+    > 68 |   ).toEqual([]);
+         |     ^
+      69 | });
+      70 |
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-block-wrapper-selectors.spec.ts:68:5
+
+
+[1A[2K(node:31558) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:31558) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:31558) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[46/466] [desktop] › tests/smoke/won-breadcrumbs.spec.ts:26:3 › PDP shows a breadcrumb trail
+[1A[2K[47/466] [desktop] › tests/smoke/won-breadcrumbs.spec.ts:57:3 › PDP emits BreadcrumbList matching what is on screen
+[1A[2K[48/466] [desktop] › tests/smoke/won-breadcrumbs.spec.ts:26:3 › collection shows a breadcrumb trail
+[1A[2K[49/466] [desktop] › tests/smoke/won-breadcrumbs.spec.ts:57:3 › collection emits BreadcrumbList matching what is on screen
+[1A[2K[50/466] [desktop] › tests/smoke/won-card-choose-action.spec.ts:34:1 › the theme offers a choose-action setting, defaulting to the modal
+[1A[2K[51/466] [desktop] › tests/smoke/won-card-choose-action.spec.ts:50:1 › Choose opens the quick-view dialog without leaving the listing
+[1A[2K[52/466] [desktop] › tests/smoke/won-card-choose-action.spec.ts:93:1 › Choose keeps the card CTA shape whichever mode is active
+[1A[2K[53/466] [desktop] › tests/smoke/won-card-cta-size.spec.ts:22:1 › every card quick-add variant renders at the same height
+[1A[2K[54/466] [desktop] › tests/smoke/won-card-cta-size.spec.ts:74:1 › card quick-add variants share one shape in their label state
+[1A[2K[55/466] [desktop] › tests/smoke/won-card-quick-add.spec.ts:20:1 › card declares its quick-add placement and reveal
+[1A[2K[56/466] [desktop] › tests/smoke/won-card-quick-add.spec.ts:29:1 › quick-add control is reachable and correctly sized for touch
+[1A[2K[57/466] [desktop] › tests/smoke/won-card-quick-add.spec.ts:45:1 › stepper quantity follows the cart
+[1A[2K  3) [desktop] › tests/smoke/won-card-quick-add.spec.ts:45:1 › stepper quantity follows the cart ───
+
+    Error: the cart itself must agree with what the card shows
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m1[39m
+    Received: [31m0[39m
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+      88 |   // settles rather than read the instant the display stops moving — the
+      89 |   // assertion is that the two AGREE, not that the server is synchronous.
+    > 90 |   await expect
+         |   ^
+      91 |     .poll(
+      92 |       async () => {
+      93 |         const cart = await page.evaluate(async () =>
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-card-quick-add.spec.ts:90:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/full-final-results/smoke-won-card-quick-add-stepper-quantity-follows-the-cart-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: tmp/theme-audit-runs/2026-09-11-remediation/full-final-results/smoke-won-card-quick-add-stepper-quantity-follows-the-cart-desktop/error-context.md
+
+
+[1A[2K(node:31608) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:31608) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:31608) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[58/466] [desktop] › tests/smoke/won-card-scale.spec.ts:58:1 › rail cards never outgrow the card ceiling
+[1A[2K[59/466] [desktop] › tests/smoke/won-card-scale.spec.ts:68:1 › card title stays legible relative to the card it sits on
+[1A[2K[60/466] [desktop] › tests/smoke/won-card-scale.spec.ts:81:1 › no dead zone: the 750px rail is not a single full-width column
+[1A[2K[61/466] [desktop] › tests/smoke/won-carousel-arrows.spec.ts:8:1 › carousel arrows are visible only when the rail overflows
+[1A[2K[62/466] [desktop] › tests/smoke/won-carousel-controls.spec.ts:19:1 › carousel pager controls render (and never show a dead/empty bar)
+[1A[2K[63/466] [desktop] › tests/smoke/won-category-labels.spec.ts:15:3 › composed cs.schema.json has no duplicate picker category labels
+[1A[2K[64/466] [desktop] › tests/smoke/won-category-labels.spec.ts:15:3 › composed en.default.schema.json has no duplicate picker category labels
+[1A[2K[65/466] [desktop] › tests/smoke/won-compose-idempotence.spec.ts:24:1 › a second compose does not rewrite files it did not change
+[1A[2K[66/466] [desktop] › tests/smoke/won-countup-reachable.spec.ts:59:1 › every global theme setting is read by a section a merchant can insert
+[1A[2K[67/466] [desktop] › tests/smoke/won-countup.spec.ts:18:1 › won-stats opts into count-up: data attr, script tag, settings
+[1A[2K[68/466] [desktop] › tests/smoke/won-countup.spec.ts:32:1 › global animation fragment + compose step exist
+[1A[2K[69/466] [desktop] › tests/smoke/won-countup.spec.ts:60:1 › parser keeps prefix/suffix and format; refuses ambiguous values
+[1A[2K[70/466] [desktop] › tests/smoke/won-countup.spec.ts:98:1 › formatValue restores exact final text at the end of the run
+[1A[2K[71/466] [desktop] › tests/smoke/won-cta-effects.spec.ts:33:1 › every won CTA opts into the shared effect layer
+[1A[2K[72/466] [desktop] › tests/smoke/won-cta-effects.spec.ts:60:1 › the whole theme resolves ONE effect per family
+[1A[2K  4) [desktop] › tests/smoke/won-cta-effects.spec.ts:60:1 › the whole theme resolves ONE effect per family 
+
+    Test was interrupted.
+
+    Error: page.goto: Test ended.
+    Call log:
+    [2m  - navigating to "http://127.0.0.1:9292/", waiting until "load"[22m
+
+
+      59 |
+      60 | test('the whole theme resolves ONE effect per family', async ({ page }) => {
+    > 61 |   await page.goto('/', { waitUntil: 'load' });
+         |              ^
+      62 |   await settle(page);
+      63 |
+      64 |   // The point of a theme-wide setting is that a store has a signature, not a
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-cta-effects.spec.ts:61:14
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    tmp/theme-audit-runs/2026-09-11-remediation/full-final-results/smoke-won-cta-effects-the--3496e-olves-ONE-effect-per-family-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[1A[2K  3 failed
+    [desktop] › tests/smoke/customization-layer.spec.ts:52:1 › won-tokens.css consumes the Tier 2 typography + motion vars 
+    [desktop] › tests/smoke/won-block-wrapper-selectors.spec.ts:46:1 › no CSS selector treats a theme block as a direct child 
+    [desktop] › tests/smoke/won-card-quick-add.spec.ts:45:1 › stepper quantity follows the cart ────
+  1 interrupted
+    [desktop] › tests/smoke/won-cta-effects.spec.ts:60:1 › the whole theme resolves ONE effect per family 
+  5 skipped
+  394 did not run
+  63 passed (2.8m)

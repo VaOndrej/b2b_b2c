@@ -1,0 +1,105 @@
+{
+  "url": "/pages/contact?view=won-qa-page-1",
+  "width": 768,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-1",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=6cd7ab56-4e6b-4823-9442-c95316aac798&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "failedAssets": [],
+    "httpAttempts": [
+      200
+    ],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "qa011",
+      "type": "won-contact",
+      "variant": "preset: Won Contact",
+      "label": "won-contact · preset: Won Contact",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-1",
+      "sectionId": "qa011",
+      "selector": "[id$=\"__qa011\"]",
+      "template": "page.won-qa-page-1.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa011-768.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\nName\nEmail\nMessage\nSend",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 248.3125,
+        "width": 768,
+        "height": 528.25
+      }
+    },
+    {
+      "id": "qa012",
+      "type": "won-contact",
+      "variant": "preset: Won Contact — split",
+      "label": "won-contact · preset: Won Contact — split",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-1",
+      "sectionId": "qa012",
+      "selector": "[id$=\"__qa012\"]",
+      "template": "page.won-qa-page-1.json",
+      "width": 768,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa012-768.png"
+      ],
+      "text": "QA sample — clear information for a considered choice\nName\nEmail\nMessage\nSend",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=400",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 432.34375,
+        "width": 768,
+        "height": 591.703125
+      }
+    }
+  ]
+}

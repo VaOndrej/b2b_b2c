@@ -1,0 +1,215 @@
+(node:24733) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 54 tests using 1 worker
+
+[1A[2K(node:24735) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:24735) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:24735) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/54] [desktop] › tests/smoke/won-feedback-8.spec.ts:120:1 › card quick-add renders a stepper once the line exists
+[1A[2K[2/54] [desktop] › tests/smoke/won-toast.spec.ts:44:1 › adding to the cart shows one toast naming the product
+[1A[2K  1) [desktop] › tests/smoke/won-toast.spec.ts:44:1 › adding to the cart shows one toast naming the product 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: locator.hover: Test timeout of 60000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-won-stepper]').first().locator('[data-won-add]')[22m
+    [2m    - locator resolved to <button type="button" data-won-add="" data-won-step="1" data-added-label="Added ✓" data-variant-id="47934266769649" class="won-pcard__step won-pcard__step--add" aria-label="Add to cart: Elektrolyty Hydratace">…</button>[22m
+    [2m  - attempting hover action[22m
+    [2m    2 × waiting for element to be visible and stable[22m
+    [2m      - element is visible and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <img width="800" height="933" loading="lazy" class="won-pcard__img" alt="Elektrolyty Hydratace" sizes="(min-width: 1024px) 25vw, 60vw" src="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=800" srcset="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=200 200w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=300 300w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=400 400w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=600 600w, /cdn/…/> from <a class="won-pcard__media-link" aria-label="Elektrolyty Hydratace" href="/products/the-inventory-not-tracked-snowboard">…</a> subtree intercepts pointer events[22m
+    [2m    - retrying hover action[22m
+    [2m    - waiting 20ms[22m
+    [2m    - waiting for element to be visible and stable[22m
+    [2m    - element is visible and stable[22m
+    [2m    - scrolling into view if needed[22m
+    [2m    - done scrolling[22m
+    [2m    - <img width="800" height="933" loading="lazy" class="won-pcard__img" alt="Elektrolyty Hydratace" sizes="(min-width: 1024px) 25vw, 60vw" src="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=800" srcset="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=200 200w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=300 300w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=400 400w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=600 600w, /cdn/…/> from <a class="won-pcard__media-link" aria-label="Elektrolyty Hydratace" href="/products/the-inventory-not-tracked-snowboard">…</a> subtree intercepts pointer events[22m
+    [2m  - retrying hover action[22m
+    [2m    - waiting 100ms[22m
+    [2m    - waiting for element to be visible and stable[22m
+    [2m    - element is not stable[22m
+    [2m  - retrying hover action[22m
+    [2m    - waiting 100ms[22m
+    [2m    4 × waiting for element to be visible and stable[22m
+    [2m      - element is visible and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <img width="800" height="933" loading="lazy" class="won-pcard__img" alt="Elektrolyty Hydratace" sizes="(min-width: 1024px) 25vw, 60vw" src="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=800" srcset="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=200 200w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=300 300w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=400 400w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=600 600w, /cdn/…/> from <a class="won-pcard__media-link" aria-label="Elektrolyty Hydratace" href="/products/the-inventory-not-tracked-snowboard">…</a> subtree intercepts pointer events[22m
+    [2m    - retrying hover action[22m
+    [2m      - waiting 500ms[22m
+    [2m    25 × waiting for element to be visible and stable[22m
+    [2m       - element is visible and stable[22m
+    [2m       - scrolling into view if needed[22m
+    [2m       - done scrolling[22m
+    [2m       - <input name="q" value="" type="search" role="combobox" ref="searchInput" autocomplete="off" on:input="/search" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list" id="won-search-input-desktop" on:keydown="/onSearchKeyDown" aria-owns="predictive-search-results" placeholder="Search products, brands…" aria-controls="predictive-search-results" class="search-input won-header-search__input"/> from <div id="header-group">…</div> subtree intercepts pointer events[22m
+    [2m     - retrying hover action[22m
+    [2m       - waiting 500ms[22m
+    [2m       - waiting for element to be visible and stable[22m
+    [2m       - element is visible and stable[22m
+    [2m       - scrolling into view if needed[22m
+    [2m       - done scrolling[22m
+    [2m       - <input name="q" value="" type="search" role="combobox" ref="searchInput" autocomplete="off" on:input="/search" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list" id="won-search-input-desktop" on:keydown="/onSearchKeyDown" aria-owns="predictive-search-results" placeholder="Search products, brands…" aria-controls="predictive-search-results" class="search-input won-header-search__input"/> from <div id="header-group">…</div> subtree intercepts pointer events[22m
+    [2m     - retrying hover action[22m
+    [2m       - waiting 500ms[22m
+    [2m       - waiting for element to be visible and stable[22m
+    [2m       - element is visible and stable[22m
+    [2m       - scrolling into view if needed[22m
+    [2m       - done scrolling[22m
+    [2m       - <img width="800" height="933" loading="lazy" class="won-pcard__img" alt="Elektrolyty Hydratace" sizes="(min-width: 1024px) 25vw, 60vw" src="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=800" srcset="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=200 200w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=300 300w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=400 400w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=600 600w, /cdn/…/> from <a class="won-pcard__media-link" aria-label="Elektrolyty Hydratace" href="/products/the-inventory-not-tracked-snowboard">…</a> subtree intercepts pointer events[22m
+    [2m     - retrying hover action[22m
+    [2m       - waiting 500ms[22m
+    [2m       - waiting for element to be visible and stable[22m
+    [2m       - element is visible and stable[22m
+    [2m       - scrolling into view if needed[22m
+    [2m       - done scrolling[22m
+    [2m       - <img width="800" height="933" loading="lazy" class="won-pcard__img" alt="Elektrolyty Hydratace" sizes="(min-width: 1024px) 25vw, 60vw" src="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=800" srcset="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=200 200w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=300 300w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=400 400w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=600 600w, /cdn/…/> from <a class="won-pcard__media-link" aria-label="Elektrolyty Hydratace" href="/products/the-inventory-not-tracked-snowboard">…</a> subtree intercepts pointer events[22m
+    [2m     - retrying hover action[22m
+    [2m       - waiting 500ms[22m
+    [2m    2 × waiting for element to be visible and stable[22m
+    [2m      - element is visible and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <input name="q" value="" type="search" role="combobox" ref="searchInput" autocomplete="off" on:input="/search" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list" id="won-search-input-desktop" on:keydown="/onSearchKeyDown" aria-owns="predictive-search-results" placeholder="Search products, brands…" aria-controls="predictive-search-results" class="search-input won-header-search__input"/> from <div id="header-group">…</div> subtree intercepts pointer events[22m
+    [2m    - retrying hover action[22m
+    [2m      - waiting 500ms[22m
+    [2m    - waiting for element to be visible and stable[22m
+    [2m    - element is visible and stable[22m
+    [2m    - scrolling into view if needed[22m
+    [2m    - done scrolling[22m
+    [2m    - <img width="800" height="933" loading="lazy" class="won-pcard__img" alt="Elektrolyty Hydratace" sizes="(min-width: 1024px) 25vw, 60vw" src="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=800" srcset="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=200 200w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=300 300w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=400 400w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=600 600w, /cdn/…/> from <a class="won-pcard__media-link" aria-label="Elektrolyty Hydratace" href="/products/the-inventory-not-tracked-snowboard">…</a> subtree intercepts pointer events[22m
+    [2m  - retrying hover action[22m
+    [2m    - waiting 500ms[22m
+
+
+      31 |  *  fixed point — a locator click re-finds the button after the card lifts on
+      32 |  *  hover, which is exactly the miss a shopper cannot reproduce. */
+    > 33 | async function tapPlus(page: import("@playwright/test").Page, nth = 0) {
+         |                                           ^
+      34 |   const stepper = page.locator("[data-won-stepper]").nth(nth);
+      35 |   await stepper.scrollIntoViewIfNeeded();
+      36 |   // Playwright waits for the real control to stabilize after the hover lift.
+        at tapPlus (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:33:43)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:48:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-won-toast-adding-to--cd1de-ne-toast-naming-the-product-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-won-toast-adding-to--cd1de-ne-toast-naming-the-product-desktop/error-context.md
+
+
+[1A[2K(node:25062) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:25062) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:25062) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[3/54] [desktop] › tests/smoke/won-toast.spec.ts:54:1 › repeat taps on one card rewrite one toast rather than stacking
+[1A[2K  2) [desktop] › tests/smoke/won-toast.spec.ts:54:1 › repeat taps on one card rewrite one toast rather than stacking 
+
+    Test was interrupted.
+
+    Error: locator.hover: Test ended.
+    Call log:
+    [2m  - waiting for locator('[data-won-stepper]').first().locator('[data-won-add]')[22m
+    [2m    - locator resolved to <button type="button" data-won-add="" data-won-step="1" data-added-label="Added ✓" data-variant-id="47934266769649" class="won-pcard__step won-pcard__step--add" aria-label="Add to cart: Elektrolyty Hydratace">…</button>[22m
+    [2m  - attempting hover action[22m
+    [2m    2 × waiting for element to be visible and stable[22m
+    [2m      - element is visible and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <img width="800" height="933" loading="lazy" class="won-pcard__img" alt="Elektrolyty Hydratace" sizes="(min-width: 1024px) 25vw, 60vw" src="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=800" srcset="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=200 200w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=300 300w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=400 400w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=600 600w, /cdn/…/> from <a class="won-pcard__media-link" aria-label="Elektrolyty Hydratace" href="/products/the-inventory-not-tracked-snowboard">…</a> subtree intercepts pointer events[22m
+    [2m    - retrying hover action[22m
+    [2m    - waiting 20ms[22m
+    [2m    - waiting for element to be visible and stable[22m
+    [2m    - element is visible and stable[22m
+    [2m    - scrolling into view if needed[22m
+    [2m    - done scrolling[22m
+    [2m    - <img width="800" height="933" loading="lazy" class="won-pcard__img" alt="Elektrolyty Hydratace" sizes="(min-width: 1024px) 25vw, 60vw" src="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=800" srcset="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=200 200w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=300 300w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=400 400w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=600 600w, /cdn/…/> from <a class="won-pcard__media-link" aria-label="Elektrolyty Hydratace" href="/products/the-inventory-not-tracked-snowboard">…</a> subtree intercepts pointer events[22m
+    [2m  - retrying hover action[22m
+    [2m    - waiting 100ms[22m
+    [2m    - waiting for element to be visible and stable[22m
+    [2m    - element is not stable[22m
+    [2m  - retrying hover action[22m
+    [2m    - waiting 100ms[22m
+    [2m    4 × waiting for element to be visible and stable[22m
+    [2m      - element is visible and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <img width="800" height="933" loading="lazy" class="won-pcard__img" alt="Elektrolyty Hydratace" sizes="(min-width: 1024px) 25vw, 60vw" src="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=800" srcset="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=200 200w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=300 300w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=400 400w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=600 600w, /cdn/…/> from <a class="won-pcard__media-link" aria-label="Elektrolyty Hydratace" href="/products/the-inventory-not-tracked-snowboard">…</a> subtree intercepts pointer events[22m
+    [2m    - retrying hover action[22m
+    [2m      - waiting 500ms[22m
+    [2m    2 × waiting for element to be visible and stable[22m
+    [2m      - element is visible and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <input name="q" value="" type="search" role="combobox" ref="searchInput" autocomplete="off" on:input="/search" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list" id="won-search-input-desktop" on:keydown="/onSearchKeyDown" aria-owns="predictive-search-results" placeholder="Search products, brands…" aria-controls="predictive-search-results" class="search-input won-header-search__input"/> from <div id="header-group">…</div> subtree intercepts pointer events[22m
+    [2m    - retrying hover action[22m
+    [2m      - waiting 500ms[22m
+    [2m      - waiting for element to be visible and stable[22m
+    [2m      - element is visible and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <input name="q" value="" type="search" role="combobox" ref="searchInput" autocomplete="off" on:input="/search" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list" id="won-search-input-desktop" on:keydown="/onSearchKeyDown" aria-owns="predictive-search-results" placeholder="Search products, brands…" aria-controls="predictive-search-results" class="search-input won-header-search__input"/> from <div id="header-group">…</div> subtree intercepts pointer events[22m
+    [2m    - retrying hover action[22m
+    [2m      - waiting 500ms[22m
+    [2m      - waiting for element to be visible and stable[22m
+    [2m      - element is visible and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <img width="800" height="933" loading="lazy" class="won-pcard__img" alt="Elektrolyty Hydratace" sizes="(min-width: 1024px) 25vw, 60vw" src="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=800" srcset="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=200 200w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=300 300w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=400 400w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=600 600w, /cdn/…/> from <a class="won-pcard__media-link" aria-label="Elektrolyty Hydratace" href="/products/the-inventory-not-tracked-snowboard">…</a> subtree intercepts pointer events[22m
+    [2m    - retrying hover action[22m
+    [2m      - waiting 500ms[22m
+    [2m      - waiting for element to be visible and stable[22m
+    [2m      - element is visible and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <img width="800" height="933" loading="lazy" class="won-pcard__img" alt="Elektrolyty Hydratace" sizes="(min-width: 1024px) 25vw, 60vw" src="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=800" srcset="/cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=200 200w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=300 300w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=400 400w, /cdn/shop/files/won-pack-electrolytes.png?v=1788345202&width=600 600w, /cdn/…/> from <a class="won-pcard__media-link" aria-label="Elektrolyty Hydratace" href="/products/the-inventory-not-tracked-snowboard">…</a> subtree intercepts pointer events[22m
+    [2m    - retrying hover action[22m
+    [2m      - waiting 500ms[22m
+    [2m    - waiting for element to be visible and stable[22m
+    [2m    - element is visible and stable[22m
+    [2m    - scrolling into view if needed[22m
+    [2m    - done scrolling[22m
+    [2m    - <input name="q" value="" type="search" role="combobox" ref="searchInput" autocomplete="off" on:input="/search" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list" id="won-search-input-desktop" on:keydown="/onSearchKeyDown" aria-owns="predictive-search-results" placeholder="Search products, brands…" aria-controls="predictive-search-results" class="search-input won-header-search__input"/> from <div id="header-group">…</div> subtree intercepts pointer events[22m
+    [2m  - retrying hover action[22m
+    [2m    - waiting 500ms[22m
+
+
+      31 |  *  fixed point — a locator click re-finds the button after the card lifts on
+      32 |  *  hover, which is exactly the miss a shopper cannot reproduce. */
+    > 33 | async function tapPlus(page: import("@playwright/test").Page, nth = 0) {
+         |                                           ^
+      34 |   const stepper = page.locator("[data-won-stepper]").nth(nth);
+      35 |   await stepper.scrollIntoViewIfNeeded();
+      36 |   // Playwright waits for the real control to stabilize after the hover lift.
+        at tapPlus (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:33:43)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-toast.spec.ts:58:15
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-won-toast-repeat-tap-dbb6b--toast-rather-than-stacking-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[1A[2K  1 failed
+    [desktop] › tests/smoke/won-toast.spec.ts:44:1 › adding to the cart shows one toast naming the product 
+  1 interrupted
+    [desktop] › tests/smoke/won-toast.spec.ts:54:1 › repeat taps on one card rewrite one toast rather than stacking 
+  51 did not run
+  1 passed (1.4m)

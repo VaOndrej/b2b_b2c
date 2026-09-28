@@ -1160,7 +1160,11 @@
       "announcement_bar": "Won Oznamovací lišta",
       "ann_message": "Zpráva",
       "ann_freeship": "Doprava zdarma (progress)",
-      "breadcrumbs": "Drobečková navigace"
+      "breadcrumbs": "Drobečková navigace",
+      "group": "Won · Skupina obsahu",
+      "product_card": "Won · Produktová karta",
+      "product_meta": "Won · Údaje produktu",
+      "product_offer": "Won · Zvýraznění nabídky"
     },
     "info": {
       "image_mobile": "Samostatný ořez pod 750px. Použij, když se na úzkém telefonu ztrácí motiv z desktopového obrázku; nech prázdné a použije se všude desktopový.",
@@ -1317,7 +1321,10 @@
       "header_search_placeholder": "Pojmenuj, co se dá hledat, např. „Hledat produkt, značku…\". Prázdné = výchozí text motivu.",
       "header_search_width": "Nejvíc, na kolik pole na desktopu naroste. Na mobilu vždy zabere celý vlastní řádek pod logem.",
       "toast_enabled": "Vypnuté se vůbec nevykreslí a drawer se zase otevírá sám.",
-      "toast_max": "Starší hlášky odcházejí dřív, než jich naskáče víc."
+      "toast_max": "Starší hlášky odcházejí dřív, než jich naskáče víc.",
+      "review_rating": "Nastavením na 0 hodnocení skryjete.",
+      "product_offer": "Do bloku vložte nativní výběr variant. Štítek je upravitelný marketingový text; skutečné slevy nastavte v Shopify.",
+      "video_fit": "Vyplnění a přizpůsobení platí pro hostované video. Externí přehrávače řídí zobrazení samy. Adaptivní poměr používá rozměry hostovaného média; externí videa používají 16:9."
     },
     "headers": {
       "ai_schema": "AI / vyhledávače (strukturovaná data)",
@@ -1577,7 +1584,31 @@
       "toast_position": "Pozice",
       "toast_duration": "Jak dlouho zůstane",
       "toast_max": "Nejvýš najednou",
-      "toast_media": "Miniatura produktu"
+      "toast_media": "Miniatura produktu",
+      "row_style": "Styl rozbalovacího řádku",
+      "feature_presentation": "Zobrazení",
+      "feature_number": "Číslo nebo označení kroku",
+      "feature_statistic_value": "Hodnota statistiky",
+      "feature_icon_style": "Styl ikony",
+      "feature_statistic_size": "Velikost statistiky",
+      "feature_marker_color": "Barva čísla nebo statistiky",
+      "slide_visualization": "Zobrazení obsahu",
+      "reviewer": "Jméno autora recenze",
+      "review_rating": "Hodnocení",
+      "media_caption": "Popisek na obrázku",
+      "expert_role": "Role nebo kvalifikace",
+      "product_badge_background": "Pozadí štítku",
+      "product_badge_color": "Barva textu štítku",
+      "product_show_vendor": "Zobrazit značku",
+      "product_show_type": "Zobrazit typ produktu",
+      "product_outline_options": "Zvýraznit možnosti variant",
+      "product_outline_color": "Barva obrysu variant",
+      "show_add": "Zobrazit přidání do košíku",
+      "show_badges": "Zobrazit štítky",
+      "delivery_appearance": "Styl řádku doručení",
+      "tile_label_position": "Umístění popisku",
+      "column_ratio": "Poměr sloupců",
+      "video_fit": "Přizpůsobení hostovaného videa"
     },
     "options": {
       "loop_off": "Vypnuto",
@@ -1766,7 +1797,31 @@
       "toast_top_right": "Vpravo nahoře",
       "toast_top_left": "Vlevo nahoře",
       "toast_bottom_right": "Vpravo dole",
-      "toast_bottom_left": "Vlevo dole"
+      "toast_bottom_left": "Vlevo dole",
+      "group_gap_small": "Malá",
+      "group_gap_medium": "Střední",
+      "group_gap_large": "Velká",
+      "panel_inherit": "Použít styl sekce",
+      "panel_plain": "Jednoduchý řádek",
+      "panel_editorial": "Velký redakční řádek",
+      "panel_boxed": "Karta s okrajem",
+      "feature_standard": "Ikona a text",
+      "feature_numbered": "Číslovaný benefit",
+      "feature_statistic": "Statistika",
+      "feature_icon_disc": "Barevný kruh",
+      "feature_icon_bare": "Samostatná ikona",
+      "slide_standard": "Běžná karta",
+      "slide_testimonial": "Recenze s obrázkem",
+      "slide_expert": "Profil odborníka",
+      "delivery_card": "Karta s odsazením",
+      "delivery_plain": "Prostý řádek",
+      "tile_label_overlay": "Přes obrázek",
+      "tile_label_below": "Pod obrázkem",
+      "product_layout_card": "Karta",
+      "product_layout_row": "Řádek",
+      "video_adaptive": "Adaptivní (hostované médium; externí 16:9)",
+      "video_cover": "Vyplnit (ořez)",
+      "video_contain": "Celé video"
     },
     "presets": {
       "product_carousel": "Won Carousel — produkty",
@@ -1808,7 +1863,10 @@
       "hero_grid_4": "Won Hero – dlaždice (4)",
       "hero_grid_3": "Won Hero – dlaždice (3)",
       "hero_carousel": "Won Hero – carousel",
-      "hero_peek": "Won Hero – peek carousel"
+      "hero_peek": "Won Hero – peek carousel",
+      "faq_grid": "Won · Dvousloupcové FAQ",
+      "editorial_columns": "Won · Redakční sloupce",
+      "split_reviews": "Won · Recenze s obrázkem"
     },
     "categories": {
       "products": "Produkty",
@@ -1856,7 +1914,9 @@
       "contact_success": "Děkujeme — brzy se ozveme.",
       "tab_title": "Záložka",
       "tab_content": "<p>Obsah záložky.</p>",
-      "ann_message": "Doprava zdarma nad 1 500 Kč 🚚"
+      "ann_message": "Doprava zdarma nad 1 500 Kč 🚚",
+      "editorial_benefits": "<p>Benefity, které stojí za pozornost</p>",
+      "editorial_expert": "<p>Pohled odborníka</p>"
     },
     "global": {
       "rails": "Won — Carousely a raily",

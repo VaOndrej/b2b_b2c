@@ -1,7 +1,7 @@
 {
   "base": "horizon",
   "demoOverlay": true,
-  "wonBaseFileCount": 110,
+  "wonBaseFileCount": 169,
   "files": {
     ".cursor/rules/accordion-accessibility.mdc": {
       "owner": "compose",
@@ -983,6 +983,11 @@
       "layer": "won",
       "sha": "e749e8fd453e5e6b"
     },
+    "assets/won-promo-code.js": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "8ddec7881bebc237"
+    },
     "assets/won-quick-view.js": {
       "owner": "compose",
       "layer": "won",
@@ -996,12 +1001,12 @@
     "assets/won-toast.js": {
       "owner": "compose",
       "layer": "won",
-      "sha": "c904d5c055f015b8"
+      "sha": "9bb1f11b4f32f563"
     },
     "assets/won-tokens.css": {
       "owner": "compose",
       "layer": "won",
-      "sha": "56f475a2007d1208"
+      "sha": "5a19fd9ea2e1dd43"
     },
     "assets/won-variant-reactive.js": {
       "owner": "compose",
@@ -1496,7 +1501,7 @@
     "blocks/won-delivery-note.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "8de5bac8678a0f24"
+      "sha": "e22cb3ea38c09e28"
     },
     "blocks/won-dosage.liquid": {
       "owner": "compose",
@@ -1506,7 +1511,12 @@
     "blocks/won-feature.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "4e998fc8b69e6fb2"
+      "sha": "ee52aee5f2ea23be"
+    },
+    "blocks/won-group.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "109839d0d34d5342"
     },
     "blocks/won-highlights.liquid": {
       "owner": "compose",
@@ -1521,7 +1531,7 @@
     "blocks/won-panel.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "44876b02498dad39"
+      "sha": "d0fe8542e6456187"
     },
     "blocks/won-param-table.liquid": {
       "owner": "compose",
@@ -1533,6 +1543,21 @@
       "layer": "won",
       "sha": "24bfffbfab7619c7"
     },
+    "blocks/won-product-card.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "163117ae54570bf2"
+    },
+    "blocks/won-product-meta.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "ae1feaa1e77a1005"
+    },
+    "blocks/won-product-offer.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "30e6b380d376c20a"
+    },
     "blocks/won-product-trust.liquid": {
       "owner": "compose",
       "layer": "won",
@@ -1541,7 +1566,7 @@
     "blocks/won-slide.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "70de97eee7ddf8a8"
+      "sha": "64a7457f811a8284"
     },
     "blocks/won-stock-signal.liquid": {
       "owner": "compose",
@@ -1556,12 +1581,12 @@
     "blocks/won-tile.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "a9472a3493109e31"
+      "sha": "c55301b70fcc7bf4"
     },
     "blocks/won-video.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "bb15e3dbf7eb98fa"
+      "sha": "8fe4622137572a02"
     },
     "config/settings_data.json": {
       "owner": "merchant",
@@ -1581,262 +1606,262 @@
     "layout/theme.liquid": {
       "owner": "compose",
       "layer": "vendor",
-      "sha": "2c006284bc568404"
+      "sha": "3f78288dda68e877"
     },
     "locales/bg.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "91228e3af6cecad5"
+      "sha": "929476f9e977c3c6"
     },
     "locales/cs.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "46cf9c676b766d5c"
+      "sha": "06e8abf988a73b6d"
     },
     "locales/cs.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "793eaa89bc5c5385"
+      "sha": "49b8d845caaa4b08"
     },
     "locales/da.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "4b6bc7b6b4598aee"
+      "sha": "d55a24e44a7ed7ac"
     },
     "locales/da.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "bd8144d747002c9a"
+      "sha": "be785065a1f0f802"
     },
     "locales/de.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "a87ab2e1ca501d5f"
+      "sha": "cdd808da8bcf2e5a"
     },
     "locales/de.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "e964137510fba7da"
+      "sha": "19f14fd911cedf29"
     },
     "locales/el.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "09de1acf2c989a97"
+      "sha": "38a3024038df1064"
     },
     "locales/en.default.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "6770c797c856bab3"
+      "sha": "7cd7d4b105e3275e"
     },
     "locales/en.default.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "2ac1ac0db7d46fc3"
+      "sha": "710b6636269dbd0b"
     },
     "locales/es.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "683fb68138a99ea4"
+      "sha": "9dd30b029b6b6a25"
     },
     "locales/es.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "0b25a2dbb8ffd74a"
+      "sha": "ac4150273459365a"
     },
     "locales/fi.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "71c532a23b14bf7e"
+      "sha": "77dac1dd509a281d"
     },
     "locales/fi.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "d94234e52696588b"
+      "sha": "8c7e83916c62d3e7"
     },
     "locales/fr.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "27988901ad0a07e7"
+      "sha": "bced9f7fb33d554f"
     },
     "locales/fr.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "e9448115e85332b1"
+      "sha": "fe4be11a2316676f"
     },
     "locales/hr.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "c2c4028ee8deeff6"
+      "sha": "a89aaac163fdcd0d"
     },
     "locales/hu.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "588a8a514a5d0cb0"
+      "sha": "1a6bfe93b044722b"
     },
     "locales/id.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "7c10b96a7ccea176"
+      "sha": "20aba9f71e1bef52"
     },
     "locales/it.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "d6ad94db37e43f64"
+      "sha": "c8433d582a5c0e57"
     },
     "locales/it.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "93f8999b9c5b12d4"
+      "sha": "805713b9e6332aff"
     },
     "locales/ja.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "06531af14d48f3be"
+      "sha": "fc0ff8bbf95170cc"
     },
     "locales/ja.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "af11c1d764a665a0"
+      "sha": "23eafe83d6c6c34c"
     },
     "locales/ko.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "258d7f84dedad0ff"
+      "sha": "a68f714c842da477"
     },
     "locales/ko.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "fee5d30042a22ed6"
+      "sha": "b433d64485cec1d5"
     },
     "locales/lt.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "2257913169fee487"
+      "sha": "c08e6cfddbe4cf98"
     },
     "locales/nb.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "d268ebb7a7cea0d4"
+      "sha": "f34f460c4afdb7c3"
     },
     "locales/nb.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "dbda2c7e6bf4ceca"
+      "sha": "6e9894e7cfd3e420"
     },
     "locales/nl.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "423a934857fcb2e0"
+      "sha": "a2313fb5098239d7"
     },
     "locales/nl.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "390032a10398a52e"
+      "sha": "12b0d0b02cf35651"
     },
     "locales/pl.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "b15e6cde0660b184"
+      "sha": "a9b095551baff3bb"
     },
     "locales/pl.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "3b88a610340b1e61"
+      "sha": "bca1d08218e0245c"
     },
     "locales/pt-BR.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "36c5df8f9271c271"
+      "sha": "6014a8e99f559d5d"
     },
     "locales/pt-BR.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "f4774b7542622f77"
+      "sha": "5f4ab2f532750c7b"
     },
     "locales/pt-PT.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "80dc91c7c12a2484"
+      "sha": "824ed0e741027862"
     },
     "locales/pt-PT.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "2a3bb8eeed6423c7"
+      "sha": "f51704972a3ca0db"
     },
     "locales/ro.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "fcde1a5e912f8168"
+      "sha": "75e355713451949f"
     },
     "locales/ru.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "5188b924722ba226"
+      "sha": "a8c4368db43d6184"
     },
     "locales/sk.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "684f73cbb0475614"
+      "sha": "03ce71b007665379"
     },
     "locales/sl.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "a463328cbbec11b4"
+      "sha": "eb9e47b71fa15c7f"
     },
     "locales/sv.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "a3d44b52660eeae0"
+      "sha": "109c5231cb0f16b4"
     },
     "locales/sv.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "931c6b3a02c0c417"
+      "sha": "ad1544f61e29e6d5"
     },
     "locales/th.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "3f8291a217486ae4"
+      "sha": "5f7966cfb16531e7"
     },
     "locales/th.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "b697e6b7dd21b032"
+      "sha": "e0e1b777c9c504e9"
     },
     "locales/tr.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "b2c7845d5f114eba"
+      "sha": "92106fd70f70ac1f"
     },
     "locales/tr.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "9344c87a68435425"
+      "sha": "91eb0b5da8c232fe"
     },
     "locales/vi.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "17e7abbc626db5de"
+      "sha": "b165dad8270e5e9d"
     },
     "locales/zh-CN.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "9f90d061a3e56455"
+      "sha": "a0d791ee910f9ccd"
     },
     "locales/zh-CN.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "bc91ecf45eb26b58"
+      "sha": "36a120af8909c1f7"
     },
     "locales/zh-TW.json": {
       "owner": "mixed",
       "layer": "locale",
-      "sha": "294685772bf267fc"
+      "sha": "a3659db724d011f9"
     },
     "locales/zh-TW.schema.json": {
       "owner": "compose",
       "layer": "locale",
-      "sha": "625ba8580e990d10"
+      "sha": "d9125cd6753b6c3b"
     },
     "release-notes.md": {
       "owner": "compose",
@@ -2071,12 +2096,12 @@
     "sections/won-band.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "289d73b75eee2c43"
+      "sha": "91e8ebaa70a1ddac"
     },
     "sections/won-carousel.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "ec0ac6c8aca5718a"
+      "sha": "e37404cb74fbab61"
     },
     "sections/won-collection-tiles.liquid": {
       "owner": "compose",
@@ -2111,7 +2136,7 @@
     "sections/won-grid.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "5681014ba819c874"
+      "sha": "f5ca74e9309d66c7"
     },
     "sections/won-hero-carousel.liquid": {
       "owner": "compose",
@@ -2136,7 +2161,7 @@
     "sections/won-media-compare.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "55da387709e2f50d"
+      "sha": "a0ec27c39f707384"
     },
     "sections/won-newsletter.liquid": {
       "owner": "compose",
@@ -2151,12 +2176,12 @@
     "sections/won-panels.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "cf156592991123ea"
+      "sha": "6961f3f55c457da2"
     },
     "sections/won-shoppable-image.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "c36bc44f4e90306a"
+      "sha": "95627be8c97b15b3"
     },
     "sections/won-stats.liquid": {
       "owner": "compose",
@@ -2166,7 +2191,7 @@
     "sections/won-sticky-atc.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "1c04e6b7da4bf40e"
+      "sha": "d1e0edb65f4d475b"
     },
     "sections/won-tabbed-rail.liquid": {
       "owner": "compose",
@@ -2181,7 +2206,7 @@
     "sections/won-variant-picker.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "536f254fc16637bc"
+      "sha": "ddfebaef70af644a"
     },
     "snippets/account-actions.liquid": {
       "owner": "compose",
@@ -2496,7 +2521,7 @@
     "snippets/scripts.liquid": {
       "owner": "compose",
       "layer": "vendor",
-      "sha": "3901c30d0bed6c70"
+      "sha": "49f8be22f6353e9c"
     },
     "snippets/search-modal.liquid": {
       "owner": "compose",
@@ -2706,12 +2731,17 @@
     "snippets/won-product-card.liquid": {
       "owner": "compose",
       "layer": "won",
-      "sha": "fb277cd9fb064b15"
+      "sha": "60980717b4c2c486"
     },
     "snippets/won-product-schema.liquid": {
       "owner": "compose",
       "layer": "won",
       "sha": "5fd0823cbed03072"
+    },
+    "snippets/won-promo-config.liquid": {
+      "owner": "compose",
+      "layer": "won",
+      "sha": "3561a83c55704448"
     },
     "snippets/won-rail-controls.liquid": {
       "owner": "compose",
@@ -2788,6 +2818,11 @@
       "layer": "data",
       "sha": "02fe5dbd6065f423"
     },
+    "templates/collection.won-qa-collection-13.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "697b928807496264"
+    },
     "templates/gift_card.liquid": {
       "owner": "compose",
       "layer": "vendor",
@@ -2813,6 +2848,76 @@
       "layer": "data",
       "sha": "871618332ff001ae"
     },
+    "templates/page.won-qa-page-1.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "17f9d4dd92ce6cb1"
+    },
+    "templates/page.won-qa-page-10.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "2e65459b1f536f12"
+    },
+    "templates/page.won-qa-page-11.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "9636ff65d27b5c71"
+    },
+    "templates/page.won-qa-page-12.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "a9cdcbdb7a559f6c"
+    },
+    "templates/page.won-qa-page-2.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "41837ef4aae01067"
+    },
+    "templates/page.won-qa-page-28.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "921a1a6405f67c45"
+    },
+    "templates/page.won-qa-page-3.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "cd68cf17a34e9d1f"
+    },
+    "templates/page.won-qa-page-31.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "1ee7f77a56d7f982"
+    },
+    "templates/page.won-qa-page-4.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "537090e71da7c356"
+    },
+    "templates/page.won-qa-page-5.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "db812f23057805e5"
+    },
+    "templates/page.won-qa-page-6.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "787ab2059df35885"
+    },
+    "templates/page.won-qa-page-7.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "a256cfbd88c58979"
+    },
+    "templates/page.won-qa-page-8.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "f1c06a5b069eed48"
+    },
+    "templates/page.won-qa-page-9.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "11f4753737508de2"
+    },
     "templates/password.json": {
       "owner": "merchant",
       "layer": "data",
@@ -2822,6 +2927,91 @@
       "owner": "merchant",
       "layer": "data",
       "sha": "885689fcab26c4ae"
+    },
+    "templates/product.won-editorial.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "43fd46386e289dc1"
+    },
+    "templates/product.won-qa-editorial.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "69778ddc2835b57c"
+    },
+    "templates/product.won-qa-product-14.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "b83a76135155b373"
+    },
+    "templates/product.won-qa-product-15.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "7b13a10b642a9745"
+    },
+    "templates/product.won-qa-product-16.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "9fe9df189faf7dea"
+    },
+    "templates/product.won-qa-product-17.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "e92fc566f01362a7"
+    },
+    "templates/product.won-qa-product-18.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "7dcd13d305dbd974"
+    },
+    "templates/product.won-qa-product-19.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "066212a24d7faa99"
+    },
+    "templates/product.won-qa-product-20.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "24ec610b7848241e"
+    },
+    "templates/product.won-qa-product-21.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "e4498d340f80fa47"
+    },
+    "templates/product.won-qa-product-22.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "1054c3ce659c6192"
+    },
+    "templates/product.won-qa-product-23.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "2e210866e51e15db"
+    },
+    "templates/product.won-qa-product-24.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "01404ec4617a4a11"
+    },
+    "templates/product.won-qa-product-25.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "0281594eb8b6a7b2"
+    },
+    "templates/product.won-qa-product-26.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "dd39cc02d46f378b"
+    },
+    "templates/product.won-qa-product-29.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "6456f407c15c0d53"
+    },
+    "templates/product.won-qa-product-30.json": {
+      "owner": "merchant",
+      "layer": "data",
+      "sha": "84e9ff12ecb68e48"
     },
     "templates/search.json": {
       "owner": "merchant",

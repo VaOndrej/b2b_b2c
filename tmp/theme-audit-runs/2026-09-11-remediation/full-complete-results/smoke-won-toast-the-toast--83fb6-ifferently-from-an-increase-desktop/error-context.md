@@ -1,0 +1,490 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#MainContent"
+  - generic [ref=e3]:
+    - generic [ref=e7]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: ✨
+        - link "Nová kolekce Hydratace je tu 💧" [ref=e11] [cursor=pointer]:
+          - /url: /collections/all
+      - button "Close" [ref=e12] [cursor=pointer]:
+        - generic [ref=e13]: ×
+    - banner [ref=e14]:
+      - generic [ref=e17]:
+        - navigation [ref=e21]:
+          - list [ref=e24]:
+            - generic:
+              - link "Home" [ref=e25] [cursor=pointer]:
+                - /url: /
+                - generic [ref=e26]: Home
+              - link "Catalog" [ref=e27] [cursor=pointer]:
+                - /url: /collections/all
+                - generic [ref=e28]: Catalog
+              - link "Contact" [ref=e29] [cursor=pointer]:
+                - /url: /pages/contact
+                - generic [ref=e30]: Contact
+        - link "B2b_b2c_store_development" [ref=e32] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e33]: B2b_b2c_store_development
+        - generic [ref=e34]:
+          - button "USD Region and language selector" [ref=e36] [cursor=pointer]:
+            - generic [ref=e37]: USD
+            - generic [ref=e38]: Region and language selector
+            - generic:
+              - img
+          - search "Search" [ref=e39]:
+            - search [ref=e40]:
+              - generic [ref=e42]:
+                - generic [ref=e43]: Search
+                - combobox "Search" [ref=e44]
+                - generic:
+                  - img
+          - generic [ref=e45]:
+            - button "Account" [ref=e47] [cursor=pointer]:
+              - img [ref=e49]
+            - button "Cart" [ref=e53] [cursor=pointer]:
+              - generic [ref=e54]:
+                - generic:
+                  - img
+                - generic [ref=e55]:
+                  - status:
+                    - generic [ref=e57]: "Total items in cart: 0"
+  - main [ref=e58]:
+    - generic [ref=e61]:
+      - navigation "Breadcrumb" [ref=e62]:
+        - list [ref=e63]:
+          - listitem [ref=e64]:
+            - link "Home" [ref=e65] [cursor=pointer]:
+              - /url: /
+          - listitem [ref=e66]:
+            - text: /
+            - generic [ref=e67]: Products
+      - heading "Products" [level=1] [ref=e69]
+      - generic [ref=e70]:
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - generic [ref=e73]: Filters
+            - link "Clear all" [ref=e74] [cursor=pointer]:
+              - /url: /collections/all
+          - group [ref=e75]:
+            - generic "Availability −" [ref=e76] [cursor=pointer]
+            - list [ref=e77]:
+              - listitem [ref=e78]:
+                - generic [ref=e79] [cursor=pointer]:
+                  - checkbox "In stock 20" [ref=e80]
+                  - generic [ref=e81]: In stock
+                  - generic [ref=e82]: "20"
+              - listitem [ref=e83]:
+                - generic [ref=e84] [cursor=pointer]:
+                  - checkbox "Out of stock 3" [ref=e85]
+                  - generic [ref=e86]: Out of stock
+                  - generic [ref=e87]: "3"
+          - group [ref=e88]:
+            - generic "Price −" [ref=e89] [cursor=pointer]
+            - generic [ref=e90]:
+              - spinbutton "Price from" [ref=e91]
+              - generic [ref=e92]: –
+              - spinbutton "Price to" [ref=e93]
+        - generic [ref=e94]:
+          - generic [ref=e95]:
+            - generic [ref=e96]: 23 products
+            - generic [ref=e97]:
+              - generic [ref=e98]: Sort
+              - combobox "Sort" [ref=e99]:
+                - option "Featured" [selected]
+                - option "Most relevant"
+                - option "Best selling"
+                - option "Alphabetically, A-Z"
+                - option "Alphabetically, Z-A"
+                - option "Price, low to high"
+                - option "Price, high to low"
+                - option "Date, old to new"
+                - option "Date, new to old"
+          - generic [ref=e100]:
+            - generic [ref=e101]:
+              - generic [ref=e102]:
+                - link "BCAA Aminokyseliny" [ref=e103] [cursor=pointer]:
+                  - /url: /products/the-multi-managed-snowboard
+                  - img "BCAA Aminokyseliny" [ref=e104]
+                - link "Choose":
+                  - /url: /products/the-multi-managed-snowboard
+              - link "BCAA Aminokyseliny 4.6(128) 4.6 / 5, 128 $629.95 $1,259.90 $157.48 / 100 g" [ref=e105] [cursor=pointer]:
+                - /url: /products/the-multi-managed-snowboard
+                - generic [ref=e106]: BCAA Aminokyseliny
+                - generic "4.6 / 5" [ref=e107]:
+                  - generic [ref=e108]: ★★★★★ ★★★★★
+                  - generic [ref=e109]: 4.6(128)
+                  - generic [ref=e110]: 4.6 / 5, 128
+                - generic [ref=e111]: $629.95 $1,259.90
+                - generic [ref=e112]: $157.48 / 100 g
+            - generic [ref=e113]:
+              - generic [ref=e114]:
+                - link "Denní Multivitamín" [ref=e115] [cursor=pointer]:
+                  - /url: /products/selling-plans-ski-wax
+                  - img "Denní Multivitamín" [ref=e116]
+                - link "Choose":
+                  - /url: /products/selling-plans-ski-wax
+              - link "Denní Multivitamín 4.4(141) 4.4 / 5, 141 $9.95 $0.41 / serving" [ref=e117] [cursor=pointer]:
+                - /url: /products/selling-plans-ski-wax
+                - generic [ref=e118]: Denní Multivitamín
+                - generic "4.4 / 5" [ref=e119]:
+                  - generic [ref=e120]: ★★★★★ ★★★★★
+                  - generic [ref=e121]: 4.4(141)
+                  - generic [ref=e122]: 4.4 / 5, 141
+                - generic [ref=e123]: $9.95
+                - generic [ref=e124]: $0.41 / serving
+            - generic [ref=e125]:
+              - generic [ref=e126]:
+                - link "Elektrolyty Hydratace" [ref=e127] [cursor=pointer]:
+                  - /url: /products/the-inventory-not-tracked-snowboard
+                  - img "Elektrolyty Hydratace" [ref=e128]
+                - 'button "Add to cart: Elektrolyty Hydratace" [active] [ref=e130] [cursor=pointer]':
+                  - generic [ref=e131]: Add to cart
+              - link "Elektrolyty Hydratace 4.6(94) 4.6 / 5, 94 $599.95 $119.99 / 100 g" [ref=e132] [cursor=pointer]:
+                - /url: /products/the-inventory-not-tracked-snowboard
+                - generic [ref=e133]: Elektrolyty Hydratace
+                - generic "4.6 / 5" [ref=e134]:
+                  - generic [ref=e135]: ★★★★★ ★★★★★
+                  - generic [ref=e136]: 4.6(94)
+                  - generic [ref=e137]: 4.6 / 5, 94
+                - generic [ref=e138]: $599.95
+                - generic [ref=e139]: $119.99 / 100 g
+            - generic [ref=e140]:
+              - generic [ref=e141]:
+                - link "Kreatin Monohydrát" [ref=e142] [cursor=pointer]:
+                  - /url: /products/the-collection-snowboard-hydrogen
+                  - img "Kreatin Monohydrát" [ref=e143]
+                - link "Choose":
+                  - /url: /products/the-collection-snowboard-hydrogen
+              - link "Kreatin Monohydrát 4.7(205) 4.7 / 5, 205 $600.00 $1,000.00 $200.00 / 100 g" [ref=e144] [cursor=pointer]:
+                - /url: /products/the-collection-snowboard-hydrogen
+                - generic [ref=e145]: Kreatin Monohydrát
+                - generic "4.7 / 5" [ref=e146]:
+                  - generic [ref=e147]: ★★★★★ ★★★★★
+                  - generic [ref=e148]: 4.7(205)
+                  - generic [ref=e149]: 4.7 / 5, 205
+                - generic [ref=e150]: $600.00 $1,000.00
+                - generic [ref=e151]: $200.00 / 100 g
+            - generic [ref=e152]:
+              - generic [ref=e153]:
+                - link "Magnesium + B6" [ref=e154] [cursor=pointer]:
+                  - /url: /products/the-compare-at-price-snowboard
+                  - img "Magnesium + B6" [ref=e155]
+                - link "Choose":
+                  - /url: /products/the-compare-at-price-snowboard
+              - link "Magnesium + B6 4.5(64) 4.5 / 5, 64 $785.95 $885.95 $26.19 / serving" [ref=e156] [cursor=pointer]:
+                - /url: /products/the-compare-at-price-snowboard
+                - generic [ref=e157]: Magnesium + B6
+                - generic "4.5 / 5" [ref=e158]:
+                  - generic [ref=e159]: ★★★★★ ★★★★★
+                  - generic [ref=e160]: 4.5(64)
+                  - generic [ref=e161]: 4.5 / 5, 64
+                - generic [ref=e162]: $785.95 $885.95
+                - generic [ref=e163]: $26.19 / serving
+            - generic [ref=e164]:
+              - generic [ref=e165]:
+                - link "MG E2E · Collection Member" [ref=e166] [cursor=pointer]:
+                  - /url: /products/mg-e2e-collection-member
+                  - img "mg-e2e-collection-member" [ref=e167]
+                - generic:
+                  - 'button "Add to cart: MG E2E · Collection Member"':
+                    - generic: Add to cart
+              - link "MG E2E · Collection Member $19.90" [ref=e168] [cursor=pointer]:
+                - /url: /products/mg-e2e-collection-member
+                - generic [ref=e169]: MG E2E · Collection Member
+                - generic [ref=e170]: $19.90
+            - generic [ref=e171]:
+              - generic [ref=e172]:
+                - link "MG E2E · Hidden Product" [ref=e173] [cursor=pointer]:
+                  - /url: /products/mg-e2e-hidden
+                  - img "mg-e2e-hidden" [ref=e174]
+                - generic:
+                  - 'button "Add to cart: MG E2E · Hidden Product"':
+                    - generic: Add to cart
+              - link "MG E2E · Hidden Product $19.90" [ref=e175] [cursor=pointer]:
+                - /url: /products/mg-e2e-hidden
+                - generic [ref=e176]: MG E2E · Hidden Product
+                - generic [ref=e177]: $19.90
+            - generic [ref=e178]:
+              - generic [ref=e179]:
+                - link "MG E2E · Max Quantity" [ref=e180] [cursor=pointer]:
+                  - /url: /products/mg-e2e-max
+                  - img "mg-e2e-max" [ref=e181]
+                - generic:
+                  - 'button "Add to cart: MG E2E · Max Quantity"':
+                    - generic: Add to cart
+              - link "MG E2E · Max Quantity $19.90" [ref=e182] [cursor=pointer]:
+                - /url: /products/mg-e2e-max
+                - generic [ref=e183]: MG E2E · Max Quantity
+                - generic [ref=e184]: $19.90
+            - generic [ref=e185]:
+              - generic [ref=e186]:
+                - link "MG E2E · MOQ + Step" [ref=e187] [cursor=pointer]:
+                  - /url: /products/mg-e2e-moq-step
+                  - img "mg-e2e-moq-step" [ref=e188]
+                - generic:
+                  - 'button "Add to cart: MG E2E · MOQ + Step"':
+                    - generic: Add to cart
+              - link "MG E2E · MOQ + Step $19.90" [ref=e189] [cursor=pointer]:
+                - /url: /products/mg-e2e-moq-step
+                - generic [ref=e190]: MG E2E · MOQ + Step
+                - generic [ref=e191]: $19.90
+            - generic [ref=e192]:
+              - generic [ref=e193]:
+                - link "MG E2E · Variant Hidden" [ref=e194] [cursor=pointer]:
+                  - /url: /products/mg-e2e-variant-hidden
+                  - img "mg-e2e-variant-hidden" [ref=e195]
+                - link "Choose":
+                  - /url: /products/mg-e2e-variant-hidden
+              - link "MG E2E · Variant Hidden $19.90" [ref=e196] [cursor=pointer]:
+                - /url: /products/mg-e2e-variant-hidden
+                - generic [ref=e197]: MG E2E · Variant Hidden
+                - generic [ref=e198]: $19.90
+            - generic [ref=e199]:
+              - generic [ref=e200]:
+                - link "Omega 3 Rybí olej" [ref=e201] [cursor=pointer]:
+                  - /url: /products/the-3p-fulfilled-snowboard
+                  - img "Omega 3 Rybí olej" [ref=e202]
+                - generic: Sold out
+              - link "Omega 3 Rybí olej 4.4(76) 4.4 / 5, 76 $629.95 $1,259.90 $13.99 / serving" [ref=e203] [cursor=pointer]:
+                - /url: /products/the-3p-fulfilled-snowboard
+                - generic [ref=e204]: Omega 3 Rybí olej
+                - generic "4.4 / 5" [ref=e205]:
+                  - generic [ref=e206]: ★★★★★ ★★★★★
+                  - generic [ref=e207]: 4.4(76)
+                  - generic [ref=e208]: 4.4 / 5, 76
+                - generic [ref=e209]: $629.95 $1,259.90
+                - generic [ref=e210]: $13.99 / serving
+            - generic [ref=e211]:
+              - generic [ref=e212]:
+                - link "Pre-Workout Energy" [ref=e213] [cursor=pointer]:
+                  - /url: /products/the-videographer-snowboard
+                  - img "Pre-Workout Energy" [ref=e214]
+                - link "Choose":
+                  - /url: /products/the-videographer-snowboard
+              - link "Pre-Workout Energy 4.7(231) 4.7 / 5, 231 $549.95 $999.95 $109.99 / 100 g" [ref=e215] [cursor=pointer]:
+                - /url: /products/the-videographer-snowboard
+                - generic [ref=e216]: Pre-Workout Energy
+                - generic "4.7 / 5" [ref=e217]:
+                  - generic [ref=e218]: ★★★★★ ★★★★★
+                  - generic [ref=e219]: 4.7(231)
+                  - generic [ref=e220]: 4.7 / 5, 231
+                - generic [ref=e221]: $549.95 $999.95
+                - generic [ref=e222]: $109.99 / 100 g
+            - generic [ref=e223]:
+              - generic [ref=e224]:
+                - link "Protein Blend — Výhodný set" [ref=e225] [cursor=pointer]:
+                  - /url: /products/the-complete-snowboard
+                  - img "Protein Blend — Výhodný set" [ref=e226]
+                - link "Choose":
+                  - /url: /products/the-complete-snowboard
+              - link "Protein Blend — Výhodný set 4.9(512) 4.9 / 5, 512 $699.95 $69.99 / 100 g" [ref=e227] [cursor=pointer]:
+                - /url: /products/the-complete-snowboard
+                - generic [ref=e228]: Protein Blend — Výhodný set
+                - generic "4.9 / 5" [ref=e229]:
+                  - generic [ref=e230]: ★★★★★ ★★★★★
+                  - generic [ref=e231]: 4.9(512)
+                  - generic [ref=e232]: 4.9 / 5, 512
+                - generic [ref=e233]: $699.95
+                - generic [ref=e234]: $69.99 / 100 g
+            - generic [ref=e235]:
+              - generic [ref=e236]:
+                - link "Proteinová tyčinka (12 ks)" [ref=e237] [cursor=pointer]:
+                  - /url: /products/the-out-of-stock-snowboard
+                  - img "Proteinová tyčinka (12 ks)" [ref=e238]
+                - generic: Sold out
+              - link "Proteinová tyčinka (12 ks) 4.3(58) 4.3 / 5, 58 $885.95 $134.23 / 100 g" [ref=e239] [cursor=pointer]:
+                - /url: /products/the-out-of-stock-snowboard
+                - generic [ref=e240]: Proteinová tyčinka (12 ks)
+                - generic "4.3 / 5" [ref=e241]:
+                  - generic [ref=e242]: ★★★★★ ★★★★★
+                  - generic [ref=e243]: 4.3(58)
+                  - generic [ref=e244]: 4.3 / 5, 58
+                - generic [ref=e245]: $885.95
+                - generic [ref=e246]: $134.23 / 100 g
+            - generic [ref=e247]:
+              - generic [ref=e248]:
+                - link "Vitamín D3 + K2" [ref=e249] [cursor=pointer]:
+                  - /url: /products/the-multi-location-snowboard
+                  - img "Vitamín D3 + K2" [ref=e250]
+                - link "Choose":
+                  - /url: /products/the-multi-location-snowboard
+              - link "Vitamín D3 + K2 4.9(87) 4.9 / 5, 87 $729.95 $1,459.90 $8.11 / serving" [ref=e251] [cursor=pointer]:
+                - /url: /products/the-multi-location-snowboard
+                - generic [ref=e252]: Vitamín D3 + K2
+                - generic "4.9 / 5" [ref=e253]:
+                  - generic [ref=e254]: ★★★★★ ★★★★★
+                  - generic [ref=e255]: 4.9(87)
+                  - generic [ref=e256]: 4.9 / 5, 87
+                - generic [ref=e257]: $729.95 $1,459.90
+                - generic [ref=e258]: $8.11 / serving
+            - generic [ref=e259]:
+              - generic [ref=e260]:
+                - link "Whey Protein — Čokoláda" [ref=e261] [cursor=pointer]:
+                  - /url: /products/the-collection-snowboard-liquid
+                  - img "Whey Protein — Čokoláda" [ref=e262]
+                - link "Choose":
+                  - /url: /products/the-collection-snowboard-liquid
+              - link "Whey Protein — Čokoláda 4.8(342) 4.8 / 5, 342 $749.95 $1,874.95 $74.99 / 100 g" [ref=e263] [cursor=pointer]:
+                - /url: /products/the-collection-snowboard-liquid
+                - generic [ref=e264]: Whey Protein — Čokoláda
+                - generic "4.8 / 5" [ref=e265]:
+                  - generic [ref=e266]: ★★★★★ ★★★★★
+                  - generic [ref=e267]: 4.8(342)
+                  - generic [ref=e268]: 4.8 / 5, 342
+                - generic [ref=e269]: $749.95 $1,874.95
+                - generic [ref=e270]: $74.99 / 100 g
+            - generic [ref=e271]:
+              - generic [ref=e272]:
+                - link "Whey Protein — Vanilka" [ref=e273] [cursor=pointer]:
+                  - /url: /products/the-collection-snowboard-oxygen
+                  - img "Whey Protein — Vanilka" [ref=e274]
+                - link "Choose":
+                  - /url: /products/the-collection-snowboard-oxygen
+              - link "Whey Protein — Vanilka 4.6(118) 4.6 / 5, 118 $1,025.00 $2,562.50 $102.50 / 100 g" [ref=e275] [cursor=pointer]:
+                - /url: /products/the-collection-snowboard-oxygen
+                - generic [ref=e276]: Whey Protein — Vanilka
+                - generic "4.6 / 5" [ref=e277]:
+                  - generic [ref=e278]: ★★★★★ ★★★★★
+                  - generic [ref=e279]: 4.6(118)
+                  - generic [ref=e280]: 4.6 / 5, 118
+                - generic [ref=e281]: $1,025.00 $2,562.50
+                - generic [ref=e282]: $102.50 / 100 g
+            - generic [ref=e283]:
+              - generic [ref=e284]:
+                - link "Won E2E — Multi Axis" [ref=e285] [cursor=pointer]:
+                  - /url: /products/won-e2e-multiaxis
+                - link "Choose":
+                  - /url: /products/won-e2e-multiaxis
+              - link "Won E2E — Multi Axis $20.00" [ref=e286] [cursor=pointer]:
+                - /url: /products/won-e2e-multiaxis
+                - generic [ref=e287]: Won E2E — Multi Axis
+                - generic [ref=e288]: $20.00
+            - generic [ref=e289]:
+              - generic [ref=e290]:
+                - link "Won E2E — Simple A" [ref=e291] [cursor=pointer]:
+                  - /url: /products/won-e2e-simple-a
+                - generic:
+                  - 'button "Add to cart: Won E2E — Simple A"':
+                    - generic: Add to cart
+              - link "Won E2E — Simple A $10.00" [ref=e292] [cursor=pointer]:
+                - /url: /products/won-e2e-simple-a
+                - generic [ref=e293]: Won E2E — Simple A
+                - generic [ref=e294]: $10.00
+            - generic [ref=e295]:
+              - generic [ref=e296]:
+                - link "Won E2E — Simple B" [ref=e297] [cursor=pointer]:
+                  - /url: /products/won-e2e-simple-b
+                - generic:
+                  - 'button "Add to cart: Won E2E — Simple B"':
+                    - generic: Add to cart
+              - link "Won E2E — Simple B $12.00" [ref=e298] [cursor=pointer]:
+                - /url: /products/won-e2e-simple-b
+                - generic [ref=e299]: Won E2E — Simple B
+                - generic [ref=e300]: $12.00
+            - generic [ref=e301]:
+              - generic [ref=e302]:
+                - link "Won E2E — Spare" [ref=e303] [cursor=pointer]:
+                  - /url: /products/won-e2e-spare
+                - generic:
+                  - 'button "Add to cart: Won E2E — Spare"':
+                    - generic: Add to cart
+              - link "Won E2E — Spare $9.00" [ref=e304] [cursor=pointer]:
+                - /url: /products/won-e2e-spare
+                - generic [ref=e305]: Won E2E — Spare
+                - generic [ref=e306]: $9.00
+            - generic [ref=e307]:
+              - generic [ref=e308]:
+                - link "Won E2E — Two Variants" [ref=e309] [cursor=pointer]:
+                  - /url: /products/won-e2e-two-variants
+                - link "Choose":
+                  - /url: /products/won-e2e-two-variants
+              - link "Won E2E — Two Variants $15.00" [ref=e310] [cursor=pointer]:
+                - /url: /products/won-e2e-two-variants
+                - generic [ref=e311]: Won E2E — Two Variants
+                - generic [ref=e312]: $15.00
+    - generic [ref=e315]:
+      - heading "Nezmeškej akce" [level=2] [ref=e316]
+      - generic [ref=e317]:
+        - generic [ref=e318]:
+          - textbox "your@email.com" [ref=e319]
+          - button "Subscribe" [ref=e320] [cursor=pointer]
+        - generic [ref=e321] [cursor=pointer]:
+          - checkbox "I agree to receive marketing emails and accept the privacy policy." [ref=e322]
+          - generic [ref=e323]:
+            - text: I agree to receive marketing emails and accept the
+            - link "privacy policy" [ref=e324]:
+              - /url: /policies/privacy-policy
+            - text: .
+  - generic [ref=e327]:
+    - generic [ref=e328]:
+      - generic [ref=e329]:
+        - paragraph [ref=e330]: Won
+        - paragraph [ref=e332]: Sportovní výživa s čistým složením a poctivým poradenstvím.
+        - generic [ref=e333]:
+          - img [ref=e334]
+          - img [ref=e339]
+          - img [ref=e346]
+          - img [ref=e351]
+          - img [ref=e357]
+          - img [ref=e361]
+      - generic [ref=e370]:
+        - navigation "Kategorie" [ref=e371]:
+          - paragraph [ref=e372]: Kategorie
+          - list [ref=e373]:
+            - listitem [ref=e374]:
+              - link "Proteiny" [ref=e375] [cursor=pointer]:
+                - /url: /collections/proteiny
+            - listitem [ref=e376]:
+              - link "Kreatin & aminokyseliny" [ref=e377] [cursor=pointer]:
+                - /url: /collections/kreatin-aminokyseliny
+            - listitem [ref=e378]:
+              - link "Vitamíny & minerály" [ref=e379] [cursor=pointer]:
+                - /url: /collections/vitaminy-mineraly
+            - listitem [ref=e380]:
+              - link "Zdraví & regenerace" [ref=e381] [cursor=pointer]:
+                - /url: /collections/zdravi-regenerace
+        - navigation "Informace" [ref=e382]:
+          - paragraph [ref=e383]: Informace
+          - list [ref=e384]:
+            - listitem [ref=e385]:
+              - link "O nás" [ref=e386] [cursor=pointer]:
+                - /url: /pages/about
+            - listitem [ref=e387]:
+              - link "Blog" [ref=e388] [cursor=pointer]:
+                - /url: /blogs/news
+            - listitem [ref=e389]:
+              - link "Časté dotazy" [ref=e390] [cursor=pointer]:
+                - /url: /pages/faq
+            - listitem [ref=e391]:
+              - link "Kontakt" [ref=e392] [cursor=pointer]:
+                - /url: /pages/contact
+        - navigation "Zákaznický servis" [ref=e393]:
+          - paragraph [ref=e394]: Zákaznický servis
+          - list [ref=e395]:
+            - listitem [ref=e396]:
+              - link "Doprava a platba" [ref=e397] [cursor=pointer]:
+                - /url: /pages/shipping
+            - listitem [ref=e398]:
+              - link "Vrácení zboží" [ref=e399] [cursor=pointer]:
+                - /url: /policies/refund-policy
+            - listitem [ref=e400]:
+              - link "Reklamace" [ref=e401] [cursor=pointer]:
+                - /url: /pages/claims
+            - listitem [ref=e402]:
+              - link "Věrnostní klub" [ref=e403] [cursor=pointer]:
+                - /url: /account/register
+    - generic [ref=e404]:
+      - paragraph [ref=e405]: © 2026 B2b_b2c_store_development · Všechna práva vyhrazena.
+      - list [ref=e406]:
+        - listitem [ref=e407]:
+          - link "Obchodní podmínky" [ref=e408] [cursor=pointer]:
+            - /url: /policies/terms-of-service
+        - listitem [ref=e409]:
+          - link "Ochrana soukromí" [ref=e410] [cursor=pointer]:
+            - /url: /policies/privacy-policy
+  - status "Cart notifications"
+```

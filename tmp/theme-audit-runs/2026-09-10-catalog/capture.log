@@ -1,0 +1,174 @@
+
+> test:smoke
+> playwright test tests/smoke --grep QA catalogue --project=desktop --reporter=line
+
+(node:74213) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 81 tests using 1 worker
+
+[1A[2K(node:74215) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:74215) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:74215) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-1
+[1A[2K[2/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-2
+[1A[2K[3/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-3
+[1A[2K[4/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-4
+[1A[2K  1) [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-4 
+
+    Error: QA preview must render, not an upload-error document
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m503[39m
+
+      22 |     fs.mkdirSync(`${root}/screenshots`, {recursive:true});
+      23 |     const response = await page.goto(url, {waitUntil:'domcontentloaded'});
+    > 24 |     expect(response?.status(), 'QA preview must render, not an upload-error document').toBe(200);
+         |                                                                                        ^
+      25 |     await page.locator('#MainContent').waitFor();
+      26 |     signals.identity = await page.evaluate(() => ({shop:(window as any).Shopify?.shop,theme:(window as any).Shopify?.theme}));
+      27 |     expect(signals.identity.shop).toBe('b2b-b2c-store-development.myshopify.com');
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-qa-catalog.spec.ts:24:88
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-won-qa-catalog-QA-ca-ee272--contact-view-won-qa-page-4-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-won-qa-catalog-QA-ca-ee272--contact-view-won-qa-page-4-desktop/error-context.md
+
+
+[1A[2K(node:74296) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:74296) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:74296) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[5/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-5
+[1A[2K[6/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-6
+[1A[2K[7/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-7
+[1A[2K[8/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-8
+[1A[2K[9/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-9
+[1A[2K[10/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-10
+[1A[2K[11/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-11
+[1A[2K[12/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-12
+[1A[2K[13/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /collections/automated-collection?view=won-qa-collection-13
+[1A[2K  2) [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /collections/automated-collection?view=won-qa-collection-13 
+
+    Error: QA preview must render, not an upload-error document
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m503[39m
+
+      22 |     fs.mkdirSync(`${root}/screenshots`, {recursive:true});
+      23 |     const response = await page.goto(url, {waitUntil:'domcontentloaded'});
+    > 24 |     expect(response?.status(), 'QA preview must render, not an upload-error document').toBe(200);
+         |                                                                                        ^
+      25 |     await page.locator('#MainContent').waitFor();
+      26 |     signals.identity = await page.evaluate(() => ({shop:(window as any).Shopify?.shop,theme:(window as any).Shopify?.theme}));
+      27 |     expect(signals.identity.shop).toBe('b2b-b2c-store-development.myshopify.com');
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tests/smoke/won-qa-catalog.spec.ts:24:88
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-won-qa-catalog-QA-ca-54968-n-view-won-qa-collection-13-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-won-qa-catalog-QA-ca-54968-n-view-won-qa-collection-13-desktop/error-context.md
+
+
+[1A[2K(node:74760) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:74760) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:74760) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[14/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-14
+[1A[2K[15/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-15
+[1A[2K[16/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-16
+[1A[2K[17/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-17
+[1A[2K[18/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-18
+[1A[2K[19/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-19
+[1A[2K[20/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-20
+[1A[2K[21/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-21
+[1A[2K[22/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-22
+[1A[2K[23/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-23
+[1A[2K[24/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-24
+[1A[2K[25/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-25
+[1A[2K[26/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-product-26
+[1A[2K[27/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /products/the-videographer-snowboard?view=won-qa-editorial
+[1A[2K[28/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /pages/contact?view=won-qa-page-1
+[1A[2K[29/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /pages/contact?view=won-qa-page-2
+[1A[2K[30/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /pages/contact?view=won-qa-page-3
+[1A[2K[31/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /pages/contact?view=won-qa-page-4
+[1A[2K[32/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /pages/contact?view=won-qa-page-5
+[1A[2K[33/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /pages/contact?view=won-qa-page-6
+[1A[2K[34/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /pages/contact?view=won-qa-page-7
+[1A[2K[35/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /pages/contact?view=won-qa-page-8
+[1A[2K[36/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /pages/contact?view=won-qa-page-9
+[1A[2K[37/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /pages/contact?view=won-qa-page-10
+[1A[2K[38/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /pages/contact?view=won-qa-page-11
+[1A[2K[39/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /pages/contact?view=won-qa-page-12
+[1A[2K[40/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /collections/automated-collection?view=won-qa-collection-13
+[1A[2K[41/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-14
+[1A[2K[42/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-15
+[1A[2K[43/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-16
+[1A[2K[44/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-17
+[1A[2K[45/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-18
+[1A[2K[46/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-19
+[1A[2K[47/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-20
+[1A[2K[48/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-21
+[1A[2K[49/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-22
+[1A[2K[50/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-23
+[1A[2K[51/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-24
+[1A[2K[52/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-25
+[1A[2K[53/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-product-26
+[1A[2K[54/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 768 /products/the-videographer-snowboard?view=won-qa-editorial
+[1A[2K[55/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /pages/contact?view=won-qa-page-1
+[1A[2K[56/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /pages/contact?view=won-qa-page-2
+[1A[2K[57/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /pages/contact?view=won-qa-page-3
+[1A[2K[58/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /pages/contact?view=won-qa-page-4
+[1A[2K[59/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /pages/contact?view=won-qa-page-5
+[1A[2K[60/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /pages/contact?view=won-qa-page-6
+[1A[2K[61/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /pages/contact?view=won-qa-page-7
+[1A[2K[62/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /pages/contact?view=won-qa-page-8
+[1A[2K[63/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /pages/contact?view=won-qa-page-9
+[1A[2K[64/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /pages/contact?view=won-qa-page-10
+[1A[2K[65/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /pages/contact?view=won-qa-page-11
+[1A[2K[66/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /pages/contact?view=won-qa-page-12
+[1A[2K[67/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /collections/automated-collection?view=won-qa-collection-13
+[1A[2K[68/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-14
+[1A[2K[69/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-15
+[1A[2K[70/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-16
+[1A[2K[71/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-17
+[1A[2K[72/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-18
+[1A[2K[73/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-19
+[1A[2K[74/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-20
+[1A[2K[75/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-21
+[1A[2K[76/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-22
+[1A[2K[77/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-23
+[1A[2K[78/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-24
+[1A[2K[79/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-25
+[1A[2K[80/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-product-26
+[1A[2K[81/81] [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 1440 /products/the-videographer-snowboard?view=won-qa-editorial
+[1A[2K  2 failed
+    [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /pages/contact?view=won-qa-page-4 
+    [desktop] › tests/smoke/won-qa-catalog.spec.ts:13:3 › QA catalogue 390 /collections/automated-collection?view=won-qa-collection-13 
+  79 passed (10.0m)

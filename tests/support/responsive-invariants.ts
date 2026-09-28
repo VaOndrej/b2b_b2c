@@ -62,26 +62,33 @@ export async function assertResponsiveSane(page: Page) {
   const small = await page.evaluate((min) => {
     const controls = 'button, [role="button"], input:not([type="hidden"]), select, summary';
     const box = (el: Element) => el.getBoundingClientRect();
-    const union = (a: DOMRect, b: DOMRect) => {
-      const left = Math.min(a.left, b.left), top = Math.min(a.top, b.top);
-      const right = Math.max(a.right, b.right), bottom = Math.max(a.bottom, b.bottom);
-      return { left, top, right, bottom, width: right - left, height: bottom - top } as DOMRect;
+    const visibleHitBox = (el: HTMLElement): DOMRect | null => {
+      const r = box(el);
+      if (!el.getClientRects().length || r.width <= 0 || r.height <= 0) return null;
+      // An offscreen/clipped native radio is represented by its visible label.
+      // Controls in hidden panels have no rendered box and are not actionable.
+      let node: HTMLElement | null = el;
+      while (node) {
+        const cs = getComputedStyle(node);
+        if (cs.visibility === 'hidden' || cs.visibility === 'collapse' || Number(cs.opacity) === 0) return null;
+        node = node.parentElement;
+      }
+      const cs = getComputedStyle(el);
+      if (cs.pointerEvents === 'none') return null;
+      if (cs.clipPath === 'inset(50%)' || /^rect\(0px[, ]+0px[, ]+0px[, ]+0px\)$/.test(cs.clip)) return null;
+      if (r.right <= 0 || r.bottom <= 0) return null;
+      return r;
     };
-    // A checkbox/radio's tap target is the input AND its label together — a tiny
-    // native input with a large clickable label meets the target size.
-    const effective = (el: HTMLElement): DOMRect => {
-      let r = box(el);
+    // A label is an alternative hit area, not a bridge of clickable pixels
+    // between two distant boxes. At least one real area must meet both axes.
+    const effective = (el: HTMLElement): DOMRect[] => {
+      const candidates: HTMLElement[] = [el];
       const type = (el.getAttribute('type') || '').toLowerCase();
       if (el.tagName === 'INPUT' && (type === 'checkbox' || type === 'radio')) {
-        const labels = (el as HTMLInputElement).labels ? [...(el as HTMLInputElement).labels!] : [];
-        const wrap = el.closest('label');
-        if (wrap && !labels.includes(wrap)) labels.push(wrap);
-        for (const lab of labels) {
-          const lr = box(lab);
-          if (lr.width > 0 && lr.height > 0) r = union(r, lr);
-        }
+        const labels = (el as HTMLInputElement).labels;
+        if (labels) candidates.push(...labels);
       }
-      return r;
+      return candidates.map(visibleHitBox).filter((r): r is DOMRect => r !== null);
     };
     // Only enforce 44px on links that are genuinely control-like (button/tile).
     // A plain inline or short-height text link is navigation prose, which WCAG
@@ -100,8 +107,8 @@ export async function assertResponsiveSane(page: Page) {
     return [...document.querySelectorAll<HTMLElement>(`${controls}, a[href]`)]
       .filter((el) => el.matches(controls) || isButtonLike(el))
       .filter((el) => {
-        const r = effective(el);
-        return r.width > 0 && r.height > 0 && (r.height < min || r.width < min);
+        const areas = effective(el);
+        return areas.length > 0 && !areas.some((r) => r.height >= min && r.width >= min);
       })
       .slice(0, 8)
       .map((el) => `${el.tagName.toLowerCase()}.${(el.className || '').toString().split(' ')[0]}`);

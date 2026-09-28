@@ -1,0 +1,1259 @@
+{
+  "sections": {
+    "main": {
+      "type": "product-information",
+      "blocks": {
+        "media-gallery": {
+          "type": "_product-media-gallery",
+          "static": true,
+          "settings": {
+            "media_presentation": "grid",
+            "media_columns": "two",
+            "image_gap": 16,
+            "large_first_image": false,
+            "icons_style": "arrow",
+            "slideshow_controls_style": "thumbnails",
+            "slideshow_mobile_controls_style": "dots",
+            "thumbnail_position": "bottom",
+            "thumbnail_width": 64,
+            "aspect_ratio": "1",
+            "constrain_to_viewport": false,
+            "media_fit": "contain",
+            "media_radius": 14,
+            "extend_media": false,
+            "zoom": true,
+            "video_loop": false,
+            "hide_variants": true,
+            "padding-block-start": 0,
+            "padding-block-end": 0,
+            "padding-inline-start": 0,
+            "padding-inline-end": 0
+          },
+          "blocks": {}
+        },
+        "product-details": {
+          "type": "_product-details",
+          "static": true,
+          "settings": {
+            "width": "fill",
+            "custom_width": 100,
+            "width_mobile": "fill",
+            "custom_width_mobile": 100,
+            "height": "fit",
+            "details_position": "flex-start",
+            "gap": 16,
+            "sticky_details_desktop": false,
+            "inherit_color_scheme": true,
+            "color_scheme": "scheme-1",
+            "background_media": "none",
+            "video_position": "cover",
+            "background_image_position": "cover",
+            "border": "none",
+            "border_width": 1,
+            "border_opacity": 100,
+            "border_radius": 0,
+            "padding-block-start": 24,
+            "padding-block-end": 24,
+            "padding-inline-start": 0,
+            "padding-inline-end": 0
+          },
+          "blocks": {
+            "won_crumbs": {
+              "type": "won-breadcrumbs",
+              "settings": {
+                "emit_schema": false
+              }
+            },
+            "group_icgrde": {
+              "type": "group",
+              "name": "Header",
+              "settings": {
+                "link": "",
+                "open_in_new_tab": false,
+                "content_direction": "column",
+                "vertical_on_mobile": true,
+                "horizontal_alignment": "flex-start",
+                "vertical_alignment": "center",
+                "align_baseline": false,
+                "horizontal_alignment_flex_direction_column": "flex-start",
+                "vertical_alignment_flex_direction_column": "center",
+                "gap": 12,
+                "width": "fill",
+                "custom_width": 100,
+                "width_mobile": "fill",
+                "custom_width_mobile": 100,
+                "height": "fit",
+                "custom_height": 100,
+                "inherit_color_scheme": true,
+                "color_scheme": "",
+                "background_media": "none",
+                "video_position": "cover",
+                "background_image_position": "cover",
+                "border": "none",
+                "border_width": 1,
+                "border_opacity": 100,
+                "border_radius": 0,
+                "placeholder": "",
+                "toggle_overlay": false,
+                "overlay_color": "#00000026",
+                "overlay_style": "solid",
+                "gradient_direction": "to top",
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0
+              },
+              "blocks": {
+                "text_xpVMaM": {
+                  "type": "text",
+                  "name": "t:names.title",
+                  "settings": {
+                    "text": "<h1>{{ closest.product.title }}</h1>",
+                    "width": "fit-content",
+                    "max_width": "normal",
+                    "alignment": "left",
+                    "type_preset": "h2",
+                    "font": "var(--font-body--family)",
+                    "font_size": "1rem",
+                    "line_height": "normal",
+                    "letter_spacing": "normal",
+                    "case": "none",
+                    "wrap": "pretty",
+                    "color": "var(--color-foreground)",
+                    "background": false,
+                    "background_color": "#00000026",
+                    "corner_radius": 0,
+                    "padding-block-start": 0,
+                    "padding-block-end": 0,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0
+                  },
+                  "blocks": {}
+                }
+              },
+              "block_order": [
+                "text_xpVMaM"
+              ]
+            },
+            "product_meta": {
+              "type": "won-product-meta",
+              "settings": {
+                "show_vendor": true,
+                "show_type": true
+              }
+            },
+            "text_aEtTtq": {
+              "type": "text",
+              "name": "Product description",
+              "settings": {
+                "text": "{{ closest.product.description }}",
+                "width": "100%",
+                "max_width": "normal",
+                "alignment": "left",
+                "type_preset": "rte",
+                "font": "var(--font-body--family)",
+                "font_size": "",
+                "line_height": "normal",
+                "letter_spacing": "normal",
+                "case": "none",
+                "wrap": "pretty",
+                "color": "var(--color-foreground)",
+                "background": false,
+                "background_color": "#00000026",
+                "corner_radius": 0,
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0
+              },
+              "blocks": {}
+            },
+            "product_offer": {
+              "type": "won-product-offer",
+              "settings": {
+                "outline_options": true,
+                "badge_background": "#ef4f9b",
+                "badge_color": "#ffffff",
+                "outline_color": "#b8d83c"
+              },
+              "blocks": {
+                "variant_picker": {
+                  "type": "variant-picker",
+                  "settings": {
+                    "variant_style": "buttons",
+                    "show_swatches": false,
+                    "alignment": "left",
+                    "padding-block-start": 0,
+                    "padding-block-end": 0,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0
+                  },
+                  "blocks": {}
+                }
+              },
+              "block_order": [
+                "variant_picker"
+              ]
+            },
+            "price": {
+              "type": "price",
+              "settings": {
+                "show_sale_price_first": true,
+                "show_installments": false,
+                "show_tax_info": false,
+                "type_preset": "paragraph",
+                "width": "100%",
+                "alignment": "left",
+                "font": "var(--font-body--family)",
+                "font_size": "1rem",
+                "line_height": "normal",
+                "letter_spacing": "normal",
+                "case": "none",
+                "color": "var(--color-foreground)",
+                "padding-block-start": 4,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0
+              },
+              "blocks": {}
+            },
+            "unit_price": {
+              "type": "won-price-per-unit",
+              "settings": {
+                "prefix": "Per unit:"
+              }
+            },
+            "buy_buttons_eYQEYi": {
+              "type": "buy-buttons",
+              "settings": {
+                "stacking": true,
+                "show_pickup_availability": false,
+                "gift_card_form": true,
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0
+              },
+              "blocks": {
+                "quantity": {
+                  "type": "quantity",
+                  "static": true,
+                  "settings": {},
+                  "blocks": {}
+                },
+                "add-to-cart": {
+                  "type": "add-to-cart",
+                  "static": true,
+                  "settings": {
+                    "style_class": "button"
+                  },
+                  "blocks": {}
+                },
+                "accelerated-checkout": {
+                  "type": "accelerated-checkout",
+                  "static": true,
+                  "settings": {},
+                  "blocks": {}
+                }
+              },
+              "block_order": []
+            },
+            "won_stock": {
+              "type": "won-stock-signal",
+              "settings": {
+                "low_threshold": 10,
+                "delivery_fallback": ""
+              }
+            },
+            "won_trust": {
+              "type": "won-product-trust",
+              "settings": {}
+            }
+          },
+          "block_order": [
+            "won_crumbs",
+            "group_icgrde",
+            "product_meta",
+            "text_aEtTtq",
+            "product_offer",
+            "price",
+            "unit_price",
+            "buy_buttons_eYQEYi",
+            "won_stock",
+            "won_trust"
+          ]
+        }
+      },
+      "settings": {
+        "content_width": "content-center-aligned",
+        "enable_sticky_add_to_cart": false,
+        "desktop_media_position": "left",
+        "equal_columns": true,
+        "limit_details_width": false,
+        "gap": 40,
+        "color_scheme": "",
+        "padding-block-start": 0,
+        "padding-block-end": 0
+      }
+    },
+    "bundles_details": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading": "",
+        "columns_desktop": 2,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "gap": 32,
+        "item_style": "plain",
+        "color_scheme": "scheme-1",
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "feature_title_lines": 0,
+        "bg_color": "#ffffff",
+        "text_color": "#142b49",
+        "accent_override": "#27a9df",
+        "heading_weight": "800"
+      },
+      "blocks": {
+        "bundles": {
+          "type": "won-group",
+          "settings": {
+            "heading": "<p>Complete your selection</p>",
+            "text": "",
+            "columns_desktop": 1,
+            "columns_mobile": "1",
+            "gap": "4"
+          },
+          "blocks": {
+            "product_one": {
+              "type": "won-product-card",
+              "settings": {
+                "product": "the-videographer-snowboard",
+                "aspect": "square",
+                "show_add": true,
+                "show_badges": true,
+                "layout": "row"
+              }
+            },
+            "product_two": {
+              "type": "won-product-card",
+              "settings": {
+                "product": "the-collection-snowboard-hydrogen",
+                "aspect": "square",
+                "show_add": true,
+                "show_badges": true,
+                "layout": "row"
+              }
+            }
+          },
+          "block_order": [
+            "product_one",
+            "product_two"
+          ]
+        },
+        "details": {
+          "type": "won-group",
+          "settings": {
+            "heading": "",
+            "text": "",
+            "columns_desktop": 1,
+            "columns_mobile": "1",
+            "gap": "4"
+          },
+          "blocks": {
+            "detail_1": {
+              "type": "won-panel",
+              "settings": {
+                "title": "How to use",
+                "content": "<p>Add product-specific information here, or connect this answer to a product metafield in the theme editor.</p>",
+                "row_style": "editorial"
+              }
+            },
+            "detail_2": {
+              "type": "won-panel",
+              "settings": {
+                "title": "Materials and composition",
+                "content": "<p>Add product-specific information here, or connect this answer to a product metafield in the theme editor.</p>",
+                "row_style": "editorial"
+              }
+            },
+            "detail_3": {
+              "type": "won-panel",
+              "settings": {
+                "title": "Who it is for",
+                "content": "<p>Add product-specific information here, or connect this answer to a product metafield in the theme editor.</p>",
+                "row_style": "editorial"
+              }
+            }
+          },
+          "block_order": [
+            "detail_1",
+            "detail_2",
+            "detail_3"
+          ]
+        }
+      },
+      "block_order": [
+        "bundles",
+        "details"
+      ]
+    },
+    "reviews": {
+      "type": "won-carousel",
+      "settings": {
+        "source": "manual",
+        "layout": "slider",
+        "heading": "<p>Stories from everyday use</p>",
+        "heading_max_width_desktop": 80,
+        "head_link_label": "Read all reviews",
+        "head_link_url": "",
+        "columns_desktop": 2,
+        "columns_tablet": 1,
+        "columns_mobile": "1",
+        "gap": 16,
+        "color_scheme": "scheme-1",
+        "show_arrows": true,
+        "show_progress": false,
+        "show_dots": true,
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "bg_color": "#27a9df",
+        "text_color": "#ffffff",
+        "accent_override": "#ffffff",
+        "heading_weight": "800"
+      },
+      "blocks": {
+        "review_1": {
+          "type": "won-slide",
+          "settings": {
+            "visualization": "testimonial",
+            "heading": "<p>Example review headline 1</p>",
+            "heading_size_desktop": 20,
+            "heading_size_mobile": 18,
+            "text": "<p>Replace this sample with a genuine customer review, and add an approved customer image.</p>",
+            "reviewer": "QA fictional example",
+            "review_rating": 0,
+            "media_type": "image",
+            "inherit_color_scheme": false,
+            "color_scheme": "scheme-1",
+            "corner_radius": 14,
+            "image": "shopify://shop_images/photo-1526170375885-4d8ecf77b99f.jpg",
+            "image_mobile": "shopify://shop_images/photo-1526170375885-4d8ecf77b99f.jpg",
+            "media_caption": "QA demonstration image"
+          }
+        },
+        "review_2": {
+          "type": "won-slide",
+          "settings": {
+            "visualization": "testimonial",
+            "heading": "<p>Example review headline 2</p>",
+            "heading_size_desktop": 20,
+            "heading_size_mobile": 18,
+            "text": "<p>Replace this sample with a genuine customer review, and add an approved customer image.</p>",
+            "reviewer": "QA fictional example",
+            "review_rating": 0,
+            "media_type": "image",
+            "inherit_color_scheme": false,
+            "color_scheme": "scheme-1",
+            "corner_radius": 14,
+            "image": "shopify://shop_images/photo-1526170375885-4d8ecf77b99f.jpg",
+            "image_mobile": "shopify://shop_images/photo-1526170375885-4d8ecf77b99f.jpg",
+            "media_caption": "QA demonstration image"
+          }
+        }
+      },
+      "block_order": [
+        "review_1",
+        "review_2"
+      ]
+    },
+    "benefits_expert": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading": "",
+        "columns_desktop": 1,
+        "columns_tablet": 1,
+        "columns_mobile": "1",
+        "gap": 32,
+        "item_style": "plain",
+        "color_scheme": "scheme-1",
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "feature_title_lines": 0,
+        "bg_color": "#ffffff",
+        "text_color": "#142b49",
+        "accent_override": "#27a9df",
+        "heading_weight": "800"
+      },
+      "blocks": {
+        "balance": {
+          "type": "won-group",
+          "settings": {
+            "columns_desktop": 2,
+            "columns_mobile": "1",
+            "column_ratio": "3:2",
+            "gap": "6"
+          },
+          "blocks": {
+            "benefits": {
+              "type": "won-group",
+              "settings": {
+                "heading": "<p>Four benefits worth exploring</p>",
+                "text": "",
+                "columns_desktop": 1,
+                "columns_mobile": "1",
+                "gap": "4"
+              },
+              "blocks": {
+                "benefit_1": {
+                  "type": "won-feature",
+                  "settings": {
+                    "heading": "Everyday comfort",
+                    "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+                    "icon": "heart",
+                    "icon_style": "bare",
+                    "image_position": "left",
+                    "presentation": "numbered",
+                    "number_label": "01",
+                    "accent_override": "#27a9df",
+                    "marker_color": "#ef4f9b",
+                    "image": ""
+                  }
+                },
+                "benefit_2": {
+                  "type": "won-feature",
+                  "settings": {
+                    "heading": "Thoughtful materials",
+                    "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+                    "icon": "leaf",
+                    "icon_style": "bare",
+                    "image_position": "left",
+                    "presentation": "numbered",
+                    "number_label": "02",
+                    "accent_override": "#27a9df",
+                    "marker_color": "#ef4f9b",
+                    "image": ""
+                  }
+                },
+                "benefit_3": {
+                  "type": "won-feature",
+                  "settings": {
+                    "heading": "Reliable protection",
+                    "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+                    "icon": "shield",
+                    "icon_style": "bare",
+                    "image_position": "left",
+                    "presentation": "numbered",
+                    "number_label": "03",
+                    "accent_override": "#27a9df",
+                    "marker_color": "#ef4f9b",
+                    "image": ""
+                  }
+                },
+                "benefit_4": {
+                  "type": "won-feature",
+                  "settings": {
+                    "heading": "Easy to use",
+                    "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+                    "icon": "bolt",
+                    "icon_style": "bare",
+                    "image_position": "left",
+                    "presentation": "numbered",
+                    "number_label": "04",
+                    "accent_override": "#27a9df",
+                    "marker_color": "#ef4f9b",
+                    "image": ""
+                  }
+                }
+              },
+              "block_order": [
+                "benefit_1",
+                "benefit_2",
+                "benefit_3",
+                "benefit_4"
+              ]
+            },
+            "expert": {
+              "type": "won-group",
+              "settings": {
+                "heading": "<p>An expert perspective</p>",
+                "text": "",
+                "columns_desktop": 1,
+                "columns_mobile": "1",
+                "gap": "4"
+              },
+              "blocks": {
+                "profile": {
+                  "type": "won-slide",
+                  "settings": {
+                    "visualization": "expert",
+                    "media_type": "image",
+                    "media_caption": "QA demonstration image",
+                    "heading": "<p>Expert name</p>",
+                    "expert_role": "Role or qualification",
+                    "text": "<p>Add an approved expert quotation relevant to this product. Replace all example content before publishing.</p>",
+                    "heading_size_desktop": 28,
+                    "heading_size_mobile": 24,
+                    "image": "shopify://shop_images/photo-1526170375885-4d8ecf77b99f.jpg",
+                    "image_mobile": "shopify://shop_images/photo-1526170375885-4d8ecf77b99f.jpg",
+                    "reviewer": "QA fictional example"
+                  }
+                }
+              },
+              "block_order": [
+                "profile"
+              ]
+            }
+          },
+          "block_order": [
+            "benefits",
+            "expert"
+          ]
+        }
+      },
+      "block_order": [
+        "balance"
+      ]
+    },
+    "trust": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading": "",
+        "columns_desktop": 3,
+        "columns_tablet": 3,
+        "columns_mobile": "1",
+        "gap": 32,
+        "item_style": "plain",
+        "color_scheme": "scheme-1",
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "feature_title_lines": 0,
+        "content_align": "center",
+        "bg_color": "#27a9df",
+        "text_color": "#ffffff",
+        "accent_override": "#ffffff",
+        "heading_weight": "800"
+      },
+      "blocks": {
+        "trust_1": {
+          "type": "won-feature",
+          "settings": {
+            "heading": "Your verified standard",
+            "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+            "icon": "award",
+            "icon_style": "bare",
+            "image_position": "top",
+            "image_size": 64,
+            "accent_override": "#ffffff",
+            "image": ""
+          }
+        },
+        "trust_2": {
+          "type": "won-feature",
+          "settings": {
+            "heading": "Your material promise",
+            "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+            "icon": "leaf",
+            "icon_style": "bare",
+            "image_position": "top",
+            "image_size": 64,
+            "accent_override": "#ffffff",
+            "image": ""
+          }
+        },
+        "trust_3": {
+          "type": "won-feature",
+          "settings": {
+            "heading": "Your service commitment",
+            "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+            "icon": "shield",
+            "icon_style": "bare",
+            "image_position": "top",
+            "image_size": 64,
+            "accent_override": "#ffffff",
+            "image": ""
+          }
+        }
+      },
+      "block_order": [
+        "trust_1",
+        "trust_2",
+        "trust_3"
+      ]
+    },
+    "reasons": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading": "<p>Why choose this product?</p>",
+        "columns_desktop": 2,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "gap": 32,
+        "item_style": "plain",
+        "color_scheme": "scheme-1",
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "feature_title_lines": 0,
+        "bg_color": "#ffffff",
+        "text_color": "#142b49",
+        "accent_override": "#27a9df",
+        "heading_weight": "800",
+        "content_align": "center"
+      },
+      "blocks": {
+        "reason_1": {
+          "type": "won-feature",
+          "settings": {
+            "heading": "A clear everyday purpose",
+            "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+            "icon": "check",
+            "icon_style": "bare",
+            "image_position": "left",
+            "accent_override": "#ef4f9b",
+            "image": ""
+          }
+        },
+        "reason_2": {
+          "type": "won-feature",
+          "settings": {
+            "heading": "Thoughtful design details",
+            "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+            "icon": "check",
+            "icon_style": "bare",
+            "image_position": "left",
+            "accent_override": "#ef4f9b",
+            "image": ""
+          }
+        },
+        "reason_3": {
+          "type": "won-feature",
+          "settings": {
+            "heading": "Simple to incorporate into your routine",
+            "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+            "icon": "check",
+            "icon_style": "bare",
+            "image_position": "left",
+            "accent_override": "#ef4f9b",
+            "image": ""
+          }
+        },
+        "reason_4": {
+          "type": "won-feature",
+          "settings": {
+            "heading": "Straightforward product information",
+            "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+            "icon": "check",
+            "icon_style": "bare",
+            "image_position": "left",
+            "accent_override": "#ef4f9b",
+            "image": ""
+          }
+        },
+        "reason_5": {
+          "type": "won-feature",
+          "settings": {
+            "heading": "Support when you need it",
+            "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+            "icon": "check",
+            "icon_style": "bare",
+            "image_position": "left",
+            "accent_override": "#ef4f9b",
+            "image": ""
+          }
+        }
+      },
+      "block_order": [
+        "reason_1",
+        "reason_2",
+        "reason_3",
+        "reason_4",
+        "reason_5"
+      ]
+    },
+    "composition": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading": "<p>What makes the composition distinctive?</p>",
+        "columns_desktop": 2,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "gap": 32,
+        "item_style": "plain",
+        "color_scheme": "scheme-1",
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "feature_title_lines": 0,
+        "bg_color": "#ffffff",
+        "text_color": "#142b49",
+        "accent_override": "#27a9df",
+        "heading_weight": "800",
+        "content_align": "center"
+      },
+      "blocks": {
+        "intro": {
+          "type": "won-group",
+          "settings": {
+            "heading": "",
+            "text": "",
+            "columns_desktop": 2,
+            "columns_mobile": "1",
+            "gap": "4"
+          },
+          "blocks": {
+            "intro_copy": {
+              "type": "won-slide",
+              "settings": {
+                "heading": "",
+                "text": "<p>Explain the product composition in plain language. Connect this copy to product information or maintain it in the theme editor.</p>",
+                "image": "shopify://shop_images/photo-1526170375885-4d8ecf77b99f.jpg",
+                "image_mobile": "shopify://shop_images/photo-1526170375885-4d8ecf77b99f.jpg",
+                "reviewer": "QA fictional example",
+                "media_caption": "QA demonstration image"
+              }
+            },
+            "stat": {
+              "type": "won-feature",
+              "settings": {
+                "heading": "Key components",
+                "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+                "icon": "none",
+                "icon_style": "bare",
+                "image_position": "left",
+                "presentation": "statistic",
+                "statistic_value": "17",
+                "accent_override": "#27a9df",
+                "marker_color": "#ef4f9b",
+                "image": ""
+              }
+            }
+          },
+          "block_order": [
+            "intro_copy",
+            "stat"
+          ]
+        },
+        "categories": {
+          "type": "won-group",
+          "settings": {
+            "heading": "",
+            "text": "",
+            "columns_desktop": 2,
+            "columns_mobile": "1",
+            "gap": "4"
+          },
+          "blocks": {
+            "category_1": {
+              "type": "won-feature",
+              "settings": {
+                "heading": "Structure",
+                "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+                "icon": "box",
+                "icon_style": "bare",
+                "image_position": "left",
+                "accent_override": "#27a9df",
+                "image": ""
+              }
+            },
+            "category_2": {
+              "type": "won-feature",
+              "settings": {
+                "heading": "Comfort",
+                "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+                "icon": "heart",
+                "icon_style": "bare",
+                "image_position": "left",
+                "accent_override": "#27a9df",
+                "image": ""
+              }
+            },
+            "category_3": {
+              "type": "won-feature",
+              "settings": {
+                "heading": "Protection",
+                "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+                "icon": "shield",
+                "icon_style": "bare",
+                "image_position": "left",
+                "accent_override": "#27a9df",
+                "image": ""
+              }
+            },
+            "category_4": {
+              "type": "won-feature",
+              "settings": {
+                "heading": "Finish",
+                "text": "<p>QA demonstration only. A longer explanation tests line wrapping, readable spacing and the balance beside the adjacent portrait.</p>",
+                "icon": "droplet",
+                "icon_style": "bare",
+                "image_position": "left",
+                "accent_override": "#27a9df",
+                "image": ""
+              }
+            }
+          },
+          "block_order": [
+            "category_1",
+            "category_2",
+            "category_3",
+            "category_4"
+          ]
+        }
+      },
+      "block_order": [
+        "intro",
+        "categories"
+      ]
+    },
+    "faq": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading": "<p>Need to know more?</p>",
+        "columns_desktop": 2,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "gap": 32,
+        "item_style": "plain",
+        "color_scheme": "scheme-1",
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "feature_title_lines": 0,
+        "bg_color": "#ffffff",
+        "text_color": "#142b49",
+        "accent_override": "#27a9df",
+        "heading_weight": "800"
+      },
+      "blocks": {
+        "faq_1": {
+          "type": "won-panel",
+          "settings": {
+            "title": "Who is this product suitable for?",
+            "content": "<p>Add product-specific information here, or connect this answer to a product metafield in the theme editor.</p>",
+            "row_style": "boxed"
+          }
+        },
+        "faq_2": {
+          "type": "won-panel",
+          "settings": {
+            "title": "How should I use it?",
+            "content": "<p>Add product-specific information here, or connect this answer to a product metafield in the theme editor.</p>",
+            "row_style": "boxed"
+          }
+        },
+        "faq_3": {
+          "type": "won-panel",
+          "settings": {
+            "title": "How do I care for it?",
+            "content": "<p>Add product-specific information here, or connect this answer to a product metafield in the theme editor.</p>",
+            "row_style": "boxed"
+          }
+        },
+        "faq_4": {
+          "type": "won-panel",
+          "settings": {
+            "title": "Can I use it every day?",
+            "content": "<p>Add product-specific information here, or connect this answer to a product metafield in the theme editor.</p>",
+            "row_style": "boxed"
+          }
+        },
+        "faq_5": {
+          "type": "won-panel",
+          "settings": {
+            "title": "Which option should I choose?",
+            "content": "<p>Add product-specific information here, or connect this answer to a product metafield in the theme editor.</p>",
+            "row_style": "boxed"
+          }
+        },
+        "faq_6": {
+          "type": "won-panel",
+          "settings": {
+            "title": "Where can I find more information?",
+            "content": "<p>Add product-specific information here, or connect this answer to a product metafield in the theme editor.</p>",
+            "row_style": "boxed"
+          }
+        }
+      },
+      "block_order": [
+        "faq_1",
+        "faq_2",
+        "faq_3",
+        "faq_4",
+        "faq_5",
+        "faq_6"
+      ]
+    },
+    "editorial": {
+      "type": "won-grid",
+      "settings": {
+        "source": "blocks",
+        "heading": "<p>Explore more stories</p>",
+        "columns_desktop": 4,
+        "columns_tablet": 2,
+        "columns_mobile": "2",
+        "gap": 32,
+        "item_style": "plain",
+        "color_scheme": "scheme-1",
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "feature_title_lines": 0,
+        "bg_color": "#ffffff",
+        "text_color": "#142b49",
+        "accent_override": "#27a9df",
+        "heading_weight": "800"
+      },
+      "blocks": {
+        "story_1": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "Getting started",
+            "toggle_overlay": false,
+            "corner_radius": 14,
+            "label_position": "below",
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "story_2": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "Choosing your essentials",
+            "toggle_overlay": false,
+            "corner_radius": 14,
+            "label_position": "below",
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "story_3": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "Everyday inspiration",
+            "toggle_overlay": false,
+            "corner_radius": 14,
+            "label_position": "below",
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        },
+        "story_4": {
+          "type": "won-tile",
+          "settings": {
+            "heading": "Care and maintenance",
+            "toggle_overlay": false,
+            "corner_radius": 14,
+            "label_position": "below",
+            "image": "shopify://shop_images/won-pack-preworkout.png"
+          }
+        }
+      },
+      "block_order": [
+        "story_1",
+        "story_2",
+        "story_3",
+        "story_4"
+      ]
+    },
+    "main_label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA editorial · main</p>",
+        "heading_size_desktop": 48,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 30,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration composition and fictional example copy — not product claims.</p>"
+      }
+    },
+    "bundles_details_label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA editorial · bundles_details</p>",
+        "heading_size_desktop": 48,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 30,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration composition and fictional example copy — not product claims.</p>"
+      }
+    },
+    "reviews_label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA editorial · reviews</p>",
+        "heading_size_desktop": 48,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 30,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration composition and fictional example copy — not product claims.</p>"
+      }
+    },
+    "benefits_expert_label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA editorial · benefits_expert</p>",
+        "heading_size_desktop": 48,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 30,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration composition and fictional example copy — not product claims.</p>"
+      }
+    },
+    "trust_label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA editorial · trust</p>",
+        "heading_size_desktop": 48,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 30,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration composition and fictional example copy — not product claims.</p>"
+      }
+    },
+    "reasons_label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA editorial · reasons</p>",
+        "heading_size_desktop": 48,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 30,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration composition and fictional example copy — not product claims.</p>"
+      }
+    },
+    "composition_label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA editorial · composition</p>",
+        "heading_size_desktop": 48,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 30,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration composition and fictional example copy — not product claims.</p>"
+      }
+    },
+    "faq_label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA editorial · faq</p>",
+        "heading_size_desktop": 48,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 30,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration composition and fictional example copy — not product claims.</p>"
+      }
+    },
+    "editorial_label": {
+      "type": "won-page-header",
+      "settings": {
+        "heading": "<p>QA editorial · editorial</p>",
+        "heading_size_desktop": 48,
+        "heading_max_width_desktop": 100,
+        "heading_size_mobile": 30,
+        "heading_max_width_mobile": 100,
+        "toggle_overlay": true,
+        "overlay_color": "#00000059",
+        "min_height": 0,
+        "content_align": "left",
+        "color_scheme": "scheme-1",
+        "section_width": "page",
+        "padding_top": 24,
+        "padding_bottom": 8,
+        "image": "",
+        "subheading": "<p>Demonstration composition and fictional example copy — not product claims.</p>"
+      }
+    }
+  },
+  "order": [
+    "main_label",
+    "main",
+    "bundles_details_label",
+    "bundles_details",
+    "reviews_label",
+    "reviews",
+    "benefits_expert_label",
+    "benefits_expert",
+    "trust_label",
+    "trust",
+    "reasons_label",
+    "reasons",
+    "composition_label",
+    "composition",
+    "faq_label",
+    "faq",
+    "editorial_label",
+    "editorial"
+  ]
+}

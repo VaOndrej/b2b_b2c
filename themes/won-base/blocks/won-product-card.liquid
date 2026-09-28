@@ -1,0 +1,78 @@
+{% doc %}
+Merchant-selected product card for nested groups and Won grids.
+All media, prices, badges, availability and quick-add stay in the shared card.
+@example
+{% content_for 'block', type: 'won-product-card', id: 'related' %}
+{% enddoc %}
+{%- assign s = block.settings -%}
+<div class="won-product-card-block" {{ block.shopify_attributes }}>
+  {%- if s.product != blank -%}
+    {% render 'won-product-card', product: s.product, aspect: s.aspect, layout: s.layout, show_add: s.show_add, show_badges: s.show_badges %}
+  {%- elsif request.design_mode -%}
+    <div class="won-product-card-block__empty">{{ 'product-1' | placeholder_svg_tag }}<p>{{ 'won.product_card.select_product' | t }}</p></div>
+  {%- endif -%}
+</div>
+{% stylesheet %}
+  .won-product-card-block { min-inline-size: 0; }
+  .won-product-card-block__empty { background: var(--won-surface); border-radius: var(--won-radius-md); padding: var(--won-space-3); }
+  .won-product-card-block__empty svg { inline-size: 100%; block-size: auto; }
+{% endstylesheet %}
+{% schema %}
+{
+  "name": "t:won.names.product_card",
+  "settings": [
+    {
+      "type": "product",
+      "id": "product",
+      "label": "t:won.settings.product"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "t:won.settings.layout",
+      "default": "card",
+      "options": [
+        { "value": "card", "label": "t:won.options.product_layout_card" },
+        { "value": "row", "label": "t:won.options.product_layout_row" }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "aspect",
+      "label": "t:won.settings.card_aspect",
+      "default": "portrait",
+      "options": [
+        {
+          "value": "square",
+          "label": "t:won.options.aspect_square"
+        },
+        {
+          "value": "portrait",
+          "label": "t:won.options.aspect_portrait"
+        },
+        {
+          "value": "landscape",
+          "label": "t:won.options.aspect_landscape"
+        }
+      ]
+    },
+    {
+      "type": "checkbox",
+      "id": "show_add",
+      "label": "t:won.settings.show_add",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_badges",
+      "label": "t:won.settings.show_badges",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:won.names.product_card"
+    }
+  ]
+}
+{% endschema %}

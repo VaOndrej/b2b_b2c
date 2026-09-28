@@ -1,0 +1,30 @@
+(node:32905) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 4 tests using 1 worker
+
+[1A[2K(node:32906) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:32906) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:32906) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/4] [desktop] › tests/smoke/won-block-wrapper-selectors.spec.ts:53:1 › wrapper guard distinguishes real Shopify parents from section parents
+[1A[2K[2/4] [desktop] › tests/smoke/won-block-wrapper-selectors.spec.ts:61:1 › no CSS selector treats a theme block as a direct child
+[1A[2K(node:32913) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:32913) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+[1A[2K(node:32913) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[3/4] [mobile] › tests/smoke/won-block-wrapper-selectors.spec.ts:53:1 › wrapper guard distinguishes real Shopify parents from section parents
+[1A[2K[4/4] [mobile] › tests/smoke/won-block-wrapper-selectors.spec.ts:61:1 › no CSS selector treats a theme block as a direct child
+[1A[2K  4 passed (1.3s)

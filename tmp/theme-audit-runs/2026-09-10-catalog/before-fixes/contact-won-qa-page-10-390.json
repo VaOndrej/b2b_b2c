@@ -1,0 +1,404 @@
+{
+  "url": "/pages/contact?view=won-qa-page-10",
+  "width": 390,
+  "httpStatus": 200,
+  "signals": {
+    "console": [
+      "Framing 'https://shop.app/' violates the following Content Security Policy directive: \"frame-ancestors 'self' https://shop.app https://admin.shopify.com\". The request has been blocked.\n",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://127.0.0.1:9292/web-pixels@704e843dw38e170ffp88ffc213ma0cfcc05/custom/web-pixel-shopify-custom-pixel@0520/sandbox/modern/pages/contact?view=won-qa-page-10",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://127.0.0.1:9292/api/collect",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://shop.app/pay/hop?analytics_trace_id=37ae817c-036e-42a6-b877-2da72e235c89&target_origin=http%3A%2F%2F127.0.0.1%3A9292&client_handle=b2b-b2c-store-development.myshopify.com",
+        "error": "net::ERR_BLOCKED_BY_RESPONSE"
+      }
+    ],
+    "failedAssets": [],
+    "identity": {
+      "shop": "b2b-b2c-store-development.myshopify.com",
+      "theme": {
+        "name": "Development (249968-Ondrej--MacBook-Air)",
+        "id": 161957216497,
+        "schema_name": "Horizon",
+        "schema_version": "3.2.1",
+        "theme_store_id": null,
+        "role": "development",
+        "handle": "null",
+        "style": {
+          "id": null,
+          "handle": null
+        }
+      }
+    },
+    "responsive": "pass"
+  },
+  "results": [
+    {
+      "id": "qa118",
+      "type": "won-tile",
+      "variant": "badge_position=top_left",
+      "label": "won-tile · badge_position=top_left",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa118",
+      "selector": "[id$=\"__qa118\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa118-390.png"
+      ],
+      "text": "QA sample\nQA sample category",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 288.578125,
+        "width": 390,
+        "height": 555.703125
+      }
+    },
+    {
+      "id": "qa119",
+      "type": "won-tile",
+      "variant": "badge_position=top_right",
+      "label": "won-tile · badge_position=top_right",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa119",
+      "selector": "[id$=\"__qa119\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa119-390.png"
+      ],
+      "text": "QA sample\nQA sample category",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 144.0625,
+        "width": 390,
+        "height": 555.703125
+      }
+    },
+    {
+      "id": "qa120",
+      "type": "won-tile",
+      "variant": "badge_position=bottom_left",
+      "label": "won-tile · badge_position=bottom_left",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa120",
+      "selector": "[id$=\"__qa120\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa120-390.png"
+      ],
+      "text": "QA sample\nQA sample category",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 288.546875,
+        "width": 390,
+        "height": 555.703125
+      }
+    },
+    {
+      "id": "qa121",
+      "type": "won-tile",
+      "variant": "badge_position=bottom_right",
+      "label": "won-tile · badge_position=bottom_right",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa121",
+      "selector": "[id$=\"__qa121\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa121-390.png"
+      ],
+      "text": "QA sample\nQA sample category",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 144.03125,
+        "width": 390,
+        "height": 555.703125
+      }
+    },
+    {
+      "id": "qa122",
+      "type": "won-tile",
+      "variant": "badge_style=accent",
+      "label": "won-tile · badge_style=accent",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa122",
+      "selector": "[id$=\"__qa122\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa122-390.png"
+      ],
+      "text": "QA sample\nQA sample category",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 288.515625,
+        "width": 390,
+        "height": 555.703125
+      }
+    },
+    {
+      "id": "qa123",
+      "type": "won-tile",
+      "variant": "badge_style=dark",
+      "label": "won-tile · badge_style=dark",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa123",
+      "selector": "[id$=\"__qa123\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa123-390.png"
+      ],
+      "text": "QA sample\nQA sample category",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 144,
+        "width": 390,
+        "height": 555.703125
+      }
+    },
+    {
+      "id": "qa124",
+      "type": "won-tile",
+      "variant": "badge_style=light",
+      "label": "won-tile · badge_style=light",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa124",
+      "selector": "[id$=\"__qa124\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa124-390.png"
+      ],
+      "text": "QA sample\nQA sample category",
+      "images": [
+        {
+          "src": "http://127.0.0.1:9292/cdn/shop/files/won-pack-preworkout.png?v=1788345217&width=500",
+          "loaded": true
+        }
+      ],
+      "box": {
+        "x": 0,
+        "y": 288.484375,
+        "width": 390,
+        "height": 555.703125
+      }
+    },
+    {
+      "id": "qa125",
+      "type": "won-delivery-note",
+      "variant": "appearance=card",
+      "label": "won-delivery-note · appearance=card",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa125",
+      "selector": "[id$=\"__qa125\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa125-390.png"
+      ],
+      "text": "Order by 2 pm for same-day dispatch.",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 358.96875,
+        "width": 390,
+        "height": 125.921875
+      }
+    },
+    {
+      "id": "qa126",
+      "type": "won-delivery-note",
+      "variant": "appearance=plain",
+      "label": "won-delivery-note · appearance=plain",
+      "context": "page",
+      "limitations": [],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa126",
+      "selector": "[id$=\"__qa126\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa126-390.png"
+      ],
+      "text": "Order by 2 pm for same-day dispatch.",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 625.671875,
+        "width": 390,
+        "height": 98.84375
+      }
+    },
+    {
+      "id": "qa127",
+      "type": "won-video",
+      "variant": "video_type=hosted",
+      "label": "won-video · video_type=hosted",
+      "context": "page",
+      "limitations": [
+        "Hosted video resource unavailable; external embed availability requires network verification"
+      ],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa127",
+      "selector": "[id$=\"__qa127\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa127-390.png"
+      ],
+      "text": "",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 282.296875,
+        "width": 390,
+        "height": 279.75
+      }
+    },
+    {
+      "id": "qa128",
+      "type": "won-video",
+      "variant": "video_type=external",
+      "label": "won-video · video_type=external",
+      "context": "page",
+      "limitations": [
+        "Hosted video resource unavailable; external embed availability requires network verification"
+      ],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa128",
+      "selector": "[id$=\"__qa128\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [
+        {
+          "name": "render",
+          "error": "Liquid error (blocks/won-video line 13): external_video_tag does not support VideoUrlDrop"
+        }
+      ],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa128-390.png"
+      ],
+      "text": "Liquid error (blocks/won-video line 13): external_video_tag does not support VideoUrlDrop",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 563.828125,
+        "width": 390,
+        "height": 279.75
+      }
+    },
+    {
+      "id": "qa129",
+      "type": "won-video",
+      "variant": "aspect_ratio=16/9",
+      "label": "won-video · aspect_ratio=16/9",
+      "context": "page",
+      "limitations": [
+        "Hosted video resource unavailable; external embed availability requires network verification"
+      ],
+      "url": "/pages/contact?view=won-qa-page-10",
+      "sectionId": "qa129",
+      "selector": "[id$=\"__qa129\"]",
+      "template": "page.won-qa-page-10.json",
+      "width": 390,
+      "status": "captured-not-reviewed",
+      "checks": [],
+      "screenshots": [
+        "tmp/theme-audit-runs/2026-09-10-catalog/screenshots/qa129-390.png"
+      ],
+      "text": "",
+      "images": [],
+      "box": {
+        "x": 0,
+        "y": 282.359375,
+        "width": 390,
+        "height": 279.75
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "endpoint": "/cart/clear.js",
+  "status": 429,
+  "response": {
+    "status": "too_many_requests",
+    "message": "Too many attempts",
+    "description": "Please try again in a few minutes"
+  },
+  "context": "One diagnostic APIRequestContext request after cart-repeat-stable.log completed 33 passed, 27 setup failures. No test retries enabled. Further requests stopped."
+}

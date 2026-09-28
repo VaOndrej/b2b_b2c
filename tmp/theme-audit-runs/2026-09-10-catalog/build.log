@@ -1,0 +1,8 @@
+2e: injected 9 Won global settings group(s) into horizon settings_schema.json
+2f: routed 2 header search call site(s) through won-search
+2g: search results now render won-product-card
+2h: search page field gated behind the icon-only header
+2i: page search form now asks for partial-word matching
+composed horizon: 107 code files overlaid, 10 native duplicate sections hidden from picker, 26 sections given the shared style controls, 4 locale files merged, 33 demo data files applied -> /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/themes/dist/horizon-dev
+sync: 5 file(s) written, 0 removed (unchanged files keep their mtime, so the dev server does not re-upload them)
+manifest: 597 files classified (data 43, locale 51, vendor 396, won 107) -> .won-manifest.json
