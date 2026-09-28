@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 
 // SPEC-DRIVEN contract for the Won Discounts storefront foundation (MVP0,
 // Task 4). In MVP0 the embed only has to prove it loads: it renders a hidden
@@ -42,7 +43,11 @@ test("embed renders the MVP0 root marker with status and currency", async () => 
 
   assert.match(block, /id="won-discounts-root"/);
   assert.match(block, /data-won-discounts-embed/);
-  assert.match(block, /data-won-discounts-status="ready"/);
+  // Audit P3-11: Liquid renders "loading"; only the storefront JS may set
+  // "ready", so a "ready" marker proves the JS actually ran (the live E2E waits
+  // for it plus window.WonDiscounts.ready).
+  assert.match(block, /data-won-discounts-status="loading"/);
+  assert.doesNotMatch(block, /data-won-discounts-status="ready"/);
   assert.match(
     block,
     /data-won-discounts-currency="\{\{\s*cart\.currency\.iso_code\s*\}\}"/,
@@ -129,4 +134,75 @@ test("locale files stay valid JSON with identical key sets across en/cs/sk", asy
       `${locale} keys differ from ${first}: ${JSON.stringify(keys)} vs ${JSON.stringify(firstKeys)}`,
     );
   }
+});
+
+// --- Audit P3-11: the JS, not the Liquid, flips the marker to "ready" ---------------------------
+
+type FakeRoot = {
+  attributes: Record<string, string>;
+  setAttribute(name: string, value: string): void;
+  getAttribute(name: string): string | null;
+  __wonDiscountsInit?: boolean;
+};
+
+/** Run assets/won-discounts.js against a minimal DOM: the root marker as Liquid renders it. */
+async function bootEmbed({ config = "{}", readyState = "complete" }: { config?: string; readyState?: string } = {}) {
+  const javascript = await readExtension("assets/won-discounts.js");
+  const listeners: Record<string, Array<() => void>> = {};
+  const window: Record<string, unknown> = {};
+  const statusWhenSet: Array<{ status: string; wonDiscountsReady: unknown }> = [];
+  const root: FakeRoot = {
+    attributes: { "data-won-discounts-status": "loading" },
+    setAttribute(name, value) {
+      if (name === "data-won-discounts-status") {
+        statusWhenSet.push({ status: value, wonDiscountsReady: (window.WonDiscounts as { ready?: unknown } | undefined)?.ready });
+      }
+      this.attributes[name] = value;
+    },
+    getAttribute(name) {
+      return this.attributes[name] ?? null;
+    },
+  };
+  const document = {
+    readyState,
+    querySelector: (selector: string) => (selector === "[data-won-discounts-embed]" ? root : null),
+    getElementById: (id: string) => (id === "won-discounts-config" ? { textContent: config } : null),
+    addEventListener: (event: string, fn: () => void) => {
+      (listeners[event] ??= []).push(fn);
+    },
+  };
+  const context = vm.createContext({ window, document, JSON });
+  vm.runInContext(javascript, context);
+  return {
+    root,
+    window,
+    statusWhenSet,
+    fire: (event: string) => (listeners[event] ?? []).forEach((fn) => fn()),
+    runAgain: () => vm.runInContext(javascript, context),
+  };
+}
+
+test("storefront JS turns the Liquid 'loading' marker into 'ready' only after WonDiscounts is initialised", async () => {
+  const { root, window, statusWhenSet } = await bootEmbed({ config: '{"hello":"world"}' });
+  assert.equal(root.getAttribute("data-won-discounts-status"), "ready");
+  const api = window.WonDiscounts as { ready: boolean; config: unknown; version: string };
+  assert.equal(api.ready, true);
+  assert.deepEqual(api.config, { hello: "world" });
+  assert.deepEqual(statusWhenSet, [{ status: "ready", wonDiscountsReady: true }], "ready is set last, exactly once");
+});
+
+test("storefront JS waits for DOMContentLoaded when the document is still loading", async () => {
+  const embed = await bootEmbed({ readyState: "loading" });
+  assert.equal(embed.root.getAttribute("data-won-discounts-status"), "loading", "nothing ran yet");
+  embed.fire("DOMContentLoaded");
+  assert.equal(embed.root.getAttribute("data-won-discounts-status"), "ready");
+});
+
+test("storefront JS still reaches 'ready' with a malformed config and initialises only once", async () => {
+  const embed = await bootEmbed({ config: "{not json" });
+  assert.equal(embed.root.getAttribute("data-won-discounts-status"), "ready");
+  // (compared as JSON: the object comes from the vm realm)
+  assert.equal(JSON.stringify((embed.window.WonDiscounts as { config: unknown }).config), "{}");
+  embed.runAgain();
+  assert.equal(embed.statusWhenSet.length, 1, "the init guard keeps a second load from re-initialising");
 });

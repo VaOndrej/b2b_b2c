@@ -5,6 +5,9 @@
   discount and mutates no cart — later MVPs build the actual discount UI on
   top of this foundation. See doctrine SF-1 (no cart mutation from the
   embed) and SF-2 (storefront JS gzip budget).
+
+  The marker is rendered as "loading"; only won-discounts.js sets "ready"
+  after it initialised window.WonDiscounts, so "ready" proves the JS ran.
 {% endcomment %}
 
 {% liquid
@@ -19,7 +22,7 @@
 <div
   id="won-discounts-root"
   data-won-discounts-embed
-  data-won-discounts-status="ready"
+  data-won-discounts-status="loading"
   data-won-discounts-currency="{{ cart.currency.iso_code }}"
   hidden
 ></div>

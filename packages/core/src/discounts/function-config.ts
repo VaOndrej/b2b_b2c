@@ -38,6 +38,13 @@ export interface EncodeFunctionConfigOptions {
    * Without it, the earliest live (non-killed, valid) window is used.
    */
   now?: string;
+  /**
+   * Force which campaign the variables carry, ignoring `now`: a live campaign's
+   * id, or `null` for "no campaign" (1970 → 1970). An id that is not a live
+   * campaign also yields "no campaign". Used to measure every state the node's
+   * metafield can be in over time (encodeFunctionConfigWorstCase).
+   */
+  campaignId?: string | null;
 }
 
 /** Read-only view: a live config and the frozen DEFAULT_CONFIG are both accepted. */
@@ -49,18 +56,26 @@ type CampaignInput = ConfigInput["campaigns"][number];
  * pair of variables means one window at a time; campaigns never overlap (A8,
  * enforced by sanitizeConfig), so "the current or next live one" is unambiguous.
  */
-function selectCampaign(campaigns: readonly CampaignInput[], now: string | undefined): CampaignInput | null {
-  const live = campaigns
-    .filter(
-      (c) =>
-        !c.killed &&
-        isShopLocalDateTime(c.window.start) &&
-        isShopLocalDateTime(c.window.end) &&
-        c.window.start < c.window.end &&
-        (now === undefined || c.window.end > now),
-    )
+function liveCampaigns(campaigns: readonly CampaignInput[]): CampaignInput[] {
+  return campaigns.filter(
+    (c) =>
+      !c.killed &&
+      isShopLocalDateTime(c.window.start) &&
+      isShopLocalDateTime(c.window.end) &&
+      c.window.start < c.window.end,
+  );
+}
+
+function selectCampaign(campaigns: readonly CampaignInput[], opts: EncodeFunctionConfigOptions): CampaignInput | null {
+  const live = liveCampaigns(campaigns);
+  if (opts.campaignId !== undefined) {
+    return opts.campaignId === null ? null : (live.find((c) => c.id === opts.campaignId) ?? null);
+  }
+  const { now } = opts;
+  const upcoming = live
+    .filter((c) => now === undefined || c.window.end > now)
     .sort((a, b) => (a.window.start < b.window.start ? -1 : a.window.start > b.window.start ? 1 : 0));
-  return live[0] ?? null;
+  return upcoming[0] ?? null;
 }
 
 /**
@@ -69,7 +84,7 @@ function selectCampaign(campaigns: readonly CampaignInput[], now: string | undef
  * does not reach the function — and its budget — until someone decides it should.
  */
 export function buildFunctionPayload(c: ConfigInput, opts: EncodeFunctionConfigOptions = {}) {
-  const selected = selectCampaign(c.campaigns, opts.now);
+  const selected = selectCampaign(c.campaigns, opts);
   const { codes, tiers, rewards, margin } = c.modules;
   return {
     campaignStart: selected ? selected.window.start : NO_CAMPAIGN_DATETIME,
@@ -126,4 +141,25 @@ export function encodeFunctionConfig(
   const json = JSON.stringify(buildFunctionPayload(c, opts));
   const bytes = new TextEncoder().encode(json).length;
   return { json, bytes, fits: bytes <= FUNCTION_CONFIG_BUDGET_BYTES };
+}
+
+export interface WorstCaseFunctionConfig extends EncodedFunctionConfig {
+  /** The campaign whose window makes the payload largest (`null` = no campaign). */
+  campaignId: string | null;
+}
+
+/**
+ * The largest payload this config can produce over time. The sync rewrites the
+ * metafield with whichever campaign is current (`opts.now`), so a save must be
+ * refused if ANY of those states — every live campaign, or none — is over the
+ * budget, not only the one that happens to be current at save time (the states
+ * differ by the selected campaign's id and window).
+ */
+export function encodeFunctionConfigWorstCase(c: ConfigInput): WorstCaseFunctionConfig {
+  let worst: WorstCaseFunctionConfig = { ...encodeFunctionConfig(c, { campaignId: null }), campaignId: null };
+  for (const campaign of liveCampaigns(c.campaigns)) {
+    const encoded = encodeFunctionConfig(c, { campaignId: campaign.id });
+    if (encoded.bytes > worst.bytes) worst = { ...encoded, campaignId: campaign.id };
+  }
+  return worst;
 }

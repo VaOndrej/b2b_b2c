@@ -9,6 +9,25 @@
 //                                             executes against the dev store,
 //                                             writes evidence JSON, and ALWAYS
 //                                             deletes what it created
+//   … --live --confirm-store-wide             required on top of --live when the
+//                                             experiment puts an AUTOMATIC node in a
+//                                             mode that discounts every cart line
+//                                             (percent_all, campaign_window, echo on
+//                                             automatic): every other app's E2E on
+//                                             the shared dev store sees that discount
+//                                             while it exists (audit P3-3)
+//
+// Safety (audit P3-2):
+//   - cleanup always finishes: SIGINT/SIGTERM is deferred until the cleanup
+//     (registered nodes + metafields, then a sweep) has completed; repeated
+//     signals only print a notice. Admin calls are spawned in their own process
+//     group, so Ctrl+C in the terminal does not kill a delete half-way.
+//   - a create is never repeated blindly: after a transport failure the node is
+//     looked up by its exact title first and only re-created when absent.
+//   - the sweep pages through ALL discount nodes and deletes only app discounts
+//     of THIS app's function (appKey = client_id, functionId) with the WON-PROTO
+//     title prefix, plus our $app:won_discounts.product metafield on every
+//     won-e2e-* product. Anything else with the prefix is reported, never deleted.
 //
 // Admin API: `shopify app execute` as the app (no admin token). Storefront:
 // Playwright, password page unlocked with SHOPIFY_E2E_STOREFRONT_PASSWORD
@@ -24,6 +43,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
+import { WON_E2E_PRODUCT_LIST } from "@won/testing/e2e-products";
+
 const execFileP = promisify(execFile);
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -38,6 +59,21 @@ export const NO_CAMPAIGN = "1970-01-01T00:00:00";
 export const CONFIG_NAMESPACE = "$app:won_discounts";
 export const CONFIG_KEY = "function_config";
 export const PRODUCT_KEY = "product";
+/** This app's client_id (public, from shopify.app.toml): `appDiscountType.appKey` of our nodes. */
+export const APP_CLIENT_ID = readClientId();
+/** Shared E2E catalog (packages/testing): the only products a prototype may write a metafield on. */
+export const E2E_PRODUCT_HANDLES = WON_E2E_PRODUCT_LIST.map((product) => product.handle).filter((handle) =>
+  handle.startsWith("won-e2e-"),
+);
+/** Discount node types an app function provides (the only kind the sweep may delete). */
+const APP_DISCOUNT_TYPES = new Set(["DiscountAutomaticApp", "DiscountCodeApp"]);
+
+function readClientId() {
+  const toml = fs.readFileSync(path.join(APP_DIR, "shopify.app.toml"), "utf8");
+  const match = /^client_id\s*=\s*"([^"]+)"/m.exec(toml);
+  if (!match) throw new Error("client_id not found in shopify.app.toml");
+  return match[1];
+}
 /** Evidence + temp files. Override with WON_PROTO_OUT (e.g. a scratchpad dir). */
 export const OUT_DIR = process.env.WON_PROTO_OUT ?? path.join(os.tmpdir(), "won-discounts-prototypes");
 const FUNCTION_LOG_DIR = path.join(APP_DIR, ".shopify", "logs");
@@ -66,17 +102,23 @@ export const GQL = {
     timezoneOffset
   }
 }`,
-  discountNodes: `query WonProtoDiscountNodes {
-  discountNodes(first: 100) {
+  // Paged (100 per page, `after` = previous endCursor) and without a search
+  // `query`: the search index lags behind fresh creates, a plain listing does not.
+  discountNodes: `query WonProtoDiscountNodes($after: String) {
+  discountNodes(first: 100, after: $after) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
     nodes {
       id
       discount {
         __typename
-        ... on DiscountAutomaticApp { title status }
+        ... on DiscountAutomaticApp { title status appDiscountType { functionId appKey } }
+        ... on DiscountCodeApp { title status appDiscountType { functionId appKey } }
         ... on DiscountAutomaticBasic { title status }
         ... on DiscountAutomaticBxgy { title status }
         ... on DiscountAutomaticFreeShipping { title status }
-        ... on DiscountCodeApp { title status }
         ... on DiscountCodeBasic { title status }
         ... on DiscountCodeBxgy { title status }
         ... on DiscountCodeFreeShipping { title status }
@@ -332,6 +374,7 @@ export class Evidence {
     this.name = name;
     this.live = live;
     this.file = path.join(OUT_DIR, `${name}.json`);
+    /** @type {Record<string, any>} free-form evidence, serialised as-is */
     this.data = {
       experiment: name,
       mode: live ? "live" : "dry-run",
@@ -356,8 +399,11 @@ export class Evidence {
   async save() {
     if (!this.live) return;
     this.data.savedAt = now();
-    await fsp.mkdir(OUT_DIR, { recursive: true });
-    await fsp.writeFile(this.file, `${JSON.stringify(this.data, null, 2)}\n`);
+    await fsp.mkdir(path.dirname(this.file), { recursive: true });
+    // Write + rename: a signal-driven exit during a save never leaves a truncated file.
+    const tmp = `${this.file}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`;
+    await fsp.writeFile(tmp, `${JSON.stringify(this.data, null, 2)}\n`);
+    await fsp.rename(tmp, this.file);
   }
 }
 
@@ -377,7 +423,7 @@ function dryResponse(name, variables) {
         shop: { ianaTimezone: "America/New_York", timezoneOffset: "-0400" },
       };
     case "discountNodes":
-      return { discountNodes: { nodes: [] } };
+      return { discountNodes: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } };
     case "automaticCreate":
       return {
         discountAutomaticAppCreate: {
@@ -433,96 +479,347 @@ function dryResponse(name, variables) {
   }
 }
 
+/**
+ * Mode of an AUTOMATIC node's function_config that discounts lines of EVERY
+ * cart on the store (no code needed, not limited to won-e2e products), or null.
+ * Such a node changes the result of any other app's E2E on the shared dev store
+ * while it exists (audit P3-3), so creating it needs --confirm-store-wide.
+ * `config` is the config object or the exact JSON string written.
+ */
+export function storeWideReason(config) {
+  let value = config;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return null; // unreadable config: the function yields no operations
+    }
+  }
+  const prototype = value && typeof value === "object" ? value.prototype : null;
+  if (!prototype || typeof prototype !== "object") return null;
+  if (prototype.mode === "percent_all") return "percent_all discounts every line of every cart";
+  if (prototype.mode === "campaign_window") return "campaign_window discounts every line of every cart while the window is active";
+  if (prototype.mode === "echo_codes" && prototype.echoOnAutomatic === true) {
+    return "echo_codes with echoOnAutomatic discounts the first line of every cart that carries any discount code";
+  }
+  return null;
+}
+
+/** A failure of the transport (network, CLI, 502/503), not a GraphQL result: the request may or may not have landed. */
+export function isTransportError(error) {
+  if (error?.transport === true) return true;
+  const output = stripAnsi(`${error?.stdout ?? ""}\n${error?.stderr ?? ""}\n${error?.message ?? ""}`);
+  return /ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|fetch failed|\b50[23]\b/i.test(output);
+}
+
+/**
+ * Creates are the only non-idempotent calls: after a transport failure they
+ * are never simply re-sent (the first request may have created the node, and a
+ * blind retry would leave an unregistered duplicate). Each entry knows the
+ * exact title to look up, the node type it produces, and how to rebuild the
+ * mutation's response from a node found by that lookup.
+ */
+const CREATE_DOCS = {
+  automaticCreate: {
+    title: (variables) => variables.automaticAppDiscount.title,
+    appDiscount: true,
+    type: "DiscountAutomaticApp",
+    createdId: (data) => data.discountAutomaticAppCreate?.automaticAppDiscount?.discountId ?? null,
+    recovered: (node) => ({
+      discountAutomaticAppCreate: {
+        automaticAppDiscount: { discountId: node.id, title: node.title, status: node.status, recoveredAfterTransportError: true },
+        userErrors: [],
+      },
+    }),
+  },
+  codeCreate: {
+    title: (variables) => variables.codeAppDiscount.title,
+    appDiscount: true,
+    type: "DiscountCodeApp",
+    createdId: (data) => data.discountCodeAppCreate?.codeAppDiscount?.discountId ?? null,
+    recovered: (node, variables) => ({
+      discountCodeAppCreate: {
+        codeAppDiscount: {
+          discountId: node.id,
+          title: node.title,
+          status: node.status,
+          codes: { nodes: [{ code: variables.codeAppDiscount.code }] },
+          recoveredAfterTransportError: true,
+        },
+        userErrors: [],
+      },
+    }),
+  },
+  basicCodeCreate: {
+    title: (variables) => variables.basicCodeDiscount.title,
+    appDiscount: false,
+    type: "DiscountCodeBasic",
+    createdId: (data) => data.discountCodeBasicCreate?.codeDiscountNode?.id ?? null,
+    recovered: (node) => ({ discountCodeBasicCreate: { codeDiscountNode: { id: node.id }, userErrors: [] } }),
+  },
+};
+
+/** Not idempotent and not identifiable by title: never retried. */
+const NEVER_RETRY = new Set(["redeemBulkAdd"]);
+
+/**
+ * Default executor: one `shopify app execute` as the app (no admin token). The
+ * CLI runs in its own process group (`detached`), so a Ctrl+C in the terminal
+ * reaches only this script (which defers it until cleanup is done), never a
+ * mutation half-way. Rejects with the CLI's stdout/stderr on failure.
+ */
+export async function shopifyExecute(name, query, variables) {
+  const tmp = path.join(OUT_DIR, "gql-tmp");
+  await fsp.mkdir(tmp, { recursive: true });
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const queryFile = path.join(tmp, `${name}-${stamp}.graphql`);
+  const variableFile = path.join(tmp, `${name}-${stamp}.variables.json`);
+  const outputFile = path.join(tmp, `${name}-${stamp}.out.json`);
+  await fsp.writeFile(queryFile, query);
+  const args = [
+    "shopify", "app", "execute",
+    "--path", APP_DIR,
+    "--store", STORE,
+    "--version", API_VERSION,
+    "--query-file", queryFile,
+    "--output-file", outputFile,
+    "--no-color",
+  ];
+  if (variables) {
+    await fsp.writeFile(variableFile, JSON.stringify(variables));
+    args.push("--variable-file", variableFile);
+  }
+  await execFileP("npx", args, { cwd: REPO_ROOT, maxBuffer: 32 * 1024 * 1024, detached: true });
+  return JSON.parse(await fsp.readFile(outputFile, "utf8"));
+}
+
 export class Admin {
-  /** @param {Evidence} evidence */
-  constructor(evidence, live) {
+  /**
+   * @param {Evidence} evidence
+   * @param {boolean} live
+   * @param {{
+   *   execute?: (name: string, query: string, variables: any) => Promise<any>,
+   *   confirmStoreWide?: boolean,
+   *   retryDelayMs?: number,
+   * }} [options] `execute` is injectable so tests can drive every failure mode without a store.
+   */
+  constructor(evidence, live, { execute = shopifyExecute, confirmStoreWide = false, retryDelayMs = 3000 } = {}) {
     this.evidence = evidence;
     this.live = live;
+    this.execute = execute;
+    this.confirmStoreWide = confirmStoreWide;
+    this.retryDelayMs = retryDelayMs;
     this.printed = new Set();
+    /** @type {Set<Promise<unknown>>} */
+    this.inflight = new Set();
+    /** @type {string | null} set by a stop signal: from then on only cleanup calls go out */
+    this.blocked = null;
+    /** @type {((id: string, title: string) => void) | null} set by Cleanup: every created node is registered at once */
+    this.onCreated = null;
+    /** @type {string | null} this app's function id, from functionInfo() */
+    this.functionId = null;
+    /** @type {Set<string>} ids of won-e2e products read via product(): the only metafield owners allowed */
+    this.e2eProductIds = new Set();
   }
 
-  async run(name, variables = undefined) {
+  /** Refuse every further non-cleanup call (a stop signal arrived). */
+  block(reason) {
+    this.blocked = reason;
+  }
+
+  /** Resolves once every call already sent has finished (successfully or not). */
+  async settled() {
+    while (this.inflight.size > 0) await Promise.allSettled([...this.inflight]);
+  }
+
+  /**
+   * @param {string} name GQL document
+   * @param {unknown} [variables]
+   * @param {{ cleanup?: boolean }} [options] cleanup calls still run after a stop signal
+   */
+  async run(name, variables = undefined, { cleanup = false } = {}) {
     const query = GQL[name];
     if (!query) throw new Error(`unknown GraphQL document ${name}`);
+    if (this.blocked && !cleanup) {
+      throw new Error(`GraphQL ${name} not sent: ${this.blocked} (only cleanup runs now)`);
+    }
     if (!this.live) {
       if (!this.printed.has(name)) {
         this.printed.add(name);
         console.log(`\n--- GraphQL ${name} (${API_VERSION}) ---\n${query}`);
       }
       console.log(`--- variables for ${name}: ${JSON.stringify(redact(variables ?? {}), null, 2)}`);
-      return dryResponse(name, variables);
+      const data = dryResponse(name, variables);
+      this.registerCreated(name, variables, data);
+      return data;
     }
-
-    const tmp = path.join(OUT_DIR, "gql-tmp");
-    await fsp.mkdir(tmp, { recursive: true });
-    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const queryFile = path.join(tmp, `${name}-${stamp}.graphql`);
-    const variableFile = path.join(tmp, `${name}-${stamp}.variables.json`);
-    const outputFile = path.join(tmp, `${name}-${stamp}.out.json`);
-    await fsp.writeFile(queryFile, query);
-    const args = [
-      "shopify", "app", "execute",
-      "--path", APP_DIR,
-      "--store", STORE,
-      "--version", API_VERSION,
-      "--query-file", queryFile,
-      "--output-file", outputFile,
-      "--no-color",
-    ];
-    if (variables) {
-      await fsp.writeFile(variableFile, JSON.stringify(variables));
-      args.push("--variable-file", variableFile);
+    const call = this.runLive(name, query, variables);
+    this.inflight.add(call);
+    try {
+      return await call;
+    } finally {
+      this.inflight.delete(call);
     }
+  }
 
+  registerCreated(name, variables, data) {
+    const doc = CREATE_DOCS[name];
+    const id = doc ? doc.createdId(data) : null;
+    if (id) this.onCreated?.(id, doc.title(variables));
+  }
+
+  async runLive(name, query, variables) {
     const entry = { at: now(), name, variables: redact(variables ?? null) };
+    const create = CREATE_DOCS[name];
     let lastError = null;
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       try {
-        await fsp.rm(outputFile, { force: true });
-        await execFileP("npx", args, { cwd: REPO_ROOT, maxBuffer: 32 * 1024 * 1024 });
-        const response = JSON.parse(await fsp.readFile(outputFile, "utf8"));
+        const response = await this.execute(name, query, variables);
         entry.response = redact(response);
         this.evidence.data.graphql.push(entry);
+        this.registerCreated(name, variables, response);
         return response;
       } catch (error) {
         const output = stripAnsi(`${error.stdout ?? ""}\n${error.stderr ?? ""}`).trim();
-        lastError = { attempt, message: error.message.split("\n")[0], output: output.slice(-4000) };
-        // Only transport failures are retried; a GraphQL error is a result.
-        if (!/ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|fetch failed|503|502/i.test(output)) break;
-        await sleep(3000 * attempt);
+        lastError = { attempt, message: String(error.message ?? error).split("\n")[0], output: output.slice(-4000) };
+        // A GraphQL error is a result, not a transport failure: never retried.
+        if (!isTransportError(error) || NEVER_RETRY.has(name) || attempt === 3) break;
+        await sleep(this.retryDelayMs * attempt);
+        if (create) {
+          // The first request may have created the node: look it up by its
+          // exact title before sending the create again.
+          const found = await this.findCreatedNode(name, variables);
+          if (found) {
+            const response = create.recovered(found, variables);
+            entry.response = redact(response);
+            entry.recoveredAfterAttempt = attempt;
+            this.evidence.data.graphql.push(entry);
+            this.registerCreated(name, variables, response);
+            return response;
+          }
+        }
+        // A stop signal arrived while waiting to retry: send nothing new.
+        if (this.blocked) {
+          lastError.output = `${lastError.output}\n(not retried: ${this.blocked})`.trim();
+          break;
+        }
       }
     }
     entry.error = lastError;
     this.evidence.data.graphql.push(entry);
-    const failure = new Error(`GraphQL ${name} failed: ${lastError.output.slice(-800)}`);
+    const failure = new Error(`GraphQL ${name} failed: ${lastError.output.slice(-800) || lastError.message}`);
     failure.graphqlError = lastError;
     throw failure;
+  }
+
+  /** The node a create would have made, found by its exact title (and, for app discounts, our function). */
+  async findCreatedNode(name, variables) {
+    const doc = CREATE_DOCS[name];
+    const title = doc.title(variables);
+    const nodes = await this.listDiscountNodes({ cleanup: true });
+    const matches = nodes.filter(
+      (node) => node.title === title && node.type === doc.type && (!doc.appDiscount || this.isOurAppDiscount(node)),
+    );
+    if (matches.length > 1) {
+      // Every match is registered so cleanup removes them all; report the first.
+      for (const node of matches.slice(1)) this.onCreated?.(node.id, node.title);
+    }
+    return matches[0] ?? null;
+  }
+
+  /** Every discount node on the store, all pages. */
+  async listDiscountNodes({ cleanup = false } = {}) {
+    const out = [];
+    let after = null;
+    for (let page = 0; page < 100; page += 1) {
+      const data = await this.run("discountNodes", after ? { after } : {}, { cleanup });
+      const connection = data.discountNodes;
+      for (const node of connection.nodes) {
+        out.push({
+          id: node.id,
+          type: node.discount?.__typename ?? null,
+          title: node.discount?.title ?? "",
+          status: node.discount?.status ?? null,
+          functionId: node.discount?.appDiscountType?.functionId ?? null,
+          appKey: node.discount?.appDiscountType?.appKey ?? null,
+        });
+      }
+      if (!connection.pageInfo?.hasNextPage) return out;
+      after = connection.pageInfo.endCursor;
+    }
+    throw new Error("discountNodes: more than 100 pages, refusing to continue");
+  }
+
+  /** An app discount of THIS app's function (never a native discount or another app's). */
+  isOurAppDiscount(node) {
+    return (
+      APP_DISCOUNT_TYPES.has(node.type) &&
+      this.functionId !== null &&
+      node.functionId === this.functionId &&
+      node.appKey === APP_CLIENT_ID
+    );
   }
 
   async functionInfo() {
     const data = await this.run("functions");
     const fn = data.shopifyFunctions.nodes.find((node) => node.handle === FUNCTION_HANDLE);
     if (!fn) throw new Error(`function ${FUNCTION_HANDLE} not registered on the store`);
+    this.functionId = fn.id;
     return { function: fn, shop: data.shop };
   }
 
-  async listProtoNodes() {
-    const data = await this.run("discountNodes");
-    return data.discountNodes.nodes
-      .filter((node) => (node.discount?.title ?? "").startsWith(TITLE_PREFIX))
-      .map((node) => ({ id: node.id, title: node.discount.title, type: node.discount.__typename, status: node.discount.status }));
+  /**
+   * WON-PROTO nodes, split into the ones the sweep may delete (app discounts of
+   * THIS app's function) and `foreign` ones that only share the prefix (a
+   * native code a prototype made, another app's node): reported, never deleted.
+   */
+  async listProtoNodes({ cleanup = false } = {}) {
+    const all = (await this.listDiscountNodes({ cleanup })).filter((node) => node.title.startsWith(TITLE_PREFIX));
+    return {
+      ours: all.filter((node) => this.isOurAppDiscount(node)),
+      foreign: all.filter((node) => !this.isOurAppDiscount(node)),
+    };
   }
 
-  async deleteNode(id) {
+  async deleteNode(id, { cleanup = false } = {}) {
     if (id.includes("DiscountAutomaticNode")) {
-      const data = await this.run("automaticDelete", { id });
+      const data = await this.run("automaticDelete", { id }, { cleanup });
       return data.discountAutomaticDelete;
     }
-    const data = await this.run("codeDelete", { id });
+    const data = await this.run("codeDelete", { id }, { cleanup });
     return data.discountCodeDelete;
   }
 
+  /** Refuse (live) or flag (dry-run) an automatic node config that discounts every cart (audit P3-3). */
+  assertNotStoreWide(config, what) {
+    const reason = storeWideReason(config);
+    if (!reason) return;
+    if (!this.live) {
+      console.log(`\n⚠ ${what}: ${reason} — a live run needs --confirm-store-wide`);
+      return;
+    }
+    if (!this.confirmStoreWide) {
+      throw new Error(
+        `${what}: ${reason}. Every other E2E on ${STORE} would see this discount; re-run with --live --confirm-store-wide once no other suite is running.`,
+      );
+    }
+  }
+
+  /** Our $app:won_discounts.product metafield on every won-e2e product (null when absent). */
+  async e2eProductMetafields({ cleanup = false } = {}) {
+    const out = [];
+    for (const handle of E2E_PRODUCT_HANDLES) {
+      const data = await this.run("product", { identifier: { handle } }, { cleanup });
+      const product = data.productByIdentifier;
+      if (!product) continue;
+      out.push({ handle, id: product.id, metafield: product.metafield ?? null });
+    }
+    return out;
+  }
+
+  /** @param {{ title: string, config?: unknown, configValue?: string }} args */
   async createAutomatic({ title, config, configValue }) {
+    this.assertNotStoreWide(configValue ?? config, `automatic node "${TITLE_PREFIX} ${title}"`);
     const variables = {
       automaticAppDiscount: {
         title: `${TITLE_PREFIX} ${title}`,
@@ -541,6 +838,7 @@ export class Admin {
     return result.automaticAppDiscount;
   }
 
+  /** @param {{ title: string, code: string, config?: unknown, configValue?: string }} args */
   async createCode({ title, code, config, configValue }) {
     const variables = {
       codeAppDiscount: {
@@ -584,10 +882,15 @@ export class Admin {
 
   async product(handle) {
     const data = await this.run("product", { identifier: { handle } });
-    return data.productByIdentifier;
+    const product = data.productByIdentifier;
+    if (product?.id && E2E_PRODUCT_HANDLES.includes(handle)) this.e2eProductIds.add(product.id);
+    return product;
   }
 
   async setProductMetafield(ownerId, value) {
+    if (!this.e2eProductIds.has(ownerId)) {
+      throw new Error(`refusing to write ${CONFIG_NAMESPACE}.${PRODUCT_KEY} on ${ownerId}: not a won-e2e-* product read via product()`);
+    }
     const data = await this.run("metafieldsSet", {
       metafields: [{ ownerId, namespace: CONFIG_NAMESPACE, key: PRODUCT_KEY, type: "json", value }],
     });
@@ -598,6 +901,7 @@ export class Admin {
 
   /** Replace the node's function_config (value = exact JSON string written). */
   async setNodeConfig(ownerId, value) {
+    if (String(ownerId).includes("DiscountAutomaticNode")) this.assertNotStoreWide(value, `automatic node ${ownerId}`);
     const data = await this.run("metafieldsSet", {
       metafields: [{ ownerId, namespace: CONFIG_NAMESPACE, key: CONFIG_KEY, type: "json", value }],
     });
@@ -622,25 +926,65 @@ export class Admin {
 // Cleanup (runs in finally and on SIGINT/SIGTERM)
 // ---------------------------------------------------------------------------
 
+const SIGNAL_EXIT_CODES = { SIGINT: 130, SIGTERM: 143 };
+
 export class Cleanup {
-  /** @param {Admin} admin @param {Evidence} evidence */
-  constructor(admin, evidence) {
+  /**
+   * @param {Admin} admin
+   * @param {Evidence} evidence
+   * @param {{ signals?: { on: Function, off: Function }, exit?: (code: number) => void }} [options]
+   *   injectable for tests; default: the real process
+   */
+  constructor(admin, evidence, { signals = process, exit = (code) => process.exit(code) } = {}) {
     this.admin = admin;
     this.evidence = evidence;
     this.tasks = [];
-    this.ran = false;
-    const onSignal = async (signal) => {
-      console.error(`\n${signal}: cleaning up before exit…`);
-      await this.run();
-      await evidence.save();
-      process.exit(130);
+    /** @type {Promise<void> | null} the one cleanup run, shared by `finally` and a signal */
+    this.running = null;
+    this.signalled = null;
+    this.signals = signals;
+    this.exit = exit;
+    // Every node the Admin creates is registered the moment its id is known,
+    // so a signal between "created" and the script's own cleanup.node() loses nothing.
+    admin.onCreated = (id, title) => this.node(id, title);
+    this.onSignal = (signal) => {
+      void this.handleSignal(signal);
     };
-    process.once("SIGINT", onSignal);
-    process.once("SIGTERM", onSignal);
+    signals.on("SIGINT", this.onSignal);
+    signals.on("SIGTERM", this.onSignal);
   }
 
-  /** Register a created discount node. */
+  /**
+   * First signal: stop sending anything but cleanup, wait for calls already in
+   * flight (a create that lands is registered), run the cleanup to the end, save
+   * the evidence, then exit. Further signals are deferred until that is done.
+   */
+  async handleSignal(signal) {
+    if (this.signalled) {
+      console.error(`\n${signal}: cleanup is still running — waiting for it to finish (it will exit by itself).`);
+      return;
+    }
+    this.signalled = signal;
+    console.error(`\n${signal}: stopping; cleaning up before exit (further signals wait for the cleanup)…`);
+    this.admin.block(`${signal} received`);
+    try {
+      await this.run();
+      await this.evidence.save();
+    } finally {
+      this.dispose();
+      this.exit(SIGNAL_EXIT_CODES[signal] ?? 1);
+    }
+  }
+
+  /** Stop listening for signals (after the run is complete). */
+  dispose() {
+    this.signals.off("SIGINT", this.onSignal);
+    this.signals.off("SIGTERM", this.onSignal);
+  }
+
+  /** Register a created discount node (idempotent: the Admin registers creates itself). */
   node(id, title) {
+    if (this.tasks.some((task) => task.kind === "node" && task.id === id)) return;
     this.tasks.push({ kind: "node", id, title });
   }
 
@@ -649,32 +993,64 @@ export class Cleanup {
     this.tasks.push({ kind: "metafield", identifier, restore });
   }
 
-  /** Remove leftovers of earlier runs before creating anything. */
-  async sweepLeftovers() {
-    const leftovers = await this.admin.listProtoNodes();
-    this.evidence.data.leftoversAtStart = leftovers;
-    for (const node of leftovers) {
-      const result = await this.admin.deleteNode(node.id);
-      this.evidence.data.cleanup.actions.push({ at: now(), phase: "pre-run sweep", node, result });
+  /**
+   * Remove what earlier (crashed) runs left behind: every WON-PROTO app discount
+   * of THIS app's function, on every page of discountNodes, and our product
+   * metafield on every won-e2e product. Prefix-only matches of anything else
+   * are recorded in `cleanup.foreignNodes` and left alone.
+   */
+  async sweepLeftovers(phase = "pre-run sweep") {
+    const { ours, foreign } = await this.admin.listProtoNodes({ cleanup: true });
+    if (phase === "pre-run sweep") this.evidence.data.leftoversAtStart = ours;
+    if (foreign.length) {
+      this.evidence.data.cleanup.foreignNodes = foreign;
+      console.error(`\n⚠ ${foreign.length} ${TITLE_PREFIX} node(s) not provided by this app's function were left alone: ${foreign.map((node) => node.id).join(", ")}`);
     }
-    return leftovers;
+    for (const node of ours) {
+      try {
+        const result = await this.admin.deleteNode(node.id, { cleanup: true });
+        this.evidence.data.cleanup.actions.push({ at: now(), phase, node, result });
+      } catch (error) {
+        this.evidence.data.cleanup.actions.push({ at: now(), phase, failed: node, error: String(error.message).slice(0, 800) });
+      }
+    }
+    const products = await this.admin.e2eProductMetafields({ cleanup: true });
+    const withMetafield = products.filter((product) => product.metafield);
+    if (withMetafield.length) {
+      const identifiers = withMetafield.map((product) => ({ ownerId: product.id, namespace: CONFIG_NAMESPACE, key: PRODUCT_KEY }));
+      try {
+        const data = await this.admin.run("metafieldsDelete", { metafields: identifiers }, { cleanup: true });
+        this.evidence.data.cleanup.actions.push({ at: now(), phase, deletedProductMetafields: withMetafield.map((p) => p.handle), result: data.metafieldsDelete });
+      } catch (error) {
+        this.evidence.data.cleanup.actions.push({ at: now(), phase, failed: identifiers, error: String(error.message).slice(0, 800) });
+      }
+    }
+    return ours;
   }
 
-  async run() {
-    if (this.ran) return;
-    this.ran = true;
+  /** Run the cleanup once; a second caller (signal + finally) awaits the same run. */
+  run() {
+    this.running ??= this.runOnce();
+    return this.running;
+  }
+
+  async runOnce() {
+    // Calls already sent (e.g. a create) finish first, so what they created is registered.
+    await this.admin.settled();
     for (const task of [...this.tasks].reverse()) {
       try {
         if (task.kind === "node") {
-          const result = await this.admin.deleteNode(task.id);
+          const result = await this.admin.deleteNode(task.id, { cleanup: true });
           this.evidence.data.cleanup.actions.push({ at: now(), deleted: task, result });
         } else if (task.restore) {
-          const data = await this.admin.run("metafieldsSet", {
-            metafields: [{ ...task.identifier, type: task.restore.type, value: task.restore.value }],
-          });
+          const data = await this.admin.run(
+            "metafieldsSet",
+            { metafields: [{ ...task.identifier, type: task.restore.type, value: task.restore.value }] },
+            { cleanup: true },
+          );
           this.evidence.data.cleanup.actions.push({ at: now(), restored: task.identifier, result: data.metafieldsSet });
         } else {
-          const data = await this.admin.run("metafieldsDelete", { metafields: [task.identifier] });
+          const data = await this.admin.run("metafieldsDelete", { metafields: [task.identifier] }, { cleanup: true });
           this.evidence.data.cleanup.actions.push({ at: now(), deleted: task.identifier, result: data.metafieldsDelete });
         }
       } catch (error) {
@@ -682,11 +1058,18 @@ export class Cleanup {
       }
     }
     try {
-      const remaining = await this.admin.listProtoNodes();
-      this.evidence.data.cleanup.remainingProtoNodes = remaining;
+      // Anything created but never registered (e.g. a duplicate from a lost
+      // response) is caught by the same sweep that runs before each experiment.
+      await this.sweepLeftovers("post-run sweep");
+      const { ours } = await this.admin.listProtoNodes({ cleanup: true });
+      const productMetafields = (await this.admin.e2eProductMetafields({ cleanup: true })).filter((product) => product.metafield);
+      this.evidence.data.cleanup.remainingProtoNodes = ours;
+      this.evidence.data.cleanup.remainingProductMetafields = productMetafields.map((product) => product.handle);
       this.evidence.data.cleanup.ok =
-        remaining.length === 0 && this.evidence.data.cleanup.actions.every((action) => !action.failed);
-      console.log(`\n✔ cleanup: remaining ${TITLE_PREFIX} nodes = ${remaining.length}`);
+        ours.length === 0 &&
+        productMetafields.length === 0 &&
+        this.evidence.data.cleanup.actions.every((action) => !action.failed);
+      console.log(`\n✔ cleanup: remaining ${TITLE_PREFIX} nodes = ${ours.length}, product metafields = ${productMetafields.length}`);
     } catch (error) {
       this.evidence.data.cleanup.ok = false;
       this.evidence.data.cleanup.verifyError = String(error.message).slice(0, 800);
@@ -1123,9 +1506,8 @@ export function linePercent(summary, predicate = () => true, index = 0) {
 
 export const approx = (value, target, tolerance = 0.6) => Math.abs(value - target) <= tolerance;
 
-export function parseArgs() {
-  const live = process.argv.includes("--live");
-  return { live };
+export function parseArgs(argv = process.argv) {
+  return { live: argv.includes("--live"), confirmStoreWide: argv.includes("--confirm-store-wide") };
 }
 
 /**
@@ -1133,12 +1515,13 @@ export function parseArgs() {
  * cleanup that runs in `finally` no matter how the experiment ends.
  */
 export async function runExperiment(name, plan, body) {
-  const { live } = parseArgs();
+  const { live, confirmStoreWide } = parseArgs();
   const evidence = new Evidence(name, live);
   console.log(`# ${name} — ${live ? "LIVE on " + STORE : "DRY-RUN (nothing is sent; pass --live to execute)"}`);
   console.log(plan);
   evidence.data.plan = plan;
-  const admin = new Admin(evidence, live);
+  evidence.data.confirmStoreWide = confirmStoreWide;
+  const admin = new Admin(evidence, live, { confirmStoreWide });
   const cleanup = new Cleanup(admin, evidence);
   const logs = live ? new FunctionLogs(name) : { collect: () => ({ runs: [], devLines: [] }), attach: async () => {} };
   const storefront = new Storefront(evidence, live);
@@ -1161,6 +1544,7 @@ export async function runExperiment(name, plan, body) {
     await cleanup.run();
     evidence.data.finishedAt = now();
     await evidence.save();
+    if (!cleanup.signalled) cleanup.dispose();
     if (live) console.log(`\nEvidence: ${evidence.file}`);
   }
   process.exitCode = failed ? 1 : 0;

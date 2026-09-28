@@ -10,6 +10,8 @@ import { promisify } from "node:util";
 import { sanitizeConfig } from "@won/core/discounts/config";
 import { encodeFunctionConfig } from "@won/core/discounts/function-config";
 
+import { acquireBuildLock } from "../lib/build-lock.ts";
+
 // Contract for the `won-discounts-engine` discount function: the extension
 // config matches what the app writes (metafield namespace/key, targets), and
 // the compiled Wasm, run through the real Shopify CLI (`shopify app function
@@ -204,15 +206,21 @@ test("every object function_config fixture carries campaignStart/campaignEnd (qu
   }
 });
 
+// Audit P3-6: dev-harness.contract's `npm run build` rewrites the same
+// dist/function.wasm. The build lock is held from this build until the last
+// fixture ran, so no fixture ever runs against a half-written Wasm.
 describe("shopify app function run", { concurrency: 6 }, () => {
   let workDir = "";
+  let releaseBuildLock: () => void = () => {};
 
   before(async () => {
+    releaseBuildLock = await acquireBuildLock();
     workDir = mkdtempSync(path.join(tmpdir(), "won-discounts-fn-"));
     await shopify(["app", "function", "build", "--path", EXT_REL]);
-  }, { timeout: 180_000 });
+  }, { timeout: 15 * 60_000 });
 
   after(() => {
+    releaseBuildLock();
     if (workDir) rmSync(workDir, { recursive: true, force: true });
   });
 

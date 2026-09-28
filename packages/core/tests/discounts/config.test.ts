@@ -96,8 +96,8 @@ function randomPrimitive(rng: () => number): unknown {
     case 2:
       return rng() < 0.5;
     case 3:
-      return ["yes", "", "CZK", "eur", "products", "best", "auto", "garbage"][
-        Math.floor(rng() * 8)
+      return ["yes", "", "CZK", "eur", "products", "best", "auto", "garbage", "a b", "r1", "2026-11-27T00:00:00Z", "tiers"][
+        Math.floor(rng() * 12)
       ];
     case 4:
       return null;
@@ -158,6 +158,22 @@ function randomValue(rng: () => number, depth: number): unknown {
     "currency",
     "handle",
     "enabled",
+    // fix round 2: references, schedules, ids and goals
+    "schedule",
+    "startsAt",
+    "endsAt",
+    "combinesWith",
+    "ruleIds",
+    "origin",
+    "nativeId",
+    "targeting",
+    "segments",
+    "goals",
+    "overrides",
+    "patch",
+    "ruleId",
+    "window",
+    "killed",
     "noiseKey",
   ];
   const out: Record<string, unknown> = {};

@@ -69,6 +69,8 @@ async function openReadyPdp(page: Page) {
     "app embed marker missing — is the overlay applied and `shopify app dev` running?",
   ).toHaveCount(1);
   await expect(embed).toHaveAttribute("id", "won-discounts-root");
+  // Liquid renders "loading"; only assets/won-discounts.js sets "ready" (after
+  // window.WonDiscounts exists), so this proves the storefront JS actually ran.
   await expect(embed).toHaveAttribute("data-won-discounts-status", "ready");
   await page.waitForFunction(() => window.WonDiscounts?.ready === true);
   return embed;

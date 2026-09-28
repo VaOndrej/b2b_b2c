@@ -8,6 +8,8 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { withBuildLock } from "../lib/build-lock.ts";
+
 // Task 5 brief: the dev-only admin harness (app/routes/dev.preview.$.tsx) lets
 // us screenshot admin screens without logging into Shopify admin, but must
 // NEVER exist outside development/test. Two independent guards, both proven here:
@@ -154,12 +156,17 @@ test("build-time guard: the route manifest includes the harness only for NODE_EN
   }
 });
 
-test("production build excludes the dev harness route from build/server (build-time guard)", () => {
-  execFileSync("npm", ["run", "build"], {
-    cwd: APP_ROOT,
-    env: { ...process.env, NODE_ENV: "production" },
-    stdio: "pipe",
-  });
+test("production build excludes the dev harness route from build/server (build-time guard)", { timeout: 20 * 60_000 }, async () => {
+  // `npm run build` also rebuilds extensions/…/dist/function.wasm, which
+  // function.contract runs its fixtures against: build under the shared lock
+  // (audit P3-6).
+  await withBuildLock(() =>
+    execFileSync("npm", ["run", "build"], {
+      cwd: APP_ROOT,
+      env: { ...process.env, NODE_ENV: "production" },
+      stdio: "pipe",
+    }),
+  );
 
   const serverDir = path.join(APP_ROOT, "build", "server");
   const files = listFiles(serverDir);

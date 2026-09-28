@@ -5,6 +5,7 @@
 // in @won/core/discounts/config; this module only owns the Prisma I/O.
 
 import {
+  CONFIG_LIMITS,
   createDefaultConfig,
   isNewerSchema,
   readStoredConfig,
@@ -13,7 +14,7 @@ import {
   type ConfigIssue,
   type WonDiscountsConfig,
 } from "@won/core/discounts/config";
-import { encodeFunctionConfig, FUNCTION_CONFIG_BUDGET_BYTES } from "@won/core/discounts/function-config";
+import { encodeFunctionConfigWorstCase, FUNCTION_CONFIG_BUDGET_BYTES } from "@won/core/discounts/function-config";
 
 import type { PrismaClient } from "../generated/prisma/client";
 
@@ -41,11 +42,27 @@ export type SaveConfigResult =
       functionConfigBytes: number;
     }
   | {
-      /** The discount function could not read this config (C3): nothing was written. */
+      /**
+       * The discount function could not read this config (C3) in at least one of
+       * the states the sync writes over time (every live campaign, or none):
+       * nothing was written. `bytes` is the largest of those states.
+       */
       ok: false;
       reason: "function_config_too_large";
       bytes: number;
       budget: number;
+      config: WonDiscountsConfig;
+      issues: ConfigIssue[];
+    }
+  | {
+      /**
+       * The sanitized config itself is over CONFIG_LIMITS.storedConfigBytes
+       * (256 KiB, audit P2-1 backstop): nothing was written, no history row.
+       */
+      ok: false;
+      reason: "config_too_large";
+      bytes: number;
+      limit: number;
       config: WonDiscountsConfig;
       issues: ConfigIssue[];
     }
@@ -90,19 +107,39 @@ export async function loadConfig(db: PrismaClient, shop: string): Promise<Loaded
   return { config: readStoredConfig(parsed.value), readOnly };
 }
 
+/** Prisma error codes worth one more attempt: unique violation (lost create race), write conflict. */
+const RETRYABLE_WRITE_ERRORS = new Set(["P2002", "P2034"]);
+const SAVE_ATTEMPTS = 3;
+
+function isRetryableWriteError(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === "string" && RETRYABLE_WRITE_ERRORS.has(code);
+}
+
 /**
  * Sanitize `input` and persist it as the shop's current config, recording a
  * ConfigVersion snapshot in the same transaction. Refuses (writes nothing) when
- *   - the config's function payload is over the C3 budget — the discount
- *     function could not read it and every Won discount would stop (§9), or
+ *   - the config's function payload is over the C3 budget in ANY state the
+ *     sync writes over time (each live campaign as the current one, or none) —
+ *     the discount function could not read it and every Won discount would
+ *     stop (§9, re-review K: measuring only "now" let a later campaign with a
+ *     longer id push the payload over),
+ *   - the sanitized config is over CONFIG_LIMITS.storedConfigBytes (256 KiB) —
+ *     the backstop that keeps ShopConfig/ConfigVersion rows small whatever the
+ *     per-field caps multiply out to (audit P2-1), or
  *   - the stored row was written by a newer schema (DATA-3) — overwriting it
  *     would silently drop fields this code does not know.
  * Issues (§4c — surfaced to the admin, never silently dropped) are returned
  * either way the sanitizer ran.
+ *
+ * Race-safe: two instances saving a shop that has no row yet both read "no
+ * row"; the loser's insert hits the unique key (P2002). The whole transaction
+ * is then retried and takes the guarded-update path (same for a write
+ * conflict, P2034), so concurrent saves are last-write-wins, never an error.
  */
 export async function saveConfig(db: PrismaClient, shop: string, input: unknown): Promise<SaveConfigResult> {
   const { config, issues } = sanitizeConfig(input);
-  const encoded = encodeFunctionConfig(config);
+  const encoded = encodeFunctionConfigWorstCase(config);
   if (!encoded.fits) {
     return {
       ok: false,
@@ -115,8 +152,20 @@ export async function saveConfig(db: PrismaClient, shop: string, input: unknown)
   }
 
   const data = JSON.stringify(config);
+  const storedBytes = Buffer.byteLength(data, "utf8");
+  if (storedBytes > CONFIG_LIMITS.storedConfigBytes) {
+    return {
+      ok: false,
+      reason: "config_too_large",
+      bytes: storedBytes,
+      limit: CONFIG_LIMITS.storedConfigBytes,
+      config,
+      issues,
+    };
+  }
+
   type Outcome = { kind: "newer_schema"; version: number } | { kind: "saved"; versionId: string };
-  const outcome = await db.$transaction(async (tx): Promise<Outcome> => {
+  const write = () => db.$transaction(async (tx): Promise<Outcome> => {
     const existing = await tx.shopConfig.findUnique({ where: { shop } });
     if (existing) {
       const version = storedSchemaVersion(existing);
@@ -137,6 +186,15 @@ export async function saveConfig(db: PrismaClient, shop: string, input: unknown)
     return { kind: "saved", versionId: version.id };
   });
 
+  let outcome: Outcome | undefined;
+  for (let attempt = 1; outcome === undefined; attempt++) {
+    try {
+      outcome = await write();
+    } catch (error) {
+      if (attempt >= SAVE_ATTEMPTS || !isRetryableWriteError(error)) throw error;
+    }
+  }
+
   if (outcome.kind === "newer_schema") {
     return { ok: false, reason: "newer_schema", storedSchemaVersion: outcome.version };
   }
@@ -146,10 +204,29 @@ export async function saveConfig(db: PrismaClient, shop: string, input: unknown)
   return { ok: true, config, issues, versionId: outcome.versionId, functionConfigBytes: encoded.bytes };
 }
 
-/** Drops ConfigVersion rows for `shop` older than the retention window. */
+/** Rows created before this instant are past CONFIG_HISTORY_RETENTION_DAYS. */
+function historyCutoff(now: Date): Date {
+  return new Date(now.getTime() - CONFIG_HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+}
+
+/** Drops ConfigVersion rows for `shop` older than the retention window (on every save). */
 async function pruneConfigHistory(db: PrismaClient, shop: string): Promise<void> {
-  const cutoff = new Date(Date.now() - CONFIG_HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-  await db.configVersion.deleteMany({ where: { shop, createdAt: { lt: cutoff } } });
+  await db.configVersion.deleteMany({ where: { shop, createdAt: { lt: historyCutoff(new Date()) } } });
+}
+
+/**
+ * Retention job (PRIV-2, audit P3-11): drops ConfigVersion rows older than
+ * CONFIG_HISTORY_RETENTION_DAYS for ALL shops — including inactive shops that
+ * never save again, whose history the per-save prune above never touches. The
+ * current config (ShopConfig) is never pruned. Idempotent; returns how many
+ * rows were deleted.
+ *
+ * NOT WIRED YET: it is wired into the app's scheduler (daily) in MVP 5. Until
+ * then nothing calls it in production; only the per-save prune runs.
+ */
+export async function pruneExpiredConfigHistory(db: PrismaClient, now: Date = new Date()): Promise<number> {
+  const { count } = await db.configVersion.deleteMany({ where: { createdAt: { lt: historyCutoff(now) } } });
+  return count;
 }
 
 /**

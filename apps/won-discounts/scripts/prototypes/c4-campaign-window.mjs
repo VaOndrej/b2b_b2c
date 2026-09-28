@@ -18,7 +18,9 @@
 //
 //   node apps/won-discounts/scripts/prototypes/c4-campaign-window.mjs          # dry-run
 //   WON_PROTO_OUT=<dir> WON_PROTO_APP_DEV_LOG=<app-dev.log> \
-//     node --env-file=apps/won-discounts/.env apps/won-discounts/scripts/prototypes/c4-campaign-window.mjs --live
+//     node --env-file=apps/won-discounts/.env apps/won-discounts/scripts/prototypes/c4-campaign-window.mjs --live --confirm-store-wide
+//   (--confirm-store-wide: its AUTOMATIC node discounts every cart on the shared dev
+//    store while it exists — run only when no other app's E2E is running, audit P3-3)
 
 import { CONFIG_KEY, CONFIG_NAMESPACE, approx, observe, runExperiment, shopLocal } from "./lib.mjs";
 

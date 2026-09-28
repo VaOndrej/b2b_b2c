@@ -59,6 +59,16 @@ export type ReopenOnReturnMode = (typeof REOPEN_ON_RETURN_MODES)[number];
 export const LOCALE_CODES = ["cs", "sk", "en"] as const;
 export type LocaleCode = (typeof LOCALE_CODES)[number];
 
+/**
+ * Onboarding step 1 "Co chceš řešit?" (docs/won-discounts/rozhodnuti.md, Onboarding):
+ * doprava/dárek → rewards, množstevní slevy → tiers, výprodej → outlet, marže →
+ * margin, přesun slev → migrate. Goals only ORDER the modules (all five stay
+ * visible). MVP 1 onboarding extends this list when it needs another goal; an
+ * unknown value is dropped with an issue, never stored.
+ */
+export const ONBOARDING_GOALS = ["rewards", "tiers", "outlet", "margin", "migrate"] as const;
+export type OnboardingGoal = (typeof ONBOARDING_GOALS)[number];
+
 // --- Types (spec §2 catalog) --------------------------------------------------------
 
 export interface MarketSetting {
@@ -210,7 +220,7 @@ export interface StorefrontSettings {
 export type LocaleDictionary = Readonly<Record<LocaleCode, Record<string, string>>>;
 
 export interface OnboardingState {
-  goals: string[];
+  goals: OnboardingGoal[];
   step: number; // 1-5, ordering only — modules stay always visible
 }
 
@@ -266,6 +276,26 @@ export const CONFIG_LIMITS = Object.freeze({
   overridesPerCampaign: 200,
   localeStringLength: 500,
   localeKeysPerLanguage: 200,
+  /** Rule, tier set, gift tier and campaign ids: `[A-Za-z0-9_-]{1,64}` (see sanitizeEntityId). */
+  idLength: 64,
+  markets: 50,
+  /** Currencies per MoneyByCurrency map (one per market at most). */
+  currenciesPerAmount: 50,
+  /** Items in any list of references (product/variant/collection ids, segments, rule ids, gift choices). */
+  listItems: 250,
+  /** Length of one reference (a Shopify GID, a market handle, a segment id). */
+  referenceLength: 100,
+  /** Margin overrides per collection. */
+  marginOverrides: 100,
+  /**
+   * Backstop on the WHOLE stored config (UTF-8 bytes of the sanitized JSON),
+   * enforced by the app's saveConfig: 256 KiB. The per-field caps above bound
+   * each list, but multiplied out (50 campaigns × 200 overrides × lists, three
+   * languages × 200 texts) they still allow MBs; nothing a merchant builds by
+   * hand comes near 256 KiB, and it keeps every ShopConfig/ConfigVersion row
+   * small (audit P2-1, re-review of fix round 1).
+   */
+  storedConfigBytes: 256 * 1024,
 });
 
 // --- Defaults ------------------------------------------------------------------------
@@ -335,6 +365,38 @@ export function isShopLocalDateTime(v: unknown): v is string {
   return day <= daysInMonth;
 }
 
+const ISO_DATETIME_RE =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,9})?)?(?:Z|[+-](\d{2}):(\d{2}))$/;
+
+/**
+ * True for an ISO 8601 date-time WITH a zone designator (`Z` or `±HH:MM`), e.g.
+ * `2026-11-27T00:00:00Z` or `2026-11-27T00:00:00+01:00` — the shape of Shopify's
+ * `DateTime` scalar, which is what a rule's `schedule.startsAt/endsAt` becomes on
+ * its discount node. A zone-less value would be read in an unknown zone, so it is
+ * refused (campaign windows are the shop-local exception, see isShopLocalDateTime).
+ */
+export function isIsoDateTime(v: unknown): v is string {
+  if (typeof v !== "string") return false;
+  const m = ISO_DATETIME_RE.exec(v);
+  if (!m) return false;
+  const [year, month, day, hour, minute] = m.slice(1, 6).map(Number);
+  const second = m[6] === undefined ? 0 : Number(m[6]);
+  if (month < 1 || month > 12 || day < 1 || hour > 23 || minute > 59 || second > 59) return false;
+  if (m[7] !== undefined && (Number(m[7]) > 23 || Number(m[8]) > 59)) return false;
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return day <= daysInMonth && Number.isFinite(Date.parse(v));
+}
+
+const ENTITY_ID_RE = /^[A-Za-z0-9_-]+$/;
+
+/** True for an id the config accepts as-is: 1–64 characters of `[A-Za-z0-9_-]`. */
+export function isValidEntityId(v: unknown): v is string {
+  return typeof v === "string" && v.length > 0 && v.length <= CONFIG_LIMITS.idLength && ENTITY_ID_RE.test(v);
+}
+
+/** Native Shopify discount node GID (the backup link of a migrated rule). */
+const NATIVE_DISCOUNT_GID_RE = /^gid:\/\/shopify\/(?:DiscountNode|DiscountCodeNode|DiscountAutomaticNode)\/\d{1,20}$/;
+
 // --- Sanitize helpers ------------------------------------------------------------------
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -364,7 +426,7 @@ function sanitizeBoolWithIssue(
       issues,
       path,
       "invalid_boolean",
-      `Expected a boolean, got ${JSON.stringify(v)}; using default ${fallback}.`,
+      `Expected a boolean, got ${preview(v)}; using default ${fallback}.`,
     );
   }
   return fallback;
@@ -387,7 +449,7 @@ function sanitizeEnum<T extends string>(
     issues,
     path,
     "invalid_enum",
-    `Expected one of ${allowed.join(", ")}; got ${JSON.stringify(v)}. Using default "${fallback}".`,
+    `Expected one of ${allowed.join(", ")}; got ${preview(v)}. Using default "${fallback}".`,
   );
   return fallback;
 }
@@ -406,7 +468,7 @@ function sanitizePercent(
       issues,
       path,
       "invalid_percent",
-      `Expected a number between 0 and 100, got ${JSON.stringify(v)}. Using default ${fallback}.`,
+      `Expected a number between 0 and 100, got ${preview(v)}. Using default ${fallback}.`,
     );
     return fallback;
   }
@@ -427,9 +489,128 @@ function sanitizeString(v: unknown, fallback: string, maxLen = 200): string {
   return typeof v === "string" ? v.slice(0, maxLen) : fallback;
 }
 
-function sanitizeStringArray(v: unknown): string[] {
+/** A user-supplied value shortened for an issue message (issues must stay small too). */
+function preview(v: unknown, max = 80): string {
+  let text: string;
+  try {
+    text = typeof v === "string" ? JSON.stringify(v.slice(0, max + 1)) : (JSON.stringify(v) ?? String(v));
+  } catch {
+    text = typeof v; // never throw from an issue message (cyclic/BigInt input)
+  }
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+/**
+ * A list of references (Shopify GIDs, segment ids, market handles, rule ids):
+ * strings only, each at most CONFIG_LIMITS.referenceLength characters, at most
+ * CONFIG_LIMITS.listItems of them. Anything cut is reported (audit P2-1: an
+ * uncapped list here let a 3 MB config through a ~500 B function payload).
+ */
+function sanitizeStringArray(v: unknown, issues: ConfigIssue[], path: string): string[] {
   if (!Array.isArray(v)) return [];
-  return v.filter((x): x is string => typeof x === "string");
+  const out: string[] = [];
+  let tooLong = 0;
+  let overLimit = 0;
+  for (const item of v) {
+    if (typeof item !== "string") continue;
+    if (item.length > CONFIG_LIMITS.referenceLength) {
+      tooLong++;
+      continue;
+    }
+    if (out.length >= CONFIG_LIMITS.listItems) {
+      overLimit++;
+      continue;
+    }
+    out.push(item);
+  }
+  if (tooLong > 0) {
+    pushIssue(
+      issues,
+      path,
+      "reference_too_long",
+      `${tooLong} value(s) longer than ${CONFIG_LIMITS.referenceLength} characters were dropped.`,
+    );
+  }
+  if (overLimit > 0) {
+    pushIssue(
+      issues,
+      path,
+      "too_many_items",
+      `A list can have at most ${CONFIG_LIMITS.listItems} items; ${overLimit} more were dropped.`,
+    );
+  }
+  return out;
+}
+
+/** A single optional reference (e.g. a variant GID): dropped with an issue when too long. */
+function sanitizeReference(v: unknown, issues: ConfigIssue[], path: string): string | undefined {
+  if (typeof v !== "string") return undefined;
+  if (v.length <= CONFIG_LIMITS.referenceLength) return v;
+  pushIssue(
+    issues,
+    path,
+    "reference_too_long",
+    `Value longer than ${CONFIG_LIMITS.referenceLength} characters was dropped.`,
+  );
+  return undefined;
+}
+
+/** MoneyByCurrency with at most CONFIG_LIMITS.currenciesPerAmount currencies (first ones win). */
+function sanitizeMoney(v: unknown, issues: ConfigIssue[], path: string): MoneyByCurrency {
+  const money = sanitizeMoneyByCurrency(v);
+  const keys = Object.keys(money);
+  if (keys.length <= CONFIG_LIMITS.currenciesPerAmount) return money;
+  pushIssue(
+    issues,
+    path,
+    "too_many_currencies",
+    `An amount can have at most ${CONFIG_LIMITS.currenciesPerAmount} currencies; ${keys.length - CONFIG_LIMITS.currenciesPerAmount} more were dropped.`,
+  );
+  return Object.fromEntries(keys.slice(0, CONFIG_LIMITS.currenciesPerAmount).map((k) => [k, money[k]]));
+}
+
+/** FNV-1a (32 bit): a tiny, stable string hash — the same input always gives the same id. */
+function fnv1a(text: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+type EntityKind = "rule" | "tier" | "gift" | "campaign";
+
+/**
+ * Ids of rules, tier sets, gift tiers and campaigns key the Shopify discount
+ * nodes (MVP 1: one node per code rule), metafield payloads and admin URLs, so
+ * they must be short and URL/GID-safe: `[A-Za-z0-9_-]{1,64}`.
+ *
+ * Policy for a non-empty id that breaks that rule: it is REGENERATED
+ * deterministically as `<kind>-<fnv1a(original)>` (e.g. `rule-1x9k2ab`) with an
+ * `invalid_id` issue, and every reference to the original id (combinesWith,
+ * campaign override targets) is remapped to the new one. Regenerating instead
+ * of dropping keeps the merchant's rule; determinism keeps readStoredConfig
+ * stable (the same stored row always yields the same id) and the sanitizer
+ * idempotent (the new id is valid). A missing/empty id carries no identity to
+ * derive from, so that entry is still dropped (`missing_id`), as before.
+ */
+function sanitizeEntityId(
+  v: unknown,
+  kind: EntityKind,
+  issues: ConfigIssue[],
+  path: string,
+): { id: string; original?: string } | null {
+  if (typeof v !== "string" || v === "") return null;
+  if (isValidEntityId(v)) return { id: v };
+  const id = `${kind}-${fnv1a(v)}`;
+  pushIssue(
+    issues,
+    `${path}.id`,
+    "invalid_id",
+    `Id ${preview(v, 40)} is not 1-${CONFIG_LIMITS.idLength} characters of letters, digits, "-" or "_"; it was replaced by "${id}".`,
+  );
+  return { id, original: v };
 }
 
 // --- Markets ---------------------------------------------------------------------------
@@ -447,7 +628,7 @@ function sanitizeMarket(v: unknown, issues: ConfigIssue[], index: number): Marke
       issues,
       `markets[${index}].currency`,
       "invalid_currency",
-      `Invalid market currency ${JSON.stringify(v.currency)}; market dropped.`,
+      `Invalid market currency ${preview(v.currency)}; market dropped.`,
     );
     return null;
   }
@@ -457,10 +638,23 @@ function sanitizeMarket(v: unknown, issues: ConfigIssue[], index: number): Marke
 function sanitizeMarkets(v: unknown, issues: ConfigIssue[]): MarketSetting[] {
   if (!Array.isArray(v)) return [];
   const out: MarketSetting[] = [];
+  let overLimit = 0;
   v.forEach((item, i) => {
+    if (out.length >= CONFIG_LIMITS.markets) {
+      overLimit++;
+      return;
+    }
     const m = sanitizeMarket(item, issues, i);
     if (m) out.push(m);
   });
+  if (overLimit > 0) {
+    pushIssue(
+      issues,
+      "markets",
+      "too_many_markets",
+      `Only the first ${CONFIG_LIMITS.markets} markets are kept; ${overLimit} more were dropped.`,
+    );
+  }
   return out;
 }
 
@@ -518,7 +712,7 @@ function sanitizeDiscountRuleValue(
       return { kind: "percentage", percent: sanitizePercent(v.percent, 0, `${path}.percent`, issues) };
     }
     if (v.kind === "fixed") {
-      return { kind: "fixed", amount: sanitizeMoneyByCurrency(v.amount) };
+      return { kind: "fixed", amount: sanitizeMoney(v.amount, issues, `${path}.amount`) };
     }
     if (v.kind === "freeShipping") {
       return { kind: "freeShipping" };
@@ -539,12 +733,12 @@ function sanitizeDiscountTarget(
     if (v.kind === "products") {
       return {
         kind: "products",
-        productIds: sanitizeStringArray(v.productIds),
-        variantIds: sanitizeStringArray(v.variantIds),
+        productIds: sanitizeStringArray(v.productIds, issues, `${path}.productIds`),
+        variantIds: sanitizeStringArray(v.variantIds, issues, `${path}.variantIds`),
       };
     }
     if (v.kind === "collections") {
-      return { kind: "collections", ids: sanitizeStringArray(v.ids) };
+      return { kind: "collections", ids: sanitizeStringArray(v.ids, issues, `${path}.ids`) };
     }
   }
   pushIssue(issues, path, "invalid_target", "Invalid discount target; defaulted to order.");
@@ -607,13 +801,50 @@ function sanitizeCodes(v: unknown[], issues: ConfigIssue[], path: string): strin
   return out;
 }
 
+/**
+ * A rule's schedule becomes startsAt/endsAt of its Shopify discount node, so both
+ * must be ISO 8601 date-times with a zone and start < end. A schedule that is
+ * supplied but wrong is removed AND the rule is disabled (with an issue): running
+ * a time-limited discount forever is worse than not running it until fixed.
+ */
+function sanitizeSchedule(
+  v: unknown,
+  issues: ConfigIssue[],
+  path: string,
+): { ok: true; schedule?: DiscountRule["schedule"] } | { ok: false } {
+  if (v === undefined || v === null) return { ok: true };
+  const fail = (why: string) => {
+    pushIssue(
+      issues,
+      path,
+      "invalid_schedule",
+      `${why} Use ISO 8601 date-times with a time zone (e.g. 2026-11-27T00:00:00+01:00) and a start before the end; the schedule was removed and the rule disabled.`,
+    );
+    return { ok: false as const };
+  };
+  if (!isRecord(v)) return fail("The schedule is not an object.");
+  const schedule: NonNullable<DiscountRule["schedule"]> = {};
+  for (const key of ["startsAt", "endsAt"] as const) {
+    const value = v[key];
+    if (value === undefined || value === null) continue;
+    if (!isIsoDateTime(value)) return fail(`${key} ${preview(value, 40)} is not a valid date-time.`);
+    schedule[key] = value;
+  }
+  if (schedule.startsAt && schedule.endsAt && Date.parse(schedule.startsAt) >= Date.parse(schedule.endsAt)) {
+    return fail("The schedule ends before (or when) it starts.");
+  }
+  // An empty schedule means "always"; it is simply omitted.
+  return schedule.startsAt || schedule.endsAt ? { ok: true, schedule } : { ok: true };
+}
+
 function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], path: string): DiscountRule | null {
   if (!isRecord(v)) return null;
-  const id = typeof v.id === "string" && v.id ? v.id : "";
-  if (!id) {
+  const entity = sanitizeEntityId(v.id, "rule", issues, path);
+  if (!entity) {
     pushIssue(issues, path, "missing_id", "Discount rule without an id was dropped.");
     return null;
   }
+  const { id } = entity;
 
   const rule: DiscountRule = {
     id,
@@ -628,19 +859,18 @@ function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], path: string): 
 
   if (isRecord(v.minimum)) {
     const minimum: DiscountRule["minimum"] = {};
-    if (v.minimum.subtotal !== undefined) minimum.subtotal = sanitizeMoneyByCurrency(v.minimum.subtotal);
+    if (v.minimum.subtotal !== undefined) {
+      minimum.subtotal = sanitizeMoney(v.minimum.subtotal, issues, `${path}.minimum.subtotal`);
+    }
     if (typeof v.minimum.quantity === "number" && Number.isFinite(v.minimum.quantity)) {
       minimum.quantity = Math.max(0, Math.floor(v.minimum.quantity));
     }
     rule.minimum = minimum;
   }
 
-  if (isRecord(v.schedule)) {
-    const schedule: DiscountRule["schedule"] = {};
-    if (typeof v.schedule.startsAt === "string") schedule.startsAt = v.schedule.startsAt;
-    if (typeof v.schedule.endsAt === "string") schedule.endsAt = v.schedule.endsAt;
-    rule.schedule = schedule;
-  }
+  const schedule = sanitizeSchedule(v.schedule, issues, `${path}.schedule`);
+  if (!schedule.ok) rule.enabled = false;
+  else if (schedule.schedule) rule.schedule = schedule.schedule;
 
   if (isRecord(v.limits)) {
     const limits: DiscountRule["limits"] = {};
@@ -653,20 +883,69 @@ function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], path: string): 
 
   if (isRecord(v.targeting)) {
     const targeting: DiscountRule["targeting"] = {};
-    if (Array.isArray(v.targeting.segments)) targeting.segments = sanitizeStringArray(v.targeting.segments);
-    if (Array.isArray(v.targeting.markets)) targeting.markets = sanitizeStringArray(v.targeting.markets);
+    if (Array.isArray(v.targeting.segments)) {
+      targeting.segments = sanitizeStringArray(v.targeting.segments, issues, `${path}.targeting.segments`);
+    }
+    if (Array.isArray(v.targeting.markets)) {
+      targeting.markets = sanitizeStringArray(v.targeting.markets, issues, `${path}.targeting.markets`);
+    }
     rule.targeting = targeting;
   }
 
+  // Orphaned rule ids are pruned later (pruneCombinesWith), once every rule id is known.
   if (isRecord(v.combinesWith) && Array.isArray(v.combinesWith.ruleIds)) {
-    rule.combinesWith = { ruleIds: sanitizeStringArray(v.combinesWith.ruleIds) };
+    rule.combinesWith = {
+      ruleIds: sanitizeStringArray(v.combinesWith.ruleIds, issues, `${path}.combinesWith.ruleIds`),
+    };
   }
 
-  if (isRecord(v.origin) && typeof v.origin.nativeId === "string") {
-    rule.origin = { nativeId: v.origin.nativeId };
+  if (isRecord(v.origin)) {
+    if (typeof v.origin.nativeId === "string" && NATIVE_DISCOUNT_GID_RE.test(v.origin.nativeId)) {
+      rule.origin = { nativeId: v.origin.nativeId };
+    } else {
+      pushIssue(
+        issues,
+        `${path}.origin.nativeId`,
+        "invalid_origin",
+        `Native discount link ${preview(v.origin.nativeId, 60)} is not a Shopify discount node id (gid://shopify/DiscountCodeNode/…); the link was removed.`,
+      );
+    }
   }
 
   return rule;
+}
+
+/**
+ * `combinesWith.ruleIds` may only name rules that exist (audit P2-2): ids of
+ * rules whose id was regenerated are remapped, unknown ids are removed with an
+ * issue, duplicates are merged.
+ */
+function pruneCombinesWith(
+  ruleIds: string[],
+  known: ReadonlySet<string>,
+  aliases: ReadonlyMap<string, string>,
+  issues: ConfigIssue[],
+  path: string,
+): string[] {
+  const out: string[] = [];
+  const orphans: string[] = [];
+  for (const raw of ruleIds) {
+    const id = known.has(raw) ? raw : aliases.get(raw);
+    if (id === undefined) {
+      orphans.push(raw);
+      continue;
+    }
+    if (!out.includes(id)) out.push(id);
+  }
+  if (orphans.length > 0) {
+    pushIssue(
+      issues,
+      path,
+      "orphan_combines_with",
+      `Combines-with points to rule(s) that do not exist (${listPreview(orphans.map((o) => preview(o, 40)))}); they were removed.`,
+    );
+  }
+  return out;
 }
 
 /**
@@ -674,9 +953,18 @@ function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], path: string): 
  * mapping in MVP 1 can key on `id`), and every code owned by exactly one rule —
  * Shopify refuses the same code on two discount nodes.
  */
-function sanitizeRules(v: unknown, issues: ConfigIssue[]): DiscountRule[] {
-  if (!Array.isArray(v)) return [];
+/** Original (invalid) id → regenerated id, per entity kind (see sanitizeEntityId). */
+type IdAliases = Map<string, string>;
+
+function rememberAlias(aliases: IdAliases, raw: unknown, id: string): void {
+  if (typeof raw === "string" && raw !== id && !aliases.has(raw)) aliases.set(raw, id);
+}
+
+function sanitizeRules(v: unknown, issues: ConfigIssue[]): { rules: DiscountRule[]; aliases: IdAliases } {
+  const aliases: IdAliases = new Map();
+  if (!Array.isArray(v)) return { rules: [], aliases };
   const out: DiscountRule[] = [];
+  const paths: string[] = [];
   const ids = new Set<string>();
   const usedCodes = new Set<string>();
   let overLimit = 0;
@@ -698,6 +986,7 @@ function sanitizeRules(v: unknown, issues: ConfigIssue[]): DiscountRule[] {
       return;
     }
     ids.add(rule.id);
+    if (isRecord(item)) rememberAlias(aliases, item.id, rule.id);
     if (rule.codes) {
       const taken = rule.codes.filter((code) => usedCodes.has(code));
       if (taken.length > 0) {
@@ -712,6 +1001,7 @@ function sanitizeRules(v: unknown, issues: ConfigIssue[]): DiscountRule[] {
       for (const code of rule.codes) usedCodes.add(code);
     }
     out.push(rule);
+    paths.push(path);
   });
   if (overLimit > 0) {
     pushIssue(
@@ -721,28 +1011,41 @@ function sanitizeRules(v: unknown, issues: ConfigIssue[]): DiscountRule[] {
       `Only the first ${CONFIG_LIMITS.rules} discount rules are kept; ${overLimit} more were dropped.`,
     );
   }
-  return out;
+  out.forEach((rule, i) => {
+    if (rule.combinesWith) {
+      rule.combinesWith.ruleIds = pruneCombinesWith(
+        rule.combinesWith.ruleIds,
+        ids,
+        aliases,
+        issues,
+        `${paths[i]}.combinesWith.ruleIds`,
+      );
+    }
+  });
+  return { rules: out, aliases };
 }
 
 // --- Tiers module ----------------------------------------------------------------------
 
-function sanitizeTierBreak(v: unknown): TierBreak | null {
+function sanitizeTierBreak(v: unknown, issues: ConfigIssue[], path: string): TierBreak | null {
   if (!isRecord(v)) return null;
   if (typeof v.minQty !== "number" || !Number.isFinite(v.minQty)) return null;
   const out: TierBreak = { minQty: Math.max(1, Math.floor(v.minQty)) };
   if (typeof v.percent === "number" && Number.isFinite(v.percent)) {
     out.percent = Math.min(100, Math.max(0, v.percent));
   }
-  if (v.amountOff !== undefined) out.amountOff = sanitizeMoneyByCurrency(v.amountOff);
+  if (v.amountOff !== undefined) out.amountOff = sanitizeMoney(v.amountOff, issues, `${path}.amountOff`);
   return out;
 }
 
-function sanitizeTierSetScope(v: unknown): TierSetScope {
+function sanitizeTierSetScope(v: unknown, issues: ConfigIssue[], path: string): TierSetScope {
   if (v === "global") return "global";
   if (isRecord(v)) {
     const out: { productIds?: string[]; collectionIds?: string[] } = {};
-    if (Array.isArray(v.productIds)) out.productIds = sanitizeStringArray(v.productIds);
-    if (Array.isArray(v.collectionIds)) out.collectionIds = sanitizeStringArray(v.collectionIds);
+    if (Array.isArray(v.productIds)) out.productIds = sanitizeStringArray(v.productIds, issues, `${path}.productIds`);
+    if (Array.isArray(v.collectionIds)) {
+      out.collectionIds = sanitizeStringArray(v.collectionIds, issues, `${path}.collectionIds`);
+    }
     return out;
   }
   return "global";
@@ -750,13 +1053,16 @@ function sanitizeTierSetScope(v: unknown): TierSetScope {
 
 function sanitizeTierSet(v: unknown, issues: ConfigIssue[], path: string): TierSet | null {
   if (!isRecord(v)) return null;
-  const id = typeof v.id === "string" && v.id ? v.id : "";
-  if (!id) {
+  const entity = sanitizeEntityId(v.id, "tier", issues, path);
+  if (!entity) {
     pushIssue(issues, path, "missing_id", "Tier set without an id was dropped.");
     return null;
   }
+  const { id } = entity;
   let breaks = Array.isArray(v.breaks)
-    ? v.breaks.map(sanitizeTierBreak).filter((b): b is TierBreak => b !== null)
+    ? v.breaks
+        .map((b, j) => sanitizeTierBreak(b, issues, `${path}.breaks[${j}]`))
+        .filter((b): b is TierBreak => b !== null)
     : [];
   if (breaks.length > CONFIG_LIMITS.breaksPerTierSet) {
     pushIssue(
@@ -769,14 +1075,15 @@ function sanitizeTierSet(v: unknown, issues: ConfigIssue[], path: string): TierS
   }
   return {
     id,
-    scope: sanitizeTierSetScope(v.scope),
+    scope: sanitizeTierSetScope(v.scope, issues, `${path}.scope`),
     countAcross: sanitizeEnum(v.countAcross, TIER_COUNT_ACROSS_MODES, "line", `${path}.countAcross`, issues),
     breaks,
   };
 }
 
-function sanitizeTierSets(v: unknown, issues: ConfigIssue[]): TierSet[] {
-  if (!Array.isArray(v)) return [];
+function sanitizeTierSets(v: unknown, issues: ConfigIssue[]): { sets: TierSet[]; aliases: IdAliases } {
+  const aliases: IdAliases = new Map();
+  if (!Array.isArray(v)) return { sets: [], aliases };
   const out: TierSet[] = [];
   let overLimit = 0;
   v.forEach((item, i) => {
@@ -785,7 +1092,9 @@ function sanitizeTierSets(v: unknown, issues: ConfigIssue[]): TierSet[] {
       return;
     }
     const set = sanitizeTierSet(item, issues, `modules.tiers.sets[${i}]`);
-    if (set) out.push(set);
+    if (!set) return;
+    if (isRecord(item)) rememberAlias(aliases, item.id, set.id);
+    out.push(set);
   });
   if (overLimit > 0) {
     pushIssue(
@@ -795,30 +1104,38 @@ function sanitizeTierSets(v: unknown, issues: ConfigIssue[]): TierSet[] {
       `Only the first ${CONFIG_LIMITS.tierSets} tier sets are kept; ${overLimit} more were dropped.`,
     );
   }
-  return out;
+  return { sets: out, aliases };
 }
 
 // --- Rewards module ----------------------------------------------------------------------
 
-function sanitizeGiftTier(v: unknown): GiftTier | null {
+function sanitizeGiftTier(v: unknown, issues: ConfigIssue[], path: string): GiftTier | null {
   if (!isRecord(v)) return null;
-  const id = typeof v.id === "string" && v.id ? v.id : "";
-  if (!id) return null;
+  const entity = sanitizeEntityId(v.id, "gift", issues, path);
+  if (!entity) return null;
   const out: GiftTier = {
-    id,
-    threshold: sanitizeMoneyByCurrency(v.threshold),
-    choices: sanitizeStringArray(v.choices),
+    id: entity.id,
+    threshold: sanitizeMoney(v.threshold, issues, `${path}.threshold`),
+    choices: sanitizeStringArray(v.choices, issues, `${path}.choices`),
   };
-  if (typeof v.fallbackVariantId === "string") out.fallbackVariantId = v.fallbackVariantId;
+  const fallback = sanitizeReference(v.fallbackVariantId, issues, `${path}.fallbackVariantId`);
+  if (fallback !== undefined) out.fallbackVariantId = fallback;
   return out;
 }
 
-function sanitizeRewards(v: unknown, issues: ConfigIssue[]): RewardsModule {
+function sanitizeRewards(v: unknown, issues: ConfigIssue[]): { rewards: RewardsModule; aliases: IdAliases } {
   const def = DEFAULT_CONFIG.modules.rewards;
   const rec = isRecord(v) ? v : {};
-  let gifts = Array.isArray(rec.gifts)
-    ? rec.gifts.map(sanitizeGiftTier).filter((g): g is GiftTier => g !== null)
-    : [];
+  const aliases: IdAliases = new Map();
+  let gifts: GiftTier[] = [];
+  if (Array.isArray(rec.gifts)) {
+    rec.gifts.forEach((item, i) => {
+      const gift = sanitizeGiftTier(item, issues, `modules.rewards.gifts[${i}]`);
+      if (!gift) return;
+      if (isRecord(item)) rememberAlias(aliases, item.id, gift.id);
+      gifts.push(gift);
+    });
+  }
   if (gifts.length > CONFIG_LIMITS.giftTiers) {
     pushIssue(
       issues,
@@ -839,9 +1156,11 @@ function sanitizeRewards(v: unknown, issues: ConfigIssue[]): RewardsModule {
     giftDeclinable: true,
   };
   if (isRecord(rec.freeShipping)) {
-    out.freeShipping = { threshold: sanitizeMoneyByCurrency(rec.freeShipping.threshold) };
+    out.freeShipping = {
+      threshold: sanitizeMoney(rec.freeShipping.threshold, issues, "modules.rewards.freeShipping.threshold"),
+    };
   }
-  return out;
+  return { rewards: out, aliases };
 }
 
 // --- Outlet module -----------------------------------------------------------------------
@@ -863,9 +1182,9 @@ function sanitizeOutlet(v: unknown, issues: ConfigIssue[]): OutletModule {
 
 // --- Margin module -----------------------------------------------------------------------
 
-function sanitizeMarginOverride(v: unknown): MarginCollectionOverride | null {
+function sanitizeMarginOverride(v: unknown, issues: ConfigIssue[], path: string): MarginCollectionOverride | null {
   if (!isRecord(v)) return null;
-  const collectionId = typeof v.collectionId === "string" && v.collectionId ? v.collectionId : "";
+  const collectionId = sanitizeReference(v.collectionId, issues, `${path}.collectionId`) ?? "";
   if (!collectionId) return null;
   const out: MarginCollectionOverride = { collectionId };
   if (typeof v.minMarginPercent === "number" && Number.isFinite(v.minMarginPercent)) {
@@ -897,9 +1216,20 @@ function sanitizeMargin(v: unknown, issues: ConfigIssue[]): MarginModule {
       issues,
     );
   }
-  const perCollection = Array.isArray(rec.perCollection)
-    ? rec.perCollection.map(sanitizeMarginOverride).filter((x): x is MarginCollectionOverride => x !== null)
+  let perCollection = Array.isArray(rec.perCollection)
+    ? rec.perCollection
+        .map((item, i) => sanitizeMarginOverride(item, issues, `modules.margin.perCollection[${i}]`))
+        .filter((x): x is MarginCollectionOverride => x !== null)
     : [];
+  if (perCollection.length > CONFIG_LIMITS.marginOverrides) {
+    pushIssue(
+      issues,
+      "modules.margin.perCollection",
+      "too_many_margin_overrides",
+      `Only the first ${CONFIG_LIMITS.marginOverrides} collection margin settings are kept; ${perCollection.length - CONFIG_LIMITS.marginOverrides} more were dropped.`,
+    );
+    perCollection = perCollection.slice(0, CONFIG_LIMITS.marginOverrides);
+  }
   return { global, perCollection };
 }
 
@@ -929,21 +1259,51 @@ const OVERRIDE_TARGET_LABELS: Record<OverrideTarget["kind"], string> = {
   giftTier: "a gift tier",
 };
 
+/**
+ * What a campaign override can point at: every rule, tier set and gift tier by
+ * its final id AND by the original id it had before sanitizeEntityId replaced
+ * it (aliases), so an override written against the old id follows the entity.
+ * An invalid original id can never equal a valid final id, so the two key
+ * spaces never collide. `ruleIds`/`ruleAliases` prune `combinesWith` in patches.
+ */
+interface OverrideContext {
+  targets: Map<string, OverrideTarget[]>;
+  ruleIds: ReadonlySet<string>;
+  ruleAliases: ReadonlyMap<string, string>;
+}
+
 function collectOverrideTargets(
   rules: DiscountRule[],
   sets: TierSet[],
   gifts: GiftTier[],
-): Map<string, OverrideTarget[]> {
+  aliases: { rules: IdAliases; sets: IdAliases; gifts: IdAliases },
+): OverrideContext {
   const targets = new Map<string, OverrideTarget[]>();
   const add = (id: string, target: OverrideTarget) => {
     const list = targets.get(id);
     if (list) list.push(target);
     else targets.set(id, [target]);
   };
+  const byId = <T extends { id: string }>(values: T[]) => new Map(values.map((value) => [value.id, value]));
+  const rulesById = byId(rules);
+  const setsById = byId(sets);
+  const giftsById = byId(gifts);
   for (const value of rules) add(value.id, { kind: "rule", value });
   for (const value of sets) add(value.id, { kind: "tierSet", value });
   for (const value of gifts) add(value.id, { kind: "giftTier", value });
-  return targets;
+  for (const [raw, id] of aliases.rules) {
+    const value = rulesById.get(id);
+    if (value) add(raw, { kind: "rule", value });
+  }
+  for (const [raw, id] of aliases.sets) {
+    const value = setsById.get(id);
+    if (value) add(raw, { kind: "tierSet", value });
+  }
+  for (const [raw, id] of aliases.gifts) {
+    const value = giftsById.get(id);
+    if (value) add(raw, { kind: "giftTier", value });
+  }
+  return { targets, ruleIds: new Set(rulesById.keys()), ruleAliases: aliases.rules };
 }
 
 function sanitizeOverridePatch(
@@ -951,6 +1311,7 @@ function sanitizeOverridePatch(
   rawPatch: Record<string, unknown>,
   issues: ConfigIssue[],
   path: string,
+  ctx: OverrideContext,
 ): Record<string, unknown> {
   const allowed: readonly string[] = OVERRIDE_FIELDS[target.kind];
   // Start from the target's current (already sanitized) value so the target's own
@@ -977,8 +1338,20 @@ function sanitizeOverridePatch(
       ? sanitizeDiscountRule(merged, issues, path)
       : target.kind === "tierSet"
         ? sanitizeTierSet(merged, issues, path)
-        : sanitizeGiftTier(merged);
+        : sanitizeGiftTier(merged, issues, path);
   if (!isRecord(sanitized)) return {};
+  if (target.kind === "rule" && patched.includes("combinesWith")) {
+    const combinesWith = (sanitized as unknown as DiscountRule).combinesWith;
+    if (combinesWith) {
+      combinesWith.ruleIds = pruneCombinesWith(
+        combinesWith.ruleIds,
+        ctx.ruleIds,
+        ctx.ruleAliases,
+        issues,
+        `${path}.combinesWith.ruleIds`,
+      );
+    }
+  }
 
   const out: Record<string, unknown> = {};
   for (const key of patched) {
@@ -991,8 +1364,9 @@ function sanitizeOverrides(
   v: unknown,
   issues: ConfigIssue[],
   path: string,
-  targets: Map<string, OverrideTarget[]>,
+  ctx: OverrideContext,
 ): RuleOverride[] {
+  const { targets } = ctx;
   if (!Array.isArray(v)) return [];
   const out: RuleOverride[] = [];
   let overLimit = 0;
@@ -1010,7 +1384,7 @@ function sanitizeOverrides(
         issues,
         itemPath,
         "orphan_override",
-        `Campaign override points to ${JSON.stringify(ruleId)}, which does not exist; the override was removed.`,
+        `Campaign override points to ${preview(ruleId, 60)}, which does not exist; the override was removed.`,
       );
       return;
     }
@@ -1019,16 +1393,18 @@ function sanitizeOverrides(
         issues,
         itemPath,
         "ambiguous_override",
-        `"${ruleId}" matches more than one rule, tier set or gift tier; the override was removed.`,
+        `${preview(ruleId, 60)} matches more than one rule, tier set or gift tier; the override was removed.`,
       );
       return;
     }
-    const patch = sanitizeOverridePatch(found[0], isRecord(item.patch) ? item.patch : {}, issues, `${itemPath}.patch`);
+    const patch = sanitizeOverridePatch(found[0], isRecord(item.patch) ? item.patch : {}, issues, `${itemPath}.patch`, ctx);
     if (Object.keys(patch).length === 0) {
       pushIssue(issues, itemPath, "empty_override", "Campaign override changes nothing; it was removed.");
       return;
     }
-    out.push({ ruleId, patch });
+    // Always the target's final id (an override written against an id that
+    // sanitizeEntityId regenerated follows its entity).
+    out.push({ ruleId: found[0].value.id, patch });
   });
   if (overLimit > 0) {
     pushIssue(
@@ -1045,14 +1421,15 @@ function sanitizeCampaign(
   v: unknown,
   issues: ConfigIssue[],
   path: string,
-  targets: Map<string, OverrideTarget[]>,
+  ctx: OverrideContext,
 ): Campaign | null {
   if (!isRecord(v)) return null;
-  const id = typeof v.id === "string" && v.id ? v.id : "";
-  if (!id) {
+  const entity = sanitizeEntityId(v.id, "campaign", issues, path);
+  if (!entity) {
     pushIssue(issues, path, "missing_id", "Campaign without an id was dropped.");
     return null;
   }
+  const { id } = entity;
   const name = sanitizeString(v.name, "");
   const window = isRecord(v.window) ? v.window : {};
   const start = isShopLocalDateTime(window.start) ? window.start : "";
@@ -1072,7 +1449,9 @@ function sanitizeCampaign(
     id,
     name,
     window: { start, end },
-    overrides: sanitizeOverrides(v.overrides, issues, `${path}.overrides`, targets),
+    // Killed campaigns keep their overrides (the merchant may revive them), and
+    // those go through exactly the same caps and sanitizers as live ones.
+    overrides: sanitizeOverrides(v.overrides, issues, `${path}.overrides`, ctx),
     killed,
   };
 }
@@ -1104,7 +1483,7 @@ function disableOverlappingCampaigns(entries: Array<{ campaign: Campaign; path: 
   }
 }
 
-function sanitizeCampaigns(v: unknown, issues: ConfigIssue[], targets: Map<string, OverrideTarget[]>): Campaign[] {
+function sanitizeCampaigns(v: unknown, issues: ConfigIssue[], ctx: OverrideContext): Campaign[] {
   if (!Array.isArray(v)) return [];
   const entries: Array<{ campaign: Campaign; path: string }> = [];
   const ids = new Set<string>();
@@ -1115,7 +1494,7 @@ function sanitizeCampaigns(v: unknown, issues: ConfigIssue[], targets: Map<strin
       return;
     }
     const path = `campaigns[${i}]`;
-    const campaign = sanitizeCampaign(item, issues, path, targets);
+    const campaign = sanitizeCampaign(item, issues, path, ctx);
     if (!campaign) return;
     if (ids.has(campaign.id)) {
       pushIssue(
@@ -1194,11 +1573,34 @@ function sanitizeLocales(v: unknown, issues: ConfigIssue[]): LocaleDictionary {
   };
 }
 
-function sanitizeOnboarding(v: unknown): OnboardingState {
+/** Known goals only (ONBOARDING_GOALS), each once, in the merchant's order. */
+function sanitizeGoals(v: unknown, issues: ConfigIssue[]): OnboardingGoal[] {
+  if (!Array.isArray(v)) return [];
+  const out: OnboardingGoal[] = [];
+  const unknown: unknown[] = [];
+  for (const goal of v) {
+    if (typeof goal === "string" && (ONBOARDING_GOALS as readonly string[]).includes(goal)) {
+      if (!out.includes(goal as OnboardingGoal)) out.push(goal as OnboardingGoal);
+    } else {
+      unknown.push(goal);
+    }
+  }
+  if (unknown.length > 0) {
+    pushIssue(
+      issues,
+      "onboarding.goals",
+      "unknown_onboarding_goal",
+      `${unknown.length} unknown onboarding goal(s) (${listPreview(unknown.map((g) => preview(g, 30)))}) were dropped; known goals: ${ONBOARDING_GOALS.join(", ")}.`,
+    );
+  }
+  return out;
+}
+
+function sanitizeOnboarding(v: unknown, issues: ConfigIssue[]): OnboardingState {
   const def = DEFAULT_CONFIG.onboarding;
   const rec = isRecord(v) ? v : {};
   return {
-    goals: sanitizeStringArray(rec.goals),
+    goals: sanitizeGoals(rec.goals, issues),
     step:
       typeof rec.step === "number" && Number.isFinite(rec.step)
         ? Math.min(5, Math.max(1, Math.floor(rec.step)))
@@ -1222,12 +1624,12 @@ export function sanitizeConfig(input: unknown): { config: WonDiscountsConfig; is
   const engine = sanitizeEngine(rec.engine, issues);
 
   const codesRaw = isRecord(modules.codes) ? modules.codes : {};
-  const rules = sanitizeRules(codesRaw.rules, issues);
+  const { rules, aliases: ruleAliases } = sanitizeRules(codesRaw.rules, issues);
 
   const tiersRaw = isRecord(modules.tiers) ? modules.tiers : {};
-  const sets = sanitizeTierSets(tiersRaw.sets, issues);
+  const { sets, aliases: setAliases } = sanitizeTierSets(tiersRaw.sets, issues);
 
-  const rewards = sanitizeRewards(modules.rewards, issues);
+  const { rewards, aliases: giftAliases } = sanitizeRewards(modules.rewards, issues);
 
   const config: WonDiscountsConfig = {
     schemaVersion: SCHEMA_VERSION,
@@ -1241,10 +1643,14 @@ export function sanitizeConfig(input: unknown): { config: WonDiscountsConfig; is
       margin: sanitizeMargin(modules.margin, issues),
     },
     // Campaigns last: their overrides are checked against the final rule/tier/gift ids.
-    campaigns: sanitizeCampaigns(rec.campaigns, issues, collectOverrideTargets(rules, sets, rewards.gifts)),
+    campaigns: sanitizeCampaigns(
+      rec.campaigns,
+      issues,
+      collectOverrideTargets(rules, sets, rewards.gifts, { rules: ruleAliases, sets: setAliases, gifts: giftAliases }),
+    ),
     storefront: sanitizeStorefront(rec.storefront),
     locales: sanitizeLocales(rec.locales, issues),
-    onboarding: sanitizeOnboarding(rec.onboarding),
+    onboarding: sanitizeOnboarding(rec.onboarding, issues),
   };
 
   return { config, issues };

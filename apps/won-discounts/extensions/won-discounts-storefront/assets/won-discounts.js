@@ -1,8 +1,10 @@
 /*
  * Won Discounts storefront foundation (MVP0).
  *
- * This is deliberately minimal: it proves the app embed loads and sets a
- * stable readiness marker. It never mutates the cart (doctrine SF-1) and
+ * This is deliberately minimal: it proves the app embed loads and flips the
+ * root marker from the Liquid-rendered "loading" to "ready" once
+ * window.WonDiscounts exists (so "ready" proves this script ran). It never
+ * mutates the cart (doctrine SF-1) and
  * stays well under the gzip perf budget (doctrine SF-2). Later MVPs build
  * the discount UI on top of this foundation.
  */
@@ -41,6 +43,7 @@
       ready: true
     };
 
+    // Last step: "ready" only once everything above has run.
     root.setAttribute("data-won-discounts-status", "ready");
   }
 
