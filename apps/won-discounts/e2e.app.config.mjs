@@ -7,9 +7,21 @@ export default {
     bodyMarker: "won-discounts-health-ok",
   },
   testCommand: ["npm", "run", "test:e2e"],
+  // The overlays switch the Won Discounts app embed ON in each theme copy, so
+  // the E2E never depends on a manual theme-editor step. They are the whole
+  // canonical settings_data.json + our embed block, generated (and drift-
+  // checked with --check) by `node scripts/make-e2e-overlay.mjs`.
   themes: {
-    horizon: { remoteName: "Horizon", preferredPort: 9885 },
-    dawn: { remoteName: "Dawn", preferredPort: 9886 },
+    horizon: {
+      remoteName: "Horizon",
+      preferredPort: 9885,
+      settingsDataOverlay: "e2e/settings_data.horizon.json",
+    },
+    dawn: {
+      remoteName: "Dawn",
+      preferredPort: 9886,
+      settingsDataOverlay: "e2e/settings_data.dawn.json",
+    },
   },
   appStartHint: "npm run dev -w won-discounts",
 };

@@ -200,7 +200,9 @@ Harness v MVP 0 renderuje Přehled v0 s fixture configem (mock session, bez Shop
 Modify `e2e.app.config.mjs` (`settingsDataOverlay` per téma).
 
 **Produces:** Overlay = kanonický `config/settings_data.json` sdíleného tématu + v
-`current.blocks` app embed `{ "type": "shopify://apps/won-discounts/blocks/won_discounts_embed/<uid ze shopify.extension.toml>", "disabled": false, "settings": {} }`.
+`current.blocks` app embed `{ "type": "shopify://apps/won-discounts/blocks/won_discounts_embed/<registrační UUID extensionu>", "disabled": false, "settings": {} }`.
+**Oprava během běhu:** není to `uid` ze `shopify.extension.toml`, ale UUID, které přidělí Shopify
+(`01a0e790-ee4d-733c-ac8e-14c7baa03fff`, zjištěno ze `settings_data.json` po jednorázovém zapnutí embedu).
 Spec E2E (obě témata): na `/products/won-e2e-simple-a` existuje `[data-won-discounts-embed]`
 se `data-won-discounts-status="ready"`, `window.WonDiscounts.ready === true`, na 390 px žádný
 horizontální overflow (`assertResponsiveSane`), žádná chyba konzole z našeho assetu.
