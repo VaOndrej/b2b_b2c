@@ -122,5 +122,9 @@ test("block name and locales are localized with identical key sets", async () =>
     );
   }
 
-  assert.equal(typeof (parsedByLocale["en.default.json"] as any).blocks?.won_discounts?.name, "string");
+  interface WonDiscountsLocale {
+    blocks?: { won_discounts?: { name?: unknown } };
+  }
+  const enDefault = parsedByLocale["en.default.json"] as WonDiscountsLocale;
+  assert.equal(typeof enDefault.blocks?.won_discounts?.name, "string");
 });
