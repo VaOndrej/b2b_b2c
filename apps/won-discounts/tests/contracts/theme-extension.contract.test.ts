@@ -92,10 +92,18 @@ test("storefront JS parses its config JSON defensively (invalid JSON never throw
   assert.match(javascript, /catch/);
 });
 
-test("block name and locales are localized with identical key sets", async () => {
+test("block name is a plain literal string, not a translation key", async () => {
+  // "Won Discounts" is a brand name, identical in every locale. Using a
+  // literal here (instead of t:blocks.won_discounts.name) avoids the
+  // theme-editor bug where a missing/mismatched schema-locale entry renders
+  // as `missing translation: "t:blo…"` in non-English admin locales (e.g.
+  // Czech) — see fix round 2.
   const block = await readExtension("blocks/won_discounts_embed.liquid");
-  assert.match(block, /"name"\s*:\s*"t:blocks\.won_discounts\.name"/);
+  assert.match(block, /"name"\s*:\s*"Won Discounts"/);
+  assert.doesNotMatch(block, /"name"\s*:\s*"t:/);
+});
 
+test("locale files stay valid JSON with identical key sets across en/cs/sk", async () => {
   const locales = ["en.default.json", "cs.json", "sk.json"];
   const parsedByLocale: Record<string, unknown> = {};
   for (const locale of locales) {
@@ -121,10 +129,4 @@ test("block name and locales are localized with identical key sets", async () =>
       `${locale} keys differ from ${first}: ${JSON.stringify(keys)} vs ${JSON.stringify(firstKeys)}`,
     );
   }
-
-  interface WonDiscountsLocale {
-    blocks?: { won_discounts?: { name?: unknown } };
-  }
-  const enDefault = parsedByLocale["en.default.json"] as WonDiscountsLocale;
-  assert.equal(typeof enDefault.blocks?.won_discounts?.name, "string");
 });
