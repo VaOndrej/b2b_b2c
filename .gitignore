@@ -26,3 +26,6 @@ themes/bases/
 # Publish intermediate: the generic deploy build. Reproducible with
 # `npm run theme:generic`; the deploy repo is where it actually lives.
 themes/dist/*-generic/
+
+# Uložené přihlášení Playwrightu do Shopify adminu (session cookies) — nikdy necommitovat
+/.auth/

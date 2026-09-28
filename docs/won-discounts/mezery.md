@@ -52,12 +52,15 @@ A2–A4 a A6–A13: **odsouhlaseno** (2026-09-28).
 | # | Co | Proč |
 |---|---|---|
 | B1 | ~~Trhy CZ a SK~~ | **Hotovo**, existují |
-| B2 | Testovací platební brána (Bogus) | Výprodej počítá kusy z objednávek, analytika z objednávek; bez testovacích objednávek nejde E2E |
-| B3 | Nákupní ceny + sledovaný sklad na testovacích produktech, 1 pevná cena v ceníku trhu | Orchestrátor rozšíří seed (`e2e-products.js`, idempotentní), nezakládá nové produkty |
-| B6 | Vypnout cizí slevu `Test_Code_discount` | Jinak zasahuje do E2E. Orchestrátor ji přesune přes vlastní import (reálný test) nebo vypne |
-| B7 | Publikovat jazyk sk | Texty sk na storefrontu |
-| B4 | Jednorázové přihlášení Playwrightu do Shopify adminu (uložený `storageState`) | Bez toho orchestrátor nevidí admin vizuálně. U Toasts to zůstalo neověřené (SB task `won-toasts-visual-check-section-pattern`) |
-| B5 | ~~Worktree~~ | **Rozhodnuto:** práce přímo na `main`, rozpracované změny commitnuty a pushnuty 2026-09-28 |
+| B2 | ~~Testovací platební brána~~ | **Hotovo:** Bogus Gateway je aktivní (Ondřej). Heslo ke storefrontu předá prompt, patří jen do gitignorovaného `apps/won-discounts/.env` jako `SHOPIFY_E2E_STOREFRONT_PASSWORD` |
+| B3 | Nákupní ceny + sledovaný sklad na testovacích produktech | **Orchestrátor si nastaví sám** přes seed (`e2e-products.js`, idempotentní). Dev store, volná ruka |
+| B6 | ~~Vypnout `Test_Code_discount`~~ | **Hotovo 2026-09-28:** stav EXPIRED |
+| B7 | ~~Publikovat sk~~ | **Hotovo 2026-09-28** |
+| B8 | ~~Pevná cena v ceníku trhu~~ | **Hotovo 2026-09-28:** `won-e2e-spare` = 199 CZK v ceníku `česko` |
+| B4 | Jednorázové přihlášení Playwrightu do Shopify adminu (uložený `storageState`) | **Nepřihlašovat hlavním účtem** (2026-09-28): session `admin.shopify.com` by dala Playwrightu přístup ke všem storům účtu, včetně klientských. Admin se ověřuje přes dev-only harness (D2). Případně později samostatný Shopify účet jen s přístupem k dev storu. Bez toho orchestrátor nevidí admin uvnitř Shopify. U Toasts to zůstalo neověřené (SB task `won-toasts-visual-check-section-pattern`) |
+| B5 | ~~Worktree~~ | **Rozhodnuto:** práce přímo na `main`, rozpracované změny pushnuté Ondřejem 2026-09-28 (`c7212ef`) |
+
+Skript a zálohy: `tmp/won-discounts-setup/` (`setup-devstore.mjs`, výchozí dry-run, undo v hlavičce).
 
 ## C. Technická rizika navíc (ověřeno v shopify.dev 2026-09-28)
 

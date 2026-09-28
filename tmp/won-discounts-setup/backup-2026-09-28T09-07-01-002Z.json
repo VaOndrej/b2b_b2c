@@ -1,0 +1,61 @@
+{
+  "discountNode": {
+    "id": "gid://shopify/DiscountAutomaticNode/2179405644017",
+    "discount": {
+      "title": "Test_Code_discount",
+      "status": "ACTIVE",
+      "startsAt": "2026-09-12T15:05:12Z",
+      "endsAt": null,
+      "appDiscountType": {
+        "title": "Discount - attribute input",
+        "app": {
+          "title": "SMART Functions"
+        }
+      }
+    }
+  },
+  "shopLocales": [
+    {
+      "locale": "cs",
+      "primary": false,
+      "published": true
+    },
+    {
+      "locale": "en",
+      "primary": true,
+      "published": true
+    },
+    {
+      "locale": "sk",
+      "primary": false,
+      "published": false
+    }
+  ],
+  "catalogs": {
+    "nodes": [
+      {
+        "title": "česko",
+        "priceList": {
+          "id": "gid://shopify/PriceList/27005124849",
+          "currency": "CZK",
+          "fixedPricesCount": 0
+        }
+      }
+    ]
+  },
+  "products": {
+    "nodes": [
+      {
+        "handle": "won-e2e-spare",
+        "variants": {
+          "nodes": [
+            {
+              "id": "gid://shopify/ProductVariant/48468679164145",
+              "price": "9.00"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

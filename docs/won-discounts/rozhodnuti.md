@@ -213,4 +213,4 @@ Zbytek mezer (A2–A4, A6–A13) odsouhlasen, viz `mezery.md`.
 
 ## Otevřené
 
-- Struktura promptu orchestrátora.
+Nic. Prompt orchestrátora: [`prompt-orchestrator.md`](prompt-orchestrator.md).
