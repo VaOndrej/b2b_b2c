@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Katalog sedmnácti navrhovaných WonApps rozdělených do šesti produktových suit."
+      content="Katalog čtrnácti navrhovaných WonApps rozdělených do šesti produktových suit."
     />
     <title>WonApps — katalog produktové roadmapy</title>
     <style>
@@ -167,6 +167,13 @@
       /* App identity tile — a rounded glyph mark per app, echoing the Won
          wordmark's rounded-square logo. Neutral by default; build-now cards
          inherit the mint accent so the recommended apps read at a glance. */
+      /* Longer badge (Scaffold) + price: let the head wrap instead of
+         squeezing the app code or overflowing a 390px column. */
+      .card-head.card-head-wrap {
+        flex-wrap: wrap;
+        row-gap: 10px;
+      }
+
       .card-id {
         display: flex;
         align-items: center;
@@ -554,6 +561,41 @@
         font-style: italic;
       }
 
+      /* Compact Free/Pro table inside a guide — same look as .pbnd-table,
+         sized for a card column. */
+      .app-guide .guide-scroll {
+        margin: 10px 0 0;
+        overflow-x: auto;
+      }
+
+      .app-guide .guide-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.82rem;
+      }
+
+      .app-guide .guide-table th,
+      .app-guide .guide-table td {
+        padding: 7px 8px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .app-guide .guide-table thead th {
+        border-bottom-color: var(--line-strong);
+        color: var(--text-muted);
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .app-guide .guide-table tbody th {
+        color: var(--text);
+        font-weight: 650;
+      }
+
       @media print {
         .app-guide {
           display: none;
@@ -588,7 +630,7 @@
     <main class="shell">
       <header class="catalog-header">
         <p class="eyebrow">Katalog</p>
-        <h1>Sedm suit, osmnáct appek</h1>
+        <h1>Šest suit, čtrnáct appek</h1>
         <p class="lede">
           Seřazeno tak, jak by šly nabízet. Cena, coupling, náročnost extrakce a
           mapování na Shopify API jsou v každé kartě.
@@ -764,29 +806,40 @@
                 <td class="avoids">cenu</td>
               </tr>
               <tr>
+                <th scope="row">Won Discounts</th>
+                <td class="owns">
+                  <strong>cenu a odměny</strong> (primitiv = sleva): slevy a
+                  kódy, množstevní slevy, dárky a doprava zdarma za práh,
+                  výprodej, ochrana marže. Všechny slevy obchodu jdou přes Won,
+                  Shopify Function = zdroj pravdy. Nahrazuje Tiers, Rewards,
+                  Outlet a MarginGuard.
+                </td>
+                <td class="avoids">
+                  doporučování (Companion), notifikace (Toasts), ovladač množství
+                  (Stepper), B2B ceníky
+                </td>
+              </tr>
+              <tr>
                 <th scope="row">Won Companion</th>
                 <td class="owns">
                   <strong>doporučení</strong> „přidej ještě <em>jinou</em> věc“ —
                   cross-sell, bundle, bigger-pack swap (šířka)
                 </td>
-                <td class="avoids">cenu</td>
+                <td class="avoids">
+                  cenu (na slevu a práh jen <strong>odkazuje</strong>, vlastní je
+                  Won Discounts)
+                </td>
               </tr>
               <tr>
-                <th scope="row">Won Tiers</th>
+                <th scope="row">Won Toasts</th>
                 <td class="owns">
-                  <strong>cenu podle množství</strong> — „kup víc <em>toho
-                  samého</em>, levněji“ (hloubka), Shopify Function = zdroj
-                  pravdy
+                  <strong>notifikaci</strong> na storefrontu — toast po změně
+                  košíku, milník, social proof
                 </td>
-                <td class="avoids">doporučování / UX</td>
-              </tr>
-              <tr>
-                <th scope="row">Won Rewards</th>
-                <td class="owns">
-                  <strong>odměnu za práh</strong> — dárek / doprava zdarma
-                  (milestone)
+                <td class="avoids">
+                  cenu (slevu jen <strong>oznámí</strong> z hotové alokace v
+                  <code>/cart.js</code>, nepočítá ji)
                 </td>
-                <td class="avoids">katalogovou cenu</td>
               </tr>
               <tr>
                 <th scope="row">Won Badges</th>
@@ -800,9 +853,12 @@
         </div>
         <p class="pbnd-test">
           <strong>Test proti splývání:</strong> Stepper vlastní <em>ovladač</em>,
-          Tiers vlastní <em>cenu</em>, Companion vlastní <em>doporučení</em>,
-          Rewards vlastní <em>odměnu</em>, Badges vlastní <em>štítek</em>. Když
-          appka potřebuje cizí primitiv, <strong>odkáže</strong> ho, nevlastní.
+          Won Discounts vlastní <em>cenu a odměny</em>, Companion vlastní
+          <em>doporučení</em>, Toasts vlastní <em>notifikaci</em>, Badges vlastní
+          <em>štítek</em>. Když appka potřebuje cizí primitiv,
+          <strong>odkáže</strong> ho, nevlastní: Toasts slevu jen oznámí z hotové
+          alokace, Companion doporučí produkt, který zákazníka posune k prahu
+          nebo k levnější množstevní slevě.
         </p>
         <div class="pbnd-decisions">
           <div class="pbnd-card">
@@ -825,21 +881,39 @@
           </div>
           <div class="pbnd-card">
             <h3>
-              Companion ≠ Tiers
+              Companion ≠ Won Discounts
               <span class="pbnd-tag">rozhodnuto 2026-08-07</span>
             </h3>
             <p>
-              Vypadají podobně (oba „upsell“), ale je to <strong>šířka vs
-              hloubka</strong>. <strong>Neslévat.</strong> Tiers drží cenu
-              Functionou a patří do Function-rodiny s Rewards (sdílený
-              <code>packages/functions</code> crate) — vnořit ho do Companionu =
-              zašpinit jeho duši „žádná cenová magie“.
+              Companion a množstevní slevy vypadají podobně (oba „upsell“), ale
+              je to <strong>šířka vs hloubka</strong>. <strong>Neslévat.</strong>
+              Množstevní slevy drží cenu Functionou a od 2026-09-28 jsou modulem
+              <strong>Won Discounts</strong> (dříve samostatná Won Tiers) —
+              vnořit je do Companionu = zašpinit jeho duši „žádná cenová magie“.
             </p>
             <p>
-              Companion Tiers místo toho <strong>odkazuje</strong>: „přidej ještě
-              1 ks a jsi v levnějším tieru“ = Companion <em>doporučení</em>
-              namířené na <em>cenu</em>, kterou vlastní Tiers. Kooperují,
-              neslévají se.
+              Companion na množstevní slevu místo toho
+              <strong>odkazuje</strong>: „přidej ještě 1 ks a jsi v levnější
+              úrovni“ = Companion <em>doporučení</em> namířené na <em>cenu</em>,
+              kterou vlastní Won Discounts. Kooperují, neslévají se.
+            </p>
+          </div>
+          <div class="pbnd-card">
+            <h3>
+              Slevy = Won Discounts
+              <span class="pbnd-tag">rozhodnuto 2026-09-28</span>
+            </h3>
+            <p>
+              Tiers, Rewards (GiftLadder + ShipGoal), Outlet a MarginGuard
+              <strong>nejsou samostatné appky</strong>, ale moduly jedné:
+              <strong>Won Discounts</strong>. Všechny slevy obchodu jdou přes ni,
+              jen tak engine ví, co se v košíku a v pokladně uplatní.
+            </p>
+            <p>
+              Discount funkce o sobě nevědí a store jich smí mít max. 25
+              aktivních, proto slevový hub je tady <strong>záměr</strong>, ne
+              anti-pattern. Detail:
+              <a href="won-discounts/rozhodnuti.md"><code>won-discounts/rozhodnuti.md</code></a>.
             </p>
           </div>
         </div>
@@ -874,7 +948,7 @@
         <p class="bq-eyebrow">Než začneš číst karty · 2</p>
         <h2 id="buildq-title" class="bq-title">Katalog vize ≠ build fronta</h2>
         <p class="bq-lede">
-          Těch osmnáct karet je <strong>katalog vize</strong>, ne fronta na stavění. Build fronta má
+          Těch čtrnáct karet je <strong>katalog vize</strong>, ne fronta na stavění. Build fronta má
           <strong>přesně jednu položku dopředu</strong>, gated. Appky <strong>vznikají jako theme
           featury z klientské práce</strong> (won-base) a na placený listing se povýší, teprve když se
           poptávka u klientů opakuje a fan-out ji zvaliduje. Detail: <a href="severka.html">severka</a>.
@@ -882,13 +956,13 @@
         <div class="bq-queue">
           <div class="bq-slot now">
             <p class="lab">Build fronta · teď</p>
-            <h3>Won Toasts</h3>
-            <p>Pilot — dokazuje build-harness (billing, app-block, @won/core), ne flagship. „Hotovo“ = merchant-self-installable + harness znovupoužitelný + hands-off běh na reálném storu.</p>
+            <h3>Won Discounts</h3>
+            <p>Autonomní stavba MVP 0–7 na dev storu (Tiers + Rewards + Outlet + MarginGuard v jedné appce). Stav <strong>Scaffold</strong>: MVP 0 rozpracované, nic nasazené. „Hotovo“ = MVP 0–7 zelené na bráně i živém E2E Horizon + Dawn, připravené k nasazení, nenasazené. Vzor a harness: pilot Won Toasts (Beta).</p>
           </div>
           <div class="bq-slot">
             <p class="lab">Build fronta · další (gated)</p>
             <h3>1× AOV appka</h3>
-            <p>Rewards nebo Companion — až po prvním fan-outu (Vlna 2 v severce). Nezakládat listing dřív.</p>
+            <p>Companion — až po prvním fan-outu (Vlna 2 v severce). Rewards už je modul Won Discounts. Nezakládat listing dřív.</p>
           </div>
           <div class="bq-slot">
             <p class="lab">Zbytek</p>
@@ -899,7 +973,7 @@
         <div class="bq-tax">
           <div class="bq-cat listing">
             <h4>Reálný listing</h4>
-            <p><strong>Function</strong> (Tiers, Rewards — checkout, sdílený substrát, ale nejsložitější) + <strong>config/data</strong> (Toasts, Companion — lehčí). Sem míří peníze.</p>
+            <p><strong>Function</strong> (Won Discounts — slevy, odměny, výprodej a marže v jedné appce; checkout, nejsložitější) + <strong>config/data</strong> (Toasts, Companion — lehčí). Sem míří peníze.</p>
           </div>
           <div class="bq-cat feature">
             <h4>Theme featura (ne appka)</h4>
@@ -1030,7 +1104,7 @@
                 pro Dawn i Horizon (quick-add, Section Rendering API, multi-tab).
                 <code>cartState</code>, <code>deriveEvents</code> a milestone
                 state machine <strong>zdědil Toasts pilot</strong> — tady se
-                zúročí; Companion a Rewards na hotovém core <em>jen stojí</em> a
+                zúročí; Companion a Rewards (dnes modul Won Discounts) na hotovém core <em>jen stojí</em> a
                 referencují „viz Won Stepper". Design tokeny sdílíme přes
                 <code>&lt;won-host&gt;</code>, cross-app bus přes document event
                 <code>won:cart:update</code>, ať appky nedělají dvojité fetche.
@@ -1112,15 +1186,15 @@
                 <em>B2B / wholesale pozice:</em> rychlá manipulace velkých
                 množství, case-packs, přímé zadání čísla a MOQ/násobky = přesně
                 bolest B2B → Stepper je „B2B-friendly qty widget" a most k
-                <strong>Won Tiers</strong>; <strong>direct-entry velkých množství
+                <strong>Won Discounts</strong> (množstevní slevy); <strong>direct-entry velkých množství
                 = Pro</strong> (spolu s quantity rules). <em>Analytika vede k
                 závěrům, ne vanity metrikám:</em> kde se mění množství
                 (PDP/cart/karta = kam dát pozornost), up/down/qty→0 na ploše
                 (removal v draweru = cenový/shipping šok = friction diagnóza),
                 produkty často bumpnuté na 2–3+ = <strong>kandidáti na
                 multipack/bundle</strong> → krmí <strong>Companion bigger-pack</strong>
-                a <strong>Rewards</strong> prahy, B2B účty s velkými množstvími →
-                insight pro <strong>Tiers</strong>. Dva akční závěry: merchandising
+                a prahy odměn ve <strong>Won Discounts</strong>, B2B účty s velkými množstvími →
+                insight pro množstevní slevy (<strong>Won Discounts</strong>). Dva akční závěry: merchandising
                 (co zabalit) + friction (kde ztrácíš košík) — obojí předá dál jiné
                 Won appce. <em>Zralost:</em> spec na úrovni Toasts, ~70 % substrátu
                 zděděno z pilota; nové jen dva rizikové kusy
@@ -1155,8 +1229,8 @@
                 spike náleží už do build fáze (psaní core kódu), ne do plánování.
               </p>
               <p class="guide-idea">
-                <strong>Ekosystém — Function-owning appky (zásada, platí i pro
-                Rewards/Tiers):</strong> Function appka = <strong>dvě extension,
+                <strong>Ekosystém — Function-owning appky (zásada 2026-08; pro
+                slevy upravená 2026-09-28, viz konec odstavce):</strong> Function appka = <strong>dvě extension,
                 jedna appka</strong>: storefront (pure surface) <em>zobrazuje</em>
                 efekt, Shopify Function (Rust→WASM) <em>vynucuje/naceňuje</em> u
                 checkoutu; config = jeden zdroj pravdy → storefront přes app-proxy
@@ -1167,11 +1241,18 @@
                 konzistentní chování, sdílené zaokrouhlování, sdílený
                 <code>won.*</code> metafield schema a jedna <strong>„Won stacking
                 policy"</strong> (konzistentní <code>combinesWith</code> +
-                zdokumentované pořadí + cross-app awareness jako Toasts↔GiftLadder
-                <code>_gift_progress</code>). Vyhnout se: jeden „hub" vlastnící
+                zdokumentované pořadí + cross-app awareness jako Toasts↔dárky (dříve GiftLadder, dnes Won
+                Discounts) <code>_gift_progress</code>). Vyhnout se: jeden „hub" vlastnící
                 všechny Functions (zabíjí modularitu) i nekoordinovaným per-app
                 Functions (dvojité slevy). Přesné limity Functions ověřit přes
-                <code>shopify-dev</code> MCP při psaní Rewards/Tiers.
+                <code>shopify-dev</code> MCP při psaní Won Discounts.
+                <strong>Aktualizace 2026-09-28:</strong> pro slevy už „žádný hub“
+                neplatí. Tiers, Rewards, Outlet a MarginGuard se sloučily do
+                <strong>Won Discounts</strong>, který záměrně vlastní všechny
+                discount Functions obchodu (discount funkce o sobě nevědí, max. 25
+                aktivních na store → pár uzlů nad jedním configem). Zásada „dvě
+                extension, jedna appka“ (storefront zobrazuje, Function naceňuje)
+                platí dál.
               </p>
               <p class="guide-idea">
                 <strong>Admin UX (sdílený Won admin systém — mechanika, ne štítky):</strong>
@@ -1397,7 +1478,7 @@
                 „po zavření už ne", cross-page dedupe) — nesmí ven dřív, než ten
                 gate existuje. Cart eventy zůstávají bezpečné (spouští je jen
                 akce zákazníka). Free-shipping progress bar sem
-                <em>nepatří</em> (řeší GiftLadder); tady je milestone
+                <em>nepatří</em> (řeší Won Discounts, modul Odměny za košík); tady je milestone
                 jednorázový toast, ne page-view spam.
               </p>
               <p class="guide-idea">
@@ -1437,10 +1518,10 @@
               <p class="guide-idea">
                 <strong>Obecný vzor „app → <code>won.*</code> metapole → téma (SSR/AI)":</strong> tohle
                 NENÍ nový most, je to <strong>kanonická konvence portfolia</strong> (Stepper Pro čte
-                <code>won.quantity_rules</code>, Tiers, Toasts…). Stejným způsobem může theme
+                <code>won.quantity_rules</code>, Won Discounts, Toasts…). Stejným způsobem může theme
                 <code>won-schema</code> engine krmit víc zdrojů: <em>reviews → <code>won.rating</code>
                 → AggregateRating</em>, <em>sklad → dostupnost</em>, <em>Toasts → popularity</em>,
-                <em>Tiers → B2B ceny</em>. AI-renderer (JSON-LD) je vždy <strong>téma</strong>; appky
+                <em>Won Discounts → množstevní ceny</em>. AI-renderer (JSON-LD) je vždy <strong>téma</strong>; appky
                 jsou jen producenti signálu. <strong>Pozor na kolizi názvu:</strong> theme
                 <code>won-schema</code> engine (schema.org / JSON-LD) ≠ appka <strong>Won Schema</strong>
                 (metafield-type <em>migrátor</em>) — jiný koncept, stejné slovo.
@@ -1479,9 +1560,9 @@
                 placená alternativa pro segment odpuzený adwarem.
               </p>
               <p class="guide-idea">
-                <strong>Čtení Function-slev (napojení na Tiers / Rewards):</strong>
+                <strong>Čtení Function-slev (napojení na Won Discounts):</strong>
                 Toasts musí umět oslavit „aktivovala se množstevní sleva", i když ji
-                naceňuje <em>cizí</em> Function (Tiers) u checkoutu. Napojení je čisté a
+                naceňuje <em>cizí</em> Function (Won Discounts, množstevní slevy) u checkoutu. Napojení je čisté a
                 <strong>theme-independent</strong> (ověřeno přes <code>shopify-dev</code>):
                 automatická Function-sleva je vidět na storefrontu už před checkoutem —
                 Ajax <code>/cart.js</code> ji nese jako
@@ -1496,17 +1577,17 @@
                 při změně množiny alokací. <strong>Atribuce (load-bearing kontrakt):</strong>
                 Toasts smí oslavit jen slevu, kterou <em>umí přiřadit</em> k Won appce — proto
                 Won Functions stampují title/message v rezervovaném <code>won.*</code> namespace
-                (např. marker <code>won-tiers:</code>, lidská část zůstává čitelná „Množstevní
+                (např. marker <code>won-discounts:</code>, dříve navržený <code>won-tiers:</code>; lidská část zůstává čitelná „Množstevní
                 sleva 3+ ks"); parser žije ve sdíleném <code>packages/functions</code> (unpark až
-                s Tiers). <strong>Poctivost (doktrína „no toast &gt; wrong toast"):</strong>
+                s Won Discounts). <strong>Poctivost (doktrína „no toast &gt; wrong toast"):</strong>
                 neznámý title (kupón, merchantova ruční sleva) → <strong>mlčet</strong>, nikdy ho
                 nevydávat za množstevní slevu. <strong>Arbitráž:</strong> Toasts je renderer/arbiter
-                (jeho grouping / rate-limit / conflict engine z MVP3), Tiers a Rewards jsou jen
-                <em>zdroje typed signálů</em> → jedna alokace = jeden toast, žádné dvojité
+                (jeho grouping / rate-limit / conflict engine z MVP3), Won Discounts je jen
+                <em>zdroj typed signálů</em> → jedna alokace = jeden toast, žádné dvojité
                 oslavování. <strong>Timing:</strong> alokace je v <code>/cart.js</code> až po
                 server-reconcile, takže toast se pouští na <strong>reconciled</strong> cartState, ne
                 na Stepperově optimistickém — jinak bys oslavil slevu, kterou server nepotvrdil.
-                Primitiv drží: Toasts vlastní <em>notifikaci</em>, Tiers vlastní <em>cenu</em> —
+                Primitiv drží: Toasts vlastní <em>notifikaci</em>, Won Discounts vlastní <em>cenu</em> —
                 Toasts jen přečte hotovou alokaci (odkaz, ne vlastnictví; viz „Hranice portfolia").
               </p>
               <ol>
@@ -1829,14 +1910,15 @@
                 ne fake-AI) + collection/segment cílení. <strong>(2) Slevy</strong>
                 — v1 zůstává <strong>Function-free</strong> (lehká instalace, čistá
                 pomoc bez úplatku); slevový upsell = <strong>budoucí Pro</strong>
-                přes sdílený <code>packages/functions</code> crate (respektuje Won
-                stacking policy). <strong>(3) Placementy</strong> — v1
+                a jde <strong>přes Won Discounts</strong> (rozhodnuto 2026-09-28:
+                všechny slevy obchodu jdou přes Won Discounts; Companion vlastní
+                funkci na slevy nemá). <strong>(3) Placementy</strong> — v1
                 <strong>post-add modal + cart</strong> (srdce = post-add okamžik),
                 PDP inline fast-follow, <strong>post-purchase park</strong> (jiný
                 okamžik, jiná extension). <strong>(4) PackUp</strong> = modul
                 bigger-pack swap (potvrzeno). <strong>(5) Cross-app synergie</strong>
-                (upsell-to-unlock reward / next Tiers break) — napsáno jako Pro,
-                <strong>build park</strong> až budou Rewards/Tiers živé.
+                (upsell-to-unlock reward / další množstevní úroveň) — napsáno jako Pro,
+                <strong>build park</strong> až bude Won Discounts živý (odměny + množstevní slevy).
                 <strong>(6) Free/Pro čára</strong> — Free = modal + manuál +
                 1-click + bigger-pack + design + governance (plnohodnotný asistent,
                 ne mrzák); Pro <strong>gatuje SCOPE, ne kvalitu</strong> = real FBT
@@ -1881,8 +1963,8 @@
                 boční košík, <strong>modal potlačí auto-open draweru</strong> (ladí se
                 Stepperovým drawer-suppress togglem); <strong>toast-suppress</strong>
                 — když běží modal, potlačit redundantní „přidáno" toast (Toasts dál
-                řeší remove/undo); <strong>hranice s Rewards</strong> — Companion
-                <em>doporučuje produkty</em>, Rewards <em>vlastní prahy/progress bar</em>
+                řeší remove/undo); <strong>hranice s Won Discounts</strong> — Companion
+                <em>doporučuje produkty</em>, Won Discounts <em>vlastní prahy/progress bar</em>
                 (Companion je neduplikuje; upsell-to-unlock jen v Pro). <em>Measurement
                 = retence:</em> <strong>holdout</strong> (modal 90 % / skrytý 10 % →
                 srovnání AOV = inkrementální pravda) vedle „attributed-add value"
@@ -2008,10 +2090,11 @@
                   Billing (flat) · <code>MVP6</code> (budoucí Pro) <strong>real
                   co-occurrence FBT z objednávek</strong> (GDPR: žádné PII ve
                   storefront payloadu, vyloučit stornované/vrácené) +
-                  <strong>slevové upsely</strong> přes sdílený
-                  <code>packages/functions</code> crate (Won stacking policy) +
-                  <strong>cross-app upsell-to-unlock</strong> (park až budou
-                  Rewards/Tiers živé).
+                  <strong>slevové upsely</strong> jako pravidla ve
+                  <strong>Won Discounts</strong> (Companion vlastní slevovou
+                  funkci nemá, rozhodnuto 2026-09-28) +
+                  <strong>cross-app upsell-to-unlock</strong> (park až bude
+                  Won Discounts živý).
                 </li>
                 <li>
                   <strong>Akceptační kritéria (výběr):</strong> (1) přidání
@@ -2170,534 +2253,54 @@
         </div>
       </section>
 
-      <section class="suite" aria-labelledby="suite-rewards">
+      <section class="suite" aria-labelledby="suite-discounts">
         <header class="suite-heading">
           <div class="suite-title">
             <span class="suite-number">03</span>
-            <h2 id="suite-rewards">Rewards &amp; Progress</h2>
+            <h2 id="suite-discounts">Discounts &amp; Rewards</h2>
           </div>
           <p class="suite-summary">
-            2 appky · Gamifikované prahy — dárky a doprava zdarma.
+            1 appka + 1 odložená · Slevy, odměny, výprodej a marže v jedné
+            appce.
           </p>
         </header>
 
         <div class="app-grid">
-          <article class="app-card">
-            <div class="card-head">
+          <article class="app-card build-now">
+            <div class="card-head card-head-wrap">
               <span class="card-id">
                 <span class="app-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="4.5" y="10" width="15" height="8.5" rx="1.2" />
-                    <rect x="4" y="7.5" width="16" height="2.5" rx="0.8" />
-                    <path d="M12 7.5v11" />
-                    <path d="M12 7.5c-2.6 0-3.6-3.4-1.1-3.4 1.8 0 1.1 3.4 1.1 3.4z" />
-                    <path d="M12 7.5c2.6 0 3.6-3.4 1.1-3.4-1.8 0-1.1 3.4-1.1 3.4z" />
+                    <path d="M11.5 4h-6a1.5 1.5 0 0 0-1.5 1.5v6a2 2 0 0 0 .6 1.4l6.5 6.5a2 2 0 0 0 2.8 0l5.6-5.6a2 2 0 0 0 0-2.8L12.9 4.6A2 2 0 0 0 11.5 4z" />
+                    <circle cx="7.6" cy="7.6" r="1.3" fill="currentColor" stroke="none" />
+                    <path d="M10.4 15.2l4.8-4.8" />
+                    <circle cx="10.9" cy="10.9" r="0.9" />
+                    <circle cx="14.7" cy="14.7" r="0.9" />
                   </svg>
                 </span>
-                <span class="app-code">WON·GIFT</span>
+                <span class="app-code">WON·DISC</span>
               </span>
-              <span class="mvp-badge mvp-spec">Spec</span>
-              <span class="price">$3/mo</span>
+              <span class="mvp-badge mvp-scaffold">Scaffold</span>
+              <span class="price">$29/mo</span>
             </div>
-            <h3>Won GiftLadder</h3>
+            <h3>Won Discounts</h3>
             <p class="description">
-              Dárky zdarma po kumulativních prazích s gamifikovanou lištou a
-              možností odmítnout. Nacenění řeší Discount Function; dárek jako
-              reálný skladový produkt — to Shopify nativně neumí.
-            </p>
-            <div class="tags">
-              <span class="tag source">E · Enervit</span>
-              <span class="tag">coupling <strong>vysoký</strong></span>
-              <span class="tag">extrakce <strong>L</strong></span>
-              <span class="tag">Shopify Functions · Theme App Ext</span>
-            </div>
-            <footer class="card-footer">
-              <div class="potential">
-                <span
-                  class="meter"
-                  style="--score: 4"
-                  role="img"
-                  aria-label="Potenciál 4 z 5"
-                ></span>
-                <span class="potential-label">Potenciál</span>
-              </div>
-              <span class="state">Později</span>
-            </footer>
-            <details class="app-guide">
-              <summary>Návod k implementaci (Won-Toasts hloubka)</summary>
-              <p class="guide-idea">
-                <strong>0 · Nápad:</strong> konsolidace tří custom klientských
-                řešení do jedné appky &mdash; <strong>Won Rewards</strong>
-                (dřívější GiftLadder + ShipGoal + Mystery). Kumulativní prahy
-                hodnoty košíku odemykají odměny: (a) lišta „do dopravy zdarma
-                zbývá X&ldquo; (ShipGoal, v Enervitu suploval
-                <code>free-shipping-bar.js</code>, v Therabeastu server-side nad
-                <code>items_subtotal_price</code>), (b) free-gift ladder &mdash;
-                dárek jako <strong>reálný skladový produkt</strong> automaticky
-                přidaný do košíku (property <code>_gift_progress</code>, origin
-                <code>gift-auto-add.js</code> + <code>gift-progress-bar.js</code>)
-                s možností odmítnout, a (c) <strong>MYSTERY / reveal</strong>
-                dárek &mdash; u prahu se odemkne skrytý/náhodný reálný skladový
-                dárek s reveal animací. Nacenění na $0 řeší
-                <strong>Discount Function</strong>, ne ruční „Buy X get Y&ldquo;
-                sleva, kterou klient dřív spravoval v adminu.
-              </p>
-              <p class="guide-idea">
-                <strong>Rozhodnutí / pozicování:</strong> ceník
-                <strong>flat</strong> (jeden předvídatelný tarif, ne metered
-                jako BOGOS overage nebo Monk $49&ndash;149) &mdash;
-                <em>stejná funkčnost, jednodušší používání</em>, warm-start
-                recenze z reálných eshopů (Enervit, Therabeast), kde všechny tři
-                mechaniky roky běžely jako theme JS. Gift kategorie je
-                <strong>crowded</strong> (BOGOS 5.0/4025 recenzí), reálný skladový
-                dárek už je <em>table stakes</em> (Corner to má přímo v copy).
-                Náš <strong>wedge z auditu</strong>: FLAT cena +
-                <strong>MYSTERY / reveal mechanika, kterou nikdo nemarketuje</strong>
-                (neobsazený reveal úhel &mdash; VÉST tímto) + reálný sklad +
-                jednodušší nastavení + warm-start. „No ads&ldquo; je tu
-                irelevantní, není to headline.
-              </p>
-              <p class="guide-idea">
-                <strong>Sdílený cart-core:</strong> Rewards je čistý konzument
-                <code>@won/core/cart</code> &mdash; nestaví ho (to je Stepper,
-                viz Won Stepper), jen čte. Bere <code>cartState</code>
-                (reaktivní snapshot <code>/cart.js</code>), <strong>milestone
-                state machine</strong> per cart token
-                (<code>unreached | approaching | just_reached | reached |
-                just_lost</code>) a property <code>_gift_progress</code> &mdash;
-                obojí <strong>seedol Toasts</strong> a Rewards je znovupoužívá,
-                takže <strong>žádné dvojité oslavování</strong>: práh oslaví
-                buď Rewards bar, nebo Toasts, přes jeden sdílený milestone
-                engine (<code>summarizeConcurrent</code>). Storefront kreslí do
-                sdíleného <code>&lt;won-host&gt;</code> (Shadow DOM + design
-                tokeny) a poslouchá cross-app bus
-                <code>document</code> event <code>won:cart:update</code>, ať
-                nedělá dvojité fetche.
-              </p>
-              <p class="guide-idea">
-                <strong>Duše appky:</strong> Rewards je <em>štědrý, poctivý
-                hostitel</em> — promění košík ve <strong>viditelný, férový cíl s
-                reálnou odměnou</strong> a zvedá AOV tím, že <strong>dává, ne že
-                manipuluje</strong>. Kde Toasts říká „stalo se", Stepper „změň to
-                snadno" a Companion „a tohle?", Rewards říká <strong>„skoro tam jsi
-                — a čeká tě tohle"</strong>. Duše = <em>zasloužená štědrost</em>:
-                progress bar, který <strong>říká pravdu</strong>, práh, který se
-                <strong>nehýbe</strong>, a dárek, který je <strong>reálný a hezký</strong>
-                (ne šunt na vyprodání deadstocku). Anti-duše: falešná scarcity,
-                posouvání cíle, skryté podmínky, „dárek" jako past — Rewards jde
-                <strong>odmítnout</strong> a nikdy nepřekvapí účtem. Odměna je dar,
-                ne trik.
-              </p>
-              <p class="guide-idea">
-                <strong>Forky &amp; rozhodnutí (grounded shopify-dev, 2026-08):</strong>
-                <strong>(1) Function architektura</strong> — <strong>jedna Discount
-                Function, dva targety</strong> (<code>cart.lines.discounts.generate.run</code>
-                = $0 na gift line, <code>cart.delivery-options.discounts.generate.run</code>
-                = doprava zdarma); <strong>ne Cart Transform</strong> → žádné Plus
-                omezení. <strong>(2) Gift line</strong> — storefront auto-přidá reálný
-                skladový produkt (<code>_gift_progress</code>, jako dnes Toasts
-                ignoruje), Function nacení $0; milestone machine přidá/odebere na
-                reached/just_lost. <strong>(3) Multi-currency prahy</strong> = core
-                (ne jedno číslo) — Function detekuje měnu košíku a bere práh per-měna
-                (Markets); špatný práh v cizí měně = trust disaster, proto od MVP1.
-                <strong>(4) Re-validation / abuse</strong> — Function nacení $0 jen
-                dokud práh platí; když zákazník u checkoutu sundá položky, gift by se
-                naúčtoval → primární obrana storefront odebere na just_lost, +
-                <strong>volitelná Cart-Checkout-Validation Function</strong> jako
-                hard-guard (blokne checkout s nekvalifikovaným <code>_gift_progress</code>);
-                zařazeno jako <strong>correctness hardening MVP, ne Pro gate</strong>
-                (je to důvěra). <strong>(5) Mystery</strong> — deterministický
-                <strong>client-side</strong> výběr (Functions jsou pure, nemůžou
-                random), seed = cart token, reveal u prahu; honest (pool jako
-                „překvapení z těchto"). <strong>(6) Free/Pro čára</strong> — Free =
-                free-shipping goal + <em>jeden</em> free-gift práh + bar + odmítnutí;
-                Pro = multi-tier ladder, Mystery, gift-choice, segment/targeting,
-                scheduling, analytics holdout, custom CSS. Pro gatuje SCOPE, ne
-                kvalitu. <strong>(7) Ownership</strong> — Rewards <strong>vlastní
-                progress bar</strong>; Toasts/Companion se odkazují, oslava jde přes
-                sdílený milestone engine → žádné dvojité oslavování.
-                <strong>(8) Won stacking policy</strong> — gift = product discount,
-                doprava = shipping discount; deklarované <code>combinesWith</code>
-                (kooperativní), aby Rewards neblokoval merchantovy jiné slevy ani
-                Companion budoucí; řízeno „Stacking" kontrolou v adminu.
-              </p>
-              <p class="guide-idea">
-                <strong>Hloubkový brainstorm (širší úhly):</strong>
-                <em>Function ↔ storefront mirror = core risk</em> (Rewards ekvivalent
-                Stepperova theme-attachmentu). Storefront ukazuje „dárek zdarma", ale
-                Function to MUSÍ reálně nacenit $0 u checkoutu — když se rozejdou
-                (Function nenasazená / chyba), zákazník zaplatí dárek = trust disaster.
-                → admin ukazuje <strong>Function deployment/active status</strong>;
-                „nic se neukáže, dokud Function nežije". <em>Gift inventory / OOS:</em>
-                dárek = reálný skladový produkt → vyprodáno → fallback (další z poolu /
-                disable tieru / skrýt), nikdy nenabídnout OOS, odečítat sklad.
-                <em>Threshold honesty:</em> eligible subtotal = bez gift řádků (ať se
-                práh nepočítá z dárku), multi-currency, zaokrouhlování.
-                <em>Pokles pod práh</em> → dárek odebrán → Toasts jemně oznámí „ztratil
-                jsi…", ne agresivně (just_lost). <em>Multi-tier ladder UX:</em> víc
-                prahů = eskalace, bar s uzly, „další odměna za X". <em>Gift-choice (Pro):</em>
-                zákazník si vybere z poolu vs auto — kontrola vs anticipace.
-                <em>Scheduling (Pro):</em> Functions neznají čas → kampaň se
-                zapíná/vypíná <strong>změnou configu/metafieldu</strong>, ne uvnitř
-                Function. <em>Analytika = retence:</em> zvedla odměna reálně AOV?
-                <strong>holdout</strong> (jako Companion) + redemption rate + threshold
-                distribution, poctivě. <em>Cross-app:</em> Companion
-                <strong>upsell-to-unlock</strong> doporučí produkt co překročí práh;
-                Toasts oznámí reached/lost; Stepper qty → recompute — Rewards je „cíl",
-                ostatní k němu navigují. <em>A11y/i18n/perf:</em> bar = <code>aria</code>
-                (valuenow), cs/sk/en + RTL, perf budget, reveal respektuje
-                reduced-motion. <em>GDPR:</em> segment/targeting = customer data →
-                webhooky + protected customer data access. <em>De-risk spike (build
-                fáze):</em> prototyp Discount Function se dvěma targety + <code>shopify
-                app function run</code> proti input.json (práh splněn / nesplněn / pod
-                prahem po odebrání) = ověří re-validation + combinesWith; deterministický
-                <code>pickMysteryGift</code> unit testy = druhá půlka.
-              </p>
-              <p class="guide-idea">
-                <strong>Admin UX (sdílený Won admin systém — mechanika, ne štítky):</strong>
-                nav <em>Overview → Rewards → Design → Targeting → Insights → Plan</em>
-                (tvar sdílený, jména vlastní). Studio shell jako u Toasts. <em>Per-screen:</em>
-                Overview onboarding (zapnout → app embed → <strong>Function status</strong>
-                „sleva aktivní u checkoutu ✓" — nový prvek, první Function appka) →
-                dashboard (redemption, AOV lift); cross-app awareness „Progress oznámení
-                přes Won Toasts" + „Companion umí doporučit produkt k dosažení prahu".
-                <strong>Rewards studio</strong> (segmenty = typy odměn Free-shipping /
-                Free-gift / Mystery / Tiered; panel = práh <strong>per-měna</strong> v
-                human units, gift picker z reálného skladu, <code>giftPool</code> pro
-                Mystery, label; sticky preview = <strong>progress bar + reward state</strong>
-                approaching/reached/reveal v <code>&lt;won-host&gt;</code>). Design (bar
-                look — barvy, uzly prahů, reveal styl + Placement cart/drawer/announcement/sticky
-                + presety). Targeting (never/runs Free/Pro). Insights (Pro — holdout AOV
-                lift + redemption rate + threshold distribution, honest). Plan (Free single
-                reward / Pro amber). <em>Rewards přidává do sdíleného systému dva nové
-                prvky</em> (použije i Tiers): <strong>Function/checkout status</strong> +
-                <strong>Stacking control</strong> (Won stacking policy). Sdílené patterny:
-                <code>ProFrame</code>, human-label mapy, settings search, Custom CSS escape
-                hatch, config history. Vizuální spec:
-                <a href="https://claude.ai/code/artifact/0a447e59-6373-4162-8d32-fad3e2a84c92">Won Admin System artifact</a>.
-              </p>
-              <ol>
-                <li>
-                  <strong>Architektura:</strong> cart-core
-                  (<code>cartState</code> + <strong>milestone machine</strong>,
-                  reuse) &rarr; <strong>reward engine</strong>
-                  (<code>packages/core/src/rewards/</code>, framework-free) &rarr;
-                  <strong>Discount Function</strong> (product discount: $0 na
-                  zvolený reálný skladový dárek / doprava zdarma) +
-                  <strong>storefront progress-bar &amp; reveal plocha</strong> ve
-                  sdíleném <code>&lt;won-host&gt;</code>. App
-                  <code>apps/won-rewards/</code> (klon <code>_template</code>,
-                  React Router + Polaris). Milestone machine reused &rarr; žádné
-                  dvojité oslavování s Toasts.
-                </li>
-                <li>
-                  <strong>Core moduly (unit testy červené první,
-                  <code>tsx --test</code>):</strong> čte
-                  <code>cartState</code> z <code>@won/core/cart</code> (eligible
-                  subtotal = součet <code>final_line_price</code> bez řádků s
-                  <code>_gift_progress</code>);
-                  <code>evaluateThresholds({eligibleSubtotalCents, tiers})</code>
-                  &rarr; <code>{reached[], next, remainingCents,
-                  progressPct(cap 100)}</code>, tier =
-                  <code>{id, kind:"shipping"|"gift"|"mystery", cents,
-                  giftPool[], label}</code>; feeduje sdílenou
-                  <strong>milestone machine</strong> (reuse z Toasts) &rarr;
-                  <code>just_reached</code>/<code>just_lost</code> per cart token;
-                  <code>reconcileGiftLines({cart, reached, optOut})</code> &rarr;
-                  diff operací (add/remove/qty) pro <code>/cart/change.js</code>;
-                  <code>pickMysteryGift(giftPool, cartToken)</code> &rarr;
-                  deterministický výběr PRÁVĚ JEDNOHO reálného skladového dárku
-                  (seed = token, ať reveal nekmitá mezi tabů/refreshy).
-                </li>
-                <li>
-                  <strong>Data model:</strong> Prisma
-                  <code>RewardsConfig { shop, enabled, thresholds(JSON),
-                  giftPool[], mysteryEnabled, plan }</code>. App-proxy
-                  <code>/apps/won-rewards/config</code> vrací resolved tiers +
-                  texty (marker <code>won-rewards-config-ok</code>, vzor
-                  won-quantity config route); tatáž konfigurace se zrcadlí do
-                  <strong>metafieldu</strong> pro Discount Function (Function
-                  nemá DB přístup).
-                </li>
-                <li>
-                  <strong>Admin UX (Polaris):</strong> <em>Přehled</em> (vypínač,
-                  kontrola app embedu, živý náhled bar/reveal ve stejném
-                  <code>&lt;won-host&gt;</code> jako storefront);
-                  <em>Prahy &amp; odměny</em> (žebřík tierů: částka + typ
-                  shipping/gift/mystery + dárek nebo <code>giftPool</code> pro
-                  Mystery + label, pořadí); <em>Mystery</em> (zapnout, pool
-                  skladových variant, reveal styl/animace); <em>Vzhled</em>
-                  (barvy, uzly prahů, texty lišty per-locale cs/sk/en).
-                </li>
-                <li>
-                  <strong>MVP žebřík (každý shippable, TDD):</strong>
-                  <code>MVP0</code> skeleton (klon, <code>RewardsConfig</code>,
-                  config proxy, Discount Function scaffold + app embed injektne
-                  <code>&lt;won-host&gt;</code> no-op) ·
-                  <code>MVP1</code> <strong>free-shipping progress bar</strong>
-                  (ShipGoal &mdash; read-only <code>cartState</code>/cart-total,
-                  BEZ Function, cold-start-safe &mdash; ship first) ·
-                  <code>MVP2</code> <strong>free-gift ladder</strong> (Discount
-                  Function: $0 na zvolený reálný skladový dárek; auto-add +
-                  možnost odmítnout přes <code>_gift_opt_out</code>; odečítá
-                  sklad) ·
-                  <code>MVP3</code> <strong>MYSTERY / reveal dárek</strong> (u
-                  prahu odemkne skrytý/náhodný reálný skladový dárek + reveal
-                  animace &mdash; diferenciátor) ·
-                  <code>MVP4</code> <strong>tiered / více prahů + conflict
-                  integrace s Toasts</strong> (sdílený milestone engine &rarr;
-                  jedno oznámení, <code>summarizeConcurrent</code>, žádný dvojitý
-                  toast) ·
-                  <code>MVP5</code> targeting, analytika &amp; billing
-                  (segmenty, plan gate, attributed revenue, Shopify Billing).
-                </li>
-                <li>
-                  <strong>Akceptační kritéria (výběr, E2E/unit):</strong>
-                  (1) košík překročí práh &rarr; bar přejde do
-                  <code>just_reached</code> <strong>JEDNOU</strong>, ne při každé
-                  změně; (2) dárek auto-přidán jako <strong>reálný řádek
-                  odečítající sklad</strong> s <code>_gift_progress</code> a cenou
-                  $0 (Function); (3) odmítnutí dárek odebere a nevrací se;
-                  (4) Mystery odhalí <strong>PRÁVĚ JEDEN</strong> reálný skladový
-                  dárek (deterministicky per token); (5) pokles pod práh &rarr;
-                  dárek odebrán + stav <code>just_lost</code>; (6) Toasts oznámí
-                  přes sdílený milestone &mdash; <strong>žádný dvojitý toast</strong>.
-                </li>
-                <li>
-                  <strong>Testy / E2E (Dawn i Horizon,
-                  <code>@won/testing</code>):</strong> sdílený harness
-                  <code>@won/testing/playwright</code> + katalog
-                  <code>@won/testing/e2e-products</code> (<code>spare</code> jako
-                  dárek/Mystery pool, <code>simpleA/B</code> na naplnění košíku k
-                  prahům); cílit na vlastní markery
-                  <code>data-won-rewards-status="ready"</code>,
-                  <code>[data-won-rewards-bar]</code>,
-                  <code>[data-won-mystery-reveal]</code>, ne na DOM tématu.
-                  Scénáře: pod práh „zbývá X&ldquo; &rarr; překroč &rarr; dárek v
-                  <code>/cart.js</code> s cenou 0 &rarr; odeber položky &rarr;
-                  dárek zmizí; Mystery reveal ukáže jeden produkt; současný práh
-                  s Toasts &rarr; jen jedno oznámení.
-                </li>
-                <li>
-                  <strong>Gate:</strong> <code>npm run test:unit -w won-rewards
-                  &amp;&amp; npm run typecheck -w won-rewards &amp;&amp; npm run
-                  build -w won-rewards &amp;&amp; npm run validate:shopify</code>
-                  (Function build je součást <code>build</code>).
-                </li>
-              </ol>
-            </details>
-          </article>
-
-          <article class="app-card">
-            <div class="card-head">
-              <span class="card-id">
-                <span class="app-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="8" width="10" height="7" rx="1" />
-                    <path d="M13 10h3.6l2.6 3v2H13z" />
-                    <circle cx="7" cy="16.6" r="1.5" />
-                    <circle cx="16.5" cy="16.6" r="1.5" />
-                  </svg>
-                </span>
-                <span class="app-code">WON·SHIP</span>
-              </span>
-              <span class="mvp-badge mvp-spec">Spec</span>
-              <span class="price">$1/mo</span>
-            </div>
-            <h3>Won ShipGoal</h3>
-            <p class="description">
-              „Do dopravy zdarma zbývá X“ živě v liště i v košíku. Komodita, ale
-              levné lepidlo do rewards suity.
+              Nejrobustnější slevová appka na Shopify. Ne 30 funkcí, ale pět
+              jasně oddělených modulů nad sdíleným enginem, které se navzájem
+              nepoperou. Všechny slevy obchodu jdou přes Won, takže engine ví,
+              co se v košíku i v pokladně uplatní.
             </p>
             <div class="tags">
               <span class="tag source">E+T · oba</span>
-              <span class="tag">coupling <strong>nízký</strong></span>
-              <span class="tag">extrakce <strong>S</strong></span>
-              <span class="tag">Theme App Ext</span>
-              <span class="tag platform">◐ Shopify má základ</span>
-            </div>
-            <footer class="card-footer">
-              <div class="potential">
-                <span
-                  class="meter"
-                  style="--score: 2"
-                  role="img"
-                  aria-label="Potenciál 2 z 5"
-                ></span>
-                <span class="potential-label">Potenciál</span>
-              </div>
-              <span class="state">Modul</span>
-            </footer>
-            <details class="app-guide">
-              <summary>Návod k implementaci</summary>
-              <p class="guide-idea">🔀 <strong>Konsolidováno do Won Rewards</strong> — viz karta <code>WON·GIFT</code>. ShipGoal = free-shipping progress bar (Rewards MVP1, cold-start-safe, bez Function). Karta zůstává jako reference k modulu.</p>
-              <p class="guide-idea">
-                ShipGoal se staví společně s Won GiftLadder nad jedním core
-                modulem <code>packages/core/src/rewards/thresholds.ts</code> —
-                shipping práh je tier typu <code>"shipping"</code> (bez
-                auto-add dárku, doprava zdarma zůstává nativní shipping rate;
-                appka jen živě ukazuje „zbývá X“ + plný bar). Kompletní
-                propojený návod je v kartě <strong>Won GiftLadder</strong>
-                výše.
-              </p>
-            </details>
-          </article>
-        </div>
-      </section>
-
-      <section class="suite" aria-labelledby="suite-pricing">
-        <header class="suite-heading">
-          <div class="suite-title">
-            <span class="suite-number">04</span>
-            <h2 id="suite-pricing">Pricing &amp; Margin</h2>
-          </div>
-          <p class="suite-summary">4 appky · Slevy a marže pod kontrolou.</p>
-        </header>
-
-        <div class="app-grid">
-          <article class="app-card">
-            <div class="card-head">
-              <span class="card-id">
-                <span class="app-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="4" y="13" width="3.6" height="5" rx="0.6" />
-                    <rect x="10.2" y="9.5" width="3.6" height="8.5" rx="0.6" />
-                    <rect x="16.4" y="6" width="3.6" height="12" rx="0.6" />
-                    <circle cx="18.2" cy="3.6" r="0.9" fill="currentColor" stroke="none" />
-                  </svg>
-                </span>
-                <span class="app-code">WON·TIER</span>
-              </span>
-              <span class="mvp-badge mvp-spec">Spec</span>
-              <span class="price">$3/mo</span>
-            </div>
-            <h3>Won Tiers</h3>
-            <p class="description">
-              Množstevní slevy s živými cenami napříč PDP, kartami, searchem i
-              košíkem. Zdroj pravdy = Discount Function.
-            </p>
-            <div class="tags">
-              <span class="tag source">T · Therabeast</span>
               <span class="tag">coupling <strong>vysoký</strong></span>
               <span class="tag">extrakce <strong>XL</strong></span>
-              <span class="tag">Shopify Functions · Theme App Ext</span>
-              <span class="tag platform">◐ Shopify má základ</span>
-            </div>
-            <footer class="card-footer">
-              <div class="potential">
-                <span
-                  class="meter"
-                  style="--score: 4"
-                  role="img"
-                  aria-label="Potenciál 4 z 5"
-                ></span>
-                <span class="potential-label">Potenciál</span>
-              </div>
-              <span class="state">Později</span>
-            </footer>
-            <details class="app-guide">
-              <summary>Návod k implementaci</summary>
-              <p class="guide-idea">
-                <strong>0 · Nápad (T·Therabeast):</strong> 3 globální množstevní
-                tiery (<code>tb_qty_tier_1..3_qty/_pct</code>, procenta nebo
-                fixní částka) se živě propisují do cen na PDP, kartách, searchi
-                i košíku + hláška „přidej ještě 1 ks…“
-                (<code>assets/tb-qty-price.js</code>, tiers přes
-                <code>window.tbQtyTiers</code>). POZOR na klíčovou lekci ze
-                zdroje: theme JS je jen vizuální vrstva — reálnou cenu musí
-                držet Discount Function, jinak sleva v checkoutu neexistuje.
-              </p>
-              <ol>
-                <li>
-                  <strong>Klon:</strong> rsync z <code>apps/_template/</code>
-                  (standardní vyloučení dle README), přejmenovat,
-                  <code>npm install</code>, <code>npm run config:link -w
-                  won-tiers</code>.
-                </li>
-                <li>
-                  <strong>Core modul:</strong>
-                  <code>packages/core/src/tiers/tier-pricing.ts</code> —
-                  <code>resolveTier({quantity, tiers})</code> (tier =
-                  <code>{minQty, type: "percentage"|"fixed", value}</code>) a
-                  <code>tierUnitPriceCents(baseCents, tier)</code>; volitelný
-                  režim „počítat množství přes celý košík vs. per produkt“.
-                  Lze opřít o existující <code>@won/core/discount</code>
-                  (discount.rules). + <code>node:test</code> na hranice tierů
-                  a zaokrouhlení.
-                </li>
-                <li>
-                  <strong>Plocha: Shopify Function (product discount) + Theme
-                  App Extension.</strong> Function = zdroj pravdy: podle
-                  množství řádku aplikuje tier slevu (config čte z metafieldu
-                  appky) a <strong>stampuje discount title/message v Won kontraktu</strong>
-                  (marker <code>won-tiers:</code> + lidský popis), aby ji storefront
-                  přečetl z <code>/cart.js</code> — takhle ji <strong>Won Toasts</strong>
-                  oslaví a <strong>Companion</strong> může nabídnout „přidej 1 ks →
-                  levnější tier" (viz napojení v Toasts kartě). TAE = zobrazení: app block s tabulkou tierů na PDP
-                  (<code>[data-won-tiers-table]</code>) + „ušetříš X“ u řádku
-                  košíku; živé přepisování cen v cizích kartách/searchi je
-                  theme-coupled — nechat jako volitelný „best effort“ modul,
-                  MVP bez něj.
-                </li>
-                <li>
-                  <strong>Data:</strong> Prisma <code>TierSet { shop, scope
-                  (all|product), productId?, tiers(JSON), countAcrossCart
-                  }</code>; zrcadlit do app metafieldu pro Function; app-proxy
-                  <code>/apps/won-tiers/config</code> pro storefront tabulku.
-                </li>
-                <li>
-                  <strong>Produkty pro testy:</strong> sdílený katalog —
-                  <code>simpleA</code> (globální tier),
-                  <code>twoVariants</code> (per-produkt pravidlo),
-                  <code>multiAxis</code> drž v rezervě pro variantní ceny.
-                </li>
-                <li>
-                  <strong>Admin UI:</strong> editor tierů (minQty + typ +
-                  hodnota, max ~5 řádků), přepínač počítání přes košík,
-                  volba produktového scope.
-                </li>
-                <li>
-                  <strong>E2E:</strong> sdílený Horizon/Dawn; marker
-                  <code>data-won-tiers-status="ready"</code>: PDP ukazuje
-                  tabulku → přidej 3 ks → v košíku je discount aplikovaná
-                  Function (kontrola přes <code>/cart.js</code>
-                  <code>line_level_discount_allocations</code>), ne jen text.
-                </li>
-                <li>
-                  <strong>Gate:</strong> <code>test:unit</code>,
-                  <code>typecheck</code>, <code>build</code> (<code>-w
-                  won-tiers</code>, zahrnuje build Function) + <code>npm run
-                  validate:shopify</code>.
-                </li>
-              </ol>
-            </details>
-          </article>
-
-          <article class="app-card build-now">
-            <div class="card-head">
-              <span class="card-id">
-                <span class="app-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 3.5l7 2.5v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z" />
-                    <path d="M8.6 12l2.4 2.4 4.4-4.9" />
-                  </svg>
-                </span>
-                <span class="app-code">WON·MRGN</span>
-              </span>
-              <span class="mvp-badge mvp-spec">Spec</span>
-              <span class="price">$2/mo</span>
-            </div>
-            <h3>Won MarginGuard</h3>
-            <p class="description">
-              Slevový hub s duší ochrany: všechny přímé slevy a kódy žijí tady,
-              protože jen tady drží tvoje výjimky (až na úroveň varianty) a
-              marže — sleva nikdy nespadne pod floor.
-            </p>
-            <div class="tags">
-              <span class="tag source">E · Enervit</span>
-              <span class="tag">coupling <strong>nízký</strong></span>
-              <span class="tag">extrakce <strong>M</strong></span>
-              <span class="tag">Shopify Functions (discount)</span>
+              <span class="tag">Shopify Functions (discount) · Theme App Ext · Admin</span>
+              <span class="tag platform">◆ Slevy a kódy</span>
+              <span class="tag platform">◆ Množstevní slevy</span>
+              <span class="tag platform">◆ Odměny za košík</span>
+              <span class="tag platform">◆ Výprodej (Pro)</span>
+              <span class="tag platform">◆ Ochrana marže</span>
+              <span class="tag platform">◆ Sdílený engine · Kampaně (Pro)</span>
             </div>
             <footer class="card-footer">
               <div class="potential">
@@ -2712,267 +2315,219 @@
               <span class="state now">Stavět hned</span>
             </footer>
             <details class="app-guide">
-              <summary>Návod k implementaci</summary>
+              <summary>Návod k implementaci (MVP 0–7)</summary>
               <p class="guide-idea">
-                <strong>0 · Nápad (E·Enervit):</strong> slevy se nesmí sčítat
-                s výprodejem, dárkovými kartami, sadami a dárky. V Enervitu to
-                kód neřeší — jsou to ručně udržované výjimky v admin slevách
-                (a theme jen skrývá gift-card/mystery produkty přes
-                <code>snippets/is-gift-card.liquid</code>). Přesně tahle ruční
-                operativa je nápad appky: vyloučení definovat jednou a vynutit
-                automaticky u každé slevy.
+                <strong>Stav (2026-09-28): Scaffold, MVP 0 rozpracované.</strong>
+                Kostra <code>apps/won-discounts</code> existuje. Nic není
+                nasazené ani ověřené na storu. Staví se autonomně podle
+                <a href="won-discounts/prompt-orchestrator.md"><code>docs/won-discounts/prompt-orchestrator.md</code></a>.
+                Zdroj pravdy:
+                <a href="won-discounts/rozhodnuti.md"><code>docs/won-discounts/rozhodnuti.md</code></a>
+                &gt; <code>mezery.md</code> &gt; prompt &gt; tahle karta. Spec
+                <a href="won-discounts-mvp-plan.md"><code>docs/won-discounts-mvp-plan.md</code></a>
+                a stav běhu
+                <a href="won-discounts-build-log.md"><code>docs/won-discounts-build-log.md</code></a>
+                vznikají v MVP 0.
               </p>
               <p class="guide-idea">
-                <strong>Brainstorm &amp; rozhodnutí (2026-08-10):</strong>
-                appka je záměrně <strong>široký slevový hub</strong>, ne malá
-                utilitka — protože exkluzi/floor jde <em>zaručit jen u slevy,
-                kterou MarginGuard sám aplikuje</em> (Functions se navzájem
-                nevidí; nativní „amount off order“ neumí vyloučit řádek;
-                <code>compare_at</code> sleva stále bere kódy). Proto
-                <strong>slevy žijí v MarginGuardu</strong> (plné pojetí A).
-                <strong>Vlastní ruleset</strong> (exkluze + floor) čtou i
-                sourozenci Tiers/Rewards/Outlet (self-exclude přes sdílený
-                <code>packages/core/src/margin/</code>; Outlet do něj píše tagy)
-                — jedna autorita, víc producentů slev.
-                <strong>Hranice hubu:</strong> jen přímé %/fixní slevy
-                (produkt/varianta/kolekce/order), automatické i kódové;
-                <em>free-shipping goal = Rewards, qty-tiery = Tiers, dárky =
-                Rewards</em>; <strong>BOGO až pozdější MVP</strong> (na start
-                ne). <strong>Variantní přesnost je wedge</strong> (1 z 8 variant
-                zlevněná → kód na ni neplatí, na sourozence ano — nativní
-                Shopify to neumí, Function ano, vidí řádek =
-                <code>ProductVariant</code>). Jméno <strong>zamčeno:
-                WonMarginGuard</strong> (ochrana + přesnost, ne generické „Won
-                Discounts“).
+                <strong>Sloučeno 2026-09-28:</strong> nahrazuje karty
+                <code>WON·TIER</code> (Won Tiers), <code>WON·GIFT</code> (Won
+                GiftLadder / Won Rewards), <code>WON·SHIP</code> (Won ShipGoal),
+                <code>WON·OUT</code> (Won Outlet) a <code>WON·MRGN</code> (Won
+                MarginGuard). Jedna appka, jeden listing. Původní návody jsou v
+                historii: <code>git show c7212ef:docs/product-roadmap.html</code>,
+                MarginGuard i ve specu
+                <code>docs/superpowers/specs/2026-08-10-won-marginguard-design.md</code>.
+                Kde se od <code>rozhodnuti.md</code> liší (Outlet jako kopie
+                produktu, validační funkce u dárku, Mystery v Rewards), neplatí.
               </p>
               <p class="guide-idea">
-                <strong>Floor (srdce appky):</strong> Function čte per-řádek
-                <code>cost.amountPerQuantity</code> (aktuální cena) +
-                <code>cost.compareAtAmountPerQuantity</code> (původní) a
-                <strong>clampuje vlastní slevu</strong> tak, aby cena nespadla
-                pod floor: <code>reálnáSleva = min(chtěná, cena − floor)</code>.
-                <code>FloorRule</code> nese <code>basis:
-                "sellingPrice" | "compareAt"</code> — <strong>default A =
-                sellingPrice</strong> (40 % z prodejní ceny), per-produkt toggle
-                na <code>compareAt</code> je Pro. <em>Cenový</em> floor = Free
-                core; <em>cost-based</em> marže (COGS přes Admin API →
-                metafield) = Pro. Reuse hotového jádra
-                <code>margin.guard.ts</code>/<code>floor.rules.ts</code>
-                (<code>validateMargin</code> už vrací
-                <code>BELOW_FLOOR</code>/<code>floorPrice</code>).
+                <strong>Pozicování:</strong> nejrobustnější slevová appka na
+                Shopify. Každý modul odpovídá na jednu otázku merchanta;
+                plánování, cílení a jazyky jsou vlastnosti pravidel, ne moduly.
+                Silný use case: Black Friday. Dva cíle UX: merchant
+                <strong>není svázaný</strong> našimi rozhodnutími (sporné chování
+                je volba v nastavení s fungující výchozí hodnotou) a
+                <strong>není přehlcený</strong> (první sleva do 3 minut, pokročilé
+                volby pod „Další možnosti“).
               </p>
               <p class="guide-idea">
-                <strong>Migrace (bezpečnostně-kritická, MVP3):</strong>
-                one-click přenos nativních Shopify slev do MarginGuardu jako
-                subsystém <code>Backup → Dry-run → Migrate → Report</code> +
-                <strong>Rollback</strong>: (1) plná lokální záloha nativních slev
-                PŘED čímkoli, (2) dry-run report (co se namapuje, co ne, co
-                domigrovat ručně a proč), (3) migrace supported tvarů +
-                deaktivace nativních (kód nutně smazat/vypnout kvůli unikátnosti
-                před vytvořením MarginGuard verze), (4) závěrečný report;
-                záloha dává rollback.
+                <strong>Moduly (v adminu vždy všech 5):</strong>
+                <strong>Slevy a kódy</strong> („X % nebo částka na produkt,
+                kolekci, objednávku, doprava zdarma, kódem nebo automaticky“) ·
+                <strong>Množstevní slevy</strong> („kup víc, zaplať míň“) ·
+                <strong>Odměny za košík</strong> („utrať X, dostaneš Y“: doprava
+                zdarma, dárek, žebřík prahů) · <strong>Výprodej (Pro)</strong>
+                („doprodat N kusů se slevou, pak zpět na plnou cenu“) ·
+                <strong>Ochrana marže</strong> („nikdy neprodat pod X“).
+                <strong>Sdílený engine</strong> pod nimi: kombinování, přednost,
+                vylučování, náhled „co se uplatní v tomhle košíku a proč“,
+                konzistence košík ↔ pokladna, kontrola, že sleva reálně platí v
+                checkoutu. <strong>Kampaně (Pro)</strong> nad nimi: časové okno +
+                sada pravidel napříč moduly, atomický start i konec, náhled,
+                kill switch; ochrana marže platí i v kampani.
+                <strong>Vynecháno:</strong> BOGO (pokryjí množstevní slevy),
+                bundly a cross-sell (Won Companion), odpočty a oznámení (Won
+                Toasts), B2B ceníky (b2b-companion), popupy, Mystery dárek
+                (odloženo).
               </p>
               <p class="guide-idea">
-                <strong>Free / Pro (Pro gatuje scope, ne kvalitu):</strong>
-                Free = exkluze všech druhů + <strong>price floor</strong> +
-                přímé slevy (auto i kód) + migrace/rollback + <strong>až 50
-                aktivních slev</strong>. Pro = cost-based floor, segment/B2B
-                floory, Insights („sleva capnutá floorem“, nejčastěji vyloučené
-                produkty), scheduling, pokročilý stacking, basis-B toggle,
-                custom badge.
+                <strong>Hlavní rozhodnutí:</strong>
+                <strong>(1) Dárek se nikdy neplatí a checkout se nikdy
+                neblokuje.</strong> Žádná validační funkce. V pokladně dárek
+                zůstane zdarma (práh se počítá z ceny před ostatními slevami); o
+                dárku se rozhoduje v košíku: pole pro kód v košíku + varování „s
+                tímhle kódem přijdeš o dárek“.
+                <strong>(2) Výprodej = kvóta na existující variantě</strong>,
+                žádná kopie produktu: <code>price</code> +
+                <code>compare_at_price</code>, prodané kusy z objednávek, storna a
+                vratky se vrací do kvóty, po vyčerpání nebo datu plná cena; umí i
+                pevné ceny v cenících trhů.
+                <strong>(3) Prahy a pevné částky per trh / měna</strong> (CZ
+                1000 Kč, SK 60 €), žádný přepočet kurzem; trh bez hodnoty odměnu
+                nenabízí a admin upozorní. Základ, ne Pro.
+                <strong>(4) Všechny slevy obchodu jdou přes Won
+                Discounts.</strong> Nativní slevy appka vždy detekuje a jedním
+                tlačítkem přesune (záloha → pravidlo ve Won → smazání nativní;
+                undo ze zálohy). Vše Free.
               </p>
               <p class="guide-idea">
-                <strong>MVP žebřík (Approach 1 — ochrana první, migrace jako
-                izolovaný milník; každý krok shippable, TDD):</strong>
-                <strong>MVP0</strong> skeleton (klon <code>_template</code>,
-                Prisma <code>ExclusionRule</code>+<code>FloorRule</code>,
-                Function scaffold no-op, config proxy + metafield mirror) ·
-                <strong>MVP1</strong> authoring + ochrana: 1 automatická %/fix
-                sleva authored v appce + exkluze
-                (kolekce/tag/typ/gift-card/produkt/varianta) + price floor
-                (basis A) → Function aplikuje, vyloučí, clampuje (reuse margin
-                core — <em>tady je duše, shippable</em>) ·
-                <strong>MVP2</strong> kódové slevy
-                (<code>enteredDiscountCodes</code>) + stacking/combination
-                control · <strong>MVP3</strong> MIGRACE
-                (backup/dry-run/migrate/report/rollback jako samostatný bezpečný
-                subsystém) · <strong>MVP4</strong> sdílená autorita — ruleset
-                čtou Tiers/Rewards/Outlet (self-exclude), Outlet píše tagy ·
-                <strong>MVP5</strong> Pro: cost-based floor (COGS), segment/B2B
-                floory, Insights, scheduling, basis-B toggle, billing.
+                <strong>Technické mantinely (shopify.dev, 2026-09-28):</strong>
+                discount funkce běží souběžně a o sobě nevědí, max. 25 aktivních
+                na store → pravidla se konsolidují do pár uzlů nad jedním
+                configem; funkce nedostane metafield nad 10 000 bajtů; vlastní UI
+                v pokladně jen pro Plus → v pokladně nic vlastního. Rizika C1–C6
+                ověří prototypy v MVP 0.
               </p>
-              <ol>
-                <li>
-                  <strong>Klon:</strong> rsync z <code>apps/_template/</code>
-                  (standardní vyloučení dle README), přejmenovat,
-                  <code>npm install</code>, <code>npm run config:link -w
-                  won-marginguard</code>.
-                </li>
-                <li>
-                  <strong>Core modul: REUSE.</strong> Jádro už existuje —
-                  <code>packages/core/src/margin/</code>
-                  (<code>margin.guard.ts</code>, <code>floor.rules.ts</code>) a
-                  <code>packages/core/src/discount/</code>
-                  (<code>discount.rules.ts</code>,
-                  <code>conflict.detector.ts</code>) z b2b-companion. Doplň jen
-                  <code>exclusion.rules.ts</code>:
-                  <code>isExcluded({product, rules})</code> — pravidla typu
-                  kolekce/tag/typ/gift-card/template — + <code>node:test</code>.
-                </li>
-                <li>
-                  <strong>Plocha: Shopify Function (discount).</strong>
-                  Order/product discount Function čte pravidla z app
-                  metafieldu a vyloučeným řádkům slevu nepřidělí (resp. přes
-                  discount kombinace zablokuje stack). Žádné storefront UI —
-                  volitelně jen badge „výprodejová cena je konečná“ jako mini
-                  app block.
-                </li>
-                <li>
-                  <strong>Data:</strong> Prisma <code>ExclusionRule { shop,
-                  kind (collection|tag|productType|giftCard|product|variant),
-                  value, enabled }</code> + <code>FloorRule</code> (viz
-                  brainstorm níže); zrcadlit do metafieldu pro
-                  Function; žádná app-proxy route není potřeba (bez
-                  storefront JS).
-                </li>
-                <li>
-                  <strong>Produkty pro testy:</strong> sdílený katalog —
-                  <code>simpleB</code> označit pravidlem (např. tag
-                  <code>won-e2e-outlet</code> přidá seed appky — tag je vratná
-                  metadata úprava, produkt samotný se nemění),
-                  <code>simpleA</code> jako slevitelný kontrolní vzorek.
-                </li>
-                <li>
-                  <strong>Admin UI:</strong> seznam vyloučení (picker
-                  kolekce/tag/typ + přepínač gift cards), náhled kolik
-                  produktů pravidlo pokrývá.
-                </li>
-                <li>
-                  <strong>E2E:</strong> checkout-level chování je mimo
-                  storefront harness — těžiště je v unit testech Function
-                  (vstup/výstup JSON) + integrační test přes
-                  <code>discountAutomaticAppCreate</code> a cart s
-                  <code>simpleA</code>+<code>simpleB</code>: sleva se aplikuje
-                  jen na <code>simpleA</code> (ověřit
-                  <code>/cart.js</code> discount allocations na sdíleném
-                  Horizon/Dawn).
-                </li>
-                <li>
-                  <strong>Gate:</strong> <code>test:unit</code>,
-                  <code>typecheck</code>, <code>build</code> (<code>-w
-                  won-marginguard</code>, vč. Function) + <code>npm run
-                  validate:shopify</code>.
-                </li>
-              </ol>
-            </details>
-          </article>
-
-          <article class="app-card">
-            <div class="card-head">
-              <span class="card-id">
-                <span class="app-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11.5 4h-6a1.5 1.5 0 0 0-1.5 1.5v6a2 2 0 0 0 .6 1.4l6.5 6.5a2 2 0 0 0 2.8 0l5.6-5.6a2 2 0 0 0 0-2.8L12.9 4.6A2 2 0 0 0 11.5 4z" />
-                    <circle cx="7.6" cy="7.6" r="1.3" fill="currentColor" stroke="none" />
-                    <path d="M11 10v3.6" />
-                    <path d="M9.4 12.2l1.6 1.8 1.6-1.8" />
-                  </svg>
-                </span>
-                <span class="app-code">WON·OUT</span>
-              </span>
-              <span class="mvp-badge mvp-spec">Spec</span>
-              <span class="price">$2/mo</span>
-            </div>
-            <h3>Won Outlet</h3>
-            <p class="description">
-              Průvodce výprodejem: kopie produktu s novými cenami,
-              auto-vyloučení ze slev, po doprodání smaže a založí 301 redirect.
-            </p>
-            <div class="tags">
-              <span class="tag source">E · Enervit</span>
-              <span class="tag">coupling <strong>střední</strong></span>
-              <span class="tag">extrakce <strong>M</strong></span>
-              <span class="tag">Admin API app</span>
-            </div>
-            <footer class="card-footer">
-              <div class="potential">
-                <span
-                  class="meter"
-                  style="--score: 3"
-                  role="img"
-                  aria-label="Potenciál 3 z 5"
-                ></span>
-                <span class="potential-label">Potenciál</span>
+              <p class="guide-idea">
+                <strong>Free / Pro v kostce.</strong> Free omezuje rozsah, ne
+                kvalitu: konzistence košík ↔ pokladna, ochrana marže a a11y jsou
+                ve Free plné. <strong>Pro $29 / měsíc flat</strong>, USD, bez
+                limitu objednávek, 14denní trial.
+              </p>
+              <div class="guide-scroll">
+                <table class="guide-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Modul</th>
+                      <th scope="col">Free</th>
+                      <th scope="col">Pro</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">Slevy a kódy</th>
+                      <td>všechny typy, neomezeně</td>
+                      <td>+ cílení segment / trh</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Množstevní slevy</th>
+                      <td>1 globální sada úrovní</td>
+                      <td>sady per produkt / kolekce, počítání přes košík</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Odměny</th>
+                      <td>doprava zdarma + 1 dárkový práh, práh per trh / měna</td>
+                      <td>žebřík prahů, výběr ze 3 dárků</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Výprodej</th>
+                      <td>—</td>
+                      <td>celý modul</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Ochrana marže</th>
+                      <td>globální minimum</td>
+                      <td>per kolekce + přehled zásahů</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Engine</th>
+                      <td>kombinace po kategoriích, náhled, kód v košíku</td>
+                      <td>+ kombinace per sleva</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Kampaně</th>
+                      <td>—</td>
+                      <td>✓</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Přehledy</th>
+                      <td>základní čísla</td>
+                      <td>kolik slevy stály vs. kolik přinesly</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <span class="state">Admin</span>
-            </footer>
-            <details class="app-guide">
-              <summary>Návod k implementaci</summary>
-              <p class="guide-idea">
-                <strong>0 · Nápad (E·Enervit):</strong> celý outletový proces
-                je v Enervitu ruční admin operativa (theme má jen hub stránku
-                s odkazy na <code>/collections/outlet</code> a
-                <code>/collections/sety</code>) — appka ji automatizuje:
-                duplikát produktu s novou cenou do outlet kolekce,
-                auto-vyloučení ze slev, hlídání skladu a po doprodání
-                smazání + 301 redirect na původní produkt.
-              </p>
               <ol>
                 <li>
-                  <strong>Klon:</strong> rsync z <code>apps/_template/</code>
-                  (standardní vyloučení), přejmenovat, <code>npm install</code>,
-                  <code>npm run config:link -w won-outlet</code>.
+                  <strong>MVP 0 · rozpracované:</strong> scaffold, config v0,
+                  prázdná Discount Function + theme app extension s embedem;
+                  spec, build log, sloučení roadmapy; prototypy rizik C1–C5 na
+                  dev storu. <em>Exit:</em> každé riziko má v build logu verdikt
+                  „platí / fallback“ s důkazem, spec je upravený podle verdiktů.
                 </li>
                 <li>
-                  <strong>Core modul:</strong>
-                  <code>packages/core/src/outlet/outlet-lifecycle.ts</code> —
-                  čistý stavový automat <code>nextAction({state, inventory,
-                  config})</code>: <code>draft → published → soldOut →
-                  redirected</code>; plus <code>outletPriceCents(baseCents,
-                  discountPct, rounding)</code>. Reuse
-                  <code>@won/core/catalog</code> (resolver/ruleset) pro výběr
-                  produktů. + <code>node:test</code> na přechody (nikdy smazat
-                  produkt s objednávkou v letu, redirect až po delete).
+                  <strong>MVP 1 · plánované:</strong> engine
+                  (<code>@won/core/discounts</code>: plán slev pro košík,
+                  kombinování, vysvětlení) + <strong>Slevy a kódy</strong> +
+                  detekce nativních slev + jednoklikový přesun + Vyzkoušet košík
+                  + Přehled v1 + onboarding kroky 1–3. <em>Exit:</em> kód i
+                  automatická sleva platí v pokladně (E2E přes Bogus); přesun a
+                  undo fungují na dev storu.
                 </li>
                 <li>
-                  <strong>Plocha: Admin API app</strong> (žádné storefront UI,
-                  žádná Function — vyloučení ze slev zajistí tag, který čte
-                  Won MarginGuard). Mutace: <code>productDuplicate</code> →
-                  úprava cen (<code>productVariantsBulkUpdate</code>) + tag
-                  <code>won-outlet</code> + zařazení do outlet kolekce;
-                  webhook <code>inventory_levels/update</code> hlídá doprodání;
-                  pak <code>productDelete</code> +
-                  <code>urlRedirectCreate</code> (301 na původní handle).
+                  <strong>MVP 2 · plánované:</strong> <strong>Ochrana
+                  marže</strong> (globální minimum Free; per kolekce + přehled
+                  zásahů Pro; produkty bez <code>unitCost</code> → max. sleva %).
+                  <em>Exit:</em> žádná kombinace slev v E2E nepodleze minimum;
+                  sleva se sníží na hranici, nikdy neblokuje.
                 </li>
                 <li>
-                  <strong>Data:</strong> Prisma <code>OutletRun { shop,
-                  sourceProductId, outletProductId, discountPct, state,
-                  redirectId?, createdAt }</code> — auditní stopa každého
-                  kroku; bez app-proxy.
+                  <strong>MVP 3 · plánované:</strong> <strong>Množstevní
+                  slevy</strong> + PDP blok (tabulka + živá cena) + základ
+                  storefrontu (embed, předpřipravené vzhledy bloků).
+                  <em>Exit:</em> Horizon i Dawn, 3 ks v košíku → sleva v
+                  <code>/cart.js</code> i v pokladně.
                 </li>
                 <li>
-                  <strong>Produkty pro testy:</strong> sdílený katalog je
-                  read-only — outlet DUPLIKÁTY tvoří appka sama a po testu je
-                  uklidí (delete je součást testovaného lifecyclu);
-                  zdroj = <code>spare</code>, aby se nesahalo na produkty
-                  používané jinými appkami.
+                  <strong>MVP 4 · plánované:</strong> <strong>Odměny</strong>
+                  (doprava zdarma, dárek jako reálný skladový produkt, žebřík
+                  prahů Pro, prahy per trh) + košík: progress bar, dárek s
+                  „Odmítnout“, pole pro kód s varováním o dárku, „Ušetříš X“,
+                  tip „přidej 1 ks“. <em>Exit:</em> dárek v pokladně vždy $0; kód
+                  pod práh → varování + volba; CZ i SK práh.
                 </li>
                 <li>
-                  <strong>Admin UI:</strong> průvodce: vyber produkty → sleva %
-                  → náhled cen → spustit; tabulka běžících outletů se stavem a
-                  tlačítkem „ukončit teď“ (smaže + založí redirect ručně).
+                  <strong>MVP 5 · plánované:</strong> <strong>Výprodej
+                  (Pro)</strong>: kvóta, per trh + ceníky, 4 úrovně zobrazení,
+                  storna a vratky, znovuotevření podle nastavení, historie kroků.
+                  <em>Exit:</em> objednávky do vyčerpání kvóty → cena se vrátí;
+                  storno vrátí kus; ceník trhu se upraví a vrátí.
                 </li>
                 <li>
-                  <strong>E2E:</strong> tady výjimečně ne storefront harness,
-                  ale integrační test admin flow: vytvoř outlet z
-                  <code>spare</code> → ověř cenu/tag/kolekci → simuluj
-                  doprodání (inventory na 0) → ověř delete + redirect
-                  (<code>urlRedirects</code> query) → cleanup.
+                  <strong>MVP 6 · plánované:</strong> <strong>Kampaně
+                  (Pro)</strong>: okno + sada pravidel napříč moduly, atomický
+                  start i konec, náhled košíku v čase kampaně, kill switch, zákaz
+                  překryvu. <em>Exit:</em> kampaň začne a skončí, po konci je stav
+                  jako předtím.
                 </li>
                 <li>
-                  <strong>Gate:</strong> <code>test:unit</code>,
-                  <code>typecheck</code>, <code>build</code> (<code>-w
-                  won-outlet</code>) + <code>npm run validate:shopify</code>.
+                  <strong>MVP 7 · plánované:</strong> onboarding do 3 minut,
+                  Přehled, Vzhled (Pro vlastní vzhled + návod pro AI), analytika
+                  Free/Pro, billing + downgrade, „Připravit na odinstalaci“, BETA
+                  ceny na kartách, support/chatbot docs, <code>Dockerfile</code> +
+                  <code>fly.toml</code>, BFS kontrola. <em>Exit:</em> celá brána +
+                  E2E obě témata zelené, badge <code>Shipped</code>, nic
+                  nasazené.
+                </li>
+                <li>
+                  <strong>Brána každého MVP:</strong> <code>npm run
+                  test:packages</code> · <code>test:unit</code> ·
+                  <code>typecheck</code> · <code>lint</code> ·
+                  <code>build</code> (<code>-w won-discounts</code>, vč. funkcí) ·
+                  <code>npm run validate:shopify</code> · <code>npm run
+                  guard:test:core</code> (b2b-companion nesmí zčervenat) + živé
+                  E2E Horizon + Dawn bez <code>--bail</code>.
                 </li>
               </ol>
             </details>
@@ -3018,7 +2573,7 @@
             </footer>
             <details class="app-guide">
               <summary>Návod k implementaci</summary>
-              <p class="guide-idea">🔀 <strong>Konsolidováno do Won Rewards</strong> — viz karta <code>WON·GIFT</code>. Mystery = reveal-gift mechanika (Rewards MVP3, hlavní wedge kategorie). Karta zůstává jako reference k modulu.</p>
+              <p class="guide-idea">🔀 <strong>Odloženo.</strong> Won Rewards (dříve karta <code>WON·GIFT</code>, Mystery tam byla MVP3) se 2026-09-28 sloučil do <strong>Won Discounts</strong> (karta <code>WON·DISC</code>) a Mystery dárek tam je vědomě <strong>odložený</strong> (<code>docs/won-discounts/rozhodnuti.md</code> → Vynecháno). Karta zůstává jako reference.</p>
               <p class="guide-idea">
                 <strong>0 · Nápad (E·Enervit):</strong> dárek k objednávce nad
                 práh jako reálný skladový line-item s neutrálním názvem
@@ -3040,7 +2595,7 @@
                   jednoprahá specializace GiftLadderu — použij
                   <code>packages/core/src/rewards/thresholds.ts</code>
                   (<code>evaluateThresholds</code> +
-                  <code>reconcileGiftLines</code>, viz guide Won GiftLadder);
+                  <code>reconcileGiftLines</code>, původně z guide Won GiftLadder, dnes modul Odměny ve Won Discounts);
                   doplň jen <code>node:test</code> scénář „jeden tier, skrytý
                   název“.
                 </li>
@@ -3092,7 +2647,7 @@
       <section class="suite" aria-labelledby="suite-merchandising">
         <header class="suite-heading">
           <div class="suite-title">
-            <span class="suite-number">05</span>
+            <span class="suite-number">04</span>
             <h2 id="suite-merchandising">Merchandising &amp; Content</h2>
           </div>
           <p class="suite-summary">
@@ -3716,7 +3271,7 @@
       <section class="suite" aria-labelledby="suite-discovery">
         <header class="suite-heading">
           <div class="suite-title">
-            <span class="suite-number">06</span>
+            <span class="suite-number">05</span>
             <h2 id="suite-discovery">Discovery</h2>
           </div>
           <p class="suite-summary">2 appky · Než zákazník najde, co hledá.</p>
@@ -3943,7 +3498,7 @@
       <section class="suite" aria-labelledby="suite-data">
         <header class="suite-heading">
           <div class="suite-title">
-            <span class="suite-number">07</span>
+            <span class="suite-number">06</span>
             <h2 id="suite-data">Data &amp; Schema Ops</h2>
           </div>
           <p class="suite-summary">
@@ -4092,7 +3647,7 @@
 
       <footer class="catalog-footer">
         <span>WonApps · živá produktová roadmapa</span>
-        <span>7 suit · 18 appek · 5 doporučené stavět hned</span>
+        <span>6 suit · 14 appek · 5 doporučené stavět hned</span>
       </footer>
     </main>
   </body>

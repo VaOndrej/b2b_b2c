@@ -14,6 +14,8 @@ a pro prompt orchestrátora. Související: [`mezery.md`](mezery.md), [`prompt-o
   a jazyky jsou vlastnosti pravidel, ne moduly.
 - **Všechny slevy obchodu jdou přes Won Discounts.** Jen tak engine zná všechno, co se v košíku
   a v pokladně uplatní.
+  Platí i pro slevové upsely Won Companion: jdou jako pravidla ve Won Discounts, Companion
+  vlastní slevovou funkci nemá (Ondřej, 2026-09-28).
 - **Nastavitelnost:** chování v hraničních situacích (dárek vs. kód, znovuotevření výprodeje…)
   si volí merchant v nastavení. Appka mu jasně vysvětlí, co volba udělá.
 - **Silný use case:** Black Friday a podobné kampaně.
