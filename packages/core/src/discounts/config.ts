@@ -296,6 +296,15 @@ export const CONFIG_LIMITS = Object.freeze({
    * small (audit P2-1, re-review of fix round 1).
    */
   storedConfigBytes: 256 * 1024,
+  /**
+   * The issues list itself must stay bounded (audit P3-10 followup): an input with
+   * tens of thousands of invalid entries (e.g. 30 000 markets each missing a
+   * handle) would otherwise push one ConfigIssue per bad entry, growing the
+   * response without limit even though sanitization itself is already capped.
+   * sanitizeConfig keeps only the first `maxIssues` and adds one summary issue for
+   * the rest.
+   */
+  maxIssues: 100,
 });
 
 // --- Defaults ------------------------------------------------------------------------
@@ -454,7 +463,12 @@ function sanitizeEnum<T extends string>(
   return fallback;
 }
 
-/** Clamps to 0-100; reports an issue only for a supplied-but-invalid/out-of-range value. */
+/**
+ * Clamps to 0-100. Only a finite `number` is accepted (same policy as
+ * sanitizeMoneyByCurrency, audit P3-10): a string like "50", a boolean or null is
+ * never coerced, it is reported as invalid and the default is used. Reports an
+ * issue only for a supplied-but-invalid/out-of-range value.
+ */
 function sanitizePercent(
   v: unknown,
   fallback: number,
@@ -462,8 +476,7 @@ function sanitizePercent(
   issues: ConfigIssue[],
 ): number {
   if (v === undefined) return fallback;
-  const n = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n)) {
+  if (typeof v !== "number" || !Number.isFinite(v)) {
     pushIssue(
       issues,
       path,
@@ -472,6 +485,7 @@ function sanitizePercent(
     );
     return fallback;
   }
+  const n = v;
   if (n < 0 || n > 100) {
     const clamped = Math.min(100, Math.max(0, n));
     pushIssue(
@@ -1653,7 +1667,23 @@ export function sanitizeConfig(input: unknown): { config: WonDiscountsConfig; is
     onboarding: sanitizeOnboarding(rec.onboarding, issues),
   };
 
-  return { config, issues };
+  return { config, issues: capIssues(issues) };
+}
+
+/**
+ * Caps the issues list at CONFIG_LIMITS.maxIssues, replacing anything past that
+ * with one summary issue — the list itself is not something a hostile or buggy
+ * admin request should be able to blow up (audit P3-10 followup).
+ */
+function capIssues(issues: ConfigIssue[]): ConfigIssue[] {
+  if (issues.length <= CONFIG_LIMITS.maxIssues) return issues;
+  const kept = issues.slice(0, CONFIG_LIMITS.maxIssues);
+  kept.push({
+    path: "",
+    code: "issues_truncated",
+    message: `${issues.length - CONFIG_LIMITS.maxIssues} more problem(s) were found but are not listed here.`,
+  });
+  return kept;
 }
 
 /**

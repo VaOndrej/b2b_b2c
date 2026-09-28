@@ -3,7 +3,11 @@ import path from "node:path";
 
 import type { Page, TestInfo } from "@playwright/test";
 import { WON_E2E_PRODUCTS } from "@won/testing/e2e-products";
-import { createStorefrontTest, expect } from "@won/testing/playwright";
+import {
+  assertResponsiveSane,
+  createStorefrontTest,
+  expect,
+} from "@won/testing/playwright";
 
 // SPEC-DRIVEN (MVP 0, Task 6). Live proof that the Won Discounts app embed —
 // switched on through the e2e/settings_data.*.json overlay, never by hand —
@@ -76,10 +80,6 @@ async function openReadyPdp(page: Page) {
   return embed;
 }
 
-// Same thresholds as tests/support/responsive-invariants.ts.
-const TAP_MIN = 44;
-const OVERFLOW_TOL = 1;
-
 /**
  * Mobile sanity scoped to what this app owns. The repo-wide
  * `assertResponsiveSane` also enforces 44px tap targets on EVERY control of
@@ -88,52 +88,11 @@ const OVERFLOW_TOL = 1;
  * Horizon `button.email-signup__button` / `button.policy-list-trigger`, Dawn
  * `button.disclosure__button` / `summary.share-button__button` — observed
  * 2026-09-28). So: the PAGE must not scroll horizontally (theme + our embed
- * together), and the size/tap-target laws apply to our embed subtree only.
+ * together — `assertResponsiveSane`'s page-level check is never scoped away),
+ * and the size/tap-target laws apply to our embed subtree only, via `root`.
  */
 async function assertEmbedResponsiveSane(page: Page) {
-  const result = await page.evaluate(
-    ({ tapMin, tol }) => {
-      const doc = document.documentElement;
-      const viewport = doc.clientWidth;
-      const root = document.querySelector("[data-won-discounts-embed]");
-      const nodes = root
-        ? [root, ...root.querySelectorAll<HTMLElement>("*")]
-        : [];
-      const rendered = nodes.filter((el) => el.getClientRects().length > 0);
-      const label = (el: Element) =>
-        `${el.tagName.toLowerCase()}.${String(el.className || "").split(" ")[0]}`;
-      return {
-        scrollWidth: doc.scrollWidth,
-        viewport,
-        wide: rendered
-          .filter((el) => el.getBoundingClientRect().width > viewport + tol)
-          .map(label),
-        smallControls: rendered
-          .filter((el) =>
-            el.matches(
-              'button, [role="button"], a[href], input:not([type="hidden"]), select, summary',
-            ),
-          )
-          .filter((el) => {
-            const box = el.getBoundingClientRect();
-            return box.width < tapMin || box.height < tapMin;
-          })
-          .map(label),
-      };
-    },
-    { tapMin: TAP_MIN, tol: OVERFLOW_TOL },
-  );
-  expect(
-    result.scrollWidth,
-    `page scrolls horizontally: scrollWidth ${result.scrollWidth} > viewport ${result.viewport}`,
-  ).toBeLessThanOrEqual(result.viewport + OVERFLOW_TOL);
-  expect(result.wide, "won-discounts elements wider than the viewport").toEqual(
-    [],
-  );
-  expect(
-    result.smallControls,
-    `won-discounts controls below ${TAP_MIN}px`,
-  ).toEqual([]);
+  await assertResponsiveSane(page, { root: "#won-discounts-root" });
 }
 
 async function saveScreenshot(page: Page, testInfo: TestInfo, width: number) {

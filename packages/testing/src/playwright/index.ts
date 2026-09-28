@@ -16,3 +16,9 @@ export {
   test,
   type StorefrontTestOptions,
 } from "./test-base.ts";
+export {
+  assertResponsiveSane,
+  assertHeadingBodyAlignment,
+  assertCarousel,
+  type AssertResponsiveSaneOptions,
+} from "./responsive-invariants.ts";

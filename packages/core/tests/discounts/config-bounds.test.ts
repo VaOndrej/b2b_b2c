@@ -411,3 +411,27 @@ test("encodeFunctionConfigWorstCase measures the largest state over time (every 
   // No live campaign: the worst case is the no-campaign state.
   assert.equal(encodeFunctionConfigWorstCase(sanitizeConfig({}).config).campaignId, null);
 });
+
+// --- issues list is bounded too (audit P3-10 followup) -------------------------------------
+// 30 000 markets each missing a handle used to push 30 000 separate ConfigIssues (the
+// too_many_markets cap only limits how many markets are KEPT, not how many bad ones are
+// reported). sanitizeConfig must cap the issues list itself.
+
+test("30 000 bad markets no longer produce 30 000 issues", () => {
+  const markets = Array.from({ length: 30_000 }, () => ({ currency: "EUR", enabled: true })); // no handle
+  const { config, issues } = sanitizeConfig({ markets });
+  assert.equal(config.markets.length, 0);
+  assert.equal(issues.length, CONFIG_LIMITS.maxIssues + 1, "capped list plus one summary issue");
+  assert.ok(hasIssue(issues, "missing_handle"), "the kept issues are still real ones");
+  const summary = issues[issues.length - 1];
+  assert.equal(summary.code, "issues_truncated");
+  assert.match(summary.message, /29900 more/);
+  assert.ok(storedBytes(issues) < 32 * 1024, `issues JSON stayed ${storedBytes(issues)} B`);
+});
+
+test("issues under the cap are returned unchanged, with no summary issue", () => {
+  const markets = Array.from({ length: 5 }, () => ({ currency: "EUR", enabled: true }));
+  const { issues } = sanitizeConfig({ markets });
+  assert.equal(issues.length, 5);
+  assert.ok(!hasIssue(issues, "issues_truncated"));
+});

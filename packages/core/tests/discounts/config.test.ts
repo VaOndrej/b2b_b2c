@@ -7,6 +7,7 @@ import {
   readStoredConfig,
   sanitizeConfig,
   SCHEMA_VERSION,
+  type DiscountRuleValue,
 } from "../../src/discounts/config.ts";
 
 test("sanitizeConfig(null) returns the default config", () => {
@@ -45,6 +46,30 @@ test("margin.global.maxDiscountPercent clamps 150 to 100, with an issue", () => 
     issues.some((i) => i.path === "modules.margin.global.maxDiscountPercent"),
     "expected an issue for the out-of-range percent",
   );
+});
+
+// audit P3-10: percent fields must not coerce a string/boolean/null via Number() —
+// same policy as sanitizeMoneyByCurrency (only a finite `number` is accepted).
+test("margin.global.maxDiscountPercent rejects a numeric string instead of coercing it", () => {
+  const { config, issues } = sanitizeConfig({
+    modules: { margin: { global: { maxDiscountPercent: "50" } } },
+  });
+  assert.equal(config.modules.margin.global.maxDiscountPercent, DEFAULT_CONFIG.modules.margin.global.maxDiscountPercent);
+  assert.ok(issues.some((i) => i.path === "modules.margin.global.maxDiscountPercent" && i.code === "invalid_percent"));
+});
+
+test("a rule's percentage value rejects true/null instead of coercing them", () => {
+  const base = { id: "r1", enabled: true, name: "R", method: "automatic", target: { kind: "order" } };
+  for (const bad of [true, null, "10", [10], {}]) {
+    const { config, issues } = sanitizeConfig({
+      modules: { codes: { rules: [{ ...base, value: { kind: "percentage", percent: bad } }] } },
+    });
+    assert.deepEqual(config.modules.codes.rules[0].value, ({ kind: "percentage", percent: 0 } satisfies DiscountRuleValue));
+    assert.ok(
+      issues.some((i) => i.path === "modules.codes.rules[0].value.percent" && i.code === "invalid_percent"),
+      `expected invalid_percent for ${JSON.stringify(bad)}`,
+    );
+  }
 });
 
 test("readStoredConfig never throws and always returns a valid config", () => {

@@ -168,9 +168,20 @@ interface WonDiscountsConfig {
 - **Jediný sanitizer** `sanitizeConfig(input) → {config, issues[]}` v core (DATA-2): clamp,
   enumy, defaulty, odstranění osiřelých referencí, `issues` pro admin (lidsky, §4c).
 - **Tolerant reader + migrace** `migrateConfig` (DATA-3); fixture každé verze v testech.
-- **Rozpočet velikosti (C3):** `encodeFunctionConfig(config) → {nodeConfig, productData}`;
-  contract test spadne, když `nodeConfig` > **9 000 B** (rezerva 10 %). Admin nedovolí uložit
-  config, který by se nevešel (§13: řekne proč a co s tím).
+- **Rozpočet velikosti (C3):** do funkce jde jen podmnožina configu (bez textů, vzhledu,
+  onboardingu, trhů); **9 000 B** (rezerva 10 % pod ověřenou hranicí 10 000 B) se kontroluje
+  pro nejhorší případ (bez kampaně i s každou kampaní živou). Admin nedovolí uložit config,
+  který by se nevešel (§13: řekne proč a co s tím).
+- **Stropy uloženého configu (audit MVP 0):** každé pole a řetězec má strop (`CONFIG_LIMITS`),
+  celý uložený config max. **256 KiB** (`config_too_large`). Id max. 64 znaků `[A-Za-z0-9_-]`;
+  neplatné id se deterministicky nahradí a reference přemapují. Onboarding cíle jen ze známého
+  výčtu. Číselná pole berou jen `number` (žádná koerce řetězců). Vrácené `issues` jsou omezené
+  (prvních 100 + souhrn).
+- **Novější verze schématu** (rolling deploy) se jen čte, uložení ji nepřepíše (`newer_schema`).
+- **Historie verzí** 90 dní; úklid pro všechny shopy (`pruneExpiredConfigHistory`) se napojí
+  na scheduler v MVP 5 (dnes jen při uložení).
+- **Data shopu** se mažou v `shop/redact` (~48 h po odinstalaci), ne v `app/uninstalled`
+  (zpožděný webhook po reinstalaci by smazal nový config a zálohy nativních slev, A7).
 - **Žádné magic numbers** v engine/storefrontu: všechno je pole s defaultem.
 
 ---
