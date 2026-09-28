@@ -371,6 +371,29 @@ test("Minor 9: two app instances (no shared process lock) move the same native o
   assert.equal(all.length, 1);
   const loser = [a, b].find((r) => !r.ok || r.alreadyMoved);
   assert.ok(loser, "the second one saw the first");
+  // Deterministic since the DB claim guard (partial unique index, fix round 1 of T5b):
+  // exactly one instance moved it; the other was told it is in progress (or already moved).
+  assert.equal([a, b].filter((r) => r.ok && !r.alreadyMoved).length, 1);
+  assert.ok(!loser.ok ? loser.code === "in_progress" && loser.state === "in_progress" : loser.alreadyMoved, JSON.stringify(loser));
+});
+
+test("Minor 9 (DB guard): the losing instance's claim is refused by the database, never a second backup row", async () => {
+  const { shop, shopify, common } = setup();
+  const nativeId = shopify.add(basicNode({ method: "automatic", title: "Pojistka" }));
+  // Instance A holds a live claim (its row was created a moment ago in another process).
+  const held = await db.prisma.nativeDiscountBackup.create({
+    data: { shop, nativeId, kind: "automatic_basic", title: "Pojistka", snapshot: "{}", status: "moving" },
+  });
+  // Instance B raced past the "previous row" check before A's row existed: its own create now hits the index.
+  await assert.rejects(
+    db.prisma.nativeDiscountBackup.create({ data: { shop, nativeId, kind: "automatic_basic", title: "Pojistka", snapshot: "{}", status: "moving" } }),
+    (error: { code?: string }) => error.code === "P2002",
+  );
+  // And through the move itself: in progress, nothing deleted, still one row.
+  const result = await moveNative({ ...common, nativeId });
+  assert.ok(!result.ok && result.code === "in_progress" && result.backupId === held.id, JSON.stringify(result));
+  assert.equal(shopify.callsTo("WonNativeAutomaticDelete").length, 0);
+  assert.equal((await rows(shop)).length, 1);
 });
 
 test("Minor 9: a live claim of another instance blocks; a stale one is taken over", async () => {

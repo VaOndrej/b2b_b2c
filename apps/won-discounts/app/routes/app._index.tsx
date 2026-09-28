@@ -4,7 +4,7 @@ import { useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { shopCtx } from "../lib/integration/context.server";
-import { requestLocale } from "../lib/integration/locale.server";
+import { adminLocale } from "../lib/integration/locale.server";
 import { overviewAction, overviewData } from "../lib/integration/pages.server";
 import { buildOverviewProps, OverviewScreen } from "../components/screens/OverviewScreen";
 
@@ -16,8 +16,8 @@ import { buildOverviewProps, OverviewScreen } from "../components/screens/Overvi
 // The loader is also the sync retry trigger (resyncIfPending, bounded — REL-1)
 // and reads the native discounts (detection cached ≤ 60 s, bounded).
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin, session, sessionToken } = await authenticate.admin(request);
-  const locale = requestLocale(request, session.shop, sessionToken?.sub);
+  const { admin, session } = await authenticate.admin(request);
+  const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "" });
   const { config, options } = await overviewData(ctx, { scopes: session.scope ?? "" });
@@ -27,8 +27,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 // "Přesunout" / "Přesunout vše" / "Vrátit zpět" (NativeDiscountsPanel fetcher) and
 // "Synchronizovat znovu" (ResyncButton, from any admin page).
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin, session, sessionToken } = await authenticate.admin(request);
-  const locale = requestLocale(request, session.shop, sessionToken?.sub);
+  const { admin, session } = await authenticate.admin(request);
+  const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "" });
   return overviewAction(ctx, await request.formData());

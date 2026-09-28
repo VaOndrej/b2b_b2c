@@ -34,6 +34,13 @@ model Session {
 
   refreshToken        String?
   refreshTokenExpires DateTime?
+
+  /// Won: the admin language (`cs` | `en`) Shopify passed as `?locale=` on the
+  /// last embedded document load of this session. Client-side fetches carry no
+  /// `?locale=`, and an offline session has no user locale, so loaders read it
+  /// from here (app/lib/integration/locale.server.ts). The session library
+  /// never writes this column, so a token refresh keeps it.
+  adminLocale         String?
 }
 
 // Won Discounts config persistence (spec §2, doctrine DATA-2/DATA-3/DATA-4).
@@ -75,6 +82,16 @@ model WonNode {
 }
 
 /// Raw snapshot of a native Shopify discount taken before moving it into Won (undo, A7).
+///
+/// Claim guard (migration 20260928184219_sync_version_link_claim_guard): a
+/// PARTIAL unique index allows at most one live claim — status `moving` or
+/// `undoing` — per shop + nativeId, across every app instance:
+///   CREATE UNIQUE INDEX "NativeDiscountBackup_one_claim_per_native"
+///     ON "NativeDiscountBackup"("shop", "nativeId") WHERE "status" IN ('moving', 'undoing');
+/// Prisma's schema language cannot express a partial index, so it lives only in
+/// the migration SQL (migrate diff ignores it; tests/integration/claim-guard.test.ts
+/// pins it). app/lib/native/move.server.ts treats its violation (P2002) as
+/// "already claimed".
 model NativeDiscountBackup {
   id        String   @id @default(cuid())
   shop      String
@@ -101,6 +118,10 @@ model SyncRun {
   errorCount Int      @default(0)
   /// JSON array of work the run left for the next one (e.g. "campaign_switch_held"); null/[] = none.
   pending    String?
+  /// The ConfigVersion this run synced (a save: the version it saved; a resync:
+  /// the stored config's version). "Běží" compares it with the current version.
+  /// Null = unknown (runs before this column, or the version was pruned).
+  configVersionId String?
   @@index([shop, startedAt])
 }
 

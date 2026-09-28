@@ -152,13 +152,27 @@ function isLiveClaim(row: BackupRow): boolean {
   return isClaim(row.status) && Date.now() - row.updatedAt.getTime() < CLAIM_STALE_MS;
 }
 
+/**
+ * The database's claim guard (migration 20260928184219): a partial unique index
+ * allows one `moving`/`undoing` row per shop + nativeId. Its violation means
+ * another instance holds the claim.
+ */
+function isClaimConflict(error: unknown): boolean {
+  return (error as { code?: unknown } | null)?.code === "P2002";
+}
+
 /** Compare-and-set on (status, updatedAt): true when this caller now owns the row. */
 async function claim(db: PrismaClient, row: BackupRow, data: Record<string, unknown>): Promise<boolean> {
-  const { count } = await db.nativeDiscountBackup.updateMany({
-    where: { id: row.id, status: row.status, updatedAt: row.updatedAt },
-    data,
-  });
-  return count === 1;
+  try {
+    const { count } = await db.nativeDiscountBackup.updateMany({
+      where: { id: row.id, status: row.status, updatedAt: row.updatedAt },
+      data,
+    });
+    return count === 1;
+  } catch (error) {
+    if (isClaimConflict(error)) return false; // another row of this native is claimed
+    throw error;
+  }
 }
 
 // --- Config helpers -------------------------------------------------------------------
@@ -333,8 +347,13 @@ async function moveLocked(input: MoveNativeInput): Promise<MoveResult> {
     try {
       const row = await db.nativeDiscountBackup.create({ data: { shop, nativeId, wonRuleId: null, ...claimData } });
       rowId = row.id;
-    } catch {
-      return fail({ code: "backup_failed" });
+    } catch (error) {
+      if (!isClaimConflict(error)) return fail({ code: "backup_failed" });
+      // Another instance claimed this native first (the DB guard): nothing was changed here.
+      const holder = await db.nativeDiscountBackup.findFirst({
+        where: { shop, nativeId, status: { in: [BACKUP_STATUS.moving, BACKUP_STATUS.undoing] } },
+      });
+      return fail({ code: "in_progress" }, "in_progress", holder ? { backupId: holder.id } : {});
     }
     // Another instance may have claimed the same native at the same time: the oldest live claim wins.
     const rivals = await db.nativeDiscountBackup.findMany({

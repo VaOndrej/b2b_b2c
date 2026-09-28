@@ -22,3 +22,12 @@ export function withConfigLock<T>(shop: string, run: () => Promise<T>): Promise<
   });
   return next;
 }
+
+/**
+ * True while some config writer (a save, a move, a resync) holds or waits for
+ * the shop's lock. Přehled's GET trigger uses it to stay non-blocking: it never
+ * queues a resync behind (or next to) another writer.
+ */
+export function isConfigLocked(shop: string): boolean {
+  return queues.has(shop);
+}

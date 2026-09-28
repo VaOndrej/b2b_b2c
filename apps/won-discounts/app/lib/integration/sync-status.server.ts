@@ -1,23 +1,29 @@
 // Real sync facts for the admin (integration step):
-//   - the Přehled trigger: resyncIfPending, bounded by a deadline (REL-1: the
+//   - the Přehled trigger: resyncIfPending on the GET, made safe for every load
+//     (prefetch, focus reloads): it runs under the shop's config lock and is
+//     NON-BLOCKING (a save, move or resync holding the lock → no second resync,
+//     the page says a sync is running), debounced per shop (at most one trigger
+//     per RESYNC_TRIGGER_DEBOUNCE_MS) and bounded by a deadline (REL-1: the
 //     page renders even when Shopify is slow; the resync goes on in the
 //     background and the page says so);
-//   - "Synchronizovat znovu": resyncShop, now;
+//   - "Synchronizovat znovu": resyncShop, now (under the same lock);
 //   - the shop's sync line (SyncView) from the latest SyncRun;
 //   - per rule "Běží" (RuleSyncMap): is THIS version of the rule in Shopify?
-//       automatic rule  the last run that APPLIED the shop function config
-//                       (written or unchanged, verified) synced a config in
-//                       which the rule was exactly as it is now;
+//     By the VERSION LINK, never by clocks: every SyncRun records the
+//     ConfigVersion it synced (SyncRun.configVersionId). The newest run that
+//     APPLIED the shop function config (written or unchanged, verified) names
+//     the config Shopify runs. Then
+//       automatic rule  that config holds the rule exactly as it is now, and
+//                       every setting the payload is built from (engine,
+//                       markets, campaigns, the other modules — all but the
+//                       onboarding steps) is as it is now;
 //       code rule       the same, AND its Won node is tracked as active with
 //                       the rule's current codes (WonNode.codesHash; an
 //                       "inactive:" hash = deactivated node, null = codes
 //                       still changing).
-//     Which config a run synced: the stored config when it was saved before
-//     the run started (ShopConfig.updatedAt ≤ run start), else the newest
-//     ConfigVersion saved before the run. The admin's saves and their syncs
-//     run under one lock (lock.server.ts), so a run never starts before the
-//     save it syncs; only a Přehled resync racing a save can pair a run with a
-//     version saved while it was queued — the next load corrects it.
+//     A run without a link (before the column existed) or whose version was
+//     pruned from history proves nothing: its rules read "čeká na propsání"
+//     until the next sync.
 
 import { readStoredConfig, type DiscountRule, type WonDiscountsConfig } from "@won/core/discounts/config";
 
@@ -31,11 +37,21 @@ import { canonicalJson } from "../sync/util";
 import type { RuleSyncMap, RuleSyncState, SyncView, UiResult } from "../../components/model/types";
 import { nowOf, type ShopCtx } from "./context.server";
 import { withinDeadline } from "./deadline";
-import { withConfigLock } from "./lock.server";
+import { isConfigLocked, withConfigLock } from "./lock.server";
 import { ruleNames, shopConfigApplied, stepWarnings, syncOutcome, syncProblems } from "./sync-copy";
 
 /** How long the Přehled waits for a pending resync before rendering anyway. */
 export const OVERVIEW_SYNC_DEADLINE_MS = 3_000;
+/** Přehled loads trigger resyncIfPending at most this often per shop (prefetch / focus reloads). */
+export const RESYNC_TRIGGER_DEBOUNCE_MS = 30_000;
+
+/** When the Přehled last triggered a resync, per shop (this process; a debounce, not a fact). */
+const lastTrigger = new Map<string, number>();
+
+/** Test hook. */
+export function clearResyncDebounce(): void {
+  lastTrigger.clear();
+}
 
 function localTime(date: Date, timezone: string | null): string {
   return shopLocalDateTime(date, timezone ?? "UTC");
@@ -79,14 +95,28 @@ export async function overviewSync(
 ): Promise<SyncView> {
   if (loaded.unreadable) return { state: "blocked", reason: "unreadable_config" };
   if (loaded.readOnly) return { state: "blocked", reason: "newer_schema" };
-  const work = resyncIfPending({
-    client: ctx.client,
-    db: ctx.db,
-    shop: ctx.shop,
-    createSync: ctx.createSync,
-    now: ctx.now,
-    logger: ctx.logger,
-  });
+  const names = ruleNames(loaded.config);
+  const current = async () =>
+    syncViewOf(await loadSyncStatus(ctx.db, ctx.shop), { configExists: loaded.exists, timezone: opts.timezone, names });
+  // Another writer (a save and its sync, a move, a resync) is at work: never a second resync next to it.
+  if (isConfigLocked(ctx.shop)) return { state: "running" };
+  // Prefetch / focus reloads: one trigger per shop per debounce window.
+  const now = nowOf(ctx).getTime();
+  const last = lastTrigger.get(ctx.shop);
+  if (last !== undefined && now >= last && now - last < RESYNC_TRIGGER_DEBOUNCE_MS) return current();
+  lastTrigger.set(ctx.shop, now);
+  if (lastTrigger.size > 10_000) lastTrigger.delete(lastTrigger.keys().next().value as string);
+
+  const work = withConfigLock(ctx.shop, () =>
+    resyncIfPending({
+      client: ctx.client,
+      db: ctx.db,
+      shop: ctx.shop,
+      createSync: ctx.createSync,
+      now: ctx.now,
+      logger: ctx.logger,
+    }),
+  );
   const outcome = await withinDeadline(work, opts.deadlineMs ?? OVERVIEW_SYNC_DEADLINE_MS);
   if (!outcome.done) return { state: "running" };
   if ("error" in outcome) {
@@ -104,8 +134,7 @@ export async function overviewSync(
       return { state: "blocked", reason: result.result.reason };
     }
   }
-  const status = await loadSyncStatus(ctx.db, ctx.shop);
-  return syncViewOf(status, { configExists: loaded.exists, timezone: opts.timezone, names: ruleNames(loaded.config) });
+  return current();
 }
 
 /** A resync's result as the admin result banner. */
@@ -158,26 +187,35 @@ function readVersion(data: string): WonDiscountsConfig | null {
 
 const ruleKey = (rule: DiscountRule | undefined) => (rule ? canonicalJson(rule) : null);
 
-/** The rules (by id, canonical JSON) of the config the newest APPLYING run synced; null = none known. */
-async function coveredRules(db: PrismaClient, shop: string): Promise<Map<string, string> | "current" | null> {
+/**
+ * Everything the function payload is built from besides the rules: engine,
+ * markets, campaigns and the other modules. Only the onboarding steps (goals,
+ * step) change nothing that runs.
+ */
+function settingsKey(config: WonDiscountsConfig): string {
+  const { onboarding, modules, ...rest } = config;
+  void onboarding;
+  const { codes, ...otherModules } = modules;
+  void codes;
+  return canonicalJson({ ...rest, modules: otherModules });
+}
+
+/** The config Shopify runs: the one the newest APPLYING run synced, by its version link (null = unknown). */
+async function appliedConfig(db: PrismaClient, shop: string): Promise<{ versionId: string; config: WonDiscountsConfig } | null> {
   const runs = await db.syncRun.findMany({
     where: { shop },
     orderBy: [{ startedAt: "desc" }, { id: "desc" }],
     take: SYNC_RUNS_KEPT,
-    select: { startedAt: true, steps: true },
+    select: { steps: true, configVersionId: true },
   });
   const applied = runs.find((run) => shopConfigApplied(parseSteps(run.steps)));
-  if (!applied) return null;
-  const stored = await db.shopConfig.findUnique({ where: { shop }, select: { updatedAt: true } });
-  if (stored && stored.updatedAt.getTime() <= applied.startedAt.getTime()) return "current";
+  if (!applied?.configVersionId) return null;
   const version = await db.configVersion.findFirst({
-    where: { shop, createdAt: { lte: applied.startedAt } },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    select: { data: true },
+    where: { id: applied.configVersionId, shop },
+    select: { id: true, data: true },
   });
   const config = version ? readVersion(version.data) : null;
-  if (!config) return null;
-  return new Map(config.modules.codes.rules.map((rule) => [rule.id, canonicalJson(rule)]));
+  return version && config ? { versionId: version.id, config } : null;
 }
 
 /**
@@ -189,16 +227,18 @@ export async function loadRuleSync(
   ctx: Pick<ShopCtx, "db" | "shop">,
   config: WonDiscountsConfig,
 ): Promise<RuleSyncMap> {
-  const [covered, nodes, latest] = await Promise.all([
-    coveredRules(ctx.db, ctx.shop),
+  const [applied, nodes, latest] = await Promise.all([
+    appliedConfig(ctx.db, ctx.shop),
     ctx.db.wonNode.findMany({ where: { shop: ctx.shop, role: "code" }, select: { key: true, codesHash: true } }),
     loadSyncStatus(ctx.db, ctx.shop),
   ]);
   const hashes = new Map(nodes.map((node) => [node.key, node.codesHash]));
   const notSynced: RuleSyncState = latest && !latest.ok ? "failed" : "pending";
+  const settingsLive = applied !== null && settingsKey(applied.config) === settingsKey(config);
+  const liveRules = new Map((applied?.config.modules.codes.rules ?? []).map((rule) => [rule.id, ruleKey(rule)]));
   const out: Record<string, RuleSyncState> = {};
   for (const rule of config.modules.codes.rules) {
-    const inConfig = covered === "current" || (covered !== null && covered.get(rule.id) === ruleKey(rule));
+    const inConfig = settingsLive && liveRules.get(rule.id) === ruleKey(rule);
     let live = inConfig;
     if (live && rule.method === "code") {
       live = hashes.get(`code:${rule.id}`) === codesHash(rule.codes ?? []);

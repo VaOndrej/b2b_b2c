@@ -8,24 +8,25 @@ import { WonNavMenu } from "@won/app-kit/admin-nav";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { loadConfig } from "../lib/config.server";
-import { resolveLocale, t, type Locale } from "../i18n";
+import { adminLocale } from "../lib/integration/locale.server";
+import { t, type Locale } from "../i18n";
 import { LocaleProvider } from "../i18n/context";
 import { navItems } from "../components/model/modules";
 
 // The embedded admin shell: App Bridge, the admin language (A10) and the nav.
 //
 // Language: Shopify passes the admin language as `?locale=` on the document load
-// of the embedded app; in-app navigations drop the query string. The first value
-// is kept in component state, so a later revalidation without the parameter
-// never flips the language.
+// of the embedded app; in-app navigations drop the query string. adminLocale
+// (app/lib/integration/locale.server.ts) reads it from the request or the
+// session; the first value is also kept in component state, so a revalidation
+// never flips the language mid-session.
 //
 // Nav: the shared Won structure (@won/app-kit/admin-nav: home first, Plan last).
 // Modules that are not built yet stay visible (Admin IA: all modules always
 // shown) in the order of the onboarding goals, and open a page that says so.
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const { config } = await loadConfig(db, session.shop);
-  const locale = resolveLocale(new URL(request.url).searchParams.get("locale"));
+  const [{ config }, locale] = await Promise.all([loadConfig(db, session.shop), adminLocale(request, session, db)]);
   return {
     // eslint-disable-next-line no-undef
     apiKey: process.env.SHOPIFY_API_KEY || "",

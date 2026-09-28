@@ -104,7 +104,21 @@ export async function saveAndSync(args: SaveAndSyncArgs): Promise<SaveAndSyncRes
   });
   if (!save.ok) return { save, sync: null, warnings: context.warnings };
   const sync = (args.createSync ?? createProductionSync)(client, db);
-  return { save, sync: await sync.syncShop(shop, save.config), warnings: context.warnings };
+  return { save, sync: await sync.syncShop(shop, save.config, { configVersionId: save.versionId }), warnings: context.warnings };
+}
+
+/**
+ * The ConfigVersion the stored config was saved as: saveConfig writes the
+ * ShopConfig row and its ConfigVersion in one transaction, so it is the
+ * newest version of the shop (null when history was pruned).
+ */
+async function storedVersionId(db: PrismaClient, shop: string): Promise<string | null> {
+  const version = await db.configVersion.findFirst({
+    where: { shop },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { id: true },
+  });
+  return version?.id ?? null;
 }
 
 export type ResyncRefusal = {
@@ -146,7 +160,8 @@ export async function resyncShop(args: Common): Promise<ResyncResult> {
       );
     }
   }
-  return { ...(await sync.syncShop(shop, loaded.config)), warnings };
+  const configVersionId = await storedVersionId(db, shop);
+  return { ...(await sync.syncShop(shop, loaded.config, { configVersionId })), warnings };
 }
 
 export interface SyncStatus {
@@ -157,6 +172,8 @@ export interface SyncStatus {
   errorCount: number;
   steps: SyncStep[];
   pending: PendingWork[];
+  /** The ConfigVersion the run synced (null = unknown). */
+  configVersionId: string | null;
 }
 
 function parseJsonArray<T>(text: string | null): T[] {
@@ -181,6 +198,7 @@ export async function loadSyncStatus(db: PrismaClient, shop: string): Promise<Sy
     errorCount: run.errorCount,
     steps: parseJsonArray<SyncStep>(run.steps),
     pending: parseJsonArray<PendingWork>(run.pending),
+    configVersionId: run.configVersionId ?? null,
   };
 }
 

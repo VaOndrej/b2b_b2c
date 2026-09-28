@@ -59,6 +59,8 @@ interface CacheEntry {
 }
 
 const detections = new Map<string, CacheEntry>();
+/** The shop's native codes from its newest finished detection (codes do not depend on the language). */
+const codesByShop = new Map<string, { at: number; detection: NativeDetection }>();
 
 const cacheKey = (shop: string, locale: Locale) => `${shop}|${locale}`;
 
@@ -82,6 +84,8 @@ export function detectNative(ctx: ShopCtx, config: WonDiscountsConfig, opts: { f
   promise.then(
     (value) => {
       entry.value = value;
+      codesByShop.set(ctx.shop, { at: entry.at, detection: value });
+      if (codesByShop.size > 5000) codesByShop.delete(codesByShop.keys().next().value as string);
     },
     () => {
       if (detections.get(key) === entry) detections.delete(key);
@@ -94,24 +98,40 @@ export function detectNative(ctx: ShopCtx, config: WonDiscountsConfig, opts: { f
 /** Forget the shop's detections (after a move / undo / rule save: the list or the conflicts changed). */
 export function forgetDetection(shop: string): void {
   for (const key of [...detections.keys()]) if (key.startsWith(`${shop}|`)) detections.delete(key);
+  codesByShop.delete(shop);
 }
 
 /** Test hook. */
 export function clearDetectionCache(): void {
   detections.clear();
+  codesByShop.clear();
 }
 
-/** Codes of the shop's native discounts from a fresh cached detection, if one is at hand (no Shopify call). */
+/** Codes of the shop's native discounts from a fresh finished detection, if one is at hand (no Shopify call). */
 export function cachedNativeCodes(shop: string, exceptId?: string): string[] | undefined {
-  const now = Date.now();
-  for (const [key, entry] of detections) {
-    if (!key.startsWith(`${shop}|`) || !entry.value || now - entry.at >= NATIVE_DETECTION_TTL_MS) continue;
-    return nativeCodes(entry.value, exceptId);
-  }
-  return undefined;
+  const hit = codesByShop.get(shop);
+  if (!hit || Date.now() - hit.at >= NATIVE_DETECTION_TTL_MS) return undefined;
+  return nativeCodes(hit.detection, exceptId);
 }
 
-/** Codes the detection saw on native discounts (movable ones; the first page of each). */
+/**
+ * The native codes the code-hash collision check (saveConfig `otherCodes`)
+ * gets. What that check covers, exactly:
+ *   - Won code vs Won code: every code of every rule, always (the config).
+ *   - Won code vs a native code: the codes detection returns — every movable
+ *     native (Basic / Free shipping) discount's FIRST DETECT_CODES (= 5,
+ *     app/lib/native/documents.ts) codes. Codes past the first page, and codes
+ *     of BXGY / other apps' discounts (detection reads them for its own
+ *     conflict list but does not return them), are not checked. Reading them
+ *     all is not cheap: the detection page would request ~10× more points
+ *     (10 discounts × codes(first: N)) and exceed Shopify's 1 000-point cap.
+ *   - The SAME text on a native and a Won rule is not a hash question: Shopify
+ *     refuses a code on two discounts, so the Won node's create fails with
+ *     "Code must be unique" and the sync reports it (sync.problem.codeTaken);
+ *     detection lists it as a same_code conflict.
+ * A missed collision means two DIFFERENT codes share the 8-hex hash (≈ 1 in
+ * 4.3 × 10⁹ per pair): the native code would also trigger the Won rule.
+ */
 export function nativeCodes(detection: NativeDetection, exceptId?: string): string[] {
   return detection.movable.filter((n) => n.id !== exceptId).flatMap((n) => n.codes);
 }

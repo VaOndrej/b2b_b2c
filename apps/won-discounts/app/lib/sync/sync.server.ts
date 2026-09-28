@@ -87,15 +87,23 @@ export function shopLocalDateTime(date: Date, timeZone: string): string {
 
 const inflight = new Map<string, Promise<unknown>>();
 
+export interface SyncShopOptions {
+  /**
+   * The ConfigVersion `config` was saved as, recorded on the SyncRun (the
+   * version link the admin's "Běží" compares with; null/absent = unknown).
+   */
+  configVersionId?: string | null;
+}
+
 export interface Sync {
-  syncShop(shop: string, config: ConfigView): Promise<SyncResult>;
+  syncShop(shop: string, config: ConfigView, options?: SyncShopOptions): Promise<SyncResult>;
 }
 
 export function createSync(deps: SyncDeps): Sync {
   return {
-    syncShop(shop, config) {
+    syncShop(shop, config, options = {}) {
       const previous = inflight.get(shop) ?? Promise.resolve();
-      const run = previous.catch(() => undefined).then(() => runSync(deps, shop, config));
+      const run = previous.catch(() => undefined).then(() => runSync(deps, shop, config, options.configVersionId ?? null));
       inflight.set(shop, run);
       void run
         .finally(() => {
@@ -113,7 +121,7 @@ interface ShopState {
   functionConfig: string | null;
 }
 
-async function runSync(deps: SyncDeps, shop: string, config: ConfigView): Promise<SyncResult> {
+async function runSync(deps: SyncDeps, shop: string, config: ConfigView, configVersionId: string | null): Promise<SyncResult> {
   const startedAt = deps.now();
   const steps: SyncStep[] = [];
   const pending = new Set<PendingWork>();
@@ -132,7 +140,7 @@ async function runSync(deps: SyncDeps, shop: string, config: ConfigView): Promis
   }
   if (steps.some((step) => !step.ok)) pending.add("failed_steps");
   if (steps.some((step) => /still running/.test(step.detail))) pending.add("codes_in_progress");
-  const result = await persist(deps, shop, startedAt, steps, [...pending]);
+  const result = await persist(deps, shop, startedAt, steps, [...pending], configVersionId);
   if (rethrow) throw rethrow;
   return result;
 }
@@ -337,6 +345,7 @@ async function persist(
   startedAt: Date,
   steps: SyncStep[],
   pending: PendingWork[],
+  configVersionId: string | null,
 ): Promise<SyncResult> {
   const failed = steps.filter((step) => !step.ok);
   const ok = failed.length === 0 && steps.length > 0;
@@ -352,6 +361,7 @@ async function persist(
         steps: JSON.stringify(steps),
         errorCount: failed.length,
         pending: pending.length ? JSON.stringify(pending) : null,
+        configVersionId,
       },
     });
     runId = run.id;

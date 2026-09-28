@@ -5,12 +5,11 @@ import { t } from "../../app/i18n/index.ts";
 import { saveWarnings, shopConfigApplied, stepNodeKey, stepProblem, stepWarnings, syncProblems } from "../../app/lib/integration/sync-copy.ts";
 import { withinDeadline } from "../../app/lib/integration/deadline.ts";
 import { withConfigLock } from "../../app/lib/integration/lock.server.ts";
-import { forgetLocales, requestLocale } from "../../app/lib/integration/locale.server.ts";
 
 // What a sync did, in the merchant's words (§4c): every failed step of the sync
 // layer (English machine detail) becomes a sentence in cs/en, naming the rule;
 // the technical detail stays visible in parentheses. Plus the small
-// integration primitives (deadline, lock, the remembered admin language).
+// integration primitives (deadline, lock). The admin language: locale.test.ts.
 
 const names = new Map([["vip", "VIP10"]]);
 const say = (step: { step: string; ok: boolean; detail: string }, locale: "cs" | "en" = "cs") => {
@@ -109,13 +108,4 @@ test("withConfigLock: one config writer at a time per shop, other shops in paral
   assert.equal(await c, "c");
   assert.ok(order.indexOf("a:end") < order.indexOf("b:start"), order.join(" "));
   assert.ok(order.indexOf("c:end") < order.indexOf("a:end"), "another shop does not wait");
-});
-
-test("the admin language: ?locale= of a document load is remembered for that staff user's later fetches", () => {
-  forgetLocales();
-  assert.equal(requestLocale(new Request("https://app.test/app?locale=en-US"), "s.myshopify.com", "user-1"), "en");
-  assert.equal(requestLocale(new Request("https://app.test/app/discounts.data"), "s.myshopify.com", "user-1"), "en");
-  assert.equal(requestLocale(new Request("https://app.test/app?locale=cs"), "s.myshopify.com", "user-2"), "cs");
-  assert.equal(requestLocale(new Request("https://app.test/app.data"), "s.myshopify.com", "user-1"), "en", "per user");
-  assert.equal(requestLocale(new Request("https://app.test/app.data"), "other.myshopify.com", "user-9"), "cs", "default");
 });

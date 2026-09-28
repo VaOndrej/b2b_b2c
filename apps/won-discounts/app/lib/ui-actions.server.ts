@@ -306,7 +306,12 @@ export async function readAdminContext(ctx: {
 
 // --- Config writes -------------------------------------------------------------------------
 
-/** Save `next` and write it into Shopify (canonical saveAndSync); the shop's native codes guard code hashes. */
+/**
+ * Save `next` and write it into Shopify (canonical saveAndSync). The code-hash
+ * collision check gets the shop's native codes when a fresh detection is at
+ * hand (coverage: native.server.ts `nativeCodes`); a save never calls Shopify
+ * just for them.
+ */
 async function writeAndSync(ctx: ShopCtx, next: WonDiscountsConfig, replaceUnreadable: boolean): Promise<SaveAndSyncResult> {
   const result = await saveAndSync({
     client: ctx.client,

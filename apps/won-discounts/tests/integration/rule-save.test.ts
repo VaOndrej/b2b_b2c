@@ -222,3 +222,50 @@ test("'Běží' per rule: a rule changed after the last applied sync is 'čeká 
   const page = await discountsPage(ctx, { ...PAGE, deleted: false });
   assert.match(text(await renderPage(createElement(DiscountsScreen, page))), /2 slevy · 1 běží · 1 čeká na propsání/);
 });
+
+// --- Fix round 1, item 2: "Běží" from the version link, not from timestamps --------------------
+
+test("'Běží' follows the synced ConfigVersion, not clocks: a sync run stamped in the future cannot cover a later save", async () => {
+  const store = new FakeStore();
+  const { createSync } = await import("../../app/lib/sync/sync.server.ts");
+  const { productionSyncDeps } = await import("../../app/lib/sync/wiring.server.ts");
+  const future = new Date(Date.now() + 60 * 60_000);
+  const ctx = {
+    ...testCtx(db.prisma, shop, store),
+    // A sync whose clock runs an hour ahead (another instance, a skewed host).
+    createSync: (client: never, prisma: never) =>
+      createSync({ ...productionSyncDeps(client, prisma, { info() {}, warn() {}, error() {} }), now: () => future, sleep: async () => {} }),
+  };
+  const created = await ruleEditorAction(ctx as never, formOf(automatic), "new");
+  assert.ok("redirect" in created);
+  const id = /discounts\/([^?]+)/.exec(created.redirect)![1];
+  const { config } = await loadConfig(db.prisma, shop);
+  // Changed after that run, never synced.
+  const next = { ...config, modules: { ...config.modules, codes: { rules: config.modules.codes.rules.map((r) => ({ ...r, name: "Přejmenovaná" })) } } };
+  assert.equal((await saveConfig(db.prisma, shop, next)).ok, true);
+  assert.deepEqual(await loadRuleSync(ctx as never, (await loadConfig(db.prisma, shop)).config), { [id]: "pending" });
+});
+
+test("'Běží' compares the whole config version: an engine setting change leaves every rule 'čeká na propsání' until synced", async () => {
+  const store = new FakeStore();
+  const ctx = testCtx(db.prisma, shop, store);
+  const a = await ruleEditorAction(ctx, formOf(automatic), "new");
+  const b = await ruleEditorAction(ctx, formOf(withCode("VIP20")), "new");
+  assert.ok("redirect" in a && "redirect" in b);
+  const idA = /discounts\/([^?]+)/.exec(a.redirect)![1];
+  const idB = /discounts\/([^?]+)/.exec(b.redirect)![1];
+  assert.deepEqual(await loadRuleSync(ctx, (await loadConfig(db.prisma, shop)).config), { [idA]: "synced", [idB]: "synced" });
+
+  const { config } = await loadConfig(db.prisma, shop);
+  const engine = { ...config.engine, combination: { ...config.engine.combination, productWithOrder: !config.engine.combination.productWithOrder } };
+  assert.equal((await saveConfig(db.prisma, shop, { ...config, engine })).ok, true);
+  assert.deepEqual(await loadRuleSync(ctx, (await loadConfig(db.prisma, shop)).config), { [idA]: "pending", [idB]: "pending" });
+
+  // An onboarding-only save does not touch what runs.
+  const again = await loadConfig(db.prisma, shop);
+  const { overviewAction } = await import("../../app/lib/integration/pages.server.ts");
+  assert.equal((await overviewAction(ctx, formOf([["intent", "resync"]]))).ok, true);
+  assert.equal((await saveConfig(db.prisma, shop, { ...(await loadConfig(db.prisma, shop)).config, onboarding: { goals: ["rewards"], step: 3 } })).ok, true);
+  void again;
+  assert.deepEqual(await loadRuleSync(ctx, (await loadConfig(db.prisma, shop)).config), { [idA]: "synced", [idB]: "synced" });
+});

@@ -4,7 +4,7 @@ import { after, before, beforeEach, test } from "node:test";
 import { createElement } from "react";
 
 import { loadConfig, saveConfig } from "../../app/lib/config.server.ts";
-import { clearDetectionCache } from "../../app/lib/integration/native.server.ts";
+import { cachedNativeCodes, clearDetectionCache, forgetDetection } from "../../app/lib/integration/native.server.ts";
 import { onboardingPage, overviewAction, overviewPage } from "../../app/lib/integration/pages.server.ts";
 import { clearSignalCache } from "../../app/lib/ui-actions.server.ts";
 import { loadSyncStatus } from "../../app/lib/sync/save-and-sync.server.ts";
@@ -153,6 +153,11 @@ test("native discounts: movable ones with what a move loses (planMove), BXGY wit
   assert.match(html, /Střetává se s Won/);
   assert.match(html, new RegExp(bxgy!.reason!.slice(0, 30).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
+  // The shop's native codes (hash-collision check of rule saves) are at hand per shop, whatever language detected them.
+  assert.deepEqual(cachedNativeCodes(shop), ["LETO15"]);
+  assert.deepEqual(cachedNativeCodes(shop, leto!.id), []);
+  assert.equal(cachedNativeCodes("another-shop.myshopify.com"), undefined);
+
   const reads = store.ops.filter((op) => op === "WonNativeDiscounts").length;
   await overviewPage(ctx, PAGE);
   assert.equal(store.ops.filter((op) => op === "WonNativeDiscounts").length, reads, "second load within 60 s: from the cache");
@@ -160,6 +165,8 @@ test("native discounts: movable ones with what a move loses (planMove), BXGY wit
   // Onboarding step 2 shows the same list (one Move button for all).
   const onboarding = await onboardingPage(ctx, { ...PAGE, fresh: false });
   assert.equal(onboarding.native.state, "ok");
+  forgetDetection(shop);
+  assert.equal(cachedNativeCodes(shop), undefined, "forgotten with the detection");
 });
 
 test("a detection failure is said, and never hides the undo of an earlier move", async () => {
@@ -176,4 +183,52 @@ test("a detection failure is said, and never hides the undo of an earlier move",
   assert.match(html, /JARO10/);
   assert.match(html, /Vrátit zpět/);
   assert.deepEqual((await loadConfig(db.prisma, shop)).config.modules.codes.rules, []);
+});
+
+// --- Fix round 1, item 1: the Přehled GET trigger is locked and debounced -------------------
+
+test("concurrent Přehled loads (prefetch + navigation) run ONE resync; the other renders 'synchronizace právě běží'", async () => {
+  await seed([auto("a1")]);
+  const store = new FakeStore();
+  store.delayMs = 5;
+  const ctx = testCtx(db.prisma, shop, store);
+  const [a, b] = await Promise.all([overviewPage(ctx, PAGE), overviewPage(ctx, PAGE)]);
+  assert.equal(await db.prisma.syncRun.count({ where: { shop } }), 1, "one resync for two loads");
+  assert.deepEqual([a.signals?.sync.state, b.signals?.sync.state].sort(), ["ok", "running"]);
+});
+
+test("a Přehled load while a save holds the config lock does not resync (non-blocking): it says a sync is running", async () => {
+  await seed([auto("a1")]);
+  const store = new FakeStore();
+  const ctx = testCtx(db.prisma, shop, store);
+  const { withConfigLock } = await import("../../app/lib/integration/lock.server.ts");
+  let release!: () => void;
+  const held = withConfigLock(shop, () => new Promise<void>((resolve) => (release = resolve)));
+  const props = await overviewPage(ctx, PAGE);
+  assert.equal(props.signals?.sync.state, "running");
+  assert.equal(await db.prisma.syncRun.count({ where: { shop } }), 0, "no resync next to the running save");
+  release();
+  await held;
+});
+
+test("Přehled reloads within 30 s never re-trigger a resync (debounce per shop), after 30 s they may", async () => {
+  await seed([auto("a1")]);
+  const store = new FakeStore();
+  store.sync.fail("WonSyncMetafieldsSet", { graphqlError: "Internal error" }, 500);
+  let clock = Date.now();
+  const ctx = { ...testCtx(db.prisma, shop, store), now: () => new Date(clock) };
+  await overviewPage(ctx, PAGE);
+  assert.equal(await db.prisma.syncRun.count({ where: { shop } }), 1);
+  // resyncIfPending's own 5-min retry interval has passed (failed run) …
+  clock += 6 * 60_000;
+  await overviewPage(ctx, PAGE);
+  assert.equal(await db.prisma.syncRun.count({ where: { shop } }), 2, "retried once the interval passed");
+  // … but a reload within 30 s of that retry is debounced, whatever resyncIfPending would say.
+  await overviewPage(ctx, PAGE);
+  await overviewPage(ctx, PAGE);
+  assert.equal(await db.prisma.syncRun.count({ where: { shop } }), 2, "debounced");
+  clock += 31_000;
+  clock += 6 * 60_000;
+  await overviewPage(ctx, PAGE);
+  assert.equal(await db.prisma.syncRun.count({ where: { shop } }), 3);
 });

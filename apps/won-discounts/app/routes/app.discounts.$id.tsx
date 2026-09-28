@@ -4,15 +4,15 @@ import { useActionData, useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { shopCtx } from "../lib/integration/context.server";
-import { requestLocale } from "../lib/integration/locale.server";
+import { adminLocale } from "../lib/integration/locale.server";
 import { ruleEditorAction, ruleEditorPage } from "../lib/integration/pages.server";
 import { RuleEditorScreen } from "../components/screens/RuleEditorScreen";
 
 // Rule editor: /app/discounts/new(?recipe=…) or /app/discounts/<rule id>.
 // `?saved=1` is the landing right after creating a rule (it reports that save's sync).
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
-  const { admin, session, sessionToken } = await authenticate.admin(request);
-  const locale = requestLocale(request, session.shop, sessionToken?.sub);
+  const { admin, session } = await authenticate.admin(request);
+  const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "" });
   const url = new URL(request.url);
@@ -29,8 +29,8 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 export const action = async ({ request, params }: ActionFunctionArgs) => {
   // SEC-2: the shop is the session's; the rule id is the URL's; the form is
   // parsed and validated on the server by saveRule (SEC-1).
-  const { admin, session, sessionToken, redirect } = await authenticate.admin(request);
-  const locale = requestLocale(request, session.shop, sessionToken?.sub);
+  const { admin, session, redirect } = await authenticate.admin(request);
+  const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "" });
   const outcome = await ruleEditorAction(ctx, await request.formData(), params.id ?? "new");

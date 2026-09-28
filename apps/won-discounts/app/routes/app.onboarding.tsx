@@ -4,15 +4,15 @@ import { useActionData, useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { shopCtx } from "../lib/integration/context.server";
-import { requestLocale } from "../lib/integration/locale.server";
+import { adminLocale } from "../lib/integration/locale.server";
 import { onboardingAction, onboardingPage } from "../lib/integration/pages.server";
 import type { UiResult } from "../components/model/types";
 import { OnboardingScreen } from "../components/screens/OnboardingScreen";
 
 // Onboarding steps 1–3. Revalidated on focus (embed auto-detection).
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin, session, sessionToken } = await authenticate.admin(request);
-  const locale = requestLocale(request, session.shop, sessionToken?.sub);
+  const { admin, session } = await authenticate.admin(request);
+  const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "" });
   // `?recheck=` (focus after the theme editor) re-reads the theme, bypassing the short cache.
@@ -21,8 +21,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs): Promise<UiResult> => {
-  const { admin, session, sessionToken } = await authenticate.admin(request);
-  const locale = requestLocale(request, session.shop, sessionToken?.sub);
+  const { admin, session } = await authenticate.admin(request);
+  const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "" });
   return onboardingAction(ctx, await request.formData());

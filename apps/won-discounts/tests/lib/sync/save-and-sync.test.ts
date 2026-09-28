@@ -246,3 +246,26 @@ test("PRIV-2: deleteShopData also erases the shop's ProductTargetIndex rows (and
   assert.equal(await db.prisma.productTargetIndex.count({ where: { shop } }), 0);
   assert.equal(await db.prisma.productTargetIndex.count({ where: { shop: other } }), 1);
 });
+
+test("the version link: a save's sync run records the saved ConfigVersion; a resync records the stored config's version", async () => {
+  const fake = new FakeShopify();
+  const saved = await saveAndSync({
+    client: fake,
+    db: db.prisma,
+    shop,
+    input: { modules: { codes: { rules: [autoRule("a1")] } } },
+    createSync: realSync,
+  });
+  assert.ok(saved.save.ok && saved.sync?.ok, JSON.stringify(saved.sync?.errors));
+  assert.equal((await loadSyncStatus(db.prisma, shop))?.configVersionId, saved.save.versionId);
+
+  // A resync syncs the STORED config: its run links the newest ConfigVersion (the one that row was saved with).
+  const resynced = await resyncShop({ client: fake, db: db.prisma, shop, createSync: realSync });
+  assert.equal(resynced.ok, true);
+  assert.equal((await loadSyncStatus(db.prisma, shop))?.configVersionId, saved.save.versionId);
+
+  const second = await saveAndSync({ client: fake, db: db.prisma, shop, input: { modules: { codes: { rules: [autoRule("a2")] } } }, createSync: realSync });
+  assert.ok(second.save.ok);
+  assert.notEqual(second.save.versionId, saved.save.versionId);
+  assert.equal((await loadSyncStatus(db.prisma, shop))?.configVersionId, second.save.versionId);
+});
