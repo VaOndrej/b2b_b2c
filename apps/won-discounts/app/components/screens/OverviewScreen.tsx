@@ -6,7 +6,9 @@
 // built by buildOverviewProps(); every word comes from i18n + the core formatter.
 //
 // "Běží" is green only for a rule that really runs (model/rule-status.ts):
-// switched on, inside its schedule, evaluable at checkout, written to Shopify.
+// switched on, inside its schedule, evaluable at checkout, and THIS version of
+// it written to Shopify (per-rule sync facts). The sync line shows what did
+// not reach Shopify, with "Synchronizovat znovu".
 // With only { schemaVersion, ruleCount, readOnly } the screen still renders every
 // section, each stating honestly what is not known yet (§12). No router hook runs
 // at this level, so the component also renders outside a router (unit renders).
@@ -23,8 +25,10 @@ import { currencyCodes, currencyViews } from "../model/markets";
 import { orderedModules, UPCOMING_MODULES, UPCOMING_MODULE_META } from "../model/modules";
 import { shopToday } from "../model/rule-form";
 import { ruleStatus, ruleStatusSummary } from "../model/rule-status";
-import { NOT_WIRED_SIGNALS, checkoutText, embedText, statusSummary, syncText } from "../model/signals";
-import type { AdminSignals, CurrencyView } from "../model/types";
+import { uiText } from "../model/result-copy";
+import { NOT_WIRED_SIGNALS, checkoutText, embedText, statusSummary, syncNeedsRetry, syncText } from "../model/signals";
+import type { AdminSignals, CurrencyView, RuleSyncMap, UiResult } from "../model/types";
+import { ResyncButton } from "../shell/Notice";
 import { PlanBadge } from "../shell/PlanBadge";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_ATTENTION, WON_FAINT } from "../shell/tokens";
@@ -45,6 +49,10 @@ export interface OverviewScreenProps {
   timezone?: string | null;
   /** Store signals (embed, checkout, sync, native discounts). Absent → not connected yet. */
   signals?: AdminSignals;
+  /** Per-rule sync facts (is this version in Shopify). Absent → judged by the sync line. */
+  ruleSync?: RuleSyncMap;
+  /** The last move / undo result, when the page (not the section's fetcher) has it. */
+  nativeResult?: UiResult | null;
 }
 
 export function buildOverviewProps(
@@ -52,6 +60,7 @@ export function buildOverviewProps(
   opts: {
     readOnly: boolean;
     signals?: AdminSignals;
+    ruleSync?: RuleSyncMap;
     shopCurrency?: string | null;
     timezone?: string | null;
     marketNames?: Readonly<Record<string, string>>;
@@ -72,6 +81,7 @@ export function buildOverviewProps(
     timezone,
   };
   if (opts.signals) props.signals = opts.signals;
+  if (opts.ruleSync) props.ruleSync = { ...opts.ruleSync };
   return props;
 }
 
@@ -103,13 +113,15 @@ export function OverviewScreen({
   today,
   timezone = null,
   signals,
+  ruleSync,
+  nativeResult,
 }: OverviewScreenProps) {
   const tr = useT();
   const { t } = tr;
   const codes = currencyCodes(currencies);
   const status = signals ?? NOT_WIRED_SIGNALS;
   const warnings = rules ? collectWarnings(rules, codes) : [];
-  const statusCtx = { today: today ?? null, timezone, sync: status.sync };
+  const statusCtx = { today: today ?? null, timezone, sync: status.sync, ruleSync };
   const statuses = (rules ?? []).map((rule) => ruleStatus(rule, statusCtx));
   const liveCount = statuses.filter((s) => s.kind === "live").length;
   const showOnboarding = onboardingStep !== undefined && onboardingStep <= 3 && ruleCount === 0;
@@ -212,22 +224,23 @@ export function OverviewScreen({
               <RowNote>{checkoutText(status.checkout, tr)}</RowNote>
             </WonRow>
             <WonRow
-              action={
-                status.sync.state === "error" ? (
-                  <s-button href="/app/discounts" variant="secondary">
-                    {t("overview.sync.errorFix")}
-                  </s-button>
-                ) : undefined
-              }
+              tone={status.sync.state === "error" || status.sync.state === "blocked" ? "attention" : undefined}
+              action={syncNeedsRetry(status.sync) ? <ResyncButton /> : undefined}
             >
               <s-text type="strong">{t("overview.sync.label")}</s-text>
-              <RowNote>{syncText(status.sync, tr)}</RowNote>
+              <RowNote tone={status.sync.state === "error" ? "attention" : undefined}>{syncText(status.sync, tr)}</RowNote>
+              {status.sync.state === "error"
+                ? (status.sync.problems ?? []).map((problem, i) => <RowNote key={i}>{uiText(problem, tr)}</RowNote>)
+                : null}
+              {status.sync.state === "ok"
+                ? (status.sync.warnings ?? []).map((warning, i) => <RowNote key={i}>{uiText(warning, tr)}</RowNote>)
+                : null}
             </WonRow>
           </div>
         </WonSection>
 
         <WonSection title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)}>
-          <NativeDiscountsPanel native={status.native} mode="each" />
+          <NativeDiscountsPanel native={status.native} mode="each" result={nativeResult} />
         </WonSection>
 
         <WonSection

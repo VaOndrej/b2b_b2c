@@ -26,13 +26,19 @@ import {
   DEV_EMBED_ON,
   DEV_EMPTY_FIXTURE,
   DEV_MARKET_NAMES,
-  DEV_NATIVE,
   DEV_NOW,
   DEV_ONBOARDING_FIXTURE,
   DEV_OVERVIEW_FIXTURE,
+  DEV_RULE_SYNC_FAILED,
+  DEV_RULE_SYNC_OK,
   DEV_SIGNALS,
+  DEV_SIGNALS_SYNC_FAILED,
   DEV_TIMEZONE,
   DEV_TRY_CART_LINES,
+  devEditorResult,
+  devMovedResult,
+  devNative,
+  devNativeMoved,
   devTryCartPlan,
   isDevHarnessEnabled,
 } from "../lib/dev-harness.server";
@@ -42,12 +48,16 @@ import {
 // configs and fixture store signals, with no Shopify auth and no database — so
 // every screen can be screenshot at 390/1440px without logging into Shopify.
 //
-//   /dev/preview/overview        Přehled as the app shows it today (signals not
-//                                 connected); ?state=live (signals wired),
-//                                 ?state=empty (new shop), ?readOnly=1
-//   /dev/preview/discounts       ?state=empty, ?sync=ok (as once the sync is wired)
-//   /dev/preview/rule-editor     ?rule=<fixture id> | ?rule=new&recipe=<recipe>, ?plan=pro
-//   /dev/preview/try-cart        ?state=empty | ?state=not-wired
+//   /dev/preview/overview        Přehled without store signals (the v0 contract);
+//                                 ?state=live (wired: synced, native discounts),
+//                                 ?state=sync-failed (last sync failed + Synchronizovat
+//                                 znovu), ?state=moved (a discount just moved, with
+//                                 its undo + an unfinished move), ?state=empty,
+//                                 ?readOnly=1
+//   /dev/preview/discounts       ?state=empty, ?sync=ok | ?sync=failed (per-rule facts)
+//   /dev/preview/rule-editor     ?rule=<fixture id> | ?rule=new&recipe=<recipe>, ?plan=pro,
+//                                 ?result=unreadable|too-many|collision|sync-failed|saved
+//   /dev/preview/try-cart        a REAL engine plan on fixture prices; ?state=empty | ?state=not-wired
 //   /dev/preview/onboarding      ?step=1|2|3, ?embed=on
 //   /dev/preview/move-dialog
 //   /dev/preview/coming-soon     ?module=tiers|rewards|outlet|margin|campaigns|appearance
@@ -101,17 +111,35 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
   const names = DEV_MARKET_NAMES;
   const sync = { state: "not_wired" as const };
   switch (screen) {
-    case "overview":
+    case "overview": {
+      const wired = { readOnly, timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW };
       if (state === "live") {
-        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly, signals: DEV_SIGNALS, timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW });
+        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { ...wired, signals: { ...DEV_SIGNALS, native: devNative(locale) }, ruleSync: DEV_RULE_SYNC_OK });
+      }
+      if (state === "sync-failed") {
+        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
+          ...wired,
+          signals: { ...DEV_SIGNALS_SYNC_FAILED, native: devNative(locale) },
+          ruleSync: DEV_RULE_SYNC_FAILED,
+        });
+      }
+      if (state === "moved") {
+        return {
+          ...buildOverviewProps(DEV_OVERVIEW_FIXTURE, { ...wired, signals: { ...DEV_SIGNALS, native: devNativeMoved(locale) }, ruleSync: DEV_RULE_SYNC_OK }),
+          // The Notice the Move fetcher shows in the section right after the move.
+          nativeResult: devMovedResult(locale),
+        };
       }
       if (state === "empty") return buildOverviewProps(DEV_EMPTY_FIXTURE, { readOnly, timezone: DEV_TIMEZONE, now: DEV_NOW });
       return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly });
+    }
     case "discounts": {
       const config = state === "empty" ? DEV_EMPTY_FIXTURE : DEV_OVERVIEW_FIXTURE;
+      const syncState = q.get("sync");
       return buildDiscountsProps(config, {
         readOnly,
-        sync: q.get("sync") === "ok" ? DEV_SIGNALS.sync : sync,
+        sync: syncState === "ok" ? DEV_SIGNALS.sync : syncState === "failed" ? DEV_SIGNALS_SYNC_FAILED.sync : sync,
+        ...(syncState === "ok" ? { ruleSync: DEV_RULE_SYNC_OK } : syncState === "failed" ? { ruleSync: DEV_RULE_SYNC_FAILED } : {}),
         codeRules: codeRuleLimit(config),
         timezone: DEV_TIMEZONE,
         marketNames: names,
@@ -133,7 +161,7 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         now: DEV_NOW,
       });
       if (!props) throw notFound();
-      return { ...props, result: null };
+      return { ...props, result: devEditorResult(q.get("result")) };
     }
     case "try-cart": {
       const base = buildTryCartProps(DEV_OVERVIEW_FIXTURE, { timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW });
@@ -141,20 +169,22 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       if (state === "not-wired") {
         return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", result: { ok: false as const, reason: "not_wired" as const, what: "tryCart" as const } };
       }
-      return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", currency: "CZK", plan: devTryCartPlan(locale) };
+      return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", currency: "CZK:cz", plan: devTryCartPlan(locale) };
     }
     case "onboarding": {
       const step = Number(q.get("step") ?? "1");
       const config = step === 1 ? DEV_EMPTY_FIXTURE : DEV_ONBOARDING_FIXTURE;
       const props = buildOnboardingProps(config, {
-        native: DEV_NATIVE,
+        native: devNative(locale),
         embed: q.get("embed") === "on" ? DEV_EMBED_ON : DEV_EMBED_OFF,
         readOnly,
       });
       return { ...props, step: Math.min(3, Math.max(1, Number.isFinite(step) ? step : 1)) };
     }
-    case "move-dialog":
-      return { discounts: DEV_NATIVE.state === "ok" ? DEV_NATIVE.discounts.filter((d) => d.movable) : [] };
+    case "move-dialog": {
+      const discounts = devNative(locale).discounts.filter((d) => d.movable);
+      return { discounts: q.get("all") === "1" ? discounts : discounts.slice(0, 1) };
+    }
     case "coming-soon": {
       const module = q.get("module") ?? "tiers";
       if (!isUpcomingModule(module)) throw notFound();

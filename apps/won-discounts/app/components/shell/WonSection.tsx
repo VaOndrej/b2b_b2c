@@ -20,7 +20,7 @@
 import { useEffect, useId, useState, type CSSProperties, type ReactNode } from "react";
 
 import { useT } from "../../i18n/context";
-import { statusLabel, type RuleStatus } from "../model/rule-status";
+import { needsAttention, statusLabel, type RuleStatus } from "../model/rule-status";
 import { PlanBadge } from "./PlanBadge";
 import {
   WON_AMBER,
@@ -181,7 +181,7 @@ function Glyph({ name }: { name: SectionGlyphName }) {
 export function StatusPill({ on, status }: { on?: boolean; status?: RuleStatus }) {
   const tr = useT();
   const live = status ? status.kind === "live" : on === true;
-  const attention = status?.kind === "unsupported";
+  const attention = status ? needsAttention(status) : false;
   const label = status ? statusLabel(status, tr) : on ? tr.t("common.live") : tr.t("common.off");
   const color = live ? WON_LIVE : attention ? WON_ATTENTION : "#5f6b78";
   return (

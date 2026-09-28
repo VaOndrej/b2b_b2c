@@ -8,7 +8,7 @@ import { describeRuleParts } from "@won/core/discounts/describe";
 
 import type { Translator } from "../../i18n";
 import { missingCurrencies, ruleName } from "../model/describe";
-import { statusText, type RuleStatus } from "../model/rule-status";
+import { needsAttention, statusText, type RuleStatus } from "../model/rule-status";
 import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 
 export function CustomerPreview({
@@ -25,7 +25,7 @@ export function CustomerPreview({
   const { t } = tr;
   // A rule that does not run today says so first (§17c): the amounts below are
   // what it WOULD give, not what a customer gets now.
-  const notNow = ["off", "unsupported", "scheduled", "ended"].includes(status.kind) ? statusText(status, tr) ?? t("status.off") : null;
+  const notNow = ["off", "unsupported", "no_code", "scheduled", "ended"].includes(status.kind) ? statusText(status, tr) ?? t("status.off") : null;
   const missing = missingCurrencies(draft, codes);
   const offerIn = (c: string): string => {
     const p = describeRuleParts(draft, tr.locale, { currency: c });
@@ -49,7 +49,7 @@ export function CustomerPreview({
       </div>
       <div style={{ fontSize: 13.5, color: WON_INK }}>{t("editor.preview.checkout", { name: ruleName(draft, tr) })}</div>
       {notNow ? (
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: status.kind === "unsupported" ? WON_ATTENTION : WON_MUTED }}>{notNow}</div>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: needsAttention(status) ? WON_ATTENTION : WON_MUTED }}>{notNow}</div>
       ) : null}
       {codes.map((c) => (
         <div key={c} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, borderTop: `1px solid ${WON_LINE}`, paddingTop: 6 }}>

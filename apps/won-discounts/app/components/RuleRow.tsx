@@ -9,7 +9,7 @@ import type { DiscountRule } from "@won/core/discounts/config";
 
 import { useT } from "../i18n/context";
 import { describeRuleLine, ruleName } from "./model/describe";
-import { statusText, type RuleStatus } from "./model/rule-status";
+import { needsAttention, statusText, type RuleStatus } from "./model/rule-status";
 import { RowNote, StatusPill, WonRow } from "./shell/WonSection";
 
 export function RuleRow({
@@ -31,13 +31,13 @@ export function RuleRow({
   const tr = useT();
   const note = statusText(status, tr);
   return (
-    <WonRow action={action} tone={attention || status.kind === "unsupported" ? "attention" : undefined}>
+    <WonRow action={action} tone={attention || needsAttention(status) ? "attention" : undefined}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <s-text type="strong">{ruleName(rule, tr)}</s-text>
         <StatusPill status={status} />
       </div>
       <RowNote>{describeRuleLine(rule, tr, currencies, timezone)}</RowNote>
-      {note ? <RowNote tone={status.kind === "unsupported" ? "attention" : undefined}>{note}</RowNote> : null}
+      {note ? <RowNote tone={needsAttention(status) ? "attention" : undefined}>{note}</RowNote> : null}
       {attention ? <RowNote tone="attention">{attention}</RowNote> : null}
     </WonRow>
   );

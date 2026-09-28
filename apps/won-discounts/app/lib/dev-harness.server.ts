@@ -16,15 +16,20 @@
 // instead of the shop's stored ones. It never reads the database and never
 // authenticates.
 
+import { codeHash } from "@won/core/discounts/code-hash";
 import { DEFAULT_CONFIG, readStoredConfig, type WonDiscountsConfig } from "@won/core/discounts/config";
 
 import type {
   AdminSignals,
   CartPlanView,
   NativeView,
+  RuleSyncMap,
   TryCartLineView,
+  UiResult,
 } from "../components/model/types";
+import { lossText, warningText } from "./native/copy";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
+import { planTryCart } from "./integration/try-cart-plan";
 
 export function isDevHarnessEnabled(): boolean {
   // eslint-disable-next-line no-undef
@@ -133,45 +138,146 @@ export const DEV_ONBOARDING_FIXTURE: WonDiscountsConfig = readStoredConfig({
 
 const DEV_ACTIVATE_URL = `https://${DEV_SHOP}/admin/themes/current/editor?context=apps&activateAppId=dev-api-key/won_discounts_embed`;
 
-export const DEV_NATIVE: NativeView = {
-  state: "ok",
-  discounts: [
-    {
-      id: "gid://shopify/DiscountCodeNode/1001",
-      title: "LETO15",
-      method: "code",
-      code: "LETO15",
-      summary: "15 % z objednávky",
-      movable: true,
-      losses: ["usage_history", "once_per_customer"],
-    },
-    {
-      id: "gid://shopify/DiscountAutomaticNode/1002",
-      title: "Doprava zdarma nad 2 000 Kč",
-      method: "automatic",
-      summary: "Doprava zdarma",
-      movable: true,
-      losses: [],
-    },
-    {
-      id: "gid://shopify/DiscountAutomaticNode/1003",
-      title: "Kup 2, třetí zdarma",
-      method: "automatic",
-      movable: false,
-      blockedReason: "bxgy",
-      losses: [],
-    },
-  ],
-  moved: [{ backupId: "bk_dev_1", title: "JARO10", movedAt: "2026-09-20T10:00:00" }],
-};
+/** Native discounts as the detector + planMove word them (app/lib/native/copy.ts sentences). */
+export function devNative(locale: "cs" | "en" = "cs"): Extract<NativeView, { state: "ok" }> {
+  return {
+    state: "ok",
+    discounts: [
+      {
+        id: "gid://shopify/DiscountCodeNode/1001",
+        title: "LETO15",
+        method: "code",
+        code: "LETO15",
+        summary: locale === "cs" ? "15 % z objednávky" : "15% off the order",
+        movable: true,
+        losses: [lossText({ code: "usage_history", used: 42 }, locale), lossText({ code: "once_per_customer" }, locale)],
+        warnings: [warningText({ code: "usage_limit_remaining", used: 42, limit: 100, remaining: 58 }, locale)],
+      },
+      {
+        id: "gid://shopify/DiscountAutomaticNode/1002",
+        title: "Doprava zdarma nad 2 000 Kč",
+        method: "automatic",
+        summary: locale === "cs" ? "Doprava zdarma · od 2 000 Kč" : "Free shipping · from CZK 2,000",
+        movable: true,
+        losses: [lossText({ code: "usage_history", used: 0 }, locale)],
+        warnings: [warningText({ code: "other_currencies", shopCurrency: "CZK", missing: ["EUR"] }, locale)],
+      },
+      {
+        id: "gid://shopify/DiscountAutomaticNode/1003",
+        title: "Kup 2, třetí zdarma",
+        method: "automatic",
+        movable: false,
+        blockedReason: "bxgy",
+        losses: [],
+      },
+    ],
+    moved: [{ backupId: "bk_dev_1", title: "JARO10", movedAt: "2026-09-20T10:00:00", state: "moved" }],
+    conflicts: [],
+  };
+}
+
+export const DEV_NATIVE: NativeView = devNative("cs");
+
+/** Right after a move: the moved discount with its undo, and one move that did not finish (in the backup). */
+export function devNativeMoved(locale: "cs" | "en" = "cs"): NativeView {
+  const base = devNative(locale);
+  return {
+    ...base,
+    discounts: base.discounts.filter((d) => d.id !== "gid://shopify/DiscountCodeNode/1001"),
+    moved: [
+      { backupId: "bk_dev_2", title: "LETO15", movedAt: "2026-09-28T14:05:00", state: "moved" },
+      {
+        backupId: "bk_dev_3",
+        title: "PODZIM20",
+        movedAt: "2026-09-28T13:40:00",
+        state: "attention",
+        note:
+          locale === "cs"
+            ? "Přesun se nepovedl (Sleva „PODZIM20“ se do Shopify nepropsala). Slevu se nepodařilo vrátit do Shopify. Je v záloze, klikni na „Vrátit zpět“."
+            : "The move failed (The discount “PODZIM20” did not reach Shopify). The discount could not be put back into Shopify. It is in the backup, click “Undo”.",
+      },
+      ...base.moved,
+    ],
+  };
+}
+
+/** The Notice right after "Přesunout" (what to keep in mind, from planMove). */
+export function devMovedResult(locale: "cs" | "en" = "cs"): UiResult {
+  return {
+    ok: true,
+    message: "moved",
+    count: 1,
+    notes: [warningText({ code: "usage_limit_remaining", used: 42, limit: 100, remaining: 58 }, locale)],
+  };
+}
 
 /** What Přehled looks like once sync, native detection and checkout checks are wired. */
 export const DEV_SIGNALS: AdminSignals = {
   embed: { state: "off", activateUrl: DEV_ACTIVATE_URL },
-  checkout: { state: "verified", at: "2026-09-28T15:40:00" },
+  checkout: { state: "not_wired" },
   sync: { state: "ok", at: "2026-09-28T16:20:00" },
   native: DEV_NATIVE,
 };
+
+/** Every fixture rule in Shopify as it is now (the per-rule facts after a clean sync). */
+export const DEV_RULE_SYNC_OK: RuleSyncMap = Object.fromEntries(
+  DEV_OVERVIEW_FIXTURE.modules.codes.rules.map((rule) => [rule.id, "synced" as const]),
+);
+
+/** The last sync failed on the VIP10 code rule (its code is taken by another Shopify discount). */
+export const DEV_RULE_SYNC_FAILED: RuleSyncMap = { ...DEV_RULE_SYNC_OK, "dev-fixture-2": "failed" };
+
+export const DEV_SIGNALS_SYNC_FAILED: AdminSignals = {
+  ...DEV_SIGNALS,
+  embed: { state: "on", activateUrl: DEV_ACTIVATE_URL },
+  sync: {
+    state: "error",
+    at: "2026-09-28T16:20:00",
+    problems: [
+      {
+        key: "sync.problem.codeTaken",
+        params: { rule: "VIP10", detail: "\"VIP10\": could not create \"VIP10\": Code must be unique. Please try a different code." },
+      },
+    ],
+  },
+};
+
+/** Two real codes the discount function cannot tell apart (same 8-hex hash), found deterministically. */
+function collidingCodes(): [string, string] {
+  const seen = new Map<string, string>();
+  for (let i = 0; ; i++) {
+    const code = `LETO${i}`;
+    const other = seen.get(codeHash(code));
+    if (other) return [other, code];
+    seen.set(codeHash(code), code);
+  }
+}
+
+/** Editor refusals as the save action returns them (harness `?result=`). */
+export function devEditorResult(kind: string | null): UiResult | null {
+  switch (kind) {
+    case "unreadable":
+      return { ok: false, reason: "unreadable_config" };
+    case "too-many":
+      return { ok: false, reason: "too_many_code_rules", count: 21, limit: 20, shopifyLimit: 25 };
+    case "collision":
+      return { ok: false, reason: "code_hash_collision", codes: [collidingCodes()] };
+    case "sync-failed":
+      return {
+        ok: true,
+        message: "saved",
+        sync: {
+          ok: false,
+          problems: [{ key: "sync.problem.rule", params: { rule: "Černý pátek", detail: "\"Černý pátek\": Throttled (3 attempts)" } }],
+          warnings: [],
+        },
+      };
+    case "saved":
+      return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] } };
+    default:
+      return null;
+  }
+}
 
 export const DEV_EMBED_OFF = { state: "off" as const, activateUrl: DEV_ACTIVATE_URL };
 export const DEV_EMBED_ON = { state: "on" as const, activateUrl: DEV_ACTIVATE_URL };
@@ -195,47 +301,27 @@ export const DEV_TRY_CART_LINES: TryCartLineView[] = [
 ];
 
 /**
- * The plan the engine returns for DEV_TRY_CART_LINES in CZK with code VIP10 on
- * 28. 9. 2026 against DEV_OVERVIEW_FIXTURE (A1: order discounts don't stack, the
- * better one wins; ties go to priority, then id). Sentences in the requested
- * admin language, as explainPlan writes them.
+ * The REAL engine plan for DEV_TRY_CART_LINES in CZK (Česko) with code VIP10 on
+ * 28. 9. 2026 against DEV_OVERVIEW_FIXTURE — the same planTryCart the action
+ * runs, on fixture prices instead of Shopify's.
  */
 export function devTryCartPlan(locale: "cs" | "en"): CartPlanView {
-  const cs = locale === "cs";
-  return {
+  return planTryCart(DEV_OVERVIEW_FIXTURE, {
+    lines: DEV_TRY_CART_LINES.map((line) => ({
+      variantId: line.variantId,
+      productId: line.productId,
+      title: line.variantTitle ? `${line.title} (${line.variantTitle})` : line.title,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice.CZK ?? 0,
+      collectionIds: [],
+    })),
     currency: "CZK",
+    countryCode: "CZ",
+    codes: ["VIP10"],
     date: "2026-09-28",
-    lines: [
-      { lineId: "line-1", title: "Mikina Won", quantity: 2, subtotal: 2580_00, discount: 0, total: 2580_00 },
-      { lineId: "line-2", title: "Čepice", quantity: 1, subtotal: 390_00, discount: 0, total: 390_00 },
-    ],
-    explain: [
-      {
-        tone: "success",
-        text: cs ? "Podzimní sleva 10 %: −297 Kč z objednávky." : "Podzimní sleva 10 %: CZK 297 off the order.",
-      },
-      {
-        tone: "warning",
-        text: cs
-          ? "Kód VIP10 se neuplatní. Stejně výhodná Podzimní sleva 10 % už platí a slevy z objednávky se nesčítají."
-          : "Code VIP10 doesn't apply. Podzimní sleva 10 % is just as good and order discounts don't stack.",
-      },
-      {
-        tone: "info",
-        text: cs
-          ? "Sleva 200 Kč / 8 € se neuplatní, Podzimní sleva 10 % je výhodnější."
-          : "Sleva 200 Kč / 8 € doesn't apply; Podzimní sleva 10 % is better.",
-      },
-      {
-        tone: "info",
-        text: cs ? "Černý pátek platí od 27. 11. 2026." : "Černý pátek starts on 27 Nov 2026.",
-      },
-      {
-        tone: "info",
-        text: cs ? "Počítá se do slevy z objednávky." : "Counts towards the order discount.",
-        lineIds: ["line-1", "line-2"],
-      },
-    ],
-    totals: { subtotal: 2970_00, productDiscount: 0, orderDiscount: 297_00, total: 2673_00 },
-  };
+    time: "14:00:00",
+    shopTimezone: DEV_TIMEZONE,
+    locale,
+    market: DEV_MARKET_NAMES.cz,
+  });
 }

@@ -46,8 +46,29 @@ test("not synced to Shopify yet → 'Uloženo, zatím nepropsáno', never green"
   const s = ruleStatus(rule(), ctx("2026-09-28", NOT_WIRED));
   assert.equal(s.kind, "not_synced");
   assert.equal(statusText(s, cs), "Uloženo, zatím nepropsáno do Shopify");
-  assert.equal(ruleStatus(rule(), ctx("2026-09-28", { state: "error", at: "x" })).kind, "not_synced");
+  // A failed sync says so (not "waiting").
+  const failed = ruleStatus(rule(), ctx("2026-09-28", { state: "error", at: "x" }));
+  assert.equal(failed.kind, "sync_failed");
+  assert.match(statusText(failed, cs) ?? "", /synchronizace selhala/);
   assert.equal(ruleStatus(rule(), ctx("2026-09-28")).kind, "live");
+});
+
+test("per-rule sync facts decide over the shop's sync line (Běží = THIS version is in Shopify)", () => {
+  const ok = ctx("2026-09-28");
+  const r = rule();
+  assert.equal(ruleStatus(r, { ...ok, ruleSync: { [r.id]: "synced" } }).kind, "live");
+  assert.equal(ruleStatus(r, { ...ok, ruleSync: { [r.id]: "pending" } }).kind, "not_synced", "the shop synced, but not this version");
+  assert.equal(ruleStatus(r, { ...ok, ruleSync: { [r.id]: "failed" } }).kind, "sync_failed");
+  assert.equal(ruleStatus(r, { ...ok, ruleSync: {} }).kind, "not_synced", "no fact = not claimed live");
+  // A code rule without a code never runs, whatever the sync says.
+  const noCode = ruleStatus(rule({ method: "code", codes: [] }), { ...ok, ruleSync: { [r.id]: "synced" } });
+  assert.equal(noCode.kind, "no_code");
+  assert.equal(statusText(noCode, cs), "Neběží: sleva s kódem zatím nemá žádný kód");
+  assert.equal(
+    ruleStatusSummary([noCode, ruleStatus(rule({ targeting: { segments: ["s"] } }), ok)], cs),
+    "2 slevy · 2 neběží",
+    "without a code and segment-targeted both count as 'neběží'",
+  );
 });
 
 test("switched off, segment-targeted, unsaved draft", () => {

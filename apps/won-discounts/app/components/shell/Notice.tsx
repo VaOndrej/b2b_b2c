@@ -1,91 +1,120 @@
-// Renders the outcome of an admin action honestly (§12): saved, refused with the
-// real reason, or "not connected yet" — never a silent no-op, never "try again"
-// for something a retry cannot fix. Where one action resolves a refusal, the
-// notice carries it (§13a). Field-level errors are shown next to their fields.
+// Renders the outcome of an admin action honestly (§12): saved AND in Shopify,
+// saved but not (yet) in Shopify (what did not get through, with "Synchronizovat
+// znovu"), refused with the real reason, or "not connected yet" — never a
+// silent no-op, never "try again" for something a retry cannot fix. Where one
+// action resolves a refusal, the notice carries it (§13a). Field-level errors
+// are shown next to their fields. The wording lives in model/result-copy.ts.
 
 import type { ReactNode } from "react";
+import { useFetcher } from "react-router";
 
 import { useT } from "../../i18n/context";
-import type { MessageKey, MessageParams, Translator } from "../../i18n";
-import type { UiFailure, UiResult } from "../model/types";
+import type { MessageKey } from "../../i18n";
+import { failureCopy, uiText } from "../model/result-copy";
+import type { SyncOutcomeView, UiResult } from "../model/types";
+import { boolAttr } from "./attrs";
 
-interface FailureCopy {
-  key: MessageKey;
-  params?: MessageParams;
-  /** The one action that resolves it, if there is one. */
-  action?: { label: MessageKey; href?: string; reload?: true };
-  tone: "info" | "critical" | "warning";
+export { failureCopy } from "../model/result-copy";
+
+/** Where "Synchronizovat znovu" posts: the Přehled route action (`intent=resync`). */
+export const RESYNC_ACTION = "/app?index";
+
+function Items({ items }: { items: readonly string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <s-unordered-list>
+      {items.map((item, i) => (
+        <s-list-item key={`${i}-${item}`}>{item}</s-list-item>
+      ))}
+    </s-unordered-list>
+  );
 }
 
-export function failureCopy(result: UiFailure, tr: Translator): FailureCopy {
-  switch (result.reason) {
-    case "not_wired":
-      return {
-        key: result.what === "move" ? "result.notWired.move" : result.what === "undo" ? "result.notWired.undo" : "result.notWired.tryCart",
-        tone: "info",
-      };
-    case "invalid":
-      return { key: "result.invalid", tone: "critical" };
-    case "too_many_code_rules":
-      return {
-        key: "result.tooManyCodeRules",
-        params: { limit: result.limit, count: result.count, shopify: result.shopifyLimit },
-        action: { label: "result.action.showDiscounts", href: "/app/discounts" },
-        tone: "critical",
-      };
-    case "code_hash_collision":
-      return {
-        key: "result.codeHashCollision",
-        params: { codes: result.codes.map((group) => tr.list(group)).join("; ") },
-        action: { label: "result.action.editCodes", href: "#codes" },
-        tone: "critical",
-      };
-    case "newer_schema":
-      return { key: "result.newerSchema", action: { label: "result.action.reload", reload: true }, tone: "warning" };
-    case "function_config_too_large":
-      return {
-        key: "result.functionTooLarge",
-        params: { bytes: result.bytes, budget: result.budget },
-        action: { label: "result.action.showDiscounts", href: "/app/discounts" },
-        tone: "critical",
-      };
-    case "config_too_large":
-      return {
-        key: "result.configTooLarge",
-        params: { bytes: result.bytes, limit: result.limit },
-        action: { label: "result.action.showDiscounts", href: "/app/discounts" },
-        tone: "critical",
-      };
-    case "not_found":
-      return { key: "result.notFound", action: { label: "result.action.showDiscounts", href: "/app/discounts" }, tone: "critical" };
-    case "nothing_selected":
-      return { key: "result.nothingSelected", tone: "info" };
-    case "bad_request":
-      return { key: "result.badRequest", action: { label: "result.action.reload", reload: true }, tone: "critical" };
-    case "preview_only":
-      return { key: "result.previewOnly", tone: "info" };
-    case "error":
-    default:
-      return { key: "result.error", tone: "critical" };
+function Titled({ title, items }: { title: string; items: readonly string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <s-stack direction="block" gap="small-200">
+      <s-text type="strong">{title}</s-text>
+      <Items items={items} />
+    </s-stack>
+  );
+}
+
+/** "Synchronizovat znovu": resyncs the stored config (Přehled action) and shows what happened. */
+export function ResyncButton({ slot, variant = "secondary" }: { slot?: "secondary-actions"; variant?: "primary" | "secondary" | "tertiary" }) {
+  const tr = useT();
+  const fetcher = useFetcher<UiResult>();
+  const busy = fetcher.state !== "idle";
+  const button = (
+    <s-button
+      slot={slot}
+      variant={variant}
+      loading={boolAttr(busy)}
+      disabled={boolAttr(busy)}
+      onClick={() => fetcher.submit({ intent: "resync" }, { method: "post", action: RESYNC_ACTION })}
+    >
+      {tr.t("result.action.resync")}
+    </s-button>
+  );
+  if (!fetcher.data) return button;
+  // In a banner the button sits in its actions slot; what the resync did goes into the banner body.
+  if (slot) {
+    return (
+      <>
+        {button}
+        <Notice result={fetcher.data} />
+      </>
+    );
   }
+  return (
+    <s-stack direction="block" gap="small-200">
+      {button}
+      <Notice result={fetcher.data} />
+    </s-stack>
+  );
 }
 
-export function Notice({ result }: { result: UiResult | null | undefined }) {
+function syncHeading(message: string, sync: SyncOutcomeView | undefined): MessageKey {
+  if (message === "synced") return "result.synced";
+  if (message === "deleted") return sync && !sync.ok ? "result.deletedNotSynced" : "result.deleted";
+  if (sync && !sync.ok) return "result.savedNotSynced";
+  return sync ? "result.savedSynced" : "result.saved";
+}
+
+export function Notice({ result, onReplace }: { result: UiResult | null | undefined; onReplace?: () => void }) {
   const tr = useT();
   const { t } = tr;
   if (!result) return null;
   if (result.ok) {
+    if (result.message === "moved" || result.message === "undone") {
+      const moved = result.message === "moved";
+      const failures = result.failures ?? [];
+      return (
+        <s-banner
+          tone={failures.length > 0 ? "warning" : "success"}
+          heading={moved ? tr.tp("result.moved", result.count ?? 1) : t("result.undone")}
+        >
+          <s-stack direction="block" gap="small-300">
+            <Titled title={t(moved ? "result.movedNotes" : "result.undoneNotes")} items={result.notes ?? []} />
+            <Titled title={t("result.movedPartly")} items={failures} />
+          </s-stack>
+        </s-banner>
+      );
+    }
+    const sync = result.sync;
     const fixes = result.fixes ?? [];
-    const heading = fixes.length > 0 ? t("result.savedWithFixes") : t(result.message === "deleted" ? "result.deleted" : "result.saved");
+    const failed = sync !== undefined && !sync.ok;
+    const heading = fixes.length > 0 && !failed ? t("result.savedWithFixes") : t(syncHeading(result.message, sync));
+    const warnings = (sync?.warnings ?? []).map((w) => uiText(w, tr));
+    const problems = (sync?.problems ?? []).map((p) => uiText(p, tr));
     return (
-      <s-banner tone="success" heading={heading}>
-        {fixes.length > 0 ? (
-          <s-unordered-list>
-            {fixes.map((fix) => (
-              <s-list-item key={fix}>{fix}</s-list-item>
-            ))}
-          </s-unordered-list>
-        ) : null}
+      <s-banner tone={failed ? "warning" : "success"} heading={heading}>
+        <s-stack direction="block" gap="small-300">
+          {fixes.length > 0 && failed ? <Titled title={t("result.savedWithFixes")} items={fixes} /> : <Items items={fixes} />}
+          <Items items={problems} />
+          <Titled title={t("result.syncWarnings")} items={warnings} />
+        </s-stack>
+        {failed ? <ResyncButton slot="secondary-actions" /> : null}
       </s-banner>
     );
   }
@@ -103,10 +132,19 @@ export function Notice({ result }: { result: UiResult | null | undefined }) {
         {t(copy.action.label)}
       </s-button>
     );
+  } else if (copy.action?.replace && onReplace) {
+    action = (
+      <s-button slot="secondary-actions" onClick={onReplace}>
+        {t(copy.action.label)}
+      </s-button>
+    );
+  } else if (copy.action?.resync) {
+    action = <ResyncButton slot="secondary-actions" />;
   }
   return (
     <s-banner tone={copy.tone}>
       {t(copy.key, copy.params)}
+      {copy.items && copy.items.length > 0 ? <Items items={copy.items} /> : null}
       {action}
     </s-banner>
   );

@@ -20,7 +20,6 @@ import {
   readMarketNames,
   readShopContext,
   resolvePlan,
-  runTryCart,
   saveOnboarding,
   saveRule,
   uiFailureFromSave,
@@ -29,13 +28,16 @@ import {
 } from "../../app/lib/ui-actions.server.ts";
 import { FIELD } from "../../app/components/model/rule-form.ts";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
+import { FakeStore, testCtx } from "../integration/helpers.ts";
 
 // The admin UI's single server seam (app/lib/ui-actions.server.ts):
 //   SEC-1 — the raw form is validated on the server; refused input writes nothing.
 //   SEC-2 — every write is scoped to the shop the caller passes (the SESSION shop);
 //           a `shop` field in the form is ignored, other shops are never touched.
 //   BILL-1 — Pro fields are not writable without server-derived entitlement.
-//   Not-wired seams answer honestly instead of pretending.
+// Writes go through the canonical saveAndSync against a fake Shopify
+// (tests/integration/helpers.ts); what reaches Shopify is pinned in
+// tests/integration/*.
 
 const SHOP = "ui-actions.myshopify.com";
 const OTHER = "other.myshopify.com";
@@ -48,6 +50,9 @@ before(() => {
 after(async () => {
   await db.drop();
 });
+
+/** The request context for `shop` (fake Shopify + real sync + this test DB). */
+const ctx = (shop: string) => testCtx(db.prisma, shop, new FakeStore());
 
 function form(entries: [string, string][]): FormData {
   const fd = new FormData();
@@ -65,7 +70,7 @@ const valid: [string, string][] = [
 ];
 
 test("saveRule creates a rule for the given shop only; a `shop` form field is ignored (SEC-2)", async () => {
-  const { result, ruleId } = await saveRule(db.prisma, SHOP, form([...valid, ["shop", OTHER], ["id", "evil"]]), OPTS);
+  const { result, ruleId } = await saveRule(ctx(SHOP), form([...valid, ["shop", OTHER], ["id", "evil"]]), OPTS);
   assert.equal(result.ok, true);
   assert.ok(ruleId && ruleId !== "evil" && /^r_[a-z0-9]+$/.test(ruleId));
 
@@ -78,7 +83,7 @@ test("saveRule creates a rule for the given shop only; a `shop` form field is ig
 test("saveRule refuses invalid input on the server and writes nothing (SEC-1)", async () => {
   const before = (await loadConfig(db.prisma, SHOP)).config.modules.codes.rules.length;
   const bad = valid.map(([k, v]) => [k, k === FIELD.percent ? "500" : k === FIELD.method ? "magic" : v] as [string, string]);
-  const { result, ruleId } = await saveRule(db.prisma, SHOP, form(bad), OPTS);
+  const { result, ruleId } = await saveRule(ctx(SHOP), form(bad), OPTS);
   assert.equal(ruleId, null);
   assert.equal(result.ok, false);
   assert.ok(!result.ok && result.reason === "invalid");
@@ -94,23 +99,23 @@ test("saveRule edits by the URL id; an unknown id is not_found; Pro fields need 
   const edited = valid.map(([k, v]) => [k, k === FIELD.name ? "Přejmenovaná" : v] as [string, string]);
   const proFields: [string, string][] = [[FIELD.markets, "cz"]];
 
-  const res = await saveRule(db.prisma, SHOP, form([...edited, ...proFields]), { ...OPTS, ruleId: rule.id });
+  const res = await saveRule(ctx(SHOP), form([...edited, ...proFields]), { ...OPTS, ruleId: rule.id });
   assert.equal(res.result.ok, true);
   const after = (await loadConfig(db.prisma, SHOP)).config.modules.codes.rules;
   assert.equal(after.length, 1);
   assert.equal(after[0].name, "Přejmenovaná");
   assert.equal(after[0].targeting, undefined, "no market targeting without Pro");
 
-  const missing = await saveRule(db.prisma, SHOP, form(valid), { ...OPTS, ruleId: "r_does_not_exist" });
+  const missing = await saveRule(ctx(SHOP), form(valid), { ...OPTS, ruleId: "r_does_not_exist" });
   assert.deepEqual(missing.result, { ok: false, reason: "not_found" });
 });
 
 test("deleteRule removes the rule of this shop only", async () => {
-  const other = await saveRule(db.prisma, OTHER, form(valid), OPTS);
+  const other = await saveRule(ctx(OTHER), form(valid), OPTS);
   const [rule] = (await loadConfig(db.prisma, SHOP)).config.modules.codes.rules;
   // The other shop's rule id cannot be deleted through this shop.
-  assert.deepEqual(await deleteRule(db.prisma, SHOP, other.ruleId ?? ""), { ok: false, reason: "not_found" });
-  assert.deepEqual(await deleteRule(db.prisma, SHOP, rule.id), { ok: true, message: "deleted" });
+  assert.deepEqual(await deleteRule(ctx(SHOP), other.ruleId ?? ""), { ok: false, reason: "not_found" });
+  assert.deepEqual(await deleteRule(ctx(SHOP), rule.id), { ok: true, message: "deleted", sync: { ok: true, problems: [], warnings: [] } });
   assert.deepEqual((await loadConfig(db.prisma, SHOP)).config.modules.codes.rules, []);
   assert.equal((await loadConfig(db.prisma, OTHER)).config.modules.codes.rules.length, 1);
 });
@@ -119,26 +124,21 @@ test("onboarding: only known goals are stored (comma-joined choice list or separ
   const patch = readOnboardingForm(form([["intent", "goals"], ["goals", "rewards,bogus"], ["goals", "migrate"]]));
   assert.deepEqual(patch, { goals: ["rewards", "migrate"], step: 2 });
   assert.equal(readOnboardingForm(form([["intent", "step"], ["step", "9"]])), null);
-  assert.deepEqual(await saveOnboarding(db.prisma, SHOP, patch ?? {}), { ok: true, message: "saved" });
+  assert.deepEqual(await saveOnboarding({ db: db.prisma, shop: SHOP }, patch ?? {}), { ok: true, message: "saved" });
   const { config } = await loadConfig(db.prisma, SHOP);
   assert.deepEqual(config.onboarding, { goals: ["rewards", "migrate"], step: 2 });
 });
 
-test("not-wired seams say so and change nothing; their inputs are validated", async () => {
-  assert.deepEqual(await moveNative({ shop: SHOP }, []), { ok: false, reason: "nothing_selected" });
-  assert.deepEqual(await undoMove({ shop: SHOP }, null), { ok: false, reason: "bad_request" });
+test("native seams validate their input before anything reaches Shopify", async () => {
+  const store = new FakeStore();
+  const c = testCtx(db.prisma, SHOP, store);
+  assert.deepEqual(await moveNative(c, []), { ok: false, reason: "nothing_selected" });
+  assert.deepEqual(await undoMove(c, null), { ok: false, reason: "bad_request" });
+  assert.deepEqual(store.ops, [], "nothing was sent");
   assert.deepEqual(readNativeIds(form([["nativeId", "gid://shopify/DiscountCodeNode/1"], ["nativeId", "gid://evil/1"]])), [
     "gid://shopify/DiscountCodeNode/1",
   ]);
   assert.equal(readBackupId(form([["backupId", "../../etc"]])), null);
-  assert.deepEqual(await moveNative({ shop: SHOP }, ["gid://shopify/DiscountCodeNode/1"]), {
-    ok: false,
-    reason: "not_wired",
-    what: "move",
-  });
-  assert.deepEqual(await undoMove({ shop: SHOP }, "bk_1"), { ok: false, reason: "not_wired", what: "undo" });
-  const cart = await runTryCart({ shop: SHOP }, { lines: [], currency: "CZK", codes: [], date: "2026-09-28", locale: "cs" });
-  assert.deepEqual(cart, { result: { ok: false, reason: "not_wired", what: "tryCart" }, plan: null });
 });
 
 test("BILL-1: without a verified subscription the plan resolves to Free", async () => {
@@ -179,7 +179,7 @@ test("too_many_code_rules: the 21st active code rule is refused with the limit a
     shopifyLimit: SHOPIFY_MAX_ACTIVE_DISCOUNT_FUNCTIONS,
   });
 
-  const { result } = await saveRule(db.prisma, shop, form(codeForm("ONE-TOO-MANY")), OPTS);
+  const { result } = await saveRule(ctx(shop), form(codeForm("ONE-TOO-MANY")), OPTS);
   assert.deepEqual(result, {
     ok: false,
     reason: "too_many_code_rules",
@@ -192,7 +192,7 @@ test("too_many_code_rules: the 21st active code rule is refused with the limit a
   assert.deepEqual(copy.params, { limit: 20, count: 21, shopify: 25 });
   assert.equal(copy.action?.href, "/app/discounts");
   // A switched-off code rule does not count: saving it is fine.
-  const off = await saveRule(db.prisma, shop, form(codeForm("PARKED").filter(([k]) => k !== FIELD.enabled)), OPTS);
+  const off = await saveRule(ctx(shop), form(codeForm("PARKED").filter(([k]) => k !== FIELD.enabled)), OPTS);
   assert.equal(off.result.ok, true);
 });
 
@@ -211,9 +211,9 @@ function collidingCodes(): [string, string] {
 test("code_hash_collision: names the codes the checkout cannot tell apart, fix link to #codes", async () => {
   const shop = "collision.myshopify.com";
   const [a, b] = collidingCodes();
-  const first = await saveRule(db.prisma, shop, form(codeForm(a)), OPTS);
+  const first = await saveRule(ctx(shop), form(codeForm(a)), OPTS);
   assert.equal(first.result.ok, true);
-  const { result } = await saveRule(db.prisma, shop, form(codeForm(b)), OPTS);
+  const { result } = await saveRule(ctx(shop), form(codeForm(b)), OPTS);
   assert.equal(result.ok, false);
   assert.ok(!result.ok && result.reason === "code_hash_collision");
   assert.deepEqual(!result.ok && result.reason === "code_hash_collision" ? result.codes.flat().sort() : [], [a, b].sort());
@@ -229,6 +229,7 @@ test("every saveConfig refusal maps to its own typed failure with its own copy",
     [{ ok: false, reason: "function_config_too_large", bytes: 9500, budget: 9000 }, "result.functionTooLarge", "/app/discounts"],
     [{ ok: false, reason: "config_too_large", bytes: 300000, limit: 262144 }, "result.configTooLarge", "/app/discounts"],
     [{ ok: false, reason: "newer_schema", storedSchemaVersion: 2 }, "result.newerSchema", undefined],
+    [{ ok: false, reason: "unreadable_config" }, "result.unreadableConfig", undefined],
   ] as const;
   for (const [refusal, key, href] of cases) {
     const failure = uiFailureFromSave({ ...refusal, config: {} as never, issues: [] } as never);

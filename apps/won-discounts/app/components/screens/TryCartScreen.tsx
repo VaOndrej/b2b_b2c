@@ -1,9 +1,9 @@
-// Vyzkoušet košík — build a cart (products + market/currency + codes + day) and
-// see what applies and WHY, in human sentences (spec §5). The plan itself is
-// computed by the engine (planCart + explainPlan) on the server and arrives as
-// a ready CartPlanView; this screen never does discount math (DATA-4, §10b).
-// Until the engine step is wired, the action answers `not_wired` and the screen
-// says so (§12).
+// Vyzkoušet košík — build a cart (products/variants + market/currency + codes +
+// day) and see what applies and WHY, in human sentences (spec §5). The plan
+// itself is computed on the server — Shopify prices for the chosen market, then
+// the engine (planCart + explainPlan) on the discount function's own payload —
+// and arrives as a ready CartPlanView; this screen never does discount math
+// (DATA-4, §10b). The market choice submits `CZK:cz` (currency + market).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form } from "react-router";
@@ -15,7 +15,8 @@ import type { Translator } from "../../i18n";
 import { pickProducts } from "../model/app-bridge";
 import { formatDate, formatMoney } from "@won/core/discounts/describe";
 
-import { currencyCodes, currencyLabel, currencyViews, type MarketNames } from "../model/markets";
+import { currencyViews, type MarketNames } from "../model/markets";
+import { TRY_CART_LIMITS } from "../model/try-cart-form";
 import { shopToday } from "../model/rule-form";
 import type { CartPlanView, CurrencyView, ExplainView, FieldError, TryCartLineView, UiResult } from "../model/types";
 import { boolAttr } from "../shell/attrs";
@@ -53,6 +54,15 @@ export function buildTryCartProps(
     plan: null,
     result: null,
   };
+}
+
+/** One select option per enabled market (`CZK:cz` "CZK · Česko"), or per currency when it has none. */
+export function marketOptions(currencies: readonly CurrencyView[]): { value: string; label: string; currency: string }[] {
+  return currencies.flatMap((c) =>
+    c.markets.length > 0
+      ? c.markets.map((m) => ({ value: `${c.code}:${m.handle}`, label: `${c.code} · ${m.name}`, currency: c.code }))
+      : [{ value: c.code, label: c.code, currency: c.code }],
+  );
 }
 
 function explainFor(explain: readonly ExplainView[], lineId: string | null): ExplainView[] {
@@ -94,12 +104,17 @@ export function TryCartScreen(props: TryCartScreenProps) {
   const { currencies, timezone, today, plan, result } = props;
   const tr = useT();
   const { t } = tr;
-  const codes = useMemo(() => currencyCodes(currencies), [currencies]);
+  const options = useMemo(() => marketOptions(currencies), [currencies]);
   const [lines, setLines] = useState<TryCartLineView[]>(props.lines);
+  // A run answers with the cart as Shopify priced it: show those titles and prices.
+  // (An empty list is a revalidated loader, never a run: the cart being built stays.)
+  useEffect(() => {
+    if (props.lines.length > 0) setLines(props.lines);
+  }, [props.lines]);
   const [unavailable, setUnavailable] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [live, setLive] = useState({
-    currency: props.currency ?? codes[0] ?? "",
+    currency: props.currency ?? options[0]?.value ?? "",
     codes: props.codes ?? "",
     date: props.date ?? today,
     quantity: props.lines.reduce((s, l) => s + l.quantity, 0),
@@ -136,17 +151,20 @@ export function TryCartScreen(props: TryCartScreenProps) {
       return;
     }
     const next = [...lines];
+    // The picker returns each product with the variants picked (all of them when the product was picked whole).
     for (const product of res.items) {
-      const variant = product.variants[0];
-      if (!variant || next.some((l) => l.variantId === variant.id)) continue;
-      next.push({
-        variantId: variant.id,
-        productId: product.id,
-        title: product.title,
-        variantTitle: variant.title && variant.title !== "Default Title" ? variant.title : undefined,
-        quantity: 1,
-        unitPrice: {},
-      });
+      for (const variant of product.variants) {
+        if (next.length >= TRY_CART_LIMITS.lines) break;
+        if (next.some((l) => l.variantId === variant.id)) continue;
+        next.push({
+          variantId: variant.id,
+          productId: product.id,
+          title: product.title,
+          variantTitle: variant.title && variant.title !== "Default Title" ? variant.title : undefined,
+          quantity: 1,
+          unitPrice: {},
+        });
+      }
     }
     setLines(next);
     setLive((s) => ({ ...s, quantity: next.reduce((sum, l) => sum + l.quantity, 0) }));
@@ -157,9 +175,11 @@ export function TryCartScreen(props: TryCartScreenProps) {
     const e = errors.find((x) => x.field === field);
     return e ? t(e.key, e.params) : undefined;
   };
+  const selected = options.find((o) => o.value === live.currency);
+  const liveCurrency = selected?.currency ?? live.currency.split(":")[0] ?? "";
   const cartSummary = [
     tr.tp("count.item", live.quantity),
-    live.currency,
+    selected?.label ?? live.currency,
     live.codes.trim() ? live.codes.trim().toUpperCase() : "",
     live.date ? formatDate(live.date, tr.locale) : "",
   ]
@@ -194,7 +214,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
                 ) : (
                   <div>
                     {lines.map((line) => {
-                      const price = line.unitPrice[live.currency];
+                      const price = line.unitPrice[liveCurrency];
                       return (
                         <WonRow
                           key={line.variantId}
@@ -230,9 +250,9 @@ export function TryCartScreen(props: TryCartScreenProps) {
                             {[
                               line.variantTitle,
                               typeof price === "number"
-                                ? formatMoney(price, live.currency, tr.locale)
-                                : live.currency
-                                  ? t("tryCart.noPrice", { currency: live.currency })
+                                ? formatMoney(price, liveCurrency, tr.locale)
+                                : liveCurrency
+                                  ? t("tryCart.noPrice", { currency: liveCurrency })
                                   : "",
                             ]
                               .filter(Boolean)
@@ -255,9 +275,9 @@ export function TryCartScreen(props: TryCartScreenProps) {
               {errorFor("lines") ? <RowNote tone="attention">{errorFor("lines")}</RowNote> : null}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 200px), 1fr))", gap: 12 }}>
                 <s-select name="currency" label={t("tryCart.market")} value={live.currency} error={errorFor("currency")}>
-                  {currencies.map((c) => (
-                    <s-option key={c.code} value={c.code} selected={boolAttr(c.code === live.currency)}>
-                      {currencyLabel(c)}
+                  {options.map((o) => (
+                    <s-option key={o.value} value={o.value} selected={boolAttr(o.value === live.currency)}>
+                      {o.label}
                     </s-option>
                   ))}
                 </s-select>
@@ -289,6 +309,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
             {result && !(result.ok === false && result.reason === "invalid") ? <Notice result={result} /> : null}
             {plan ? (
               <div>
+                {plan.market ? <s-text color="subdued">{t("tryCart.result.market", { market: plan.market })}</s-text> : null}
                 {plan.lines.map((line) => (
                   <WonRow key={line.lineId}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>

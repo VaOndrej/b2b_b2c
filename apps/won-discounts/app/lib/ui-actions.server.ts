@@ -1,24 +1,26 @@
-// The admin UI's single server seam (MVP 1, Task 5). Every admin route action
-// and the store-signal reads go through here, so the integration step rewires
-// ONE module, not the screens:
-//
-//   saveRule / deleteRule   → today: saveConfig (config.server). Integration:
-//                             app/lib/sync `saveAndSync` (config + Shopify nodes
-//                             + function metafields in one step).
-//   moveNative / undoMove   → today: `{ ok:false, reason:"not_wired" }`, and the
-//                             UI says the Shopify discount is unchanged.
-//                             Integration: app/lib/native (backup → Won rule →
-//                             delete native; undo = restore from backup).
-//   runTryCart              → today: `not_wired`. Integration: the engine
-//                             (@won/core/discounts planCart + explainPlan) on
-//                             real variant prices read from Shopify.
-//   loadAdminSignals        → theme-embed detection is real (read_themes);
-//                             sync, native detection and checkout verification
-//                             are `not_wired` until app/lib/sync + app/lib/native.
-//
-// Security: callers pass the SESSION shop (SEC-2) — nothing here ever reads a
-// shop from a form — and the raw FormData, which is parsed and validated here on
+// The admin UI's single server seam. Every admin route action and the store
+// reads go through here; the routes build ONE request context (ShopCtx,
+// app/lib/integration/context.server.ts) from `authenticate.admin` — the
+// SESSION shop (SEC-2), the app DB and the embedded admin's AdminClient — and
+// hand it over with the raw FormData, which is parsed and validated here on
 // the server (SEC-1) by the same parser the editor uses for its live summary.
+//
+// Wired (MVP 1 integration step, app/lib/integration/*):
+//   saveRule / deleteRule   → the canonical saveAndSync (app/lib/sync): config
+//                             + Shopify nodes + function metafields in one
+//                             step; the result says what reached Shopify.
+//                             `unreadable_config` is refused until the merchant
+//                             confirms (form `replaceUnreadable=1`).
+//   resyncNow               → "Synchronizovat znovu" (resyncShop).
+//   moveNative / undoMove   → app/lib/native moveNative / undoMove behind the
+//                             canonical saveAndSync (native codes passed for the
+//                             hash-collision check).
+//   runTryCart              → Shopify prices (market country) + the engine on
+//                             the function's own payload (planCart + explainPlan).
+//   loadStoreSignals        → embed (read_themes), sync (resyncIfPending,
+//                             bounded, REL-1) and native detection (cached).
+// Every config read-modify-write runs under one per-shop lock (lock.server.ts).
+// Checkout verification is still not wired and says so.
 
 import {
   CONFIG_LIMITS,
@@ -29,16 +31,31 @@ import {
 import { parseEmbedStatus } from "@won/core/toasts/embed-status";
 import { resolveEntitlement } from "@won/app-kit/entitlement";
 
-import type { PrismaClient } from "../generated/prisma/client";
 import { EMBED_BLOCK_HANDLE, embedActivationUrl } from "../components/model/embed";
 import { BACKUP_ID, NATIVE_DISCOUNT_GID } from "../components/model/ids";
 import { currencyCodes, currencyViews, type MarketNames } from "../components/model/markets";
 import { readRuleForm, newRuleId, type FormDataLike } from "../components/model/rule-form";
 import { NOT_WIRED_SIGNALS } from "../components/model/signals";
 import { readTryCartForm, type TryCartInput } from "../components/model/try-cart-form";
-import type { AdminSignals, CartPlanView, CodeRuleLimit, EmbedState, UiFailure, UiResult } from "../components/model/types";
+import type { AdminSignals, CodeRuleLimit, EmbedState, UiResult } from "../components/model/types";
 import { activeCodeRules, MAX_ACTIVE_CODE_RULES, SHOPIFY_MAX_ACTIVE_DISCOUNT_FUNCTIONS } from "./config-guards.server";
-import { loadConfig, saveConfig, type SaveConfigResult } from "./config.server";
+import { loadConfig, saveConfig, type LoadedConfig } from "./config.server";
+import type { ShopCtx } from "./integration/context.server";
+import { withConfigLock } from "./integration/lock.server";
+import {
+  cachedNativeCodes,
+  forgetDetection,
+  loadNativeView,
+  moveNativeDiscounts,
+  undoNativeDiscount,
+} from "./integration/native.server";
+import { uiFailureFromSave } from "./integration/results";
+import { ruleNames, syncOutcome } from "./integration/sync-copy";
+import { overviewSync, resyncNow as resyncStored } from "./integration/sync-status.server";
+import { runTryCartPlan, type TryCartRun } from "./integration/try-cart.server";
+import { saveAndSync, type SaveAndSyncResult } from "./sync/save-and-sync.server";
+
+export { uiFailureFromSave } from "./integration/results";
 
 /** Admin GraphQL as a plain function (`admin.graphql` adapted by the route; a fake in tests). */
 export type AdminGraphql = (query: string, variables?: Record<string, unknown>) => Promise<unknown>;
@@ -209,9 +226,8 @@ async function detectEmbed(graphql: AdminGraphql): Promise<EmbedState> {
 }
 
 /**
- * Přehled / onboarding store signals. Only the embed is read today; the rest is
- * explicitly `not_wired` (the integration step fills sync, checkout and native
- * from app/lib/sync and app/lib/native).
+ * The theme-embed signal (read_themes); sync, native and checkout stay
+ * `not_wired` here — loadStoreSignals below adds the wired ones.
  */
 export async function loadAdminSignals(ctx: {
   shop: string;
@@ -227,6 +243,35 @@ export async function loadAdminSignals(ctx: {
     ? await cached(`embed:${ctx.shop}`, () => detectEmbed(ctx.graphql), { fresh: ctx.fresh })
     : "no_scope";
   return { ...NOT_WIRED_SIGNALS, embed: { state, activateUrl } };
+}
+
+/**
+ * Přehled / onboarding store signals, all wired: the embed, the sync line
+ * (Přehled only: it is also the retry trigger, resyncIfPending, bounded by a
+ * deadline — REL-1) and the native discounts (detection cached ≤ 60 s,
+ * bounded). Checkout verification is not wired yet and says so.
+ */
+export async function loadStoreSignals(
+  ctx: ShopCtx,
+  loaded: Pick<LoadedConfig, "config" | "exists" | "unreadable" | "readOnly">,
+  opts: {
+    scopes: string;
+    graphql: AdminGraphql;
+    timezone: string | null;
+    /** Run the Přehled sync trigger (onboarding does not). */
+    sync: boolean;
+    fresh?: boolean;
+    syncDeadlineMs?: number;
+    nativeDeadlineMs?: number;
+  },
+): Promise<AdminSignals> {
+  const [base, sync, native] = await Promise.all([
+    loadAdminSignals({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: opts.graphql, fresh: opts.fresh }),
+    opts.sync ? overviewSync(ctx, loaded, { timezone: opts.timezone, deadlineMs: opts.syncDeadlineMs }) : Promise.resolve(NOT_WIRED_SIGNALS.sync),
+    // `fresh` re-reads the theme only (onboarding's focus re-check); detection keeps its 60 s cache.
+    loadNativeView(ctx, loaded.config, { timezone: opts.timezone, deadlineMs: opts.nativeDeadlineMs }),
+  ]);
+  return { ...base, sync, native };
 }
 
 // --- One call per loader ------------------------------------------------------------------
@@ -261,27 +306,42 @@ export async function readAdminContext(ctx: {
 
 // --- Config writes -------------------------------------------------------------------------
 
-/** Every refusal saveConfig can give → the UI's typed failure (each has its own copy + fix, Notice.tsx). */
-export function uiFailureFromSave(res: Exclude<SaveConfigResult, { ok: true }>): UiFailure {
-  switch (res.reason) {
-    case "too_many_code_rules":
-      return { ok: false, reason: "too_many_code_rules", count: res.count, limit: res.limit, shopifyLimit: SHOPIFY_MAX_ACTIVE_DISCOUNT_FUNCTIONS };
-    case "code_hash_collision":
-      return { ok: false, reason: "code_hash_collision", codes: res.collisions.map((group) => [...group]) };
-    case "function_config_too_large":
-      return { ok: false, reason: "function_config_too_large", bytes: res.bytes, budget: res.budget };
-    case "config_too_large":
-      return { ok: false, reason: "config_too_large", bytes: res.bytes, limit: res.limit };
-    case "newer_schema":
-      return { ok: false, reason: "newer_schema" };
-    default:
-      return { ok: false, reason: "error" };
-  }
+/** Save `next` and write it into Shopify (canonical saveAndSync); the shop's native codes guard code hashes. */
+async function writeAndSync(ctx: ShopCtx, next: WonDiscountsConfig, replaceUnreadable: boolean): Promise<SaveAndSyncResult> {
+  const result = await saveAndSync({
+    client: ctx.client,
+    db: ctx.db,
+    shop: ctx.shop,
+    input: next,
+    otherCodes: cachedNativeCodes(ctx.shop),
+    replaceUnreadable,
+    createSync: ctx.createSync,
+    now: ctx.now,
+    logger: ctx.logger,
+  });
+  // A rule change can start or end a conflict with a native discount.
+  if (result.save.ok) forgetDetection(ctx.shop);
+  return result;
 }
 
-async function writeConfig(db: PrismaClient, shop: string, next: WonDiscountsConfig): Promise<SaveConfigResult> {
-  // Integration step: app/lib/sync saveAndSync(db, shop, next) replaces this call.
-  return saveConfig(db, shop, next);
+/** The success result of a save: sanitizer notes for `prefix` + what reached Shopify. */
+function savedResult(
+  res: SaveAndSyncResult & { save: { ok: true } },
+  message: "saved" | "deleted",
+  prefix: string | null,
+): UiResult {
+  const fixes = prefix === null ? [] : res.save.issues.filter((i) => i.path === prefix || i.path.startsWith(`${prefix}.`)).map((i) => i.message);
+  return {
+    ok: true,
+    message,
+    ...(fixes.length > 0 ? { fixes } : {}),
+    ...(res.sync ? { sync: syncOutcome(res.sync, res.warnings, ruleNames(res.save.config)) } : {}),
+  };
+}
+
+/** The form's explicit confirmation to replace an unreadable stored config (I3). */
+export function readReplaceUnreadable(form: FormDataLike): boolean {
+  return form.get("replaceUnreadable") === "1";
 }
 
 export interface SaveRuleOptions {
@@ -294,60 +354,72 @@ export interface SaveRuleOptions {
 
 /**
  * Create or update one rule from the editor's raw form. Validated here (SEC-1),
- * scoped to the session shop (SEC-2), sanitized again by saveConfig (DATA-2).
+ * scoped to the session shop (SEC-2), sanitized again by saveConfig (DATA-2),
+ * then written into Shopify (saveAndSync).
  */
 export async function saveRule(
-  db: PrismaClient,
-  shop: string,
+  ctx: ShopCtx,
   form: FormDataLike,
   opts: SaveRuleOptions,
 ): Promise<{ result: UiResult; ruleId: string | null }> {
-  const { config, readOnly } = await loadConfig(db, shop);
-  if (readOnly) return { result: { ok: false, reason: "newer_schema" }, ruleId: null };
+  return withConfigLock(ctx.shop, async () => {
+    const replaceUnreadable = readReplaceUnreadable(form);
+    const { config, readOnly, unreadable } = await loadConfig(ctx.db, ctx.shop);
+    if (readOnly) return { result: { ok: false, reason: "newer_schema" }, ruleId: null };
+    // I3: never replace an unreadable stored config without the merchant's confirmation.
+    if (unreadable && !replaceUnreadable) return { result: { ok: false, reason: "unreadable_config" }, ruleId: null };
 
-  const rules = config.modules.codes.rules;
-  const isNew = opts.ruleId === "new";
-  const existing = isNew ? null : (rules.find((r) => r.id === opts.ruleId) ?? null);
-  if (!isNew && !existing) return { result: { ok: false, reason: "not_found" }, ruleId: null };
-  if (isNew && rules.length >= CONFIG_LIMITS.rules) {
-    return {
-      result: { ok: false, reason: "invalid", errors: [{ field: "name", key: "editor.error.tooManyRules", params: { max: CONFIG_LIMITS.rules } }] },
-      ruleId: null,
-    };
-  }
+    const rules = config.modules.codes.rules;
+    const isNew = opts.ruleId === "new";
+    const existing = isNew ? null : (rules.find((r) => r.id === opts.ruleId) ?? null);
+    if (!isNew && !existing) return { result: { ok: false, reason: "not_found" }, ruleId: null };
+    if (isNew && rules.length >= CONFIG_LIMITS.rules) {
+      return {
+        result: { ok: false, reason: "invalid", errors: [{ field: "name", key: "editor.error.tooManyRules", params: { max: CONFIG_LIMITS.rules } }] },
+        ruleId: null,
+      };
+    }
 
-  const id = existing ? existing.id : newRuleId();
-  const parsed = readRuleForm(form, {
-    id,
-    currencies: currencyCodes(currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules })),
-    timezone: opts.timezone,
-    pro: opts.pro,
-    existing,
-    marketHandles: config.markets.filter((m) => m.enabled).map((m) => m.handle),
-    otherRules: rules.filter((r) => r.id !== id).map((r) => ({ id: r.id, name: r.name, codes: r.codes })),
+    const id = existing ? existing.id : newRuleId();
+    const parsed = readRuleForm(form, {
+      id,
+      currencies: currencyCodes(currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules })),
+      timezone: opts.timezone,
+      pro: opts.pro,
+      existing,
+      marketHandles: config.markets.filter((m) => m.enabled).map((m) => m.handle),
+      otherRules: rules.filter((r) => r.id !== id).map((r) => ({ id: r.id, name: r.name, codes: r.codes })),
+    });
+    if (parsed.errors.length > 0) return { result: { ok: false, reason: "invalid", errors: parsed.errors }, ruleId: null };
+
+    const nextRules = existing ? rules.map((r) => (r.id === id ? parsed.rule : r)) : [...rules, parsed.rule];
+    const index = nextRules.findIndex((r) => r.id === id);
+    const res = await writeAndSync(ctx, { ...config, modules: { ...config.modules, codes: { rules: nextRules } } }, replaceUnreadable);
+    if (!res.save.ok) return { result: uiFailureFromSave(res.save), ruleId: null };
+    return { result: savedResult({ ...res, save: res.save }, "saved", `modules.codes.rules[${index}]`), ruleId: id };
   });
-  if (parsed.errors.length > 0) return { result: { ok: false, reason: "invalid", errors: parsed.errors }, ruleId: null };
-
-  const nextRules = existing ? rules.map((r) => (r.id === id ? parsed.rule : r)) : [...rules, parsed.rule];
-  const index = nextRules.findIndex((r) => r.id === id);
-  const res = await writeConfig(db, shop, { ...config, modules: { ...config.modules, codes: { rules: nextRules } } });
-  if (!res.ok) return { result: uiFailureFromSave(res), ruleId: null };
-  const prefix = `modules.codes.rules[${index}]`;
-  const fixes = res.issues.filter((i) => i.path === prefix || i.path.startsWith(`${prefix}.`)).map((i) => i.message);
-  return { result: { ok: true, message: "saved", ...(fixes.length > 0 ? { fixes } : {}) }, ruleId: id };
 }
 
-/** Delete one rule (the previous config stays in ConfigVersion history, §14b). */
-export async function deleteRule(db: PrismaClient, shop: string, ruleId: string): Promise<UiResult> {
-  const { config, readOnly } = await loadConfig(db, shop);
-  if (readOnly) return { ok: false, reason: "newer_schema" };
-  const rules = config.modules.codes.rules;
-  if (!rules.some((r) => r.id === ruleId)) return { ok: false, reason: "not_found" };
-  const res = await writeConfig(db, shop, {
-    ...config,
-    modules: { ...config.modules, codes: { rules: rules.filter((r) => r.id !== ruleId) } },
+/** Delete one rule (the previous config stays in ConfigVersion history, §14b); its Won node goes with it. */
+export async function deleteRule(ctx: ShopCtx, ruleId: string): Promise<UiResult> {
+  return withConfigLock(ctx.shop, async () => {
+    const { config, readOnly, unreadable } = await loadConfig(ctx.db, ctx.shop);
+    if (readOnly) return { ok: false, reason: "newer_schema" };
+    if (unreadable) return { ok: false, reason: "unreadable_config" };
+    const rules = config.modules.codes.rules;
+    if (!rules.some((r) => r.id === ruleId)) return { ok: false, reason: "not_found" };
+    const res = await writeAndSync(
+      ctx,
+      { ...config, modules: { ...config.modules, codes: { rules: rules.filter((r) => r.id !== ruleId) } } },
+      false,
+    );
+    return res.save.ok ? savedResult({ ...res, save: res.save }, "deleted", null) : uiFailureFromSave(res.save);
   });
-  return res.ok ? { ok: true, message: "deleted" } : uiFailureFromSave(res);
+}
+
+/** "Synchronizovat znovu" (Přehled, and the Notice after a save that did not reach Shopify). */
+export function resyncNow(ctx: ShopCtx): Promise<UiResult> {
+  return resyncStored(ctx);
 }
 
 export type OnboardingPatch = { goals?: OnboardingGoal[]; step?: number };
@@ -372,18 +444,24 @@ export function readOnboardingForm(form: FormDataLike): OnboardingPatch | null {
   return null;
 }
 
-export async function saveOnboarding(db: PrismaClient, shop: string, patch: OnboardingPatch): Promise<UiResult> {
-  const { config, readOnly } = await loadConfig(db, shop);
-  if (readOnly) return { ok: false, reason: "newer_schema" };
-  const onboarding = {
-    goals: patch.goals ?? config.onboarding.goals,
-    step: patch.step ?? config.onboarding.step,
-  };
-  const res = await writeConfig(db, shop, { ...config, onboarding });
-  return res.ok ? { ok: true, message: "saved" } : uiFailureFromSave(res);
+/**
+ * Onboarding steps (goals, step) change nothing Shopify runs, so they are saved
+ * without a sync — under the same per-shop lock as every other config write.
+ */
+export async function saveOnboarding(ctx: Pick<ShopCtx, "db" | "shop">, patch: OnboardingPatch): Promise<UiResult> {
+  return withConfigLock(ctx.shop, async () => {
+    const { config, readOnly } = await loadConfig(ctx.db, ctx.shop);
+    if (readOnly) return { ok: false, reason: "newer_schema" };
+    const onboarding = {
+      goals: patch.goals ?? config.onboarding.goals,
+      step: patch.step ?? config.onboarding.step,
+    };
+    const res = await saveConfig(ctx.db, ctx.shop, { ...config, onboarding });
+    return res.ok ? { ok: true, message: "saved" } : uiFailureFromSave(res);
+  });
 }
 
-// --- Not wired yet: native discounts + cart engine ---------------------------------------
+// --- Native discounts + cart engine -----------------------------------------------------
 
 /** Native discount ids from a Move form: only Shopify discount node GIDs, at most 50. */
 export function readNativeIds(form: FormDataLike): string[] {
@@ -397,39 +475,33 @@ export function readBackupId(form: FormDataLike): string | null {
 }
 
 /**
- * Move native Shopify discounts into Won. Integration: app/lib/native moveNative
- * (backup → Won rule → delete native, restore on failure, REL-3). Until then it
- * changes nothing and says so.
+ * Move native Shopify discounts into Won (app/lib/native moveNative: backup →
+ * delete native → Won rule through saveAndSync; restored at once on failure,
+ * REL-3). One after another; the result says what moved and what did not.
  */
-export async function moveNative(ctx: { shop: string }, nativeIds: readonly string[]): Promise<UiResult> {
-  void ctx;
-  if (nativeIds.length === 0) return { ok: false, reason: "nothing_selected" };
-  return { ok: false, reason: "not_wired", what: "move" };
+export async function moveNative(ctx: ShopCtx, nativeIds: readonly string[]): Promise<UiResult> {
+  return moveNativeDiscounts(ctx, nativeIds);
 }
 
-/** Undo a move from its backup. Integration: app/lib/native undoMove. */
-export async function undoMove(ctx: { shop: string }, backupId: string | null): Promise<UiResult> {
-  void ctx;
-  if (!backupId) return { ok: false, reason: "bad_request" };
-  return { ok: false, reason: "not_wired", what: "undo" };
+/** Undo a move from its backup (app/lib/native undoMove; only this shop's backups, SEC-2). */
+export async function undoMove(ctx: ShopCtx, backupId: string | null): Promise<UiResult> {
+  return undoNativeDiscount(ctx, backupId);
 }
 
 /**
- * Plan the simulated cart. Integration: read variant prices for `input.currency`
- * from Shopify, build CartPlanInput (targeting from productRuleIndex), then
- * planCart(input, buildShopFunctionConfig(config)) + explainPlan(plan, locale)
- * → CartPlanView.
+ * Plan the simulated cart: prices from Shopify for the chosen market/currency,
+ * targeting from productRuleIndex, planCart on the function's own payload +
+ * explainPlan → CartPlanView (app/lib/integration/try-cart*.ts).
  */
 export async function runTryCart(
-  ctx: { shop: string },
+  ctx: ShopCtx,
   input: TryCartInput & { locale: "cs" | "en" },
-): Promise<{ result: UiResult; plan: CartPlanView | null }> {
-  void ctx;
-  void input;
-  return { result: { ok: false, reason: "not_wired", what: "tryCart" }, plan: null };
+  opts: { config: WonDiscountsConfig; shopCurrency: string | null; timezone: string | null; marketNames?: MarketNames },
+): Promise<TryCartRun> {
+  return runTryCartPlan(ctx, input, opts);
 }
 
-/** Try-cart form (SEC-1) → input or field errors. Currencies come from the stored config. */
+/** Try-cart form (SEC-1) → input or field errors. Currencies and markets come from the stored config. */
 export function readTryCart(
   form: FormDataLike,
   config: WonDiscountsConfig,
@@ -438,5 +510,6 @@ export function readTryCart(
   const currencies = currencyCodes(
     currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules: config.modules.codes.rules }),
   );
-  return readTryCartForm(form, { currencies, today: opts.today });
+  const markets = config.markets.filter((m) => m.enabled).map((m) => ({ handle: m.handle, currency: m.currency }));
+  return readTryCartForm(form, { currencies, today: opts.today, markets });
 }

@@ -20,7 +20,7 @@ import { ruleName } from "../model/describe";
 import { currencyCodes, currencyViews, marketViews, type MarketNames } from "../model/markets";
 import { FIELD, readRuleForm, recipeRule, ruleFormDefaults, shopToday, type RecipeKey, type RuleFormContext } from "../model/rule-form";
 import { ruleStatus } from "../model/rule-status";
-import type { CodeRuleLimit, CurrencyView, FieldError, MarketView, SyncView, UiResult } from "../model/types";
+import type { CodeRuleLimit, CurrencyView, FieldError, MarketView, RuleSyncMap, SyncView, UiResult } from "../model/types";
 import { ApplySection } from "../rule-editor/ApplySection";
 import { DiscountSection } from "../rule-editor/DiscountSection";
 import { MoreOptionsSection } from "../rule-editor/MoreOptionsSection";
@@ -40,6 +40,8 @@ export interface RuleEditorScreenProps {
   /** Shop-local today (the rule's real state is judged on it). */
   today: string;
   sync: SyncView;
+  /** Per-rule sync facts (Běží = this version is in Shopify). */
+  ruleSync?: RuleSyncMap;
   /** Server-derived Pro entitlement (BILL-1). */
   pro: boolean;
   readOnly: boolean;
@@ -59,6 +61,7 @@ export function buildRuleEditorProps(
     pro: boolean;
     timezone: string | null;
     sync: SyncView;
+    ruleSync?: RuleSyncMap;
     codeRules: CodeRuleLimit;
     shopCurrency?: string | null;
     marketNames?: MarketNames;
@@ -77,6 +80,7 @@ export function buildRuleEditorProps(
     timezone: opts.timezone,
     today: shopToday(opts.timezone, opts.now),
     sync: opts.sync,
+    ...(opts.ruleSync ? { ruleSync: { ...opts.ruleSync } } : {}),
     pro: opts.pro,
     readOnly: opts.readOnly,
     markets: marketViews(config.markets, opts.marketNames),
@@ -90,7 +94,7 @@ export function buildRuleEditorProps(
 const DELETE_DIALOG = "won-delete-dialog";
 
 export function RuleEditorScreen(props: RuleEditorScreenProps) {
-  const { mode, rule, recipe, currencies, timezone, today, sync, pro, readOnly, markets, otherRules, codeRules, result } = props;
+  const { mode, rule, recipe, currencies, timezone, today, sync, ruleSync, pro, readOnly, markets, otherRules, codeRules, result } = props;
   const tr = useT();
   const { t } = tr;
   const codes = useMemo(() => currencyCodes(currencies), [currencies]);
@@ -180,8 +184,16 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
     !!(initial.minimum || initial.schedule || (initial.method === "code" && initial.limits));
 
   const ed: EditorView = { draft, defaults, codes, timezone, errorFor, tr };
-  const status = ruleStatus(draft, { today, timezone, sync, draft: mode === "new" });
+  const status = ruleStatus(draft, { today, timezone, sync, ruleSync, draft: mode === "new" });
   const submit = useSubmit();
+  // I3: "Nahradit neplatnou konfiguraci" re-submits exactly this form, confirmed.
+  const replaceUnreadable = () => {
+    const form = formRef.current;
+    if (!form) return;
+    const data = new FormData(form);
+    data.set("replaceUnreadable", "1");
+    submit(data, { method: "post" });
+  };
   const heading = mode === "new" ? t("editor.titleNew") : ruleName(initial, tr);
 
   return (
@@ -203,7 +215,7 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
               {t("common.readOnly.body")}
             </s-banner>
           ) : null}
-          <Notice result={result} />
+          <Notice result={result} onReplace={replaceUnreadable} />
           <DiscountSection
             ed={ed}
             status={status}

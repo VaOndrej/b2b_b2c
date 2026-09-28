@@ -51,12 +51,28 @@ export function syncText(view: SyncView, tr: Translator): string {
       return tr.t("overview.sync.ok", { date: formatDateTime(view.at, tr.locale) });
     case "pending":
       return tr.t("overview.sync.pending");
+    case "running":
+      return tr.t("overview.sync.running");
+    case "never":
+      return tr.t("overview.sync.never");
     case "error":
       return tr.t("overview.sync.error", { date: formatDateTime(view.at, tr.locale) });
+    case "blocked":
+      return tr.t(view.reason === "unreadable_config" ? "overview.sync.blocked.unreadable" : "overview.sync.blocked.newer");
     case "not_wired":
     default:
       return tr.t("overview.sync.notWired");
   }
+}
+
+/** The sync line has a "Synchronizovat znovu" (a failed or waiting sync; never while one runs). */
+export function syncNeedsRetry(view: SyncView): boolean {
+  return view.state === "error" || view.state === "pending";
+}
+
+/** Sync is fine for the "Stav v obchodě" summary: written, or nothing to write yet. */
+export function syncSettled(view: SyncView): boolean {
+  return view.state === "ok" || view.state === "never";
 }
 
 /** The "Stav v obchodě" state line. */
@@ -65,6 +81,6 @@ export function statusSummary(signals: AdminSignals, tr: Translator): string {
   if (embed.state === "off" || embed.state === "draft_only" || embed.state === "no_scope") {
     return tr.t("overview.status.embedOff");
   }
-  const open = [embed.state !== "on", checkout.state !== "verified", sync.state !== "ok"].filter(Boolean).length;
+  const open = [embed.state !== "on", checkout.state !== "verified", !syncSettled(sync)].filter(Boolean).length;
   return open === 0 ? tr.t("overview.status.allGood") : tr.t("overview.status.unverified", { n: open });
 }

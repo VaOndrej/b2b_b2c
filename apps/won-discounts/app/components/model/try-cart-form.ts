@@ -1,7 +1,8 @@
 // "Vyzkoušet košík" form → the simulated cart the engine plans (SEC-1: one parser,
-// run by the server action). Only ids, quantities, a known currency, codes and a
-// shop-local day are read; prices never come from the browser — the engine step
-// reads them from Shopify for the chosen currency.
+// run by the server action). Only ids, quantities, a known currency (optionally
+// with one of its enabled Won markets: `CZK:cz`), codes and a shop-local day are
+// read; prices never come from the browser — the engine step reads them from
+// Shopify for the chosen market and currency.
 
 import { PRODUCT_GID, VARIANT_GID, splitCodes } from "./ids";
 import { isCalendarDate, type FormDataLike } from "./rule-form";
@@ -12,6 +13,8 @@ export const TRY_CART_LIMITS = Object.freeze({ lines: 50, quantity: 999, codes: 
 export interface TryCartInput {
   lines: { variantId: string; productId: string; quantity: number }[];
   currency: string;
+  /** Enabled Won market handle the prices and the buyer country come from (null = the currency's default). */
+  market: string | null;
   codes: string[];
   /** Shop-local day `YYYY-MM-DD` the schedules are evaluated on. */
   date: string;
@@ -19,7 +22,7 @@ export interface TryCartInput {
 
 export function readTryCartForm(
   form: FormDataLike,
-  ctx: { currencies: readonly string[]; today: string },
+  ctx: { currencies: readonly string[]; today: string; markets?: readonly { handle: string; currency: string }[] },
 ): { input: TryCartInput; errors: FieldError[] } {
   const errors: FieldError[] = [];
   const all = (name: string) => form.getAll(name).map((v) => (typeof v === "string" ? v : ""));
@@ -41,8 +44,16 @@ export function readTryCartForm(
   }
   if (lines.length === 0) errors.push({ field: "lines", key: "tryCart.error.lines" });
 
-  const currency = str("currency").toUpperCase();
+  // "CZK" or "CZK:cz" (a currency and one of its enabled Won markets).
+  const [rawCurrency, rawMarket] = str("currency").split(":", 2);
+  const currency = (rawCurrency ?? "").trim().toUpperCase();
+  const handle = rawMarket?.trim() || null;
+  let market: string | null = null;
   if (!ctx.currencies.includes(currency)) errors.push({ field: "currency", key: "tryCart.error.currency" });
+  else if (handle !== null) {
+    if ((ctx.markets ?? []).some((m) => m.handle === handle && m.currency === currency)) market = handle;
+    else errors.push({ field: "currency", key: "tryCart.error.currency" });
+  }
 
   const codes = splitCodes(str("codes"))
     .filter((code) => code.length <= TRY_CART_LIMITS.codeLength)
@@ -55,5 +66,5 @@ export function readTryCartForm(
     else errors.push({ field: "date", key: "tryCart.error.date" });
   }
 
-  return { input: { lines, currency, codes, date }, errors };
+  return { input: { lines, currency, market, codes, date }, errors };
 }

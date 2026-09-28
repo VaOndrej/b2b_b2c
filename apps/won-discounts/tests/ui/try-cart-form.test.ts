@@ -37,9 +37,28 @@ test("a valid simulated cart", () => {
       { variantId: "gid://shopify/ProductVariant/12", productId: "gid://shopify/Product/2", quantity: 1 },
     ],
     currency: "EUR",
+    market: null,
     codes: ["VIP10", "LETO"],
     date: "2026-11-27",
   });
+});
+
+test("market choice: `CZK:cz` names an enabled Won market of that currency, anything else is refused", () => {
+  const ctx = { ...CTX, markets: [{ handle: "cz", currency: "CZK" }, { handle: "sk", currency: "EUR" }] };
+  const line: [string, string][] = [
+    ["variantId", "gid://shopify/ProductVariant/11"],
+    ["productId", "gid://shopify/Product/1"],
+    ["quantity", "1"],
+  ];
+  const ok = readTryCartForm(form([...line, ["currency", "CZK:cz"]]), ctx);
+  assert.deepEqual(ok.errors, []);
+  assert.equal(ok.input.currency, "CZK");
+  assert.equal(ok.input.market, "cz");
+  for (const bad of ["CZK:sk", "CZK:hu", "EUR:cz:x", "HUF:hu"]) {
+    const res = readTryCartForm(form([...line, ["currency", bad]]), ctx);
+    assert.deepEqual(res.errors.map((e) => e.field), ["currency"], bad);
+    assert.equal(res.input.market, null, bad);
+  }
 });
 
 test("junk is refused: foreign ids, zero quantities, an unknown currency, a bad date", () => {

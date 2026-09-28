@@ -13,7 +13,8 @@ import { missingCurrencies, ruleName } from "../model/describe";
 import { currencyCodes, currencyViews, type MarketNames } from "../model/markets";
 import { shopToday } from "../model/rule-form";
 import { ruleStatus, ruleStatusSummary } from "../model/rule-status";
-import type { CodeRuleLimit, CurrencyView, SyncView, UiResult } from "../model/types";
+import { syncText } from "../model/signals";
+import type { CodeRuleLimit, CurrencyView, RuleSyncMap, SyncView, UiResult } from "../model/types";
 import { Notice } from "../shell/Notice";
 import { WonSection } from "../shell/WonSection";
 
@@ -22,6 +23,8 @@ export interface DiscountsScreenProps {
   rules: DiscountRule[];
   currencies: CurrencyView[];
   sync: SyncView;
+  /** Per-rule sync facts (Běží = this version is in Shopify). */
+  ruleSync?: RuleSyncMap;
   today: string;
   timezone: string | null;
   codeRules: CodeRuleLimit;
@@ -33,6 +36,7 @@ export function buildDiscountsProps(
   opts: {
     readOnly: boolean;
     sync: SyncView;
+    ruleSync?: RuleSyncMap;
     codeRules: CodeRuleLimit;
     shopCurrency?: string | null;
     timezone?: string | null;
@@ -48,6 +52,7 @@ export function buildDiscountsProps(
     rules,
     currencies: currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules, marketNames: opts.marketNames }),
     sync: opts.sync,
+    ...(opts.ruleSync ? { ruleSync: { ...opts.ruleSync } } : {}),
     today: shopToday(timezone, opts.now),
     timezone,
     codeRules: opts.codeRules,
@@ -55,15 +60,19 @@ export function buildDiscountsProps(
   };
 }
 
-export function DiscountsScreen({ readOnly, rules, currencies, sync, today, timezone, codeRules, result }: DiscountsScreenProps) {
+/** Hints are joined into one line: each ends with a full stop. */
+const sentence = (text: string) => (/[.!?…]$/.test(text) ? text : `${text}.`);
+
+export function DiscountsScreen({ readOnly, rules, currencies, sync, ruleSync, today, timezone, codeRules, result }: DiscountsScreenProps) {
   const tr = useT();
   const { t } = tr;
   const codes = currencyCodes(currencies);
-  const statuses = rules.map((rule) => ruleStatus(rule, { today, timezone, sync }));
+  const statuses = rules.map((rule) => ruleStatus(rule, { today, timezone, sync, ruleSync }));
   const summary = rules.length === 0 ? t("discounts.list.none") : ruleStatusSummary(statuses, tr);
   const hints = [
-    // §12: until sync is connected, saving a rule does not make it live in Shopify.
+    // §12: say when saved rules are not (all) in Shopify, and why.
     sync.state === "not_wired" ? t("result.notWired.sync") : "",
+    sync.state === "error" || sync.state === "blocked" || sync.state === "running" ? sentence(syncText(sync, tr)) : "",
     codeRules.active > 0 ? t("discounts.codeLimit", { active: codeRules.active, limit: codeRules.limit }) : "",
   ].filter(Boolean);
 

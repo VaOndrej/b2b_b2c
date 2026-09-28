@@ -3,70 +3,39 @@ import { useActionData, useLoaderData } from "react-router";
 
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
-import { loadConfig } from "../lib/config.server";
-import { codeRuleLimit, deleteRule, graphqlFrom, readAdminContext, readShopContext, resolvePlan, saveRule } from "../lib/ui-actions.server";
-import { NOT_WIRED_SIGNALS } from "../components/model/signals";
-import { isRecipeKey } from "../components/model/rule-form";
-import type { UiResult } from "../components/model/types";
-import { buildRuleEditorProps, RuleEditorScreen } from "../components/screens/RuleEditorScreen";
+import { shopCtx } from "../lib/integration/context.server";
+import { requestLocale } from "../lib/integration/locale.server";
+import { ruleEditorAction, ruleEditorPage } from "../lib/integration/pages.server";
+import { RuleEditorScreen } from "../components/screens/RuleEditorScreen";
 
 // Rule editor: /app/discounts/new(?recipe=…) or /app/discounts/<rule id>.
-// `?saved=1` is the landing right after creating a rule.
+// `?saved=1` is the landing right after creating a rule (it reports that save's sync).
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
-  const { admin, session } = await authenticate.admin(request);
-  const [{ config, readOnly }, reads, plan] = await Promise.all([
-    loadConfig(db, session.shop),
-    readAdminContext({
-      shop: session.shop,
-      scopes: session.scope ?? "",
-      // eslint-disable-next-line no-undef
-      apiKey: process.env.SHOPIFY_API_KEY || "",
-      graphql: graphqlFrom(admin),
-    }),
-    resolvePlan(),
-  ]);
+  const { admin, session, sessionToken } = await authenticate.admin(request);
+  const locale = requestLocale(request, session.shop, sessionToken?.sub);
+  // eslint-disable-next-line no-undef
+  const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "" });
   const url = new URL(request.url);
-  const recipe = url.searchParams.get("recipe");
-  const props = buildRuleEditorProps(config, {
+  const props = await ruleEditorPage(ctx, {
+    scopes: session.scope ?? "",
     ruleId: params.id ?? "new",
-    recipe: isRecipeKey(recipe) ? recipe : null,
-    readOnly,
-    pro: plan.pro,
-    timezone: reads.shopContext.timezone,
-    // Integration: the last SyncRun from app/lib/sync.
-    sync: NOT_WIRED_SIGNALS.sync,
-    codeRules: codeRuleLimit(config),
-    shopCurrency: reads.shopContext.currencyCode,
-    marketNames: reads.marketNames,
+    recipe: url.searchParams.get("recipe"),
+    saved: url.searchParams.get("saved") === "1",
   });
   if (!props) throw new Response("Not Found", { status: 404 });
-  const saved: UiResult | null = url.searchParams.get("saved") === "1" ? { ok: true, message: "saved" } : null;
-  return { ...props, result: saved };
+  return props;
 };
 
 export const action = async ({ request, params }: ActionFunctionArgs) => {
   // SEC-2: the shop is the session's; the rule id is the URL's; the form is
   // parsed and validated on the server by saveRule (SEC-1).
-  const { admin, session, redirect } = await authenticate.admin(request);
-  const form = await request.formData();
-  const ruleId = params.id ?? "new";
-
-  if (form.get("intent") === "delete") {
-    const result = await deleteRule(db, session.shop, ruleId);
-    if (result.ok) return redirect("/app/discounts?deleted=1");
-    return { result };
-  }
-  if (form.get("intent") !== "save") return { result: { ok: false as const, reason: "bad_request" as const } };
-
-  const [shopContext, plan] = await Promise.all([readShopContext(graphqlFrom(admin)), resolvePlan()]);
-  const { result, ruleId: savedId } = await saveRule(db, session.shop, form, {
-    ruleId,
-    timezone: shopContext.timezone,
-    shopCurrency: shopContext.currencyCode,
-    pro: plan.pro,
-  });
-  if (result.ok && ruleId === "new" && savedId) return redirect(`/app/discounts/${savedId}?saved=1`);
-  return { result };
+  const { admin, session, sessionToken, redirect } = await authenticate.admin(request);
+  const locale = requestLocale(request, session.shop, sessionToken?.sub);
+  // eslint-disable-next-line no-undef
+  const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "" });
+  const outcome = await ruleEditorAction(ctx, await request.formData(), params.id ?? "new");
+  if ("redirect" in outcome) return redirect(outcome.redirect);
+  return outcome;
 };
 
 export default function RuleEditor() {

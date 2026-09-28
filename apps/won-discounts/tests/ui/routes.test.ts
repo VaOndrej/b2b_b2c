@@ -39,18 +39,32 @@ test("every admin route authenticates in its loader and action", () => {
   assert.ok(checked >= 13, `checked ${checked} loaders/actions`);
 });
 
-test("no admin route takes the shop from the request; seam calls pass the session shop", () => {
+test("no admin route takes the shop from the request; the request context is built from the session shop", () => {
+  let wired = 0;
   for (const file of adminRoutes) {
     const source = readFileSync(path.join(ROUTES_DIR, file), "utf8");
     assert.doesNotMatch(source, /\.get\(["']shop["']\)/, `${file} reads a shop from the request`);
-    for (const call of source.matchAll(/\b(saveRule|deleteRule|saveOnboarding)\(([^,]+),\s*([^,)]+)/g)) {
-      assert.equal(call[3].trim(), "session.shop", `${file}: ${call[1]} must get session.shop`);
+    // SEC-2: every request context (app/lib/integration/context.server.ts) gets the SESSION shop.
+    for (const call of source.matchAll(/\bshopCtx\(([^,]+),\s*([^,)]+)/g)) {
+      assert.equal(call[2].trim(), "session.shop", `${file}: shopCtx must get session.shop`);
+      wired++;
     }
-    for (const call of source.matchAll(/\b(moveNative|undoMove|runTryCart)\(\{\s*shop:\s*([^}]+)\}/g)) {
-      assert.equal(call[2].trim(), "session.shop", `${file}: ${call[1]} must get session.shop`);
+    // Page handlers get only that context (never a shop of their own).
+    for (const call of source.matchAll(/\b(\w+(?:Page|Action))\(([^,)]+)/g)) {
+      assert.equal(call[2].trim(), "ctx", `${file}: ${call[1]} must get the session context`);
     }
     // Config writes only through the seam (it validates the form server-side).
     assert.doesNotMatch(source, /\bsaveConfig\(/, `${file} writes config directly instead of through ui-actions`);
+  }
+  // Přehled (loader + action), Slevy a kódy, editor (loader + action), try-cart (loader + action), onboarding (loader + action).
+  assert.ok(wired >= 9, `${wired} wired contexts`);
+});
+
+test("the integration layer never reads a shop from a form or a URL", () => {
+  const dir = path.join(APP_ROOT, "app/lib/integration");
+  for (const file of readdirSync(dir)) {
+    const source = readFileSync(path.join(dir, file), "utf8");
+    assert.doesNotMatch(source, /\.get\(["']shop["']\)|searchParams\.get\(["']shop/, `${file} reads a shop from the request`);
   }
 });
 

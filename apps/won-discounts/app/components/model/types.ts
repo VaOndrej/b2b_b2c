@@ -2,11 +2,11 @@
 // them over the wire), no raw enum ever reaches the screen as text: every union
 // member below is translated by the component that renders it (§4c).
 //
-// Where a value comes from a subsystem that is not connected yet (sync,
-// native-discount detection, checkout verification, the cart engine), the type
-// has an explicit `not_wired` state and the UI says so honestly (§12) instead of
-// pretending or hiding the block. The integration step replaces those states
-// with real data from app/lib/sync, app/lib/native and the engine.
+// Sync, native-discount detection and the cart engine are wired (integration
+// step, app/lib/integration/*). What is still not connected (checkout
+// verification) keeps an explicit `not_wired` state and the UI says so honestly
+// (§12) instead of pretending or hiding the block. The harness may still render
+// the `not_wired` states (v0 overview contract).
 
 import type { MessageKey } from "../../i18n";
 
@@ -33,6 +33,15 @@ export interface CodeRuleLimit {
   shopifyLimit: number;
 }
 
+/**
+ * A sentence built on the server but worded by the screen: an i18n key and its
+ * params, so it follows the admin language the page is rendered in (§4c, A10).
+ */
+export interface UiText {
+  key: MessageKey;
+  params?: Record<string, string | number>;
+}
+
 // --- Store signals (Přehled, onboarding) ---------------------------------------------
 
 export type EmbedState = "on" | "off" | "draft_only" | "unknown" | "no_scope";
@@ -48,14 +57,44 @@ export type CheckoutView =
   | { state: "verified"; at: string }
   | { state: "failing"; at: string };
 
+/**
+ * The shop's sync with Shopify (app/lib/sync SyncRun, Přehled). Times are
+ * shop-local `YYYY-MM-DDTHH:MM:SS`.
+ */
 export type SyncView =
   | { state: "not_wired" }
+  /** Nothing saved yet, so nothing to write into Shopify. */
+  | { state: "never" }
+  /** Saved, not written into Shopify yet (the next Přehled load retries). */
   | { state: "pending" }
-  | { state: "ok"; at: string }
-  | { state: "error"; at: string };
+  /** A sync started on this page load and is still running (the page did not wait, REL-1). */
+  | { state: "running" }
+  | { state: "ok"; at: string; warnings?: UiText[] }
+  /** The last run failed; `problems` = what did not reach Shopify. */
+  | { state: "error"; at: string; problems?: UiText[] }
+  /** The stored config is not synced at all (unreadable row, or a newer app version wrote it). */
+  | { state: "blocked"; reason: "unreadable_config" | "newer_schema" };
+
+/**
+ * Is THIS version of a rule in Shopify? (Běží, §17c) From real sync facts
+ * (app/lib/integration/sync-status.server.ts): the last successful shop-config
+ * write covered the rule as it is now, and a code rule's Won node is active
+ * with its current codes.
+ */
+export type RuleSyncState = "synced" | "pending" | "failed";
+export type RuleSyncMap = Readonly<Record<string, RuleSyncState>>;
+
+/** What a save (or a resync) did in Shopify, for the result banner. */
+export interface SyncOutcomeView {
+  /** Everything reached Shopify. */
+  ok: boolean;
+  /** What did not reach Shopify. */
+  problems: UiText[];
+  /** Fine, but worth knowing (e.g. a product reduced to fit its budget, markets not read). */
+  warnings: UiText[];
+}
 
 export type NativeBlockedReason = "bxgy" | "app" | "other";
-export type NativeLoss = "usage_history" | "once_per_customer";
 
 /** A Shopify discount that is not managed by Won (detected by app/lib/native). */
 export interface NativeDiscountView {
@@ -68,20 +107,43 @@ export interface NativeDiscountView {
   summary?: string;
   movable: boolean;
   blockedReason?: NativeBlockedReason;
-  /** What a move loses (the dialog states it before the click, §14c). */
-  losses: NativeLoss[];
+  /** Why it stays in Shopify: the detector's sentence in the admin language. */
+  reason?: string;
+  /** What a move loses (planMove sentences; the dialog states them before the click, §14c). */
+  losses: string[];
+  /** What changes or needs attention after a move (planMove sentences). */
+  warnings?: string[];
 }
 
+/** A backup of a moved discount (NativeDiscountBackup), with its undo. */
 export interface MovedDiscountView {
   backupId: string;
   title: string;
+  /** Shop-local `YYYY-MM-DDTHH:MM:SS` of the last change. */
   movedAt: string;
+  /**
+   * moved     the rule is in Won, the native deleted: "Vrátit zpět" undoes it;
+   * attention a move or undo did not finish (only in the backup, codes missing,
+   *           outcome unknown): `note` says where it is, "Vrátit zpět" finishes it.
+   */
+  state?: "moved" | "attention";
+  note?: string;
+}
+
+/** A live native discount that fights a Won rule (detection, spec §4.1). */
+export interface NativeConflictView {
+  nativeTitle: string;
+  ruleName: string;
+  /** The detector's sentence, with its fix. */
+  message: string;
 }
 
 export type NativeView =
   | { state: "not_wired" }
-  | { state: "error" }
-  | { state: "ok"; discounts: NativeDiscountView[]; moved: MovedDiscountView[] };
+  /** Detection is still running (the page did not wait for it, REL-1). */
+  | { state: "loading"; moved?: MovedDiscountView[] }
+  | { state: "error"; message?: string; moved?: MovedDiscountView[] }
+  | { state: "ok"; discounts: NativeDiscountView[]; moved: MovedDiscountView[]; conflicts?: NativeConflictView[] };
 
 export interface AdminSignals {
   embed: EmbedView;
@@ -101,6 +163,20 @@ export interface FieldError {
 
 export type UiFailure =
   | { ok: false; reason: "not_wired"; what: "move" | "undo" | "tryCart" }
+  /**
+   * The stored config cannot be read (I3): saving would replace it with the
+   * defaults + this change. Nothing was written; the merchant confirms with
+   * "Nahradit neplatnou konfiguraci" (re-submit with replaceUnreadable).
+   */
+  | { ok: false; reason: "unreadable_config" }
+  /** A move / undo of native discounts failed: the native layer's sentences (why, where the discount is now, what to do). */
+  | { ok: false; reason: "native_failed"; op: "move" | "undo"; messages: string[]; done: number }
+  /** "Synchronizovat znovu" did not get everything into Shopify. */
+  | { ok: false; reason: "sync_failed"; problems: UiText[] }
+  /** Vyzkoušet košík: Shopify has no price in the chosen currency for these products. */
+  | { ok: false; reason: "prices_unavailable"; currency: string; products: string[] }
+  /** Shopify could not be read (Vyzkoušet košík); `detail` is technical. */
+  | { ok: false; reason: "shopify_unavailable"; detail?: string }
   | { ok: false; reason: "invalid"; errors: FieldError[] }
   /** Saving would make more code rules active than Shopify can run (C2). */
   | { ok: false; reason: "too_many_code_rules"; count: number; limit: number; shopifyLimit: number }
@@ -120,9 +196,16 @@ export type UiFailure =
 export type UiResult =
   | {
       ok: true;
-      message: "saved" | "deleted";
+      message: "saved" | "deleted" | "synced" | "moved" | "undone";
       /** Sanitizer notes about this save (core ConfigIssue messages). */
       fixes?: string[];
+      /** What the save did in Shopify (absent = nothing was sent, e.g. onboarding steps). */
+      sync?: SyncOutcomeView;
+      /** Move / undo: how many discounts, and what the merchant should know (losses, what undo could not bring back). */
+      count?: number;
+      notes?: string[];
+      /** "Přesunout vše" where some failed: their sentences. */
+      failures?: string[];
     }
   | UiFailure;
 
@@ -157,6 +240,8 @@ export interface ExplainView {
 
 /** The engine's plan for the simulated cart, already computed (planCart + explainPlan). */
 export interface CartPlanView {
+  /** Market the prices and the country came from (its Shopify name), when known. */
+  market?: string | null;
   currency: string;
   /** Shop-local date the plan was evaluated on. */
   date: string | null;

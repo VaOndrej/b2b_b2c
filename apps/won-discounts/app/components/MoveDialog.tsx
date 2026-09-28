@@ -1,19 +1,43 @@
 // "Přesunout do Won" confirmation (docs/won-discounts/rozhodnuti.md, "Přesun
 // nativních slev"): before the one click, say exactly what happens and what is
-// lost (§14c), and how to undo it (§14b). The body is a separate component so the
-// harness and tests can render it without opening a modal.
+// lost (§14c) — the planMove sentences for THIS discount (app/lib/native) —
+// and how to undo it (§14b). The body is a separate component so the harness
+// and tests can render it without opening a modal.
 
-import type { NativeDiscountView, NativeLoss } from "./model/types";
+import type { NativeDiscountView } from "./model/types";
 import { useT } from "../i18n/context";
 
-const LOSS_KEYS: Record<NativeLoss, "move.lose.usageHistory" | "move.lose.oncePerCustomer"> = {
-  usage_history: "move.lose.usageHistory",
-  once_per_customer: "move.lose.oncePerCustomer",
-};
+function List({ items }: { items: readonly string[] }) {
+  return (
+    <s-unordered-list>
+      {items.map((item, i) => (
+        <s-list-item key={`${i}-${item}`}>{item}</s-list-item>
+      ))}
+    </s-unordered-list>
+  );
+}
+
+/** One discount: its losses and notes. Several: the same, per discount (each says its own). */
+function LossBlock({ discount, titled }: { discount: NativeDiscountView; titled: boolean }) {
+  const { t } = useT();
+  const warnings = discount.warnings ?? [];
+  return (
+    <s-stack direction="block" gap="small-200">
+      {titled ? <s-text type="strong">{discount.title}</s-text> : null}
+      <s-text type={titled ? undefined : "strong"}>{t("move.lose.title")}</s-text>
+      {discount.losses.length === 0 ? <s-paragraph>{t("move.lose.none")}</s-paragraph> : <List items={discount.losses} />}
+      {warnings.length > 0 ? (
+        <>
+          <s-text type={titled ? undefined : "strong"}>{t("move.warnings.title")}</s-text>
+          <List items={warnings} />
+        </>
+      ) : null}
+    </s-stack>
+  );
+}
 
 export function MoveDialogBody({ discounts }: { discounts: readonly NativeDiscountView[] }) {
   const { t } = useT();
-  const losses = [...new Set(discounts.flatMap((d) => d.losses))];
   return (
     <s-stack direction="block" gap="base">
       <s-stack direction="block" gap="small-200">
@@ -24,18 +48,9 @@ export function MoveDialogBody({ discounts }: { discounts: readonly NativeDiscou
           <s-list-item>{t("move.step.delete")}</s-list-item>
         </s-ordered-list>
       </s-stack>
-      <s-stack direction="block" gap="small-200">
-        <s-text type="strong">{t("move.lose.title")}</s-text>
-        {losses.length === 0 ? (
-          <s-paragraph>{t("move.lose.none")}</s-paragraph>
-        ) : (
-          <s-unordered-list>
-            {losses.map((loss) => (
-              <s-list-item key={loss}>{t(LOSS_KEYS[loss])}</s-list-item>
-            ))}
-          </s-unordered-list>
-        )}
-      </s-stack>
+      {discounts.map((discount) => (
+        <LossBlock key={discount.id} discount={discount} titled={discounts.length > 1} />
+      ))}
       <s-paragraph color="subdued">{t("move.undo")}</s-paragraph>
     </s-stack>
   );
