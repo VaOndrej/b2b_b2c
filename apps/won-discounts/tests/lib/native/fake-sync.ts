@@ -3,7 +3,8 @@
 // code app discount per enabled code rule in the FakeShopify store — enough
 // for the "one code, one discount" rule to bite exactly like it does live.
 // Failures are scripted per call: "before_save", "after_save" (config saved,
-// nothing synced), "after_node" (config saved AND the Won node created), "throw".
+// nothing synced), "after_node" (config saved AND the Won node created), "throw",
+// "node_without_save" (the Won node created, the config NOT saved: an orphan).
 
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
 
@@ -12,7 +13,7 @@ import { saveConfig } from "../../../app/lib/config.server.ts";
 import type { SaveAndSync } from "../../../app/lib/native/types.ts";
 import type { FakeShopify } from "./fake-shopify.ts";
 
-export type SyncFailure = "before_save" | "after_save" | "after_node" | "throw";
+export type SyncFailure = "before_save" | "after_save" | "after_node" | "throw" | "node_without_save";
 
 export const WON_APP_KEY = "won-discounts-test-key";
 
@@ -67,6 +68,11 @@ export function createFakeSync(db: PrismaClient, shopify: FakeShopify, failures:
     const failure = failures.shift();
     if (failure === "before_save") return { ok: false, message: "Shopify is not answering" };
     if (failure === "throw") throw new Error("sync crashed");
+    if (failure === "node_without_save") {
+      // A sync that pushed nodes but died before the config was stored.
+      sync(config);
+      return { ok: false, message: "sync died before saving" };
+    }
     const saved = await saveConfig(db, shop, config);
     if (!saved.ok) return { ok: false, message: `config refused: ${saved.reason}` };
     if (failure === "after_save") return { ok: false, message: "sync failed after save" };

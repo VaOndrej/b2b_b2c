@@ -31,18 +31,44 @@ function targetConflict(native: NativeDiscount, rule: DiscountRule): ConflictKin
   return null;
 }
 
+/** A live code discount Won cannot move (BXGY, another app's) — only its codes matter here. */
+export interface OtherCodeHolder {
+  id: string;
+  title: string;
+  codes: readonly string[];
+}
+
 /**
  * Conflicts between live (ACTIVE / SCHEDULED) native discounts and enabled Won
  * rules. `natives` may be first-page reads (detection): codes and ids beyond
- * the first page are not compared.
+ * the first page are not compared. `others` are live code discounts of types
+ * Won cannot move (BXGY, other apps): a code they hold blocks a Won node just
+ * the same.
  */
 export function findConflicts(
   natives: readonly NativeDiscount[],
   config: WonDiscountsConfig,
   locale: NativeLocale = "cs",
+  others: readonly OtherCodeHolder[] = [],
 ): NativeConflict[] {
   const rules = config.modules.codes.rules.filter((r) => r.enabled);
   const out: NativeConflict[] = [];
+  for (const other of others) {
+    const held = new Set(other.codes.map((c) => c.trim().toUpperCase()));
+    for (const rule of rules) {
+      const shared = (rule.codes ?? []).filter((c) => held.has(c.trim().toUpperCase()));
+      if (shared.length === 0) continue;
+      out.push({
+        kind: "same_code",
+        nativeId: other.id,
+        nativeTitle: other.title,
+        ruleId: rule.id,
+        ruleName: rule.name,
+        codes: shared,
+        message: conflictText("same_code", other.title, rule.name || rule.id, locale, shared, false),
+      });
+    }
+  }
   for (const native of natives) {
     if (native.status === "EXPIRED") continue;
     const nativeCodes = new Set(native.codes.map((c) => c.trim().toUpperCase()));

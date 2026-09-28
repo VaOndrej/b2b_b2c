@@ -15,6 +15,8 @@
 //             appliesOncePerCustomer as is (its history resets = loss)
 //   combining Won's own settings (A1) apply; every category where the native
 //             setting differs becomes a warning
+//   subs      Won does not tell subscriptions apart: a one-time-only native gets
+//             a warning, a subscription cycle limit is a stated loss
 //   origin    { nativeId } links the rule to its backup
 
 import {
@@ -25,6 +27,7 @@ import {
   type WonDiscountsConfig,
 } from "@won/core/discounts/config";
 
+import { decimalToMinor } from "./amounts.ts";
 import { classifyNative } from "./classify.ts";
 import {
   type CombinationCategory,
@@ -54,33 +57,16 @@ export interface PlanMoveOptions {
   now?: Date;
 }
 
-/** Digits after the decimal point of a currency (CZK/EUR 2, JPY 0, KWD 3), from ICU. */
-function currencyDigits(currency: string): number {
-  try {
-    return new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions().maximumFractionDigits ?? 2;
-  } catch {
-    return 2;
-  }
-}
+export { decimalToMinor } from "./amounts.ts";
 
-/**
- * Shopify decimal string → integer minor units, parsed from the digits (no float
- * multiplication), extra digits rounded half up. Null when it is not a decimal.
- */
-export function decimalToMinor(amount: string, currency: string): number | null {
-  const m = /^(\d+)(?:\.(\d+))?$/.exec(amount.trim());
-  if (!m) return null;
-  const digits = currencyDigits(currency);
-  const fraction = m[2] ?? "";
-  const kept = fraction.slice(0, digits).padEnd(digits, "0");
-  const roundUp = fraction.length > digits && Number(fraction[digits]) >= 5;
-  const value = Number(m[1] + kept) + (roundUp ? 1 : 0);
-  return Number.isSafeInteger(value) ? value : null;
-}
-
-function money(amount: string, currency: string): MoneyByCurrency {
+/** Shop decimal → MoneyByCurrency; an unreadable amount refuses the move (never an empty amount). */
+function money(amount: string, currency: string, locale: NativeLocale): MoneyByCurrency {
   const minor = decimalToMinor(amount, currency);
-  return minor === null ? {} : { [currency.toUpperCase()]: minor };
+  if (minor === null) {
+    const reason: NotMovableReason = { code: "unsupported_value" };
+    throw new NotMovableError(reason, notMovableReasonText(reason, locale));
+  }
+  return { [currency.toUpperCase()]: minor };
 }
 
 /**
@@ -163,7 +149,7 @@ export function planMove(native: NativeDiscount, config: WonDiscountsConfig, opt
       native.value.kind === "percentage"
         ? { kind: "percentage", percent: Math.min(100, Math.max(0, native.value.percent)) }
         : native.value.kind === "fixed"
-          ? { kind: "fixed", amount: money(native.value.amount, native.value.currencyCode || shopCurrency) }
+          ? { kind: "fixed", amount: money(native.value.amount, native.value.currencyCode || shopCurrency, locale) }
           : { kind: "freeShipping" },
     target:
       native.target.kind === "products"
@@ -181,7 +167,7 @@ export function planMove(native: NativeDiscount, config: WonDiscountsConfig, opt
   // Minimum
   let usesMoney = native.value.kind === "fixed";
   if (native.minimum?.kind === "subtotal") {
-    rule.minimum = { subtotal: money(native.minimum.amount, native.minimum.currencyCode || shopCurrency) };
+    rule.minimum = { subtotal: money(native.minimum.amount, native.minimum.currencyCode || shopCurrency, locale) };
     usesMoney = true;
   } else if (native.minimum?.kind === "quantity") {
     rule.minimum = { quantity: native.minimum.quantity };
@@ -224,6 +210,12 @@ export function planMove(native: NativeDiscount, config: WonDiscountsConfig, opt
     if (limits.usageLimit !== undefined || limits.oncePerCustomer !== undefined) rule.limits = limits;
   }
   losses.unshift({ code: "usage_history", used: native.usageCount });
+
+  // Subscriptions: Won does not tell them apart. Say both ways it differs (never widen quietly).
+  if (!native.appliesOnSubscription) warnings.push({ code: "subscriptions_included" });
+  else if (native.recurringCycleLimit !== null && native.recurringCycleLimit > 0) {
+    losses.push({ code: "subscription_cycles", cycles: native.recurringCycleLimit });
+  }
 
   // Money in other currencies is never invented (principle 6).
   if (usesMoney) {

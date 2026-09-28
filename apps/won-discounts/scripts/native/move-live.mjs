@@ -19,12 +19,20 @@
 //           Without it the script stops before any write.
 //
 // Steps: sweep leftovers → create the native test discount WON-TEST-NATIVE
-// (10 % on won-e2e-simple-a, code WONTESTNATIVE) → detect it → dialog preview →
-// move → verify (native gone, Won rule in the config, code on a Won node) →
-// undo → verify (native back: same code, 10 %, same product; rule gone) →
-// cleanup in `finally` (native deleted, rule removed, backup rows of this run
-// deleted). Evidence JSON: $WON_NATIVE_OUT or <tmp>/won-discounts-native/.
+// (10 % on won-e2e-simple-a, code WONTESTNATIVE) → CART: the code applies 10 %
+// → detect it → dialog preview → move → verify (native gone, Won rule in the
+// config, code on a Won node) → CART: the Won rule gives the same 10 % and the
+// code is applicable → undo → verify (native back: same code, 10 %, same
+// product; rule gone) → CART: the native applies again → cleanup in `finally`
+// (native deleted, rule removed, backup rows of this run deleted, cart cleared).
+// Evidence JSON: $WON_NATIVE_OUT or <tmp>/won-discounts-native/.
 // Ctrl+C is deferred until the cleanup has finished.
+//
+// Cart checks: Playwright + the storefront AJAX cart, the same helpers as the
+// MVP 0 prototypes (scripts/prototypes/lib.mjs Storefront/observe): password
+// page unlocked with SHOPIFY_E2E_STOREFRONT_PASSWORD from the .env (never
+// printed), ≥ 1.5 s between cart requests (Cloudflare 429), each verdict = 2
+// consecutive fresh carts that match. The dry-run prints the cart plan only.
 //
 // Every GraphQL document it sends is in app/lib/native/documents.ts (validated
 // with the Shopify dev MCP, admin 2026-04) plus PRODUCT_QUERY below (validated).
@@ -75,14 +83,46 @@ function readClientId() {
   return /^client_id\s*=\s*"([^"]+)"/m.exec(toml)?.[1] ?? null;
 }
 
-const evidence = { name: "native-move-live", live, store: STORE, startedAt: new Date().toISOString(), steps: [], cleanup: [] };
+const proto = await import(pathToFileURL(path.join(APP_DIR, "scripts/prototypes/lib.mjs")).href);
+
+// Shape shared with the prototype helpers (Storefront/observe read `live`, `data`, `save`).
+const evidence = {
+  live,
+  data: { name: "native-move-live", live, store: STORE, startedAt: new Date().toISOString(), steps: [], observations: [], cleanup: [] },
+  save: async () => {},
+};
 function step(name, detail) {
-  evidence.steps.push({ at: new Date().toISOString(), name, detail });
+  evidence.data.steps.push({ at: new Date().toISOString(), name, detail });
   console.log(`\n▶ ${name}${detail === undefined ? "" : `\n${JSON.stringify(detail, null, 2)}`}`);
 }
 function check(condition, message) {
   if (!condition) throw new Error(`check failed: ${message}`);
   console.log(`  ✓ ${message}`);
+}
+
+/** The code is applicable and some discount on the test line is 10 % (whoever gives it: native or Won). */
+function tenPercentWithCode(summary) {
+  const code = summary.discount_codes.find((entry) => String(entry.code).toUpperCase() === CODE);
+  const line = summary.items[0];
+  return Boolean(code?.applicable) && Boolean(line?.line_level_discount_allocations.some((a) => proto.approx(a.percentOfLine ?? 0, 10)));
+}
+
+/** Fresh carts (1× won-e2e-simple-a + the code) until 2 in a row give 10 %; the dry-run prints the plan. */
+async function checkCart(storefront, label, expectation) {
+  const observation = await proto.observe({
+    evidence,
+    storefront,
+    label,
+    codes: [CODE],
+    expectation,
+    expect: tenPercentWithCode,
+    timeoutMs: 180_000,
+  });
+  if (!live) {
+    console.log(`  (dry-run: cart "${label}" not checked)`);
+    return;
+  }
+  check(observation.matched, `cart ${label}: ${expectation}`);
 }
 
 // --- Signals: never leave the store half-cleaned -----------------------------------------
@@ -165,12 +205,12 @@ async function deleteTestNative(env, phase) {
   if (!holder) return;
   if (holder.type === "DiscountCodeBasic" && holder.title === TITLE) {
     const data = await gql(env, "codeDelete", { id: holder.id });
-    evidence.cleanup.push({ phase, deletedNative: holder.id, userErrors: data.discountCodeDelete?.userErrors ?? [] });
+    evidence.data.cleanup.push({ phase, deletedNative: holder.id, userErrors: data.discountCodeDelete?.userErrors ?? [] });
     return;
   }
   // Anything else holding the test code (e.g. the Won node of a leftover rule) is
   // released through the config below, never deleted here.
-  evidence.cleanup.push({ phase, codeHeldBy: holder });
+  evidence.data.cleanup.push({ phase, codeHeldBy: holder });
 }
 
 async function removeTestRules(env, shop, phase) {
@@ -182,13 +222,18 @@ async function removeTestRules(env, shop, phase) {
   const ids = new Set(leftovers.map((r) => r.id));
   const config = { ...loaded.config, modules: { ...loaded.config.modules, codes: { rules: rules.filter((r) => !ids.has(r.id)) } } };
   const result = await env.saveAndSync({ shop, config });
-  evidence.cleanup.push({ phase, removedRules: [...ids], result });
+  evidence.data.cleanup.push({ phase, removedRules: [...ids], result });
 }
 
 // --- The run ---------------------------------------------------------------------------
 async function main() {
   console.log(`# native move + undo — ${live ? `LIVE on ${STORE}` : "DRY-RUN against an in-memory store (pass --live to run on the dev store)"}`);
   const env = live ? await liveEnvironment() : await dryEnvironment();
+  if (live && !process.env.SHOPIFY_E2E_STOREFRONT_PASSWORD) {
+    await env.close();
+    throw new Error("SHOPIFY_E2E_STOREFRONT_PASSWORD missing (cart checks): run with --env-file=apps/won-discounts/.env. Nothing was sent.");
+  }
+  const storefront = new proto.Storefront(evidence, live);
   const shop = STORE;
   const created = new Set();
   let failure = null;
@@ -217,6 +262,10 @@ async function main() {
     created.add(nativeId);
     guard();
 
+    await storefront.open();
+    await checkCart(storefront, "native before the move", "code WONTESTNATIVE applicable, 10 % on the line (native discount)");
+    guard();
+
     const wonNodeIds = (await env.db.wonNode.findMany({ where: { shop }, select: { discountNodeId: true } })).map((n) => n.discountNodeId);
     const detection = await native.detect.detectNativeDiscounts(env.client, { ...env.options, wonNodeIds, ownAppKey: env.ownAppKey });
     const found = detection.movable.find((n) => n.id === nativeId);
@@ -240,6 +289,7 @@ async function main() {
     check(rule && rule.codes?.includes(CODE) && rule.value.kind === "percentage" && rule.value.percent === 10, "the Won rule is in the config (10 %, same code)");
     const holderAfterMove = await codeHolder(env);
     check(holderAfterMove?.type === "DiscountCodeApp", `the code ${CODE} now lives on a Won node (${holderAfterMove?.id})`);
+    await checkCart(storefront, "Won after the move", "code WONTESTNATIVE applicable, the Won rule gives the same 10 %");
     guard();
 
     const undone = await native.move.undoMove({
@@ -267,14 +317,16 @@ async function main() {
     );
     const configAfterUndo = (await loadConfig(env.db, shop)).config;
     check(!configAfterUndo.modules.codes.rules.some((r) => r.origin?.nativeId === nativeId), "the Won rule is gone from the config");
+    await checkCart(storefront, "native after the undo", "code WONTESTNATIVE applicable, the native discount gives 10 % again");
   } catch (error) {
     failure = error;
-    evidence.error = String(error?.message ?? error).slice(0, 2000);
-    console.error(`\n✖ ${evidence.error}`);
+    evidence.data.error = String(error?.message ?? error).slice(0, 2000);
+    console.error(`\n✖ ${evidence.data.error}`);
   } finally {
     cleaningUp = true;
     console.log("\n▶ cleanup");
     for (const [label, run] of [
+      ["storefront cart (codes removed, cart cleared)", () => storefront.close()],
       ["test native discount", () => deleteTestNative(env, "cleanup")],
       ["test rule in the config", () => removeTestRules(env, shop, "cleanup")],
       ["test discount again (after the rule released its code)", () => deleteTestNative(env, "cleanup-2")],
@@ -282,7 +334,7 @@ async function main() {
         "backup rows of this run",
         async () => {
           const { count } = await env.db.nativeDiscountBackup.deleteMany({ where: { shop, nativeId: { in: [...created] } } });
-          evidence.cleanup.push({ phase: "cleanup", deletedBackupRows: count });
+          evidence.data.cleanup.push({ phase: "cleanup", deletedBackupRows: count });
         },
       ],
     ]) {
@@ -290,15 +342,15 @@ async function main() {
         await run();
         console.log(`  ✓ ${label}`);
       } catch (error) {
-        evidence.cleanup.push({ phase: "cleanup", failed: label, error: String(error?.message ?? error).slice(0, 500) });
+        evidence.data.cleanup.push({ phase: "cleanup", failed: label, error: String(error?.message ?? error).slice(0, 500) });
         console.error(`  ✖ ${label}: ${error?.message ?? error}`);
         failure ??= error;
       }
     }
-    evidence.finishedAt = new Date().toISOString();
+    evidence.data.finishedAt = new Date().toISOString();
     await fsp.mkdir(OUT_DIR, { recursive: true });
     const file = path.join(OUT_DIR, `native-move-${live ? "live" : "dry"}-${Date.now()}.json`);
-    await fsp.writeFile(file, `${JSON.stringify(evidence, null, 2)}\n`);
+    await fsp.writeFile(file, `${JSON.stringify(evidence.data, null, 2)}\n`);
     console.log(`\nEvidence: ${file}`);
     await env.close();
   }

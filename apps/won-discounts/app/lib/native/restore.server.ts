@@ -30,7 +30,14 @@ export interface SnapshotEnvelope {
    * Set once the discount is (back) in Shopify under this id: after an undo,
    * after a failed move put it back, or when the delete never happened.
    */
-  restoredAs?: { nativeId: string; at: string };
+  restoredAs?: {
+    nativeId: string;
+    at: string;
+    /** Codes of the snapshot not (yet) on the restored discount: the next undo adds them. */
+    codesMissing?: number;
+    /** Shopify was still importing codes when we stopped waiting: not a failure yet. */
+    codesPending?: boolean;
+  };
 }
 
 export function makeSnapshot(node: any, shop: ShopContext, now: Date = new Date()): SnapshotEnvelope {
@@ -121,6 +128,7 @@ export function buildCreateInput(native: NativeDiscount, raw: any): Record<strin
     input.appliesOnSubscription = native.appliesOnSubscription;
   }
 
+  if (native.recurringCycleLimit !== null) input.recurringCycleLimit = native.recurringCycleLimit;
   if (native.method === "code") {
     input.code = native.codes[0];
     input.appliesOncePerCustomer = native.oncePerCustomer;
@@ -130,10 +138,17 @@ export function buildCreateInput(native: NativeDiscount, raw: any): Record<strin
 }
 
 export type RestoreResult =
-  | { ok: true; nativeId: string; reused: boolean; codesFailed: number }
+  | {
+      ok: true;
+      nativeId: string;
+      reused: boolean;
+      /** Snapshot codes not on the discount yet (failed or, with `codesPending`, still importing). */
+      codesMissing: number;
+      codesPending: boolean;
+    }
   | { ok: false; message: string; codeTaken?: boolean };
 
-interface RestoreOptions extends RequestOptions {
+export interface RestoreOptions extends RequestOptions {
   now?: () => Date;
   /** Polls of a bulk code creation before giving up waiting (codes may still land). */
   bulkPolls?: number;
@@ -178,8 +193,9 @@ async function addRemainingCodes(
   discountId: string,
   codes: string[],
   options: RestoreOptions,
-): Promise<number> {
+): Promise<{ failed: number; pending: boolean }> {
   let failed = 0;
+  let pending = false;
   const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   for (let i = 0; i < codes.length; i += REDEEM_CODES_PER_CALL) {
     const chunk = codes.slice(i, i + REDEEM_CODES_PER_CALL);
@@ -198,9 +214,10 @@ async function addRemainingCodes(
       status = result.ok ? result.data?.discountRedeemCodeBulkCreation : null;
       done = status?.done === true;
     }
-    if (status && typeof status.failedCount === "number") failed += status.failedCount;
+    if (!done) pending = true; // still importing: not a failure yet
+    else if (status && typeof status.failedCount === "number") failed += status.failedCount;
   }
-  return failed;
+  return { failed, pending };
 }
 
 /**
@@ -225,8 +242,8 @@ export async function restoreNative(
     if (existing.found) {
       if (existing.found.typename === spec.typename && existing.found.title === native.title) {
         // An earlier attempt created it; it may have died before every code was added.
-        const codesFailed = await completeCodes(client, existing.found.id, native, true, options);
-        return { ok: true, nativeId: existing.found.id, reused: true, codesFailed };
+        const codes = await completeCodes(client, existing.found.id, native, true, options);
+        return { ok: true, nativeId: existing.found.id, reused: true, codesMissing: codes.missing, codesPending: codes.pending };
       }
       return { ok: false, message: `the code ${native.codes[0]} belongs to another discount`, codeTaken: true };
     }
@@ -239,8 +256,10 @@ export async function restoreNative(
     const errors = userErrorsOf(payload);
     if (errors.length > 0) return { ok: false, message: describeUserErrors(errors) };
     nativeId = typeof payload?.[spec.node]?.id === "string" ? payload[spec.node].id : null;
-  } else if (created.kind === "transport") {
-    // The create may have landed: look before reporting a failure.
+  }
+  if (!nativeId && !(created.ok === false && created.kind === "throttled")) {
+    // Transport failure, a GraphQL error or an answer without an id: the create
+    // may still have landed. Look before reporting a failure (never duplicate).
     if (native.method === "code") {
       const found = await lookupCode(client, native.codes[0], options);
       if (found.ok && found.found?.typename === spec.typename && found.found.title === native.title) nativeId = found.found.id;
@@ -250,8 +269,8 @@ export async function restoreNative(
   }
   if (!nativeId) return { ok: false, message: created.ok ? "Shopify returned no discount id" : created.message };
 
-  const codesFailed = await completeCodes(client, nativeId, native, false, options);
-  return { ok: true, nativeId, reused: false, codesFailed };
+  const codes = await completeCodes(client, nativeId, native, false, options);
+  return { ok: true, nativeId, reused: false, codesMissing: codes.missing, codesPending: codes.pending };
 }
 
 /** Redeem codes Shopify reports on a discount, or null when it cannot be read. */
@@ -263,9 +282,10 @@ async function countCodes(client: AdminClient, id: string, options: RequestOptio
 
 /**
  * Make sure every code of the snapshot is on `id` (the create carried only the
- * first). Returns how many are still missing, measured by Shopify's own count
- * when it can be read (a code that already exists makes the bulk add report a
- * failure, so the count is the honest number).
+ * first). `missing` is measured by Shopify's own count when it can be read (a
+ * code that already exists makes the bulk add report a failure, so the count
+ * is the honest number); `pending` when Shopify was still importing when we
+ * stopped waiting, so the missing ones may yet land.
  */
 async function completeCodes(
   client: AdminClient,
@@ -273,13 +293,30 @@ async function completeCodes(
   native: NativeDiscount,
   reused: boolean,
   options: RestoreOptions,
-): Promise<number> {
-  if (native.method !== "code" || native.codes.length <= 1) return 0;
+): Promise<{ missing: number; pending: boolean }> {
+  if (native.method !== "code" || native.codes.length <= 1) return { missing: 0, pending: false };
   if (reused) {
     const count = await countCodes(client, id, options);
-    if (count !== null && count >= native.codes.length) return 0;
+    if (count !== null && count >= native.codes.length) return { missing: 0, pending: false };
   }
-  const bulkFailed = await addRemainingCodes(client, id, native.codes.slice(1), options);
+  const added = await addRemainingCodes(client, id, native.codes.slice(1), options);
   const count = await countCodes(client, id, options);
-  return count === null ? bulkFailed : Math.max(0, native.codes.length - count);
+  const missing = count === null ? added.failed : Math.max(0, native.codes.length - count);
+  return { missing, pending: added.pending && missing > 0 };
+}
+
+/**
+ * A restored discount still missing codes (snapshot.restoredAs.codesMissing):
+ * add them from the snapshot now. The undo path for a partial restore.
+ */
+export async function finishRestoredCodes(
+  client: AdminClient,
+  envelope: SnapshotEnvelope,
+  options: RestoreOptions = {},
+): Promise<{ ok: true; missing: number; pending: boolean } | { ok: false; message: string }> {
+  const native = nativeFromSnapshot(envelope);
+  const target = envelope.restoredAs?.nativeId;
+  if (!native || !target) return { ok: false, message: "the backup cannot be read" };
+  const codes = await completeCodes(client, target, native, true, options);
+  return { ok: true, ...codes };
 }

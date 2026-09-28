@@ -88,6 +88,8 @@ export type NormalizedNode =
       status: NativeStatus;
       /** App discounts: which app provides it. */
       app: { appKey: string | null; functionId: string | null; title: string | null } | null;
+      /** Redeem codes of a code BXGY / app discount (first page): a Won rule cannot share them. */
+      codes: string[];
     };
 
 function valueOf(customerGets: any): NativeValue | null {
@@ -183,6 +185,7 @@ export function normalizeNode(node: any, shop: ShopContext): NormalizedNode | nu
       title,
       kind,
       status,
+      codes: pageOf(d.codes, (n) => n?.code).ids,
       app: appType
         ? {
             appKey: typeof appType.appKey === "string" ? appType.appKey : null,
@@ -239,6 +242,9 @@ export function normalizeNode(node: any, shop: ShopContext): NormalizedNode | nu
     minimum: minimumOf(d.minimumRequirement),
     codes: codes.ids,
     codesCount: isCode ? (int(d.codesCount?.count) ?? codes.ids.length) : 0,
+    // Without a count, only a fully read list is exact.
+    codesCountExact: !isCode || (d.codesCount ? d.codesCount.precision === "EXACT" : codes.next === null),
+    recurringCycleLimit: int(d.codeBasicCycleLimit ?? d.autoBasicCycleLimit ?? d.codeShipCycleLimit ?? d.autoShipCycleLimit),
     usageCount: int(d.asyncUsageCount) ?? 0,
     usageLimit: int(d.usageLimit),
     oncePerCustomer: bool(d.appliesOncePerCustomer, false),

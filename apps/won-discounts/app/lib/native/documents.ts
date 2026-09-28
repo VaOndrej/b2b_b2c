@@ -6,6 +6,8 @@
 // Query cost: the list query nests three item connections and one code
 // connection per node, so its page size stays small (DETECT_PAGE_SIZE ×
 // ~(3 × DETECT_ITEMS + DETECT_CODES)) to stay well under the 1 000 point cap.
+// `recurringCycleLimit` is Int on some discount types and Int! on others, so
+// each type reads it under its own alias (one response key, one type).
 
 /** Nodes per `discountNodes` page during detection. */
 export const DETECT_PAGE_SIZE = 10;
@@ -83,6 +85,7 @@ fragment WonNativeDiscountFields on Discount {
   __typename
   ... on DiscountCodeBasic {
     title status startsAt endsAt asyncUsageCount usageLimit appliesOncePerCustomer discountClasses
+    codeBasicCycleLimit: recurringCycleLimit
     codesCount { count precision }
     codes(first: $codes) { ...WonNativeCodes }
     customerGets { ...WonNativeCustomerGets }
@@ -92,6 +95,7 @@ fragment WonNativeDiscountFields on Discount {
   }
   ... on DiscountAutomaticBasic {
     title status startsAt endsAt asyncUsageCount discountClasses
+    autoBasicCycleLimit: recurringCycleLimit
     customerGets { ...WonNativeCustomerGets }
     minimumRequirement { ...WonNativeMinimum }
     combinesWith { orderDiscounts productDiscounts shippingDiscounts }
@@ -99,6 +103,7 @@ fragment WonNativeDiscountFields on Discount {
   }
   ... on DiscountCodeFreeShipping {
     title status startsAt endsAt asyncUsageCount usageLimit appliesOncePerCustomer appliesOnOneTimePurchase appliesOnSubscription
+    codeShipCycleLimit: recurringCycleLimit
     codesCount { count precision }
     codes(first: $codes) { ...WonNativeCodes }
     destinationSelection { ...WonNativeDestination }
@@ -109,16 +114,21 @@ fragment WonNativeDiscountFields on Discount {
   }
   ... on DiscountAutomaticFreeShipping {
     title status startsAt endsAt asyncUsageCount appliesOnOneTimePurchase appliesOnSubscription
+    autoShipCycleLimit: recurringCycleLimit
     destinationSelection { ...WonNativeDestination }
     maximumShippingPrice { amount currencyCode }
     minimumRequirement { ...WonNativeMinimum }
     combinesWith { orderDiscounts productDiscounts shippingDiscounts }
     context { ...WonNativeContext }
   }
-  ... on DiscountCodeBxgy { title status }
+  ... on DiscountCodeBxgy {
+    title status
+    codes(first: $codes) { ...WonNativeCodes }
+  }
   ... on DiscountAutomaticBxgy { title status }
   ... on DiscountCodeApp {
     title status
+    codes(first: $codes) { ...WonNativeCodes }
     appDiscountType { appKey functionId title app { title } }
   }
   ... on DiscountAutomaticApp {

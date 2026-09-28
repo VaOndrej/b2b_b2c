@@ -101,9 +101,10 @@ test("REL-3: sync fails after the delete (Won node already holds the code) → n
 
   assert.equal(result.ok, false);
   assert.ok(!result.ok);
-  assert.equal(result.code, "sync_failed_restored");
+  assert.equal(result.code, "sync_failed");
+  assert.equal(result.state, "restored");
   assert.equal(result.nativeRestored, true);
-  assert.match(result.error, /^Přesun se nepovedl \(config read-back failed\)\. Slevu jsme hned vrátili do Shopify se stejným kódem/);
+  assert.equal(result.error, "Přesun se nepovedl (config read-back failed). Slevu jsme hned vrátili do Shopify, funguje jako dřív.");
   const restoredId = result.restoredNativeId!;
   const restored = shopify.nodes.get(restoredId);
   assert.equal(restored.discount.__typename, "DiscountCodeBasic");
@@ -112,8 +113,7 @@ test("REL-3: sync fails after the delete (Won node already holds the code) → n
   assert.equal(restored.discount.customerGets.value.percentage, 0.2);
   assert.equal(restored.discount.minimumRequirement.greaterThanOrEqualToSubtotal.amount, "500.00");
   assert.equal(restored.discount.usageLimit, 50);
-  // The first restore hit "code taken" (the Won node) and sent no create; the config was
-  // rolled back, the node removed, and the retry created it once.
+  // The config is rolled back first (the Won node released the code), then one create.
   assert.equal(shopify.callsTo("WonNativeCodeBasicCreate").length, 1);
   assert.equal(sync.calls.length, 2); // the failed save + the rollback
   assert.equal(sync.nodeIds.size, 0);
@@ -136,7 +136,8 @@ test("REL-3: sync refused before saving → native restored directly, config unt
 
   const result = await moveNative({ ...common, nativeId });
   assert.ok(!result.ok);
-  assert.equal(result.code, "sync_failed_restored");
+  assert.equal(result.code, "sync_failed");
+  assert.equal(result.state, "restored");
   assert.equal(sync.calls.length, 1, "no rollback save when nothing was saved");
   const restored = shopify.nodes.get(result.restoredNativeId!);
   assert.equal(restored.discount.__typename, "DiscountAutomaticFreeShipping");
@@ -147,11 +148,12 @@ test("REL-3: sync refused before saving → native restored directly, config unt
 test("REL-3: the restore fails too → the backup keeps the only copy; undo finishes the job later", async () => {
   const { shop, shopify, common } = setup(["throw"]);
   const nativeId = shopify.add(basicNode({ title: "Křehká", codes: ["KREHKA"] }));
-  shopify.inject("WonNativeCodeBasicCreate", { userErrors: [{ message: "Internal error" }] }, { userErrors: [{ message: "Internal error" }] });
+  shopify.inject("WonNativeCodeBasicCreate", { userErrors: [{ message: "Internal error" }] });
 
   const result = await moveNative({ ...common, nativeId });
   assert.ok(!result.ok);
-  assert.equal(result.code, "sync_failed_not_restored");
+  assert.equal(result.code, "sync_failed");
+  assert.equal(result.state, "in_backup");
   assert.equal(result.nativeRestored, false);
   assert.match(result.error, /Je v záloze, klikni na „Vrátit zpět“\.$/);
   assert.equal(shopify.holderOf("KREHKA"), null);
@@ -220,11 +222,11 @@ test("refused before any change: code already on a Won rule, BXGY, missing disco
   const r2 = await moveNative({ ...common, nativeId: bxgy });
   assert.ok(!r2.ok);
   assert.equal(r2.code, "not_movable");
-  assert.equal(r2.error, "Won Discounts nemá Kup X, dostaneš Y. Pokryjí to množstevní slevy.");
+  assert.equal(r2.error, "Won Discounts nemá Kup X, dostaneš Y. Pokryjí to množstevní slevy. Nic se nezměnilo.");
 
   const r3 = await moveNative({ ...common, nativeId: "gid://shopify/DiscountCodeNode/404", locale: "en" });
   assert.ok(!r3.ok);
-  assert.equal(r3.error, "This discount is no longer in Shopify. Refresh the list.");
+  assert.equal(r3.error, "This discount is no longer in Shopify. Nothing changed. Refresh the list.");
 
   assert.equal(shopify.callsTo("WonNativeCodeDelete").length, 0);
   assert.equal((await backups(shop)).length, 0);

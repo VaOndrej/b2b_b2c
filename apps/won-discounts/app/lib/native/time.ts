@@ -1,9 +1,9 @@
-// Shopify returns discount dates as UTC instants. The Won engine reads a rule's
-// schedule at DAY granularity from the date written in the ISO string itself
-// (plan.ts startDate/endDate), so a UTC string would shift a Prague midnight
-// start to the previous day. Rule schedules are therefore written in the SHOP'S
-// zone with an explicit offset (still a valid zoned ISO date-time for the
-// config sanitizer and for the node's startsAt/endsAt).
+// Shopify returns discount dates as UTC instants. A rule's schedule is read at
+// DAY granularity in shop time; the engine's payload builder converts any offset
+// to shop-local days, but a reader that takes the date from the string literally
+// would shift a Prague-midnight start to the previous day. Writing the SHOP'S
+// zone with an explicit offset is unambiguous for both (and still a valid zoned
+// ISO date-time for the config sanitizer and the node's startsAt/endsAt).
 
 interface LocalParts {
   year: number;

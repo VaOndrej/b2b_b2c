@@ -21,9 +21,19 @@ export interface RequestOptions {
 }
 
 export type GqlResult =
+  /**
+   * `partialErrors`: GraphQL answered with data AND per-item errors (a field or
+   * node it could not resolve comes back null). The data is kept (API-2): the
+   * readers skip the null items, a mutation payload is judged by its own fields.
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw GraphQL payload, narrowed by the caller
-  | { ok: true; data: any }
+  | { ok: true; data: any; partialErrors?: string[] }
   | { ok: false; kind: "graphql" | "throttled" | "transport"; message: string };
+
+/** True when the response carries usable data: at least one top-level field that is not null. */
+function hasData(data: unknown): boolean {
+  return !!data && typeof data === "object" && Object.values(data as Record<string, unknown>).some((v) => v !== null && v !== undefined);
+}
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -79,6 +89,9 @@ export async function runGql(
       const errors = errorList(response?.errors);
       if (errors.length === 0) return { ok: true, data: response?.data ?? {} };
       const throttled = errors.some((e) => e.code === "THROTTLED" || isThrottledText(e.message));
+      if (!throttled && hasData(response?.data)) {
+        return { ok: true, data: response.data, partialErrors: errors.map((e) => e.message.slice(0, 200)) };
+      }
       last = {
         ok: false,
         kind: throttled ? "throttled" : "graphql",

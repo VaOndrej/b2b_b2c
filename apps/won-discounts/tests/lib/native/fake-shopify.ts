@@ -7,8 +7,10 @@
 //   { graphqlError: "…" }          GraphQL error (nothing executed)
 //   { throws: "…" }                transport failure, nothing executed
 //   { throwsAfterApply: "…" }      transport failure AFTER the write landed
+//   { graphqlErrorAfterApply: "…" } GraphQL error answer although the write landed
 //   { userErrors: [{ message }] }  mutation answered with userErrors
 
+import type { AdminGraphQLResult, GraphQLErrorLike } from "../../../app/lib/admin-client.server.ts";
 import type { AdminClient } from "../../../app/lib/native/types.ts";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- the fake speaks raw Admin API JSON */
@@ -18,6 +20,7 @@ export type Injection =
   | { graphqlError: string }
   | { throws: string }
   | { throwsAfterApply: string }
+  | { graphqlErrorAfterApply: string }
   | { userErrors: { message: string; code?: string; field?: string[] }[] };
 
 export interface RecordedCall {
@@ -64,7 +67,9 @@ export class FakeShopify implements AdminClient {
   calls: RecordedCall[] = [];
   private injections = new Map<string, Injection[]>();
   private nextId = 9000;
-  private bulk = new Map<string, { codesCount: number; importedCount: number; failedCount: number }>();
+  private bulk = new Map<string, { codesCount: number; importedCount: number; failedCount: number; done: boolean }>();
+  /** Redeem-code bulk creations never finish (Shopify still importing): codes do not appear yet. */
+  bulkNeverDone = false;
   /** Clock for createdAt / status of created discounts. */
   now: () => Date = () => new Date("2026-09-28T12:00:00Z");
 
@@ -101,7 +106,7 @@ export class FakeShopify implements AdminClient {
     return null;
   }
 
-  async graphql(query: string, variables?: Record<string, unknown>): Promise<{ data?: any; errors?: unknown }> {
+  async graphql<TData = any>(query: string, variables?: Record<string, unknown>): Promise<AdminGraphQLResult<TData>> {
     const name = /^(?:query|mutation)\s+(\w+)/.exec(query.trim())?.[1] ?? "anonymous";
     this.calls.push({ name, variables: variables ? clone(variables) : undefined });
     const injected = this.injections.get(name)?.shift();
@@ -111,11 +116,16 @@ export class FakeShopify implements AdminClient {
       if ("throws" in injected) throw new Error(injected.throws);
       if ("userErrors" in injected) {
         const field = MUTATION_FIELD[name] ?? "payload";
-        return { data: { [field]: { userErrors: injected.userErrors.map((e) => ({ field: e.field ?? null, code: e.code ?? null, message: e.message })) } } };
+        const payload = { userErrors: injected.userErrors.map((e) => ({ field: e.field ?? null, code: e.code ?? null, message: e.message })) };
+        return { data: { [field]: payload } as TData };
       }
       if ("throwsAfterApply" in injected) {
         this.handle(name, variables ?? {});
         throw new Error(injected.throwsAfterApply);
+      }
+      if ("graphqlErrorAfterApply" in injected) {
+        this.handle(name, variables ?? {});
+        return { errors: [{ message: injected.graphqlErrorAfterApply }] };
       }
     }
     return { data: this.handle(name, variables ?? {}) };
@@ -131,7 +141,8 @@ export class FakeShopify implements AdminClient {
       if (parent && parent[key]) parent[key] = slice(parent[key], 0, sizes[list.variable]);
     }
     if (CODE_TYPES.has(out.discount.__typename) && node.discount.codes) {
-      out.discount.codesCount = { count: node.discount.codes.nodes.length, precision: "EXACT" };
+      // `fakeCodesCount` on a fixture overrides what Shopify reports (e.g. AT_LEAST).
+      out.discount.codesCount = node.discount.fakeCodesCount ?? { count: node.discount.codes.nodes.length, precision: "EXACT" };
     }
     return out;
   }
@@ -205,21 +216,23 @@ export class FakeShopify implements AdminClient {
         if (codes.length > 250) return { [field]: { bulkCreation: null, userErrors: [{ message: "Too many codes" }] } };
         let imported = 0;
         let failed = 0;
-        for (const { code } of codes) {
-          if (this.codeTaken(code)) failed++;
-          else {
-            node.discount.codes.nodes.push({ code });
-            imported++;
+        if (!this.bulkNeverDone) {
+          for (const { code } of codes) {
+            if (this.codeTaken(code)) failed++;
+            else {
+              node.discount.codes.nodes.push({ code });
+              imported++;
+            }
           }
         }
         this.nextId += 1;
         const id = `gid://shopify/DiscountRedeemCodeBulkCreation/${this.nextId}`;
-        this.bulk.set(id, { codesCount: codes.length, importedCount: imported, failedCount: failed });
+        this.bulk.set(id, { codesCount: codes.length, importedCount: imported, failedCount: failed, done: !this.bulkNeverDone });
         return { [field]: { bulkCreation: { id, done: false }, userErrors: [] } };
       }
       case "WonNativeRedeemCodesStatus": {
         const b = this.bulk.get(String(v.id));
-        return { discountRedeemCodeBulkCreation: b ? { done: true, ...b } : null };
+        return { discountRedeemCodeBulkCreation: b ? { ...b } : null };
       }
       case "WonNativeCodeLookup": {
         const node = this.holderOf(String(v.code));
@@ -265,6 +278,7 @@ export class FakeShopify implements AdminClient {
 
     const id = this.newId(isCode ? "code" : "automatic");
     const typename = `Discount${isCode ? "Code" : "Automatic"}${isBasic ? "Basic" : "FreeShipping"}`;
+    const cycleAlias = `${isCode ? "code" : "auto"}${isBasic ? "Basic" : "Ship"}CycleLimit`;
     const discount: any = {
       __typename: typename,
       title: input.title,
@@ -283,6 +297,8 @@ export class FakeShopify implements AdminClient {
           : null,
       combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: false, ...input.combinesWith },
       context: { __typename: "DiscountBuyerSelectionAll", all: "ALL" },
+      // The documents read recurringCycleLimit under a per-type alias.
+      [cycleAlias]: input.recurringCycleLimit ?? 0,
     };
     if (isCode) {
       discount.codes = { nodes: [{ code: input.code }] };
@@ -325,6 +341,16 @@ export class FakeShopify implements AdminClient {
     this.nodes.set(id, { id, discount });
     return { [field]: { [nodeKey]: { id }, userErrors: [] } };
   }
+}
+
+/** A scripted AdminClient (tests of the request layer): any raw response shape. */
+export function scriptedClient(respond: (query: string, variables?: Record<string, unknown>) => Promise<{ data?: unknown; errors?: unknown }>): AdminClient {
+  return {
+    async graphql<TData = any>(query: string, variables?: Record<string, unknown>): Promise<AdminGraphQLResult<TData>> {
+      const response = await respond(query, variables);
+      return { data: response.data as TData, errors: response.errors as GraphQLErrorLike[] | undefined };
+    },
+  };
 }
 
 // --- Fixture builders (raw Admin API shape) -------------------------------------------

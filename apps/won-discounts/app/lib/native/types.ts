@@ -5,16 +5,15 @@
 
 import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
 
+import type { AdminClient as SharedAdminClient } from "../admin-client.server";
+
 /**
- * Minimal Admin GraphQL client, structurally compatible with the sync layer's
- * `app/lib/admin-client.ts` (T3). Local until that file exists; unify then.
- * `data`/`errors` follow the GraphQL response shape. A transport failure
- * (network, CLI, timeout) rejects the promise.
+ * The app's one Admin GraphQL client contract (app/lib/admin-client.server.ts,
+ * sync layer): GraphQL-level failures resolve with `errors`, transport failures
+ * reject (AdminTransportError with the HTTP status). Type-only import: nothing
+ * server-side reaches a client bundle through this file.
  */
-export interface AdminClient {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw GraphQL payloads are narrowed by the readers
-  graphql(query: string, variables?: Record<string, unknown>): Promise<{ data?: any; errors?: unknown }>;
-}
+export type AdminClient = SharedAdminClient;
 
 /** Admin language of the merchant (A10). */
 export type NativeLocale = "cs" | "en";
@@ -84,6 +83,10 @@ export interface NativeDiscount {
   codes: string[];
   /** Total redeem codes Shopify reports (may be larger than `codes.length`). */
   codesCount: number;
+  /** False when Shopify reports the count only as a lower bound (precision AT_LEAST). */
+  codesCountExact: boolean;
+  /** Subscriptions: on how many recurring orders it applies (0 / null = every one). */
+  recurringCycleLimit: number | null;
   /** Shopify's asynchronous usage counter (approximate). */
   usageCount: number;
   usageLimit: number | null;
@@ -111,7 +114,9 @@ export type NotMovableReason =
   | { code: "shipping_countries" }
   | { code: "shipping_price_cap" }
   | { code: "too_many_items"; count: number; limit: number }
-  | { code: "too_many_codes_to_back_up"; count: number; limit: number }
+  | { code: "too_many_codes_to_back_up"; count: number; limit: number; atLeast: boolean }
+  | { code: "no_codes" }
+  | { code: "incomplete_read" }
   | { code: "usage_exhausted"; used: number; limit: number }
   | { code: "expired" }
   | { code: "unsupported_value" }
@@ -181,9 +186,24 @@ export type SaveAndSync = (input: { shop: string; config: WonDiscountsConfig }) 
 
 export type SaveAndSyncResult = { ok: true } | { ok: false; message: string };
 
-/** NativeDiscountBackup.status values. */
+/**
+ * NativeDiscountBackup.status values (a plain string column, no schema change):
+ *   backed_up  snapshot taken; the native may or may not still be in Shopify
+ *              (a move stopped before finishing, or the delete outcome is
+ *              unknown). A retried move or an undo checks and converges.
+ *   moving     claimed by a running move (compare-and-set, all instances)
+ *   undoing    claimed by a running undo
+ *   moved      the rule is in Won, the native is deleted
+ *   restored   the native is back in Shopify (snapshot.restoredAs)
+ *   failed     the move failed; snapshot.restoredAs says whether the native is
+ *              back (and which codes are still missing), otherwise it is only
+ *              in the backup and undo puts it back
+ * A `moving`/`undoing` claim older than CLAIM_STALE_MS (process died) is taken over.
+ */
 export const BACKUP_STATUS = Object.freeze({
   backedUp: "backed_up",
+  moving: "moving",
+  undoing: "undoing",
   moved: "moved",
   restored: "restored",
   failed: "failed",

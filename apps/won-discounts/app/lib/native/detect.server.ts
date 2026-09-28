@@ -12,7 +12,7 @@
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
 
 import { classifyNative } from "./classify.ts";
-import { findConflicts } from "./conflicts.ts";
+import { findConflicts, type OtherCodeHolder } from "./conflicts.ts";
 import { notMovableReasonText } from "./copy.ts";
 import { DETECT_CODES, DETECT_ITEMS, DETECT_PAGE_SIZE } from "./documents.ts";
 import { normalizeNode } from "./normalize.ts";
@@ -79,6 +79,7 @@ export async function detectNativeDiscounts(client: AdminClient, options: Detect
 
   const detection: NativeDetection = { shop, movable: [], notMovable: [], expired: [], conflicts: [] };
   const live: NativeDiscount[] = [];
+  const otherCodeHolders: OtherCodeHolder[] = [];
   let after: string | null = null;
   let complete = false;
 
@@ -117,6 +118,7 @@ export async function detectNativeDiscounts(client: AdminClient, options: Detect
           reasonCode: reason.code,
           reason: notMovableReasonText(reason, locale),
         });
+        if (node.codes.length > 0) otherCodeHolders.push({ id: node.id, title: node.title, codes: node.codes });
         continue;
       }
       const native = node.native;
@@ -152,6 +154,6 @@ export async function detectNativeDiscounts(client: AdminClient, options: Detect
     );
   }
 
-  if (options.config) detection.conflicts = findConflicts(live, options.config, locale);
+  if (options.config) detection.conflicts = findConflicts(live, options.config, locale, otherCodeHolders);
   return detection;
 }

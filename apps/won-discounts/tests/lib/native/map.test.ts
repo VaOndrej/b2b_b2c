@@ -58,8 +58,9 @@ test("code discount, % on products: every field maps, codes upper-case, origin l
     origin: { nativeId: "gid://shopify/DiscountCodeNode/123" },
   });
   assert.deepEqual(losses, ["Historie použití zůstane v Shopify. Won počítá od nuly."]);
-  // Native combining equals the A1 defaults for a product discount → nothing to say.
-  assert.deepEqual(warnings, []);
+  // Native combining equals the A1 defaults for a product discount → nothing to say about it;
+  // Won does not tell subscriptions apart (review Minor 3) → that is said.
+  assert.deepEqual(warnings, ["Prodáváš-li předplatné: v Shopify na něj sleva neplatila. Won předplatné nerozlišuje, bude platit i na něj."]);
   // The config sanitizer accepts it unchanged (no issues, nothing dropped).
   const config = createDefaultConfig();
   config.modules.codes.rules.push(rule);
@@ -103,6 +104,7 @@ test("free shipping (code) maps to a shipping rule; combining differences are sp
   assert.deepEqual(rule.value, { kind: "freeShipping" });
   assert.deepEqual(rule.target, { kind: "shipping" });
   assert.deepEqual(warnings, [
+    "Prodáváš-li předplatné: v Shopify na něj sleva neplatila. Won předplatné nerozlišuje, bude platit i na něj.",
     "V Shopify se nekombinovala s produktovými slevami. Ve Won se podle nastavení kombinování kombinuje.",
     "V Shopify se nekombinovala se slevami na objednávku. Ve Won se podle nastavení kombinování kombinuje.",
   ]);

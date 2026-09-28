@@ -3,19 +3,18 @@ import { test } from "node:test";
 
 import { runGql } from "../../../app/lib/native/request.server.ts";
 import type { AdminClient } from "../../../app/lib/native/types.ts";
+import { scriptedClient } from "./fake-shopify.ts";
 
 // API-3 / REL-2: what is retried and what never is.
 
 function scripted(steps: (() => Promise<{ data?: unknown; errors?: unknown }>)[]): AdminClient & { calls: number } {
-  const client = {
-    calls: 0,
-    async graphql() {
-      const step = steps[Math.min(client.calls, steps.length - 1)];
-      client.calls += 1;
-      return step();
-    },
-  };
-  return client;
+  const state = { calls: 0 };
+  const client = scriptedClient(() => {
+    const step = steps[Math.min(state.calls, steps.length - 1)];
+    state.calls += 1;
+    return step();
+  });
+  return Object.defineProperty(client, "calls", { get: () => state.calls }) as AdminClient & { calls: number };
 }
 
 const httpError = (status: number, retryAfterMs: number | null = null) =>

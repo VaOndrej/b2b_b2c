@@ -3,36 +3,40 @@
 // restore the native from the backup and remove the Won rule).
 //
 // REL-3, "what if this request dies mid-way?":
-//   before the backup row   nothing changed; a retry starts over.
-//   backup row, no delete   status "backed_up", native still live. A retry
-//                           re-reads it, refreshes the snapshot, continues.
-//   deleted, no Won rule    status "backed_up", native gone. A retry resumes at
-//                           the Won step from the snapshot; undo restores it.
-//   Won step fails          the native is restored AT ONCE from the snapshot
-//                           (same code), the config rolled back if it was
-//                           saved, status "failed" + human error. When even the
-//                           restore fails, the row keeps the only copy; undo
-//                           (or another move) finishes the job.
+//   before the claim         nothing changed; a retry starts over.
+//   claimed, no delete       the native is still live; the row is released.
+//   delete outcome unknown   (transport error AND the existence check failed)
+//                            status "backed_up", snapshot intact, the merchant
+//                            is told we do not know. A retried move re-checks
+//                            and continues; undo restores if the native is gone.
+//   deleted, Won step fails  the Won rule is rolled back FIRST (checked), then
+//   (or any refusal after    the native restored at once from the snapshot
+//    a resumed delete)       (same code). If the rule cannot be removed, the
+//                            native is NOT recreated (an automatic one would
+//                            apply twice): status "failed", undo finishes.
+//                            Codes that did not come back are counted and kept
+//                            in the snapshot; the next undo adds them.
 //   undo: Won rule removed, restore fails
-//                           the rule is put back (the discount keeps running
-//                           through Won); if that fails too, status "failed"
-//                           and a later undo retries from the snapshot.
-// Concurrency: every native operation of a shop runs one at a time in this
-// process (a per-shop queue), so two clicks never delete twice or lose each
-// other's rule in the config's read-modify-write. The app runs as one instance
-// (SQLite); a multi-instance deploy needs a DB lock here instead.
-// Idempotent: moving an already moved nativeId returns the existing result;
-// undoing an already restored backup does nothing.
+//                            the rule is put back (the discount keeps running
+//                            through Won); if that fails too, status "failed"
+//                            and a later undo retries from the snapshot.
+// Concurrency: per shop, operations run one at a time in this process, and
+// across app instances every move / undo first CLAIMS its backup row with a
+// compare-and-set (status → "moving" / "undoing"; a fresh row loses to an older
+// live claim). A claim older than CLAIM_STALE_MS (the process died) is taken
+// over. Idempotent: moving an already moved nativeId returns the existing
+// result; undoing an already restored backup does nothing.
 
 import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import { loadConfig } from "../config.server";
 import { checkActiveCodeRuleLimit } from "../config-guards.server";
-import { classifyNative } from "./classify.ts";
+import { classifyNative, incompleteSnapshot } from "./classify.ts";
 import {
   type MoveErrorItem,
   moveErrorText,
+  type MoveState,
   type NotRestoredItem,
   notMovableReasonText,
   notRestoredText,
@@ -40,10 +44,11 @@ import {
   undoErrorText,
 } from "./copy.ts";
 import { readShopContext } from "./detect.server.ts";
-import { planMove } from "./map.server.ts";
+import { NotMovableError, planMove } from "./map.server.ts";
 import { readNativeDiscount } from "./read.server.ts";
 import { describeUserErrors, type RequestOptions, runGql, userErrorsOf } from "./request.server.ts";
 import {
+  finishRestoredCodes,
   makeSnapshot,
   nativeFromSnapshot,
   parseSnapshot,
@@ -61,9 +66,12 @@ import {
   type SaveAndSyncResult,
 } from "./types.ts";
 
+/** A move / undo claim older than this belongs to a process that died: it may be taken over. */
+export const CLAIM_STALE_MS = 10 * 60_000;
+
 export interface NativeOpOptions extends RequestOptions {
   locale?: NativeLocale;
-  /** Clock (tests). */
+  /** Clock for snapshots and plans (tests). Claims always use the wall clock (Prisma's updatedAt). */
   now?: () => Date;
   /** Polls of a bulk code creation during a restore. */
   bulkPolls?: number;
@@ -89,12 +97,17 @@ export type MoveResult =
   | {
       ok: false;
       code: MoveErrorItem["code"];
-      /** Human sentence for the merchant (§4c). */
+      /** Where the discount is now (see copy.ts MoveState). */
+      state: MoveState;
+      /** Human sentence for the merchant (§4c): why, where the discount is, what to do. */
       error: string;
       backupId?: string;
       /** Set when the move failed after the delete: was the native put back? */
       nativeRestored?: boolean;
       restoredNativeId?: string;
+      /** Codes of the backup not (yet) on the restored discount. */
+      codesMissing?: number;
+      codesPending?: boolean;
     };
 
 export type UndoResult =
@@ -109,7 +122,9 @@ export type UndoResult =
     }
   | { ok: false; code: UndoErrorItem["code"]; error: string };
 
-// --- Per-shop queue -------------------------------------------------------------------
+type BackupRow = NonNullable<Awaited<ReturnType<PrismaClient["nativeDiscountBackup"]["findFirst"]>>>;
+
+// --- Per-shop queue (this process) --------------------------------------------------------
 
 const queues = new Map<string, Promise<unknown>>();
 
@@ -125,6 +140,25 @@ function withShopLock<T>(shop: string, run: () => Promise<T>): Promise<T> {
     if (queues.get(shop) === settled) queues.delete(shop);
   });
   return next;
+}
+
+// --- Claims (all instances) ---------------------------------------------------------------
+
+function isClaim(status: string): boolean {
+  return status === BACKUP_STATUS.moving || status === BACKUP_STATUS.undoing;
+}
+
+function isLiveClaim(row: BackupRow): boolean {
+  return isClaim(row.status) && Date.now() - row.updatedAt.getTime() < CLAIM_STALE_MS;
+}
+
+/** Compare-and-set on (status, updatedAt): true when this caller now owns the row. */
+async function claim(db: PrismaClient, row: BackupRow, data: Record<string, unknown>): Promise<boolean> {
+  const { count } = await db.nativeDiscountBackup.updateMany({
+    where: { id: row.id, status: row.status, updatedAt: row.updatedAt },
+    data,
+  });
+  return count === 1;
 }
 
 // --- Config helpers -------------------------------------------------------------------
@@ -166,26 +200,28 @@ async function nativeExists(client: AdminClient, id: string, options: RequestOpt
   return Boolean(result.data?.discountNode?.id);
 }
 
-async function deleteNative(
-  client: AdminClient,
-  native: NativeDiscount,
-  options: RequestOptions,
-): Promise<{ ok: true } | { ok: false; message: string }> {
+type DeleteOutcome = { outcome: "deleted" } | { outcome: "not_deleted"; message: string } | { outcome: "unknown"; message: string };
+
+async function deleteNative(client: AdminClient, native: NativeDiscount, options: RequestOptions): Promise<DeleteOutcome> {
   const code = native.method === "code";
   const result = await runGql(client, code ? "codeDelete" : "automaticDelete", { id: native.id }, options);
+  let message: string;
   if (result.ok) {
     const payload = result.data?.[code ? "discountCodeDelete" : "discountAutomaticDelete"];
     const errors = userErrorsOf(payload);
-    if (errors.length === 0) return { ok: true };
-    // Already gone (deleted meanwhile) is what we wanted.
-    if ((await nativeExists(client, native.id, options)) === false) return { ok: true };
-    return { ok: false, message: describeUserErrors(errors) };
+    if (errors.length === 0 && payload) return { outcome: "deleted" };
+    message = errors.length > 0 ? describeUserErrors(errors) : (result.partialErrors ?? ["no answer"]).join("; ");
+  } else if (result.kind === "throttled") {
+    // Rate limited before execution, even after the retries: nothing happened.
+    return { outcome: "not_deleted", message: result.message };
+  } else {
+    message = result.message;
   }
-  if (result.kind === "transport") {
-    // The delete may have landed: look before calling it a failure.
-    if ((await nativeExists(client, native.id, options)) === false) return { ok: true };
-  }
-  return { ok: false, message: result.message };
+  // Every other answer may hide a delete that landed: the store decides.
+  const exists = await nativeExists(client, native.id, options);
+  if (exists === false) return { outcome: "deleted" };
+  if (exists === true) return { outcome: "not_deleted", message };
+  return { outcome: "unknown", message };
 }
 
 // --- Backup rows ----------------------------------------------------------------------
@@ -212,6 +248,11 @@ function reasonForNonBasic(kind: string): NotMovableReason {
   return { code: "unknown_type" };
 }
 
+/** A restore that left codes missing is not finished: the next undo adds them. */
+function codesStillMissing(envelope: SnapshotEnvelope): boolean {
+  return (envelope.restoredAs?.codesMissing ?? 0) > 0;
+}
+
 // --- Move -----------------------------------------------------------------------------
 
 export interface MoveNativeInput extends Common {
@@ -222,37 +263,46 @@ export function moveNative(input: MoveNativeInput): Promise<MoveResult> {
   return withShopLock(input.shop, () => moveLocked(input));
 }
 
+type Fail = (item: MoveErrorItem, state?: MoveState, extra?: Partial<Extract<MoveResult, { ok: false }>>) => MoveResult;
+
 async function moveLocked(input: MoveNativeInput): Promise<MoveResult> {
   const { client, db, shop, nativeId } = input;
   const locale = input.locale ?? "cs";
   const now = input.now ?? (() => new Date());
-  const fail = (item: MoveErrorItem, extra: Partial<Extract<MoveResult, { ok: false }>> = {}): MoveResult => ({
+  const fail: Fail = (item, state = "unchanged", extra = {}) => ({
     ok: false,
     code: item.code,
-    error: moveErrorText(item, locale),
+    state,
+    error: moveErrorText(item, locale, state, { missing: extra.codesMissing, pending: extra.codesPending }),
     ...extra,
   });
 
-  // 0. Idempotency / resume.
+  // 0. Idempotency, running claims, resume.
   const previous = await db.nativeDiscountBackup.findFirst({ where: { shop, nativeId }, orderBy: { createdAt: "desc" } });
   if (previous?.status === BACKUP_STATUS.moved) {
     return { ok: true, backupId: previous.id, ruleId: previous.wonRuleId ?? "", alreadyMoved: true, losses: [], warnings: [] };
   }
+  if (previous && isLiveClaim(previous)) return fail({ code: "in_progress" }, "in_progress", { backupId: previous.id });
   const previousEnvelope = previous ? parseSnapshot(previous.snapshot) : null;
   const resumable =
     previous !== null &&
     previousEnvelope !== null &&
-    (previous.status === BACKUP_STATUS.backedUp || (previous.status === BACKUP_STATUS.failed && !previousEnvelope.restoredAs));
+    (previous.status === BACKUP_STATUS.backedUp ||
+      isClaim(previous.status) || // stale claim: its process died
+      (previous.status === BACKUP_STATUS.failed && !previousEnvelope.restoredAs));
+  // With a resumable row the native may already be deleted: a failed read proves nothing.
+  const unknownFail = (detail: string) =>
+    fail({ code: "outcome_unknown", detail }, "unknown", { backupId: previous?.id });
 
-  // 1. Read everything first; nothing changes until the backup exists.
+  // 1. Read everything first.
   const shopContext = await readShopContext(client, input);
-  if (!shopContext.ok) return fail({ code: "read_failed", detail: shopContext.message });
+  if (!shopContext.ok) return resumable ? unknownFail(shopContext.message) : fail({ code: "read_failed", detail: shopContext.message });
   const read = await readNativeDiscount(client, nativeId, shopContext.shop, input);
 
   let native: NativeDiscount;
   let envelope: SnapshotEnvelope;
   let deleted = false;
-  if (!read.ok && read.notFound && resumable && previous && previousEnvelope) {
+  if (!read.ok && read.notFound && resumable && previousEnvelope) {
     // An earlier attempt deleted it: the snapshot is the discount now.
     const fromSnapshot = nativeFromSnapshot(previousEnvelope);
     if (!fromSnapshot) return fail({ code: "not_found" });
@@ -260,110 +310,184 @@ async function moveLocked(input: MoveNativeInput): Promise<MoveResult> {
     envelope = previousEnvelope;
     deleted = true;
   } else if (!read.ok) {
-    return read.notFound ? fail({ code: "not_found" }) : fail({ code: "read_failed", detail: read.message });
+    if (read.notFound) return fail({ code: "not_found" });
+    return resumable ? unknownFail(read.message) : fail({ code: "read_failed", detail: read.message });
   } else if (!read.movableType) {
     return fail({ code: "not_movable", reason: notMovableReasonText(reasonForNonBasic(read.kind), locale) });
   } else {
     native = read.native;
     envelope = makeSnapshot(read.raw, shopContext.shop, now());
-    if (native.status === "EXPIRED") return fail({ code: "not_movable", reason: notMovableReasonText({ code: "expired" }, locale) });
-    const reason = classifyNative(native);
+    const reason: NotMovableReason | null =
+      native.status === "EXPIRED" ? { code: "expired" } : (classifyNative(native) ?? incompleteSnapshot(native));
+    // Still live in Shopify, nothing deleted: a refusal changes nothing.
     if (reason) return fail({ code: "not_movable", reason: notMovableReasonText(reason, locale) });
   }
 
-  // 2. Plan against the current config and refuse early what the save would refuse.
+  // 2. Claim the backup row (the backup itself, before anything destructive, §14c).
+  let rowId: string;
+  const claimData = { status: BACKUP_STATUS.moving, snapshot: JSON.stringify(envelope), error: null, kind: native.kind, title: native.title };
+  if (resumable && previous) {
+    if (!(await claim(db, previous, claimData))) return fail({ code: "in_progress" }, "in_progress", { backupId: previous.id });
+    rowId = previous.id;
+  } else {
+    try {
+      const row = await db.nativeDiscountBackup.create({ data: { shop, nativeId, wonRuleId: null, ...claimData } });
+      rowId = row.id;
+    } catch {
+      return fail({ code: "backup_failed" });
+    }
+    // Another instance may have claimed the same native at the same time: the oldest live claim wins.
+    const rivals = await db.nativeDiscountBackup.findMany({
+      where: { shop, nativeId, status: { in: [BACKUP_STATUS.moving, BACKUP_STATUS.moved] } },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+    const winner = rivals.find((r) => r.status === BACKUP_STATUS.moved) ?? rivals.find((r) => r.id === rowId || isLiveClaim(r));
+    if (winner && winner.id !== rowId) {
+      await db.nativeDiscountBackup.delete({ where: { id: rowId } });
+      if (winner.status === BACKUP_STATUS.moved) {
+        return { ok: true, backupId: winner.id, ruleId: winner.wonRuleId ?? "", alreadyMoved: true, losses: [], warnings: [] };
+      }
+      return fail({ code: "in_progress" }, "in_progress", { backupId: winner.id });
+    }
+  }
+
+  const ctx: AbortContext = { input, locale, now, fail, rowId, nativeId, envelope, ruleId: previous?.wonRuleId ?? null };
+
+  /** A refusal after the claim: put the discount back if it is gone, else release the row. */
+  const refuse = async (item: MoveErrorItem): Promise<MoveResult> => {
+    if (deleted) return abortAfterDelete(ctx, item);
+    if (resumable) {
+      // The native is live (just read): record where it is, so undo has nothing to do.
+      await updateRow(db, rowId, {
+        status: BACKUP_STATUS.failed,
+        error: moveErrorText(item, locale),
+        snapshot: { ...envelope, restoredAs: { nativeId, at: now().toISOString() } },
+      });
+    } else {
+      await db.nativeDiscountBackup.delete({ where: { id: rowId } });
+    }
+    return fail(item, "unchanged", resumable ? { backupId: rowId } : {});
+  };
+
+  // 3. Plan against the current config; refuse early what the save would refuse.
   const loaded = await loadConfig(db, shop);
-  if (loaded.readOnly) return fail({ code: "config_read_only" });
+  if (loaded.readOnly) return refuse({ code: "config_read_only" });
   let plan: MovePlan;
   try {
     plan = planMove(native, loaded.config, { locale, now: now() });
   } catch (error) {
-    return fail({ code: "not_movable", reason: error instanceof Error ? error.message : String(error) });
+    const reason = error instanceof NotMovableError ? error.message : String(error);
+    return refuse({ code: "not_movable", reason });
   }
+  ctx.ruleId = plan.rule.id;
   const planCodes = new Set(plan.rule.codes ?? []);
   const holder = loaded.config.modules.codes.rules.find(
     (r) => r.origin?.nativeId !== nativeId && (r.codes ?? []).some((c) => planCodes.has(c)),
   );
   if (holder) {
     const codes = (holder.codes ?? []).filter((c) => planCodes.has(c));
-    return fail({ code: "code_taken", codes, ruleName: holder.name || holder.id });
+    return refuse({ code: "code_taken", codes, ruleName: holder.name || holder.id });
   }
   const limit = checkActiveCodeRuleLimit(withRule(loaded.config, plan.rule, nativeId));
   if (!limit.ok) {
-    return fail({ code: "code_rule_limit", count: checkActiveCodeRuleLimit(loaded.config).count, limit: limit.limit });
+    return refuse({ code: "code_rule_limit", count: checkActiveCodeRuleLimit(loaded.config).count, limit: limit.limit });
   }
-
-  // 3. Backup (before anything destructive, §14c).
-  let rowId: string;
-  try {
-    if (resumable && previous) {
-      await updateRow(db, previous.id, { status: BACKUP_STATUS.backedUp, error: null, snapshot: envelope, wonRuleId: plan.rule.id });
-      rowId = previous.id;
-    } else {
-      const row = await db.nativeDiscountBackup.create({
-        data: {
-          shop,
-          nativeId,
-          kind: native.kind,
-          title: native.title,
-          snapshot: JSON.stringify(envelope),
-          wonRuleId: plan.rule.id,
-          status: BACKUP_STATUS.backedUp,
-        },
-      });
-      rowId = row.id;
-    }
-  } catch {
-    return fail({ code: "backup_failed" });
-  }
+  await updateRow(db, rowId, { wonRuleId: plan.rule.id });
 
   // 4. Delete the native discount (frees its code for the Won node).
   if (!deleted) {
     const removed = await deleteNative(client, native, input);
-    if (!removed.ok) {
-      // Still in Shopify under its own id: record that, so undo has nothing to do.
+    if (removed.outcome === "not_deleted") {
+      // Confirmed still in Shopify under its own id: undo has nothing to do.
       const item: MoveErrorItem = { code: "delete_failed", detail: removed.message };
       await updateRow(db, rowId, {
         status: BACKUP_STATUS.failed,
         error: moveErrorText(item, locale),
         snapshot: { ...envelope, restoredAs: { nativeId, at: now().toISOString() } },
       });
-      return fail(item, { backupId: rowId });
+      return fail(item, "unchanged", { backupId: rowId });
     }
+    if (removed.outcome === "unknown") {
+      // Maybe deleted, maybe not: keep the backup open; retry and undo both re-check the store.
+      const item: MoveErrorItem = { code: "outcome_unknown", detail: removed.message };
+      await updateRow(db, rowId, { status: BACKUP_STATUS.backedUp, error: moveErrorText(item, locale, "unknown") });
+      return fail(item, "unknown", { backupId: rowId });
+    }
+    deleted = true;
   }
 
   // 5. Add the rule and sync. Re-read the config: it may have changed meanwhile.
   const fresh = await loadConfig(db, shop);
-  const synced = fresh.readOnly
-    ? ({ ok: false, message: moveErrorText({ code: "config_read_only" }, locale) } as const)
-    : await safeSaveAndSync(input.saveAndSync, shop, withRule(fresh.config, plan.rule, nativeId));
-  if (synced.ok) {
-    await updateRow(db, rowId, { status: BACKUP_STATUS.moved, error: null, wonRuleId: plan.rule.id });
-    return { ok: true, backupId: rowId, ruleId: plan.rule.id, alreadyMoved: false, losses: plan.losses, warnings: plan.warnings };
-  }
+  if (fresh.readOnly) return abortAfterDelete(ctx, { code: "config_read_only" });
+  const synced = await safeSaveAndSync(input.saveAndSync, shop, withRule(fresh.config, plan.rule, nativeId));
+  if (!synced.ok) return abortAfterDelete(ctx, { code: "sync_failed", detail: synced.message });
+  await updateRow(db, rowId, { status: BACKUP_STATUS.moved, error: null, wonRuleId: plan.rule.id });
+  return { ok: true, backupId: rowId, ruleId: plan.rule.id, alreadyMoved: false, losses: plan.losses, warnings: plan.warnings };
+}
 
-  // 6. REL-3: the native is gone and Won has no working rule → put it back now.
-  const detail = synced.message;
-  let restored = await restoreNative(client, envelope, { ...input, now });
+interface AbortContext {
+  input: MoveNativeInput;
+  locale: NativeLocale;
+  now: () => Date;
+  fail: Fail;
+  rowId: string;
+  nativeId: string;
+  envelope: SnapshotEnvelope;
+  ruleId: string | null;
+}
+
+/**
+ * REL-3: the native is deleted and Won has no working rule for it. Take the Won
+ * rule out first (checked: if it stays, recreating the native would make the
+ * discount apply twice), then put the native back from the snapshot at once.
+ */
+async function abortAfterDelete(ctx: AbortContext, item: MoveErrorItem): Promise<MoveResult> {
+  const { input, locale, now, fail, rowId, nativeId, envelope } = ctx;
+  const { client, db, shop, saveAndSync } = input;
+  const inBackup = async (state: "in_backup" | "rule_stuck"): Promise<MoveResult> => {
+    await updateRow(db, rowId, { status: BACKUP_STATUS.failed, error: moveErrorText(item, locale, state) });
+    return fail(item, state, { backupId: rowId, nativeRestored: false });
+  };
+
+  // 1. Won back to "no rule for this discount".
   const current = await loadConfig(db, shop);
-  const saved = current.config.modules.codes.rules.some((r) => isRuleOf(r, plan.rule.id, nativeId));
-  if (saved && !current.readOnly) {
-    await safeSaveAndSync(input.saveAndSync, shop, withoutRule(current.config, plan.rule.id, nativeId));
+  const saved = current.config.modules.codes.rules.some((r) => isRuleOf(r, ctx.ruleId, nativeId));
+  if (saved) {
+    if (current.readOnly) return inBackup("rule_stuck");
+    const rolledBack = await safeSaveAndSync(saveAndSync, shop, withoutRule(current.config, ctx.ruleId, nativeId));
+    if (!rolledBack.ok) return inBackup("rule_stuck");
   }
-  if (!restored.ok) restored = await restoreNative(client, envelope, { ...input, now });
 
-  if (restored.ok) {
-    const item: MoveErrorItem = { code: "sync_failed_restored", detail };
-    await updateRow(db, rowId, {
-      status: BACKUP_STATUS.failed,
-      error: moveErrorText(item, locale),
-      snapshot: { ...envelope, restoredAs: { nativeId: restored.nativeId, at: now().toISOString() } },
-    });
-    return fail(item, { backupId: rowId, nativeRestored: true, restoredNativeId: restored.nativeId });
+  // 2. The native back from the snapshot.
+  let restored = await restoreNative(client, envelope, { ...input, now });
+  if (!restored.ok && restored.codeTaken && !saved && !current.readOnly) {
+    // A Won node may hold the code without its rule in the saved config (a sync
+    // that died half-way): sync the saved config once, then try again.
+    const resynced = await safeSaveAndSync(saveAndSync, shop, withoutRule(current.config, ctx.ruleId, nativeId));
+    if (resynced.ok) restored = await restoreNative(client, envelope, { ...input, now });
   }
-  const item: MoveErrorItem = { code: "sync_failed_not_restored", detail: `${detail}; ${restored.message}` };
-  await updateRow(db, rowId, { status: BACKUP_STATUS.failed, error: moveErrorText(item, locale) });
-  return fail(item, { backupId: rowId, nativeRestored: false });
+  if (!restored.ok) return inBackup("in_backup");
+
+  const partly = restored.codesMissing > 0;
+  const state: MoveState = partly ? "restored_partly" : "restored";
+  await updateRow(db, rowId, {
+    status: BACKUP_STATUS.failed,
+    error: moveErrorText(item, locale, state, { missing: restored.codesMissing, pending: restored.codesPending }),
+    snapshot: {
+      ...envelope,
+      restoredAs: {
+        nativeId: restored.nativeId,
+        at: now().toISOString(),
+        ...(partly ? { codesMissing: restored.codesMissing, codesPending: restored.codesPending } : {}),
+      },
+    },
+  });
+  return fail(item, state, {
+    backupId: rowId,
+    nativeRestored: true,
+    restoredNativeId: restored.nativeId,
+    ...(partly ? { codesMissing: restored.codesMissing, codesPending: restored.codesPending } : {}),
+  });
 }
 
 // --- Undo -----------------------------------------------------------------------------
@@ -376,11 +500,16 @@ export function undoMove(input: UndoMoveInput): Promise<UndoResult> {
   return withShopLock(input.shop, () => undoLocked(input));
 }
 
-function notRestoredFor(native: NativeDiscount | null, codesFailed: number, locale: NativeLocale): string[] {
+function codeItems(missing: number, pending: boolean): NotRestoredItem[] {
+  if (missing <= 0) return [];
+  return [pending ? { code: "codes_pending", count: missing } : { code: "codes_failed", count: missing }];
+}
+
+function notRestoredFor(native: NativeDiscount | null, missing: number, pending: boolean, locale: NativeLocale): string[] {
   const items: NotRestoredItem[] = [{ code: "usage_count" }];
   if (native?.oncePerCustomer) items.push({ code: "once_per_customer" });
   if (native && native.usageLimit !== null && native.usageCount > 0) items.push({ code: "usage_limit_full", limit: native.usageLimit });
-  if (codesFailed > 0) items.push({ code: "codes_failed", count: codesFailed });
+  items.push(...codeItems(missing, pending));
   return items.map((item) => notRestoredText(item, locale));
 }
 
@@ -395,22 +524,66 @@ async function undoLocked(input: UndoMoveInput): Promise<UndoResult> {
   if (!row) return fail({ code: "backup_not_found" });
   const envelope = parseSnapshot(row.snapshot);
   if (!envelope) return fail({ code: "backup_unreadable" });
-  if (row.status === BACKUP_STATUS.restored || envelope.restoredAs) {
-    return { ok: true, alreadyRestored: true, nativeId: envelope.restoredAs?.nativeId ?? null, notRestored: [] };
+  if (isLiveClaim(row)) return fail({ code: "in_progress" });
+  if (envelope.restoredAs && !codesStillMissing(envelope)) {
+    return { ok: true, alreadyRestored: true, nativeId: envelope.restoredAs.nativeId, notRestored: [] };
   }
   const native = nativeFromSnapshot(envelope);
   if (!native) return fail({ code: "backup_unreadable" });
 
-  if (row.status === BACKUP_STATUS.backedUp) {
-    // A move is unfinished: if it never deleted the native, there is nothing to put back.
+  // Claim the row; a stale claim ("moving"/"undoing" of a dead process) is an unknown state.
+  const unknownState = row.status === BACKUP_STATUS.backedUp || isClaim(row.status);
+  const releaseStatus = isClaim(row.status) ? BACKUP_STATUS.backedUp : row.status;
+  if (!(await claim(db, row, { status: BACKUP_STATUS.undoing }))) return fail({ code: "in_progress" });
+  const release = (extra: Parameters<typeof updateRow>[2] = {}) => updateRow(db, row.id, { status: releaseStatus, ...extra });
+
+  // A partial restore: add the codes that are still missing, from the snapshot.
+  if (envelope.restoredAs && codesStillMissing(envelope)) {
+    const finished = await finishRestoredCodes(client, envelope, { ...input, now });
+    if (!finished.ok) {
+      await release();
+      return fail({ code: "backup_unreadable" });
+    }
+    const done = finished.missing === 0;
+    await updateRow(db, row.id, {
+      status: done ? BACKUP_STATUS.restored : releaseStatus,
+      error: done ? null : undefined,
+      snapshot: {
+        ...envelope,
+        restoredAs: {
+          nativeId: envelope.restoredAs.nativeId,
+          at: now().toISOString(),
+          ...(done ? {} : { codesMissing: finished.missing, codesPending: finished.pending }),
+        },
+      },
+    });
+    return {
+      ok: true,
+      alreadyRestored: false,
+      nativeId: envelope.restoredAs.nativeId,
+      notRestored: codeItems(finished.missing, finished.pending).map((item) => notRestoredText(item, locale)),
+    };
+  }
+
+  if (unknownState) {
+    // A move stopped part-way (or its delete outcome was unknown): is the native still there?
     const exists = await nativeExists(client, row.nativeId, input);
-    if (exists === null) return fail({ code: "check_failed", detail: "discountNode" });
+    if (exists === null) {
+      await release();
+      return fail({ code: "check_failed", detail: "discountNode" });
+    }
     if (exists) {
       const loaded = await loadConfig(db, shop);
       if (loaded.config.modules.codes.rules.some((r) => isRuleOf(r, row.wonRuleId, row.nativeId))) {
-        if (loaded.readOnly) return fail({ code: "config_read_only" });
+        if (loaded.readOnly) {
+          await release();
+          return fail({ code: "config_read_only" });
+        }
         const removed = await safeSaveAndSync(input.saveAndSync, shop, withoutRule(loaded.config, row.wonRuleId, row.nativeId));
-        if (!removed.ok) return fail({ code: "remove_rule_failed", detail: removed.message });
+        if (!removed.ok) {
+          await release();
+          return fail({ code: "remove_rule_failed", detail: removed.message });
+        }
       }
       await updateRow(db, row.id, {
         status: BACKUP_STATUS.restored,
@@ -425,11 +598,15 @@ async function undoLocked(input: UndoMoveInput): Promise<UndoResult> {
   const loaded = await loadConfig(db, shop);
   const hadRule = loaded.config.modules.codes.rules.some((r) => isRuleOf(r, row.wonRuleId, row.nativeId));
   if (hadRule) {
-    if (loaded.readOnly) return fail({ code: "config_read_only" });
+    if (loaded.readOnly) {
+      await release();
+      return fail({ code: "config_read_only" });
+    }
     const removed = await safeSaveAndSync(input.saveAndSync, shop, withoutRule(loaded.config, row.wonRuleId, row.nativeId));
     if (!removed.ok) {
       // It may have saved or synced part of it: put the rule back as it was.
       await safeSaveAndSync(input.saveAndSync, shop, loaded.config);
+      await release();
       return fail({ code: "remove_rule_failed", detail: removed.message });
     }
   }
@@ -439,23 +616,34 @@ async function undoLocked(input: UndoMoveInput): Promise<UndoResult> {
   if (!restored.ok) {
     if (hadRule) {
       const back = await safeSaveAndSync(input.saveAndSync, shop, loaded.config);
-      if (back.ok) return fail({ code: "restore_failed_rule_back", detail: restored.message });
+      if (back.ok) {
+        await release();
+        return fail({ code: "restore_failed_rule_back", detail: restored.message });
+      }
     }
     const item: UndoErrorItem = { code: "restore_failed_nowhere", detail: restored.message };
     await updateRow(db, row.id, { status: BACKUP_STATUS.failed, error: undoErrorText(item, locale) });
     return fail(item);
   }
 
+  const partly = restored.codesMissing > 0;
   await updateRow(db, row.id, {
     status: BACKUP_STATUS.restored,
     error: null,
-    snapshot: { ...envelope, restoredAs: { nativeId: restored.nativeId, at: now().toISOString() } },
+    snapshot: {
+      ...envelope,
+      restoredAs: {
+        nativeId: restored.nativeId,
+        at: now().toISOString(),
+        ...(partly ? { codesMissing: restored.codesMissing, codesPending: restored.codesPending } : {}),
+      },
+    },
   });
   return {
     ok: true,
     alreadyRestored: false,
     nativeId: restored.nativeId,
-    notRestored: notRestoredFor(native, restored.codesFailed, locale),
+    notRestored: notRestoredFor(native, restored.codesMissing, restored.codesPending, locale),
   };
 }
 
@@ -477,10 +665,14 @@ export async function previewMove(input: Omit<MoveNativeInput, "saveAndSync">): 
   const read = await readNativeDiscount(input.client, input.nativeId, shopContext.shop, input);
   if (!read.ok) return read.notFound ? fail({ code: "not_found" }) : fail({ code: "read_failed", detail: read.message });
   if (!read.movableType) return fail({ code: "not_movable", reason: notMovableReasonText(reasonForNonBasic(read.kind), locale) });
-  if (read.native.status === "EXPIRED") return fail({ code: "not_movable", reason: notMovableReasonText({ code: "expired" }, locale) });
-  const reason = classifyNative(read.native);
+  const reason: NotMovableReason | null =
+    read.native.status === "EXPIRED" ? { code: "expired" } : (classifyNative(read.native) ?? incompleteSnapshot(read.native));
   if (reason) return fail({ code: "not_movable", reason: notMovableReasonText(reason, locale) });
   const loaded = await loadConfig(input.db, input.shop);
-  const plan = planMove(read.native, loaded.config, { locale, now: (input.now ?? (() => new Date()))() });
-  return { ok: true, native: read.native, plan };
+  try {
+    const plan = planMove(read.native, loaded.config, { locale, now: (input.now ?? (() => new Date()))() });
+    return { ok: true, native: read.native, plan };
+  } catch (error) {
+    return fail({ code: "not_movable", reason: error instanceof Error ? error.message : String(error) });
+  }
 }
