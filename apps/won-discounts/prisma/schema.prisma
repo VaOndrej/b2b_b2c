@@ -99,5 +99,21 @@ model SyncRun {
   ok         Boolean  @default(false)
   steps      String   // JSON array of {step, ok, detail}
   errorCount Int      @default(0)
+  /// JSON array of work the run left for the next one (e.g. "campaign_switch_held"); null/[] = none.
+  pending    String?
   @@index([shop, startedAt])
+}
+
+/// Products that carry the sync's $app:won_discounts/product metafield (sync
+/// bookkeeping in the app DB, DATA-1). payloadHash = hash of the value last
+/// written; null = a write is in flight (write-ahead: the row exists BEFORE the
+/// metafield is written, so a crash never leaves an untracked metafield).
+model ProductTargetIndex {
+  id          String   @id @default(cuid())
+  shop        String
+  productId   String   // Shopify product GID
+  payloadHash String?
+  updatedAt   DateTime @updatedAt
+  @@unique([shop, productId])
+  @@index([shop])
 }

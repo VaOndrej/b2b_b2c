@@ -235,7 +235,7 @@ test("a code moved from one rule to another in one save ends on the new rule's n
   assert.deepEqual(byTitle.get("Rule b"), ["B1", "MOVE"]);
 });
 
-test("rule disabled or deleted → its node is deleted and untracked; foreign discounts are never touched", async () => {
+test("C1: a DISABLED rule's node is deactivated (usage history kept); a DELETED rule's node is deleted; foreign discounts untouched", async () => {
   const fake = new FakeShopify();
   const foreignCode = fake.addForeignNode({ kind: "code", title: "Native 5%", codes: [{ id: "gid://shopify/DiscountRedeemCode/1", code: "NATIVE5" }] });
   const foreignAuto = fake.addForeignNode({ kind: "automatic", title: AUTO_NODE_TITLE });
@@ -243,16 +243,125 @@ test("rule disabled or deleted → its node is deleted and untracked; foreign di
   const deps = makeDeps(fake, db.prisma);
   const sync = createSync(deps);
   await sync.syncShop(shop, configWith([codeRule("keep"), codeRule("disable"), codeRule("remove")]));
-  assert.equal(fake.wonNodes().length, 4);
+  const disabledNode = fake.wonNodes().find((n) => n.title === "Rule disable")!;
+  fake.calls = [];
 
   const result = await sync.syncShop(shop, configWith([codeRule("keep"), codeRule("disable", { enabled: false })]));
   assert.equal(result.ok, true, JSON.stringify(result.errors));
-  assert.deepEqual(fake.wonNodes().map((node) => node.title).sort(), ["Rule keep", AUTO_NODE_TITLE]);
+  // disabled → deactivated, still there, still tracked, codes kept
+  assert.ok(fake.nodes.has(disabledNode.id), "the disabled rule's node is NOT deleted");
+  assert.equal(fake.statusOf(disabledNode), "EXPIRED");
+  assert.deepEqual(disabledNode.codes.map((c) => c.code), ["DISABLE10"]);
+  assert.deepEqual(fake.callsOf("WonSyncCodeDeactivate").map((c) => c.variables), [{ id: disabledNode.id }]);
+  // deleted → deleted
+  assert.deepEqual(fake.wonNodes().map((node) => node.title).sort(), ["Rule disable", "Rule keep", AUTO_NODE_TITLE].sort());
+  assert.equal(fake.callsOf("WonSyncCodeDelete").length, 1);
   const keys = (await db.prisma.wonNode.findMany({ where: { shop } })).map((row) => row.key).sort();
-  assert.deepEqual(keys, ["auto", "code:keep"]);
+  assert.deepEqual(keys, ["auto", "code:disable", "code:keep"]);
+  // No vars written to the inactive node.
+  assert.ok(!fake.callsOf("WonSyncMetafieldsSet").some((c) => JSON.stringify(c.variables).includes(disabledNode.id)));
   for (const foreign of [foreignCode, foreignAuto, otherApp]) assert.ok(fake.nodes.has(foreign.id), `${foreign.title} untouched`);
-  const touched = new Set(fake.mutations().flatMap((call) => [String((call.variables as { id?: string })?.id ?? "")]));
+  const touched = new Set(fake.mutations().map((call) => String((call.variables as { id?: string })?.id ?? "")));
   for (const foreign of [foreignCode, foreignAuto, otherApp]) assert.ok(!touched.has(foreign.id));
+
+  // Idempotent while disabled: nothing is sent again.
+  fake.calls = [];
+  await sync.syncShop(shop, configWith([codeRule("keep"), codeRule("disable", { enabled: false })]));
+  assert.deepEqual(fake.mutations(), []);
+});
+
+test("C1: re-enabling a rule ACTIVATES its old node (same node, history kept) and applies its schedule", async () => {
+  const fake = new FakeShopify();
+  const deps = makeDeps(fake, db.prisma);
+  const sync = createSync(deps);
+  await sync.syncShop(shop, configWith([codeRule("c")]));
+  const node = fake.wonNodes().find((n) => n.kind === "code")!;
+  await sync.syncShop(shop, configWith([codeRule("c", { enabled: false })]));
+  assert.equal(fake.statusOf(node), "EXPIRED");
+  fake.calls = [];
+
+  const result = await sync.syncShop(shop, configWith([codeRule("c", { schedule: { endsAt: "2026-12-31T23:00:00Z" } })]));
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+  assert.deepEqual(fake.callsOf("WonSyncCodeActivate").map((c) => c.variables), [{ id: node.id }]);
+  assert.equal(fake.callsOf("WonSyncCodeCreate").length, 0, "the same node, not a new one");
+  assert.equal(fake.statusOf(node), "ACTIVE");
+  assert.equal(node.endsAt, "2026-12-31T23:00:00.000Z");
+  const activate = fake.calls.findIndex((c) => c.op === "WonSyncCodeActivate");
+  const update = fake.calls.findIndex((c) => c.op === "WonSyncCodeUpdate");
+  assert.ok(activate < update, "activate first, then the schedule update");
+});
+
+test("C1: a code moved from a DEACTIVATED rule to another rule is removed from the old node first", async () => {
+  const fake = new FakeShopify();
+  const deps = makeDeps(fake, db.prisma);
+  const sync = createSync(deps);
+  await sync.syncShop(shop, configWith([codeRule("old", { codes: ["OLD1", "MOVE"] })]));
+  const oldNode = fake.wonNodes().find((n) => n.title === "Rule old")!;
+  fake.calls = [];
+
+  // One save: "old" is disabled and loses MOVE, a new rule takes MOVE.
+  const result = await sync.syncShop(
+    shop,
+    configWith([codeRule("old", { enabled: false, codes: ["OLD1"] }), codeRule("new", { codes: ["MOVE"] })]),
+  );
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+  assert.equal(fake.statusOf(oldNode), "EXPIRED");
+  assert.deepEqual(oldNode.codes.map((c) => c.code), ["OLD1"], "MOVE left the deactivated node, OLD1 stays");
+  const newNode = fake.wonNodes().find((n) => n.title === "Rule new")!;
+  assert.deepEqual(newNode.codes.map((c) => c.code), ["MOVE"]);
+  const removal = fake.calls.findIndex((c) => c.op === "WonSyncRedeemBulkDelete");
+  const create = fake.calls.findIndex((c) => c.op === "WonSyncCodeCreate");
+  assert.ok(removal !== -1 && removal < create, "removed before the new node is created");
+});
+
+test("C1/M6: a code rule whose schedule already ended gets no node (no error loop); an existing one is deactivated", async () => {
+  const fake = new FakeShopify();
+  const deps = makeDeps(fake, db.prisma);
+  const sync = createSync(deps);
+  const ended = { schedule: { startsAt: "2026-01-01T00:00:00Z", endsAt: "2026-02-01T00:00:00Z" } };
+  const first = await sync.syncShop(shop, configWith([codeRule("past", ended)]));
+  assert.equal(first.ok, true, JSON.stringify(first.errors));
+  assert.equal(fake.callsOf("WonSyncCodeCreate").length, 0);
+  const again = await sync.syncShop(shop, configWith([codeRule("past", ended)]));
+  assert.equal(again.ok, true);
+  assert.equal(fake.callsOf("WonSyncCodeCreate").length, 0, "no create attempt on later syncs either");
+
+  // A live rule whose schedule is then moved into the past: its node is deactivated, not deleted.
+  await sync.syncShop(shop, configWith([codeRule("soon")]));
+  const node = fake.wonNodes().find((n) => n.title === "Rule soon")!;
+  const later = await sync.syncShop(shop, configWith([codeRule("soon", ended)]));
+  assert.equal(later.ok, true, JSON.stringify(later.errors));
+  assert.ok(fake.nodes.has(node.id));
+  assert.equal(fake.statusOf(node), "EXPIRED");
+});
+
+test("M5: one node failing (adoption read throws) does not stop the other nodes, codes or vars", async () => {
+  const fake = new FakeShopify();
+  const deps = makeDeps(fake, db.prisma);
+  const sync = createSync(deps);
+  await sync.syncShop(shop, configWith([codeRule("a"), codeRule("b")]));
+  await db.prisma.wonNode.deleteMany({ where: { shop, key: "code:a" } }); // "a" must be adopted
+  const original = fake.graphql.bind(fake);
+  fake.graphql = async (query, variables) => {
+    // The adoption read of "a" (nodes query for a single untracked id) fails hard.
+    if (query.includes("WonSyncNodes") && (variables as { ids: string[] }).ids.length === 1) throw new Error("boom: adopt read");
+    return original(query, variables);
+  };
+  const result = await sync.syncShop(shop, configWith([codeRule("a"), codeRule("b", { codes: ["B10", "B-EXTRA"] }), codeRule("c")]));
+  fake.graphql = original;
+  assert.equal(result.ok, false);
+  assert.ok(result.steps.some((s) => s.step === "node.create:code:a" && !s.ok && /boom/.test(s.detail)), JSON.stringify(result.steps));
+  assert.ok(result.steps.some((s) => s.step === "codes.add:code:b" && s.ok), "b's codes still added");
+  assert.ok(result.steps.some((s) => s.step === "node.create:code:c" && s.ok), "c still created");
+  assert.deepEqual(result.pending, ["failed_steps"]);
+});
+
+test("M9: WonNode.varsVersion is no longer written", async () => {
+  const fake = new FakeShopify();
+  const deps = makeDeps(fake, db.prisma);
+  await createSync(deps).syncShop(shop, configWith([codeRule("c")]));
+  const rows = await db.prisma.wonNode.findMany({ where: { shop } });
+  assert.ok(rows.every((row) => row.varsVersion === null));
 });
 
 test("changed rule properties update the existing node (title, classes, schedule, limits)", async () => {

@@ -7,14 +7,17 @@
 // Namespace `$app:won_discounts` is app-owned: only this app can read or write
 // it, and the discount function reads the same keys:
 //   shop     function_config  the shared config (C7), one atomic write for all nodes
-//   shop     product_index    product ids that may carry our product metafield
-//                             (sync bookkeeping, never read by the function)
 //   node     function_vars    per-node input-query variables (role, campaign window)
-//   product  product          {"ruleIds": [...]} precomputed targeting
+//   product  product          productMetafieldValue(entry) = {"ruleIds", "variantRuleIds"}
+// Which products carry `product` is sync bookkeeping in Prisma
+// ProductTargetIndex (DATA-1), not in Shopify.
+//
+// Every document stays under Shopify's 1 000-point requested-cost cap per
+// query (connections cost 2 + first × node cost); tests/lib/sync/query-cost.test.ts
+// measures each one.
 
 export const WON_NAMESPACE = "$app:won_discounts";
 export const SHOP_CONFIG_KEY = "function_config";
-export const SHOP_PRODUCT_INDEX_KEY = "product_index";
 export const NODE_VARS_KEY = "function_vars";
 export const PRODUCT_KEY = "product";
 
@@ -24,10 +27,6 @@ export const GQL = {
     id
     ianaTimezone
     functionConfig: metafield(namespace: "$app:won_discounts", key: "function_config") {
-      id
-      value
-    }
-    productIndex: metafield(namespace: "$app:won_discounts", key: "product_index") {
       id
       value
     }
@@ -173,6 +172,35 @@ export const GQL = {
   codeDelete: `mutation WonSyncCodeDelete($id: ID!) {
   discountCodeDelete(id: $id) {
     deletedCodeDiscountId
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}`,
+
+  // Deactivate = endsAt := now → EXPIRED; codes, usage count and
+  // once-per-customer history stay. Activate = endsAt := null → ACTIVE.
+  // (live: scripts/sync/verify-code-facts.mjs, task-3-report.md "Fix round 1").
+  codeDeactivate: `mutation WonSyncCodeDeactivate($id: ID!) {
+  discountCodeDeactivate(id: $id) {
+    codeDiscountNode {
+      id
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}`,
+
+  codeActivate: `mutation WonSyncCodeActivate($id: ID!) {
+  discountCodeActivate(id: $id) {
+    codeDiscountNode {
+      id
+    }
     userErrors {
       field
       message
@@ -391,16 +419,18 @@ export const GQL = {
   }
 }`,
 
-  // Shopify Markets with their countries (Pro market targeting, T1 fix round).
-  // Needs the read_markets scope (https://shopify.dev/docs/api/admin-graphql/2026-04/queries/markets).
-  // 250 regions per market cover every ISO country (≈ 250).
+  // Shopify Markets (Pro market targeting). Needs read_markets
+  // (https://shopify.dev/docs/api/admin-graphql/2026-04/queries/markets). Paged
+  // WITHOUT regions: markets(first: 50) × regions(first: 250) would request
+  // ~12 500 points, far over the 1 000-point cap; regions are read per market.
   markets: `query WonSyncMarkets($after: String) {
-  markets(first: 50, after: $after) {
+  markets(first: 10, after: $after) {
     pageInfo {
       hasNextPage
       endCursor
     }
     nodes {
+      id
       handle
       name
       status
@@ -409,14 +439,24 @@ export const GQL = {
           currencyCode
         }
       }
-      conditions {
-        regionsCondition {
-          regions(first: 250) {
-            nodes {
-              __typename
-              ... on MarketRegionCountry {
-                code
-              }
+    }
+  }
+}`,
+
+  marketRegions: `query WonSyncMarketRegions($id: ID!, $after: String) {
+  market(id: $id) {
+    id
+    conditions {
+      regionsCondition {
+        regions(first: 50, after: $after) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          nodes {
+            __typename
+            ... on MarketRegionCountry {
+              code
             }
           }
         }

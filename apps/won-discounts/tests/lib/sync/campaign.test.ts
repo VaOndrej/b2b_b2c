@@ -5,7 +5,7 @@ import { activeCodeRules } from "../../../app/lib/config-guards.server.ts";
 import { createSync } from "../../../app/lib/sync/sync.server.ts";
 import { createTestDatabase, type TestDatabase } from "../test-db.ts";
 import { FakeShopify } from "./fake-shopify.ts";
-import { campaignVersion, codeRule, configWith, makeDeps } from "./helpers.ts";
+import { campaignVersion, codeRule, configWith, makeDeps, NOW, NOW_SHOP_LOCAL } from "./helpers.ts";
 
 // Campaign switch protocol (T1 function-payload.ts "Sync sequences"): when the
 // selected campaign or its window changes, (1) a NO-CAMPAIGN shop config,
@@ -133,7 +133,8 @@ test("a code rule a live campaign enables gets its node (and counts toward the l
   const config = configWith([codeRule("bfcode", { enabled: false, codes: ["BF30"] })], {
     campaigns: [{ ...bf, overrides: [{ ruleId: "bfcode", patch: { enabled: true } }] }],
   });
-  assert.deepEqual(activeCodeRules(config).map((rule) => rule.id), ["bfcode"]);
+  const at = { now: NOW, shopLocalNow: NOW_SHOP_LOCAL };
+  assert.deepEqual(activeCodeRules(config, at).map((rule) => rule.id), ["bfcode"]);
   const result = await createSync(deps).syncShop(shop, config);
   assert.equal(result.ok, true, JSON.stringify(result.errors));
   assert.ok(fake.wonNodes().some((node) => node.codes.some((c) => c.code === "BF30")));
@@ -142,5 +143,29 @@ test("a code rule a live campaign enables gets its node (and counts toward the l
   const killed = configWith([codeRule("bfcode", { enabled: false, codes: ["BF30"] })], {
     campaigns: [{ ...bf, killed: true, overrides: [{ ruleId: "bfcode", patch: { enabled: true } }] }],
   });
-  assert.deepEqual(activeCodeRules(killed), []);
+  assert.deepEqual(activeCodeRules(killed, at), []);
+});
+
+test("M2: a failed phase 1 stops the run — no new vars, no product or config write; the running campaign stays intact", async () => {
+  const fake = new FakeShopify();
+  const deps = makeDeps(fake, db.prisma);
+  const sync = createSync(deps);
+  await sync.syncShop(shop, configWith([codeRule("c")], { campaigns: [bf] }));
+  const before = fake.shopMetafieldValue("function_config");
+  const varsBefore = fake.wonNodes().map((node) => node.metafields.get("$app:won_discounts/function_vars")!.value);
+  fake.calls = [];
+
+  fake.fail("WonSyncMetafieldsSet", { userErrors: [{ message: "phase 1 refused" }] }, 1);
+  const moved = { ...bf, window: { start: "2026-09-28T06:00:00", end: "2026-09-30T00:00:00" } };
+  const result = await sync.syncShop(shop, configWith([codeRule("c"), codeRule("d")], { campaigns: [moved] }));
+  assert.equal(result.ok, false);
+  assert.ok(result.steps.some((s) => s.step === "sync.stopped"), JSON.stringify(result.steps));
+  assert.deepEqual(fake.mutations().map((c) => c.op), ["WonSyncMetafieldsSet"], "only the refused phase-1 write");
+  assert.equal(fake.shopMetafieldValue("function_config"), before);
+  assert.deepEqual(
+    fake.wonNodes().map((node) => node.metafields.get("$app:won_discounts/function_vars")!.value),
+    varsBefore,
+    "every node still carries the running campaign's vars",
+  );
+  assert.ok(result.pending.includes("campaign_switch_held"));
 });

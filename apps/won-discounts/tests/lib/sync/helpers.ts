@@ -6,7 +6,10 @@
 import { sanitizeConfig, type WonDiscountsConfig } from "@won/core/discounts/config";
 
 import type { PrismaClient } from "../../../app/generated/prisma/client.ts";
-import type { ConfigView as SyncConfigView, SyncDeps, SyncNodeRole } from "../../../app/lib/sync/types.ts";
+import type { ConfigView as SyncConfigView, SyncDeps, SyncNodeRole, SyncProductEntry } from "../../../app/lib/sync/types.ts";
+
+/** Test hook: products the fake engine reports as reduced to fit their 9 000 B budget. */
+export const oversizedProducts = new Map<string, NonNullable<SyncProductEntry["oversized"]>>();
 import type { FakeShopify } from "./fake-shopify.ts";
 
 export const NOW = new Date("2026-09-28T12:00:00Z");
@@ -98,7 +101,7 @@ export function fakeBuilders(log: BuilderLog, overrides: Partial<Builders> = {})
     },
     productRuleIndex(config, products) {
       log.indexInputs.push(products.map((p) => ({ ...p })));
-      const index = new Map<string, { ruleIds: string[]; variantRuleIds: Record<string, string[]> }>();
+      const index = new Map<string, SyncProductEntry>();
       for (const product of products) {
         const whole = new Set<string>();
         const variantRuleIds: Record<string, string[]> = {};
@@ -107,12 +110,15 @@ export function fakeBuilders(log: BuilderLog, overrides: Partial<Builders> = {})
           if (target.kind === "products") {
             if (target.productIds.includes(product.productId)) whole.add(rule.id);
             for (const variant of product.variantIds) {
-              if (target.variantIds.includes(variant)) (variantRuleIds[variant] ??= []).push(rule.id);
+              // Keyed by the variant's numeric id, like the engine (targeting.ts variantKey).
+              if (target.variantIds.includes(variant)) (variantRuleIds[variant.split("/").pop()!] ??= []).push(rule.id);
             }
           }
           if (target.kind === "collections" && product.collectionIds.some((c) => target.ids.includes(c))) whole.add(rule.id);
         }
-        index.set(product.productId, { ruleIds: [...whole].sort(), variantRuleIds });
+        const entry: SyncProductEntry = { ruleIds: [...whole].sort(), variantRuleIds };
+        const oversized = oversizedProducts.get(product.productId);
+        index.set(product.productId, oversized ? { ...entry, oversized } : entry);
       }
       return index;
     },

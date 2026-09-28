@@ -32,8 +32,10 @@ export interface SyncProductInput {
 /** What a product's `$app:won_discounts`/`product` metafield carries (engine ProductRuleEntry). */
 export interface SyncProductEntry {
   ruleIds: readonly string[];
-  /** Variant GID → rule refs for rules targeting single variants (only variants with refs). */
+  /** Variant numeric id → rule refs for rules targeting single variants (only variants with refs). */
   variantRuleIds?: Readonly<Record<string, readonly string[]>>;
+  /** The engine shrank the value to fit the product budget (never written; surfaced as a warning step). */
+  oversized?: { bytes: number; collapsedRefs: readonly string[]; droppedRefs: readonly string[] };
 }
 
 export interface ShopConfigBuildOptions {
@@ -87,13 +89,27 @@ export interface SyncStep {
   ok: boolean;
   /** Human-readable, one line. */
   detail: string;
+  /** ok, but the merchant should know (e.g. a product reduced to fit its budget). */
+  warning?: boolean;
 }
+
+/**
+ * Work a run left for the next one (SyncRun.pending): the Přehled calls
+ * resyncIfPending (save-and-sync.server.ts) on load when the last run has any.
+ */
+export type PendingWork =
+  | "failed_steps"
+  | "campaign_switch_held"
+  | "stale_product_refs"
+  | "codes_in_progress";
 
 export interface SyncResult {
   ok: boolean;
   steps: SyncStep[];
   /** Details of the failed steps (what the Přehled shows). */
   errors: string[];
+  /** What the next sync still has to do ([] = nothing). */
+  pending: PendingWork[];
   /** The persisted SyncRun row (null when it could not be written). */
   runId: string | null;
 }

@@ -73,7 +73,7 @@ export class FakeShopify implements AdminClient {
   collections = new Map<string, string[]>();
   functions = [{ id: WON_FUNCTION_ID, handle: WON_FUNCTION_HANDLE, apiType: "discounts" }];
   /** Shopify Markets (read with read_markets). */
-  markets: { handle: string; name: string; status: "ACTIVE" | "DRAFT"; currency: string; countries: string[] }[] = [];
+  markets: { id?: string; handle: string; name: string; status: "ACTIVE" | "DRAFT"; currency: string; countries: string[] }[] = [];
   /** Page size for every paged connection (the documents ask for 250/100; smaller exercises paging). */
   pageSize = 250;
   /** Codes that fail inside an async bulk add (per-code errors). */
@@ -82,6 +82,8 @@ export class FakeShopify implements AdminClient {
   asyncPollsBeforeDone = 0;
   /** metafieldsSet refuses more than this many inputs (Shopify: 25). */
   metafieldsSetLimit = 25;
+  /** The store's clock (node status, deactivate). */
+  clock: () => Date = () => new Date("2026-09-28T12:00:00Z");
   calls: RecordedCall[] = [];
 
   private seq = 1000;
@@ -250,11 +252,19 @@ export class FakeShopify implements AdminClient {
     return node;
   }
 
+  /** Shopify derives the status from the dates (deactivate = endsAt := now). */
+  statusOf(node: FakeNode): "ACTIVE" | "EXPIRED" | "SCHEDULED" {
+    const now = this.clock().getTime();
+    if (node.endsAt !== null && Date.parse(node.endsAt) <= now) return "EXPIRED";
+    if (Date.parse(node.startsAt) > now) return "SCHEDULED";
+    return "ACTIVE";
+  }
+
   private nodeView(node: FakeNode) {
     const vars = node.metafields.get(mfKey("$app:won_discounts", "function_vars"));
     const common = {
       title: node.title,
-      status: "ACTIVE",
+      status: this.statusOf(node),
       startsAt: node.startsAt,
       endsAt: node.endsAt,
       discountClasses: node.discountClasses,
@@ -293,7 +303,6 @@ export class FakeShopify implements AdminClient {
             id: this.shopId,
             ianaTimezone: this.ianaTimezone,
             functionConfig: this.shopMetafields.get(mfKey("$app:won_discounts", "function_config")) ?? null,
-            productIndex: this.shopMetafields.get(mfKey("$app:won_discounts", "product_index")) ?? null,
           },
         };
       case "WonSyncShopConfigReadBack":
@@ -343,6 +352,15 @@ export class FakeShopify implements AdminClient {
         if (!this.nodes.has(v.id)) return { [field]: { [idField]: null, userErrors: [{ message: "Discount does not exist", code: "INVALID" }] } };
         this.nodes.delete(v.id);
         return { [field]: { [idField]: v.id, userErrors: [] } };
+      }
+      case "WonSyncCodeDeactivate":
+      case "WonSyncCodeActivate": {
+        const field = op === "WonSyncCodeActivate" ? "discountCodeActivate" : "discountCodeDeactivate";
+        const node = this.nodes.get(v.id);
+        if (!node) return { [field]: { codeDiscountNode: null, userErrors: [{ message: "Discount does not exist" }] } };
+        // Live (verify-code-facts): deactivate sets endsAt = now; activate clears endsAt.
+        node.endsAt = op === "WonSyncCodeActivate" ? null : this.clock().toISOString();
+        return { [field]: { codeDiscountNode: { id: node.id }, userErrors: [] } };
       }
       case "WonSyncRedeemBulkAdd": {
         const node = this.nodes.get(v.discountId);
@@ -482,18 +500,30 @@ export class FakeShopify implements AdminClient {
       case "WonSyncMarkets":
         return {
           markets: this.page(
-            this.markets.map((m) => ({
+            this.markets.map((m, i) => ({
+              id: m.id ?? `gid://shopify/Market/${i + 1}`,
               handle: m.handle,
               name: m.name,
               status: m.status,
               currencySettings: { baseCurrency: { currencyCode: m.currency } },
-              conditions: {
-                regionsCondition: { regions: { nodes: m.countries.map((code) => ({ __typename: "MarketRegionCountry", code })) } },
-              },
             })),
             v.after,
           ),
         };
+      case "WonSyncMarketRegions": {
+        const market = this.markets.find((m, i) => (m.id ?? `gid://shopify/Market/${i + 1}`) === v.id);
+        if (!market) return { market: null };
+        return {
+          market: {
+            id: v.id,
+            conditions: {
+              regionsCondition: {
+                regions: this.page(market.countries.map((code) => ({ __typename: "MarketRegionCountry", code })), v.after),
+              },
+            },
+          },
+        };
+      }
       default:
         throw new Error(`FakeShopify: unknown operation ${op}`);
     }

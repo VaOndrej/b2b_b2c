@@ -19,6 +19,7 @@ import { buildShopFunctionConfigWorstCase } from "@won/core/discounts/function-p
 
 import type { PrismaClient } from "../generated/prisma/client";
 import { checkActiveCodeRuleLimit, checkCodeHashCollisions } from "./config-guards.server";
+import { withMarketCountries, type ShopMarket } from "./sync/markets";
 
 /** How long ConfigVersion rows are kept before being pruned (support/rollback window). */
 export const CONFIG_HISTORY_RETENTION_DAYS = 90;
@@ -32,6 +33,15 @@ export interface LoadedConfig {
    * for display, but saving it would drop the newer fields — saveConfig refuses.
    */
   readOnly: boolean;
+  /** False when the shop has no stored row yet (`config` = the defaults). */
+  exists: boolean;
+  /**
+   * True when a row EXISTS but cannot be read (not JSON, not a config object):
+   * `config` is then the defaults for display only. Never sync it (it would
+   * delete every Won discount) and never save over it silently — saveConfig
+   * refuses unless `replaceUnreadable` (I3).
+   */
+  unreadable: boolean;
 }
 
 export type SaveConfigResult =
@@ -94,6 +104,18 @@ export type SaveConfigResult =
       issues: ConfigIssue[];
     }
   | {
+      /**
+       * The stored row exists but cannot be read (I3): saving would silently
+       * replace whatever it held with a config built on the defaults. Nothing
+       * was written; retry with `replaceUnreadable: true` after the merchant
+       * confirmed.
+       */
+      ok: false;
+      reason: "unreadable_config";
+      config: WonDiscountsConfig;
+      issues: ConfigIssue[];
+    }
+  | {
       /** The stored row belongs to a newer schema (DATA-3): nothing was written. */
       ok: false;
       reason: "newer_schema";
@@ -126,12 +148,26 @@ function storedSchemaVersion(row: { schemaVersion: number; data: string }): numb
  */
 export async function loadConfig(db: PrismaClient, shop: string): Promise<LoadedConfig> {
   const row = await db.shopConfig.findUnique({ where: { shop } });
-  if (!row) return { config: createDefaultConfig(), readOnly: false };
+  if (!row) return { config: createDefaultConfig(), readOnly: false, exists: false, unreadable: false };
 
   const readOnly = storedSchemaVersion(row) > SCHEMA_VERSION;
   const parsed = parseStoredData(row.data);
-  if (!parsed.ok) return { config: createDefaultConfig(), readOnly };
-  return { config: readStoredConfig(parsed.value), readOnly };
+  if (!parsed.ok || !isConfigObject(parsed.value)) {
+    return { config: createDefaultConfig(), readOnly, exists: true, unreadable: true };
+  }
+  return { config: readStoredConfig(parsed.value), readOnly, exists: true, unreadable: false };
+}
+
+/** A stored config is always a sanitized object with `modules`; anything else is unreadable. */
+function isConfigObject(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const modules = (value as { modules?: unknown }).modules;
+  return typeof modules === "object" && modules !== null && !Array.isArray(modules);
+}
+
+function rowIsUnreadable(row: { data: string }): boolean {
+  const parsed = parseStoredData(row.data);
+  return !parsed.ok || !isConfigObject(parsed.value);
 }
 
 /** Prisma error codes worth one more attempt: unique violation (lost create race), write conflict. */
@@ -141,6 +177,22 @@ const SAVE_ATTEMPTS = 3;
 function isRetryableWriteError(error: unknown): boolean {
   const code = (error as { code?: unknown } | null)?.code;
   return typeof code === "string" && RETRYABLE_WRITE_ERRORS.has(code);
+}
+
+export interface SaveConfigOptions {
+  /** Codes of the shop's other (native) discounts, when known: checked for hash collisions too. */
+  otherCodes?: readonly string[];
+  /**
+   * The shop's Shopify markets (saveAndSync reads them when the config targets
+   * a market): their countries are merged into the config BEFORE the budget is
+   * measured and are saved with it, so the sync ships exactly what was
+   * measured (I2).
+   */
+  shopMarkets?: readonly ShopMarket[];
+  /** Shop-local now (`YYYY-MM-DDTHH:MM:SS`) for "is this campaign still live" in the code-rule limit. */
+  shopLocalNow?: string;
+  /** Overwrite a stored row that cannot be read (I3) — only after the merchant confirmed. */
+  replaceUnreadable?: boolean;
 }
 
 /**
@@ -159,7 +211,8 @@ function isRetryableWriteError(error: unknown): boolean {
  *     the backstop that keeps ShopConfig/ConfigVersion rows small whatever the
  *     per-field caps multiply out to (audit P2-1), or
  *   - the stored row was written by a newer schema (DATA-3) — overwriting it
- *     would silently drop fields this code does not know.
+ *     would silently drop fields this code does not know, or
+ *   - the stored row cannot be read (I3) and `replaceUnreadable` is not set.
  * Issues (§4c — surfaced to the admin, never silently dropped) are returned
  * either way the sanitizer ran.
  *
@@ -168,19 +221,16 @@ function isRetryableWriteError(error: unknown): boolean {
  * is then retried and takes the guarded-update path (same for a write
  * conflict, P2034), so concurrent saves are last-write-wins, never an error.
  */
-export interface SaveConfigOptions {
-  /** Codes of the shop's other (native) discounts, when known: checked for hash collisions too. */
-  otherCodes?: readonly string[];
-}
-
 export async function saveConfig(
   db: PrismaClient,
   shop: string,
   input: unknown,
   options: SaveConfigOptions = {},
 ): Promise<SaveConfigResult> {
-  const { config, issues } = sanitizeConfig(input);
-  const codeRules = checkActiveCodeRuleLimit(config);
+  const sanitized = sanitizeConfig(input);
+  const issues = sanitized.issues;
+  const config = options.shopMarkets ? withMarketCountries(sanitized.config, options.shopMarkets).config : sanitized.config;
+  const codeRules = checkActiveCodeRuleLimit(config, { shopLocalNow: options.shopLocalNow });
   if (!codeRules.ok) {
     return {
       ok: false,
@@ -223,9 +273,12 @@ export async function saveConfig(
     };
   }
 
-  type Outcome = { kind: "newer_schema"; version: number } | { kind: "saved"; versionId: string };
+  type Outcome = { kind: "newer_schema"; version: number } | { kind: "unreadable" } | { kind: "saved"; versionId: string };
   const write = () => db.$transaction(async (tx): Promise<Outcome> => {
     const existing = await tx.shopConfig.findUnique({ where: { shop } });
+    if (existing && !options.replaceUnreadable && rowIsUnreadable(existing) && storedSchemaVersion(existing) <= SCHEMA_VERSION) {
+      return { kind: "unreadable" };
+    }
     if (existing) {
       const version = storedSchemaVersion(existing);
       if (version > SCHEMA_VERSION) return { kind: "newer_schema", version };
@@ -256,6 +309,22 @@ export async function saveConfig(
 
   if (outcome.kind === "newer_schema") {
     return { ok: false, reason: "newer_schema", storedSchemaVersion: outcome.version };
+  }
+  if (outcome.kind === "unreadable") {
+    return {
+      ok: false,
+      reason: "unreadable_config",
+      config,
+      issues: [
+        ...issues,
+        {
+          path: "",
+          code: "unreadable_config",
+          message:
+            "The saved configuration could not be read, so the editor showed the defaults. Saving now would replace the saved configuration; confirm to replace it.",
+        },
+      ],
+    };
   }
 
   await pruneConfigHistory(db, shop);
@@ -304,5 +373,6 @@ export async function deleteShopData(db: PrismaClient, shop: string): Promise<vo
     db.wonNode.deleteMany({ where: { shop } }),
     db.nativeDiscountBackup.deleteMany({ where: { shop } }),
     db.syncRun.deleteMany({ where: { shop } }),
+    db.productTargetIndex.deleteMany({ where: { shop } }),
   ]);
 }

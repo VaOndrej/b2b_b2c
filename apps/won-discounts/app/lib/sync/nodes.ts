@@ -1,11 +1,18 @@
 // Desired Won discount nodes for a config (spec §3 "Emise per uzel", C1 platí,
 // C2 fallback): exactly ONE automatic node "Won Discounts" + ONE code node per
-// active code rule (all its codes as redeem codes). Pure: no I/O.
+// code rule, in one of three states (C1, doctrine §14a "off ≠ erased"):
+//   active    the rule is live (activeCodeRules): the node exists and is active,
+//             all its codes as redeem codes;
+//   inactive  the rule still exists but is off (disabled, no codes, schedule
+//             ended, switched to automatic): an existing node is DEACTIVATED
+//             (Shopify keeps its usage count and once-per-customer history),
+//             never created;
+//   absent    the rule was DELETED from the config: its node is deleted.
+// Pure: no I/O.
 
-import { createHash } from "node:crypto";
-
-import { activeCodeRules } from "../config-guards.server";
+import { activeCodeRules, type ActivityContext } from "../config-guards.server";
 import type { ConfigView, SyncNodeRole } from "./types";
+import { hashText } from "./util";
 
 export const FUNCTION_HANDLE = "won-discounts-engine";
 export const AUTO_NODE_KEY = "auto";
@@ -22,6 +29,8 @@ export interface DesiredNode {
   /** WonNode.key: "auto" | "code:<ruleId>". */
   key: string;
   role: SyncNodeRole;
+  /** False = keep an existing node deactivated; never create one. */
+  active: boolean;
   title: string;
   discountClasses: DiscountClass[];
   /** Code nodes: every code of the rule, upper-case, config order (the first one creates the node). */
@@ -39,19 +48,9 @@ export function codeNodeKey(ruleId: string): string {
   return `code:${ruleId}`;
 }
 
-export function roleKey(role: SyncNodeRole): string {
-  return role.kind === "automatic" ? AUTO_NODE_KEY : codeNodeKey(role.ruleId);
-}
-
 /** Fingerprint of a code set (order-insensitive, case-insensitive like Shopify codes). */
 export function codesHash(codes: readonly string[]): string {
-  const normalized = [...new Set(codes.map((code) => code.toUpperCase()))].sort();
-  return createHash("sha256").update(normalized.join("\n")).digest("hex").slice(0, 32);
-}
-
-/** Fingerprint of a JSON payload as written (WonNode.varsVersion stores it for the vars). */
-export function payloadHash(json: string): string {
-  return createHash("sha256").update(json).digest("hex").slice(0, 32);
+  return hashText([...new Set(codes.map((code) => code.toUpperCase()))].sort().join("\n"));
 }
 
 function classesFor(target: unknown, value: unknown): DiscountClass[] {
@@ -64,12 +63,14 @@ function classesFor(target: unknown, value: unknown): DiscountClass[] {
   return [...out];
 }
 
+type RuleView = ConfigView["modules"]["codes"]["rules"][number];
+
 /**
  * Classes a code rule's node must allow: from the rule's target/value, plus any
- * live campaign override that re-targets or re-values it (the campaign runs on
- * the same node, so the node must already allow that class when it starts).
+ * not-killed campaign override that re-targets or re-values it (the campaign
+ * runs on the same node, so the node must already allow that class when it starts).
  */
-function ruleClasses(config: ConfigView, rule: ConfigView["modules"]["codes"]["rules"][number]): DiscountClass[] {
+function ruleClasses(config: ConfigView, rule: RuleView): DiscountClass[] {
   const classes = new Set<DiscountClass>(classesFor(rule.target, rule.value));
   for (const campaign of config.campaigns) {
     if (campaign.killed) continue;
@@ -83,11 +84,34 @@ function ruleClasses(config: ConfigView, rule: ConfigView["modules"]["codes"]["r
   return CLASS_ORDER.filter((c) => classes.has(c));
 }
 
-export function desiredNodes(config: ConfigView): DesiredNode[] {
+function codeNode(config: ConfigView, rule: RuleView, active: boolean): DesiredNode {
+  const usageLimit = rule.limits?.usageLimit;
+  return {
+    key: codeNodeKey(rule.id),
+    role: { kind: "code", ruleId: rule.id },
+    active,
+    title: (rule.name.trim() || rule.id).slice(0, TITLE_MAX),
+    discountClasses: ruleClasses(config, rule),
+    codes: rule.method === "code" ? [...new Set((rule.codes ?? []).map((code) => code.toUpperCase()))] : [],
+    startsAt: rule.schedule?.startsAt ?? null,
+    endsAt: rule.schedule?.endsAt ?? null,
+    usageLimit: typeof usageLimit === "number" && usageLimit > 0 ? usageLimit : null,
+    appliesOncePerCustomer: rule.limits?.oncePerCustomer === true,
+  };
+}
+
+/**
+ * The automatic node + one entry per rule of the config: active code rules as
+ * `active`, every other rule as `inactive` (only acts on a node the sync
+ * already tracks under `code:<ruleId>`). A tracked node whose rule id is not in
+ * the list at all belongs to a deleted rule.
+ */
+export function desiredNodes(config: ConfigView, ctx: ActivityContext = {}): DesiredNode[] {
   const nodes: DesiredNode[] = [
     {
       key: AUTO_NODE_KEY,
       role: { kind: "automatic" },
+      active: true,
       title: AUTO_NODE_TITLE,
       discountClasses: [...CLASS_ORDER],
       codes: [],
@@ -97,19 +121,7 @@ export function desiredNodes(config: ConfigView): DesiredNode[] {
       appliesOncePerCustomer: false,
     },
   ];
-  for (const rule of activeCodeRules(config)) {
-    const usageLimit = rule.limits?.usageLimit;
-    nodes.push({
-      key: codeNodeKey(rule.id),
-      role: { kind: "code", ruleId: rule.id },
-      title: (rule.name.trim() || rule.id).slice(0, TITLE_MAX),
-      discountClasses: ruleClasses(config, rule),
-      codes: [...new Set((rule.codes ?? []).map((code) => code.toUpperCase()))],
-      startsAt: rule.schedule?.startsAt ?? null,
-      endsAt: rule.schedule?.endsAt ?? null,
-      usageLimit: typeof usageLimit === "number" && usageLimit > 0 ? usageLimit : null,
-      appliesOncePerCustomer: rule.limits?.oncePerCustomer === true,
-    });
-  }
+  const active = new Set(activeCodeRules(config, ctx).map((rule) => rule.id));
+  for (const rule of config.modules.codes.rules) nodes.push(codeNode(config, rule, active.has(rule.id)));
   return nodes;
 }

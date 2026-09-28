@@ -1,11 +1,18 @@
-// Shopify Markets → `config.markets[].countries` (Pro market targeting, T1 fix
-// round: the engine matches the cart's country against each targeted market's
-// countries, shipped in the shop payload as `marketCountries`). Countries are
-// owned by Shopify Markets and change there, so the sync reads them fresh
-// whenever a rule targets a market (read_markets scope) and builds the shop
-// payload from a copy of the config with the countries filled in; the saved
-// config is never rewritten by the sync. The admin can use loadShopMarkets to
-// list the shop's markets (handle, name, currency, countries) in Settings.
+// Shopify Markets → `config.markets[].countries` (Pro market targeting: the
+// engine matches the cart's country against each targeted market's countries,
+// shipped in the shop payload as `marketCountries`).
+//
+// Countries are resolved at SAVE time (I2): saveAndSync reads the markets once
+// when the config targets a market, merges their countries into the config
+// BEFORE saveConfig measures the function budget, and saves them. The sync
+// never swaps countries, so what was measured is exactly what ships — no
+// accepted save can fail the sync budget. resyncShop refreshes them through
+// the same save path when Shopify's markets changed (save-and-sync.server.ts).
+//
+// Cost (I1): Shopify refuses a query whose REQUESTED cost exceeds 1 000 points
+// (connection = 2 + first × node cost). markets(first: 50) × regions(first:
+// 250) requested ~12 500, so markets are paged 10 at a time without regions,
+// and each market's countries are paged 50 at a time. read_markets scope.
 
 import type { AdminClient } from "../admin-client.server";
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
@@ -23,31 +30,46 @@ export interface ShopMarket {
 }
 
 interface MarketNode {
+  id: string;
   handle: string;
   name: string;
   status: string;
   currencySettings?: { baseCurrency?: { currencyCode?: string } | null } | null;
-  conditions?: { regionsCondition?: { regions?: { nodes?: ({ __typename?: string; code?: string } | null)[] } | null } | null } | null;
+}
+
+type Page<T> = { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: T[] };
+
+async function marketCountries(transport: Transport, id: string): Promise<string[]> {
+  const out = new Set<string>();
+  let after: string | null = null;
+  for (;;) {
+    const data: {
+      market: { conditions?: { regionsCondition?: { regions?: Page<{ __typename?: string; code?: string } | null> | null } | null } | null } | null;
+    } = await transport.call("marketRegions", { id, after });
+    const regions = data.market?.conditions?.regionsCondition?.regions;
+    if (!regions) break;
+    for (const region of regions.nodes) {
+      const code = region?.__typename === "MarketRegionCountry" && typeof region.code === "string" ? region.code.toUpperCase() : null;
+      if (code && /^[A-Z]{2}$/.test(code)) out.add(code);
+    }
+    if (!regions.pageInfo.hasNextPage) break;
+    after = regions.pageInfo.endCursor;
+  }
+  return [...out];
 }
 
 export async function loadShopMarkets(transport: Transport): Promise<ShopMarket[]> {
   const out: ShopMarket[] = [];
   let after: string | null = null;
   for (;;) {
-    const data: { markets: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: MarketNode[] } } = await transport.call(
-      "markets",
-      { after },
-    );
+    const data: { markets: Page<MarketNode> } = await transport.call("markets", { after });
     for (const node of data.markets.nodes) {
-      const countries = (node.conditions?.regionsCondition?.regions?.nodes ?? [])
-        .map((region) => (region?.__typename === "MarketRegionCountry" && typeof region.code === "string" ? region.code.toUpperCase() : null))
-        .filter((code): code is string => code !== null && /^[A-Z]{2}$/.test(code));
       out.push({
         handle: node.handle,
         name: node.name,
         active: node.status === "ACTIVE",
         currency: node.currencySettings?.baseCurrency?.currencyCode ?? null,
-        countries: [...new Set(countries)],
+        countries: await marketCountries(transport, node.id),
       });
     }
     if (!data.markets.pageInfo.hasNextPage) break;
@@ -58,12 +80,12 @@ export async function loadShopMarkets(transport: Transport): Promise<ShopMarket[
 
 const quiet: SyncLogger = { info() {}, warn() {}, error() {} };
 
-/** For the admin (Settings): the shop's markets through an AdminClient, default retry policy. */
+/** The shop's markets through an AdminClient, default retry policy (saveAndSync, Settings, scripts). */
 export function loadShopMarketsWith(client: AdminClient, logger: SyncLogger = quiet): Promise<ShopMarket[]> {
   return loadShopMarkets(new Transport(client, undefined, undefined, logger));
 }
 
-/** True when some rule (or a live campaign override) targets a market. */
+/** True when some rule (or a not-killed campaign override) targets a market. */
 export function targetsMarkets(config: ConfigView): boolean {
   const has = (targeting: unknown) => {
     const markets = (targeting as { markets?: unknown } | null | undefined)?.markets;
@@ -78,18 +100,24 @@ export function targetsMarkets(config: ConfigView): boolean {
 /**
  * A copy of `config` whose markets carry the countries Shopify has for the same
  * handle. Markets Shopify does not know keep what was saved and are reported in
- * `missing` (their rules then match no country unless countries were saved).
+ * `missing`; `changed` = some market's countries differ from the config's.
  */
-export function withMarketCountries(config: ConfigView, markets: readonly ShopMarket[]): { config: ConfigView; missing: string[] } {
+export function withMarketCountries<C extends ConfigView>(
+  config: C,
+  markets: readonly ShopMarket[],
+): { config: C; missing: string[]; changed: boolean } {
   const byHandle = new Map(markets.map((m) => [m.handle, m]));
   const missing: string[] = [];
+  let changed = false;
   const merged = config.markets.map((market) => {
     const shopMarket = byHandle.get(market.handle);
     if (!shopMarket) {
       missing.push(market.handle);
       return market;
     }
-    return { ...market, countries: shopMarket.countries.slice(0, CONFIG_LIMITS.listItems) };
+    const countries = shopMarket.countries.slice(0, CONFIG_LIMITS.listItems);
+    if ((market.countries ?? []).join(",") !== countries.join(",")) changed = true;
+    return { ...market, countries };
   });
-  return { config: { ...config, markets: merged }, missing };
+  return { config: { ...config, markets: merged }, missing, changed };
 }

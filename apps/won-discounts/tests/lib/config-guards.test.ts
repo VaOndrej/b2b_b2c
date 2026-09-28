@@ -169,3 +169,44 @@ test("a Won code colliding with a known native code is refused; no collision pas
   assert.match(withNative.issue.message, /WONS2TA/);
   assert.match(withNative.issue.message, /another discount/);
 });
+
+test("M4: a campaign that has ENDED (not killed) no longer enables a disabled code rule nor uses a limit slot", () => {
+  const override = { ruleId: "bf", patch: { enabled: true } };
+  const campaign = (window: { start: string; end: string }) => ({ id: "c1", name: "C", window, overrides: [override], killed: false });
+  const rule = codeRule("bf", { enabled: false });
+  const live = sanitizeConfig({
+    modules: { codes: { rules: [rule] } },
+    campaigns: [campaign({ start: "2026-09-28T00:00:00", end: "2026-09-29T00:00:00" })],
+  }).config;
+  const ended = sanitizeConfig({
+    modules: { codes: { rules: [rule] } },
+    campaigns: [campaign({ start: "2026-09-01T00:00:00", end: "2026-09-02T00:00:00" })],
+  }).config;
+  const ctx = { now: new Date("2026-09-28T12:00:00Z"), shopLocalNow: "2026-09-28T14:00:00" };
+  assert.deepEqual(activeCodeRules(live, ctx).map((r) => r.id), ["bf"]);
+  assert.deepEqual(activeCodeRules(ended, ctx), []);
+  assert.equal(checkActiveCodeRuleLimit(ended, ctx).count, 0);
+  // Without the shop's zone a campaign counts as ended only once it ended everywhere (UTC − 12 h).
+  const justEnded = sanitizeConfig({
+    modules: { codes: { rules: [rule] } },
+    campaigns: [campaign({ start: "2026-09-28T00:00:00", end: "2026-09-28T10:00:00" })],
+  }).config;
+  assert.deepEqual(activeCodeRules(justEnded, { now: new Date("2026-09-28T12:00:00Z") }).map((r) => r.id), ["bf"], "conservative");
+  assert.deepEqual(activeCodeRules(justEnded, ctx), [], "with the shop-local time it has ended");
+});
+
+test("M6: a code rule whose own schedule already ended is not active and does not count", () => {
+  const now = new Date("2026-09-28T12:00:00Z");
+  const config = sanitizeConfig({
+    modules: {
+      codes: {
+        rules: [
+          codeRule("past", { schedule: { startsAt: "2026-01-01T00:00:00Z", endsAt: "2026-02-01T00:00:00Z" } }),
+          codeRule("future", { schedule: { startsAt: "2026-12-01T00:00:00Z" } }),
+        ],
+      },
+    },
+  }).config;
+  assert.deepEqual(activeCodeRules(config, { now }).map((r) => r.id), ["future"], "scheduled (future) rules still count");
+  assert.equal(checkActiveCodeRuleLimit(config, { now }).count, 1);
+});
