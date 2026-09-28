@@ -11,6 +11,14 @@ export type UiLocale = PlanLocale;
 
 const NBSP = " ";
 
+/** Longest code echoed back into any text (codes are customer input; render as text only). */
+export const MAX_ECHOED_CODE_LENGTH = 64;
+
+/** A code as it may be shown: at most MAX_ECHOED_CODE_LENGTH characters, then "…". */
+export function echoCode(code: string): string {
+  return code.length > MAX_ECHOED_CODE_LENGTH ? `${code.slice(0, MAX_ECHOED_CODE_LENGTH)}…` : code;
+}
+
 /** Symbols we are sure about per locale; any other currency prints its ISO code. */
 const CS_SYMBOLS: Readonly<Record<string, string>> = { CZK: "Kč", EUR: "€" };
 const EN_PREFIX_SYMBOLS: Readonly<Record<string, string>> = { EUR: "€", USD: "$", GBP: "£" };
@@ -133,7 +141,7 @@ function describeMethod(rule: DescribableRule, locale: UiLocale): string {
   if (rule.method === "automatic") return cs ? "automaticky" : "automatic";
   const codes = rule.codes ?? [];
   if (codes.length === 0) return cs ? "kódem" : "by code";
-  const shown = codes.slice(0, MAX_CODES_SHOWN).join(", ");
+  const shown = codes.slice(0, MAX_CODES_SHOWN).map(echoCode).join(", ");
   const more = codes.length - MAX_CODES_SHOWN;
   const tail = more > 0 ? (cs ? ` a ${more} další` : ` and ${more} more`) : "";
   const label = codes.length === 1 ? (cs ? "kód" : "code") : cs ? "kódy" : "codes";

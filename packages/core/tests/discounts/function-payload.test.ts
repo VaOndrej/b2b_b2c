@@ -324,3 +324,35 @@ test("verifyShopFunctionConfig: names what is wrong", () => {
   const huge = { ...payload, pad: "x".repeat(10_001) };
   assert.equal((verifyShopFunctionConfig(huge) as { reason: string }).reason, "too_large");
 });
+
+// --- fix round 2 -------------------------------------------------------------------------------
+
+test("a schedule that cannot be converted ships as invalid (fail closed), never as 'no schedule'", () => {
+  const config = configOf([pct("A", 10), pct("B", 10)]);
+  // Hand-built (a sanitized config never gets here): unparseable start; valid start + unparseable end.
+  (config.modules.codes.rules[0] as { schedule?: unknown }).schedule = { startsAt: "garbage" };
+  (config.modules.codes.rules[1] as { schedule?: unknown }).schedule = { startsAt: "2026-11-27T23:00:00Z", endsAt: "31.12.2026" };
+  const { payload } = buildShopFunctionConfig(config, OPTS);
+  assert.deepEqual(payload.modules.codes.rules[0].schedule, { invalid: true });
+  assert.deepEqual(payload.modules.codes.rules[1].schedule, { invalid: true });
+  const plan = planCart(cartOf([line("L1", 100_00, 1, ["A", "B"])], { today: "2026-11-28" }), payload);
+  assert.deepEqual(plan.rules.map((r) => r.state), ["schedule_unknown", "schedule_unknown"]);
+});
+
+test("marketCountries also covers markets the selected campaign's overrides target (and the worst case counts them)", () => {
+  const config = sanitizeConfig({
+    markets: [
+      { handle: "cz", currency: "CZK", enabled: true, countries: ["CZ"] },
+      { handle: "eu", currency: "EUR", enabled: true, countries: ["SK", "AT"] },
+    ],
+    modules: { codes: { rules: [orderPct("O", 10, { targeting: { markets: ["cz"] } })] } },
+    campaigns: [{ ...CAMPAIGNS[1], overrides: [{ ruleId: "O", patch: { targeting: { markets: ["eu"] } } }] }],
+  }).config;
+  const during = buildShopFunctionConfig(config, { now: "2026-11-28T10:00:00", shopTimezone: FIXTURE_TZ });
+  assert.deepEqual(during.payload.marketCountries, { cz: ["CZ"], eu: ["SK", "AT"] });
+  const after = buildShopFunctionConfig(config, { now: "2027-01-01T00:00:00", shopTimezone: FIXTURE_TZ });
+  assert.deepEqual(after.payload.marketCountries, { cz: ["CZ"] }, "no campaign selected → only base markets");
+  const noCampaign = buildShopFunctionConfig(config, { ...OPTS, now: "2026-11-28T10:00:00", forceNoCampaign: true });
+  assert.deepEqual(noCampaign.payload.marketCountries, { cz: ["CZ"] });
+  assert.ok(buildShopFunctionConfigWorstCase(config).bytes >= during.bytes);
+});

@@ -4,7 +4,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { parseRuleRef, productRuleIndex, ruleRef } from "../../src/discounts/targeting.ts";
+import {
+  parseRuleRef,
+  PRODUCT_METAFIELD_BUDGET_BYTES,
+  productMetafieldValue,
+  productRuleIndex,
+  ruleRef,
+} from "../../src/discounts/targeting.ts";
 import { configOf, orderPct, pct } from "./engine-fixtures.ts";
 
 const P = (n: number) => `gid://shopify/Product/${n}`;
@@ -39,16 +45,16 @@ test("collection and product targets map to product-wide ruleIds; order/shipping
   });
 });
 
-test("a variant target goes to variantRuleIds keyed by variant GID — never product-wide, never to a sibling", () => {
+test("a variant target goes to variantRuleIds keyed by the variant's numeric id — never product-wide, never to a sibling", () => {
   const config = configOf([pct("one", 10, { target: { kind: "products", productIds: [], variantIds: [V(12)] } })]);
-  assert.deepEqual(productRuleIndex(config, PRODUCTS).get(P(1)), { ruleIds: [], variantRuleIds: { [V(12)]: ["one"] } });
+  assert.deepEqual(productRuleIndex(config, PRODUCTS).get(P(1)), { ruleIds: [], variantRuleIds: { "12": ["one"] } });
 });
 
 test("all current variants listed still stay per variant: a variant added later does not inherit the discount", () => {
   const config = configOf([pct("all", 10, { target: { kind: "products", productIds: [], variantIds: [V(31), V(32)] } })]);
   assert.deepEqual(productRuleIndex(config, PRODUCTS).get(P(3)), {
     ruleIds: [],
-    variantRuleIds: { [V(31)]: ["all"], [V(32)]: ["all"] },
+    variantRuleIds: { "31": ["all"], "32": ["all"] },
   });
 });
 
@@ -91,7 +97,56 @@ test("a campaign that re-targets a rule adds campaign-scoped refs (also per vari
   const live = productRuleIndex(configOf(rules, { campaigns: [campaign(false)] }), PRODUCTS);
   assert.deepEqual(live.get(P(1)), { ruleIds: ["r", "v"], variantRuleIds: {} });
   assert.deepEqual(live.get(P(2)), { ruleIds: ["r@bf"], variantRuleIds: {} });
-  assert.deepEqual(live.get(P(3)), { ruleIds: [], variantRuleIds: { [V(32)]: ["v@bf"] } });
+  assert.deepEqual(live.get(P(3)), { ruleIds: [], variantRuleIds: { "32": ["v@bf"] } });
   const killed = productRuleIndex(configOf(rules, { campaigns: [campaign(true)] }), PRODUCTS);
   assert.deepEqual(killed.get(P(2)), { ruleIds: [], variantRuleIds: {} });
+});
+
+// --- fix round 2: per-product metafield budget ------------------------------------------------
+
+const manyVariants = (n: number, from = 44_000_000_000_000) => Array.from({ length: n }, (_, i) => V(from + i));
+const bytesOf = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
+
+test("sanity: one rule can list at most CONFIG_LIMITS.listItems (250) variants, so 400 need two rules", () => {
+  const config = configOf([pct("r", 10, { target: { kind: "products", productIds: [], variantIds: manyVariants(400) } })]);
+  const target = config.modules.codes.rules[0].target as { variantIds: string[] };
+  assert.equal(target.variantIds.length, 250);
+});
+
+test("400 targeted variants (two rules) on a 400-variant product: over budget, the largest ref is dropped and reported", () => {
+  const variants = manyVariants(400);
+  const config = configOf([
+    pct("a", 10, { target: { kind: "products", productIds: [], variantIds: variants.slice(0, 250) } }),
+    pct("b", 10, { target: { kind: "products", productIds: [], variantIds: variants.slice(150, 400) } }),
+    pct("coll", 10, { target: { kind: "collections", ids: [C(100)] } }),
+  ]);
+  const entry = productRuleIndex(config, [{ productId: P(9), variantIds: variants, collectionIds: [C(100)] }]).get(P(9))!;
+  const value = productMetafieldValue(entry);
+  assert.ok(entry.oversized!.bytes > PRODUCT_METAFIELD_BUDGET_BYTES, String(entry.oversized?.bytes));
+  assert.ok(bytesOf(value) <= PRODUCT_METAFIELD_BUDGET_BYTES, String(bytesOf(value)));
+  assert.deepEqual(entry.oversized?.droppedRefs, ["a"], "equal counts (250/250): dropped by ref asc");
+  assert.deepEqual(entry.oversized?.collapsedRefs, []);
+  assert.deepEqual(value.ruleIds, ["coll"], "collection-wide rules survive");
+  assert.equal(Object.keys(value.variantRuleIds).length, 250, "rule b keeps all its variants");
+  assert.ok(Object.values(value.variantRuleIds).every((refs) => refs.length === 1 && refs[0] === "b"));
+  assert.ok(Object.keys(value.variantRuleIds).every((k) => /^\d+$/.test(k)), "keys are numeric ids, not GIDs");
+});
+
+test("over budget with refs that cover every variant: collapsed to the equivalent product-wide refs", () => {
+  const variants = manyVariants(250);
+  const ids = ["r1", "r2", "r3", "r4", "r5"];
+  const config = configOf(ids.map((id) => pct(id, 10, { target: { kind: "products", productIds: [], variantIds: variants } })));
+  const entry = productRuleIndex(config, [{ productId: P(9), variantIds: variants, collectionIds: [] }]).get(P(9))!;
+  assert.deepEqual(productMetafieldValue(entry), { ruleIds: ids, variantRuleIds: {} });
+  assert.deepEqual(entry.oversized?.collapsedRefs, ids);
+  assert.deepEqual(entry.oversized?.droppedRefs, []);
+  assert.ok(entry.oversized!.bytes > PRODUCT_METAFIELD_BUDGET_BYTES, String(entry.oversized?.bytes));
+});
+
+test("a product within the budget has no oversized report and its value is the entry itself", () => {
+  const config = configOf([pct("one", 10, { target: { kind: "products", productIds: [], variantIds: [V(12)] } })]);
+  const entry = productRuleIndex(config, PRODUCTS).get(P(1))!;
+  assert.equal(entry.oversized, undefined);
+  assert.deepEqual(productMetafieldValue(entry), { ruleIds: [], variantRuleIds: { "12": ["one"] } });
+  assert.equal(PRODUCT_METAFIELD_BUDGET_BYTES, 9000);
 });

@@ -261,6 +261,8 @@ interface Rule {
   minSubtotalMissing: boolean;
   minQuantity: number;
   scheduled: boolean;
+  /** Scheduled, but the payload's schedule is not a pair of valid shop days: never live. */
+  scheduleInvalid: boolean;
   startsOn: string | null;
   endsOn: string | null;
   markets: string[] | null;
@@ -374,10 +376,17 @@ function readRule(raw: Rec, currency: string): Rule | null {
       ? Math.floor(minimum.quantity)
       : 0;
   // Schedules arrive as shop-local days (buildShopFunctionConfig converted them with
-  // the shop's time zone). A schedule without them — e.g. raw ISO strings in a
-  // hand-built payload — is never trusted: the rule gates as schedule_unknown.
-  const scheduled = isRecord(raw.schedule) && Object.keys(raw.schedule).length > 0;
+  // the shop's time zone). Fail closed: any schedule that is not exactly valid
+  // `startsOn`/`endsOn` days — `{invalid: true}`, raw ISO strings, junk, `{}` — is
+  // never read as "no schedule"; the rule gates as schedule_unknown.
+  const scheduled = raw.schedule !== undefined && raw.schedule !== null;
   const schedule = isRecord(raw.schedule) ? raw.schedule : {};
+  const scheduleKeys = Object.keys(schedule);
+  const scheduleInvalid =
+    scheduled &&
+    (!isRecord(raw.schedule) ||
+      scheduleKeys.length === 0 ||
+      scheduleKeys.some((k) => (k !== "startsOn" && k !== "endsOn") || localDate(schedule[k]) === null));
   const targeting = isRecord(raw.targeting) ? raw.targeting : {};
 
   return {
@@ -395,6 +404,7 @@ function readRule(raw: Rec, currency: string): Rule | null {
     minSubtotalMissing: hasSubtotal && minSubtotal === null,
     minQuantity,
     scheduled,
+    scheduleInvalid,
     startsOn: localDate(schedule.startsOn),
     endsOn: localDate(schedule.endsOn),
     markets: stringList(targeting.markets),
@@ -561,7 +571,7 @@ function gate(rule: Rule, ctx: GateContext, targetScope: Scope, entered: boolean
   if (rule.scheduled) {
     // [spec] DAY granularity in shop time: the function reads only shop.localTime.date
     // without variables; exact-time windows are the Campaigns module's job (C4).
-    if (!cart.today || (!rule.startsOn && !rule.endsOn)) return "schedule_unknown";
+    if (!cart.today || rule.scheduleInvalid) return "schedule_unknown";
     if (rule.startsOn && cart.today < rule.startsOn) return "not_started";
     if (rule.endsOn && cart.today > rule.endsOn) return "ended";
   }
@@ -902,7 +912,9 @@ function buildOutcomes(
       amount: c?.amount ?? 0,
       lineIds: c?.lineIds ?? [],
       enteredCodes: codes.enteredByRule.get(rule.id) ?? [],
-      describable: rule.describable,
+      // The payload has only code hashes: describe a code rule by the codes the
+      // customer actually entered (describeRule caps each for display).
+      describable: rule.method === "code" ? { ...rule.describable, codes: codes.enteredByRule.get(rule.id) ?? [] } : rule.describable,
     };
     if (state === "below_minimum" && rule.missing) out.missing = rule.missing;
     if (rule.startsOn) out.startsOn = rule.startsOn;

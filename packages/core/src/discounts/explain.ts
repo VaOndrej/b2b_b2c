@@ -3,7 +3,17 @@
 // in the storefront, which must say honestly why an entered code did nothing
 // (Shopify only shows `applicable: false`, spec §3).
 
-import { csPlural, describeRule, enPlural, formatDate, formatMoney, formatPercent, type UiLocale } from "./describe.ts";
+import {
+  csPlural,
+  describeRule,
+  echoCode as echo,
+  enPlural,
+  formatDate,
+  formatMoney,
+  formatPercent,
+  MAX_ECHOED_CODE_LENGTH,
+  type UiLocale,
+} from "./describe.ts";
 import type { CartPlan, CodeOutcome, RuleOutcome, ShippingValue } from "./plan.ts";
 
 /**
@@ -23,12 +33,7 @@ export interface ExplainItem {
 
 const q = (text: string, locale: UiLocale) => (locale === "cs" ? `„${text}“` : `“${text}”`);
 
-export const MAX_ECHOED_CODE_LENGTH = 64;
-
-/** A customer-entered code as it may be echoed back: at most 64 characters, then "…". */
-function echo(code: string): string {
-  return code.length > MAX_ECHOED_CODE_LENGTH ? `${code.slice(0, MAX_ECHOED_CODE_LENGTH)}…` : code;
-}
+export { MAX_ECHOED_CODE_LENGTH };
 
 /** How to name the owner of a stack another rule is part of: its code when it is a code rule. */
 function ownerReference(owner: RuleOutcome, plan: CartPlan, locale: UiLocale): { code?: string; name: string } {
@@ -234,6 +239,10 @@ function automaticSentences(rule: RuleOutcome, plan: CartPlan, locale: UiLocale)
       return info(cs ? `Sleva ${name} skončila ${formatDate(rule.endsOn ?? "", locale)}.` : `${name} ended on ${formatDate(rule.endsOn ?? "", locale)}.`);
     case "zero_value":
       return info(cs ? `Sleva ${name} tu nic neušetří.` : `${name} saves nothing here.`);
+    case "schedule_unknown":
+      return info(
+        cs ? `Sleva ${name} se neuplatní: její platnost teď nejde ověřit.` : `${name} is not applied: its dates cannot be checked right now.`,
+      );
     default:
       return [];
   }

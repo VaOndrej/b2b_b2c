@@ -29,9 +29,11 @@ export interface CartLineInput {
    */
   ruleIds: readonly string[];
   /**
-   * Variant-level targeting from the same metafield, keyed by variant GID. The
-   * engine uses only the entry of this line's `variantId` — a sibling variant's
-   * rules never apply. The adapter may pass the product's whole map.
+   * Variant-level targeting from the same metafield, keyed by the variant's
+   * numeric id (`variantKey`, the tail of its GID — short, so ~400 targeted
+   * variants still fit the product metafield). The engine uses only the entry of
+   * this line's own variant — a sibling variant's rules never apply. A full-GID
+   * key is still understood (tolerant reader). The adapter may pass the whole map.
    */
   variantRuleIds?: Readonly<Record<string, readonly string[]>>;
 }
@@ -128,6 +130,22 @@ function readCampaign(v: unknown): CartCampaignInput | null {
   };
 }
 
+/** The short, stable key of a GID (`gid://shopify/ProductVariant/42` → "42"). */
+export function variantKey(variantId: string): string {
+  const slash = variantId.lastIndexOf("/");
+  return slash === -1 ? variantId : variantId.slice(slash + 1);
+}
+
+/** This variant's refs from a `variantRuleIds` map: by numeric id, else by full GID. */
+function refsOfVariant(byVariant: unknown, variantId: string): string[] {
+  if (!variantId || typeof byVariant !== "object" || byVariant === null) return [];
+  const map = byVariant as Record<string, unknown>;
+  const own = (key: string) => Object.prototype.hasOwnProperty.call(map, key);
+  const key = variantKey(variantId);
+  if (own(key)) return strings(map[key]);
+  return own(variantId) ? strings(map[variantId]) : [];
+}
+
 export function normalizeCode(code: string): string {
   return code.trim().toUpperCase();
 }
@@ -148,11 +166,7 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
     const quantity = nonNegativeInt(raw.quantity);
     const unitPrice = nonNegativeInt(raw.unitPrice);
     const variantId = str(raw.variantId);
-    const byVariant = raw.variantRuleIds;
-    const variantRefs =
-      variantId && typeof byVariant === "object" && byVariant !== null && Object.prototype.hasOwnProperty.call(byVariant, variantId)
-        ? strings((byVariant as Record<string, unknown>)[variantId])
-        : [];
+    const variantRefs = refsOfVariant(raw.variantRuleIds, variantId);
     lines.push({
       id: str(raw.id),
       variantId,

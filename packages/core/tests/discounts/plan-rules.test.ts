@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { planCart, SEGMENT_TARGETING_SUPPORTED, unsupportedInFunction } from "../../src/discounts/plan.ts";
+import { explainPlan } from "../../src/discounts/explain.ts";
 import { ruleRef } from "../../src/discounts/targeting.ts";
 import {
   cartOf,
@@ -226,8 +227,8 @@ test("targeting comes only from line.ruleIds: product/collection rules skip line
   assert.deepEqual(winners(plan, "L2"), []);
 });
 
-test("variant-level targeting: variantRuleIds apply to that variant only, never to a sibling", () => {
-  const variantRuleIds = { "gid://shopify/ProductVariant/42": ["A"] };
+test("variant-level targeting: variantRuleIds (keyed by the numeric id) apply to that variant only, never to a sibling", () => {
+  const variantRuleIds = { "42": ["A"] };
   const plan = planCart(
     cartOf([
       line("L1", 100_00, 1, [], { variantId: "gid://shopify/ProductVariant/42", variantRuleIds }),
@@ -381,4 +382,56 @@ test("unsupportedInFunction tells the admin which rule features the checkout can
   assert.deepEqual(unsupportedInFunction({ targeting: { segments: [], markets: ["cz"] } }), []);
   assert.deepEqual(unsupportedInFunction({}), []);
   assert.equal(SEGMENT_TARGETING_SUPPORTED, false);
+});
+
+test("variantRuleIds keyed by the full variant GID are still understood (tolerant reader)", () => {
+  const variantRuleIds = { "gid://shopify/ProductVariant/42": ["A"] };
+  const plan = planCart(
+    cartOf([
+      line("L1", 100_00, 1, [], { variantId: "gid://shopify/ProductVariant/42", variantRuleIds }),
+      line("L2", 100_00, 1, [], { variantId: "gid://shopify/ProductVariant/43", variantRuleIds }),
+    ]),
+    payloadOf([pct("A", 10)]),
+  );
+  assert.deepEqual([winners(plan, "L1"), winners(plan, "L2")], [["A"], []]);
+});
+
+// --- fix round 2 -------------------------------------------------------------------------------
+
+test("a campaign that re-targets a rule to another market: that market's countries ship and the rule applies there", () => {
+  const extra = {
+    markets: [
+      { handle: "cz", currency: "CZK", enabled: true, countries: ["CZ"] },
+      { handle: "eu", currency: "EUR", enabled: true, countries: ["SK"] },
+    ],
+    campaigns: [
+      {
+        id: "bf",
+        name: "BF",
+        window: { start: "2026-11-27T00:00:00", end: "2026-11-30T23:59:59" },
+        overrides: [{ ruleId: "O", patch: { targeting: { markets: ["eu"] } } }],
+      },
+    ],
+  };
+  const payload = payloadOf([orderPct("O", 10)], extra, { now: "2026-11-28T10:00:00" });
+  assert.deepEqual(payload.marketCountries, { eu: ["SK"] });
+  const campaign = { id: payload.campaignId, active: true, varsVersion: payload.campaignVarsVersion };
+  const sk = planCart(cartOf([line("L1", 1000_00)], { countryCode: "SK", campaign }), payload);
+  assert.equal(outcome(sk, "O").state, "applied");
+  assert.equal(sk.order?.amount, 100_00);
+  const cz = planCart(cartOf([line("L1", 1000_00)], { countryCode: "CZ", campaign }), payload);
+  assert.equal(outcome(cz, "O").state, "market");
+});
+
+test("a schedule the payload marks unconvertible never applies (fail closed), with an explanation", () => {
+  const payload = payloadOf([pct("A", 10, { name: "Zima" })]);
+  for (const schedule of [{ invalid: true }, { startsOn: "2026-11-01", invalid: true }, { startsOn: "garbage" }, {}]) {
+    (payload.modules.codes.rules[0] as { schedule: unknown }).schedule = schedule;
+    const plan = planCart(cartOf([line("L1", 100_00, 1, ["A"])], { today: "2026-11-28" }), payload);
+    assert.equal(outcome(plan, "A").state, "schedule_unknown", JSON.stringify(schedule));
+    assert.ok(
+      explainPlan(plan, "cs").some((i) => i.text === "Sleva „Zima“ se neuplatní: její platnost teď nejde ověřit."),
+      JSON.stringify(explainPlan(plan, "cs")),
+    );
+  }
 });

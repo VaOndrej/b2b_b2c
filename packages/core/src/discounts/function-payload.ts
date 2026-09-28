@@ -85,8 +85,12 @@ export interface FunctionRule {
   target: { kind: DiscountTargetKind };
   priority?: number;
   minimum?: { subtotal?: MoneyByCurrency; quantity?: number };
-  /** Shop-local calendar days, inclusive (`YYYY-MM-DD`). */
-  schedule?: { startsOn?: string; endsOn?: string };
+  /**
+   * Shop-local calendar days, inclusive (`YYYY-MM-DD`). `{ invalid: true }` when a
+   * date could not be converted: the engine then never applies the rule (fail
+   * closed), it is never read as "no schedule".
+   */
+  schedule?: { startsOn?: string; endsOn?: string; invalid?: true };
   targeting?: { segments?: string[]; markets?: string[] };
   combinesWith?: { ruleIds: string[] };
 }
@@ -107,7 +111,7 @@ export interface FunctionConfigPayload {
   /** Must equal a node's `varsVersion` for that node to apply the campaign. */
   campaignVarsVersion: string | null;
   engine: EngineSettings;
-  /** Market handle → upper-case countries, for enabled markets some rule targets. */
+  /** Market handle → upper-case countries, for enabled markets some rule or the selected campaign targets. */
   marketCountries: Record<string, string[]>;
   modules: {
     codes: { rules: FunctionRule[] };
@@ -264,7 +268,12 @@ function shipRule(r: ReadonlyDeep<DiscountRule>, shopTimezone: string): Function
     if (hasSubtotal) out.minimum.subtotal = { ...subtotal };
     if (quantity > 0) out.minimum.quantity = quantity;
   }
-  if (r.schedule && (r.schedule.startsAt || r.schedule.endsAt)) out.schedule = shopLocalDates(r.schedule, shopTimezone);
+  if (r.schedule && (r.schedule.startsAt || r.schedule.endsAt)) {
+    // Fail closed: a side that was set but did not convert must not become "unbounded".
+    const local = shopLocalDates(r.schedule, shopTimezone);
+    const converted = (!r.schedule.startsAt || local.startsOn) && (!r.schedule.endsAt || local.endsOn);
+    out.schedule = converted ? local : { invalid: true };
+  }
   const segments = r.targeting?.segments;
   const markets = r.targeting?.markets;
   if (nonEmpty(segments) || nonEmpty(markets)) {
@@ -287,9 +296,21 @@ function shipPatch(patch: ReadonlyDeep<Record<string, unknown>>): Record<string,
   return out;
 }
 
-function shipMarketCountries(config: ConfigInput): Record<string, string[]> {
+/**
+ * Countries of every enabled market that a base rule OR an override of the
+ * selected campaign targets (a campaign may re-target a rule to another market;
+ * without its countries that rule could never apply). Only the selected campaign
+ * ships, so the worst-case builder measures each campaign's markets too.
+ */
+function shipMarketCountries(config: ConfigInput, selected: CampaignInput | null): Record<string, string[]> {
   const targeted = new Set<string>();
-  for (const rule of config.modules.codes.rules) for (const m of rule.targeting?.markets ?? []) targeted.add(m);
+  const addFrom = (targeting: unknown) => {
+    if (typeof targeting !== "object" || targeting === null) return;
+    const markets = (targeting as { markets?: unknown }).markets;
+    if (Array.isArray(markets)) for (const m of markets) if (typeof m === "string") targeted.add(m);
+  };
+  for (const rule of config.modules.codes.rules) addFrom(rule.targeting);
+  for (const override of selected?.overrides ?? []) addFrom(override.patch.targeting);
   const out: Record<string, string[]> = {};
   for (const market of config.markets) {
     if (!market.enabled || !targeted.has(market.handle) || !market.countries?.length) continue;
@@ -312,7 +333,7 @@ function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone
     campaignId: selected ? selected.id : null,
     campaignVarsVersion: campaignVarsVersion(selected),
     engine: copy<EngineSettings>(config.engine),
-    marketCountries: shipMarketCountries(config),
+    marketCountries: shipMarketCountries(config, selected),
     modules: {
       codes: { rules: codes.rules.map((r) => shipRule(r, shopTimezone)) },
       tiers: { sets: copy<TierSet[]>(tiers.sets) },

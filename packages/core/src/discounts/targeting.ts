@@ -1,10 +1,19 @@
 // Precomputed targeting (plan T3, spec §1 C3): which product/collection rules
 // apply to which product or variant. The sync layer writes `productRuleIndex`
 // into each product's `$app:won_discounts` metafield as
-//   { ruleIds: [...], variantRuleIds: { "<variant GID>": [...] } }
+//   productMetafieldValue(entry) = { ruleIds: [...], variantRuleIds: { "<variant numeric id>": [...] } }
 // and the function passes both to the engine per cart line (CartLineInput). The
 // function never needs collection slots in its input query and the rules' id
 // lists never reach the 9 000 B config budget.
+//
+// The product metafield has the same silent 10 000 B limit as the shop config
+// (over it the function reads `null`, and EVERY Won product discount on that
+// product disappears). So each product value is kept under
+// PRODUCT_METAFIELD_BUDGET_BYTES: variant keys are the short numeric ids, and an
+// over-budget product first collapses variant refs that cover every current
+// variant (equivalent today), then drops the largest variant-level refs until it
+// fits — failing closed for those rules on that product only — and says so in
+// `entry.oversized` for the sync to surface.
 //
 // A reference is one string (rule and campaign ids are `[A-Za-z0-9_-]`, so "@"
 // is a safe separator):
@@ -12,17 +21,17 @@
 //   "ruleId@<campaign>"  only while that campaign re-targets the rule
 // Order and shipping rules are never listed: they apply to every line.
 
+import { variantKey } from "./cart.ts";
 import type { ReadonlyDeep, WonDiscountsConfig } from "./config.ts";
+
+export { variantKey };
+
+/** Per-product metafield budget: ~10 % under the 10 000 B the function reads (C3/C7). */
+export const PRODUCT_METAFIELD_BUDGET_BYTES = 9000;
 
 export interface RuleRefParts {
   ruleId: string;
   campaignId?: string;
-}
-
-/** The short, stable key of a GID (`gid://shopify/ProductVariant/42` → "42"); used by adapters. */
-export function variantKey(variantId: string): string {
-  const slash = variantId.lastIndexOf("/");
-  return slash === -1 ? variantId : variantId.slice(slash + 1);
 }
 
 export function ruleRef(ruleId: string, opts: { campaignId?: string } = {}): string {
@@ -40,10 +49,73 @@ export interface ProductTargetingInput {
   collectionIds: readonly string[];
 }
 
-/** What the product metafield carries (sorted, unique lists; only variants that have refs). */
-export interface ProductRuleEntry {
+/** The value written to the product metafield (sorted, unique lists; only variants that have refs). */
+export interface ProductMetafieldValue {
   ruleIds: string[];
+  /** Keyed by the variant's numeric id (variantKey). */
   variantRuleIds: Record<string, string[]>;
+}
+
+export interface ProductRuleEntry extends ProductMetafieldValue {
+  /**
+   * Present only when the product went over PRODUCT_METAFIELD_BUDGET_BYTES and
+   * the value above was reduced to fit. `bytes` = size before; refs in
+   * `collapsedRefs` now apply product-wide (they covered every current variant;
+   * a variant added later inherits them until the product is re-indexed); refs in
+   * `droppedRefs` no longer apply to this product at all. The sync must surface
+   * both to the merchant.
+   */
+  oversized?: { bytes: number; collapsedRefs: string[]; droppedRefs: string[] };
+}
+
+/** Exactly what to write to the product metafield (never the `oversized` report). */
+export function productMetafieldValue(entry: ProductMetafieldValue): ProductMetafieldValue {
+  return { ruleIds: entry.ruleIds, variantRuleIds: entry.variantRuleIds };
+}
+
+const utf8Bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
+
+function toValue(whole: ReadonlySet<string>, perVariant: ReadonlyMap<string, ReadonlySet<string>>): ProductMetafieldValue {
+  const variantRuleIds: Record<string, string[]> = {};
+  for (const key of [...perVariant.keys()].sort()) {
+    const refs = [...perVariant.get(key)!].filter((ref) => !whole.has(ref)).sort();
+    if (refs.length > 0) variantRuleIds[key] = refs;
+  }
+  return { ruleIds: [...whole].sort(), variantRuleIds };
+}
+
+/** Variant count per variant-level ref, largest first (ties: ref asc). */
+function variantRefCounts(perVariant: ReadonlyMap<string, ReadonlySet<string>>, whole: ReadonlySet<string>): [string, number][] {
+  const counts = new Map<string, number>();
+  for (const refs of perVariant.values()) for (const ref of refs) if (!whole.has(ref)) counts.set(ref, (counts.get(ref) ?? 0) + 1);
+  return [...counts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+}
+
+/** Fit one product under the budget (see the header): collapse equivalents, then drop the largest. */
+function fitProduct(
+  whole: Set<string>,
+  perVariant: Map<string, Set<string>>,
+  variantCount: number,
+): ProductRuleEntry {
+  let value = toValue(whole, perVariant);
+  const bytes = utf8Bytes(value);
+  if (bytes <= PRODUCT_METAFIELD_BUDGET_BYTES) return value;
+
+  const collapsedRefs: string[] = [];
+  for (const [ref, count] of variantRefCounts(perVariant, whole)) {
+    if (count !== variantCount) continue;
+    whole.add(ref);
+    collapsedRefs.push(ref);
+  }
+  value = toValue(whole, perVariant);
+  const droppedRefs: string[] = [];
+  for (const [ref] of variantRefCounts(perVariant, whole)) {
+    if (utf8Bytes(value) <= PRODUCT_METAFIELD_BUDGET_BYTES) break;
+    for (const refs of perVariant.values()) refs.delete(ref);
+    droppedRefs.push(ref);
+    value = toValue(whole, perVariant);
+  }
+  return { ...value, oversized: { bytes, collapsedRefs: collapsedRefs.sort(), droppedRefs: droppedRefs.sort() } };
 }
 
 interface Scope {
@@ -74,9 +146,10 @@ function scopeOf(target: unknown, ref: string): Scope | null {
  * included, so the sync can clear a stale metafield).
  *  - Every rule is indexed, enabled or not: enabling a rule then needs no product
  *    metafield rewrite (the engine checks `enabled`, schedule, codes…).
- *  - A variant target is listed per variant and never collapsed to the product,
- *    even when every current variant is listed: a variant added later must not
- *    inherit the discount (the sync re-indexes on product changes).
+ *  - A variant target is listed per variant (keyed by numeric id) and not
+ *    collapsed to the product even when every current variant is listed — a
+ *    variant added later must not inherit the discount — unless the product is
+ *    over PRODUCT_METAFIELD_BUDGET_BYTES (then see `oversized`).
  *  - A variant ref already covered product-wide is not repeated.
  *  - A campaign override that patches a rule's target adds campaign-scoped refs
  *    (killed campaigns add nothing).
@@ -111,17 +184,13 @@ export function productRuleIndex(
       }
       for (const variantId of product.variantIds) {
         if (!scope.variantIds.has(variantId)) continue;
-        let refs = perVariant.get(variantId);
-        if (!refs) perVariant.set(variantId, (refs = new Set()));
+        const key = variantKey(variantId);
+        let refs = perVariant.get(key);
+        if (!refs) perVariant.set(key, (refs = new Set()));
         refs.add(scope.ref);
       }
     }
-    const variantRuleIds: Record<string, string[]> = {};
-    for (const variantId of [...perVariant.keys()].sort()) {
-      const refs = [...perVariant.get(variantId)!].filter((ref) => !whole.has(ref)).sort();
-      if (refs.length > 0) variantRuleIds[variantId] = refs;
-    }
-    index.set(product.productId, { ruleIds: [...whole].sort(), variantRuleIds });
+    index.set(product.productId, fitProduct(whole, perVariant, new Set(product.variantIds).size));
   }
   return index;
 }

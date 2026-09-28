@@ -221,3 +221,27 @@ test("segment targeting: an honest 'not available yet', for codes and automatic 
   assert.ok(texts(plan, "cs").includes("Sleva „Věrní“ se neuplatní: cílení na segment zatím není k dispozici."));
   assert.ok(texts(plan, "en").includes("Code VIP is not applied: segment targeting is not available yet."));
 });
+
+// --- fix round 2 -------------------------------------------------------------------------------
+
+test("the admin simulation describes a code rule with the codes actually entered (capped at 64), not a generic 'kódem'", () => {
+  const long = `VIP${"X".repeat(100)}`;
+  const plan = planCart(
+    cartOf([line("L1", 1000_00)], { enteredCodes: ["vip", long] }),
+    payloadOf([orderPct("V", 10, code(["VIP", long]))]),
+  );
+  const rule = plan.rules[0];
+  assert.equal(describeRule(rule.describable, "cs", "CZK"), `10${NBSP}% z objednávky · kódy VIP, ${long.slice(0, 64)}…`);
+  assert.equal(describeRule(rule.describable, "en", "CZK"), `10% off the order · codes VIP, ${long.slice(0, 64)}…`);
+
+  const notEntered = planCart(cartOf([line("L1", 1000_00)]), payloadOf([orderPct("V", 10, code(["VIP"]))]));
+  assert.equal(describeRule(notEntered.rules[0].describable, "cs", "CZK"), `10${NBSP}% z objednávky · kódem`);
+});
+
+test("an automatic rule whose schedule cannot be checked says so", () => {
+  const plan = planCart(
+    cartOf([line("L1", 100_00, 1, ["A"])], { today: undefined }),
+    payloadOf([pct("A", 10, { name: "Zima", schedule: { startsAt: "2026-11-27T00:00:00+01:00" } })]),
+  );
+  assert.ok(texts(plan, "en").includes("“Zima” is not applied: its dates cannot be checked right now."), texts(plan, "en").join("\n"));
+});
