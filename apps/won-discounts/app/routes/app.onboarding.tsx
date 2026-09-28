@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { useLoaderData } from "react-router";
+import { useActionData, useLoaderData } from "react-router";
 
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
@@ -10,43 +10,44 @@ import {
   moveNative,
   readBackupId,
   readNativeIds,
-  readShopContext,
+  readOnboardingForm,
+  saveOnboarding,
   undoMove,
 } from "../lib/ui-actions.server";
-import { buildOverviewProps, OverviewScreen } from "../components/screens/OverviewScreen";
+import type { UiResult } from "../components/model/types";
+import { buildOnboardingProps, OnboardingScreen } from "../components/screens/OnboardingScreen";
 
-// Přehled v1. The screen lives in components/screens/OverviewScreen.tsx so the
-// dev harness renders exactly the same component (audit P2-5). All reads and
-// writes go through app/lib/ui-actions.server.ts (the integration seam), always
-// with the SESSION shop (SEC-2).
+// Onboarding steps 1–3. Revalidated on focus (embed auto-detection).
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
-  const graphql = graphqlFrom(admin);
-  const [{ config, readOnly }, shopContext, signals] = await Promise.all([
+  const [{ config, readOnly }, signals] = await Promise.all([
     loadConfig(db, session.shop),
-    readShopContext(graphql),
     loadAdminSignals({
       shop: session.shop,
       scopes: session.scope ?? "",
       // eslint-disable-next-line no-undef
       apiKey: process.env.SHOPIFY_API_KEY || "",
-      graphql,
+      graphql: graphqlFrom(admin),
     }),
   ]);
-  return buildOverviewProps(config, { readOnly, signals, shopCurrency: shopContext.currencyCode });
+  return buildOnboardingProps(config, { native: signals.native, embed: signals.embed, readOnly });
 };
 
-// "Přesunout" / "Přesunout vše" / "Vrátit zpět" (NativeDiscountsPanel fetcher).
-export const action = async ({ request }: ActionFunctionArgs) => {
+export const action = async ({ request }: ActionFunctionArgs): Promise<UiResult> => {
   const { session } = await authenticate.admin(request);
   const form = await request.formData();
   const intent = form.get("intent");
   if (intent === "move") return moveNative({ shop: session.shop }, readNativeIds(form));
   if (intent === "undo") return undoMove({ shop: session.shop }, readBackupId(form));
-  return { ok: false as const, reason: "invalid" as const, errors: [] };
+  const patch = readOnboardingForm(form);
+  if (!patch) return { ok: false, reason: "invalid", errors: [] };
+  return saveOnboarding(db, session.shop, patch);
 };
 
-export default function Index() {
+export default function Onboarding() {
   const props = useLoaderData<typeof loader>();
-  return <OverviewScreen {...props} />;
+  const result = useActionData<typeof action>();
+  // A successful step save just advances the step (the loader re-reads it); only
+  // refusals are worth a banner here.
+  return <OnboardingScreen {...props} result={result && !result.ok ? result : null} />;
 }

@@ -1,0 +1,204 @@
+import assert from "node:assert/strict";
+import { after, before, test } from "node:test";
+
+import { loadConfig } from "../../app/lib/config.server.ts";
+import {
+  deleteRule,
+  embedStateFromThemes,
+  loadAdminSignals,
+  moveNative,
+  readBackupId,
+  readNativeIds,
+  readOnboardingForm,
+  readShopContext,
+  resolvePlan,
+  runTryCart,
+  saveOnboarding,
+  saveRule,
+  undoMove,
+  type AdminGraphql,
+} from "../../app/lib/ui-actions.server.ts";
+import { FIELD } from "../../app/components/model/rule-form.ts";
+import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
+
+// The admin UI's single server seam (app/lib/ui-actions.server.ts):
+//   SEC-1 — the raw form is validated on the server; refused input writes nothing.
+//   SEC-2 — every write is scoped to the shop the caller passes (the SESSION shop);
+//           a `shop` field in the form is ignored, other shops are never touched.
+//   BILL-1 — Pro fields are not writable without server-derived entitlement.
+//   Not-wired seams answer honestly instead of pretending.
+
+const SHOP = "ui-actions.myshopify.com";
+const OTHER = "other.myshopify.com";
+const OPTS = { ruleId: "new", timezone: "Europe/Prague", shopCurrency: "CZK", pro: false };
+
+let db: TestDatabase;
+before(() => {
+  db = createTestDatabase("ui-actions");
+});
+after(async () => {
+  await db.drop();
+});
+
+function form(entries: [string, string][]): FormData {
+  const fd = new FormData();
+  for (const [k, v] of entries) fd.append(k, v);
+  return fd;
+}
+
+const valid: [string, string][] = [
+  [FIELD.name, "Podzimní sleva"],
+  [FIELD.enabled, "on"],
+  [FIELD.valueKind, "percentage"],
+  [FIELD.percent, "10"],
+  [FIELD.target, "order"],
+  [FIELD.method, "automatic"],
+];
+
+test("saveRule creates a rule for the given shop only; a `shop` form field is ignored (SEC-2)", async () => {
+  const { result, ruleId } = await saveRule(db.prisma, SHOP, form([...valid, ["shop", OTHER], ["id", "evil"]]), OPTS);
+  assert.equal(result.ok, true);
+  assert.ok(ruleId && ruleId !== "evil" && /^r_[a-z0-9]+$/.test(ruleId));
+
+  const mine = (await loadConfig(db.prisma, SHOP)).config.modules.codes.rules;
+  assert.deepEqual(mine.map((r) => [r.id, r.name, r.value]), [[ruleId, "Podzimní sleva", { kind: "percentage", percent: 10 }]]);
+  const theirs = (await loadConfig(db.prisma, OTHER)).config.modules.codes.rules;
+  assert.deepEqual(theirs, [], "the other shop is untouched");
+});
+
+test("saveRule refuses invalid input on the server and writes nothing (SEC-1)", async () => {
+  const before = (await loadConfig(db.prisma, SHOP)).config.modules.codes.rules.length;
+  const bad = valid.map(([k, v]) => [k, k === FIELD.percent ? "500" : k === FIELD.method ? "magic" : v] as [string, string]);
+  const { result, ruleId } = await saveRule(db.prisma, SHOP, form(bad), OPTS);
+  assert.equal(ruleId, null);
+  assert.equal(result.ok, false);
+  assert.ok(!result.ok && result.reason === "invalid");
+  assert.deepEqual(
+    !result.ok && result.reason === "invalid" ? result.errors.map((e) => e.field).sort() : [],
+    ["method", "percent"],
+  );
+  assert.equal((await loadConfig(db.prisma, SHOP)).config.modules.codes.rules.length, before);
+});
+
+test("saveRule edits by the URL id; an unknown id is not_found; Pro fields need entitlement (BILL-1)", async () => {
+  const [rule] = (await loadConfig(db.prisma, SHOP)).config.modules.codes.rules;
+  const edited = valid.map(([k, v]) => [k, k === FIELD.name ? "Přejmenovaná" : v] as [string, string]);
+  const proFields: [string, string][] = [[FIELD.markets, "cz"]];
+
+  const res = await saveRule(db.prisma, SHOP, form([...edited, ...proFields]), { ...OPTS, ruleId: rule.id });
+  assert.equal(res.result.ok, true);
+  const after = (await loadConfig(db.prisma, SHOP)).config.modules.codes.rules;
+  assert.equal(after.length, 1);
+  assert.equal(after[0].name, "Přejmenovaná");
+  assert.equal(after[0].targeting, undefined, "no market targeting without Pro");
+
+  const missing = await saveRule(db.prisma, SHOP, form(valid), { ...OPTS, ruleId: "r_does_not_exist" });
+  assert.deepEqual(missing.result, { ok: false, reason: "not_found" });
+});
+
+test("deleteRule removes the rule of this shop only", async () => {
+  const other = await saveRule(db.prisma, OTHER, form(valid), OPTS);
+  const [rule] = (await loadConfig(db.prisma, SHOP)).config.modules.codes.rules;
+  // The other shop's rule id cannot be deleted through this shop.
+  assert.deepEqual(await deleteRule(db.prisma, SHOP, other.ruleId ?? ""), { ok: false, reason: "not_found" });
+  assert.deepEqual(await deleteRule(db.prisma, SHOP, rule.id), { ok: true, message: "deleted" });
+  assert.deepEqual((await loadConfig(db.prisma, SHOP)).config.modules.codes.rules, []);
+  assert.equal((await loadConfig(db.prisma, OTHER)).config.modules.codes.rules.length, 1);
+});
+
+test("onboarding: only known goals are stored (comma-joined choice list or separate values)", async () => {
+  const patch = readOnboardingForm(form([["intent", "goals"], ["goals", "rewards,bogus"], ["goals", "migrate"]]));
+  assert.deepEqual(patch, { goals: ["rewards", "migrate"], step: 2 });
+  assert.equal(readOnboardingForm(form([["intent", "step"], ["step", "9"]])), null);
+  assert.deepEqual(await saveOnboarding(db.prisma, SHOP, patch ?? {}), { ok: true, message: "saved" });
+  const { config } = await loadConfig(db.prisma, SHOP);
+  assert.deepEqual(config.onboarding, { goals: ["rewards", "migrate"], step: 2 });
+});
+
+test("not-wired seams say so and change nothing; their inputs are validated", async () => {
+  assert.deepEqual(readNativeIds(form([["nativeId", "gid://shopify/DiscountCodeNode/1"], ["nativeId", "gid://evil/1"]])), [
+    "gid://shopify/DiscountCodeNode/1",
+  ]);
+  assert.equal(readBackupId(form([["backupId", "../../etc"]])), null);
+  assert.deepEqual(await moveNative({ shop: SHOP }, ["gid://shopify/DiscountCodeNode/1"]), {
+    ok: false,
+    reason: "not_wired",
+    what: "move",
+  });
+  assert.deepEqual(await undoMove({ shop: SHOP }, "bk_1"), { ok: false, reason: "not_wired", what: "undo" });
+  const cart = await runTryCart({ shop: SHOP }, { lines: [], currency: "CZK", codes: [], date: "2026-09-28", locale: "cs" });
+  assert.deepEqual(cart, { result: { ok: false, reason: "not_wired", what: "tryCart" }, plan: null });
+});
+
+test("BILL-1: without a verified subscription the plan resolves to Free", async () => {
+  assert.deepEqual(await resolvePlan(), { pro: false });
+});
+
+// --- Store signals ------------------------------------------------------------------
+
+const settings = (blocks: Record<string, unknown>) =>
+  `/* Shopify banner comment */\n${JSON.stringify({ current: { blocks } })}`;
+const EMBED = "shopify://apps/won-discounts/blocks/won_discounts_embed/01a0e790-ee4d-733c-ac8e-14c7baa03fff";
+
+test("embed detection: by block handle (no UUID), the live theme decides", () => {
+  assert.equal(embedStateFromThemes([{ role: "MAIN", settings: settings({ a: { type: EMBED, disabled: false } }) }]), "on");
+  assert.equal(embedStateFromThemes([{ role: "MAIN", settings: settings({ a: { type: EMBED, disabled: true } }) }]), "off");
+  assert.equal(embedStateFromThemes([{ role: "MAIN", settings: settings({}) }]), "off", "never activated");
+  assert.equal(
+    embedStateFromThemes([
+      { role: "MAIN", settings: settings({}) },
+      { role: "UNPUBLISHED", settings: settings({ a: { type: EMBED } }) },
+    ]),
+    "draft_only",
+  );
+  assert.equal(embedStateFromThemes([{ role: "MAIN", settings: null }]), "unknown");
+  assert.equal(embedStateFromThemes([]), "unknown");
+  // Another app's embed with a similar name is not ours.
+  assert.equal(
+    embedStateFromThemes([{ role: "MAIN", settings: settings({ a: { type: "shopify://apps/won-toasts/blocks/won_toasts_embed/x" } }) }]),
+    "off",
+  );
+});
+
+function fakeGraphql(responses: Record<string, unknown>): AdminGraphql {
+  return async (query) => {
+    const name = /query (\w+)/.exec(query)?.[1] ?? "";
+    if (!(name in responses)) throw new Error(`unexpected query ${name}`);
+    return responses[name];
+  };
+}
+
+test("loadAdminSignals: embed read with read_themes, activation deep link, the rest not wired", async () => {
+  const graphql = fakeGraphql({
+    WonDiscountsThemes: { data: { themes: { nodes: [{ id: "gid://shopify/OnlineStoreTheme/1", role: "MAIN" }] } } },
+    WonDiscountsThemeSettings: {
+      data: { node: { files: { nodes: [{ body: { content: settings({ a: { type: EMBED } }) } }] } } },
+    },
+  });
+  const signals = await loadAdminSignals({ shop: SHOP, scopes: "write_discounts,read_themes", apiKey: "abc123", graphql });
+  assert.deepEqual(signals.embed, {
+    state: "on",
+    activateUrl: `https://${SHOP}/admin/themes/current/editor?context=apps&activateAppId=abc123/won_discounts_embed`,
+  });
+  assert.deepEqual(signals.sync, { state: "not_wired" });
+  assert.deepEqual(signals.native, { state: "not_wired" });
+  assert.deepEqual(signals.checkout, { state: "not_wired" });
+
+  const noScope = await loadAdminSignals({ shop: SHOP, scopes: "write_discounts", apiKey: "abc123", graphql });
+  assert.equal(noScope.embed.state, "no_scope");
+  const outage = await loadAdminSignals({
+    shop: SHOP,
+    scopes: "read_themes",
+    apiKey: "abc123",
+    graphql: async () => {
+      throw new Error("down");
+    },
+  });
+  assert.equal(outage.embed.state, "unknown");
+});
+
+test("readShopContext degrades to nulls (REL-1)", async () => {
+  const ok = fakeGraphql({ WonDiscountsShopContext: { data: { shop: { currencyCode: "CZK", ianaTimezone: "Europe/Prague" } } } });
+  assert.deepEqual(await readShopContext(ok), { currencyCode: "CZK", timezone: "Europe/Prague" });
+  assert.deepEqual(await readShopContext(async () => ({ errors: [{}] })), { currencyCode: null, timezone: null });
+});
