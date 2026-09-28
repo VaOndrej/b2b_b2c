@@ -1,8 +1,9 @@
 // Store-status wording (Přehled, onboarding): each signal state → one honest
 // sentence (§11d state at rest, §12 never claims more than is known).
 
+import { formatDate } from "@won/core/discounts/describe";
+
 import type { MessageKey, Translator } from "../../i18n";
-import { formatDateTime } from "./money";
 import type { AdminSignals, CheckoutView, EmbedState, SyncView } from "./types";
 
 /** What the app shows while sync / native detection / checkout checks are not connected yet. */
@@ -12,6 +13,13 @@ export const NOT_WIRED_SIGNALS: AdminSignals = {
   sync: { state: "not_wired" },
   native: { state: "not_wired" },
 };
+
+/** "2026-09-28T16:20:00…" → "28. 9. 2026 16:20" (the time as written, shop-local from the sync). */
+export function formatDateTime(iso: string, locale: "cs" | "en"): string {
+  const time = /T(\d{2}:\d{2})/.exec(iso)?.[1];
+  const date = formatDate(iso.slice(0, 10), locale);
+  return time ? `${date} ${time}` : date;
+}
 
 const EMBED_KEYS: Record<EmbedState, MessageKey> = {
   on: "overview.embed.on",

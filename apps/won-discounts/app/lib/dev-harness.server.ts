@@ -39,13 +39,20 @@ export const DEV_NOW = new Date("2026-09-28T12:00:00Z");
 const DEV_MARKETS = [
   { handle: "cz", currency: "CZK", enabled: true },
   { handle: "sk", currency: "EUR", enabled: true },
+  // A market that is switched off: rules may still hold HUF values (kept, shown read-only).
+  { handle: "hu", currency: "HUF", enabled: false },
 ];
 
+/** Shopify market names (read_markets) for the fixture handles. */
+export const DEV_MARKET_NAMES: Readonly<Record<string, string>> = { cz: "Česko", sk: "Slovensko", hu: "Maďarsko" };
+
 /**
- * Přehled fixture: the real defaults, two markets (CZK, EUR) and a realistic set
- * of rules — an automatic %, a code rule with a CZK-only minimum, a complete
- * fixed CZK/EUR rule, a fixed rule missing its EUR value (warning), and a
- * switched-off free-shipping rule — run through the real reader.
+ * Přehled fixture: the real defaults, two enabled markets (CZK, EUR) plus a
+ * switched-off one (HUF), and a realistic set of rules — an automatic %, a code
+ * rule with a CZK-only minimum, a complete fixed CZK/EUR rule (with a kept HUF
+ * value), a scheduled fixed rule missing its EUR value (warning), a switched-off
+ * free-shipping rule and a segment-targeted rule checkout cannot evaluate yet —
+ * run through the real reader.
  */
 export const DEV_OVERVIEW_FIXTURE: WonDiscountsConfig = readStoredConfig({
   ...DEFAULT_CONFIG,
@@ -78,7 +85,7 @@ export const DEV_OVERVIEW_FIXTURE: WonDiscountsConfig = readStoredConfig({
           enabled: true,
           name: "Sleva 200 Kč / 8 €",
           method: "automatic",
-          value: { kind: "fixed", amount: { CZK: 200_00, EUR: 8_00 } },
+          value: { kind: "fixed", amount: { CZK: 200_00, EUR: 8_00, HUF: 3000_00 } },
           target: { kind: "order" },
           minimum: { subtotal: { CZK: 1500_00, EUR: 60_00 } },
         },
@@ -99,6 +106,15 @@ export const DEV_OVERVIEW_FIXTURE: WonDiscountsConfig = readStoredConfig({
           value: { kind: "freeShipping" },
           target: { kind: "shipping" },
           minimum: { subtotal: { CZK: 1500_00, EUR: 60_00 } },
+        },
+        {
+          id: "dev-fixture-6",
+          enabled: true,
+          name: "Stálí zákazníci 5 %",
+          method: "automatic",
+          value: { kind: "percentage", percent: 5 },
+          target: { kind: "order" },
+          targeting: { segments: ["gid://shopify/Segment/1"] },
         },
       ],
     },

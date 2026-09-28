@@ -31,11 +31,13 @@ import { resolveEntitlement } from "@won/app-kit/entitlement";
 
 import type { PrismaClient } from "../generated/prisma/client";
 import { EMBED_BLOCK_HANDLE, embedActivationUrl } from "../components/model/embed";
-import { currencyCodes, currencyViews, marketHandles } from "../components/model/markets";
+import { BACKUP_ID, NATIVE_DISCOUNT_GID } from "../components/model/ids";
+import { currencyCodes, currencyViews, type MarketNames } from "../components/model/markets";
 import { readRuleForm, newRuleId, type FormDataLike } from "../components/model/rule-form";
 import { NOT_WIRED_SIGNALS } from "../components/model/signals";
 import { readTryCartForm, type TryCartInput } from "../components/model/try-cart-form";
-import type { AdminSignals, CartPlanView, EmbedState, UiResult } from "../components/model/types";
+import type { AdminSignals, CartPlanView, CodeRuleLimit, EmbedState, UiFailure, UiResult } from "../components/model/types";
+import { activeCodeRules, MAX_ACTIVE_CODE_RULES, SHOPIFY_MAX_ACTIVE_DISCOUNT_FUNCTIONS } from "./config-guards.server";
 import { loadConfig, saveConfig, type SaveConfigResult } from "./config.server";
 
 /** Admin GraphQL as a plain function (`admin.graphql` adapted by the route; a fake in tests). */
@@ -79,6 +81,59 @@ export async function readShopContext(graphql: AdminGraphql): Promise<ShopContex
   } catch {
     return { currencyCode: null, timezone: null };
   }
+}
+
+// --- Short-lived per-shop cache (theme and market reads) ----------------------------------
+
+/** How long a theme / market read is reused (PERF-1, API-3): a Přehled reload doesn't re-read themes. */
+export const SIGNAL_CACHE_TTL_MS = 60_000;
+
+const signalCache = new Map<string, { at: number; value: unknown }>();
+
+async function cached<T>(key: string, load: () => Promise<T>, opts: { fresh?: boolean; now?: number } = {}): Promise<T> {
+  const now = opts.now ?? Date.now();
+  const hit = signalCache.get(key);
+  if (!opts.fresh && hit && now - hit.at < SIGNAL_CACHE_TTL_MS) return hit.value as T;
+  const value = await load();
+  signalCache.set(key, { at: now, value });
+  if (signalCache.size > 5000) signalCache.delete(signalCache.keys().next().value as string);
+  return value;
+}
+
+/** Test hook: forget every cached read. */
+export function clearSignalCache(): void {
+  signalCache.clear();
+}
+
+/**
+ * The shop's market names by handle (read_markets), so the admin shows "Česko",
+ * not "cz" (§4c). Degrades to {} — the UI then falls back to the handle.
+ */
+export async function readMarketNames(graphql: AdminGraphql, shop: string): Promise<MarketNames> {
+  return cached(`markets:${shop}`, async () => {
+    try {
+      const json = (await graphql(`#graphql
+        query WonDiscountsMarketNames { markets(first: 50) { nodes { handle name } } }`)) as {
+        data?: { markets?: { nodes?: { handle?: unknown; name?: unknown }[] } };
+      };
+      const out: Record<string, string> = {};
+      for (const node of json?.data?.markets?.nodes ?? []) {
+        if (typeof node?.handle === "string" && typeof node?.name === "string" && node.name.trim()) out[node.handle] = node.name;
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  });
+}
+
+/** Active code rules vs. the cap, for the list, the editor and Tarif (shown before a save refuses). */
+export function codeRuleLimit(config: WonDiscountsConfig): CodeRuleLimit {
+  return {
+    active: activeCodeRules(config).length,
+    limit: MAX_ACTIVE_CODE_RULES,
+    shopifyLimit: SHOPIFY_MAX_ACTIVE_DISCOUNT_FUNCTIONS,
+  };
 }
 
 // --- Store signals -------------------------------------------------------------------------
@@ -136,13 +191,18 @@ async function detectEmbed(graphql: AdminGraphql): Promise<EmbedState> {
     if (!Array.isArray(nodes)) return "unknown";
     const themes = nodes
       .filter((n): n is { id: string; role: string } => typeof n?.id === "string" && typeof n?.role === "string")
-      .filter((n) => THEME_ROLES_READ.has(n.role.toUpperCase()))
-      .sort((a, b) => (a.role.toUpperCase() === "MAIN" ? -1 : b.role.toUpperCase() === "MAIN" ? 1 : 0))
-      .slice(0, MAX_THEMES_READ);
-    const withSettings = await Promise.all(
-      themes.map(async (th) => ({ role: th.role, settings: await readThemeSettings(graphql, th.id) })),
+      .filter((n) => THEME_ROLES_READ.has(n.role.toUpperCase()));
+    const main = themes.find((th) => th.role.toUpperCase() === "MAIN");
+    if (!main) return "unknown";
+    const mainRead = { role: main.role, settings: await readThemeSettings(graphql, main.id) };
+    const mainState = embedStateFromThemes([mainRead]);
+    // Drafts only matter when the live theme is off (API-3: fewer reads).
+    if (mainState !== "off") return mainState;
+    const drafts = themes.filter((th) => th !== main).slice(0, MAX_THEMES_READ - 1);
+    const draftReads = await Promise.all(
+      drafts.map(async (th) => ({ role: th.role, settings: await readThemeSettings(graphql, th.id) })),
     );
-    return embedStateFromThemes(withSettings);
+    return embedStateFromThemes([mainRead, ...draftReads]);
   } catch {
     return "unknown";
   }
@@ -158,22 +218,65 @@ export async function loadAdminSignals(ctx: {
   scopes: string;
   apiKey: string;
   graphql: AdminGraphql;
+  /** Skip the short cache (onboarding step 3 re-checks after the theme editor). */
+  fresh?: boolean;
 }): Promise<AdminSignals> {
   const activateUrl = embedActivationUrl(ctx.shop, ctx.apiKey);
   const canReadThemes = ctx.scopes.split(",").map((s) => s.trim()).includes("read_themes");
-  const state: EmbedState = canReadThemes ? await detectEmbed(ctx.graphql) : "no_scope";
+  const state: EmbedState = canReadThemes
+    ? await cached(`embed:${ctx.shop}`, () => detectEmbed(ctx.graphql), { fresh: ctx.fresh })
+    : "no_scope";
   return { ...NOT_WIRED_SIGNALS, embed: { state, activateUrl } };
+}
+
+// --- One call per loader ------------------------------------------------------------------
+
+export interface AdminReads {
+  shopContext: ShopContext;
+  marketNames: MarketNames;
+  /** Only when asked for (Přehled, onboarding). */
+  signals: AdminSignals | null;
+}
+
+/**
+ * Everything an admin loader reads from Shopify besides the config, in
+ * parallel, each degrading on its own (REL-1): shop currency + zone, market
+ * names, and (when asked) the store signals. `fresh` bypasses the short cache.
+ */
+export async function readAdminContext(ctx: {
+  shop: string;
+  scopes: string;
+  apiKey: string;
+  graphql: AdminGraphql;
+  signals?: boolean;
+  fresh?: boolean;
+}): Promise<AdminReads> {
+  const [shopContext, marketNames, signals] = await Promise.all([
+    readShopContext(ctx.graphql),
+    readMarketNames(ctx.graphql, ctx.shop),
+    ctx.signals ? loadAdminSignals(ctx) : Promise.resolve(null),
+  ]);
+  return { shopContext, marketNames, signals };
 }
 
 // --- Config writes -------------------------------------------------------------------------
 
-function saveFailure(res: Exclude<SaveConfigResult, { ok: true }>): UiResult {
-  if (res.reason === "function_config_too_large") {
-    return { ok: false, reason: "function_config_too_large", bytes: res.bytes, budget: res.budget };
+/** Every refusal saveConfig can give → the UI's typed failure (each has its own copy + fix, Notice.tsx). */
+export function uiFailureFromSave(res: Exclude<SaveConfigResult, { ok: true }>): UiFailure {
+  switch (res.reason) {
+    case "too_many_code_rules":
+      return { ok: false, reason: "too_many_code_rules", count: res.count, limit: res.limit, shopifyLimit: SHOPIFY_MAX_ACTIVE_DISCOUNT_FUNCTIONS };
+    case "code_hash_collision":
+      return { ok: false, reason: "code_hash_collision", codes: res.collisions.map((group) => [...group]) };
+    case "function_config_too_large":
+      return { ok: false, reason: "function_config_too_large", bytes: res.bytes, budget: res.budget };
+    case "config_too_large":
+      return { ok: false, reason: "config_too_large", bytes: res.bytes, limit: res.limit };
+    case "newer_schema":
+      return { ok: false, reason: "newer_schema" };
+    default:
+      return { ok: false, reason: "error" };
   }
-  if (res.reason === "config_too_large") return { ok: false, reason: "config_too_large", bytes: res.bytes, limit: res.limit };
-  if (res.reason === "newer_schema") return { ok: false, reason: "newer_schema" };
-  return { ok: false, reason: "error" };
 }
 
 async function writeConfig(db: PrismaClient, shop: string, next: WonDiscountsConfig): Promise<SaveConfigResult> {
@@ -220,7 +323,7 @@ export async function saveRule(
     timezone: opts.timezone,
     pro: opts.pro,
     existing,
-    marketHandles: marketHandles(config.markets),
+    marketHandles: config.markets.filter((m) => m.enabled).map((m) => m.handle),
     otherRules: rules.filter((r) => r.id !== id).map((r) => ({ id: r.id, name: r.name, codes: r.codes })),
   });
   if (parsed.errors.length > 0) return { result: { ok: false, reason: "invalid", errors: parsed.errors }, ruleId: null };
@@ -228,7 +331,7 @@ export async function saveRule(
   const nextRules = existing ? rules.map((r) => (r.id === id ? parsed.rule : r)) : [...rules, parsed.rule];
   const index = nextRules.findIndex((r) => r.id === id);
   const res = await writeConfig(db, shop, { ...config, modules: { ...config.modules, codes: { rules: nextRules } } });
-  if (!res.ok) return { result: saveFailure(res), ruleId: null };
+  if (!res.ok) return { result: uiFailureFromSave(res), ruleId: null };
   const prefix = `modules.codes.rules[${index}]`;
   const fixes = res.issues.filter((i) => i.path === prefix || i.path.startsWith(`${prefix}.`)).map((i) => i.message);
   return { result: { ok: true, message: "saved", ...(fixes.length > 0 ? { fixes } : {}) }, ruleId: id };
@@ -244,7 +347,7 @@ export async function deleteRule(db: PrismaClient, shop: string, ruleId: string)
     ...config,
     modules: { ...config.modules, codes: { rules: rules.filter((r) => r.id !== ruleId) } },
   });
-  return res.ok ? { ok: true, message: "deleted" } : saveFailure(res);
+  return res.ok ? { ok: true, message: "deleted" } : uiFailureFromSave(res);
 }
 
 export type OnboardingPatch = { goals?: OnboardingGoal[]; step?: number };
@@ -277,17 +380,14 @@ export async function saveOnboarding(db: PrismaClient, shop: string, patch: Onbo
     step: patch.step ?? config.onboarding.step,
   };
   const res = await writeConfig(db, shop, { ...config, onboarding });
-  return res.ok ? { ok: true, message: "saved" } : saveFailure(res);
+  return res.ok ? { ok: true, message: "saved" } : uiFailureFromSave(res);
 }
 
 // --- Not wired yet: native discounts + cart engine ---------------------------------------
 
-const NATIVE_GID = /^gid:\/\/shopify\/(?:DiscountNode|DiscountCodeNode|DiscountAutomaticNode)\/\d{1,20}$/;
-const BACKUP_ID = /^[A-Za-z0-9_-]{1,64}$/;
-
 /** Native discount ids from a Move form: only Shopify discount node GIDs, at most 50. */
 export function readNativeIds(form: FormDataLike): string[] {
-  const ids = form.getAll("nativeId").filter((v): v is string => typeof v === "string" && NATIVE_GID.test(v));
+  const ids = form.getAll("nativeId").filter((v): v is string => typeof v === "string" && NATIVE_DISCOUNT_GID.test(v));
   return [...new Set(ids)].slice(0, 50);
 }
 
@@ -303,14 +403,14 @@ export function readBackupId(form: FormDataLike): string | null {
  */
 export async function moveNative(ctx: { shop: string }, nativeIds: readonly string[]): Promise<UiResult> {
   void ctx;
-  if (nativeIds.length === 0) return { ok: false, reason: "invalid", errors: [] };
+  if (nativeIds.length === 0) return { ok: false, reason: "nothing_selected" };
   return { ok: false, reason: "not_wired", what: "move" };
 }
 
 /** Undo a move from its backup. Integration: app/lib/native undoMove. */
 export async function undoMove(ctx: { shop: string }, backupId: string | null): Promise<UiResult> {
   void ctx;
-  if (!backupId) return { ok: false, reason: "invalid", errors: [] };
+  if (!backupId) return { ok: false, reason: "bad_request" };
   return { ok: false, reason: "not_wired", what: "undo" };
 }
 

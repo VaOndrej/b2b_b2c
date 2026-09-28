@@ -23,7 +23,9 @@ export function SettingsScreen({ currencies }: SettingsScreenProps) {
           summary={
             withMarkets.length === 0
               ? t("settings.markets.none")
-              : t("settings.markets.list", { currencies: tr.list(withMarkets.map((c) => `${c.code} (${c.markets.join(", ")})`)) })
+              : t("settings.markets.list", {
+                  currencies: tr.list(withMarkets.map((c) => `${c.code} (${c.markets.map((m) => m.name).join(", ")})`)),
+                })
           }
           hint={t("settings.language")}
         />

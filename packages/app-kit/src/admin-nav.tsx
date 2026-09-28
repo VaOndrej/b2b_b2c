@@ -33,12 +33,24 @@ export type WonNavItem = {
  *       { to: "/app/plan", label: "Plan" },
  *     ]}
  *   />
+ *
+ * A localized admin passes `homeLabel` (default "Overview").
  */
-export function WonNavMenu({ items }: { items: WonNavItem[] }): ReactElement {
+export function WonNavMenu({
+  items,
+  homeLabel = "Overview",
+}: {
+  items: WonNavItem[];
+  /**
+   * Label of the home link. Defaults to "Overview"; an app whose admin speaks
+   * the merchant's language passes its own (e.g. "Přehled").
+   */
+  homeLabel?: string;
+}): ReactElement {
   return (
     <ui-nav-menu>
       <a href="/app" rel="home">
-        Overview
+        {homeLabel}
       </a>
       {items.map((item) => (
         <a key={item.to} href={item.to}>

@@ -7,14 +7,15 @@
 import { useState } from "react";
 import { useFetcher } from "react-router";
 
+import { formatDate } from "@won/core/discounts/describe";
+
 import { useT } from "../i18n/context";
 import type { Translator } from "../i18n";
 import { MoveDialog } from "./MoveDialog";
-import { formatDate } from "./model/money";
 import type { NativeBlockedReason, NativeDiscountView, NativeView, UiResult } from "./model/types";
+import { boolAttr } from "./shell/attrs";
 import { Notice } from "./shell/Notice";
-import { WonRow } from "./shell/WonSection";
-import { WON_MUTED } from "./shell/tokens";
+import { RowNote, WonRow } from "./shell/WonSection";
 
 const BLOCKED_KEYS: Record<NativeBlockedReason, "overview.native.blocked.bxgy" | "overview.native.blocked.app" | "overview.native.blocked.other"> = {
   bxgy: "overview.native.blocked.bxgy",
@@ -63,7 +64,7 @@ function NativeList({ native, mode }: { native: Extract<NativeView, { state: "ok
       variant={primary ? "primary" : "secondary"}
       commandFor={DIALOG_ID}
       command="--show"
-      disabled={busy || undefined}
+      disabled={boolAttr(busy)}
       onClick={() => setPending(items)}
     >
       {label}
@@ -81,9 +82,7 @@ function NativeList({ native, mode }: { native: Extract<NativeView, { state: "ok
               action={mode === "each" && d.movable ? moveButton([d], tr.t("overview.native.move")) : undefined}
             >
               <s-text type="strong">{d.title}</s-text>
-              <div style={{ fontSize: 12.5, color: WON_MUTED, marginTop: 2 }}>
-                {d.movable ? describeNative(d, tr) : tr.t(BLOCKED_KEYS[d.blockedReason ?? "other"])}
-              </div>
+              <RowNote>{d.movable ? describeNative(d, tr) : tr.t(BLOCKED_KEYS[d.blockedReason ?? "other"])}</RowNote>
             </WonRow>
           ))}
         </div>
@@ -101,15 +100,13 @@ function NativeList({ native, mode }: { native: Extract<NativeView, { state: "ok
             <WonRow
               key={m.backupId}
               action={
-                <s-button variant="tertiary" disabled={busy || undefined} onClick={() => submit("undo", [m.backupId])}>
+                <s-button variant="tertiary" disabled={boolAttr(busy)} onClick={() => submit("undo", [m.backupId])}>
                   {tr.t("overview.native.undo")}
                 </s-button>
               }
             >
               <s-text>{m.title}</s-text>
-              <div style={{ fontSize: 12.5, color: WON_MUTED, marginTop: 2 }}>
-                {tr.t("overview.native.movedAt", { date: formatDate(m.movedAt, tr.locale) })}
-              </div>
+              <RowNote>{tr.t("overview.native.movedAt", { date: formatDate(m.movedAt.slice(0, 10), tr.locale) })}</RowNote>
             </WonRow>
           ))}
         </div>

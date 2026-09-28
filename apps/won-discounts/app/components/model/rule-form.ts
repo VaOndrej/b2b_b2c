@@ -20,9 +20,11 @@ import {
   type DiscountValueKind,
 } from "@won/core/discounts/config";
 
+import { fromMinorUnits, toMinorUnits } from "@won/core/discounts/money";
+
 import { translator, type Locale } from "../../i18n";
-import { scheduleEndDay } from "./describe";
-import { minorToInput, parseMoneyInput } from "./money";
+import { ruleDays, writtenDays } from "./describe";
+import { COLLECTION_GID, PRODUCT_GID, VARIANT_GID, splitCodes } from "./ids";
 import type { FieldError } from "./types";
 
 export const NAME_MAX = 200;
@@ -48,7 +50,27 @@ export const FIELD = {
   oncePerCustomer: "oncePerCustomer",
   markets: "markets",
   combinesWith: "combinesWith",
+  /** A stored value in a currency whose market is off: kept unless listed here (§14a). */
+  dropCurrency: "dropCurrency",
 } as const;
+
+/**
+ * What a merchant typed ("100", "100,50", "1 000.5") in `currency` → minor units
+ * via the engine's own converter. Empty → null ("no value", not zero); negative
+ * or malformed → NaN (the form reports it).
+ */
+export function parseMoneyInput(raw: string, currency: string): number | null {
+  const text = raw.replace(/[\s\u00a0]/g, "").replace(",", ".");
+  if (text === "") return null;
+  const minor = toMinorUnits(text, currency);
+  return minor === null ? Number.NaN : minor;
+}
+
+/** Minor units → the editable field value ("100" or "100.5"). */
+export function minorToInput(minor: number, currency: string): string {
+  const text = fromMinorUnits(minor, currency);
+  return text.includes(".") ? text.replace(/\.?0+$/, "") : text;
+}
 
 export interface FormDataLike {
   get(name: string): FormDataEntryValue | null;
@@ -78,9 +100,6 @@ export interface RuleFormResult {
   errors: FieldError[];
 }
 
-const PRODUCT_GID = /^gid:\/\/shopify\/Product\/\d{1,20}$/;
-const VARIANT_GID = /^gid:\/\/shopify\/ProductVariant\/\d{1,20}$/;
-const COLLECTION_GID = /^gid:\/\/shopify\/Collection\/\d{1,20}$/;
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const INT_RE = /^\d{1,9}$/;
 
@@ -164,15 +183,6 @@ export function shopToday(timeZone: string | null, now: Date = new Date()): stri
   return now.toISOString().slice(0, 10);
 }
 
-function splitCodes(raw: string): string[] {
-  const out: string[] = [];
-  for (const part of raw.split(/[\n,;]+/)) {
-    const code = part.trim().toUpperCase();
-    if (code && !out.includes(code)) out.push(code);
-  }
-  return out;
-}
-
 export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleFormResult {
   const errors: FieldError[] = [];
   const err = (field: string, key: FieldError["key"], params?: FieldError["params"]) => errors.push({ field, key, params });
@@ -184,6 +194,14 @@ export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleForm
     form.getAll(name).filter((v): v is string => typeof v === "string");
   const checked = (name: string) => ["on", "true", "1"].includes(str(name));
   const existing = ctx.existing ?? null;
+  const dropped = new Set(all(FIELD.dropCurrency).map((c) => c.trim().toUpperCase()));
+  const keptOutside = (stored: Readonly<Record<string, number>> | undefined): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const [c, minor] of Object.entries(stored ?? {})) {
+      if (!ctx.currencies.includes(c) && !dropped.has(c) && typeof minor === "number") out[c] = minor;
+    }
+    return out;
+  };
 
   // Name
   const name = str(FIELD.name).trim().slice(0, NAME_MAX);
@@ -212,10 +230,14 @@ export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleForm
       amount[currency] = minor;
     }
     if (!invalid && Object.keys(amount).length === 0) err("amount", "editor.error.amountNone");
+    // Values in currencies whose market is off are not form fields; they stay
+    // stored unless the merchant removes them explicitly (never a silent drop).
+    if (existing?.value.kind === "fixed") Object.assign(amount, keptOutside(existing.value.amount));
     value = { kind: "fixed", amount };
   } else {
+    // "Zadej 1 až 100 %": the copy and the parser agree (decimals like 12,5 are fine).
     const percent = Number(str(FIELD.percent).trim().replace(",", "."));
-    const valid = str(FIELD.percent).trim() !== "" && Number.isFinite(percent) && percent > 0 && percent <= 100;
+    const valid = str(FIELD.percent).trim() !== "" && Number.isFinite(percent) && percent >= 1 && percent <= 100;
     if (!valid) err(FIELD.percent, "editor.error.percent");
     value = { kind: "percentage", percent: valid ? Math.round(percent * 100) / 100 : 0 };
   }
@@ -274,6 +296,7 @@ export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleForm
     }
     subtotal[currency] = minor;
   }
+  Object.assign(subtotal, keptOutside(existing?.minimum?.subtotal));
   const minQtyRaw = str(FIELD.minQty).trim();
   let quantity = 0;
   if (minQtyRaw !== "") {
@@ -345,11 +368,20 @@ function structuredCloneJson<T>(v: T): T {
 
 // --- Form defaults (rule → field values) ---------------------------------------------
 
+export interface OutsideCurrencyValue {
+  currency: string;
+  /** Stored fixed amount in minor units, if any. */
+  amount: number | null;
+  /** Stored minimum subtotal in minor units, if any. */
+  minimum: number | null;
+}
+
 export interface RuleFormDefaults {
   name: string;
   enabled: boolean;
   valueKind: DiscountValueKind;
   percent: string;
+  /** Editable amounts, one per shop market currency. */
   amounts: Record<string, string>;
   target: DiscountTargetKind;
   productIds: string[];
@@ -365,20 +397,32 @@ export interface RuleFormDefaults {
   oncePerCustomer: boolean;
   markets: string[];
   combinesWith: string[];
+  /** Stored values in currencies whose market is off: shown read-only, kept on save (§14a). */
+  outside: OutsideCurrencyValue[];
   /** The same values keyed by form field name (what a submit of the untouched form sends). */
   fields: Record<string, string | string[] | boolean>;
 }
 
-export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string[]): RuleFormDefaults {
+/**
+ * Field values for a rule. `timezone` (the shop's) turns the stored schedule into
+ * shop-local days exactly like the sync does; without it, the written days.
+ */
+export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string[], timezone?: string | null): RuleFormDefaults {
   const amount = rule.value.kind === "fixed" ? rule.value.amount : {};
   const subtotal = rule.minimum?.subtotal ?? {};
-  const allCurrencies = [...new Set([...currencies, ...Object.keys(amount), ...Object.keys(subtotal)])];
   const amounts: Record<string, string> = {};
   const minimums: Record<string, string> = {};
-  for (const c of allCurrencies) {
+  for (const c of currencies) {
     amounts[c] = typeof amount[c] === "number" ? minorToInput(amount[c], c) : "";
     minimums[c] = typeof subtotal[c] === "number" ? minorToInput(subtotal[c], c) : "";
   }
+  const outsideCodes = [...new Set([...Object.keys(amount), ...Object.keys(subtotal)])].filter((c) => !currencies.includes(c));
+  const outside: OutsideCurrencyValue[] = outsideCodes.map((c) => ({
+    currency: c,
+    amount: typeof amount[c] === "number" ? amount[c] : null,
+    minimum: typeof subtotal[c] === "number" ? subtotal[c] : null,
+  }));
+  const days = timezone === undefined ? writtenDays(rule) : ruleDays(rule, timezone);
   const target = rule.target;
   const d: Omit<RuleFormDefaults, "fields"> = {
     name: rule.name,
@@ -394,12 +438,13 @@ export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string
     codes: (rule.codes ?? []).join("\n"),
     minimums,
     minQty: rule.minimum?.quantity ? String(rule.minimum.quantity) : "",
-    startDate: rule.schedule?.startsAt ? rule.schedule.startsAt.slice(0, 10) : "",
-    endDate: rule.schedule?.endsAt ? scheduleEndDay(rule.schedule.endsAt) : "",
+    startDate: days.startsOn ?? "",
+    endDate: days.endsOn ?? "",
     usageLimit: rule.limits?.usageLimit ? String(rule.limits.usageLimit) : "",
     oncePerCustomer: rule.limits?.oncePerCustomer === true,
     markets: [...(rule.targeting?.markets ?? [])],
     combinesWith: [...(rule.combinesWith?.ruleIds ?? [])],
+    outside,
   };
   const fields: RuleFormDefaults["fields"] = {
     [FIELD.name]: d.name,
@@ -420,7 +465,7 @@ export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string
     [FIELD.markets]: d.markets,
     [FIELD.combinesWith]: d.combinesWith,
   };
-  for (const c of allCurrencies) {
+  for (const c of currencies) {
     fields[FIELD.amount(c)] = amounts[c];
     fields[FIELD.minimum(c)] = minimums[c];
   }

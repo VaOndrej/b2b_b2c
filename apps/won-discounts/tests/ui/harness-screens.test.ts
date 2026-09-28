@@ -11,25 +11,34 @@ import { createStaticHandler, createStaticRouter, StaticRouterProvider } from "r
 // handler, i.e. the same loader → component path as a real request.
 
 const SCREENS: { path: string; expect: RegExp[] }[] = [
-  { path: "overview", expect: [/Co běží/, /Stav v obchodě/, /Zatím nezkontrolováno/, /Konfigurace: verze 1 · 5 pravidel/] },
-  { path: "overview?state=live", expect: [/Upozornění/, /LETO15/, /Přesunout vše \(2\)/, /Vrátit zpět/] },
+  { path: "overview", expect: [/Co běží/, /Stav v obchodě/, /Zatím nezkontrolováno/, /čeká na propsání|čekají na propsání/, /Konfigurace: verze 1 · 6 pravidel/] },
+  {
+    path: "overview?state=live",
+    expect: [/Upozornění/, /LETO15/, /Přesunout vše \(2\)/, /Vrátit zpět/, /Naplánováno od 27\. 11\. 2026/, /3 běží · 1 naplánovaná · 1 neběží/, /cílí na segmenty zákazníků/, /Upravit cílení/],
+  },
   { path: "overview?state=empty", expect: [/Zatím žádná sleva/, /Nastavení za 3 minuty/, /% na vše/, /Uvítací kód/] },
   { path: "overview?readOnly=1", expect: [/Nastavení jen pro čtení/] },
-  { path: "discounts", expect: [/Tvoje slevy/, /Černý pátek/, /v EUR se nenabízí/] },
+  { path: "discounts", expect: [/Tvoje slevy/, /Černý pátek/, /v EUR se nenabízí/, /Aktivní slevy s kódem: 1 z 20/, /nepropsáno do Shopify/] },
+  { path: "discounts?sync=ok", expect: [/6 slev · 3 běží · 1 naplánovaná · 1 neběží · 1 vypnutá/, /Naplánováno od 27\. 11\. 2026/] },
   { path: "discounts?state=empty", expect: [/Vyber recept/] },
-  { path: "rule-editor", expect: [/Částka v CZK/, /Částka v EUR/, /nenabízí se/, /Europe\/Prague/, /Pro · odemknout/] },
-  { path: "rule-editor?rule=dev-fixture-2", expect: [/VIP10/, /1× na zákazníka/] },
-  { path: "rule-editor?rule=new&recipe=welcomeCode", expect: [/Nová sleva/, /VITEJ10/] },
-  { path: "rule-editor?rule=dev-fixture-2&plan=pro", expect: [/Cílení a kombinace/] },
-  { path: "try-cart", expect: [/Mikina Won/, /Kód VIP10 se neuplatní/, /Celkem/] },
+  { path: "rule-editor", expect: [/Částka v CZK/, /Částka v EUR/, /nenabízí se/, /Europe\/Prague/, /Pro · odemknout/, /Naplánováno/, /Připravujeme/] },
+  { path: "rule-editor?rule=dev-fixture-2", expect: [/VIP10/, /1× na zákazníka/, /Aktivní slevy s kódem: 1 z 20/] },
+  { path: "rule-editor?rule=dev-fixture-3", expect: [/HUF/, /Uloženo i pro HUF: 3\u00a0000\u00a0HUF\. Trh je vypnutý, hodnota zůstává\./, /Odebrat hodnotu v HUF/] },
+  { path: "rule-editor?rule=dev-fixture-6", expect: [/Neběží/, /V pokladně se zatím neuplatní, proto sleva neběží/] },
+  { path: "rule-editor?rule=new&recipe=welcomeCode", expect: [/Nová sleva/, /VITEJ10/, /Neuloženo/] },
+  { path: "rule-editor?rule=dev-fixture-2&plan=pro", expect: [/Cílení a kombinace/, /Česko/, /Slovensko/] },
+  { path: "try-cart", expect: [/Mikina Won × 2/, /Kód VIP10 se neuplatní/, /Celkem/, /CZK · Česko/] },
   { path: "try-cart?state=not-wired", expect: [/Výpočet košíku zatím není zapojený/] },
-  { path: "onboarding", expect: [/Co chceš řešit/, /Doprava zdarma nebo dárek/] },
+  { path: "onboarding", expect: [/Co chceš řešit/, /Doprava zdarma nebo dárek/, /na první místo/] },
   { path: "onboarding?step=3&embed=on", expect: [/Zapnuto. Web je připravený/, /Vytvořit první slevu/] },
   { path: "move-dialog", expect: [/Co se stane/, /Co se ztratí/, /Počet dosavadních použití kódu/] },
   { path: "coming-soon?module=outlet", expect: [/Výprodej/, /Přijde v další verzi/, /Přejít na Přehled/] },
-  { path: "plan", expect: [/Tarif/, /Pro · 29 USD/] },
-  { path: "settings", expect: [/Trhy a měny/, /CZK \(cz\)/] },
-  { path: "overview?state=live&locale=en", expect: [/What&#x27;s running|What's running/, /Discounts outside Won/, /Move all \(2\)/] },
+  { path: "plan", expect: [/Tarif/, /Pro · 29 USD/, /nejvýš 20 aktivních s kódem/, /nejvýš 25 slevových funkcí/] },
+  { path: "settings", expect: [/Trhy a měny/, /CZK \(Česko\)/] },
+  {
+    path: "overview?state=live&locale=en",
+    expect: [/What&#x27;s running|What's running/, /Discounts outside Won/, /Move all \(2\)/, /Scheduled from 27 Nov 2026/],
+  },
   { path: "rule-editor?locale=en", expect: [/Amount in EUR/, /not offered/] },
 ];
 
@@ -49,6 +58,9 @@ async function render(path: string): Promise<{ status: number; html: string }> {
   const handler = createStaticHandler(routes);
   const context = await handler.query(new Request(`http://localhost/dev/preview/${path}`));
   if (context instanceof Response) return { status: context.status, html: "" };
+  // A thrown 404 is asserted by status; rendering it would only print React
+  // Router's default ErrorBoundary into the test log.
+  if (context.statusCode !== 200) return { status: context.statusCode, html: "" };
   const router = createStaticRouter(handler.dataRoutes, context);
   const html = renderToString(createElement(StaticRouterProvider, { router, context }));
   return { status: context.statusCode, html };
@@ -65,7 +77,9 @@ for (const screen of SCREENS) {
     const text = html.replace(/<script[\s\S]*?<\/script>/g, "");
     assert.doesNotMatch(text, /\{(n|name|value|currency|rule|currencies|date|count)\}/, `${screen.path}: leftover placeholder`);
     assert.doesNotMatch(text, />[^<]*\bundefined\b[^<]*</, `${screen.path}: "undefined" in text`);
-    assert.doesNotMatch(text, />[^<]*\b(freeShipping|percentage|not_wired|draft_only)\b[^<]*</, `${screen.path}: raw enum in text`);
+    assert.doesNotMatch(text, />[^<]*\b(freeShipping|percentage|not_wired|draft_only|not_synced)\b[^<]*</, `${screen.path}: raw enum in text`);
+    // Copy must not promise what does not exist: no "unlimited", no segments "after connecting".
+    assert.doesNotMatch(text, /neomezeně|unlimited|po napojení/i, `${screen.path}: overclaiming copy`);
   });
 }
 

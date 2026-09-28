@@ -7,8 +7,8 @@
 // Each step is a WonSection whose state line tells the truth when collapsed (§17d);
 // the current step is open. Step 4 (first rule from a recipe) is the editor.
 
-import { useEffect } from "react";
-import { Form, useRevalidator } from "react-router";
+import { useEffect, useRef } from "react";
+import { Form, useNavigate } from "react-router";
 
 import { ONBOARDING_GOALS, type OnboardingGoal, type WonDiscountsConfig } from "@won/core/discounts/config";
 
@@ -19,6 +19,7 @@ import { recipeHref } from "../RecipeGrid";
 import type { RecipeKey } from "../model/rule-form";
 import { embedText } from "../model/signals";
 import type { EmbedView, NativeView, UiResult } from "../model/types";
+import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { WonSection } from "../shell/WonSection";
 
@@ -59,20 +60,27 @@ export function firstRecipe(goals: readonly OnboardingGoal[]): RecipeKey {
   return goals.includes("rewards") ? "freeShipping" : "percentAll";
 }
 
-const on = (b: boolean): true | undefined => (b ? true : undefined);
+const RECHECK_MIN_MS = 3000;
 
 export function OnboardingScreen({ step, goals, native, embed, readOnly, result }: OnboardingScreenProps) {
   const tr = useT();
   const { t } = tr;
   const embedOn = embed.state === "on";
 
-  // "Appka sama pozná, že je zapnutý": re-read the loader when the merchant
-  // returns from the theme editor tab.
-  const revalidator = useRevalidator();
+  // "Appka sama pozná, že je zapnutý": when the merchant comes back from the
+  // theme editor tab, re-read the embed state bypassing the short theme cache
+  // (`?recheck=`). `focus` and `visibilitychange` both fire on a tab switch, so
+  // one re-check per few seconds at most (API-3).
+  const navigate = useNavigate();
+  const lastCheck = useRef(0);
   useEffect(() => {
     if (embedOn || typeof window === "undefined") return;
     const again = () => {
-      if (document.visibilityState === "visible" && revalidator.state === "idle") revalidator.revalidate();
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastCheck.current < RECHECK_MIN_MS) return;
+      lastCheck.current = now;
+      navigate(`?recheck=${now}`, { replace: true, preventScrollReset: true });
     };
     window.addEventListener("focus", again);
     document.addEventListener("visibilitychange", again);
@@ -80,7 +88,7 @@ export function OnboardingScreen({ step, goals, native, embed, readOnly, result 
       window.removeEventListener("focus", again);
       document.removeEventListener("visibilitychange", again);
     };
-  }, [embedOn, revalidator]);
+  }, [embedOn, navigate]);
 
   const goalsSummary =
     goals.length === 0 ? t("onboarding.goals.none") : t("onboarding.goals.picked", { goals: tr.list(goals.map((g) => t(GOAL_KEYS[g]))) });
@@ -114,13 +122,13 @@ export function OnboardingScreen({ step, goals, native, embed, readOnly, result 
               {/* One checklist = one control (§7c calm test), multiple answers allowed. */}
               <s-choice-list name="goals" label={t("onboarding.goals.title")} labelAccessibilityVisibility="exclusive" multiple>
                 {ONBOARDING_GOALS.map((goal) => (
-                  <s-choice key={goal} value={goal} selected={on(goals.includes(goal))}>
+                  <s-choice key={goal} value={goal} selected={boolAttr(goals.includes(goal))}>
                     {t(GOAL_KEYS[goal])}
                   </s-choice>
                 ))}
               </s-choice-list>
               <div>
-                <s-button type="submit" variant="primary" disabled={on(readOnly)}>
+                <s-button type="submit" variant="primary" disabled={boolAttr(readOnly)}>
                   {t("common.continue")}
                 </s-button>
               </div>
@@ -142,7 +150,7 @@ export function OnboardingScreen({ step, goals, native, embed, readOnly, result 
             <Form method="post">
               <input type="hidden" name="intent" value="step" />
               <input type="hidden" name="step" value="3" />
-              <s-button type="submit" variant={native.state === "ok" && native.discounts.some((d) => d.movable) ? "tertiary" : "primary"} disabled={on(readOnly)}>
+              <s-button type="submit" variant={native.state === "ok" && native.discounts.some((d) => d.movable) ? "tertiary" : "primary"} disabled={boolAttr(readOnly)}>
                 {t("common.continue")}
               </s-button>
             </Form>

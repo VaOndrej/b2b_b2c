@@ -14,14 +14,18 @@ import { ComingSoonScreen } from "../components/screens/ComingSoonScreen";
 import { buildDiscountsProps, DiscountsScreen, type DiscountsScreenProps } from "../components/screens/DiscountsScreen";
 import { buildOnboardingProps, OnboardingScreen, type OnboardingScreenProps } from "../components/screens/OnboardingScreen";
 import { buildOverviewProps, OverviewScreen, type OverviewScreenProps } from "../components/screens/OverviewScreen";
-import { PlanScreen } from "../components/screens/PlanScreen";
+import { PlanScreen, type PlanScreenProps } from "../components/screens/PlanScreen";
 import { buildRuleEditorProps, RuleEditorScreen, type RuleEditorScreenProps } from "../components/screens/RuleEditorScreen";
 import { SettingsScreen, type SettingsScreenProps } from "../components/screens/SettingsScreen";
 import { buildTryCartProps, TryCartScreen, type TryCartScreenProps } from "../components/screens/TryCartScreen";
+import { CONFIG_LIMITS } from "@won/core/discounts/config";
+
+import { codeRuleLimit } from "../lib/ui-actions.server";
 import {
   DEV_EMBED_OFF,
   DEV_EMBED_ON,
   DEV_EMPTY_FIXTURE,
+  DEV_MARKET_NAMES,
   DEV_NATIVE,
   DEV_NOW,
   DEV_ONBOARDING_FIXTURE,
@@ -41,7 +45,7 @@ import {
 //   /dev/preview/overview        Přehled as the app shows it today (signals not
 //                                 connected); ?state=live (signals wired),
 //                                 ?state=empty (new shop), ?readOnly=1
-//   /dev/preview/discounts       ?state=empty
+//   /dev/preview/discounts       ?state=empty, ?sync=ok (as once the sync is wired)
 //   /dev/preview/rule-editor     ?rule=<fixture id> | ?rule=new&recipe=<recipe>, ?plan=pro
 //   /dev/preview/try-cart        ?state=empty | ?state=not-wired
 //   /dev/preview/onboarding      ?step=1|2|3, ?embed=on
@@ -94,16 +98,26 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
   const state = q.get("state");
   const locale = resolveLocale(q.get("locale"));
 
+  const names = DEV_MARKET_NAMES;
+  const sync = { state: "not_wired" as const };
   switch (screen) {
     case "overview":
-      if (state === "live") return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly, signals: DEV_SIGNALS });
-      if (state === "empty") return buildOverviewProps(DEV_EMPTY_FIXTURE, { readOnly });
+      if (state === "live") {
+        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly, signals: DEV_SIGNALS, timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW });
+      }
+      if (state === "empty") return buildOverviewProps(DEV_EMPTY_FIXTURE, { readOnly, timezone: DEV_TIMEZONE, now: DEV_NOW });
       return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly });
-    case "discounts":
-      return buildDiscountsProps(state === "empty" ? DEV_EMPTY_FIXTURE : DEV_OVERVIEW_FIXTURE, {
+    case "discounts": {
+      const config = state === "empty" ? DEV_EMPTY_FIXTURE : DEV_OVERVIEW_FIXTURE;
+      return buildDiscountsProps(config, {
         readOnly,
-        sync: { state: "not_wired" },
+        sync: q.get("sync") === "ok" ? DEV_SIGNALS.sync : sync,
+        codeRules: codeRuleLimit(config),
+        timezone: DEV_TIMEZONE,
+        marketNames: names,
+        now: DEV_NOW,
       });
+    }
     case "rule-editor": {
       const recipe = q.get("recipe");
       const props = buildRuleEditorProps(DEV_OVERVIEW_FIXTURE, {
@@ -112,13 +126,17 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         readOnly,
         pro: q.get("plan") === "pro",
         timezone: DEV_TIMEZONE,
+        sync,
+        codeRules: codeRuleLimit(DEV_OVERVIEW_FIXTURE),
         shopCurrency: "CZK",
+        marketNames: names,
+        now: DEV_NOW,
       });
       if (!props) throw notFound();
       return { ...props, result: null };
     }
     case "try-cart": {
-      const base = buildTryCartProps(DEV_OVERVIEW_FIXTURE, { timezone: DEV_TIMEZONE, now: DEV_NOW });
+      const base = buildTryCartProps(DEV_OVERVIEW_FIXTURE, { timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW });
       if (state === "empty") return base;
       if (state === "not-wired") {
         return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", result: { ok: false as const, reason: "not_wired" as const, what: "tryCart" as const } };
@@ -143,9 +161,9 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       return { module };
     }
     case "plan":
-      return { pro: q.get("plan") === "pro" };
+      return { pro: q.get("plan") === "pro", codeRules: codeRuleLimit(DEV_OVERVIEW_FIXTURE), maxRules: CONFIG_LIMITS.rules };
     case "settings":
-      return { currencies: currencyViews(DEV_OVERVIEW_FIXTURE.markets) };
+      return { currencies: currencyViews(DEV_OVERVIEW_FIXTURE.markets, { marketNames: names }) };
     default:
       throw notFound();
   }
@@ -211,7 +229,7 @@ export default function DevPreview() {
       content = <ComingSoonScreen {...(data as { module: UpcomingModule })} />;
       break;
     case "plan":
-      content = <PlanScreen {...(data as { pro: boolean })} />;
+      content = <PlanScreen {...(data as PlanScreenProps)} />;
       break;
     case "settings":
       content = <SettingsScreen {...(data as SettingsScreenProps)} />;

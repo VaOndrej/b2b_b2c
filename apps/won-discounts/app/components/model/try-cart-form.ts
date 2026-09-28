@@ -3,13 +3,11 @@
 // shop-local day are read; prices never come from the browser — the engine step
 // reads them from Shopify for the chosen currency.
 
+import { PRODUCT_GID, VARIANT_GID, splitCodes } from "./ids";
 import { isCalendarDate, type FormDataLike } from "./rule-form";
 import type { FieldError } from "./types";
 
 export const TRY_CART_LIMITS = Object.freeze({ lines: 50, quantity: 999, codes: 10, codeLength: 255 });
-
-const VARIANT_GID = /^gid:\/\/shopify\/ProductVariant\/\d{1,20}$/;
-const PRODUCT_GID = /^gid:\/\/shopify\/Product\/\d{1,20}$/;
 
 export interface TryCartInput {
   lines: { variantId: string; productId: string; quantity: number }[];
@@ -46,13 +44,9 @@ export function readTryCartForm(
   const currency = str("currency").toUpperCase();
   if (!ctx.currencies.includes(currency)) errors.push({ field: "currency", key: "tryCart.error.currency" });
 
-  const codes: string[] = [];
-  for (const part of str("codes").split(/[\n,;]+/)) {
-    const code = part.trim().toUpperCase();
-    if (!code || code.length > TRY_CART_LIMITS.codeLength || codes.includes(code)) continue;
-    if (codes.length >= TRY_CART_LIMITS.codes) break;
-    codes.push(code);
-  }
+  const codes = splitCodes(str("codes"))
+    .filter((code) => code.length <= TRY_CART_LIMITS.codeLength)
+    .slice(0, TRY_CART_LIMITS.codes);
 
   const rawDate = str("date");
   let date = ctx.today;

@@ -20,6 +20,7 @@
 import { useEffect, useId, useState, type CSSProperties, type ReactNode } from "react";
 
 import { useT } from "../../i18n/context";
+import { statusLabel, type RuleStatus } from "../model/rule-status";
 import { PlanBadge } from "./PlanBadge";
 import {
   WON_AMBER,
@@ -172,9 +173,17 @@ function Glyph({ name }: { name: SectionGlyphName }) {
   }
 }
 
-/** "Běží" / "Vypnuto" — state legible at rest (§11d). Green is only ever "live". */
-export function StatusPill({ on }: { on: boolean }) {
-  const { t } = useT();
+/**
+ * State legible at rest (§11d). Green ONLY for "really running" — `on` for a
+ * switch-like thing (the embed), `status` for a rule (model/rule-status.ts:
+ * Běží / Naplánováno / Skončilo / Nepropsáno / Neběží / Vypnuto).
+ */
+export function StatusPill({ on, status }: { on?: boolean; status?: RuleStatus }) {
+  const tr = useT();
+  const live = status ? status.kind === "live" : on === true;
+  const attention = status?.kind === "unsupported";
+  const label = status ? statusLabel(status, tr) : on ? tr.t("common.live") : tr.t("common.off");
+  const color = live ? WON_LIVE : attention ? WON_ATTENTION : "#5f6b78";
   return (
     <span
       style={{
@@ -187,17 +196,51 @@ export function StatusPill({ on }: { on: boolean }) {
         padding: "2px 9px 2px 7px",
         borderRadius: 999,
         whiteSpace: "nowrap",
-        color: on ? WON_LIVE : "#6b7684",
-        background: on ? "rgba(26,143,75,.10)" : WON_WASH,
-        border: `1px solid ${on ? "rgba(26,143,75,.28)" : WON_LINE}`,
+        color,
+        background: live ? "rgba(26,143,75,.10)" : attention ? "rgba(180,35,24,.07)" : WON_WASH,
+        border: `1px solid ${live ? "rgba(26,143,75,.28)" : attention ? "rgba(180,35,24,.3)" : WON_LINE}`,
       }}
     >
       <span
         aria-hidden="true"
-        style={{ width: 6, height: 6, borderRadius: 999, background: on ? WON_LIVE : "#c3cad2", flex: "0 0 auto" }}
+        style={{ width: 6, height: 6, borderRadius: 999, background: live ? WON_LIVE : attention ? WON_ATTENTION : "#c3cad2", flex: "0 0 auto" }}
       />
-      {on ? t("common.live") : t("common.off")}
+      {label}
     </span>
+  );
+}
+
+/** The collapse affordance: a clear chevron in a ring, pointing down when open. */
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        flex: "0 0 auto",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 26,
+        height: 26,
+        borderRadius: 999,
+        border: `1px solid #c9d0d8`,
+        background: "#fff",
+        color: WON_INK,
+        transition: "transform .18s ease",
+        transform: open ? "rotate(90deg)" : "none",
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </span>
+  );
+}
+
+/** The quiet second line of a list row (A7: one style, not re-typed per screen). */
+export function RowNote({ children, tone }: { children: ReactNode; tone?: "attention" }) {
+  return (
+    <div style={{ fontSize: 12.5, lineHeight: 1.4, color: tone === "attention" ? WON_ATTENTION : WON_MUTED, marginTop: 2 }}>{children}</div>
   );
 }
 
@@ -219,8 +262,10 @@ export interface WonSectionProps {
   summary?: string;
   /** One extra sentence under the summary. */
   hint?: string;
-  /** Live/Off marker. Omit for sections that are neither. */
+  /** Live/Off marker for a switch-like thing. Omit for sections that are neither. */
   on?: boolean;
+  /** A rule's real state (model/rule-status.ts); wins over `on`. */
+  status?: RuleStatus;
   /** Pro-gated section: amber edge + marker; `locked` sells it. */
   pro?: boolean;
   locked?: boolean;
@@ -241,6 +286,7 @@ export function WonSection({
   summary,
   hint,
   on,
+  status,
   pro,
   locked = false,
   proof,
@@ -278,7 +324,7 @@ export function WonSection({
         <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: WON_INK, letterSpacing: "-0.01em" }}>{title}</span>
           {pro ? <PlanBadge tier="pro" locked={locked} /> : null}
-          {on !== undefined ? <StatusPill on={on} /> : null}
+          {status ? <StatusPill status={status} /> : on !== undefined ? <StatusPill on={on} /> : null}
         </span>
         {summary ? (
           <span style={{ display: "block", marginTop: 3, fontSize: 12.5, lineHeight: 1.35, color: WON_MUTED }}>
@@ -291,21 +337,7 @@ export function WonSection({
           </span>
         ) : null}
       </span>
-      {collapsible ? (
-        <span
-          aria-hidden="true"
-          style={{
-            flex: "0 0 auto",
-            color: "#98a2ae",
-            transition: "transform .18s ease",
-            transform: expanded ? "rotate(90deg)" : "none",
-            lineHeight: 1,
-            fontSize: 14,
-          }}
-        >
-          ▸
-        </span>
-      ) : null}
+      {collapsible ? <Chevron open={expanded} /> : null}
     </>
   );
 
@@ -401,21 +433,7 @@ export function WonBlock({
           <span style={{ display: "block", marginTop: 2, fontSize: 12.5, lineHeight: 1.4, color: WON_MUTED }}>{summary}</span>
         ) : null}
       </span>
-      {collapsible ? (
-        <span
-          aria-hidden="true"
-          style={{
-            flex: "0 0 auto",
-            color: "#98a2ae",
-            transition: "transform .18s ease",
-            transform: expanded ? "rotate(90deg)" : "none",
-            lineHeight: 1,
-            fontSize: 13,
-          }}
-        >
-          ▸
-        </span>
-      ) : null}
+      {collapsible ? <Chevron open={expanded} /> : null}
     </>
   );
 

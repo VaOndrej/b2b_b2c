@@ -1,47 +1,87 @@
-// Renders the outcome of an admin action honestly (§12): saved, refused with a
-// reason, or "not connected yet" — never a silent no-op. Messages are i18n keys
-// resolved here; field-level errors are shown next to their fields by the screen.
+// Renders the outcome of an admin action honestly (§12): saved, refused with the
+// real reason, or "not connected yet" — never a silent no-op, never "try again"
+// for something a retry cannot fix. Where one action resolves a refusal, the
+// notice carries it (§13a). Field-level errors are shown next to their fields.
+
+import type { ReactNode } from "react";
 
 import { useT } from "../../i18n/context";
-import type { MessageKey } from "../../i18n";
-import type { UiResult } from "../model/types";
+import type { MessageKey, MessageParams, Translator } from "../../i18n";
+import type { UiFailure, UiResult } from "../model/types";
 
-function failureKey(result: Exclude<UiResult, { ok: true }>): MessageKey {
+interface FailureCopy {
+  key: MessageKey;
+  params?: MessageParams;
+  /** The one action that resolves it, if there is one. */
+  action?: { label: MessageKey; href?: string; reload?: true };
+  tone: "info" | "critical" | "warning";
+}
+
+export function failureCopy(result: UiFailure, tr: Translator): FailureCopy {
   switch (result.reason) {
     case "not_wired":
-      return result.what === "move"
-        ? "result.notWired.move"
-        : result.what === "undo"
-          ? "result.notWired.undo"
-          : "result.notWired.tryCart";
+      return {
+        key: result.what === "move" ? "result.notWired.move" : result.what === "undo" ? "result.notWired.undo" : "result.notWired.tryCart",
+        tone: "info",
+      };
     case "invalid":
-      return "result.invalid";
+      return { key: "result.invalid", tone: "critical" };
+    case "too_many_code_rules":
+      return {
+        key: "result.tooManyCodeRules",
+        params: { limit: result.limit, count: result.count, shopify: result.shopifyLimit },
+        action: { label: "result.action.showDiscounts", href: "/app/discounts" },
+        tone: "critical",
+      };
+    case "code_hash_collision":
+      return {
+        key: "result.codeHashCollision",
+        params: { codes: result.codes.map((group) => tr.list(group)).join("; ") },
+        action: { label: "result.action.editCodes", href: "#codes" },
+        tone: "critical",
+      };
     case "newer_schema":
-      return "result.newerSchema";
+      return { key: "result.newerSchema", action: { label: "result.action.reload", reload: true }, tone: "warning" };
     case "function_config_too_large":
-      return "result.functionTooLarge";
+      return {
+        key: "result.functionTooLarge",
+        params: { bytes: result.bytes, budget: result.budget },
+        action: { label: "result.action.showDiscounts", href: "/app/discounts" },
+        tone: "critical",
+      };
     case "config_too_large":
-      return "result.configTooLarge";
+      return {
+        key: "result.configTooLarge",
+        params: { bytes: result.bytes, limit: result.limit },
+        action: { label: "result.action.showDiscounts", href: "/app/discounts" },
+        tone: "critical",
+      };
     case "not_found":
-      return "result.notFound";
+      return { key: "result.notFound", action: { label: "result.action.showDiscounts", href: "/app/discounts" }, tone: "critical" };
+    case "nothing_selected":
+      return { key: "result.nothingSelected", tone: "info" };
+    case "bad_request":
+      return { key: "result.badRequest", action: { label: "result.action.reload", reload: true }, tone: "critical" };
     case "preview_only":
-      return "result.previewOnly";
+      return { key: "result.previewOnly", tone: "info" };
     case "error":
     default:
-      return "result.error";
+      return { key: "result.error", tone: "critical" };
   }
 }
 
 export function Notice({ result }: { result: UiResult | null | undefined }) {
-  const { t } = useT();
+  const tr = useT();
+  const { t } = tr;
   if (!result) return null;
   if (result.ok) {
-    const heading = result.fixes && result.fixes.length > 0 ? t("result.savedWithFixes") : t(result.message === "deleted" ? "result.deleted" : "result.saved");
+    const fixes = result.fixes ?? [];
+    const heading = fixes.length > 0 ? t("result.savedWithFixes") : t(result.message === "deleted" ? "result.deleted" : "result.saved");
     return (
       <s-banner tone="success" heading={heading}>
-        {result.fixes && result.fixes.length > 0 ? (
+        {fixes.length > 0 ? (
           <s-unordered-list>
-            {result.fixes.map((fix) => (
+            {fixes.map((fix) => (
               <s-list-item key={fix}>{fix}</s-list-item>
             ))}
           </s-unordered-list>
@@ -49,9 +89,25 @@ export function Notice({ result }: { result: UiResult | null | undefined }) {
       </s-banner>
     );
   }
-  let params: Record<string, number> | undefined;
-  if (result.reason === "function_config_too_large") params = { bytes: result.bytes, budget: result.budget };
-  else if (result.reason === "config_too_large") params = { bytes: result.bytes, limit: result.limit };
-  const tone = result.reason === "not_wired" || result.reason === "preview_only" ? "info" : "critical";
-  return <s-banner tone={tone}>{t(failureKey(result), params)}</s-banner>;
+  const copy = failureCopy(result, tr);
+  let action: ReactNode = null;
+  if (copy.action?.href) {
+    action = (
+      <s-button slot="secondary-actions" href={copy.action.href}>
+        {t(copy.action.label)}
+      </s-button>
+    );
+  } else if (copy.action?.reload) {
+    action = (
+      <s-button slot="secondary-actions" onClick={() => window.location.reload()}>
+        {t(copy.action.label)}
+      </s-button>
+    );
+  }
+  return (
+    <s-banner tone={copy.tone}>
+      {t(copy.key, copy.params)}
+      {action}
+    </s-banner>
+  );
 }

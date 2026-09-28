@@ -20,6 +20,8 @@ import { buildOnboardingProps, OnboardingScreen } from "../components/screens/On
 // Onboarding steps 1–3. Revalidated on focus (embed auto-detection).
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
+  // `?recheck=` (focus after the theme editor) re-reads the theme, bypassing the short cache.
+  const fresh = new URL(request.url).searchParams.has("recheck");
   const [{ config, readOnly }, signals] = await Promise.all([
     loadConfig(db, session.shop),
     loadAdminSignals({
@@ -28,6 +30,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       // eslint-disable-next-line no-undef
       apiKey: process.env.SHOPIFY_API_KEY || "",
       graphql: graphqlFrom(admin),
+      fresh,
     }),
   ]);
   return buildOnboardingProps(config, { native: signals.native, embed: signals.embed, readOnly });
@@ -40,7 +43,7 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<UiResult>
   if (intent === "move") return moveNative({ shop: session.shop }, readNativeIds(form));
   if (intent === "undo") return undoMove({ shop: session.shop }, readBackupId(form));
   const patch = readOnboardingForm(form);
-  if (!patch) return { ok: false, reason: "invalid", errors: [] };
+  if (!patch) return { ok: false, reason: "bad_request" };
   return saveOnboarding(db, session.shop, patch);
 };
 

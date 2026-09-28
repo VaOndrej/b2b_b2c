@@ -7,6 +7,7 @@ import {
   DISCOUNT_VALUE_KINDS,
   type DiscountRule,
 } from "@won/core/discounts/config";
+import { describeRule as coreDescribeRule } from "@won/core/discounts/describe";
 
 import {
   collectWarnings,
@@ -19,19 +20,20 @@ import {
   describeSchedule,
   describeValue,
   missingCurrencies,
+  ruleDays,
 } from "../../app/components/model/describe.ts";
-import { formatMoney, minorToInput, parseMoneyInput } from "../../app/components/model/money.ts";
 import { translator, type Locale } from "../../app/i18n/index.ts";
 
-// Doctrine §17 / §4c: every state-at-rest line the admin shows comes from one
-// formatter module and never contains a raw enum key, an i18n key, a leftover
-// `{placeholder}` or "undefined". The Czech admin must not leak any English
-// enum word at all.
+// Doctrine §17 / §17a / DATA-4: the admin's state lines come from the ONE core
+// formatter the engine also uses, and never contain a raw enum key, an i18n key,
+// a leftover `{placeholder}` or "undefined". The Czech admin must not leak any
+// English enum word at all.
 
-const NBSP = "\u00a0";
+const NBSP = " ";
 const cs = translator("cs");
 const en = translator("en");
 const CURRENCIES = ["CZK", "EUR"];
+const TZ = "Europe/Prague";
 
 const ENUM_KEYS: string[] = [...DISCOUNT_METHODS, ...DISCOUNT_VALUE_KINDS, ...DISCOUNT_TARGET_KINDS];
 
@@ -73,7 +75,7 @@ function* everyRule(): Generator<DiscountRule> {
             minimum: { subtotal: { CZK: 100000 }, quantity: 3 },
             schedule: { startsAt: "2026-11-01T00:00:00+01:00", endsAt: "2026-12-01T00:00:00+01:00" },
             limits: { usageLimit: 100, oncePerCustomer: true },
-            targeting: { markets: ["sk"] },
+            targeting: { markets: ["sk"], segments: ["gid://shopify/Segment/1"] },
             combinesWith: { ruleIds: ["r2"] },
           });
         }
@@ -104,14 +106,14 @@ test("describe* state lines never contain raw enum keys, i18n keys or placeholde
     for (const tr of [cs, en]) {
       const names = new Map([["r2", "Druhá sleva"]]);
       const lines = [
-        describeRuleLine(r, tr, CURRENCIES),
+        describeRuleLine(r, tr, CURRENCIES, TZ),
         describeValue(r, tr, CURRENCIES),
         describeMethod(r, tr),
         describeMinimum(r, tr, CURRENCIES),
-        describeSchedule(r, tr),
+        describeSchedule(r, tr, TZ),
         describeLimits(r, tr),
-        describeMoreOptions(r, tr, CURRENCIES),
-        describeProSettings(r, tr, names),
+        describeMoreOptions(r, tr, CURRENCIES, TZ),
+        describeProSettings(r, tr, names, { sk: "Slovensko" }),
       ];
       for (const line of lines) assertHuman(line, tr.locale, `${r.value.kind}/${r.target.kind}/${r.method}`);
       count++;
@@ -120,46 +122,64 @@ test("describe* state lines never contain raw enum keys, i18n keys or placeholde
   assert.ok(count > 300, `exercised ${count} combinations`);
 });
 
-test("the rule line reads value · method · minimum · schedule, per currency", () => {
-  assert.equal(describeRuleLine(rule({}), cs, ["CZK"]), `10${NBSP}% z objednávky · automaticky`);
-  assert.equal(describeRuleLine(rule({}), en, ["CZK"]), "10% off the order · automatic");
+test("§17a: the admin line IS the core formatter's line (+ the schedule); no second wording", () => {
+  for (const r of everyRule()) {
+    for (const tr of [cs, en]) {
+      const core = coreDescribeRule(r, tr.locale, undefined, { currencies: CURRENCIES, codesKnown: true });
+      const line = describeRuleLine({ ...r, schedule: undefined }, tr, CURRENCIES, TZ);
+      assert.equal(line, core);
+    }
+  }
+});
+
+test("the rule line reads value · method · minimum · schedule · not offered in", () => {
+  assert.equal(describeRuleLine(rule({}), cs, ["CZK"], TZ), `10${NBSP}% z objednávky · automaticky`);
+  assert.equal(describeRuleLine(rule({}), en, ["CZK"], TZ), "10% off the order · automatic");
   assert.equal(
-    describeRuleLine(rule({ value: { kind: "fixed", amount: { CZK: 10000, EUR: 400 } } }), cs, CURRENCIES),
+    describeRuleLine(rule({ value: { kind: "fixed", amount: { CZK: 10000, EUR: 400 } } }), cs, CURRENCIES, TZ),
     `100${NBSP}Kč / 4${NBSP}€ z objednávky · automaticky`,
   );
   assert.equal(
     describeRuleLine(
-      rule({ method: "code", codes: ["VIP10"], minimum: { subtotal: { CZK: 100000 } } }),
+      rule({
+        method: "code",
+        codes: ["VIP10"],
+        minimum: { subtotal: { CZK: 100000 }, quantity: 3 },
+        schedule: { startsAt: "2026-11-27T00:00:00+01:00", endsAt: "2026-12-01T00:00:00+01:00" },
+      }),
       cs,
       CURRENCIES,
+      TZ,
     ),
-    `10${NBSP}% z objednávky · kód VIP10 · od 1${NBSP}000${NBSP}Kč · v EUR se nenabízí`,
+    `10${NBSP}% z objednávky · kód VIP10 · od 1${NBSP}000${NBSP}Kč · od 3 ks · 27. 11. 2026 až 30. 11. 2026 · v EUR se nenabízí`,
   );
-  assert.equal(
-    describeRuleLine(rule({ value: { kind: "freeShipping" }, target: { kind: "shipping" } }), en, CURRENCIES),
-    "Free shipping · automatic",
-  );
-  assert.equal(
-    describeRuleLine(rule({ method: "code", codes: ["A", "B", "C", "D", "E"] }), cs, []),
-    `10${NBSP}% z objednávky · kódy A, B, C a 2 další`,
-  );
-  assert.equal(
-    describeSchedule(rule({ schedule: { startsAt: "2026-11-01T00:00:00+01:00", endsAt: "2026-12-01T00:00:00+01:00" } }), cs),
-    "1. 11. 2026 až 30. 11. 2026",
-  );
+  assert.equal(describeMethod(rule({ method: "code", codes: [] }), cs), "kódem, zatím bez kódu");
+  assert.equal(describeMethod(rule({ method: "code", codes: ["A", "B", "C", "D", "E"] }), cs), "kódy A, B, C a 2 další");
+});
+
+test("schedule days are the shop's days, exactly as the sync ships them (DST-safe)", () => {
+  const r = rule({ schedule: { startsAt: "2026-06-30T22:00:00Z", endsAt: "2026-07-31T22:00:00Z" } });
+  assert.deepEqual(ruleDays(r, TZ), { startsOn: "2026-07-01", endsOn: "2026-07-31" });
+  assert.equal(describeSchedule(r, cs, TZ), "1. 7. 2026 až 31. 7. 2026");
+  assert.deepEqual(ruleDays(rule({}), TZ), {});
+  // Zone unknown: the days the schedule was written for, never re-read in UTC
+  // (found in the v2 screenshots: 27. 11. +01:00 read as 26. 11. UTC).
+  const written = rule({ schedule: { startsAt: "2026-11-27T00:00:00+01:00", endsAt: "2026-12-01T00:00:00+01:00" } });
+  assert.deepEqual(ruleDays(written, null), { startsOn: "2026-11-27", endsOn: "2026-11-30" });
+  assert.deepEqual(ruleDays(written, "Not/AZone"), { startsOn: "2026-11-27", endsOn: "2026-11-30" });
 });
 
 test("missingCurrencies: a fixed value or a minimum without a currency is 'not offered' there", () => {
   assert.deepEqual(missingCurrencies(rule({}), CURRENCIES), []);
   assert.deepEqual(missingCurrencies(rule({ value: { kind: "fixed", amount: { CZK: 100 } } }), CURRENCIES), ["EUR"]);
   assert.deepEqual(missingCurrencies(rule({ minimum: { subtotal: { EUR: 100 } } }), CURRENCIES), ["CZK"]);
-  // An empty minimum map means "no minimum", not "not offered anywhere".
   assert.deepEqual(missingCurrencies(rule({ minimum: { subtotal: {} } }), CURRENCIES), []);
 });
 
-test("collectWarnings: missing currency, a code rule without a code, a product rule with nothing selected", () => {
+test("collectWarnings: segment targeting (never sold as working), missing currency, no code, nothing selected", () => {
   const warnings = collectWarnings(
     [
+      rule({ id: "s", name: "Segment", targeting: { segments: ["gid://shopify/Segment/1"] } }),
       rule({ id: "a", name: "Fixní", value: { kind: "fixed", amount: { CZK: 100 } } }),
       rule({ id: "b", name: "Kódová", method: "code", codes: [] }),
       rule({ id: "c", name: "Produkty", target: { kind: "products", productIds: [], variantIds: [] } }),
@@ -168,28 +188,18 @@ test("collectWarnings: missing currency, a code rule without a code, a product r
     CURRENCIES,
   );
   assert.deepEqual(
-    warnings.map((w) => [w.kind, w.ruleId]),
+    warnings.map((w) => [w.kind, w.ruleId, w.field]),
     [
-      ["missingCurrency", "a"],
-      ["noCode", "b"],
-      ["noTarget", "c"],
+      ["unsupported", "s", "pro"],
+      ["missingCurrency", "a", "value"],
+      ["noCode", "b", "codes"],
+      ["noTarget", "c", "target"],
     ],
   );
-  assert.deepEqual(warnings[0].currencies, ["EUR"]);
-});
-
-test("money: format per locale, parse what a merchant types, round-trip the field value", () => {
-  assert.equal(formatMoney(123450, "CZK", "cs"), `1${NBSP}234,50${NBSP}Kč`);
-  assert.equal(formatMoney(123450, "CZK", "en"), "CZK 1,234.50");
-  assert.equal(formatMoney(4000, "EUR", "en"), "€40");
-  assert.equal(formatMoney(500, "JPY", "cs"), `500${NBSP}JPY`);
-  assert.equal(parseMoneyInput("100", "CZK"), 10000);
-  assert.equal(parseMoneyInput("100,5", "CZK"), 10050);
-  assert.equal(parseMoneyInput("1 000.25", "EUR"), 100025);
-  assert.equal(parseMoneyInput("", "EUR"), null);
-  assert.ok(Number.isNaN(parseMoneyInput("-5", "EUR")));
-  assert.ok(Number.isNaN(parseMoneyInput("1.234", "EUR")));
-  assert.equal(parseMoneyInput("500", "JPY"), 500);
-  assert.equal(minorToInput(10050, "CZK"), "100.5");
-  assert.equal(minorToInput(10000, "CZK"), "100");
+  assert.deepEqual(warnings[1].currencies, ["EUR"]);
+  assert.match(describeProSettings(rule({ targeting: { segments: ["x"] } }), cs, new Map()), /v pokladně se zatím neuplatní/);
+  assert.equal(
+    describeProSettings(rule({ targeting: { markets: ["cz", "sk"] } }), cs, new Map(), { cz: "Česko" }),
+    "Jen trhy Česko a sk · kombinuje se podle výchozích pravidel",
+  );
 });

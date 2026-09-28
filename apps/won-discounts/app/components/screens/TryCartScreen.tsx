@@ -13,13 +13,15 @@ import type { WonDiscountsConfig } from "@won/core/discounts/config";
 import { useT } from "../../i18n/context";
 import type { Translator } from "../../i18n";
 import { pickProducts } from "../model/app-bridge";
-import { currencyCodes, currencyViews } from "../model/markets";
-import { formatDate, formatMoney } from "../model/money";
+import { formatDate, formatMoney } from "@won/core/discounts/describe";
+
+import { currencyCodes, currencyLabel, currencyViews, type MarketNames } from "../model/markets";
 import { shopToday } from "../model/rule-form";
 import type { CartPlanView, CurrencyView, ExplainView, FieldError, TryCartLineView, UiResult } from "../model/types";
+import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
-import { WonRow, WonSection } from "../shell/WonSection";
-import { WON_ATTENTION, WON_FONT, WON_INK, WON_LINE, WON_MUTED } from "../shell/tokens";
+import { RowNote, WonBlock, WonRow, WonSection } from "../shell/WonSection";
+import { WON_FONT, WON_INK, WON_LINE, WON_MUTED } from "../shell/tokens";
 
 export interface TryCartScreenProps {
   currencies: CurrencyView[];
@@ -37,10 +39,14 @@ export interface TryCartScreenProps {
 
 export function buildTryCartProps(
   config: WonDiscountsConfig,
-  opts: { timezone: string | null; shopCurrency?: string | null; now?: Date },
+  opts: { timezone: string | null; shopCurrency?: string | null; marketNames?: MarketNames; now?: Date },
 ): TryCartScreenProps {
   return {
-    currencies: currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules: config.modules.codes.rules }),
+    currencies: currencyViews(config.markets, {
+      shopCurrency: opts.shopCurrency,
+      rules: config.modules.codes.rules,
+      marketNames: opts.marketNames,
+    }),
     timezone: opts.timezone,
     today: shopToday(opts.timezone, opts.now),
     lines: [],
@@ -49,19 +55,22 @@ export function buildTryCartProps(
   };
 }
 
-const on = (b: boolean): true | undefined => (b ? true : undefined);
-
 function explainFor(explain: readonly ExplainView[], lineId: string | null): ExplainView[] {
   return explain.filter((e) => (lineId === null ? !e.lineIds || e.lineIds.length === 0 : e.lineIds?.includes(lineId)));
 }
 
+/**
+ * The engine's sentences. An entered code losing to a better discount is an
+ * expected outcome, not an error: shown in ink with "!" — never red (§11a: red is
+ * "needs attention" in the setup).
+ */
 function ExplainList({ items }: { items: ExplainView[] }) {
   if (items.length === 0) return null;
   return (
     <ul style={{ margin: "6px 0 0", padding: 0, listStyle: "none", fontFamily: WON_FONT }}>
       {items.map((item, i) => (
-        <li key={i} style={{ display: "flex", gap: 8, fontSize: 12.5, lineHeight: 1.45, color: item.tone === "warning" ? WON_ATTENTION : WON_MUTED }}>
-          <span aria-hidden="true" style={{ flex: "0 0 auto", color: item.tone === "warning" ? WON_ATTENTION : WON_INK }}>
+        <li key={i} style={{ display: "flex", gap: 8, fontSize: 12.5, lineHeight: 1.45, color: item.tone === "info" ? WON_MUTED : WON_INK }}>
+          <span aria-hidden="true" style={{ flex: "0 0 auto", width: 10, color: WON_INK, fontWeight: 700 }}>
             {item.tone === "success" ? "✓" : item.tone === "warning" ? "!" : "·"}
           </span>
           <span>{item.text}</span>
@@ -167,60 +176,74 @@ export function TryCartScreen(props: TryCartScreenProps) {
           <input type="hidden" name="locale" value={tr.locale} />
           <WonSection title={t("tryCart.cart.title")} glyph="cart" summary={cartSummary}>
             <s-stack direction="block" gap="base">
-              {lines.length === 0 ? (
-                <s-text color="subdued">{t("tryCart.cart.empty")}</s-text>
-              ) : (
-                <div>
-                  {lines.map((line) => {
-                    const price = line.unitPrice[live.currency];
-                    return (
-                      <WonRow
-                        key={line.variantId}
-                        action={
-                          <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
-                            <div style={{ width: 96 }}>
-                              <s-number-field
-                                name="quantity"
-                                label={t("tryCart.qty")}
-                                value={String(line.quantity)}
-                                min={1}
-                                max={999}
-                                inputMode="numeric"
-                              />
+              {/* §7c calm: the per-line controls sit in one collapsed block; the
+                  summary names what is in the cart. Hidden ≠ unmounted: every
+                  line still submits (§17d). */}
+              <WonBlock
+                title={t("tryCart.lines.title")}
+                summary={
+                  lines.length === 0
+                    ? t("tryCart.lines.none")
+                    : lines.map((l) => `${l.title} × ${l.quantity}`).join(", ")
+                }
+                collapsible
+                defaultOpen={false}
+              >
+                {lines.length === 0 ? (
+                  <s-text color="subdued">{t("tryCart.cart.empty")}</s-text>
+                ) : (
+                  <div>
+                    {lines.map((line) => {
+                      const price = line.unitPrice[live.currency];
+                      return (
+                        <WonRow
+                          key={line.variantId}
+                          action={
+                            <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                              <div style={{ width: 96 }}>
+                                <s-number-field
+                                  name="quantity"
+                                  label={t("tryCart.qty")}
+                                  value={String(line.quantity)}
+                                  min={1}
+                                  max={999}
+                                  inputMode="numeric"
+                                />
+                              </div>
+                              <s-button
+                                variant="tertiary"
+                                onClick={() => {
+                                  const next = lines.filter((l) => l.variantId !== line.variantId);
+                                  setLines(next);
+                                  setLive((s) => ({ ...s, quantity: next.reduce((sum, l) => sum + l.quantity, 0) }));
+                                }}
+                              >
+                                {t("tryCart.remove")}
+                              </s-button>
                             </div>
-                            <s-button
-                              variant="tertiary"
-                              onClick={() => {
-                                const next = lines.filter((l) => l.variantId !== line.variantId);
-                                setLines(next);
-                                setLive((s) => ({ ...s, quantity: next.reduce((sum, l) => sum + l.quantity, 0) }));
-                              }}
-                            >
-                              {t("tryCart.remove")}
-                            </s-button>
-                          </div>
-                        }
-                      >
-                        <input type="hidden" name="variantId" value={line.variantId} />
-                        <input type="hidden" name="productId" value={line.productId} />
-                        <s-text type="strong">{line.title}</s-text>
-                        <div style={{ fontSize: 12.5, color: WON_MUTED, marginTop: 2 }}>
-                          {[
-                            line.variantTitle,
-                            typeof price === "number"
-                              ? formatMoney(price, live.currency, tr.locale)
-                              : live.currency
-                                ? t("tryCart.noPrice", { currency: live.currency })
-                                : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </div>
-                      </WonRow>
-                    );
-                  })}
-                </div>
-              )}
+                          }
+                        >
+                          <input type="hidden" name="variantId" value={line.variantId} />
+                          <input type="hidden" name="productId" value={line.productId} />
+                          <s-text type="strong">{line.title}</s-text>
+                          <RowNote>
+                            {[
+                              line.variantTitle,
+                              typeof price === "number"
+                                ? formatMoney(price, live.currency, tr.locale)
+                                : live.currency
+                                  ? t("tryCart.noPrice", { currency: live.currency })
+                                  : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </RowNote>
+                        </WonRow>
+                      );
+                    })}
+                  </div>
+                )}
+              </WonBlock>
               <div>
                 <s-button onClick={() => void addProducts()}>{t("tryCart.add")}</s-button>
                 {unavailable ? (
@@ -229,12 +252,12 @@ export function TryCartScreen(props: TryCartScreenProps) {
                   </div>
                 ) : null}
               </div>
-              {errorFor("lines") ? <div style={{ color: WON_ATTENTION, fontSize: 12.5 }}>{errorFor("lines")}</div> : null}
+              {errorFor("lines") ? <RowNote tone="attention">{errorFor("lines")}</RowNote> : null}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 200px), 1fr))", gap: 12 }}>
                 <s-select name="currency" label={t("tryCart.market")} value={live.currency} error={errorFor("currency")}>
                   {currencies.map((c) => (
-                    <s-option key={c.code} value={c.code} selected={on(c.code === live.currency)}>
-                      {c.markets.length > 0 ? `${c.code} · ${c.markets.join(", ")}` : c.code}
+                    <s-option key={c.code} value={c.code} selected={boolAttr(c.code === live.currency)}>
+                      {currencyLabel(c)}
                     </s-option>
                   ))}
                 </s-select>

@@ -10,10 +10,27 @@
 
 import type { MessageKey } from "../../i18n";
 
-/** One currency the shop sells in, with the Won markets that use it (handles). */
+/** A Won market as the merchant knows it: its Shopify name (the handle when the name is unknown). */
+export interface MarketView {
+  handle: string;
+  name: string;
+}
+
+/** One currency the shop sells in, with the enabled Won markets that use it. */
 export interface CurrencyView {
   code: string;
-  markets: string[];
+  markets: MarketView[];
+}
+
+/**
+ * Active code rules vs. the cap (C2: each active code rule is its own Shopify
+ * discount; Shopify runs at most 25 discount functions per store, Won keeps 20).
+ */
+export interface CodeRuleLimit {
+  active: number;
+  limit: number;
+  /** Shopify's store-wide cap the limit is derived from. */
+  shopifyLimit: number;
 }
 
 // --- Store signals (Přehled, onboarding) ---------------------------------------------
@@ -85,10 +102,18 @@ export interface FieldError {
 export type UiFailure =
   | { ok: false; reason: "not_wired"; what: "move" | "undo" | "tryCart" }
   | { ok: false; reason: "invalid"; errors: FieldError[] }
+  /** Saving would make more code rules active than Shopify can run (C2). */
+  | { ok: false; reason: "too_many_code_rules"; count: number; limit: number; shopifyLimit: number }
+  /** Codes the discount function cannot tell apart (8-hex code hashes). */
+  | { ok: false; reason: "code_hash_collision"; codes: string[][] }
   | { ok: false; reason: "newer_schema" }
   | { ok: false; reason: "function_config_too_large"; bytes: number; budget: number }
   | { ok: false; reason: "config_too_large"; bytes: number; limit: number }
   | { ok: false; reason: "not_found" }
+  /** A Move was submitted without any discount selected. */
+  | { ok: false; reason: "nothing_selected" }
+  /** The request itself made no sense (unknown intent, missing id): a stale page or a tampered form. */
+  | { ok: false; reason: "bad_request" }
   | { ok: false; reason: "preview_only" }
   | { ok: false; reason: "error" };
 

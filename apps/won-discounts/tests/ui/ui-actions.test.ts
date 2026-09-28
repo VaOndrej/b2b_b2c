@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
-import { loadConfig } from "../../app/lib/config.server.ts";
+import { codeHash } from "@won/core/discounts/code-hash";
+
+import { loadConfig, saveConfig } from "../../app/lib/config.server.ts";
+import { MAX_ACTIVE_CODE_RULES, SHOPIFY_MAX_ACTIVE_DISCOUNT_FUNCTIONS } from "../../app/lib/config-guards.server.ts";
+import { failureCopy } from "../../app/components/shell/Notice.tsx";
+import { translator } from "../../app/i18n/index.ts";
 import {
+  clearSignalCache,
+  codeRuleLimit,
   deleteRule,
   embedStateFromThemes,
   loadAdminSignals,
@@ -10,11 +17,13 @@ import {
   readBackupId,
   readNativeIds,
   readOnboardingForm,
+  readMarketNames,
   readShopContext,
   resolvePlan,
   runTryCart,
   saveOnboarding,
   saveRule,
+  uiFailureFromSave,
   undoMove,
   type AdminGraphql,
 } from "../../app/lib/ui-actions.server.ts";
@@ -116,6 +125,8 @@ test("onboarding: only known goals are stored (comma-joined choice list or separ
 });
 
 test("not-wired seams say so and change nothing; their inputs are validated", async () => {
+  assert.deepEqual(await moveNative({ shop: SHOP }, []), { ok: false, reason: "nothing_selected" });
+  assert.deepEqual(await undoMove({ shop: SHOP }, null), { ok: false, reason: "bad_request" });
   assert.deepEqual(readNativeIds(form([["nativeId", "gid://shopify/DiscountCodeNode/1"], ["nativeId", "gid://evil/1"]])), [
     "gid://shopify/DiscountCodeNode/1",
   ]);
@@ -139,6 +150,98 @@ test("BILL-1: without a verified subscription the plan resolves to Free", async 
 const settings = (blocks: Record<string, unknown>) =>
   `/* Shopify banner comment */\n${JSON.stringify({ current: { blocks } })}`;
 const EMBED = "shopify://apps/won-discounts/blocks/won_discounts_embed/01a0e790-ee4d-733c-ac8e-14c7baa03fff";
+
+// --- Save refusals: each one typed, named and actionable (never "try again") --------------
+
+const codeRule = (id: string, code: string) => ({
+  id,
+  enabled: true,
+  name: `Kód ${code}`,
+  method: "code",
+  codes: [code],
+  value: { kind: "percentage", percent: 5 },
+  target: { kind: "order" },
+});
+const codeForm = (code: string): [string, string][] => [
+  ...valid.filter(([k]) => k !== FIELD.method),
+  [FIELD.method, "code"],
+  [FIELD.codes, code],
+];
+
+test("too_many_code_rules: the 21st active code rule is refused with the limit and why", async () => {
+  const shop = "limit.myshopify.com";
+  const rules = Array.from({ length: MAX_ACTIVE_CODE_RULES }, (_, i) => codeRule(`c${i}`, `CODE${i}`));
+  const seeded = await saveConfig(db.prisma, shop, { ...(await loadConfig(db.prisma, shop)).config, modules: { codes: { rules } } });
+  assert.equal(seeded.ok, true);
+  assert.deepEqual(codeRuleLimit((await loadConfig(db.prisma, shop)).config), {
+    active: MAX_ACTIVE_CODE_RULES,
+    limit: MAX_ACTIVE_CODE_RULES,
+    shopifyLimit: SHOPIFY_MAX_ACTIVE_DISCOUNT_FUNCTIONS,
+  });
+
+  const { result } = await saveRule(db.prisma, shop, form(codeForm("ONE-TOO-MANY")), OPTS);
+  assert.deepEqual(result, {
+    ok: false,
+    reason: "too_many_code_rules",
+    count: MAX_ACTIVE_CODE_RULES + 1,
+    limit: MAX_ACTIVE_CODE_RULES,
+    shopifyLimit: SHOPIFY_MAX_ACTIVE_DISCOUNT_FUNCTIONS,
+  });
+  const copy = failureCopy(result as never, translator("cs"));
+  assert.equal(copy.key, "result.tooManyCodeRules");
+  assert.deepEqual(copy.params, { limit: 20, count: 21, shopify: 25 });
+  assert.equal(copy.action?.href, "/app/discounts");
+  // A switched-off code rule does not count: saving it is fine.
+  const off = await saveRule(db.prisma, shop, form(codeForm("PARKED").filter(([k]) => k !== FIELD.enabled)), OPTS);
+  assert.equal(off.result.ok, true);
+});
+
+/** Two different codes with the same 8-hex function hash (birthday search, deterministic). */
+function collidingCodes(): [string, string] {
+  const seen = new Map<string, string>();
+  for (let i = 0; ; i++) {
+    const code = `WON${i}`;
+    const hash = codeHash(code);
+    const other = seen.get(hash);
+    if (other) return [other, code];
+    seen.set(hash, code);
+  }
+}
+
+test("code_hash_collision: names the codes the checkout cannot tell apart, fix link to #codes", async () => {
+  const shop = "collision.myshopify.com";
+  const [a, b] = collidingCodes();
+  const first = await saveRule(db.prisma, shop, form(codeForm(a)), OPTS);
+  assert.equal(first.result.ok, true);
+  const { result } = await saveRule(db.prisma, shop, form(codeForm(b)), OPTS);
+  assert.equal(result.ok, false);
+  assert.ok(!result.ok && result.reason === "code_hash_collision");
+  assert.deepEqual(!result.ok && result.reason === "code_hash_collision" ? result.codes.flat().sort() : [], [a, b].sort());
+  const copy = failureCopy(result as never, translator("cs"));
+  assert.equal(copy.action?.href, "#codes");
+  assert.match(String(copy.params?.codes), new RegExp(`${a}|${b}`));
+  assert.equal((await loadConfig(db.prisma, shop)).config.modules.codes.rules.length, 1, "nothing written");
+});
+
+test("every saveConfig refusal maps to its own typed failure with its own copy", () => {
+  const cs = translator("cs");
+  const cases = [
+    [{ ok: false, reason: "function_config_too_large", bytes: 9500, budget: 9000 }, "result.functionTooLarge", "/app/discounts"],
+    [{ ok: false, reason: "config_too_large", bytes: 300000, limit: 262144 }, "result.configTooLarge", "/app/discounts"],
+    [{ ok: false, reason: "newer_schema", storedSchemaVersion: 2 }, "result.newerSchema", undefined],
+  ] as const;
+  for (const [refusal, key, href] of cases) {
+    const failure = uiFailureFromSave({ ...refusal, config: {} as never, issues: [] } as never);
+    assert.equal(failure.reason, refusal.reason);
+    const copy = failureCopy(failure, cs);
+    assert.equal(copy.key, key);
+    assert.equal(copy.action?.href, href);
+    assert.notEqual(copy.key, "result.error", "a refusal is never a generic 'try again'");
+  }
+  assert.equal(failureCopy({ ok: false, reason: "newer_schema" }, cs).action?.reload, true);
+  assert.equal(failureCopy({ ok: false, reason: "bad_request" }, cs).key, "result.badRequest");
+  assert.equal(failureCopy({ ok: false, reason: "nothing_selected" }, cs).key, "result.nothingSelected");
+});
 
 test("embed detection: by block handle (no UUID), the live theme decides", () => {
   assert.equal(embedStateFromThemes([{ role: "MAIN", settings: settings({ a: { type: EMBED, disabled: false } }) }]), "on");
@@ -169,6 +272,7 @@ function fakeGraphql(responses: Record<string, unknown>): AdminGraphql {
 }
 
 test("loadAdminSignals: embed read with read_themes, activation deep link, the rest not wired", async () => {
+  clearSignalCache();
   const graphql = fakeGraphql({
     WonDiscountsThemes: { data: { themes: { nodes: [{ id: "gid://shopify/OnlineStoreTheme/1", role: "MAIN" }] } } },
     WonDiscountsThemeSettings: {
@@ -187,7 +291,7 @@ test("loadAdminSignals: embed read with read_themes, activation deep link, the r
   const noScope = await loadAdminSignals({ shop: SHOP, scopes: "write_discounts", apiKey: "abc123", graphql });
   assert.equal(noScope.embed.state, "no_scope");
   const outage = await loadAdminSignals({
-    shop: SHOP,
+    shop: "outage.myshopify.com",
     scopes: "read_themes",
     apiKey: "abc123",
     graphql: async () => {
@@ -195,6 +299,47 @@ test("loadAdminSignals: embed read with read_themes, activation deep link, the r
     },
   });
   assert.equal(outage.embed.state, "unknown");
+});
+
+test("theme reads are cached per shop for a short time; drafts are read only when the live theme is off", async () => {
+  clearSignalCache();
+  const calls: string[] = [];
+  const graphql: AdminGraphql = async (query, variables) => {
+    const name = /query (\w+)/.exec(query)?.[1] ?? "";
+    calls.push(`${name}:${String(variables?.id ?? "")}`);
+    if (name === "WonDiscountsThemes") {
+      return {
+        data: {
+          themes: {
+            nodes: [
+              { id: "gid://shopify/OnlineStoreTheme/1", role: "MAIN" },
+              { id: "gid://shopify/OnlineStoreTheme/2", role: "UNPUBLISHED" },
+            ],
+          },
+        },
+      };
+    }
+    return { data: { node: { files: { nodes: [{ body: { content: settings({ a: { type: EMBED } }) } }] } } } };
+  };
+  const ctx = { shop: "cache.myshopify.com", scopes: "read_themes", apiKey: "k", graphql };
+  assert.equal((await loadAdminSignals(ctx)).embed.state, "on");
+  assert.deepEqual(calls, ["WonDiscountsThemes:", "WonDiscountsThemeSettings:gid://shopify/OnlineStoreTheme/1"], "live theme on → no draft read");
+  await loadAdminSignals(ctx);
+  assert.equal(calls.length, 2, "second load within the TTL is served from the cache");
+  await loadAdminSignals({ ...ctx, fresh: true });
+  assert.equal(calls.length, 4, "fresh (onboarding re-check) bypasses the cache");
+});
+
+test("market names come from Shopify (read_markets); a failed read degrades to handles", async () => {
+  clearSignalCache();
+  const ok = fakeGraphql({ WonDiscountsMarketNames: { data: { markets: { nodes: [{ handle: "cz", name: "Česko" }, { handle: "sk", name: "" }] } } } });
+  assert.deepEqual(await readMarketNames(ok, "names.myshopify.com"), { cz: "Česko" });
+  assert.deepEqual(
+    await readMarketNames(async () => {
+      throw new Error("no scope");
+    }, "names-failing.myshopify.com"),
+    {},
+  );
 });
 
 test("readShopContext degrades to nulls (REL-1)", async () => {

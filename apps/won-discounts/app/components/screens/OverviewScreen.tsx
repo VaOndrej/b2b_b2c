@@ -3,28 +3,31 @@
 // embedded route (app/routes/app._index.tsx, the shop's config + store signals)
 // and by the dev harness (app/routes/dev.preview.$.tsx, fixtures), so the harness
 // screenshots the real screen (audit P2-5). Props are plain serializable data
-// built by buildOverviewProps(); every word comes from i18n + model/describe.ts.
+// built by buildOverviewProps(); every word comes from i18n + the core formatter.
 //
-// With only { schemaVersion, ruleCount, readOnly } (a shop whose store signals are
-// not connected yet) the screen still renders every section, each stating
-// honestly what is not known yet (§12). No router hook runs at this level, so the
-// component also renders outside a router (unit renders); the parts that submit
-// (native discounts) mount only when there is something to submit.
+// "Běží" is green only for a rule that really runs (model/rule-status.ts):
+// switched on, inside its schedule, evaluable at checkout, written to Shopify.
+// With only { schemaVersion, ruleCount, readOnly } the screen still renders every
+// section, each stating honestly what is not known yet (§12). No router hook runs
+// at this level, so the component also renders outside a router (unit renders).
 
-import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/config";
+import type { DiscountRule, OnboardingGoal, WonDiscountsConfig } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
 import type { Translator } from "../../i18n";
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
 import { RecipeGrid } from "../RecipeGrid";
-import { collectWarnings, describeRuleLine, ruleName, type RuleWarning } from "../model/describe";
+import { RuleRow } from "../RuleRow";
+import { collectWarnings, type RuleWarning } from "../model/describe";
 import { currencyCodes, currencyViews } from "../model/markets";
-import { UPCOMING_MODULES, UPCOMING_MODULE_META } from "../model/modules";
+import { orderedModules, UPCOMING_MODULES, UPCOMING_MODULE_META } from "../model/modules";
+import { shopToday } from "../model/rule-form";
+import { ruleStatus, ruleStatusSummary } from "../model/rule-status";
 import { NOT_WIRED_SIGNALS, checkoutText, embedText, statusSummary, syncText } from "../model/signals";
 import type { AdminSignals, CurrencyView } from "../model/types";
 import { PlanBadge } from "../shell/PlanBadge";
-import { StatusPill, WonRow, WonSection } from "../shell/WonSection";
-import { WON_ATTENTION, WON_FAINT, WON_MUTED } from "../shell/tokens";
+import { RowNote, WonRow, WonSection } from "../shell/WonSection";
+import { WON_ATTENTION, WON_FAINT } from "../shell/tokens";
 
 export interface OverviewScreenProps {
   schemaVersion: number;
@@ -34,24 +37,39 @@ export interface OverviewScreenProps {
   /** The shop's rules (what runs). Absent → only the count is known. */
   rules?: DiscountRule[];
   currencies?: CurrencyView[];
-  /** Onboarding step 1–5 from the config. */
+  /** Onboarding step 1–5 and goals from the config (goals order the modules). */
   onboardingStep?: number;
+  goals?: OnboardingGoal[];
+  /** Shop-local today and zone: a rule's schedule is judged on the shop's day. */
+  today?: string;
+  timezone?: string | null;
   /** Store signals (embed, checkout, sync, native discounts). Absent → not connected yet. */
   signals?: AdminSignals;
 }
 
 export function buildOverviewProps(
   config: WonDiscountsConfig,
-  opts: { readOnly: boolean; signals?: AdminSignals; shopCurrency?: string | null },
+  opts: {
+    readOnly: boolean;
+    signals?: AdminSignals;
+    shopCurrency?: string | null;
+    timezone?: string | null;
+    marketNames?: Readonly<Record<string, string>>;
+    now?: Date;
+  },
 ): OverviewScreenProps {
   const rules = config.modules.codes.rules;
+  const timezone = opts.timezone ?? null;
   const props: OverviewScreenProps = {
     schemaVersion: config.schemaVersion,
     ruleCount: rules.length,
     readOnly: opts.readOnly,
     rules,
-    currencies: currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules }),
+    currencies: currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules, marketNames: opts.marketNames }),
     onboardingStep: config.onboarding.step,
+    goals: [...config.onboarding.goals],
+    today: shopToday(timezone, opts.now),
+    timezone,
   };
   if (opts.signals) props.signals = opts.signals;
   return props;
@@ -59,24 +77,16 @@ export function buildOverviewProps(
 
 const RUNNING_SHOWN = 5;
 
-function runningSummary(rules: readonly DiscountRule[] | undefined, ruleCount: number, tr: Translator): string {
-  if (ruleCount === 0) return tr.t("overview.running.none");
-  if (!rules) return tr.tp("count.discount", ruleCount);
-  const live = rules.filter((r) => r.enabled).length;
-  const off = rules.length - live;
-  return [tr.tp("count.discount", rules.length), tr.tp("count.live", live), off > 0 ? tr.tp("count.off", off) : ""]
-    .filter(Boolean)
-    .join(" · ");
-}
-
 function warningText(w: RuleWarning, tr: Translator): string {
   const rule = w.ruleName.trim() || tr.t("common.untitled");
+  if (w.kind === "unsupported") return tr.t("overview.warning.unsupported", { rule });
   if (w.kind === "missingCurrency") return tr.t("overview.warning.missingCurrency", { rule, currencies: tr.list(w.currencies ?? []) });
   if (w.kind === "noCode") return tr.t("overview.warning.noCode", { rule });
   return tr.t("overview.warning.noTarget", { rule });
 }
 
 function warningFix(w: RuleWarning, tr: Translator): string {
+  if (w.kind === "unsupported") return tr.t("overview.warning.unsupported.fix");
   if (w.kind === "missingCurrency") return tr.t("overview.warning.missingCurrency.fix");
   if (w.kind === "noCode") return tr.t("overview.warning.noCode.fix");
   return tr.t("overview.warning.noTarget.fix");
@@ -89,6 +99,9 @@ export function OverviewScreen({
   rules,
   currencies = [],
   onboardingStep,
+  goals = [],
+  today,
+  timezone = null,
   signals,
 }: OverviewScreenProps) {
   const tr = useT();
@@ -96,9 +109,13 @@ export function OverviewScreen({
   const codes = currencyCodes(currencies);
   const status = signals ?? NOT_WIRED_SIGNALS;
   const warnings = rules ? collectWarnings(rules, codes) : [];
-  const liveCount = rules ? rules.filter((r) => r.enabled).length : 0;
+  const statusCtx = { today: today ?? null, timezone, sync: status.sync };
+  const statuses = (rules ?? []).map((rule) => ruleStatus(rule, statusCtx));
+  const liveCount = statuses.filter((s) => s.kind === "live").length;
   const showOnboarding = onboardingStep !== undefined && onboardingStep <= 3 && ruleCount === 0;
   const embedNeedsAction = status.embed.state !== "on" && status.embed.activateUrl !== null;
+  const summary =
+    ruleCount === 0 ? t("overview.running.none") : rules ? ruleStatusSummary(statuses, tr) : tr.tp("count.discount", ruleCount);
 
   return (
     <s-page heading="Won Discounts">
@@ -124,8 +141,9 @@ export function OverviewScreen({
         <WonSection
           title={t("overview.running.title")}
           glyph="tag"
-          summary={runningSummary(rules, ruleCount, tr)}
-          on={ruleCount > 0 ? liveCount > 0 : undefined}
+          summary={summary}
+          // Green only when something really runs; otherwise the summary says what is going on.
+          on={liveCount > 0 ? true : undefined}
         >
           {ruleCount === 0 ? (
             // §15: the empty state teaches — the shape of success + one next step.
@@ -135,14 +153,8 @@ export function OverviewScreen({
             </s-stack>
           ) : (
             <div>
-              {(rules ?? []).slice(0, RUNNING_SHOWN).map((rule) => (
-                <WonRow key={rule.id}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <s-text type="strong">{ruleName(rule, tr)}</s-text>
-                    <StatusPill on={rule.enabled} />
-                  </div>
-                  <div style={{ fontSize: 12.5, color: WON_MUTED, marginTop: 2 }}>{describeRuleLine(rule, tr, codes)}</div>
-                </WonRow>
+              {(rules ?? []).slice(0, RUNNING_SHOWN).map((rule, i) => (
+                <RuleRow key={rule.id} rule={rule} status={statuses[i]} currencies={codes} timezone={timezone} />
               ))}
               <WonRow
                 action={
@@ -193,11 +205,11 @@ export function OverviewScreen({
               }
             >
               <s-text type="strong">{t("overview.embed.label")}</s-text>
-              <div style={{ fontSize: 12.5, color: WON_MUTED, marginTop: 2 }}>{embedText(status.embed.state, tr)}</div>
+              <RowNote>{embedText(status.embed.state, tr)}</RowNote>
             </WonRow>
             <WonRow>
               <s-text type="strong">{t("overview.checkout.label")}</s-text>
-              <div style={{ fontSize: 12.5, color: WON_MUTED, marginTop: 2 }}>{checkoutText(status.checkout, tr)}</div>
+              <RowNote>{checkoutText(status.checkout, tr)}</RowNote>
             </WonRow>
             <WonRow
               action={
@@ -209,7 +221,7 @@ export function OverviewScreen({
               }
             >
               <s-text type="strong">{t("overview.sync.label")}</s-text>
-              <div style={{ fontSize: 12.5, color: WON_MUTED, marginTop: 2 }}>{syncText(status.sync, tr)}</div>
+              <RowNote>{syncText(status.sync, tr)}</RowNote>
             </WonRow>
           </div>
         </WonSection>
@@ -226,7 +238,7 @@ export function OverviewScreen({
           defaultOpen={false}
         >
           <div>
-            {UPCOMING_MODULES.map((key) => {
+            {orderedModules(goals).map((key) => {
               const meta = UPCOMING_MODULE_META[key];
               return (
                 <WonRow key={key} action={<s-link href={`/app/${key}`}>{t("soon.state")}</s-link>}>
@@ -234,7 +246,7 @@ export function OverviewScreen({
                     <s-text type="strong">{t(meta.title)}</s-text>
                     {meta.pro ? <PlanBadge tier="pro" /> : null}
                   </div>
-                  <div style={{ fontSize: 12.5, color: WON_MUTED, marginTop: 2 }}>{t(meta.body)}</div>
+                  <RowNote>{t(meta.body)}</RowNote>
                 </WonRow>
               );
             })}

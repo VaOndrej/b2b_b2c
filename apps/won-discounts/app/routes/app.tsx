@@ -1,61 +1,51 @@
+import { useState } from "react";
 import type { HeadersFunction, LoaderFunctionArgs, ShouldRevalidateFunction } from "react-router";
 import { Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
+import { WonNavMenu } from "@won/app-kit/admin-nav";
 
 import { authenticate } from "../shopify.server";
-import { resolveLocale, t } from "../i18n";
+import db from "../db.server";
+import { loadConfig } from "../lib/config.server";
+import { resolveLocale, t, type Locale } from "../i18n";
 import { LocaleProvider } from "../i18n/context";
+import { navItems } from "../components/model/modules";
 
 // The embedded admin shell: App Bridge, the admin language (A10) and the nav.
 //
-// Language: Shopify passes the admin language as `?locale=` on the document
-// load of the embedded app. In-app navigations drop the query string, so this
-// layout's data is NOT re-fetched on them (shouldRevalidate below) and the
-// language resolved on the first load stays for the session of the page.
+// Language: Shopify passes the admin language as `?locale=` on the document load
+// of the embedded app; in-app navigations drop the query string. The first value
+// is kept in component state, so a later revalidation without the parameter
+// never flips the language.
+//
+// Nav: the shared Won structure (@won/app-kit/admin-nav: home first, Plan last).
+// Modules that are not built yet stay visible (Admin IA: all modules always
+// shown) in the order of the onboarding goals, and open a page that says so.
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
+  const { config } = await loadConfig(db, session.shop);
   const locale = resolveLocale(new URL(request.url).searchParams.get("locale"));
-  // eslint-disable-next-line no-undef
-  return { apiKey: process.env.SHOPIFY_API_KEY || "", locale };
+  return {
+    // eslint-disable-next-line no-undef
+    apiKey: process.env.SHOPIFY_API_KEY || "",
+    locale,
+    goals: [...config.onboarding.goals],
+  };
 };
 
-export const shouldRevalidate: ShouldRevalidateFunction = ({ nextUrl, defaultShouldRevalidate }) =>
-  nextUrl.searchParams.has("locale") ? defaultShouldRevalidate : false;
+// Re-read after a form submission (e.g. onboarding goals reorder the nav) or a new
+// ?locale=; plain in-app navigations keep the layout's data.
+export const shouldRevalidate: ShouldRevalidateFunction = ({ nextUrl, formMethod, defaultShouldRevalidate }) =>
+  formMethod || nextUrl.searchParams.has("locale") ? defaultShouldRevalidate : false;
 
 export default function App() {
-  const { apiKey, locale } = useLoaderData<typeof loader>();
-
-  // Won nav structure (@won/app-kit/admin-nav): home first (rel="home"), feature
-  // pages in order, Plan last. Rendered here rather than through WonNavMenu
-  // because WonNavMenu hard-codes an English "Overview" home label and this app's
-  // admin speaks Czech too (A10). Modules that are not built yet stay visible
-  // (Admin IA: all five modules always shown) and open a page that says so.
-  const items: { to: string; label: string }[] = [
-    { to: "/app/discounts", label: t(locale, "nav.discounts") },
-    { to: "/app/try-cart", label: t(locale, "nav.tryCart") },
-    { to: "/app/tiers", label: t(locale, "nav.tiers") },
-    { to: "/app/rewards", label: t(locale, "nav.rewards") },
-    { to: "/app/outlet", label: t(locale, "nav.outlet") },
-    { to: "/app/margin", label: t(locale, "nav.margin") },
-    { to: "/app/campaigns", label: t(locale, "nav.campaigns") },
-    { to: "/app/appearance", label: t(locale, "nav.appearance") },
-    { to: "/app/settings", label: t(locale, "nav.settings") },
-    { to: "/app/plan", label: t(locale, "nav.plan") },
-  ];
+  const data = useLoaderData<typeof loader>();
+  const [locale] = useState<Locale>(data.locale);
 
   return (
-    <AppProvider embedded apiKey={apiKey}>
-      <ui-nav-menu>
-        <a href="/app" rel="home">
-          {t(locale, "nav.overview")}
-        </a>
-        {items.map((item) => (
-          <a key={item.to} href={item.to}>
-            {item.label}
-          </a>
-        ))}
-      </ui-nav-menu>
+    <AppProvider embedded apiKey={data.apiKey}>
+      <WonNavMenu homeLabel={t(locale, "nav.overview")} items={navItems(locale, data.goals)} />
       <LocaleProvider locale={locale}>
         <Outlet />
       </LocaleProvider>

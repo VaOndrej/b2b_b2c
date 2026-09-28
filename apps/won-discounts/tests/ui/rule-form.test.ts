@@ -5,6 +5,8 @@ import type { DiscountRule } from "@won/core/discounts/config";
 
 import {
   FIELD,
+  minorToInput,
+  parseMoneyInput,
   readRuleForm,
   recipeRule,
   ruleFormDefaults,
@@ -56,9 +58,13 @@ test("a valid percentage rule round-trips; the id comes from the server context,
   });
 });
 
-test("percent must be 1–100; decimals with a comma are fine", () => {
+test("percent must be 1–100 like the copy says; decimals with a comma are fine", () => {
   const set = (v: string) => base.map(([k, x]) => [k, k === FIELD.percent ? v : x] as [string, string]);
   assert.deepEqual(errorsOf(set("0")), ["percent:editor.error.percent"]);
+  assert.deepEqual(errorsOf(set("0,5")), ["percent:editor.error.percent"]);
+  assert.deepEqual(errorsOf(set("100,5")), ["percent:editor.error.percent"]);
+  assert.deepEqual(errorsOf(set("1")), []);
+  assert.deepEqual(errorsOf(set("100")), []);
   assert.deepEqual(errorsOf(set("150")), ["percent:editor.error.percent"]);
   assert.deepEqual(errorsOf(set("abc")), ["percent:editor.error.percent"]);
   assert.deepEqual(readRuleForm(form(set("12,5")), CTX).rule.value, { kind: "percentage", percent: 12.5 });
@@ -220,4 +226,48 @@ test("recipes pre-fill sensible values per currency; every recipe reads back thr
   assert.deepEqual(welcome.limits, { oncePerCustomer: true });
   const amountOff = recipeRule("amountOff", { id: "r1", locale: "en", currencies: ["CZK", "EUR", "HUF"] });
   assert.deepEqual(amountOff.value, { kind: "fixed", amount: { CZK: 10000, EUR: 400 } });
+});
+
+test("§14a: stored values in currencies whose market is off are kept, unless removed explicitly", () => {
+  const existing: DiscountRule = {
+    id: "r_new",
+    enabled: true,
+    name: "x",
+    method: "automatic",
+    value: { kind: "fixed", amount: { CZK: 10000, HUF: 300000 } },
+    target: { kind: "order" },
+    minimum: { subtotal: { CZK: 100000, HUF: 1500000 } },
+  };
+  const fixedForm: [string, string][] = [
+    ...base.filter(([k]) => k !== FIELD.valueKind && k !== FIELD.percent),
+    [FIELD.valueKind, "fixed"],
+    [FIELD.amount("CZK"), "200"],
+    [FIELD.minimum("CZK"), "1000"],
+  ];
+  const kept = readRuleForm(form(fixedForm), { ...CTX, existing });
+  assert.deepEqual(kept.errors, []);
+  assert.deepEqual(kept.rule.value, { kind: "fixed", amount: { CZK: 20000, HUF: 300000 } });
+  assert.deepEqual(kept.rule.minimum, { subtotal: { CZK: 100000, HUF: 1500000 } });
+
+  const dropped = readRuleForm(form([...fixedForm, [FIELD.dropCurrency, "HUF"]]), { ...CTX, existing });
+  assert.deepEqual(dropped.rule.value, { kind: "fixed", amount: { CZK: 20000 } });
+  assert.deepEqual(dropped.rule.minimum, { subtotal: { CZK: 100000 } });
+
+  // The form shows them read-only, never as editable fields that would be lost.
+  const defaults = ruleFormDefaults(existing, ["CZK", "EUR"]);
+  assert.deepEqual(defaults.outside, [{ currency: "HUF", amount: 300000, minimum: 1500000 }]);
+  assert.equal(defaults.fields[FIELD.amount("HUF")], undefined);
+});
+
+test("money input: parsed and printed by the engine's converter", () => {
+  assert.equal(parseMoneyInput("100", "CZK"), 10000);
+  assert.equal(parseMoneyInput("100,5", "CZK"), 10050);
+  assert.equal(parseMoneyInput("1 000.25", "EUR"), 100025);
+  assert.equal(parseMoneyInput("", "EUR"), null);
+  assert.ok(Number.isNaN(parseMoneyInput("-5", "EUR")));
+  assert.ok(Number.isNaN(parseMoneyInput("abc", "EUR")));
+  assert.equal(parseMoneyInput("500", "JPY"), 500);
+  assert.equal(minorToInput(10050, "CZK"), "100.5");
+  assert.equal(minorToInput(10000, "CZK"), "100");
+  assert.equal(minorToInput(500, "JPY"), "500");
 });
