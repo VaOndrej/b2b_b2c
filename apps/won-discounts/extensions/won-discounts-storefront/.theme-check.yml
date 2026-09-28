@@ -1,0 +1,8 @@
+# Won Discounts app embed theme-check config.
+#
+# ValidSchema does not understand theme-app-embed keys (`target`, `javascript`,
+# `stylesheet`) and reports them as "not allowed" — a false positive for app
+# embeds. Shopify validates the embed schema at build/deploy time anyway.
+# (Same rationale as apps/won-toasts/extensions/won-toasts-storefront/.theme-check.yml.)
+ValidSchema:
+  enabled: false

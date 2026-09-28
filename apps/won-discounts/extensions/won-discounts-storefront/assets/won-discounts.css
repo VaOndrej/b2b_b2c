@@ -1,0 +1,10 @@
+/*
+ * Won Discounts app embed stylesheet.
+ *
+ * MVP0 renders no visible UI: the root marker stays hidden. This file only
+ * exists so the schema's `stylesheet` reference resolves; later MVPs add the
+ * discount UI styling here.
+ */
+[data-won-discounts-embed] {
+  display: none;
+}
