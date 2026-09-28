@@ -1,0 +1,71 @@
+# Input query variables come from the discount's `$app:won_discounts` /
+# `function_config` metafield: its top-level keys `campaignStart` and
+# `campaignEnd` (DateTimeWithoutTimezone, e.g. "2026-09-28T00:00:00", shop
+# timezone). The defaults describe an empty window in the past, so
+# `campaignActive` is false when no campaign is configured.
+query CartInput(
+  $campaignStart: DateTimeWithoutTimezone! = "1970-01-01T00:00:00"
+  $campaignEnd: DateTimeWithoutTimezone! = "1970-01-01T00:00:00"
+) {
+  triggeringDiscountCode
+  enteredDiscountCodes {
+    code
+    rejectable
+  }
+  discount {
+    discountClasses
+    metafield(namespace: "$app:won_discounts", key: "function_config") {
+      jsonValue
+    }
+  }
+  shop {
+    localTime {
+      date
+      campaignActive: dateTimeBetween(
+        startDateTime: $campaignStart
+        endDateTime: $campaignEnd
+      )
+    }
+  }
+  cart {
+    cost {
+      subtotalAmount {
+        amount
+        currencyCode
+      }
+    }
+    lines {
+      id
+      quantity
+      cost {
+        amountPerQuantity {
+          amount
+          currencyCode
+        }
+        compareAtAmountPerQuantity {
+          amount
+        }
+      }
+      gift: attribute(key: "_won_gift") {
+        value
+      }
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          id
+          product {
+            id
+            wonProduct: metafield(namespace: "$app:won_discounts", key: "product") {
+              jsonValue
+            }
+          }
+        }
+      }
+    }
+  }
+  localization {
+    country {
+      isoCode
+    }
+  }
+}

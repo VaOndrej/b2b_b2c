@@ -1,0 +1,87 @@
+{
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [],
+      "discount": {
+        "discountClasses": [
+          "ORDER"
+        ],
+        "metafield": {
+          "jsonValue": {
+            "prototype": {
+              "mode": "percent_all",
+              "percent": 15
+            }
+          }
+        }
+      },
+      "shop": {
+        "localTime": {
+          "date": "2026-09-28",
+          "campaignActive": false
+        }
+      },
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "amount": "500.0",
+            "currencyCode": "CZK"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0",
+                "currencyCode": "CZK"
+              },
+              "compareAtAmountPerQuantity": null
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/10",
+              "product": {
+                "id": "gid://shopify/Product/1",
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 2,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "200.0",
+                "currencyCode": "CZK"
+              },
+              "compareAtAmountPerQuantity": null
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/20",
+              "product": {
+                "id": "gid://shopify/Product/2",
+                "wonProduct": null
+              }
+            }
+          }
+        ]
+      },
+      "localization": {
+        "country": {
+          "isoCode": "CZ"
+        }
+      }
+    },
+    "output": {
+      "operations": []
+    }
+  }
+}

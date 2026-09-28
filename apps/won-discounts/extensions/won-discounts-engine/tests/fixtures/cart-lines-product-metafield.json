@@ -1,0 +1,195 @@
+{
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [],
+      "discount": {
+        "discountClasses": [
+          "PRODUCT"
+        ],
+        "metafield": {
+          "jsonValue": {
+            "prototype": {
+              "mode": "product_metafield"
+            }
+          }
+        }
+      },
+      "shop": {
+        "localTime": {
+          "date": "2026-09-28",
+          "campaignActive": false
+        }
+      },
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "amount": "500.0",
+            "currencyCode": "CZK"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0",
+                "currencyCode": "CZK"
+              },
+              "compareAtAmountPerQuantity": null
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/10",
+              "product": {
+                "id": "gid://shopify/Product/1",
+                "wonProduct": {
+                  "jsonValue": {
+                    "percent": 7
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 2,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "200.0",
+                "currencyCode": "CZK"
+              },
+              "compareAtAmountPerQuantity": null
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/20",
+              "product": {
+                "id": "gid://shopify/Product/2",
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/3",
+            "quantity": 3,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "300.0",
+                "currencyCode": "CZK"
+              },
+              "compareAtAmountPerQuantity": null
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/30",
+              "product": {
+                "id": "gid://shopify/Product/3",
+                "wonProduct": {
+                  "jsonValue": {
+                    "percent": "x"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/4",
+            "quantity": 4,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "400.0",
+                "currencyCode": "CZK"
+              },
+              "compareAtAmountPerQuantity": null
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "CustomProduct"
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/5",
+            "quantity": 5,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "500.0",
+                "currencyCode": "CZK"
+              },
+              "compareAtAmountPerQuantity": {
+                "amount": "700.0"
+              }
+            },
+            "gift": {
+              "value": "1"
+            },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/50",
+              "product": {
+                "id": "gid://shopify/Product/5",
+                "wonProduct": {
+                  "jsonValue": {
+                    "percent": 12.5
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "localization": {
+        "country": {
+          "isoCode": "CZ"
+        }
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "productDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "WON 7%",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/1"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 7
+                  }
+                }
+              },
+              {
+                "message": "WON 12.5%",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/5"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 12.5
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "ALL"
+          }
+        }
+      ]
+    }
+  }
+}

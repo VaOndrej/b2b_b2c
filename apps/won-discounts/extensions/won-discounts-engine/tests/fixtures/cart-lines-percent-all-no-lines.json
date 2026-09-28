@@ -1,0 +1,46 @@
+{
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [],
+      "discount": {
+        "discountClasses": [
+          "PRODUCT"
+        ],
+        "metafield": {
+          "jsonValue": {
+            "prototype": {
+              "mode": "percent_all",
+              "percent": 15
+            }
+          }
+        }
+      },
+      "shop": {
+        "localTime": {
+          "date": "2026-09-28",
+          "campaignActive": false
+        }
+      },
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "amount": "500.0",
+            "currencyCode": "CZK"
+          }
+        },
+        "lines": []
+      },
+      "localization": {
+        "country": {
+          "isoCode": "CZ"
+        }
+      }
+    },
+    "output": {
+      "operations": []
+    }
+  }
+}

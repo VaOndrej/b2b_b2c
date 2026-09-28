@@ -1,0 +1,30 @@
+api_version = "2026-04"
+
+[[extensions]]
+name = "t:name"
+handle = "won-discounts-engine"
+type = "function"
+uid = "f40d0f78-3d15-1474-b4b1-791610e3a3593f0ccc53"
+description = "t:description"
+
+  [[extensions.targeting]]
+  target = "cart.lines.discounts.generate.run"
+  input_query = "src/cart_lines_discounts_generate_run.graphql"
+  export = "cart-lines-discounts-generate-run"
+
+  [[extensions.targeting]]
+  target = "cart.delivery-options.discounts.generate.run"
+  input_query = "src/cart_delivery_options_discounts_generate_run.graphql"
+  export = "cart-delivery-options-discounts-generate-run"
+
+  # Input query variables are read from this metafield on the function owner
+  # (the discount node). Top-level JSON keys map to query variable names
+  # ($campaignStart, $campaignEnd); other keys (e.g. "prototype") are the
+  # function config read via discount.metafield in the input query.
+  [extensions.input.variables]
+  namespace = "$app:won_discounts"
+  key = "function_config"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"

@@ -1,0 +1,6 @@
+# MVP 0: the delivery target is registered but emits no operations yet.
+query DeliveryInput {
+  discount {
+    discountClasses
+  }
+}
