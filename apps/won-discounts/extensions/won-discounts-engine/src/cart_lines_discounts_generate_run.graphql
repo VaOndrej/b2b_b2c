@@ -4,12 +4,16 @@
 # CONTRACT: every `function_config` MUST contain top-level `campaignStart` and
 # `campaignEnd` (DateTimeWithoutTimezone in shop-local time, e.g.
 # "2026-09-28T14:00:00"; use "1970-01-01T00:00:00" for both when there is no
-# campaign). Shopify docs: a key missing from the metafield (or a missing
-# metafield) is passed as null, and null for a `!` variable makes the function
-# execution fail, in every mode: no discount, checkout is not blocked. Whether
-# the query defaults below are applied instead is platform behaviour to settle
-# in C4. `campaignStarted` separates "window not started" from "variables not
-# bound" (the 1970 default is always started).
+# campaign). Settled on the platform by C4
+# (docs/won-discounts/evidence/mvp0/c4-campaign-window.json): a key missing
+# from the metafield, or a missing metafield, fails the run with
+# InvalidVariableValueError before any JS runs, in every mode: the node gives
+# no discount at all (checkout is not blocked). The `= "1970-..."` defaults
+# below are NOT applied by the platform; never rely on them. The local runner
+# (`shopify app function run`) binds no variables and cannot reproduce this.
+# @won/core/discounts/function-config encodeFunctionConfig always writes both
+# keys. `campaignStarted` separates "window not started" from "variables not
+# bound" (the 1970 value is always started).
 query CartInput(
   $campaignStart: DateTimeWithoutTimezone! = "1970-01-01T00:00:00"
   $campaignEnd: DateTimeWithoutTimezone! = "1970-01-01T00:00:00"

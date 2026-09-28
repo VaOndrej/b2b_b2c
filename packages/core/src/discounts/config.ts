@@ -237,9 +237,46 @@ export interface ConfigIssue {
   message: string;
 }
 
+/** Deeply read-only view of `T` (the type of the shared, frozen DEFAULT_CONFIG). */
+export type ReadonlyDeep<T> = T extends (infer U)[]
+  ? ReadonlyArray<ReadonlyDeep<U>>
+  : T extends object
+    ? { readonly [K in keyof T]: ReadonlyDeep<T[K]> }
+    : T;
+
+// --- Limits (audit P2-1) ---------------------------------------------------------------
+
+/**
+ * Hard caps on every list that reaches ShopConfig/ConfigVersion, so a buggy or
+ * hostile admin request cannot bloat storage or the per-request read. Anything over
+ * a cap is dropped with a human-readable issue (never silently). The part of the
+ * config the discount function reads is additionally bounded at save time by the
+ * byte budget in function-config.ts (C3). Exported so the admin can explain a limit
+ * instead of hard-coding the number (§4c, "no magic numbers").
+ */
+export const CONFIG_LIMITS = Object.freeze({
+  rules: 200,
+  codesPerRule: 1000,
+  /** Shopify's own maximum discount code length. */
+  codeLength: 255,
+  tierSets: 50,
+  breaksPerTierSet: 10,
+  giftTiers: 10,
+  campaigns: 50,
+  overridesPerCampaign: 200,
+  localeStringLength: 500,
+  localeKeysPerLanguage: 200,
+});
+
 // --- Defaults ------------------------------------------------------------------------
 
-export const DEFAULT_CONFIG: WonDiscountsConfig = {
+/**
+ * The shared defaults. Deep-frozen (audit P1-1, SEC-2): it is one object per
+ * process, so a caller that mutated it would leak its change into every other
+ * shop that falls back to the default. Never hand this object out as a shop's
+ * config — use createDefaultConfig() / readStoredConfig() for a fresh copy.
+ */
+export const DEFAULT_CONFIG: ReadonlyDeep<WonDiscountsConfig> = deepFreeze<WonDiscountsConfig>({
   schemaVersion: SCHEMA_VERSION,
   markets: [],
   engine: {
@@ -262,12 +299,51 @@ export const DEFAULT_CONFIG: WonDiscountsConfig = {
   storefront: { appearancePreset: "default", cardPricesEnabled: false },
   locales: { cs: {}, sk: {}, en: {} },
   onboarding: { goals: [], step: 1 },
-};
+});
+
+function deepFreeze<T>(value: T): ReadonlyDeep<T> {
+  if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
+    for (const child of Object.values(value)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value as ReadonlyDeep<T>;
+}
+
+/** A fresh, mutable copy of the defaults: what a shop with no stored config gets. */
+export function createDefaultConfig(): WonDiscountsConfig {
+  // DEFAULT_CONFIG is plain JSON data by construction, so a JSON round trip is an
+  // exact deep copy (and works in runtimes without structuredClone).
+  return JSON.parse(JSON.stringify(DEFAULT_CONFIG)) as WonDiscountsConfig;
+}
+
+const SHOP_LOCAL_DATETIME_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/;
+
+/**
+ * True for a real calendar date-time in the exact `YYYY-MM-DDTHH:MM:SS` shape of
+ * Shopify's `DateTimeWithoutTimezone` (shop-local time, no offset). Campaign
+ * windows become the function's `$campaignStart/$campaignEnd` variables, and a
+ * value the platform cannot parse fails the whole run (C4), so the shape is
+ * checked strictly here rather than trusted.
+ */
+export function isShopLocalDateTime(v: unknown): v is string {
+  if (typeof v !== "string") return false;
+  const m = SHOP_LOCAL_DATETIME_RE.exec(v);
+  if (!m) return false;
+  const [year, month, day, hour, minute, second] = m.slice(1).map(Number);
+  if (month < 1 || month > 12 || day < 1 || hour > 23 || minute > 59 || second > 59) return false;
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return day <= daysInMonth;
+}
 
 // --- Sanitize helpers ------------------------------------------------------------------
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function listPreview(values: string[], max = 5): string {
+  const shown = values.slice(0, max).join(", ");
+  return values.length > max ? `${shown} and ${values.length - max} more` : shown;
 }
 
 function pushIssue(issues: ConfigIssue[], path: string, code: string, message: string): void {
@@ -475,9 +551,64 @@ function sanitizeDiscountTarget(
   return { kind: "order" };
 }
 
-function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], index: number): DiscountRule | null {
+/**
+ * Discount codes are case-insensitive in Shopify, so they are stored trimmed and
+ * upper-cased, once each, and never longer than Shopify accepts (audit P3-10).
+ */
+function sanitizeCodes(v: unknown[], issues: ConfigIssue[], path: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  let duplicates = 0;
+  let tooLong = 0;
+  let overLimit = 0;
+  for (const raw of v) {
+    if (typeof raw !== "string") continue;
+    const code = raw.trim().toUpperCase();
+    if (!code) continue;
+    if (code.length > CONFIG_LIMITS.codeLength) {
+      tooLong++;
+      continue;
+    }
+    if (seen.has(code)) {
+      duplicates++;
+      continue;
+    }
+    if (out.length >= CONFIG_LIMITS.codesPerRule) {
+      overLimit++;
+      continue;
+    }
+    seen.add(code);
+    out.push(code);
+  }
+  if (tooLong > 0) {
+    pushIssue(
+      issues,
+      path,
+      "code_too_long",
+      `${tooLong} code(s) longer than ${CONFIG_LIMITS.codeLength} characters were dropped.`,
+    );
+  }
+  if (duplicates > 0) {
+    pushIssue(
+      issues,
+      path,
+      "duplicate_code",
+      `${duplicates} duplicate code(s) were merged (codes are not case-sensitive).`,
+    );
+  }
+  if (overLimit > 0) {
+    pushIssue(
+      issues,
+      path,
+      "too_many_codes",
+      `A rule can have at most ${CONFIG_LIMITS.codesPerRule} codes; ${overLimit} more were dropped.`,
+    );
+  }
+  return out;
+}
+
+function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], path: string): DiscountRule | null {
   if (!isRecord(v)) return null;
-  const path = `modules.codes.rules[${index}]`;
   const id = typeof v.id === "string" && v.id ? v.id : "";
   if (!id) {
     pushIssue(issues, path, "missing_id", "Discount rule without an id was dropped.");
@@ -493,7 +624,7 @@ function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], index: number):
     target: sanitizeDiscountTarget(v.target, issues, `${path}.target`),
   };
 
-  if (Array.isArray(v.codes)) rule.codes = sanitizeStringArray(v.codes);
+  if (Array.isArray(v.codes)) rule.codes = sanitizeCodes(v.codes, issues, `${path}.codes`);
 
   if (isRecord(v.minimum)) {
     const minimum: DiscountRule["minimum"] = {};
@@ -538,6 +669,61 @@ function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], index: number):
   return rule;
 }
 
+/**
+ * Rules list: capped, one rule per id (the first wins, so the node-per-code-rule
+ * mapping in MVP 1 can key on `id`), and every code owned by exactly one rule —
+ * Shopify refuses the same code on two discount nodes.
+ */
+function sanitizeRules(v: unknown, issues: ConfigIssue[]): DiscountRule[] {
+  if (!Array.isArray(v)) return [];
+  const out: DiscountRule[] = [];
+  const ids = new Set<string>();
+  const usedCodes = new Set<string>();
+  let overLimit = 0;
+  v.forEach((item, i) => {
+    if (out.length >= CONFIG_LIMITS.rules) {
+      overLimit++;
+      return;
+    }
+    const path = `modules.codes.rules[${i}]`;
+    const rule = sanitizeDiscountRule(item, issues, path);
+    if (!rule) return;
+    if (ids.has(rule.id)) {
+      pushIssue(
+        issues,
+        path,
+        "duplicate_rule_id",
+        `Another rule already uses the id "${rule.id}"; this duplicate was dropped.`,
+      );
+      return;
+    }
+    ids.add(rule.id);
+    if (rule.codes) {
+      const taken = rule.codes.filter((code) => usedCodes.has(code));
+      if (taken.length > 0) {
+        rule.codes = rule.codes.filter((code) => !usedCodes.has(code));
+        pushIssue(
+          issues,
+          `${path}.codes`,
+          "duplicate_code",
+          `Code(s) ${listPreview(taken)} already belong to an earlier rule and were removed from this one.`,
+        );
+      }
+      for (const code of rule.codes) usedCodes.add(code);
+    }
+    out.push(rule);
+  });
+  if (overLimit > 0) {
+    pushIssue(
+      issues,
+      "modules.codes.rules",
+      "too_many_rules",
+      `Only the first ${CONFIG_LIMITS.rules} discount rules are kept; ${overLimit} more were dropped.`,
+    );
+  }
+  return out;
+}
+
 // --- Tiers module ----------------------------------------------------------------------
 
 function sanitizeTierBreak(v: unknown): TierBreak | null {
@@ -562,28 +748,54 @@ function sanitizeTierSetScope(v: unknown): TierSetScope {
   return "global";
 }
 
-function sanitizeTierSet(v: unknown, issues: ConfigIssue[], index: number): TierSet | null {
+function sanitizeTierSet(v: unknown, issues: ConfigIssue[], path: string): TierSet | null {
   if (!isRecord(v)) return null;
   const id = typeof v.id === "string" && v.id ? v.id : "";
   if (!id) {
-    pushIssue(issues, `modules.tiers.sets[${index}]`, "missing_id", "Tier set without an id was dropped.");
+    pushIssue(issues, path, "missing_id", "Tier set without an id was dropped.");
     return null;
   }
-  const breaks = Array.isArray(v.breaks)
+  let breaks = Array.isArray(v.breaks)
     ? v.breaks.map(sanitizeTierBreak).filter((b): b is TierBreak => b !== null)
     : [];
+  if (breaks.length > CONFIG_LIMITS.breaksPerTierSet) {
+    pushIssue(
+      issues,
+      `${path}.breaks`,
+      "too_many_tier_breaks",
+      `A tier set can have at most ${CONFIG_LIMITS.breaksPerTierSet} quantity breaks; ${breaks.length - CONFIG_LIMITS.breaksPerTierSet} more were dropped.`,
+    );
+    breaks = breaks.slice(0, CONFIG_LIMITS.breaksPerTierSet);
+  }
   return {
     id,
     scope: sanitizeTierSetScope(v.scope),
-    countAcross: sanitizeEnum(
-      v.countAcross,
-      TIER_COUNT_ACROSS_MODES,
-      "line",
-      `modules.tiers.sets[${index}].countAcross`,
-      issues,
-    ),
+    countAcross: sanitizeEnum(v.countAcross, TIER_COUNT_ACROSS_MODES, "line", `${path}.countAcross`, issues),
     breaks,
   };
+}
+
+function sanitizeTierSets(v: unknown, issues: ConfigIssue[]): TierSet[] {
+  if (!Array.isArray(v)) return [];
+  const out: TierSet[] = [];
+  let overLimit = 0;
+  v.forEach((item, i) => {
+    if (out.length >= CONFIG_LIMITS.tierSets) {
+      overLimit++;
+      return;
+    }
+    const set = sanitizeTierSet(item, issues, `modules.tiers.sets[${i}]`);
+    if (set) out.push(set);
+  });
+  if (overLimit > 0) {
+    pushIssue(
+      issues,
+      "modules.tiers.sets",
+      "too_many_tier_sets",
+      `Only the first ${CONFIG_LIMITS.tierSets} tier sets are kept; ${overLimit} more were dropped.`,
+    );
+  }
+  return out;
 }
 
 // --- Rewards module ----------------------------------------------------------------------
@@ -604,10 +816,20 @@ function sanitizeGiftTier(v: unknown): GiftTier | null {
 function sanitizeRewards(v: unknown, issues: ConfigIssue[]): RewardsModule {
   const def = DEFAULT_CONFIG.modules.rewards;
   const rec = isRecord(v) ? v : {};
+  let gifts = Array.isArray(rec.gifts)
+    ? rec.gifts.map(sanitizeGiftTier).filter((g): g is GiftTier => g !== null)
+    : [];
+  if (gifts.length > CONFIG_LIMITS.giftTiers) {
+    pushIssue(
+      issues,
+      "modules.rewards.gifts",
+      "too_many_gift_tiers",
+      `Only the first ${CONFIG_LIMITS.giftTiers} gift tiers are kept; ${gifts.length - CONFIG_LIMITS.giftTiers} more were dropped.`,
+    );
+    gifts = gifts.slice(0, CONFIG_LIMITS.giftTiers);
+  }
   const out: RewardsModule = {
-    gifts: Array.isArray(rec.gifts)
-      ? rec.gifts.map(sanitizeGiftTier).filter((g): g is GiftTier => g !== null)
-      : [],
+    gifts,
     countOtherDiscounts: sanitizeBoolWithIssue(
       rec.countOtherDiscounts,
       def.countOtherDiscounts,
@@ -683,30 +905,240 @@ function sanitizeMargin(v: unknown, issues: ConfigIssue[]): MarginModule {
 
 // --- Campaigns ---------------------------------------------------------------------------
 
-function sanitizeRuleOverride(v: unknown): RuleOverride | null {
-  if (!isRecord(v)) return null;
-  const ruleId = typeof v.ruleId === "string" && v.ruleId ? v.ruleId : "";
-  if (!ruleId) return null;
-  return { ruleId, patch: isRecord(v.patch) ? v.patch : {} };
+// A campaign override targets, by id, a discount rule, a tier set or a gift tier
+// (spec §4.6: overrides across Slevy a kódy / Množstevní / Odměny). Its patch may
+// only touch the fields listed here, and each patched value goes through the very
+// sanitizer that guards the target itself — a campaign can never smuggle in a
+// value (e.g. 1000 %) the module would have refused (audit P2-2, DATA-2).
+// `method`/`codes`/`limits`/`origin` are excluded on purpose: they define the
+// Shopify discount node, which a time window must not rewrite.
+const OVERRIDE_FIELDS = {
+  rule: ["enabled", "name", "value", "target", "minimum", "targeting", "combinesWith"],
+  tierSet: ["countAcross", "breaks"],
+  giftTier: ["threshold", "choices", "fallbackVariantId"],
+} as const;
+
+type OverrideTarget =
+  | { kind: "rule"; value: DiscountRule }
+  | { kind: "tierSet"; value: TierSet }
+  | { kind: "giftTier"; value: GiftTier };
+
+const OVERRIDE_TARGET_LABELS: Record<OverrideTarget["kind"], string> = {
+  rule: "a discount rule",
+  tierSet: "a tier set",
+  giftTier: "a gift tier",
+};
+
+function collectOverrideTargets(
+  rules: DiscountRule[],
+  sets: TierSet[],
+  gifts: GiftTier[],
+): Map<string, OverrideTarget[]> {
+  const targets = new Map<string, OverrideTarget[]>();
+  const add = (id: string, target: OverrideTarget) => {
+    const list = targets.get(id);
+    if (list) list.push(target);
+    else targets.set(id, [target]);
+  };
+  for (const value of rules) add(value.id, { kind: "rule", value });
+  for (const value of sets) add(value.id, { kind: "tierSet", value });
+  for (const value of gifts) add(value.id, { kind: "giftTier", value });
+  return targets;
 }
 
-function sanitizeCampaign(v: unknown, _index: number): Campaign | null {
+function sanitizeOverridePatch(
+  target: OverrideTarget,
+  rawPatch: Record<string, unknown>,
+  issues: ConfigIssue[],
+  path: string,
+): Record<string, unknown> {
+  const allowed: readonly string[] = OVERRIDE_FIELDS[target.kind];
+  // Start from the target's current (already sanitized) value so the target's own
+  // sanitizer sees a complete object; only the patched keys are read back out.
+  const merged: Record<string, unknown> = { ...(target.value as unknown as Record<string, unknown>) };
+  const patched: string[] = [];
+  for (const key of Object.keys(rawPatch)) {
+    if (!allowed.includes(key)) {
+      pushIssue(
+        issues,
+        `${path}.${key}`,
+        "override_field_not_allowed",
+        `A campaign cannot change "${key}" of ${OVERRIDE_TARGET_LABELS[target.kind]}; the field was ignored.`,
+      );
+      continue;
+    }
+    merged[key] = rawPatch[key];
+    patched.push(key);
+  }
+  if (patched.length === 0) return {};
+
+  const sanitized: unknown =
+    target.kind === "rule"
+      ? sanitizeDiscountRule(merged, issues, path)
+      : target.kind === "tierSet"
+        ? sanitizeTierSet(merged, issues, path)
+        : sanitizeGiftTier(merged);
+  if (!isRecord(sanitized)) return {};
+
+  const out: Record<string, unknown> = {};
+  for (const key of patched) {
+    if (sanitized[key] !== undefined) out[key] = sanitized[key];
+  }
+  return out;
+}
+
+function sanitizeOverrides(
+  v: unknown,
+  issues: ConfigIssue[],
+  path: string,
+  targets: Map<string, OverrideTarget[]>,
+): RuleOverride[] {
+  if (!Array.isArray(v)) return [];
+  const out: RuleOverride[] = [];
+  let overLimit = 0;
+  v.forEach((item, i) => {
+    if (out.length >= CONFIG_LIMITS.overridesPerCampaign) {
+      overLimit++;
+      return;
+    }
+    if (!isRecord(item)) return;
+    const itemPath = `${path}[${i}]`;
+    const ruleId = typeof item.ruleId === "string" ? item.ruleId : "";
+    const found = ruleId ? (targets.get(ruleId) ?? []) : [];
+    if (found.length === 0) {
+      pushIssue(
+        issues,
+        itemPath,
+        "orphan_override",
+        `Campaign override points to ${JSON.stringify(ruleId)}, which does not exist; the override was removed.`,
+      );
+      return;
+    }
+    if (found.length > 1) {
+      pushIssue(
+        issues,
+        itemPath,
+        "ambiguous_override",
+        `"${ruleId}" matches more than one rule, tier set or gift tier; the override was removed.`,
+      );
+      return;
+    }
+    const patch = sanitizeOverridePatch(found[0], isRecord(item.patch) ? item.patch : {}, issues, `${itemPath}.patch`);
+    if (Object.keys(patch).length === 0) {
+      pushIssue(issues, itemPath, "empty_override", "Campaign override changes nothing; it was removed.");
+      return;
+    }
+    out.push({ ruleId, patch });
+  });
+  if (overLimit > 0) {
+    pushIssue(
+      issues,
+      path,
+      "too_many_overrides",
+      `A campaign can have at most ${CONFIG_LIMITS.overridesPerCampaign} overrides; ${overLimit} more were dropped.`,
+    );
+  }
+  return out;
+}
+
+function sanitizeCampaign(
+  v: unknown,
+  issues: ConfigIssue[],
+  path: string,
+  targets: Map<string, OverrideTarget[]>,
+): Campaign | null {
   if (!isRecord(v)) return null;
   const id = typeof v.id === "string" && v.id ? v.id : "";
-  if (!id) return null;
+  if (!id) {
+    pushIssue(issues, path, "missing_id", "Campaign without an id was dropped.");
+    return null;
+  }
+  const name = sanitizeString(v.name, "");
   const window = isRecord(v.window) ? v.window : {};
+  const start = isShopLocalDateTime(window.start) ? window.start : "";
+  const end = isShopLocalDateTime(window.end) ? window.end : "";
+  let killed = sanitizeBool(v.killed, false);
+  // Same-shape strings compare chronologically, so `<` is a date comparison here.
+  if (!start || !end || start >= end) {
+    killed = true;
+    pushIssue(
+      issues,
+      `${path}.window`,
+      "invalid_campaign_window",
+      `Campaign "${name || id}" needs a start before its end, both as YYYY-MM-DDTHH:MM:SS in shop time; the campaign was disabled.`,
+    );
+  }
   return {
     id,
-    name: sanitizeString(v.name, ""),
-    window: {
-      start: typeof window.start === "string" ? window.start : "",
-      end: typeof window.end === "string" ? window.end : "",
-    },
-    overrides: Array.isArray(v.overrides)
-      ? v.overrides.map(sanitizeRuleOverride).filter((o): o is RuleOverride => o !== null)
-      : [],
-    killed: sanitizeBool(v.killed, false),
+    name,
+    window: { start, end },
+    overrides: sanitizeOverrides(v.overrides, issues, `${path}.overrides`, targets),
+    killed,
   };
+}
+
+/**
+ * Campaigns must not overlap (A8): the function checks one window at a time (C4),
+ * so two live windows would make "which overrides apply" ambiguous. The campaign
+ * that starts earlier (array order on a tie) stays; a later overlapping one is
+ * disabled with an issue rather than deleted, so the merchant keeps their work.
+ */
+function disableOverlappingCampaigns(entries: Array<{ campaign: Campaign; path: string }>, issues: ConfigIssue[]) {
+  const live = entries
+    .filter((e) => !e.campaign.killed)
+    .sort((a, b) => (a.campaign.window.start < b.campaign.window.start ? -1 : a.campaign.window.start > b.campaign.window.start ? 1 : 0));
+  const kept: Campaign[] = [];
+  for (const { campaign, path } of live) {
+    const clash = kept.find((k) => campaign.window.start < k.window.end && k.window.start < campaign.window.end);
+    if (!clash) {
+      kept.push(campaign);
+      continue;
+    }
+    campaign.killed = true;
+    pushIssue(
+      issues,
+      path,
+      "overlapping_campaign",
+      `Campaign "${campaign.name || campaign.id}" overlaps "${clash.name || clash.id}"; campaigns must not overlap, so the later one was disabled.`,
+    );
+  }
+}
+
+function sanitizeCampaigns(v: unknown, issues: ConfigIssue[], targets: Map<string, OverrideTarget[]>): Campaign[] {
+  if (!Array.isArray(v)) return [];
+  const entries: Array<{ campaign: Campaign; path: string }> = [];
+  const ids = new Set<string>();
+  let overLimit = 0;
+  v.forEach((item, i) => {
+    if (entries.length >= CONFIG_LIMITS.campaigns) {
+      overLimit++;
+      return;
+    }
+    const path = `campaigns[${i}]`;
+    const campaign = sanitizeCampaign(item, issues, path, targets);
+    if (!campaign) return;
+    if (ids.has(campaign.id)) {
+      pushIssue(
+        issues,
+        path,
+        "duplicate_campaign_id",
+        `Another campaign already uses the id "${campaign.id}"; this duplicate was dropped.`,
+      );
+      return;
+    }
+    ids.add(campaign.id);
+    entries.push({ campaign, path });
+  });
+  if (overLimit > 0) {
+    pushIssue(
+      issues,
+      "campaigns",
+      "too_many_campaigns",
+      `Only the first ${CONFIG_LIMITS.campaigns} campaigns are kept; ${overLimit} more were dropped.`,
+    );
+  }
+  disableOverlappingCampaigns(entries, issues);
+  return entries.map((e) => e.campaign);
 }
 
 // --- Storefront / locales / onboarding -----------------------------------------------------
@@ -720,21 +1152,45 @@ function sanitizeStorefront(v: unknown): StorefrontSettings {
   };
 }
 
-function sanitizeLocaleTexts(v: unknown): Record<string, string> {
+function sanitizeLocaleTexts(v: unknown, issues: ConfigIssue[], path: string): Record<string, string> {
   if (!isRecord(v)) return {};
-  const out: Record<string, string> = {};
+  const out = new Map<string, string>();
+  let overLimit = 0;
   for (const [k, val] of Object.entries(v)) {
-    if (typeof val === "string") out[k.slice(0, 100)] = val.slice(0, 2000);
+    if (typeof val !== "string") continue;
+    const key = k.slice(0, 100);
+    if (key === "__proto__") continue;
+    if (!out.has(key) && out.size >= CONFIG_LIMITS.localeKeysPerLanguage) {
+      overLimit++;
+      continue;
+    }
+    if (val.length > CONFIG_LIMITS.localeStringLength) {
+      pushIssue(
+        issues,
+        `${path}.${key}`,
+        "locale_text_too_long",
+        `Text is longer than ${CONFIG_LIMITS.localeStringLength} characters; it was shortened.`,
+      );
+    }
+    out.set(key, val.slice(0, CONFIG_LIMITS.localeStringLength));
   }
-  return out;
+  if (overLimit > 0) {
+    pushIssue(
+      issues,
+      path,
+      "too_many_locale_keys",
+      `Only the first ${CONFIG_LIMITS.localeKeysPerLanguage} texts per language are kept; ${overLimit} more were dropped.`,
+    );
+  }
+  return Object.fromEntries(out);
 }
 
-function sanitizeLocales(v: unknown): LocaleDictionary {
+function sanitizeLocales(v: unknown, issues: ConfigIssue[]): LocaleDictionary {
   const rec = isRecord(v) ? v : {};
   return {
-    cs: sanitizeLocaleTexts(rec.cs),
-    sk: sanitizeLocaleTexts(rec.sk),
-    en: sanitizeLocaleTexts(rec.en),
+    cs: sanitizeLocaleTexts(rec.cs, issues, "locales.cs"),
+    sk: sanitizeLocaleTexts(rec.sk, issues, "locales.sk"),
+    en: sanitizeLocaleTexts(rec.en, issues, "locales.en"),
   };
 }
 
@@ -762,34 +1218,32 @@ export function sanitizeConfig(input: unknown): { config: WonDiscountsConfig; is
   const rec = isRecord(input) ? input : {};
   const modules = isRecord(rec.modules) ? rec.modules : {};
 
+  const markets = sanitizeMarkets(rec.markets, issues);
+  const engine = sanitizeEngine(rec.engine, issues);
+
   const codesRaw = isRecord(modules.codes) ? modules.codes : {};
-  const rules = Array.isArray(codesRaw.rules)
-    ? codesRaw.rules
-        .map((r, i) => sanitizeDiscountRule(r, issues, i))
-        .filter((r): r is DiscountRule => r !== null)
-    : [];
+  const rules = sanitizeRules(codesRaw.rules, issues);
 
   const tiersRaw = isRecord(modules.tiers) ? modules.tiers : {};
-  const sets = Array.isArray(tiersRaw.sets)
-    ? tiersRaw.sets.map((s, i) => sanitizeTierSet(s, issues, i)).filter((s): s is TierSet => s !== null)
-    : [];
+  const sets = sanitizeTierSets(tiersRaw.sets, issues);
+
+  const rewards = sanitizeRewards(modules.rewards, issues);
 
   const config: WonDiscountsConfig = {
     schemaVersion: SCHEMA_VERSION,
-    markets: sanitizeMarkets(rec.markets, issues),
-    engine: sanitizeEngine(rec.engine, issues),
+    markets,
+    engine,
     modules: {
       codes: { rules },
       tiers: { sets },
-      rewards: sanitizeRewards(modules.rewards, issues),
+      rewards,
       outlet: sanitizeOutlet(modules.outlet, issues),
       margin: sanitizeMargin(modules.margin, issues),
     },
-    campaigns: Array.isArray(rec.campaigns)
-      ? rec.campaigns.map((c, i) => sanitizeCampaign(c, i)).filter((c): c is Campaign => c !== null)
-      : [],
+    // Campaigns last: their overrides are checked against the final rule/tier/gift ids.
+    campaigns: sanitizeCampaigns(rec.campaigns, issues, collectOverrideTargets(rules, sets, rewards.gifts)),
     storefront: sanitizeStorefront(rec.storefront),
-    locales: sanitizeLocales(rec.locales),
+    locales: sanitizeLocales(rec.locales, issues),
     onboarding: sanitizeOnboarding(rec.onboarding),
   };
 
@@ -797,10 +1251,21 @@ export function sanitizeConfig(input: unknown): { config: WonDiscountsConfig; is
 }
 
 /**
+ * True when `stored` was written by a NEWER schema than this code knows (DATA-3,
+ * rolling deploys). Such a config can still be read — readStoredConfig returns the
+ * best-effort current-schema view — but must be treated as read-only: writing that
+ * view back would silently drop every field the newer code added.
+ */
+export function isNewerSchema(stored: unknown): boolean {
+  return isRecord(stored) && typeof stored.schemaVersion === "number" && stored.schemaVersion > SCHEMA_VERSION;
+}
+
+/**
  * Tolerant migration, vN -> current (DATA-3). MVP0 has no prior real schema, so a
  * v0/no-version fixture only needs its schemaVersion stamped forward — sanitizeConfig
  * fills any structural gaps. Future breaking shape changes branch on `version` here,
  * each with its own fixture test, before the shape reaches sanitizeConfig.
+ * A newer-schema config passes through unchanged (see isNewerSchema).
  */
 export function migrateConfig(stored: unknown): unknown {
   if (!isRecord(stored)) return stored;
@@ -809,7 +1274,11 @@ export function migrateConfig(stored: unknown): unknown {
   return { ...stored, schemaVersion: SCHEMA_VERSION };
 }
 
-/** migrate + sanitize; never throws, always returns a valid config. */
+/**
+ * migrate + sanitize; never throws, always returns a valid, freshly allocated
+ * config (never DEFAULT_CONFIG itself). For a newer-schema row this is a read-only
+ * view — check isNewerSchema(stored) before saving anything derived from it.
+ */
 export function readStoredConfig(stored: unknown): WonDiscountsConfig {
   return sanitizeConfig(migrateConfig(stored)).config;
 }

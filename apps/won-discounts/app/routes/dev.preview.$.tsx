@@ -1,49 +1,38 @@
+import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
 
-import {
-  DEV_OVERVIEW_FIXTURE,
-  isDevHarnessEnabled,
-  statusLabel,
-  typeLabel,
-} from "../lib/dev-harness.server";
+import { buildOverviewProps, OverviewScreen } from "../components/screens/OverviewScreen";
+import { DEV_OVERVIEW_FIXTURE, isDevHarnessEnabled } from "../lib/dev-harness.server";
 
-// Dev-only admin harness (Task 5 brief): renders a standalone "Přehled v0"
-// preview against a fixture config, with no Shopify auth — so we can
-// screenshot admin screens at 390/1440px without ever logging into Shopify
-// admin in a browser.
+// Dev-only admin harness (Task 5 brief): renders the REAL Přehled screen (the
+// same OverviewScreen component as app/routes/app._index.tsx) against a
+// fixture config, with no Shopify auth and no database — so we can screenshot
+// admin screens at 390/1440px without logging into Shopify admin.
+// `?readOnly=1` renders the newer-schema (read-only) state.
 //
-// Double guard against ever reaching production:
+// Double guard against ever reaching a non-development environment:
 //   1. BUILD-TIME: app/routes.ts excludes this file from the route manifest
-//      when NODE_ENV === "production" — the module never ships.
+//      unless NODE_ENV is exactly "development" or "test".
 //   2. RUNTIME (defence in depth, e.g. a misconfigured build): the loader
-//      404s whenever isDevHarnessEnabled() is false.
+//      404s whenever isDevHarnessEnabled() is false (same allowlist).
 //
 // The splat ($ -> /dev/preview/*) accepts any sub-path; MVP 0 only has one
 // screen (the overview), so every path renders it.
 //
-// The route component only reads useLoaderData() — it never imports
-// dev-harness.server.ts itself. That module is `.server`-only (React Router
-// strips loader/action from the client bundle, but NOT a component's own
-// imports), so all label lookups happen inside the loader and are passed down
-// as plain, already-Czech strings.
-export const loader = () => {
+// The route component only reads useLoaderData() and renders shared
+// components — it never imports dev-harness.server.ts values itself (React
+// Router strips loader/action from the client bundle, but NOT a component's
+// own imports).
+export const loader = ({ request }: LoaderFunctionArgs) => {
   if (!isDevHarnessEnabled()) {
     throw new Response("Not Found", { status: 404 });
   }
-  return {
-    shopName: DEV_OVERVIEW_FIXTURE.shopName,
-    items: DEV_OVERVIEW_FIXTURE.items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      statusLabel: statusLabel(item.status),
-      typeLabel: typeLabel(item.type),
-      valueSummary: item.valueSummary,
-    })),
-  };
+  const readOnly = new URL(request.url).searchParams.get("readOnly") === "1";
+  return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly });
 };
 
 export default function DevPreview() {
-  const { shopName, items } = useLoaderData<typeof loader>();
+  const props = useLoaderData<typeof loader>();
 
   return (
     <>
@@ -51,20 +40,7 @@ export default function DevPreview() {
           @shopify/shopify-app-react-router's <AppProvider> loads it for real
           admin pages, so a screenshot of this route looks like the real app. */}
       <script src="https://cdn.shopify.com/shopifycloud/polaris.js" />
-      <s-page heading="Přehled v0 (dev harness)">
-        <s-section heading={shopName}>
-          <s-paragraph>
-            Toto je vývojářský náhled bez přihlášení do Shopify adminu. Nikdy
-            neběží v produkčním sestavení.
-          </s-paragraph>
-          {items.map((item) => (
-            <s-paragraph key={item.id}>
-              <s-text>{item.name}</s-text> — {item.statusLabel},{" "}
-              {item.typeLabel}, {item.valueSummary}
-            </s-paragraph>
-          ))}
-        </s-section>
-      </s-page>
+      <OverviewScreen {...props} />
     </>
   );
 }

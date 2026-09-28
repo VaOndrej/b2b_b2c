@@ -106,3 +106,72 @@ test("shop/redact clears sessions and runs the app's data deletion", async () =>
   assert.deepEqual(deleted, ["test.myshopify.com"]);
   assert.equal(sessionsCleared, true);
 });
+
+// --- shop/redact deletion failures (audit P2-4, PRIV-2) ---------------------------------
+
+function failingRedactDeps() {
+  const sessions: string[] = [];
+  return {
+    sessions,
+    deps: {
+      authenticate: fakeAuth(),
+      db: {
+        session: {
+          deleteMany: async ({ where }: { where: { shop: string } }) => {
+            sessions.push(where.shop);
+          },
+        },
+      },
+      deleteShopData: async () => {
+        throw Object.assign(new Error("SQLITE_BUSY customer@example.com"), { code: "P2034" });
+      },
+    },
+  };
+}
+
+test("shop/redact default (SHARE-1): a failing deletion is still ACKed 200 — unchanged for other apps", async () => {
+  const { deps } = failingRedactDeps();
+  const res = await createShopRedactAction(deps)(actionArgs());
+  assert.equal(res.status, 200);
+});
+
+test("shop/redact with retryOnDeletionError: a failing deletion answers 500 so Shopify retries, logged without the error text", async () => {
+  const { deps, sessions } = failingRedactDeps();
+  const logged: unknown[] = [];
+  const orig = console.error;
+  console.error = (...a: unknown[]) => logged.push(a);
+  try {
+    const res = await createShopRedactAction({ ...deps, retryOnDeletionError: true })(actionArgs());
+    assert.equal(res.status, 500);
+  } finally {
+    console.error = orig;
+  }
+  const flat = JSON.stringify(logged);
+  assert.match(flat, /test\.myshopify\.com/, "the failure must be logged");
+  assert.match(flat, /P2034/, "with the error code for diagnosis");
+  assert.ok(!flat.includes("customer@example.com"), "but never the error message (may carry PII)");
+  assert.deepEqual(sessions, [], "sessions stay until the retry succeeds");
+});
+
+test("shop/redact with retryOnDeletionError: success still clears data and sessions with 200", async () => {
+  const deleted: string[] = [];
+  let sessionsCleared = false;
+  const action = createShopRedactAction({
+    authenticate: fakeAuth(),
+    db: {
+      session: {
+        deleteMany: async () => {
+          sessionsCleared = true;
+        },
+      },
+    },
+    deleteShopData: async (shop) => {
+      deleted.push(shop);
+    },
+    retryOnDeletionError: true,
+  });
+  const res = await action(actionArgs());
+  assert.equal(res.status, 200);
+  assert.deepEqual(deleted, ["test.myshopify.com"]);
+  assert.equal(sessionsCleared, true);
+});

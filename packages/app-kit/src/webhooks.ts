@@ -17,15 +17,30 @@ type ComplianceDeps = WebhookDeps & {
   redactCustomer?: (args: { shop: string; payload: any }) => Promise<void> | void;
   /** shop/redact — erase all app-owned data for the shop (sessions cleared for you). */
   deleteShopData?: (shop: string) => Promise<void> | void;
+  /**
+   * shop/redact only. Default `false` keeps the historical behaviour: a failing
+   * `deleteShopData` is swallowed and the webhook still answers 200. `true`: the
+   * failure is logged (topic, shop and error name/code — never the message or
+   * payload, which may carry PII) and the webhook answers 500, so Shopify retries
+   * it instead of the shop's data being silently kept (PRIV-2).
+   */
+  retryOnDeletionError?: boolean;
 };
+
+function errorLabel(error: unknown): string {
+  if (!(error instanceof Error)) return typeof error;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" || typeof code === "number" ? `${error.name} ${code}` : error.name;
+}
 
 async function runSafe(fn: (() => Promise<void> | void) | undefined) {
   if (!fn) return;
   try {
     await fn();
   } catch {
-    // Compliance webhooks must still ACK 200 even if our own cleanup fails;
-    // Shopify retries, and a thrown handler would look like a rejected request.
+    // Default: ACK 200 even if our own cleanup fails. Note that Shopify does NOT
+    // retry a 200 — the failure is lost. Apps that must not lose a deletion opt
+    // into `retryOnDeletionError` (shop/redact), which answers 500 instead.
   }
 }
 
@@ -108,10 +123,25 @@ export function createShopRedactAction({
   authenticate,
   db,
   deleteShopData,
+  retryOnDeletionError = false,
 }: ComplianceDeps) {
   return async ({ request }: ActionFunctionArgs) => {
     const { shop, topic } = await authenticate.webhook(request);
     console.log(`Received ${topic} webhook for ${shop}`);
+
+    if (retryOnDeletionError) {
+      try {
+        if (deleteShopData) await deleteShopData(shop);
+        await db.session.deleteMany({ where: { shop } });
+      } catch (error) {
+        console.error(
+          `${topic} webhook for ${shop}: shop data deletion failed (${errorLabel(error)}); answering 500 so Shopify retries`,
+        );
+        return new Response(null, { status: 500 });
+      }
+      return new Response();
+    }
+
     await runSafe(deleteShopData ? () => deleteShopData(shop) : undefined);
     await db.session.deleteMany({ where: { shop } }).catch(() => {});
     return new Response();

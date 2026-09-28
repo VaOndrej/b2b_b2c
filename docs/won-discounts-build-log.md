@@ -7,19 +7,19 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
-- **Fáze:** MVP 0 — Fáze 0 (dokumenty + scaffold).
-- **Hotovo ve Fázi 0:** spec `docs/won-discounts-mvp-plan.md` · build log · klon
-  `apps/_template` → `apps/won-discounts` (přejmenováno v `package.json` + `shopify.app.toml`,
-  `e2e.app.config.mjs` vyplněný, `npm install` zaregistroval workspace) · `.env` s heslem
-  storefrontu · roadmapa: 5 karet (Tiers, GiftLadder/Rewards, ShipGoal, Outlet, MarginGuard)
-  sloučeno do karty Won Discounts (`Scaffold`), přepsané Hranice portfolia a build fronta
-  (kontrola tagů OK, screenshoty 390/1440 bez přetečení; záloha `scratchpad/product-roadmap.orig.html`).
-- **Blokováno:** nic. Operace appky na dev storu jdou přes `shopify app execute` (bez tokenu
-  ze `shpat.md`). Token zůstává potřeba jen pro sdílený seed (`seed:e2e-products`, nákupní ceny
-  v MVP 2) — tam se zastavím, pokud nebude v `.env` + povolený.
-- **Další krok po odblokování:** ověřit `shopify app info`, zapsat verdikt P2/P3, pak MVP 0
-  plán (`docs/plans/2026-09-28-won-discounts-mvp0.md`) → prototypy C1–C5.
-- **Poslední commit:** — (zatím nic necommitnuto v rámci běhu).
+- **Fáze:** MVP 0 — uzavírání (Task 8): opravy nálezů auditu (vlna 1 běží, vlna 2 = zbylé P3),
+  pak brána + živé E2E + vizuální QA + roadmapa + commit/push. Pak MVP 1.
+- **Hotovo v MVP 0:** spec + plán, scaffold, config v0 (`@won/core/discounts`), Prisma config
+  s historií, Přehled v0, JS discount funkce (prototypové módy), theme app extension s embedem,
+  app proxy health, dev harness mimo produkci, živé E2E embedu ✓ Horizon ✓ Dawn, verdikty
+  C1–C5 (viz tabulka), audit MVP 0 (0× P0, 2× P1, 8× P2, 11× P3).
+- **Blokováno:** nic. Operace appky na dev storu jdou přes `shopify app execute`. Token ze
+  `shpat.md` je potřeba jen pro sdílený seed `seed:e2e-products` (nákupní ceny v MVP 2);
+  pokud nebude dostupný, nákupní ceny nastavím přes appku (vyžaduje scope `write_inventory`
+  → rozhodnutí v plánu MVP 2).
+- **Ondřej 2026-09-28:** „oprav vše, pak pokračuj na další MVP autonomně, chyby vždy oprav,
+  než se posuneš dál.“ → opravuju všechny nálezy auditu (i P2/P3) a glob v `apps/_template`.
+- **Poslední commit:** viz `git log --oneline` (MVP 0 commity od `2d94477`), push až po uzavření.
 
 ## Ověřená fakta API (schema.graphql Discount Function, API 2026-04)
 
@@ -55,7 +55,7 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   jednorázově: zapnout embed v theme editoru (Ondřej, 2026-09-28) → přečíst UUID přes Admin API
   (`theme.files(config/settings_data.json)`) → overlay pro obě témata.
 - **`test:unit` glob:** `tsx --test tests/**/*.test.ts` bez uvozovek tiše přeskočí `tests/*.test.ts`
-  (sh bez globstar). V appce opraveno (43 → 59 testů); `_template` má stejný vzor → otázka na Ondřeje.
+  (sh bez globstar). V appce opraveno (43 → 59 testů); `_template` opravit také (Ondřej 2026-09-28: ano).
 
 ## Rozhodnutí běhu
 

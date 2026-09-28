@@ -4,29 +4,17 @@ import { useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { loadConfig } from "../lib/config.server";
+import { buildOverviewProps, OverviewScreen } from "../components/screens/OverviewScreen";
 
+// Přehled v0. The screen itself lives in components/screens/OverviewScreen.tsx
+// so the dev harness renders exactly the same component (audit P2-5).
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const config = await loadConfig(db, session.shop);
-
-  return {
-    schemaVersion: config.schemaVersion,
-    ruleCount: config.modules.codes.rules.length,
-  };
+  const { config, readOnly } = await loadConfig(db, session.shop);
+  return buildOverviewProps(config, { readOnly });
 };
 
 export default function Index() {
-  const { schemaVersion, ruleCount } = useLoaderData<typeof loader>();
-
-  return (
-    <s-page heading="Won Discounts">
-      <s-section heading="Stav">
-        <s-paragraph>
-          Konfigurace: verze {schemaVersion} · {ruleCount}{" "}
-          {ruleCount === 1 ? "pravidlo" : ruleCount >= 2 && ruleCount <= 4 ? "pravidla" : "pravidel"}
-        </s-paragraph>
-        <s-paragraph>Vložení do tématu: zatím neověřeno</s-paragraph>
-      </s-section>
-    </s-page>
-  );
+  const props = useLoaderData<typeof loader>();
+  return <OverviewScreen {...props} />;
 }

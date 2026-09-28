@@ -1,0 +1,3 @@
+{"path":"/products/won-e2e-simple-a","status":200,"xfo":"DENY","csp":"block-all-mixed-content; frame-ancestors 'none'; upgrade-insecure-requests;","checkedAt":"2026-09-28T12:27:51.099Z"}
+{"path":"/products/won-e2e-simple-a?preview_theme_id=","status":200,"xfo":"DENY","csp":"block-all-mixed-content; frame-ancestors 'none'; upgrade-insecure-requests;","checkedAt":"2026-09-28T12:27:51.558Z"}
+{"path":"/cart","status":200,"xfo":"DENY","csp":"block-all-mixed-content; frame-ancestors 'none'; upgrade-insecure-requests;","checkedAt":"2026-09-28T12:27:51.830Z"}

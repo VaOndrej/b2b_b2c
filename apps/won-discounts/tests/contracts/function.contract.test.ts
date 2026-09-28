@@ -7,6 +7,9 @@ import { after, before, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
+import { sanitizeConfig } from "@won/core/discounts/config";
+import { encodeFunctionConfig } from "@won/core/discounts/function-config";
+
 // Contract for the `won-discounts-engine` discount function: the extension
 // config matches what the app writes (metafield namespace/key, targets), and
 // the compiled Wasm, run through the real Shopify CLI (`shopify app function
@@ -61,8 +64,13 @@ function parseLastJsonObject(stdout: string): RunResult | null {
 
 async function runFixture(workDir: string, file: string) {
   const fixture = JSON.parse(readFileSync(path.join(FIXTURES_DIR, file), "utf8")) as Fixture;
+  const result = await runInput(workDir, file, fixture.payload.input, fixture.payload.export);
+  return { fixture, result };
+}
+
+async function runInput(workDir: string, file: string, input: unknown, exportName: string) {
   const inputPath = path.join(workDir, file);
-  writeFileSync(inputPath, JSON.stringify(fixture.payload.input));
+  writeFileSync(inputPath, JSON.stringify(input));
 
   let stdout = "";
   let stderr = "";
@@ -77,7 +85,7 @@ async function runFixture(workDir: string, file: string) {
       "--input",
       inputPath,
       "--export",
-      fixture.payload.export,
+      exportName,
       "--json",
     ]));
   } catch (error) {
@@ -92,7 +100,7 @@ async function runFixture(workDir: string, file: string) {
   const result = parseLastJsonObject(stdout);
   assert.ok(result, `no function run JSON result in CLI output${context}`);
   assert.equal(result.success, true, `function run failed: ${result.logs}${context}`);
-  return { fixture, result };
+  return result;
 }
 
 const fixtureFiles = readdirSync(FIXTURES_DIR)
@@ -156,6 +164,36 @@ test("fixtures exist for every prototype mode and for missing/corrupt config", (
   }
 });
 
+const SHOP_LOCAL_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/;
+
+/** `$name` of every variable the input query declares, e.g. ["campaignStart", "campaignEnd"]. */
+function declaredQueryVariables(): string[] {
+  const query = readFileSync(LINES_QUERY, "utf8").replace(/^#.*$/gm, "");
+  const header = /query\s+\w+\s*\(([^)]*)\)/.exec(query)?.[1] ?? "";
+  return [...header.matchAll(/\$(\w+)\s*:/g)].map((m) => m[1]);
+}
+
+// C4 (platform): a variable missing from function_config fails the whole run
+// with InvalidVariableValueError. The app writes the metafield from
+// encodeFunctionConfig, so its output must bind every declared variable — with
+// or without a campaign.
+test("encodeFunctionConfig output binds every variable the input query declares (C4)", () => {
+  const variables = declaredQueryVariables();
+  assert.deepEqual(variables.sort(), ["campaignEnd", "campaignStart"]);
+  const withCampaign = sanitizeConfig({
+    campaigns: [
+      { id: "bf", name: "BF", window: { start: "2026-11-27T00:00:00", end: "2026-11-30T23:59:59" }, overrides: [], killed: false },
+    ],
+  }).config;
+  for (const config of [sanitizeConfig({}).config, withCampaign]) {
+    const payload = JSON.parse(encodeFunctionConfig(config).json) as Record<string, unknown>;
+    for (const name of variables) {
+      assert.equal(typeof payload[name], "string", `function_config must carry top-level ${name}`);
+      assert.match(String(payload[name]), SHOP_LOCAL_DATETIME, `${name} must be a DateTimeWithoutTimezone`);
+    }
+  }
+});
+
 test("every object function_config fixture carries campaignStart/campaignEnd (query contract)", () => {
   for (const file of fixtureFiles) {
     if (file.startsWith(NO_KEYS_PREFIX)) continue;
@@ -185,16 +223,28 @@ describe("shopify app function run", { concurrency: 6 }, () => {
     });
   }
 
-  // Observed with the local runner (function-runner 9.1.2 has no variable
-  // binding: its only inputs are the Wasm, the input JSON, the export and the
-  // schema/query used for limits). A config without campaignStart/campaignEnd
-  // is therefore run with whatever campaign leaves the input carries; these
-  // fixtures carry the query defaults (1970 window: started, not active). The
-  // JS never reads the keys, so percent_all still discounts and debugCampaign
-  // reports "started" (3 %). On the platform the docs say the missing keys are
-  // passed as null and the run fails before the JS; C4 decides which one holds.
+  // The real encoder payload (no MVP 0 prototype mode in it) runs through the
+  // compiled Wasm without an error and without a discount.
+  test("the encodeFunctionConfig payload runs cleanly through the Wasm", { timeout: 90_000 }, async () => {
+    const base = readFixture("cart-lines-config-no-prototype.json").payload;
+    const jsonValue = JSON.parse(encodeFunctionConfig(sanitizeConfig({}).config).json) as unknown;
+    const input = { ...base.input, discount: { ...(base.input.discount ?? {}), metafield: { jsonValue } } };
+    const result = await runInput(workDir, "encoder-payload.json", input, base.export);
+    assert.deepEqual(result.output, { operations: [] });
+  });
+
+  // LOCAL-RUNNER-ONLY — this is NOT platform behaviour. C4 settled the platform
+  // side (docs/won-discounts/evidence/mvp0/c4-campaign-window.json): a
+  // function_config without campaignStart/campaignEnd fails with
+  // InvalidVariableValueError before the JS runs, the query defaults are NOT
+  // applied, and the node gives 0 %. The local runner (function-runner 9.1.2)
+  // binds no variables (its only inputs are the Wasm, the input JSON, the export
+  // and the schema/query used for limits), so it cannot reproduce that: these
+  // fixtures carry the 1970 leaves by hand and only pin that the JS itself never
+  // crashes without the keys. The app must always write both keys —
+  // encodeFunctionConfig does (contract test above).
   for (const file of noKeysFiles) {
-    test(`config without campaign keys: ${file}`, { timeout: 90_000 }, async () => {
+    test(`local-runner-only (platform fails, C4): config without campaign keys: ${file}`, { timeout: 90_000 }, async () => {
       const input = readFixture(file).payload.input;
       const config = input.discount?.metafield?.jsonValue;
       assert.ok(isPlainObject(config), `${file}: config must be an object`);
@@ -208,7 +258,11 @@ describe("shopify app function run", { concurrency: 6 }, () => {
 
       const { fixture, result } = await runFixture(workDir, file);
       assert.deepEqual(result.output, fixture.payload.output);
-      assert.notDeepEqual(result.output, { operations: [] }, "the JS alone does not need the keys");
+      assert.notDeepEqual(
+        result.output,
+        { operations: [] },
+        "local runner only: the JS does not read the keys (on the platform the run fails before it, C4)",
+      );
     });
   }
 });

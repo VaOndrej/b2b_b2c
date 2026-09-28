@@ -71,7 +71,8 @@ Sync vrstva (server, jediný zapisovač do Shopify)
   ├─ app-data metafield (AppInstallation) storefront       (config pro theme extension)
   └─ Won discount uzly (C1/C2):
         N-auto  „Won Discounts“          automatic app discount, třídy PRODUCT+ORDER+SHIPPING
-        N-code  „Won Discounts — kódy“   code app discount(y) s více redeem kódy
+        N-code-<pravidlo>                 code app discount na KAŽDÉ kódové pravidlo, všechny
+                                          jeho kódy jako redeem kódy (C2 fallback, §3)
                                           ▼
                        Discount Function `won-discounts-engine` (JS, 2 targety)
                          cart.lines.discounts.generate.run
@@ -82,7 +83,8 @@ Theme app extension `won-discounts-storefront`
   app embed (košík: progress, dárek + Odmítnout, pole pro kód + varování, „Ušetříš X“,
              tip „přidej 1 ks“; BETA ceny na kartách) · bloky: množstevní tabulka + živá cena
              (PDP), štítek výprodeje · config z app-data metafieldu (bez síťového volání)
-App proxy `/apps/won-discounts/*`  health · náhledový token (C5) · (MVP4) živý plán košíku
+App proxy `/apps/won-discounts/*`  health · (MVP4) živý plán košíku · náhledový parametr pro
+                                   „Zobrazit na mém webu“ (C5 fallback: storefront nejde do iframe)
 Webhooky  orders/create · orders/cancelled · refunds/create (výprodej, analytika) ·
           app/uninstalled · GDPR (WBH-3) · app_subscriptions/update (billing)
 ```
@@ -399,8 +401,8 @@ Dawn bez `--bail`** (oba `✓`) + vizuální QA 390/1440 (storefront + admin har
 
 | MVP | Zákaznická hodnota | Merchant hodnota | Technický rozsah | Exit kritéria (navíc ke společné bráně) | Badge |
 |---|---|---|---|---|---|
-| **0** | — | — | Scaffold, config v0 (schema, sanitizer, migrace), prázdná discount funkce, theme app extension s embedem, dev harness, prototypy C1–C5 | Každé riziko C1–C5 má verdikt „platí / fallback“ s důkazem (`shopify app function run`, E2E, screenshot); spec upravený podle verdiktů | Scaffold |
-| **1** | Sleva / kód platí v košíku i pokladně | Engine, Slevy a kódy, detekce + přesun nativních slev s undo, Vyzkoušet košík, Přehled v1, onboarding 1–3 | `@won/core/discounts` (plan, kombinace, vysvětlení), sync vrstva, N-auto + N-code | Kód i automatická sleva platí v pokladně (E2E Bogus). Přesun + undo fungují na dev storu. Kombinace A1 pokryté unit testy na hranice | Alpha |
+| **0** | — | — | Scaffold, config v0 (schema, sanitizer, migrace), discount funkce s **prototypovými módy** (echo kódů, % na vše, okno kampaně, produktový metafield — nahradí je engine v MVP 1), theme app extension s embedem, dev harness, prototypy C1–C5 | Každé riziko C1–C5 má verdikt „platí / fallback“ s důkazem (`shopify app function run`, E2E, screenshot); spec upravený podle verdiktů | Scaffold |
+| **1** | Sleva / kód platí v košíku i pokladně | Engine, Slevy a kódy, detekce + přesun nativních slev s undo, Vyzkoušet košík, Přehled v1, onboarding 1–3 | `@won/core/discounts` (plan, kombinace, vysvětlení), sync vrstva, N-auto + N-code-<pravidlo> (§3) | Kód i automatická sleva platí v pokladně (E2E Bogus). Přesun + undo fungují na dev storu. Kombinace A1 pokryté unit testy na hranice | Alpha |
 | **2** | — | Ochrana marže (globální Free; per kolekce + zásahy Pro; bez unitCost → max %) | Marže v engine, zrcadlo unitCost, seed nákupních cen | Žádná kombinace slev v E2E nepodleze minimum; sleva se sníží, nikdy neblokuje | Alpha |
 | **3** | Tabulka a živá cena na PDP | Množstevní slevy + vzhledy bloků | PDP blok, embed základ, předpřipravené vzhledy | Horizon i Dawn: tabulka se zobrazí, 3 ks → sleva v `/cart.js` (`line_level_discount_allocations`) i v pokladně | Beta |
 | **4** | Progress, dárek, kód v košíku, „Ušetříš X“ | Odměny (doprava, dárek, žebřík Pro, prahy per trh) | Košík v embedu, gift atributy, delivery target | Scénáře „Dárky vs. další slevy“ v E2E: dárek v pokladně vždy $0; kód pod práh → varování + volba; odmítnutý dárek se nevrací; CZ i SK práh | Beta |

@@ -16,6 +16,8 @@ const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 
 export interface TestDatabase {
   prisma: PrismaClient;
+  /** `file:` DATABASE_URL of the throwaway SQLite file (for code that builds its own client). */
+  url: string;
   /** Delete the throwaway SQLite file and disconnect. Call from `after()`. */
   drop: () => Promise<void>;
 }
@@ -41,6 +43,7 @@ export function createTestDatabase(label: string): TestDatabase {
   const prisma = new PrismaClient({ datasourceUrl: url });
   return {
     prisma,
+    url,
     async drop() {
       await prisma.$disconnect();
       rmSync(dir, { recursive: true, force: true });
