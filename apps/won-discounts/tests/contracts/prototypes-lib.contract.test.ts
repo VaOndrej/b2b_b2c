@@ -249,6 +249,26 @@ test("a create that never landed is re-sent only after the title lookup finds no
   assert.equal(created.discountId, store.nodes.at(-1)?.id);
 });
 
+test("a create that lands only on the last, still-failed attempt is registered for cleanup (audit fix4-3)", async () => {
+  const { store, admin, cleanup } = setup({ confirmStoreWide: true });
+  await admin.functionInfo();
+  // Attempts 1 and 2 never reach the store (transport failure before landing);
+  // attempt 3 lands (a node is created) but its response is lost, so the
+  // whole call still reports failure -- the node it left behind must not be
+  // silently orphaned.
+  store.failNext("automaticCreate", "before", "before", "after");
+
+  await assert.rejects(() => admin.createAutomatic({ title: "C1 last-attempt-orphan", config: productMode }));
+
+  assert.equal(store.count("automaticCreate"), 3, "all three attempts were sent");
+  const ours = store.nodes.filter((n) => n.title === "WON-PROTO C1 last-attempt-orphan");
+  assert.equal(ours.length, 1, "the third attempt's node exists on the store");
+  assert.ok(
+    cleanup.tasks.some((t: { id?: string }) => t.id === ours[0].id),
+    "the orphaned node from the last failed attempt is registered for cleanup",
+  );
+});
+
 test("a GraphQL error is a result, never retried; redeemBulkAdd is never retried either", async () => {
   const { store, admin } = setup();
   store.failNext("functions", "graphql");

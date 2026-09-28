@@ -15,7 +15,7 @@
 // (crash, kill -9) is taken over; waiting is bounded by a timeout.
 
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -66,28 +66,84 @@ function ownerAlive(lockDir: string): boolean {
   }
 }
 
+function reaperPath(lockDir: string): string {
+  return `${lockDir}.reap`;
+}
+
+function writeOwner(lockDir: string): void {
+  writeFileSync(path.join(lockDir, "owner.json"), JSON.stringify({ pid: process.pid, since: new Date().toISOString() }));
+}
+
 /**
- * Take an abandoned lock out of the way. rename() is atomic, so of two waiters
- * that both saw it abandoned only one moves it; if what was moved turns out to
- * be a fresh, live lock (another waiter took over in between), it is put back.
+ * Take over a stale lock, run by at most one process at a time per lock (an
+ * exclusive reaper marker directory serializes it).
+ *
+ * Audit fix4-2: the previous version had every waiter that saw the lock as
+ * abandoned rename it aside itself, inspect it, and put it back if it turned
+ * out to be live after all. With 3+ contenders, two waiters could both decide
+ * to reap around the same moment: one (A) takes the original stale lock,
+ * deletes it and re-mkdirs it fresh; the other (B) — acting on its own,
+ * now-stale "it looked abandoned" check — renames away *A's fresh lock*,
+ * finds a live pid in it, and tries to rename it back. If a third process (C)
+ * slipped a plain `mkdirSync(lockDir)` into the gap while B held it in a
+ * tomb, B's restore fails (the destination is occupied and non-empty) and
+ * the old code fell through to deleting the tomb anyway — destroying A's
+ * still-live lock while C also believes it holds the lock: two holders.
+ *
+ * The fix removes the "rename away, maybe restore" dance entirely:
+ *  - Only one process may ever be mid-reap for a given lock (the `.reap`
+ *    marker directory, created with `mkdirSync`, which is atomic and
+ *    exclusive). Every other reap attempt just backs off.
+ *  - The winning reaper re-checks liveness one more time — closing the
+ *    window between the caller's check and this call — and only then
+ *    removes the stale directory and immediately re-creates it as its own,
+ *    with no gap in which it inspects, moves, or restores anything.
+ *  - `acquireBuildLock`'s normal mkdir attempt is skipped for as long as the
+ *    `.reap` marker exists, so nothing else can land a `mkdirSync` in the
+ *    brief window between the reaper's removal and its own re-create.
+ *
+ * Returns true when this process now holds a fresh lockDir.
  */
-function removeAbandoned(lockDir: string): void {
-  const tomb = `${lockDir}.abandoned-${process.pid}-${Date.now()}`;
+function reapAndAcquire(lockDir: string): boolean {
+  const reaper = reaperPath(lockDir);
   try {
-    renameSync(lockDir, tomb);
-  } catch {
-    return; // someone else moved or released it
+    mkdirSync(reaper);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false; // another process is already reaping this lock
+    throw error;
   }
-  const pid = ownerPid(tomb);
-  if (pid !== null && pidAlive(pid)) {
+  try {
+    if (ownerAlive(lockDir)) return false; // became live again since the caller's check: not our job
+    rmSync(lockDir, { recursive: true, force: true });
     try {
-      renameSync(tomb, lockDir);
-      return;
-    } catch {
-      // lockDir exists again: that owner won; the moved one is gone either way
+      mkdirSync(lockDir);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") return false; // lost a hairline race; the caller retries normally
+      throw error;
     }
+    writeOwner(lockDir);
+    // Verify what we just wrote is really there and is ours (belt-and-braces
+    // against a filesystem surprising us) before handing the lock out.
+    return ownerPid(lockDir) === process.pid;
+  } finally {
+    rmSync(reaper, { recursive: true, force: true });
   }
-  rmSync(tomb, { recursive: true, force: true });
+}
+
+function buildRelease(lockDir: string): () => void {
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    process.off("exit", release);
+    // Only delete lockDir if it is still ours: a process whose lock was
+    // legitimately reaped away as abandoned (it crashed or hung long enough
+    // to look dead, then got taken over) must never delete the new owner's
+    // live lock on a delayed/late release call.
+    if (ownerPid(lockDir) === process.pid) rmSync(lockDir, { recursive: true, force: true });
+  };
+  process.on("exit", release);
+  return release;
 }
 
 /**
@@ -100,24 +156,18 @@ export async function acquireBuildLock(options: BuildLockOptions = {}): Promise<
   const pollMs = options.pollMs ?? 200;
   const started = Date.now();
   for (;;) {
-    try {
-      mkdirSync(lockDir);
-      writeFileSync(path.join(lockDir, "owner.json"), JSON.stringify({ pid: process.pid, since: new Date().toISOString() }));
-      let released = false;
-      const release = () => {
-        if (released) return;
-        released = true;
-        process.off("exit", release);
-        rmSync(lockDir, { recursive: true, force: true });
-      };
-      process.on("exit", release);
-      return release;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    }
-    if (!ownerAlive(lockDir)) {
-      removeAbandoned(lockDir); // take it over on the next attempt
-      continue;
+    if (!existsSync(reaperPath(lockDir))) {
+      try {
+        mkdirSync(lockDir);
+        writeOwner(lockDir);
+        return buildRelease(lockDir);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      }
+      if (!existsSync(reaperPath(lockDir)) && !ownerAlive(lockDir)) {
+        if (reapAndAcquire(lockDir)) return buildRelease(lockDir);
+        continue;
+      }
     }
     if (Date.now() - started > timeoutMs) {
       throw new Error(`timed out after ${timeoutMs} ms waiting for ${lockDir}`);

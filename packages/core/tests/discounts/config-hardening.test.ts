@@ -253,6 +253,23 @@ test("override patch fields a campaign may not change are dropped (id, codes, me
   }
 });
 
+test("a huge disallowed patch key is truncated in the issue, not echoed whole (audit fix4-1)", () => {
+  const hugeKey = "x".repeat(3_000_000);
+  const patch = { [hugeKey]: "value" };
+  const { config, issues } = sanitizeConfig({
+    modules: { codes: { rules: [rule("r1")] } },
+    campaigns: [{ id: "bf", name: "BF", window: WINDOW, overrides: [{ ruleId: "r1", patch }], killed: false }],
+  });
+  assert.deepEqual(config.campaigns[0].overrides, [], "the empty patch drops the whole override");
+  const totalBytes = Buffer.byteLength(JSON.stringify(issues));
+  assert.ok(totalBytes < 20_000, `issues JSON was ${totalBytes} bytes, expected < 20000`);
+  const issue = issues.find((i) => i.code === "override_field_not_allowed");
+  assert.ok(issue, "expected an override_field_not_allowed issue");
+  assert.ok(issue!.path.length < 100, `path was ${issue!.path.length} chars`);
+  assert.ok(issue!.message.length < 200, `message was ${issue!.message.length} chars`);
+  assert.ok(issue!.path.includes("…") || issue!.path.length <= 70, "path should be truncated");
+});
+
 test("tier-set and gift-tier overrides are sanitized with the tier/gift sanitizers", () => {
   const { config } = sanitizeConfig({
     modules: {

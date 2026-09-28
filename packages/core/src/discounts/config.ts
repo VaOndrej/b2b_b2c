@@ -503,6 +503,13 @@ function sanitizeString(v: unknown, fallback: string, maxLen = 200): string {
   return typeof v === "string" ? v.slice(0, maxLen) : fallback;
 }
 
+/** A raw key echoed into an issue's path or message, bounded so an unbounded
+ * input (e.g. a multi-MB patch key) can never blow up the issues payload
+ * (audit fix4-1: a 3 MB patch key produced ~6 MB of issues). */
+function truncateKey(key: string, max = 64): string {
+  return key.length > max ? `${key.slice(0, max)}…` : key;
+}
+
 /** A user-supplied value shortened for an issue message (issues must stay small too). */
 function preview(v: unknown, max = 80): string {
   let text: string;
@@ -1334,11 +1341,12 @@ function sanitizeOverridePatch(
   const patched: string[] = [];
   for (const key of Object.keys(rawPatch)) {
     if (!allowed.includes(key)) {
+      const safeKey = truncateKey(key);
       pushIssue(
         issues,
-        `${path}.${key}`,
+        `${path}.${safeKey}`,
         "override_field_not_allowed",
-        `A campaign cannot change "${key}" of ${OVERRIDE_TARGET_LABELS[target.kind]}; the field was ignored.`,
+        `A campaign cannot change "${safeKey}" of ${OVERRIDE_TARGET_LABELS[target.kind]}; the field was ignored.`,
       );
       continue;
     }

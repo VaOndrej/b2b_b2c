@@ -76,6 +76,65 @@ test("a lock left behind by a dead process is taken over", async () => {
   assert.equal(existsSync(lockDir), false);
 });
 
+test("a stale lock with 3+ concurrent contenders is taken over by exactly one (audit fix4-2)", async () => {
+  const name = uniqueName("stale-race");
+  const dead = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
+  const deadPid = Number(dead.stdout);
+  const lockDir = buildLockPath(name);
+  mkdirSync(lockDir);
+  writeFileSync(path.join(lockDir, "owner.json"), JSON.stringify({ pid: deadPid }));
+
+  const log = path.join(scratch, "stale-race.log");
+  writeFileSync(log, "");
+  const child = path.join(scratch, "stale-race-holder.mts");
+  writeFileSync(
+    child,
+    `import { appendFileSync } from "node:fs";
+import { acquireBuildLock } from ${JSON.stringify(path.join(HERE, "build-lock.ts"))};
+const release = await acquireBuildLock({ name: ${JSON.stringify(name)}, pollMs: 5, timeoutMs: 30000 });
+appendFileSync(${JSON.stringify(log)}, "start " + process.pid + " " + Date.now() + "\\n");
+await new Promise((r) => setTimeout(r, 100));
+appendFileSync(${JSON.stringify(log)}, "end " + process.pid + " " + Date.now() + "\\n");
+release();
+`,
+  );
+  // 6 contenders race to take over the same stale lock at once: the previous
+  // "rename away, maybe restore" dance could let two of them both believe
+  // they held it (audit fix4-2).
+  const children = Array.from({ length: 6 }, () =>
+    spawn(process.execPath, ["--import", "tsx", child], { cwd: APP_ROOT, stdio: "pipe" }),
+  );
+  const stderr: string[] = [];
+  for (const c of children) c.stderr.on("data", (chunk) => stderr.push(String(chunk)));
+  const codes = await Promise.all(
+    children.map((c) => new Promise<number | null>((resolve) => c.on("exit", (code) => resolve(code)))),
+  );
+  assert.deepEqual(codes, Array(6).fill(0), stderr.join(""));
+
+  const lines = readFileSync(log, "utf8").trim().split("\n");
+  assert.equal(lines.length, 12, `expected 6 start/end pairs:\n${lines.join("\n")}`);
+  const events = lines
+    .map((line) => {
+      const [word, pid, at] = line.split(" ");
+      return { word, pid, at: Number(at) };
+    })
+    .sort((a, b) => a.at - b.at || (a.word === "end" ? -1 : 1));
+  // Mutual exclusion: at no point are two holders both "in" (started but not
+  // yet ended).
+  let inside = 0;
+  for (const event of events) {
+    if (event.word === "start") {
+      inside += 1;
+      assert.ok(inside <= 1, `more than one holder inside at once:\n${lines.join("\n")}`);
+    } else {
+      inside -= 1;
+    }
+  }
+  assert.equal(inside, 0);
+  assert.equal(existsSync(lockDir), false, "released");
+  assert.equal(existsSync(`${lockDir}.reap`), false, "reaper marker cleaned up");
+});
+
 test("a live holder makes a waiter time out instead of hanging forever", async () => {
   const name = uniqueName("timeout");
   const release = await acquireBuildLock({ name });

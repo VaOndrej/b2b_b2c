@@ -683,7 +683,18 @@ export class Admin {
         const output = stripAnsi(`${error.stdout ?? ""}\n${error.stderr ?? ""}`).trim();
         lastError = { attempt, message: String(error.message ?? error).split("\n")[0], output: output.slice(-4000) };
         // A GraphQL error is a result, not a transport failure: never retried.
-        if (!isTransportError(error) || NEVER_RETRY.has(name) || attempt === 3) break;
+        if (!isTransportError(error) || NEVER_RETRY.has(name) || attempt === 3) {
+          if (attempt === 3 && create && isTransportError(error) && !NEVER_RETRY.has(name)) {
+            // The final attempt still failed, so this call reports failure —
+            // but a transport error means the request may have landed anyway.
+            // Look the node up by its exact title one more time and register
+            // it for cleanup, so a create whose response was lost on the last
+            // try is never left behind (audit fix4-3).
+            const found = await this.findCreatedNode(name, variables);
+            if (found) this.onCreated?.(found.id, found.title);
+          }
+          break;
+        }
         await sleep(this.retryDelayMs * attempt);
         if (create) {
           // The first request may have created the node: look it up by its
