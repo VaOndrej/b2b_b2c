@@ -201,6 +201,38 @@ test("deleteShopData is idempotent (no rows for the shop is a no-op, not an erro
   await assert.doesNotReject(() => deleteShopData(db.prisma, "never-existed.myshopify.com"));
 });
 
+test("PRIV-2: deleteShopData also removes WonNode, NativeDiscountBackup and SyncRun for that shop only", async () => {
+  const target = "delete-me-mvp1.myshopify.com";
+  const keep = "keep-me-mvp1.myshopify.com";
+
+  for (const shop of [target, keep]) {
+    await db.prisma.wonNode.create({
+      data: { shop, key: "auto", role: "automatic", discountNodeId: "gid://shopify/DiscountNode/1" },
+    });
+    await db.prisma.nativeDiscountBackup.create({
+      data: {
+        shop,
+        nativeId: "gid://shopify/DiscountCodeNode/1",
+        kind: "code_basic",
+        title: "Old discount",
+        snapshot: "{}",
+        status: "backed_up",
+      },
+    });
+    await db.prisma.syncRun.create({ data: { shop, steps: "[]" } });
+  }
+
+  await deleteShopData(db.prisma, target);
+
+  assert.equal((await db.prisma.wonNode.findMany({ where: { shop: target } })).length, 0);
+  assert.equal((await db.prisma.nativeDiscountBackup.findMany({ where: { shop: target } })).length, 0);
+  assert.equal((await db.prisma.syncRun.findMany({ where: { shop: target } })).length, 0);
+
+  assert.equal((await db.prisma.wonNode.findMany({ where: { shop: keep } })).length, 1);
+  assert.equal((await db.prisma.nativeDiscountBackup.findMany({ where: { shop: keep } })).length, 1);
+  assert.equal((await db.prisma.syncRun.findMany({ where: { shop: keep } })).length, 1);
+});
+
 test("corrupted JSON in the stored row falls back to a fresh default config, never throws", async () => {
   const shop = "corrupted.myshopify.com";
   await db.prisma.shopConfig.create({

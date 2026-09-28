@@ -57,3 +57,47 @@ model ConfigVersion {
 
   @@index([shop, createdAt])
 }
+
+/// Won discount nodes the sync layer owns in Shopify (1 automatic + 1 per code rule).
+model WonNode {
+  id             String   @id @default(cuid())
+  shop           String
+  key            String   // "auto" | "code:<ruleId>"
+  role           String   // "automatic" | "code"
+  ruleId         String?
+  discountNodeId String   // Shopify GID
+  codesHash      String?
+  varsVersion    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@unique([shop, key])
+  @@index([shop])
+}
+
+/// Raw snapshot of a native Shopify discount taken before moving it into Won (undo, A7).
+model NativeDiscountBackup {
+  id        String   @id @default(cuid())
+  shop      String
+  nativeId  String   // original Shopify GID
+  kind      String   // human-readable type key from detection, e.g. "code_basic"
+  title     String
+  snapshot  String   // JSON of the native discount as read before deletion
+  wonRuleId String?
+  status    String   // "backed_up" | "moved" | "restored" | "failed"
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([shop, status])
+}
+
+/// Result of the last sync runs for the Přehled status (bounded, pruned to last 20 per shop).
+model SyncRun {
+  id         String   @id @default(cuid())
+  shop       String
+  startedAt  DateTime @default(now())
+  finishedAt DateTime?
+  ok         Boolean  @default(false)
+  steps      String   // JSON array of {step, ok, detail}
+  errorCount Int      @default(0)
+  @@index([shop, startedAt])
+}
