@@ -78,7 +78,7 @@ test("free shipping is a delivery candidate of 100 %", () => {
   assert.equal(candidate.ruleId, "S");
 });
 
-test("a stack of an automatic and a code rule is emitted once, by the node of the higher priority", () => {
+test("a stack of an automatic and a higher-priority code rule is emitted once, by the code node", () => {
   const rules = [pct("A", 10, { combinesWith: { ruleIds: ["C"] } }), pct("C", 5, { ...code(["KOD"]), priority: 3 })];
   const plan = planCart(cartOf([line("L1", 1000_00, 1, ["A", "C"])], { enteredCodes: ["KOD"] }), payloadOf(rules));
   assert.equal(emitForNode(plan, AUTO, null).productCandidates.length, 0);
@@ -99,4 +99,29 @@ test("a plan without a usable config emits nothing from any node", () => {
   const empty = { productCandidates: [], orderCandidates: [], deliveryCandidates: [] };
   assert.deepEqual(emitForNode(plan, AUTO, null), empty);
   assert.deepEqual(emitForNode(plan, codeNode("C"), "KOD"), empty);
+});
+
+test("mirror: a HIGHER-priority automatic rule stacked with a code rule — the code node emits the sum, the automatic node nothing", () => {
+  const rules = [pct("A", 10, { priority: 9, combinesWith: { ruleIds: ["C"] } }), pct("C", 5, code(["KOD"]))];
+  const plan = planCart(
+    cartOf([line("L1", 1000_00, 1, ["A", "C"]), line("L2", 1000_00, 1, ["A"])], { enteredCodes: ["KOD"] }),
+    payloadOf(rules),
+  );
+  const auto = emitForNode(plan, AUTO, null).productCandidates;
+  assert.deepEqual(auto.map((c) => c.lineId), ["L2"], "the automatic node only emits the line without the code");
+  const [candidate] = emitForNode(plan, codeNode("C"), "KOD").productCandidates;
+  assert.equal(candidate.lineId, "L1");
+  assert.equal(candidate.fixedTotal, 150_00);
+  assert.equal(candidate.ruleId, "C");
+});
+
+test("a code node triggered by a NON-first entered code of its rule emits exactly the same", () => {
+  const plan = planCart(
+    cartOf([line("L1", 1000_00, 1, ["C"])], { enteredCodes: ["PRVNI", "druhy"] }),
+    payloadOf([pct("C", 20, code(["PRVNI", "DRUHY"]))]),
+  );
+  const first = emitForNode(plan, codeNode("C"), "PRVNI");
+  const second = emitForNode(plan, codeNode("C"), "Druhy");
+  assert.equal(first.productCandidates.length, 1);
+  assert.deepEqual(second, first);
 });

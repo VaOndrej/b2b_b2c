@@ -154,3 +154,70 @@ test("a plan without a usable config says so in one plain sentence", () => {
   assert.deepEqual(texts(plan, "cs"), ["Nastavení slev se nepodařilo načíst, žádná sleva se teď neuplatní."]);
   assert.deepEqual(texts(plan, "en"), ["The discount settings could not be loaded; no discount applies right now."]);
 });
+
+// --- fix round 1 -------------------------------------------------------------------------------
+
+test("shopper-facing text never brands the app, even for a code the app does not manage", () => {
+  const plan = planCart(cartOf([line("L1", 1000_00)], { enteredCodes: ["CIZI"] }), payloadOf([]));
+  for (const locale of ["cs", "en"] as const) {
+    const all = texts(plan, locale).join("\n");
+    assert.doesNotMatch(all, /won/i, all);
+  }
+  assert.ok(texts(plan, "cs").includes("Kód CIZI je jiná sleva obchodu, tady se nepočítá."));
+  assert.ok(texts(plan, "en").includes("Code CIZI is another store discount and is not counted here."));
+});
+
+test("an echoed code is capped at 64 characters (customer input, rendered as text only)", () => {
+  const long = "X".repeat(200);
+  const plan = planCart(cartOf([line("L1", 1000_00)], { enteredCodes: [long] }), payloadOf([]));
+  const [item] = explainPlan(plan, "cs");
+  assert.ok(item.text.includes(`${"X".repeat(64)}…`), item.text);
+  assert.ok(!item.text.includes("X".repeat(65)));
+  assert.equal(item.code, `${"X".repeat(64)}…`);
+});
+
+test("two codes in one Pro stack: the one that does not own it says it applied together with the other", () => {
+  const plan = planCart(
+    cartOf([line("L1", 1000_00, 1, ["C1", "C2"])], { enteredCodes: ["JEDNA", "DVA"] }),
+    payloadOf([
+      pct("C1", 10, { ...code(["JEDNA"]), combinesWith: { ruleIds: ["C2"] } }),
+      pct("C2", 5, { ...code(["DVA"]), priority: 4 }),
+    ]),
+  );
+  assert.ok(texts(plan, "cs").includes("Kód JEDNA se uplatnil společně s kódem DVA."), texts(plan, "cs").join("\n"));
+  assert.ok(texts(plan, "en").includes("Code JEDNA was applied together with code DVA."));
+});
+
+test("an automatic rule stacked into a code says it is included in the code", () => {
+  const plan = planCart(
+    cartOf([line("L1", 1000_00, 1, ["A", "C"])], { enteredCodes: ["KOD"] }),
+    payloadOf([pct("A", 10, { name: "Podzim", priority: 9, combinesWith: { ruleIds: ["C"] } }), pct("C", 5, code(["KOD"]))]),
+  );
+  assert.ok(texts(plan, "cs").includes("Sleva „Podzim“ je započtená v kódu KOD."), texts(plan, "cs").join("\n"));
+  assert.ok(texts(plan, "en").includes("“Podzim” is included in code KOD."));
+});
+
+test("a free-shipping code dropped by a Free switch is 'does not combine', never 'you have a better discount'", () => {
+  const plan = planCart(
+    cartOf([line("L1", 1000_00, 1, ["A"])], { enteredCodes: ["DOPRAVA"] }),
+    payloadOf([pct("A", 10), freeShip("S", code(["DOPRAVA"])), freeShip("S2")], {
+      engine: { combination: { productWithShipping: false } },
+    }),
+  );
+  const cs = texts(plan, "cs").join("\n");
+  assert.match(cs, /Kód DOPRAVA se nekombinuje/);
+  assert.doesNotMatch(cs, /výhodnější/);
+});
+
+test("segment targeting: an honest 'not available yet', for codes and automatic rules", () => {
+  const plan = planCart(
+    cartOf([line("L1", 1000_00)], { enteredCodes: ["VIP"] }),
+    payloadOf([
+      orderPct("V", 10, { ...code(["VIP"]), targeting: { segments: ["gid://shopify/Segment/1"] } }),
+      orderPct("A", 5, { name: "Věrní", targeting: { segments: ["gid://shopify/Segment/1"] } }),
+    ]),
+  );
+  assert.ok(texts(plan, "cs").includes("Kód VIP se neuplatní: cílení na segment zatím není k dispozici."), texts(plan, "cs").join("\n"));
+  assert.ok(texts(plan, "cs").includes("Sleva „Věrní“ se neuplatní: cílení na segment zatím není k dispozici."));
+  assert.ok(texts(plan, "en").includes("Code VIP is not applied: segment targeting is not available yet."));
+});

@@ -41,8 +41,20 @@ export function configOf(rules: RawRule[], extra: Record<string, unknown> = {}):
   return sanitizeConfig({ ...extra, modules: { codes: { rules } } }).config;
 }
 
-export function payloadOf(rules: RawRule[], extra: Record<string, unknown> = {}): FunctionConfigPayload {
-  return buildShopFunctionConfig(configOf(rules, extra)).payload;
+/** Shop time used by the fixtures: Prague, early October (before every fixture campaign). */
+export const FIXTURE_NOW = "2026-10-01T12:00:00";
+export const FIXTURE_TZ = "Europe/Prague";
+
+export function payloadOf(
+  rules: RawRule[],
+  extra: Record<string, unknown> = {},
+  opts: { now?: string; shopTimezone?: string; forceNoCampaign?: boolean } = {},
+): FunctionConfigPayload {
+  return buildShopFunctionConfig(configOf(rules, extra), {
+    now: opts.now ?? FIXTURE_NOW,
+    shopTimezone: opts.shopTimezone ?? FIXTURE_TZ,
+    ...(opts.forceNoCampaign ? { forceNoCampaign: true } : {}),
+  }).payload;
 }
 
 export function line(

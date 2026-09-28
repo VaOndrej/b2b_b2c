@@ -293,3 +293,44 @@ test("a code rule competes with automatic rules on equal terms once its code is 
   const withCode = planCart(cartOf([line("L1", 1000_00, 1, ["A", "C"])], { enteredCodes: ["leto20"] }), payloadOf(rules));
   assert.deepEqual(winners(withCode, "L1"), ["C"]);
 });
+
+// --- fix round 1 -------------------------------------------------------------------------------
+
+test("a Pro stack that contains a code rule is owned by the CODE rule, even against a higher-priority automatic rule", () => {
+  const plan = planCart(
+    cartOf([line("L1", 1000_00, 1, ["A", "C"])], { enteredCodes: ["KOD"] }),
+    payloadOf([pct("A", 10, { priority: 9, combinesWith: { ruleIds: ["C"] } }), pct("C", 5, code(["KOD"]))]),
+  );
+  const stack = lineOf(plan, "L1").product;
+  assert.equal(stack?.amount, 150_00);
+  assert.equal(stack?.ownerRuleId, "C");
+  assert.equal(stack?.ownerMethod, "code");
+  assert.equal(outcome(plan, "C").state, "applied");
+  assert.equal(outcome(plan, "A").state, "combined");
+});
+
+test("two code rules in one stack: the higher-priority code owns it, the other is combined into it", () => {
+  const plan = planCart(
+    cartOf([line("L1", 1000_00, 1, ["C1", "C2"])], { enteredCodes: ["JEDNA", "DVA"] }),
+    payloadOf([
+      pct("C1", 10, { ...code(["JEDNA"]), combinesWith: { ruleIds: ["C2"] } }),
+      pct("C2", 5, { ...code(["DVA"]), priority: 4 }),
+    ]),
+  );
+  assert.equal(lineOf(plan, "L1").product?.ownerRuleId, "C2");
+  assert.equal(outcome(plan, "C1").state, "combined");
+  assert.equal(outcome(plan, "C1").combinedInto, "C2");
+});
+
+test("a Free switch that drops shipping marks EVERY shipping candidate not combinable, none outranked", () => {
+  const plan = planCart(
+    cartOf([line("L1", 1000_00, 1, ["A"])]),
+    payloadOf([pct("A", 10), freeShip("S1"), pct("S2", 50, { target: { kind: "shipping" } })], {
+      engine: { combination: { productWithShipping: false } },
+    }),
+  );
+  assert.equal(plan.shipping, null);
+  assert.equal(outcome(plan, "S1").state, "not_combinable");
+  assert.equal(outcome(plan, "S2").state, "not_combinable");
+  assert.equal(outcome(plan, "S2").betterRuleIds, undefined);
+});

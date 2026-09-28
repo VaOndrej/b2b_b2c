@@ -23,11 +23,17 @@ export interface CartLineInput {
   /** A Won gift line (`_won_gift`, A1.2): outside every discount and every threshold. */
   giftTierId?: string;
   /**
-   * Precomputed targeting from the product metafield (targeting.ts ruleRef):
-   * `ruleId`, `ruleId:<variant>` or `ruleId@<campaign>[:<variant>]`. Product and
-   * collection rules apply ONLY to lines listing them; order rules to every line.
+   * Precomputed product-wide targeting from the product metafield (targeting.ts):
+   * `ruleId` or `ruleId@<campaign>`. Product and collection rules apply ONLY to
+   * lines listing them (here or in `variantRuleIds`); order rules to every line.
    */
   ruleIds: readonly string[];
+  /**
+   * Variant-level targeting from the same metafield, keyed by variant GID. The
+   * engine uses only the entry of this line's `variantId` — a sibling variant's
+   * rules never apply. The adapter may pass the product's whole map.
+   */
+  variantRuleIds?: Readonly<Record<string, readonly string[]>>;
 }
 
 export interface CartCampaignInput {
@@ -38,10 +44,12 @@ export interface CartCampaignInput {
 
 export interface CartPlanInput {
   currency: CurrencyCode;
+  /**
+   * Buyer's country (function: `localization.country.isoCode`). Pro market
+   * targeting matches it against the shared config's `marketCountries`; unknown
+   * → market-targeted rules are not offered.
+   */
   countryCode?: string;
-  /** Market handle (Pro market targeting). Unknown → market-targeted rules are not offered. */
-  marketHandle?: string;
-  customer?: { segments?: readonly string[] };
   lines: readonly CartLineInput[];
   /** Every entered code, Won or not (function: enteredDiscountCodes). Case-insensitive. */
   enteredCodes: readonly string[];
@@ -55,8 +63,9 @@ export interface CartPlanInput {
   campaign?: CartCampaignInput | null;
   /**
    * Shop-local date `YYYY-MM-DD` (function: `shop.localTime.date`). Rule schedules
-   * are evaluated at DAY granularity [spec]: that is all the function can read
-   * without variables; exact-time windows are the Campaigns module's job (C4).
+   * are evaluated at DAY granularity against the shop-local dates the shared
+   * config carries (buildShopFunctionConfig converts them with the shop's time
+   * zone); exact-time windows are the Campaigns module's job (C4).
    */
   today?: string;
   /** Shop-local `YYYY-MM-DDTHH:MM:SS` (admin simulation); `today` is taken from it when missing. */
@@ -76,13 +85,14 @@ export interface NormalizedLine {
   subtotal: number;
   outlet: boolean;
   gift: boolean;
+  /** Product-wide refs + this variant's refs. */
   ruleIds: readonly string[];
 }
 
 export interface NormalizedCart {
   currency: CurrencyCode;
-  marketHandle: string | null;
-  segments: ReadonlySet<string> | null;
+  /** Upper-case ISO 3166-1 alpha-2, or null. */
+  countryCode: string | null;
   lines: NormalizedLine[];
   /** Upper-cased, trimmed, unique, in entry order. */
   enteredCodes: string[];
@@ -94,6 +104,7 @@ export interface NormalizedCart {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const LOCAL_DATETIME_PREFIX_RE = /^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}/;
+const COUNTRY_RE = /^[A-Z]{2}$/;
 
 function nonNegativeInt(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
@@ -101,6 +112,10 @@ function nonNegativeInt(v: unknown): number {
 
 function str(v: unknown): string {
   return typeof v === "string" ? v : "";
+}
+
+function strings(v: unknown): string[] {
+  return Array.isArray(v) ? (v as unknown[]).filter((r): r is string => typeof r === "string") : [];
 }
 
 function readCampaign(v: unknown): CartCampaignInput | null {
@@ -121,7 +136,7 @@ export function normalizeCode(code: string): string {
  * Defensive normalization: the function hands in whatever its adapter built from
  * a Shopify payload, so nonsense (NaN quantity, negative price, junk arrays) is
  * read as "nothing" rather than trusted. Throws only when `input` is not an
- * object at all (planCart turns that into an empty plan with an error).
+ * object at all (planCart turns that into an empty plan with a reason).
  */
 export function normalizeCart(input: CartPlanInput): NormalizedCart {
   if (typeof input !== "object" || input === null) throw new TypeError("cart input is not an object");
@@ -132,16 +147,22 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
     const raw = item as Partial<Record<keyof CartLineInput, unknown>>;
     const quantity = nonNegativeInt(raw.quantity);
     const unitPrice = nonNegativeInt(raw.unitPrice);
+    const variantId = str(raw.variantId);
+    const byVariant = raw.variantRuleIds;
+    const variantRefs =
+      variantId && typeof byVariant === "object" && byVariant !== null && Object.prototype.hasOwnProperty.call(byVariant, variantId)
+        ? strings((byVariant as Record<string, unknown>)[variantId])
+        : [];
     lines.push({
       id: str(raw.id),
-      variantId: str(raw.variantId),
+      variantId,
       productId: str(raw.productId),
       quantity,
       unitPrice,
       subtotal: quantity * unitPrice,
       outlet: raw.outlet === true,
       gift: typeof raw.giftTierId === "string" && raw.giftTierId !== "",
-      ruleIds: Array.isArray(raw.ruleIds) ? (raw.ruleIds as unknown[]).filter((r): r is string => typeof r === "string") : [],
+      ruleIds: variantRefs.length > 0 ? [...strings(raw.ruleIds), ...variantRefs] : strings(raw.ruleIds),
     });
   }
 
@@ -156,14 +177,11 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
   if (typeof input.today === "string" && DATE_RE.test(input.today)) today = input.today;
   else if (typeof input.now === "string") today = LOCAL_DATETIME_PREFIX_RE.exec(input.now)?.[1] ?? null;
 
-  const segments = input.customer && Array.isArray(input.customer.segments)
-    ? new Set(input.customer.segments.filter((s): s is string => typeof s === "string"))
-    : null;
+  const country = str(input.countryCode).trim().toUpperCase();
 
   return {
     currency: str(input.currency).toUpperCase(),
-    marketHandle: typeof input.marketHandle === "string" && input.marketHandle ? input.marketHandle : null,
-    segments,
+    countryCode: COUNTRY_RE.test(country) ? country : null,
     lines,
     enteredCodes,
     campaign: readCampaign(input.campaign),

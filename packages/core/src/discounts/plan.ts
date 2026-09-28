@@ -3,27 +3,38 @@
 // discount function, the admin "Vyzkoušet košík" and later the storefront run
 // unchanged; each node then emits only its own part (emit.ts).
 //
-// Order of work (A1 defaults, spec §3 "Deterministické pořadí"):
-//   0. campaign overrides (only when the node's campaign + varsVersion match the
-//      shop config, C4/C7) → rules as they are right now;
-//   1. outlet lines are out of product AND order discounts (unless
-//      `engine.combination.outletWithAnything`); 2. gift lines are out of
-//      everything, thresholds included;
-//   3. product discounts: per line the better one for the customer wins, never a
-//      sum (ties: priority desc, id asc); Pro `combinesWith` may stack rules,
-//      emitted as ONE value by the node of the highest-priority component;
-//   4. order discounts: on the subtotal AFTER product discounts [spec], the
-//      better one wins [spec]; 6. shipping: the best shipping candidate;
-//   7. margin protection — MVP 2 hook, identity for now.
-//   Free per-category switches (`engine.combination.*`) make product+order,
-//   product+shipping, order+shipping exclusive when turned off.
+// Stages (A1 defaults, spec §3 "Deterministické pořadí"), one function each:
+//   resolveRules    campaign overrides (only when the node's campaign + varsVersion
+//                   match the shop config, C4/C7) → the rules as they are now;
+//   matchCodes      entered codes → code rules, by hash (code-hash.ts);
+//   prepareLines    outlet lines out of product AND order discounts (unless
+//                   `outletWithAnything`), gift lines out of everything,
+//                   thresholds included; precomputed targeting per line;
+//   gateRules       enabled, code entered, schedule (shop days), market
+//                   (country), segment (unsupported), currency, targets,
+//                   minimum (the WHOLE cart, [spec] „minimum košíku“);
+//   planProducts    per line the better one for the customer wins, never a sum
+//                   (ties: priority desc, id asc); Pro `combinesWith` may stack;
+//   planOrderStage  on the subtotal AFTER product discounts [spec], better wins
+//                   [spec]; the Free product-with-order switch;
+//   planShipping    one winner; the Free product/order-with-shipping switches;
+//   applyMarginProtection  MVP 2 hook, identity for now;
+//   buildOutcomes   per-rule and per-code states for explain/admin.
+//
+// Stack ownership (who emits): a stack that contains a code rule is owned by a
+// CODE rule (highest priority, then id asc), so the code shows as applied in
+// Shopify and its usage limit / once-per-customer is counted; otherwise the
+// highest-priority rule. Known limitation: in a stack of two code rules only the
+// owner's code is emitted, so Shopify counts a use of that code only; the other
+// code shows `applicable: false` (explain says it applied together).
 //
 // Money is integer minor units of the cart currency. A currency without a value
 // (fixed amount, minimum) takes the rule out of play (MKT-1, principle 6).
 // Performance: O(lines × rules-per-line) + one sort per line; the Pro stacking
 // search only runs on lines that actually have combinable candidates.
 
-import { type CartPlanInput, type NormalizedCart, type NormalizedLine, normalizeCart, normalizeCode, type PlanLocale } from "./cart.ts";
+import { type CartPlanInput, type NormalizedCart, type NormalizedLine, normalizeCart, type PlanLocale } from "./cart.ts";
+import { codeHash } from "./code-hash.ts";
 import type { DiscountMethod, DiscountRuleValue, DiscountTargetKind, ReadonlyDeep } from "./config.ts";
 import { DEFAULT_CONFIG } from "./config/defaults.ts";
 import { DISCOUNT_TARGET_KINDS } from "./config/enums.ts";
@@ -47,9 +58,9 @@ export type RuleState =
   | "code_not_entered"
   | "not_started"
   | "ended"
-  | "schedule_unknown" // scheduled, but the plan got no shop date
-  | "market" // Pro market targeting excludes this market (or it is unknown)
-  | "segment" // Pro segment targeting excludes this customer
+  | "schedule_unknown" // scheduled, but no shop date (or no shop-local schedule) to compare
+  | "market" // Pro market targeting: the cart country is not in the rule's markets (or unknown)
+  | "unsupported" // uses a feature the checkout cannot evaluate yet (segment targeting)
   | "currency_missing" // no amount / minimum for the cart currency (MKT-1)
   | "no_target_lines"
   | "outlet_only" // every line it targets is on outlet
@@ -84,7 +95,7 @@ export interface PlanStack {
   /** In rank order (amount desc, priority desc, id asc); one unless Pro stacking. */
   components: PlanComponent[];
   amount: number;
-  /** The rule whose node emits this stack: highest priority, then id asc. */
+  /** The rule whose node emits this stack: a code rule when there is one, else the highest priority. */
   ownerRuleId: string;
   ownerMethod: DiscountMethod;
   value: EmittedValue;
@@ -148,9 +159,9 @@ export interface RuleOutcome {
 }
 
 export interface CodeOutcome {
-  /** As entered, trimmed and upper-cased. */
+  /** As entered, trimmed and upper-cased (customer input: render as text only). */
   code: string;
-  /** The Won rule owning the code; null for a code Won does not manage. */
+  /** The Won rule owning the code; null for a code this app does not manage. */
   ruleId: string | null;
   state: CodeState;
 }
@@ -213,6 +224,23 @@ export function isFunctionConfigPayload(value: unknown): value is FunctionConfig
   return typeof codes === "object" && codes !== null && Array.isArray((codes as Record<string, unknown>).rules);
 }
 
+// --- What the checkout cannot evaluate (for the admin) ------------------------------------
+
+/**
+ * Segment targeting needs `customer.inAnySegment(segmentIds:)` — a query
+ * ARGUMENT, which only the node's metafield variables can supply, and the node
+ * variables carry no segment list. Until that exists, segment-targeted rules are
+ * skipped by the engine (state `unsupported`) and the admin shows this gap.
+ */
+export const SEGMENT_TARGETING_SUPPORTED = false as const;
+
+export type FunctionGap = "segment_targeting";
+
+/** Features of a rule the discount function cannot evaluate yet ([] = fully supported). */
+export function unsupportedInFunction(rule: { targeting?: { segments?: readonly string[]; markets?: readonly string[] } }): FunctionGap[] {
+  return !SEGMENT_TARGETING_SUPPORTED && (rule.targeting?.segments?.length ?? 0) > 0 ? ["segment_targeting"] : [];
+}
+
 // --- Internal model ------------------------------------------------------------------------
 
 type ValueKind = "percentage" | "fixed" | "freeShipping";
@@ -228,14 +256,15 @@ interface Rule {
   /** Fixed amount in the cart currency; null = no value for it. */
   fixed: number | null;
   priority: number;
-  codes: string[];
+  codeHashes: string[];
   minSubtotal: number | null;
   minSubtotalMissing: boolean;
   minQuantity: number;
+  scheduled: boolean;
   startsOn: string | null;
   endsOn: string | null;
   markets: string[] | null;
-  segments: string[] | null;
+  segmentTargeted: boolean;
   /** Pro combinesWith as written on this rule (the relation is made symmetric in partnersOf). */
   combines: string[];
   describable: DescribableRule;
@@ -259,6 +288,25 @@ interface Scope {
   discountable: number;
 }
 
+interface WorkLine {
+  line: NormalizedLine;
+  excluded: "outlet" | "gift" | null;
+  ruleSet: Set<string>;
+  product: PlanStack | null;
+}
+
+interface EngineFlags {
+  outletWithAnything: boolean;
+  productWithOrder: boolean;
+  productWithShipping: boolean;
+  orderWithShipping: boolean;
+}
+
+interface ActiveCampaign {
+  id: string;
+  patches: Map<string, Rec>;
+}
+
 type Rec = Record<string, unknown>;
 
 const isRecord = (v: unknown): v is Rec => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -267,6 +315,8 @@ const isRecord = (v: unknown): v is Rec => typeof v === "object" && v !== null &
 const RULE_OVERRIDE_KEYS = ["enabled", "name", "value", "target", "minimum", "targeting", "combinesWith"] as const;
 
 const MAX_BETTER_RULES = 3;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 function amountIn(money: unknown, currency: string): number | null {
   if (!isRecord(money)) return null;
@@ -278,29 +328,13 @@ function clampPercent(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : 0;
 }
 
-const DATETIME_RE = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?/;
-
-/** The calendar date written in an ISO date-time (the shop's offset, as the admin writes it). */
-function startDate(v: unknown): string | null {
-  return typeof v === "string" ? (DATETIME_RE.exec(v)?.[1] ?? null) : null;
-}
-
-/** Last live day of a schedule end: its date, or the day before when it ends exactly at midnight. */
-function endDate(v: unknown): string | null {
-  if (typeof v !== "string") return null;
-  const m = DATETIME_RE.exec(v);
-  if (!m) return null;
-  const midnight = m[2] === "00" && m[3] === "00" && (m[4] ?? "00") === "00" && /^0*$/.test(m[5] ?? "");
-  if (!midnight) return m[1];
-  const [y, mo, d] = m[1].split("-").map(Number);
-  return new Date(Date.UTC(y, mo - 1, d - 1)).toISOString().slice(0, 10);
-}
-
 function stringList(v: unknown): string[] | null {
   if (!Array.isArray(v)) return null;
   const out = v.filter((x): x is string => typeof x === "string");
   return out.length > 0 ? out : null;
 }
+
+const localDate = (v: unknown): string | null => (typeof v === "string" && DATE_RE.test(v) ? v : null);
 
 function readRule(raw: Rec, currency: string): Rule | null {
   const value = raw.value;
@@ -329,9 +363,7 @@ function readRule(raw: Rec, currency: string): Rule | null {
   const cls: DiscountClass =
     valueKind === "freeShipping" || target === "shipping" ? "shipping" : target === "order" ? "order" : "product";
   const method: DiscountMethod = raw.method === "code" ? "code" : "automatic";
-  const codes = method === "code" && Array.isArray(raw.codes)
-    ? raw.codes.filter((c): c is string => typeof c === "string").map(normalizeCode).filter(Boolean)
-    : [];
+  const codeHashes = method === "code" ? (stringList(raw.codeHashes) ?? []) : [];
 
   const minimum = isRecord(raw.minimum) ? raw.minimum : {};
   const subtotalMap = minimum.subtotal;
@@ -341,13 +373,16 @@ function readRule(raw: Rec, currency: string): Rule | null {
     typeof minimum.quantity === "number" && Number.isFinite(minimum.quantity) && minimum.quantity > 0
       ? Math.floor(minimum.quantity)
       : 0;
+  // Schedules arrive as shop-local days (buildShopFunctionConfig converted them with
+  // the shop's time zone). A schedule without them — e.g. raw ISO strings in a
+  // hand-built payload — is never trusted: the rule gates as schedule_unknown.
+  const scheduled = isRecord(raw.schedule) && Object.keys(raw.schedule).length > 0;
   const schedule = isRecord(raw.schedule) ? raw.schedule : {};
   const targeting = isRecord(raw.targeting) ? raw.targeting : {};
-  const name = typeof raw.name === "string" ? raw.name : "";
 
   return {
     id: raw.id as string,
-    name,
+    name: typeof raw.name === "string" ? raw.name : "",
     method,
     enabled: raw.enabled === true,
     cls,
@@ -355,18 +390,18 @@ function readRule(raw: Rec, currency: string): Rule | null {
     percent,
     fixed,
     priority: typeof raw.priority === "number" && Number.isFinite(raw.priority) ? Math.floor(raw.priority) : 0,
-    codes,
+    codeHashes,
     minSubtotal,
     minSubtotalMissing: hasSubtotal && minSubtotal === null,
     minQuantity,
-    startsOn: startDate(schedule.startsAt),
-    endsOn: endDate(schedule.endsAt),
+    scheduled,
+    startsOn: localDate(schedule.startsOn),
+    endsOn: localDate(schedule.endsOn),
     markets: stringList(targeting.markets),
-    segments: stringList(targeting.segments),
+    segmentTargeted: unsupportedInFunction({ targeting: { segments: stringList(targeting.segments) ?? [] } }).length > 0,
     combines: isRecord(raw.combinesWith) ? (stringList(raw.combinesWith.ruleIds) ?? []) : [],
     describable: {
       method,
-      codes,
       value: describedValue,
       target: { kind: target },
       ...(hasSubtotal || minQuantity > 0
@@ -380,10 +415,31 @@ function readRule(raw: Rec, currency: string): Rule | null {
   };
 }
 
-interface ActiveCampaign {
-  id: string;
-  patches: Map<string, Rec>;
+function readEngine(config: Rec): EngineFlags {
+  const defaults = DEFAULT_CONFIG.engine.combination;
+  const engine = isRecord(config.engine) ? config.engine : {};
+  const c = isRecord(engine.combination) ? engine.combination : {};
+  const flag = (key: keyof EngineFlags) => (typeof c[key] === "boolean" ? (c[key] as boolean) : defaults[key]);
+  return {
+    outletWithAnything: flag("outletWithAnything"),
+    productWithOrder: flag("productWithOrder"),
+    productWithShipping: flag("productWithShipping"),
+    orderWithShipping: flag("orderWithShipping"),
+  };
 }
+
+/** Market handle → countries, as the shared config ships them (enabled, targeted markets only). */
+function readMarketCountries(config: Rec): Map<string, ReadonlySet<string>> {
+  const out = new Map<string, ReadonlySet<string>>();
+  if (!isRecord(config.marketCountries)) return out;
+  for (const [handle, countries] of Object.entries(config.marketCountries)) {
+    const list = stringList(countries);
+    if (list) out.set(handle, new Set(list.map((c) => c.toUpperCase())));
+  }
+  return out;
+}
+
+// --- Stage: rules as they are right now ------------------------------------------------------
 
 /**
  * The campaign whose overrides apply: the node says its window is live AND its
@@ -410,35 +466,136 @@ function activeCampaign(config: Rec, cart: NormalizedCart): ActiveCampaign | nul
   return { id: node.id, patches };
 }
 
-function readRules(config: Rec, currency: string, campaign: ActiveCampaign | null) {
-  const modules = config.modules as Rec;
-  const raws = (modules.codes as Rec).rules as unknown[];
+function resolveRules(config: Rec, cart: NormalizedCart) {
+  const campaign = activeCampaign(config, cart);
+  const raws = ((config.modules as Rec).codes as Rec).rules as unknown[];
   const rules: Rule[] = [];
   const retargeted = new Set<string>();
   const seen = new Set<string>();
   for (const raw of raws) {
     if (!isRecord(raw) || typeof raw.id !== "string" || raw.id === "" || seen.has(raw.id)) continue;
     const patch = campaign?.patches.get(raw.id);
-    const rule = readRule(patch ? { ...raw, ...patch } : raw, currency);
+    const rule = readRule(patch ? { ...raw, ...patch } : raw, cart.currency);
     if (!rule) continue;
     seen.add(rule.id);
     if (patch && "target" in patch) retargeted.add(rule.id);
     rules.push(rule);
   }
-  return { rules, retargeted };
+  return { campaign, rules, retargeted, byId: new Map(rules.map((r) => [r.id, r])) };
 }
 
-function readEngine(config: Rec) {
-  const defaults = DEFAULT_CONFIG.engine.combination;
-  const engine = isRecord(config.engine) ? config.engine : {};
-  const c = isRecord(engine.combination) ? engine.combination : {};
-  const flag = (key: keyof typeof defaults, fallback: boolean) => (typeof c[key] === "boolean" ? (c[key] as boolean) : fallback);
-  return {
-    outletWithAnything: flag("outletWithAnything", defaults.outletWithAnything),
-    productWithOrder: flag("productWithOrder", defaults.productWithOrder),
-    productWithShipping: flag("productWithShipping", defaults.productWithShipping),
-    orderWithShipping: flag("orderWithShipping", defaults.orderWithShipping),
-  };
+// --- Stage: codes ------------------------------------------------------------------------------
+
+/** Entered codes → code rules by hash; the first entered code of a rule is the one that counts. */
+function matchCodes(rules: Rule[], cart: NormalizedCart) {
+  const ownerByHash = new Map<string, Rule>();
+  for (const rule of rules) {
+    if (rule.method !== "code") continue;
+    for (const hash of rule.codeHashes) if (!ownerByHash.has(hash)) ownerByHash.set(hash, rule);
+  }
+  const ownerOfCode = new Map<string, Rule>();
+  const enteredByRule = new Map<string, string[]>();
+  for (const code of cart.enteredCodes) {
+    const rule = ownerByHash.get(codeHash(code));
+    if (!rule) continue;
+    ownerOfCode.set(code, rule);
+    const list = enteredByRule.get(rule.id);
+    if (list) list.push(code);
+    else enteredByRule.set(rule.id, [code]);
+  }
+  return { ownerOfCode, enteredByRule };
+}
+
+// --- Stage: lines, exclusions, targeting, scopes ------------------------------------------------
+
+const emptyScope = (): Scope => ({ subtotal: 0, quantity: 0, lines: 0, discountable: 0 });
+
+function prepareLines(cart: NormalizedCart, engine: EngineFlags, campaignId: string | null, retargeted: ReadonlySet<string>) {
+  const work: WorkLine[] = cart.lines.map((line) => ({
+    line,
+    excluded: line.gift ? "gift" : line.outlet && !engine.outletWithAnything ? "outlet" : null,
+    ruleSet: lineRuleIds(line, campaignId, retargeted),
+    product: null,
+  }));
+  const cartScope = emptyScope();
+  const ruleScopes = new Map<string, Scope>();
+  for (const w of work) {
+    if (w.excluded === "gift") continue;
+    const discountable = w.excluded === null ? 1 : 0;
+    cartScope.subtotal += w.line.subtotal;
+    cartScope.quantity += w.line.quantity;
+    cartScope.lines += 1;
+    cartScope.discountable += discountable;
+    for (const id of w.ruleSet) {
+      let s = ruleScopes.get(id);
+      if (!s) ruleScopes.set(id, (s = emptyScope()));
+      s.subtotal += w.line.subtotal;
+      s.quantity += w.line.quantity;
+      s.lines += 1;
+      s.discountable += discountable;
+    }
+  }
+  return { work, cartScope, ruleScopes };
+}
+
+// --- Stage: eligibility ---------------------------------------------------------------------------
+
+interface GateContext {
+  cart: NormalizedCart;
+  marketCountries: Map<string, ReadonlySet<string>>;
+  /** The whole cart (non-gift lines): what „minimum košíku“ is measured on. */
+  cartScope: Scope;
+}
+
+function inMarket(rule: Rule, ctx: GateContext): boolean {
+  const country = ctx.cart.countryCode;
+  if (!rule.markets || !country) return false;
+  return rule.markets.some((handle) => ctx.marketCountries.get(handle)?.has(country) === true);
+}
+
+/** Rule gate, in the order a merchant would ask "why not?". Returns null when eligible. */
+function gate(rule: Rule, ctx: GateContext, targetScope: Scope, entered: boolean): RuleState | null {
+  const { cart, cartScope } = ctx;
+  if (!rule.enabled) return "disabled";
+  if (rule.method === "code" && !entered) return "code_not_entered";
+  if (rule.scheduled) {
+    // [spec] DAY granularity in shop time: the function reads only shop.localTime.date
+    // without variables; exact-time windows are the Campaigns module's job (C4).
+    if (!cart.today || (!rule.startsOn && !rule.endsOn)) return "schedule_unknown";
+    if (rule.startsOn && cart.today < rule.startsOn) return "not_started";
+    if (rule.endsOn && cart.today > rule.endsOn) return "ended";
+  }
+  if (rule.segmentTargeted) return "unsupported";
+  if (rule.markets && !inMarket(rule, ctx)) return "market";
+  if ((rule.valueKind === "fixed" && rule.fixed === null) || rule.minSubtotalMissing) return "currency_missing";
+  if (targetScope.lines === 0) return "no_target_lines";
+  if (rule.cls !== "shipping" && targetScope.discountable === 0) return "outlet_only";
+  // [spec] „Minimum košíku“ = the WHOLE cart: every non-gift line at its
+  // pre-discount price, outlet included (it is what the customer pays), whatever
+  // the rule targets; the same for the quantity minimum.
+  const missingSubtotal = rule.minSubtotal !== null ? Math.max(0, rule.minSubtotal - cartScope.subtotal) : 0;
+  const missingQuantity = rule.minQuantity > 0 ? Math.max(0, rule.minQuantity - cartScope.quantity) : 0;
+  if (missingSubtotal > 0 || missingQuantity > 0) {
+    rule.missing = {
+      ...(missingSubtotal > 0 ? { subtotal: missingSubtotal, minimumSubtotal: rule.minSubtotal as number } : {}),
+      ...(missingQuantity > 0 ? { quantity: missingQuantity, minimumQuantity: rule.minQuantity } : {}),
+    };
+    return "below_minimum";
+  }
+  return null;
+}
+
+function gateRules(
+  rules: Rule[],
+  ctx: GateContext,
+  ruleScopes: Map<string, Scope>,
+  enteredByRule: Map<string, string[]>,
+): void {
+  const none = emptyScope();
+  for (const rule of rules) {
+    const targetScope = rule.cls === "product" ? (ruleScopes.get(rule.id) ?? none) : ctx.cartScope;
+    rule.state = gate(rule, ctx, targetScope, enteredByRule.has(rule.id));
+  }
 }
 
 // --- Ranking and stacking ------------------------------------------------------------------
@@ -447,13 +604,19 @@ function readEngine(config: Rec) {
 function byRank(a: Candidate, b: Candidate): number {
   if (a.amount !== b.amount) return b.amount - a.amount;
   if (a.rule.priority !== b.rule.priority) return b.rule.priority - a.rule.priority;
-  return a.rule.id < b.rule.id ? -1 : a.rule.id > b.rule.id ? 1 : 0;
+  return byId(a.rule, b.rule);
 }
 
-/** Owner of a stack: highest priority, then id asc. */
+/**
+ * Owner of a stack (whose node emits it): among the CODE components when there
+ * is one — so the code shows as applied and Shopify counts its use — else among
+ * all; highest priority, then id asc. (A stack is only ever of one class.)
+ */
 function ownerOf(components: Candidate[]): Rule {
-  let owner = components[0].rule;
-  for (const { rule } of components) {
+  const codes = components.filter((c) => c.rule.method === "code");
+  const pool = codes.length > 0 ? codes : components;
+  let owner = pool[0].rule;
+  for (const { rule } of pool) {
     if (rule.priority > owner.priority || (rule.priority === owner.priority && rule.id < owner.id)) owner = rule;
   }
   return owner;
@@ -532,15 +695,6 @@ function pick(positive: Candidate[], cap: number, partners: Map<string, Set<stri
   return { components, total: cap - remaining };
 }
 
-// --- The plan -------------------------------------------------------------------------------
-
-interface WorkLine {
-  line: NormalizedLine;
-  excluded: "outlet" | "gift" | null;
-  ruleSet: Set<string>;
-  product: PlanStack | null;
-}
-
 function label(rule: Rule, locale: PlanLocale, currency: string): string {
   return rule.name || describeRule(rule.describable, locale, currency, { short: true });
 }
@@ -561,14 +715,8 @@ function buildStack(
       c.rule.lostTo.push(owner.id);
     }
   }
-  const components: PlanComponent[] = picked.components.map((c) => ({
-    ruleId: c.rule.id,
-    method: c.rule.method,
-    module: "codes",
-    amount: c.amount,
-  }));
   return {
-    components,
+    components: picked.components.map((c) => ({ ruleId: c.rule.id, method: c.rule.method, module: "codes", amount: c.amount })),
     amount: picked.total,
     ownerRuleId: owner.id,
     ownerMethod: owner.method,
@@ -589,103 +737,21 @@ function orderAmount(rule: Rule, base: number): number {
   return 0;
 }
 
-/** Rule gate, in the order a merchant would ask "why not?". Returns null when eligible. */
-function gate(rule: Rule, cart: NormalizedCart, scope: Scope, entered: boolean): RuleState | null {
-  if (!rule.enabled) return "disabled";
-  if (rule.method === "code" && !entered) return "code_not_entered";
-  if (rule.startsOn || rule.endsOn) {
-    // [spec] DAY granularity in shop time: the function reads only shop.localTime.date
-    // without variables; exact-time windows are the Campaigns module's job (C4).
-    if (!cart.today) return "schedule_unknown";
-    if (rule.startsOn && cart.today < rule.startsOn) return "not_started";
-    if (rule.endsOn && cart.today > rule.endsOn) return "ended";
-  }
-  if (rule.markets && (!cart.marketHandle || !rule.markets.includes(cart.marketHandle))) return "market";
-  if (rule.segments && (!cart.segments || !rule.segments.some((s) => cart.segments?.has(s)))) return "segment";
-  if ((rule.valueKind === "fixed" && rule.fixed === null) || rule.minSubtotalMissing) return "currency_missing";
-  if (scope.lines === 0) return "no_target_lines";
-  if (rule.cls !== "shipping" && scope.discountable === 0) return "outlet_only";
-  // [spec] Minimum = pre-discount price and quantity of the non-gift lines the rule
-  // targets (all of them for order/shipping), outlet included: it is what the
-  // customer pays for those goods (same reading as the rewards threshold, A1.1).
-  const missingSubtotal = rule.minSubtotal !== null ? Math.max(0, rule.minSubtotal - scope.subtotal) : 0;
-  const missingQuantity = rule.minQuantity > 0 ? Math.max(0, rule.minQuantity - scope.quantity) : 0;
-  if (missingSubtotal > 0 || missingQuantity > 0) {
-    rule.missing = {
-      ...(missingSubtotal > 0 ? { subtotal: missingSubtotal, minimumSubtotal: rule.minSubtotal as number } : {}),
-      ...(missingQuantity > 0 ? { quantity: missingQuantity, minimumQuantity: rule.minQuantity } : {}),
-    };
-    return "below_minimum";
-  }
-  return null;
+// --- Stage: product discounts --------------------------------------------------------------------
+
+interface StackContext {
+  byId: Map<string, Rule>;
+  partners: Map<string, Set<string>>;
+  locale: PlanLocale;
+  currency: string;
 }
 
-/** MVP 2 hook (A1.7 margin protection): lowers product allocations to the margin floor. Identity for now. */
-function applyMarginProtection(lines: WorkLine[]): WorkLine[] {
-  return lines;
-}
-
-function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
-  const { currency, locale } = cart;
-  const engine = readEngine(config);
-  const campaign = activeCampaign(config, cart);
-  const { rules, retargeted } = readRules(config, currency, campaign);
-  const byId = new Map(rules.map((r) => [r.id, r]));
-
-  // Codes → rules (code rules only; a code belongs to one rule — the sanitizer guarantees it).
-  const codeOwner = new Map<string, Rule>();
-  for (const rule of rules) {
-    if (rule.method !== "code") continue;
-    for (const code of rule.codes) if (!codeOwner.has(code)) codeOwner.set(code, rule);
-  }
-  const enteredByRule = new Map<string, string[]>();
-  for (const code of cart.enteredCodes) {
-    const rule = codeOwner.get(code);
-    if (!rule) continue;
-    const list = enteredByRule.get(rule.id);
-    if (list) list.push(code);
-    else enteredByRule.set(rule.id, [code]);
-  }
-
-  // Lines, exclusions, targeting, scopes.
-  const work: WorkLine[] = cart.lines.map((line) => ({
-    line,
-    excluded: line.gift ? "gift" : line.outlet && !engine.outletWithAnything ? "outlet" : null,
-    ruleSet: lineRuleIds(line, campaign?.id ?? null, retargeted),
-    product: null,
-  }));
-  const cartScope: Scope = { subtotal: 0, quantity: 0, lines: 0, discountable: 0 };
-  const ruleScopes = new Map<string, Scope>();
-  for (const w of work) {
-    if (w.excluded === "gift") continue;
-    const discountable = w.excluded === null ? 1 : 0;
-    cartScope.subtotal += w.line.subtotal;
-    cartScope.quantity += w.line.quantity;
-    cartScope.lines += 1;
-    cartScope.discountable += discountable;
-    for (const id of w.ruleSet) {
-      let s = ruleScopes.get(id);
-      if (!s) ruleScopes.set(id, (s = { subtotal: 0, quantity: 0, lines: 0, discountable: 0 }));
-      s.subtotal += w.line.subtotal;
-      s.quantity += w.line.quantity;
-      s.lines += 1;
-      s.discountable += discountable;
-    }
-  }
-  const emptyScope: Scope = { subtotal: 0, quantity: 0, lines: 0, discountable: 0 };
-  for (const rule of rules) {
-    const scope = rule.cls === "product" ? (ruleScopes.get(rule.id) ?? emptyScope) : cartScope;
-    rule.state = gate(rule, cart, scope, enteredByRule.has(rule.id));
-  }
-
-  const partners = partnersOf(rules);
-
-  // 3. Product discounts, per line.
+function planProducts(work: WorkLine[], ctx: StackContext): void {
   for (const w of work) {
     if (w.excluded || w.ruleSet.size === 0) continue;
     const positive: Candidate[] = [];
     for (const id of w.ruleSet) {
-      const rule = byId.get(id);
+      const rule = ctx.byId.get(id);
       if (!rule || rule.cls !== "product" || rule.state !== null) continue;
       const amount = productAmount(rule, w.line);
       if (amount > 0) positive.push({ rule, amount });
@@ -693,95 +759,118 @@ function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
     if (positive.length === 0) continue;
     const unitPrice = w.line.unitPrice;
     w.product = buildStack(
-      pick(positive, w.line.subtotal, partners),
+      pick(positive, w.line.subtotal, ctx.partners),
       positive,
       (single) =>
         single.rule.valueKind === "percentage"
           ? { percent: single.rule.percent }
           : { fixedPerItem: Math.min(single.rule.fixed ?? 0, unitPrice) },
-      locale,
-      currency,
+      ctx.locale,
+      ctx.currency,
     );
   }
-  applyMarginProtection(work);
+}
 
-  // 4. Order discount, on the subtotal after product discounts [spec].
+/** MVP 2 hook (A1.7 margin protection): lowers product allocations to the margin floor. Identity for now. */
+function applyMarginProtection(lines: WorkLine[]): WorkLine[] {
+  return lines;
+}
+
+// --- Stage: order discount ---------------------------------------------------------------------
+
+function planOrderStage(rules: Rule[], work: WorkLine[], engine: EngineFlags, ctx: StackContext): PlanOrder | null {
   const orderRules = rules.filter((r) => r.cls === "order" && r.state === null);
   const excludedLineIds = work.filter((w) => w.excluded !== null).map((w) => w.line.id);
-  const planOrder = (base: number): PlanOrder | null => {
+  const planAt = (base: number): PlanOrder | null => {
     const positive = orderRules.map((rule) => ({ rule, amount: orderAmount(rule, base) })).filter((c) => c.amount > 0);
     if (positive.length === 0) return null;
     const stack = buildStack(
-      pick(positive, base, partners),
+      pick(positive, base, ctx.partners),
       positive,
       (single) => (single.rule.valueKind === "percentage" ? { percent: single.rule.percent } : { fixedTotal: single.amount }),
-      locale,
-      currency,
+      ctx.locale,
+      ctx.currency,
     );
     return stack ? { ...stack, base, excludedLineIds } : null;
   };
   const productTotal = work.reduce((sum, w) => sum + (w.product?.amount ?? 0), 0);
   const discountableSubtotal = work.reduce((sum, w) => sum + (w.excluded === null ? w.line.subtotal : 0), 0);
-  let order: PlanOrder | null;
-  if (engine.productWithOrder) {
-    order = planOrder(discountableSubtotal - productTotal);
-  } else {
-    // Exclusive (Free switch off): the better scenario for the customer wins, a tie keeps products.
-    // Every rule of the losing category that had something to give is "not combinable".
-    const orderOnly = planOrder(discountableSubtotal);
-    const orderWins = orderOnly !== null && orderOnly.amount > productTotal;
-    const losing: DiscountClass = orderWins ? "product" : "order";
-    for (const rule of rules) if (rule.cls === losing && rule.hadCandidate) rule.dropped = true;
-    if (orderWins) for (const w of work) w.product = null;
-    order = orderWins ? orderOnly : null;
-  }
+  // [spec] The order discount is taken from the subtotal AFTER product discounts.
+  if (engine.productWithOrder) return planAt(discountableSubtotal - productTotal);
 
-  // 6. Shipping: one winner. With a known delivery cost by amount; otherwise
-  // [spec] percent (free = 100 %) ranks above a fixed amount, larger first.
-  let shipping: PlanShipping | null = null;
-  const shipCost = cart.shippingAmount;
-  const shipCandidates = rules
+  // Exclusive (Free switch off): the better scenario for the customer wins, a tie
+  // keeps products. Every rule of the losing category that had something to give
+  // is "not combinable".
+  const orderOnly = planAt(discountableSubtotal);
+  const orderWins = orderOnly !== null && orderOnly.amount > productTotal;
+  const losing: DiscountClass = orderWins ? "product" : "order";
+  for (const rule of rules) if (rule.cls === losing && rule.hadCandidate) rule.dropped = true;
+  if (orderWins) for (const w of work) w.product = null;
+  return orderWins ? orderOnly : null;
+}
+
+// --- Stage: shipping -----------------------------------------------------------------------------
+
+/**
+ * One shipping winner. With a known delivery cost by amount; otherwise [spec]
+ * percent (free = 100 %) ranks above a fixed amount, larger first. When a Free
+ * switch forbids shipping next to the product/order discounts that apply, EVERY
+ * shipping candidate is dropped as not combinable — none is "outranked" by a
+ * winner that does not apply either.
+ */
+function planShipping(
+  rules: Rule[],
+  work: WorkLine[],
+  order: PlanOrder | null,
+  engine: EngineFlags,
+  cart: NormalizedCart,
+): PlanShipping | null {
+  const cost = cart.shippingAmount;
+  const candidates = rules
     .filter((r) => r.cls === "shipping" && r.state === null)
     .map((rule) => {
       const percent = rule.valueKind === "freeShipping" ? 100 : rule.valueKind === "percentage" ? rule.percent : null;
       const fixed = rule.valueKind === "fixed" ? (rule.fixed ?? 0) : null;
-      const amount =
-        shipCost === null ? null : percent !== null ? Math.round((shipCost * percent) / 100) : Math.min(fixed ?? 0, shipCost);
+      const amount = cost === null ? null : percent !== null ? Math.round((cost * percent) / 100) : Math.min(fixed ?? 0, cost);
       const value: ShippingValue =
-        percent !== null ? { percent } : { fixedTotal: shipCost === null ? (fixed ?? 0) : Math.min(fixed ?? 0, shipCost) };
+        percent !== null ? { percent } : { fixedTotal: cost === null ? (fixed ?? 0) : Math.min(fixed ?? 0, cost) };
       const worth = percent !== null ? percent > 0 : (fixed ?? 0) > 0;
       const key = amount !== null ? [amount, 0] : percent !== null ? [1, percent] : [0, fixed ?? 0];
       return { rule, value, amount, worth, key };
     })
     .filter((c) => c.worth)
-    .sort(
-      (a, b) =>
-        b.key[0] - a.key[0] ||
-        b.key[1] - a.key[1] ||
-        b.rule.priority - a.rule.priority ||
-        (a.rule.id < b.rule.id ? -1 : a.rule.id > b.rule.id ? 1 : 0),
-    );
-  if (shipCandidates.length > 0) {
-    const [winner, ...losers] = shipCandidates;
-    for (const c of shipCandidates) c.rule.hadCandidate = true;
-    for (const c of losers) if (c.rule.lostTo.length < MAX_BETTER_RULES) c.rule.lostTo.push(winner.rule.id);
-    const blocked = (!engine.productWithShipping && work.some((w) => w.product)) || (!engine.orderWithShipping && order !== null);
-    if (blocked) {
-      winner.rule.dropped = true;
-    } else {
-      shipping = {
-        ruleId: winner.rule.id,
-        method: winner.rule.method,
-        ownerRuleId: winner.rule.id,
-        ownerMethod: winner.rule.method,
-        value: winner.value,
-        amount: winner.amount,
-        message: label(winner.rule, locale, currency),
-      };
-    }
-  }
+    .sort((a, b) => b.key[0] - a.key[0] || b.key[1] - a.key[1] || b.rule.priority - a.rule.priority || byId(a.rule, b.rule));
+  if (candidates.length === 0) return null;
 
-  // Outcomes from the FINAL stacks.
+  for (const c of candidates) c.rule.hadCandidate = true;
+  const blocked = (!engine.productWithShipping && work.some((w) => w.product)) || (!engine.orderWithShipping && order !== null);
+  if (blocked) {
+    for (const c of candidates) c.rule.dropped = true;
+    return null;
+  }
+  const [winner, ...losers] = candidates;
+  for (const c of losers) if (c.rule.lostTo.length < MAX_BETTER_RULES) c.rule.lostTo.push(winner.rule.id);
+  return {
+    ruleId: winner.rule.id,
+    method: winner.rule.method,
+    ownerRuleId: winner.rule.id,
+    ownerMethod: winner.rule.method,
+    value: winner.value,
+    amount: winner.amount,
+    message: label(winner.rule, cart.locale, cart.currency),
+  };
+}
+
+// --- Stage: outcomes -----------------------------------------------------------------------------
+
+function buildOutcomes(
+  rules: Rule[],
+  work: WorkLine[],
+  order: PlanOrder | null,
+  shipping: PlanShipping | null,
+  cart: NormalizedCart,
+  codes: ReturnType<typeof matchCodes>,
+): { outcomes: RuleOutcome[]; codeOutcomes: CodeOutcome[] } {
   const contribution = new Map<string, { amount: number; lineIds: string[]; owner: boolean; combinedInto?: string }>();
   const credit = (ruleId: string, amount: number, owner: string, lineId?: string) => {
     let c = contribution.get(ruleId);
@@ -802,7 +891,7 @@ function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
     const c = contribution.get(rule.id);
     const state: RuleState =
       rule.state ??
-      // (dropped before outranked: a rule of the losing category could not have applied either way)
+      // dropped before outranked: a rule of the losing category could not have applied either way
       (c?.owner ? "applied" : c ? "combined" : rule.dropped ? "not_combinable" : rule.hadCandidate ? "outranked" : "zero_value");
     const out: RuleOutcome = {
       ruleId: rule.id,
@@ -812,7 +901,7 @@ function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
       state,
       amount: c?.amount ?? 0,
       lineIds: c?.lineIds ?? [],
-      enteredCodes: enteredByRule.get(rule.id) ?? [],
+      enteredCodes: codes.enteredByRule.get(rule.id) ?? [],
       describable: rule.describable,
     };
     if (state === "below_minimum" && rule.missing) out.missing = rule.missing;
@@ -824,12 +913,31 @@ function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
   });
   const outcomeById = new Map(outcomes.map((o) => [o.ruleId, o]));
 
-  const codes: CodeOutcome[] = cart.enteredCodes.map((code) => {
-    const rule = codeOwner.get(code);
+  const codeOutcomes: CodeOutcome[] = cart.enteredCodes.map((code) => {
+    const rule = codes.ownerOfCode.get(code);
     if (!rule) return { code, ruleId: null, state: "unknown" };
-    if (enteredByRule.get(rule.id)?.[0] !== code) return { code, ruleId: rule.id, state: "same_rule" };
+    if (codes.enteredByRule.get(rule.id)?.[0] !== code) return { code, ruleId: rule.id, state: "same_rule" };
     return { code, ruleId: rule.id, state: outcomeById.get(rule.id)!.state };
   });
+  return { outcomes, codeOutcomes };
+}
+
+// --- The plan -------------------------------------------------------------------------------
+
+function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
+  const { currency, locale } = cart;
+  const engine = readEngine(config);
+  const { campaign, rules, retargeted, byId: rulesById } = resolveRules(config, cart);
+  const codes = matchCodes(rules, cart);
+  const { work, cartScope, ruleScopes } = prepareLines(cart, engine, campaign?.id ?? null, retargeted);
+  gateRules(rules, { cart, marketCountries: readMarketCountries(config), cartScope }, ruleScopes, codes.enteredByRule);
+
+  const stackCtx: StackContext = { byId: rulesById, partners: partnersOf(rules), locale, currency };
+  planProducts(work, stackCtx);
+  applyMarginProtection(work);
+  const order = planOrderStage(rules, work, engine, stackCtx);
+  const shipping = planShipping(rules, work, order, engine, cart);
+  const { outcomes, codeOutcomes } = buildOutcomes(rules, work, order, shipping, cart, codes);
 
   const lines: PlanLine[] = work.map((w) => ({
     lineId: w.line.id,
@@ -854,7 +962,7 @@ function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
     order,
     shipping,
     rules: outcomes,
-    codes,
+    codes: codeOutcomes,
     gifts: [],
     warnings: [],
     progress: {},

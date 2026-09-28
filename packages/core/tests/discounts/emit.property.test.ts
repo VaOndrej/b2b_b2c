@@ -29,6 +29,10 @@ function rng(seed: number) {
 
 type Rng = ReturnType<typeof rng>;
 const CURRENCIES = ["CZK", "EUR"] as const;
+const MARKETS = [
+  { handle: "cz", currency: "CZK", enabled: true, countries: ["CZ"] },
+  { handle: "eu", currency: "EUR", enabled: true, countries: ["SK", "AT"] },
+];
 
 function randomRule(r: Rng, i: number, ids: string[]): RawRule {
   const id = `r${i}`;
@@ -57,7 +61,8 @@ function randomRule(r: Rng, i: number, ids: string[]): RawRule {
     rule.minimum = r.chance(0.5) ? { subtotal: r.chance(0.8) ? { CZK: r.int(1, 30) * 100_00 } : { EUR: 10_00 } } : { quantity: r.int(1, 6) };
   }
   if (r.chance(0.15)) rule.combinesWith = { ruleIds: ids.filter(() => r.chance(0.4)) };
-  if (r.chance(0.1)) rule.schedule = r.chance(0.5) ? { startsAt: "2026-12-01T00:00:00+01:00" } : { endsAt: "2026-09-01T00:00:00+01:00" };
+  if (r.chance(0.1)) rule.schedule = r.chance(0.5) ? { startsAt: "2026-12-01T00:00:00+01:00" } : { endsAt: "2026-09-01T00:00:00Z" };
+  if (r.chance(0.1)) rule.targeting = { markets: [r.pick(["cz", "eu"])] };
   return rule;
 }
 
@@ -87,7 +92,7 @@ function randomCase(r: Rng): { input: CartPlanInput; rules: RawRule[]; engine: R
     orderWithShipping: r.chance(0.8),
   };
   return {
-    input: { currency: r.pick(CURRENCIES), lines, enteredCodes, today: "2026-10-01" },
+    input: { currency: r.pick(CURRENCIES), countryCode: r.pick(["CZ", "SK", "DE"]), lines, enteredCodes, today: "2026-10-01" },
     rules,
     engine,
   };
@@ -98,9 +103,10 @@ test("property: the sum of all nodes' emissions equals the plan (200 random cart
   let productAllocations = 0;
   let orderDiscounts = 0;
   let shippingDiscounts = 0;
+  let sameRuleTriggers = 0;
   for (let n = 0; n < 200; n++) {
     const { input, rules, engine } = randomCase(r);
-    const payload = payloadOf(rules, { engine: { combination: engine } });
+    const payload = payloadOf(rules, { engine: { combination: engine }, markets: MARKETS });
     const plan = planCart(input, payload);
     const where = `case ${n}`;
     assert.equal(plan.reason, undefined, where);
@@ -108,10 +114,18 @@ test("property: the sum of all nodes' emissions equals the plan (200 random cart
     // Every node Shopify would run: the automatic one, plus each code rule's node
     // once per entered code of that rule (it runs with that triggering code).
     const emissions: NodeEmission[] = [emitForNode(plan, { kind: "automatic" }, null)];
+    // Shopify triggers a code node with ONE of its rule's entered codes — not
+    // necessarily the first: pick any, and check every other choice emits the same.
     for (const rule of plan.rules) {
-      if (rule.method !== "code") continue;
-      const [first] = rule.enteredCodes;
-      if (first) emissions.push(emitForNode(plan, { kind: "code", ruleId: rule.ruleId }, first));
+      if (rule.method !== "code" || rule.enteredCodes.length === 0) continue;
+      const role = { kind: "code", ruleId: rule.ruleId } as const;
+      const trigger = r.pick(rule.enteredCodes);
+      const emission = emitForNode(plan, role, trigger.toLowerCase());
+      for (const other of rule.enteredCodes) {
+        assert.deepEqual(emitForNode(plan, role, other), emission, `${where}: ${rule.ruleId} via ${other}`);
+      }
+      emissions.push(emission);
+      if (rule.enteredCodes.length > 1) sameRuleTriggers++;
     }
 
     for (const planLine of plan.lines) {
@@ -140,6 +154,12 @@ test("property: the sum of all nodes' emissions equals the plan (200 random cart
     assert.equal(deliveries.length, plan.shipping ? 1 : 0, `${where}: shipping`);
     if (plan.shipping) shippingDiscounts++;
 
+    // A stack containing an entered code rule is never emitted by the automatic node (spec §3).
+    for (const c of emissions[0].productCandidates) {
+      const stack = plan.lines.find((l) => l.lineId === c.lineId)?.product;
+      assert.ok(!stack?.components.some((x) => x.method === "code"), `${where}: automatic node emits a code value`);
+    }
+
     // Every emitted value belongs to a rule whose own state says it applied.
     const all = [...emissions.flatMap((e) => e.productCandidates), ...orders, ...deliveries];
     for (const c of all) {
@@ -157,6 +177,7 @@ test("property: the sum of all nodes' emissions equals the plan (200 random cart
   assert.ok(productAllocations > 100, `product allocations: ${productAllocations}`);
   assert.ok(orderDiscounts > 20, `order discounts: ${orderDiscounts}`);
   assert.ok(shippingDiscounts > 20, `shipping discounts: ${shippingDiscounts}`);
+  assert.ok(sameRuleTriggers > 5, `code nodes with several entered codes: ${sameRuleTriggers}`);
 });
 
 // --- performance -------------------------------------------------------------------------------
@@ -203,9 +224,7 @@ test("performance: 200 lines × 50 rules plans in well under 50 ms", () => {
   }
   runs.sort((a, b) => a - b);
   const median = runs[Math.floor(runs.length / 2)];
-  // Printed so the report can quote real numbers.
-  console.log(`planCart+emit 200×50: median ${median.toFixed(2)} ms, max ${runs[runs.length - 1].toFixed(2)} ms`);
-  assert.ok(median < 50, `median ${median} ms`);
+  assert.ok(median < 50, `planCart+emit 200×50: median ${median.toFixed(2)} ms, max ${runs[runs.length - 1].toFixed(2)} ms`);
 });
 
 test("performance: the Pro worst case (50 rules all stacking, all on every one of 200 lines) stays under 50 ms", () => {
@@ -241,6 +260,5 @@ test("performance: the Pro worst case (50 rules all stacking, all on every one o
   }
   runs.sort((a, b) => a - b);
   const median = runs[4];
-  console.log(`planCart Pro worst case 200×50 all stacking: median ${median.toFixed(2)} ms`);
-  assert.ok(median < 50, `median ${median} ms`);
+  assert.ok(median < 50, `planCart Pro worst case 200×50 all stacking: median ${median.toFixed(2)} ms`);
 });

@@ -97,3 +97,15 @@ test("the split keeps the public surface of @won/core/discounts/config", () => {
     "sanitizeConfig",
   ]);
 });
+
+test("a market may list its countries: ISO 3166-1 alpha-2, upper-cased, unique; junk dropped with an issue", () => {
+  const { config, issues } = sanitizeConfig({
+    markets: [
+      { handle: "eu", currency: "EUR", countries: ["sk", "AT", "SK", "xx1", 5] },
+      { handle: "cz", currency: "CZK" },
+    ],
+  });
+  assert.deepEqual(config.markets[0].countries, ["SK", "AT"]);
+  assert.ok(!("countries" in config.markets[1]), "no countries given → field omitted (unchanged shape)");
+  assert.equal(issues.find((i) => i.path === "markets[0].countries")?.code, "invalid_country");
+});

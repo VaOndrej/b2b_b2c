@@ -19,7 +19,34 @@ function sanitizeMarket(v: unknown, issues: ConfigIssue[], index: number): Marke
     );
     return null;
   }
-  return { handle, currency, enabled: sanitizeBool(v.enabled, true) };
+  const market: MarketSetting = { handle, currency, enabled: sanitizeBool(v.enabled, true) };
+  if (Array.isArray(v.countries)) market.countries = sanitizeCountries(v.countries, issues, `markets[${index}].countries`);
+  return market;
+}
+
+const COUNTRY_RE = /^[A-Z]{2}$/;
+
+/** ISO 3166-1 alpha-2, upper-cased, each once, capped like every reference list. */
+function sanitizeCountries(v: unknown[], issues: ConfigIssue[], path: string): string[] {
+  const out: string[] = [];
+  const invalid: unknown[] = [];
+  for (const raw of v) {
+    const code = typeof raw === "string" ? raw.trim().toUpperCase() : "";
+    if (!COUNTRY_RE.test(code)) {
+      invalid.push(raw);
+      continue;
+    }
+    if (!out.includes(code) && out.length < CONFIG_LIMITS.listItems) out.push(code);
+  }
+  if (invalid.length > 0) {
+    pushIssue(
+      issues,
+      path,
+      "invalid_country",
+      `${invalid.length} value(s) are not two-letter country codes (${invalid.slice(0, 5).map((x) => preview(x, 20)).join(", ")}); they were dropped.`,
+    );
+  }
+  return out;
 }
 
 export function sanitizeMarkets(v: unknown, issues: ConfigIssue[]): MarketSetting[] {

@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { planCart } from "../../src/discounts/plan.ts";
+import { planCart, SEGMENT_TARGETING_SUPPORTED, unsupportedInFunction } from "../../src/discounts/plan.ts";
 import { ruleRef } from "../../src/discounts/targeting.ts";
 import {
   cartOf,
@@ -58,20 +58,21 @@ test("minimum quantity counts items, not lines", () => {
   assert.equal(outcome(ok, "O").state, "applied");
 });
 
-test("a product rule's minimum counts only the lines it targets, before discounts, outlet included [spec]", () => {
-  const rules = [pct("A", 10, { minimum: { subtotal: { CZK: 1000_00 } } }), pct("B", 50)];
-  const plan = planCart(
-    cartOf([
-      line("L1", 600_00, 1, ["A", "B"]),
-      line("L2", 400_00, 1, ["A"], { outlet: true }),
-      line("L3", 5000_00),
-    ]),
+test("the minimum is the WHOLE cart („minimum košíku“): every non-gift line, pre-discount, outlet included", () => {
+  const rules = [pct("A", 10, { minimum: { subtotal: { CZK: 1000_00 }, quantity: 3 } })];
+  // A targets only L1 (600), but the cart is 600 + 300 (untargeted) + 100 (outlet) = 1000, 3 items.
+  const cart = [line("L1", 600_00, 1, ["A"]), line("L2", 300_00), line("L3", 100_00, 1, [], { outlet: true })];
+  const plan = planCart(cartOf(cart), payloadOf(rules));
+  assert.equal(outcome(plan, "A").state, "applied");
+  assert.equal(lineOf(plan, "L1").product?.amount, 60_00);
+
+  // A gift line never counts toward the minimum.
+  const withGift = planCart(
+    cartOf([line("L1", 600_00, 1, ["A"]), line("L2", 300_00), line("G", 100_00, 1, [], { giftTierId: "g" })]),
     payloadOf(rules),
   );
-  // 600 + 400 (outlet counts, pre-discount even though B wins L1) = 1000 → A is eligible.
-  assert.notEqual(outcome(plan, "A").state, "below_minimum");
-  assert.deepEqual(winners(plan, "L1"), ["B"]);
-  assert.equal(outcome(plan, "A").state, "outranked");
+  assert.equal(outcome(withGift, "A").state, "below_minimum");
+  assert.deepEqual(outcome(withGift, "A").missing, { subtotal: 100_00, minimumSubtotal: 1000_00, quantity: 1, minimumQuantity: 3 });
 });
 
 // --- currency without a value ------------------------------------------------------------------
@@ -111,6 +112,15 @@ test("schedule is evaluated per shop-local DATE: start and end days are inclusiv
   assert.equal(at("2026-11-30").state, "applied");
   assert.equal(at("2026-12-01").state, "ended");
   assert.equal(at("2026-12-01").endsOn, "2026-11-30");
+});
+
+test("the engine reads the shop-local dates the payload carries, never the ISO strings", () => {
+  const payload = payloadOf([SCHEDULED]);
+  assert.deepEqual(payload.modules.codes.rules[0].schedule, { startsOn: "2026-11-27", endsOn: "2026-11-30" });
+  // A hand-built payload that still carries raw ISO strings is not trusted: never applied.
+  (payload.modules.codes.rules[0] as { schedule: unknown }).schedule = { startsAt: "2026-01-01T00:00:00Z" };
+  const plan = planCart(cartOf([line("L1", 100_00, 1, ["A"])], { today: "2026-11-28" }), payload);
+  assert.equal(outcome(plan, "A").state, "schedule_unknown");
 });
 
 test("an end exactly at midnight means the previous day was the last one", () => {
@@ -176,22 +186,33 @@ test("a code with no targeted line in the cart says so", () => {
 
 // --- Pro targeting -------------------------------------------------------------------------------
 
-test("Pro market targeting: only in listed markets; unknown market = not offered", () => {
-  const rules = [orderPct("O", 10, { targeting: { markets: ["cz"] } })];
-  const cz = planCart(cartOf([line("L1", 100_00)], { marketHandle: "cz" }), payloadOf(rules));
-  assert.equal(outcome(cz, "O").state, "applied");
-  const sk = planCart(cartOf([line("L1", 100_00)], { marketHandle: "sk" }), payloadOf(rules));
-  assert.equal(outcome(sk, "O").state, "market");
-  const unknown = planCart(cartOf([line("L1", 100_00)]), payloadOf(rules));
-  assert.equal(outcome(unknown, "O").state, "market");
+const MARKETS = {
+  markets: [
+    { handle: "cz", currency: "CZK", enabled: true, countries: ["cz"] },
+    { handle: "eu", currency: "EUR", enabled: true, countries: ["SK", "AT"] },
+    { handle: "off", currency: "EUR", enabled: false, countries: ["DE"] },
+  ],
+};
+
+test("Pro market targeting matches the cart COUNTRY against the markets' countries (no deprecated market field)", () => {
+  const payload = payloadOf([orderPct("O", 10, { targeting: { markets: ["eu"] } })], MARKETS);
+  const at = (countryCode?: string) =>
+    outcome(planCart(cartOf([line("L1", 100_00)], countryCode ? { countryCode } : {}), payload), "O").state;
+  assert.equal(at("SK"), "applied");
+  assert.equal(at("at"), "applied", "country codes are case-insensitive");
+  assert.equal(at("CZ"), "market");
+  assert.equal(at(undefined), "market", "unknown country = not offered");
 });
 
-test("Pro segment targeting: only for customers in a listed segment", () => {
-  const rules = [orderPct("O", 10, { targeting: { segments: ["vip"] } })];
-  const vip = planCart(cartOf([line("L1", 100_00)], { customer: { segments: ["vip", "b2b"] } }), payloadOf(rules));
-  assert.equal(outcome(vip, "O").state, "applied");
-  const anon = planCart(cartOf([line("L1", 100_00)]), payloadOf(rules));
-  assert.equal(outcome(anon, "O").state, "segment");
+test("a rule targeting a disabled or unknown market is never offered", () => {
+  const payload = payloadOf([orderPct("O", 10, { targeting: { markets: ["off", "ghost"] } })], MARKETS);
+  assert.equal(outcome(planCart(cartOf([line("L1", 100_00)], { countryCode: "DE" }), payload), "O").state, "market");
+});
+
+test("segment targeting cannot be evaluated in the function: the rule is skipped as unsupported", () => {
+  const plan = planCart(cartOf([line("L1", 100_00)]), payloadOf([orderPct("O", 10, { targeting: { segments: ["vip"] } })]));
+  assert.equal(outcome(plan, "O").state, "unsupported");
+  assert.equal(plan.order, null);
 });
 
 // --- precomputed targeting --------------------------------------------------------------------------
@@ -205,17 +226,22 @@ test("targeting comes only from line.ruleIds: product/collection rules skip line
   assert.deepEqual(winners(plan, "L2"), []);
 });
 
-test("a variant-scoped rule reference applies to that variant only", () => {
-  const ref = ruleRef("A", { variantId: "gid://shopify/ProductVariant/42" });
+test("variant-level targeting: variantRuleIds apply to that variant only, never to a sibling", () => {
+  const variantRuleIds = { "gid://shopify/ProductVariant/42": ["A"] };
   const plan = planCart(
     cartOf([
-      line("L1", 100_00, 1, [ref], { variantId: "gid://shopify/ProductVariant/42" }),
-      line("L2", 100_00, 1, [ref], { variantId: "gid://shopify/ProductVariant/43" }),
+      line("L1", 100_00, 1, [], { variantId: "gid://shopify/ProductVariant/42", variantRuleIds }),
+      line("L2", 100_00, 1, [], { variantId: "gid://shopify/ProductVariant/43", variantRuleIds }),
     ]),
     payloadOf([pct("A", 10)]),
   );
   assert.deepEqual(winners(plan, "L1"), ["A"]);
   assert.deepEqual(winners(plan, "L2"), []);
+});
+
+test("a legacy `rule:variant` ref is not a rule id: it never discounts anything", () => {
+  const plan = planCart(cartOf([line("L1", 100_00, 1, ["A:42"])]), payloadOf([pct("A", 10)]));
+  assert.deepEqual(winners(plan, "L1"), []);
 });
 
 // --- campaigns (C4 window + C7 varsVersion handshake) -------------------------------------------
@@ -348,4 +374,11 @@ test("the plan carries the later-MVP slots empty (gifts, warnings, progress)", (
   assert.deepEqual(plan.gifts, []);
   assert.deepEqual(plan.warnings, []);
   assert.deepEqual(plan.progress, {});
+});
+
+test("unsupportedInFunction tells the admin which rule features the checkout cannot evaluate yet", () => {
+  assert.deepEqual(unsupportedInFunction({ targeting: { segments: ["gid://shopify/Segment/1"] } }), ["segment_targeting"]);
+  assert.deepEqual(unsupportedInFunction({ targeting: { segments: [], markets: ["cz"] } }), []);
+  assert.deepEqual(unsupportedInFunction({}), []);
+  assert.equal(SEGMENT_TARGETING_SUPPORTED, false);
 });

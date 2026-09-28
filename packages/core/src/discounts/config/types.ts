@@ -16,6 +16,12 @@ export interface MarketSetting {
   handle: string;
   currency: CurrencyCode;
   enabled: boolean;
+  /**
+   * ISO 3166-1 alpha-2 countries of the market (upper-case). Pro market targeting
+   * matches the cart's country against these (the function's `localization.market`
+   * is deprecated). Absent = the market cannot be targeted by country yet.
+   */
+  countries?: string[];
 }
 
 export interface EngineSettings {

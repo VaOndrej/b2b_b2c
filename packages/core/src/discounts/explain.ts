@@ -6,6 +6,12 @@
 import { csPlural, describeRule, enPlural, formatDate, formatMoney, formatPercent, type UiLocale } from "./describe.ts";
 import type { CartPlan, CodeOutcome, RuleOutcome, ShippingValue } from "./plan.ts";
 
+/**
+ * One explanation line. `text` (and `code`) can contain what a shopper typed or
+ * what arrived via a `/discount/<code>` link: consumers must render it as TEXT,
+ * never as HTML. Echoed codes are capped at MAX_ECHOED_CODE_LENGTH characters.
+ * Shopper-facing text never names the app.
+ */
 export interface ExplainItem {
   /** success = saves money now; warning = an entered code does nothing; info = context and hints. */
   tone: "success" | "info" | "warning";
@@ -16,6 +22,19 @@ export interface ExplainItem {
 }
 
 const q = (text: string, locale: UiLocale) => (locale === "cs" ? `„${text}“` : `“${text}”`);
+
+export const MAX_ECHOED_CODE_LENGTH = 64;
+
+/** A customer-entered code as it may be echoed back: at most 64 characters, then "…". */
+function echo(code: string): string {
+  return code.length > MAX_ECHOED_CODE_LENGTH ? `${code.slice(0, MAX_ECHOED_CODE_LENGTH)}…` : code;
+}
+
+/** How to name the owner of a stack another rule is part of: its code when it is a code rule. */
+function ownerReference(owner: RuleOutcome, plan: CartPlan, locale: UiLocale): { code?: string; name: string } {
+  const code = owner.method === "code" ? owner.enteredCodes[0] : undefined;
+  return code ? { code: echo(code), name: echo(code) } : { name: q(labelOf(owner, plan, locale), locale) };
+}
 
 function labelOf(rule: RuleOutcome, plan: CartPlan, locale: UiLocale): string {
   return rule.name || describeRule(rule.describable, locale, plan.currency, { short: true });
@@ -47,7 +66,8 @@ function item(tone: ExplainItem["tone"], text: string, refs: { ruleId?: string; 
 function applied(rule: RuleOutcome, plan: CartPlan, locale: UiLocale): string {
   const cs = locale === "cs";
   const money = formatMoney(rule.amount, plan.currency, locale);
-  const code = rule.method === "code" ? rule.enteredCodes[0] : undefined;
+  const entered = rule.method === "code" ? rule.enteredCodes[0] : undefined;
+  const code = entered === undefined ? undefined : echo(entered);
   if (rule.discountClass === "shipping" && plan.shipping?.ruleId === rule.ruleId) {
     const phrase = shippingPhrase(plan.shipping.value, plan, locale);
     if (code) return cs ? `Kód ${code}: ${phrase}.` : `Code ${code}: ${phrase}.`;
@@ -74,21 +94,30 @@ function betterName(rule: RuleOutcome, plan: CartPlan, locale: UiLocale): string
 /** Why an entered Won code does nothing (warning), or a note when it counts only inside another stack. */
 function codeSentences(code: CodeOutcome, plan: CartPlan, locale: UiLocale): ExplainItem[] {
   const cs = locale === "cs";
-  const c = code.code;
+  const c = echo(code.code);
   const rule = code.ruleId ? plan.rules.find((r) => r.ruleId === code.ruleId) : undefined;
   const refs = { ruleId: code.ruleId ?? undefined, code: c };
   const warn = (text: string) => [item("warning", text, refs)];
-  if (!rule) return [item("info", cs ? `Kód ${c} nespravuje Won Discounts.` : `Code ${c} is not managed by Won Discounts.`, refs)];
+  if (!rule) {
+    // Another store discount (native Shopify, another app): never brand, just say it is not counted here.
+    return [item("info", cs ? `Kód ${c} je jiná sleva obchodu, tady se nepočítá.` : `Code ${c} is another store discount and is not counted here.`, refs)];
+  }
   switch (code.state) {
     case "applied":
       return [];
     case "combined": {
+      // Known limitation (two codes in one Pro stack): only the owner's code is
+      // emitted, so Shopify shows this one as not applicable and does not count its use.
       const owner = plan.rules.find((r) => r.ruleId === rule.combinedInto);
-      const name = owner ? q(labelOf(owner, plan, locale), locale) : "";
-      return [item("info", cs ? `Kód ${c} je započtený ve slevě ${name}.` : `Code ${c} is included in ${name}.`, refs)];
+      if (!owner) return [];
+      const ref = ownerReference(owner, plan, locale);
+      if (ref.code) {
+        return [item("info", cs ? `Kód ${c} se uplatnil společně s kódem ${ref.code}.` : `Code ${c} was applied together with code ${ref.code}.`, refs)];
+      }
+      return [item("info", cs ? `Kód ${c} je započtený ve slevě ${ref.name}.` : `Code ${c} is included in ${ref.name}.`, refs)];
     }
     case "same_rule": {
-      const first = rule.enteredCodes[0];
+      const first = echo(rule.enteredCodes[0]);
       return warn(
         cs
           ? `Kód ${c} patří ke stejné slevě jako kód ${first}; uplatní se jen jeden.`
@@ -140,16 +169,14 @@ function codeSentences(code: CodeOutcome, plan: CartPlan, locale: UiLocale): Exp
       return warn(cs ? `U kódu ${c} teď nejde ověřit platnost.` : `Code ${c} cannot be checked right now.`);
     case "market":
       return warn(cs ? `Kód ${c} v tomto trhu neplatí.` : `Code ${c} is not valid in this market.`);
-    case "segment":
-      return warn(cs ? `Kód ${c} je jen pro vybrané zákazníky.` : `Code ${c} is only for selected customers.`);
+    case "unsupported":
+      return warn(
+        cs ? `Kód ${c} se neuplatní: cílení na segment zatím není k dispozici.` : `Code ${c} is not applied: segment targeting is not available yet.`,
+      );
     case "disabled":
       return warn(cs ? `Kód ${c} je vypnutý.` : `Code ${c} is turned off.`);
     case "not_combinable":
-      return warn(
-        cs
-          ? `Kód ${c} se nekombinuje s ostatními slevami v košíku, které jsou výhodnější.`
-          : `Code ${c} does not combine with the other discounts in the cart, which save more.`,
-      );
+      return warn(cs ? `Kód ${c} se nekombinuje s ostatními slevami v košíku.` : `Code ${c} does not combine with the other discounts in the cart.`);
     case "zero_value":
     case "code_not_entered":
     case "unknown":
@@ -166,8 +193,10 @@ function automaticSentences(rule: RuleOutcome, plan: CartPlan, locale: UiLocale)
   switch (rule.state) {
     case "combined": {
       const owner = plan.rules.find((r) => r.ruleId === rule.combinedInto);
-      const ownerName = owner ? q(labelOf(owner, plan, locale), locale) : "";
-      return info(cs ? `Sleva ${name} je započtená ve slevě ${ownerName}.` : `${name} is included in ${ownerName}.`);
+      if (!owner) return [];
+      const ref = ownerReference(owner, plan, locale);
+      if (ref.code) return info(cs ? `Sleva ${name} je započtená v kódu ${ref.code}.` : `${name} is included in code ${ref.code}.`);
+      return info(cs ? `Sleva ${name} je započtená ve slevě ${ref.name}.` : `${name} is included in ${ref.name}.`);
     }
     case "outranked": {
       const better = betterName(rule, plan, locale);
@@ -187,6 +216,10 @@ function automaticSentences(rule: RuleOutcome, plan: CartPlan, locale: UiLocale)
       }
       return out;
     }
+    case "unsupported":
+      return info(
+        cs ? `Sleva ${name} se neuplatní: cílení na segment zatím není k dispozici.` : `${name} is not applied: segment targeting is not available yet.`,
+      );
     case "currency_missing":
       return info(
         cs
@@ -243,7 +276,7 @@ export function explainPlan(plan: CartPlan, locale: UiLocale): ExplainItem[] {
     if (rule.state !== "applied") continue;
     out.push(item("success", capitalize(applied(rule, plan, locale)), {
       ruleId: rule.ruleId,
-      code: rule.method === "code" ? rule.enteredCodes[0] : undefined,
+      code: rule.method === "code" && rule.enteredCodes[0] !== undefined ? echo(rule.enteredCodes[0]) : undefined,
       lineIds: rule.lineIds,
     }));
   }
