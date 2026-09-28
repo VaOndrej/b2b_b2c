@@ -51,6 +51,11 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Poučení (platí pro další appky)
 
+- **JS discount funkce nestačí na velké košíky.** Engine v JS (Javy): 200 řádků ≈ 96 M instrukcí
+  při limitu 11 M, samotné čtení vstupu 12,3 M, limit padá kolem 22 řádků (2026-09-28, MVP 1 T2).
+  Produkční funkce → Rust (fallback ze specu §1), TS engine zůstává referencí, shodu hlídají
+  fixtures generované z TS enginu. Rust toolchain nainstalován uživatelsky (`~/.cargo`, bez
+  úpravy PATH; odinstalace `rustup self uninstall`).
 - **Embed v `settings_data.json` se odkazuje registračním UUID extensionu, ne `uid` z
   `shopify.extension.toml`.** Won Discounts: toml uid `7ffc5d3f…`, v `settings_data` je
   `shopify://apps/won-discounts/blocks/won_discounts_embed/01a0e790-ee4d-733c-ac8e-14c7baa03fff`.
