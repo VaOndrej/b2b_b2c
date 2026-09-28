@@ -30,6 +30,12 @@ export const REPO_ROOT = path.resolve(APP_DIR, "../..");
 export const SHOP_DOMAIN = String(process.env.SHOPIFY_E2E_SHOP_DOMAIN ?? "").trim() || "b2b-b2c-store-development.myshopify.com";
 export const STORE_ORIGIN = `https://${SHOP_DOMAIN}`;
 export const THEME_LABEL = String(process.env.SHOPIFY_E2E_THEME_LABEL ?? "").trim();
+/**
+ * Which seed profile is on the store (scripts/e2e/seed-mvp1.mjs --profile): each
+ * checkout spec runs only under its own profile, so one matrix run per seed ends
+ * green on both themes. Default "mvp1"; the shapes matrix sets WON_E2E_PROFILE=shapes.
+ */
+export const E2E_PROFILE = String(process.env.WON_E2E_PROFILE ?? "").trim() || "mvp1";
 
 const STOREFRONT_API_PATH = /^\/api\/[^/]+\/graphql\.json$/u;
 const LOOPBACK_HOST = /^(?:127\.0\.0\.1|localhost|\[::1\])$/u;
@@ -75,6 +81,14 @@ function readDotenvValue(key: string): string {
  * (checkout lives there, not on the theme-dev origin). The password comes from
  * SHOPIFY_E2E_STOREFRONT_PASSWORD (env, or that one key of apps/won-discounts/.env,
  * like the matrix runner) and is never logged.
+ *
+ * The browser form comes first. When Cloudflare answers the form POST with its
+ * interactive "Verify you are human" challenge (observed 2026-09-28 after a day
+ * of E2E password submissions from one IP: /password?__cf_chl_rt_tk=… → back to
+ * /password with a Turnstile box a headless browser cannot pass), the same POST
+ * `shopify theme dev` sends (form_type=storefront_password) goes out through the
+ * context's request API instead, which shares the browser's cookie jar, so the
+ * unlocked storefront cookie lands in this browser session.
  */
 export async function unlockRealStorefront(page: Page): Promise<void> {
   const password = String(process.env.SHOPIFY_E2E_STOREFRONT_PASSWORD ?? "").trim() || readDotenvValue("SHOPIFY_E2E_STOREFRONT_PASSWORD");
@@ -85,7 +99,27 @@ export async function unlockRealStorefront(page: Page): Promise<void> {
   if (page.url().includes("/password") && (await input.count()) > 0) {
     expect(password, "SHOPIFY_E2E_STOREFRONT_PASSWORD (env or apps/won-discounts/.env) is needed for the real storefront").not.toBe("");
     await input.fill(password);
-    await Promise.all([page.waitForURL((url) => !url.pathname.endsWith("/password"), { timeout: 30_000 }), input.press("Enter")]);
+    let challenged = false;
+    page.on("framenavigated", (frame) => {
+      if (frame === page.mainFrame() && frame.url().includes("__cf_chl")) challenged = true;
+    });
+    const unlocked = await Promise.all([
+      page.waitForURL((url) => !url.pathname.endsWith("/password"), { timeout: 30_000 }).then(
+        () => true,
+        () => false,
+      ),
+      input.press("Enter"),
+    ]).then(([ok]) => ok);
+    if (!unlocked) {
+      console.log(`[unlockRealStorefront] browser form did not unlock${challenged ? " (Cloudflare challenge)" : ""}; unlocking through the context request API`);
+      const response = await page.context().request.post(`${STORE_ORIGIN}/password`, {
+        form: { form_type: "storefront_password", utf8: "\u2713", password },
+        maxRedirects: 0,
+        failOnStatusCode: false,
+      });
+      expect(response.status(), "storefront password POST (request API)").toBeLessThan(400);
+      await page.goto(`${STORE_ORIGIN}/`, { waitUntil: "domcontentloaded" });
+    }
   }
   expect(page.url(), "real storefront still locked").not.toContain("/password");
 }

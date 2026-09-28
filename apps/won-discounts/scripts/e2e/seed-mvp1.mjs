@@ -6,14 +6,21 @@
 // as the app) and the app's own DB, so WonNode/SyncRun/ConfigVersion stay the
 // app's and the next admin save starts from what is on the store.
 //
-// Rules (scripts/e2e/mvp1-fixture.mjs): "E2E auto 10 %" (automatic, 10 % on
-// won-e2e-simple-a) and "E2E kód" (code WONE2E15, 15 % on the order).
+// Profiles (--profile, default mvp1):
+//   mvp1    scripts/e2e/mvp1-fixture.mjs: "E2E auto 10 %" (automatic, 10 % on
+//           won-e2e-simple-a) and "E2E kód" (code WONE2E15, 15 % on the order);
+//           tests/e2e/checkout.mvp1.spec.ts.
+//   shapes  scripts/e2e/shapes-fixture.mjs: a fixed amount per item above
+//           won-e2e-simple-b's price (sent as 100 %) and two Pro-stacked
+//           percentages on won-e2e-simple-a (sent as one summed percent);
+//           tests/e2e/checkout.shapes.spec.ts (matrix with WON_E2E_PROFILE=shapes).
+// A seed REPLACES the E2E rules of the other profile (one backup covers both).
 //
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs
 //       DRY-RUN (default): reads the store + the stored config, prints the seed
 //       config and the sync plan (scripts/sync/live-sync.ts dry-run: every
 //       mutation printed, none sent). Writes nothing anywhere.
-//   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --live
+//   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs [--profile shapes] --live
 //       backs up the stored config (only when no backup exists yet, so a re-seed
 //       never backs up its own seed), saves the seed config and syncs it.
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --cleanup [--live]
@@ -21,7 +28,7 @@
 //       rules) and syncs it; dry-run by default.
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --state
 //       read-only: Won nodes of the app's function, the shop function_config
-//       metafield and the won-e2e-simple-a product metafield.
+//       metafield and the won-e2e-simple-a / won-e2e-simple-b product metafields.
 //
 // Options: --out <dir> (evidence + backup; default $WON_E2E_OUT or
 // <tmp>/won-discounts-e2e) · --json (print the whole result).
@@ -40,6 +47,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { register } from "tsx/esm/api";
 
 import { E2E_AUTO_RULE_ID, E2E_CODE, E2E_PRODUCT_HANDLE, E2E_RULE_IDS, e2eRules } from "./mvp1-fixture.mjs";
+import { SHAPES_HANDLES, SHAPES_PRODUCT_B_HANDLE, SHAPES_RULE_IDS, shapesRules } from "./shapes-fixture.mjs";
 
 register();
 
@@ -50,7 +58,7 @@ const STORE = "b2b-b2c-store-development.myshopify.com";
 const DEV_DB = path.join(APP_DIR, "prisma/dev.sqlite");
 
 // Validated with the Shopify dev MCP (admin 2026-04): read_products, read_discounts.
-const STATE_QUERY = `query WonE2eState($after: String, $handle: String!) {
+const STATE_QUERY = `query WonE2eState($after: String, $handle: String!, $handleB: String!) {
   shop {
     id
     functionConfig: metafield(namespace: "$app:won_discounts", key: "function_config") {
@@ -60,6 +68,14 @@ const STATE_QUERY = `query WonE2eState($after: String, $handle: String!) {
     }
   }
   product: productByIdentifier(identifier: { handle: $handle }) {
+    id
+    handle
+    metafield(namespace: "$app:won_discounts", key: "product") {
+      id
+      value
+    }
+  }
+  productB: productByIdentifier(identifier: { handle: $handleB }) {
     id
     handle
     metafield(namespace: "$app:won_discounts", key: "product") {
@@ -101,10 +117,20 @@ const printJson = flag("--json");
 const OUT_DIR = path.resolve(option("--out") ?? process.env.WON_E2E_OUT ?? path.join(os.tmpdir(), "won-discounts-e2e"));
 const BACKUP_FILE = path.join(OUT_DIR, "seed-mvp1-backup.json");
 for (const arg of argv) {
-  if (arg.startsWith("--") && !["--live", "--cleanup", "--state", "--json", "--out"].includes(arg)) {
+  if (arg.startsWith("--") && !["--live", "--cleanup", "--state", "--json", "--out", "--profile"].includes(arg)) {
     throw new Error(`unknown argument ${arg}`);
   }
 }
+
+// Seed profiles: the products each one targets and its rules (GIDs by handle).
+const PROFILES = {
+  mvp1: { handles: [E2E_PRODUCT_HANDLE], rules: (ids) => e2eRules(ids[E2E_PRODUCT_HANDLE]), label: `code ${E2E_CODE}` },
+  shapes: { handles: SHAPES_HANDLES, rules: shapesRules, label: "capped fixed per item + Pro stack, no code" },
+};
+const PROFILE = option("--profile") ?? "mvp1";
+if (!Object.hasOwn(PROFILES, PROFILE)) throw new Error(`unknown --profile ${PROFILE} (${Object.keys(PROFILES).join(", ")})`);
+/** Every E2E rule id of every profile: what a cleanup without a backup removes, and what "the seed is in it" means. */
+const ALL_E2E_RULE_IDS = [...E2E_RULE_IDS, ...SHAPES_RULE_IDS];
 
 // The app's DB, absolute (never the .env): set before the Prisma client loads.
 process.env.DATABASE_URL = `file:${DEV_DB}`;
@@ -152,11 +178,13 @@ async function readState() {
   const nodes = [];
   let shop = null;
   let product = null;
+  let productB = null;
   let after = null;
   for (let page = 0; page < 50; page += 1) {
-    const data = await query(STATE_QUERY, { handle: E2E_PRODUCT_HANDLE, ...(after ? { after } : {}) });
+    const data = await query(STATE_QUERY, { handle: E2E_PRODUCT_HANDLE, handleB: SHAPES_PRODUCT_B_HANDLE, ...(after ? { after } : {}) });
     shop ??= data.shop;
     product ??= data.product;
+    productB ??= data.productB;
     nodes.push(...data.discountNodes.nodes);
     if (!data.discountNodes.pageInfo.hasNextPage) break;
     after = data.discountNodes.pageInfo.endCursor;
@@ -191,6 +219,7 @@ async function readState() {
       .map((node) => ({ id: node.id, type: node.discount?.__typename ?? null, title: node.discount?.title ?? null, status: node.discount?.status ?? null })),
     shopFunctionConfig: config,
     product: product ? { handle: product.handle, id: product.id, wonProductMetafield: product.metafield?.value ?? null } : null,
+    productB: productB ? { handle: productB.handle, id: productB.id, wonProductMetafield: productB.metafield?.value ?? null } : null,
   };
 }
 
@@ -199,12 +228,12 @@ function summarize(config) {
   return (config?.modules?.codes?.rules ?? []).map((rule) => ({ id: rule.id, name: rule.name, method: rule.method, enabled: rule.enabled }));
 }
 
-function seedConfig(previous, productId) {
-  // Only the E2E rules (no campaigns, default engine switches) so the carts the
-  // spec checks are decided by these two rules alone; markets are kept.
+function seedConfig(previous, productIds) {
+  // Only the profile's E2E rules (no campaigns, default engine switches) so the
+  // carts the spec checks are decided by these rules alone; markets are kept.
   const config = createDefaultConfig();
   config.markets = previous.markets ?? [];
-  config.modules.codes.rules = e2eRules(productId);
+  config.modules.codes.rules = PROFILES[PROFILE].rules(productIds);
   return config;
 }
 
@@ -285,7 +314,7 @@ async function main() {
     const loaded = await loadConfig(db, STORE);
     if (loaded.unreadable) throw new Error("the stored config cannot be read; refusing to touch it (nothing was sent)");
     if (loaded.readOnly) throw new Error("the stored config belongs to a newer schema; refusing to touch it (nothing was sent)");
-    const hasSeed = loaded.config.modules.codes.rules.some((rule) => E2E_RULE_IDS.includes(rule.id));
+    const hasSeed = loaded.config.modules.codes.rules.some((rule) => ALL_E2E_RULE_IDS.includes(rule.id));
     console.log(
       `# stored config of ${STORE}: ${loaded.exists ? `${loaded.config.modules.codes.rules.length} rule(s)${hasSeed ? " (the E2E seed is in it)" : ""}` : "no row yet"}`,
     );
@@ -298,7 +327,7 @@ async function main() {
         target = backup.exists ? backup.config : createDefaultConfig();
         console.log(`\n# cleanup: restore the backup of ${backup.backedUpAt} (${backup.exists ? `${summarize(backup.config).length} rule(s)` : "there was no row: the defaults, no rules"})`);
       } else if (hasSeed) {
-        target = { ...loaded.config, modules: { ...loaded.config.modules, codes: { rules: loaded.config.modules.codes.rules.filter((rule) => !E2E_RULE_IDS.includes(rule.id)) } } };
+        target = { ...loaded.config, modules: { ...loaded.config.modules, codes: { rules: loaded.config.modules.codes.rules.filter((rule) => !ALL_E2E_RULE_IDS.includes(rule.id)) } } };
         console.log(`\n# cleanup: no backup in ${OUT_DIR}; removing only the E2E rules from the stored config`);
       } else {
         console.log(`\n# cleanup: no backup in ${OUT_DIR} and no E2E rule stored — nothing to do`);
@@ -320,9 +349,11 @@ async function main() {
       return;
     }
 
-    const product = (
-      await query(
-        `query WonE2eProduct($handle: String!) {
+    const productIds = {};
+    for (const handle of PROFILES[PROFILE].handles) {
+      const found = (
+        await query(
+          `query WonE2eProduct($handle: String!) {
   productByIdentifier(identifier: { handle: $handle }) {
     id
     handle
@@ -337,18 +368,22 @@ async function main() {
     }
   }
 }`,
-        { handle: E2E_PRODUCT_HANDLE },
-      )
-    ).productByIdentifier;
-    if (!product?.id) throw new Error(`product ${E2E_PRODUCT_HANDLE} not found on ${STORE}`);
+          { handle },
+        )
+      ).productByIdentifier;
+      if (!found?.id) throw new Error(`product ${handle} not found on ${STORE}`);
+      productIds[handle] = found.id;
+    }
     const backup = readBackup();
     const previous = backup ? (backup.exists ? backup.config : createDefaultConfig()) : loaded.config;
-    const config = seedConfig(previous, product.id);
-    console.log(`\n# seed: ${E2E_PRODUCT_HANDLE} = ${product.id}; code ${E2E_CODE}`);
+    const config = seedConfig(previous, productIds);
+    console.log(
+      `\n# seed (profile ${PROFILE}): ${Object.entries(productIds).map(([handle, id]) => `${handle} = ${id}`).join(", ")}; ${PROFILES[PROFILE].label}`,
+    );
     for (const rule of summarize(config)) console.log(`  + ${rule.id} "${rule.name}" ${rule.method}`);
 
     if (!live) {
-      process.exitCode = dryRunPlan(config, "seed");
+      process.exitCode = dryRunPlan(config, PROFILE === "mvp1" ? "seed" : `seed-${PROFILE}`);
       console.log("\n(dry-run: nothing written; pass --live)");
       return;
     }
@@ -369,18 +404,20 @@ async function main() {
     printSync(result);
     const status = await loadSyncStatus(db, STORE);
     const wonNodes = await trackedNodeSummary(db);
+    const evidenceName = PROFILE === "mvp1" ? "seed-mvp1" : `seed-mvp1-${PROFILE}`;
     const evidence = {
-      name: "seed-mvp1",
+      name: evidenceName,
+      profile: PROFILE,
       store: STORE,
       at: new Date().toISOString(),
-      product: { handle: E2E_PRODUCT_HANDLE, id: product.id },
+      products: Object.entries(productIds).map(([handle, id]) => ({ handle, id })),
       rules: summarize(config),
-      autoRule: E2E_AUTO_RULE_ID,
+      ...(PROFILE === "mvp1" ? { autoRule: E2E_AUTO_RULE_ID } : {}),
       result: syncSummary(result),
       syncRun: status,
       wonNodes,
     };
-    console.log(`\nEvidence: ${writeEvidence("seed-mvp1", evidence)}`);
+    console.log(`\nEvidence: ${writeEvidence(evidenceName, evidence)}`);
     if (printJson) console.log(JSON.stringify(evidence, null, 2));
     process.exitCode = result.save.ok && result.sync?.ok ? 0 : 1;
   } finally {

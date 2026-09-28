@@ -35,11 +35,20 @@ const INPUTS_QUERY = `query WonE2eProduct($handle: String!) {
 }
 `;
 
+export interface ProductRefs {
+  ruleIds?: string[];
+  variantRuleIds?: Record<string, string[]>;
+}
+
 export interface LiveInputs {
   config: PlanConfig;
   productId: string;
-  productRefs: { ruleIds?: string[]; variantRuleIds?: Record<string, string[]> };
+  productRefs: ProductRefs;
   shopTimezone: string;
+  /** Several products (readLiveInputsFor): product GID → its metafield refs; planInputFromCart looks every line up here. */
+  refsByProductId?: Record<string, ProductRefs>;
+  /** Several products (readLiveInputsFor): handle → product GID. */
+  productIdByHandle?: Record<string, string>;
 }
 
 export interface Expected {
@@ -108,6 +117,21 @@ export async function readLiveInputs(handle: string): Promise<LiveInputs> {
   }
 }
 
+/**
+ * The function's inputs for a cart of several products: the shop config of the
+ * first read and every product's metafield refs (each read as the app, cached).
+ */
+export async function readLiveInputsFor(handles: readonly string[]): Promise<LiveInputs> {
+  const all: LiveInputs[] = [];
+  for (const handle of handles) all.push(await readLiveInputs(handle));
+  const first = all[0]!;
+  return {
+    ...first,
+    refsByProductId: Object.fromEntries(all.map((inputs) => [inputs.productId, inputs.productRefs])),
+    productIdByHandle: Object.fromEntries(handles.map((handle, i) => [handle, all[i]!.productId])),
+  };
+}
+
 function shopLocalDate(timeZone: string, now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
@@ -117,15 +141,16 @@ function shopLocalDate(timeZone: string, now = new Date()): string {
 /** The CartPlanInput the function builds for this cart (extensions/won-discounts-engine/src/input.rs). */
 export function planInputFromCart(cart: Cart, inputs: LiveInputs, country: string): CartPlanInput {
   const lines: CartLineInput[] = cart.items.map((item, index) => {
-    const own = `gid://shopify/Product/${item.product_id}` === inputs.productId;
+    const productGid = `gid://shopify/Product/${item.product_id}`;
+    const refs = inputs.refsByProductId ? inputs.refsByProductId[productGid] : productGid === inputs.productId ? inputs.productRefs : undefined;
     return {
       id: `gid://shopify/CartLine/${index}`,
       variantId: `gid://shopify/ProductVariant/${item.variant_id}`,
       productId: "",
       quantity: item.quantity,
       unitPrice: item.original_price,
-      ruleIds: own ? (inputs.productRefs.ruleIds ?? []) : [],
-      ...(own && inputs.productRefs.variantRuleIds ? { variantRuleIds: inputs.productRefs.variantRuleIds } : {}),
+      ruleIds: refs?.ruleIds ?? [],
+      ...(refs?.variantRuleIds ? { variantRuleIds: refs.variantRuleIds } : {}),
     };
   });
   return {

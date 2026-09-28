@@ -19,8 +19,10 @@ export interface CartItem {
   key: string;
   variant_id: number;
   product_id: number;
+  product_title?: string;
   quantity: number;
   original_price: number;
+  original_line_price?: number;
   final_line_price: number;
   line_level_discount_allocations: CartAllocation[];
 }
@@ -75,6 +77,22 @@ export async function freshCart(page: Page, handle: string, codes: readonly stri
   const variantId = product.variants[0]!.id;
   await storefrontJson(page, "POST", "/cart/clear.js", {});
   await storefrontJson(page, "POST", "/cart/update.js", { updates: { [String(variantId)]: 1 }, discount: codes.join(",") });
+  return storefrontJson<Cart>(page, "GET", "/cart.js");
+}
+
+/**
+ * Like freshCart for several products: empty cart, then the first variant of
+ * each handle × its quantity and exactly `codes`, in ONE update. Shopify decides
+ * the cart's line order: match lines by product, never by index.
+ */
+export async function freshCartWith(page: Page, lines: readonly { handle: string; quantity: number }[], codes: readonly string[]): Promise<Cart> {
+  const updates: Record<string, number> = {};
+  for (const { handle, quantity } of lines) {
+    const product = await storefrontJson<{ variants: { id: number }[] }>(page, "GET", `/products/${handle}.js`);
+    updates[String(product.variants[0]!.id)] = quantity;
+  }
+  await storefrontJson(page, "POST", "/cart/clear.js", {});
+  await storefrontJson(page, "POST", "/cart/update.js", { updates, discount: codes.join(",") });
   return storefrontJson<Cart>(page, "GET", "/cart.js");
 }
 

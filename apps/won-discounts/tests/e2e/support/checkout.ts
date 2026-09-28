@@ -16,6 +16,8 @@ export const SUBTOTAL = /^(Mezisoučet|Subtotal)/iu;
 export const SHIPPING = /^(Expedice|Doprava|Shipping)/iu;
 export const TOTAL = /^(Celkem|Total)$/iu;
 export const TAX = /(Daně|Daň|DPH|Taxes|Tax)/iu;
+/** A line or row the checkout prints as free instead of "0,00 Kč". */
+export const FREE = /^(Zdarma|Free|ZDARMA|FREE)$/u;
 
 /** "1 234,56 Kč" / "− 29,43 Kč" / "(-21,80 Kč)" / "CZK 819,77 Kč" → signed minor units (2-digit currency); null when there is no amount. */
 export function minorUnits(text: string): number | null {
@@ -92,8 +94,13 @@ export async function checkoutLines(page: Page): Promise<CheckoutLine[]> {
     title: line.title,
     allocations: line.allocations.map((a) => ({ title: a.title, amount: minorUnits(a.amountText) })),
     originalPrice: minorUnits(line.priceTexts.find((p) => p.tag === "S")?.text ?? ""),
-    finalPrice: minorUnits([...line.priceTexts].reverse().find((p) => p.tag === "P")?.text ?? ""),
+    finalPrice: priceOrFree([...line.priceTexts].reverse().find((p) => p.tag === "P")?.text ?? ""),
   }));
+}
+
+/** minorUnits, with the checkout's "Zdarma"/"Free" read as 0. */
+function priceOrFree(text: string): number | null {
+  return minorUnits(text) ?? (FREE.test(text.trim()) ? 0 : null);
 }
 
 /** The allocation of `discountTitle` on the first line that has it (the checkout upper-cases discount titles). */
@@ -120,8 +127,8 @@ export async function applyCodeInCheckout(page: Page, code: string): Promise<voi
 }
 
 /** Contact + a Czech shipping address (market cesko), then the first shipping rate. */
-export async function fillCzechShippingAddress(page: Page): Promise<void> {
-  await page.locator("#email").fill("won-e2e+mvp1@example.com");
+export async function fillCzechShippingAddress(page: Page, email = "won-e2e+mvp1@example.com"): Promise<void> {
+  await page.locator("#email").fill(email);
   await page.locator('select[name="countryCode"]').selectOption("CZ");
   await page.locator('input[name="firstName"]:visible').first().fill("Won");
   await page.locator('input[name="lastName"]:visible').first().fill("Tester");

@@ -25,7 +25,7 @@ import {
   TOTAL,
 } from "./support/checkout.ts";
 import { saveEvidence, saveScreenshot } from "./support/evidence.ts";
-import { expect, STORE_ORIGIN, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
+import { E2E_PROFILE, expect, STORE_ORIGIN, test, THEME_LABEL, unlockRealStorefront } from "./support/fixtures.ts";
 import { expectedFor, readLiveInputs } from "./support/won-plan.ts";
 
 // SPEC-DRIVEN (MVP 1, Task 6). Live proof that Won discounts really apply in
@@ -53,6 +53,9 @@ import { expectedFor, readLiveInputs } from "./support/won-plan.ts";
 const CHECKOUT_COUNTRY = "CZ"; // market cesko (CZK)
 
 test.describe(`Won Discounts in cart and checkout (MVP 1)${THEME_LABEL ? ` — ${THEME_LABEL}` : ""}`, () => {
+  // Runs under the MVP 1 seed only (the default); the shapes seed replaces these rules (checkout.shapes.spec.ts).
+  test.skip(E2E_PROFILE !== "mvp1", `WON_E2E_PROFILE=${E2E_PROFILE}: this spec needs the MVP 1 seed (seed-mvp1.mjs --live)`);
+
   test.afterEach(async ({ page, baseURL }) => {
     // Theme-dev cart only (a completed checkout consumed its cart; every test starts from freshCart anyway).
     if (page.url().startsWith(new URL(baseURL!).origin)) await clearCartQuietly(page);
