@@ -3,7 +3,7 @@
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
     "input": {
-      "triggeringDiscountCode": "X",
+      "triggeringDiscountCode": null,
       "enteredDiscountCodes": [],
       "discount": {
         "discountClasses": [
@@ -12,18 +12,18 @@
         "metafield": {
           "jsonValue": {
             "prototype": {
-              "mode": "free_money",
-              "percent": 50
+              "mode": "campaign_window",
+              "debugCampaign": true
             },
-            "campaignStart": "1970-01-01T00:00:00",
-            "campaignEnd": "1970-01-01T00:00:00"
+            "campaignStart": "2026-09-28T00:00:00",
+            "campaignEnd": "2026-09-29T00:00:00"
           }
         }
       },
       "shop": {
         "localTime": {
           "date": "2026-09-28",
-          "campaignActive": false,
+          "campaignActive": true,
           "campaignStarted": true
         }
       },
@@ -84,7 +84,35 @@
       }
     },
     "output": {
-      "operations": []
+      "operations": [
+        {
+          "productDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "WON:CAMPAIGN|2026-09-28|active",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/1"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/2"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 10
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "FIRST"
+          }
+        }
+      ]
     }
   }
 }

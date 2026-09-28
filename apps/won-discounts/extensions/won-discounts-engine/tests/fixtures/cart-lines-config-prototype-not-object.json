@@ -11,14 +11,17 @@
         ],
         "metafield": {
           "jsonValue": {
-            "prototype": "echo_codes"
+            "prototype": "echo_codes",
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00"
           }
         }
       },
       "shop": {
         "localTime": {
           "date": "2026-09-28",
-          "campaignActive": false
+          "campaignActive": false,
+          "campaignStarted": true
         }
       },
       "cart": {

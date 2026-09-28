@@ -3,8 +3,33 @@
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
     "input": {
-      "triggeringDiscountCode": "X",
-      "enteredDiscountCodes": [],
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [
+        {
+          "code": "F",
+          "rejectable": true
+        },
+        {
+          "code": "E",
+          "rejectable": true
+        },
+        {
+          "code": "D",
+          "rejectable": true
+        },
+        {
+          "code": "C",
+          "rejectable": true
+        },
+        {
+          "code": "B",
+          "rejectable": true
+        },
+        {
+          "code": "A",
+          "rejectable": true
+        }
+      ],
       "discount": {
         "discountClasses": [
           "PRODUCT"
@@ -12,8 +37,8 @@
         "metafield": {
           "jsonValue": {
             "prototype": {
-              "mode": "free_money",
-              "percent": 50
+              "mode": "echo_codes",
+              "echoOnAutomatic": true
             },
             "campaignStart": "1970-01-01T00:00:00",
             "campaignEnd": "1970-01-01T00:00:00"
@@ -84,7 +109,30 @@
       }
     },
     "output": {
-      "operations": []
+      "operations": [
+        {
+          "productDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "WON:AUTO|A,B,C,D,E,F",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/1"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 50
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "FIRST"
+          }
+        }
+      ]
     }
   }
 }

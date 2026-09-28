@@ -20,7 +20,8 @@
       "shop": {
         "localTime": {
           "date": "2026-09-28",
-          "campaignActive": false
+          "campaignActive": false,
+          "campaignStarted": true
         }
       },
       "cart": {

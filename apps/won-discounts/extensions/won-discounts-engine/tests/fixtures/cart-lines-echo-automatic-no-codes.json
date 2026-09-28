@@ -3,7 +3,7 @@
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
     "input": {
-      "triggeringDiscountCode": "X",
+      "triggeringDiscountCode": null,
       "enteredDiscountCodes": [],
       "discount": {
         "discountClasses": [
@@ -12,8 +12,8 @@
         "metafield": {
           "jsonValue": {
             "prototype": {
-              "mode": "free_money",
-              "percent": 50
+              "mode": "echo_codes",
+              "echoOnAutomatic": true
             },
             "campaignStart": "1970-01-01T00:00:00",
             "campaignEnd": "1970-01-01T00:00:00"

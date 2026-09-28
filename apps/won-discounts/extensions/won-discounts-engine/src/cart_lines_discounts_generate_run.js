@@ -7,17 +7,26 @@
 
 // MVP 0 prototype, not the engine. `function_config.prototype.mode` picks one
 // behaviour used to verify platform risks C1–C4 on a dev store:
-//   echo_codes        1 % on the first line, message echoes the codes (C1/C2)
+//   echo_codes        code node: 1 % on the first line, message
+//                     `WON:<triggering>|<sorted entered codes>` (never truncated).
+//                     Automatic node with `echoOnAutomatic: true`:
+//                     min(50, 10 × entered codes) % on the first line, so the
+//                     cart total shows how many codes the node saw (C1/C2)
 //   percent_all       `percent` % on every line (C3: metafield size budget)
-//   campaign_window   `percent` % (default 10) only while shop.localTime.campaignActive (C4)
+//   campaign_window   `percent` % (default 10) only while shop.localTime.campaignActive.
+//                     With `debugCampaign: true` the percent encodes the variable
+//                     state: active 10 %, started but not active 3 %, not started
+//                     none (C4: tells "variables not bound" from "window inactive")
 //   product_metafield per line: `$app:won_discounts.product` jsonValue.percent (C3)
 // Missing or corrupt config yields no operations and never throws (spec §9):
 // checkout must never be blocked by this function.
 
-/** Shopify does not document a hard cap; keep messages short. */
-const MAX_MESSAGE_LENGTH = 100;
 const CAMPAIGN_DEFAULT_PERCENT = 10;
 const ECHO_PERCENT = 1;
+const ECHO_AUTOMATIC_PERCENT_PER_CODE = 10;
+const ECHO_AUTOMATIC_MAX_PERCENT = 50;
+const CAMPAIGN_DEBUG_ACTIVE_PERCENT = 10;
+const CAMPAIGN_DEBUG_STARTED_PERCENT = 3;
 
 /** @type {CartLinesDiscountsGenerateRunResult} */
 const NO_OPERATIONS = { operations: [] };
@@ -42,13 +51,6 @@ function readPercent(value) {
 }
 
 /**
- * @param {string} message
- */
-function shortMessage(message) {
-  return message.length > MAX_MESSAGE_LENGTH ? message.slice(0, MAX_MESSAGE_LENGTH) : message;
-}
-
-/**
  * @param {number} percent
  */
 function percentMessage(percent) {
@@ -63,7 +65,7 @@ function percentMessage(percent) {
  */
 function candidate(message, lineIds, percent) {
   return {
-    message: shortMessage(message),
+    message,
     targets: lineIds.map((id) => ({ cartLine: { id } })),
     value: { percentage: { value: percent } },
   };
@@ -94,14 +96,25 @@ function productDiscounts(candidates, selectionStrategy) {
  * @param {{ id: string }[]} lines
  */
 function echoCodes(input, prototype, lines) {
-  const triggering = input.triggeringDiscountCode;
-  if (typeof triggering !== "string" || triggering === "") return NO_OPERATIONS;
   const entered = (Array.isArray(input.enteredDiscountCodes) ? input.enteredDiscountCodes : [])
     .map((entry) => (entry && typeof entry.code === "string" ? entry.code : ""))
     .filter((code) => code !== "")
     .sort();
-  const message = `WON:${triggering}|${entered.join(",")}`;
-  return productDiscounts([candidate(message, [lines[0].id], ECHO_PERCENT)], "FIRST");
+  const triggering = input.triggeringDiscountCode;
+
+  if (typeof triggering === "string" && triggering !== "") {
+    const message = `WON:${triggering}|${entered.join(",")}`;
+    return productDiscounts([candidate(message, [lines[0].id], ECHO_PERCENT)], "FIRST");
+  }
+
+  // Automatic node: the message is not a reliable readout, the amount is.
+  if (prototype.echoOnAutomatic !== true || entered.length === 0) return NO_OPERATIONS;
+  const percent = Math.min(
+    ECHO_AUTOMATIC_MAX_PERCENT,
+    ECHO_AUTOMATIC_PERCENT_PER_CODE * entered.length,
+  );
+  const message = `WON:AUTO|${entered.join(",")}`;
+  return productDiscounts([candidate(message, [lines[0].id], percent)], "FIRST");
 }
 
 /**
@@ -125,12 +138,32 @@ function percentAll(input, prototype, lines) {
  */
 function campaignWindow(input, prototype, lines) {
   const localTime = input.shop?.localTime;
+  const date = typeof localTime?.date === "string" ? localTime.date : "";
+  const lineIds = lines.map((line) => line.id);
+
+  if (prototype.debugCampaign === true) {
+    // The 1970 query default is always "started", so a future window that
+    // still yields 3 % means the variables were not bound.
+    if (localTime?.campaignActive === true) {
+      return productDiscounts(
+        [candidate(`WON:CAMPAIGN|${date}|active`, lineIds, CAMPAIGN_DEBUG_ACTIVE_PERCENT)],
+        "FIRST",
+      );
+    }
+    if (localTime?.campaignStarted === true) {
+      return productDiscounts(
+        [candidate(`WON:CAMPAIGN|${date}|started`, lineIds, CAMPAIGN_DEBUG_STARTED_PERCENT)],
+        "FIRST",
+      );
+    }
+    return NO_OPERATIONS;
+  }
+
   if (localTime?.campaignActive !== true) return NO_OPERATIONS;
   const percent =
     prototype.percent === undefined ? CAMPAIGN_DEFAULT_PERCENT : readPercent(prototype.percent);
   if (percent === null) return NO_OPERATIONS;
-  const message = `WON:CAMPAIGN|${typeof localTime.date === "string" ? localTime.date : ""}`;
-  return productDiscounts([candidate(message, lines.map((line) => line.id), percent)], "FIRST");
+  return productDiscounts([candidate(`WON:CAMPAIGN|${date}`, lineIds, percent)], "FIRST");
 }
 
 /**
