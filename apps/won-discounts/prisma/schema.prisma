@@ -35,3 +35,25 @@ model Session {
   refreshToken        String?
   refreshTokenExpires DateTime?
 }
+
+// Won Discounts config persistence (spec §2, doctrine DATA-2/DATA-3/DATA-4).
+// The shape stored in `data` is validated only by @won/core/discounts/config —
+// this schema just stores the sanitized JSON, keyed by shop.
+model ShopConfig {
+  shop          String   @id
+  schemaVersion Int
+  data          String
+  updatedAt     DateTime @updatedAt
+}
+
+// Append-only history of every saved config, for support/rollback. Pruned to
+// CONFIG_HISTORY_RETENTION_DAYS by app/lib/config.server.ts.
+model ConfigVersion {
+  id            String   @id @default(cuid())
+  shop          String
+  schemaVersion Int
+  data          String
+  createdAt     DateTime @default(now())
+
+  @@index([shop, createdAt])
+}
