@@ -1,6 +1,6 @@
 # MVP 1 engine input (spec §3 "Emise per uzel", "Transport configu"). Every Won
 # node reads the SAME cart and shared config, plans the whole cart and emits
-# only its own part (src/adapt.js).
+# only its own part (src/input.rs; reference: tests/reference-adapter.js).
 #
 #   discount.vars   the node's own `$app:won_discounts`/`function_vars`: role,
 #                   ruleId, campaignId, varsVersion (@won/core buildNodeVars)
@@ -17,14 +17,14 @@
 # for both when there is no campaign). Shopify binds input-query variables only
 # from the metafield named in [extensions.input.variables] (C4:
 # docs/won-discounts/evidence/mvp0/c4-campaign-window.json): a missing key or a
-# missing metafield fails the run with InvalidVariableValueError before any JS
+# missing metafield fails the run with InvalidVariableValueError before any code
 # runs, so the node gives no discount (checkout is not blocked). There are no
 # query defaults on purpose: the platform does not apply them. The local runner
 # (`shopify app function run`) binds no variables; fixtures carry the resolved
 # `campaignActive` leaf. @won/core buildNodeVars always writes both keys.
 #
 # Cost (shopify.dev input query cost table): 22 of 30.
-query CartInput(
+query Input(
   $campaignStart: DateTimeWithoutTimezone!
   $campaignEnd: DateTimeWithoutTimezone!
 ) {

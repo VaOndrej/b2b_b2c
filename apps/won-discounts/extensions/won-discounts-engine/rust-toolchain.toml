@@ -1,0 +1,5 @@
+# shopify_function 2.x builds for wasm32-unknown-unknown only (wasm32-wasip1 is
+# refused at compile time); rustup installs the target from this file.
+[toolchain]
+channel = "stable"
+targets = ["wasm32-unknown-unknown"]

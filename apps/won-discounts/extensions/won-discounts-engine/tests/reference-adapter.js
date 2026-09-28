@@ -1,13 +1,13 @@
 // @ts-check
-// The discount function's only glue to the engine (spec §3 "Emise per uzel",
-// DATA-4: one brain). Every Won node runs the SAME plan and emits only its own
-// part:
+// The REFERENCE adapter: the JS function's glue to the TS engine, kept as the
+// parity oracle for the Rust function (README.md "Parity", DATA-4: one brain).
+// The Rust function (src/) reproduces exactly what this computes:
 //
 //   function input ─adaptInput→ CartPlanInput ─planCart→ CartPlan
 //                  ─emitForNode(role, triggering code)→ NodeEmission
 //                  ─toCartLinesResult / toDeliveryResult→ function output
 //
-// Where each input comes from (input queries in this folder, T0/C7):
+// Where each input comes from (input queries in src/, T0/C7):
 //   - shared config: app-owned SHOP metafield `$app:won_discounts`/`function_config`
 //     (`shop.config.jsonValue`); over 10 000 B it arrives as null → the plan is
 //     `config_missing` and the node emits nothing;
@@ -22,8 +22,8 @@
 //     attribute (a gift is a property of the cart line, not of the product: the
 //     same product bought normally is an ordinary line).
 //
-// Never throws: the run wrappers turn any error into `{ operations: [] }`, so a
-// broken config or input never blocks checkout (principle 4).
+// Never throws: the run wrappers turn any error into `{ operations: [] }`.
+// Used by tests/parity.test.js and apps/won-discounts/tests/contracts/function.contract.test.ts.
 
 import { emitForNode } from "@won/core/discounts/emit";
 import { fromMinorUnits, toMinorUnits } from "@won/core/discounts/money";

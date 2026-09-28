@@ -1,2 +1,4 @@
 dist
 generated
+/target
+.build-lock

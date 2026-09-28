@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -12,20 +12,28 @@ import { emitForNode, type NodeEmission } from "@won/core/discounts/emit";
 import { buildNodeVars } from "@won/core/discounts/function-payload";
 import { planCart } from "@won/core/discounts/plan";
 
-import { adaptInput, GIFT_ATTRIBUTE, toCartLinesResult, toDeliveryResult } from "../../extensions/won-discounts-engine/src/adapt.js";
+import {
+  adaptInput,
+  GIFT_ATTRIBUTE,
+  toCartLinesResult,
+  toDeliveryResult,
+} from "../../extensions/won-discounts-engine/tests/reference-adapter.js";
 import { acquireBuildLock } from "../lib/build-lock.ts";
 
 // Contract for the `won-discounts-engine` discount function (MVP 1, the engine):
 //   - the extension config and input queries match what the app writes
 //     (node variables `function_vars`, shared SHOP config `function_config`,
 //     product metafield `product`) and bind the C4 campaign variables;
-//   - the compiled Wasm, run through the real Shopify CLI (`shopify app function
-//     run`), produces exactly the output recorded in every fixture;
-//   - PARITY (DATA-4, one engine): that output equals the engine computed
-//     directly in node — adaptInput → planCart → emitForNode → output mapping —
-//     so the bundled engine in the function cannot drift from @won/core;
+//   - the compiled Wasm (Rust, extensions/won-discounts-engine/README.md), run
+//     through the real Shopify CLI (`shopify app function run`), produces
+//     exactly the output recorded in every fixture;
+//   - PARITY (DATA-4, one engine): that output equals the TS engine computed
+//     directly in node — the reference adapter (tests/reference-adapter.js):
+//     adaptInput → planCart → emitForNode → output mapping — so the Rust port
+//     cannot drift from @won/core;
 //   - the instruction budget (Shopify: 11 M instructions for carts up to 200
-//     lines, shopify.dev/docs/api/functions/2026-04 "Resource limits").
+//     lines, shopify.dev/docs/api/functions/2026-04 "Resource limits"), with
+//     ≥ 30 % headroom for every fixture, the 200-line carts included.
 
 const exec = promisify(execFile);
 
@@ -42,7 +50,7 @@ const DELIVERY_TARGET = "cart.delivery-options.discounts.generate.run";
 /** Shopify's limit for carts up to 200 lines; we keep ≥ 30 % headroom. */
 const INSTRUCTION_LIMIT = 11_000_000;
 const INSTRUCTION_BUDGET = (INSTRUCTION_LIMIT / 10) * 7;
-/** The 200-line fixtures that measure the budget (reported, see the todo test). */
+/** The 200-line fixtures that measure the budget (their own tests below). */
 const BUDGET_PREFIX = /-200-lines-budget\.json$/;
 
 type Fixture = {
@@ -56,10 +64,13 @@ type FixtureInput = {
 type RunResult = { success: boolean; output: unknown; logs: string; instructions?: number };
 type ExecFailure = { stdout?: string; stderr?: string; message?: string };
 
+/** The function builds with cargo (Rust); rustup installs it user-level, off the default PATH. */
+const CARGO_PATH = `${path.join(homedir(), ".cargo", "bin")}${path.delimiter}${process.env.PATH ?? ""}`;
+
 function shopify(args: string[]) {
   return exec("npx", ["shopify", ...args], {
     cwd: APP_DIR,
-    env: { ...process.env, SHOPIFY_CLI_NO_ANALYTICS: "1", NO_COLOR: "1" },
+    env: { ...process.env, PATH: CARGO_PATH, SHOPIFY_CLI_NO_ANALYTICS: "1", NO_COLOR: "1" },
     maxBuffer: 64 * 1024 * 1024,
   });
 }
@@ -246,9 +257,10 @@ test("every fixture's node variables carry campaignStart/campaignEnd (query cont
   }
 });
 
-// Audit P3-6: dev-harness.contract's `npm run build` rewrites the same
-// dist/function.wasm. The build lock is held from this build until the last
-// fixture ran, so no fixture ever runs against a half-written Wasm.
+// Audit P3-6: dev-harness.contract's `npm run build` rewrites the same Wasm
+// (target/wasm32-unknown-unknown/release/won-discounts-engine.wasm). The build
+// lock is held from this build until the last fixture ran, so no fixture ever
+// runs against a half-written Wasm.
 describe("shopify app function run", { concurrency: 6 }, () => {
   let workDir = "";
   let releaseBuildLock: () => void = () => {};
@@ -283,13 +295,11 @@ describe("shopify app function run", { concurrency: 6 }, () => {
     });
   }
 
-  // DONE_WITH_CONCERNS (T2 report): the 200-line carts exceed Shopify's limit by
-  // ~8× in the JS runtime (reading that input alone costs more than 11 M). The
-  // test runs and prints the numbers but is a todo until the function's hot
-  // path fits (see .superpowers/sdd/2026-09-28-won-discounts-mvp1/task-2-report.md).
+  // The 200-line carts (37 rules, codes, a Pro stack, outlet lines): the JS
+  // function needed ~96 M instructions here (task-2-report.md); the Rust port
+  // must stay ≤ 70 % of Shopify's limit like every other fixture.
   for (const file of fixtureFiles.filter((f) => BUDGET_PREFIX.test(f))) {
     test(`${file}: ≤ ${INSTRUCTION_BUDGET} instructions (Shopify limit ${INSTRUCTION_LIMIT} − 30 %)`, {
-      todo: "200-line carts exceed the JS instruction limit — see task-2-report.md",
       timeout: 120_000,
     }, async (t) => {
       let count = instructions.get(file);

@@ -1,5 +1,5 @@
-// Inherits the repo ESLint config; skips `shopify app function build` outputs
-// (dist/ bundle, generated/ GraphQL types), which are not source.
+// Inherits the repo ESLint config; skips build outputs (target/: cargo, dist/ and
+// generated/: leftovers of the JS version), which are not source.
 module.exports = {
-  ignorePatterns: ["dist/", "generated/"],
+  ignorePatterns: ["dist/", "generated/", "target/"],
 };

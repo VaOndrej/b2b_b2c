@@ -27,6 +27,9 @@ description = "t:description"
   namespace = "$app:won_discounts"
   key = "function_vars"
 
+  # Rust (production hot path; the TS engine in @won/core stays the reference,
+  # README.md). Needs cargo on PATH: `export PATH="$HOME/.cargo/bin:$PATH"`.
   [extensions.build]
-  command = ""
-  path = "dist/function.wasm"
+  command = "cargo build --target=wasm32-unknown-unknown --release"
+  path = "target/wasm32-unknown-unknown/release/won-discounts-engine.wasm"
+  watch = ["src/**/*.rs"]

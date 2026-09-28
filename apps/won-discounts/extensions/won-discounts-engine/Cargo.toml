@@ -1,0 +1,18 @@
+[package]
+name = "won-discounts-engine"
+version = "1.0.0"
+edition = "2021"
+publish = false
+
+# Only the shopify_function crate (Shopify's Rust rules for functions: no serde,
+# no chrono). Input is read lazily through its Wasm API; output is written
+# through the same API (src/output.rs).
+[dependencies]
+shopify_function = "2.2.0"
+
+[profile.release]
+lto = true
+opt-level = 3
+strip = true
+codegen-units = 1
+panic = "abort"

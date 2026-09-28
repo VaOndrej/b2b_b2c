@@ -5,7 +5,7 @@
 # MUST be top-level keys of the node's `function_vars`, C4).
 #
 # Cost (shopify.dev input query cost table): 23 of 30.
-query DeliveryInput(
+query Input(
   $campaignStart: DateTimeWithoutTimezone!
   $campaignEnd: DateTimeWithoutTimezone!
 ) {

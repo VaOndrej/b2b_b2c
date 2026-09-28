@@ -5,33 +5,16 @@
   "type": "module",
   "scripts": {
     "shopify": "npm exec -- shopify",
-    "typegen": "npm exec -- shopify app function typegen",
-    "build": "npm exec -- shopify app function build",
-    "preview": "npm exec -- shopify app function run",
+    "build": "PATH=\"$HOME/.cargo/bin:$PATH\" npm exec -- shopify app function build",
+    "preview": "PATH=\"$HOME/.cargo/bin:$PATH\" npm exec -- shopify app function run",
     "fixtures": "tsx tests/generate-fixtures.js",
-    "test": "vitest run"
-  },
-  "codegen": {
-    "schema": "schema.graphql",
-    "documents": "src/*.graphql",
-    "generates": {
-      "./generated/api.ts": {
-        "plugins": [
-          "typescript",
-          "typescript-operations"
-        ]
-      }
-    },
-    "config": {
-      "omitOperationSuffix": true
-    }
-  },
-  "dependencies": {
-    "@shopify/shopify_function": "^2.0.1",
-    "@won/core": "*"
+    "test": "npm run test:rust && npm run test:js",
+    "test:rust": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --quiet",
+    "test:js": "PATH=\"$HOME/.cargo/bin:$PATH\" vitest run"
   },
   "devDependencies": {
     "@shopify/shopify-function-test-helpers": "^1.0.0",
+    "@won/core": "*",
     "graphql": "^16.11.0",
     "vitest": "^3.2.4"
   }
