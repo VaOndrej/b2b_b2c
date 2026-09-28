@@ -1,0 +1,595 @@
+// The function scenarios (spec §3 A1, "Emise per uzel"): one entry per fixture
+// file in tests/fixtures/. Each states the merchant config, the node (role,
+// classes, triggering code), the cart, and the EXPECTED output written by hand
+// from the spec — never copied from a run. tests/fixture-builder.js turns a
+// scenario into the function input; `npm run fixtures -w won-discounts-engine`
+// writes the files; tests/fixtures.drift.test.js keeps them in sync.
+
+import {
+  DEFAULT_GROUP,
+  fixed,
+  freeShip,
+  lineId,
+  orderPct,
+  pct,
+  variantId,
+  withCodes,
+} from "./fixture-builder.js";
+
+/** @typedef {import("./fixture-builder.js").Scenario} Scenario */
+
+// --- Expected-output helpers ---------------------------------------------------------------
+
+const NONE = { operations: [] };
+const out = (/** @type {unknown[]} */ ...operations) => ({ operations });
+const percent = (/** @type {number} */ value) => ({ percentage: { value } });
+const perItem = (/** @type {string} */ amount) => ({ fixedAmount: { amount, appliesToEachItem: true } });
+const lineTotal = (/** @type {string} */ amount) => ({ fixedAmount: { amount, appliesToEachItem: false } });
+
+/** @param {string} message @param {number[]} lines @param {unknown} value */
+const pc = (message, lines, value) => ({ message, targets: lines.map((n) => ({ cartLine: { id: lineId(n) } })), value });
+/** @param {unknown[]} candidates */
+const products = (...candidates) => ({ productDiscountsAdd: { candidates, selectionStrategy: "ALL" } });
+/** @param {string} message @param {number[]} excluded @param {unknown} value */
+const order = (message, excluded, value) => ({
+  orderDiscountsAdd: {
+    candidates: [{ message, targets: [{ orderSubtotal: { excludedCartLineIds: excluded.map(lineId) } }], value }],
+    selectionStrategy: "FIRST",
+  },
+});
+/** @param {string} message @param {unknown} value @param {string[]} [groups] */
+const delivery = (message, value, groups = [DEFAULT_GROUP]) => ({
+  deliveryDiscountsAdd: {
+    candidates: [{ message, targets: groups.map((id) => ({ deliveryGroup: { id } })), value }],
+    selectionStrategy: "ALL",
+  },
+});
+
+const AUTO = /** @type {const} */ ({ kind: "automatic" });
+const codeNode = (/** @type {string} */ ruleId) => ({ kind: /** @type {const} */ ("code"), ruleId });
+const won = (/** @type {string[]} */ ...ruleIds) => ({ ruleIds });
+
+// --- Shared configs ------------------------------------------------------------------------
+
+const SUMMER = pct("summer", 10, { name: "Letní sleva" });
+const WELCOME = withCodes(["WELCOME15"], pct("welcome", 15, { name: "Vítejte" }));
+const ORDER5 = orderPct("order5", 5, { name: "5 % na objednávku" });
+const SHIP = freeShip("ship", { name: "Doprava zdarma", minimum: { subtotal: { CZK: 100000 } } });
+
+/** @returns {Scenario[]} */
+function allScenarios() {
+  return [
+  // --- automatic node alone --------------------------------------------------------------
+  {
+    name: "lines-auto-alone",
+    description: "Automatic node, one automatic rule: only the targeted line gets 10 %.",
+    target: "lines",
+    rules: [SUMMER],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "100.0", won: won("summer") },
+      { n: 2, price: "200.0", qty: 2, won: null },
+    ],
+    expected: out(products(pc("Letní sleva", [1], percent(10)))),
+  },
+  {
+    name: "lines-auto-value-mapping",
+    description:
+      "Automatic node: lines with the same rule share one candidate; a fixed amount per item is capped at the unit price (50 Kč on a 30 Kč item → 30.00 each).",
+    target: "lines",
+    rules: [SUMMER, fixed("tenoff", { CZK: 5000 }, { name: "Sleva 50 Kč" })],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "100.0", won: won("summer") },
+      { n: 2, price: "249.9", qty: 3, won: won("summer") },
+      { n: 3, price: "30.0", qty: 2, won: won("tenoff") },
+      { n: 4, price: "80.0", won: won("tenoff") },
+    ],
+    expected: out(
+      products(
+        pc("Letní sleva", [1, 2], percent(10)),
+        pc("Sleva 50 Kč", [3], perItem("30.00")),
+        pc("Sleva 50 Kč", [4], perItem("50.00")),
+      ),
+    ),
+  },
+  {
+    name: "lines-variant-targeting",
+    description:
+      "Product metafield variantRuleIds: only the listed variant of the product gets the rule; ruleIds applies to every variant.",
+    target: "lines",
+    rules: [SUMMER, pct("vip", 20, { name: "VIP varianta" })],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "100.0", variant: 11, won: { ruleIds: ["summer"], variantRuleIds: { [variantId(11)]: ["vip"] } } },
+      { n: 2, price: "100.0", variant: 12, won: { ruleIds: ["summer"], variantRuleIds: { [variantId(11)]: ["vip"] } } },
+    ],
+    expected: out(products(pc("VIP varianta", [1], percent(20)), pc("Letní sleva", [2], percent(10)))),
+  },
+
+  // --- code node triggered with its own code ---------------------------------------------
+  {
+    name: "lines-code-own-trigger",
+    description: "Code node triggered by its own code (entered in lower case): 15 % on the targeted line.",
+    target: "lines",
+    rules: [WELCOME],
+    role: codeNode("welcome"),
+    triggering: "welcome15",
+    entered: ["welcome15"],
+    lines: [
+      { n: 1, price: "100.0", won: won("welcome") },
+      { n: 2, price: "50.0", won: null },
+    ],
+    expected: out(products(pc("Vítejte", [1], percent(15)))),
+  },
+  {
+    name: "lines-code-trigger-mismatch",
+    description: "Code node whose triggering code is not one of its rule's codes emits nothing.",
+    target: "lines",
+    rules: [WELCOME],
+    role: codeNode("welcome"),
+    triggering: "SOMEONEELSE",
+    entered: ["SOMEONEELSE", "WELCOME15"],
+    lines: [{ n: 1, price: "100.0", won: won("welcome") }],
+    expected: NONE,
+  },
+
+  // --- automatic + code on the same line: only the winner's node emits -------------------
+  {
+    name: "lines-compete-code-wins-auto-node",
+    description: "Code 15 % beats automatic 10 % on line 1: the automatic node emits only line 2.",
+    target: "lines",
+    rules: [SUMMER, WELCOME],
+    role: AUTO,
+    entered: ["WELCOME15"],
+    lines: [
+      { n: 1, price: "100.0", won: won("summer", "welcome") },
+      { n: 2, price: "100.0", won: won("summer") },
+    ],
+    expected: out(products(pc("Letní sleva", [2], percent(10)))),
+  },
+  {
+    name: "lines-compete-code-wins-code-node",
+    description: "Code 15 % beats automatic 10 % on line 1: the code node emits line 1.",
+    target: "lines",
+    rules: [SUMMER, WELCOME],
+    role: codeNode("welcome"),
+    triggering: "WELCOME15",
+    entered: ["WELCOME15"],
+    lines: [
+      { n: 1, price: "100.0", won: won("summer", "welcome") },
+      { n: 2, price: "100.0", won: won("summer") },
+    ],
+    expected: out(products(pc("Vítejte", [1], percent(15)))),
+  },
+  {
+    name: "lines-compete-auto-wins-auto-node",
+    description: "Automatic 20 % beats code 15 % on line 1: the automatic node emits both lines.",
+    target: "lines",
+    rules: [pct("summer", 20, { name: "Letní sleva" }), WELCOME],
+    role: AUTO,
+    entered: ["WELCOME15"],
+    lines: [
+      { n: 1, price: "100.0", won: won("summer", "welcome") },
+      { n: 2, price: "100.0", won: won("summer") },
+    ],
+    expected: out(products(pc("Letní sleva", [1, 2], percent(20)))),
+  },
+  {
+    name: "lines-compete-auto-wins-code-node",
+    description: "Automatic 20 % beats code 15 % everywhere: the code node emits nothing (Shopify shows the code as not applicable).",
+    target: "lines",
+    rules: [pct("summer", 20, { name: "Letní sleva" }), WELCOME],
+    role: codeNode("welcome"),
+    triggering: "WELCOME15",
+    entered: ["WELCOME15"],
+    lines: [
+      { n: 1, price: "100.0", won: won("summer", "welcome") },
+      { n: 2, price: "100.0", won: won("summer") },
+    ],
+    expected: NONE,
+  },
+
+  // --- order + product stack ---------------------------------------------------------------
+  {
+    name: "lines-order-product-stack-auto",
+    description:
+      "Automatic product 10 % and automatic order 5 % stack; a custom (non-product) line is part of the order subtotal.",
+    target: "lines",
+    rules: [SUMMER, ORDER5],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "100.0", won: won("summer") },
+      { n: 2, price: "300.0", won: null },
+      { n: 3, price: "40.0", custom: true },
+    ],
+    expected: out(products(pc("Letní sleva", [1], percent(10))), order("5 % na objednávku", [], percent(5))),
+  },
+  {
+    name: "lines-order-product-stack-code-node",
+    description: "Code order discount + automatic product discount: the code node emits only its order discount.",
+    target: "lines",
+    rules: [SUMMER, withCodes(["OBJ100"], { ...ORDER5, id: "obj", name: "100 Kč na objednávku", value: { kind: "fixed", amount: { CZK: 10000 } } })],
+    role: codeNode("obj"),
+    triggering: "OBJ100",
+    entered: ["OBJ100"],
+    lines: [
+      { n: 1, price: "100.0", won: won("summer") },
+      { n: 2, price: "300.0", won: null },
+    ],
+    expected: out({
+      orderDiscountsAdd: {
+        candidates: [
+          {
+            message: "100 Kč na objednávku",
+            targets: [{ orderSubtotal: { excludedCartLineIds: [] } }],
+            value: { fixedAmount: { amount: "100.00" } },
+          },
+        ],
+        selectionStrategy: "FIRST",
+      },
+    }),
+  },
+  {
+    name: "lines-product-class-only",
+    description: "A node without the ORDER class never emits an order candidate (only the classes it was created with).",
+    target: "lines",
+    rules: [SUMMER, ORDER5],
+    role: AUTO,
+    classes: ["PRODUCT"],
+    lines: [{ n: 1, price: "100.0", won: won("summer") }],
+    expected: out(products(pc("Letní sleva", [1], percent(10)))),
+  },
+
+  // --- free shipping on the delivery target ----------------------------------------------
+  {
+    name: "delivery-free-shipping-auto",
+    description: "Automatic free shipping over 1 000 Kč: 100 % on every delivery group.",
+    target: "delivery",
+    rules: [SUMMER, SHIP],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "700.0", won: won("summer") },
+      { n: 2, price: "400.0", won: null },
+    ],
+    deliveryGroups: [DEFAULT_GROUP, "gid://shopify/CartDeliveryGroup/2"],
+    expected: out(delivery("Doprava zdarma", percent(100), [DEFAULT_GROUP, "gid://shopify/CartDeliveryGroup/2"])),
+  },
+  {
+    name: "delivery-free-shipping-below-minimum",
+    description: "Free shipping minimum 1 000 Kč not reached (pre-discount subtotal 900 Kč): no delivery discount.",
+    target: "delivery",
+    rules: [SHIP],
+    role: AUTO,
+    lines: [{ n: 1, price: "300.0", qty: 3, won: null }],
+    expected: NONE,
+  },
+  {
+    name: "delivery-free-shipping-code",
+    description: "Free-shipping code on its code node: 100 % on the delivery group.",
+    target: "delivery",
+    rules: [withCodes(["DOPRAVA"], freeShip("shipcode", { name: "Doprava zdarma s kódem" }))],
+    role: codeNode("shipcode"),
+    triggering: "DOPRAVA",
+    entered: ["DOPRAVA"],
+    lines: [{ n: 1, price: "100.0", won: null }],
+    expected: out(delivery("Doprava zdarma s kódem", percent(100))),
+  },
+  {
+    name: "delivery-no-shipping-class",
+    description: "A node without the SHIPPING class never emits a delivery candidate.",
+    target: "delivery",
+    rules: [SHIP],
+    role: AUTO,
+    classes: ["PRODUCT", "ORDER"],
+    lines: [{ n: 1, price: "2000.0", won: null }],
+    expected: NONE,
+  },
+  {
+    name: "lines-free-shipping-only",
+    description: "The lines target of a node with only a free-shipping rule emits nothing (shipping is the delivery target's job).",
+    target: "lines",
+    rules: [SHIP],
+    role: AUTO,
+    lines: [{ n: 1, price: "2000.0", won: null }],
+    expected: NONE,
+  },
+
+  // --- outlet and gift lines are excluded ------------------------------------------------
+  {
+    name: "lines-outlet-excluded",
+    description:
+      "Outlet line (product metafield outlet: true) gets no product discount and is excluded from the order subtotal.",
+    target: "lines",
+    rules: [SUMMER, ORDER5],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "100.0", won: won("summer") },
+      { n: 2, price: "100.0", won: { ruleIds: ["summer"], outlet: true } },
+      { n: 3, price: "100.0", variant: 31, won: { ruleIds: ["summer"], outlet: [variantId(31)] } },
+      { n: 4, price: "100.0", variant: 32, won: { ruleIds: ["summer"], outlet: [variantId(31)] } },
+    ],
+    expected: out(products(pc("Letní sleva", [1, 4], percent(10))), order("5 % na objednávku", [2, 3], percent(5))),
+  },
+  {
+    name: "lines-gift-excluded",
+    description: "A `_won_gift` line is outside every discount: no product discount, excluded from the order subtotal.",
+    target: "lines",
+    rules: [SUMMER, ORDER5],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "100.0", won: won("summer") },
+      { n: 2, price: "100.0", gift: "tier-1", won: won("summer") },
+    ],
+    expected: out(products(pc("Letní sleva", [1], percent(10))), order("5 % na objednávku", [2], percent(5))),
+  },
+
+  // --- currency ------------------------------------------------------------------------------
+  {
+    name: "lines-currency-missing",
+    description: "A fixed amount with no value for the cart currency (EUR only, cart in CZK) is never applied — not 0, not converted.",
+    target: "lines",
+    rules: [fixed("eur5", { EUR: 500 }, { name: "5 EUR" })],
+    role: AUTO,
+    lines: [{ n: 1, price: "100.0", won: won("eur5") }],
+    expected: NONE,
+  },
+  {
+    name: "lines-currency-eur",
+    description: "The same rule in an EUR cart: 5.00 per item.",
+    target: "lines",
+    rules: [fixed("eur5", { EUR: 500 }, { name: "5 EUR" })],
+    role: AUTO,
+    currency: "EUR",
+    country: "SK",
+    language: "SK",
+    lines: [{ n: 1, price: "12.5", qty: 2, won: won("eur5") }],
+    expected: out(products(pc("5 EUR", [1], perItem("5.00")))),
+  },
+
+  // --- schedules (shop-local day) --------------------------------------------------------------
+  {
+    name: "lines-schedule-not-started",
+    description: "A rule starting tomorrow (shop date 2026-10-01, Prague offset) is not live today.",
+    target: "lines",
+    rules: [pct("summer", 10, { name: "Letní sleva", schedule: { startsAt: "2026-10-02T00:00:00+02:00" } })],
+    role: AUTO,
+    lines: [{ n: 1, price: "100.0", won: won("summer") }],
+    expected: NONE,
+  },
+  {
+    name: "lines-schedule-last-day",
+    description: "A rule ending today at 23:59:59 is live all day (day granularity, end inclusive).",
+    target: "lines",
+    rules: [pct("summer", 10, { name: "Letní sleva", schedule: { startsAt: "2026-09-01T00:00:00+02:00", endsAt: "2026-10-01T23:59:59+02:00" } })],
+    role: AUTO,
+    lines: [{ n: 1, price: "100.0", won: won("summer") }],
+    expected: out(products(pc("Letní sleva", [1], percent(10)))),
+  },
+
+  // --- shared config missing / invalid -----------------------------------------------------
+  {
+    name: "lines-config-null",
+    description: "Shop config null (e.g. over 10 000 B, C7): no operations, no error.",
+    target: "lines",
+    rules: [SUMMER],
+    role: AUTO,
+    shopConfig: "null",
+    lines: [{ n: 1, price: "100.0", won: won("summer") }],
+    expected: NONE,
+  },
+  {
+    name: "lines-config-invalid",
+    description: "Shop config of the wrong shape (the C7 prototype value {percent: 9}): no operations.",
+    target: "lines",
+    rules: [SUMMER],
+    role: AUTO,
+    shopConfig: { percent: 9 },
+    lines: [{ n: 1, price: "100.0", won: won("summer") }],
+    expected: NONE,
+  },
+  {
+    name: "delivery-config-null",
+    description: "Shop config null on the delivery target: no operations.",
+    target: "delivery",
+    rules: [SHIP],
+    role: AUTO,
+    shopConfig: "null",
+    lines: [{ n: 1, price: "2000.0", won: null }],
+    expected: NONE,
+  },
+  {
+    name: "lines-vars-missing",
+    description:
+      "No node variables (local runner only: on the platform the run fails before the JS, C4): the role is unknown, nothing is emitted.",
+    target: "lines",
+    rules: [SUMMER],
+    role: AUTO,
+    varsPatch: () => null,
+    lines: [{ n: 1, price: "100.0", won: won("summer") }],
+    expected: NONE,
+  },
+  {
+    name: "lines-auto-role-with-trigger",
+    description: "Automatic variables on a node that has a triggering code are inconsistent: nothing is emitted (never automatic value twice).",
+    target: "lines",
+    rules: [SUMMER],
+    role: AUTO,
+    triggering: "WELCOME15",
+    entered: ["WELCOME15"],
+    lines: [{ n: 1, price: "100.0", won: won("summer") }],
+    expected: NONE,
+  },
+
+  // --- campaigns (C4/C7 versioned variables) -------------------------------------------------
+  campaign("lines-campaign-match", "Campaign live and the node's campaign id + varsVersion match the shop config: override 30 % applies.", {
+    active: true,
+    expected: out(products(pc("Letní sleva", [1], percent(30)))),
+  }),
+  campaign(
+    "lines-campaign-version-mismatch",
+    "Campaign live but the node's varsVersion is stale (mid-sync): no campaign overrides, the base 10 % applies.",
+    {
+      active: true,
+      varsPatch: (vars) => ({ ...vars, varsVersion: "vstale000" }),
+      expected: out(products(pc("Letní sleva", [1], percent(10)))),
+    },
+  ),
+  campaign("lines-campaign-inactive", "Campaign window not live (dateTimeBetween false): the base 10 % applies.", {
+    active: false,
+    expected: out(products(pc("Letní sleva", [1], percent(10)))),
+  }),
+
+  // --- instruction budget ------------------------------------------------------------------
+  budget("lines"),
+  budget("delivery"),
+  ];
+}
+
+/**
+ * @param {string} name @param {string} description
+ * @param {{ active: boolean, expected: { operations: unknown[] }, varsPatch?: Scenario["varsPatch"] }} opts
+ * @returns {Scenario}
+ */
+function campaign(name, description, opts) {
+  return {
+    name,
+    description,
+    target: "lines",
+    rules: [SUMMER],
+    configExtra: {
+      campaigns: [
+        {
+          id: "bf",
+          name: "Black Friday",
+          window: { start: "2026-09-30T00:00:00", end: "2026-10-05T23:59:59" },
+          overrides: [{ ruleId: "summer", patch: { value: { kind: "percentage", percent: 30 } } }],
+          killed: false,
+        },
+      ],
+    },
+    role: AUTO,
+    campaignActive: opts.active,
+    ...(opts.varsPatch ? { varsPatch: opts.varsPatch } : {}),
+    lines: [{ n: 1, price: "100.0", won: won("summer") }],
+    expected: opts.expected,
+  };
+}
+
+// --- The 200-line cart (instruction budget) ------------------------------------------------
+//
+// 200 lines, 37 rules (8 automatic product rules, 2 entered code rules, 20 code
+// rules with codes nobody entered, 5 disabled, an order and a shipping rule),
+// 3–6 refs per line, a Pro combinesWith pair, 4 outlet lines. The expected
+// output is computed below by a deliberately simple model of the A1 rules (best
+// single amount per line, the p7+p8 stack when both target the line) — not by
+// the engine.
+
+const BUDGET_LINES = 200;
+const P_PERCENT = [3, 5, 7, 9, 11, 13, 15, 17]; // p1..p8
+const CODE_RULES = [
+  { id: "c1", percent: 12, code: "C1CODE", every: 7 },
+  { id: "c2", percent: 25, code: "C2CODE", every: 10 },
+];
+
+function budgetRules() {
+  const rules = P_PERCENT.map((percent, i) =>
+    pct(`p${i + 1}`, percent, i === 6 ? { combinesWith: { ruleIds: ["p8"] } } : {}),
+  );
+  for (const c of CODE_RULES) rules.push(withCodes([c.code], pct(c.id, c.percent)));
+  for (let k = 1; k <= 20; k += 1) {
+    rules.push(withCodes([`F${k}A`, `F${k}B`, `F${k}C`], pct(`f${k}`, 30)));
+  }
+  for (let k = 1; k <= 5; k += 1) rules.push(pct(`d${k}`, 40, { enabled: false }));
+  rules.push(orderPct("o1", 5, { minimum: { subtotal: { CZK: 100000 } } }));
+  rules.push(freeShip("s1"));
+  return rules;
+}
+
+/** @param {number} i */
+function budgetRefs(i) {
+  const refs = new Set([`p${(i % 8) + 1}`, `p${((i * 3) % 8) + 1}`, `p${((i * 5 + 2) % 8) + 1}`]);
+  for (const c of CODE_RULES) if (i % c.every === 0) refs.add(c.id);
+  refs.add(`f${(i % 20) + 1}`);
+  if (i % 9 === 0) refs.add(`d${(i % 5) + 1}`);
+  return [...refs];
+}
+
+const budgetPrice = (/** @type {number} */ i) => 100 + (i % 37) * 10; // Kč
+const budgetQty = (/** @type {number} */ i) => 1 + (i % 3);
+const budgetOutlet = (/** @type {number} */ i) => i % 50 === 0;
+
+/** Minor units → "123.45" (CZK). */
+const kc = (/** @type {number} */ minor) => `${Math.floor(minor / 100)}.${String(minor % 100).padStart(2, "0")}`;
+
+/** The automatic node's product candidates for the budget cart, by the simple model. */
+function budgetExpectedProducts() {
+  /** @type {Map<string, { message: string, targets: { cartLine: { id: string } }[], value: unknown }>} */
+  const groups = new Map();
+  /** @type {{ message: string, targets: { cartLine: { id: string } }[], value: unknown }[]} */
+  const candidates = [];
+  for (let i = 1; i <= BUDGET_LINES; i += 1) {
+    if (budgetOutlet(i)) continue;
+    const refs = new Set(budgetRefs(i));
+    const subtotal = budgetPrice(i) * 100 * budgetQty(i);
+    const amount = (/** @type {number} */ p) => Math.round((subtotal * p) / 100);
+    /** @type {{ id: string, percent: number, amount: number, code: boolean }[]} */
+    const singles = [];
+    P_PERCENT.forEach((p, k) => {
+      if (refs.has(`p${k + 1}`)) singles.push({ id: `p${k + 1}`, percent: p, amount: amount(p), code: false });
+    });
+    for (const c of CODE_RULES) if (refs.has(c.id)) singles.push({ id: c.id, percent: c.percent, amount: amount(c.percent), code: true });
+    singles.sort((a, b) => b.amount - a.amount || (a.id < b.id ? -1 : 1));
+    const best = singles[0];
+    const target = { cartLine: { id: lineId(i) } };
+    if (refs.has("p7") && refs.has("p8") && amount(15) + amount(17) > best.amount) {
+      candidates.push({ message: "Sleva p8 + Sleva p7", targets: [target], value: lineTotal(kc(amount(15) + amount(17))) });
+      continue;
+    }
+    if (best.code) continue; // a code wins this line: its own node emits it
+    const key = best.id;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.targets.push(target);
+      continue;
+    }
+    const candidate = { message: `Sleva ${best.id}`, targets: [target], value: percent(best.percent) };
+    groups.set(key, candidate);
+    candidates.push(candidate);
+  }
+  return candidates;
+}
+
+/**
+ * @param {"lines" | "delivery"} target
+ * @returns {Scenario}
+ */
+function budget(target) {
+  const lines = [];
+  for (let i = 1; i <= BUDGET_LINES; i += 1) {
+    lines.push({
+      n: i,
+      price: `${budgetPrice(i)}.0`,
+      qty: budgetQty(i),
+      won: budgetOutlet(i) ? { ruleIds: budgetRefs(i), outlet: true } : { ruleIds: budgetRefs(i) },
+    });
+  }
+  const outlet = [];
+  for (let i = 1; i <= BUDGET_LINES; i += 1) if (budgetOutlet(i)) outlet.push(i);
+  return {
+    name: `${target}-200-lines-budget`,
+    description:
+      "Instruction budget: 200 lines × 3–6 refs, 37 rules, entered codes, a Pro stack, outlet lines — the automatic node must stay under the Shopify instruction limit with ≥ 30 % headroom.",
+    target,
+    rules: budgetRules(),
+    role: AUTO,
+    entered: CODE_RULES.map((c) => c.code),
+    lines,
+    expected:
+      target === "lines"
+        ? out(products(...budgetExpectedProducts()), order("Sleva o1", outlet, percent(5)))
+        : out(delivery("Doprava s1", percent(100))),
+  };
+}
+
+export default allScenarios();

@@ -1,3 +1,4 @@
+// HISTORICAL (MVP 1 T2): these prototypes target the MVP 0 function version (commits 29f3a47 / 37769e0, prototype modes); the engine replaced those modes, so a --live run needs that version checked out.
 // Shared plumbing for the MVP 0 platform-risk prototypes (C1–C4) and the
 // MVP 1 transport prototype C7 (app-owned shop metafield).
 //

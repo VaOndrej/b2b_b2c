@@ -1,39 +1,45 @@
-# Input query variables come from the discount's `$app:won_discounts` /
-# `function_config` metafield: its top-level keys map to variable names.
+# MVP 1 engine input (spec §3 "Emise per uzel", "Transport configu"). Every Won
+# node reads the SAME cart and shared config, plans the whole cart and emits
+# only its own part (src/adapt.js).
 #
-# CONTRACT: every `function_config` MUST contain top-level `campaignStart` and
-# `campaignEnd` (DateTimeWithoutTimezone in shop-local time, e.g.
-# "2026-09-28T14:00:00"; use "1970-01-01T00:00:00" for both when there is no
-# campaign). Settled on the platform by C4
-# (docs/won-discounts/evidence/mvp0/c4-campaign-window.json): a key missing
-# from the metafield, or a missing metafield, fails the run with
-# InvalidVariableValueError before any JS runs, in every mode: the node gives
-# no discount at all (checkout is not blocked). The `= "1970-..."` defaults
-# below are NOT applied by the platform; never rely on them. The local runner
-# (`shopify app function run`) binds no variables and cannot reproduce this.
-# @won/core/discounts/function-config encodeFunctionConfig always writes both
-# keys. `campaignStarted` separates "window not started" from "variables not
-# bound" (the 1970 value is always started).
+#   discount.vars   the node's own `$app:won_discounts`/`function_vars`: role,
+#                   ruleId, campaignId, varsVersion (@won/core buildNodeVars)
+#   shop.config     the app-owned SHOP metafield `$app:won_discounts`/
+#                   `function_config`, shared by every node (C7); over 10 000 B
+#                   it arrives as null → no discount, no error
+#   wonProduct      per product `{ruleIds, variantRuleIds?, outlet?}` (precomputed
+#                   targeting)
+#   country         Pro market targeting (market → countries map in the shared
+#                   config; the deprecated `localization.market` is not used)
+#
+# CONTRACT: the node's `function_vars` MUST contain top-level `campaignStart` and
+# `campaignEnd` (DateTimeWithoutTimezone in shop-local time; "1970-01-01T00:00:00"
+# for both when there is no campaign). Shopify binds input-query variables only
+# from the metafield named in [extensions.input.variables] (C4:
+# docs/won-discounts/evidence/mvp0/c4-campaign-window.json): a missing key or a
+# missing metafield fails the run with InvalidVariableValueError before any JS
+# runs, so the node gives no discount (checkout is not blocked). There are no
+# query defaults on purpose: the platform does not apply them. The local runner
+# (`shopify app function run`) binds no variables; fixtures carry the resolved
+# `campaignActive` leaf. @won/core buildNodeVars always writes both keys.
+#
+# Cost (shopify.dev input query cost table): 22 of 30.
 query CartInput(
-  $campaignStart: DateTimeWithoutTimezone! = "1970-01-01T00:00:00"
-  $campaignEnd: DateTimeWithoutTimezone! = "1970-01-01T00:00:00"
+  $campaignStart: DateTimeWithoutTimezone!
+  $campaignEnd: DateTimeWithoutTimezone!
 ) {
   triggeringDiscountCode
   enteredDiscountCodes {
     code
-    rejectable
   }
   discount {
     discountClasses
-    metafield(namespace: "$app:won_discounts", key: "function_config") {
+    vars: metafield(namespace: "$app:won_discounts", key: "function_vars") {
       jsonValue
     }
   }
   shop {
-    # MVP 1 prototype C7: app-owned SHOP metafield (same namespace/key, owner =
-    # shop) shared by every node. Only the `shop_config` prototype mode reads it;
-    # the node's own function_config still carries the query variables.
-    metafield(namespace: "$app:won_discounts", key: "function_config") {
+    config: metafield(namespace: "$app:won_discounts", key: "function_config") {
       jsonValue
     }
     localTime {
@@ -42,13 +48,19 @@ query CartInput(
         startDateTime: $campaignStart
         endDateTime: $campaignEnd
       )
-      campaignStarted: dateTimeAfter(dateTime: $campaignStart)
+    }
+  }
+  localization {
+    country {
+      isoCode
+    }
+    language {
+      isoCode
     }
   }
   cart {
     cost {
       subtotalAmount {
-        amount
         currencyCode
       }
     }
@@ -57,10 +69,6 @@ query CartInput(
       quantity
       cost {
         amountPerQuantity {
-          amount
-          currencyCode
-        }
-        compareAtAmountPerQuantity {
           amount
         }
       }
@@ -72,18 +80,12 @@ query CartInput(
         ... on ProductVariant {
           id
           product {
-            id
             wonProduct: metafield(namespace: "$app:won_discounts", key: "product") {
               jsonValue
             }
           }
         }
       }
-    }
-  }
-  localization {
-    country {
-      isoCode
     }
   }
 }

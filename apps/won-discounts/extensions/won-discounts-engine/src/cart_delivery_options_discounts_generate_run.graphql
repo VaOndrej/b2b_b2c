@@ -1,6 +1,75 @@
-# MVP 0: the delivery target is registered but emits no operations yet.
-query DeliveryInput {
+# MVP 1 engine input for the delivery target: the same plan as the lines target
+# (the shipping winner depends on the lines: minimums, product/order switches),
+# emitted on every delivery group. Same sources and the same variables CONTRACT
+# as src/cart_lines_discounts_generate_run.graphql (campaignStart/campaignEnd
+# MUST be top-level keys of the node's `function_vars`, C4).
+#
+# Cost (shopify.dev input query cost table): 23 of 30.
+query DeliveryInput(
+  $campaignStart: DateTimeWithoutTimezone!
+  $campaignEnd: DateTimeWithoutTimezone!
+) {
+  triggeringDiscountCode
+  enteredDiscountCodes {
+    code
+  }
   discount {
     discountClasses
+    vars: metafield(namespace: "$app:won_discounts", key: "function_vars") {
+      jsonValue
+    }
+  }
+  shop {
+    config: metafield(namespace: "$app:won_discounts", key: "function_config") {
+      jsonValue
+    }
+    localTime {
+      date
+      campaignActive: dateTimeBetween(
+        startDateTime: $campaignStart
+        endDateTime: $campaignEnd
+      )
+    }
+  }
+  localization {
+    country {
+      isoCode
+    }
+    language {
+      isoCode
+    }
+  }
+  cart {
+    cost {
+      subtotalAmount {
+        currencyCode
+      }
+    }
+    deliveryGroups {
+      id
+    }
+    lines {
+      id
+      quantity
+      cost {
+        amountPerQuantity {
+          amount
+        }
+      }
+      gift: attribute(key: "_won_gift") {
+        value
+      }
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          id
+          product {
+            wonProduct: metafield(namespace: "$app:won_discounts", key: "product") {
+              jsonValue
+            }
+          }
+        }
+      }
+    }
   }
 }

@@ -17,13 +17,15 @@ description = "t:description"
   input_query = "src/cart_delivery_options_discounts_generate_run.graphql"
   export = "cart-delivery-options-discounts-generate-run"
 
-  # Input query variables are read from this metafield on the function owner
-  # (the discount node). Top-level JSON keys map to query variable names
-  # ($campaignStart, $campaignEnd); other keys (e.g. "prototype") are the
-  # function config read via discount.metafield in the input query.
+  # Input query variables are read ONLY from this metafield on the function
+  # owner (the discount node): the node's small `function_vars` (@won/core
+  # buildNodeVars). Its top-level keys campaignStart/campaignEnd map to the
+  # query variables (missing → InvalidVariableValueError, C4); role, ruleId,
+  # campaignId and varsVersion are read via `discount.vars` in the input
+  # queries. The shared config is the SHOP metafield `function_config` (C7).
   [extensions.input.variables]
   namespace = "$app:won_discounts"
-  key = "function_config"
+  key = "function_vars"
 
   [extensions.build]
   command = ""
