@@ -15,6 +15,8 @@ pub enum NodeRole {
 /// Candidates borrow from the plan (and through it from the function input).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProductCandidate<'p> {
+    /// Index of the candidate's line in `CartPlan::lines`.
+    pub line: usize,
     pub line_id: &'p str,
     pub rule_id: &'p str,
     pub message: &'p str,
@@ -69,9 +71,10 @@ pub fn emit_for_node<'p>(plan: &'p CartPlan<'_>, role: &NodeRole, triggering_cod
         Some(i) => owner == i,
     };
 
-    for line in &plan.lines {
+    for (index, line) in plan.lines.iter().enumerate() {
         let Some(stack) = line.product.as_ref().filter(|s| owns(s.owner)) else { continue };
         out.product.push(ProductCandidate {
+            line: index,
             line_id: line.line_id,
             rule_id: rules[stack.owner].id,
             message: &stack.message,

@@ -11,8 +11,9 @@ The Won Discounts discount function (Discount Function API 2026-04), targets
   except the short text of an unnamed rule, which is the checkout message.
 - **TS engine (`packages/core/src/discounts`): the reference.** The admin
   ("Vyzkoušet košík") and the storefront use it, and it defines what is correct.
-  `tests/reference-adapter.js` is the TS adapter the JS function used. With the
-  TS engine it computes the reference output for any function input.
+  `tests/reference-adapter.js` holds the reference adapter and the output
+  mapping. With the TS engine it computes the reference output for any
+  function input.
 
 Why Rust: the JS function (Javy) cost ~96 M instructions on a 200-line cart,
 against Shopify's limit of 11 M. Reading the input alone cost 12.3 M. Over the
@@ -24,18 +25,27 @@ limit, Shopify drops every Won discount without an error. See
 
 The fixtures are the parity oracle. `tests/fixtures/*.json` are generated from
 `tests/scenarios.js` through the public `@won/core` builders
-(`npm run fixtures -w won-discounts-engine`). Their expected outputs were
-written by hand, and the TS engine reproduces all of them. When the TS engine
-changes behaviour, the port must follow. These checks catch a gap:
+(`npm run fixtures -w won-discounts-engine`). Their expected outputs are written
+by hand, and the TS reference reproduces all of them.
 
 | Check | Where |
 |---|---|
 | Every fixture, TS reference = fixture output | `tests/parity.test.js` |
-| Every fixture, Wasm = fixture output | `tests/default.test.js` |
-| Every fixture, native Rust = fixture output (character for character) | `cargo test` (`src/fixture_tests.rs`) |
-| Seeded random carts and configs, junk included: Wasm = TS reference | `tests/parity.test.js`; `PARITY_CASES=5000 PARITY_SEED=7` for a longer run |
-| Every fixture through `shopify app function run`: output = fixture = TS engine, plus the instruction budget | `apps/won-discounts/tests/contracts/function.contract.test.ts` |
-| The A1 rules one by one | `cargo test` (`src/engine/tests.rs`) |
+| Every fixture, Wasm = fixture output (parsed) | `tests/default.test.js`, `function.contract.test.ts` |
+| Every fixture, Wasm output text = expected text | `tests/parity.test.js` |
+| Every fixture, native Rust output text = JSON.stringify of the expected output | `cargo test` (`src/fixture_tests.rs`) |
+| Seeded random carts and configs vs the TS reference | `tests/parity.test.js` |
+| Every Rust unit test has a TS twin | `tests/engine-unit.twins.test.js` |
+
+Details:
+- **Wasm output text.** The output text function-runner prints (sorted keys, and numbers in the form the Wasm wrote them, e.g. `10` not `10.0`) must equal the expected output rendered the same way.
+- **Native Rust output text.** Compared character for character. The same run checks that the output-size arithmetic equals the written JSON.
+- **Random carts.**
+  - Seeds `20260928,1,2,3,5,8` × 400 cases, up to 50 lines, junk data included.
+  - Rule ids include non-ASCII, astral and 64-character text, plus a UTF-16 tie mode, so the tie order is compared too.
+  - Every engine branch must be hit ≥ 20 times, or the test fails.
+  - Env overrides: `PARITY_SEEDS=…`, `PARITY_CASES=…`.
+- **Unit-test twins.** Each twin runs the Rust test's scenario through the TS engine and asserts the same values. The test names are paired automatically.
 
 Rules for a change:
 
@@ -44,6 +54,32 @@ Rules for a change:
   above is green.
 - Never edit a fixture's expected output to match the Rust function.
 
+## Output size
+
+Shopify refuses a function output over **20 kB** (1 kB = 1000 B) for carts up to
+200 lines; the limit scales with the line count above that
+(shopify.dev/docs/api/functions/2026-04, "Resource limits"). Over it, the node
+gives no discount at all. The output mapping (the same in
+`tests/reference-adapter.js` and `src/output.rs`) therefore works in three steps:
+
+1. **Every value is exact and as groupable as possible.** Candidates with the same message and value share one candidate with several targets.
+   - A fixed amount per item that equals the unit price → 100 %.
+   - A Pro stack of fixed total T on a line of subtotal S:
+     - T = S → 100 %;
+     - whole-percent stack ΣP with `Math.round(S × ΣP / 100)` = T → ΣP %;
+     - T divisible by the quantity q → T / q per item;
+     - otherwise T once, on that line only. A shared `appliesToEachItem: false` amount would be applied once across all its targets, so it is never grouped.
+2. **Over the budget, stacks drop to their top rule.** The budget is 19 000 B, scaled like Shopify's limit. Every Pro stack is emitted as its top rule's own value, which groups; the customer keeps the larger part of the stack. The function logs it.
+3. **Last resort, drop the smallest.** The product candidates that save the least are dropped until the output fits.
+
+Worst-case fixtures:
+
+| Fixture | Exact output | Emitted output |
+|---|---|---|
+| `lines-pro-stack-output-percent` | 32.7 kB before the change | 14.9 kB |
+| `lines-pro-stack-output-degraded` | 35.0 kB | 10.0 kB |
+| `lines-output-truncated` | 47.5 kB | 18.2 kB |
+
 ## Layout
 
 | Path | What |
@@ -51,29 +87,54 @@ Rules for a change:
 | `src/main.rs` | `#[typegen]` + `#[query]` modules, the two Wasm exports (dash-named, as in the JS version) |
 | `src/cart_lines_discounts_generate_run.rs`, `src/cart_delivery_options_discounts_generate_run.rs` | the two targets |
 | `src/input.rs` | function input → engine cart, config and node role (the reference adapter's `adaptInput`) |
-| `src/json.rs` | tolerant readers for the `jsonValue` metafields and the line price (`custom_scalar_overrides`) |
-| `src/output.rs` | emission → function output, written through the Wasm API (numbers as numbers, like the reference) |
-| `src/engine/` | `config.rs` (shared config), `cart.rs` (normalizeCart), `plan.rs` (planCart), `emit.rs` (emitForNode), `hash.rs` (code hash), `money.rs`, `describe.rs`, `js.rs` (the JS semantics the engine relies on: Math.round, trim, string order) |
+| `src/json.rs` | tolerant readers for the `jsonValue` metafields and the line price (`custom_scalar_overrides`), the per-run outlet-list cache |
+| `src/output.rs` | emission → function output: exact values, grouping, the output budget; written through the Wasm API |
+| `src/engine/` | `config.rs` (shared config), `cart.rs` (normalizeCart), `plan.rs` (planCart), `emit.rs` (emitForNode), `hash.rs` (code hash), `money.rs`, `describe.rs`, `fnv.rs`, `js.rs` (the JS semantics the engine relies on: Math.round, trim, string order) |
 
 Invariants:
 
-- Money is in integer minor units (i64). Percentages use the TS float
-  expression and `Math.round` semantics.
-- Ties go to amount desc, then priority desc, then id asc.
-- Parsing never fails. Junk in a metafield reads as "nothing". A missing or
-  invalid shared config emits no operations.
+- Money is in integer minor units (i64). Sums saturate.
+- Percentages use the TS float expression and `Math.round` semantics.
+- Ties go to amount desc, then priority desc, then id asc (JS string order, by UTF-16 unit).
+- Parsing never fails. Junk in a metafield reads as "nothing". A missing or invalid shared config emits no operations.
 
-## Build and test
+## Accepted edge differences (junk data only)
+
+These differ from the TS reference only for values that the admin's
+`sanitizeConfig`, the sync or the platform never produce. They are accepted and
+not covered by the random parity test.
+
+- **Priority.** A priority beyond ±9.2·10¹⁸ saturates in `i64`, while TS still orders such priorities. The sanitizer clamps priority to 0–1000 (`CONFIG_LIMITS.rulePriority`).
+- **Huge money.** Amounts at or beyond 2⁶³ minor units saturate. TS loses precision already beyond 2⁵³ (~90 trillion CZK).
+- **Number text.** Rust prints plain decimals where JS switches to exponent notation (≥ 10²¹ or < 10⁻⁶).
+  - For a line price given as a JSON number, both read the same value: Shopify sends prices as strings, and such numbers end as "no price" or 0 on both sides.
+  - Percentages are clamped to 0–100 and messages round them to 2 decimals. A percent below 10⁻⁶ would print differently but parse to the same number.
+- **Unicode case mapping.** Discount codes are upper-cased with Rust's Unicode tables, while the admin hashes them with Node's ICU tables. A code containing a character whose upper-case form differs between those Unicode versions (only recently added characters) hashes differently. It then never matches, which fails closed: that code's rule does not apply.
+- **Outlet lists.** Lines are taken to share one outlet list when the list's length and first element agree. That is always true for what the sync writes, because a product lists its own variant GIDs and a variant belongs to one product. A hand-made metafield where two products list the same first GID but differ further on would be read as one list.
+- **Duplicate JSON keys.** Metafield JSON is stored parsed, so duplicate keys cannot reach the function.
+- **Schema-invalid input.** Input such as a missing `quantity` or no `__typename` makes a generated accessor abort the run: no discount, checkout not blocked. Shopify builds the input from the query, so it cannot happen.
+
+## Build, dev and test
 
 Rust is installed user-level (rustup) and is **not on the default PATH**. The
-npm scripts add it:
+npm scripts add it themselves:
 
 ```sh
-npm test -w won-discounts-engine          # cargo test, then vitest (fixtures, drift, parity, query cost)
-npm run build:functions -w won-discounts  # shopify app function build (cargo + trampoline)
+npm test -w won-discounts-engine             # cargo test, then vitest (fixtures, drift, parity, twins, query cost)
+npm run build:functions -w won-discounts     # this function only (cargo + trampoline)
+npm run build:all -w won-discounts           # the function, then the app
+npm run dev -w won-discounts                 # shopify app dev, with cargo on PATH (hot reload)
 ```
 
-In a shell of your own, run `export PATH="$HOME/.cargo/bin:$PATH"` before `cargo` or
-`shopify app dev`. The `wasm32-unknown-unknown` target is required, because
-`shopify_function` 2.x refuses `wasm32-wasip1`. `rust-toolchain.toml` lists
-it, so rustup installs it when it is missing.
+`npm run build -w won-discounts` builds the app only, so CI's `build:apps`
+needs no Rust toolchain; CI does not run this function's tests. In a shell of
+your own, run `export PATH="$HOME/.cargo/bin:$PATH"` before `cargo` or
+`shopify app dev`.
+
+The target `wasm32-unknown-unknown` is required, because `shopify_function` 2.x
+refuses `wasm32-wasip1`. `rust-toolchain.toml` lists it, so rustup installs it
+when it is missing.
+
+A function build briefly re-exposes cargo's raw Wasm before the CLI re-applies
+its trampoline. Don't run the function tests while another build of it runs,
+such as a `shopify app dev` hot reload; if that happens, re-run them.

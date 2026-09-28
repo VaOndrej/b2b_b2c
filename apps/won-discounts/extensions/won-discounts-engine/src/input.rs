@@ -63,7 +63,9 @@ macro_rules! adapt_input {
             (Some(role), Some(config)) => {
                 let cart = input.cart();
                 let currency = $crate::engine::js::upper(cart.cost().subtotal_amount().currency_code());
+                let exponent = $crate::engine::money::currency_exponent(&currency);
                 let mut lines = Vec::with_capacity(cart.lines().len());
+                let mut outlet_lists = $crate::json::OutletLists::default();
                 for line in cart.lines() {
                     let id = line.id().as_str();
                     if id.is_empty() {
@@ -78,7 +80,7 @@ macro_rules! adapt_input {
                             // The variant id is read only when the metafield needs it.
                             let variant_id = if won.needs_variant_id() { variant.id().as_str() } else { "" };
                             variant_rule_ids = won.variant_refs(variant_id);
-                            outlet = won.is_outlet(variant_id);
+                            outlet = won.is_outlet(variant_id, &mut outlet_lists);
                         }
                     }
                     lines.push($crate::engine::cart::LineInput {
@@ -89,7 +91,7 @@ macro_rules! adapt_input {
                             .amount_per_quantity()
                             .amount()
                             .text()
-                            .and_then(|text| $crate::engine::money::to_minor_units(text, &currency))
+                            .and_then(|text| $crate::engine::money::to_minor_units_with(text, exponent))
                             .unwrap_or(0),
                         outlet,
                         gift: line.gift().and_then(|g| g.value()).is_some_and(|v| !v.is_empty()),

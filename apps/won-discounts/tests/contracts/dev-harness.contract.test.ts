@@ -157,9 +157,9 @@ test("build-time guard: the route manifest includes the harness only for NODE_EN
 });
 
 test("production build excludes the dev harness route from build/server (build-time guard)", { timeout: 20 * 60_000 }, async () => {
-  // `npm run build` also rebuilds extensions/…/dist/function.wasm, which
-  // function.contract runs its fixtures against: build under the shared lock
-  // (audit P3-6).
+  // `npm run build` is the app build only (the function builds with
+  // `build:functions` / `build:all`, which need cargo); it still takes the
+  // shared build lock with function.contract (audit P3-6).
   await withBuildLock(() =>
     execFileSync("npm", ["run", "build"], {
       cwd: APP_ROOT,

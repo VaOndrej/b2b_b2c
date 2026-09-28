@@ -13,12 +13,11 @@
 // string order), never config order.
 
 use std::borrow::Cow;
-use std::collections::HashMap;
-use std::hash::{BuildHasherDefault, Hasher};
 
 use super::cart::{normalize_cart, CartInput, NormalizedCart, NormalizedLine};
 use super::config::{Config, EngineFlags, FieldsRef, RawCampaign, RawRule, TargetKind, ValueSpec};
 use super::describe::{describe_short, DescribedValue};
+use super::fnv::FnvMap;
 use super::hash::code_hash;
 use super::js;
 
@@ -131,6 +130,8 @@ pub struct PlanStack<'a> {
 pub struct PlanLine<'a> {
     pub line_id: &'a str,
     pub excluded: Option<Excluded>,
+    pub quantity: i64,
+    pub unit_price: i64,
     pub subtotal: i64,
     pub product: Option<PlanStack<'a>>,
 }
@@ -172,26 +173,7 @@ impl CartPlan<'_> {
     }
 }
 
-// --- Rule ids: a tiny FNV map (std's SipHash is needlessly slow for 200 lines) -------------------
-
-#[derive(Default)]
-struct Fnv(u64);
-
-impl Hasher for Fnv {
-    fn finish(&self) -> u64 {
-        self.0
-    }
-    fn write(&mut self, bytes: &[u8]) {
-        let mut h = if self.0 == 0 { 0xcbf2_9ce4_8422_2325 } else { self.0 };
-        for b in bytes {
-            h ^= u64::from(*b);
-            h = h.wrapping_mul(0x0100_0000_01b3);
-        }
-        self.0 = h;
-    }
-}
-
-type IdMap<'a> = HashMap<&'a str, usize, BuildHasherDefault<Fnv>>;
+type IdMap<'a> = FnvMap<&'a str, usize>;
 
 // --- Stage: rules as they are right now ------------------------------------------------------
 
@@ -297,7 +279,7 @@ fn match_codes(rules: &[Rule], cart: &NormalizedCart) -> Vec<Vec<String>> {
     if cart.entered_codes.is_empty() {
         return entered_by_rule;
     }
-    let mut owner_by_hash: HashMap<&str, usize, BuildHasherDefault<Fnv>> = HashMap::default();
+    let mut owner_by_hash: FnvMap<&str, usize> = FnvMap::default();
     for (i, rule) in rules.iter().enumerate() {
         if !rule.method_code {
             continue;
@@ -492,36 +474,34 @@ fn pick(rules: &[Rule], positive: &mut [Component], cap: i64, partners: &[Vec<us
         return Picked { components, total: amount.max(0) };
     }
     let mut chosen: Vec<Component> = vec![positive[0]];
-    if any_partners && positive.len() > 1 {
-        let mut best_total = cap.min(positive[0].amount);
-        let mut covered = vec![false; positive.len()];
-        for (si, seed) in positive.iter().enumerate() {
-            let mine = &partners[seed.rule];
-            if mine.is_empty() || covered[si] {
+    let mut best_total = cap.min(positive[0].amount);
+    let mut covered = vec![false; positive.len()];
+    for (si, seed) in positive.iter().enumerate() {
+        let mine = &partners[seed.rule];
+        if mine.is_empty() || covered[si] {
+            continue;
+        }
+        // Indices into `positive`, which is in rank order: ascending index = rank order.
+        let mut set = vec![si];
+        for (ci, c) in positive.iter().enumerate() {
+            if ci == si || !mine.contains(&c.rule) {
                 continue;
             }
-            // Indices into `positive`, which is in rank order: ascending index = rank order.
-            let mut set = vec![si];
-            for (ci, c) in positive.iter().enumerate() {
-                if ci == si || !mine.contains(&c.rule) {
-                    continue;
-                }
-                if set.iter().all(|&s| s == si || partners[positive[s].rule].contains(&c.rule)) {
-                    set.push(ci);
-                }
+            if set.iter().all(|&s| s == si || partners[positive[s].rule].contains(&c.rule)) {
+                set.push(ci);
             }
-            if set.len() == 1 {
-                continue;
-            }
-            for &c in &set {
-                covered[c] = true;
-            }
-            set.sort_unstable();
-            let total = cap.min(set.iter().map(|&i| positive[i].amount).fold(0i64, i64::saturating_add));
-            if total > best_total {
-                best_total = total;
-                chosen = set.iter().map(|&i| positive[i]).collect();
-            }
+        }
+        if set.len() == 1 {
+            continue;
+        }
+        for &c in &set {
+            covered[c] = true;
+        }
+        set.sort_unstable();
+        let total = cap.min(set.iter().map(|&i| positive[i].amount).fold(0i64, i64::saturating_add));
+        if total > best_total {
+            best_total = total;
+            chosen = set.iter().map(|&i| positive[i]).collect();
         }
     }
     let mut components = Vec::with_capacity(chosen.len());
@@ -652,9 +632,9 @@ fn plan_order_stage<'a>(work: &mut [WorkLine<'a>], engine: &EngineFlags, ctx: &S
         )?;
         Some(PlanOrder { stack, base, excluded_line_ids: excluded_line_ids.clone() })
     };
-    let product_total: i64 = work.iter().map(|w| w.product.as_ref().map_or(0, |p| p.amount)).sum();
-    let discountable_subtotal: i64 =
-        work.iter().zip(&ctx.cart.lines).filter(|(w, _)| w.excluded.is_none()).map(|(_, l)| l.subtotal).sum();
+    let product_total = work.iter().map(|w| w.product.as_ref().map_or(0, |p| p.amount)).fold(0i64, i64::saturating_add);
+    let discountable_subtotal =
+        work.iter().zip(&ctx.cart.lines).filter(|(w, _)| w.excluded.is_none()).map(|(_, l)| l.subtotal).fold(0i64, i64::saturating_add);
     // [spec] The order discount is taken from the subtotal AFTER product discounts.
     if engine.product_with_order {
         return plan_at(discountable_subtotal - product_total);
@@ -748,6 +728,8 @@ fn failed_plan<'a>(cart: &NormalizedCart<'a>, reason: PlanFailure) -> CartPlan<'
                 } else {
                     None
                 },
+                quantity: l.quantity,
+                unit_price: l.unit_price,
                 subtotal: l.subtotal,
                 product: None,
             })
@@ -802,7 +784,14 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
     let lines = work
         .into_iter()
         .zip(&cart.lines)
-        .map(|(w, line)| PlanLine { line_id: line.id, excluded: w.excluded, subtotal: line.subtotal, product: w.product })
+        .map(|(w, line)| PlanLine {
+            line_id: line.id,
+            excluded: w.excluded,
+            quantity: line.quantity,
+            unit_price: line.unit_price,
+            subtotal: line.subtotal,
+            product: w.product,
+        })
         .collect();
     CartPlan { currency: cart.currency.clone(), reason: None, rules, entered_by_rule, campaign_id, lines, order, shipping }
 }

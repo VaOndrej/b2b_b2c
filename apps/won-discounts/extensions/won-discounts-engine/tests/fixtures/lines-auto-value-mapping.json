@@ -1,5 +1,5 @@
 {
-  "scenario": "Automatic node: lines with the same rule share one candidate; a fixed amount per item is capped at the unit price (50 Kč on a 30 Kč item → 30.00 each).",
+  "scenario": "Automatic node: lines with the same rule share one candidate; a fixed amount per item is capped at the unit price, and a capped one (50 Kč on a 30 Kč item: the item is free) is emitted as 100 % — the same discount, and it groups across prices.",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -238,9 +238,8 @@
                   }
                 ],
                 "value": {
-                  "fixedAmount": {
-                    "amount": "30.00",
-                    "appliesToEachItem": true
+                  "percentage": {
+                    "value": 100
                   }
                 }
               },

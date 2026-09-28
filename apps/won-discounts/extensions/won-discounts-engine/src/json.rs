@@ -9,6 +9,7 @@
 use shopify_function::wasm_api::{read::Error, Deserialize, Value};
 
 use crate::engine::config::Config;
+use crate::engine::fnv::FnvMap;
 use crate::engine::js;
 
 // --- Low-level reads (JS `typeof` checks) ------------------------------------------------
@@ -226,20 +227,59 @@ impl WonProduct {
     }
 
     /// `outlet === true || (Array.isArray(outlet) && variantId !== "" && outlet.includes(variantId))`.
-    pub fn is_outlet(&self, variant_id: &str) -> bool {
+    ///
+    /// A variant outlet list is read in full at most once per run: every line of
+    /// one product carries the same list (the product metafield). The first line
+    /// of a product scans it (stopping at a match), the second parses and sorts
+    /// it into `lists`, and later lines only read its first element to find it.
+    /// Two lists are taken to be the same list when their length and first
+    /// element agree — always true for what the sync writes (a product's own
+    /// variant GIDs; a variant belongs to one product); README "Accepted edge
+    /// differences" for hand-made metafields.
+    pub fn is_outlet(&self, variant_id: &str, lists: &mut OutletLists) -> bool {
         match self.outlet {
             Outlet::None => false,
             Outlet::All => true,
             Outlet::Variants(list) => {
-                if variant_id.is_empty() {
+                let len = list.array_len().unwrap_or(0);
+                if variant_id.is_empty() || len == 0 {
                     return false;
                 }
-                let len = list.array_len().unwrap_or(0);
-                (0..len).any(|i| list.get_at_index(i).as_string().as_deref() == Some(variant_id))
+                let Some(first) = list.get_at_index(0).as_string() else {
+                    // Not a list of GIDs: read it as it is, once for this line.
+                    return (1..len).any(|i| list.get_at_index(i).as_string().as_deref() == Some(variant_id));
+                };
+                let key = (len, first);
+                match lists.0.get_mut(&key) {
+                    // Third and later lines of this product: a lookup.
+                    Some(Some(sorted)) => sorted.binary_search_by(|v| v.as_str().cmp(variant_id)).is_ok(),
+                    // Second line of this product: read the whole list once, keep it sorted.
+                    Some(slot @ None) => {
+                        let mut sorted: Vec<String> = Vec::with_capacity(len);
+                        sorted.push(key.1.clone());
+                        sorted.extend((1..len).filter_map(|i| list.get_at_index(i).as_string()));
+                        sorted.sort_unstable();
+                        let hit = sorted.binary_search_by(|v| v.as_str().cmp(variant_id)).is_ok();
+                        *slot = Some(sorted);
+                        hit
+                    }
+                    // First line of this product: scan, stopping at a match.
+                    None => {
+                        let hit =
+                            key.1 == variant_id || (1..len).any(|i| list.get_at_index(i).as_string().as_deref() == Some(variant_id));
+                        lists.0.insert(key, None);
+                        hit
+                    }
+                }
             }
         }
     }
 }
+
+/// The variant outlet lists seen so far in this run, by (length, first element):
+/// none after the first line of a product, the sorted list from its second line on.
+#[derive(Default)]
+pub struct OutletLists(FnvMap<(usize, String), Option<Vec<String>>>);
 
 /// A value read by key is "own" when it is not undefined: for a record the
 /// provider returns null for a missing key and an error for a non-record, so
@@ -297,7 +337,7 @@ mod tests {
                 let variant = if w.needs_variant_id() { V } else { "" };
                 let mut refs = w.rule_ids().to_vec();
                 refs.extend(w.variant_refs(variant));
-                Ok((refs, w.is_outlet(variant)))
+                Ok((refs, w.is_outlet(variant, &mut OutletLists::default())))
             },
             won,
         )
@@ -326,6 +366,27 @@ mod tests {
         assert_eq!(line_refs(r#"[["a"]]"#), (vec![], false));
         assert_eq!(line_refs(r#"{"ruleIds": ["a", 1, null, "b"]}"#), (refs(&["a", "b"]), false));
         assert_eq!(line_refs("null"), (vec![], false));
+    }
+
+    #[test]
+    fn outlet_lists_are_read_once_per_product_and_answer_every_line() {
+        // Four lines of product A (variants 1–4, outlet list [2, 4]) and one of
+        // product B (outlet list [1]): scan, parse, lookup, lookup; then B's own list.
+        let json = r#"[
+            {"outlet": ["gid://v/2", "gid://v/4"]}, {"outlet": ["gid://v/2", "gid://v/4"]},
+            {"outlet": ["gid://v/2", "gid://v/4"]}, {"outlet": ["gid://v/2", "gid://v/4"]},
+            {"outlet": ["gid://w/1"]}
+        ]"#;
+        let got = run_function_with_input(
+            |products: Vec<WonProduct>| {
+                let mut lists = OutletLists::default();
+                let variants = ["gid://v/1", "gid://v/2", "gid://v/3", "gid://v/4", "gid://w/1"];
+                Ok(products.iter().zip(variants).map(|(w, v)| w.is_outlet(v, &mut lists)).collect::<Vec<_>>())
+            },
+            json,
+        )
+        .unwrap();
+        assert_eq!(got, vec![false, true, false, true, true]);
     }
 
     #[test]

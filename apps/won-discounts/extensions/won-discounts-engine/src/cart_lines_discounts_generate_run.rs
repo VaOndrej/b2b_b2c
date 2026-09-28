@@ -23,5 +23,5 @@ pub fn cart_lines_discounts_generate_run(
     };
     let plan = plan_cart(adapted.cart, Some(adapted.config));
     let emission = emit_for_node(&plan, &adapted.role, adapted.triggering_code);
-    Ok(cart_lines_result(&emission, product, order, &plan.currency))
+    Ok(cart_lines_result(&emission, &plan, product, order, input.cart().lines().len()))
 }

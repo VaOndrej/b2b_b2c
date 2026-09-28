@@ -24,3 +24,18 @@ Dawn (nebo na variant morphu v Horizonu):
 - V E2E používej sdílené helpery `quantityForm` / `quantityStepper` z
   `@won/testing/playwright`, ne vlastní XPath předpokládající vnoření.
 - Před shipnutím spusť matrix **bez `--bail`**, ať proběhne i Dawn leg.
+
+## Won Discounts: build, dev a testy
+
+Slevová funkce (`extensions/won-discounts-engine`) je v Rustu, detaily v jejím
+[`README.md`](extensions/won-discounts-engine/README.md). Rust je nainstalovaný
+přes rustup mimo výchozí PATH, skripty si `~/.cargo/bin` přidají samy.
+
+- `npm run dev`: `shopify app dev` s cargo na PATH, funkce se při změně přestaví.
+- `npm run build`: jen appka (react-router). CI (`build:apps`) Rust nepotřebuje.
+- `npm run build:functions`: jen slevová funkce (cargo, pak trampoline CLI).
+- `npm run build:all`: funkce, pak appka.
+- `shopify app deploy` si funkci staví sám, takže taky potřebuje cargo na PATH:
+  `PATH="$HOME/.cargo/bin:$PATH" npx shopify app deploy`.
+- `npm run test:unit`: node testy a testy funkce (cargo test, pak vitest). Potřebuje
+  Rust s cílem `wasm32-unknown-unknown`. CI testy funkce nespouští.

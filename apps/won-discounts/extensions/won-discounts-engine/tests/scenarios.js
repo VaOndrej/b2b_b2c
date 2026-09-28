@@ -75,7 +75,7 @@ function allScenarios() {
   {
     name: "lines-auto-value-mapping",
     description:
-      "Automatic node: lines with the same rule share one candidate; a fixed amount per item is capped at the unit price (50 Kč on a 30 Kč item → 30.00 each).",
+      "Automatic node: lines with the same rule share one candidate; a fixed amount per item is capped at the unit price, and a capped one (50 Kč on a 30 Kč item: the item is free) is emitted as 100 % — the same discount, and it groups across prices.",
     target: "lines",
     rules: [SUMMER, fixed("tenoff", { CZK: 5000 }, { name: "Sleva 50 Kč" })],
     role: AUTO,
@@ -88,7 +88,7 @@ function allScenarios() {
     expected: out(
       products(
         pc("Letní sleva", [1, 2], percent(10)),
-        pc("Sleva 50 Kč", [3], perItem("30.00")),
+        pc("Sleva 50 Kč", [3], percent(100)),
         pc("Sleva 50 Kč", [4], perItem("50.00")),
       ),
     ),
@@ -440,6 +440,14 @@ function allScenarios() {
     expected: out(products(pc("Letní sleva", [1], percent(10)))),
   }),
 
+  // --- a big variant outlet list on many lines of one product --------------------------------
+  outletListShared(),
+
+  // --- output size (Shopify: 20 kB for ≤ 200 lines) ----------------------------------------
+  proStackPercentOutput(),
+  proStackDegradedOutput(),
+  truncatedOutput(),
+
   // --- instruction budget ------------------------------------------------------------------
   budget("lines"),
   budget("delivery"),
@@ -543,7 +551,15 @@ function budgetExpectedProducts() {
     const best = singles[0];
     const target = { cartLine: { id: lineId(i) } };
     if (refs.has("p7") && refs.has("p8") && amount(15) + amount(17) > best.amount) {
-      candidates.push({ message: "Sleva p8 + Sleva p7", targets: [target], value: lineTotal(kc(amount(15) + amount(17))) });
+      // A Pro stack of whole percents whose sum rounds to the same amount is
+      // emitted as that percent (32 %): exact, and every such line shares it.
+      const pro = groups.get("pro");
+      if (pro) pro.targets.push(target);
+      else {
+        const candidate = { message: "Sleva p8 + Sleva p7", targets: [target], value: percent(32) };
+        groups.set("pro", candidate);
+        candidates.push(candidate);
+      }
       continue;
     }
     if (best.code) continue; // a code wins this line: its own node emits it
@@ -589,6 +605,202 @@ function budget(target) {
       target === "lines"
         ? out(products(...budgetExpectedProducts()), order("Sleva o1", outlet, percent(5)))
         : out(delivery("Doprava s1", percent(100))),
+  };
+}
+
+/**
+ * 40 lines are variants of one product whose metafield lists 45 outlet variants
+ * (odd variants): the function reads that list in full once, not on every line.
+ * 160 more lines of plain products. The input is ~115 kB (Shopify's input limit
+ * is 128 kB).
+ * @returns {Scenario}
+ */
+function outletListShared() {
+  const outletVariants = Array.from({ length: 45 }, (_, k) => variantId(100 + 2 * k + 1));
+  const lines = [];
+  const targets = [];
+  for (let i = 1; i <= 200; i += 1) {
+    if (i <= 40) {
+      lines.push({ n: i, price: "100.0", variant: 100 + i, won: { ruleIds: ["a"], outlet: outletVariants } });
+      if (i % 2 === 0) targets.push(i);
+    } else {
+      lines.push({ n: i, price: "100.0", won: won("a") });
+      targets.push(i);
+    }
+  }
+  return {
+    name: "lines-outlet-list-shared",
+    description:
+      "40 lines are variants of one product whose metafield lists 45 outlet variants: the odd ones are excluded, the rest and 160 plain lines get 10 %.",
+    target: "lines",
+    rules: [pct("a", 10)],
+    role: AUTO,
+    lines,
+    expected: out(products(pc("Sleva a", targets, percent(10)))),
+  };
+}
+
+// --- Output size (tests/reference-adapter.js "Output size") --------------------------------
+//
+// Shopify refuses an output over 20 kB (1 kB = 1000 B) for carts up to 200
+// lines and then the node gives NO discount at all. The mapping keeps every
+// value exact and as groupable as possible; over the budget (19 000 B) it
+// degrades Pro stacks to their top rule, and as a last resort drops the product
+// candidates that save the least. The expected outputs below come from this
+// simple model of those rules, not from the adapter.
+
+const OUTPUT_BUDGET = 19000;
+const bytes = (/** @type {unknown} */ value) => new TextEncoder().encode(JSON.stringify(value)).length;
+const minor = (/** @type {string} */ price) => Math.round(Number(price) * 100);
+
+/** Groups `{ key, message, value, target }` rows into candidates, first appearance first. */
+function groupRows(/** @type {{ key: string | null, message: string, value: unknown, target: unknown, amount: number }[]} */ rows) {
+  /** @type {Map<string, { message: string, targets: unknown[], value: unknown, amount: number }>} */
+  const groups = new Map();
+  const out = [];
+  for (const row of rows) {
+    const k = row.key === null ? null : JSON.stringify([row.message, row.key]);
+    const existing = k === null ? undefined : groups.get(k);
+    if (existing) {
+      existing.targets.push(row.target);
+      existing.amount += row.amount;
+      continue;
+    }
+    const candidate = { message: row.message, targets: [row.target], value: row.value, amount: row.amount };
+    if (k !== null) groups.set(k, candidate);
+    out.push(candidate);
+  }
+  return out;
+}
+
+const productsOf = (/** @type {{ message: string, targets: unknown[], value: unknown }[]} */ list) =>
+  out(products(...list.map(({ message, targets, value }) => ({ message, targets, value }))));
+
+/**
+ * 200 distinct products, each with the Pro stack Black Friday 17 % + VIP 15 %:
+ * every line whose stack sums to the rounded 32 % shares one 32 % candidate;
+ * the few where the two roundings differ keep their exact amount.
+ * @returns {Scenario}
+ */
+function proStackPercentOutput() {
+  const lines = [];
+  const rows = [];
+  for (let i = 1; i <= 200; i += 1) {
+    const price = (49 + i * 1.37).toFixed(2);
+    const qty = 1 + (i % 3);
+    lines.push({ n: i, price, qty, won: won("vip", "bf") });
+    const s = minor(price) * qty;
+    const total = Math.min(s, Math.round((s * 17) / 100) + Math.round((s * 15) / 100));
+    const target = { cartLine: { id: lineId(i) } };
+    const message = "Black Friday + VIP";
+    if (total === s) rows.push({ key: "p100", message, value: percent(100), target, amount: total });
+    else if (Math.round((s * 32) / 100) === total) rows.push({ key: "p32", message, value: percent(32), target, amount: total });
+    else if (total % qty === 0) rows.push({ key: `e${total / qty}`, message, value: perItem(kc(total / qty)), target, amount: total });
+    else rows.push({ key: null, message, value: lineTotal(kc(total)), target, amount: total });
+  }
+  const expected = productsOf(groupRows(rows));
+  return {
+    name: "lines-pro-stack-output-percent",
+    description:
+      "Output size: 200 lines, each with the Pro stack 17 % + 15 %. A stack of whole percents is emitted as the summed percent when that rounds to the same amount (exact), so the lines share one candidate and the output stays far under 20 kB.",
+    target: "lines",
+    rules: [pct("bf", 17, { name: "Black Friday" }), pct("vip", 15, { name: "VIP", combinesWith: { ruleIds: ["bf"] } })],
+    role: AUTO,
+    lines,
+    expected,
+  };
+}
+
+/**
+ * 200 distinct products, each with the Pro stack "9,99 Kč z kusu" + "Deset procent":
+ * every stack amount differs, so the exact output (~38 kB) is over the budget;
+ * each stack is then emitted as its top rule's own value (fixed per item or
+ * 10 %), and those group.
+ * @returns {Scenario}
+ */
+function proStackDegradedOutput() {
+  const lines = [];
+  const exactRows = [];
+  const degradedRows = [];
+  for (let i = 1; i <= 200; i += 1) {
+    const price = (50 + i * 1.01).toFixed(2);
+    lines.push({ n: i, price, won: won("fix", "ten") });
+    const s = minor(price);
+    const fix = Math.min(999, s);
+    const ten = Math.round((s * 10) / 100);
+    const target = { cartLine: { id: lineId(i) } };
+    // Rank: amount desc, then id asc ("fix" < "ten").
+    const fixFirst = fix >= ten;
+    const message = fixFirst ? "9,99 Kč z kusu + Deset procent" : "Deset procent + 9,99 Kč z kusu";
+    const total = Math.min(s, fix + ten);
+    exactRows.push({ key: `e${total}`, message, value: perItem(kc(total)), target, amount: total });
+    degradedRows.push(
+      fixFirst
+        ? { key: `e${fix}`, message: "9,99 Kč z kusu", value: perItem(kc(fix)), target, amount: fix }
+        : { key: "p10", message: "Deset procent", value: percent(10), target, amount: ten },
+    );
+  }
+  const exact = productsOf(groupRows(exactRows));
+  if (bytes(exact) <= OUTPUT_BUDGET) throw new Error("proStackDegradedOutput: the exact output must be over the budget");
+  return {
+    name: "lines-pro-stack-output-degraded",
+    description:
+      "Output size: 200 lines, each with a different Pro stack amount (fixed per item + 10 %): the exact output would be ~38 kB, over Shopify's 20 kB (the node would give nothing), so every stack is emitted as its top rule's own value.",
+    target: "lines",
+    rules: [
+      fixed("fix", { CZK: 999 }, { name: "9,99 Kč z kusu", combinesWith: { ruleIds: ["ten"] } }),
+      pct("ten", 10, { name: "Deset procent" }),
+    ],
+    role: AUTO,
+    lines,
+    expected: productsOf(groupRows(degradedRows)),
+  };
+}
+
+/**
+ * 24 fixed rules with 200-character names, each on a mix of cheap (free) and
+ * dearer items: 48 candidates with long messages are over the budget with no
+ * stack to degrade, so the candidates that save the least are dropped until the
+ * output fits.
+ * @returns {Scenario}
+ */
+function truncatedOutput() {
+  const RULES = 24;
+  const ids = Array.from({ length: RULES }, (_, k) => `t${k + 1}`);
+  const nameOf = (/** @type {string} */ id) => `${id} ${"Velmi dlouhý název slevy ".repeat(10)}`.slice(0, 200);
+  const rules = ids.map((id) => fixed(id, { CZK: 3000 }, { name: nameOf(id) }));
+  const lines = [];
+  const rows = [];
+  for (let i = 1; i <= 200; i += 1) {
+    const id = ids[i % RULES];
+    const cheap = Math.floor(i / RULES) % 2 === 0;
+    const price = cheap ? `${10 + (i % 17)}.50` : `${100 + (i % 23)}.00`;
+    lines.push({ n: i, price, won: won(id) });
+    const s = minor(price);
+    const target = { cartLine: { id: lineId(i) } };
+    rows.push(
+      cheap
+        ? { key: "p100", message: nameOf(id), value: percent(100), target, amount: s }
+        : { key: "e3000", message: nameOf(id), value: perItem("30.00"), target, amount: 3000 },
+    );
+  }
+  let kept = groupRows(rows);
+  if (bytes(productsOf(kept)) <= OUTPUT_BUDGET) throw new Error("truncatedOutput: must start over the budget");
+  while (bytes(productsOf(kept)) > OUTPUT_BUDGET) {
+    // Drop the candidate that saves the least (ties: the later one).
+    let drop = 0;
+    for (let k = 1; k < kept.length; k += 1) if (kept[k].amount <= kept[drop].amount) drop = k;
+    kept = kept.filter((_, k) => k !== drop);
+  }
+  return {
+    name: "lines-output-truncated",
+    description:
+      "Output size, last resort: 48 candidates with 200-character messages and no stack to degrade are over the 19 000 B budget, so the candidates that save the least are dropped until the output fits.",
+    target: "lines",
+    rules,
+    role: AUTO,
+    lines,
+    expected: productsOf(kept),
   };
 }
 

@@ -1,7 +1,9 @@
 // Engine unit tests: the A1 rules (spec §3, plan.ts header) one by one, on
 // plain carts. Configs are JSON as the shop metafield carries it, read by the
-// same tolerant reader the function uses. Every expectation here was checked
-// against the TS engine (planCart + emitForNode) — see README.md "Parity".
+// same tolerant reader the function uses. Every test has a TS twin of the same
+// name in tests/engine-unit.twins.test.js that runs the scenario through the TS
+// engine and asserts the same values (the pairing itself is checked there):
+// change a twin together with its test.
 
 use shopify_function::run_function_with_input;
 

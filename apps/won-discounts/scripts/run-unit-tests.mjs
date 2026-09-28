@@ -2,10 +2,13 @@
 // The app's unit gate (`npm run test:unit`, audit P3-7): runs BOTH suites and
 // fails if EITHER fails.
 //   1. node tests   — tests/**/*.test.ts (node:test via tsx, files in parallel)
-//   2. engine tests — `npm test -w won-discounts-engine` (vitest: every function
-//                     fixture validated against the input query and the
-//                     function schema, then run through the Wasm)
-// Sequential on purpose: the engine suite rebuilds dist/function.wasm, which
+//   2. engine tests — `npm test -w won-discounts-engine`: `cargo test` (the Rust
+//                     function natively, every fixture included), then vitest
+//                     (every fixture validated against the input query and the
+//                     function schema and run through the Wasm, parity with the
+//                     TS engine on fixtures and seeded random carts). Needs cargo;
+//                     the npm scripts put ~/.cargo/bin on PATH themselves.
+// Sequential on purpose: the engine suite rebuilds the function's Wasm, which
 // the node suite's function.contract runs fixtures against (see
 // tests/lib/build-lock.ts). The second suite runs even when the first failed,
 // so one run reports every failure.

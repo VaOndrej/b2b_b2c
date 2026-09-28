@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, test } from "node:test";
@@ -8,15 +8,14 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import { sanitizeConfig } from "@won/core/discounts/config";
-import { emitForNode, type NodeEmission } from "@won/core/discounts/emit";
 import { buildNodeVars } from "@won/core/discounts/function-payload";
-import { planCart } from "@won/core/discounts/plan";
 
 import {
-  adaptInput,
   GIFT_ATTRIBUTE,
-  toCartLinesResult,
-  toDeliveryResult,
+  OUTPUT_LIMIT_BYTES,
+  outputBytes,
+  runCartLines,
+  runDelivery,
 } from "../../extensions/won-discounts-engine/tests/reference-adapter.js";
 import { acquireBuildLock } from "../lib/build-lock.ts";
 
@@ -31,6 +30,7 @@ import { acquireBuildLock } from "../lib/build-lock.ts";
 //     directly in node — the reference adapter (tests/reference-adapter.js):
 //     adaptInput → planCart → emitForNode → output mapping — so the Rust port
 //     cannot drift from @won/core;
+//   - every output fits Shopify's 20 kB output limit (same page, "Resource limits");
 //   - the instruction budget (Shopify: 11 M instructions for carts up to 200
 //     lines, shopify.dev/docs/api/functions/2026-04 "Resource limits"), with
 //     ≥ 30 % headroom for every fixture, the 200-line carts included.
@@ -47,6 +47,8 @@ const QUERIES = {
 };
 const DELIVERY_TARGET = "cart.delivery-options.discounts.generate.run";
 
+/** Shopify's compiled binary size limit (same page, "Fixed limits": 256 kB, 1 kB = 1000 B). */
+const WASM_LIMIT_BYTES = 256_000;
 /** Shopify's limit for carts up to 200 lines; we keep ≥ 30 % headroom. */
 const INSTRUCTION_LIMIT = 11_000_000;
 const INSTRUCTION_BUDGET = (INSTRUCTION_LIMIT / 10) * 7;
@@ -140,16 +142,9 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-const NO_EMISSION: NodeEmission = { productCandidates: [], orderCandidates: [], deliveryCandidates: [] };
-
-/** PARITY: the fixture's output computed by the engine in node (no Wasm). */
+/** PARITY: the fixture's output computed by the TS engine in node through the reference adapter (no Wasm). */
 function engineOutput(fixture: Fixture) {
-  const adapted = adaptInput(fixture.payload.input);
-  const emission =
-    adapted.role === null
-      ? NO_EMISSION
-      : emitForNode(planCart(adapted.cart, adapted.config as Parameters<typeof planCart>[1]), adapted.role, adapted.triggeringCode);
-  return fixture.payload.target === DELIVERY_TARGET ? toDeliveryResult(emission, adapted) : toCartLinesResult(emission, adapted);
+  return fixture.payload.target === DELIVERY_TARGET ? runDelivery(fixture.payload.input) : runCartLines(fixture.payload.input);
 }
 
 test("extension toml: api version, both run targets, node variables metafield function_vars", () => {
@@ -277,12 +272,22 @@ describe("shopify app function run", { concurrency: 6 }, () => {
     if (workDir) rmSync(workDir, { recursive: true, force: true });
   });
 
+  test(`the built Wasm is under Shopify's ${WASM_LIMIT_BYTES} B binary size limit`, (t) => {
+    const toml = readFileSync(path.join(EXT_DIR, "shopify.extension.toml"), "utf8");
+    const wasm = /^\s*path = "([^"]+\.wasm)"$/m.exec(toml)?.[1];
+    assert.ok(wasm, "shopify.extension.toml [extensions.build] path");
+    const bytes = statSync(path.join(EXT_DIR, wasm)).size;
+    t.diagnostic(`${wasm}: ${bytes} B of ${WASM_LIMIT_BYTES} B`);
+    assert.ok(bytes < WASM_LIMIT_BYTES, `${bytes} B ≥ ${WASM_LIMIT_BYTES} B`);
+  });
+
   for (const file of fixtureFiles) {
     test(file, { timeout: 120_000 }, async (t) => {
       const fixture = readFixture(file);
       const result = await runInput(workDir, file, fixture.payload.input, fixture.payload.export);
       assert.deepEqual(result.output, fixture.payload.output, "Wasm output = the fixture's expected output");
       assert.deepEqual(result.output, engineOutput(fixture), "PARITY: Wasm output = the engine run directly in node");
+      assert.ok(outputBytes(result.output) < OUTPUT_LIMIT_BYTES, `${file}: output ${outputBytes(result.output)} B ≥ Shopify's ${OUTPUT_LIMIT_BYTES} B`);
       assert.equal(typeof result.instructions, "number", "function-runner reports the instruction count");
       instructions.set(file, result.instructions as number);
       t.diagnostic(`${file}: ${result.instructions} instructions`);

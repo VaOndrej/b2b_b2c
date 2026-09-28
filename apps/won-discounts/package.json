@@ -6,9 +6,10 @@
     "node": ">=20.19 <22 || >=22.12"
   },
   "scripts": {
-    "build": "npm run build:functions && react-router build",
+    "build": "react-router build",
+    "build:all": "npm run build:functions && npm run build",
     "build:functions": "PATH=\"$HOME/.cargo/bin:$PATH\" shopify app function build --path extensions/won-discounts-engine",
-    "dev": "shopify app dev --path .",
+    "dev": "PATH=\"$HOME/.cargo/bin:$PATH\" shopify app dev --path .",
     "prisma:generate": "prisma generate",
     "prisma:migrate:deploy": "node ./scripts/ensure-sqlite-db.mjs && prisma migrate deploy",
     "setup": "npm run prisma:generate && npm run prisma:migrate:deploy",

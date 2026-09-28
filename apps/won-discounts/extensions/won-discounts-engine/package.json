@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "shopify": "npm exec -- shopify",
-    "build": "PATH=\"$HOME/.cargo/bin:$PATH\" npm exec -- shopify app function build",
+    "build:wasm": "PATH=\"$HOME/.cargo/bin:$PATH\" npm exec -- shopify app function build",
     "preview": "PATH=\"$HOME/.cargo/bin:$PATH\" npm exec -- shopify app function run",
     "fixtures": "tsx tests/generate-fixtures.js",
     "test": "npm run test:rust && npm run test:js",

@@ -1,14 +1,16 @@
 // Cross-process lock for tests that write or read the SAME build outputs
 // (audit P3-6). `node --test` runs every test file in its own process, in
 // parallel:
-//   - tests/contracts/function.contract.test.ts builds
-//     extensions/won-discounts-engine/dist/function.wasm and runs ~26 fixtures
-//     against it;
-//   - tests/contracts/dev-harness.contract.test.ts runs `npm run build`, which
-//     rebuilds that same Wasm (build:functions) and build/.
-// Without the lock a fixture can run against a half-written Wasm. Both take
-// this lock for as long as they need the outputs, so `npm run test:unit` stays
-// fully parallel everywhere else.
+//   - tests/contracts/function.contract.test.ts builds the Rust function
+//     (extensions/won-discounts-engine/target/wasm32-unknown-unknown/release/
+//     won-discounts-engine.wasm) and runs every fixture against it;
+//   - tests/contracts/dev-harness.contract.test.ts runs `npm run build`
+//     (build/ only since the function build moved to `build:functions` /
+//     `build:all`; it keeps the lock in case that changes back).
+// A Rust build re-copies cargo's raw Wasm over the output before the CLI
+// re-applies its trampoline, so without the lock a fixture can run against a
+// half-built Wasm. Both take this lock for as long as they need the outputs,
+// so `npm run test:unit` stays fully parallel everywhere else.
 //
 // The lock is a directory (mkdir is atomic) in the OS temp dir, keyed by this
 // checkout's path, holding the owner's pid. A lock whose owner process is gone
