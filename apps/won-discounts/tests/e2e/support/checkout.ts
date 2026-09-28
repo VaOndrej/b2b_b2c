@@ -1,0 +1,162 @@
+import type { Locator, Page } from "@playwright/test";
+
+import { expect } from "./fixtures.ts";
+
+// Shopify's own checkout / thank-you page (not the theme). Money is read from
+// its two structured tables, both `role="table"` labelled by a heading:
+//   - the line items  (aria-labelledby "ResourceList…"): per line the title,
+//     each discount allocation ("<title> (-21,80 Kč)") and the original /
+//     reduced price;
+//   - the price summary (aria-labelledby "MoneyLine-Heading…"): subtotal,
+//     order discounts (one row per code), shipping, taxes, total.
+// The page language follows the market (cesko → cs-CZ); summary labels are
+// matched in Czech and English.
+
+export const SUBTOTAL = /^(Mezisoučet|Subtotal)/iu;
+export const SHIPPING = /^(Expedice|Doprava|Shipping)/iu;
+export const TOTAL = /^(Celkem|Total)$/iu;
+export const TAX = /(Daně|Daň|DPH|Taxes|Tax)/iu;
+
+/** "1 234,56 Kč" / "− 29,43 Kč" / "(-21,80 Kč)" / "CZK 819,77 Kč" → signed minor units (2-digit currency); null when there is no amount. */
+export function minorUnits(text: string): number | null {
+  const match = /([\u2212-])?\s*(\d[\d\s\u00a0\u202f.]*[.,]\d{2})(?!\d)/u.exec(text);
+  if (!match) return null;
+  const digits = match[2]!.replace(/[^\d]/gu, "");
+  return Number(digits) * (match[1] ? -1 : 1);
+}
+
+export interface SummaryRow {
+  label: string;
+  value: string;
+  amount: number | null;
+}
+
+export interface CheckoutLine {
+  title: string;
+  /** One per discount allocation on the line, as the checkout lists it. */
+  allocations: { title: string; amount: number | null }[];
+  originalPrice: number | null;
+  finalPrice: number | null;
+}
+
+/** The aside that holds the price summary (a collapsed mobile header aside comes first). */
+function summaryAside(page: Page): Locator {
+  return page.locator("aside", { has: page.locator('[role="table"][aria-labelledby^="MoneyLine-Heading"]') }).last();
+}
+
+/** Rows of the price summary table. */
+export async function priceSummary(page: Page): Promise<SummaryRow[]> {
+  const table = summaryAside(page).locator('[role="table"][aria-labelledby^="MoneyLine-Heading"]');
+  await expect(table).toBeVisible({ timeout: 60_000 });
+  const rows = await table.locator('[role="row"]').evaluateAll((elements) =>
+    elements.map((row) => {
+      const header = row.querySelector('[role="rowheader"]');
+      const cell = row.querySelector('[role="cell"]');
+      // The cell repeats its value in an aria-hidden animation copy: read the visible copy (the last text node holder).
+      const visible = cell ? [...cell.querySelectorAll("span,strong")].filter((el) => !el.closest('[aria-hidden="true"]')) : [];
+      const value = visible.length ? (visible[visible.length - 1]!.textContent ?? "") : (cell?.textContent ?? "");
+      return { label: (header?.textContent ?? "").replace(/\s+/gu, " ").trim(), value: value.replace(/\s+/gu, " ").trim() };
+    }),
+  );
+  return rows.filter((row) => row.label !== "").map((row) => ({ ...row, amount: minorUnits(row.value) }));
+}
+
+/** Amount of the first summary row whose label matches (a string matches a row containing it, e.g. a discount code). */
+export function rowAmount(rows: readonly SummaryRow[], label: RegExp | string): number | null {
+  const row = rows.find((r) => (typeof label === "string" ? r.label.toUpperCase().includes(label.toUpperCase()) : label.test(r.label)));
+  return row?.amount ?? null;
+}
+
+/** The line items table, one entry per cart line. */
+export async function checkoutLines(page: Page): Promise<CheckoutLine[]> {
+  const table = summaryAside(page).locator('[role="table"][aria-labelledby^="ResourceList"]');
+  await expect(table).toBeVisible({ timeout: 60_000 });
+  const raw = await table.locator('[role="rowgroup"] [role="row"]').evaluateAll((rows) =>
+    rows
+      .filter((row) => row.querySelector('[role="cell"]'))
+      .map((row) => {
+        const text = (el: Element | null | undefined) => (el?.textContent ?? "").replace(/\s+/gu, " ").trim();
+        // Each allocation: <p><span dir="auto">TITLE</span> (-21,80 Kč)</p>.
+        const allocations = [...row.querySelectorAll('span[dir="auto"]')]
+          .map((span) => ({ title: text(span), amountText: text(span.parentElement).slice(text(span).length).trim() }))
+          .filter((a) => a.amountText.startsWith("("));
+        // Cells: image, description (title + allocations), quantity, price (<s> original, <p> reduced) — the price is the last one.
+        const cells = [...row.querySelectorAll('[role="cell"]')];
+        const priceCell = cells[cells.length - 1] ?? null;
+        const titleEl = cells.flatMap((cell) => (cell === priceCell ? [] : [...cell.querySelectorAll("p")])).find((p) => !p.querySelector('span[dir="auto"]')) ?? null;
+        const priceTexts = priceCell ? [...priceCell.querySelectorAll("s, p")].map((el) => ({ tag: el.tagName, text: text(el) })) : [];
+        return { title: text(titleEl), allocations, priceTexts };
+      }),
+  );
+  return raw.map((line) => ({
+    title: line.title,
+    allocations: line.allocations.map((a) => ({ title: a.title, amount: minorUnits(a.amountText) })),
+    originalPrice: minorUnits(line.priceTexts.find((p) => p.tag === "S")?.text ?? ""),
+    finalPrice: minorUnits([...line.priceTexts].reverse().find((p) => p.tag === "P")?.text ?? ""),
+  }));
+}
+
+/** The allocation of `discountTitle` on the first line that has it (the checkout upper-cases discount titles). */
+export function lineAllocation(lines: readonly CheckoutLine[], discountTitle: string): number | null {
+  for (const line of lines) {
+    const hit = line.allocations.find((a) => a.title.toUpperCase() === discountTitle.toUpperCase());
+    if (hit) return hit.amount;
+  }
+  return null;
+}
+
+/** Go to the storefront's /checkout (it redirects to /checkouts/cn/<token>) and wait for the form. */
+export async function openCheckout(page: Page, url = "/checkout"): Promise<void> {
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("#email")).toBeVisible({ timeout: 90_000 });
+  expect(new URL(page.url()).pathname).toMatch(/^\/checkouts\//u);
+}
+
+/** Enter a discount code in the checkout's own discount field, as a buyer would; waits for its summary row. */
+export async function applyCodeInCheckout(page: Page, code: string): Promise<void> {
+  await page.locator('input[name="reductions"]').first().fill(code);
+  await page.locator('form:has(input[name="reductions"]) button[type="submit"]').first().click();
+  await expect.poll(async () => rowAmount(await priceSummary(page), code), { timeout: 60_000 }).not.toBeNull();
+}
+
+/** Contact + a Czech shipping address (market cesko), then the first shipping rate. */
+export async function fillCzechShippingAddress(page: Page): Promise<void> {
+  await page.locator("#email").fill("won-e2e+mvp1@example.com");
+  await page.locator('select[name="countryCode"]').selectOption("CZ");
+  await page.locator('input[name="firstName"]:visible').first().fill("Won");
+  await page.locator('input[name="lastName"]:visible').first().fill("Tester");
+  await page.locator('input[name="address1"]:visible').first().fill("Václavské náměstí 1");
+  await page.locator('input[name="postalCode"]:visible').first().fill("110 00");
+  await page.locator('input[name="city"]:visible').first().fill("Praha");
+  await page.locator('input[name="city"]:visible').first().press("Tab");
+  // Several rates → radios, pick the first; a single rate is preselected. Either way the summary gets a shipping amount.
+  const radios = page.locator('#shippingMethod ~ * input[type="radio"], input[type="radio"][name^="shipping"]');
+  await expect.poll(async () => (await radios.count()) > 0 || rowAmount(await priceSummary(page), SHIPPING) !== null, { timeout: 60_000 }).toBe(true);
+  if ((await radios.count()) > 0) await radios.first().check();
+  await expect.poll(async () => rowAmount(await priceSummary(page), SHIPPING), { timeout: 60_000 }).not.toBeNull();
+}
+
+async function fillCardField(page: Page, frame: string, name: string, value: string): Promise<void> {
+  const input = page.frameLocator(`iframe[name^="card-fields-${frame}"]`).locator(`input[name="${name}"]`);
+  await input.click();
+  await input.pressSequentially(value, { delay: 50 });
+}
+
+/** Bogus gateway: card "1" (approved), any future expiry, CVV 111; waits for the thank-you page. */
+export async function payWithBogusCard(page: Page): Promise<void> {
+  await fillCardField(page, "number", "number", "1");
+  await fillCardField(page, "expiry", "expiry", "1230");
+  await fillCardField(page, "verification_value", "verification_value", "111");
+  await fillCardField(page, "name", "name", "Bogus Gateway");
+  await page.locator("#checkout-pay-button").click();
+  await page.waitForURL(/thank[-_]you/u, { timeout: 150_000 });
+}
+
+/** On a phone the order summary is collapsed: open it (best effort) so a screenshot shows the discount lines. */
+export async function expandMobileSummary(page: Page): Promise<void> {
+  const toggle = page.getByRole("button", { name: /Shrnutí objednávky|order summary/iu }).first();
+  if (await toggle.isVisible().catch(() => false)) {
+    await toggle.click();
+    await page.waitForTimeout(1_000);
+  }
+}

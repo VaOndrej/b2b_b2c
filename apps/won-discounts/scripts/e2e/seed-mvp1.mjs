@@ -220,6 +220,22 @@ async function nativeCodes(db) {
   return detection.movable.flatMap((node) => node.codes);
 }
 
+/** The app's tracked Won nodes for evidence: key, role and the node's live Shopify status only (no raw rows). */
+async function trackedNodeSummary(db) {
+  const rows = await db.wonNode.findMany({ where: { shop: STORE }, select: { key: true, role: true, discountNodeId: true } });
+  let statusById = null;
+  try {
+    statusById = new Map((await readState()).wonNodes.map((node) => [node.id, node.status]));
+  } catch (error) {
+    console.log(`(could not read the nodes' Shopify status: ${error?.message ?? error})`);
+  }
+  return rows.map((row) => ({
+    key: row.key,
+    role: row.role,
+    status: statusById ? (statusById.get(row.discountNodeId) ?? "not on the store") : "unknown",
+  }));
+}
+
 function syncSummary(result) {
   return {
     save: result.save.ok
@@ -352,7 +368,7 @@ async function main() {
     const result = await saveAndSync({ client, db, shop: STORE, input: config, otherCodes: await nativeCodes(db) });
     printSync(result);
     const status = await loadSyncStatus(db, STORE);
-    const wonNodes = await db.wonNode.findMany({ where: { shop: STORE }, select: { key: true, role: true, ruleId: true, discountNodeId: true } });
+    const wonNodes = await trackedNodeSummary(db);
     const evidence = {
       name: "seed-mvp1",
       store: STORE,

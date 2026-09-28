@@ -3,20 +3,18 @@ import path from "node:path";
 
 import type { Page, TestInfo } from "@playwright/test";
 import { WON_E2E_PRODUCTS } from "@won/testing/e2e-products";
-import {
-  assertResponsiveSane,
-  createStorefrontTest,
-  expect,
-} from "@won/testing/playwright";
+import { assertResponsiveSane } from "@won/testing/playwright";
+
+import { expect, test } from "./support/fixtures.ts";
 
 // SPEC-DRIVEN (MVP 0, Task 6). Live proof that the Won Discounts app embed —
 // switched on through the e2e/settings_data.*.json overlay, never by hand —
 // renders and boots on BOTH shared themes. Only our own markers are asserted
 // (never theme DOM), so the same spec holds on Horizon and Dawn.
-
-const test = createStorefrontTest({
-  javaScriptProxyPaths: ["won-discounts.js"],
-});
+//
+// `test` is the shared fixture (support/fixtures.ts): it keeps the theme-dev
+// session authenticated, so loading the PDP here never breaks the cart AJAX of
+// a spec that runs after this one.
 
 const PDP_PATH = `/products/${WON_E2E_PRODUCTS.simpleA.handle}`;
 const OUR_ASSET = /\/won-discounts\.(?:js|css)(?:\?|$)/u;
