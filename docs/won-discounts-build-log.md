@@ -7,8 +7,8 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
-- **Fáze:** MVP 0 — uzavírání (Task 8): opravy nálezů auditu (vlna 1 běží, vlna 2 = zbylé P3),
-  pak brána + živé E2E + vizuální QA + roadmapa + commit/push. Pak MVP 1.
+- **Fáze:** MVP 0 ✅ uzavřené (checkpoint níž). Další: MVP 1 podle
+  `docs/plans/2026-09-28-won-discounts-mvp1.md` (T0 prototyp C7 ‖ T1 engine).
 - **Hotovo v MVP 0:** spec + plán, scaffold, config v0 (`@won/core/discounts`), Prisma config
   s historií, Přehled v0, JS discount funkce (prototypové módy), theme app extension s embedem,
   app proxy health, dev harness mimo produkci, živé E2E embedu ✓ Horizon ✓ Dawn, verdikty
@@ -82,8 +82,56 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Checkpointy MVP
 
-_(zatím žádný)_
+### MVP 0 — Scaffold + verdikty rizik ✅ (badge zůstává `Scaffold`)
+
+**Hotové a ověřené**
+- Spec + plán (`docs/plans/2026-09-28-won-discounts-mvp0.md`), scaffold z `_template`, appka
+  propojená (`config:link`, Ondřej) a nainstalovaná na dev storu (auto-grant scopes).
+- `@won/core/discounts`: config v0 (typy všech modulů, sanitizer se stropy, migrace, tolerant
+  reader, novější schéma jen pro čtení), money per měna, payload funkce (jen podmnožina, vždy
+  klíče kampaně, rozpočet 9 000 B pro nejhorší případ).
+- Prisma `ShopConfig` + `ConfigVersion` (historie 90 dní), Přehled v0 (`OverviewScreen`, sdílený
+  s dev harnessem), mazání dat v `shop/redact` s retry.
+- JS discount funkce `won-discounts-engine` (API 2026-04) s prototypovými módy, 27 fixtures.
+- Theme app extension: app embed (`loading` → `ready` z JS), 715 B gz JS, theme check 0.
+- App proxy health, dev harness jen v development/test (build-time i runtime).
+- **Živé E2E embedu ✓ Horizon ✓ Dawn** (4/4, bez `--bail`, overlay s registračním UUID) →
+  `docs/won-discounts/evidence/mvp0/e2e-embed-matrix.md` + screenshoty 390/1440.
+- Verdikty C1–C5 s důkazy (tabulka výš), spec §2/§3/§6/§11 upravený.
+- Nezávislý audit (0 P0 / 2 P1 / 8 P2 / 11 P3) → **všechny nálezy opraveny** ve 4 vlnách
+  s re-review (výjimky níž).
+
+**Brána (HEAD `3b20006`)**: `test:packages` core 392 + testing 21 ✓ · `test:unit -w won-discounts`
+121 + engine vitest 27 ✓ · typecheck ✓ · lint ✓ · build (vč. funkce) ✓ · `validate:shopify`
+0 nálezů (Toasts 6 + Discounts 4 soubory) ✓ · `guard:test:core` 301 ✓ · `_template` unit 18 +
+typecheck ✓.
+
+**Vědomé kompromisy / odklady**
+- Retenční úklid historie pro spící shopy (`pruneExpiredConfigHistory`) existuje, napojí se na
+  scheduler v MVP 5 (ten vzniká kvůli konci výprodeje). Do té doby úklid jen při uložení.
+- CI (`.github/workflows/ci.yml`) nespouští `test:unit` appek — mimo povolený rozsah; doporučení
+  pro Ondřeje: přidat `npm run test:unit -w won-discounts` do CI.
+- Testovací route `_template` pro `shop/redact` počítá se SQLite; appka na Postgresu ji přepíše.
+- Transport configu (audit P2-8): rozhodne prototyp C7 v MVP 1 (shop metafield vs. kopie v uzlech).
+
+**Neověřeno**
+- Vložení adminu do Shopify adminu (embedded UI) — vizuálně ověří Ondřej na konci.
+- Chování na Postgresu (souběžné uložení testováno jen na SQLite + vynucené prokládání).
+
+**Poučení** viz sekce výš (registrační UUID embedu, glob `test:unit`, 1 produktová sleva na
+řádek, klíče kampaně povinné, Cloudflare 429 na storefrontu → tempo ≥ 1,5 s).
 
 ## Parkované otázky a dluh
 
-- (P3) Práce s admin tokenem pro seed / úklid / testovací objednávky — čeká na rozhodnutí Ondřeje.
+Drobnosti z task review MVP 0, které po opravách auditu zůstaly (žádná neblokuje):
+- `packages/core/src/discounts/config.ts` je velký soubor (sanitizery všech modulů) → rozdělit
+  po modulech při T1 MVP 1 (engine), bez změny chování.
+- `DISCOUNT_VALUE_KINDS` / `DISCOUNT_TARGET_KINDS` se ve validaci neověřují přes pole (drift) → T1.
+- Funkce: `any` casty místo generovaných enumů (nahradí engine v T2 MVP 1).
+- `build` appky potřebuje Shopify CLI (devDependency) a stažení javy/function-runneru →
+  Dockerfile v MVP 7 musí stavět s devDependencies.
+- Contract testy extensionu jsou textové (regex nad zdrojem); chování ověřuje živé E2E.
+- `eslint-disable no-undef` u `process.env` (chybí node globals v eslint env appky).
+- E2E: `.not.toHaveCount(0)` → `.toHaveCount(1)` (styl).
+- Storefront má Cloudflare challenge (429) při rychlých zápisech do košíku → E2E a skripty
+  drží tempo ≥ 1,5 s.

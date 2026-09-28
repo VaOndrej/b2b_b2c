@@ -1,0 +1,323 @@
+{
+  "experiment": "cleanup-final",
+  "mode": "live",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "apiVersion": "2026-04",
+  "startedAt": "2026-09-28T13:42:57.662Z",
+  "steps": [],
+  "observations": [],
+  "graphql": [
+    {
+      "at": "2026-09-28T13:42:57.662Z",
+      "name": "functions",
+      "variables": null,
+      "response": {
+        "shopifyFunctions": {
+          "nodes": [
+            {
+              "id": "01a0e791-bf2a-77e6-9d45-e355028dabfe",
+              "handle": "won-discounts-engine",
+              "title": "won-discounts-engine",
+              "apiType": "discount",
+              "app": {
+                "title": "won-discounts"
+              }
+            }
+          ]
+        },
+        "shop": {
+          "ianaTimezone": "America/New_York",
+          "timezoneOffset": "-0400"
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T13:43:01.533Z",
+      "name": "discountNodes",
+      "variables": {},
+      "response": {
+        "discountNodes": {
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": "eyJsYXN0X2lkIjoyMTc5NTgyNTU4NDQ5LCJsYXN0X3ZhbHVlIjoiMjE3OTU4MjU1ODQ0OSJ9"
+          },
+          "nodes": [
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179405644017",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Test_Code_discount",
+                "status": "EXPIRED",
+                "appDiscountType": {
+                  "functionId": "5a26a800-9286-4452-9d89-e987a391c148",
+                  "appKey": "a6a8f18b7e4beeaef114811d17caa08a"
+                }
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179409412337",
+              "discount": {
+                "__typename": "DiscountAutomaticBxgy",
+                "title": "Dárek zdarma",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179582558449",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Free gift",
+                "status": "EXPIRED",
+                "appDiscountType": {
+                  "functionId": "5a26a800-9286-4452-9d89-e987a391c148",
+                  "appKey": "a6a8f18b7e4beeaef114811d17caa08a"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T13:43:06.503Z",
+      "name": "discountNodes",
+      "variables": {},
+      "response": {
+        "discountNodes": {
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": "eyJsYXN0X2lkIjoyMTc5NTgyNTU4NDQ5LCJsYXN0X3ZhbHVlIjoiMjE3OTU4MjU1ODQ0OSJ9"
+          },
+          "nodes": [
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179405644017",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Test_Code_discount",
+                "status": "EXPIRED",
+                "appDiscountType": {
+                  "functionId": "5a26a800-9286-4452-9d89-e987a391c148",
+                  "appKey": "a6a8f18b7e4beeaef114811d17caa08a"
+                }
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179409412337",
+              "discount": {
+                "__typename": "DiscountAutomaticBxgy",
+                "title": "Dárek zdarma",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179582558449",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Free gift",
+                "status": "EXPIRED",
+                "appDiscountType": {
+                  "functionId": "5a26a800-9286-4452-9d89-e987a391c148",
+                  "appKey": "a6a8f18b7e4beeaef114811d17caa08a"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T13:43:12.445Z",
+      "name": "product",
+      "variables": {
+        "identifier": {
+          "handle": "won-e2e-simple-a"
+        }
+      },
+      "response": {
+        "productByIdentifier": {
+          "id": "gid://shopify/Product/9692429058289",
+          "handle": "won-e2e-simple-a",
+          "metafield": null,
+          "variants": {
+            "nodes": [
+              {
+                "id": "gid://shopify/ProductVariant/48468678902001",
+                "price": "10.00"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T13:43:18.402Z",
+      "name": "product",
+      "variables": {
+        "identifier": {
+          "handle": "won-e2e-simple-b"
+        }
+      },
+      "response": {
+        "productByIdentifier": {
+          "id": "gid://shopify/Product/9692429091057",
+          "handle": "won-e2e-simple-b",
+          "metafield": null,
+          "variants": {
+            "nodes": [
+              {
+                "id": "gid://shopify/ProductVariant/48468678934769",
+                "price": "12.00"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T13:43:22.091Z",
+      "name": "product",
+      "variables": {
+        "identifier": {
+          "handle": "won-e2e-two-variants"
+        }
+      },
+      "response": {
+        "productByIdentifier": {
+          "id": "gid://shopify/Product/9692429123825",
+          "handle": "won-e2e-two-variants",
+          "metafield": null,
+          "variants": {
+            "nodes": [
+              {
+                "id": "gid://shopify/ProductVariant/48468678967537",
+                "price": "15.00"
+              },
+              {
+                "id": "gid://shopify/ProductVariant/48468679000305",
+                "price": "18.00"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T13:43:25.794Z",
+      "name": "product",
+      "variables": {
+        "identifier": {
+          "handle": "won-e2e-multiaxis"
+        }
+      },
+      "response": {
+        "productByIdentifier": {
+          "id": "gid://shopify/Product/9692429156593",
+          "handle": "won-e2e-multiaxis",
+          "metafield": null,
+          "variants": {
+            "nodes": [
+              {
+                "id": "gid://shopify/ProductVariant/48468679033073",
+                "price": "20.00"
+              },
+              {
+                "id": "gid://shopify/ProductVariant/48468679065841",
+                "price": "20.00"
+              },
+              {
+                "id": "gid://shopify/ProductVariant/48468679098609",
+                "price": "22.00"
+              },
+              {
+                "id": "gid://shopify/ProductVariant/48468679131377",
+                "price": "22.00"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T13:43:29.453Z",
+      "name": "product",
+      "variables": {
+        "identifier": {
+          "handle": "won-e2e-spare"
+        }
+      },
+      "response": {
+        "productByIdentifier": {
+          "id": "gid://shopify/Product/9692429189361",
+          "handle": "won-e2e-spare",
+          "metafield": null,
+          "variants": {
+            "nodes": [
+              {
+                "id": "gid://shopify/ProductVariant/48468679164145",
+                "price": "9.00"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "functionLogs": [],
+  "cleanup": {
+    "actions": []
+  },
+  "result": {
+    "checkedAt": "2026-09-28T13:43:34.084Z",
+    "protoNodes": [],
+    "foreignProtoNodes": [],
+    "allDiscountNodes": [
+      {
+        "id": "gid://shopify/DiscountAutomaticNode/2179405644017",
+        "title": "Test_Code_discount",
+        "status": "EXPIRED",
+        "type": "DiscountAutomaticApp"
+      },
+      {
+        "id": "gid://shopify/DiscountAutomaticNode/2179409412337",
+        "title": "Dárek zdarma",
+        "status": "EXPIRED",
+        "type": "DiscountAutomaticBxgy"
+      },
+      {
+        "id": "gid://shopify/DiscountAutomaticNode/2179582558449",
+        "title": "Free gift",
+        "status": "EXPIRED",
+        "type": "DiscountAutomaticApp"
+      }
+    ],
+    "products": [
+      {
+        "handle": "won-e2e-simple-a",
+        "id": "gid://shopify/Product/9692429058289",
+        "wonProductMetafield": null
+      },
+      {
+        "handle": "won-e2e-simple-b",
+        "id": "gid://shopify/Product/9692429091057",
+        "wonProductMetafield": null
+      },
+      {
+        "handle": "won-e2e-two-variants",
+        "id": "gid://shopify/Product/9692429123825",
+        "wonProductMetafield": null
+      },
+      {
+        "handle": "won-e2e-multiaxis",
+        "id": "gid://shopify/Product/9692429156593",
+        "wonProductMetafield": null
+      },
+      {
+        "handle": "won-e2e-spare",
+        "id": "gid://shopify/Product/9692429189361",
+        "wonProductMetafield": null
+      }
+    ],
+    "clean": true
+  },
+  "savedAt": "2026-09-28T13:43:34.084Z"
+}

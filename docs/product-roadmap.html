@@ -957,7 +957,7 @@
           <div class="bq-slot now">
             <p class="lab">Build fronta · teď</p>
             <h3>Won Discounts</h3>
-            <p>Autonomní stavba MVP 0–7 na dev storu (Tiers + Rewards + Outlet + MarginGuard v jedné appce). Stav <strong>Scaffold</strong>: MVP 0 rozpracované, nic nasazené. „Hotovo“ = MVP 0–7 zelené na bráně i živém E2E Horizon + Dawn, připravené k nasazení, nenasazené. Vzor a harness: pilot Won Toasts (Beta).</p>
+            <p>Autonomní stavba MVP 0–7 na dev storu (Tiers + Rewards + Outlet + MarginGuard v jedné appce). Stav <strong>Scaffold</strong>: MVP 0 hotové (brána + živé E2E Horizon/Dawn, verdikty rizik C1–C5), MVP 1 rozpracované, nic nasazené. „Hotovo“ = MVP 0–7 zelené na bráně i živém E2E Horizon + Dawn, připravené k nasazení, nenasazené. Vzor a harness: pilot Won Toasts (Beta).</p>
           </div>
           <div class="bq-slot">
             <p class="lab">Build fronta · další (gated)</p>
@@ -2317,9 +2317,10 @@
             <details class="app-guide">
               <summary>Návod k implementaci (MVP 0–7)</summary>
               <p class="guide-idea">
-                <strong>Stav (2026-09-28): Scaffold, MVP 0 rozpracované.</strong>
-                Kostra <code>apps/won-discounts</code> existuje. Nic není
-                nasazené ani ověřené na storu. Staví se autonomně podle
+                <strong>Stav (2026-09-28): Scaffold, MVP 0 hotové, MVP 1 rozpracované.</strong>
+                Kostra <code>apps/won-discounts</code> stojí: config v0, discount
+                funkce, app embed ověřený živým E2E na Horizon i Dawn, dev harness
+                adminu. Nic není nasazené. Staví se autonomně podle
                 <a href="won-discounts/prompt-orchestrator.md"><code>docs/won-discounts/prompt-orchestrator.md</code></a>.
                 Zdroj pravdy:
                 <a href="won-discounts/rozhodnuti.md"><code>docs/won-discounts/rozhodnuti.md</code></a>
@@ -2460,14 +2461,17 @@
               </div>
               <ol>
                 <li>
-                  <strong>MVP 0 · rozpracované:</strong> scaffold, config v0,
-                  prázdná Discount Function + theme app extension s embedem;
-                  spec, build log, sloučení roadmapy; prototypy rizik C1–C5 na
-                  dev storu. <em>Exit:</em> každé riziko má v build logu verdikt
-                  „platí / fallback“ s důkazem, spec je upravený podle verdiktů.
+                  <strong>MVP 0 · hotové (2026-09-28):</strong> scaffold, config v0,
+                  Discount Function (prototypové módy) + theme app extension s embedem
+                  (✓ Horizon ✓ Dawn), dev harness, audit + opravy. Verdikty rizik:
+                  C1 platí (všechny Won uzly vidí zadané kódy; na řádek 1 produktová
+                  sleva), C2 fallback (kódový uzel na pravidlo + limit v adminu),
+                  C3 platí (hranice 10 000 B), C4 platí (čas kampaně ve funkci,
+                  klíče povinné), C5 fallback (storefront nejde do iframe → náhled
+                  z tokenů tématu). Důkazy: <code>docs/won-discounts/evidence/mvp0/</code>.
                 </li>
                 <li>
-                  <strong>MVP 1 · plánované:</strong> engine
+                  <strong>MVP 1 · rozpracované:</strong> engine
                   (<code>@won/core/discounts</code>: plán slev pro košík,
                   kombinování, vysvětlení) + <strong>Slevy a kódy</strong> +
                   detekce nativních slev + jednoklikový přesun + Vyzkoušet košík
