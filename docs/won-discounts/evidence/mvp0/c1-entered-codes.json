@@ -1,0 +1,2649 @@
+{
+  "experiment": "c1-entered-codes",
+  "mode": "live",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "apiVersion": "2026-04",
+  "startedAt": "2026-09-28T11:40:09.908Z",
+  "steps": [
+    {
+      "at": "2026-09-28T11:40:18.588Z",
+      "message": "create automatic node (echo_codes + echoOnAutomatic)"
+    },
+    {
+      "at": "2026-09-28T11:40:27.791Z",
+      "message": "create code node WONPROTO1 (echo_codes)"
+    },
+    {
+      "at": "2026-09-28T11:40:33.933Z",
+      "message": "create code node WONPROTO2 (echo_codes)"
+    },
+    {
+      "at": "2026-09-28T11:40:39.963Z",
+      "message": "create native basic code WONPROTONATIVE (5 %, not a Won function)"
+    }
+  ],
+  "observations": [
+    {
+      "label": "a: WONPROTO1 only",
+      "codes": [
+        "WONPROTO1"
+      ],
+      "expectation": "automatic allocation ≈ 10 % (saw 1 code)",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 11740,
+      "windowStart": "2026-09-28T11:41:11.327Z",
+      "windowEnd": "2026-09-28T11:41:23.067Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 19620,
+        "total_discount": 2180,
+        "totalDiscountPercent": 10,
+        "discount_codes": [
+          {
+            "code": "WONPROTO1",
+            "applicable": false
+          }
+        ],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 19620,
+            "total_discount": 2180,
+            "line_level_discount_allocations": [
+              {
+                "amount": 2180,
+                "percentOfLine": 10,
+                "title": "WON:AUTO|WONPROTO1",
+                "type": "automatic",
+                "key": "b249678a-5c36-46f1-a592-de473bc484b8",
+                "value": "10.0",
+                "value_type": "percentage"
+              }
+            ]
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 2180,
+        "discount_codes": [
+          {
+            "code": "WONPROTO1",
+            "applicable": false
+          }
+        ],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          [
+            {
+              "amount": 2180,
+              "discount_application": {
+                "allocation_method": "each",
+                "created_at": "2026-09-28T11:41:22.908Z",
+                "description": null,
+                "key": "b249678a-5c36-46f1-a592-de473bc484b8",
+                "target_selection": "entitled",
+                "target_type": "line_item",
+                "title": "WON:AUTO|WONPROTO1",
+                "total_allocated_amount": 2180,
+                "type": "automatic",
+                "value": "10.0",
+                "value_type": "percentage"
+              }
+            }
+          ]
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T11:41:14.838Z",
+          "elapsedMs": 3511,
+          "matched": true,
+          "cart": "discount 2180/21800 (10%) codes[WONPROTO1:NOT-applicable] allocations[L0:WON:AUTO|WONPROTO1=10%]"
+        },
+        {
+          "at": "2026-09-28T11:41:23.067Z",
+          "elapsedMs": 11740,
+          "matched": true,
+          "cart": "discount 2180/21800 (10%) codes[WONPROTO1:NOT-applicable] allocations[L0:WON:AUTO|WONPROTO1=10%]"
+        }
+      ],
+      "functionRuns": [
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114114_596Z_extensions_won-discounts-engine_22ea9c.json",
+          "logTimestamp": "2026-09-28T11:41:14.596670Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 569945,
+          "inputPresent": true,
+          "triggeringDiscountCode": "WONPROTO1",
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 109,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:WONPROTO1|WONPROTO1",
+              "percent": 1,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 109
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114114_599Z_extensions_won-discounts-engine_0f4278.json",
+          "logTimestamp": "2026-09-28T11:41:14.599161Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 573708,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 132,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:AUTO|WONPROTO1",
+              "percent": 10,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 132
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114122_806Z_extensions_won-discounts-engine_fcc29e.json",
+          "logTimestamp": "2026-09-28T11:41:22.806514Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 569945,
+          "inputPresent": true,
+          "triggeringDiscountCode": "WONPROTO1",
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 109,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:WONPROTO1|WONPROTO1",
+              "percent": 1,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 109
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114122_809Z_extensions_won-discounts-engine_b2f812.json",
+          "logTimestamp": "2026-09-28T11:41:22.809893Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 573708,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 132,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:AUTO|WONPROTO1",
+              "percent": 10,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 132
+          },
+          "otherTopLevel": {}
+        }
+      ]
+    },
+    {
+      "label": "b: WONPROTO1 + WONPROTO2",
+      "codes": [
+        "WONPROTO1",
+        "WONPROTO2"
+      ],
+      "expectation": "automatic allocation ≈ 20 % (saw 2 codes)",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 10496,
+      "windowStart": "2026-09-28T11:41:31.070Z",
+      "windowEnd": "2026-09-28T11:41:41.566Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 17440,
+        "total_discount": 4360,
+        "totalDiscountPercent": 20,
+        "discount_codes": [
+          {
+            "code": "WONPROTO1",
+            "applicable": false
+          },
+          {
+            "code": "WONPROTO2",
+            "applicable": false
+          }
+        ],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 17440,
+            "total_discount": 4360,
+            "line_level_discount_allocations": [
+              {
+                "amount": 4360,
+                "percentOfLine": 20,
+                "title": "WON:AUTO|WONPROTO1,WONPROTO2",
+                "type": "automatic",
+                "key": "88ce9496-5c79-4c9b-9443-f3c64e6c3406",
+                "value": "20.0",
+                "value_type": "percentage"
+              }
+            ]
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 4360,
+        "discount_codes": [
+          {
+            "code": "WONPROTO1",
+            "applicable": false
+          },
+          {
+            "code": "WONPROTO2",
+            "applicable": false
+          }
+        ],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          [
+            {
+              "amount": 4360,
+              "discount_application": {
+                "allocation_method": "each",
+                "created_at": "2026-09-28T11:41:41.417Z",
+                "description": null,
+                "key": "88ce9496-5c79-4c9b-9443-f3c64e6c3406",
+                "target_selection": "entitled",
+                "target_type": "line_item",
+                "title": "WON:AUTO|WONPROTO1,WONPROTO2",
+                "total_allocated_amount": 4360,
+                "type": "automatic",
+                "value": "20.0",
+                "value_type": "percentage"
+              }
+            }
+          ]
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T11:41:33.312Z",
+          "elapsedMs": 2242,
+          "matched": true,
+          "cart": "discount 4360/21800 (20%) codes[WONPROTO1:NOT-applicable WONPROTO2:NOT-applicable] allocations[L0:WON:AUTO|WONPROTO1,WONPROTO2=20%]"
+        },
+        {
+          "at": "2026-09-28T11:41:41.565Z",
+          "elapsedMs": 10495,
+          "matched": true,
+          "cart": "discount 4360/21800 (20%) codes[WONPROTO1:NOT-applicable WONPROTO2:NOT-applicable] allocations[L0:WON:AUTO|WONPROTO1,WONPROTO2=20%]"
+        }
+      ],
+      "functionRuns": [
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114133_075Z_extensions_won-discounts-engine_2aae87.json",
+          "logTimestamp": "2026-09-28T11:41:33.075671Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 584981,
+          "inputPresent": true,
+          "triggeringDiscountCode": "WONPROTO1",
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 109,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:WONPROTO1|WONPROTO1,WONPROTO2",
+              "percent": 1,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 109
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114133_078Z_extensions_won-discounts-engine_635dac.json",
+          "logTimestamp": "2026-09-28T11:41:33.078593Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 584981,
+          "inputPresent": true,
+          "triggeringDiscountCode": "WONPROTO2",
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 109,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:WONPROTO2|WONPROTO1,WONPROTO2",
+              "percent": 1,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 109
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114133_081Z_extensions_won-discounts-engine_bef562.json",
+          "logTimestamp": "2026-09-28T11:41:33.081662Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 588648,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": true
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 132,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:AUTO|WONPROTO1,WONPROTO2",
+              "percent": 20,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 132
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114141_305Z_extensions_won-discounts-engine_51768d.json",
+          "logTimestamp": "2026-09-28T11:41:41.305429Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 584981,
+          "inputPresent": true,
+          "triggeringDiscountCode": "WONPROTO1",
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 109,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:WONPROTO1|WONPROTO1,WONPROTO2",
+              "percent": 1,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 109
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114141_308Z_extensions_won-discounts-engine_3795f5.json",
+          "logTimestamp": "2026-09-28T11:41:41.308386Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 584981,
+          "inputPresent": true,
+          "triggeringDiscountCode": "WONPROTO2",
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 109,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:WONPROTO2|WONPROTO1,WONPROTO2",
+              "percent": 1,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 109
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114141_310Z_extensions_won-discounts-engine_881f43.json",
+          "logTimestamp": "2026-09-28T11:41:41.310997Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 588648,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": true
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 132,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:AUTO|WONPROTO1,WONPROTO2",
+              "percent": 20,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 132
+          },
+          "otherTopLevel": {}
+        }
+      ]
+    },
+    {
+      "label": "c: no codes",
+      "codes": [],
+      "expectation": "no automatic allocation (0 codes)",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 10253,
+      "windowStart": "2026-09-28T11:41:49.568Z",
+      "windowEnd": "2026-09-28T11:41:59.821Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 21800,
+        "total_discount": 0,
+        "totalDiscountPercent": 0,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 21800,
+            "total_discount": 0,
+            "line_level_discount_allocations": []
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 0,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          []
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T11:41:51.722Z",
+          "elapsedMs": 2154,
+          "matched": true,
+          "cart": "discount 0/21800 (0%) codes[] allocations[]"
+        },
+        {
+          "at": "2026-09-28T11:41:59.821Z",
+          "elapsedMs": 10253,
+          "matched": true,
+          "cart": "discount 0/21800 (0%) codes[] allocations[]"
+        }
+      ],
+      "functionRuns": [
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114151_504Z_extensions_won-discounts-engine_4ced0e.json",
+          "logTimestamp": "2026-09-28T11:41:51.504086Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 472761,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 132,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 132
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114159_622Z_extensions_won-discounts-engine_6614a1.json",
+          "logTimestamp": "2026-09-28T11:41:59.622235Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 472761,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 132,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 132
+          },
+          "otherTopLevel": {}
+        }
+      ]
+    },
+    {
+      "label": "d: WONPROTO1 + WONPROTO2 + NOTAWONCODE7 (non-existent)",
+      "codes": [
+        "WONPROTO1",
+        "WONPROTO2",
+        "NOTAWONCODE7"
+      ],
+      "expectation": "record: 20 % = unknown code not passed to the function, 30 % = passed",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 10355,
+      "windowStart": "2026-09-28T11:42:07.823Z",
+      "windowEnd": "2026-09-28T11:42:18.178Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 17440,
+        "total_discount": 4360,
+        "totalDiscountPercent": 20,
+        "discount_codes": [
+          {
+            "code": "WONPROTO1",
+            "applicable": false
+          },
+          {
+            "code": "WONPROTO2",
+            "applicable": false
+          },
+          {
+            "code": "NOTAWONCODE7",
+            "applicable": false
+          }
+        ],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 17440,
+            "total_discount": 4360,
+            "line_level_discount_allocations": [
+              {
+                "amount": 4360,
+                "percentOfLine": 20,
+                "title": "WON:AUTO|WONPROTO1,WONPROTO2",
+                "type": "automatic",
+                "key": "6d30f67f-79e4-45ae-bd75-bd8dd592c7c6",
+                "value": "20.0",
+                "value_type": "percentage"
+              }
+            ]
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 4360,
+        "discount_codes": [
+          {
+            "code": "WONPROTO1",
+            "applicable": false
+          },
+          {
+            "code": "WONPROTO2",
+            "applicable": false
+          },
+          {
+            "code": "NOTAWONCODE7",
+            "applicable": false
+          }
+        ],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          [
+            {
+              "amount": 4360,
+              "discount_application": {
+                "allocation_method": "each",
+                "created_at": "2026-09-28T11:42:18.026Z",
+                "description": null,
+                "key": "6d30f67f-79e4-45ae-bd75-bd8dd592c7c6",
+                "target_selection": "entitled",
+                "target_type": "line_item",
+                "title": "WON:AUTO|WONPROTO1,WONPROTO2",
+                "total_allocated_amount": 4360,
+                "type": "automatic",
+                "value": "20.0",
+                "value_type": "percentage"
+              }
+            }
+          ]
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T11:42:09.993Z",
+          "elapsedMs": 2170,
+          "matched": true,
+          "cart": "discount 4360/21800 (20%) codes[WONPROTO1:NOT-applicable WONPROTO2:NOT-applicable NOTAWONCODE7:NOT-applicable] allocations[L0:WON:AUTO|WONPROTO1,WONPROTO2=20%]"
+        },
+        {
+          "at": "2026-09-28T11:42:18.178Z",
+          "elapsedMs": 10355,
+          "matched": true,
+          "cart": "discount 4360/21800 (20%) codes[WONPROTO1:NOT-applicable WONPROTO2:NOT-applicable NOTAWONCODE7:NOT-applicable] allocations[L0:WON:AUTO|WONPROTO1,WONPROTO2=20%]"
+        }
+      ],
+      "functionRuns": [
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114209_751Z_extensions_won-discounts-engine_8c81e4.json",
+          "logTimestamp": "2026-09-28T11:42:09.751471Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 584981,
+          "inputPresent": true,
+          "triggeringDiscountCode": "WONPROTO1",
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 109,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:WONPROTO1|WONPROTO1,WONPROTO2",
+              "percent": 1,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 109
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114209_754Z_extensions_won-discounts-engine_ca6416.json",
+          "logTimestamp": "2026-09-28T11:42:09.754538Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 584981,
+          "inputPresent": true,
+          "triggeringDiscountCode": "WONPROTO2",
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 109,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:WONPROTO2|WONPROTO1,WONPROTO2",
+              "percent": 1,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 109
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114209_757Z_extensions_won-discounts-engine_29afe7.json",
+          "logTimestamp": "2026-09-28T11:42:09.757366Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 588648,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": true
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 132,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:AUTO|WONPROTO1,WONPROTO2",
+              "percent": 20,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 132
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114217_926Z_extensions_won-discounts-engine_0cbcf9.json",
+          "logTimestamp": "2026-09-28T11:42:17.926176Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 584981,
+          "inputPresent": true,
+          "triggeringDiscountCode": "WONPROTO1",
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 109,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:WONPROTO1|WONPROTO1,WONPROTO2",
+              "percent": 1,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 109
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114217_928Z_extensions_won-discounts-engine_789121.json",
+          "logTimestamp": "2026-09-28T11:42:17.928752Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 584981,
+          "inputPresent": true,
+          "triggeringDiscountCode": "WONPROTO2",
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 109,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:WONPROTO2|WONPROTO1,WONPROTO2",
+              "percent": 1,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 109
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114217_930Z_extensions_won-discounts-engine_0f4f9b.json",
+          "logTimestamp": "2026-09-28T11:42:17.930863Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 588648,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": true
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 132,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:AUTO|WONPROTO1,WONPROTO2",
+              "percent": 20,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 132
+          },
+          "otherTopLevel": {}
+        }
+      ]
+    },
+    {
+      "label": "e: WONPROTO1 + WONPROTONATIVE (native code)",
+      "codes": [
+        "WONPROTO1",
+        "WONPROTONATIVE"
+      ],
+      "expectation": "record: 20 % = native code passed to the Won function, 10 % = not passed (native 5 % may win the line instead)",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 10369,
+      "windowStart": "2026-09-28T11:42:26.181Z",
+      "windowEnd": "2026-09-28T11:42:36.550Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 16568,
+        "total_discount": 5232,
+        "totalDiscountPercent": 24,
+        "discount_codes": [
+          {
+            "code": "WONPROTO1",
+            "applicable": false
+          },
+          {
+            "code": "WONPROTONATIVE",
+            "applicable": true
+          }
+        ],
+        "cart_level_discount_applications": [
+          {}
+        ],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 17440,
+            "total_discount": 5232,
+            "line_level_discount_allocations": [
+              {
+                "amount": 4360,
+                "percentOfLine": 20,
+                "title": "WON:AUTO|WONPROTO1,WONPROTONATIVE",
+                "type": "automatic",
+                "key": "9750e3c4-ad0e-4085-8a72-683ec0fa206e",
+                "value": "20.0",
+                "value_type": "percentage"
+              }
+            ]
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 5232,
+        "discount_codes": [
+          {
+            "code": "WONPROTO1",
+            "applicable": false
+          },
+          {
+            "code": "WONPROTONATIVE",
+            "applicable": true
+          }
+        ],
+        "cart_level_discount_applications": [
+          {
+            "amount": 872,
+            "discount_application": {
+              "allocation_method": "across",
+              "created_at": "2026-09-28T11:42:36.400Z",
+              "description": null,
+              "key": "b3760c98-6916-44a3-a0d5-b5a494418f3a",
+              "target_selection": "all",
+              "target_type": "line_item",
+              "title": "WONPROTONATIVE",
+              "total_allocated_amount": 872,
+              "type": "discount_code",
+              "value": "5.0",
+              "value_type": "percentage"
+            }
+          }
+        ],
+        "line_level_discount_allocations": [
+          [
+            {
+              "amount": 4360,
+              "discount_application": {
+                "allocation_method": "each",
+                "created_at": "2026-09-28T11:42:36.400Z",
+                "description": null,
+                "key": "9750e3c4-ad0e-4085-8a72-683ec0fa206e",
+                "target_selection": "entitled",
+                "target_type": "line_item",
+                "title": "WON:AUTO|WONPROTO1,WONPROTONATIVE",
+                "total_allocated_amount": 4360,
+                "type": "automatic",
+                "value": "20.0",
+                "value_type": "percentage"
+              }
+            }
+          ]
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T11:42:28.389Z",
+          "elapsedMs": 2208,
+          "matched": true,
+          "cart": "discount 5232/21800 (24%) codes[WONPROTO1:NOT-applicable WONPROTONATIVE:applicable] allocations[L0:WON:AUTO|WONPROTO1,WONPROTONATIVE=20%]"
+        },
+        {
+          "at": "2026-09-28T11:42:36.550Z",
+          "elapsedMs": 10369,
+          "matched": true,
+          "cart": "discount 5232/21800 (24%) codes[WONPROTO1:NOT-applicable WONPROTONATIVE:applicable] allocations[L0:WON:AUTO|WONPROTO1,WONPROTONATIVE=20%]"
+        }
+      ],
+      "functionRuns": [
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114228_148Z_extensions_won-discounts-engine_4b3efe.json",
+          "logTimestamp": "2026-09-28T11:42:28.148488Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 584795,
+          "inputPresent": true,
+          "triggeringDiscountCode": "WONPROTO1",
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTONATIVE",
+              "rejectable": false
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 109,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:WONPROTO1|WONPROTO1,WONPROTONATIVE",
+              "percent": 1,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 109
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114228_150Z_extensions_won-discounts-engine_6cc31d.json",
+          "logTimestamp": "2026-09-28T11:42:28.150943Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 588807,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            },
+            {
+              "code": "WONPROTONATIVE",
+              "rejectable": true
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 132,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:AUTO|WONPROTO1,WONPROTONATIVE",
+              "percent": 20,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 132
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114236_309Z_extensions_won-discounts-engine_739b49.json",
+          "logTimestamp": "2026-09-28T11:42:36.309673Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 584795,
+          "inputPresent": true,
+          "triggeringDiscountCode": "WONPROTO1",
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTONATIVE",
+              "rejectable": false
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 109,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:WONPROTO1|WONPROTO1,WONPROTONATIVE",
+              "percent": 1,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 109
+          },
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c1-entered-codes/20260928_114236_312Z_extensions_won-discounts-engine_f7fc49.json",
+          "logTimestamp": "2026-09-28T11:42:36.312875Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 588807,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            },
+            {
+              "code": "WONPROTONATIVE",
+              "rejectable": true
+            }
+          ],
+          "discountMetafield": "present",
+          "configMode": "echo_codes",
+          "configJsonBytes": 132,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:AUTO|WONPROTO1,WONPROTONATIVE",
+              "percent": 20,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "bytes": 132
+          },
+          "otherTopLevel": {}
+        }
+      ]
+    }
+  ],
+  "graphql": [
+    {
+      "at": "2026-09-28T11:40:09.910Z",
+      "name": "functions",
+      "variables": null,
+      "response": {
+        "shopifyFunctions": {
+          "nodes": [
+            {
+              "id": "01a0e791-bf2a-77e6-9d45-e355028dabfe",
+              "handle": "won-discounts-engine",
+              "title": "won-discounts-engine",
+              "apiType": "discount",
+              "app": {
+                "title": "won-discounts"
+              }
+            }
+          ]
+        },
+        "shop": {
+          "ianaTimezone": "America/New_York",
+          "timezoneOffset": "-0400"
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:40:14.306Z",
+      "name": "discountNodes",
+      "variables": null,
+      "response": {
+        "discountNodes": {
+          "nodes": [
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179405644017",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Test_Code_discount",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179409412337",
+              "discount": {
+                "__typename": "DiscountAutomaticBxgy",
+                "title": "Dárek zdarma",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179582558449",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Free gift",
+                "status": "EXPIRED"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:40:18.589Z",
+      "name": "automaticCreate",
+      "variables": {
+        "automaticAppDiscount": {
+          "title": "WON-PROTO C1 auto echo",
+          "functionHandle": "won-discounts-engine",
+          "startsAt": "2026-09-28T11:39:18.588Z",
+          "discountClasses": [
+            "PRODUCT"
+          ],
+          "combinesWith": {
+            "productDiscounts": true,
+            "orderDiscounts": true,
+            "shippingDiscounts": true
+          },
+          "metafields": [
+            {
+              "namespace": "$app:won_discounts",
+              "key": "function_config",
+              "type": "json",
+              "value": "{\"prototype\":{\"mode\":\"echo_codes\",\"echoOnAutomatic\":true},\"campaignStart\":\"1970-01-01T00:00:00\",\"campaignEnd\":\"1970-01-01T00:00:00\"}"
+            }
+          ]
+        }
+      },
+      "response": {
+        "discountAutomaticAppCreate": {
+          "automaticAppDiscount": {
+            "discountId": "gid://shopify/DiscountAutomaticNode/2204261187825",
+            "title": "WON-PROTO C1 auto echo",
+            "status": "ACTIVE",
+            "discountClasses": [
+              "PRODUCT"
+            ],
+            "startsAt": "2026-09-28T11:39:18Z"
+          },
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:40:27.791Z",
+      "name": "codeCreate",
+      "variables": {
+        "codeAppDiscount": {
+          "title": "WON-PROTO C1 WONPROTO1",
+          "code": "WONPROTO1",
+          "functionHandle": "won-discounts-engine",
+          "startsAt": "2026-09-28T11:39:27.791Z",
+          "discountClasses": [
+            "PRODUCT"
+          ],
+          "context": {
+            "all": "ALL"
+          },
+          "appliesOncePerCustomer": false,
+          "combinesWith": {
+            "productDiscounts": true,
+            "orderDiscounts": true,
+            "shippingDiscounts": true
+          },
+          "metafields": [
+            {
+              "namespace": "$app:won_discounts",
+              "key": "function_config",
+              "type": "json",
+              "value": "{\"prototype\":{\"mode\":\"echo_codes\"},\"campaignStart\":\"1970-01-01T00:00:00\",\"campaignEnd\":\"1970-01-01T00:00:00\"}"
+            }
+          ]
+        }
+      },
+      "response": {
+        "discountCodeAppCreate": {
+          "codeAppDiscount": {
+            "discountId": "gid://shopify/DiscountCodeNode/2204261220593",
+            "title": "WON-PROTO C1 WONPROTO1",
+            "status": "ACTIVE",
+            "discountClasses": [
+              "PRODUCT"
+            ],
+            "codes": {
+              "nodes": [
+                {
+                  "code": "WONPROTO1"
+                }
+              ]
+            }
+          },
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:40:33.933Z",
+      "name": "codeCreate",
+      "variables": {
+        "codeAppDiscount": {
+          "title": "WON-PROTO C1 WONPROTO2",
+          "code": "WONPROTO2",
+          "functionHandle": "won-discounts-engine",
+          "startsAt": "2026-09-28T11:39:33.933Z",
+          "discountClasses": [
+            "PRODUCT"
+          ],
+          "context": {
+            "all": "ALL"
+          },
+          "appliesOncePerCustomer": false,
+          "combinesWith": {
+            "productDiscounts": true,
+            "orderDiscounts": true,
+            "shippingDiscounts": true
+          },
+          "metafields": [
+            {
+              "namespace": "$app:won_discounts",
+              "key": "function_config",
+              "type": "json",
+              "value": "{\"prototype\":{\"mode\":\"echo_codes\"},\"campaignStart\":\"1970-01-01T00:00:00\",\"campaignEnd\":\"1970-01-01T00:00:00\"}"
+            }
+          ]
+        }
+      },
+      "response": {
+        "discountCodeAppCreate": {
+          "codeAppDiscount": {
+            "discountId": "gid://shopify/DiscountCodeNode/2204261253361",
+            "title": "WON-PROTO C1 WONPROTO2",
+            "status": "ACTIVE",
+            "discountClasses": [
+              "PRODUCT"
+            ],
+            "codes": {
+              "nodes": [
+                {
+                  "code": "WONPROTO2"
+                }
+              ]
+            }
+          },
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:40:39.964Z",
+      "name": "basicCodeCreate",
+      "variables": {
+        "basicCodeDiscount": {
+          "title": "WON-PROTO C1 native",
+          "code": "WONPROTONATIVE",
+          "startsAt": "2026-09-28T11:39:39.963Z",
+          "context": {
+            "all": "ALL"
+          },
+          "appliesOncePerCustomer": false,
+          "customerGets": {
+            "value": {
+              "percentage": 0.05
+            },
+            "items": {
+              "all": true
+            }
+          },
+          "combinesWith": {
+            "productDiscounts": true,
+            "orderDiscounts": true,
+            "shippingDiscounts": true
+          }
+        }
+      },
+      "response": {
+        "discountCodeBasicCreate": {
+          "codeDiscountNode": {
+            "id": "gid://shopify/DiscountCodeNode/2204261286129"
+          },
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:40:47.272Z",
+      "name": "nodeConfig",
+      "variables": {
+        "id": "gid://shopify/DiscountAutomaticNode/2204261187825"
+      },
+      "response": {
+        "discountNode": {
+          "id": "gid://shopify/DiscountAutomaticNode/2204261187825",
+          "metafield": {
+            "id": "gid://shopify/Metafield/191400603451633",
+            "type": "json",
+            "value": "{\"prototype\":{\"mode\":\"echo_codes\",\"echoOnAutomatic\":true},\"campaignStart\":\"1970-01-01T00:00:00\",\"campaignEnd\":\"1970-01-01T00:00:00\"}"
+          },
+          "discount": {
+            "__typename": "DiscountAutomaticApp",
+            "title": "WON-PROTO C1 auto echo",
+            "status": "ACTIVE"
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:40:52.930Z",
+      "name": "nodeConfig",
+      "variables": {
+        "id": "gid://shopify/DiscountCodeNode/2204261220593"
+      },
+      "response": {
+        "discountNode": {
+          "id": "gid://shopify/DiscountCodeNode/2204261220593",
+          "metafield": {
+            "id": "gid://shopify/Metafield/191400622424305",
+            "type": "json",
+            "value": "{\"prototype\":{\"mode\":\"echo_codes\"},\"campaignStart\":\"1970-01-01T00:00:00\",\"campaignEnd\":\"1970-01-01T00:00:00\"}"
+          },
+          "discount": {
+            "__typename": "DiscountCodeApp",
+            "title": "WON-PROTO C1 WONPROTO1",
+            "status": "ACTIVE",
+            "codesCount": {
+              "count": 1
+            },
+            "codes": {
+              "nodes": [
+                {
+                  "code": "WONPROTO1"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:41:02.541Z",
+      "name": "nodeConfig",
+      "variables": {
+        "id": "gid://shopify/DiscountCodeNode/2204261253361"
+      },
+      "response": {
+        "discountNode": {
+          "id": "gid://shopify/DiscountCodeNode/2204261253361",
+          "metafield": {
+            "id": "gid://shopify/Metafield/191400644116721",
+            "type": "json",
+            "value": "{\"prototype\":{\"mode\":\"echo_codes\"},\"campaignStart\":\"1970-01-01T00:00:00\",\"campaignEnd\":\"1970-01-01T00:00:00\"}"
+          },
+          "discount": {
+            "__typename": "DiscountCodeApp",
+            "title": "WON-PROTO C1 WONPROTO2",
+            "status": "ACTIVE",
+            "codesCount": {
+              "count": 1
+            },
+            "codes": {
+              "nodes": [
+                {
+                  "code": "WONPROTO2"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:42:56.572Z",
+      "name": "codeDelete",
+      "variables": {
+        "id": "gid://shopify/DiscountCodeNode/2204261286129"
+      },
+      "response": {
+        "discountCodeDelete": {
+          "deletedCodeDiscountId": "gid://shopify/DiscountCodeNode/2204261286129",
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:43:00.877Z",
+      "name": "codeDelete",
+      "variables": {
+        "id": "gid://shopify/DiscountCodeNode/2204261253361"
+      },
+      "response": {
+        "discountCodeDelete": {
+          "deletedCodeDiscountId": "gid://shopify/DiscountCodeNode/2204261253361",
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:43:05.231Z",
+      "name": "codeDelete",
+      "variables": {
+        "id": "gid://shopify/DiscountCodeNode/2204261220593"
+      },
+      "response": {
+        "discountCodeDelete": {
+          "deletedCodeDiscountId": "gid://shopify/DiscountCodeNode/2204261220593",
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:43:09.438Z",
+      "name": "automaticDelete",
+      "variables": {
+        "id": "gid://shopify/DiscountAutomaticNode/2204261187825"
+      },
+      "response": {
+        "discountAutomaticDelete": {
+          "deletedAutomaticDiscountId": "gid://shopify/DiscountAutomaticNode/2204261187825",
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T11:43:13.391Z",
+      "name": "discountNodes",
+      "variables": null,
+      "response": {
+        "discountNodes": {
+          "nodes": [
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179405644017",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Test_Code_discount",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179409412337",
+              "discount": {
+                "__typename": "DiscountAutomaticBxgy",
+                "title": "Dárek zdarma",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179582558449",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Free gift",
+                "status": "EXPIRED"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "functionLogs": [
+    {
+      "collectedAt": "2026-09-28T11:42:54.569Z",
+      "runs": 22,
+      "unassigned": [],
+      "appDevLines": [
+        "Error while polling app logs.Retrying in 5 seconds.Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5699M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114114_596Z_extensions_won-discounts-engine_22ea9c.json (22ea9c)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5737M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114114_599Z_extensions_won-discounts-engine_0f4278.json (0f4278)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5699M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114122_806Z_extensions_won-discounts-engine_fcc29e.json (fcc29e)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5737M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114122_809Z_extensions_won-discounts-engine_b2f812.json (b2f812)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5850M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114133_075Z_extensions_won-discounts-engine_2aae87.json (2aae87)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5850M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114133_078Z_extensions_won-discounts-engine_635dac.json (635dac)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5886M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114133_081Z_extensions_won-discounts-engine_bef562.json (bef562)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5850M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114141_305Z_extensions_won-discounts-engine_51768d.json (51768d)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5850M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114141_308Z_extensions_won-discounts-engine_3795f5.json (3795f5)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5886M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114141_310Z_extensions_won-discounts-engine_881f43.json (881f43)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.4728M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114151_504Z_extensions_won-discounts-engine_4ced0e.json (4ced0e)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.4728M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114159_622Z_extensions_won-discounts-engine_6614a1.json (6614a1)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5850M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114209_751Z_extensions_won-discounts-engine_8c81e4.json (8c81e4)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5850M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114209_754Z_extensions_won-discounts-engine_ca6416.json (ca6416)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5886M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114209_757Z_extensions_won-discounts-engine_29afe7.json (29afe7)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5850M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114217_926Z_extensions_won-discounts-engine_0cbcf9.json (0cbcf9)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5850M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114217_928Z_extensions_won-discounts-engine_789121.json (789121)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5886M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114217_930Z_extensions_won-discounts-engine_0f4f9b.json (0f4f9b)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5848M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114228_148Z_extensions_won-discounts-engine_4b3efe.json (4b3efe)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5888M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114228_150Z_extensions_won-discounts-engine_6cc31d.json (6cc31d)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5848M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114236_309Z_extensions_won-discounts-engine_739b49.json (739b49)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5888M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_114236_312Z_extensions_won-discounts-engine_f7fc49.json (f7fc49)"
+      ]
+    }
+  ],
+  "cleanup": {
+    "actions": [
+      {
+        "at": "2026-09-28T11:43:00.877Z",
+        "deleted": {
+          "kind": "node",
+          "id": "gid://shopify/DiscountCodeNode/2204261286129",
+          "title": "C1 native"
+        },
+        "result": {
+          "deletedCodeDiscountId": "gid://shopify/DiscountCodeNode/2204261286129",
+          "userErrors": []
+        }
+      },
+      {
+        "at": "2026-09-28T11:43:05.231Z",
+        "deleted": {
+          "kind": "node",
+          "id": "gid://shopify/DiscountCodeNode/2204261253361",
+          "title": "C1 WONPROTO2"
+        },
+        "result": {
+          "deletedCodeDiscountId": "gid://shopify/DiscountCodeNode/2204261253361",
+          "userErrors": []
+        }
+      },
+      {
+        "at": "2026-09-28T11:43:09.438Z",
+        "deleted": {
+          "kind": "node",
+          "id": "gid://shopify/DiscountCodeNode/2204261220593",
+          "title": "C1 WONPROTO1"
+        },
+        "result": {
+          "deletedCodeDiscountId": "gid://shopify/DiscountCodeNode/2204261220593",
+          "userErrors": []
+        }
+      },
+      {
+        "at": "2026-09-28T11:43:13.391Z",
+        "deleted": {
+          "kind": "node",
+          "id": "gid://shopify/DiscountAutomaticNode/2204261187825",
+          "title": "C1 auto echo"
+        },
+        "result": {
+          "deletedAutomaticDiscountId": "gid://shopify/DiscountAutomaticNode/2204261187825",
+          "userErrors": []
+        }
+      }
+    ],
+    "remainingProtoNodes": [],
+    "ok": true
+  },
+  "plan": "Plan:\n 1. sweep leftover WON-PROTO nodes\n 2. create automatic node  \"WON-PROTO C1 auto echo\"   config {prototype:{mode:echo_codes,echoOnAutomatic:true}, campaignStart/End 1970}\n 3. create code node       \"WON-PROTO C1 WONPROTO1\"   code WONPROTO1, config {prototype:{mode:echo_codes}}\n 4. create code node       \"WON-PROTO C1 WONPROTO2\"   code WONPROTO2, same config\n 5. create native code     \"WON-PROTO C1 native\"      code WONPROTONATIVE (discountCodeBasicCreate, 5 % all items)\n 6. storefront (fresh cart, 1× won-e2e-simple-a), each read twice in a row:\n      a. WONPROTO1                    → automatic allocation ≈ 10 %\n      b. WONPROTO1,WONPROTO2          → automatic allocation ≈ 20 %   (C1 readout)\n      c. no codes                     → no automatic allocation\n      d. WONPROTO1,WONPROTO2,NOTAWONCODE7 (does not exist) → record: 20 % = unknown code not passed, 30 % = passed\n      e. WONPROTO1,WONPROTONATIVE      → record: 20 % = native code passed to the Won function, 10 % = not passed\n 7. function run logs (timestamp-matched to each cart window): triggeringDiscountCode +\n    enteredDiscountCodes seen by the automatic node and by each code node\n 8. finally: delete all 4 nodes, list WON-PROTO nodes (must be 0)",
+  "function": {
+    "id": "01a0e791-bf2a-77e6-9d45-e355028dabfe",
+    "handle": "won-discounts-engine",
+    "title": "won-discounts-engine",
+    "apiType": "discount",
+    "app": {
+      "title": "won-discounts"
+    }
+  },
+  "shop": {
+    "ianaTimezone": "America/New_York",
+    "timezoneOffset": "-0400"
+  },
+  "leftoversAtStart": [],
+  "nodes": {
+    "auto": {
+      "discountId": "gid://shopify/DiscountAutomaticNode/2204261187825",
+      "title": "WON-PROTO C1 auto echo",
+      "status": "ACTIVE",
+      "discountClasses": [
+        "PRODUCT"
+      ],
+      "startsAt": "2026-09-28T11:39:18Z"
+    },
+    "WONPROTO1": {
+      "discountId": "gid://shopify/DiscountCodeNode/2204261220593",
+      "title": "WON-PROTO C1 WONPROTO1",
+      "status": "ACTIVE",
+      "discountClasses": [
+        "PRODUCT"
+      ],
+      "codes": {
+        "nodes": [
+          {
+            "code": "WONPROTO1"
+          }
+        ]
+      }
+    },
+    "WONPROTO2": {
+      "discountId": "gid://shopify/DiscountCodeNode/2204261253361",
+      "title": "WON-PROTO C1 WONPROTO2",
+      "status": "ACTIVE",
+      "discountClasses": [
+        "PRODUCT"
+      ],
+      "codes": {
+        "nodes": [
+          {
+            "code": "WONPROTO2"
+          }
+        ]
+      }
+    },
+    "native": {
+      "discountId": "gid://shopify/DiscountCodeNode/2204261286129"
+    }
+  },
+  "storedConfigs": {
+    "auto": {
+      "node": "gid://shopify/DiscountAutomaticNode/2204261187825",
+      "discount": {
+        "__typename": "DiscountAutomaticApp",
+        "title": "WON-PROTO C1 auto echo",
+        "status": "ACTIVE"
+      },
+      "storedBytes": 132,
+      "storedPreview": "{\"prototype\":{\"mode\":\"echo_codes\",\"echoOnAutomatic\":true},\"campaignStart\":\"1970-01-01T00:00:00\",\"campaignEnd\":\"1970-01-01T00:00:00\"}"
+    },
+    "WONPROTO1": {
+      "node": "gid://shopify/DiscountCodeNode/2204261220593",
+      "discount": {
+        "__typename": "DiscountCodeApp",
+        "title": "WON-PROTO C1 WONPROTO1",
+        "status": "ACTIVE",
+        "codesCount": {
+          "count": 1
+        },
+        "codes": {
+          "nodes": [
+            {
+              "code": "WONPROTO1"
+            }
+          ]
+        }
+      },
+      "storedBytes": 109,
+      "storedPreview": "{\"prototype\":{\"mode\":\"echo_codes\"},\"campaignStart\":\"1970-01-01T00:00:00\",\"campaignEnd\":\"1970-01-01T00:00:00\"}"
+    },
+    "WONPROTO2": {
+      "node": "gid://shopify/DiscountCodeNode/2204261253361",
+      "discount": {
+        "__typename": "DiscountCodeApp",
+        "title": "WON-PROTO C1 WONPROTO2",
+        "status": "ACTIVE",
+        "codesCount": {
+          "count": 1
+        },
+        "codes": {
+          "nodes": [
+            {
+              "code": "WONPROTO2"
+            }
+          ]
+        }
+      },
+      "storedBytes": 109,
+      "storedPreview": "{\"prototype\":{\"mode\":\"echo_codes\"},\"campaignStart\":\"1970-01-01T00:00:00\",\"campaignEnd\":\"1970-01-01T00:00:00\"}"
+    }
+  },
+  "storefrontVariant": {
+    "id": 48468678902001,
+    "price": 21800
+  },
+  "savedAt": "2026-09-28T11:43:17.432Z",
+  "verdictData": {
+    "autoPercentByObservation": {
+      "a": 10,
+      "b": 20,
+      "c": 0,
+      "d": 20,
+      "e": 20
+    },
+    "matched": {
+      "a": true,
+      "b": true,
+      "c": true
+    },
+    "discountCodes": {
+      "a": [
+        {
+          "code": "WONPROTO1",
+          "applicable": false
+        }
+      ],
+      "b": [
+        {
+          "code": "WONPROTO1",
+          "applicable": false
+        },
+        {
+          "code": "WONPROTO2",
+          "applicable": false
+        }
+      ],
+      "d": [
+        {
+          "code": "WONPROTO1",
+          "applicable": false
+        },
+        {
+          "code": "WONPROTO2",
+          "applicable": false
+        },
+        {
+          "code": "NOTAWONCODE7",
+          "applicable": false
+        }
+      ],
+      "e": [
+        {
+          "code": "WONPROTO1",
+          "applicable": false
+        },
+        {
+          "code": "WONPROTONATIVE",
+          "applicable": true
+        }
+      ]
+    },
+    "runsDuringB": {
+      "automatic": [
+        {
+          "at": "2026-09-28T11:41:33.081662Z",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": true
+            }
+          ],
+          "out": [
+            "WON:AUTO|WONPROTO1,WONPROTO2@20%"
+          ]
+        },
+        {
+          "at": "2026-09-28T11:41:41.310997Z",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": true
+            }
+          ],
+          "out": [
+            "WON:AUTO|WONPROTO1,WONPROTO2@20%"
+          ]
+        }
+      ],
+      "code": [
+        {
+          "at": "2026-09-28T11:41:33.075671Z",
+          "triggering": "WONPROTO1",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "out": [
+            "WON:WONPROTO1|WONPROTO1,WONPROTO2@1%"
+          ]
+        },
+        {
+          "at": "2026-09-28T11:41:33.078593Z",
+          "triggering": "WONPROTO2",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "out": [
+            "WON:WONPROTO2|WONPROTO1,WONPROTO2@1%"
+          ]
+        },
+        {
+          "at": "2026-09-28T11:41:41.305429Z",
+          "triggering": "WONPROTO1",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "out": [
+            "WON:WONPROTO1|WONPROTO1,WONPROTO2@1%"
+          ]
+        },
+        {
+          "at": "2026-09-28T11:41:41.308386Z",
+          "triggering": "WONPROTO2",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "out": [
+            "WON:WONPROTO2|WONPROTO1,WONPROTO2@1%"
+          ]
+        }
+      ]
+    },
+    "automaticSawBothCodes": true,
+    "codeNodesSawBothCodes": true,
+    "codeNodeTriggeringCodesDuringB": [
+      "WONPROTO1",
+      "WONPROTO2"
+    ],
+    "runsDuringD": {
+      "automatic": [
+        {
+          "at": "2026-09-28T11:42:09.757366Z",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": true
+            }
+          ],
+          "out": [
+            "WON:AUTO|WONPROTO1,WONPROTO2@20%"
+          ]
+        },
+        {
+          "at": "2026-09-28T11:42:17.930863Z",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": true
+            }
+          ],
+          "out": [
+            "WON:AUTO|WONPROTO1,WONPROTO2@20%"
+          ]
+        }
+      ],
+      "code": [
+        {
+          "at": "2026-09-28T11:42:09.751471Z",
+          "triggering": "WONPROTO1",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "out": [
+            "WON:WONPROTO1|WONPROTO1,WONPROTO2@1%"
+          ]
+        },
+        {
+          "at": "2026-09-28T11:42:09.754538Z",
+          "triggering": "WONPROTO2",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "out": [
+            "WON:WONPROTO2|WONPROTO1,WONPROTO2@1%"
+          ]
+        },
+        {
+          "at": "2026-09-28T11:42:17.926176Z",
+          "triggering": "WONPROTO1",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "out": [
+            "WON:WONPROTO1|WONPROTO1,WONPROTO2@1%"
+          ]
+        },
+        {
+          "at": "2026-09-28T11:42:17.928752Z",
+          "triggering": "WONPROTO2",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTO2",
+              "rejectable": false
+            }
+          ],
+          "out": [
+            "WON:WONPROTO2|WONPROTO1,WONPROTO2@1%"
+          ]
+        }
+      ]
+    },
+    "runsDuringE": {
+      "automatic": [
+        {
+          "at": "2026-09-28T11:42:28.150943Z",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            },
+            {
+              "code": "WONPROTONATIVE",
+              "rejectable": true
+            }
+          ],
+          "out": [
+            "WON:AUTO|WONPROTO1,WONPROTONATIVE@20%"
+          ]
+        },
+        {
+          "at": "2026-09-28T11:42:36.312875Z",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": true
+            },
+            {
+              "code": "WONPROTONATIVE",
+              "rejectable": true
+            }
+          ],
+          "out": [
+            "WON:AUTO|WONPROTO1,WONPROTONATIVE@20%"
+          ]
+        }
+      ],
+      "code": [
+        {
+          "at": "2026-09-28T11:42:28.148488Z",
+          "triggering": "WONPROTO1",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTONATIVE",
+              "rejectable": false
+            }
+          ],
+          "out": [
+            "WON:WONPROTO1|WONPROTO1,WONPROTONATIVE@1%"
+          ]
+        },
+        {
+          "at": "2026-09-28T11:42:36.309673Z",
+          "triggering": "WONPROTO1",
+          "entered": [
+            {
+              "code": "WONPROTO1",
+              "rejectable": false
+            },
+            {
+              "code": "WONPROTONATIVE",
+              "rejectable": false
+            }
+          ],
+          "out": [
+            "WON:WONPROTO1|WONPROTO1,WONPROTONATIVE@1%"
+          ]
+        }
+      ]
+    }
+  },
+  "storefrontCodesResent": 0,
+  "storefrontRateLimited": 0,
+  "storefrontRequests": 21,
+  "finishedAt": "2026-09-28T11:43:17.432Z"
+}

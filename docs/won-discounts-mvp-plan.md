@@ -223,12 +223,32 @@ interface CartPlan {
 8. **Kampaň** (Pro): když `now.campaignActive = id`, přepisy kampaně se aplikují na config
    **před** krokem 1; marže platí dál.
 
-### Emise per uzel (C1)
+### Emise per uzel (C1 platí, C2 fallback — verdikty MVP 0)
 
-- `emitForNode(plan, node)`: automatický uzel vydá produktové alokace automatických pravidel
-  + množstevní úrovně + dárky + objednávkové automatické + dopravu z prahu; kódový uzel vydá
-  jen alokace pravidla, jehož kód je `triggeringDiscountCode`. Protože oba uzly počítají
-  **tentýž** plán ze stejného vstupu (včetně `enteredDiscountCodes`), součet emisí = plán.
+- **Uzly:** jeden automatický uzel `Won Discounts` (automatická pravidla, množstevní úrovně,
+  dárky, doprava z prahu) + **jeden kódový uzel na každé kódové pravidlo** (všechny kódy toho
+  pravidla jako redeem kódy: newsletter, influenceři…). Kódy **jednoho** pravidla se v jednom
+  košíku nesčítají (z uzlu se uplatní max. 1 kód — ověřeno C2); kódy **různých** pravidel ano,
+  pokud to dovolí kombinování (A1).
+- **Tentýž plán v každém uzlu:** každý uzel vidí všechny zadané platné kódy
+  (`enteredDiscountCodes`, ověřeno C1) a spočítá celý plán `planCart`. Vydá jen alokace pravidel,
+  která vlastní: automatický uzel automatická pravidla, kódový uzel pravidlo, jehož kód je
+  `triggeringDiscountCode`.
+- **Nejvýš jedna produktová alokace na řádek** (mimo Plus platí Shopify 1 produktová sleva na
+  řádek — ověřeno C1/C2). Engine vybere na každém řádku jednoho vítěze a emituje ho jen uzel,
+  který ho vlastní. Součet per sleva (Pro) emituje jako jednu hodnotu uzel pravidla s nejvyšší
+  prioritou.
+- **Kód, jehož uzel nic nevydá, ukáže Shopify jako neuplatněný** (`applicable: false`). Proto
+  hodnotu kódu nikdy nevydává automatický uzel a košík (storefront) poctivě vysvětlí proč
+  („máš výhodnější slevu“, „kód se na tyto produkty nevztahuje“).
+- **Admin limit (C2 fallback):** počet aktivních kódových pravidel je omezený (každé = 1 uzel).
+  Přesné číslo podle limitu Shopify ověří MVP 1; admin ho poctivě vysvětlí a nedovolí překročit.
+- **Transport configu (C3, C4):** metafield `function_config` je zároveň zdroj proměnných dotazu.
+  Chybějící klíč `campaignStart/End`, chybějící metafield nebo hodnota nad 10 000 B → funkce
+  selže (`InvalidVariableValueError`) a uzel nedá žádnou slevu (checkout se neblokuje). Proto:
+  rozpočet 9 000 B hlídaný při uložení, sync zapisuje klíče vždy, contract test. [spec] MVP 1
+  oddělí malé proměnné (`function_vars`: časy kampaně) od configu čteného přes
+  `discount.metafield`, aby přetečení configu neshodilo i časovou logiku.
 - Won uzly mají `combinesWith` product/order/shipping = true (engine sám řeší vylučování);
   cizí (nativní) slevy engine nevidí — proto detekce a přesun (princip 3).
 
@@ -314,8 +334,10 @@ interface CartPlan {
   (datový kontrakt, eventy, CSS proměnné, příklad) — SEC-3: vlastní CSS jen scoped.
 - **BETA:** ceny podle množství na kartách a ve vyhledávání (merchant zapne v adminu).
 - **Pokladna:** nic vlastního, jen názvy slev z funkce (lokalizované).
-- **Věrný náhled (C5):** primárně storefront v iframe adminu s náhledovým tokenem
-  (neuložený config přes app proxy); fallback náhled s tokeny tématu + „Zobrazit na mém webu“.
+- **Věrný náhled (C5 → fallback, MVP 0):** storefront nejde vložit do iframe (`x-frame-options:
+  DENY`, `frame-ancestors 'none'`). Náhled v adminu = sdílený renderer bloků krmený tokeny
+  živého tématu (barvy, fonty, radius ze `settings_data.json` přes `read_themes`) + tlačítko
+  „Zobrazit na mém webu“ s náhledovým parametrem.
 
 ---
 
@@ -404,13 +426,13 @@ s každým MVP; MVP 7 je jen dotahuje.
 
 ## 11. Rizika a prototypy MVP 0
 
-| # | Otázka prototypu | Primární cesta | Předem schválený fallback |
-|---|---|---|---|
-| C1 | Vidí kódový i automatický uzel všechny zadané Won kódy (`enteredDiscountCodes`) a dá součet emisí stejný plán? | Jeden mozek, víc rukou (§3) | `combinesWith` + konzervativní strop marže v každém uzlu |
-| C2 | Jde na jeden kódový uzel přidat víc redeem kódů a funkce pozná použitý kód (`triggeringDiscountCode`)? Kolik Won kódů jde kombinovat v jednom košíku? | Jeden kódový uzel s více kódy | Limit počtu kódů v adminu, poctivě vysvětlený |
-| C3 | Kolik pravidel se vejde do 9 000 B; čte funkce per-produkt metafieldy? | Globální pravidla na uzlu, data per produkt v metafieldech | Tvrdý strop počtu pravidel v adminu |
-| C4 | Pozná funkce okno kampaně přes `shop.localTime.dateTimeBetween` s proměnnými z metafieldu? | `shop.localTime` ve funkci | Nativní `startsAt`/`endsAt` na uzlech |
-| C5 | Jde storefront vložit do iframe adminu (frame-ancestors) s náhledovým tokenem přes app proxy? | Iframe + náhledový token | Náhled s tokeny tématu + „Zobrazit na mém webu“ |
-| C6 | — | Rozhodnuto: záloha → smazání nativní → vytvoření ve Won | — |
+| # | Otázka prototypu | Primární cesta | Předem schválený fallback | Verdikt MVP 0 |
+|---|---|---|---|---|
+| C1 | Vidí kódový i automatický uzel všechny zadané Won kódy (`enteredDiscountCodes`) a dá součet emisí stejný plán? | Jeden mozek, víc rukou (§3) | `combinesWith` + konzervativní strop marže v každém uzlu | **platí** (1 produktová alokace na řádek, viz §3) |
+| C2 | Jde na jeden kódový uzel přidat víc redeem kódů a funkce pozná použitý kód (`triggeringDiscountCode`)? Kolik Won kódů jde kombinovat v jednom košíku? | Jeden kódový uzel s více kódy | Limit počtu kódů v adminu, poctivě vysvětlený | **fallback**: uzel na kódové pravidlo, limit aktivních kódových pravidel |
+| C3 | Kolik pravidel se vejde do 9 000 B; čte funkce per-produkt metafieldy? | Globální pravidla na uzlu, data per produkt v metafieldech | Tvrdý strop počtu pravidel v adminu | **platí** (hranice přesně 10 000 B) |
+| C4 | Pozná funkce okno kampaně přes `shop.localTime.dateTimeBetween` s proměnnými z metafieldu? | `shop.localTime` ve funkci | Nativní `startsAt`/`endsAt` na uzlech | **platí** (klíče povinné) |
+| C5 | Jde storefront vložit do iframe adminu (frame-ancestors) s náhledovým tokenem přes app proxy? | Iframe + náhledový token | Náhled s tokeny tématu + „Zobrazit na mém webu“ | **fallback** |
+| C6 | — | Rozhodnuto: záloha → smazání nativní → vytvoření ve Won | — | rozhodnuto |
 
 Verdikty a důkazy: build log.

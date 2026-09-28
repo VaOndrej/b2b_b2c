@@ -46,6 +46,17 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 | P4 | Storefront heslo | ✓ Playwright odemkl `/password` a načetl `/products/won-e2e-simple-a` (title „Won E2E — Simple A“) | `scratchpad/check-storefront.mjs`, heslo jen v `apps/won-discounts/.env` (gitignored, `git check-ignore` ✓) |
 | P5 | Porty | `24678` (výchozí Vite HMR) už poslouchá jiný `node` proces → při `app dev` hlídat kolizi HMR. `9885/9886` volné pro E2E témata. | `lsof -iTCP -sTCP:LISTEN` |
 
+## Poučení (platí pro další appky)
+
+- **Embed v `settings_data.json` se odkazuje registračním UUID extensionu, ne `uid` z
+  `shopify.extension.toml`.** Won Discounts: toml uid `7ffc5d3f…`, v `settings_data` je
+  `shopify://apps/won-discounts/blocks/won_discounts_embed/01a0e790-ee4d-733c-ac8e-14c7baa03fff`.
+  Lokálně (CLI, `.shopify`, `app info --json` → jen `uid` / `devUUID`) se nedá zjistit;
+  jednorázově: zapnout embed v theme editoru (Ondřej, 2026-09-28) → přečíst UUID přes Admin API
+  (`theme.files(config/settings_data.json)`) → overlay pro obě témata.
+- **`test:unit` glob:** `tsx --test tests/**/*.test.ts` bez uvozovek tiše přeskočí `tests/*.test.ts`
+  (sh bez globstar). V appce opraveno (43 → 59 testů); `_template` má stejný vzor → otázka na Ondřeje.
+
 ## Rozhodnutí běhu
 
 - Nová doména v core: **`packages/core/src/discounts/`** (množné číslo). Stávající
@@ -62,11 +73,11 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 | # | Riziko | Verdikt | Důkaz |
 |---|---|---|---|
-| C1 | jeden mozek | — | — |
-| C2 | limit 25 | — | — |
-| C3 | 10 kB metafield | — | — |
-| C4 | čas ve funkci | — | — |
-| C5 | věrný náhled | — | — |
+| C1 | jeden mozek | **platí** — automatický uzel (echo) viděl zadané Won kódy: 1 kód → 10 %, 2 kódy → 20 %, bez kódu 0 %; nativní kód také vidí, neexistující ne. Kódové uzly vidí oba kódy a jako `triggeringDiscountCode` svůj. **Výhrada:** mimo Plus se na řádek uplatní 1 produktová sleva; kód, jehož uzel nic nevydá, je `applicable:false` → spec §3 upraven (na řádek emituje nejvýš 1 uzel, hodnotu kódu vydává jen jeho uzel). | `docs/won-discounts/evidence/mvp0/c1-entered-codes.json`, function run logy v `app-dev.log`, report T7 |
+| C2 | limit 25 | **fallback** — `discountRedeemCodeBulkAdd` funguje (`codesCount` 2), funkce pozná použitý kód, ale z jednoho uzlu se v košíku uplatní max. 1 kód. Dva kódy ze dvou uzlů na různých řádcích se uplatní oba, na stejném řádku jen jeden. → uzel na kódové pravidlo + limit aktivních kódových pravidel v adminu (přesné číslo MVP 1). | `docs/won-discounts/evidence/mvp0/c2-multi-code-node.json` |
+| C3 | 10 kB metafield | **platí** — 9 000 B → 11 %, 10 000 B → 12 % (projde), 10 001 B / 10 100 B → 0 % a `InvalidVariableValueError` (config je i zdroj proměnných). Produktový metafield `{percent:7}` → 7 %. Rozpočet 9 000 B ponechán. | `docs/won-discounts/evidence/mvp0/c3-config-size.json` |
+| C4 | čas ve funkci | **platí** — `dateTimeBetween` s proměnnými v čase obchodu (America/New_York): okno teď → 10 %, za hodinu → 0 %, skončené → 3 % (debug). Bez klíčů / bez metafieldu → `InvalidVariableValueError`, defaulty dotazu se **nepoužijí** → klíče povinné. | `docs/won-discounts/evidence/mvp0/c4-campaign-window.json` |
+| C5 | věrný náhled | **fallback** — storefront nejde vložit do iframe: `x-frame-options: DENY` + `content-security-policy: … frame-ancestors 'none'` na `/password`, odemčeném `/products/won-e2e-simple-a` i `/cart` (i s `preview_theme_id`). Náhled v adminu = tokeny tématu (barvy, fonty, radius ze `settings_data.json` přes `read_themes`) + sdílený renderer bloků + tlačítko „Zobrazit na mém webu“ s náhledovým parametrem. | `docs/won-discounts/evidence/mvp0/c5-headers.mjs` (Playwright, odemčený storefront), `curl -sI` 2026-09-28 |
 | C6 | kód při přesunu | rozhodnuto: záloha → smazání → vytvoření ve Won | `rozhodnuti.md` |
 
 ## Checkpointy MVP

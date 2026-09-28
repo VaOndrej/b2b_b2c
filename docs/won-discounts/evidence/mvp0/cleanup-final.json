@@ -1,0 +1,168 @@
+{
+  "experiment": "cleanup-final",
+  "mode": "live",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "apiVersion": "2026-04",
+  "startedAt": "2026-09-28T12:04:29.388Z",
+  "steps": [],
+  "observations": [],
+  "graphql": [
+    {
+      "at": "2026-09-28T12:04:29.390Z",
+      "name": "discountNodes",
+      "variables": null,
+      "response": {
+        "discountNodes": {
+          "nodes": [
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179405644017",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Test_Code_discount",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179409412337",
+              "discount": {
+                "__typename": "DiscountAutomaticBxgy",
+                "title": "Dárek zdarma",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179582558449",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Free gift",
+                "status": "EXPIRED"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:04:33.389Z",
+      "name": "discountNodes",
+      "variables": null,
+      "response": {
+        "discountNodes": {
+          "nodes": [
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179405644017",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Test_Code_discount",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179409412337",
+              "discount": {
+                "__typename": "DiscountAutomaticBxgy",
+                "title": "Dárek zdarma",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179582558449",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Free gift",
+                "status": "EXPIRED"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:04:41.214Z",
+      "name": "product",
+      "variables": {
+        "identifier": {
+          "handle": "won-e2e-simple-a"
+        }
+      },
+      "response": {
+        "productByIdentifier": {
+          "id": "gid://shopify/Product/9692429058289",
+          "handle": "won-e2e-simple-a",
+          "metafield": null,
+          "variants": {
+            "nodes": [
+              {
+                "id": "gid://shopify/ProductVariant/48468678902001",
+                "price": "10.00"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:04:44.785Z",
+      "name": "product",
+      "variables": {
+        "identifier": {
+          "handle": "won-e2e-simple-b"
+        }
+      },
+      "response": {
+        "productByIdentifier": {
+          "id": "gid://shopify/Product/9692429091057",
+          "handle": "won-e2e-simple-b",
+          "metafield": null,
+          "variants": {
+            "nodes": [
+              {
+                "id": "gid://shopify/ProductVariant/48468678934769",
+                "price": "12.00"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "functionLogs": [],
+  "cleanup": {
+    "actions": []
+  },
+  "result": {
+    "checkedAt": "2026-09-28T12:04:48.411Z",
+    "protoNodes": [],
+    "allDiscountNodes": [
+      {
+        "id": "gid://shopify/DiscountAutomaticNode/2179405644017",
+        "title": "Test_Code_discount",
+        "status": "EXPIRED"
+      },
+      {
+        "id": "gid://shopify/DiscountAutomaticNode/2179409412337",
+        "title": "Dárek zdarma",
+        "status": "EXPIRED"
+      },
+      {
+        "id": "gid://shopify/DiscountAutomaticNode/2179582558449",
+        "title": "Free gift",
+        "status": "EXPIRED"
+      }
+    ],
+    "products": [
+      {
+        "handle": "won-e2e-simple-a",
+        "id": "gid://shopify/Product/9692429058289",
+        "wonProductMetafield": null
+      },
+      {
+        "handle": "won-e2e-simple-b",
+        "id": "gid://shopify/Product/9692429091057",
+        "wonProductMetafield": null
+      }
+    ],
+    "clean": true
+  },
+  "savedAt": "2026-09-28T12:04:48.411Z"
+}

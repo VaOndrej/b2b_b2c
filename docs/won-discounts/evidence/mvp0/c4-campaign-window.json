@@ -1,0 +1,1714 @@
+{
+  "experiment": "c4-campaign-window",
+  "mode": "live",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "apiVersion": "2026-04",
+  "startedAt": "2026-09-28T12:01:12.222Z",
+  "steps": [
+    {
+      "at": "2026-09-28T12:01:21.845Z",
+      "message": "create automatic node, window a (shop America/New_York now 2026-09-28T08:01:21)",
+      "extra": {
+        "campaignStart": "2026-09-28T07:01:21",
+        "campaignEnd": "2026-09-28T09:01:21",
+        "writtenAtUtc": "2026-09-28T12:01:21.837Z",
+        "shopNow": "2026-09-28T08:01:21"
+      }
+    },
+    {
+      "at": "2026-09-28T12:01:50.150Z",
+      "message": "metafieldsSet b: {\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T09:01:50\",\"campaignEnd\":\"2026-09-28T10:01:50\"}",
+      "extra": {
+        "campaignStart": "2026-09-28T09:01:50",
+        "campaignEnd": "2026-09-28T10:01:50",
+        "writtenAtUtc": "2026-09-28T12:01:50.149Z",
+        "shopNow": "2026-09-28T08:01:50"
+      }
+    },
+    {
+      "at": "2026-09-28T12:02:12.678Z",
+      "message": "metafieldsSet c: {\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T07:02:12\",\"campaignEnd\":\"2026-09-28T07:32:12\"}",
+      "extra": {
+        "campaignStart": "2026-09-28T07:02:12",
+        "campaignEnd": "2026-09-28T07:32:12",
+        "writtenAtUtc": "2026-09-28T12:02:12.677Z",
+        "shopNow": "2026-09-28T08:02:12"
+      }
+    },
+    {
+      "at": "2026-09-28T12:02:35.330Z",
+      "message": "metafieldsSet a2: {\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T07:02:35\",\"campaignEnd\":\"2026-09-28T09:02:35\"}",
+      "extra": {
+        "campaignStart": "2026-09-28T07:02:35",
+        "campaignEnd": "2026-09-28T09:02:35",
+        "writtenAtUtc": "2026-09-28T12:02:35.329Z",
+        "shopNow": "2026-09-28T08:02:35"
+      }
+    },
+    {
+      "at": "2026-09-28T12:02:58.281Z",
+      "message": "metafieldsSet d: {\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true}}"
+    },
+    {
+      "at": "2026-09-28T12:03:20.320Z",
+      "message": "e: metafieldsDelete function_config on the node"
+    }
+  ],
+  "observations": [
+    {
+      "label": "a: window around now",
+      "codes": [],
+      "expectation": "≈10 %",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 11950,
+      "windowStart": "2026-09-28T12:01:30.196Z",
+      "windowEnd": "2026-09-28T12:01:42.146Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 19620,
+        "total_discount": 2180,
+        "totalDiscountPercent": 10,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 19620,
+            "total_discount": 2180,
+            "line_level_discount_allocations": [
+              {
+                "amount": 2180,
+                "percentOfLine": 10,
+                "title": "WON:CAMPAIGN|2026-09-28|active",
+                "type": "automatic",
+                "key": "70217886-9cc2-43a1-95fc-04d00e3b81bc",
+                "value": "10.0",
+                "value_type": "percentage"
+              }
+            ]
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 2180,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          [
+            {
+              "amount": 2180,
+              "discount_application": {
+                "allocation_method": "each",
+                "created_at": "2026-09-28T12:01:41.988Z",
+                "description": null,
+                "key": "70217886-9cc2-43a1-95fc-04d00e3b81bc",
+                "target_selection": "entitled",
+                "target_type": "line_item",
+                "title": "WON:CAMPAIGN|2026-09-28|active",
+                "total_allocated_amount": 2180,
+                "type": "automatic",
+                "value": "10.0",
+                "value_type": "percentage"
+              }
+            }
+          ]
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T12:01:33.978Z",
+          "elapsedMs": 3782,
+          "matched": true,
+          "cart": "discount 2180/21800 (10%) codes[] allocations[L0:WON:CAMPAIGN|2026-09-28|active=10%]"
+        },
+        {
+          "at": "2026-09-28T12:01:42.146Z",
+          "elapsedMs": 11950,
+          "matched": true,
+          "cart": "discount 2180/21800 (10%) codes[] allocations[L0:WON:CAMPAIGN|2026-09-28|active=10%]"
+        }
+      ],
+      "functionRuns": [
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c4-campaign-window/20260928_120133_591Z_extensions_won-discounts-engine_1a855a.json",
+          "logTimestamp": "2026-09-28T12:01:33.591647Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 546339,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [],
+          "discountMetafield": "present",
+          "configMode": "campaign_window",
+          "configJsonBytes": 135,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": true,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:CAMPAIGN|2026-09-28|active",
+              "percent": 10,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "2026-09-28T07:01:21",
+            "campaignEnd": "2026-09-28T09:01:21",
+            "bytes": 135
+          },
+          "errorType": null,
+          "errorMessages": null,
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c4-campaign-window/20260928_120141_922Z_extensions_won-discounts-engine_c5771e.json",
+          "logTimestamp": "2026-09-28T12:01:41.922140Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 546339,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [],
+          "discountMetafield": "present",
+          "configMode": "campaign_window",
+          "configJsonBytes": 135,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": true,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:CAMPAIGN|2026-09-28|active",
+              "percent": 10,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "2026-09-28T07:01:21",
+            "campaignEnd": "2026-09-28T09:01:21",
+            "bytes": 135
+          },
+          "errorType": null,
+          "errorMessages": null,
+          "otherTopLevel": {}
+        }
+      ]
+    },
+    {
+      "label": "b: window starts in +1 h",
+      "codes": [],
+      "expectation": "≈0 %",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 10240,
+      "windowStart": "2026-09-28T12:01:54.434Z",
+      "windowEnd": "2026-09-28T12:02:04.674Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 21800,
+        "total_discount": 0,
+        "totalDiscountPercent": 0,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 21800,
+            "total_discount": 0,
+            "line_level_discount_allocations": []
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 0,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          []
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T12:01:56.553Z",
+          "elapsedMs": 2119,
+          "matched": true,
+          "cart": "discount 0/21800 (0%) codes[] allocations[]"
+        },
+        {
+          "at": "2026-09-28T12:02:04.674Z",
+          "elapsedMs": 10240,
+          "matched": true,
+          "cart": "discount 0/21800 (0%) codes[] allocations[]"
+        }
+      ],
+      "functionRuns": [
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c4-campaign-window/20260928_120156_339Z_extensions_won-discounts-engine_651c41.json",
+          "logTimestamp": "2026-09-28T12:01:56.339320Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 466779,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [],
+          "discountMetafield": "present",
+          "configMode": "campaign_window",
+          "configJsonBytes": 135,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": false
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "2026-09-28T09:01:50",
+            "campaignEnd": "2026-09-28T10:01:50",
+            "bytes": 135
+          },
+          "errorType": null,
+          "errorMessages": null,
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c4-campaign-window/20260928_120204_470Z_extensions_won-discounts-engine_f04dd9.json",
+          "logTimestamp": "2026-09-28T12:02:04.470758Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 466779,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [],
+          "discountMetafield": "present",
+          "configMode": "campaign_window",
+          "configJsonBytes": 135,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": false
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "2026-09-28T09:01:50",
+            "campaignEnd": "2026-09-28T10:01:50",
+            "bytes": 135
+          },
+          "errorType": null,
+          "errorMessages": null,
+          "otherTopLevel": {}
+        }
+      ]
+    },
+    {
+      "label": "c: window −1 h … −30 min (ended)",
+      "codes": [],
+      "expectation": "≈3 %",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 10425,
+      "windowStart": "2026-09-28T12:02:16.898Z",
+      "windowEnd": "2026-09-28T12:02:27.323Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 21146,
+        "total_discount": 654,
+        "totalDiscountPercent": 3,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 21146,
+            "total_discount": 654,
+            "line_level_discount_allocations": [
+              {
+                "amount": 654,
+                "percentOfLine": 3,
+                "title": "WON:CAMPAIGN|2026-09-28|started",
+                "type": "automatic",
+                "key": "893e66fb-99fa-4981-831f-78ea2f532069",
+                "value": "3.0",
+                "value_type": "percentage"
+              }
+            ]
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 654,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          [
+            {
+              "amount": 654,
+              "discount_application": {
+                "allocation_method": "each",
+                "created_at": "2026-09-28T12:02:27.160Z",
+                "description": null,
+                "key": "893e66fb-99fa-4981-831f-78ea2f532069",
+                "target_selection": "entitled",
+                "target_type": "line_item",
+                "title": "WON:CAMPAIGN|2026-09-28|started",
+                "total_allocated_amount": 654,
+                "type": "automatic",
+                "value": "3.0",
+                "value_type": "percentage"
+              }
+            }
+          ]
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T12:02:19.104Z",
+          "elapsedMs": 2206,
+          "matched": true,
+          "cart": "discount 654/21800 (3%) codes[] allocations[L0:WON:CAMPAIGN|2026-09-28|started=3%]"
+        },
+        {
+          "at": "2026-09-28T12:02:27.323Z",
+          "elapsedMs": 10425,
+          "matched": true,
+          "cart": "discount 654/21800 (3%) codes[] allocations[L0:WON:CAMPAIGN|2026-09-28|started=3%]"
+        }
+      ],
+      "functionRuns": [
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c4-campaign-window/20260928_120218_873Z_extensions_won-discounts-engine_491992.json",
+          "logTimestamp": "2026-09-28T12:02:18.873841Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 546908,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [],
+          "discountMetafield": "present",
+          "configMode": "campaign_window",
+          "configJsonBytes": 135,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:CAMPAIGN|2026-09-28|started",
+              "percent": 3,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "2026-09-28T07:02:12",
+            "campaignEnd": "2026-09-28T07:32:12",
+            "bytes": 135
+          },
+          "errorType": null,
+          "errorMessages": null,
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c4-campaign-window/20260928_120227_063Z_extensions_won-discounts-engine_73da9e.json",
+          "logTimestamp": "2026-09-28T12:02:27.063127Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 546908,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [],
+          "discountMetafield": "present",
+          "configMode": "campaign_window",
+          "configJsonBytes": 135,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": false,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:CAMPAIGN|2026-09-28|started",
+              "percent": 3,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "2026-09-28T07:02:12",
+            "campaignEnd": "2026-09-28T07:32:12",
+            "bytes": 135
+          },
+          "errorType": null,
+          "errorMessages": null,
+          "otherTopLevel": {}
+        }
+      ]
+    },
+    {
+      "label": "a2: window around now (control before d)",
+      "codes": [],
+      "expectation": "≈10 %",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 10857,
+      "windowStart": "2026-09-28T12:02:39.421Z",
+      "windowEnd": "2026-09-28T12:02:50.278Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 19620,
+        "total_discount": 2180,
+        "totalDiscountPercent": 10,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 19620,
+            "total_discount": 2180,
+            "line_level_discount_allocations": [
+              {
+                "amount": 2180,
+                "percentOfLine": 10,
+                "title": "WON:CAMPAIGN|2026-09-28|active",
+                "type": "automatic",
+                "key": "369fa54c-c108-4768-9844-e73fd6b8bc00",
+                "value": "10.0",
+                "value_type": "percentage"
+              }
+            ]
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 2180,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          [
+            {
+              "amount": 2180,
+              "discount_application": {
+                "allocation_method": "each",
+                "created_at": "2026-09-28T12:02:50.064Z",
+                "description": null,
+                "key": "369fa54c-c108-4768-9844-e73fd6b8bc00",
+                "target_selection": "entitled",
+                "target_type": "line_item",
+                "title": "WON:CAMPAIGN|2026-09-28|active",
+                "total_allocated_amount": 2180,
+                "type": "automatic",
+                "value": "10.0",
+                "value_type": "percentage"
+              }
+            }
+          ]
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T12:02:42.074Z",
+          "elapsedMs": 2653,
+          "matched": true,
+          "cart": "discount 2180/21800 (10%) codes[] allocations[L0:WON:CAMPAIGN|2026-09-28|active=10%]"
+        },
+        {
+          "at": "2026-09-28T12:02:50.278Z",
+          "elapsedMs": 10857,
+          "matched": true,
+          "cart": "discount 2180/21800 (10%) codes[] allocations[L0:WON:CAMPAIGN|2026-09-28|active=10%]"
+        }
+      ],
+      "functionRuns": [
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c4-campaign-window/20260928_120241_541Z_extensions_won-discounts-engine_769521.json",
+          "logTimestamp": "2026-09-28T12:02:41.541671Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 546339,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [],
+          "discountMetafield": "present",
+          "configMode": "campaign_window",
+          "configJsonBytes": 135,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": true,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:CAMPAIGN|2026-09-28|active",
+              "percent": 10,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "2026-09-28T07:02:35",
+            "campaignEnd": "2026-09-28T09:02:35",
+            "bytes": 135
+          },
+          "errorType": null,
+          "errorMessages": null,
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c4-campaign-window/20260928_120249_993Z_extensions_won-discounts-engine_ab009a.json",
+          "logTimestamp": "2026-09-28T12:02:49.993474Z",
+          "status": "success",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": 546339,
+          "inputPresent": true,
+          "triggeringDiscountCode": null,
+          "enteredDiscountCodes": [],
+          "discountMetafield": "present",
+          "configMode": "campaign_window",
+          "configJsonBytes": 135,
+          "localTime": {
+            "date": "2026-09-28",
+            "campaignActive": true,
+            "campaignStarted": true
+          },
+          "productMetafields": [
+            {
+              "line": "gid://shopify/CartLine/0",
+              "variant": "gid://shopify/ProductVariant/48468678902001",
+              "wonProduct": null
+            }
+          ],
+          "candidates": [
+            {
+              "message": "WON:CAMPAIGN|2026-09-28|active",
+              "percent": 10,
+              "lines": [
+                "gid://shopify/CartLine/0"
+              ],
+              "selectionStrategy": "FIRST"
+            }
+          ],
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype",
+              "campaignStart",
+              "campaignEnd"
+            ],
+            "campaignStart": "2026-09-28T07:02:35",
+            "campaignEnd": "2026-09-28T09:02:35",
+            "bytes": 135
+          },
+          "errorType": null,
+          "errorMessages": null,
+          "otherTopLevel": {}
+        }
+      ]
+    },
+    {
+      "label": "d: config without campaignStart/campaignEnd keys",
+      "codes": [],
+      "expectation": "record (accepted once the cart leaves a2's 10 %): 3 % = query defaults used; 0 % = null passed → function error",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 10299,
+      "windowStart": "2026-09-28T12:03:02.019Z",
+      "windowEnd": "2026-09-28T12:03:12.318Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 21800,
+        "total_discount": 0,
+        "totalDiscountPercent": 0,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 21800,
+            "total_discount": 0,
+            "line_level_discount_allocations": []
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 0,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          []
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T12:03:04.204Z",
+          "elapsedMs": 2186,
+          "matched": true,
+          "cart": "discount 0/21800 (0%) codes[] allocations[]"
+        },
+        {
+          "at": "2026-09-28T12:03:12.318Z",
+          "elapsedMs": 10299,
+          "matched": true,
+          "cart": "discount 0/21800 (0%) codes[] allocations[]"
+        }
+      ],
+      "functionRuns": [
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c4-campaign-window/20260928_120303_932Z_extensions_won-discounts-engine_7e8621.json",
+          "logTimestamp": "2026-09-28T12:03:03.932734Z",
+          "status": "failure",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": null,
+          "inputPresent": false,
+          "configMode": null,
+          "configJsonBytes": null,
+          "candidates": [],
+          "output": null,
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype"
+            ],
+            "bytes": 61
+          },
+          "errorType": "InvalidVariableValueError",
+          "errorMessages": [
+            "Variable $campaignStart of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]",
+            "Variable $campaignEnd of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]"
+          ],
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c4-campaign-window/20260928_120312_108Z_extensions_won-discounts-engine_a542d0.json",
+          "logTimestamp": "2026-09-28T12:03:12.108805Z",
+          "status": "failure",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": null,
+          "inputPresent": false,
+          "configMode": null,
+          "configJsonBytes": null,
+          "candidates": [],
+          "output": null,
+          "functionLogs": [],
+          "inputQueryVariables": {
+            "keys": [
+              "prototype"
+            ],
+            "bytes": 61
+          },
+          "errorType": "InvalidVariableValueError",
+          "errorMessages": [
+            "Variable $campaignStart of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]",
+            "Variable $campaignEnd of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]"
+          ],
+          "otherTopLevel": {}
+        }
+      ]
+    },
+    {
+      "label": "e: no function_config metafield",
+      "codes": [],
+      "expectation": "record: run-log status without the metafield",
+      "matched": true,
+      "attempts": 2,
+      "elapsedMs": 10240,
+      "windowStart": "2026-09-28T12:03:29.047Z",
+      "windowEnd": "2026-09-28T12:03:39.287Z",
+      "finalCart": {
+        "item_count": 1,
+        "original_total_price": 21800,
+        "total_price": 21800,
+        "total_discount": 0,
+        "totalDiscountPercent": 0,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "items": [
+          {
+            "variant_id": 48468678902001,
+            "quantity": 1,
+            "original_line_price": 21800,
+            "final_line_price": 21800,
+            "total_discount": 0,
+            "line_level_discount_allocations": []
+          }
+        ]
+      },
+      "finalCartRawExcerpt": {
+        "total_discount": 0,
+        "discount_codes": [],
+        "cart_level_discount_applications": [],
+        "line_level_discount_allocations": [
+          []
+        ]
+      },
+      "history": [
+        {
+          "at": "2026-09-28T12:03:31.118Z",
+          "elapsedMs": 2071,
+          "matched": true,
+          "cart": "discount 0/21800 (0%) codes[] allocations[]"
+        },
+        {
+          "at": "2026-09-28T12:03:39.287Z",
+          "elapsedMs": 10240,
+          "matched": true,
+          "cart": "discount 0/21800 (0%) codes[] allocations[]"
+        }
+      ],
+      "functionRuns": [
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c4-campaign-window/20260928_120330_919Z_extensions_won-discounts-engine_e2f5d4.json",
+          "logTimestamp": "2026-09-28T12:03:30.919961Z",
+          "status": "failure",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": null,
+          "inputPresent": false,
+          "configMode": null,
+          "configJsonBytes": null,
+          "candidates": [],
+          "output": null,
+          "functionLogs": [],
+          "inputQueryVariables": null,
+          "errorType": "InvalidVariableValueError",
+          "errorMessages": [
+            "Variable $campaignStart of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]",
+            "Variable $campaignEnd of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]"
+          ],
+          "otherTopLevel": {}
+        },
+        {
+          "file": "/private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/prototypes/function-logs/c4-campaign-window/20260928_120339_063Z_extensions_won-discounts-engine_921fee.json",
+          "logTimestamp": "2026-09-28T12:03:39.063985Z",
+          "status": "failure",
+          "export": "cart-lines-discounts-generate-run",
+          "fuelConsumed": null,
+          "inputPresent": false,
+          "configMode": null,
+          "configJsonBytes": null,
+          "candidates": [],
+          "output": null,
+          "functionLogs": [],
+          "inputQueryVariables": null,
+          "errorType": "InvalidVariableValueError",
+          "errorMessages": [
+            "Variable $campaignStart of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]",
+            "Variable $campaignEnd of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]"
+          ],
+          "otherTopLevel": {}
+        }
+      ]
+    }
+  ],
+  "graphql": [
+    {
+      "at": "2026-09-28T12:01:12.224Z",
+      "name": "functions",
+      "variables": null,
+      "response": {
+        "shopifyFunctions": {
+          "nodes": [
+            {
+              "id": "01a0e791-bf2a-77e6-9d45-e355028dabfe",
+              "handle": "won-discounts-engine",
+              "title": "won-discounts-engine",
+              "apiType": "discount",
+              "app": {
+                "title": "won-discounts"
+              }
+            }
+          ]
+        },
+        "shop": {
+          "ianaTimezone": "America/New_York",
+          "timezoneOffset": "-0400"
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:01:16.096Z",
+      "name": "discountNodes",
+      "variables": null,
+      "response": {
+        "discountNodes": {
+          "nodes": [
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179405644017",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Test_Code_discount",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179409412337",
+              "discount": {
+                "__typename": "DiscountAutomaticBxgy",
+                "title": "Dárek zdarma",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179582558449",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Free gift",
+                "status": "EXPIRED"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:01:21.846Z",
+      "name": "automaticCreate",
+      "variables": {
+        "automaticAppDiscount": {
+          "title": "WON-PROTO C4 campaign",
+          "functionHandle": "won-discounts-engine",
+          "startsAt": "2026-09-28T12:00:21.845Z",
+          "discountClasses": [
+            "PRODUCT"
+          ],
+          "combinesWith": {
+            "productDiscounts": true,
+            "orderDiscounts": true,
+            "shippingDiscounts": true
+          },
+          "metafields": [
+            {
+              "namespace": "$app:won_discounts",
+              "key": "function_config",
+              "type": "json",
+              "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T07:01:21\",\"campaignEnd\":\"2026-09-28T09:01:21\"}"
+            }
+          ]
+        }
+      },
+      "response": {
+        "discountAutomaticAppCreate": {
+          "automaticAppDiscount": {
+            "discountId": "gid://shopify/DiscountAutomaticNode/2204263940337",
+            "title": "WON-PROTO C4 campaign",
+            "status": "ACTIVE",
+            "discountClasses": [
+              "PRODUCT"
+            ],
+            "startsAt": "2026-09-28T12:00:21Z"
+          },
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:01:50.153Z",
+      "name": "metafieldsSet",
+      "variables": {
+        "metafields": [
+          {
+            "ownerId": "gid://shopify/DiscountAutomaticNode/2204263940337",
+            "namespace": "$app:won_discounts",
+            "key": "function_config",
+            "type": "json",
+            "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T09:01:50\",\"campaignEnd\":\"2026-09-28T10:01:50\"}"
+          }
+        ]
+      },
+      "response": {
+        "metafieldsSet": {
+          "metafields": [
+            {
+              "id": "gid://shopify/Metafield/191407708668145",
+              "namespace": "app--428983222273--won_discounts",
+              "key": "function_config",
+              "type": "json",
+              "compareDigest": "6c3e44189b74516112411696d16f8b0e7b043f785bfc7d6231327a1d75a8496f"
+            }
+          ],
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:02:12.680Z",
+      "name": "metafieldsSet",
+      "variables": {
+        "metafields": [
+          {
+            "ownerId": "gid://shopify/DiscountAutomaticNode/2204263940337",
+            "namespace": "$app:won_discounts",
+            "key": "function_config",
+            "type": "json",
+            "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T07:02:12\",\"campaignEnd\":\"2026-09-28T07:32:12\"}"
+          }
+        ]
+      },
+      "response": {
+        "metafieldsSet": {
+          "metafields": [
+            {
+              "id": "gid://shopify/Metafield/191407708668145",
+              "namespace": "app--428983222273--won_discounts",
+              "key": "function_config",
+              "type": "json",
+              "compareDigest": "51c783b54e768722d9648f283c8518d2d56c5e08913ebdea3331780c2dcd2f0a"
+            }
+          ],
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:02:35.332Z",
+      "name": "metafieldsSet",
+      "variables": {
+        "metafields": [
+          {
+            "ownerId": "gid://shopify/DiscountAutomaticNode/2204263940337",
+            "namespace": "$app:won_discounts",
+            "key": "function_config",
+            "type": "json",
+            "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T07:02:35\",\"campaignEnd\":\"2026-09-28T09:02:35\"}"
+          }
+        ]
+      },
+      "response": {
+        "metafieldsSet": {
+          "metafields": [
+            {
+              "id": "gid://shopify/Metafield/191407708668145",
+              "namespace": "app--428983222273--won_discounts",
+              "key": "function_config",
+              "type": "json",
+              "compareDigest": "b0d19d96ec2b92cd02c8ea41c40d04ff1532f57e91aea8dbbac2493899966254"
+            }
+          ],
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:02:58.283Z",
+      "name": "metafieldsSet",
+      "variables": {
+        "metafields": [
+          {
+            "ownerId": "gid://shopify/DiscountAutomaticNode/2204263940337",
+            "namespace": "$app:won_discounts",
+            "key": "function_config",
+            "type": "json",
+            "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true}}"
+          }
+        ]
+      },
+      "response": {
+        "metafieldsSet": {
+          "metafields": [
+            {
+              "id": "gid://shopify/Metafield/191407708668145",
+              "namespace": "app--428983222273--won_discounts",
+              "key": "function_config",
+              "type": "json",
+              "compareDigest": "46cac138df605cae86d4751e2cc7a568a59e389da261d0c6fa5a6b11efee964b"
+            }
+          ],
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:03:20.322Z",
+      "name": "metafieldsDelete",
+      "variables": {
+        "metafields": [
+          {
+            "ownerId": "gid://shopify/DiscountAutomaticNode/2204263940337",
+            "namespace": "$app:won_discounts",
+            "key": "function_config"
+          }
+        ]
+      },
+      "response": {
+        "metafieldsDelete": {
+          "deletedMetafields": [
+            {
+              "ownerId": "gid://shopify/DiscountAutomaticNode/2204263940337",
+              "namespace": "app--428983222273--won_discounts",
+              "key": "function_config"
+            }
+          ],
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:03:24.556Z",
+      "name": "nodeConfig",
+      "variables": {
+        "id": "gid://shopify/DiscountAutomaticNode/2204263940337"
+      },
+      "response": {
+        "discountNode": {
+          "id": "gid://shopify/DiscountAutomaticNode/2204263940337",
+          "metafield": null,
+          "discount": {
+            "__typename": "DiscountAutomaticApp",
+            "title": "WON-PROTO C4 campaign",
+            "status": "ACTIVE"
+          }
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:03:59.300Z",
+      "name": "automaticDelete",
+      "variables": {
+        "id": "gid://shopify/DiscountAutomaticNode/2204263940337"
+      },
+      "response": {
+        "discountAutomaticDelete": {
+          "deletedAutomaticDiscountId": "gid://shopify/DiscountAutomaticNode/2204263940337",
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-28T12:04:04.195Z",
+      "name": "discountNodes",
+      "variables": null,
+      "response": {
+        "discountNodes": {
+          "nodes": [
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179405644017",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Test_Code_discount",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179409412337",
+              "discount": {
+                "__typename": "DiscountAutomaticBxgy",
+                "title": "Dárek zdarma",
+                "status": "EXPIRED"
+              }
+            },
+            {
+              "id": "gid://shopify/DiscountAutomaticNode/2179582558449",
+              "discount": {
+                "__typename": "DiscountAutomaticApp",
+                "title": "Free gift",
+                "status": "EXPIRED"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "functionLogs": [
+    {
+      "collectedAt": "2026-09-28T12:03:57.301Z",
+      "runs": 12,
+      "unassigned": [],
+      "appDevLines": [
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5463M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_120133_591Z_extensions_won-discounts-engine_1a855a.json (1a855a)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5463M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_120141_922Z_extensions_won-discounts-engine_c5771e.json (c5771e)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.4668M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_120156_339Z_extensions_won-discounts-engine_651c41.json (651c41)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.4668M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_120204_470Z_extensions_won-discounts-engine_f04dd9.json (f04dd9)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5469M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_120218_873Z_extensions_won-discounts-engine_491992.json (491992)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5469M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_120227_063Z_extensions_won-discounts-engine_73da9e.json (73da9e)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5463M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_120241_541Z_extensions_won-discounts-engine_769521.json (769521)",
+        "Function export \"cart-lines-discounts-generate-run\" executed successfully using 0.5463M instructions.└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_120249_993Z_extensions_won-discounts-engine_ab009a.json (ab009a)",
+        "❌ Function export \"cart-lines-discounts-generate-run\" failed to execute with error: InvalidVariableValueError└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_120303_932Z_extensions_won-discounts-engine_7e8621.json (7e8621)",
+        "❌ Function export \"cart-lines-discounts-generate-run\" failed to execute with error: InvalidVariableValueError└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_120312_108Z_extensions_won-discounts-engine_a542d0.json (a542d0)",
+        "❌ Function export \"cart-lines-discounts-generate-run\" failed to execute with error: InvalidVariableValueError└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_120330_919Z_extensions_won-discounts-engine_e2f5d4.json (e2f5d4)",
+        "❌ Function export \"cart-lines-discounts-generate-run\" failed to execute with error: InvalidVariableValueError└ Log: /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260928_120339_063Z_extensions_won-discounts-engine_921fee.json (921fee)"
+      ]
+    }
+  ],
+  "cleanup": {
+    "actions": [
+      {
+        "at": "2026-09-28T12:04:04.195Z",
+        "deleted": {
+          "kind": "node",
+          "id": "gid://shopify/DiscountAutomaticNode/2204263940337",
+          "title": "C4 campaign"
+        },
+        "result": {
+          "deletedAutomaticDiscountId": "gid://shopify/DiscountAutomaticNode/2204263940337",
+          "userErrors": []
+        }
+      }
+    ],
+    "remainingProtoNodes": [],
+    "ok": true
+  },
+  "plan": "Plan:\n 1. sweep leftover WON-PROTO nodes; read shop.ianaTimezone\n 2. create automatic node \"WON-PROTO C4 campaign\", config {prototype:{mode:campaign_window,debugCampaign:true}, campaignStart, campaignEnd}\n 3. states (metafieldsSet on the node, times computed in shop-local time right before each write):\n      a  [now−1h, now+1h]      → 10 %\n      b  [now+1h, now+2h]      → 0 %\n      c  [now−1h, now−30min]   → 3 %\n      a2 [now−1h, now+1h]      → 10 % (control)\n      d  keys campaignStart/campaignEnd omitted → record (3 % = defaults, 0 % = null → function error)\n      e  function_config metafield deleted (metafieldsDelete) → record run-log status\n 4. finally: delete the node (and its metafields), list WON-PROTO nodes (must be 0)",
+  "function": {
+    "id": "01a0e791-bf2a-77e6-9d45-e355028dabfe",
+    "handle": "won-discounts-engine",
+    "title": "won-discounts-engine",
+    "apiType": "discount",
+    "app": {
+      "title": "won-discounts"
+    }
+  },
+  "shop": {
+    "ianaTimezone": "America/New_York",
+    "timezoneOffset": "-0400"
+  },
+  "leftoversAtStart": [],
+  "node": {
+    "discountId": "gid://shopify/DiscountAutomaticNode/2204263940337",
+    "title": "WON-PROTO C4 campaign",
+    "status": "ACTIVE",
+    "discountClasses": [
+      "PRODUCT"
+    ],
+    "startsAt": "2026-09-28T12:00:21Z"
+  },
+  "windows": {
+    "a": {
+      "campaignStart": "2026-09-28T07:01:21",
+      "campaignEnd": "2026-09-28T09:01:21",
+      "writtenAtUtc": "2026-09-28T12:01:21.837Z",
+      "shopNow": "2026-09-28T08:01:21",
+      "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T07:01:21\",\"campaignEnd\":\"2026-09-28T09:01:21\"}"
+    },
+    "b": {
+      "campaignStart": "2026-09-28T09:01:50",
+      "campaignEnd": "2026-09-28T10:01:50",
+      "writtenAtUtc": "2026-09-28T12:01:50.149Z",
+      "shopNow": "2026-09-28T08:01:50",
+      "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T09:01:50\",\"campaignEnd\":\"2026-09-28T10:01:50\"}"
+    },
+    "c": {
+      "campaignStart": "2026-09-28T07:02:12",
+      "campaignEnd": "2026-09-28T07:32:12",
+      "writtenAtUtc": "2026-09-28T12:02:12.677Z",
+      "shopNow": "2026-09-28T08:02:12",
+      "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T07:02:12\",\"campaignEnd\":\"2026-09-28T07:32:12\"}"
+    },
+    "a2": {
+      "campaignStart": "2026-09-28T07:02:35",
+      "campaignEnd": "2026-09-28T09:02:35",
+      "writtenAtUtc": "2026-09-28T12:02:35.329Z",
+      "shopNow": "2026-09-28T08:02:35",
+      "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T07:02:35\",\"campaignEnd\":\"2026-09-28T09:02:35\"}"
+    },
+    "d": {
+      "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true}}"
+    }
+  },
+  "storefrontVariant": {
+    "id": 48468678902001,
+    "price": 21800
+  },
+  "savedAt": "2026-09-28T12:04:07.792Z",
+  "eDeleted": {
+    "deletedMetafields": [
+      {
+        "ownerId": "gid://shopify/DiscountAutomaticNode/2204263940337",
+        "namespace": "app--428983222273--won_discounts",
+        "key": "function_config"
+      }
+    ],
+    "userErrors": []
+  },
+  "eNodeConfig": {
+    "node": "gid://shopify/DiscountAutomaticNode/2204263940337",
+    "discount": {
+      "__typename": "DiscountAutomaticApp",
+      "title": "WON-PROTO C4 campaign",
+      "status": "ACTIVE"
+    },
+    "storedBytes": null,
+    "storedPreview": null
+  },
+  "verdictData": {
+    "timeZone": "America/New_York",
+    "windows": {
+      "a": {
+        "campaignStart": "2026-09-28T07:01:21",
+        "campaignEnd": "2026-09-28T09:01:21",
+        "writtenAtUtc": "2026-09-28T12:01:21.837Z",
+        "shopNow": "2026-09-28T08:01:21",
+        "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T07:01:21\",\"campaignEnd\":\"2026-09-28T09:01:21\"}"
+      },
+      "b": {
+        "campaignStart": "2026-09-28T09:01:50",
+        "campaignEnd": "2026-09-28T10:01:50",
+        "writtenAtUtc": "2026-09-28T12:01:50.149Z",
+        "shopNow": "2026-09-28T08:01:50",
+        "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T09:01:50\",\"campaignEnd\":\"2026-09-28T10:01:50\"}"
+      },
+      "c": {
+        "campaignStart": "2026-09-28T07:02:12",
+        "campaignEnd": "2026-09-28T07:32:12",
+        "writtenAtUtc": "2026-09-28T12:02:12.677Z",
+        "shopNow": "2026-09-28T08:02:12",
+        "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T07:02:12\",\"campaignEnd\":\"2026-09-28T07:32:12\"}"
+      },
+      "a2": {
+        "campaignStart": "2026-09-28T07:02:35",
+        "campaignEnd": "2026-09-28T09:02:35",
+        "writtenAtUtc": "2026-09-28T12:02:35.329Z",
+        "shopNow": "2026-09-28T08:02:35",
+        "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true},\"campaignStart\":\"2026-09-28T07:02:35\",\"campaignEnd\":\"2026-09-28T09:02:35\"}"
+      },
+      "d": {
+        "value": "{\"prototype\":{\"mode\":\"campaign_window\",\"debugCampaign\":true}}"
+      }
+    },
+    "results": {
+      "a": {
+        "label": "a: window around now",
+        "matched": true,
+        "cartPercent": 10,
+        "allocations": [
+          {
+            "amount": 2180,
+            "percentOfLine": 10,
+            "title": "WON:CAMPAIGN|2026-09-28|active",
+            "type": "automatic",
+            "key": "70217886-9cc2-43a1-95fc-04d00e3b81bc",
+            "value": "10.0",
+            "value_type": "percentage"
+          }
+        ],
+        "runs": [
+          {
+            "at": "2026-09-28T12:01:33.591647Z",
+            "status": "success",
+            "errorType": null,
+            "errorMessages": null,
+            "variables": {
+              "keys": [
+                "prototype",
+                "campaignStart",
+                "campaignEnd"
+              ],
+              "campaignStart": "2026-09-28T07:01:21",
+              "campaignEnd": "2026-09-28T09:01:21",
+              "bytes": 135
+            },
+            "localTime": {
+              "date": "2026-09-28",
+              "campaignActive": true,
+              "campaignStarted": true
+            },
+            "out": [
+              "WON:CAMPAIGN|2026-09-28|active@10%"
+            ]
+          },
+          {
+            "at": "2026-09-28T12:01:41.922140Z",
+            "status": "success",
+            "errorType": null,
+            "errorMessages": null,
+            "variables": {
+              "keys": [
+                "prototype",
+                "campaignStart",
+                "campaignEnd"
+              ],
+              "campaignStart": "2026-09-28T07:01:21",
+              "campaignEnd": "2026-09-28T09:01:21",
+              "bytes": 135
+            },
+            "localTime": {
+              "date": "2026-09-28",
+              "campaignActive": true,
+              "campaignStarted": true
+            },
+            "out": [
+              "WON:CAMPAIGN|2026-09-28|active@10%"
+            ]
+          }
+        ]
+      },
+      "b": {
+        "label": "b: window starts in +1 h",
+        "matched": true,
+        "cartPercent": 0,
+        "allocations": [],
+        "runs": [
+          {
+            "at": "2026-09-28T12:01:56.339320Z",
+            "status": "success",
+            "errorType": null,
+            "errorMessages": null,
+            "variables": {
+              "keys": [
+                "prototype",
+                "campaignStart",
+                "campaignEnd"
+              ],
+              "campaignStart": "2026-09-28T09:01:50",
+              "campaignEnd": "2026-09-28T10:01:50",
+              "bytes": 135
+            },
+            "localTime": {
+              "date": "2026-09-28",
+              "campaignActive": false,
+              "campaignStarted": false
+            },
+            "out": []
+          },
+          {
+            "at": "2026-09-28T12:02:04.470758Z",
+            "status": "success",
+            "errorType": null,
+            "errorMessages": null,
+            "variables": {
+              "keys": [
+                "prototype",
+                "campaignStart",
+                "campaignEnd"
+              ],
+              "campaignStart": "2026-09-28T09:01:50",
+              "campaignEnd": "2026-09-28T10:01:50",
+              "bytes": 135
+            },
+            "localTime": {
+              "date": "2026-09-28",
+              "campaignActive": false,
+              "campaignStarted": false
+            },
+            "out": []
+          }
+        ]
+      },
+      "c": {
+        "label": "c: window −1 h … −30 min (ended)",
+        "matched": true,
+        "cartPercent": 3,
+        "allocations": [
+          {
+            "amount": 654,
+            "percentOfLine": 3,
+            "title": "WON:CAMPAIGN|2026-09-28|started",
+            "type": "automatic",
+            "key": "893e66fb-99fa-4981-831f-78ea2f532069",
+            "value": "3.0",
+            "value_type": "percentage"
+          }
+        ],
+        "runs": [
+          {
+            "at": "2026-09-28T12:02:18.873841Z",
+            "status": "success",
+            "errorType": null,
+            "errorMessages": null,
+            "variables": {
+              "keys": [
+                "prototype",
+                "campaignStart",
+                "campaignEnd"
+              ],
+              "campaignStart": "2026-09-28T07:02:12",
+              "campaignEnd": "2026-09-28T07:32:12",
+              "bytes": 135
+            },
+            "localTime": {
+              "date": "2026-09-28",
+              "campaignActive": false,
+              "campaignStarted": true
+            },
+            "out": [
+              "WON:CAMPAIGN|2026-09-28|started@3%"
+            ]
+          },
+          {
+            "at": "2026-09-28T12:02:27.063127Z",
+            "status": "success",
+            "errorType": null,
+            "errorMessages": null,
+            "variables": {
+              "keys": [
+                "prototype",
+                "campaignStart",
+                "campaignEnd"
+              ],
+              "campaignStart": "2026-09-28T07:02:12",
+              "campaignEnd": "2026-09-28T07:32:12",
+              "bytes": 135
+            },
+            "localTime": {
+              "date": "2026-09-28",
+              "campaignActive": false,
+              "campaignStarted": true
+            },
+            "out": [
+              "WON:CAMPAIGN|2026-09-28|started@3%"
+            ]
+          }
+        ]
+      },
+      "a2": {
+        "label": "a2: window around now (control before d)",
+        "matched": true,
+        "cartPercent": 10,
+        "allocations": [
+          {
+            "amount": 2180,
+            "percentOfLine": 10,
+            "title": "WON:CAMPAIGN|2026-09-28|active",
+            "type": "automatic",
+            "key": "369fa54c-c108-4768-9844-e73fd6b8bc00",
+            "value": "10.0",
+            "value_type": "percentage"
+          }
+        ],
+        "runs": [
+          {
+            "at": "2026-09-28T12:02:41.541671Z",
+            "status": "success",
+            "errorType": null,
+            "errorMessages": null,
+            "variables": {
+              "keys": [
+                "prototype",
+                "campaignStart",
+                "campaignEnd"
+              ],
+              "campaignStart": "2026-09-28T07:02:35",
+              "campaignEnd": "2026-09-28T09:02:35",
+              "bytes": 135
+            },
+            "localTime": {
+              "date": "2026-09-28",
+              "campaignActive": true,
+              "campaignStarted": true
+            },
+            "out": [
+              "WON:CAMPAIGN|2026-09-28|active@10%"
+            ]
+          },
+          {
+            "at": "2026-09-28T12:02:49.993474Z",
+            "status": "success",
+            "errorType": null,
+            "errorMessages": null,
+            "variables": {
+              "keys": [
+                "prototype",
+                "campaignStart",
+                "campaignEnd"
+              ],
+              "campaignStart": "2026-09-28T07:02:35",
+              "campaignEnd": "2026-09-28T09:02:35",
+              "bytes": 135
+            },
+            "localTime": {
+              "date": "2026-09-28",
+              "campaignActive": true,
+              "campaignStarted": true
+            },
+            "out": [
+              "WON:CAMPAIGN|2026-09-28|active@10%"
+            ]
+          }
+        ]
+      },
+      "d": {
+        "label": "d: config without campaignStart/campaignEnd keys",
+        "matched": true,
+        "cartPercent": 0,
+        "allocations": [],
+        "runs": [
+          {
+            "at": "2026-09-28T12:03:03.932734Z",
+            "status": "failure",
+            "errorType": "InvalidVariableValueError",
+            "errorMessages": [
+              "Variable $campaignStart of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]",
+              "Variable $campaignEnd of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]"
+            ],
+            "variables": {
+              "keys": [
+                "prototype"
+              ],
+              "bytes": 61
+            },
+            "out": []
+          },
+          {
+            "at": "2026-09-28T12:03:12.108805Z",
+            "status": "failure",
+            "errorType": "InvalidVariableValueError",
+            "errorMessages": [
+              "Variable $campaignStart of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]",
+              "Variable $campaignEnd of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]"
+            ],
+            "variables": {
+              "keys": [
+                "prototype"
+              ],
+              "bytes": 61
+            },
+            "out": []
+          }
+        ]
+      },
+      "e": {
+        "label": "e: no function_config metafield",
+        "matched": true,
+        "cartPercent": 0,
+        "allocations": [],
+        "runs": [
+          {
+            "at": "2026-09-28T12:03:30.919961Z",
+            "status": "failure",
+            "errorType": "InvalidVariableValueError",
+            "errorMessages": [
+              "Variable $campaignStart of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]",
+              "Variable $campaignEnd of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]"
+            ],
+            "variables": null,
+            "out": []
+          },
+          {
+            "at": "2026-09-28T12:03:39.063985Z",
+            "status": "failure",
+            "errorType": "InvalidVariableValueError",
+            "errorMessages": [
+              "Variable $campaignStart of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]",
+              "Variable $campaignEnd of type DateTimeWithoutTimezone! was provided invalid value [INVALID_VARIABLE: Expected value to not be null]"
+            ],
+            "variables": null,
+            "out": []
+          }
+        ]
+      }
+    }
+  },
+  "storefrontCodesResent": 0,
+  "storefrontRateLimited": 0,
+  "storefrontRequests": 25,
+  "finishedAt": "2026-09-28T12:04:07.792Z"
+}
