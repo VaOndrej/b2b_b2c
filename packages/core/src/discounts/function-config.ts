@@ -51,12 +51,16 @@ export interface EncodeFunctionConfigOptions {
 type ConfigInput = ReadonlyDeep<WonDiscountsConfig>;
 type CampaignInput = ConfigInput["campaigns"][number];
 
+// Legacy transport (MVP 0): the whole payload + C4 keys on every node. MVP 1's
+// transport is function-payload.ts (shared config + small node variables); this
+// stays for existing callers and the save-time worst-case budget check.
+
 /**
  * The window the function checks via `shop.localTime.dateTimeBetween` (C4). One
  * pair of variables means one window at a time; campaigns never overlap (A8,
  * enforced by sanitizeConfig), so "the current or next live one" is unambiguous.
  */
-function liveCampaigns(campaigns: readonly CampaignInput[]): CampaignInput[] {
+export function liveCampaigns(campaigns: readonly CampaignInput[]): CampaignInput[] {
   return campaigns.filter(
     (c) =>
       !c.killed &&
@@ -66,7 +70,7 @@ function liveCampaigns(campaigns: readonly CampaignInput[]): CampaignInput[] {
   );
 }
 
-function selectCampaign(campaigns: readonly CampaignInput[], opts: EncodeFunctionConfigOptions): CampaignInput | null {
+export function selectCampaign(campaigns: readonly CampaignInput[], opts: EncodeFunctionConfigOptions): CampaignInput | null {
   const live = liveCampaigns(campaigns);
   if (opts.campaignId !== undefined) {
     return opts.campaignId === null ? null : (live.find((c) => c.id === opts.campaignId) ?? null);

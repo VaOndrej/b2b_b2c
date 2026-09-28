@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { moneyFor, sanitizeMoneyByCurrency } from "../../src/discounts/money.ts";
+import {
+  currencyExponent,
+  fromMinorUnits,
+  moneyFor,
+  sanitizeMoneyByCurrency,
+  toMinorUnits,
+} from "../../src/discounts/money.ts";
 
 test("sanitizeMoneyByCurrency upper-cases valid ISO codes, drops the rest", () => {
   const out = sanitizeMoneyByCurrency({
@@ -44,4 +50,32 @@ test("moneyFor returns null for a missing market/currency", () => {
 
 test("moneyFor returns 0, not null, for an explicit zero value", () => {
   assert.equal(moneyFor({ CZK: 0 }, "CZK"), 0);
+});
+
+// --- minor units (the function adapter converts Shopify's decimal strings) -------
+
+test("currencyExponent: ISO 4217 minor digits, 2 by default", () => {
+  assert.equal(currencyExponent("CZK"), 2);
+  assert.equal(currencyExponent("EUR"), 2);
+  assert.equal(currencyExponent("JPY"), 0);
+  assert.equal(currencyExponent("KWD"), 3);
+  assert.equal(currencyExponent("jpy"), 0);
+});
+
+test("toMinorUnits parses Shopify decimal strings exactly (no float drift)", () => {
+  assert.equal(toMinorUnits("1234.5", "CZK"), 123450);
+  assert.equal(toMinorUnits("0.29", "EUR"), 29);
+  assert.equal(toMinorUnits("19.99", "EUR"), 1999);
+  assert.equal(toMinorUnits("1500", "JPY"), 1500);
+  assert.equal(toMinorUnits("1.2345", "KWD"), 1235);
+  assert.equal(toMinorUnits(12.5, "EUR"), 1250);
+  assert.equal(toMinorUnits("abc", "EUR"), null);
+  assert.equal(toMinorUnits("-1.00", "EUR"), null);
+});
+
+test("fromMinorUnits prints the decimal string Shopify expects", () => {
+  assert.equal(fromMinorUnits(123450, "CZK"), "1234.50");
+  assert.equal(fromMinorUnits(5, "EUR"), "0.05");
+  assert.equal(fromMinorUnits(1500, "JPY"), "1500");
+  assert.equal(fromMinorUnits(1235, "KWD"), "1.235");
 });
