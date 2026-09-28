@@ -18,6 +18,7 @@
         }
       },
       "shop": {
+        "metafield": null,
         "localTime": {
           "date": "2026-09-28",
           "campaignActive": false,

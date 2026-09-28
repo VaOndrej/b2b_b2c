@@ -256,7 +256,15 @@ interface CartPlan {
   („máš výhodnější slevu“, „kód se na tyto produkty nevztahuje“).
 - **Admin limit (C2 fallback):** počet aktivních kódových pravidel je omezený (každé = 1 uzel).
   Přesné číslo podle limitu Shopify ověří MVP 1; admin ho poctivě vysvětlí a nedovolí překročit.
-- **Transport configu (C3, C4):** metafield `function_config` je zároveň zdroj proměnných dotazu.
+- **Transport configu (C7 platí, MVP 1):** sdílený config funkce je **app-owned shop metafield**
+  `$app:won_discounts/function_config` — jeden atomický zápis pro všechny uzly. Uzel má jen malé
+  proměnné (`role`, `ruleId`, `campaignId`, `campaignStart/End`, `varsVersion`); okno kampaně
+  musí zůstat v uzlu (proměnné dotazu čte Shopify jen z metafieldu uzlu). Neatomický zápis
+  proměnných při změně kampaně řeší verze: uzel použije přepisy kampaně jen když jeho
+  `campaignId` + `varsVersion` odpovídá shop configu, jinak se chová jako bez kampaně.
+  Shop config nad 10 000 B dorazí jako `null` **bez chyby** → rozpočet 9 000 B při uložení,
+  sync po zápisu config zpětně přečte a Přehled ukáže „config chybí / je neplatný“.
+- **Transport v MVP 0 (C3, C4):** metafield `function_config` byl zároveň zdroj proměnných dotazu.
   Chybějící klíč `campaignStart/End`, chybějící metafield nebo hodnota nad 10 000 B → funkce
   selže (`InvalidVariableValueError`) a uzel nedá žádnou slevu (checkout se neblokuje). Proto:
   rozpočet 9 000 B hlídaný při uložení, sync zapisuje klíče vždy, contract test. [spec] MVP 1

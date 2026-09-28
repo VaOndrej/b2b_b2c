@@ -18,6 +18,11 @@
 //                     state: active 10 %, started but not active 3 %, not started
 //                     none (C4: tells "variables not bound" from "window inactive")
 //   product_metafield per line: `$app:won_discounts.product` jsonValue.percent (C3)
+//   shop_config       MVP 1 prototype C7: `percent` % on every line, read from the
+//                     app-owned SHOP metafield `$app:won_discounts.function_config`
+//                     (shop.metafield jsonValue `{percent}`), shared by all nodes.
+//                     Message `WON:SHOP|<tag>|<percent>%` (`prototype.tag` optional)
+//                     tells the nodes apart in run logs and cart titles
 // Missing or corrupt config yields no operations and never throws (spec §9):
 // checkout must never be blocked by this function.
 
@@ -186,12 +191,30 @@ function productMetafield(input, prototype, lines) {
   return productDiscounts(candidates, "ALL");
 }
 
+/**
+ * @param {RunInput} input
+ * @param {Record<string, unknown>} prototype
+ * @param {{ id: string }[]} lines
+ */
+function shopConfig(input, prototype, lines) {
+  const config = input.shop?.metafield?.jsonValue;
+  if (!isPlainObject(config)) return NO_OPERATIONS;
+  const percent = readPercent(config.percent);
+  if (percent === null) return NO_OPERATIONS;
+  const tag = typeof prototype.tag === "string" && prototype.tag !== "" ? `${prototype.tag}|` : "";
+  return productDiscounts(
+    [candidate(`WON:SHOP|${tag}${percent}%`, lines.map((line) => line.id), percent)],
+    "FIRST",
+  );
+}
+
 /** @type {Record<string, (input: RunInput, prototype: Record<string, unknown>, lines: any[]) => CartLinesDiscountsGenerateRunResult>} */
 const MODES = {
   echo_codes: echoCodes,
   percent_all: percentAll,
   campaign_window: campaignWindow,
   product_metafield: productMetafield,
+  shop_config: shopConfig,
 };
 
 /**

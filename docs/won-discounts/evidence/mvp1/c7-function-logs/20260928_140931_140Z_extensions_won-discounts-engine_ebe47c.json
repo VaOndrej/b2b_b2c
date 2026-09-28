@@ -1,7 +1,8 @@
 {
+  "shopId": 78971076849,
+  "apiClientId": 428983222273,
   "payload": {
     "export": "cart-lines-discounts-generate-run",
-    "target": "cart.lines.discounts.generate.run",
     "input": {
       "triggeringDiscountCode": null,
       "enteredDiscountCodes": [],
@@ -12,16 +13,20 @@
         "metafield": {
           "jsonValue": {
             "prototype": {
-              "mode": "campaign_window",
-              "debugCampaign": true
+              "mode": "shop_config",
+              "tag": "A"
             },
-            "campaignStart": "2026-09-27T00:00:00",
-            "campaignEnd": "2026-09-27T12:00:00"
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00"
           }
         }
       },
       "shop": {
-        "metafield": null,
+        "metafield": {
+          "jsonValue": {
+            "percent": 9
+          }
+        },
         "localTime": {
           "date": "2026-09-28",
           "campaignActive": false,
@@ -31,17 +36,17 @@
       "cart": {
         "cost": {
           "subtotalAmount": {
-            "amount": "500.0",
+            "amount": "218.0",
             "currencyCode": "CZK"
           }
         },
         "lines": [
           {
-            "id": "gid://shopify/CartLine/1",
+            "id": "gid://shopify/CartLine/0",
             "quantity": 1,
             "cost": {
               "amountPerQuantity": {
-                "amount": "100.0",
+                "amount": "218.0",
                 "currencyCode": "CZK"
               },
               "compareAtAmountPerQuantity": null
@@ -49,29 +54,9 @@
             "gift": null,
             "merchandise": {
               "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/10",
+              "id": "gid://shopify/ProductVariant/48468678902001",
               "product": {
-                "id": "gid://shopify/Product/1",
-                "wonProduct": null
-              }
-            }
-          },
-          {
-            "id": "gid://shopify/CartLine/2",
-            "quantity": 2,
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "200.0",
-                "currencyCode": "CZK"
-              },
-              "compareAtAmountPerQuantity": null
-            },
-            "gift": null,
-            "merchandise": {
-              "__typename": "ProductVariant",
-              "id": "gid://shopify/ProductVariant/20",
-              "product": {
-                "id": "gid://shopify/Product/2",
+                "id": "gid://shopify/Product/9692429058289",
                 "wonProduct": null
               }
             }
@@ -84,28 +69,24 @@
         }
       }
     },
+    "inputBytes": 676,
     "output": {
       "operations": [
         {
           "productDiscountsAdd": {
             "candidates": [
               {
-                "message": "WON:CAMPAIGN|2026-09-28|started",
+                "message": "WON:SHOP|A|9%",
                 "targets": [
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/1"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/2"
+                      "id": "gid://shopify/CartLine/0"
                     }
                   }
                 ],
                 "value": {
                   "percentage": {
-                    "value": 3
+                    "value": 9
                   }
                 }
               }
@@ -114,6 +95,28 @@
           }
         }
       ]
-    }
-  }
+    },
+    "outputBytes": 168,
+    "logs": [],
+    "functionId": "01a0e791-bf2a-77e6-9d45-e355028dabfe",
+    "fuelConsumed": 594238,
+    "target": "cart.lines.discounts.generate.run",
+    "inputQueryVariablesMetafieldValue": {
+      "prototype": {
+        "mode": "shop_config",
+        "tag": "A"
+      },
+      "campaignStart": "1970-01-01T00:00:00",
+      "campaignEnd": "1970-01-01T00:00:00"
+    },
+    "inputQueryVariablesMetafieldNamespace": "$app:won_discounts",
+    "inputQueryVariablesMetafieldKey": "function_config"
+  },
+  "logType": "function_run",
+  "status": "success",
+  "source": "won-discounts-engine",
+  "sourceNamespace": "extensions",
+  "logTimestamp": "2026-09-28T14:09:31.140085Z",
+  "localTime": "2026-09-28 16:09:31",
+  "storeName": "b2b-b2c-store-development.myshopify.com"
 }

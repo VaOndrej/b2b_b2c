@@ -1,4 +1,5 @@
-// Shared plumbing for the MVP 0 platform-risk prototypes (C1–C4).
+// Shared plumbing for the MVP 0 platform-risk prototypes (C1–C4) and the
+// MVP 1 transport prototype C7 (app-owned shop metafield).
 //
 // Every prototype script follows the same contract:
 //   node scripts/prototypes/cN-*.mjs          dry-run: prints the plan and every
@@ -265,6 +266,7 @@ export const GQL = {
       id
       type
       value
+      updatedAt
     }
     discount {
       __typename
@@ -284,6 +286,20 @@ export const GQL = {
         title
         status
       }
+    }
+  }
+}`,
+  // C7: the app-owned SHOP metafield (same namespace/key as the node config).
+  shopConfig: `query WonProtoShopConfig {
+  shop {
+    id
+    metafield(namespace: "$app:won_discounts", key: "function_config") {
+      id
+      namespace
+      key
+      type
+      value
+      updatedAt
     }
   }
 }`,
@@ -465,6 +481,8 @@ function dryResponse(name, variables) {
       return { metafieldsDelete: { deletedMetafields: variables.metafields, userErrors: [] } };
     case "nodeConfig":
       return { discountNode: { id: variables.id, metafield: { value: "<dry-run>" }, discount: {} } };
+    case "shopConfig":
+      return { shop: { id: "gid://shopify/Shop/DRY-RUN", metafield: null } };
     case "product":
       return {
         productByIdentifier: {
@@ -498,6 +516,7 @@ export function storeWideReason(config) {
   const prototype = value && typeof value === "object" ? value.prototype : null;
   if (!prototype || typeof prototype !== "object") return null;
   if (prototype.mode === "percent_all") return "percent_all discounts every line of every cart";
+  if (prototype.mode === "shop_config") return "shop_config discounts every line of every cart (percent from the shop metafield)";
   if (prototype.mode === "campaign_window") return "campaign_window discounts every line of every cart while the window is active";
   if (prototype.mode === "echo_codes" && prototype.echoOnAutomatic === true) {
     return "echo_codes with echoOnAutomatic discounts the first line of every cart that carries any discount code";
@@ -620,6 +639,8 @@ export class Admin {
     this.functionId = null;
     /** @type {Set<string>} ids of won-e2e products read via product(): the only metafield owners allowed */
     this.e2eProductIds = new Set();
+    /** @type {string | null} the shop GID, from shopConfig(): the only shop owner a shop metafield is written on */
+    this.shopId = null;
   }
 
   /** Refuse every further non-cleanup call (a stop signal arrived). */
@@ -927,9 +948,36 @@ export class Admin {
     return {
       node: data.discountNode?.id ?? null,
       discount: data.discountNode?.discount ?? null,
+      metafieldId: data.discountNode?.metafield?.id ?? null,
+      updatedAt: data.discountNode?.metafield?.updatedAt ?? null,
       storedBytes: typeof value === "string" ? bytes(value) : null,
       storedPreview: typeof value === "string" ? redact(value) : null,
     };
+  }
+
+  /** C7: the shop GID + our `$app:won_discounts.function_config` shop metafield (null when absent). */
+  async shopConfig({ cleanup = false } = {}) {
+    const data = await this.run("shopConfig", undefined, { cleanup });
+    const shop = data.shop;
+    if (shop?.id) this.shopId = shop.id;
+    const metafield = shop?.metafield ?? null;
+    return {
+      shopId: shop?.id ?? null,
+      metafield,
+      storedBytes: typeof metafield?.value === "string" ? bytes(metafield.value) : null,
+      storedPreview: typeof metafield?.value === "string" ? redact(metafield.value) : null,
+    };
+  }
+
+  /** C7: replace the shop's function_config (value = exact JSON string written). Owner = the shop read via shopConfig(). */
+  async setShopConfig(value) {
+    if (!this.shopId) throw new Error("refusing to write the shop metafield: shop id unknown (call shopConfig() first)");
+    const data = await this.run("metafieldsSet", {
+      metafields: [{ ownerId: this.shopId, namespace: CONFIG_NAMESPACE, key: CONFIG_KEY, type: "json", value }],
+    });
+    const result = data.metafieldsSet;
+    if (result.userErrors.length) throw new Error(`metafieldsSet (shop): ${JSON.stringify(result.userErrors)}`);
+    return result.metafields;
   }
 }
 
@@ -950,6 +998,8 @@ export class Cleanup {
     this.admin = admin;
     this.evidence = evidence;
     this.tasks = [];
+    /** @type {{ name: string, fn: () => Promise<{ clean: boolean }> }[]} extra read-only checks after the sweep */
+    this.finalChecks = [];
     /** @type {Promise<void> | null} the one cleanup run, shared by `finally` and a signal */
     this.running = null;
     this.signalled = null;
@@ -997,6 +1047,17 @@ export class Cleanup {
   node(id, title) {
     if (this.tasks.some((task) => task.kind === "node" && task.id === id)) return;
     this.tasks.push({ kind: "node", id, title });
+  }
+
+  /**
+   * Register a read-only check that runs after the post-run sweep (e.g. C7: the
+   * shop metafield is gone). Its result lands in cleanup.checks[name]; a check
+   * that is not `clean` makes cleanup.ok false.
+   * @param {string} name
+   * @param {() => Promise<{ clean: boolean }>} fn
+   */
+  check(name, fn) {
+    this.finalChecks.push({ name, fn });
   }
 
   /** Register a metafield to delete (or restore to `restore` = {type, value}). */
@@ -1076,9 +1137,24 @@ export class Cleanup {
       const productMetafields = (await this.admin.e2eProductMetafields({ cleanup: true })).filter((product) => product.metafield);
       this.evidence.data.cleanup.remainingProtoNodes = ours;
       this.evidence.data.cleanup.remainingProductMetafields = productMetafields.map((product) => product.handle);
+      let checksClean = true;
+      if (this.finalChecks.length) {
+        this.evidence.data.cleanup.checks = {};
+        for (const { name, fn } of this.finalChecks) {
+          try {
+            const result = await fn();
+            this.evidence.data.cleanup.checks[name] = result;
+            if (!result?.clean) checksClean = false;
+          } catch (error) {
+            this.evidence.data.cleanup.checks[name] = { clean: false, error: String(error.message).slice(0, 800) };
+            checksClean = false;
+          }
+        }
+      }
       this.evidence.data.cleanup.ok =
         ours.length === 0 &&
         productMetafields.length === 0 &&
+        checksClean &&
         this.evidence.data.cleanup.actions.every((action) => !action.failed);
       console.log(`\n✔ cleanup: remaining ${TITLE_PREFIX} nodes = ${ours.length}, product metafields = ${productMetafields.length}`);
     } catch (error) {
@@ -1124,6 +1200,7 @@ export function summarizeFunctionLog(raw) {
   const input = parseMaybeJson(payload?.input);
   const output = parseMaybeJson(payload?.output);
   const metafield = input?.discount?.metafield;
+  const shopMetafield = input?.shop?.metafield;
   const operations = output?.operations ?? null;
   const candidates = [];
   for (const operation of operations ?? []) {
@@ -1152,6 +1229,17 @@ export function summarizeFunctionLog(raw) {
     discountMetafield:
       input == null ? undefined : metafield == null ? null : metafield.jsonValue == null ? "jsonValue:null" : "present",
     configMode: metafield?.jsonValue?.prototype?.mode ?? null,
+    configTag: metafield?.jsonValue?.prototype?.tag ?? null,
+    // C7: the shop metafield as the function saw it (undefined = no input / older query)
+    shopMetafield:
+      input == null || !input.shop || !("metafield" in input.shop)
+        ? undefined
+        : shopMetafield == null
+          ? null
+          : {
+              jsonValueBytes: shopMetafield.jsonValue == null ? null : bytes(JSON.stringify(shopMetafield.jsonValue)),
+              percent: shopMetafield.jsonValue?.percent ?? null,
+            },
     configJsonBytes: metafield?.jsonValue == null ? null : bytes(JSON.stringify(metafield.jsonValue)),
     localTime: input?.shop?.localTime ?? undefined,
     productMetafields: input?.cart?.lines?.map((line) => ({

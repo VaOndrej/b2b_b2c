@@ -7,8 +7,9 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
-- **Fáze:** MVP 0 ✅ uzavřené (checkpoint níž). Další: MVP 1 podle
-  `docs/plans/2026-09-28-won-discounts-mvp1.md` (T0 prototyp C7 ‖ T1 engine).
+- **Fáze:** MVP 0 ✅ uzavřené a pushnuté (`fd416e5..f678cd4`). MVP 1 běží podle
+  `docs/plans/2026-09-28-won-discounts-mvp1.md`: T0 prototyp C7 ‖ T1 engine (SDD ledger
+  `.superpowers/sdd/2026-09-28-won-discounts-mvp1/progress.md`).
 - **Hotovo v MVP 0:** spec + plán, scaffold, config v0 (`@won/core/discounts`), Prisma config
   s historií, Přehled v0, JS discount funkce (prototypové módy), theme app extension s embedem,
   app proxy health, dev harness mimo produkci, živé E2E embedu ✓ Horizon ✓ Dawn, verdikty
@@ -19,7 +20,9 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   → rozhodnutí v plánu MVP 2).
 - **Ondřej 2026-09-28:** „oprav vše, pak pokračuj na další MVP autonomně, chyby vždy oprav,
   než se posuneš dál.“ → opravuju všechny nálezy auditu (i P2/P3) a glob v `apps/_template`.
-- **Poslední commit:** viz `git log --oneline` (MVP 0 commity od `2d94477`), push až po uzavření.
+- **Poslední push:** `f678cd4` (MVP 0 uzavřené).
+- **Pro Ondřeje (mimo rozsah, neřeším):** v gitu je sledovaný `apps/won-toasts/prisma/prisma/dev.sqlite`
+  (lokální DB Won Toasts, může obsahovat sessions/tokeny) → doporučuju `git rm --cached` + gitignore.
 
 ## Ověřená fakta API (schema.graphql Discount Function, API 2026-04)
 
@@ -77,6 +80,7 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 | C2 | limit 25 | **fallback** — `discountRedeemCodeBulkAdd` funguje (`codesCount` 2), funkce pozná použitý kód, ale z jednoho uzlu se v košíku uplatní max. 1 kód. Dva kódy ze dvou uzlů na různých řádcích se uplatní oba, na stejném řádku jen jeden. → uzel na kódové pravidlo + limit aktivních kódových pravidel v adminu (přesné číslo MVP 1). | `docs/won-discounts/evidence/mvp0/c2-multi-code-node.json` |
 | C3 | 10 kB metafield | **platí** — 9 000 B → 11 %, 10 000 B → 12 % (projde), 10 001 B / 10 100 B → 0 % a `InvalidVariableValueError` (config je i zdroj proměnných). Produktový metafield `{percent:7}` → 7 %. Rozpočet 9 000 B ponechán. | `docs/won-discounts/evidence/mvp0/c3-config-size.json` |
 | C4 | čas ve funkci | **platí** — `dateTimeBetween` s proměnnými v čase obchodu (America/New_York): okno teď → 10 %, za hodinu → 0 %, skončené → 3 % (debug). Bez klíčů / bez metafieldu → `InvalidVariableValueError`, defaulty dotazu se **nepoužijí** → klíče povinné. | `docs/won-discounts/evidence/mvp0/c4-campaign-window.json` |
+| C7 | sdílený config (MVP 1) | **platí** — 2 automatické uzly čtou app-owned shop metafield `$app:won_discounts/function_config` živě: 9 % → po změně jen shop metafieldu 13 % (první čtení, 2 s), uzly se nikdy neliší (12 vyhodnocení). 10 000 B projde; 10 100 B → `shop.metafield: null`, běh `success`, 0 % (**tiché** selhání, bez erroru); smazaný → null, 0 %. Proměnné (okno kampaně) jdou dál jen z metafieldu uzlu. Cena dotazu 24 → 27/30. | `docs/won-discounts/evidence/mvp1/c7-shop-metafield.json`, `c7-function-logs/` |
 | C5 | věrný náhled | **fallback** — storefront nejde vložit do iframe: `x-frame-options: DENY` + `content-security-policy: … frame-ancestors 'none'` na `/password`, odemčeném `/products/won-e2e-simple-a` i `/cart` (i s `preview_theme_id`). Náhled v adminu = tokeny tématu (barvy, fonty, radius ze `settings_data.json` přes `read_themes`) + sdílený renderer bloků + tlačítko „Zobrazit na mém webu“ s náhledovým parametrem. | `docs/won-discounts/evidence/mvp0/c5-headers.mjs` (Playwright, odemčený storefront), `curl -sI` 2026-09-28 |
 | C6 | kód při přesunu | rozhodnuto: záloha → smazání → vytvoření ve Won | `rozhodnuti.md` |
 

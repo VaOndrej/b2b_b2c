@@ -157,6 +157,7 @@ test("fixtures exist for every prototype mode and for missing/corrupt config", (
     "campaign-debug-started",
     "campaign-debug-not-started",
     "product-metafield",
+    "shop-config",
     "config-missing",
     "config-corrupt",
     "config-no-campaign-keys",

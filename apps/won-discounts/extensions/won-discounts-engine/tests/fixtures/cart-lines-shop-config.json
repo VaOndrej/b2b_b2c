@@ -12,16 +12,20 @@
         "metafield": {
           "jsonValue": {
             "prototype": {
-              "mode": "campaign_window",
-              "debugCampaign": true
+              "mode": "shop_config",
+              "tag": "A"
             },
-            "campaignStart": "2026-09-27T00:00:00",
-            "campaignEnd": "2026-09-27T12:00:00"
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00"
           }
         }
       },
       "shop": {
-        "metafield": null,
+        "metafield": {
+          "jsonValue": {
+            "percent": 9
+          }
+        },
         "localTime": {
           "date": "2026-09-28",
           "campaignActive": false,
@@ -90,7 +94,7 @@
           "productDiscountsAdd": {
             "candidates": [
               {
-                "message": "WON:CAMPAIGN|2026-09-28|started",
+                "message": "WON:SHOP|A|9%",
                 "targets": [
                   {
                     "cartLine": {
@@ -105,7 +109,7 @@
                 ],
                 "value": {
                   "percentage": {
-                    "value": 3
+                    "value": 9
                   }
                 }
               }

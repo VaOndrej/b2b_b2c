@@ -30,6 +30,12 @@ query CartInput(
     }
   }
   shop {
+    # MVP 1 prototype C7: app-owned SHOP metafield (same namespace/key, owner =
+    # shop) shared by every node. Only the `shop_config` prototype mode reads it;
+    # the node's own function_config still carries the query variables.
+    metafield(namespace: "$app:won_discounts", key: "function_config") {
+      jsonValue
+    }
     localTime {
       date
       campaignActive: dateTimeBetween(

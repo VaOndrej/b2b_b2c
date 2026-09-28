@@ -1,0 +1,61 @@
+# C7 — tests (red → green) and input-query cost, 2026-09-28T14:16:42Z
+
+## RED 1 — fixtures carry shop.metafield, query does not (npm test -w won-discounts-engine)
+   1       Tests  30 failed | 1 passed (31)
+   1 +     "message": "Extra field `metafield` found in fixture data not in query",
+   1 ⎯⎯⎯⎯⎯⎯ Failed Tests 30 ⎯⎯⎯⎯⎯⎯⎯
+
+## RED 2 — query extended, shop_config mode missing
+   × Default Integration Test > runs cart-lines-shop-config-no-tag.json 19ms
+   × Default Integration Test > runs cart-lines-shop-config.json 16ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  2 failed | 29 passed (31)
+
+## GREEN — npm test -w won-discounts-engine
+ ✓ tests/default.test.js (31 tests) 3621ms
+      Tests  31 passed (31)
+
+## GREEN — npx tsx --test tests/contracts/function.contract.test.ts
+  ✔ cart-lines-shop-config-invalid-percent.json (3221.313ms)
+  ✔ cart-lines-shop-config-missing.json (3266.257916ms)
+  ✔ cart-lines-shop-config-no-tag.json (3027.555875ms)
+  ✔ cart-lines-shop-config.json (3196.943792ms)
+ℹ tests 37
+ℹ pass 37
+ℹ fail 0
+
+## GREEN — npx tsx --test tests/contracts/prototypes-lib.contract.test.ts (lib.mjs changed)
+ℹ tests 15
+ℹ pass 15
+ℹ fail 0
+
+## Input-query cost (shopify.dev table: Metafield-returning field 3, fields on Metafield 0, __typename 0, other leaf 1)
+### NEW (with shop.metafield)
+ 1  triggeringDiscountCode
+ 1  enteredDiscountCodes.code
+ 1  enteredDiscountCodes.rejectable
+ 1  discount.discountClasses
+ 3  discount.metafield
+ 3  shop.metafield
+ 1  shop.localTime.date
+ 1  shop.localTime.campaignActive:dateTimeBetween
+ 1  shop.localTime.campaignStarted:dateTimeAfter
+ 1  cart.cost.subtotalAmount.amount
+ 1  cart.cost.subtotalAmount.currencyCode
+ 1  cart.lines.id
+ 1  cart.lines.quantity
+ 1  cart.lines.cost.amountPerQuantity.amount
+ 1  cart.lines.cost.amountPerQuantity.currencyCode
+ 1  cart.lines.cost.compareAtAmountPerQuantity.amount
+ 1  cart.lines.gift:attribute.value
+ 1  cart.lines.merchandise.id
+ 1  cart.lines.merchandise.product.id
+ 3  cart.lines.merchandise.product.wonProduct:metafield
+ 1  localization.country.isoCode
+TOTAL cost = 27 (limit 30)
+query size without comments/whitespace = 884 B (limit 3000)
+query size, comments removed (whitespace kept) = 1400 B
+### OLD (MVP 0)
+TOTAL cost = 24 (limit 30)
+query size without comments/whitespace = 810 B (limit 3000)
+query size, comments removed (whitespace kept) = 1302 B
