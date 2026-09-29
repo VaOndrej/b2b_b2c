@@ -80,6 +80,8 @@ export class FakeShopify implements AdminClient {
   bulkAddFailCodes = new Set<string>();
   /** How many status polls a bulk creation / job reports `done: false`. */
   asyncPollsBeforeDone = 0;
+  /** Shopify's count limit for `productsCount` (precision AT_LEAST above it). */
+  countLimit = 10_000;
   /** metafieldsSet refuses more than this many inputs (Shopify: 25). */
   metafieldsSetLimit = 25;
   /** The store's clock (node status, deactivate). */
@@ -476,6 +478,16 @@ export class FakeShopify implements AdminClient {
         if (!products) return { collection: null };
         return { collection: { id: v.id, products: this.page(products.map((id) => ({ id })), v.after) } };
       }
+      case "WonSyncCollectionSizes":
+        return {
+          nodes: (v.ids as string[]).map((id) => {
+            const members = this.collections.get(id);
+            if (!members) return null;
+            // Shopify stops counting at its limit (10 000) and says so.
+            const limited = members.length > this.countLimit;
+            return { __typename: "Collection", id, productsCount: { count: limited ? this.countLimit : members.length, precision: limited ? "AT_LEAST" : "EXACT" } };
+          }),
+        };
       case "WonSyncVariantProducts":
         return {
           nodes: (v.ids as string[]).map((id) => {

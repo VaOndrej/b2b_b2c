@@ -30,8 +30,10 @@ export interface ShopCtx {
    * (read_markets, item 9) are used only when granted. Absent = unknown.
    */
   scopes?: string;
-  /** Test hooks: the sync (default: production wiring), the clock, the sync logger. */
+  /** Test hooks: the sync (default: production wiring), the clock, the sync logger, the config-lock wait. */
   createSync?: (client: AdminClient, db: PrismaClient) => Sync;
+  /** How long an admin write waits for the shop's config lock (default CONFIG_LOCK_WAIT_MS). */
+  lockWaitMs?: number;
   now?: () => Date;
   logger?: SyncLogger;
 }

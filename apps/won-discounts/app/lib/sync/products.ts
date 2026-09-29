@@ -8,9 +8,19 @@
 // exists for every product that may carry the metafield (write-ahead), so a
 // product WITHOUT a row carries no Won refs.
 //
+// Collection size limit (F2 re-review M-4/M-5): Won reads at most
+// MAX_COLLECTION_PRODUCTS collection members per sync, all targeted
+// collections together. Their sizes are read first (productsCount, one cheap
+// query); a collection that does not fit (or that Shopify only counts as "at
+// least") is left out of the product refs of the rules that target it — those
+// rules do not apply to it at checkout, each says so in a failed step
+// `products.too_large:<ruleId>` — and EVERYTHING ELSE goes on: one huge
+// collection never holds the other rules' changes (narrower, never wider).
+// A paging backstop still stops a read that runs past the limit anyway.
+//
 // Two lanes around the shop-config flip (sync.server.ts, M1 + audit P2-8):
 //   plan    targeted = product ids, products of targeted variants, collection
-//           members (paged 250, at most MAX_COLLECTION_PRODUCTS per collection);
+//           members (paged 250, within the limit above);
 //           candidates = targeted ∪ indexed; desired value per candidate
 //           (productRuleIndex → productMetafieldValue); skip where the stored
 //           payloadHash already equals it (no read, no write). Products that
@@ -52,8 +62,18 @@ import { errorText, setMetafields, userErrorText, type Transport, type UserError
 import type { ConfigView, SyncProductEntry, SyncProductInput, SyncStep } from "./types";
 import { canonicalJson, chunks, hashText, METAFIELDS_DELETE_BATCH, METAFIELDS_SET_BATCH, NODES_BATCH, sameJson } from "./util";
 
-/** Collection members read per collection per sync (100 pages of 250): a larger target is refused honestly. */
-export const MAX_COLLECTION_PRODUCTS = 25_000;
+/** Collection members read per sync, all targeted collections together (Shopify counts exactly up to 10 000). */
+export const MAX_COLLECTION_PRODUCTS = 10_000;
+/** The paging backstop's slack over MAX_COLLECTION_PRODUCTS (counts can lag a busy catalogue). */
+const PAGING_SLACK = 1_000;
+
+/** A product pass stopped because a newer sync of the shop superseded it (it redoes the work). */
+export class SyncCancelled extends Error {
+  constructor() {
+    super("superseded by a newer sync");
+    this.name = "SyncCancelled";
+  }
+}
 /** Indexed products read to check the index after an install / reinstall. */
 export const INDEX_SAMPLE_SIZE = 25;
 
@@ -116,6 +136,16 @@ export interface ProductSyncArgs {
   productRuleIndex: (config: ConfigView, products: readonly SyncProductInput[]) => Map<string, SyncProductEntry>;
   /** Check a sample of the index against Shopify first (the shop config was missing: first sync after an install). */
   verifyIndex?: boolean;
+  /**
+   * Checked before every Shopify read and write: true stops the pass with
+   * SyncCancelled (a products-only refresh superseded by a newer sync). The
+   * save's own BEFORE lane never passes it.
+   */
+  isCancelled?: () => boolean;
+}
+
+function checkCancelled(args: Pick<ProductSyncArgs, "isCancelled">): void {
+  if (args.isCancelled?.()) throw new SyncCancelled();
 }
 
 interface Write {
@@ -153,19 +183,87 @@ export interface ProductSyncResult {
 
 class CollectionTooLarge extends Error {
   constructor(readonly collectionId: string) {
-    super(`the collection ${collectionId} has more than ${MAX_COLLECTION_PRODUCTS} products`);
+    super(`the targeted collections have more than ${MAX_COLLECTION_PRODUCTS} products together (reading ${collectionId})`);
   }
 }
 
-async function targetedProducts(transport: Transport, scopes: Scopes, shop: string) {
+type RuleView = ConfigView["modules"]["codes"]["rules"][number];
+
+/**
+ * The config whose product refs this pass computes: collections that do not
+ * fit MAX_COLLECTION_PRODUCTS (together, in config order) are taken out of
+ * every rule's and campaign re-target's collection list, with one failed step
+ * per rule they are taken from. Sizes unreadable → unchanged (the backstop).
+ */
+async function limitCollections(args: ProductSyncArgs): Promise<{ config: ConfigView; steps: SyncStep[] }> {
+  const { transport, config } = args;
+  const ids = [...targetScopes(config).collectionIds];
+  if (ids.length === 0) return { config, steps: [] };
+  const sizes = new Map<string, { count: number; exact: boolean }>();
+  try {
+    for (const batch of chunks(ids, NODES_BATCH)) {
+      checkCancelled(args);
+      const data: { nodes: ({ id?: string; productsCount?: { count: number; precision: string } | null } | null)[] } = await transport.call(
+        "collectionSizes",
+        { ids: batch },
+      );
+      batch.forEach((id, i) => {
+        const count = data.nodes[i]?.productsCount;
+        if (count) sizes.set(id, { count: count.count, exact: count.precision === "EXACT" });
+      });
+    }
+  } catch (error) {
+    if (error instanceof Response || error instanceof SyncCancelled) throw error;
+    return { config, steps: [] };
+  }
+  const tooLarge = new Set<string>();
+  let total = 0;
+  for (const id of ids) {
+    const size = sizes.get(id);
+    if (!size) continue; // not found: the pass reports it
+    if (!size.exact || total + size.count > MAX_COLLECTION_PRODUCTS) tooLarge.add(id);
+    else total += size.count;
+  }
+  if (tooLarge.size === 0) return { config, steps: [] };
+
+  const out = JSON.parse(JSON.stringify(config)) as ConfigView & { modules: { codes: { rules: RuleView[] } } };
+  const affected = new Map<string, { name: string; collections: Set<string> }>();
+  const strip = (ruleId: string, name: string, target: unknown) => {
+    const t = target as { kind?: unknown; ids?: unknown } | null;
+    if (!t || t.kind !== "collections" || !Array.isArray(t.ids)) return;
+    const dropped = (t.ids as string[]).filter((id) => tooLarge.has(id));
+    if (dropped.length === 0) return;
+    (t as { ids: string[] }).ids = (t.ids as string[]).filter((id) => !tooLarge.has(id));
+    const entry = affected.get(ruleId) ?? { name, collections: new Set<string>() };
+    for (const id of dropped) entry.collections.add(id);
+    affected.set(ruleId, entry);
+  };
+  const names = new Map(out.modules.codes.rules.map((rule) => [rule.id, rule.name]));
+  for (const rule of out.modules.codes.rules) strip(rule.id, rule.name, rule.target);
+  for (const campaign of out.campaigns) {
+    if (campaign.killed) continue;
+    for (const override of campaign.overrides) strip(override.ruleId, names.get(override.ruleId) ?? override.ruleId, (override.patch as { target?: unknown }).target);
+  }
+  const steps: SyncStep[] = [...affected].map(([ruleId, { name, collections }]) => ({
+    step: `products.too_large:${ruleId}`,
+    ok: false,
+    detail:
+      `"${name || ruleId}" does not apply at checkout to ${[...collections].join(", ")}: the targeted collections have more than ` +
+      `${MAX_COLLECTION_PRODUCTS} products together, more than Won reads per sync — every other rule is synced as usual`,
+  }));
+  return { config: out, steps };
+}
+
+async function targetedProducts(args: ProductSyncArgs, scopes: Scopes) {
+  const { transport, shop } = args;
   const productCollections = new Map<string, Set<string>>();
   const targeted = new Set<string>(scopes.productIds);
   const missing: string[] = [];
   let read = 0;
   for (const collectionId of scopes.collectionIds) {
     let after: string | null = null;
-    let members = 0;
     for (;;) {
+      checkCancelled(args);
       const data: { collection: { products: Page<{ id: string }> } | null } = await transport.call("collectionProducts", {
         id: collectionId,
         after,
@@ -180,16 +278,17 @@ async function targetedProducts(transport: Transport, scopes: Scopes, shop: stri
         set.add(collectionId);
         productCollections.set(product.id, set);
       }
-      members += data.collection.products.nodes.length;
       read += data.collection.products.nodes.length;
       setSyncProgress(shop, { phase: "reading", done: read, total: null });
       if (!data.collection.products.pageInfo.hasNextPage) break;
-      if (members >= MAX_COLLECTION_PRODUCTS) throw new CollectionTooLarge(collectionId);
+      // Backstop: the sizes said it fits, the paging says otherwise (a catalogue growing right now).
+      if (read >= MAX_COLLECTION_PRODUCTS + PAGING_SLACK) throw new CollectionTooLarge(collectionId);
       after = data.collection.products.pageInfo.endCursor;
     }
   }
   const variantProducts = new Set<string>();
   for (const batch of chunks([...scopes.variantIds], NODES_BATCH)) {
+    checkCancelled(args);
     const data: { nodes: ({ id: string; product?: { id: string } } | null)[] } = await transport.call("variantProducts", { ids: batch });
     for (const node of data.nodes) {
       if (node?.product?.id) {
@@ -203,6 +302,7 @@ async function targetedProducts(transport: Transport, scopes: Scopes, shop: stri
     const variants: string[] = [];
     let after: string | null = null;
     for (;;) {
+      checkCancelled(args);
       const data: { product: { variants: Page<{ id: string }> } | null } = await transport.call("productVariants", { id: productId, after });
       if (!data.product) break;
       for (const variant of data.product.variants.nodes) variants.push(variant.id);
@@ -216,9 +316,10 @@ async function targetedProducts(transport: Transport, scopes: Scopes, shop: stri
 
 type MetafieldNode = { id: string; metafield: { value: string } | null } | null;
 
-async function readProductValues(transport: Transport, ids: readonly string[]): Promise<Map<string, MetafieldNode>> {
+async function readProductValues(transport: Transport, ids: readonly string[], isCancelled?: () => boolean): Promise<Map<string, MetafieldNode>> {
   const out = new Map<string, MetafieldNode>();
   for (const batch of chunks(ids, NODES_BATCH)) {
+    if (isCancelled?.()) throw new SyncCancelled();
     const data: { nodes: MetafieldNode[] } = await transport.call("productMetafields", { ids: batch });
     batch.forEach((productId, i) => out.set(productId, data.nodes[i]?.id ? data.nodes[i] : null));
   }
@@ -273,7 +374,7 @@ async function verifyIndexSample(args: ProductSyncArgs, indexed: Map<string, str
   const sample = hashed.slice(0, INDEX_SAMPLE_SIZE);
   let mismatch: string | null = null;
   try {
-    const values = await readProductValues(transport, sample);
+    const values = await readProductValues(transport, sample, args.isCancelled);
     for (const productId of sample) {
       const node = values.get(productId);
       if (!node) continue; // deleted product: dropped by the normal pass
@@ -285,7 +386,7 @@ async function verifyIndexSample(args: ProductSyncArgs, indexed: Map<string, str
       }
     }
   } catch (error) {
-    if (error instanceof Response) throw error;
+    if (error instanceof Response || error instanceof SyncCancelled) throw error;
     mismatch = `(read failed: ${errorText(error)})`;
   }
   if (mismatch === null) {
@@ -316,8 +417,11 @@ function failedPlan(steps: SyncStep[], staleRisk: boolean): ProductPlan {
 }
 
 export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> {
-  const { transport, db, shop, config } = args;
+  const { transport, db, shop } = args;
   const steps: SyncStep[] = [];
+  const limited = await limitCollections(args);
+  steps.push(...limited.steps);
+  const config = limited.config;
   const scopes = targetScopes(config);
   const rows = await db.productTargetIndex.findMany({ where: { shop }, select: { productId: true, payloadHash: true } });
   const indexed = new Map(rows.map((row) => [row.productId, row.payloadHash]));
@@ -325,12 +429,12 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
 
   let found;
   try {
-    found = await targetedProducts(transport, scopes, shop);
+    found = await targetedProducts(args, scopes);
   } catch (error) {
-    if (error instanceof Response) throw error;
+    if (error instanceof Response || error instanceof SyncCancelled) throw error;
     const detail =
       error instanceof CollectionTooLarge
-        ? `${error.message}; targeting a collection this large is not supported yet — pick smaller collections (nothing was written)`
+        ? `${error.message}; the collections grew past what Won reads per sync while being read (nothing was written; the next sync leaves the largest out)`
         : `could not read the targeted products: ${errorText(error)}`;
     steps.push({ step: "products", ok: false, detail });
     // Nothing written: products that left a target may still carry old refs.
@@ -404,9 +508,9 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
   const clearing = new Set(toClear);
   let values: Map<string, MetafieldNode>;
   try {
-    values = await readProductValues(transport, [...wantedIndexed, ...toClear]);
+    values = await readProductValues(transport, [...wantedIndexed, ...toClear], args.isCancelled);
   } catch (error) {
-    if (error instanceof Response) throw error;
+    if (error instanceof Response || error instanceof SyncCancelled) throw error;
     steps.push({ step: "products", ok: false, detail: `could not read the products to update: ${errorText(error)}` });
     // Every one of them may lose a ref: nothing may flip before they are written.
     return failedPlan(steps, toClear.length > 0 || wantedIndexed.length > 0);
@@ -461,6 +565,7 @@ export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPl
   const setErrors: string[] = [];
   let reductionFailed = 0;
   for (const batch of chunks(plan.sets, METAFIELDS_SET_BATCH)) {
+    checkCancelled(args);
     const error = await writeBatch(args, batch);
     if (error) {
       setErrors.push(error);
@@ -490,6 +595,7 @@ export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPl
   let clearOk = 0;
   const clearErrors: string[] = [];
   for (const batch of chunks(plan.clears, METAFIELDS_DELETE_BATCH)) {
+    checkCancelled(args);
     try {
       const data: { metafieldsDelete: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsDelete", {
         metafields: batch.map((ownerId) => ({ ownerId, namespace: WON_NAMESPACE, key: PRODUCT_KEY })),
@@ -502,7 +608,7 @@ export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPl
       clearOk += batch.length;
       await db.productTargetIndex.deleteMany({ where: { shop, productId: { in: batch } } });
     } catch (error) {
-      if (error instanceof Response) throw error;
+      if (error instanceof Response || error instanceof SyncCancelled) throw error;
       clearErrors.push(errorText(error));
     }
   }
@@ -540,13 +646,13 @@ export async function applyProductAdditions(args: ProductSyncArgs, additions: re
   const { transport, db, shop } = args;
   const steps: SyncStep[] = [];
   if (additions.length === 0) return { steps, cancelled: false };
-  const cancelled = () => options.isCancelled?.() === true;
+  const cancelled = () => options.isCancelled?.() === true || args.isCancelled?.() === true;
   const toSet: Write[] = [];
   let skipped = 0;
   try {
     for (const batch of chunks(additions, NODES_BATCH)) {
       if (cancelled()) return { steps, cancelled: true };
-      const values = await readProductValues(transport, batch.map((w) => w.productId));
+      const values = await readProductValues(transport, batch.map((w) => w.productId), cancelled);
       for (const write of batch) {
         const node = values.get(write.productId);
         if (!node) skipped += 1;
@@ -556,6 +662,7 @@ export async function applyProductAdditions(args: ProductSyncArgs, additions: re
     }
   } catch (error) {
     if (error instanceof Response) throw error;
+    if (error instanceof SyncCancelled) return { steps, cancelled: true };
     steps.push({ step: "products.add", ok: false, detail: `could not read the products that get new rules: ${errorText(error)} (they lack them until the next sync)` });
     return { steps, cancelled: false };
   }
@@ -579,13 +686,22 @@ export async function applyProductAdditions(args: ProductSyncArgs, additions: re
   return { steps, cancelled: false };
 }
 
-/** Plan + both lanes in order, no shop config in between (the products-only refresh). */
+/**
+ * Plan + both lanes in order, no shop config in between (the products-only
+ * refresh). A superseded pass (args.isCancelled) stops at its next Shopify
+ * call and says `cancelled` (nothing to record: the newer sync redoes it).
+ */
 export async function syncProducts(args: ProductSyncArgs, options: AdditionsOptions = {}): Promise<ProductSyncResult & { cancelled: boolean }> {
-  const plan = await planProducts(args);
-  if (!plan.complete) return { steps: plan.steps, staleRisk: plan.staleRisk, cancelled: false };
-  const changes = await applyProductChanges(args, plan);
-  const additions = await applyProductAdditions(args, plan.additions, options);
-  return { steps: [...plan.steps, ...changes.steps, ...additions.steps], staleRisk: changes.staleRisk, cancelled: additions.cancelled };
+  try {
+    const plan = await planProducts(args);
+    if (!plan.complete) return { steps: plan.steps, staleRisk: plan.staleRisk, cancelled: false };
+    const changes = await applyProductChanges(args, plan);
+    const additions = await applyProductAdditions(args, plan.additions, options);
+    return { steps: [...plan.steps, ...changes.steps, ...additions.steps], staleRisk: changes.staleRisk, cancelled: additions.cancelled };
+  } catch (error) {
+    if (error instanceof SyncCancelled) return { steps: [], staleRisk: false, cancelled: true };
+    throw error;
+  }
 }
 
 async function upsertRow(db: PrismaClient, shop: string, productId: string, payloadHash: string | null): Promise<void> {

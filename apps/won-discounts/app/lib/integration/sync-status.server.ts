@@ -42,13 +42,15 @@
 //     until the next sync.
 
 import { readStoredConfig, type DiscountRule, type WonDiscountsConfig } from "@won/core/discounts/config";
+import { gateConfigForPlan, type ShopPlan } from "@won/core/discounts/plan-gate";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import { loadConfig } from "../config.server";
+import { planOf } from "../plan.server";
 import { codesHash, SYNC_RUNS_KEPT } from "../sync/nodes";
 import { hasProductTargets } from "../sync/products";
 import { syncProgress } from "../sync/progress";
-import { parseSteps, storedConfigNotApplied } from "../sync/runs";
+import { appliedPlanOf, parseSteps, storedConfigNotApplied } from "../sync/runs";
 import {
   loadSyncStatus,
   refreshTargeting,
@@ -58,13 +60,13 @@ import {
   type SyncStatus,
 } from "../sync/save-and-sync.server";
 import { loadShopSyncFacts } from "../sync/sync-state.server";
-import { isSyncRunning, shopLocalDateTime } from "../sync/sync.server";
+import { backgroundProductPass, isSettingsSyncRunning, isSyncRunning, shopLocalDateTime } from "../sync/sync.server";
 import type { SyncStep } from "../sync/types";
 import { canonicalJson } from "../sync/util";
 import type { RuleSyncMap, RuleSyncState, SyncView, TargetingView, UiResult, UiText } from "../../components/model/types";
 import { nowOf, type ShopCtx } from "./context.server";
 import { withinDeadline } from "./deadline";
-import { isConfigLocked, withConfigLock } from "./lock.server";
+import { CONFIG_LOCK_WAIT_MS, ConfigLockBusy, isConfigLocked, tryWithConfigLock, withConfigLock } from "./lock.server";
 import { ruleNames, shopConfigApplied, stepNodeKey, stepWarnings, syncOutcome, syncProblems } from "./sync-copy";
 import { TARGETING_MAX_AGE_MS, TARGETING_REFRESH_DEBOUNCE_MS, targetingRefreshScheduled } from "./targeting.server";
 
@@ -95,12 +97,19 @@ function localTime(date: Date, timezone: string | null): string {
   return shopLocalDateTime(date, timezone ?? "UTC");
 }
 
-/** A sync (not only a background product lane) of the shop is queued or running here: "running", with its product progress. */
+/** A settings sync (not only a background product pass — TargetingView says that one) is queued or running here. */
 function runningView(shop: string): SyncView | null {
-  if (!isSyncRunning(shop)) return null;
-  const progress = syncProgress(shop);
-  if (progress?.phase === "writing") return null; // only the background product lane: the sync itself is done (TargetingView says it)
-  return { state: "running" };
+  return isSettingsSyncRunning(shop) ? { state: "running" } : null;
+}
+
+/**
+ * The plan the shop's syncs gate for: the request's sync factory's own
+ * resolver when there is one (tests pin it), else the app's (BILL-1). The same
+ * source the sync uses, so "applied for another plan" is never a false alarm.
+ */
+export async function ctxPlan(ctx: Pick<ShopCtx, "shop" | "db"> & Partial<Pick<ShopCtx, "client" | "createSync">>): Promise<ShopPlan> {
+  if (ctx.createSync && ctx.client) return ctx.createSync(ctx.client, ctx.db).plan(ctx.shop);
+  return planOf(ctx.shop);
 }
 
 /** The shop's sync line from its latest SyncRun. `notApplied` = the stored config is not the one Shopify runs. */
@@ -119,21 +128,24 @@ export function syncViewOf(
   return { state: "error", at, problems: syncProblems(status.steps, opts.names) };
 }
 
+type StatusCtx = Pick<ShopCtx, "db" | "shop"> & Partial<Pick<ShopCtx, "client" | "createSync">>;
+
 async function currentView(
-  ctx: Pick<ShopCtx, "db" | "shop">,
+  ctx: StatusCtx,
   loaded: { config: WonDiscountsConfig; exists: boolean },
   timezone: string | null,
   attention?: UiText[],
 ): Promise<SyncView> {
   const running = runningView(ctx.shop);
   if (running) return running;
-  const [status, notApplied] = await Promise.all([loadSyncStatus(ctx.db, ctx.shop), storedConfigNotApplied(ctx.db, ctx.shop)]);
+  const plan = await ctxPlan(ctx);
+  const [status, notApplied] = await Promise.all([loadSyncStatus(ctx.db, ctx.shop), storedConfigNotApplied(ctx.db, ctx.shop, { plan })]);
   return syncViewOf(status, { configExists: loaded.exists, timezone, names: ruleNames(loaded.config), notApplied, attention });
 }
 
 /** Sync line for loaders that do not trigger a resync (Slevy a kódy, editor). */
 export async function loadSyncView(
-  ctx: Pick<ShopCtx, "db" | "shop">,
+  ctx: StatusCtx,
   loaded: { config: WonDiscountsConfig; exists: boolean; unreadable: boolean; readOnly: boolean },
   timezone: string | null,
 ): Promise<SyncView> {
@@ -158,9 +170,13 @@ async function targetingDue(ctx: Pick<ShopCtx, "db" | "shop">, config: WonDiscou
 
 /**
  * Přehled: retry a failed / pending sync (M3 trigger) and the other resync
- * reasons, then the product-targeting refresh when due — at most
- * `deadlineMs` of waiting, then the sync line. A thrown Response (re-auth of
- * the embedded admin) that arrives in time is rethrown to the route.
+ * reasons, then — only when the sync is up to date — the product-targeting
+ * refresh when due, QUEUED in the background (F2 re-review I-1: the lock is
+ * held only for the decision and a resync's settings part; the product pass
+ * runs in the sync queue, where a newer save cancels it). While syncs keep
+ * failing, the 5-min retry backoff applies to the refresh too: no full resync
+ * every load. At most `deadlineMs` of waiting, then the sync line. A thrown
+ * Response (re-auth of the embedded admin) that arrives in time is rethrown.
  */
 export async function overviewSync(
   ctx: ShopCtx,
@@ -172,25 +188,29 @@ export async function overviewSync(
   const current = () => currentView(ctx, loaded, opts.timezone, opts.attention);
   // Another writer (a save and its sync, a move, a sweep, a resync) is at work: never a second resync next to it.
   if (isConfigLocked(ctx.shop)) return { state: "running" };
-  // A sync, or a save's background product lane, is still running here: never supersede it from a page load
-  // (a large lane would otherwise be restarted by every retry and never finish).
+  // A sync, or a background product pass, is still running here: never supersede it from a page load
+  // (a large pass would otherwise be restarted by every load and never finish).
   if (isSyncRunning(ctx.shop)) return current();
   // Prefetch / focus reloads: one trigger per shop per debounce window.
   const now = nowOf(ctx);
   const last = lastTrigger.get(ctx.shop);
   if (last !== undefined && now.getTime() >= last && now.getTime() - last < RESYNC_TRIGGER_DEBOUNCE_MS) return current();
-  lastTrigger.set(ctx.shop, now.getTime());
-  if (lastTrigger.size > 10_000) lastTrigger.delete(lastTrigger.keys().next().value as string);
 
-  // The lock is taken HERE, before any await: whatever queues for it later in this load runs after this work.
-  const work = withConfigLock(ctx.shop, async () => {
+  // Check-and-acquire in one synchronous step (tryWithConfigLock, no await since the check above):
+  // whatever queues for the lock later in this load runs after this work.
+  const attempt = tryWithConfigLock(ctx.shop, async () => {
     const common = { client: ctx.client, db: ctx.db, shop: ctx.shop, createSync: ctx.createSync, now: ctx.now, logger: ctx.logger, grantedScopes: ctx.scopes };
     const resync = await resyncIfPending({ ...common, timezone: opts.timezone, checkMarkets: true, productWrites: "background" });
-    if (!resync.resynced && (await targetingDue(ctx, loaded.config, now))) {
+    // The refresh only behind an up-to-date sync: a failing one keeps its own 5-min retry backoff.
+    if (!resync.resynced && resync.reason === "up_to_date" && (await targetingDue(ctx, loaded.config, now))) {
       await refreshTargeting({ ...common, productWrites: "background" });
     }
     return resync;
   });
+  if (attempt.skipped) return { state: "running" };
+  lastTrigger.set(ctx.shop, now.getTime());
+  if (lastTrigger.size > 10_000) lastTrigger.delete(lastTrigger.keys().next().value as string);
+  const work = attempt.result;
   overviewWork.set(ctx.shop, work);
   void work.finally(() => {
     if (overviewWork.get(ctx.shop) === work) overviewWork.delete(ctx.shop);
@@ -225,23 +245,31 @@ export function resyncResult(result: ResyncResult, names: ReadonlyMap<string, st
   const warnings = "warnings" in result ? result.warnings : [];
   const outcome = syncOutcome(result, warnings, names);
   if (!result.ok) return { ok: false, reason: "sync_failed", problems: outcome.problems };
-  const background = "background" in result && result.background ? { syncing: { products: result.background.products } } : {};
+  const background = "background" in result && result.background ? { syncing: { ...(result.background.products !== undefined ? { products: result.background.products } : {}) } } : {};
   return { ok: true, message: "synced", sync: outcome, ...background };
 }
 
-/** Run `work` under the shop's config lock, at most ACTION_SYNC_DEADLINE_MS of waiting (item 7). */
+/**
+ * Run `work` under the shop's config lock: at most CONFIG_LOCK_WAIT_MS of
+ * waiting for the lock (another writer → `busy`, nothing ran), then at most
+ * `deadlineMs` for the work (item 7: the rest goes on in the background).
+ */
 async function lockedWithDeadline(
   ctx: ShopCtx,
   work: () => Promise<ResyncResult>,
   deadlineMs: number,
-): Promise<{ done: true; result: ResyncResult } | { done: false }> {
-  const running = withConfigLock(ctx.shop, work);
-  const outcome = await withinDeadline(running, deadlineMs);
+): Promise<{ done: true; result: ResyncResult } | { done: false } | { busy: true }> {
+  const waitMs = ctx.lockWaitMs ?? CONFIG_LOCK_WAIT_MS;
+  const running = withConfigLock(ctx.shop, work, { waitMs });
+  const outcome = await withinDeadline(running, waitMs + deadlineMs);
   if (!outcome.done) {
     running.catch(() => undefined);
     return { done: false };
   }
-  if ("error" in outcome) throw outcome.error;
+  if ("error" in outcome) {
+    if (outcome.error instanceof ConfigLockBusy) return { busy: true };
+    throw outcome.error;
+  }
   return { done: true, result: outcome.value };
 }
 
@@ -263,11 +291,15 @@ export async function resyncNow(ctx: ShopCtx, opts: { deadlineMs?: number } = {}
       }),
     opts.deadlineMs ?? ACTION_SYNC_DEADLINE_MS,
   );
+  if ("busy" in outcome) return { ok: false, reason: "busy" };
   if (!outcome.done) return { ok: true, message: "synced", syncing: {} };
   return resyncResult(outcome.result, ruleNames(loaded.config));
 }
 
-/** "Obnovit cílení": re-read collection members and rewrite the product refs now (item 2). */
+/**
+ * "Obnovit cílení": re-read collection members and rewrite the product refs
+ * (item 2) — queued in the background (I-1); the answer comes at once.
+ */
 export async function refreshTargetingNow(ctx: ShopCtx, opts: { deadlineMs?: number } = {}): Promise<UiResult> {
   const loaded = await loadConfig(ctx.db, ctx.shop);
   const outcome = await lockedWithDeadline(
@@ -281,11 +313,14 @@ export async function refreshTargetingNow(ctx: ShopCtx, opts: { deadlineMs?: num
         now: ctx.now,
         logger: ctx.logger,
         grantedScopes: ctx.scopes,
+        productWrites: "background",
       }),
     opts.deadlineMs ?? ACTION_SYNC_DEADLINE_MS,
   );
-  if (!outcome.done) return { ok: true, message: "synced", syncing: {} };
-  return resyncResult(outcome.result, ruleNames(loaded.config));
+  if ("busy" in outcome) return { ok: false, reason: "busy" };
+  if (!outcome.done) return { ok: true, message: "synced", syncing: { targeting: true } };
+  const result = resyncResult(outcome.result, ruleNames(loaded.config));
+  return result.ok && result.syncing ? { ...result, syncing: { ...result.syncing, targeting: true } } : result;
 }
 
 // --- Targeting line --------------------------------------------------------------------------
@@ -299,8 +334,9 @@ export async function loadTargetingView(
   if (!hasProductTargets(config)) return { state: "none" };
   const [facts, status] = await Promise.all([loadShopSyncFacts(ctx.db, ctx.shop), loadSyncStatus(ctx.db, ctx.shop)]);
   const progress = syncProgress(ctx.shop);
-  const writing = progress?.phase === "writing" && isSyncRunning(ctx.shop);
-  const inProgress = writing || (status?.pending.includes("products_in_progress") ?? false);
+  const pass = backgroundProductPass(ctx.shop);
+  const writing = pass !== null && progress?.phase === "writing";
+  const inProgress = pass !== null || (status?.pending.includes("products_in_progress") ?? false);
   if (facts.targetingStaleAt || inProgress) {
     return {
       state: "refreshing",
@@ -418,16 +454,32 @@ function parsePending(text: string | null): string[] {
 
 const isProductStep = (step: SyncStep) => step.step === "products" || step.step.startsWith("products.");
 
-/** The latest product pass: failed, still writing / stale, or fine. */
-function productsState(runs: readonly RunRow[], stale: boolean): "ok" | "failed" | "refreshing" {
+/** `products.too_large:<ruleId>`: that rule's collections did not fit what Won reads per sync. */
+const TOO_LARGE = "products.too_large:";
+
+/**
+ * The latest product pass: failed, still writing, or fine, plus the rules it
+ * reported as not applying to a too-large collection. A too-large rule's own
+ * step never fails the other rules.
+ */
+function productsState(runs: readonly RunRow[]): { state: "ok" | "failed" | "refreshing"; tooLarge: Set<string> } {
   for (const run of runs) {
     const steps = parseSteps(run.steps);
     if (!steps.some(isProductStep)) continue;
-    if (steps.some((step) => isProductStep(step) && !step.ok)) return "failed";
-    if (parsePending(run.pending).includes("products_in_progress")) return "refreshing";
-    break;
+    const tooLarge = new Set(steps.filter((step) => !step.ok && step.step.startsWith(TOO_LARGE)).map((step) => step.step.slice(TOO_LARGE.length)));
+    if (steps.some((step) => isProductStep(step) && !step.ok && !step.step.startsWith(TOO_LARGE))) return { state: "failed", tooLarge };
+    if (parsePending(run.pending).includes("products_in_progress")) return { state: "refreshing", tooLarge };
+    return { state: "ok", tooLarge };
   }
-  return stale ? "refreshing" : "ok";
+  return { state: "ok", tooLarge: new Set() };
+}
+
+/** Does the rule (or a campaign re-target of it) target collections? Membership changes reach only those (M-3). */
+function targetsCollections(config: WonDiscountsConfig, rule: DiscountRule): boolean {
+  if (rule.target.kind === "collections") return true;
+  return config.campaigns.some(
+    (c) => !c.killed && c.overrides.some((o) => o.ruleId === rule.id && (o.patch as { target?: { kind?: unknown } }).target?.kind === "collections"),
+  );
 }
 
 /** Did the latest run that went through the nodes fail on the automatic node? */
@@ -443,36 +495,51 @@ function autoNodeFailed(runs: readonly RunRow[]): boolean {
 /**
  * Per rule of `config` (the stored one): synced / pending / failed /
  * refreshing. A rule that is not in Shopify is "failed" when the latest run
- * failed, else "pending" (saved, the next sync writes it). `autoNode` = the
- * automatic node as Přehled read it live (absent: judged from the sync facts).
+ * failed, else "pending" (saved, the next sync writes it). The comparison is
+ * between what RUNS: the applied config gated for the plan it was built for,
+ * and the stored config gated for the shop's plan now (I-2: a config built
+ * for Pro still live on a Free shop is not "Běží" for the rules it changes).
+ * `autoNode` = the automatic node as Přehled read it live (absent: judged
+ * from the sync facts). A webhook's stale mark makes only collection rules
+ * "refreshing" (M-3); a background product pass, every product rule.
  */
 export async function loadRuleSync(
-  ctx: Pick<ShopCtx, "db" | "shop">,
+  ctx: StatusCtx,
   config: WonDiscountsConfig,
-  opts: { autoNode?: AutoNodeState } = {},
+  opts: { autoNode?: AutoNodeState; plan?: ShopPlan } = {},
 ): Promise<RuleSyncMap> {
   const [runs, nodes, latest, facts] = await Promise.all([
+    // Every kept run: the newest applying one is always among them (persist keeps it), even past SYNC_RUNS_KEPT.
     ctx.db.syncRun.findMany({
       where: { shop: ctx.shop },
       orderBy: [{ startedAt: "desc" }, { id: "desc" }],
-      take: SYNC_RUNS_KEPT,
+      take: SYNC_RUNS_KEPT + 1,
       select: { steps: true, configVersionId: true, pending: true },
     }),
     ctx.db.wonNode.findMany({ where: { shop: ctx.shop }, select: { key: true, codesHash: true } }),
     loadSyncStatus(ctx.db, ctx.shop),
     loadShopSyncFacts(ctx.db, ctx.shop),
   ]);
-  const applied = await appliedConfig(ctx.db, ctx.shop, runs);
+  const [applied, plan, appliedPlan] = await Promise.all([
+    appliedConfig(ctx.db, ctx.shop, runs),
+    opts.plan ? Promise.resolve(opts.plan) : ctxPlan(ctx),
+    appliedPlanOf(ctx.db, ctx.shop),
+  ]);
   const hashes = new Map(nodes.map((node) => [node.key, node.codesHash]));
   const notSynced: RuleSyncState = latest && !latest.ok ? "failed" : "pending";
-  const settingsLive = applied !== null && settingsKey(applied.config) === settingsKey(config);
-  const liveRules = new Map((applied?.config.modules.codes.rules ?? []).map((rule) => [rule.id, ruleKey(rule)]));
+  const live = applied ? gateConfigForPlan(applied.config, appliedPlan ?? plan).config : null;
+  const wanted = gateConfigForPlan(config, plan).config;
+  const settingsLive = live !== null && settingsKey(live) === settingsKey(wanted);
+  const liveRules = new Map((live?.modules.codes.rules ?? []).map((rule) => [rule.id, ruleKey(rule)]));
+  const wantedRules = new Map(wanted.modules.codes.rules.map((rule) => [rule.id, ruleKey(rule)]));
   const autoOk =
     hashes.has("auto") && !autoNodeFailed(runs) && (opts.autoNode === undefined || opts.autoNode === "active" || opts.autoNode === "unknown");
-  const products = productsState(runs, facts.targetingStaleAt !== null);
+  const products = productsState(runs);
+  const pass = backgroundProductPass(ctx.shop);
+  const stale = facts.targetingStaleAt !== null || pass === "refresh";
   const out: Record<string, RuleSyncState> = {};
   for (const rule of config.modules.codes.rules) {
-    if (!(settingsLive && liveRules.get(rule.id) === ruleKey(rule))) {
+    if (!(settingsLive && liveRules.get(rule.id) === wantedRules.get(rule.id))) {
       out[rule.id] = notSynced;
       continue;
     }
@@ -484,8 +551,16 @@ export async function loadRuleSync(
       out[rule.id] = "failed";
       continue;
     }
-    const targetsProducts = rule.target.kind === "products" || rule.target.kind === "collections";
-    out[rule.id] = targetsProducts && products !== "ok" ? products : "synced";
+    const targetsProducts = rule.target.kind === "products" || rule.target.kind === "collections" || targetsCollections(config, rule);
+    if (!targetsProducts) {
+      out[rule.id] = "synced";
+    } else if (products.tooLarge.has(rule.id) || products.state === "failed") {
+      out[rule.id] = "failed";
+    } else if (products.state === "refreshing" || pass === "additions" || (stale && targetsCollections(config, rule))) {
+      out[rule.id] = "refreshing";
+    } else {
+      out[rule.id] = "synced";
+    }
   }
   return out;
 }

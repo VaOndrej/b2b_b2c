@@ -43,7 +43,8 @@ import {
 import { graphqlOf, nowOf, type ShopCtx } from "./context.server";
 import { formLocale } from "./locale.server";
 import { ruleNames, syncOutcome } from "./sync-copy";
-import { autoNodeAttention, loadRuleSync, loadSyncView, loadTargetingView, readAutoNodeState } from "./sync-status.server";
+import { autoNodeAttention, ctxPlan, loadRuleSync, loadSyncView, loadTargetingView, readAutoNodeState } from "./sync-status.server";
+import { appliedPlanOf } from "../sync/runs";
 import type { TryCartRun } from "./try-cart.server";
 
 export interface PageOptions {
@@ -62,19 +63,25 @@ function graphql(ctx: ShopCtx): AdminGraphql {
  * BILL-1 for the admin: the plan in force and what of the STORED config it
  * does not run (core gateConfigForPlan + explainGate, the same gate the sync
  * applies): one sentence per Pro setting, and the rules it switches off.
+ * `pending` (F2 re-review I-2): the shop config LIVE in Shopify was still
+ * built with those Pro settings (written before the sync gated for plans, or
+ * before a downgrade) — checkout runs them until the resync that is under
+ * way; the admin says exactly that, and no rule claims "Neběží" meanwhile.
  */
 export async function planGateFor(
-  ctx: Pick<ShopCtx, "shop" | "locale" | "now">,
+  ctx: Pick<ShopCtx, "shop" | "locale" | "now" | "db"> & Partial<Pick<ShopCtx, "client" | "createSync">>,
   config: WonDiscountsConfig,
   timezone: string | null,
-): Promise<{ pro: boolean; gate: GateNoteView[]; gateOff: string[] }> {
-  const plan = await resolvePlan(ctx.shop);
+): Promise<{ pro: boolean; gate: GateNoteView[]; gateOff: string[]; pending: boolean }> {
+  const [plan, applied] = await Promise.all([ctxPlan(ctx), appliedPlanOf(ctx.db, ctx.shop)]);
   const now = shopLocalDateTime(nowOf(ctx), timezone ?? "UTC");
-  const { stripped } = gateConfigForPlan(config, plan.plan, { now });
+  const { stripped } = gateConfigForPlan(config, plan, { now });
+  const pending = stripped.length > 0 && applied === "pro" && plan === "free";
   return {
-    pro: plan.pro,
+    pro: plan === "pro",
     gate: explainGate(stripped, ctx.locale).map((e) => ({ text: e.text, ...(e.ruleId !== undefined ? { ruleId: e.ruleId } : {}) })),
-    gateOff: stripped.filter((s) => s.reason === "rule_off" && s.ruleId !== undefined).map((s) => s.ruleId as string),
+    gateOff: pending ? [] : stripped.filter((s) => s.reason === "rule_off" && s.ruleId !== undefined).map((s) => s.ruleId as string),
+    pending,
   };
 }
 
@@ -128,6 +135,7 @@ export async function overviewData(ctx: ShopCtx, opts: PageOptions) {
       ruleSync,
       gate: gate.gate,
       gateOff: gate.gateOff,
+      gatePending: gate.pending,
       shopCurrency: reads.shopContext.currencyCode,
       timezone,
       marketNames: reads.marketNames,
@@ -171,6 +179,7 @@ export async function discountsPage(ctx: ShopCtx, opts: PageOptions & { deleted:
     ruleSync,
     gate: gate.gate,
     gateOff: gate.gateOff,
+    gatePending: gate.pending,
     codeRules: codeRuleLimit(loaded.config),
     shopCurrency: reads.shopContext.currencyCode,
     timezone: reads.shopContext.timezone,
@@ -202,6 +211,7 @@ export async function ruleEditorPage(
     pro: gate.pro,
     gate: gate.gate,
     gateOff: gate.gateOff,
+    gatePending: gate.pending,
     marketsScope: canReadMarkets(opts.scopes),
     timezone: reads.shopContext.timezone,
     sync,

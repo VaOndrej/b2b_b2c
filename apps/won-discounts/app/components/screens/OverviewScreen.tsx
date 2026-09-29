@@ -58,6 +58,8 @@ export interface OverviewScreenProps {
   gate?: GateNoteView[];
   /** Rules the plan switches off. */
   gateOff?: string[];
+  /** Checkout still runs a config built with those Pro settings; a resync is under way (I-2). */
+  gatePending?: boolean;
   /** Handles of the enabled Won markets (a rule targeting only others never runs). */
   enabledMarkets?: string[];
 }
@@ -70,6 +72,7 @@ export function buildOverviewProps(
     ruleSync?: RuleSyncMap;
     gate?: GateNoteView[];
     gateOff?: string[];
+    gatePending?: boolean;
     shopCurrency?: string | null;
     timezone?: string | null;
     marketNames?: Readonly<Record<string, string>>;
@@ -94,6 +97,7 @@ export function buildOverviewProps(
   if (opts.ruleSync) props.ruleSync = { ...opts.ruleSync };
   if (opts.gate && opts.gate.length > 0) props.gate = opts.gate.map((g) => ({ ...g }));
   if (opts.gateOff && opts.gateOff.length > 0) props.gateOff = [...opts.gateOff];
+  if (opts.gatePending) props.gatePending = true;
   return props;
 }
 
@@ -129,6 +133,7 @@ export function OverviewScreen({
   nativeResult,
   gate = [],
   gateOff,
+  gatePending = false,
   enabledMarkets,
 }: OverviewScreenProps) {
   const tr = useT();
@@ -200,7 +205,7 @@ export function OverviewScreen({
           )}
         </WonSection>
 
-        {gate.length > 0 ? <GateNotes notes={gate} /> : null}
+        {gate.length > 0 ? <GateNotes notes={gate} pending={gatePending} /> : null}
 
         {warnings.length > 0 ? (
           <WonSection title={t("overview.warnings.title")} glyph="alert" summary={tr.tp("count.warning", warnings.length)}>

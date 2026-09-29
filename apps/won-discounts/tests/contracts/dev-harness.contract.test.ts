@@ -10,6 +10,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { withBuildLock } from "../lib/build-lock.ts";
 
+// (Also F2 re-review M-1: the dev-only Pro override is excluded from the same build.)
+//
 // Task 5 brief: the dev-only admin harness (app/routes/dev.preview.$.tsx) lets
 // us screenshot admin screens without logging into Shopify admin, but must
 // NEVER exist outside development/test. Two independent guards, both proven here:
@@ -184,5 +186,12 @@ test("production build excludes the dev harness route from build/server (build-t
       /DEV_OVERVIEW_FIXTURE|dev-fixture-1/,
       `${path.relative(APP_ROOT, file)} must not contain the dev harness fixture data`,
     );
+    // F2 re-review M-1: the dev-only Pro override (app/lib/plan.server.ts) is dead code in a
+    // production build (import.meta.env.DEV = false) — not even the variable's name ships.
+    assert.doesNotMatch(contents, /WON_DEV_PLAN/, `${path.relative(APP_ROOT, file)} must not contain the dev-only plan override`);
   }
+  const server = readFileSync(path.join(serverDir, "index.js"), "utf8");
+  const override = /function devPlanOverride\([^)]*\) \{([\s\S]*?)\n\}/.exec(server);
+  assert.ok(override, "the resolver is in the bundle");
+  assert.match(override[1]!.trim(), /^return null;$/, "in production the override always answers null (Free)");
 });

@@ -57,7 +57,7 @@ import type {
 } from "../../components/model/types";
 import { nowOf, type ShopCtx } from "./context.server";
 import { withinDeadline } from "./deadline";
-import { withConfigLock } from "./lock.server";
+import { CONFIG_LOCK_WAIT_MS, ConfigLockBusy, withConfigLock } from "./lock.server";
 import { uiFailureFromSave } from "./results";
 import { ruleIdOfKey, ruleNames, shopConfigApplied, stepNodeKey, stepProblem } from "./sync-copy";
 
@@ -388,6 +388,8 @@ export async function loadNativeView(
 export interface NativeSyncOptions {
   client: AdminClient;
   db: PrismaClient;
+  /** The session's granted scopes: markets are read only with read_markets (optional scope, F2 re-review M-6). */
+  grantedScopes?: string | null;
   /** Codes of the shop's other native discounts (hash-collision check). */
   otherCodes?: readonly string[];
   createSync?: (client: AdminClient, db: PrismaClient) => Sync;
@@ -426,6 +428,9 @@ export function blockingSteps(steps: readonly SyncStep[], changed: ReadonlySet<s
     if (key !== null) {
       const ruleId = ruleIdOfKey(key);
       if (ruleId === null ? automatic : changed.has(ruleId)) out.push(step);
+    } else if (step.step.startsWith("products.too_large:")) {
+      // Only that rule's collections did not fit what Won reads per sync (F2 re-review M-5).
+      if (changed.has(step.step.slice("products.too_large:".length))) out.push(step);
     } else if (step.step.startsWith("products")) {
       if (productTargeted) out.push(step);
     } else if (SHOP_LEVEL.has(step.step) || step.step.startsWith("shop_config")) {
@@ -459,6 +464,7 @@ export function createSaveAndSync(opts: NativeSyncOptions): SaveAndSync {
         createSync: opts.createSync,
         now: opts.now,
         logger: opts.logger,
+        grantedScopes: opts.grantedScopes,
       });
     // F12: the save lands only on top of the version the change was built on.
     const res = baseVersion !== undefined ? await withExpectedConfigVersion(shop, baseVersion, run) : await run();
@@ -482,6 +488,7 @@ function nativeCtxOptions(ctx: ShopCtx, otherCodes?: readonly string[]): NativeS
   return {
     client: ctx.client,
     db: ctx.db,
+    grantedScopes: ctx.scopes,
     otherCodes,
     createSync: ctx.createSync,
     now: ctx.now,
@@ -498,7 +505,8 @@ function nativeCtxOptions(ctx: ShopCtx, otherCodes?: readonly string[]): NativeS
  */
 export async function moveNativeDiscounts(ctx: ShopCtx, nativeIds: readonly string[]): Promise<UiResult> {
   if (nativeIds.length === 0) return { ok: false, reason: "nothing_selected" };
-  const results = await withConfigLock(ctx.shop, async () => {
+  // F2 re-review I-1: another writer holding the config → an honest "busy" after CONFIG_LOCK_WAIT_MS, nothing moved.
+  const locked = await withConfigLock(ctx.shop, async () => {
     const loaded = await loadConfig(ctx.db, ctx.shop);
     const detected = await withinDeadline(detectNative(ctx, loaded.config), MOVE_DETECTION_DEADLINE_MS);
     const detection = detected.done && "value" in detected ? detected.value : null;
@@ -530,7 +538,12 @@ export async function moveNativeDiscounts(ctx: ShopCtx, nativeIds: readonly stri
       if (!result.ok && LIMIT_REFUSALS.has(result.code)) stopped = true;
     }
     return out;
+  }, { waitMs: ctx.lockWaitMs ?? CONFIG_LOCK_WAIT_MS }).catch((error: unknown) => {
+    if (error instanceof ConfigLockBusy) return null;
+    throw error;
   });
+  if (locked === null) return { ok: false, reason: "busy" };
+  const results = locked;
   forgetDetection(ctx.shop);
 
   const moved = results.filter((r) => r.result.ok);
@@ -556,17 +569,24 @@ export async function moveNativeDiscounts(ctx: ShopCtx, nativeIds: readonly stri
 /** "Vrátit zpět": restore the native discount from its backup (this shop's only, SEC-2 in undoMove). */
 export async function undoNativeDiscount(ctx: ShopCtx, backupId: string | null): Promise<UiResult> {
   if (!backupId) return { ok: false, reason: "bad_request" };
-  const result = await withConfigLock(ctx.shop, () =>
-    undoNativeMove({
-      client: ctx.client,
-      db: ctx.db,
-      shop: ctx.shop,
-      backupId,
-      saveAndSync: createSaveAndSync(nativeCtxOptions(ctx)),
-      locale: ctx.locale,
-      now: ctx.now,
-    }),
-  );
+  const result = await withConfigLock(
+    ctx.shop,
+    () =>
+      undoNativeMove({
+        client: ctx.client,
+        db: ctx.db,
+        shop: ctx.shop,
+        backupId,
+        saveAndSync: createSaveAndSync(nativeCtxOptions(ctx)),
+        locale: ctx.locale,
+        now: ctx.now,
+      }),
+    { waitMs: ctx.lockWaitMs ?? CONFIG_LOCK_WAIT_MS },
+  ).catch((error: unknown) => {
+    if (error instanceof ConfigLockBusy) return null;
+    throw error;
+  });
+  if (result === null) return { ok: false, reason: "busy" };
   forgetDetection(ctx.shop);
   if (!result.ok) return { ok: false, reason: "native_failed", op: "undo", messages: [result.error], done: 0 };
   return { ok: true, message: "undone", ...(result.notRestored.length > 0 ? { notes: result.notRestored } : {}) };

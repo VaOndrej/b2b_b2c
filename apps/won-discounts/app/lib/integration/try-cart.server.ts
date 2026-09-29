@@ -21,14 +21,15 @@ import { toMinorUnits } from "@won/core/discounts/money";
 import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import { AdminTransportError } from "../admin-client.server";
-import { resolvePlan } from "../plan.server";
-import { storedConfigNotApplied } from "../sync/runs";
+import type { ShopPlan } from "@won/core/discounts/plan-gate";
+import { appliedPlanOf, storedConfigNotApplied } from "../sync/runs";
 import { canReadMarkets, loadSyncStatus } from "../sync/save-and-sync.server";
 import { loadShopSyncFacts } from "../sync/sync-state.server";
 import { shopLocalDateTime } from "../sync/sync.server";
 import type { TryCartInput } from "../../components/model/try-cart-form";
 import type { CartPlanView, TryCartLineView, UiResult, UiText } from "../../components/model/types";
 import { nowOf, type ShopCtx } from "./context.server";
+import { ctxPlan } from "./sync-status.server";
 import { parseProductRefs, planTryCart, type PricedLine, type ProductRefs } from "./try-cart-plan";
 
 /** Variants per WonTryCartVariants call (≤ 1 000 requested points; tests/integration/try-cart.test.ts). */
@@ -247,17 +248,25 @@ async function readVariants(
 
 /**
  * What the simulation cannot vouch for right now (item 8): the last sync
- * failed, the stored config is not in Shopify yet, or the product targeting is
- * being refreshed (checkout may not have the latest collection membership).
+ * failed, the stored config is not in Shopify yet — or checkout still runs a
+ * config built with Pro settings the shop's plan no longer runs (I-2) — or
+ * the product targeting is being refreshed (checkout may not have the latest
+ * collection membership). `stripped` = what the plan gate takes out now.
  */
-export async function tryCartSyncWarnings(ctx: Pick<ShopCtx, "db" | "shop">): Promise<UiText[]> {
-  const [status, notApplied, facts] = await Promise.all([
+export async function tryCartSyncWarnings(
+  ctx: Pick<ShopCtx, "db" | "shop">,
+  opts: { plan?: ShopPlan; stripped?: number } = {},
+): Promise<UiText[]> {
+  const [status, notApplied, facts, applied] = await Promise.all([
     loadSyncStatus(ctx.db, ctx.shop),
-    storedConfigNotApplied(ctx.db, ctx.shop),
+    storedConfigNotApplied(ctx.db, ctx.shop, opts.plan ? { plan: opts.plan } : {}),
     loadShopSyncFacts(ctx.db, ctx.shop),
+    appliedPlanOf(ctx.db, ctx.shop),
   ]);
   const out: UiText[] = [];
+  const proStillLive = opts.plan === "free" && applied === "pro" && (opts.stripped ?? 0) > 0;
   if (status && !status.ok) out.push({ key: "tryCart.warning.syncFailed" });
+  else if (proStillLive) out.push({ key: "tryCart.warning.planPending" });
   else if (!status || notApplied) out.push({ key: "tryCart.warning.notApplied" });
   if (facts.targetingStaleAt || status?.pending.includes("products_in_progress")) out.push({ key: "tryCart.warning.targeting" });
   return out;
@@ -333,8 +342,10 @@ export async function runTryCartPlan(
     }
     const time = shopLocalDateTime(nowOf(ctx), opts.timezone).slice(11);
     const productRefs = new Map([...variants.values()].map((v) => [v.productId, v.refs]));
-    const [plan0, warnings] = await Promise.all([resolvePlan(ctx.shop), tryCartSyncWarnings(ctx)]);
-    const gated = gateConfigForPlan(opts.config, plan0.plan, { now: `${input.date}T${time}` }).config;
+    const plan0 = await ctxPlan(ctx);
+    const gate = gateConfigForPlan(opts.config, plan0, { now: `${input.date}T${time}` });
+    const gated = gate.config;
+    const warnings = await tryCartSyncWarnings(ctx, { plan: plan0, stripped: gate.stripped.length });
     const plan = planTryCart(gated, {
       productRefs,
       warnings,

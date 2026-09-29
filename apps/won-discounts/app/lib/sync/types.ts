@@ -121,6 +121,10 @@ export interface SyncResult {
   pending: PendingWork[];
   /** The persisted SyncRun row (null when it could not be written). */
   runId: string | null;
-  /** Products still being written in the background after this run (item 7). */
-  background?: { products: number };
+  /**
+   * Product work still running in the background after this run (item 7):
+   * `products` = products that only gain rules and are being written; absent
+   * for a queued targeting refresh (its size is not known yet).
+   */
+  background?: { products?: number };
 }

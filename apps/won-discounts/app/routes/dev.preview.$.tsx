@@ -61,9 +61,9 @@ import {
 //                                 znovu), ?state=moved (a discount just moved, with
 //                                 its undo + an unfinished move), ?state=empty,
 //                                 ?readOnly=1
-//   /dev/preview/discounts       ?state=empty, ?state=f2, ?sync=ok | ?sync=failed (per-rule facts)
+//   /dev/preview/discounts       ?state=empty, ?state=f2, ?state=f2-pending, ?sync=ok | ?sync=failed (per-rule facts)
 //   /dev/preview/rule-editor     ?rule=<fixture id> | ?rule=new&recipe=<recipe>, ?plan=pro,
-//                                 ?result=unreadable|too-many|collision|sync-failed|saved|base-changed|syncing,
+//                                 ?result=unreadable|too-many|collision|sync-failed|saved|base-changed|busy|syncing,
 //                                 ?rule=dev-f2-collection | dev-f2-market (F2 fixture, Free gate)
 //   /dev/preview/try-cart        a REAL engine plan on fixture prices; ?state=empty | ?state=not-wired | ?state=warnings
 //   /dev/preview/onboarding      ?step=1|2|3, ?embed=on
@@ -150,7 +150,8 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly });
     }
     case "discounts": {
-      if (state === "f2") {
+      if (state === "f2" || state === "f2-pending") {
+        const gate = devGate(locale);
         return buildDiscountsProps(DEV_F2_FIXTURE, {
           readOnly,
           sync: DEV_SIGNALS_F2.sync,
@@ -159,7 +160,9 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
           timezone: DEV_TIMEZONE,
           marketNames: names,
           now: DEV_NOW,
-          ...devGate(locale),
+          ...gate,
+          // I-2: checkout still runs a config built with these Pro settings (a resync is under way).
+          ...(state === "f2-pending" ? { gateOff: [], gatePending: true } : {}),
         });
       }
       const config = state === "empty" ? DEV_EMPTY_FIXTURE : DEV_OVERVIEW_FIXTURE;

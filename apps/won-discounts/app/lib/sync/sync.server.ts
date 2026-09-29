@@ -70,16 +70,17 @@
 //     syncing the same shop at once are not coordinated [unverified: MVP 1
 //     runs one instance]; adopt-before-create keeps it from duplicating nodes.
 
-import { gateConfigForPlan, type StrippedCapability } from "@won/core/discounts/plan-gate";
+import { gateConfigForPlan, type ShopPlan, type StrippedCapability } from "@won/core/discounts/plan-gate";
 
 import { SHOP_CONFIG_KEY, WON_NAMESPACE } from "./graphql";
 import { desiredNodes, SYNC_RUNS_KEPT, type DesiredNode } from "./nodes";
 import { NodeSync } from "./node-sync";
 import { applyProductAdditions, applyProductChanges, planProducts, syncProducts, type ProductSyncArgs } from "./products";
 import { clearSyncProgress } from "./progress";
-import { recordProductsSynced, recordShopTimezone } from "./sync-state.server";
+import { recordAppliedPlan, recordProductsSynced, recordShopTimezone } from "./sync-state.server";
 import { errorText, setMetafields, Transport } from "./transport";
 import type { ConfigView, PendingWork, SyncDeps, SyncResult, SyncStep } from "./types";
+import { parseSteps, shopConfigApplied } from "./runs";
 import { sameJson } from "./util";
 
 /** Shop-local `YYYY-MM-DDTHH:MM:SS` (DateTimeWithoutTimezone, what the engine and C4 use). */
@@ -107,11 +108,17 @@ export function shopLocalDateTime(date: Date, timeZone: string): string {
 
 const inflight = new Map<string, Promise<unknown>>();
 
-/** A queued or running AFTER lane (background product writes) of a shop. */
+/**
+ * A queued or running background product pass of a shop: a save's AFTER lane
+ * or a products-only targeting refresh. A newer sync request cancels it.
+ */
 interface BackgroundLane {
   cancelled: boolean;
+  kind: "additions" | "refresh";
 }
 const lanes = new Map<string, BackgroundLane>();
+/** Settings syncs (runSync) queued or running per shop — not the product lanes. */
+const settingsRuns = new Map<string, number>();
 
 /** Chain `work` after everything queued for `shop` in this process. */
 function enqueue<T>(shop: string, work: () => Promise<T>): Promise<T> {
@@ -129,6 +136,17 @@ function enqueue<T>(shop: string, work: () => Promise<T>): Promise<T> {
 /** True while a sync, a product refresh or a background product lane of `shop` is queued or running here. */
 export function isSyncRunning(shop: string): boolean {
   return inflight.has(shop);
+}
+
+/** True while a settings sync (not only a background product pass) of `shop` is queued or running here. */
+export function isSettingsSyncRunning(shop: string): boolean {
+  return (settingsRuns.get(shop) ?? 0) > 0;
+}
+
+/** The background product pass of `shop` queued or running here, if any ("additions" after a save, or a targeting "refresh"). */
+export function backgroundProductPass(shop: string): BackgroundLane["kind"] | null {
+  const lane = lanes.get(shop);
+  return lane && !lane.cancelled ? lane.kind : null;
 }
 
 /** Resolves when nothing is queued or running for `shop` any more (tests, scripts). */
@@ -173,22 +191,64 @@ export interface SyncShopOptions {
 export interface Sync {
   syncShop(shop: string, config: ConfigView, options?: SyncShopOptions): Promise<SyncResult>;
   /**
-   * Only the product targeting (webhook-driven refresh, "Obnovit cílení"): the
-   * shop config is not touched. Recorded as its own SyncRun.
+   * Only the product targeting (webhook-driven refresh, "Obnovit cílení", the
+   * Přehled's 24 h refresh): the shop config is not touched. Recorded as its
+   * own SyncRun. `productWrites: "background"` (the admin, F2 re-review I-1)
+   * queues the whole pass in this process's per-shop queue and answers at
+   * once — nobody waits for it, and a newer sync cancels it at its next
+   * Shopify call (it redoes the work anyway).
    */
-  refreshProducts(shop: string, config: ConfigView, options?: Pick<SyncShopOptions, "configVersionId">): Promise<SyncResult>;
+  refreshProducts(shop: string, config: ConfigView, options?: SyncShopOptions): Promise<SyncResult>;
+  /** The plan the syncs of this instance gate for (the same resolver the sync itself uses, BILL-1). */
+  plan(shop: string): Promise<ShopPlan>;
 }
 
 export function createSync(deps: SyncDeps): Sync {
   return {
     syncShop(shop, config, options = {}) {
       const generation = supersede(shop);
-      return enqueue(shop, () => runSync(deps, shop, config, options, generation));
+      settingsRuns.set(shop, (settingsRuns.get(shop) ?? 0) + 1);
+      return enqueue(shop, () => runSync(deps, shop, config, options, generation)).finally(() => {
+        const left = (settingsRuns.get(shop) ?? 1) - 1;
+        if (left > 0) settingsRuns.set(shop, left);
+        else settingsRuns.delete(shop);
+      });
     },
     refreshProducts(shop, config, options = {}) {
       supersede(shop);
-      return enqueue(shop, () => runProductRefresh(deps, shop, config, options.configVersionId ?? null));
+      const lane: BackgroundLane = { cancelled: false, kind: "refresh" };
+      lanes.set(shop, lane);
+      const run = enqueue(shop, () => runProductRefresh(deps, shop, config, options.configVersionId ?? null, lane));
+      if (options.productWrites !== "background") {
+        return run.then((result) => result ?? cancelledResult());
+      }
+      void run.catch((error: unknown) => deps.logger.error(`sync ${shop}: background targeting refresh failed: ${errorText(error)}`));
+      return Promise.resolve(queuedRefreshResult());
     },
+    plan: (shop) => deps.plan(shop),
+  };
+}
+
+/** What a queued background refresh answers at once (its own SyncRun comes when it is done). */
+function queuedRefreshResult(): SyncResult {
+  return {
+    ok: true,
+    steps: [{ step: "products.refresh", ok: true, detail: "the product targeting is being refreshed in the background" }],
+    errors: [],
+    pending: ["products_in_progress"],
+    runId: null,
+    background: {},
+  };
+}
+
+/** An inline refresh that a newer sync superseded before it finished (nothing recorded). */
+function cancelledResult(): SyncResult {
+  return {
+    ok: true,
+    steps: [{ step: "products.refresh", ok: true, detail: "superseded by a newer sync, which refreshes the targeting itself" }],
+    errors: [],
+    pending: [],
+    runId: null,
   };
 }
 
@@ -244,7 +304,7 @@ async function runSync(deps: SyncDeps, shop: string, config: ConfigView, options
   if (!background) clearSyncProgress(shop);
   if (background && after) {
     // Superseded already when a newer request came in while this run was going.
-    const lane: BackgroundLane = { cancelled: generations.get(shop) !== generation };
+    const lane: BackgroundLane = { cancelled: generations.get(shop) !== generation, kind: "additions" };
     lanes.set(shop, lane);
     const lanePlan = after;
     void enqueue(shop, () => runBackgroundLane(deps, shop, lane, lanePlan, startedAt, configVersionId)).catch(() => undefined);
@@ -290,8 +350,17 @@ async function runBackgroundLane(
   return result;
 }
 
-/** Products only (no shop config): the targeting refresh. */
-async function runProductRefresh(deps: SyncDeps, shop: string, config: ConfigView, configVersionId: string | null): Promise<SyncResult> {
+/**
+ * Products only (no shop config): the targeting refresh. Null = superseded by
+ * a newer sync before it finished (nothing recorded; the newer one redoes it).
+ */
+async function runProductRefresh(
+  deps: SyncDeps,
+  shop: string,
+  config: ConfigView,
+  configVersionId: string | null,
+  lane: BackgroundLane,
+): Promise<SyncResult | null> {
   const startedAt = deps.now();
   const steps: SyncStep[] = [];
   const pending = new Set<PendingWork>();
@@ -299,9 +368,18 @@ async function runProductRefresh(deps: SyncDeps, shop: string, config: ConfigVie
   let rethrow: unknown = null;
   let complete = false;
   try {
+    if (lane.cancelled) return null;
     const plan = await deps.plan(shop);
     const gated = gateConfigForPlan(config, plan).config;
-    const result = await syncProducts({ transport, db: deps.db, shop, config: gated, productRuleIndex: deps.productRuleIndex });
+    const result = await syncProducts({
+      transport,
+      db: deps.db,
+      shop,
+      config: gated,
+      productRuleIndex: deps.productRuleIndex,
+      isCancelled: () => lane.cancelled,
+    });
+    if (result.cancelled) return null;
     steps.push(...result.steps);
     if (result.staleRisk) pending.add("stale_product_refs");
     complete = !result.staleRisk && result.steps.every((step) => step.ok);
@@ -309,6 +387,7 @@ async function runProductRefresh(deps: SyncDeps, shop: string, config: ConfigVie
     if (error instanceof Response) rethrow = error;
     steps.push({ step: "products", ok: false, detail: `product targeting: ${errorText(error)}` });
   } finally {
+    if (lanes.get(shop) === lane) lanes.delete(shop);
     clearSyncProgress(shop);
   }
   if (steps.length === 0) steps.push({ step: "products", ok: true, detail: "no targeted products and none to clean" });
@@ -357,7 +436,7 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
   const plan = await deps.plan(shop);
   const gate = gateConfigForPlan(stored, plan, { now: nowLocal });
   const config: ConfigView = gate.config;
-  if (gate.stripped.length > 0) record({ step: "plan", ok: true, detail: gateDetail(plan, gate.stripped) });
+  record({ step: "plan", ok: true, detail: gate.stripped.length > 0 ? gateDetail(plan, gate.stripped) : `plan ${plan}: nothing to gate` });
 
   const payload = deps.buildShopFunctionConfig(config, { now: nowLocal, shopTimezone });
   if (!payload.fits) {
@@ -378,6 +457,7 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
     const noCampaign = deps.buildShopFunctionConfig(config, { now: nowLocal, shopTimezone, forceNoCampaign: true });
     const written = await writeShopConfig(deps, transport, shopState.id, storedJson, noCampaign, "shop_config.phase1", record);
     storedJson = written.stored;
+    if (written.ok) await bookkeeping(deps, shop, () => recordAppliedPlan(deps.db, shop, plan));
     if (!written.ok) {
       record({
         step: "sync.stopped",
@@ -462,6 +542,8 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
     return null;
   }
   const written = await writeShopConfig(deps, transport, shopState.id, storedJson, payload, "shop_config", record);
+  // I-2: the plan the LIVE shop config was built for (a change of plan is then a reason to resync).
+  if (written.ok) await bookkeeping(deps, shop, () => recordAppliedPlan(deps.db, shop, plan));
   // 5. The AFTER lane (runSync runs it inline or queues it) — only behind a config that is in place.
   return written.ok ? after : null;
 }
@@ -576,13 +658,18 @@ async function persist(
       },
     });
     runId = run.id;
-    const keep = await deps.db.syncRun.findMany({
+    // The newest SYNC_RUNS_KEPT runs, and ALWAYS the newest run that applied the shop config: it
+    // names the config checkout runs ("Běží", "not applied"), and product refreshes must never push
+    // it out of the window (F2 re-review).
+    const rows = await deps.db.syncRun.findMany({
       where: { shop },
       orderBy: [{ startedAt: "desc" }, { id: "desc" }],
-      take: SYNC_RUNS_KEPT,
-      select: { id: true },
+      select: { id: true, steps: true },
     });
-    await deps.db.syncRun.deleteMany({ where: { shop, id: { notIn: keep.map((row) => row.id) } } });
+    const keep = new Set(rows.slice(0, SYNC_RUNS_KEPT).map((row) => row.id));
+    const applying = rows.find((row) => shopConfigApplied(parseSteps(row.steps)));
+    if (applying) keep.add(applying.id);
+    await deps.db.syncRun.deleteMany({ where: { shop, id: { notIn: [...keep] } } });
   } catch (error) {
     deps.logger.error(`sync ${shop}: could not record the sync run: ${errorText(error)}`);
   }

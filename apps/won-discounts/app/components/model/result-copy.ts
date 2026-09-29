@@ -62,6 +62,8 @@ export function failureCopy(result: UiFailure, tr: Translator): FailureCopy {
       return { key: "result.newerSchema", action: { label: "result.action.reload", reload: true }, tone: "warning" };
     case "base_changed":
       return { key: "result.baseChanged", action: { label: "result.action.reload", reload: true }, tone: "warning" };
+    case "busy":
+      return { key: "result.busy", tone: "warning" };
     case "function_config_too_large":
       return {
         key: "result.functionTooLarge",

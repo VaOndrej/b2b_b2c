@@ -6,13 +6,19 @@
 import { useT } from "../../i18n/context";
 import type { GateNoteView } from "../model/types";
 
-export function GateNotes({ notes, compact = false }: { notes: readonly GateNoteView[]; compact?: boolean }) {
+/**
+ * `pending` (F2 re-review I-2): the shop config live in Shopify was still built
+ * with these Pro settings (before the sync gated for plans, or before a
+ * downgrade). Checkout runs them until the resync under way — the banner says
+ * that, never "not active".
+ */
+export function GateNotes({ notes, compact = false, pending = false }: { notes: readonly GateNoteView[]; compact?: boolean; pending?: boolean }) {
   const { t } = useT();
   if (notes.length === 0) return null;
   return (
-    <s-banner tone="warning" heading={t("gate.heading")}>
+    <s-banner tone="warning" heading={t(pending ? "gate.pendingHeading" : "gate.heading")}>
       <s-stack direction="block" gap="small-200">
-        {compact ? null : <s-paragraph>{t("gate.body")}</s-paragraph>}
+        {pending ? <s-paragraph>{t("gate.pendingBody")}</s-paragraph> : compact ? null : <s-paragraph>{t("gate.body")}</s-paragraph>}
         <s-unordered-list>
           {notes.map((note, i) => (
             <s-list-item key={`${i}-${note.ruleId ?? ""}`}>{note.text}</s-list-item>

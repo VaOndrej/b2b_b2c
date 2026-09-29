@@ -144,6 +144,11 @@ model ShopSyncState {
   targetingStaleNote String?
   /// When Přehled last compared Shopify market countries with the config.
   marketsCheckedAt   DateTime?
+  /// The plan ("free" | "pro") the shop function config LIVE in Shopify was
+  /// built for (BILL-1, F2 re-review I-2): another plan now → resync; until
+  /// then the admin says checkout still runs the older settings. Null = not
+  /// recorded (a config written before this column: see sync/runs.ts).
+  appliedPlan        String?
   updatedAt          DateTime  @updatedAt
 }
 

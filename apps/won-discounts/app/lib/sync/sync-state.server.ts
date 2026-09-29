@@ -10,10 +10,14 @@
 //   marketsCheckedAt  the last comparison of Shopify market countries (item 12).
 // Every write is an idempotent upsert keyed by the shop (SEC-2).
 
+import type { ShopPlan } from "@won/core/discounts/plan-gate";
+
 import type { PrismaClient } from "../../generated/prisma/client";
 
 export interface ShopSyncFacts {
   timezone: string | null;
+  /** The plan the live shop config was built for (null = not recorded). */
+  appliedPlan: ShopPlan | null;
   productsSyncedAt: Date | null;
   targetingStaleAt: Date | null;
   targetingStaleNote: string | null;
@@ -22,6 +26,7 @@ export interface ShopSyncFacts {
 
 const EMPTY: ShopSyncFacts = {
   timezone: null,
+  appliedPlan: null,
   productsSyncedAt: null,
   targetingStaleAt: null,
   targetingStaleNote: null,
@@ -34,6 +39,7 @@ export async function loadShopSyncFacts(db: PrismaClient, shop: string): Promise
   if (!row) return { ...EMPTY };
   return {
     timezone: row.timezone,
+    appliedPlan: row.appliedPlan === "free" || row.appliedPlan === "pro" ? row.appliedPlan : null,
     productsSyncedAt: row.productsSyncedAt,
     targetingStaleAt: row.targetingStaleAt,
     targetingStaleNote: row.targetingStaleNote,
@@ -49,11 +55,21 @@ export function recordShopTimezone(db: PrismaClient, shop: string, timezone: str
   return upsert(db, shop, { timezone });
 }
 
+/** The shop function config now live in Shopify was built for `plan` (written or verified unchanged). */
+export function recordAppliedPlan(db: PrismaClient, shop: string, plan: ShopPlan): Promise<void> {
+  return upsert(db, shop, { appliedPlan: plan });
+}
+
 export function recordMarketsChecked(db: PrismaClient, shop: string, at: Date): Promise<void> {
   return upsert(db, shop, { marketsCheckedAt: at });
 }
 
-/** Stale from `at` (the earliest unhandled change wins: a later mark never moves it forward). */
+/**
+ * Stale as of the LATEST unhandled change `at` (F2 re-review M-2): a product
+ * pass clears the mark only when it started after every change it covers, so
+ * a change that lands while a pass is running keeps the targeting stale.
+ * Idempotent: a repeated or late delivery (an older `at`) changes nothing.
+ */
 export async function markTargetingStale(db: PrismaClient, shop: string, note: string, at: Date): Promise<void> {
   const short = note.slice(0, 300);
   await db.shopSyncState.upsert({
@@ -61,8 +77,10 @@ export async function markTargetingStale(db: PrismaClient, shop: string, note: s
     create: { shop, targetingStaleAt: at, targetingStaleNote: short },
     update: {},
   });
-  // Only when not stale yet (idempotent for repeated webhook deliveries).
-  await db.shopSyncState.updateMany({ where: { shop, targetingStaleAt: null }, data: { targetingStaleAt: at, targetingStaleNote: short } });
+  await db.shopSyncState.updateMany({
+    where: { shop, OR: [{ targetingStaleAt: null }, { targetingStaleAt: { lt: at } }] },
+    data: { targetingStaleAt: at, targetingStaleNote: short },
+  });
 }
 
 /**

@@ -211,6 +211,12 @@ export type UiFailure =
    */
   | { ok: false; reason: "base_changed" }
   /**
+   * Another action is writing the shop's config right now (a save and its
+   * sync, a move, a resync) and did not finish within the wait (F2 re-review
+   * I-1): nothing was saved; try again in a moment.
+   */
+  | { ok: false; reason: "busy" }
+  /**
    * The stored config cannot be read (I3): saving would replace it with the
    * defaults + this change. Nothing was written; the merchant confirms with
    * "Nahradit neplatnou konfiguraci" (re-submit with replaceUnreadable).
@@ -256,9 +262,10 @@ export type UiResult =
       /**
        * Saved, and the sync goes on in the background (item 7): the deadline
        * passed (`products` absent), or products that only gain rules are being
-       * written (`products` = how many).
+       * written (`products` = how many); `targeting` = "Obnovit cílení" was
+       * queued (collections are read again in the background).
        */
-      syncing?: { products?: number };
+      syncing?: { products?: number; targeting?: boolean };
     }
   | UiFailure;
 

@@ -87,7 +87,7 @@ test("BILL-1: on Free the payload, the nodes and the product index are built fro
   assert.ok(result.steps.some((s) => s.step === "plan" && s.ok && /free: \d+ Pro setting/.test(s.detail)), JSON.stringify(result.steps));
 });
 
-test("BILL-1: on Pro the config ships as stored (nothing gated, no plan step)", async () => {
+test("BILL-1: on Pro the config ships as stored (nothing gated; the plan step records it)", async () => {
   const fake = new FakeShopify();
   fake.addProduct(9);
   const deps = makeDeps(fake, db.prisma, { plan: async () => "pro" });
@@ -96,7 +96,8 @@ test("BILL-1: on Pro the config ships as stored (nothing gated, no plan step)", 
   const shipped = deps.log.shopConfigs.at(-1)!;
   assert.deepEqual(shipped.modules.codes.rules.find((r) => r.id === "a")!.combinesWith, { ruleIds: ["b"] });
   assert.equal(shipped.campaigns.length, 1);
-  assert.ok(!result.steps.some((s) => s.step === "plan"));
+  assert.ok(result.steps.some((s) => s.step === "plan" && s.detail === "plan pro: nothing to gate"), JSON.stringify(result.steps));
+  assert.equal((await loadShopSyncFacts(db.prisma, shop)).appliedPlan, "pro", "the plan the live config was built for (I-2)");
 });
 
 test("BILL-1 with the REAL builders: a Free shop's function config carries no combinations, no market rule, no campaign", async () => {
@@ -248,21 +249,48 @@ test("item 7: a newer sync supersedes a queued lane — it never writes refs of 
   assert.equal(productSets(fake).length, 0);
 });
 
-test(`item 7: a collection with more than ${MAX_COLLECTION_PRODUCTS} products is refused with a reason (nothing written, config held when refs exist)`, async () => {
+test(`M-4/M-5: collections over ${MAX_COLLECTION_PRODUCTS} products per sync are left out of THEIR rules only; every other change reaches checkout`, async () => {
   const fake = new FakeShopify();
-  const indexedProduct = fake.addProduct(1);
+  const small = fake.addProduct(1);
+  const other = fake.addProduct(2);
+  const smallCollection = fake.addCollection(7, [small.id]);
   const deps = makeDeps(fake, db.prisma);
   const sync = createSync(deps);
-  await sync.syncShop(shop, configWith([autoRule("r", { target: { kind: "products", productIds: [indexedProduct.id], variantIds: [] } })]));
-  const huge = fake.addCollection(
-    8,
-    Array.from({ length: MAX_COLLECTION_PRODUCTS + 1 }, (_, i) => `gid://shopify/Product/${10_000 + i}`),
+  const bigMembers = Array.from({ length: MAX_COLLECTION_PRODUCTS + 1 }, (_, i) => `gid://shopify/Product/${10_000 + i}`);
+  const big = fake.addCollection(8, bigMembers);
+  await sync.syncShop(shop, configWith([autoRule("r", { target: { kind: "collections", ids: [smallCollection] } })]));
+  assert.deepEqual(fake.productMetafield(small.id), { ruleIds: ["r"], variantRuleIds: {} });
+
+  // R now also targets the huge collection, and an unrelated rule S changes: S must reach checkout.
+  const next = configWith([
+    autoRule("r", { target: { kind: "collections", ids: [smallCollection, big] } }),
+    autoRule("s", { value: { kind: "percentage", percent: 40 }, target: { kind: "products", productIds: [other.id], variantIds: [] } }),
+  ]);
+  fake.calls = [];
+  const result = await sync.syncShop(shop, next);
+  assert.equal(result.ok, false, "honest: R does not apply to the huge collection");
+  const tooLarge = result.steps.find((s) => s.step === "products.too_large:r");
+  assert.ok(tooLarge && !tooLarge.ok && /more than 10000 products together/.test(tooLarge.detail), JSON.stringify(result.steps));
+  assert.ok(result.steps.some((s) => s.step === "shop_config.write" && s.ok), "not held: the other rules' changes are live");
+  assert.match(fake.shopMetafieldValue("function_config")!, /"s"/);
+  assert.deepEqual(fake.productMetafield(small.id), { ruleIds: ["r"], variantRuleIds: {} }, "R still applies to its small collection (narrower, never wider)");
+  assert.deepEqual(fake.productMetafield(other.id), { ruleIds: ["s"], variantRuleIds: {} });
+  assert.equal(fake.callsOf("WonSyncCollectionProducts").filter((c) => (c.variables as { id: string }).id === big).length, 0, "the huge collection is never paged");
+  assert.equal(fake.callsOf("WonSyncCollectionSizes").length, 1, "one cheap size read");
+});
+
+test("M-4: the limit is per SYNC — several collections that fit alone but not together; the ones past the limit are left out", async () => {
+  const fake = new FakeShopify();
+  const half = Math.floor(MAX_COLLECTION_PRODUCTS / 2) + 1;
+  const a = fake.addCollection(21, Array.from({ length: half }, (_, i) => `gid://shopify/Product/${20_000 + i}`));
+  const b = fake.addCollection(22, Array.from({ length: half }, (_, i) => `gid://shopify/Product/${40_000 + i}`));
+  const result = await createSync(makeDeps(fake, db.prisma)).syncShop(
+    shop,
+    configWith([autoRule("first", { target: { kind: "collections", ids: [a] } }), autoRule("second", { target: { kind: "collections", ids: [b] } })]),
   );
-  const result = await sync.syncShop(shop, configWith([autoRule("r", { target: { kind: "collections", ids: [huge] } })]));
-  assert.equal(result.ok, false);
-  assert.ok(result.steps.some((s) => s.step === "products" && !s.ok && /more than 25000 products/.test(s.detail)), JSON.stringify(result.steps));
-  assert.ok(result.steps.some((s) => s.step === "shop_config.write" && /held/.test(s.detail)), "the product that may carry a stale ref holds the config");
-  assert.ok(fake.callsOf("WonSyncCollectionProducts").length <= MAX_COLLECTION_PRODUCTS / 250 + 1, "the read stops at the cap");
+  assert.ok(!result.steps.some((s) => s.step === "products.too_large:first"), "the first fits");
+  assert.ok(result.steps.some((s) => s.step === "products.too_large:second" && !s.ok), JSON.stringify(result.steps.map((s) => s.step)));
+  assert.equal(fake.callsOf("WonSyncCollectionProducts").filter((c) => (c.variables as { id: string }).id === b).length, 0);
 });
 
 // --- item 6: index trust after an install / reinstall ------------------------------------------------

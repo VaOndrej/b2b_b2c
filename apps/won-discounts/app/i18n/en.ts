@@ -171,6 +171,8 @@ export const en: Record<keyof typeof cs, string> = {
   "result.shopifyUnavailable": "Shopify could not be read right now ({detail}). Try again in a moment.",
   "result.noDetail": "no details",
   "result.baseChanged": "Someone changed the settings meanwhile. Reload the page and make the change again. Nothing was saved.",
+  "result.busy": "The settings are being written to Shopify right now. Try again in a moment; nothing was saved.",
+  "result.syncingTargeting": "The targeting is being refreshed in the background: the collections are read again from Shopify. See the result on the Overview.",
   "result.savedSyncing": "Saved, it is being written to Shopify in the background",
   "result.deletedSyncing": "Discount deleted, it is being written to Shopify in the background",
   "result.syncing": "The sync is running in the background",
@@ -192,6 +194,7 @@ export const en: Record<keyof typeof cs, string> = {
   "sync.problem.other": "Some changes did not reach Shopify ({detail}).",
   "sync.problem.autoMissing": "The automatic discount “Won Discounts” is missing in Shopify, so automatic discounts do not apply at checkout. Sync again to create it.",
   "sync.problem.autoInactive": "The automatic discount “Won Discounts” is switched off in Shopify, so automatic discounts do not apply at checkout. Sync again to switch it on.",
+  "sync.problem.collectionTooLarge": "The discount “{rule}” does not apply at checkout to some of its collections: together they have more than 10,000 products, more than Won reads per sync. Every other discount was synced ({detail}).",
   "sync.warning.oversized": "Some products have too many variant rules; we simplified part of them ({detail}).",
   "sync.warning.timezone": "The shop's time zone could not be read; campaigns were judged conservatively.",
   "sync.warning.markets": "Shopify markets could not be read. Market targeting uses the saved countries.",
@@ -295,6 +298,8 @@ export const en: Record<keyof typeof cs, string> = {
     "Moved discounts run through Won. If you uninstall the app, they stop working. Before uninstalling, put them back with Undo.",
   "gate.heading": "Pro feature not active — it does not apply at checkout",
   "gate.body": "These Pro settings stay saved, but your plan does not run them at checkout:",
+  "gate.pendingHeading": "Checkout still runs older settings with Pro features — updating…",
+  "gate.pendingBody": "Your plan does not run them. The settings without them are being written to Shopify; then this stops applying:",
   "overview.modules.title": "More modules",
   "overview.modules.summary": "In a later version: {modules}",
 
@@ -436,6 +441,7 @@ export const en: Record<keyof typeof cs, string> = {
   "tryCart.warning.shippingFirstGroup": "With several shipments, a fixed shipping discount applies to the first one only.",
   "tryCart.warning.syncFailed": "The last sync failed. Checkout may still run the previous settings.",
   "tryCart.warning.notApplied": "The saved settings are not in Shopify yet. Until they are, checkout runs the previous state.",
+  "tryCart.warning.planPending": "Checkout still runs older settings with Pro features your plan does not run. The new ones are being written; the result shows the state after that.",
   "tryCart.warning.targeting": "Product targeting is being refreshed. The result shows the products as checkout knows them right now.",
 
   // --- Onboarding -------------------------------------------------------------------------

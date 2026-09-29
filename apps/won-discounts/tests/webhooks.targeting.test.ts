@@ -103,14 +103,16 @@ test("collections/update: only a TARGETED collection marks the targeting stale; 
   assert.ok(await stale(), "the targeted one (payload with the numeric id only)");
 });
 
-test("a repeated delivery is idempotent: the first mark stays, one refresh stays scheduled", async () => {
+test("a repeated delivery is idempotent: still one stale mark (at the latest change, M-2), one refresh scheduled", async () => {
   await seedConfig({ kind: "collections", ids: [COLLECTION] });
   await call(webhook("collections/update", { id: 77, admin_graphql_api_id: COLLECTION }, "wh-dup"));
   const first = await stale();
   await new Promise((resolve) => setTimeout(resolve, 5));
   await call(webhook("collections/update", { id: 77, admin_graphql_api_id: COLLECTION }, "wh-dup"));
-  assert.deepEqual(await stale(), first);
+  const second = await stale();
+  assert.ok(first && second && second.getTime() >= first.getTime(), "never moves back");
   assert.equal(await db.prisma.shopSyncState.count({ where: { shop: SHOP } }), 1);
+  assert.equal(refresher.scheduled(SHOP), true);
 });
 
 test("products/delete drops the product's index row (its metafield is gone with it)", async () => {

@@ -379,6 +379,22 @@ export const GQL = {
   }
 }`,
 
+  // How many products each targeted collection has (F2 re-review M-4/M-5):
+  // Won reads at most MAX_COLLECTION_PRODUCTS collection members per sync.
+  // Count.precision AT_LEAST = Shopify stopped counting at its limit.
+  collectionSizes: `query WonSyncCollectionSizes($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    __typename
+    ... on Collection {
+      id
+      productsCount {
+        count
+        precision
+      }
+    }
+  }
+}`,
+
   variantProducts: `query WonSyncVariantProducts($ids: [ID!]!) {
   nodes(ids: $ids) {
     __typename

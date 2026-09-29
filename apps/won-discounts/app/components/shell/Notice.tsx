@@ -98,7 +98,7 @@ export function RefreshTargetingButton() {
   );
 }
 
-function syncHeading(message: string, sync: SyncOutcomeView | undefined, syncing: { products?: number } | undefined): MessageKey {
+function syncHeading(message: string, sync: SyncOutcomeView | undefined, syncing: { products?: number; targeting?: boolean } | undefined): MessageKey {
   if (syncing && !sync) return message === "deleted" ? "result.deletedSyncing" : message === "synced" ? "result.syncing" : "result.savedSyncing";
   if (message === "synced") return "result.synced";
   if (message === "deleted") return sync && !sync.ok ? "result.deletedNotSynced" : "result.deleted";
@@ -133,7 +133,13 @@ export function Notice({ result, onReplace }: { result: UiResult | null | undefi
     const warnings = (sync?.warnings ?? []).map((w) => uiText(w, tr));
     const problems = (sync?.problems ?? []).map((p) => uiText(p, tr));
     const syncing = result.syncing
-      ? [result.syncing.products ? t("result.syncingProducts", { n: result.syncing.products }) : t("result.syncingBackground")]
+      ? [
+          result.syncing.targeting
+            ? t("result.syncingTargeting")
+            : result.syncing.products
+              ? t("result.syncingProducts", { n: result.syncing.products })
+              : t("result.syncingBackground"),
+        ]
       : [];
     return (
       <s-banner tone={failed ? "warning" : result.syncing && !sync ? "info" : "success"} heading={heading}>

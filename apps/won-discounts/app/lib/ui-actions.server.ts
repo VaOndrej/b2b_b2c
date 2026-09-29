@@ -53,7 +53,7 @@ import { activeCodeRules, MAX_ACTIVE_CODE_RULES, SHOPIFY_MAX_ACTIVE_DISCOUNT_FUN
 import { loadConfig, saveConfig, type LoadedConfig } from "./config.server";
 import type { ShopCtx } from "./integration/context.server";
 import { withinDeadline } from "./integration/deadline";
-import { withConfigLock } from "./integration/lock.server";
+import { CONFIG_LOCK_WAIT_MS, ConfigLockBusy, withConfigLock } from "./integration/lock.server";
 import {
   cachedNativeCodes,
   detectNative,
@@ -389,6 +389,20 @@ function savedResult(
   };
 }
 
+/**
+ * An admin write under the shop's config lock, waiting at most
+ * CONFIG_LOCK_WAIT_MS for it (F2 re-review I-1): another writer still at work
+ * → `busy` ("Nastavení se právě propisuje, zkus to za chvíli"), nothing ran.
+ */
+async function lockedWrite<T>(ctx: Pick<ShopCtx, "shop" | "lockWaitMs">, busy: T, run: () => Promise<T>): Promise<T> {
+  try {
+    return await withConfigLock(ctx.shop, run, { waitMs: ctx.lockWaitMs ?? CONFIG_LOCK_WAIT_MS });
+  } catch (error) {
+    if (error instanceof ConfigLockBusy) return busy;
+    throw error;
+  }
+}
+
 /** Save attempts on top of another instance's write (F12): the first, and one retry. */
 const SAVE_ATTEMPTS = 2;
 
@@ -423,7 +437,7 @@ export async function saveRule(
   form: FormDataLike,
   opts: SaveRuleOptions,
 ): Promise<{ result: UiResult; ruleId: string | null }> {
-  return withConfigLock(ctx.shop, async () => {
+  return lockedWrite(ctx, { result: { ok: false, reason: "busy" }, ruleId: null }, async () => {
     const replaceUnreadable = readReplaceUnreadable(form);
     const loadedVersion = formRuleVersion(form);
     const isNew = opts.ruleId === "new";
@@ -485,7 +499,7 @@ export async function saveRule(
  * (F12: a rule changed meanwhile is not deleted blindly).
  */
 export async function deleteRule(ctx: ShopCtx, ruleId: string, opts: { ruleVersion?: string | null } = {}): Promise<UiResult> {
-  return withConfigLock(ctx.shop, async () => {
+  return lockedWrite<UiResult>(ctx, { ok: false, reason: "busy" }, async () => {
     for (let attempt = 1; attempt <= SAVE_ATTEMPTS; attempt += 1) {
       const loaded = await loadConfig(ctx.db, ctx.shop);
       const { config, readOnly, unreadable } = loaded;
@@ -542,8 +556,8 @@ export function readOnboardingForm(form: FormDataLike): OnboardingPatch | null {
  * Onboarding steps (goals, step) change nothing Shopify runs, so they are saved
  * without a sync — under the same per-shop lock as every other config write.
  */
-export async function saveOnboarding(ctx: Pick<ShopCtx, "db" | "shop">, patch: OnboardingPatch): Promise<UiResult> {
-  return withConfigLock(ctx.shop, async () => {
+export async function saveOnboarding(ctx: Pick<ShopCtx, "db" | "shop" | "lockWaitMs">, patch: OnboardingPatch): Promise<UiResult> {
+  return lockedWrite<UiResult>(ctx, { ok: false, reason: "busy" }, async () => {
     // F12: on top of the version just read; another instance's write in between → the patch is re-applied on it.
     for (let attempt = 1; attempt <= ONBOARDING_ATTEMPTS; attempt += 1) {
       const loaded = await loadConfig(ctx.db, ctx.shop);

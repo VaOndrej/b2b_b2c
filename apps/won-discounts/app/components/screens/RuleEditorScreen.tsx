@@ -65,6 +65,8 @@ export interface RuleEditorScreenProps {
   gateOff?: boolean;
   /** read_markets (optional scope) is granted; without it the editor asks for it when a market is picked (item 9). */
   marketsScope?: boolean;
+  /** Checkout still runs a config built with this rule's Pro settings; a resync is under way (I-2). */
+  gatePending?: boolean;
 }
 
 export function buildRuleEditorProps(
@@ -83,6 +85,7 @@ export function buildRuleEditorProps(
     now?: Date;
     gate?: GateNoteView[];
     gateOff?: string[];
+    gatePending?: boolean;
     marketsScope?: boolean;
   },
 ): RuleEditorScreenProps | null {
@@ -109,6 +112,7 @@ export function buildRuleEditorProps(
     ...(rule && opts.gate ? { gate: opts.gate.filter((g) => g.ruleId === rule.id).map((g) => ({ ...g })) } : {}),
     ...(rule && opts.gateOff?.includes(rule.id) ? { gateOff: true } : {}),
     ...(opts.marketsScope !== undefined ? { marketsScope: opts.marketsScope } : {}),
+    ...(opts.gatePending ? { gatePending: true } : {}),
   };
 }
 
@@ -260,7 +264,15 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
           />
           <ApplySection ed={ed} codeRules={codeRules} />
           <MoreOptionsSection ed={ed} defaultOpen={moreOpen} />
-          <ProSection ed={ed} pro={pro} markets={markets} otherRules={otherRules} gate={gate} marketsScope={props.marketsScope ?? true} />
+          <ProSection
+            ed={ed}
+            pro={pro}
+            markets={markets}
+            otherRules={otherRules}
+            gate={gate}
+            gatePending={props.gatePending ?? false}
+            marketsScope={props.marketsScope ?? true}
+          />
           <div>
             <s-button type="submit" variant="primary" disabled={boolAttr(readOnly)}>
               {t("common.save")}

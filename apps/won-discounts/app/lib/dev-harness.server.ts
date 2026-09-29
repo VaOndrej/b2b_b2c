@@ -294,6 +294,8 @@ export function devEditorResult(kind: string | null): UiResult | null {
       return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] } };
     case "base-changed":
       return { ok: false, reason: "base_changed" };
+    case "busy":
+      return { ok: false, reason: "busy" };
     case "syncing":
       return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] }, syncing: { products: 1240 } };
     default:

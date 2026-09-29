@@ -28,6 +28,7 @@ export function ProSection({
   markets,
   otherRules,
   gate = [],
+  gatePending = false,
   marketsScope = true,
 }: {
   ed: EditorView;
@@ -36,6 +37,8 @@ export function ProSection({
   otherRules: { id: string; name: string }[];
   /** This rule's Pro settings the plan does not run. */
   gate?: readonly GateNoteView[];
+  /** Checkout still runs these Pro settings until the resync under way (I-2). */
+  gatePending?: boolean;
   /** read_markets granted. */
   marketsScope?: boolean;
 }) {
@@ -72,7 +75,7 @@ export function ProSection({
       anchor="pro"
     >
       <s-stack direction="block" gap="base">
-        {gate.length > 0 ? <GateNotes notes={gate} compact /> : null}
+        {gate.length > 0 ? <GateNotes notes={gate} compact pending={gatePending} /> : null}
         {!pro ? <ProSell benefit={t("editor.pro.benefit")} /> : null}
         <ProFrame locked={!pro}>
           <s-stack direction="block" gap="base">

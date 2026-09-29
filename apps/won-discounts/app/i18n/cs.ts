@@ -175,6 +175,8 @@ export const cs = {
   "result.shopifyUnavailable": "Shopify se teď nepodařilo načíst ({detail}). Zkus to za chvíli znovu.",
   "result.noDetail": "bez podrobností",
   "result.baseChanged": "Někdo mezitím změnil nastavení. Načti stránku znovu a změnu zopakuj. Nic se neuložilo.",
+  "result.busy": "Nastavení se právě propisuje do Shopify. Zkus to za chvíli, nic se neuložilo.",
+  "result.syncingTargeting": "Cílení se obnovuje na pozadí: kolekce čteme znovu ze Shopify. Výsledek uvidíš v Přehledu.",
   "result.savedSyncing": "Uloženo, do Shopify se to propisuje na pozadí",
   "result.deletedSyncing": "Sleva smazána, do Shopify se to propisuje na pozadí",
   "result.syncing": "Synchronizace běží na pozadí",
@@ -196,6 +198,7 @@ export const cs = {
   "sync.problem.other": "Část změn se do Shopify nepropsala ({detail}).",
   "sync.problem.autoMissing": "Automatická sleva „Won Discounts“ v Shopify chybí, automatické slevy v pokladně neplatí. Synchronizovat znovu ji vytvoří.",
   "sync.problem.autoInactive": "Automatická sleva „Won Discounts“ je v Shopify vypnutá, automatické slevy v pokladně neplatí. Synchronizovat znovu ji zapne.",
+  "sync.problem.collectionTooLarge": "Sleva „{rule}“ se v pokladně neuplatní na část kolekcí: vybrané kolekce mají dohromady víc než 10 000 produktů, tolik Won při jedné synchronizaci nenačte. Ostatní slevy se propsaly ({detail}).",
   "sync.warning.oversized": "Některé produkty mají moc pravidel na variantách, část jsme zjednodušili ({detail}).",
   "sync.warning.timezone": "Časové pásmo obchodu se nepodařilo načíst, kampaně jsme posoudili opatrně.",
   "sync.warning.markets": "Trhy ze Shopify se nepodařilo načíst. Cílení na trhy používá uložené země.",
@@ -299,6 +302,8 @@ export const cs = {
     "Přesunuté slevy běží přes Won. Když aplikaci odinstaluješ, přestanou platit. Před odinstalací je vrať tlačítkem Vrátit zpět.",
   "gate.heading": "Pro funkce není aktivní — v pokladně se neuplatní",
   "gate.body": "Tahle Pro nastavení zůstávají uložená, ale tvůj tarif je v pokladně nespouští:",
+  "gate.pendingHeading": "V pokladně zatím běží starší nastavení s Pro funkcemi — propisujeme…",
+  "gate.pendingBody": "Tvůj tarif je nespouští. Nastavení bez nich se právě propisuje do Shopify, pak přestane platit:",
   "overview.modules.title": "Další moduly",
   "overview.modules.summary": "V další verzi: {modules}",
 
@@ -440,6 +445,7 @@ export const cs = {
   "tryCart.warning.shippingFirstGroup": "Pevná sleva na dopravu se při více zásilkách uplatní jen na první z nich.",
   "tryCart.warning.syncFailed": "Poslední synchronizace selhala. V pokladně zatím může platit předchozí nastavení.",
   "tryCart.warning.notApplied": "Uložené nastavení zatím není v Shopify. Dokud se nepropíše, v pokladně platí předchozí stav.",
+  "tryCart.warning.planPending": "V pokladně zatím běží starší nastavení s Pro funkcemi, které tvůj tarif nespouští. Propisujeme nové, výsledek ukazuje stav po propsání.",
   "tryCart.warning.targeting": "Cílení na produkty se právě obnovuje. Výsledek ukazuje produkty tak, jak je teď zná pokladna.",
 
   // --- Onboarding -------------------------------------------------------------------------

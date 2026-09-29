@@ -9,9 +9,41 @@
 
 const queues = new Map<string, Promise<unknown>>();
 
-export function withConfigLock<T>(shop: string, run: () => Promise<T>): Promise<T> {
+/**
+ * How long an admin action waits for the shop's lock before it gives up with
+ * an honest "Nastavení se právě propisuje, zkus to za chvíli" (F2 re-review
+ * I-1, REL-1): a request never hangs behind another writer.
+ */
+export const CONFIG_LOCK_WAIT_MS = 10_000;
+
+/** The lock was not free within `waitMs`: nothing ran, nothing was written. */
+export class ConfigLockBusy extends Error {
+  constructor(readonly shop: string, readonly waitedMs: number) {
+    super(`the config of ${shop} is being written by another action (waited ${waitedMs} ms); nothing was changed`);
+    this.name = "ConfigLockBusy";
+  }
+}
+
+export interface ConfigLockOptions {
+  /**
+   * Wait at most this long for the lock. When it is not ours by then, the
+   * returned promise rejects with ConfigLockBusy and `run` never runs (its
+   * turn in the queue is skipped). Once `run` started it is not interrupted.
+   * Absent = wait as long as it takes (background work only).
+   */
+  waitMs?: number;
+}
+
+export function withConfigLock<T>(shop: string, run: () => Promise<T>, opts: ConfigLockOptions = {}): Promise<T> {
   const previous = queues.get(shop) ?? Promise.resolve();
-  const next = previous.then(run, run);
+  let started = false;
+  let abandoned = false;
+  const turn = () => {
+    if (abandoned) return Promise.resolve(undefined as T);
+    started = true;
+    return run();
+  };
+  const next = previous.then(turn, turn);
   const settled = next.then(
     () => undefined,
     () => undefined,
@@ -20,7 +52,25 @@ export function withConfigLock<T>(shop: string, run: () => Promise<T>): Promise<
   void settled.then(() => {
     if (queues.get(shop) === settled) queues.delete(shop);
   });
-  return next;
+  if (opts.waitMs === undefined) return next;
+  const waitMs = opts.waitMs;
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      if (started) return;
+      abandoned = true;
+      reject(new ConfigLockBusy(shop, waitMs));
+    }, Math.max(0, waitMs));
+    next.then(
+      (value) => {
+        clearTimeout(timer);
+        if (!abandoned) resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        if (!abandoned) reject(error);
+      },
+    );
+  });
 }
 
 /**

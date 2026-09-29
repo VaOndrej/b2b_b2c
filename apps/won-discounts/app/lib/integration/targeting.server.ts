@@ -18,12 +18,19 @@
 //            gone with it).
 //      A relevant delivery marks the shop's targeting stale (ShopSyncState,
 //      idempotent: a repeated or late delivery only keeps it stale) and
-//      schedules ONE refresh per shop after TARGETING_REFRESH_DEBOUNCE_MS
-//      (in-process, under the shop's config lock). The handler answers 2xx at
-//      once (WBH-2: idempotent, nothing slow before the answer).
-//   2. The refresh (app/lib/sync/save-and-sync.server.ts refreshTargeting): the product
-//      step only — or a full resync when the stored config is not the one
-//      Shopify runs. A product pass that finished clears the stale mark.
+//      schedules ONE refresh per shop after TARGETING_REFRESH_DEBOUNCE_MS, and
+//      never sooner than TARGETING_MIN_INTERVAL_MS after the previous one
+//      (steady product edits re-read the collections at most that often,
+//      F2 re-review M-3). The handler answers 2xx at once (WBH-2: idempotent,
+//      nothing slow before the answer).
+//   2. The refresh (runNow): the shop's config lock is TRIED, never waited for
+//      (tryWithConfigLock — a save or move holding it → rescheduled), and held
+//      only for the decision (F2 re-review I-1): resyncIfPending first (a
+//      failed sync keeps its 5-min retry backoff; a stored config or plan the
+//      live one does not match → a full resync, which writes the refs in the
+//      right order), else refreshTargeting QUEUES the products-only pass in
+//      the sync queue — nobody waits for it and a newer save cancels it. A
+//      product pass that finished clears the stale mark.
 //   3. Safety nets on Přehled: "Obnovit cílení" (now), and an automatic
 //      refresh when the last product pass is older than TARGETING_MAX_AGE_MS
 //      or a stale mark outlived its scheduled refresh (a restart lost it).
@@ -38,15 +45,17 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { adminClientFromApp, type AdminClient, type AppAdminGraphql } from "../admin-client.server";
 import { loadConfig } from "../config.server";
 import { targetScopes } from "../sync/products";
-import { refreshTargeting, type ResyncResult } from "../sync/save-and-sync.server";
+import { refreshTargeting, resyncIfPending, type ResyncIfPendingResult, type ResyncResult } from "../sync/save-and-sync.server";
 import { markTargetingStale } from "../sync/sync-state.server";
 import type { Sync } from "../sync/sync.server";
 import { errorText } from "../sync/transport";
 import type { SyncLogger } from "../sync/types";
-import { withConfigLock } from "./lock.server";
+import { tryWithConfigLock } from "./lock.server";
 
 /** One refresh per shop at most this long after the first relevant webhook. */
 export const TARGETING_REFRESH_DEBOUNCE_MS = 60_000;
+/** Refreshes of one shop start at least this far apart (steady product edits, M-3). */
+export const TARGETING_MIN_INTERVAL_MS = 5 * 60_000;
 /** Přehled refreshes the targeting when the last product pass is older than this. */
 export const TARGETING_MAX_AGE_MS = 24 * 60 * 60_000;
 
@@ -118,21 +127,36 @@ export async function handleTargetingWebhook(
 
 export interface TargetingRefresherDeps {
   db: PrismaClient;
-  /** The shop's Admin API client (offline session), or null when the shop has none (uninstalled). */
-  clientFor: (shop: string) => Promise<AdminClient | null>;
+  /**
+   * The shop's Admin API client (offline session) and the scopes that session
+   * was granted (optional scopes are used only when granted, M-6), or null
+   * when the shop has none (uninstalled).
+   */
+  clientFor: (shop: string) => Promise<{ client: AdminClient; scopes: string | null } | null>;
   createSync?: (client: AdminClient, db: PrismaClient) => Sync;
   delayMs?: number;
+  minIntervalMs?: number;
   logger?: SyncLogger;
   now?: () => Date;
 }
+
+/** What one refresh did. */
+export type TargetingRefreshOutcome =
+  | { done: "no_session" }
+  /** Another writer held the config lock: tried again after the debounce. */
+  | { done: "locked" }
+  /** resyncIfPending resynced (the refs came with it) or refused / backed off (`resync.reason`). */
+  | { done: "resync"; resync: ResyncIfPendingResult }
+  /** The products-only pass (queued in the background by default). */
+  | { done: "refresh"; result: ResyncResult };
 
 export interface TargetingRefresher {
   /** Debounced: the first call starts the window, later ones fold into it. */
   schedule(shop: string): void;
   /** Is a refresh of `shop` scheduled (not run yet)? */
   scheduled(shop: string): boolean;
-  /** Run the refresh now, under the shop's config lock. */
-  runNow(shop: string): Promise<ResyncResult | null>;
+  /** Run the refresh now (the lock tried, never waited for). */
+  runNow(shop: string): Promise<TargetingRefreshOutcome>;
   /** Test hook: drop every pending timer. */
   cancelAll(): void;
 }
@@ -141,32 +165,59 @@ const quiet: SyncLogger = { info() {}, warn() {}, error() {} };
 
 export function createTargetingRefresher(deps: TargetingRefresherDeps): TargetingRefresher {
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
+  const lastRun = new Map<string, number>();
   const logger = deps.logger ?? quiet;
-  const runNow = async (shop: string): Promise<ResyncResult | null> => {
-    const client = await deps.clientFor(shop);
-    if (!client) {
+  const clock = () => (deps.now ? deps.now().getTime() : Date.now());
+  const runNow = async (shop: string): Promise<TargetingRefreshOutcome> => {
+    const session = await deps.clientFor(shop);
+    if (!session) {
       logger.warn(`targeting refresh ${shop}: no Admin API session, skipped`);
-      return null;
+      return { done: "no_session" };
     }
-    return withConfigLock(shop, () =>
-      refreshTargeting({ client, db: deps.db, shop, createSync: deps.createSync, logger: deps.logger, now: deps.now }),
-    );
+    const common = {
+      client: session.client,
+      db: deps.db,
+      shop,
+      createSync: deps.createSync,
+      logger: deps.logger,
+      now: deps.now,
+      grantedScopes: session.scopes,
+    };
+    const attempt = tryWithConfigLock(shop, async (): Promise<TargetingRefreshOutcome> => {
+      lastRun.set(shop, clock());
+      const resync = await resyncIfPending({ ...common, productWrites: "background" });
+      if (resync.resynced || resync.reason !== "up_to_date") {
+        // Backed off (a failing sync) or nothing saved: the mark stays, a later window retries.
+        if (!resync.resynced && resync.reason === "too_soon") schedule(shop);
+        return { done: "resync", resync };
+      }
+      return { done: "refresh", result: await refreshTargeting({ ...common, productWrites: "background" }) };
+    });
+    if (attempt.skipped) {
+      schedule(shop);
+      return { done: "locked" };
+    }
+    return attempt.result;
+  };
+  const schedule = (shop: string) => {
+    if (timers.has(shop)) return;
+    const debounce = deps.delayMs ?? TARGETING_REFRESH_DEBOUNCE_MS;
+    const previous = lastRun.get(shop);
+    const wait = previous === undefined ? debounce : Math.max(debounce, previous + (deps.minIntervalMs ?? TARGETING_MIN_INTERVAL_MS) - clock());
+    const timer = setTimeout(() => {
+      timers.delete(shop);
+      runNow(shop).catch((error: unknown) => logger.error(`targeting refresh ${shop}: ${errorText(error)}`));
+    }, wait);
+    (timer as { unref?: () => void }).unref?.();
+    timers.set(shop, timer);
+    if (timers.size > 10_000) {
+      const [oldest, pending] = timers.entries().next().value as [string, ReturnType<typeof setTimeout>];
+      clearTimeout(pending);
+      timers.delete(oldest);
+    }
   };
   return {
-    schedule(shop) {
-      if (timers.has(shop)) return;
-      const timer = setTimeout(() => {
-        timers.delete(shop);
-        runNow(shop).catch((error: unknown) => logger.error(`targeting refresh ${shop}: ${errorText(error)}`));
-      }, deps.delayMs ?? TARGETING_REFRESH_DEBOUNCE_MS);
-      (timer as { unref?: () => void }).unref?.();
-      timers.set(shop, timer);
-      if (timers.size > 10_000) {
-        const [oldest, pending] = timers.entries().next().value as [string, ReturnType<typeof setTimeout>];
-        clearTimeout(pending);
-        timers.delete(oldest);
-      }
-    },
+    schedule,
     scheduled: (shop) => timers.has(shop),
     runNow,
     cancelAll() {
@@ -192,8 +243,8 @@ export function appTargetingRefresher(db: PrismaClient): TargetingRefresher {
       clientFor: async (shop) => {
         try {
           const { unauthenticated } = await import("../../shopify.server");
-          const { admin } = await unauthenticated.admin(shop);
-          return adminClientFromApp(admin as unknown as AppAdminGraphql);
+          const { admin, session } = await unauthenticated.admin(shop);
+          return { client: adminClientFromApp(admin as unknown as AppAdminGraphql), scopes: session.scope ?? null };
         } catch {
           return null;
         }

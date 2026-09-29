@@ -7,10 +7,17 @@
 // (@won/app-kit/entitlement). Billing (spec §7, Tarif) is not built yet, so
 // there is no subscription to verify: production always resolves Free.
 //
-// Dev-only override (testing Pro on the dev store): WON_DEV_PLAN=pro is
-// honoured ONLY when NODE_ENV is on the dev-harness allowlist ("development",
-// "test" — lib/dev-harness-env.ts). In production (and staging, preview, an
-// unset NODE_ENV) the variable is ignored.
+// Dev-only override (testing Pro on the dev store): an env variable (see
+// devPlanOverride) honoured ONLY in a development build AND when NODE_ENV is
+// on the dev-harness allowlist ("development", "test" — lib/dev-harness-env.ts).
+//   - BUILD-TIME (F2 re-review M-1): `react-router build` (vite) replaces
+//     import.meta.env.DEV with `false`, so the override is dead code and is
+//     dropped from build/server entirely — the production bundle does not even
+//     contain the variable's name (tests/contracts/dev-harness.contract.test.ts
+//     builds and greps it). A misconfigured NODE_ENV in production cannot turn
+//     it on;
+//   - `vite dev` (shopify app dev): import.meta.env.DEV is true;
+//   - tsx (unit tests) has no import.meta.env: the NODE_ENV allowlist decides.
 
 import { resolveEntitlement } from "@won/app-kit/entitlement";
 import type { ShopPlan } from "@won/core/discounts/plan-gate";
@@ -24,8 +31,9 @@ export interface ResolvedPlan {
   pro: boolean;
 }
 
-/** The dev override, or null (not a dev environment, or not set). */
+/** The dev override, or null (a production build, not a dev environment, or not set). */
 export function devPlanOverride(env: Readonly<Record<string, string | undefined>> = process.env): ShopPlan | null {
+  if (import.meta.env?.DEV === false) return null;
   if (!isDevHarnessEnvironment(env.NODE_ENV)) return null;
   return env.WON_DEV_PLAN?.trim().toLowerCase() === "pro" ? "pro" : null;
 }

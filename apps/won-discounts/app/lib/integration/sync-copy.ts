@@ -47,6 +47,10 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
     }
     return { key: "sync.problem.rule", params: { rule, detail } };
   }
+  if (step.step.startsWith("products.too_large:")) {
+    const ruleId = step.step.slice("products.too_large:".length);
+    return { key: "sync.problem.collectionTooLarge", params: { rule: ruleLabel(ruleId, names), detail } };
+  }
   switch (step.step) {
     case "shop.read":
       return { key: "sync.problem.shopRead", params: { detail } };

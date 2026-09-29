@@ -77,6 +77,7 @@ test("a successful save syncs exactly the sanitized, saved config; saveAndSyncFr
         return { ok: true, steps: [], errors: [], pending: [], runId: null };
       },
       refreshProducts: async () => assert.fail("not a products refresh"),
+      plan: async () => "free",
     }),
   });
   assert.equal(result.save.ok, true);

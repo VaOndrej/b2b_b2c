@@ -34,6 +34,8 @@ export interface DiscountsScreenProps {
   gate?: GateNoteView[];
   /** Rules the plan switches off. */
   gateOff?: string[];
+  /** Checkout still runs a config built with those Pro settings; a resync is under way (I-2). */
+  gatePending?: boolean;
   /** Handles of the enabled Won markets. */
   enabledMarkets?: string[];
 }
@@ -52,6 +54,7 @@ export function buildDiscountsProps(
     result?: UiResult | null;
     gate?: GateNoteView[];
     gateOff?: string[];
+    gatePending?: boolean;
   },
 ): DiscountsScreenProps {
   const rules = config.modules.codes.rules;
@@ -59,6 +62,7 @@ export function buildDiscountsProps(
   return {
     ...(opts.gate && opts.gate.length > 0 ? { gate: opts.gate.map((g) => ({ ...g })) } : {}),
     ...(opts.gateOff && opts.gateOff.length > 0 ? { gateOff: [...opts.gateOff] } : {}),
+    ...(opts.gatePending ? { gatePending: true } : {}),
     enabledMarkets: config.markets.filter((m) => m.enabled).map((m) => m.handle),
     readOnly: opts.readOnly,
     rules,
@@ -87,6 +91,7 @@ export function DiscountsScreen({
   result,
   gate = [],
   gateOff,
+  gatePending = false,
   enabledMarkets,
 }: DiscountsScreenProps) {
   const tr = useT();
@@ -113,7 +118,7 @@ export function DiscountsScreen({
           </s-banner>
         ) : null}
         <Notice result={result} />
-        {gate.length > 0 ? <GateNotes notes={gate} /> : null}
+        {gate.length > 0 ? <GateNotes notes={gate} pending={gatePending} /> : null}
 
         <WonSection title={t("discounts.list.title")} glyph="tag" summary={summary} hint={hints.join(" ") || undefined}>
           {rules.length === 0 ? (
