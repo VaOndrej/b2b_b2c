@@ -1,11 +1,8 @@
-# Engine input for the delivery target: the same plan as the lines target (the
-# shipping winner depends on the lines: minimums, product/order switches, and
-# since MVP 2 margin protection — a product discount capped to 0 no longer
-# blocks shipping), emitted on every delivery group. Same sources — cost prices
-# (`wonVariant`), `marginRefs` and `presentmentCurrencyRate` included — and the
-# same variables CONTRACT as src/cart_lines_discounts_generate_run.graphql
-# (campaignStart/campaignEnd MUST be top-level keys of the node's
-# `function_vars`, C4).
+# Engine input, delivery target: the same plan as the lines target (the
+# shipping winner depends on the lines), emitted on every delivery group.
+# campaignStart/campaignEnd MUST be top-level keys of the node's function_vars
+# (CONTRACT, README.md "Input query"). Shopify counts EVERY character of this
+# file, comments included, against its 3000-character limit.
 #
 # Cost (shopify.dev input query cost table): 27 of 30.
 query Input(

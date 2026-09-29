@@ -1,5 +1,5 @@
 // Input query limits (shopify.dev/docs/api/functions/2026-04, "Input query
-// limits"): calculated cost ≤ 30 and ≤ 3000 bytes excluding comments. The cost
+// limits"): calculated cost ≤ 30 and ≤ 3000 characters (the whole file, comments included). The cost
 // is computed from the query document with the published cost table — the same
 // arithmetic as the "Cost: N of 30" line in each query's header comment, which
 // this test keeps honest.
@@ -72,9 +72,10 @@ describe("input query limits", () => {
       expect(source).toContain(`Cost (shopify.dev input query cost table): ${cost} of 30.`);
     });
 
-    test(`${file}: ≤ 3000 bytes without comments`, () => {
-      const withoutComments = source.replace(/^\s*#.*$/gm, "");
-      expect(new TextEncoder().encode(withoutComments).length).toBeLessThanOrEqual(3000);
+    // Shopify counts every character of the file, comments included ("Query can be at
+    // most 3000 characters" from `shopify app dev`, 2026-09-29); keep a 10 % margin.
+    test(`${file}: ≤ 2700 characters including comments`, () => {
+      expect([...source].length).toBeLessThanOrEqual(2700);
     });
   }
 

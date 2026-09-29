@@ -64,6 +64,47 @@ Rules for a change:
   above is green.
 - Never edit a fixture's expected output to match the Rust function.
 
+## Input query
+
+Both targets read the same fields (`src/*.graphql`; the delivery target also reads
+`cart.deliveryGroups`). The `.graphql` files keep only a short header: Shopify counts every
+character of an input query file, comments included, against its 3000-character limit
+(`tests/query-cost.test.js` measures the whole file).
+
+```text
+Engine input (MVP 1; margin protection MVP 2; spec §3 "Emise per uzel", "Transport configu"). Every Won
+node reads the SAME cart and shared config, plans the whole cart and emits
+only its own part (src/input.rs; reference: tests/reference-adapter.js).
+
+  discount.vars   the node's own `$app:won_discounts`/`function_vars`: role,
+                  ruleId, campaignId, varsVersion (@won/core buildNodeVars)
+  shop.config     the app-owned SHOP metafield `$app:won_discounts`/
+                  `function_config`, shared by every node (C7); over 10 000 B
+                  it arrives as null → no discount, no error
+  wonProduct      per product `{ruleIds, variantRuleIds?, outlet?, marginRefs?}`
+                  (precomputed targeting; `marginRefs` = numeric ids of its
+                  collections with a margin setting, MVP 2)
+  wonVariant      per variant `$app:won_discounts`/`variant` = `{cost, cur}`: the
+                  cost price in MAJOR units of the shop currency (margin
+                  protection, MVP 2; read only while margin protection is on)
+  presentmentCurrencyRate
+                  shop currency → cart currency (a Decimal): converts cost
+                  prices when the cart is in another currency (margin, MVP 2)
+  country         Pro market targeting (market → countries map in the shared
+                  config; the deprecated `localization.market` is not used)
+
+CONTRACT: the node's `function_vars` MUST contain top-level `campaignStart` and
+`campaignEnd` (DateTimeWithoutTimezone in shop-local time; "1970-01-01T00:00:00"
+for both when there is no campaign). Shopify binds input-query variables only
+from the metafield named in [extensions.input.variables] (C4:
+docs/won-discounts/evidence/mvp0/c4-campaign-window.json): a missing key or a
+missing metafield fails the run with InvalidVariableValueError before any code
+runs, so the node gives no discount (checkout is not blocked). There are no
+query defaults on purpose: the platform does not apply them. The local runner
+(`shopify app function run`) binds no variables; fixtures carry the resolved
+`campaignActive` leaf. @won/core buildNodeVars always writes both keys.
+```
+
 ## Output size
 
 Shopify refuses a function output over **20 kB** (1 kB = 1000 B) for carts up to
