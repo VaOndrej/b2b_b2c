@@ -27,7 +27,7 @@ export type OrderCandidate = {
   ruleId: string;
   message: string;
   amount: number;
-  /** Outlet and gift lines: the candidate's `orderSubtotal.excludedCartLineIds`. */
+  /** Outlet, gift and margin-excluded lines: the candidate's `orderSubtotal.excludedCartLineIds`. */
   excludedLineIds: string[];
 } & EmittedValue;
 

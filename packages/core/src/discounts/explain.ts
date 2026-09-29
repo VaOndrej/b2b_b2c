@@ -2,9 +2,16 @@
 // enum key on screen). Used by the admin "Vyzkoušet košík" and, later, the cart
 // in the storefront, which must say honestly why an entered code did nothing
 // (Shopify only shows `applicable: false`, spec §3).
+//
+// Margin protection (MVP 2): a lowered line, a lowered order discount, lines the
+// order discount leaves out and a rule margin zeroed are all said in words. The
+// REASON with numbers (cost price, minimum margin, the % ceiling) is for the
+// admin only (`audience: "admin"`); a shopper (the default) only hears that the
+// store set a lowest price — never its costs or margins.
 
 import {
   csPlural,
+  describeMarginReason,
   describeRule,
   echoCode as echo,
   entitledMinimumPhrase,
@@ -15,7 +22,7 @@ import {
   MAX_ECHOED_CODE_LENGTH,
   type UiLocale,
 } from "./describe.ts";
-import type { CartPlan, CodeOutcome, RuleOutcome, ShippingValue } from "./plan.ts";
+import type { CartPlan, CodeOutcome, PlanLine, RuleOutcome, ShippingValue } from "./plan.ts";
 
 /**
  * One explanation line. `text` (and `code`) can contain what a shopper typed or
@@ -32,7 +39,19 @@ export interface ExplainItem {
   lineIds?: string[];
 }
 
+export interface ExplainOptions {
+  /**
+   * Who reads it. "shopper" (default: the storefront cart) never hears a cost
+   * price or a margin; "admin" ("Vyzkoušet košík") hears why margin protection
+   * lowered a discount, with the numbers.
+   */
+  audience?: "admin" | "shopper";
+}
+
 const q = (text: string, locale: UiLocale) => (locale === "cs" ? `„${text}“` : `“${text}”`);
+
+/** Why a rule margin zeroed gives nothing (no numbers: shoppers read it too). */
+const AT_MINIMUM = { cs: "ceny položek jsou už na nastaveném minimu", en: "the item prices are already at the set minimum" };
 
 export { MAX_ECHOED_CODE_LENGTH };
 
@@ -205,6 +224,8 @@ function codeSentences(code: CodeOutcome, plan: CartPlan, locale: UiLocale): Exp
       return warn(cs ? `Kód ${c} je vypnutý.` : `Code ${c} is turned off.`);
     case "not_combinable":
       return warn(cs ? `Kód ${c} se nekombinuje s ostatními slevami v košíku.` : `Code ${c} does not combine with the other discounts in the cart.`);
+    case "margin_floor":
+      return warn(cs ? `Kód ${c} tu nic neušetří: ${AT_MINIMUM.cs}.` : `Code ${c} saves nothing here: ${AT_MINIMUM.en}.`);
     case "zero_value":
     case "code_not_entered":
     case "unknown":
@@ -257,6 +278,8 @@ function automaticSentences(rule: RuleOutcome, plan: CartPlan, locale: UiLocale)
       );
     case "not_combinable":
       return info(cs ? `Sleva ${name} se nekombinuje s ostatními slevami v košíku.` : `${name} does not combine with the other discounts in the cart.`);
+    case "margin_floor":
+      return info(cs ? `Sleva ${name} se neuplatní: ${AT_MINIMUM.cs}.` : `${name} is not applied: ${AT_MINIMUM.en}.`);
     case "not_started":
       return info(cs ? `Sleva ${name} začne ${formatDate(rule.startsOn ?? "", locale)}.` : `${name} starts on ${formatDate(rule.startsOn ?? "", locale)}.`);
     case "ended":
@@ -287,8 +310,64 @@ function outletSentence(plan: CartPlan, locale: UiLocale): ExplainItem[] {
   return [item("info", text, { lineIds: outlet.map((l) => l.lineId) })];
 }
 
-export function explainPlan(plan: CartPlan, locale: UiLocale): ExplainItem[] {
+/** A line whose product discount margin protection lowered: from → to, and why (numbers for the admin only). */
+function cappedLineSentence(line: PlanLine, plan: CartPlan, locale: UiLocale, admin: boolean): ExplainItem[] {
+  const capped = line.marginCapped;
+  if (!capped) return [];
   const cs = locale === "cs";
+  const before = formatMoney(capped.before, plan.currency, locale);
+  const why = admin
+    ? describeMarginReason(capped, locale)
+    : cs
+      ? "obchod u ní má nastavenou nejnižší cenu"
+      : "the store has set a lowest price for it";
+  let text: string;
+  if (capped.after > 0) {
+    const after = formatMoney(capped.after, plan.currency, locale);
+    text = cs ? `Sleva na položce je snížená z ${before} na ${after}: ${why}.` : `The discount on an item is lowered from ${before} to ${after}: ${why}.`;
+  } else {
+    text = cs ? `Sleva ${before} na položce se neuplatní: ${why}.` : `The ${before} discount on an item does not apply: ${why}.`;
+  }
+  return [item("info", text, { lineIds: [line.lineId] })];
+}
+
+/** The order discount margin protection lowered, and the lines it leaves out. */
+function marginOrderSentences(plan: CartPlan, locale: UiLocale): ExplainItem[] {
+  const order = plan.order;
+  if (!order) return [];
+  const cs = locale === "cs";
+  const out: ExplainItem[] = [];
+  if (order.marginCapped) {
+    const before = formatMoney(order.marginCapped.before, plan.currency, locale);
+    const after = formatMoney(order.marginCapped.after, plan.currency, locale);
+    out.push(
+      item(
+        "info",
+        cs
+          ? `Sleva z objednávky je snížená z ${before} na ${after}, aby cena položek neklesla pod nastavené minimum.`
+          : `The order discount is lowered from ${before} to ${after} so item prices do not drop below the set minimum.`,
+        { ruleId: order.ownerRuleId },
+      ),
+    );
+  }
+  const n = order.marginExcludedLineIds.length;
+  if (n > 0) {
+    out.push(
+      item(
+        "info",
+        cs
+          ? `Sleva z objednávky se nevztahuje na ${n} ${csPlural(n, ["položku", "položky", "položek"])}, ${n === 1 ? "její" : "jejich"} cena je už na nastaveném minimu.`
+          : `The order discount does not apply to ${n} ${enPlural(n, "item", "items")} already at ${n === 1 ? "its" : "their"} set minimum price.`,
+        { ruleId: order.ownerRuleId, lineIds: order.marginExcludedLineIds },
+      ),
+    );
+  }
+  return out;
+}
+
+export function explainPlan(plan: CartPlan, locale: UiLocale, opts: ExplainOptions = {}): ExplainItem[] {
+  const cs = locale === "cs";
+  const admin = opts.audience === "admin";
   if (plan.reason) {
     return [
       item(
@@ -318,6 +397,8 @@ export function explainPlan(plan: CartPlan, locale: UiLocale): ExplainItem[] {
     if (rule.method === "code" || rule.state === "applied") continue;
     out.push(...automaticSentences(rule, plan, locale));
   }
+  for (const line of plan.lines) out.push(...cappedLineSentence(line, plan, locale, admin));
+  out.push(...marginOrderSentences(plan, locale));
   out.push(...outletSentence(plan, locale));
   return out;
 }

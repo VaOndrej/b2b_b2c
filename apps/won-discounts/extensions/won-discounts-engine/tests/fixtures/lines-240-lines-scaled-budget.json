@@ -84,10 +84,7 @@
                 "countOtherDiscounts": false
               },
               "margin": {
-                "global": {
-                  "maxDiscountPercent": 50
-                },
-                "perCollection": []
+                "enabled": false
               }
             },
             "campaigns": []

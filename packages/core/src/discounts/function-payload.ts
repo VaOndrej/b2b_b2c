@@ -46,7 +46,11 @@
 //     `shop.localTime.date`;
 //   - Pro market targeting as `marketCountries` (the function's
 //     `localization.market` is deprecated; the engine matches the cart country);
-//   - a minimum's `scope` only when it is "entitled" (absent = the whole cart).
+//   - a minimum's `scope` only when it is "entitled" (absent = the whole cart);
+//   - margin protection (MVP 2) in its compact form (margin.ts
+//     FunctionMarginPayload): `{enabled: false}` while it is off, else
+//     `min`/`max`, the shop currency `cur` and per-collection `[m, p]` tuples
+//     keyed by numeric collection id (100 collections ≈ 2.5–3 kB).
 // The sync must build a Free shop's payload from plan-gate.ts
 // gateConfigForPlan(config, plan), never from the stored config: only then does
 // none of its Pro data (targeting, combinesWith, campaigns) ship.
@@ -61,7 +65,6 @@ import {
   type DiscountTargetKind,
   type EngineSettings,
   type GiftTier,
-  type MarginModule,
   type ReadonlyDeep,
   type TierSet,
   type WonDiscountsConfig,
@@ -69,10 +72,12 @@ import {
 import { fnv1a } from "./config/sanitize-helpers.ts";
 import type { NodeRole } from "./emit.ts";
 import { FUNCTION_CONFIG_BUDGET_BYTES, liveCampaigns, NO_CAMPAIGN_DATETIME, selectCampaign } from "./function-config.ts";
+import { buildMarginPayload, type FunctionMarginPayload, type MarginCollectionTuple } from "./margin.ts";
 import type { MoneyByCurrency } from "./money.ts";
 import { isFunctionConfigPayload } from "./plan.ts";
 
 export { isFunctionConfigPayload };
+export type { FunctionMarginPayload, MarginCollectionTuple };
 
 /** Shopify's hard limit for a metafield read by a function (C3/C7: 10 000 B passes, 10 001 B is `null`). */
 export const FUNCTION_METAFIELD_LIMIT_BYTES = 10_000;
@@ -122,7 +127,7 @@ export interface FunctionConfigPayload {
     codes: { rules: FunctionRule[] };
     tiers: { sets: TierSet[] };
     rewards: { freeShipping?: { threshold: MoneyByCurrency }; gifts: GiftTier[]; countOtherDiscounts: boolean };
-    margin: MarginModule;
+    margin: FunctionMarginPayload;
   };
   /** At most one: the selected campaign. */
   campaigns: FunctionCampaign[];
@@ -152,6 +157,13 @@ export interface ShopFunctionConfigOptions {
   shopTimezone: string;
   /** Phase 1 of the 3-phase campaign sync: ship no campaign and no version. */
   forceNoCampaign?: boolean;
+  /**
+   * The shop currency (Admin `shop.currencyCode`, e.g. "CZK"): the currency of
+   * the variants' cost prices, shipped as the margin's `cur`. Without it an
+   * enabled margin ships no `cur` and every cost is unknown (the maximum
+   * discount % applies) — safe, never a wrong conversion.
+   */
+  shopCurrency?: string;
 }
 
 type ConfigInput = ReadonlyDeep<WonDiscountsConfig>;
@@ -405,7 +417,7 @@ function encode(payload: FunctionConfigPayload): EncodedShopFunctionConfig {
   return { payload, json, bytes, fits: bytes <= FUNCTION_CONFIG_BUDGET_BYTES };
 }
 
-function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone: string): EncodedShopFunctionConfig {
+function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone: string, shopCurrency?: string): EncodedShopFunctionConfig {
   formatterFor(shopTimezone, "buildShopFunctionConfig"); // validate the zone once, up front
   const { codes, tiers, rewards, margin } = config.modules;
   return encode({
@@ -422,7 +434,7 @@ function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone
         gifts: copy<GiftTier[]>(rewards.gifts),
         countOtherDiscounts: rewards.countOtherDiscounts,
       },
-      margin: copy<MarginModule>(margin),
+      margin: buildMarginPayload(margin, shopCurrency),
     },
     campaigns: selected
       ? [
@@ -449,7 +461,7 @@ export function buildShopFunctionConfig(config: ConfigInput, opts: ShopFunctionC
   const now = requireNow(opts.now, "buildShopFunctionConfig");
   formatterFor(opts.shopTimezone, "buildShopFunctionConfig");
   const selected = opts.forceNoCampaign ? null : selectCampaign(config.campaigns, { now });
-  return build(config, selected, opts.shopTimezone);
+  return build(config, selected, opts.shopTimezone, opts.shopCurrency);
 }
 
 export interface WorstCaseShopFunctionConfig extends EncodedShopFunctionConfig {
@@ -460,17 +472,20 @@ export interface WorstCaseShopFunctionConfig extends EncodedShopFunctionConfig {
 /**
  * The largest shared config this config can produce over time: every live
  * campaign as the selected one, and none. Save must be refused unless it fits.
- * Byte size does not depend on the time zone (schedule days are fixed-length),
- * so `shopTimezone` is optional here and only shapes the returned payload.
+ * Byte size does not depend on the time zone (schedule days are fixed-length)
+ * nor on which shop currency (always 3 letters: "XXX" stands in when none is
+ * given, so an enabled margin's `cur` is always measured), so both are optional
+ * here and only shape the returned payload.
  */
 export function buildShopFunctionConfigWorstCase(
   config: ConfigInput,
-  opts: { shopTimezone?: string } = {},
+  opts: { shopTimezone?: string; shopCurrency?: string } = {},
 ): WorstCaseShopFunctionConfig {
   const zone = opts.shopTimezone ?? "UTC";
-  let worst: WorstCaseShopFunctionConfig = { ...build(config, null, zone), campaignId: null };
+  const currency = opts.shopCurrency ?? "XXX";
+  let worst: WorstCaseShopFunctionConfig = { ...build(config, null, zone, currency), campaignId: null };
   for (const campaign of liveCampaigns(config.campaigns)) {
-    const encoded = build(config, campaign, zone);
+    const encoded = build(config, campaign, zone, currency);
     if (encoded.bytes > worst.bytes) worst = { ...encoded, campaignId: campaign.id };
   }
   return worst;

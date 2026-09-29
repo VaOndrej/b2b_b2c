@@ -32,6 +32,12 @@ export const CONFIG_LIMITS = Object.freeze({
   /** Margin overrides per collection. */
   marginOverrides: 100,
   /**
+   * Highest minimum margin, percent (MVP 2). The floor is cost / (1 − m/100):
+   * at 100 % no price would do, and near it the floor explodes, so 95 % (the
+   * price at least 20 × the cost) is the cap, in the sanitizer and the engine.
+   */
+  minMarginPercent: 95,
+  /**
    * Highest amount of money anywhere in the config, minor units (10 000 000 000
    * CZK / EUR): far above any real price or threshold, and far below where the
    * TS engine (floats) and the Rust function (i64) could read an amount

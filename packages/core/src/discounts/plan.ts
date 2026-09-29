@@ -16,12 +16,20 @@
 //                   rule's own lines when its minimum scope is "entitled");
 //   planProducts    per line the better one for the customer wins, never a sum
 //                   (ties: priority desc, id asc); Pro `combinesWith` may stack;
+//   applyMarginProtection  (MVP 2, only when `modules.margin` is on) each line's
+//                   product allocation capped at its headroom above the floor
+//                   (margin.ts), the stack cut in rank order, owner recomputed;
 //   planOrderStage  on the subtotal AFTER product discounts [spec], better wins
-//                   [spec]; the Free product-with-order switch;
+//                   [spec]; the Free product-with-order switch; with margin on,
+//                   protectOrder lowers it or leaves out lines at their floor;
 //   planShipping    one winner (percent above fixed: the function knows no
 //                   delivery cost); the Free product/order-with-shipping switches;
-//   applyMarginProtection  MVP 2 hook, identity for now;
+//                   margin protection never touches shipping;
 //   buildOutcomes   per-rule and per-code states for explain/admin.
+//
+// Margin protection OFF (the default, and any payload without the enabled
+// compact margin) skips both margin steps: the plan is MVP 1's, decision for
+// decision. It never blocks: it only lowers discounts (principle 5).
 //
 // Stack ownership (who emits): a stack that contains a code rule is owned by a
 // CODE rule (highest priority, then id asc), so the code shows as applied in
@@ -33,7 +41,9 @@
 // Money is integer minor units of the cart currency. A currency without a value
 // (fixed amount, minimum) takes the rule out of play (MKT-1, principle 6).
 // Performance: O(lines × rules-per-line) + one sort per line; the Pro stacking
-// search only runs on lines that actually have combinable candidates.
+// search only runs on lines that actually have combinable candidates. Margin
+// protection of the order discount is O(lines²) at worst (one pass over each
+// candidate prefix: 200 lines ≈ 20 000 steps).
 
 import { type CartPlanInput, type NormalizedCart, type NormalizedLine, normalizeCart, type PlanLocale } from "./cart.ts";
 import { codeHash } from "./code-hash.ts";
@@ -43,6 +53,16 @@ import { CONFIG_LIMITS } from "./config/limits.ts";
 import { DISCOUNT_TARGET_KINDS } from "./config/enums.ts";
 import { type DescribableRule, describeRule } from "./describe.ts";
 import type { FunctionConfigPayload } from "./function-payload.ts";
+import {
+  costMinorUnits,
+  type FunctionMarginPayload,
+  type MarginBasis,
+  marginFloorUnit,
+  type MarginSettings,
+  type MarginSource,
+  readMarginPayload,
+  resolveMargin,
+} from "./margin.ts";
 import { lineRuleIds } from "./targeting.ts";
 
 // --- Public plan shape ------------------------------------------------------------------
@@ -67,7 +87,8 @@ export type RuleState =
   | "currency_missing" // no amount / minimum for the cart currency (MKT-1)
   | "no_target_lines"
   | "outlet_only" // every line it targets is on outlet
-  | "below_minimum";
+  | "below_minimum"
+  | "margin_floor"; // it had something to give, but margin protection took each of its winning contributions to 0
 
 export type CodeState = RuleState | "same_rule" | "unknown";
 
@@ -114,15 +135,37 @@ export interface PlanLine {
   subtotal: number;
   excluded: "outlet" | "gift" | null;
   product: PlanStack | null;
-  /** MVP 2 slot: set when margin protection lowered the product discount. */
-  marginCapped?: { before: number; after: number };
+  /** Set only when margin protection lowered this line's product discount. */
+  marginCapped?: PlanLineMarginCap;
+}
+
+/** Why and by how much margin protection lowered a line's product discount. */
+export interface PlanLineMarginCap {
+  /** The product discount without protection, minor units. */
+  before: number;
+  /** What the line gets (0 = no product discount at all). */
+  after: number;
+  /** The lowest price of one item, minor units (after = max(0, subtotal − floorUnit × quantity)). */
+  floorUnit: number;
+  /** "cost": cost + minimum margin; "max_percent": no known cost, the maximum discount % applied. */
+  basis: MarginBasis;
+  /** basis "cost": the minimum margin that applied. */
+  minMarginPercent?: number;
+  /** basis "max_percent": the ceiling that applied. */
+  maxDiscountPercent?: number;
+  /** "collection" when a collection's own setting applied (Pro). */
+  source: MarginSource;
 }
 
 export interface PlanOrder extends PlanStack {
-  /** Subtotal of the discountable lines after product discounts (what the order discount is taken from). */
+  /** Subtotal after product discounts of the lines the order discount is taken from (margin-excluded lines left out). */
   base: number;
-  /** Outlet and gift lines, in cart order (the candidate's excludedCartLineIds). */
+  /** Outlet, gift and margin-excluded lines, in cart order (the candidate's excludedCartLineIds). */
   excludedLineIds: string[];
+  /** Lines margin protection left out because they are at their floor, in cart order ([] when none). */
+  marginExcludedLineIds: string[];
+  /** Set only when margin protection lowered the order discount: without it, and with it. */
+  marginCapped?: { before: number; after: number };
 }
 
 export interface PlanShipping {
@@ -284,6 +327,8 @@ interface Rule {
   hadCandidate: boolean;
   lostTo: string[];
   dropped: boolean;
+  /** Margin protection took one of its winning (or stacked) contributions to 0. */
+  marginFloored: boolean;
 }
 
 interface Candidate {
@@ -303,6 +348,15 @@ interface WorkLine {
   excluded: "outlet" | "gift" | null;
   ruleSet: Set<string>;
   product: PlanStack | null;
+  /** Margin on: the floor of a discountable line; null when margin is off or the line is excluded. */
+  floor: LineFloor | null;
+  marginCapped?: PlanLineMarginCap;
+}
+
+interface LineFloor {
+  floorUnit: number;
+  basis: MarginBasis;
+  settings: MarginSettings;
 }
 
 interface EngineFlags {
@@ -443,6 +497,7 @@ function readRule(raw: Rec, currency: string): Rule | null {
     hadCandidate: false,
     lostTo: [],
     dropped: false,
+    marginFloored: false,
   };
 }
 
@@ -547,6 +602,7 @@ function prepareLines(cart: NormalizedCart, engine: EngineFlags, campaignId: str
     excluded: line.gift ? "gift" : line.outlet && !engine.outletWithAnything ? "outlet" : null,
     ruleSet: lineRuleIds(line, campaignId, retargeted),
     product: null,
+    floor: null,
   }));
   const cartScope = emptyScope();
   const ruleScopes = new Map<string, Scope>();
@@ -807,14 +863,201 @@ function planProducts(work: WorkLine[], ctx: StackContext): void {
   }
 }
 
-/** MVP 2 hook (A1.7 margin protection): lowers product allocations to the margin floor. Identity for now. */
-function applyMarginProtection(lines: WorkLine[]): WorkLine[] {
-  return lines;
+// --- Stage: margin protection, product discounts (MVP 2) ------------------------------------------
+
+type MarginOn = Extract<FunctionMarginPayload, { enabled: true }>;
+
+/** The floor of every discountable line (margin.ts): its settings, its cost in the cart currency, its lowest item price. */
+function computeFloors(work: WorkLine[], margin: MarginOn, cart: NormalizedCart): void {
+  for (const w of work) {
+    if (w.excluded !== null) continue;
+    const settings = resolveMargin(margin, w.line.marginRefs) as MarginSettings;
+    const costMinor = costMinorUnits(
+      w.line.unitCost ?? undefined,
+      w.line.unitCostCurrency ?? undefined,
+      cart.shopToCartRate ?? undefined,
+      cart.currency,
+      margin.cur,
+    );
+    const { floorUnit, basis } = marginFloorUnit({
+      unitPrice: w.line.unitPrice,
+      costMinor,
+      minMarginPercent: settings.minMarginPercent,
+      maxDiscountPercent: settings.maxDiscountPercent,
+    });
+    w.floor = { floorUnit, basis, settings };
+  }
+}
+
+/**
+ * Components (rank order) cut down to `total`, in rank order: each keeps what
+ * fits in what is left. A rule left with nothing is marked margin-floored.
+ */
+function cutInRankOrder(components: Candidate[], total: number): Candidate[] {
+  const kept: Candidate[] = [];
+  let remaining = total;
+  for (const c of components) {
+    const amount = Math.min(c.amount, remaining);
+    if (amount > 0) {
+      kept.push({ rule: c.rule, amount });
+      remaining -= amount;
+    } else {
+      c.rule.marginFloored = true;
+    }
+  }
+  return kept;
+}
+
+/** A stack rebuilt from what margin protection left of it: owner (ownerOf) and message recomputed. */
+function restack(kept: Candidate[], value: EmittedValue, ctx: StackContext): PlanStack {
+  const owner = ownerOf(kept);
+  return {
+    components: kept.map((c) => ({ ruleId: c.rule.id, method: c.rule.method, module: "codes", amount: c.amount })),
+    amount: kept.reduce((sum, c) => sum + c.amount, 0),
+    ownerRuleId: owner.id,
+    ownerMethod: owner.method,
+    value,
+    message: kept.map((c) => label(c.rule, ctx.locale, ctx.currency)).join(" + "),
+  };
+}
+
+/**
+ * Each line's product allocation (the winner stack planProducts picked) at most
+ * its headroom = max(0, subtotal − floorUnit × quantity). A larger one is cut in
+ * rank order and emitted as that exact total ({fixedTotal}); no headroom → no
+ * product discount on the line. Cutting after the pick keeps it monotone and
+ * deterministic (a rule never wins a line only because another was capped).
+ */
+function applyMarginProtection(work: WorkLine[], ctx: StackContext): void {
+  for (const w of work) {
+    const stack = w.product;
+    const floor = w.floor;
+    if (!stack || !floor) continue;
+    const headroom = Math.max(0, w.line.subtotal - floor.floorUnit * w.line.quantity);
+    if (stack.amount <= headroom) continue;
+    const kept = cutInRankOrder(
+      stack.components.map((c) => ({ rule: ctx.byId.get(c.ruleId) as Rule, amount: c.amount })),
+      headroom,
+    );
+    w.product = kept.length > 0 ? restack(kept, { fixedTotal: headroom }, ctx) : null;
+    w.marginCapped = {
+      before: stack.amount,
+      after: headroom,
+      floorUnit: floor.floorUnit,
+      basis: floor.basis,
+      ...(floor.basis === "cost"
+        ? { minMarginPercent: floor.settings.minMarginPercent }
+        : { maxDiscountPercent: floor.settings.maxDiscountPercent }),
+      source: floor.settings.source,
+    };
+  }
 }
 
 // --- Stage: order discount ---------------------------------------------------------------------
 
-function planOrderStage(rules: Rule[], work: WorkLine[], engine: EngineFlags, ctx: StackContext): PlanOrder | null {
+/** A line that can carry an order discount under margin protection (protectOrder). */
+interface OrderLine {
+  w: WorkLine;
+  /** Cart position (ties in the ordering). */
+  index: number;
+  /** a: the line after its product discount (> 0). */
+  after: number;
+  /** s: the line before it (its subtotal). */
+  before: number;
+  /** h = max(0, a − floorUnit × q − 1): what it can give, 1 minor unit kept for rounding. */
+  headroom: number;
+  /** k = h / s: the ordering key. */
+  ratio: number;
+}
+
+/**
+ * Margin protection of the order discount. Shopify spreads an order discount
+ * over its lines proportionally but does not say on which base, so the plan is
+ * safe for both: after product discounts (a_i) and before them (s_i), each
+ * line keeping 1 minor unit for rounding. For a set I of lines:
+ *   S_I = Σ a_i, S0_I = Σ s_i,
+ *   D_max(I) = min over i ∈ I of min(floor(h_i × S_I / a_i), floor(h_i × S0_I / s_i))
+ *   (each float expression evaluated exactly in that order),
+ *   wanted(I) = the picked stack's components recomputed at base S_I
+ *   (Σ orderAmount(rule, S_I), capped at S_I), D(I) = min(wanted(I), D_max(I)).
+ * Candidate sets: the lines with a_i > 0 sorted by k_i = h_i / s_i descending
+ * (ties: cart order), every prefix that ends where k changes, and the full set.
+ * The largest D wins, a tie goes to the larger set; its lines outside I are
+ * margin-excluded (excludedCartLineIds). D = wanted(I) keeps the natural value
+ * (a percent stays a percent, now over fewer lines); a lower D is {fixedTotal: D},
+ * taken from the components in rank order. D = 0 → no order discount. Lines with
+ * a_i = 0 carry nothing either way and are never excluded.
+ */
+function protectOrder(order: PlanOrder | null, work: WorkLine[], afterOf: (w: WorkLine) => number, ctx: StackContext): PlanOrder | null {
+  if (!order) return null;
+  const lines: OrderLine[] = [];
+  for (let index = 0; index < work.length; index++) {
+    const w = work[index];
+    if (w.excluded !== null || !w.floor) continue;
+    const after = afterOf(w);
+    if (after <= 0) continue;
+    const before = w.line.subtotal;
+    const headroom = Math.max(0, after - w.floor.floorUnit * w.line.quantity - 1);
+    lines.push({ w, index, after, before, headroom, ratio: headroom / before });
+  }
+  lines.sort((x, y) => (x.ratio !== y.ratio ? y.ratio - x.ratio : x.index - y.index));
+
+  const components = order.components.map((c) => ctx.byId.get(c.ruleId) as Rule);
+  const wantedAt = (base: number): number => {
+    let sum = 0;
+    for (const rule of components) sum += orderAmount(rule, base);
+    return Math.min(sum, base);
+  };
+  let best = { size: 0, amount: 0, base: 0, wanted: 0 };
+  let base = 0;
+  let baseBefore = 0;
+  for (let j = 0; j < lines.length; j++) {
+    base += lines[j].after;
+    baseBefore += lines[j].before;
+    if (j + 1 < lines.length && lines[j + 1].ratio === lines[j].ratio) continue;
+    let limit = Number.POSITIVE_INFINITY;
+    for (let i = 0; i <= j; i++) {
+      const l = lines[i];
+      const byAfter = Math.floor((l.headroom * base) / l.after);
+      const byBefore = Math.floor((l.headroom * baseBefore) / l.before);
+      limit = Math.min(limit, byAfter, byBefore);
+    }
+    const wanted = wantedAt(base);
+    const amount = Math.min(wanted, limit);
+    if (amount >= best.amount) best = { size: j + 1, amount, base, wanted };
+  }
+
+  if (best.amount <= 0) {
+    for (const rule of components) rule.marginFloored = true;
+    return null;
+  }
+  if (best.size === lines.length && best.amount === best.wanted) return order; // nothing to protect
+  const left = new Set(lines.slice(best.size).map((l) => l.w));
+  // The components at the winning base, in their rank order, capped at it; then cut to D.
+  let remaining = best.base;
+  const atBase: Candidate[] = components.map((rule) => {
+    const amount = Math.max(0, Math.min(orderAmount(rule, best.base), remaining));
+    remaining -= amount;
+    return { rule, amount };
+  });
+  const kept = cutInRankOrder(atBase, best.amount);
+  const natural = best.amount === best.wanted;
+  const value: EmittedValue =
+    natural && kept.length === 1
+      ? kept[0].rule.valueKind === "percentage"
+        ? { percent: kept[0].rule.percent }
+        : { fixedTotal: kept[0].amount }
+      : { fixedTotal: best.amount };
+  return {
+    ...restack(kept, value, ctx),
+    base: best.base,
+    excludedLineIds: work.filter((w) => w.excluded !== null || left.has(w)).map((w) => w.line.id),
+    marginExcludedLineIds: work.filter((w) => left.has(w)).map((w) => w.line.id),
+    ...(best.amount < order.amount ? { marginCapped: { before: order.amount, after: best.amount } } : {}),
+  };
+}
+
+function planOrderStage(rules: Rule[], work: WorkLine[], engine: EngineFlags, ctx: StackContext, marginOn: boolean): PlanOrder | null {
   const orderRules = rules.filter((r) => r.cls === "order" && r.state === null);
   const excludedLineIds = work.filter((w) => w.excluded !== null).map((w) => w.line.id);
   const planAt = (base: number): PlanOrder | null => {
@@ -827,21 +1070,31 @@ function planOrderStage(rules: Rule[], work: WorkLine[], engine: EngineFlags, ct
       ctx.locale,
       ctx.currency,
     );
-    return stack ? { ...stack, base, excludedLineIds } : null;
+    return stack ? { ...stack, base, excludedLineIds, marginExcludedLineIds: [] } : null;
   };
   const productTotal = work.reduce((sum, w) => sum + (w.product?.amount ?? 0), 0);
   const discountableSubtotal = work.reduce((sum, w) => sum + (w.excluded === null ? w.line.subtotal : 0), 0);
   // [spec] The order discount is taken from the subtotal AFTER product discounts.
-  if (engine.productWithOrder) return planAt(discountableSubtotal - productTotal);
+  if (engine.productWithOrder) {
+    const order = planAt(discountableSubtotal - productTotal);
+    return marginOn ? protectOrder(order, work, (w) => w.line.subtotal - (w.product?.amount ?? 0), ctx) : order;
+  }
 
   // Exclusive (Free switch off): the better scenario for the customer wins, a tie
   // keeps products. Every rule of the losing category that had something to give
-  // is "not combinable".
-  const orderOnly = planAt(discountableSubtotal);
+  // is "not combinable". Margin on: both scenarios are protected (the order-only
+  // one on the lines' full subtotals).
+  let orderOnly = planAt(discountableSubtotal);
+  if (marginOn) orderOnly = protectOrder(orderOnly, work, (w) => w.line.subtotal, ctx);
   const orderWins = orderOnly !== null && orderOnly.amount > productTotal;
   const losing: DiscountClass = orderWins ? "product" : "order";
   for (const rule of rules) if (rule.cls === losing && rule.hadCandidate) rule.dropped = true;
-  if (orderWins) for (const w of work) w.product = null;
+  if (orderWins) {
+    for (const w of work) {
+      w.product = null;
+      delete w.marginCapped;
+    }
+  }
   return orderWins ? orderOnly : null;
 }
 
@@ -926,7 +1179,18 @@ function buildOutcomes(
     const state: RuleState =
       rule.state ??
       // dropped before outranked: a rule of the losing category could not have applied either way
-      (c?.owner ? "applied" : c ? "combined" : rule.dropped ? "not_combinable" : rule.hadCandidate ? "outranked" : "zero_value");
+      // margin_floor: its winning contributions were all taken to 0 by margin protection.
+      (c?.owner
+        ? "applied"
+        : c
+          ? "combined"
+          : rule.marginFloored
+            ? "margin_floor"
+            : rule.dropped
+              ? "not_combinable"
+              : rule.hadCandidate
+                ? "outranked"
+                : "zero_value");
     const out: RuleOutcome = {
       ruleId: rule.id,
       name: rule.name,
@@ -970,8 +1234,12 @@ function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
 
   const stackCtx: StackContext = { byId: rulesById, partners: partnersOf(rules), locale, currency };
   planProducts(work, stackCtx);
-  applyMarginProtection(work);
-  const order = planOrderStage(rules, work, engine, stackCtx);
+  const margin = readMarginPayload((config.modules as Rec).margin);
+  if (margin.enabled) {
+    computeFloors(work, margin, cart);
+    applyMarginProtection(work, stackCtx);
+  }
+  const order = planOrderStage(rules, work, engine, stackCtx, margin.enabled);
   const shipping = planShipping(rules, work, order, engine, cart);
   const { outcomes, codeOutcomes } = buildOutcomes(rules, work, order, shipping, cart, codes);
 
@@ -984,6 +1252,7 @@ function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
     subtotal: w.line.subtotal,
     excluded: w.excluded,
     product: w.product,
+    ...(w.marginCapped ? { marginCapped: w.marginCapped } : {}),
   }));
   const subtotal = cart.lines.reduce((sum, l) => sum + l.subtotal, 0);
   const productDiscount = lines.reduce((sum, l) => sum + (l.product?.amount ?? 0), 0);

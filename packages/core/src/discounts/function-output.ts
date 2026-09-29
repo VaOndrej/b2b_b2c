@@ -20,6 +20,10 @@
 //        decimal S × P / 100 itself and may round a tie the other way than
 //        the plan's Math.round (audit MVP 1 drift #4). The same for a stack's
 //        summed percent and for an order percent;
+//      - a value margin protection lowered (`line.marginCapped`) is always its
+//        exact amount, never a percent: a percent is Shopify's rounding again,
+//        and a tie rounded the other way would take the line 1 minor unit
+//        under its floor;
 //   2. candidates with the same message and value share one candidate with
 //      several targets (a fixed total on one line never groups: shared, it
 //      would be applied ONCE across all its targets);
@@ -33,7 +37,8 @@
 //        c. both;
 //      then, as a last resort, the product candidates that save the least are
 //      dropped until the output fits. A step whose relaxation changes nothing
-//      (no tie, no stack) is skipped.
+//      (no tie, no stack) is skipped. A margin-capped line is never relaxed
+//      (neither step touches it): it keeps its exact value or is dropped.
 // Sizes are the UTF-8 bytes of the compact JSON (what JSON.stringify writes).
 //
 // Delivery: a percent applies to every delivery group; a FIXED amount goes to
@@ -246,6 +251,7 @@ function percentOnLine(p: number, amount: number, line: PlanLine, currency: stri
 /** One emitted product candidate → its exact output value, in the most groupable form. */
 function exactProductValue(c: ProductCandidate, line: PlanLine, plan: CartPlan, relax: Relax, info: PassInfo): Mapped {
   const currency = plan.currency;
+  if (line.marginCapped) return exactAmount(c.amount, line, currency);
   if (c.percent !== undefined) return percentOnLine(c.percent, c.amount, line, currency, relax, info);
   if (c.fixedPerItem !== undefined) {
     return c.fixedPerItem === line.unitPrice ? percentValue(100) : perItemValue(c.fixedPerItem, currency);
@@ -292,7 +298,8 @@ function productDrafts(emission: NodeEmission, plan: CartPlan, relax: Relax): { 
     const line = plan.lines[next];
     next += 1;
     if (!line?.product) continue;
-    const stacked = line.product.components.length > 1;
+    // A margin-capped stack is never relaxed to its top rule (its value stays exact).
+    const stacked = line.product.components.length > 1 && !line.marginCapped;
     info.anyStack ||= stacked;
     const mapped =
       relax.stacks && stacked
@@ -518,8 +525,10 @@ export function checkoutPreview(plan: CartPlan, opts: { lineCount?: number; deli
     }
   }
   const lines = plan.lines.map((l) => ({ lineId: l.lineId, planned: l.product?.amount ?? 0, applied: applied.get(l.lineId) ?? 0 }));
-  // Product discount the checkout does not apply stays in the order subtotal Shopify takes the order discount from.
-  const notApplied = lines.reduce((s, l) => s + Math.max(0, l.planned - l.applied), 0);
+  // Product discount the checkout does not apply stays in the order subtotal Shopify takes the order
+  // discount from — only on the lines that subtotal counts (not the excluded ones).
+  const excluded = new Set(plan.order?.excludedLineIds ?? []);
+  const notApplied = lines.reduce((s, l) => s + (excluded.has(l.lineId) ? 0 : Math.max(0, l.planned - l.applied)), 0);
   const base = (plan.order?.base ?? 0) + (plan.order ? notApplied : 0);
   let orderApplied = 0;
   for (const node of nodes) {

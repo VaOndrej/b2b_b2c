@@ -26,7 +26,7 @@ export const DEFAULT_CONFIG: ReadonlyDeep<WonDiscountsConfig> = deepFreeze<WonDi
     tiers: { sets: [] },
     rewards: { gifts: [], countOtherDiscounts: false, giftDeclinable: true },
     outlet: { display: "strike_badge", reopenOnReturnAfterEnd: "ask" },
-    margin: { global: { maxDiscountPercent: 50 }, perCollection: [] },
+    margin: { enabled: false, global: { maxDiscountPercent: 50 }, perCollection: [] },
   },
   campaigns: [],
   storefront: { appearancePreset: "default", cardPricesEnabled: false },

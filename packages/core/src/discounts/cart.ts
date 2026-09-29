@@ -16,8 +16,21 @@ export interface CartLineInput {
   /** Price per item in minor units of the cart currency, before any discount. */
   unitPrice: number;
   compareAtUnitPrice?: number;
-  /** MVP 2 slot (margin protection); unused by MVP 1. */
+  /**
+   * Margin protection (MVP 2): cost of one item in MAJOR units of the SHOP
+   * currency, from the variant metafield `$app:won_discounts`/`variant`
+   * (`cost`). Pass it as read; the engine decides whether it is usable
+   * (margin.ts costMinorUnits: a finite number > 0 in the shop currency).
+   */
   unitCost?: number;
+  /** The currency `unitCost` is in (the metafield's `cur`); must equal the shop config's margin `cur`. */
+  unitCostCurrency?: string;
+  /**
+   * Numeric ids of the product's collections that have a margin setting (the
+   * product metafield's `marginRefs`, targeting.ts). Only ids the shop config's
+   * margin `col` lists change anything.
+   */
+  marginRefs?: readonly string[];
   /** Active outlet run on the variant (A1.1): excluded from product and order discounts. */
   outlet?: boolean;
   /** A Won gift line (`_won_gift`, A1.2): outside every discount and every threshold. */
@@ -78,6 +91,13 @@ export interface CartPlanInput {
   // drift #7). A cost-aware ranking needs the Rust function to read the cost first.
   /** Language of generated messages (rule names win; this only phrases the fallback). */
   locale?: PlanLocale;
+  /**
+   * Shop currency → cart currency (function: `presentmentCurrencyRate`), for
+   * margin protection's cost conversion. Unused when the cart is in the shop
+   * currency; missing / not a positive number → costs in another cart currency
+   * are unknown (the maximum discount % applies).
+   */
+  shopToCartRate?: number;
 }
 
 export interface NormalizedLine {
@@ -91,6 +111,10 @@ export interface NormalizedLine {
   gift: boolean;
   /** Product-wide refs + this variant's refs. */
   ruleIds: readonly string[];
+  /** As given (validated by margin.ts costMinorUnits); null = none. */
+  unitCost: number | null;
+  unitCostCurrency: string | null;
+  marginRefs: readonly string[];
 }
 
 export interface NormalizedCart {
@@ -103,6 +127,8 @@ export interface NormalizedCart {
   campaign: CartCampaignInput | null;
   today: string | null;
   locale: PlanLocale;
+  /** As given when it is a number (validated by costMinorUnits), else null. */
+  shopToCartRate: number | null;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -178,6 +204,9 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
       outlet: raw.outlet === true,
       gift: typeof raw.giftTierId === "string" && raw.giftTierId !== "",
       ruleIds: variantRefs.length > 0 ? [...strings(raw.ruleIds), ...variantRefs] : strings(raw.ruleIds),
+      unitCost: typeof raw.unitCost === "number" ? raw.unitCost : null,
+      unitCostCurrency: typeof raw.unitCostCurrency === "string" ? raw.unitCostCurrency : null,
+      marginRefs: strings(raw.marginRefs),
     });
   }
 
@@ -202,5 +231,6 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
     campaign: readCampaign(input.campaign),
     today,
     locale: input.locale === "en" ? "en" : "cs",
+    shopToCartRate: typeof input.shopToCartRate === "number" ? input.shopToCartRate : null,
   };
 }

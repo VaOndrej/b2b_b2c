@@ -138,14 +138,25 @@ export interface OutletModule {
 
 export interface MarginCollectionOverride {
   collectionId: string;
+  /** 0–95; absent = the global value. */
   minMarginPercent?: number;
+  /** 0–100; absent = the global value. */
   maxDiscountPercent?: number;
 }
 
+/**
+ * Margin protection (MVP 2, A1.7/A2): no Won discount takes a line below its
+ * floor — cost + minimum margin when the cost is known, else the price minus the
+ * maximum discount %. Never blocks a checkout, only lowers discounts.
+ */
 export interface MarginModule {
+  /** Off by default: until the merchant turns it on, planning is exactly MVP 1's. */
+  enabled: boolean;
   global: {
-    minMarginPercent?: number; // from unitCost, when known
-    maxDiscountPercent: number; // ceiling for products with no unitCost (A2); default 50
+    /** 0–95, margin = (price after discounts − cost) / price after discounts; absent = 0 (never below cost). */
+    minMarginPercent?: number;
+    /** 0–100, the ceiling for products with no known cost (A2); default 50. */
+    maxDiscountPercent: number;
   };
   perCollection: MarginCollectionOverride[]; // Pro
 }

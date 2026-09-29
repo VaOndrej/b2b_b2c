@@ -379,3 +379,75 @@ export function describeSchedule(days: ScheduleDays | null | undefined, locale: 
   if (end) return cs ? `do ${end}` : `until ${end}`;
   return "";
 }
+
+// --- Margin protection (MVP 2) -----------------------------------------------------------------
+
+/** Why margin protection lowered a discount (plan.ts PlanLineMarginCap carries these fields). */
+export interface MarginReason {
+  basis: "cost" | "max_percent";
+  minMarginPercent?: number;
+  maxDiscountPercent?: number;
+  source: "global" | "collection";
+}
+
+/**
+ * The reason in words, for the admin (it names the cost price and the margin,
+ * which a shopper must never see): "cena neklesne pod nákupní cenu s minimální
+ * marží 20 %" · "položka nemá nákupní cenu, proto je sleva nejvýš 30 %", plus
+ * " (nastavení kolekce)" when a collection's own setting applied.
+ */
+export function describeMarginReason(reason: MarginReason, locale: UiLocale): string {
+  const cs = locale === "cs";
+  let text: string;
+  if (reason.basis === "cost") {
+    const m = reason.minMarginPercent ?? 0;
+    text = cs ? "cena neklesne pod nákupní cenu" : "the price stays above the cost price";
+    if (m > 0) {
+      const percent = formatPercent(m, locale);
+      text += cs ? ` s minimální marží ${percent}` : ` with a minimum margin of ${percent}`;
+    }
+  } else {
+    const percent = formatPercent(reason.maxDiscountPercent ?? 0, locale);
+    text = cs ? `položka nemá nákupní cenu, proto je sleva nejvýš ${percent}` : `the item has no cost price, so the discount is at most ${percent}`;
+  }
+  if (reason.source === "collection") text += cs ? " (nastavení kolekce)" : " (collection setting)";
+  return text;
+}
+
+/** The fields of the margin module a one-line summary needs (config MarginModule). */
+export interface DescribableMargin {
+  enabled: boolean;
+  global: { readonly minMarginPercent?: number; readonly maxDiscountPercent: number };
+  perCollection: readonly unknown[];
+}
+
+/**
+ * The margin module in one line for admin headers (§17a): "Ochrana marže je
+ * vypnutá" · "Min. marže 20 % · bez nákupní ceny sleva nejvýš 40 % · 1 kolekce
+ * s vlastním nastavením".
+ */
+export function describeMarginSettings(margin: DescribableMargin, locale: UiLocale): string {
+  const cs = locale === "cs";
+  if (!margin.enabled) return cs ? "Ochrana marže je vypnutá" : "Margin protection is off";
+  const m = margin.global.minMarginPercent ?? 0;
+  const p = formatPercent(margin.global.maxDiscountPercent, locale);
+  const parts = [
+    m > 0
+      ? cs
+        ? `Min. marže ${formatPercent(m, locale)}`
+        : `Minimum margin ${formatPercent(m, locale)}`
+      : cs
+        ? "Nikdy pod nákupní cenu"
+        : "Never below the cost price",
+    cs ? `bez nákupní ceny sleva nejvýš ${p}` : `without a cost price at most ${p} off`,
+  ];
+  const n = margin.perCollection.length;
+  if (n > 0) {
+    parts.push(
+      cs
+        ? `${n} ${csPlural(n, ["kolekce", "kolekce", "kolekcí"])} s vlastním nastavením`
+        : `${n} ${enPlural(n, "collection", "collections")} with ${n === 1 ? "its" : "their"} own setting`,
+    );
+  }
+  return parts.join(" · ");
+}

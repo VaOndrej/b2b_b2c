@@ -38,7 +38,8 @@ export function code(codes: string[], extra: RawRule = {}): RawRule {
 }
 
 export function configOf(rules: RawRule[], extra: Record<string, unknown> = {}): WonDiscountsConfig {
-  return sanitizeConfig({ ...extra, modules: { codes: { rules } } }).config;
+  const modules = typeof extra.modules === "object" && extra.modules !== null ? (extra.modules as Record<string, unknown>) : {};
+  return sanitizeConfig({ ...extra, modules: { ...modules, codes: { rules } } }).config;
 }
 
 /** Shop time used by the fixtures: Prague, early October (before every fixture campaign). */
@@ -48,13 +49,42 @@ export const FIXTURE_TZ = "Europe/Prague";
 export function payloadOf(
   rules: RawRule[],
   extra: Record<string, unknown> = {},
-  opts: { now?: string; shopTimezone?: string; forceNoCampaign?: boolean } = {},
+  opts: { now?: string; shopTimezone?: string; forceNoCampaign?: boolean; shopCurrency?: string } = {},
 ): FunctionConfigPayload {
   return buildShopFunctionConfig(configOf(rules, extra), {
     now: opts.now ?? FIXTURE_NOW,
     shopTimezone: opts.shopTimezone ?? FIXTURE_TZ,
+    shopCurrency: opts.shopCurrency ?? FIXTURE_SHOP_CURRENCY,
     ...(opts.forceNoCampaign ? { forceNoCampaign: true } : {}),
   }).payload;
+}
+
+/** The shop currency of the fixtures (margin protection reads costs in it). */
+export const FIXTURE_SHOP_CURRENCY = "CZK";
+
+/**
+ * A payload with margin protection ON: `margin` is the module's settings
+ * (`global`, `perCollection`), `enabled: true` unless it says otherwise.
+ */
+export function marginPayloadOf(
+  rules: RawRule[],
+  margin: Record<string, unknown>,
+  extra: Record<string, unknown> = {},
+  opts: { now?: string; shopTimezone?: string; shopCurrency?: string } = {},
+): FunctionConfigPayload {
+  return payloadOf(rules, { ...extra, modules: { margin: { enabled: true, ...margin } } }, opts);
+}
+
+/** A line with a cost price (major units of `currency`, the shop currency by default). */
+export function costLine(
+  id: string,
+  unitPrice: number,
+  unitCost: number,
+  quantity = 1,
+  ruleIds: string[] = [],
+  extra: Partial<CartLineInput> = {},
+): CartLineInput {
+  return line(id, unitPrice, quantity, ruleIds, { unitCost, unitCostCurrency: FIXTURE_SHOP_CURRENCY, ...extra });
 }
 
 export function line(
