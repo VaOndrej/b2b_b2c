@@ -1,0 +1,104 @@
+
+── Horizon ─────────────────────────────────────────────
+   canonical:    /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c_themes/Horizon
+   workspace:    /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/e2e-themes/won-discounts/horizon
+   overlay:      e2e/settings_data.horizon.json
+   remote theme: Horizon
+   origin:       http://127.0.0.1:9885
+   theme dev is serving (HTTP 200).
+   configured app proxy responds.
+
+> test:e2e
+> node ./scripts/require-e2e-contract.mjs
+
+
+Running 9 tests using 1 worker
+
+  ✓  1 tests/e2e/checkout.margin.spec.ts:329:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › cart: simple-a to its cost floor, simple-b to 30 %, Small none, WONE2EM20 applicable as an exact amount = planCart with the logged rate (24.0s)
+[checkout.margin] Horizon: code re-entered in checkout
+  ✘  2 tests/e2e/checkout.margin.spec.ts:431:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › checkout (Bogus): margin never blocks; the thank-you page charges planCart with the checkout's logged rate, no line below its floor (3.1m)
+[checkout.margin] Horizon: code re-entered in checkout
+  ✘  3 tests/e2e/checkout.margin.spec.ts:431:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › checkout (Bogus): margin never blocks; the thank-you page charges planCart with the checkout's logged rate, no line below its floor (retry #1) (46.7s)
+  -  4 tests/e2e/checkout.mvp1.spec.ts:67:3 › Won Discounts in cart and checkout (MVP 1) — Horizon › cart: the automatic 10 % and the code WONE2E15 apply exactly as planCart plans
+  -  5 tests/e2e/checkout.mvp1.spec.ts:154:3 › Won Discounts in cart and checkout (MVP 1) — Horizon › checkout (Bogus): the thank-you page shows the discounts and the total planCart predicts
+  -  6 tests/e2e/checkout.mvp1.spec.ts:253:3 › Won Discounts in cart and checkout (MVP 1) — Horizon › one buyer session on the real storefront: the code applied in the cart is carried into checkout
+  -  7 tests/e2e/checkout.shapes.spec.ts:260:3 › Won Discounts output shapes in cart and checkout (MVP 1 gate) — Horizon › cart: a capped fixed per-item amount arrives as 100 %, a Pro stack as one summed percent, both = planCart
+  -  8 tests/e2e/checkout.shapes.spec.ts:395:3 › Won Discounts output shapes in cart and checkout (MVP 1 gate) — Horizon › checkout (Bogus): the thank-you page charges what planCart predicts for both shapes
+  ✓  9 tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP (1.4s)
+  ✓  10 tests/e2e/storefront.embed.spec.ts:139:3 › Won Discounts app embed (MVP 0) — Horizon › causes no horizontal overflow at 390px (1.2s)
+
+
+  1) tests/e2e/checkout.margin.spec.ts:431:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › checkout (Bogus): margin never blocks; the thank-you page charges planCart with the checkout's logged rate, no line below its floor 
+
+    Error: no automatic + WONE2EM20 code-node run of this cart in /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs since 2026-09-29T16:18:50.707Z (found 0 matching run(s)); is `shopify app dev` running?
+
+       at support/margin.ts:291
+
+      289 |   }
+      290 |   if (!complete(runs)) {
+    > 291 |     throw new Error(
+          |           ^
+      292 |       `no automatic + ${filter.code} code-node run of this cart in ${FUNCTION_LOG_DIR} since ${new Date(filter.sinceMs).toISOString()} (found ${runs.length} matching run(s)); is \`shopify app dev\` running?`,
+      293 |     );
+      294 |   }
+        at waitForRuns (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/support/margin.ts:291:11)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:484:18
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-98d22-ate-no-line-below-its-floor/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-98d22-ate-no-line-below-its-floor/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/checkout.margin-Won-Discou-98d22-ate-no-line-below-its-floor/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: thank-you won-e2e-two-variants: price after the line discount = planCart
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 32900
+    Received: null
+
+      509 |           expect(o.allocations, `thank-you ${l.handle}: no line discount`).toEqual([]);
+      510 |         }
+    > 511 |         expect(o.finalPrice, `thank-you ${l.handle}: price after the line discount = planCart`).toBe(l.planLine.subtotal - planned);
+          |                                                                                                 ^
+      512 |       }
+      513 |       const subtotal = rowAmount(rows, SUBTOTAL);
+      514 |       const orderDiscount = rowAmount(rows, MARGIN_CODE);
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:511:97
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:493:33
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-98d22-ate-no-line-below-its-floor-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-98d22-ate-no-line-below-its-floor-retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/checkout.margin-Won-Discou-98d22-ate-no-line-below-its-floor-retry1/error-context.md
+
+  1 failed
+    tests/e2e/checkout.margin.spec.ts:431:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › checkout (Bogus): margin never blocks; the thank-you page charges planCart with the checkout's logged rate, no line below its floor 
+  5 skipped
+  3 passed (5.9m)
+npm error Lifecycle script `test:e2e` failed with error:
+npm error code 1
+npm error path /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts
+npm error workspace won-discounts
+npm error location /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts
+npm error command failed
+npm error command sh -c node ./scripts/require-e2e-contract.mjs
+
+── summary ────────────────────────────────────────────────
+   ✗ Horizon
+exit 1

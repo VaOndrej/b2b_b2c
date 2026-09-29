@@ -72,17 +72,18 @@ function runCli(args: string[]): Promise<string> {
   });
 }
 
-/** The function's inputs as stored on the store for `handle`'s product (cached per run). */
-export async function readLiveInputs(handle: string): Promise<LiveInputs> {
-  const hit = cache.get(handle);
-  if (hit) return hit;
+/**
+ * One Admin GraphQL query as the app (`shopify app execute`, API 2026-04) →
+ * its `data`. Throws when the CLI wrote no output.
+ */
+export async function executeAsApp<T>(query: string, variables: Record<string, unknown>): Promise<T> {
   const dir = await mkdtemp(path.join(tmpdir(), "won-e2e-inputs-"));
   try {
     const queryFile = path.join(dir, "q.graphql");
     const variableFile = path.join(dir, "v.json");
     const outputFile = path.join(dir, "out.json");
-    await writeFile(queryFile, INPUTS_QUERY);
-    await writeFile(variableFile, JSON.stringify({ handle }));
+    await writeFile(queryFile, query);
+    await writeFile(variableFile, JSON.stringify(variables));
     const log = await runCli([
       "shopify", "app", "execute",
       "--path", APP_DIR,
@@ -94,27 +95,34 @@ export async function readLiveInputs(handle: string): Promise<LiveInputs> {
       "--no-color",
     ]);
     if (!existsSync(outputFile)) throw new Error(`shopify app execute wrote no output: ${log.slice(-800)}`);
-    const data = JSON.parse(await readFile(outputFile, "utf8")) as {
-      productByIdentifier: { id: string; metafield: { value: string } | null } | null;
-      shop: { ianaTimezone: string; metafield: { value: string } | null };
-    };
-    const product = data.productByIdentifier;
-    if (!product) throw new Error(`product ${handle} not found`);
-    if (!data.shop.metafield) {
-      throw new Error("the shop has no $app:won_discounts.function_config: run `node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --live` first");
-    }
-    if (!product.metafield) throw new Error(`${handle} has no $app:won_discounts.product metafield: run the seed first`);
-    const inputs: LiveInputs = {
-      config: JSON.parse(data.shop.metafield.value) as PlanConfig,
-      productId: product.id,
-      productRefs: JSON.parse(product.metafield.value) as LiveInputs["productRefs"],
-      shopTimezone: data.shop.ianaTimezone,
-    };
-    cache.set(handle, inputs);
-    return inputs;
+    return JSON.parse(await readFile(outputFile, "utf8")) as T;
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+}
+
+/** The function's inputs as stored on the store for `handle`'s product (cached per run). */
+export async function readLiveInputs(handle: string): Promise<LiveInputs> {
+  const hit = cache.get(handle);
+  if (hit) return hit;
+  const data = await executeAsApp<{
+    productByIdentifier: { id: string; metafield: { value: string } | null } | null;
+    shop: { ianaTimezone: string; metafield: { value: string } | null };
+  }>(INPUTS_QUERY, { handle });
+  const product = data.productByIdentifier;
+  if (!product) throw new Error(`product ${handle} not found`);
+  if (!data.shop.metafield) {
+    throw new Error("the shop has no $app:won_discounts.function_config: run `node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --live` first");
+  }
+  if (!product.metafield) throw new Error(`${handle} has no $app:won_discounts.product metafield: run the seed first`);
+  const inputs: LiveInputs = {
+    config: JSON.parse(data.shop.metafield.value) as PlanConfig,
+    productId: product.id,
+    productRefs: JSON.parse(product.metafield.value) as LiveInputs["productRefs"],
+    shopTimezone: data.shop.ianaTimezone,
+  };
+  cache.set(handle, inputs);
+  return inputs;
 }
 
 /**
@@ -132,7 +140,7 @@ export async function readLiveInputsFor(handles: readonly string[]): Promise<Liv
   };
 }
 
-function shopLocalDate(timeZone: string, now = new Date()): string {
+export function shopLocalDate(timeZone: string, now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
   return `${get("year")}-${get("month")}-${get("day")}`;

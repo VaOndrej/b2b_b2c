@@ -4,11 +4,16 @@ import { expect } from "./fixtures.ts";
 
 // The storefront AJAX cart, paced: Cloudflare answers HTTP 429 to cart writes
 // faster than ~1.5 s apart, so every request waits CART_GAP_MS after the
-// previous one and backs off on a 429. Prices are only ever read from here
-// (/cart.js), never from theme DOM.
+// previous one and backs off on a 429. Shopify's own transient 5xx
+// (observed 2026-09-29 on GET /products/<handle>.js through theme dev: 503
+// {"errors":[{"code":"SERVICE_UNAVAILABLE","message":"There was a problem
+// loading this website. Please try again."}]}) gets the same back-off. Prices
+// are only ever read from here (/cart.js), never from theme DOM.
 
 export const CART_GAP_MS = 1_600;
 const BACKOFF_MS = [5_000, 10_000, 20_000, 30_000, 45_000];
+/** Rate limited (429) or Shopify temporarily unavailable (502/503/504): wait and send again. */
+const RETRY_STATUS = new Set([429, 502, 503, 504]);
 
 export interface CartAllocation {
   amount: number;
@@ -20,6 +25,8 @@ export interface CartItem {
   variant_id: number;
   product_id: number;
   product_title?: string;
+  handle?: string;
+  variant_title?: string | null;
   quantity: number;
   original_price: number;
   original_line_price?: number;
@@ -62,7 +69,7 @@ export async function storefrontJson<T>(page: Page, method: "GET" | "POST", url:
       },
       { method, url, body },
     );
-    if (result.status === 429 && attempt < BACKOFF_MS.length) {
+    if (RETRY_STATUS.has(result.status) && attempt < BACKOFF_MS.length) {
       await page.waitForTimeout(BACKOFF_MS[attempt]!);
       continue;
     }
@@ -91,6 +98,33 @@ export async function freshCartWith(page: Page, lines: readonly { handle: string
     const product = await storefrontJson<{ variants: { id: number }[] }>(page, "GET", `/products/${handle}.js`);
     updates[String(product.variants[0]!.id)] = quantity;
   }
+  await storefrontJson(page, "POST", "/cart/clear.js", {});
+  await storefrontJson(page, "POST", "/cart/update.js", { updates, discount: codes.join(",") });
+  return storefrontJson<Cart>(page, "GET", "/cart.js");
+}
+
+/**
+ * The storefront variant id of `handle`: the variant whose options include
+ * `option` (e.g. "Small"), else the first variant.
+ */
+export async function variantIdOf(page: Page, handle: string, option?: string): Promise<number> {
+  const product = await storefrontJson<{ variants: { id: number; options?: string[]; title?: string }[] }>(page, "GET", `/products/${handle}.js`);
+  const variant = option ? product.variants.find((v) => (v.options ?? []).includes(option) || v.title === option) : product.variants[0];
+  expect(variant, `${handle}: a variant ${option ? `with the option "${option}"` : ""}`).toBeDefined();
+  return variant!.id;
+}
+
+/**
+ * Like freshCartWith, choosing the variant per line (`option`, see variantIdOf):
+ * empty cart, then every line and exactly `codes` in ONE update.
+ */
+export async function freshCartOfVariants(
+  page: Page,
+  lines: readonly { handle: string; quantity: number; option?: string }[],
+  codes: readonly string[],
+): Promise<Cart> {
+  const updates: Record<string, number> = {};
+  for (const { handle, quantity, option } of lines) updates[String(await variantIdOf(page, handle, option))] = quantity;
   await storefrontJson(page, "POST", "/cart/clear.js", {});
   await storefrontJson(page, "POST", "/cart/update.js", { updates, discount: codes.join(",") });
   return storefrontJson<Cart>(page, "GET", "/cart.js");

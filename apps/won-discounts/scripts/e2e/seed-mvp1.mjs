@@ -14,7 +14,15 @@
 //           won-e2e-simple-b's price (sent as 100 %) and two Pro-stacked
 //           percentages on won-e2e-simple-a (sent as one summed percent);
 //           tests/e2e/checkout.shapes.spec.ts (matrix with WON_E2E_PROFILE=shapes).
-// A seed REPLACES the E2E rules of the other profile (one backup covers both).
+//   margin  scripts/e2e/margin-fixture.mjs (MVP 2): margin protection ON (minimum
+//           margin 25 %, maximum discount 30 %), "E2E marže auto 50 %" on
+//           won-e2e-simple-a + won-e2e-simple-b and code WONE2EM20 = 20 % on the
+//           order; tests/e2e/checkout.margin.spec.ts (WON_E2E_PROFILE=margin).
+//           The variant cost metafields are the cost mirror's job, run after the
+//           seed: scripts/e2e/margin-costs.mjs (dry-run, then --live); after
+//           --cleanup, `margin-costs.mjs --clear` removes them again.
+// A seed REPLACES the E2E rules (and the margin settings) of the other profile
+// (one backup covers all of them).
 //
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs
 //       DRY-RUN (default): reads the store + the stored config, prints the seed
@@ -47,6 +55,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { register } from "tsx/esm/api";
 
 import { E2E_AUTO_RULE_ID, E2E_CODE, E2E_PRODUCT_HANDLE, E2E_RULE_IDS, e2eRules } from "./mvp1-fixture.mjs";
+import { MARGIN_CODE, MARGIN_HANDLES, MARGIN_RULE_IDS, marginModule, marginRules } from "./margin-fixture.mjs";
 import { SHAPES_HANDLES, SHAPES_PRODUCT_B_HANDLE, SHAPES_RULE_IDS, shapesRules } from "./shapes-fixture.mjs";
 
 register();
@@ -126,11 +135,17 @@ for (const arg of argv) {
 const PROFILES = {
   mvp1: { handles: [E2E_PRODUCT_HANDLE], rules: (ids) => e2eRules(ids[E2E_PRODUCT_HANDLE]), label: `code ${E2E_CODE}` },
   shapes: { handles: SHAPES_HANDLES, rules: shapesRules, label: "capped fixed per item + Pro stack, no code" },
+  margin: {
+    handles: MARGIN_HANDLES,
+    rules: marginRules,
+    margin: marginModule,
+    label: `margin protection on (min margin 25 %, max discount 30 %), auto 50 % + code ${MARGIN_CODE}`,
+  },
 };
 const PROFILE = option("--profile") ?? "mvp1";
 if (!Object.hasOwn(PROFILES, PROFILE)) throw new Error(`unknown --profile ${PROFILE} (${Object.keys(PROFILES).join(", ")})`);
 /** Every E2E rule id of every profile: what a cleanup without a backup removes, and what "the seed is in it" means. */
-const ALL_E2E_RULE_IDS = [...E2E_RULE_IDS, ...SHAPES_RULE_IDS];
+const ALL_E2E_RULE_IDS = [...E2E_RULE_IDS, ...SHAPES_RULE_IDS, ...MARGIN_RULE_IDS];
 
 // The app's DB, absolute (never the .env): set before the Prisma client loads.
 process.env.DATABASE_URL = `file:${DEV_DB}`;
@@ -228,12 +243,32 @@ function summarize(config) {
   return (config?.modules?.codes?.rules ?? []).map((rule) => ({ id: rule.id, name: rule.name, method: rule.method, enabled: rule.enabled }));
 }
 
+/** "margin off" · "margin ON (min margin 25 %, max discount 30 %, 0 collection(s))" — never the raw module. */
+function marginText(config) {
+  const margin = config?.modules?.margin;
+  if (!margin || margin.enabled !== true) return "margin protection off";
+  const min = margin.global?.minMarginPercent;
+  return `margin protection ON (min margin ${min ?? "—"} %, max discount ${margin.global?.maxDiscountPercent} %, ${margin.perCollection?.length ?? 0} collection setting(s))`;
+}
+
+/** The fixture's margin module is what the stored config has (a cleanup without a backup may then switch it off). */
+function isFixtureMargin(margin) {
+  const fixture = marginModule();
+  return (
+    margin?.enabled === fixture.enabled &&
+    margin?.global?.minMarginPercent === fixture.global.minMarginPercent &&
+    margin?.global?.maxDiscountPercent === fixture.global.maxDiscountPercent &&
+    (margin?.perCollection?.length ?? 0) === 0
+  );
+}
+
 function seedConfig(previous, productIds) {
   // Only the profile's E2E rules (no campaigns, default engine switches) so the
   // carts the spec checks are decided by these rules alone; markets are kept.
   const config = createDefaultConfig();
   config.markets = previous.markets ?? [];
   config.modules.codes.rules = PROFILES[PROFILE].rules(productIds);
+  if (PROFILES[PROFILE].margin) config.modules.margin = PROFILES[PROFILE].margin();
   return config;
 }
 
@@ -319,6 +354,7 @@ async function main() {
       `# stored config of ${STORE}: ${loaded.exists ? `${loaded.config.modules.codes.rules.length} rule(s)${hasSeed ? " (the E2E seed is in it)" : ""}` : "no row yet"}`,
     );
     for (const rule of summarize(loaded.config)) console.log(`  - ${rule.id} "${rule.name}" ${rule.method} ${rule.enabled ? "enabled" : "disabled"}`);
+    console.log(`  ${marginText(loaded.config)}`);
 
     if (cleanup) {
       const backup = readBackup();
@@ -328,21 +364,35 @@ async function main() {
         console.log(`\n# cleanup: restore the backup of ${backup.backedUpAt} (${backup.exists ? `${summarize(backup.config).length} rule(s)` : "there was no row: the defaults, no rules"})`);
       } else if (hasSeed) {
         target = { ...loaded.config, modules: { ...loaded.config.modules, codes: { rules: loaded.config.modules.codes.rules.filter((rule) => !ALL_E2E_RULE_IDS.includes(rule.id)) } } };
-        console.log(`\n# cleanup: no backup in ${OUT_DIR}; removing only the E2E rules from the stored config`);
+        // The margin seed's own settings go with its rules (anything else in the module is the merchant's).
+        if (isFixtureMargin(loaded.config.modules.margin)) target.modules.margin = createDefaultConfig().modules.margin;
+        console.log(`\n# cleanup: no backup in ${OUT_DIR}; removing only the E2E rules (and the margin seed's settings) from the stored config`);
       } else {
         console.log(`\n# cleanup: no backup in ${OUT_DIR} and no E2E rule stored — nothing to do`);
         return;
       }
+      console.log(`  after the cleanup: ${summarize(target).length} rule(s), ${marginText(target)}`);
+      const marginWasOn = loaded.config.modules.margin?.enabled === true && target.modules?.margin?.enabled !== true;
       if (!live) {
         process.exitCode = dryRunPlan(target, "cleanup");
+        if (marginWasOn) console.log("\nnote: margin protection goes off → then clear the cost metafields: node apps/won-discounts/scripts/e2e/margin-costs.mjs --clear [--live]");
         console.log("\n(dry-run: nothing written; pass --live)");
         return;
       }
       const result = await saveAndSync({ client, db, shop: STORE, input: target, otherCodes: await nativeCodes(db) });
       printSync(result);
       const status = await loadSyncStatus(db, STORE);
-      const evidence = { name: "seed-mvp1-cleanup", store: STORE, at: new Date().toISOString(), restored: summarize(target), result: syncSummary(result), syncRun: status };
+      const evidence = {
+        name: "seed-mvp1-cleanup",
+        store: STORE,
+        at: new Date().toISOString(),
+        restored: summarize(target),
+        margin: marginText(target),
+        result: syncSummary(result),
+        syncRun: status,
+      };
       console.log(`\nEvidence: ${writeEvidence("seed-mvp1-cleanup", evidence)}`);
+      if (marginWasOn) console.log("next: clear the cost metafields — node apps/won-discounts/scripts/e2e/margin-costs.mjs --clear, then --clear --live");
       if (printJson) console.log(JSON.stringify(evidence, null, 2));
       if (result.save.ok && result.sync?.ok && backup) fs.renameSync(BACKUP_FILE, BACKUP_FILE.replace(/\.json$/, `.restored-${stamp()}.json`));
       process.exitCode = result.save.ok && result.sync?.ok ? 0 : 1;
@@ -381,6 +431,7 @@ async function main() {
       `\n# seed (profile ${PROFILE}): ${Object.entries(productIds).map(([handle, id]) => `${handle} = ${id}`).join(", ")}; ${PROFILES[PROFILE].label}`,
     );
     for (const rule of summarize(config)) console.log(`  + ${rule.id} "${rule.name}" ${rule.method}`);
+    console.log(`  ${marginText(config)}`);
 
     if (!live) {
       process.exitCode = dryRunPlan(config, PROFILE === "mvp1" ? "seed" : `seed-${PROFILE}`);
@@ -412,6 +463,7 @@ async function main() {
       at: new Date().toISOString(),
       products: Object.entries(productIds).map(([handle, id]) => ({ handle, id })),
       rules: summarize(config),
+      margin: marginText(config),
       ...(PROFILE === "mvp1" ? { autoRule: E2E_AUTO_RULE_ID } : {}),
       result: syncSummary(result),
       syncRun: status,
@@ -419,6 +471,9 @@ async function main() {
     };
     console.log(`\nEvidence: ${writeEvidence(evidenceName, evidence)}`);
     if (printJson) console.log(JSON.stringify(evidence, null, 2));
+    if (PROFILES[PROFILE].margin && result.save.ok && result.sync?.ok) {
+      console.log("next: mirror the purchase costs — node apps/won-discounts/scripts/e2e/margin-costs.mjs (dry-run), then --live");
+    }
     process.exitCode = result.save.ok && result.sync?.ok ? 0 : 1;
   } finally {
     await db.$disconnect();

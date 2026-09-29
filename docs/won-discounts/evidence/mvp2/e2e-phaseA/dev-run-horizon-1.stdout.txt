@@ -1,0 +1,199 @@
+
+── Horizon ─────────────────────────────────────────────
+   canonical:    /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c_themes/Horizon
+   workspace:    /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/e2e-themes/won-discounts/horizon
+   overlay:      e2e/settings_data.horizon.json
+   remote theme: Horizon
+   origin:       http://127.0.0.1:9885
+   theme dev is serving (HTTP 200).
+   configured app proxy responds.
+
+> test:e2e
+> node ./scripts/require-e2e-contract.mjs
+
+
+Running 9 tests using 1 worker
+
+  ✘  1 tests/e2e/checkout.margin.spec.ts:327:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › cart: simple-a to its cost floor, simple-b to 30 %, Small none, WONE2EM20 applicable as an exact amount = planCart with the logged rate (23.6s)
+  ✘  2 tests/e2e/checkout.margin.spec.ts:327:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › cart: simple-a to its cost floor, simple-b to 30 %, Small none, WONE2EM20 applicable as an exact amount = planCart with the logged rate (retry #1) (22.6s)
+[checkout.margin] Horizon: code re-entered in checkout
+  ✘  3 tests/e2e/checkout.margin.spec.ts:429:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › checkout (Bogus): margin never blocks; the thank-you page charges planCart with the checkout's logged rate, no line below its floor (44.4s)
+[checkout.margin] Horizon: code re-entered in checkout
+  ✘  4 tests/e2e/checkout.margin.spec.ts:429:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › checkout (Bogus): margin never blocks; the thank-you page charges planCart with the checkout's logged rate, no line below its floor (retry #1) (42.7s)
+  -  5 tests/e2e/checkout.mvp1.spec.ts:67:3 › Won Discounts in cart and checkout (MVP 1) — Horizon › cart: the automatic 10 % and the code WONE2E15 apply exactly as planCart plans
+  -  6 tests/e2e/checkout.mvp1.spec.ts:154:3 › Won Discounts in cart and checkout (MVP 1) — Horizon › checkout (Bogus): the thank-you page shows the discounts and the total planCart predicts
+  -  7 tests/e2e/checkout.mvp1.spec.ts:253:3 › Won Discounts in cart and checkout (MVP 1) — Horizon › one buyer session on the real storefront: the code applied in the cart is carried into checkout
+  -  8 tests/e2e/checkout.shapes.spec.ts:260:3 › Won Discounts output shapes in cart and checkout (MVP 1 gate) — Horizon › cart: a capped fixed per-item amount arrives as 100 %, a Pro stack as one summed percent, both = planCart
+  -  9 tests/e2e/checkout.shapes.spec.ts:395:3 › Won Discounts output shapes in cart and checkout (MVP 1 gate) — Horizon › checkout (Bogus): the thank-you page charges what planCart predicts for both shapes
+  ✓  10 tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP (1.4s)
+  ✓  11 tests/e2e/storefront.embed.spec.ts:139:3 › Won Discounts app embed (MVP 0) — Horizon › causes no horizontal overflow at 390px (1.2s)
+
+
+  1) tests/e2e/checkout.margin.spec.ts:327:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › cart: simple-a to its cost floor, simple-b to 30 %, Small none, WONE2EM20 applicable as an exact amount = planCart with the logged rate › (a) planCart with rate 21.8802535: floors, caps and the order discount 
+
+    Error: the two lines at their floor are left out
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Array [
+    -   "gid://shopify/CartLine/2",
+        "gid://shopify/CartLine/1",
+    +   "gid://shopify/CartLine/2",
+      ]
+
+      175 |   expect(order!.message).toBe(MARGIN_CODE_RULE_NAME);
+      176 |   expect(order!.marginProtected, "margin on: the order discount is sized to the floors").toBe(true);
+    > 177 |   expect(order!.marginExcludedLineIds, "the two lines at their floor are left out").toEqual([A.planLine.lineId, B.planLine.lineId]);
+          |                                                                                     ^
+      178 |   expect(order!.base, "the order base is Small alone").toBe(S.planLine.subtotal);
+      179 |   const wantedOrder = Math.round((S.planLine.subtotal * MARGIN_CODE_PERCENT) / 100);
+      180 |   const smallHeadroom = S.planLine.subtotal - S.floorUnit * S.planLine.quantity - 1;
+        at expectMarginPlan (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:177:85)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:358:102
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:358:16
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-4db67-anCart-with-the-logged-rate/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-4db67-anCart-with-the-logged-rate/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/checkout.margin-Won-Discou-4db67-anCart-with-the-logged-rate/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: the two lines at their floor are left out
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Array [
+    -   "gid://shopify/CartLine/2",
+        "gid://shopify/CartLine/1",
+    +   "gid://shopify/CartLine/2",
+      ]
+
+      175 |   expect(order!.message).toBe(MARGIN_CODE_RULE_NAME);
+      176 |   expect(order!.marginProtected, "margin on: the order discount is sized to the floors").toBe(true);
+    > 177 |   expect(order!.marginExcludedLineIds, "the two lines at their floor are left out").toEqual([A.planLine.lineId, B.planLine.lineId]);
+          |                                                                                     ^
+      178 |   expect(order!.base, "the order base is Small alone").toBe(S.planLine.subtotal);
+      179 |   const wantedOrder = Math.round((S.planLine.subtotal * MARGIN_CODE_PERCENT) / 100);
+      180 |   const smallHeadroom = S.planLine.subtotal - S.floorUnit * S.planLine.quantity - 1;
+        at expectMarginPlan (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:177:85)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:358:102
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:358:16
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-4db67-anCart-with-the-logged-rate-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-4db67-anCart-with-the-logged-rate-retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/checkout.margin-Won-Discou-4db67-anCart-with-the-logged-rate-retry1/error-context.md
+
+  2) tests/e2e/checkout.margin.spec.ts:429:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › checkout (Bogus): margin never blocks; the thank-you page charges planCart with the checkout's logged rate, no line below its floor › planCart with the checkout's rate 21.8802535 
+
+    Error: the two lines at their floor are left out
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Array [
+    -   "gid://shopify/CartLine/2",
+        "gid://shopify/CartLine/1",
+    +   "gid://shopify/CartLine/2",
+      ]
+
+      175 |   expect(order!.message).toBe(MARGIN_CODE_RULE_NAME);
+      176 |   expect(order!.marginProtected, "margin on: the order discount is sized to the floors").toBe(true);
+    > 177 |   expect(order!.marginExcludedLineIds, "the two lines at their floor are left out").toEqual([A.planLine.lineId, B.planLine.lineId]);
+          |                                                                                     ^
+      178 |   expect(order!.base, "the order base is Small alone").toBe(S.planLine.subtotal);
+      179 |   const wantedOrder = Math.round((S.planLine.subtotal * MARGIN_CODE_PERCENT) / 100);
+      180 |   const smallHeadroom = S.planLine.subtotal - S.floorUnit * S.planLine.quantity - 1;
+        at expectMarginPlan (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:177:85)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:488:76
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:488:16
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-98d22-ate-no-line-below-its-floor/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-98d22-ate-no-line-below-its-floor/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/checkout.margin-Won-Discou-98d22-ate-no-line-below-its-floor/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: the two lines at their floor are left out
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Array [
+    -   "gid://shopify/CartLine/2",
+        "gid://shopify/CartLine/1",
+    +   "gid://shopify/CartLine/2",
+      ]
+
+      175 |   expect(order!.message).toBe(MARGIN_CODE_RULE_NAME);
+      176 |   expect(order!.marginProtected, "margin on: the order discount is sized to the floors").toBe(true);
+    > 177 |   expect(order!.marginExcludedLineIds, "the two lines at their floor are left out").toEqual([A.planLine.lineId, B.planLine.lineId]);
+          |                                                                                     ^
+      178 |   expect(order!.base, "the order base is Small alone").toBe(S.planLine.subtotal);
+      179 |   const wantedOrder = Math.round((S.planLine.subtotal * MARGIN_CODE_PERCENT) / 100);
+      180 |   const smallHeadroom = S.planLine.subtotal - S.floorUnit * S.planLine.quantity - 1;
+        at expectMarginPlan (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:177:85)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:488:76
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:488:16
+
+    Test timeout of 45000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-98d22-ate-no-line-below-its-floor-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-98d22-ate-no-line-below-its-floor-retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/checkout.margin-Won-Discou-98d22-ate-no-line-below-its-floor-retry1/error-context.md
+
+  2 failed
+    tests/e2e/checkout.margin.spec.ts:327:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › cart: simple-a to its cost floor, simple-b to 30 %, Small none, WONE2EM20 applicable as an exact amount = planCart with the logged rate 
+    tests/e2e/checkout.margin.spec.ts:429:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › checkout (Bogus): margin never blocks; the thank-you page charges planCart with the checkout's logged rate, no line below its floor 
+  5 skipped
+  2 passed (5.3m)
+npm error Lifecycle script `test:e2e` failed with error:
+npm error code 1
+npm error path /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts
+npm error workspace won-discounts
+npm error location /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts
+npm error command failed
+npm error command sh -c node ./scripts/require-e2e-contract.mjs
+
+── summary ────────────────────────────────────────────────
+   ✗ Horizon
+exit 1

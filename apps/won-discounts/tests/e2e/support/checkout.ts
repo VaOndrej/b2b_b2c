@@ -87,14 +87,18 @@ export async function checkoutLines(page: Page): Promise<CheckoutLine[]> {
         const priceCell = cells[cells.length - 1] ?? null;
         const titleEl = cells.flatMap((cell) => (cell === priceCell ? [] : [...cell.querySelectorAll("p")])).find((p) => !p.querySelector('span[dir="auto"]')) ?? null;
         const priceTexts = priceCell ? [...priceCell.querySelectorAll("s, p")].map((el) => ({ tag: el.tagName, text: text(el) })) : [];
-        return { title: text(titleEl), allocations, priceTexts };
+        // A line without a discount has no <s>/<p> pair: its price is the cell's only text.
+        const priceCellText = priceCell ? text(priceCell) : "";
+        return { title: text(titleEl), allocations, priceTexts, priceCellText };
       }),
   );
   return raw.map((line) => ({
     title: line.title,
     allocations: line.allocations.map((a) => ({ title: a.title, amount: minorUnits(a.amountText) })),
     originalPrice: minorUnits(line.priceTexts.find((p) => p.tag === "S")?.text ?? ""),
-    finalPrice: priceOrFree([...line.priceTexts].reverse().find((p) => p.tag === "P")?.text ?? ""),
+    finalPrice: priceOrFree(
+      [...line.priceTexts].reverse().find((p) => p.tag === "P")?.text ?? (line.priceTexts.length === 0 ? line.priceCellText : ""),
+    ),
   }));
 }
 
