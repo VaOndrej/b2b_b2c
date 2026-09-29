@@ -264,11 +264,14 @@ test("item 2: Try Cart uses the refs checkout reads — a product that left the 
   await markTargetingStale(db.prisma, shop, "collections/update", new Date());
   const run = await tryCartAction(ctx, cart, PAGE);
   assert.equal(run.plan?.lines[0]?.discount, 200_00, "checkout still has the ref: it still gives the 20 %");
-  assert.ok(run.plan?.warnings?.some((w) => w.key === "tryCart.warning.targeting"));
+  // The product left the collection: named as a membership change (live collections are read while stale).
+  assert.ok(run.plan?.warnings?.some((w) => w.key === "tryCart.warning.membership"), JSON.stringify(run.plan?.warnings));
   const html = text(await renderPage(createElement(TryCartScreen, { ...(await tryCartPage(ctx, PAGE)), lines: run.lines!, plan: run.plan, result: run.result })));
   assert.match(html, /Pokladna se může lišit/);
-  assert.match(html, /Cílení na produkty se právě obnovuje/);
-  assert.ok(!store.calls.some((c) => c.op === "WonTryCartProductCollections"), "no fresh recompute of collection membership");
+  assert.match(html, /změnilo členství v kolekci/);
+  // Membership is read live only to warn, in the same variants query; the discount still follows the refs.
+  assert.equal(store.calls.filter((c) => c.op === "WonTryCartVariants").at(-1)?.variables.withCollections, true);
+  assert.ok(!store.calls.some((c) => c.op === "WonTryCartProductCollections"), "one page of collections was enough, no extra pages");
 });
 
 // --- item 4: Synchronizovat znovu when the stored config is not in Shopify --------------------------

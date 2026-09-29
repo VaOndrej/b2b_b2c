@@ -121,7 +121,7 @@ test("CZK · Česko + VIP20: prices from Shopify for CZ, collection targeting fr
   const pricing = store.calls.find((c) => c.op === "WonTryCartVariants")!;
   assert.equal(pricing.variables.country, "CZ");
   assert.equal(pricing.variables.priced, true);
-  assert.ok(!("withCollections" in pricing.variables), "collections are not re-read: the refs come from the product metafield");
+  assert.equal(pricing.variables.withCollections, false, "targeting is fresh: collections are not re-read, the refs come from the product metafield");
   assert.equal(plan.warnings, undefined, "in sync, nothing to warn about");
 
   const hoodie = plan.lines.find((l) => l.title === "Mikina Won (M / černá)")!;

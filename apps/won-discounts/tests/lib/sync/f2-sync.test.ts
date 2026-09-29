@@ -430,3 +430,26 @@ test("SyncDeps.plan is required in production wiring and resolves Free outside a
     else process.env.WON_DEV_PLAN = devPlan;
   }
 });
+
+test("refTargetsCollections / ruleTargetsCollections: the rule's own target, and a campaign re-target to collections (not killed)", async () => {
+  const { refTargetsCollections, ruleTargetsCollections } = await import("../../../app/lib/sync/products.ts");
+  const config = configWith(
+    [
+      autoRule("coll", { target: { kind: "collections", ids: ["gid://shopify/Collection/1"] } }),
+      autoRule("list", { target: { kind: "products", productIds: ["gid://shopify/Product/1"], variantIds: [] } }),
+    ],
+    {
+      campaigns: [
+        { id: "bf", name: "BF", window: { start: "2026-09-28T00:00:00", end: "2026-10-01T00:00:00" }, overrides: [{ ruleId: "list", patch: { target: { kind: "collections", ids: ["gid://shopify/Collection/2"] } } }], killed: false },
+        { id: "old", name: "Old", window: { start: "2026-09-28T00:00:00", end: "2026-10-01T00:00:00" }, overrides: [{ ruleId: "list", patch: { target: { kind: "collections", ids: ["gid://shopify/Collection/3"] } } }], killed: true },
+      ],
+    },
+  );
+  assert.equal(refTargetsCollections(config, "coll"), true);
+  assert.equal(refTargetsCollections(config, "list"), false, "the list rule's own ref");
+  assert.equal(refTargetsCollections(config, "list@bf"), true, "its campaign re-target to a collection");
+  assert.equal(refTargetsCollections(config, "list@old"), false, "a killed campaign adds nothing");
+  assert.equal(refTargetsCollections(config, "gone"), false);
+  assert.equal(ruleTargetsCollections(config, "coll"), true);
+  assert.equal(ruleTargetsCollections(config, "list"), true, "through the live campaign");
+});

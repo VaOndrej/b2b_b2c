@@ -9,7 +9,10 @@
 //              and the refs its `$app:won_discounts/product` metafield holds —
 //              exactly what checkout reads (item 2: never a fresh recompute of
 //              collection membership, which could promise a discount checkout
-//              does not give yet, or hide one it still gives);
+//              does not give yet, or hide one it still gives). While the
+//              targeting is being refreshed, the product's collections are
+//              read LIVE as well, only to say where Shopify and checkout
+//              differ right now (a fresh joiner / a leaver);
 // then planTryCart on the config gated for the shop's plan (BILL-1), with
 // checkout's own output mapping (item 8), and warnings when the last sync
 // failed, the stored config is not in Shopify yet, or the targeting is being
@@ -22,6 +25,7 @@ import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import { AdminTransportError } from "../admin-client.server";
 import type { ShopPlan } from "@won/core/discounts/plan-gate";
+import { targetScopes } from "../sync/products";
 import { appliedPlanOf, storedConfigNotApplied } from "../sync/runs";
 import { canReadMarkets, loadSyncStatus } from "../sync/save-and-sync.server";
 import { loadShopSyncFacts } from "../sync/sync-state.server";
@@ -34,12 +38,14 @@ import { parseProductRefs, planTryCart, type PricedLine, type ProductRefs } from
 
 /** Variants per WonTryCartVariants call (≤ 1 000 requested points; tests/integration/try-cart.test.ts). */
 export const TRY_CART_VARIANTS_BATCH = 25;
+/** Collection pages read per product beyond the first (100 each). */
+const MAX_COLLECTION_PAGES = 10;
 /** Shopify markets read for the country (10 per page). */
 const MAX_MARKET_PAGES = 5;
 const MARKETS_TTL_MS = 60_000;
 
 export const TRY_CART_DOCUMENTS = Object.freeze({
-  variants: `query WonTryCartVariants($ids: [ID!]!, $country: CountryCode, $priced: Boolean!) {
+  variants: `query WonTryCartVariants($ids: [ID!]!, $country: CountryCode, $priced: Boolean!, $withCollections: Boolean!) {
   nodes(ids: $ids) {
     __typename
     ... on ProductVariant {
@@ -58,6 +64,29 @@ export const TRY_CART_DOCUMENTS = Object.freeze({
         wonRefs: metafield(namespace: "$app:won_discounts", key: "product") {
           value
         }
+        collections(first: 20) @include(if: $withCollections) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          nodes {
+            id
+          }
+        }
+      }
+    }
+  }
+}`,
+  productCollections: `query WonTryCartProductCollections($id: ID!, $after: String) {
+  product(id: $id) {
+    id
+    collections(first: 100, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
       }
     }
   }
@@ -196,6 +225,7 @@ interface VariantNode {
     id?: string;
     title?: string;
     wonRefs?: { value?: string | null } | null;
+    collections?: Page<{ id: string }> | null;
   } | null;
 }
 
@@ -208,14 +238,33 @@ interface ReadVariant {
   amount: string | null;
   /** The refs the product's metafield holds (what checkout reads). */
   refs: ProductRefs;
+  /** The collections the product is in NOW in Shopify (read only with `withCollections`). */
+  collectionIds: string[];
+}
+
+async function productCollections(ctx: ShopCtx, productId: string, after: string | null): Promise<string[]> {
+  const out: string[] = [];
+  let cursor = after;
+  for (let page = 0; cursor && page < MAX_COLLECTION_PAGES; page++) {
+    const data: { product: { collections: Page<{ id: string }> } | null } = await call(ctx, TRY_CART_DOCUMENTS.productCollections, {
+      id: productId,
+      after: cursor,
+    });
+    const connection = data.product?.collections;
+    if (!connection) break;
+    out.push(...connection.nodes.map((n) => n.id));
+    cursor = connection.pageInfo.hasNextPage ? connection.pageInfo.endCursor : null;
+  }
+  return out;
 }
 
 async function readVariants(
   ctx: ShopCtx,
   ids: readonly string[],
-  opts: { currency: string; country: string | null; shopCurrency: string | null },
+  opts: { currency: string; country: string | null; shopCurrency: string | null; withCollections: boolean },
 ): Promise<Map<string, ReadVariant>> {
   const out = new Map<string, ReadVariant>();
+  const extraPages = new Map<string, string>();
   for (let i = 0; i < ids.length; i += TRY_CART_VARIANTS_BATCH) {
     const batch = ids.slice(i, i + TRY_CART_VARIANTS_BATCH);
     // Without a country there is no market price to ask for: the base price (shop currency) is used.
@@ -223,6 +272,7 @@ async function readVariants(
       ids: batch,
       country: opts.country,
       priced: opts.country !== null,
+      withCollections: opts.withCollections,
     });
     for (const node of data.nodes ?? []) {
       if (!node || node.__typename !== "ProductVariant" || !node.id || !node.product?.id) continue;
@@ -233,6 +283,8 @@ async function readVariants(
       } else if (opts.currency === opts.shopCurrency && typeof node.price === "string") {
         amount = node.price;
       }
+      const collections = node.product.collections;
+      if (collections?.pageInfo.hasNextPage && collections.pageInfo.endCursor) extraPages.set(node.product.id, collections.pageInfo.endCursor);
       out.set(node.id, {
         variantId: node.id,
         productId: node.product.id,
@@ -240,8 +292,13 @@ async function readVariants(
         variantTitle: node.title && node.title !== "Default Title" ? node.title : null,
         amount,
         refs: parseProductRefs(node.product.wonRefs?.value ?? null),
+        collectionIds: collections ? collections.nodes.map((n) => n.id) : [],
       });
     }
+  }
+  for (const [productId, cursor] of extraPages) {
+    const more = await productCollections(ctx, productId, cursor);
+    for (const variant of out.values()) if (variant.productId === productId) variant.collectionIds.push(...more);
   }
   return out;
 }
@@ -249,14 +306,15 @@ async function readVariants(
 /**
  * What the simulation cannot vouch for right now (item 8): the last sync
  * failed, the stored config is not in Shopify yet — or checkout still runs a
- * config built with Pro settings the shop's plan no longer runs (I-2) — or
- * the product targeting is being refreshed (checkout may not have the latest
- * collection membership). `stripped` = what the plan gate takes out now.
+ * config built with Pro settings the shop's plan no longer runs (I-2) — and
+ * whether the product targeting is being refreshed (`targetingStale`: the
+ * plan warns only when the cart involves a collection rule). `stripped` =
+ * what the plan gate takes out now.
  */
 export async function tryCartSyncWarnings(
   ctx: Pick<ShopCtx, "db" | "shop">,
   opts: { plan?: ShopPlan; stripped?: number } = {},
-): Promise<UiText[]> {
+): Promise<{ warnings: UiText[]; targetingStale: boolean }> {
   const [status, notApplied, facts, applied] = await Promise.all([
     loadSyncStatus(ctx.db, ctx.shop),
     storedConfigNotApplied(ctx.db, ctx.shop, opts.plan ? { plan: opts.plan } : {}),
@@ -268,8 +326,9 @@ export async function tryCartSyncWarnings(
   if (status && !status.ok) out.push({ key: "tryCart.warning.syncFailed" });
   else if (proStillLive) out.push({ key: "tryCart.warning.planPending" });
   else if (!status || notApplied) out.push({ key: "tryCart.warning.notApplied" });
-  if (facts.targetingStaleAt || status?.pending.includes("products_in_progress")) out.push({ key: "tryCart.warning.targeting" });
-  return out;
+  // The targeting warning is the plan's to give: only when the cart involves a collection rule (planTryCart).
+  const targetingStale = facts.targetingStaleAt !== null || (status?.pending.includes("products_in_progress") ?? false);
+  return { warnings: out, targetingStale };
 }
 
 // --- The action ---------------------------------------------------------------------------
@@ -296,12 +355,21 @@ export async function runTryCartPlan(
     return { result: { ok: false, reason: "shopify_unavailable", detail: "shop time zone" }, plan: null };
   }
   try {
+    const time = shopLocalDateTime(nowOf(ctx), opts.timezone).slice(11);
+    const plan0 = await ctxPlan(ctx);
+    const gate = gateConfigForPlan(opts.config, plan0, { now: `${input.date}T${time}` });
+    const gated = gate.config;
+    const { warnings, targetingStale } = await tryCartSyncWarnings(ctx, { plan: plan0, stripped: gate.stripped.length });
+    // While collection membership is being refreshed, the products' collections are read LIVE too:
+    // a fresh joiner (no ref yet) or a leaver (still a ref) is then said per line.
+    const liveCollections = targetingStale && targetScopes(gated).collectionIds.size > 0;
     const markets = await readMarketCountries(ctx);
     const { country, handle } = countryFor(opts.config, markets, input.currency, input.market ?? null);
     const variants = await readVariants(ctx, [...new Set(input.lines.map((l) => l.variantId))], {
       currency: input.currency,
       country,
       shopCurrency: opts.shopCurrency,
+      withCollections: liveCollections,
     });
     if (input.lines.some((l) => !variants.has(l.variantId))) {
       return {
@@ -334,21 +402,18 @@ export async function runTryCartPlan(
         title,
         quantity: line.quantity,
         unitPrice: minor,
-        collectionIds: [],
+        collectionIds: v.collectionIds,
       });
     }
     if (missing.length > 0) {
       return { result: { ok: false, reason: "prices_unavailable", currency: input.currency, products: [...new Set(missing)] }, plan: null, lines };
     }
-    const time = shopLocalDateTime(nowOf(ctx), opts.timezone).slice(11);
     const productRefs = new Map([...variants.values()].map((v) => [v.productId, v.refs]));
-    const plan0 = await ctxPlan(ctx);
-    const gate = gateConfigForPlan(opts.config, plan0, { now: `${input.date}T${time}` });
-    const gated = gate.config;
-    const warnings = await tryCartSyncWarnings(ctx, { plan: plan0, stripped: gate.stripped.length });
     const plan = planTryCart(gated, {
       productRefs,
       warnings,
+      targetingStale,
+      liveCollections,
       lines: priced,
       currency: input.currency,
       countryCode: country,

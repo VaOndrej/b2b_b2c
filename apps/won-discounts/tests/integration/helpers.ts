@@ -104,6 +104,8 @@ export class FakeStore implements AdminClient {
             const currency = market?.currency ?? this.shop.currencyCode;
             const titles = this.titles.get(id) ?? { product: `Product ${product.id}`, variant: "Default Title" };
             const refs = product.metafields.get("$app:won_discounts/product");
+            // Live collection membership (read only when asked for: stale targeting + a collection rule).
+            const collections = [...this.sync.collections].filter(([, members]) => members.includes(product.id)).map(([cid]) => ({ id: cid }));
             return {
               __typename: "ProductVariant",
               id,
@@ -116,11 +118,14 @@ export class FakeStore implements AdminClient {
                 id: product.id,
                 title: titles.product,
                 wonRefs: refs ? { value: refs.value } : null,
+                ...(variables.withCollections ? { collections: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: collections } } : {}),
               },
             };
           }),
         };
       }
+      case "WonTryCartProductCollections":
+        return { product: null };
       case "WonDiscountsAutoNodeStatus": {
         const node = this.sync.nodes.get(String(variables.id));
         if (!node) return { node: null };

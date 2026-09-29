@@ -53,7 +53,7 @@
 // invalidates every hash of the shop (payloadHash = null), so this run
 // re-verifies and rewrites them all.
 
-import { productMetafieldValue } from "@won/core/discounts/targeting";
+import { parseRuleRef, productMetafieldValue } from "@won/core/discounts/targeting";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import { PRODUCT_KEY, WON_NAMESPACE } from "./graphql";
@@ -115,6 +115,37 @@ export function targetScopes(config: ConfigView): Scopes {
     }
   }
   return scopes;
+}
+
+const isCollectionsTarget = (target: unknown) => (target as { kind?: unknown } | null | undefined)?.kind === "collections";
+
+/**
+ * Does the rule target collections — itself, or through a campaign re-target
+ * of it (not killed)? Collection membership changes (webhooks, a stale mark)
+ * reach only such rules (F2 re-review M-3; Try Cart's stale warning).
+ */
+export function ruleTargetsCollections(config: ConfigView, ruleId: string): boolean {
+  const rule = config.modules.codes.rules.find((r) => r.id === ruleId);
+  if (!rule) return false;
+  if (isCollectionsTarget(rule.target)) return true;
+  return config.campaigns.some(
+    (c) => !c.killed && c.overrides.some((o) => o.ruleId === ruleId && isCollectionsTarget((o.patch as { target?: unknown }).target)),
+  );
+}
+
+/**
+ * Does a product metafield ref ("ruleId", or "ruleId@campaignId" for a campaign
+ * re-target) come from a collection target? The campaign-scoped ref follows
+ * that campaign's re-target; the plain ref, the rule's own target.
+ */
+export function refTargetsCollections(config: ConfigView, ref: string): boolean {
+  const { ruleId, campaignId } = parseRuleRef(ref);
+  if (campaignId === undefined) {
+    const rule = config.modules.codes.rules.find((r) => r.id === ruleId);
+    return rule ? isCollectionsTarget(rule.target) : false;
+  }
+  const campaign = config.campaigns.find((c) => c.id === campaignId && !c.killed);
+  return campaign?.overrides.some((o) => o.ruleId === ruleId && isCollectionsTarget((o.patch as { target?: unknown }).target)) ?? false;
 }
 
 /** True when some rule (or campaign re-target) targets products, variants or collections. */

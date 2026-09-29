@@ -443,6 +443,7 @@ export const en: Record<keyof typeof cs, string> = {
   "tryCart.warning.notApplied": "The saved settings are not in Shopify yet. Until they are, checkout runs the previous state.",
   "tryCart.warning.planPending": "Checkout still runs older settings with Pro features your plan does not run. The new ones are being written; the result shows the state after that.",
   "tryCart.warning.targeting": "Product targeting is being refreshed. The result shows the products as checkout knows them right now.",
+  "tryCart.warning.membership": "For {lines} the collection membership changed in Shopify and checkout does not know it yet. The targeting is being refreshed; the result shows what checkout applies right now.",
 
   // --- Onboarding -------------------------------------------------------------------------
   "onboarding.title": "Set up Won Discounts",

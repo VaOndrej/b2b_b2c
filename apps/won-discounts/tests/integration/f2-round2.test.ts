@@ -419,3 +419,80 @@ test("the newest applying SyncRun is never pruned by product refreshes (the 'Bě
     reason: "up_to_date",
   });
 });
+
+// --- Try Cart: the targeting warning only for carts that involve collection rules ---------------------
+
+async function mixedTargetingShop() {
+  const store = new FakeStore();
+  const inCollection = store.sync.addProduct(1);
+  const onList = store.sync.addProduct(2);
+  const collection = store.sync.addCollection(7, [inCollection.id]);
+  store.prices.set("gid://shopify/ProductVariant/101", { CZK: "1000.00" });
+  store.prices.set("gid://shopify/ProductVariant/201", { CZK: "500.00" });
+  await seed({
+    modules: {
+      codes: {
+        rules: [
+          auto("coll", { value: { kind: "percentage", percent: 20 }, target: { kind: "collections", ids: [collection] } }),
+          auto("list", { value: { kind: "percentage", percent: 5 }, target: { kind: "products", productIds: [onList.id], variantIds: [] } }),
+        ],
+      },
+    },
+  });
+  const ctx = testCtx(db.prisma, shop, store);
+  await overviewPage(ctx, PAGE);
+  await settle();
+  await markTargetingStale(db.prisma, shop, "products/update", new Date());
+  return { ctx, inCollection, onList };
+}
+
+const cartOf = (variantId: string, productId: string) =>
+  formOf([["intent", "run"], ["variantId", variantId], ["productId", productId], ["quantity", "1"], ["currency", "CZK"]]);
+
+test("Try Cart: a cart of product-list products only gets NO 'cílení se obnovuje' warning while the targeting is stale", async () => {
+  const { ctx, onList } = await mixedTargetingShop();
+  const run = await tryCartAction(ctx, cartOf("gid://shopify/ProductVariant/201", onList.id), PAGE);
+  assert.equal(run.plan?.lines[0]?.discount, 25_00, "the list rule applies");
+  assert.ok(!(run.plan?.warnings ?? []).some((w) => w.key === "tryCart.warning.targeting"), JSON.stringify(run.plan?.warnings));
+});
+
+test("Try Cart: a cart with a product a collection rule targets gets the warning while the targeting is stale", async () => {
+  const { ctx, inCollection } = await mixedTargetingShop();
+  const run = await tryCartAction(ctx, cartOf("gid://shopify/ProductVariant/101", inCollection.id), PAGE);
+  assert.equal(run.plan?.lines[0]?.discount, 200_00, "the collection rule applies");
+  assert.ok((run.plan?.warnings ?? []).some((w) => w.key === "tryCart.warning.targeting"), JSON.stringify(run.plan?.warnings));
+});
+
+// --- Try Cart: live collection membership vs the refs checkout reads (stale targeting) -------------------
+
+test("Try Cart: a FRESH JOINER — live in a targeted collection but without the rule's ref yet — gets the membership warning", async () => {
+  const { ctx, onList } = await mixedTargetingShop();
+  // In Shopify, the list product has just joined the targeted collection; checkout has no ref for it yet.
+  const store = ctx.client as FakeStore;
+  const [collectionId, members] = [...store.sync.collections][0]!;
+  store.sync.collections.set(collectionId, [...members, onList.id]);
+  const run = await tryCartAction(ctx, cartOf("gid://shopify/ProductVariant/201", onList.id), PAGE);
+  assert.equal(run.plan?.lines[0]?.discount, 25_00, "checkout gives only the list rule for now");
+  const warnings = run.plan?.warnings ?? [];
+  assert.ok(warnings.some((w) => w.key === "tryCart.warning.membership"), JSON.stringify(warnings));
+  assert.equal(store.calls.find((c) => c.op === "WonTryCartVariants")?.variables.withCollections, true, "live collections read while stale");
+});
+
+test("Try Cart: a LEAVER — carries a collection ref but has left the collection — gets the membership warning too", async () => {
+  const { ctx, inCollection } = await mixedTargetingShop();
+  const store = ctx.client as FakeStore;
+  const [collectionId] = [...store.sync.collections][0]!;
+  store.sync.collections.set(collectionId, []);
+  const run = await tryCartAction(ctx, cartOf("gid://shopify/ProductVariant/101", inCollection.id), PAGE);
+  assert.equal(run.plan?.lines[0]?.discount, 200_00, "checkout still has the ref");
+  assert.ok((run.plan?.warnings ?? []).some((w) => w.key === "tryCart.warning.membership"), JSON.stringify(run.plan?.warnings));
+});
+
+test("Try Cart: targeting fresh → no live collection read, no membership warning", async () => {
+  const { ctx, onList } = await mixedTargetingShop();
+  await db.prisma.shopSyncState.update({ where: { shop }, data: { targetingStaleAt: null } });
+  const store = ctx.client as FakeStore;
+  const run = await tryCartAction(ctx, cartOf("gid://shopify/ProductVariant/201", onList.id), PAGE);
+  assert.ok(!(run.plan?.warnings ?? []).some((w) => w.key === "tryCart.warning.membership" || w.key === "tryCart.warning.targeting"));
+  assert.equal(store.calls.find((c) => c.op === "WonTryCartVariants")?.variables.withCollections, false);
+});

@@ -447,6 +447,7 @@ export const cs = {
   "tryCart.warning.notApplied": "Uložené nastavení zatím není v Shopify. Dokud se nepropíše, v pokladně platí předchozí stav.",
   "tryCart.warning.planPending": "V pokladně zatím běží starší nastavení s Pro funkcemi, které tvůj tarif nespouští. Propisujeme nové, výsledek ukazuje stav po propsání.",
   "tryCart.warning.targeting": "Cílení na produkty se právě obnovuje. Výsledek ukazuje produkty tak, jak je teď zná pokladna.",
+  "tryCart.warning.membership": "U položky {lines} se v Shopify změnilo členství v kolekci, pokladna to zatím nezná. Cílení se obnovuje, výsledek ukazuje stav, který pokladna uplatní teď.",
 
   // --- Onboarding -------------------------------------------------------------------------
   "onboarding.title": "Nastavení Won Discounts",

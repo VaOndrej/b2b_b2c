@@ -48,7 +48,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { loadConfig } from "../config.server";
 import { planOf } from "../plan.server";
 import { codesHash, SYNC_RUNS_KEPT } from "../sync/nodes";
-import { hasProductTargets } from "../sync/products";
+import { hasProductTargets, ruleTargetsCollections } from "../sync/products";
 import { syncProgress } from "../sync/progress";
 import { appliedPlanOf, parseSteps, storedConfigNotApplied } from "../sync/runs";
 import {
@@ -476,10 +476,7 @@ function productsState(runs: readonly RunRow[]): { state: "ok" | "failed" | "ref
 
 /** Does the rule (or a campaign re-target of it) target collections? Membership changes reach only those (M-3). */
 function targetsCollections(config: WonDiscountsConfig, rule: DiscountRule): boolean {
-  if (rule.target.kind === "collections") return true;
-  return config.campaigns.some(
-    (c) => !c.killed && c.overrides.some((o) => o.ruleId === rule.id && (o.patch as { target?: { kind?: unknown } }).target?.kind === "collections"),
-  );
+  return ruleTargetsCollections(config, rule.id);
 }
 
 /** Did the latest run that went through the nodes fail on the automatic node? */
