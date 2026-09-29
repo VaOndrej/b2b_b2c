@@ -2,12 +2,13 @@
 // "Free / Pro"; audit MVP 1 P1-1): what a shop's discount function may carry for
 // its plan. The UI hides Pro fields on Free, but a stored config can still hold
 // them (a seed, a downgrade, an import, a restored ConfigVersion), and the
-// function applies whatever the payload says. So the sync calls
-// gateConfigForPlan BEFORE building the function payload and the product
-// targeting index; a Free shop's checkout then never sees Pro data. The STORED
-// config is never changed (§14a: turning Pro off never erases the setup) — the
-// gate returns a copy plus `stripped`, the list the admin turns into sentences
-// (explainGate) so it can say exactly what is not in force.
+// function applies whatever the payload says. So the sync MUST call
+// gateConfigForPlan BEFORE building the function payload
+// (buildShopFunctionConfig) and the product targeting index
+// (productRuleIndex); only then does a Free shop's checkout never see Pro
+// data. The STORED config is never changed (§14a: turning Pro off never erases
+// the setup) — the gate returns a copy plus `stripped`, the list the admin
+// turns into sentences (explainGate) so it can say exactly what is not in force.
 //
 // Free vs Pro, as far as the config types reach today:
 //   Slevy a kódy   Free: every type        Pro: + segment / market targeting
@@ -25,10 +26,18 @@
 //   - combinesWith: removed (the rule competes like any other: better one wins);
 //   - campaigns: removed (the base rules apply);
 //   - tier sets: the first global set stays, scoped and further sets go;
-//     counting across the cart becomes per product (fewer items per count);
+//     counting across the cart becomes per product (fewer items per count).
+//     Not provable yet: no engine reads tiers before MVP 3 (see below);
 //   - gift ladder: the first threshold stays, with its first gift only;
 //   - margin per collection: folded into the global floor, the STRICTEST value
 //     wins (a larger discount than the Pro setup allowed is never possible).
+//
+// MVP 3 (Množstevní slevy) obligation: the spec defines no precedence between
+// a scoped tier set and the global one yet. If MVP 3 lets the most specific set
+// win, stripping a STRICTER scoped set here would hand its products the global
+// set — a larger discount. MVP 3 must then keep those products out of the
+// global set on Free (or fall back to the stricter of the two), and test that
+// stripping never widens a product's tiers.
 //
 // Downgrade (A6: running sales and campaigns finish, new ones cannot start).
 // Nothing is running at a downgrade in MVP 1 (no campaign or outlet UI yet), so
@@ -45,7 +54,7 @@
 // outside the function payload.
 
 import type { ReadonlyDeep, WonDiscountsConfig } from "./config.ts";
-import type { UiLocale } from "./describe.ts";
+import { csPlural, formatPercent, type UiLocale } from "./describe.ts";
 
 export type ShopPlan = "free" | "pro";
 
@@ -82,6 +91,22 @@ export interface StrippedCapability {
   name?: string;
   /** How many items the Free limit left out (tier sets, gift thresholds, gift choices, margin overrides). */
   count?: number;
+  /** Their ids: tier sets, gift tiers, gift choice variants, margin override collections. */
+  removedIds?: string[];
+  /** margin_per_collection: the global values the fold changed (a key only when it changed). */
+  values?: {
+    maxDiscountPercent?: { from: number; to: number };
+    minMarginPercent?: { from: number | null; to: number };
+  };
+}
+
+export interface GateOptions {
+  /**
+   * Shop-local `YYYY-MM-DDTHH:MM:SS`. A campaign whose window already ended is
+   * not reported (it is not in force on any plan). Without it every campaign
+   * that is not killed is reported.
+   */
+  now?: string;
 }
 
 export interface GatedConfig {
@@ -94,9 +119,11 @@ const nonEmpty = (list: readonly unknown[] | undefined): boolean => Array.isArra
 /**
  * The config a shop on `plan` may run: Pro → an exact copy; Free → a copy
  * without any Pro capability (see the header for how each is neutralised) and
- * the list of what was taken out. Pure; never mutates `config`.
+ * the list of what that changes. Pure; never mutates `config`. Pro data of a
+ * rule that is off, or of a campaign that is over (`opts.now`), is stripped all
+ * the same but not reported: nothing about it was in force.
  */
-export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan: ShopPlan): GatedConfig {
+export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan: ShopPlan, opts: GateOptions = {}): GatedConfig {
   const out = JSON.parse(JSON.stringify(config)) as WonDiscountsConfig;
   const stripped: StrippedCapability[] = [];
   if (plan === "pro") return { config: out, stripped };
@@ -104,33 +131,35 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   // Discount rules: targeting and per-rule combinations.
   for (const rule of out.modules.codes.rules) {
     const who = { ruleId: rule.id, name: rule.name };
+    const report = rule.enabled;
     if (rule.combinesWith) {
-      if (rule.combinesWith.ruleIds.length > 0) stripped.push({ capability: "rule_combinations", reason: "removed", ...who });
+      if (report && rule.combinesWith.ruleIds.length > 0) stripped.push({ capability: "rule_combinations", reason: "removed", ...who });
       delete rule.combinesWith;
     }
     if (rule.targeting) {
       const markets = nonEmpty(rule.targeting.markets);
       const segments = nonEmpty(rule.targeting.segments);
-      if (markets) stripped.push({ capability: "market_targeting", reason: "rule_off", ...who });
-      if (segments) stripped.push({ capability: "segment_targeting", reason: "rule_off", ...who });
+      if (report && markets) stripped.push({ capability: "market_targeting", reason: "rule_off", ...who });
+      if (report && segments) stripped.push({ capability: "segment_targeting", reason: "rule_off", ...who });
       if (markets || segments) rule.enabled = false;
       delete rule.targeting;
     }
   }
 
-  // Campaigns (killed ones never ship anyway; they are dropped silently).
+  // Campaigns (killed or ended ones are not in force anyway: dropped silently).
   for (const campaign of out.campaigns) {
-    if (!campaign.killed) stripped.push({ capability: "campaigns", reason: "removed", entityId: campaign.id, name: campaign.name });
+    const ended = opts.now !== undefined && campaign.window.end !== "" && campaign.window.end <= opts.now;
+    if (!campaign.killed && !ended) stripped.push({ capability: "campaigns", reason: "removed", entityId: campaign.id, name: campaign.name });
   }
   out.campaigns = [];
 
   // Quantity tiers: exactly one global set, counted per product at most.
   const sets = out.modules.tiers.sets;
   const kept = sets.find((set) => set.scope === "global");
-  const scoped = sets.filter((set) => set.scope !== "global").length;
-  const extra = sets.filter((set) => set.scope === "global" && set !== kept).length;
-  if (scoped > 0) stripped.push({ capability: "tier_set_scope", reason: "removed", count: scoped });
-  if (extra > 0) stripped.push({ capability: "tier_sets_extra", reason: "removed", count: extra });
+  const scoped = sets.filter((set) => set.scope !== "global").map((set) => set.id);
+  const extra = sets.filter((set) => set.scope === "global" && set !== kept).map((set) => set.id);
+  if (scoped.length > 0) stripped.push({ capability: "tier_set_scope", reason: "removed", count: scoped.length, removedIds: scoped });
+  if (extra.length > 0) stripped.push({ capability: "tier_sets_extra", reason: "removed", count: extra.length, removedIds: extra });
   if (kept && kept.countAcross === "cart") {
     kept.countAcross = "product";
     stripped.push({ capability: "tier_count_across_cart", reason: "reduced", entityId: kept.id });
@@ -141,9 +170,13 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   const gifts = out.modules.rewards.gifts;
   if (gifts.length > 0) {
     const first = gifts[0];
-    if (gifts.length > 1) stripped.push({ capability: "gift_ladder", reason: "reduced", entityId: first.id, count: gifts.length - 1 });
+    if (gifts.length > 1) {
+      const removedIds = gifts.slice(1).map((g) => g.id);
+      stripped.push({ capability: "gift_ladder", reason: "reduced", entityId: first.id, count: removedIds.length, removedIds });
+    }
     if (first.choices.length > 1) {
-      stripped.push({ capability: "gift_choices", reason: "reduced", entityId: first.id, count: first.choices.length - 1 });
+      const removedIds = first.choices.slice(1);
+      stripped.push({ capability: "gift_choices", reason: "reduced", entityId: first.id, count: removedIds.length, removedIds });
       first.choices = first.choices.slice(0, 1);
     }
     out.modules.rewards.gifts = [first];
@@ -152,13 +185,26 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   // Margin: per-collection settings fold into the global floor, strictest wins.
   const margin = out.modules.margin;
   if (margin.perCollection.length > 0) {
+    const before = { max: margin.global.maxDiscountPercent, min: margin.global.minMarginPercent ?? null };
     for (const o of margin.perCollection) {
       if (o.maxDiscountPercent !== undefined) margin.global.maxDiscountPercent = Math.min(margin.global.maxDiscountPercent, o.maxDiscountPercent);
       if (o.minMarginPercent !== undefined) {
         margin.global.minMarginPercent = Math.max(margin.global.minMarginPercent ?? 0, o.minMarginPercent);
       }
     }
-    stripped.push({ capability: "margin_per_collection", reason: "folded", count: margin.perCollection.length });
+    const values: NonNullable<StrippedCapability["values"]> = {};
+    if (margin.global.maxDiscountPercent !== before.max) {
+      values.maxDiscountPercent = { from: before.max, to: margin.global.maxDiscountPercent };
+    }
+    const minAfter = margin.global.minMarginPercent;
+    if (minAfter !== undefined && minAfter !== before.min) values.minMarginPercent = { from: before.min, to: minAfter };
+    stripped.push({
+      capability: "margin_per_collection",
+      reason: "folded",
+      count: margin.perCollection.length,
+      removedIds: margin.perCollection.map((o) => o.collectionId),
+      values,
+    });
     margin.perCollection = [];
   }
 
@@ -173,8 +219,38 @@ export interface GateExplanation {
   entityId?: string;
 }
 
+/** "1 sada" · "2 sady" · "5 sad". */
 function csCount(n: number, forms: readonly [string, string, string]): string {
-  return `${n} ${n === 1 ? forms[0] : n >= 2 && n <= 4 ? forms[1] : forms[2]}`;
+  return `${n} ${csPlural(n, forms)}`;
+}
+
+/** "další sada" · "další 2 sady" · "dalších 5 sad" (n ≥ 1). */
+function csOthers(n: number, forms: readonly [string, string, string]): string {
+  return n === 1 ? `další ${forms[0]}` : `${csPlural(n, ["další", "další", "dalších"])} ${csCount(n, forms)}`;
+}
+
+/** Czech verb agreeing with a counted subject: 1 → sg, 2–4 → pl, 5+ → sg (neuter). */
+function csVerb(n: number, singular: string, plural: string): string {
+  return n >= 2 && n <= 4 ? plural : singular;
+}
+
+/** "max. sleva 20 % (bylo 50 %), min. marže 25 % (bylo 10 %)" / "…" — the fold's changed values. */
+function marginChange(values: StrippedCapability["values"], locale: UiLocale): string {
+  const cs = locale === "cs";
+  const parts: string[] = [];
+  const max = values?.maxDiscountPercent;
+  if (max) {
+    const to = formatPercent(max.to, locale);
+    const from = formatPercent(max.from, locale);
+    parts.push(cs ? `max. sleva ${to} (bylo ${from})` : `a maximum discount of ${to} (was ${from})`);
+  }
+  const min = values?.minMarginPercent;
+  if (min) {
+    const to = formatPercent(min.to, locale);
+    const from = min.from === null ? (cs ? "nenastaveno" : "not set") : formatPercent(min.from, locale);
+    parts.push(cs ? `min. marže ${to} (bylo ${from})` : `a minimum margin of ${to} (was ${from})`);
+  }
+  return parts.join(cs ? ", " : " and ");
 }
 
 function sentence(s: StrippedCapability, locale: UiLocale): string {
@@ -206,7 +282,7 @@ function sentence(s: StrippedCapability, locale: UiLocale): string {
         : `${n} quantity tier ${n === 1 ? "set" : "sets"} for selected products or collections ${n === 1 ? "does" : "do"} not apply on Free; that is a Pro feature.`;
     case "tier_sets_extra":
       return cs
-        ? `Ve Free platí jen jedna sada množstevních slev pro celý obchod, ${n === 1 ? "další se neuplatní" : `dalších ${n} se neuplatní`}.`
+        ? `Ve Free platí jen jedna sada množstevních slev pro celý obchod, ${csOthers(n, ["sada", "sady", "sad"])} se neuplatní.`
         : `On Free only one quantity tier set for the whole store applies; the other ${n === 1 ? "one does" : `${n} do`} not.`;
     case "tier_count_across_cart":
       return cs
@@ -214,16 +290,23 @@ function sentence(s: StrippedCapability, locale: UiLocale): string {
         : "On Free, quantity tiers count items per product, not across the whole cart (a Pro feature).";
     case "gift_ladder":
       return cs
-        ? `Ve Free platí jen první dárkový práh, ${n === 1 ? "další práh se nenabízí" : `dalších ${n} prahů se nenabízí`} (žebřík prahů je funkce Pro).`
+        ? `Ve Free platí jen první dárkový práh, ${csOthers(n, ["práh", "prahy", "prahů"])} se ${csVerb(n, "nenabízí", "nenabízejí")} (žebřík prahů je funkce Pro).`
         : `On Free only the first gift threshold applies; the other ${n === 1 ? "one is" : `${n} are`} not offered (a threshold ladder is a Pro feature).`;
     case "gift_choices":
       return cs
-        ? `Ve Free se nabízí jen první dárek z výběru, ${n === 1 ? "druhý ne" : `dalších ${n} ne`} (výběr dárků je funkce Pro).`
+        ? `Ve Free se nabízí jen první dárek z výběru, ${csOthers(n, ["dárek", "dárky", "dárků"])} ne (výběr dárků je funkce Pro).`
         : `On Free only the first gift of the choice is offered, not the other ${n === 1 ? "one" : n} (a gift choice is a Pro feature).`;
-    case "margin_per_collection":
-      return cs
-        ? "Ochrana marže pro jednotlivé kolekce je funkce Pro. Ve Free platí jedno minimum pro celý obchod, použili jsme to nejpřísnější z tvého nastavení."
-        : "Margin protection per collection is a Pro feature. On Free one minimum applies to the whole store; we used the strictest of your settings.";
+    case "margin_per_collection": {
+      const change = marginChange(s.values, locale);
+      if (cs) {
+        return change
+          ? `Ochrana marže pro jednotlivé kolekce je funkce Pro. Ve Free platí jedno minimum pro celý obchod: použili jsme to nejpřísnější z tvého nastavení, ${change}.`
+          : "Ochrana marže pro jednotlivé kolekce je funkce Pro. Ve Free platí jedno minimum pro celý obchod, tvoje globální nastavení se nemění.";
+      }
+      return change
+        ? `Margin protection per collection is a Pro feature. On Free one minimum applies to the whole store: we used the strictest of your settings, ${change}.`
+        : "Margin protection per collection is a Pro feature. On Free one minimum applies to the whole store; your global setting stays as it is.";
+    }
   }
 }
 

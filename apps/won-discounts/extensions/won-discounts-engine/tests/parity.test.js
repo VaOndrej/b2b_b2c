@@ -153,8 +153,13 @@ function generator(seed) {
   const money = () =>
     junk(0.3)
       ? pick([{ CZK: -100 }, { CZK: "50" }, {}, null, { CZK: 150.5 }, { JPY: 500 }, { CZK: 5e12, HUF: 9e18 }])
-      : large && chance(0.5)
-        ? pick([{ CZK: 1e12, EUR: 999999999, HUF: 5e11 }, { CZK: pick([123456789, 99999999999]), KWD: 1e12 }, { USD: 1e12, BHD: 7654321 }])
+      : large && chance(0.8)
+        ? pick([
+            // At the money cap (1e12) or over it, in every cart currency: both engines read the cap.
+            { CZK: 1e12, EUR: 5e12, JPY: 1e12, KWD: 2e12, HUF: 9e18, BHD: 1e12, USD: 1e13 },
+            { CZK: 3e15, EUR: 1e12, JPY: 4e12, KWD: 1e12, HUF: 1e12, BHD: 7e12, USD: 1e12 },
+            { CZK: pick([123456789, 99999999999]), KWD: 1e12, EUR: 999999999 },
+          ])
         : pick([
             { CZK: pick([5000, 10000, 2550, 999999]) },
             { CZK: 3000, EUR: 200 },
@@ -340,13 +345,24 @@ function generator(seed) {
    * with 200-character names. "stacks": two combinable rules, every line a
    * different stack amount (exact output far over the budget → the stacks
    * degrade to their top rule). "ties": a percent on prices ending in 5
-   * haléřů / cents — every line a rounding tie emitted as its own exact amount,
-   * nothing to degrade → the smallest candidates are dropped.
+   * haléřů / cents — every line a rounding tie emitted as its own exact amount
+   * → the ties go back to their percent. "rules": 60–90 fixed rules, two values
+   * each, nothing to degrade → the smallest candidates are dropped.
    */
   function bigCase() {
-    const ties = chance(0.5);
+    const mode = pick(["stacks", "ties", "rules"]);
+    const ties = mode === "ties";
     const ids = ["big1", "big2", "big3"];
-    const rules = [
+    const ruleCount = 60 + int(31);
+    const manyRules = Array.from({ length: ruleCount }, (_, k) => ({
+      id: `m${k + 1}`,
+      enabled: true,
+      name: longName(`m${k + 1}`),
+      method: "automatic",
+      value: { kind: "fixed", amount: { CZK: 3000, EUR: 300, USD: 300 } },
+      target: { kind: "products" },
+    }));
+    const rules = mode === "rules" ? manyRules : [
       { id: "big1", enabled: true, name: longName("big1"), method: "automatic", value: { kind: "percentage", percent: pick([10, 12.5, 30]) }, target: { kind: "products" } },
       {
         id: "big2",
@@ -364,12 +380,21 @@ function generator(seed) {
     const lines = Array.from({ length: count }, (_, i) => ({
       id: `gid://shopify/CartLine/${i + 1}`,
       quantity: pick([1, 1, 1, 2]),
-      cost: { amountPerQuantity: { amount: `${10 + int(990)}.${pick(cents)}` } },
+      cost: {
+        amountPerQuantity: {
+          // "rules": a cheap item (the fixed 30 is the whole price → 100 %) or a dearer one (30 per item).
+          amount: mode === "rules" ? (chance(0.5) ? `${10 + int(17)}.50` : `${100 + int(23)}.00`) : `${10 + int(990)}.${pick(cents)}`,
+        },
+      },
       gift: null,
       merchandise: {
         __typename: "ProductVariant",
         id: vid(10000 + i),
-        product: { wonProduct: { jsonValue: { ruleIds: ties ? [pick(["big1", "big2"])] : ["big1", "big2"] } } },
+        product: {
+          wonProduct: {
+            jsonValue: { ruleIds: mode === "rules" ? [`m${(i % ruleCount) + 1}`] : ties ? [pick(["big1", "big2"])] : ["big1", "big2"] },
+          },
+        },
       },
     }));
     return {
@@ -393,11 +418,104 @@ function generator(seed) {
     };
   }
 
+  /**
+   * A split shipment: 2–4 delivery groups and a fixed shipping amount that wins
+   * (only shipping rule), so the "first group only" mapping is compared often.
+   */
+  function splitShipmentCase() {
+    const currency = pick(["CZK", "EUR", "JPY", "KWD", "HUF", "BHD", "USD"]);
+    const rules = [
+      { id: "ship", enabled: true, name: pick(["Doprava fix", ""]), method: "automatic", value: { kind: "fixed", amount: { [currency]: pick([5000, 150, 99999]) } }, target: { kind: "shipping" } },
+      { id: "r0", enabled: true, name: "Sleva r0", method: "automatic", value: { kind: "percentage", percent: 10 }, target: { kind: "products" } },
+    ];
+    if (chance(0.3)) rules[0].minimum = { subtotal: { [currency]: pick([100, 1e9]) }, ...(chance(0.5) ? { scope: "entitled" } : {}) };
+    return {
+      exportName: DELIVERY,
+      tie: false,
+      input: {
+        triggeringDiscountCode: null,
+        enteredDiscountCodes: [],
+        discount: {
+          discountClasses: ["PRODUCT", "ORDER", "SHIPPING"],
+          vars: { jsonValue: { role: "automatic", campaignId: null, campaignStart: "1970-01-01T00:00:00", campaignEnd: "1970-01-01T00:00:00", varsVersion: null } },
+        },
+        shop: {
+          config: { jsonValue: { schemaVersion: 1, campaignId: null, campaignVarsVersion: null, marketCountries: {}, modules: { codes: { rules } }, campaigns: [] } },
+          localTime: { date: "2026-10-01", campaignActive: false },
+        },
+        localization: { country: { isoCode: "CZ" }, language: { isoCode: pick(["CS", "EN"]) } },
+        cart: {
+          cost: { subtotalAmount: { currencyCode: currency } },
+          deliveryGroups: Array.from({ length: 2 + int(3) }, (_, i) => ({ id: `gid://shopify/CartDeliveryGroup/${i + 1}` })),
+          lines: Array.from({ length: 1 + int(5) }, (_, i) => ({
+            id: `gid://shopify/CartLine/${i + 1}`,
+            quantity: pick([1, 2, 3]),
+            cost: { amountPerQuantity: { amount: pick(["100.0", "49.95", "1000"]) } },
+            gift: null,
+            merchandise: { __typename: "ProductVariant", id: vid(500 + i), product: { wonProduct: { jsonValue: { ruleIds: ["r0"] } } } },
+          })),
+        },
+      },
+    };
+  }
+
+  /**
+   * Amounts at the money cap: unit prices of 2·10¹² minor units and fixed rule
+   * amounts at or over 10¹² (up to 9·10¹⁸), so the cap binds (per item and on
+   * the order) in both engines.
+   */
+  function capCase() {
+    const currency = pick(["CZK", "EUR", "JPY", "KWD", "HUF", "BHD", "USD"]);
+    const digits = currency === "JPY" ? 0 : currency === "KWD" || currency === "BHD" ? 3 : 2;
+    const price = digits === 0 ? "2000000000000" : `${"2" + "0".repeat(12 - digits)}.${"0".repeat(digits)}`;
+    const rules = [
+      { id: "cap", enabled: true, name: pick(["Strop", ""]), method: "automatic", value: { kind: "fixed", amount: { [currency]: pick([1e12, 5e12, 9e18]) } }, target: { kind: "products" } },
+      { id: "capo", enabled: true, name: "Strop objednávky", method: "automatic", value: { kind: "fixed", amount: { [currency]: pick([1e12, 3e15]) } }, target: { kind: "order" } },
+    ];
+    return {
+      exportName: LINES,
+      tie: false,
+      input: {
+        triggeringDiscountCode: null,
+        enteredDiscountCodes: [],
+        discount: {
+          discountClasses: ["PRODUCT", "ORDER", "SHIPPING"],
+          vars: { jsonValue: { role: "automatic", campaignId: null, campaignStart: "1970-01-01T00:00:00", campaignEnd: "1970-01-01T00:00:00", varsVersion: null } },
+        },
+        shop: {
+          config: { jsonValue: { schemaVersion: 1, campaignId: null, campaignVarsVersion: null, marketCountries: {}, modules: { codes: { rules } }, campaigns: [] } },
+          localTime: { date: "2026-10-01", campaignActive: false },
+        },
+        localization: { country: { isoCode: "CZ" }, language: { isoCode: pick(["CS", "EN"]) } },
+        cart: {
+          cost: { subtotalAmount: { currencyCode: currency } },
+          lines: Array.from({ length: 1 + int(3) }, (_, i) => ({
+            id: `gid://shopify/CartLine/${i + 1}`,
+            quantity: pick([1, 2]),
+            cost: { amountPerQuantity: { amount: chance(0.7) ? price : "100.00" } },
+            gift: null,
+            merchandise: { __typename: "ProductVariant", id: vid(700 + i), product: { wonProduct: { jsonValue: { ruleIds: ["cap"] } } } },
+          })),
+        },
+      },
+    };
+  }
+
   return function nextCase() {
+    if (chance(0.03)) {
+      hostile = false;
+      large = false;
+      return capCase();
+    }
     if (chance(0.07)) {
       hostile = false;
       large = false;
       return bigCase();
+    }
+    if (chance(0.04)) {
+      hostile = false;
+      large = false;
+      return splitShipmentCase();
     }
     hostile = chance(0.25);
     large = chance(0.1);
@@ -474,6 +592,7 @@ function branchesOf(exportName, input, output, tie) {
   const { plan, emission } = emissionFor(adapted);
   if (!plan || plan.reason) return hits;
   const mapped = mapOutput(emission, adapted, plan);
+  if (mapped.relaxedTies.length > 0) hits.add("over the budget: rounding ties back to their percent");
   if (mapped.degradedStacks.length > 0) hits.add("over the budget: Pro stacks as their top rule");
   if (mapped.droppedCandidates.length > 0) hits.add("over the budget: candidates dropped");
   if (exportName === LINES && input.cart.lines.length > 200 && ops.length > 0) hits.add("200+ line cart emits");
@@ -483,7 +602,20 @@ function branchesOf(exportName, input, output, tie) {
   });
   if (exportName === LINES && tieLine && ops.length > 0) hits.add("rounding tie emitted as its exact amount");
   if (plan.rules.some((r) => r.missing?.scope === "entitled")) hits.add("entitled minimum not reached");
-  if (plan.totals.subtotal >= 1e12 && ops.length > 0) hits.add("amounts ≥ 10^12 minor units emit");
+  // A CONFIG amount at or over the money cap (1e12 minor units) that some emitted stack uses.
+  const rawRules = new Map();
+  for (const r of input.shop?.config?.jsonValue?.modules?.codes?.rules ?? []) {
+    if (r && typeof r.id === "string" && !rawRules.has(r.id)) rawRules.set(r.id, r);
+  }
+  const capped = (ruleId) => {
+    const value = rawRules.get(ruleId)?.value;
+    const amount = value?.kind === "fixed" && value.amount && typeof value.amount === "object" ? value.amount[adapted.cart.currency] : undefined;
+    return typeof amount === "number" && amount >= 1e12;
+  };
+  const emitted = [...emission.productCandidates.map((c) => plan.lines.find((l) => l.lineId === c.lineId)?.product), ...(emission.orderCandidates.length > 0 ? [plan.order] : [])];
+  if (plan.campaignId === null && ops.length > 0 && emitted.some((stack) => stack?.components.some((comp) => capped(comp.ruleId)))) {
+    hits.add("a config amount at the money cap is applied");
+  }
   const exotic = /[\u00a0\ufeff\t]|[\ud800-\udfff]|ﬁ|ı/;
   const matched = new Set(plan.codes.filter((c) => c.ruleId !== null).map((c) => c.code));
   if ((input.enteredDiscountCodes ?? []).some((e) => exotic.test(e.code) && matched.has(e.code.trim().toUpperCase()))) {
@@ -660,7 +792,8 @@ describe("Wasm (function-runner)", () => {
       "rounding tie emitted as its exact amount",
       "entitled minimum not reached",
       "fixed shipping amount on a split shipment",
-      "amounts ≥ 10^12 minor units emit",
+      "a config amount at the money cap is applied",
+      "over the budget: rounding ties back to their percent",
       "HUF / BHD / USD cart emits",
       "lower-case, padded or invalid country",
       "padded / astral / case-mapped code matched",

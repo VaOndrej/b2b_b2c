@@ -89,9 +89,13 @@ pub struct DeliveryResult {
 //   2. candidates with the same message and value share one candidate with
 //      several targets (a fixed total on one line never groups: shared, it would
 //      be applied ONCE across all its targets);
-//   3. over the budget (19 000 B, scaled like Shopify's limit) every Pro stack
-//      is emitted as its top rule's own value instead, then, as a last resort,
-//      the product candidates that save the least are dropped until it fits.
+//   3. over the budget (19 000 B, scaled like Shopify's limit) the output gives
+//      up exactness step by step, the cheapest loss for the customer first, and
+//      stops at the first step that fits: (a) rounding ties back to their
+//      percent (at worst 1 minor unit per line); (b) every Pro stack as its top
+//      rule's own value, ties exact again; (c) both. A step that changes nothing
+//      (no tie, no stack) is skipped. Then, as a last resort, the product
+//      candidates that save the least are dropped until it fits.
 // Sizes are the UTF-8 bytes of the compact JSON (what JSON.stringify writes).
 
 /// Shopify's function output limit for carts up to 200 lines, bytes.
@@ -132,6 +136,8 @@ impl DraftValue {
 /// A product candidate before it is written; strings borrow from the plan.
 struct Draft<'p> {
     message: &'p str,
+    /// `quoted_len(message)`, computed once per distinct message.
+    message_len: usize,
     targets: Vec<&'p str>,
     value: DraftValue,
     /// What it saves in total, minor units (orders the last-resort drop).
@@ -139,12 +145,36 @@ struct Draft<'p> {
 }
 
 /// `roundingTiePossible` (function-output.ts): `base × percent / 100` minor
-/// units may be half a minor unit in decimal (Shopify's arithmetic). The same
-/// IEEE expression as the TS reference, so both decide identically.
+/// units is half a minor unit in decimal (Shopify's arithmetic). The tolerance
+/// is the float error of that one expression (4·10⁻¹⁵ × exact, ~18 ulps, plus
+/// an absolute 10⁻⁹), never a share of the amount. The same IEEE expression as
+/// the TS reference, so both decide identically.
 pub fn tie_possible(base: i64, percent: f64) -> bool {
     let exact = (base as f64 * percent) / 100.0;
     let fraction = exact - exact.floor();
-    (fraction - 0.5).abs() <= 1e-7 * exact.max(1.0)
+    (fraction - 0.5).abs() <= 1e-9 + exact * 4e-15
+}
+
+/// How a budget step relaxes a pass (function-output.ts `Relax`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Relax {
+    /// Pro stacks as their top rule's own value.
+    stacks: bool,
+    /// Rounding ties as their percent instead of their exact amount.
+    ties: bool,
+}
+
+/// A percent `p` on `line` whose amount is `amount`: exact on a tie unless ties are relaxed.
+fn percent_on_line(p: f64, amount: i64, line: &PlanLine, relax: Relax, any_tie: &mut bool) -> DraftValue {
+    if !tie_possible(line.subtotal, p) {
+        return DraftValue::Percent(p);
+    }
+    *any_tie = true;
+    if relax.ties {
+        DraftValue::Percent(p)
+    } else {
+        exact_amount(amount, line)
+    }
 }
 
 /// An exact amount on one line: the whole line → 100 %, divisible → per item, else once on that line.
@@ -172,10 +202,9 @@ fn whole_percent_sum(plan: &CartPlan, stack: &PlanStack) -> Option<f64> {
 }
 
 /// One emitted product candidate → its exact output value, in the most groupable form.
-fn exact_value(c: &ProductCandidate, line: &PlanLine, plan: &CartPlan) -> DraftValue {
+fn exact_value(c: &ProductCandidate, line: &PlanLine, plan: &CartPlan, relax: Relax, any_tie: &mut bool) -> DraftValue {
     match c.value {
-        EmittedValue::Percent(p) if tie_possible(line.subtotal, p) => exact_amount(c.amount, line),
-        EmittedValue::Percent(p) => DraftValue::Percent(p),
+        EmittedValue::Percent(p) => percent_on_line(p, c.amount, line, relax, any_tie),
         EmittedValue::FixedPerItem(v) if v == line.unit_price => DraftValue::Percent(100.0),
         EmittedValue::FixedPerItem(v) => DraftValue::PerItem(v),
         EmittedValue::FixedTotal(total) => {
@@ -184,8 +213,8 @@ fn exact_value(c: &ProductCandidate, line: &PlanLine, plan: &CartPlan) -> DraftV
             }
             let percent = line.product.as_ref().and_then(|stack| whole_percent_sum(plan, stack));
             if let Some(p) = percent {
-                if js::round((line.subtotal as f64 * p) / 100.0) as i64 == total && !tie_possible(line.subtotal, p) {
-                    return DraftValue::Percent(p);
+                if js::round((line.subtotal as f64 * p) / 100.0) as i64 == total {
+                    return percent_on_line(p, total, line, relax, any_tie);
                 }
             }
             exact_amount(total, line)
@@ -194,17 +223,13 @@ fn exact_value(c: &ProductCandidate, line: &PlanLine, plan: &CartPlan) -> DraftV
 }
 
 /// A Pro stack emitted as its top rule's own value (the first component, which
-/// the stack never caps): the rule's percent (its exact amount on a tie), or
-/// its fixed amount per item.
-fn top_rule_value<'p>(line: &PlanLine, plan: &'p CartPlan) -> Option<(DraftValue, &'p str, i64)> {
+/// the stack never caps): the rule's percent (its exact amount on a tie, unless
+/// ties are relaxed), or its fixed amount per item.
+fn top_rule_value<'p>(line: &PlanLine, plan: &'p CartPlan, relax: Relax, any_tie: &mut bool) -> Option<(DraftValue, &'p str, i64)> {
     let top = *line.product.as_ref()?.components.first()?;
     let rule = &plan.rules[top.rule];
     let value = if rule.value_kind == ValueKind::Percentage {
-        if tie_possible(line.subtotal, rule.percent) {
-            exact_amount(top.amount, line)
-        } else {
-            DraftValue::Percent(rule.percent)
-        }
+        percent_on_line(rule.percent, top.amount, line, relax, any_tie)
     } else {
         let per_item = top.amount / line.quantity.max(1);
         if per_item == line.unit_price {
@@ -225,43 +250,74 @@ fn group_key(value: DraftValue) -> Option<(u8, u64)> {
     }
 }
 
-/// The node's product candidates, grouped by (value, message), and whether any
-/// of them is a Pro stack (which the degraded pass would change).
-fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, degrade_stacks: bool) -> (Vec<Draft<'p>>, bool) {
+/// One pass over the node's product candidates.
+struct Pass<'p> {
+    /// Grouped by (value, message).
+    drafts: Vec<Draft<'p>>,
+    /// Some candidate is a Pro stack (relaxing stacks would change it).
+    any_stack: bool,
+    /// Some value is a rounding tie (relaxing ties would change it, or did).
+    any_tie: bool,
+}
+
+/// The node's product candidates, grouped by (value, message), under `relax`.
+fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> Pass<'p> {
     let mut out: Vec<Draft<'p>> = Vec::new();
-    // Groups by message text; most messages are one rule's label, the same `&str`
-    // for every line, so a lookup by address saves hashing the text again.
-    let mut by_text: FnvMap<((u8, u64), &'p str), usize> = FnvMap::default();
-    let mut by_address: FnvMap<((u8, u64), usize, usize), usize> = FnvMap::default();
+    // Messages are interned: most are one rule's label, the same `&str` for every
+    // line, so a lookup by address finds it without hashing the text (a name can
+    // be 200 characters); the text is hashed once per new address. Groups are
+    // then keyed by (value, message number).
+    let mut message_by_address: FnvMap<(usize, usize), u32> = FnvMap::default();
+    let mut message_by_text: FnvMap<&'p str, u32> = FnvMap::default();
+    let mut message_lens: Vec<usize> = Vec::new();
+    let mut groups: FnvMap<((u8, u64), u32), usize> = FnvMap::default();
+    // Consecutive lines usually carry the same message: the last one skips the address lookup.
+    let mut last: ((usize, usize), u32) = ((0, 0), 0);
     let mut any_stack = false;
+    let mut any_tie = false;
     for c in &emission.product {
         let Some(line) = plan.lines.get(c.line) else { continue };
         let Some(stack) = line.product.as_ref() else { continue };
         any_stack |= stack.components.len() > 1;
-        let top = if degrade_stacks && stack.components.len() > 1 { top_rule_value(line, plan) } else { None };
-        let (value, message, saves) = top.unwrap_or_else(|| (exact_value(c, line, plan), c.message, c.amount));
-        if let Some(key) = group_key(value) {
-            let address = (key, message.as_ptr() as usize, message.len());
-            let index = match by_address.get(&address) {
-                Some(&index) => Some(index),
+        let top = if relax.stacks && stack.components.len() > 1 { top_rule_value(line, plan, relax, &mut any_tie) } else { None };
+        let (value, message, saves) = match top {
+            Some(top) => top,
+            None => (exact_value(c, line, plan, relax, &mut any_tie), c.message, c.amount),
+        };
+        let address = (message.as_ptr() as usize, message.len());
+        let number = if address == last.0 {
+            last.1
+        } else {
+            match message_by_address.get(&address) {
+                Some(&number) => number,
                 None => {
-                    let found = by_text.get(&(key, message)).copied();
-                    by_address.insert(address, found.unwrap_or(out.len()));
-                    if found.is_none() {
-                        by_text.insert((key, message), out.len());
+                    let next = message_lens.len() as u32;
+                    let number = *message_by_text.entry(message).or_insert(next);
+                    if number == next {
+                        message_lens.push(quoted_len(message));
                     }
-                    found
+                    message_by_address.insert(address, number);
+                    number
                 }
-            };
-            if let Some(index) = index {
-                out[index].targets.push(c.line_id);
-                out[index].saves = out[index].saves.saturating_add(saves);
-                continue;
+            }
+        };
+        last = (address, number);
+        if let Some(key) = group_key(value) {
+            match groups.entry((key, number)) {
+                std::collections::hash_map::Entry::Occupied(group) => {
+                    let draft = &mut out[*group.get()];
+                    draft.targets.push(c.line_id);
+                    draft.saves = draft.saves.saturating_add(saves);
+                    continue;
+                }
+                std::collections::hash_map::Entry::Vacant(group) => {
+                    group.insert(out.len());
+                }
             }
         }
-        out.push(Draft { message, targets: vec![c.line_id], value, saves });
+        out.push(Draft { message, message_len: message_lens[number as usize], targets: vec![c.line_id], value, saves });
     }
-    (out, any_stack)
+    Pass { drafts: out, any_stack, any_tie }
 }
 
 fn total_value(value: &EmittedValue, currency: &str) -> Option<TotalValue> {
@@ -319,7 +375,7 @@ fn draft_len(d: &Draft, currency: &str) -> usize {
         }
     };
     r#"{"message":"#.len()
-        + quoted_len(d.message)
+        + d.message_len
         + r#","targets":["#.len()
         + targets
         + d.targets.len().saturating_sub(1)
@@ -408,15 +464,37 @@ pub fn cart_lines_result(
     } else {
         Vec::new()
     };
-    let (mut products, any_stack) = if product { drafts(emission, plan, false) } else { (Vec::new(), false) };
-    let mut lens: Vec<usize> = products.iter().map(|d| draft_len(d, currency)).collect();
+    let exact = Relax { stacks: false, ties: false };
+    let mut pass = if product { drafts(emission, plan, exact) } else { Pass { drafts: Vec::new(), any_stack: false, any_tie: false } };
+    let lens_of = |drafts: &[Draft]| -> Vec<usize> { drafts.iter().map(|d| draft_len(d, currency)).collect() };
+    let mut lens = lens_of(&pass.drafts);
     let budget = output_budget(line_count);
     let exact_len = result_len(&lens, &order_candidates);
     if exact_len > budget {
-        if any_stack {
-            products = drafts(emission, plan, true).0;
-            lens = products.iter().map(|d| draft_len(d, currency)).collect();
+        // The steps of the header, each only when it changes something.
+        let mut relax = exact;
+        let steps = [
+            pass.any_tie.then_some(Relax { stacks: false, ties: true }),
+            pass.any_stack.then_some(Relax { stacks: true, ties: false }),
+        ];
+        for step in steps.into_iter().flatten() {
+            relax = step;
+            pass = drafts(emission, plan, step);
+            lens = lens_of(&pass.drafts);
+            if result_len(&lens, &order_candidates) <= budget {
+                break;
+            }
+            // Stacks degraded and still over: relax the ties the degraded pass made too.
+            if step.stacks && pass.any_tie {
+                relax = Relax { stacks: true, ties: true };
+                pass = drafts(emission, plan, relax);
+                lens = lens_of(&pass.drafts);
+                if result_len(&lens, &order_candidates) <= budget {
+                    break;
+                }
+            }
         }
+        let products = &mut pass.drafts;
         let mut dropped = 0usize;
         while !products.is_empty() && result_len(&lens, &order_candidates) > budget {
             // Last resort: drop the candidate that saves the least (ties: the later one).
@@ -431,9 +509,12 @@ pub fn cart_lines_result(
             dropped += 1;
         }
         log!(
-            "won-discounts: exact output {exact_len} B > budget {budget} B: Pro stacks emitted as their top rule, {dropped} product candidate(s) dropped"
+            "won-discounts: exact output {exact_len} B > budget {budget} B: ties as percent {}, Pro stacks as their top rule {}, {dropped} product candidate(s) dropped",
+            relax.ties,
+            relax.stacks
         );
     }
+    let products = pass.drafts;
     #[cfg(test)]
     let expected_len = result_len(&lens, &order_candidates);
     let mut operations = Vec::with_capacity(2);

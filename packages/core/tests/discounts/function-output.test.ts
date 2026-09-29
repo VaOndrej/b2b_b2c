@@ -71,6 +71,21 @@ test("roundingTiePossible: a percent that lands on half a minor unit (in decimal
   assert.equal(roundingTiePossible(9990, 15), true); // 1498.5
   assert.equal(roundingTiePossible(10000, 33.333), false);
   assert.equal(roundingTiePossible(0, 50), false);
+  // Never a tie just because the amount is large (the tolerance is the float error, not a share of the amount).
+  assert.equal(roundingTiePossible(50_000_000, 10), false); // a 500 000 HUF line at 10 %
+  assert.equal(roundingTiePossible(10_000_000, 50), false); // a 100 000 CZK line at 50 %
+  assert.equal(roundingTiePossible(123_456_789, 10), false); // 12 345 678.9
+  assert.equal(roundingTiePossible(999_999_999_999, 33.333), false);
+  assert.equal(roundingTiePossible(123_456_785, 10), true, "a genuine half on a large line is still a tie"); // 12 345 678.5
+  assert.equal(roundingTiePossible(5_000_000_005, 10), true); // 500 000 000.5
+  // EUR x.95 prices: at 10 % one item is a genuine half cent; two items, or 20 %, are not.
+  for (let euros = 0; euros < 100; euros += 1) {
+    const price = euros * 100 + 95;
+    assert.equal(roundingTiePossible(price, 10), true, `${price} × 10 %`);
+    assert.equal(roundingTiePossible(price * 2, 10), false, `2 × ${price} × 10 %`);
+    assert.equal(roundingTiePossible(price, 20), false, `${price} × 20 %`);
+    assert.equal(roundingTiePossible(price * 3, 15), (price * 3 * 15) % 100 === 50, `3 × ${price} × 15 %`);
+  }
 });
 
 test("a single percent on a half-way line is emitted as its exact amount (Shopify may round the tie the other way)", () => {
@@ -214,6 +229,38 @@ test("over the budget: Pro stacks drop to their top rule, and the output says so
   assert.deepEqual(out.droppedCandidates, []);
 });
 
+/** 200 lines of distinct x.x5 prices at 10 % under a 200-character name: every line a rounding tie. */
+function tiePlan(): CartPlan {
+  const name = `Deset ${"Velmi dlouhý název slevy ".repeat(10)}`.slice(0, 200);
+  const lines = Array.from({ length: 200 }, (_, i) => line(`L${i + 1}`, 10_05 + i * 10, 1, ["A"]));
+  return planCart(cartOf(lines), payloadOf([pct("A", 10, { name })]));
+}
+
+test("over the budget, rounding ties go back to their percent before any candidate is dropped", () => {
+  const plan = tiePlan();
+  const out = autoOutput(plan);
+  assert.equal(out.degraded, true);
+  assert.ok(out.exactBytes > out.budget, `${out.exactBytes} > ${out.budget}`);
+  assert.deepEqual(out.droppedCandidates, [], "a possible 1-minor-unit rounding difference beats losing a line's discount");
+  assert.deepEqual(out.degradedStacks, []);
+  assert.equal(out.relaxedTies.length, 200);
+  assert.deepEqual(out.relaxedTies[0], { lineId: "L1", percent: 10 });
+  const op = out.lines.operations[0] as { productDiscountsAdd: { candidates: { targets: unknown[]; value: unknown }[] } };
+  assert.equal(op.productDiscountsAdd.candidates.length, 1);
+  assert.deepEqual(op.productDiscountsAdd.candidates[0].value, percent(10));
+  assert.equal(op.productDiscountsAdd.candidates[0].targets.length, 200);
+});
+
+test("stacks degrade before ties are relaxed only when relaxing the ties alone does not fit; exact ties stay when they fit", () => {
+  // degradedPlan: no tie in the exact output (stack totals), so the stacks degrade; the top rule's
+  // 10 % ties (prices ending in 5 haléřů) fit as exact amounts, so they stay exact.
+  const out = autoOutput(degradedPlan());
+  assert.deepEqual(out.relaxedTies, []);
+  const values = (out.lines.operations[0] as { productDiscountsAdd: { candidates: { message: string; value: unknown }[] } })
+    .productDiscountsAdd.candidates.filter((c) => c.message === "Deset procent" && "fixedAmount" in (c.value as object));
+  assert.ok(values.length > 0, "the top rule's ties are exact amounts");
+});
+
 test("last resort: the candidates that save the least are dropped until the output fits, and are listed", () => {
   const name = (id: string) => `${id} ${"Velmi dlouhý název slevy ".repeat(10)}`.slice(0, 200);
   const ids = Array.from({ length: 24 }, (_, k) => `t${k + 1}`);
@@ -250,7 +297,7 @@ test("checkoutPreview: per line what the checkout applies, every node included, 
     { lineId: "L1", planned: 20_00, applied: 20_00 },
     { lineId: "L2", planned: 1_01, applied: 1_01 },
   ]);
-  assert.deepEqual(preview.order, { planned: plan.order!.amount, applied: plan.order!.amount });
+  assert.deepEqual(preview.order, { planned: plan.order!.amount, applied: plan.order!.amount, base: plan.order!.base });
   assert.equal(preview.degraded, false);
   assert.equal(preview.shortfall, 0);
 
@@ -260,4 +307,44 @@ test("checkoutPreview: per line what the checkout applies, every node included, 
   const planned = degraded.lines.reduce((s, l) => s + l.planned, 0);
   const applied = degraded.lines.reduce((s, l) => s + l.applied, 0);
   assert.equal(degraded.shortfall, planned - applied);
+  assert.equal(preview.shippingFirstGroupOnly, false);
+});
+
+test("checkoutPreview: a degraded product output leaves a larger order base, and the order line says so", () => {
+  const lines = Array.from({ length: 200 }, (_, i) => line(`L${i + 1}`, 50_00 + (i + 1) * 101, 1, ["fix", "ten"]));
+  const plan = planCart(
+    cartOf(lines),
+    payloadOf([
+      fixed("fix", { CZK: 9_99 }, { name: "9,99 Kč z kusu", combinesWith: { ruleIds: ["ten"] } }),
+      pct("ten", 10, { name: "Deset procent" }),
+      orderPct("O", 10, { name: "Objednávka" }),
+    ]),
+  );
+  const preview = checkoutPreview(plan);
+  assert.equal(preview.degraded, true);
+  const productGap = preview.lines.reduce((s, l) => s + l.planned - l.applied, 0);
+  assert.ok(productGap > 0);
+  // Shopify takes the order percent from the subtotal after the product discounts it actually applied.
+  const base = plan.order!.base + productGap;
+  assert.equal(preview.order.base, base);
+  const orderOp = preview.nodes[0].output.lines.operations.find((op) => "orderDiscountsAdd" in op) as {
+    orderDiscountsAdd: { candidates: { value: { percentage?: { value: number }; fixedAmount?: { amount: string } } }[] };
+  };
+  const value = orderOp.orderDiscountsAdd.candidates[0].value;
+  const expected = value.percentage ? Math.round((base * value.percentage.value) / 100) : Math.min(Math.round(Number(value.fixedAmount!.amount) * 100), base);
+  assert.equal(preview.order.applied, expected);
+  assert.ok(preview.order.applied > plan.order!.amount, "a larger base gives a larger order percent");
+  assert.equal(preview.shortfall, Math.max(0, productGap + plan.order!.amount - preview.order.applied));
+});
+
+test("checkoutPreview: a fixed shipping amount on a split shipment is flagged (it goes to the first group only)", () => {
+  const groups = ["gid://shopify/CartDeliveryGroup/1", "gid://shopify/CartDeliveryGroup/2"];
+  const flat = planCart(
+    cartOf([line("L1", 100_00)]),
+    payloadOf([fixed("S", { CZK: 50_00 }, { name: "50 Kč z dopravy", target: { kind: "shipping" } })]),
+  );
+  assert.equal(checkoutPreview(flat, { deliveryGroupIds: groups }).shippingFirstGroupOnly, true);
+  assert.equal(checkoutPreview(flat, { deliveryGroupIds: groups.slice(0, 1) }).shippingFirstGroupOnly, false);
+  const free = planCart(cartOf([line("L1", 100_00)]), payloadOf([freeShip("S", { name: "Zdarma" })]));
+  assert.equal(checkoutPreview(free, { deliveryGroupIds: groups }).shippingFirstGroupOnly, false);
 });

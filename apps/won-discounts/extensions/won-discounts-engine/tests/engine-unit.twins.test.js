@@ -288,6 +288,9 @@ const TWINS = {
   a_rounding_tie_is_emitted_as_its_exact_amount() {
     expect(roundingTiePossible(1005, 10) && roundingTiePossible(2750, 1.4) && roundingTiePossible(9990, 15)).toBe(true);
     expect(roundingTiePossible(1004, 10) || roundingTiePossible(0, 50)).toBe(false);
+    expect(roundingTiePossible(50_000_000, 10) || roundingTiePossible(10_000_000, 50) || roundingTiePossible(123_456_789, 10)).toBe(false);
+    expect(roundingTiePossible(123_456_785, 10) && roundingTiePossible(5_000_000_005, 10)).toBe(true);
+    expect(roundingTiePossible(3990, 10) || roundingTiePossible(1995, 20)).toBe(false);
     const c = cfg([pct("t", 10), pct("a", 10, { combinesWith: { ruleIds: ["b"] } }), pct("b", 5), order("o", { kind: "percentage", percent: 10 })]);
     const lines = [line("l1", 1, 1005, ["t"]), line("l2", 1, 1004, ["t"]), line("l3", 3, 3330, ["a", "b"]), line("l4", 1, 106, [])];
     const plan = planCart(cart(lines), c);
@@ -322,6 +325,18 @@ const TWINS = {
     expect(json({ kind: "freeShipping" })).toBe(
       '{"operations":[{"deliveryDiscountsAdd":{"candidates":[{"message":"s","targets":[{"deliveryGroup":{"id":"g1"}},{"deliveryGroup":{"id":"g2"}}],"value":{"percentage":{"value":100}}}],"selectionStrategy":"ALL"}}]}',
     );
+  },
+
+  over_the_budget_ties_go_back_to_a_percent_before_any_drop() {
+    const name = `Deset ${"Velmi dlouhý název slevy ".repeat(8)}`;
+    const c = cfg([{ id: "a", enabled: true, name, method: "automatic", value: { kind: "percentage", percent: 10 }, target: { kind: "products" } }]);
+    const lines = Array.from({ length: 200 }, (_, i) => line(`l${i + 1}`, 1, 1005 + 10 * i, ["a"]));
+    const plan = planCart(cart(lines), c);
+    const out = mapToFunctionOutput(emitForNode(plan, { kind: "automatic" }, null), { plan, classes: ["PRODUCT", "ORDER"], lineCount: lines.length });
+    const json = JSON.stringify(out.lines);
+    expect(json.split('"message":').length - 1).toBe(1);
+    expect(json.split('"cartLine":').length - 1).toBe(200);
+    expect(json).toContain('"value":{"percentage":{"value":10}}');
   },
 
   // src/json.rs: the product metafield read (adapter + normalizeCart).

@@ -59,7 +59,7 @@ function shippingPhrase(value: ShippingValue, plan: CartPlan, locale: UiLocale):
 /** " z vybraných produktů" / " of selected products" when only the rule's own lines count toward its minimum, else "". */
 function entitledTail(rule: RuleOutcome, locale: UiLocale): string {
   if (rule.missing?.scope !== "entitled") return "";
-  const phrase = entitledMinimumPhrase(rule.describable.target.kind, locale);
+  const phrase = entitledMinimumPhrase(rule.describable.target.kind);
   return phrase ? ` ${locale === "cs" ? phrase.cs : phrase.en}` : "";
 }
 

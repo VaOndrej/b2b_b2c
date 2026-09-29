@@ -8,7 +8,7 @@ import { test } from "node:test";
 
 import { sanitizeConfig, type WonDiscountsConfig } from "../../src/discounts/config.ts";
 import { buildShopFunctionConfig } from "../../src/discounts/function-payload.ts";
-import { explainGate, gateConfigForPlan, PRO_CAPABILITIES } from "../../src/discounts/plan-gate.ts";
+import { explainGate, gateConfigForPlan, PRO_CAPABILITIES, type StrippedCapability } from "../../src/discounts/plan-gate.ts";
 import { planCart } from "../../src/discounts/plan.ts";
 import { cartOf, freeShip, line, orderPct, outcome, pct } from "./engine-fixtures.ts";
 
@@ -29,6 +29,8 @@ function proConfig(): WonDiscountsConfig {
           pct("stack-b", 5, { name: "Věrnost" }),
           pct("sk-only", 20, { name: "Jen Slovensko", targeting: { markets: ["sk"] } }),
           pct("vip", 30, { name: "VIP", targeting: { segments: ["gid://shopify/Segment/1"] } }),
+          // Already off: its Pro data is stripped, but "not in force" is nothing new to report.
+          pct("off", 40, { name: "Vypnutá", enabled: false, targeting: { markets: ["sk"] }, combinesWith: { ruleIds: ["plain"] } }),
           orderPct("plain", 5, { name: "Objednávka" }),
           freeShip("ship", { name: "Doprava" }),
         ],
@@ -63,6 +65,13 @@ function proConfig(): WonDiscountsConfig {
         overrides: [{ ruleId: "plain", patch: { value: { kind: "percentage", percent: 30 } } }],
         killed: false,
       },
+      {
+        id: "summer",
+        name: "Léto",
+        window: { start: "2026-07-01T00:00:00", end: "2026-07-31T23:59:59" },
+        overrides: [{ ruleId: "plain", patch: { value: { kind: "percentage", percent: 20 } } }],
+        killed: false,
+      },
     ],
   });
   assert.deepEqual(issues, []);
@@ -80,7 +89,7 @@ test("Pro: the config passes unchanged (a copy), nothing is stripped", () => {
 test("Free: every Pro capability is out of the gated config; the stored config is untouched", () => {
   const config = proConfig();
   const before = JSON.stringify(config);
-  const { config: free, stripped } = gateConfigForPlan(config, "free");
+  const { config: free, stripped } = gateConfigForPlan(config, "free", { now: NOW });
   assert.equal(JSON.stringify(config), before, "the input is never mutated (§14a)");
 
   const rule = (id: string) => free.modules.codes.rules.find((r) => r.id === id)!;
@@ -93,6 +102,8 @@ test("Free: every Pro capability is out of the gated config; the stored config i
   assert.equal(rule("vip").enabled, false);
   assert.equal(rule("vip").targeting, undefined);
   assert.equal(rule("plain").enabled, true);
+  assert.equal(rule("off").targeting, undefined);
+  assert.equal(rule("off").combinesWith, undefined);
   // Campaigns are Pro.
   assert.deepEqual(free.campaigns, []);
   // Exactly one global tier set, counting per product (never across the cart).
@@ -102,26 +113,37 @@ test("Free: every Pro capability is out of the gated config; the stored config i
   // Per-collection margin folds into the global floor, the strictest value wins (never a larger discount).
   assert.deepEqual(free.modules.margin, { global: { maxDiscountPercent: 20, minMarginPercent: 25 }, perCollection: [] });
 
+  // Exactly what changed: no entry for the rule that was already off or the campaign that already
+  // ended ("summer", July), the ids of what was removed, and the margin's old and new values.
   assert.deepEqual(
-    stripped.map((s) => [s.capability, s.reason, s.ruleId ?? s.entityId ?? null, s.count ?? null]),
+    stripped.map((s) => [s.capability, s.reason, s.ruleId ?? s.entityId ?? null, s.count ?? null, s.removedIds ?? null]),
     [
-      ["rule_combinations", "removed", "stack-a", null],
-      ["market_targeting", "rule_off", "sk-only", null],
-      ["segment_targeting", "rule_off", "vip", null],
-      ["campaigns", "removed", "bf", null],
-      ["tier_set_scope", "removed", null, 1],
-      ["tier_sets_extra", "removed", null, 1],
-      ["tier_count_across_cart", "reduced", "global", null],
-      ["gift_ladder", "reduced", "g1", 1],
-      ["gift_choices", "reduced", "g1", 2],
-      ["margin_per_collection", "folded", null, 2],
+      ["rule_combinations", "removed", "stack-a", null, null],
+      ["market_targeting", "rule_off", "sk-only", null, null],
+      ["segment_targeting", "rule_off", "vip", null, null],
+      ["campaigns", "removed", "bf", null, null],
+      ["tier_set_scope", "removed", null, 1, ["scoped"]],
+      ["tier_sets_extra", "removed", null, 1, ["global-2"]],
+      ["tier_count_across_cart", "reduced", "global", null, null],
+      ["gift_ladder", "reduced", "g1", 1, ["g2"]],
+      ["gift_choices", "reduced", "g1", 2, ["gid://shopify/ProductVariant/2", "gid://shopify/ProductVariant/3"]],
+      ["margin_per_collection", "folded", null, 2, ["gid://shopify/Collection/9", "gid://shopify/Collection/8"]],
     ],
+  );
+  assert.deepEqual(stripped.at(-1)?.values, {
+    maxDiscountPercent: { from: 50, to: 20 },
+    minMarginPercent: { from: 10, to: 25 },
+  });
+  // Without `now` the gate cannot tell an ended campaign: it lists every campaign that is not killed.
+  assert.deepEqual(
+    gateConfigForPlan(config, "free").stripped.filter((s) => s.capability === "campaigns").map((s) => s.entityId),
+    ["bf", "summer"],
   );
   for (const s of stripped) assert.ok(PRO_CAPABILITIES.includes(s.capability));
 });
 
 test("Free payload: no Pro data reaches the function, and the checkout plans without it", () => {
-  const { config: free } = gateConfigForPlan(proConfig(), "free");
+  const { config: free } = gateConfigForPlan(proConfig(), "free", { now: NOW });
   const payload = buildShopFunctionConfig(free, { now: NOW, shopTimezone: TZ }).payload;
   const json = JSON.stringify(payload);
   assert.equal(payload.campaignId, null);
@@ -150,7 +172,7 @@ test("Free: a config without Pro data strips nothing", () => {
 });
 
 test("explainGate: one human sentence per stripped capability, Czech and English, never an enum key", () => {
-  const { stripped } = gateConfigForPlan(proConfig(), "free");
+  const { stripped } = gateConfigForPlan(proConfig(), "free", { now: NOW });
   for (const locale of ["cs", "en"] as const) {
     const lines = explainGate(stripped, locale);
     assert.equal(lines.length, stripped.length);
@@ -166,4 +188,32 @@ test("explainGate: one human sentence per stripped capability, Czech and English
   const en = explainGate(stripped, "en").map((i) => i.text);
   assert.ok(en.includes("“Jen Slovensko” targets selected markets. That is a Pro feature, so on Free it does not apply at all."), en.join("\n"));
   assert.deepEqual(explainGate([], "cs"), []);
+  // The margin sentence names the numbers that changed.
+  assert.ok(
+    cs.includes(
+      "Ochrana marže pro jednotlivé kolekce je funkce Pro. Ve Free platí jedno minimum pro celý obchod: použili jsme to nejpřísnější z tvého nastavení, max. sleva 20\u00a0% (bylo 50\u00a0%), min. marže 25\u00a0% (bylo 10\u00a0%).",
+    ),
+    cs.join("\n"),
+  );
+});
+
+test("explainGate: Czech plurals for 1, 2 and 5 (tier sets, gift thresholds, gift choices)", () => {
+  const cs = (capability: StrippedCapability["capability"], count: number) =>
+    explainGate([{ capability, reason: "removed", count }], "cs")[0].text;
+  assert.equal(cs("tier_sets_extra", 1), "Ve Free platí jen jedna sada množstevních slev pro celý obchod, další sada se neuplatní.");
+  assert.equal(cs("tier_sets_extra", 2), "Ve Free platí jen jedna sada množstevních slev pro celý obchod, další 2 sady se neuplatní.");
+  assert.equal(cs("tier_sets_extra", 5), "Ve Free platí jen jedna sada množstevních slev pro celý obchod, dalších 5 sad se neuplatní.");
+  assert.equal(cs("gift_ladder", 1), "Ve Free platí jen první dárkový práh, další práh se nenabízí (žebřík prahů je funkce Pro).");
+  assert.equal(cs("gift_ladder", 2), "Ve Free platí jen první dárkový práh, další 2 prahy se nenabízejí (žebřík prahů je funkce Pro).");
+  assert.equal(cs("gift_ladder", 5), "Ve Free platí jen první dárkový práh, dalších 5 prahů se nenabízí (žebřík prahů je funkce Pro).");
+  assert.equal(cs("gift_choices", 1), "Ve Free se nabízí jen první dárek z výběru, další dárek ne (výběr dárků je funkce Pro).");
+  assert.equal(cs("gift_choices", 2), "Ve Free se nabízí jen první dárek z výběru, další 2 dárky ne (výběr dárků je funkce Pro).");
+  assert.equal(cs("gift_choices", 5), "Ve Free se nabízí jen první dárek z výběru, dalších 5 dárků ne (výběr dárků je funkce Pro).");
+  assert.equal(cs("tier_set_scope", 1), "1 sada množstevních slev pro vybrané produkty nebo kolekce ve Free neplatí, je to funkce Pro.");
+  assert.equal(cs("tier_set_scope", 2), "2 sady množstevních slev pro vybrané produkty nebo kolekce ve Free neplatí, je to funkce Pro.");
+  assert.equal(cs("tier_set_scope", 5), "5 sad množstevních slev pro vybrané produkty nebo kolekce ve Free neplatí, je to funkce Pro.");
+  const en = (capability: StrippedCapability["capability"], count: number) =>
+    explainGate([{ capability, reason: "removed", count }], "en")[0].text;
+  assert.equal(en("gift_ladder", 2), "On Free only the first gift threshold applies; the other 2 are not offered (a threshold ladder is a Pro feature).");
+  assert.equal(en("gift_choices", 1), "On Free only the first gift of the choice is offered, not the other one (a gift choice is a Pro feature).");
 });

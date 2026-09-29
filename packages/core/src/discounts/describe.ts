@@ -220,10 +220,7 @@ function describeMethod(rule: DescribableRule, locale: UiLocale, codesKnown: boo
  * "z vybraných produktů" / "of selected products": what an entitled minimum
  * counts (MinimumScope "entitled" on a product or collection rule), else null.
  */
-export function entitledMinimumPhrase(
-  target: DiscountTargetKind,
-  locale: UiLocale,
-): { cs: string; en: string } | null {
+export function entitledMinimumPhrase(target: DiscountTargetKind): { cs: string; en: string } | null {
   if (target === "products") return { cs: "z vybraných produktů", en: "of selected products" };
   if (target === "collections") return { cs: "z vybraných kolekcí", en: "in selected collections" };
   return null;
@@ -245,7 +242,7 @@ function describeMinimum(
   const cs = locale === "cs";
   const target = rule.target.kind;
   const lineTarget = target === "products" || target === "collections";
-  const entitled = rule.minimum?.scope === "entitled" ? entitledMinimumPhrase(target, locale) : null;
+  const entitled = rule.minimum?.scope === "entitled" ? entitledMinimumPhrase(target) : null;
   const moneyPhrase = (m: string) => {
     if (entitled) return cs ? `nákup od ${m} ${entitled.cs}` : `from ${m} ${entitled.en}`;
     if (lineTarget) return cs ? `košík od ${m}` : `cart from ${m}`;

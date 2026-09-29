@@ -465,6 +465,10 @@ fn lines_json(plan: &CartPlan, line_count: usize) -> String {
 fn a_rounding_tie_is_emitted_as_its_exact_amount() {
     assert!(tie_possible(1005, 10.0) && tie_possible(2750, 1.4) && tie_possible(9990, 15.0));
     assert!(!tie_possible(1004, 10.0) && !tie_possible(0, 50.0));
+    // Never a tie just because the amount is large; a genuine half on a large line still is.
+    assert!(!tie_possible(50_000_000, 10.0) && !tie_possible(10_000_000, 50.0) && !tie_possible(123_456_789, 10.0));
+    assert!(tie_possible(123_456_785, 10.0) && tie_possible(5_000_000_005, 10.0));
+    assert!(!tie_possible(3990, 10.0) && !tie_possible(1995, 20.0));
     let order = r#"{"id": "o", "enabled": true, "name": "o", "method": "automatic",
         "value": {"kind": "percentage", "percent": 10}, "target": {"kind": "order"}}"#;
     let c = rules(
@@ -512,4 +516,27 @@ fn a_fixed_shipping_amount_goes_to_the_first_delivery_group_only() {
         json(r#"{"kind": "freeShipping"}"#),
         r#"{"operations":[{"deliveryDiscountsAdd":{"candidates":[{"message":"s","targets":[{"deliveryGroup":{"id":"g1"}},{"deliveryGroup":{"id":"g2"}}],"value":{"percentage":{"value":100}}}],"selectionStrategy":"ALL"}}]}"#
     );
+}
+
+#[test]
+fn over_the_budget_ties_go_back_to_a_percent_before_any_drop() {
+    // 200 lines of distinct x.x5 prices at 10 % under a 200-character name: every line a tie, and
+    // one exact amount per line is far over the budget. The ties go back to their percent (one
+    // candidate) instead of dropping whole lines.
+    let name = "Deset ".to_string() + &"Velmi dlouhý název slevy ".repeat(8);
+    let c = rules(
+        &format!(r#"{{"id": "a", "enabled": true, "name": "{name}", "method": "automatic", "value": {{"kind": "percentage", "percent": 10}}, "target": {{"kind": "products"}}}}"#),
+        "",
+    );
+    let ids: Vec<String> = (1..=200).map(|i| format!("l{i}")).collect();
+    let lines: Vec<Line> = ids
+        .iter()
+        .enumerate()
+        .map(|(i, id)| Line { id: Box::leak(id.clone().into_boxed_str()), ..line("", 1, 1005 + 10 * i as i64, &["a"]) })
+        .collect();
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let json = lines_json(&plan, lines.len());
+    assert_eq!(json.matches(r#""message":"#).count(), 1, "{json}");
+    assert_eq!(json.matches(r#""cartLine":"#).count(), 200);
+    assert!(json.contains(r#""value":{"percentage":{"value":10}}"#));
 }

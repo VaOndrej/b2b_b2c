@@ -23,10 +23,17 @@
 //   2. candidates with the same message and value share one candidate with
 //      several targets (a fixed total on one line never groups: shared, it
 //      would be applied ONCE across all its targets);
-//   3. over the budget (19 000 B, scaled like Shopify's limit) every Pro stack
-//      is emitted as its top rule's own value instead (it groups; the customer
-//      keeps the larger part of the stack), then, as a last resort, the product
-//      candidates that save the least are dropped until the output fits.
+//   3. over the budget (19 000 B, scaled like Shopify's limit) the output gives
+//      up exactness step by step, the cheapest loss for the customer first,
+//      and stops at the first step that fits:
+//        a. rounding ties go back to their percent (at worst 1 minor unit per
+//           line, and only if Shopify rounds the tie the other way);
+//        b. every Pro stack is emitted as its top rule's own value (it groups;
+//           the customer keeps the larger part of the stack), ties exact again;
+//        c. both;
+//      then, as a last resort, the product candidates that save the least are
+//      dropped until the output fits. A step whose relaxation changes nothing
+//      (no tie, no stack) is skipped.
 // Sizes are the UTF-8 bytes of the compact JSON (what JSON.stringify writes).
 //
 // Delivery: a percent applies to every delivery group; a FIXED amount goes to
@@ -61,17 +68,26 @@ export function outputBytes(value: unknown): number {
 }
 
 /**
- * True when `base × percent / 100` (minor units) may be a rounding tie: its
+ * Tolerance of the rounding-tie test: the float error of `(base × percent) /
+ * 100`, never a share of the amount. Two roundings of about 2.2·10⁻¹⁶ of the
+ * value each, so 4·10⁻¹⁵ × exact (~18 ulps) plus an absolute 10⁻⁹ floor. A
+ * 500 000 HUF line at 10 % (5 000 000 minor units exactly) is never a tie.
+ */
+const TIE_EPSILON = 1e-9;
+const TIE_RELATIVE = 4e-15;
+
+/**
+ * True when `base × percent / 100` (minor units) is a rounding tie: its
  * fraction is half a minor unit in decimal arithmetic, which is what Shopify
  * computes. The binary float can land a hair either side of .5 (2 750 × 1.4 % =
- * 38.49999999999999, 38.5 in decimal), so the test has a tolerance; a false
- * positive only costs grouping (the exact amount is emitted instead).
- * The Rust function evaluates the same IEEE expression (output.rs tie_possible).
+ * 38.49999999999999, 38.5 in decimal), so the test allows the float error of
+ * that one expression, nothing more. The Rust function evaluates the same IEEE
+ * expression (output.rs tie_possible).
  */
 export function roundingTiePossible(base: number, percent: number): boolean {
   const exact = (base * percent) / 100;
   const fraction = exact - Math.floor(exact);
-  return Math.abs(fraction - 0.5) <= 1e-7 * Math.max(1, exact);
+  return Math.abs(fraction - 0.5) <= TIE_EPSILON + exact * TIE_RELATIVE;
 }
 
 // --- Output shapes ---------------------------------------------------------------------------
@@ -132,6 +148,12 @@ export interface DegradedStack {
   emitted: number;
 }
 
+/** A line whose rounding tie went back to its percent to fit the output budget (at most 1 minor unit off). */
+export interface RelaxedTie {
+  lineId: string;
+  percent: number;
+}
+
 /** A product candidate left out to fit the output budget. */
 export interface DroppedCandidate {
   message: string;
@@ -149,6 +171,8 @@ export interface MappedFunctionOutput {
   exactBytes: number;
   bytes: number;
   budget: number;
+  /** Over the budget: tie lines emitted as their percent (step a). */
+  relaxedTies: RelaxedTie[];
   degradedStacks: DegradedStack[];
   droppedCandidates: DroppedCandidate[];
 }
@@ -198,38 +222,56 @@ function wholePercentSum(plan: CartPlan, stack: PlanStack): number | null {
   return sum;
 }
 
+/** How the budget steps relax a pass (see the header): stacks → top rule, ties → percent. */
+interface Relax {
+  stacks: boolean;
+  ties: boolean;
+}
+
+/** What a pass saw: whether relaxing its stacks or its ties would change anything. */
+interface PassInfo {
+  anyStack: boolean;
+  /** Tie lines of this pass (emitted exactly, or — when ties are relaxed — as their percent). */
+  ties: RelaxedTie[];
+  degradedStacks: DegradedStack[];
+}
+
+/** A percent `p` on `line` whose amount is `amount`: exact on a tie unless ties are relaxed. */
+function percentOnLine(p: number, amount: number, line: PlanLine, currency: string, relax: Relax, info: PassInfo): Mapped {
+  if (!roundingTiePossible(line.subtotal, p)) return percentValue(p);
+  info.ties.push({ lineId: line.lineId, percent: p });
+  return relax.ties ? percentValue(p) : exactAmount(amount, line, currency);
+}
+
 /** One emitted product candidate → its exact output value, in the most groupable form. */
-function exactProductValue(c: ProductCandidate, line: PlanLine, plan: CartPlan): Mapped {
+function exactProductValue(c: ProductCandidate, line: PlanLine, plan: CartPlan, relax: Relax, info: PassInfo): Mapped {
   const currency = plan.currency;
-  if (c.percent !== undefined) {
-    return roundingTiePossible(line.subtotal, c.percent) ? exactAmount(c.amount, line, currency) : percentValue(c.percent);
-  }
+  if (c.percent !== undefined) return percentOnLine(c.percent, c.amount, line, currency, relax, info);
   if (c.fixedPerItem !== undefined) {
     return c.fixedPerItem === line.unitPrice ? percentValue(100) : perItemValue(c.fixedPerItem, currency);
   }
   const total = c.fixedTotal;
   if (total === line.subtotal) return percentValue(100);
   const percent = line.product ? wholePercentSum(plan, line.product) : null;
-  if (percent !== null && Math.round((line.subtotal * percent) / 100) === total && !roundingTiePossible(line.subtotal, percent)) {
-    return percentValue(percent);
+  if (percent !== null && Math.round((line.subtotal * percent) / 100) === total) {
+    return percentOnLine(percent, total, line, currency, relax, info);
   }
   return exactAmount(total, line, currency);
 }
 
 /**
  * A Pro stack emitted as its top rule's own value (the first component, which
- * the stack never caps): the rule's percent (its exact amount on a tie), or its
- * fixed amount per item.
+ * the stack never caps): the rule's percent (its exact amount on a tie, unless
+ * ties are relaxed), or its fixed amount per item.
  */
-function topRuleValue(line: PlanLine, plan: CartPlan): Mapped & { message: string; amount: number } {
+function topRuleValue(line: PlanLine, plan: CartPlan, relax: Relax, info: PassInfo): Mapped & { message: string; amount: number } {
   const stack = line.product as PlanStack;
   const top = stack.components[0];
   const rule = ruleOf(plan, top.ruleId) as RuleOutcome;
   const message = rule.name || describeRule(rule.describable, plan.locale, plan.currency, { short: true });
   const value = rule.describable.value;
   if (value.kind === "percentage") {
-    const mapped = roundingTiePossible(line.subtotal, value.percent) ? exactAmount(top.amount, line, plan.currency) : percentValue(value.percent);
-    return { ...mapped, message, amount: top.amount };
+    return { ...percentOnLine(value.percent, top.amount, line, plan.currency, relax, info), message, amount: top.amount };
   }
   const perItem = top.amount / line.quantity;
   const mapped = perItem === line.unitPrice ? percentValue(100) : perItemValue(perItem, plan.currency);
@@ -240,8 +282,9 @@ function topRuleValue(line: PlanLine, plan: CartPlan): Mapped & { message: strin
  * The node's product candidates, grouped. Each emitted candidate is matched to
  * its plan line (the emission follows the plan's line order).
  */
-function productDrafts(emission: NodeEmission, plan: CartPlan, degradeStacks: boolean, degraded: DegradedStack[] | null): Draft[] {
+function productDrafts(emission: NodeEmission, plan: CartPlan, relax: Relax): { drafts: Draft[]; info: PassInfo } {
   const out: Draft[] = [];
+  const info: PassInfo = { anyStack: false, ties: [], degradedStacks: [] };
   const shared = new Map<string, Draft>();
   let next = 0;
   for (const c of emission.productCandidates) {
@@ -250,9 +293,12 @@ function productDrafts(emission: NodeEmission, plan: CartPlan, degradeStacks: bo
     next += 1;
     if (!line?.product) continue;
     const stacked = line.product.components.length > 1;
+    info.anyStack ||= stacked;
     const mapped =
-      degradeStacks && stacked ? topRuleValue(line, plan) : { ...exactProductValue(c, line, plan), message: c.message, amount: c.amount };
-    if (degradeStacks && stacked && degraded) degraded.push({ lineId: c.lineId, planned: c.amount, emitted: mapped.amount });
+      relax.stacks && stacked
+        ? topRuleValue(line, plan, relax, info)
+        : { ...exactProductValue(c, line, plan, relax, info), message: c.message, amount: c.amount };
+    if (relax.stacks && stacked) info.degradedStacks.push({ lineId: c.lineId, planned: c.amount, emitted: mapped.amount });
     const target = { cartLine: { id: c.lineId } };
     const key = mapped.key === null ? null : JSON.stringify([mapped.message, mapped.key]);
     const existing = key === null ? undefined : shared.get(key);
@@ -265,7 +311,7 @@ function productDrafts(emission: NodeEmission, plan: CartPlan, degradeStacks: bo
     out.push(draft);
     if (key !== null) shared.set(key, draft);
   }
-  return out;
+  return { drafts: out, info };
 }
 
 /** Order / delivery values have no per-item variant. */
@@ -305,6 +351,7 @@ export function mapToFunctionOutput(emission: NodeEmission, input: FunctionOutpu
     exactBytes: outputBytes({ operations: [] }),
     bytes: outputBytes({ operations: [] }),
     budget,
+    relaxedTies: [],
     degradedStacks: [],
     droppedCandidates: [],
   };
@@ -339,16 +386,38 @@ export function mapToFunctionOutput(emission: NodeEmission, input: FunctionOutpu
     if (candidates.length > 0) delivery.operations.push({ deliveryDiscountsAdd: { candidates, selectionStrategy: "ALL" } });
   }
 
-  let products = classes.includes("PRODUCT") ? productDrafts(emission, plan, false, null) : [];
-  const exact = cartLinesResult(products, orderOperations);
+  if (!classes.includes("PRODUCT")) {
+    const lines = cartLinesResult([], orderOperations);
+    const bytes = outputBytes(lines);
+    return { ...none, lines, delivery, exactBytes: bytes, bytes };
+  }
+  let pass = productDrafts(emission, plan, { stacks: false, ties: false });
+  const exact = cartLinesResult(pass.drafts, orderOperations);
   const exactBytes = outputBytes(exact);
   if (exactBytes <= budget) {
     return { ...none, lines: exact, delivery, exactBytes, bytes: exactBytes };
   }
-  const degradedStacks: DegradedStack[] = [];
-  products = productDrafts(emission, plan, true, degradedStacks);
+  // Over the budget: the steps of the header, each only when it changes something.
+  let relax: Relax = { stacks: false, ties: false };
+  const steps: Relax[] = [];
+  if (pass.info.ties.length > 0) steps.push({ stacks: false, ties: true });
+  if (pass.info.anyStack) steps.push({ stacks: true, ties: false });
+  let result = exact;
+  for (const step of steps) {
+    relax = step;
+    pass = productDrafts(emission, plan, step);
+    result = cartLinesResult(pass.drafts, orderOperations);
+    if (outputBytes(result) <= budget) break;
+    // Stacks degraded and still over: relax the ties the degraded pass made too.
+    if (step.stacks && pass.info.ties.length > 0) {
+      relax = { stacks: true, ties: true };
+      pass = productDrafts(emission, plan, relax);
+      result = cartLinesResult(pass.drafts, orderOperations);
+      if (outputBytes(result) <= budget) break;
+    }
+  }
+  const products = pass.drafts;
   const droppedCandidates: DroppedCandidate[] = [];
-  let result = cartLinesResult(products, orderOperations);
   while (products.length > 0 && outputBytes(result) > budget) {
     // Last resort: drop the candidate that saves the least (ties: the later one).
     let drop = 0;
@@ -364,7 +433,8 @@ export function mapToFunctionOutput(emission: NodeEmission, input: FunctionOutpu
     exactBytes,
     bytes: outputBytes(result),
     budget,
-    degradedStacks: degradedStacks.filter((s) => s.emitted !== s.planned),
+    relaxedTies: relax.ties ? pass.info.ties : [],
+    degradedStacks: pass.info.degradedStacks.filter((s) => s.emitted !== s.planned),
     droppedCandidates,
   };
 }
@@ -383,11 +453,22 @@ export interface CheckoutPreview {
   nodes: CheckoutPreviewNode[];
   /** Per plan line: the product discount planned and what the emitted operations take off, minor units. */
   lines: { lineId: string; planned: number; applied: number }[];
-  order: { planned: number; applied: number };
+  /**
+   * The order discount: planned, and what Shopify takes off `base` — the
+   * discountable subtotal after the product discounts the checkout actually
+   * applies (larger than the plan's base when the product output was degraded).
+   */
+  order: { planned: number; applied: number; base: number };
   /** True when some node's output is not the exact plan (over the output budget). */
   degraded: boolean;
+  relaxedTies: RelaxedTie[];
   degradedStacks: DegradedStack[];
   droppedCandidates: DroppedCandidate[];
+  /**
+   * A fixed shipping amount on a cart of 2+ delivery groups: it goes to the
+   * first group only (the other shipments get none; the plan counts it once).
+   */
+  shippingFirstGroupOnly: boolean;
   /** Planned product + order discount the checkout will not apply, minor units (0 unless degraded). */
   shortfall: number;
 }
@@ -425,38 +506,48 @@ export function checkoutPreview(plan: CartPlan, opts: { lineCount?: number; deli
 
   const byId = new Map(plan.lines.map((l) => [l.lineId, l]));
   const applied = new Map<string, number>();
-  let orderApplied = 0;
   for (const node of nodes) {
     for (const op of node.output.lines.operations) {
-      if ("productDiscountsAdd" in op) {
-        for (const c of op.productDiscountsAdd.candidates) {
-          for (const t of c.targets) {
-            const line = byId.get(t.cartLine.id);
-            if (line) applied.set(line.lineId, (applied.get(line.lineId) ?? 0) + appliedOnLine(c.value, line, plan.currency));
-          }
-        }
-      } else {
-        for (const c of op.orderDiscountsAdd.candidates) {
-          const base = plan.order?.base ?? 0;
-          orderApplied +=
-            "percentage" in c.value
-              ? Math.round((base * c.value.percentage.value) / 100)
-              : Math.min(toMinorUnits(c.value.fixedAmount.amount, plan.currency) ?? 0, base);
+      if (!("productDiscountsAdd" in op)) continue;
+      for (const c of op.productDiscountsAdd.candidates) {
+        for (const t of c.targets) {
+          const line = byId.get(t.cartLine.id);
+          if (line) applied.set(line.lineId, (applied.get(line.lineId) ?? 0) + appliedOnLine(c.value, line, plan.currency));
         }
       }
     }
   }
   const lines = plan.lines.map((l) => ({ lineId: l.lineId, planned: l.product?.amount ?? 0, applied: applied.get(l.lineId) ?? 0 }));
-  const order = { planned: plan.order?.amount ?? 0, applied: orderApplied };
+  // Product discount the checkout does not apply stays in the order subtotal Shopify takes the order discount from.
+  const notApplied = lines.reduce((s, l) => s + Math.max(0, l.planned - l.applied), 0);
+  const base = (plan.order?.base ?? 0) + (plan.order ? notApplied : 0);
+  let orderApplied = 0;
+  for (const node of nodes) {
+    for (const op of node.output.lines.operations) {
+      if (!("orderDiscountsAdd" in op)) continue;
+      for (const c of op.orderDiscountsAdd.candidates) {
+        orderApplied +=
+          "percentage" in c.value
+            ? Math.round((base * c.value.percentage.value) / 100)
+            : Math.min(toMinorUnits(c.value.fixedAmount.amount, plan.currency) ?? 0, base);
+      }
+    }
+  }
+  const order = { planned: plan.order?.amount ?? 0, applied: orderApplied, base };
   const planned = lines.reduce((s, l) => s + l.planned, 0) + order.planned;
   const got = lines.reduce((s, l) => s + l.applied, 0) + order.applied;
+  const groups = opts.deliveryGroupIds?.length ?? 0;
   return {
     nodes,
     lines,
     order,
     degraded: nodes.some((n) => n.output.degraded),
+    relaxedTies: nodes.flatMap((n) => n.output.relaxedTies),
     degradedStacks: nodes.flatMap((n) => n.output.degradedStacks),
     droppedCandidates: nodes.flatMap((n) => n.output.droppedCandidates),
+    shippingFirstGroupOnly:
+      groups >= 2 &&
+      nodes.some((n) => n.output.delivery.operations.some((op) => op.deliveryDiscountsAdd.candidates.some((c) => "fixedAmount" in c.value))),
     shortfall: Math.max(0, planned - got),
   };
 }

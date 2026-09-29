@@ -47,8 +47,9 @@
 //   - Pro market targeting as `marketCountries` (the function's
 //     `localization.market` is deprecated; the engine matches the cart country);
 //   - a minimum's `scope` only when it is "entitled" (absent = the whole cart).
-// A Free shop's config goes through plan-gate.ts gateConfigForPlan first, so
-// none of its Pro data (targeting, combinesWith, campaigns) ever ships.
+// The sync must build a Free shop's payload from plan-gate.ts
+// gateConfigForPlan(config, plan), never from the stored config: only then does
+// none of its Pro data (targeting, combinesWith, campaigns) ship.
 
 import { codeHash } from "./code-hash.ts";
 import { normalizeCode, type CartCampaignInput } from "./cart.ts";

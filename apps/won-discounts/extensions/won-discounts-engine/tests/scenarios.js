@@ -542,6 +542,7 @@ function allScenarios() {
   proStackPercentOutput(),
   proStackDegradedOutput(),
   truncatedOutput(),
+  tiesRelaxedOutput(),
   scaledBudgetOutput(),
 
   // --- instruction budget ------------------------------------------------------------------
@@ -748,10 +749,10 @@ function outletListShared() {
 const OUTPUT_BUDGET = 19000;
 const bytes = (/** @type {unknown} */ value) => new TextEncoder().encode(JSON.stringify(value)).length;
 const minor = (/** @type {string} */ price) => Math.round(Number(price) * 100);
-/** A percent of S (minor units) that is half a minor unit: emitted as its exact amount. */
+/** A percent of S (minor units) that is half a minor unit: emitted as its exact amount. The tolerance is the float error only. */
 const tie = (/** @type {number} */ s, /** @type {number} */ p) => {
   const x = (s * p) / 100;
-  return Math.abs(x - Math.floor(x) - 0.5) <= 1e-7 * Math.max(1, x);
+  return Math.abs(x - Math.floor(x) - 0.5) <= 1e-9 + x * 4e-15;
 };
 
 /** Groups `{ key, message, value, target }` rows into candidates, first appearance first. */
@@ -905,6 +906,38 @@ function truncatedOutput() {
     role: AUTO,
     lines,
     expected: productsOf(kept),
+  };
+}
+
+/**
+ * 200 lines of distinct prices ending in 5 haléřů at 10 % under a 200-character
+ * name: every line is a rounding tie, and one exact amount per line is far over
+ * the budget. Before dropping anything, the ties go back to their percent (at
+ * worst 1 haléř per line if Shopify rounds a tie down), which is one candidate.
+ * @returns {Scenario}
+ */
+function tiesRelaxedOutput() {
+  const name = `Deset ${"Velmi dlouhý název slevy ".repeat(10)}`.slice(0, 200);
+  const lines = [];
+  const exactRows = [];
+  for (let i = 1; i <= 200; i += 1) {
+    const price = kc(1005 + (i - 1) * 10);
+    lines.push({ n: i, price, won: won("ten") });
+    const s = minor(price);
+    if (!tie(s, 10)) throw new Error(`tiesRelaxedOutput: ${price} must be a tie`);
+    const amount = Math.round(s / 10);
+    exactRows.push({ key: `e${amount}`, message: name, value: perItem(kc(amount)), target: { cartLine: { id: lineId(i) } }, amount });
+  }
+  if (bytes(productsOf(groupRows(exactRows))) <= OUTPUT_BUDGET) throw new Error("tiesRelaxedOutput: the exact output must be over the budget");
+  return {
+    name: "lines-output-ties-relaxed",
+    description:
+      "Output size: 200 rounding ties with a 200-character name are over the budget as exact amounts; they go back to their percent (one candidate) before any candidate is dropped.",
+    target: "lines",
+    rules: [pct("ten", 10, { name })],
+    role: AUTO,
+    lines,
+    expected: out(products(pc(name, lines.map((l) => l.n), percent(10)))),
   };
 }
 
