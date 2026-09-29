@@ -8,9 +8,11 @@
 //                   metafields, products, collections, markets);
 //   WonNative*    → the native fake (tests/lib/native/fake-shopify.ts: native
 //                   discounts, backups' restore, one code per discount);
-//   WonTryCart*   → prices / collections / markets for Vyzkoušet košík, from
-//                   the sync fake's products + `prices` below;
-//   WonDiscounts* → the admin's own reads (shop context, market names, themes).
+//   WonTryCart*   → prices / product refs (the product metafield the sync
+//                   wrote) / markets for Vyzkoušet košík, from the sync fake's
+//                   products + `prices` below;
+//   WonDiscounts* → the admin's own reads (shop context, market names, themes,
+//                   the automatic Won node's status).
 // Anything else fails the test (an unexpected document).
 
 import type { PrismaClient } from "../../app/generated/prisma/client.ts";
@@ -101,7 +103,7 @@ export class FakeStore implements AdminClient {
             const prices = this.prices.get(id) ?? {};
             const currency = market?.currency ?? this.shop.currencyCode;
             const titles = this.titles.get(id) ?? { product: `Product ${product.id}`, variant: "Default Title" };
-            const collections = [...this.sync.collections].filter(([, members]) => members.includes(product.id)).map(([cid]) => ({ id: cid }));
+            const refs = product.metafields.get("$app:won_discounts/product");
             return {
               __typename: "ProductVariant",
               id,
@@ -113,14 +115,23 @@ export class FakeStore implements AdminClient {
               product: {
                 id: product.id,
                 title: titles.product,
-                ...(variables.withCollections ? { collections: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: collections } } : {}),
+                wonRefs: refs ? { value: refs.value } : null,
               },
             };
           }),
         };
       }
-      case "WonTryCartProductCollections":
-        return { product: null };
+      case "WonDiscountsAutoNodeStatus": {
+        const node = this.sync.nodes.get(String(variables.id));
+        if (!node) return { node: null };
+        return {
+          node: {
+            __typename: "DiscountAutomaticNode",
+            id: node.id,
+            automaticDiscount: { __typename: "DiscountAutomaticApp", status: this.sync.statusOf(node) },
+          },
+        };
+      }
       default:
         throw new Error(`FakeStore: unexpected operation ${op}`);
     }

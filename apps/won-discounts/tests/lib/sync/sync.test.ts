@@ -146,7 +146,7 @@ test("fresh shop: writes the shop config, 1 automatic node and 1 code node per a
   assert.ok(steps.every((step) => typeof step.detail === "string" && step.detail.length > 0));
 });
 
-test("order: nodes (with their vars) → product metafields → shop config LAST, then read back", async () => {
+test("order: nodes (with their vars) → product refs that change → shop config, read back → products that only GAIN refs (item 7)", async () => {
   const fake = new FakeShopify();
   const product = fake.addProduct(1);
   const deps = makeDeps(fake, db.prisma);
@@ -172,11 +172,13 @@ test("order: nodes (with their vars) → product metafields → shop config LAST
   const at = (name: string) => ops.indexOf(name);
   assert.ok(at("WonSyncCodeUpdate") !== -1 && at("set:function_vars") !== -1 && at("set:product") !== -1, ops.join(", "));
   assert.ok(at("WonSyncCodeUpdate") < at("set:function_vars"), `nodes before vars: ${ops.join(", ")}`);
-  assert.ok(at("set:function_vars") < at("set:product"), `vars before products: ${ops.join(", ")}`);
-  assert.equal(ops.at(-1), "set:function_config", `shop config is the last write: ${ops.join(", ")}`);
-  const lastWrite = fake.calls.map((call) => call.kind).lastIndexOf("mutation");
+  assert.ok(at("set:function_vars") < at("set:function_config"), `vars before the shop config: ${ops.join(", ")}`);
+  // The product only GAINS a ref (it carried none): written after the flip, never ahead of the config (item 7).
+  assert.equal(ops.at(-1), "set:product", `a product that only gains refs follows the shop config: ${ops.join(", ")}`);
+  const configWrite = fake.calls.findIndex((call) => call.op === "WonSyncMetafieldsSet" && (call.variables as { metafields: { key: string }[] }).metafields[0]!.key === "function_config");
   const readBack = fake.calls.findIndex((call) => call.op === "WonSyncShopConfigReadBack");
-  assert.ok(readBack > lastWrite, "read back after the shop config write");
+  const productWrite = fake.calls.findIndex((call) => call.op === "WonSyncMetafieldsSet" && (call.variables as { metafields: { key: string }[] }).metafields[0]!.key === "product");
+  assert.ok(configWrite < readBack && readBack < productWrite, "the shop config is read back before any product gains a ref");
 });
 
 test("idempotent: a second sync with the same config sends no mutation", async () => {

@@ -74,7 +74,32 @@ export function ResyncButton({ slot, variant = "secondary" }: { slot?: "secondar
   );
 }
 
-function syncHeading(message: string, sync: SyncOutcomeView | undefined): MessageKey {
+/** "Obnovit cílení": re-reads collection members and rewrites the product refs now (Přehled action, item 2). */
+export function RefreshTargetingButton() {
+  const tr = useT();
+  const fetcher = useFetcher<UiResult>();
+  const busy = fetcher.state !== "idle";
+  const button = (
+    <s-button
+      variant="secondary"
+      loading={boolAttr(busy)}
+      disabled={boolAttr(busy)}
+      onClick={() => fetcher.submit({ intent: "refresh_targeting" }, { method: "post", action: RESYNC_ACTION })}
+    >
+      {tr.t("overview.targeting.refresh")}
+    </s-button>
+  );
+  if (!fetcher.data) return button;
+  return (
+    <s-stack direction="block" gap="small-200">
+      {button}
+      <Notice result={fetcher.data} />
+    </s-stack>
+  );
+}
+
+function syncHeading(message: string, sync: SyncOutcomeView | undefined, syncing: { products?: number } | undefined): MessageKey {
+  if (syncing && !sync) return message === "deleted" ? "result.deletedSyncing" : message === "synced" ? "result.syncing" : "result.savedSyncing";
   if (message === "synced") return "result.synced";
   if (message === "deleted") return sync && !sync.ok ? "result.deletedNotSynced" : "result.deleted";
   if (sync && !sync.ok) return "result.savedNotSynced";
@@ -104,14 +129,18 @@ export function Notice({ result, onReplace }: { result: UiResult | null | undefi
     const sync = result.sync;
     const fixes = result.fixes ?? [];
     const failed = sync !== undefined && !sync.ok;
-    const heading = fixes.length > 0 && !failed ? t("result.savedWithFixes") : t(syncHeading(result.message, sync));
+    const heading = fixes.length > 0 && !failed ? t("result.savedWithFixes") : t(syncHeading(result.message, sync, result.syncing));
     const warnings = (sync?.warnings ?? []).map((w) => uiText(w, tr));
     const problems = (sync?.problems ?? []).map((p) => uiText(p, tr));
+    const syncing = result.syncing
+      ? [result.syncing.products ? t("result.syncingProducts", { n: result.syncing.products }) : t("result.syncingBackground")]
+      : [];
     return (
-      <s-banner tone={failed ? "warning" : "success"} heading={heading}>
+      <s-banner tone={failed ? "warning" : result.syncing && !sync ? "info" : "success"} heading={heading}>
         <s-stack direction="block" gap="small-300">
           {fixes.length > 0 && failed ? <Titled title={t("result.savedWithFixes")} items={fixes} /> : <Items items={fixes} />}
           <Items items={problems} />
+          <Items items={syncing} />
           <Titled title={t("result.syncWarnings")} items={warnings} />
         </s-stack>
         {failed ? <ResyncButton slot="secondary-actions" /> : null}

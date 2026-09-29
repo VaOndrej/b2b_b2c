@@ -65,11 +65,19 @@ export type SyncView =
   | { state: "not_wired" }
   /** Nothing saved yet, so nothing to write into Shopify. */
   | { state: "never" }
-  /** Saved, not written into Shopify yet (the next Přehled load retries). */
+  /** Saved, not written into Shopify yet (the next Přehled load retries; "Synchronizovat znovu"). */
   | { state: "pending" }
-  /** A sync started on this page load and is still running (the page did not wait, REL-1). */
-  | { state: "running" }
-  | { state: "ok"; at: string; warnings?: UiText[] }
+  /**
+   * A sync is running (the page did not wait, REL-1). `products` = product
+   * metafields being written right now (item 7: "propisuje se na N produktů").
+   */
+  | { state: "running"; products?: number }
+  /**
+   * The last run went through. `attention` = something that stops Won
+   * discounts although the run was fine (the automatic node switched off or
+   * deleted in Shopify, audit P2-3) — shown in red with "Synchronizovat znovu".
+   */
+  | { state: "ok"; at: string; warnings?: UiText[]; attention?: UiText[] }
   /** The last run failed; `problems` = what did not reach Shopify. */
   | { state: "error"; at: string; problems?: UiText[] }
   /** The stored config is not synced at all (unreadable row, or a newer app version wrote it). */
@@ -81,7 +89,12 @@ export type SyncView =
  * write covered the rule as it is now, and a code rule's Won node is active
  * with its current codes.
  */
-export type RuleSyncState = "synced" | "pending" | "failed";
+/**
+ * refreshing  the rule is in Shopify, but its product targeting is being
+ *             written or refreshed right now (collection membership changed,
+ *             or a save's products are still being written, items 2 + 7).
+ */
+export type RuleSyncState = "synced" | "pending" | "failed" | "refreshing";
 export type RuleSyncMap = Readonly<Record<string, RuleSyncState>>;
 
 /** What a save (or a resync) did in Shopify, for the result banner. */
@@ -128,6 +141,10 @@ export interface MovedDiscountView {
    */
   state?: "moved" | "attention";
   note?: string;
+  /** What an undo will change, shown BEFORE the merchant confirms it (F11, §14c). */
+  undoCosts?: string[];
+  /** How the moved discount now stacks with discounts that stayed in Shopify (F4). */
+  stacking?: string[];
 }
 
 /** A live native discount that fights a Won rule (detection, spec §4.1). */
@@ -145,11 +162,35 @@ export type NativeView =
   | { state: "error"; message?: string; moved?: MovedDiscountView[] }
   | { state: "ok"; discounts: NativeDiscountView[]; moved: MovedDiscountView[]; conflicts?: NativeConflictView[] };
 
+/**
+ * Product / collection targeting freshness (item 2): checkout reads refs the
+ * sync wrote from collection membership at sync time.
+ *   none        no rule targets products or collections;
+ *   fresh       last refreshed `at` (shop-local), nothing known to be stale;
+ *   refreshing  Shopify reported a change (`since`, shop-local) or a save's
+ *               products are still being written; a refresh is on its way.
+ */
+export type TargetingView =
+  | { state: "none" }
+  | { state: "fresh"; at: string | null }
+  | { state: "refreshing"; since: string | null; products?: number };
+
 export interface AdminSignals {
   embed: EmbedView;
   checkout: CheckoutView;
   sync: SyncView;
   native: NativeView;
+  /** Absent = not known (harness v0 states). */
+  targeting?: TargetingView;
+}
+
+/**
+ * A Pro setting that is stored but not in force on the shop's plan (BILL-1,
+ * core explainGate): one sentence in the admin language, with the rule it is on.
+ */
+export interface GateNoteView {
+  text: string;
+  ruleId?: string;
 }
 
 // --- Action results ----------------------------------------------------------------------
@@ -163,6 +204,12 @@ export interface FieldError {
 
 export type UiFailure =
   | { ok: false; reason: "not_wired"; what: "move" | "undo" | "tryCart" }
+  /**
+   * The config was changed by someone else (another tab, another admin, a
+   * move) since this page read it, and the change touches the same thing
+   * (F12): nothing was saved; reload and do it again.
+   */
+  | { ok: false; reason: "base_changed" }
   /**
    * The stored config cannot be read (I3): saving would replace it with the
    * defaults + this change. Nothing was written; the merchant confirms with
@@ -206,6 +253,12 @@ export type UiResult =
       notes?: string[];
       /** "Přesunout vše" where some failed: their sentences. */
       failures?: string[];
+      /**
+       * Saved, and the sync goes on in the background (item 7): the deadline
+       * passed (`products` absent), or products that only gain rules are being
+       * written (`products` = how many).
+       */
+      syncing?: { products?: number };
     }
   | UiFailure;
 
@@ -245,7 +298,15 @@ export interface CartPlanView {
   currency: string;
   /** Shop-local date the plan was evaluated on. */
   date: string | null;
+  /** Per line what CHECKOUT applies (core checkoutPreview: the function's own output mapping). */
   lines: CartPlanLineView[];
   explain: ExplainView[];
+  /** What checkout takes off (after the output mapping), not the plan's own numbers. */
   totals: { subtotal: number; productDiscount: number; orderDiscount: number; total: number };
+  /**
+   * Where checkout may differ from the plan, or the plan from checkout right
+   * now (item 8): output over Shopify's size budget, rounding ties, a split
+   * shipment, the last sync failed, targeting being refreshed.
+   */
+  warnings?: UiText[];
 }

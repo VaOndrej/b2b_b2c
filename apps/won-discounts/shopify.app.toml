@@ -28,6 +28,23 @@ api_version = "2026-10"
   topics = [ "app/uninstalled" ]
   uri = "/webhooks/app/uninstalled"
 
+  # Collection / product targeting freshness (MVP 1 audit P1-2, F2 item 2):
+  # a change to a targeted collection (products added or removed by hand, new
+  # rules) or to any product (it may join or leave a smart collection — Shopify
+  # does NOT fire collections/update for that) marks the shop's targeting
+  # stale and schedules one debounced re-index of the product refs
+  # (app/lib/integration/targeting.server.ts). read_products covers all four.
+  # include_fields keeps the payload to what the handler reads; updated_at keeps
+  # consecutive deliveries distinct (Shopify debounces identical payloads).
+  [[webhooks.subscriptions]]
+  topics = [ "products/update", "collections/update" ]
+  uri = "/webhooks/targeting"
+  include_fields = [ "id", "admin_graphql_api_id", "updated_at" ]
+
+  [[webhooks.subscriptions]]
+  topics = [ "products/delete", "collections/delete" ]
+  uri = "/webhooks/targeting"
+
 [access_scopes]
 # Minimum scopes (API-1), each mapped to a feature (docs/won-discounts-mvp-plan.md §1):
 # - write_discounts: Won discount nodes (automatic + code) and moving native discounts
@@ -35,12 +52,17 @@ api_version = "2026-10"
 # - read_products, write_products: per-product metafields for the function (C3) and,
 #   from MVP 5, outlet price / compare-at changes.
 # - read_themes: app-embed auto-detection (onboarding step 3, embed-status pattern).
+# Optional (requested after install, only when needed — API-1, MVP 1 audit P3-2):
 # - read_markets: Pro market targeting — the sync reads each Shopify market's
 #   countries (`markets { conditions.regionsCondition.regions }`) into the shared
-#   function config (`marketCountries`), app/lib/sync/markets.ts. Read only.
+#   function config (`marketCountries`), app/lib/sync/markets.ts; the admin shows
+#   market names. Requested with App Bridge `shopify.scopes.request` when the
+#   merchant picks a market in the editor's Pro section; without it the sync
+#   keeps the saved countries and the admin shows market handles. Read only.
 # Later MVPs add read_orders (outlet quota, analytics — protected customer data),
 # price lists (MVP 4–5). Do not add scopes "for later".
-scopes = "write_discounts,read_products,write_products,read_themes,read_markets"
+scopes = "write_discounts,read_products,write_products,read_themes"
+optional_scopes = [ "read_markets" ]
 
 [app_proxy]
 url = "https://example.com/won-discounts"

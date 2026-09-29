@@ -125,6 +125,28 @@ model SyncRun {
   @@index([shop, startedAt])
 }
 
+/// Per-shop sync bookkeeping (F2, app/lib/sync/sync-state.server.ts): what the
+/// last sync ran against and what is known to be stale. One row per shop,
+/// erased with the shop (shop/redact).
+model ShopSyncState {
+  shop               String    @id
+  /// Shop IANA zone the last sync built the payload with. A different zone on
+  /// Přehled → resync (rule days are shop days).
+  timezone           String?
+  /// When the product-targeting step last finished without errors (Přehled
+  /// refreshes the targeting when this is older than 24 h).
+  productsSyncedAt   DateTime?
+  /// Set by products/collections webhooks: collection membership (or a targeted
+  /// product) changed since the last product sync; cleared by a product sync
+  /// that started after it.
+  targetingStaleAt   DateTime?
+  /// What made it stale (topic + resource id), short, for support.
+  targetingStaleNote String?
+  /// When Přehled last compared Shopify market countries with the config.
+  marketsCheckedAt   DateTime?
+  updatedAt          DateTime  @updatedAt
+}
+
 /// Products that carry the sync's $app:won_discounts/product metafield (sync
 /// bookkeeping in the app DB, DATA-1). payloadHash = hash of the value last
 /// written; null = a write is in flight (write-ahead: the row exists BEFORE the

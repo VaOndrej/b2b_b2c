@@ -159,6 +159,27 @@ export async function payWithBogusCard(page: Page): Promise<void> {
   await page.waitForURL(/thank[-_]you/u, { timeout: 150_000 });
 }
 
+/**
+ * The thank-you page fades in over the payment form (a screenshot right after the
+ * URL change shows both, gate-live-report.md). Wait until the form is gone, then
+ * read what the card was charged from the order details ("•••• 1 · 839,30 Kč CZK").
+ * Every spec reads the thank-you page and takes its screenshots only after this.
+ */
+export async function settledThankYou(page: Page): Promise<{ charged: number | null; payFormGone: boolean }> {
+  const card = page.getByText(/\u2022+\s*1\s*\u00b7/u).first();
+  await expect(card, "the order details show the charged card").toBeVisible({ timeout: 60_000 });
+  const payFormGone = await expect(page.locator("#checkout-pay-button"))
+    .toHaveCount(0, { timeout: 30_000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  await page.waitForLoadState("networkidle").catch(() => undefined);
+  await page.waitForTimeout(1_500);
+  const text = (await card.textContent()) ?? "";
+  return { charged: minorUnits(text.slice(text.indexOf("\u00b7") + 1)), payFormGone };
+}
+
 /** On a phone the order summary is collapsed: open it (best effort) so a screenshot shows the discount lines. */
 export async function expandMobileSummary(page: Page): Promise<void> {
   const toggle = page.getByRole("button", { name: /Shrnutí objednávky|order summary/iu }).first();

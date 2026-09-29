@@ -29,6 +29,8 @@ interface ResourcePickerOptions {
 interface ShopifyGlobal {
   resourcePicker?: (options: ResourcePickerOptions) => Promise<unknown[] | undefined>;
   toast?: { show?: (message: string, options?: { isError?: boolean }) => void };
+  /** App Bridge Scopes API (optional scopes declared in shopify.app.toml `optional_scopes`). */
+  scopes?: { request?: (scopes: string[]) => Promise<{ result?: string } | undefined> };
 }
 
 function appBridge(): ShopifyGlobal | null {
@@ -90,4 +92,22 @@ export async function pickCollections(selected: readonly string[]): Promise<Pick
 
 export function showToast(message: string, isError = false): void {
   appBridge()?.toast?.show?.(message, { isError });
+}
+
+export type ScopeRequestResult = "granted" | "declined" | "unavailable";
+
+/**
+ * Ask the merchant for optional scopes (App Bridge `shopify.scopes.request`,
+ * a grant modal over the app; the scopes must be in `optional_scopes`).
+ * Outside the Shopify admin: "unavailable".
+ */
+export async function requestScopes(scopes: string[]): Promise<ScopeRequestResult> {
+  const bridge = appBridge();
+  if (typeof bridge?.scopes?.request !== "function") return "unavailable";
+  try {
+    const response = await bridge.scopes.request(scopes);
+    return response?.result === "granted-all" ? "granted" : "declined";
+  } catch {
+    return "unavailable";
+  }
 }

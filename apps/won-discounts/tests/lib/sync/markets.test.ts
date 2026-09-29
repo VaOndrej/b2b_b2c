@@ -46,8 +46,9 @@ function seedMarkets(fake: FakeShopify) {
   ];
 }
 
+// Market targeting is a Pro capability (BILL-1): these tests run the sync as a Pro shop.
 const realSync = (client: AdminClient, prisma: PrismaClient) =>
-  createSync({ ...productionSyncDeps(client, prisma, quiet), now: () => new Date("2026-09-28T12:00:00Z"), sleep: async () => {} });
+  createSync({ ...productionSyncDeps(client, prisma, quiet), now: () => new Date("2026-09-28T12:00:00Z"), sleep: async () => {}, plan: async () => "pro" });
 
 test("loadShopMarkets pages markets (without regions) and each market's countries separately", async () => {
   const fake = new FakeShopify();

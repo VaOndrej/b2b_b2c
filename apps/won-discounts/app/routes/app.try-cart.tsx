@@ -14,7 +14,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
-  const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "" });
+  const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "", scopes: session.scope });
   return tryCartPage(ctx, { scopes: session.scope ?? "" });
 };
 
@@ -22,7 +22,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
-  const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "" });
+  const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "", scopes: session.scope });
   return tryCartAction(ctx, await request.formData(), { scopes: session.scope ?? "" });
 };
 

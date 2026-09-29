@@ -14,7 +14,8 @@ import { currencyCodes, currencyViews, type MarketNames } from "../model/markets
 import { shopToday } from "../model/rule-form";
 import { ruleStatus, ruleStatusSummary } from "../model/rule-status";
 import { syncText } from "../model/signals";
-import type { CodeRuleLimit, CurrencyView, RuleSyncMap, SyncView, UiResult } from "../model/types";
+import type { CodeRuleLimit, CurrencyView, GateNoteView, RuleSyncMap, SyncView, UiResult } from "../model/types";
+import { GateNotes } from "../shell/GateNotes";
 import { Notice } from "../shell/Notice";
 import { WonSection } from "../shell/WonSection";
 
@@ -29,6 +30,12 @@ export interface DiscountsScreenProps {
   timezone: string | null;
   codeRules: CodeRuleLimit;
   result?: UiResult | null;
+  /** Pro settings stored but not in force on the shop's plan (BILL-1, explainGate). */
+  gate?: GateNoteView[];
+  /** Rules the plan switches off. */
+  gateOff?: string[];
+  /** Handles of the enabled Won markets. */
+  enabledMarkets?: string[];
 }
 
 export function buildDiscountsProps(
@@ -43,11 +50,16 @@ export function buildDiscountsProps(
     marketNames?: MarketNames;
     now?: Date;
     result?: UiResult | null;
+    gate?: GateNoteView[];
+    gateOff?: string[];
   },
 ): DiscountsScreenProps {
   const rules = config.modules.codes.rules;
   const timezone = opts.timezone ?? null;
   return {
+    ...(opts.gate && opts.gate.length > 0 ? { gate: opts.gate.map((g) => ({ ...g })) } : {}),
+    ...(opts.gateOff && opts.gateOff.length > 0 ? { gateOff: [...opts.gateOff] } : {}),
+    enabledMarkets: config.markets.filter((m) => m.enabled).map((m) => m.handle),
     readOnly: opts.readOnly,
     rules,
     currencies: currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules, marketNames: opts.marketNames }),
@@ -63,11 +75,24 @@ export function buildDiscountsProps(
 /** Hints are joined into one line: each ends with a full stop. */
 const sentence = (text: string) => (/[.!?…]$/.test(text) ? text : `${text}.`);
 
-export function DiscountsScreen({ readOnly, rules, currencies, sync, ruleSync, today, timezone, codeRules, result }: DiscountsScreenProps) {
+export function DiscountsScreen({
+  readOnly,
+  rules,
+  currencies,
+  sync,
+  ruleSync,
+  today,
+  timezone,
+  codeRules,
+  result,
+  gate = [],
+  gateOff,
+  enabledMarkets,
+}: DiscountsScreenProps) {
   const tr = useT();
   const { t } = tr;
   const codes = currencyCodes(currencies);
-  const statuses = rules.map((rule) => ruleStatus(rule, { today, timezone, sync, ruleSync }));
+  const statuses = rules.map((rule) => ruleStatus(rule, { today, timezone, sync, ruleSync, gateOff, currencies: codes, enabledMarkets }));
   const summary = rules.length === 0 ? t("discounts.list.none") : ruleStatusSummary(statuses, tr);
   const hints = [
     // §12: say when saved rules are not (all) in Shopify, and why.
@@ -88,6 +113,7 @@ export function DiscountsScreen({ readOnly, rules, currencies, sync, ruleSync, t
           </s-banner>
         ) : null}
         <Notice result={result} />
+        {gate.length > 0 ? <GateNotes notes={gate} /> : null}
 
         <WonSection title={t("discounts.list.title")} glyph="tag" summary={summary} hint={hints.join(" ") || undefined}>
           {rules.length === 0 ? (

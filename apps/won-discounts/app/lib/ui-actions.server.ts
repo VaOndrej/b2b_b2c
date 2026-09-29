@@ -10,7 +10,19 @@
 //                             + Shopify nodes + function metafields in one
 //                             step; the result says what reached Shopify.
 //                             `unreadable_config` is refused until the merchant
-//                             confirms (form `replaceUnreadable=1`).
+//                             confirms (form `replaceUnreadable=1`). F12: the
+//                             save names the stored version it builds on
+//                             (retried once on top of another instance's
+//                             write when that write did not touch this rule)
+//                             and the rule version the editor loaded
+//                             (`ruleVersion`): a rule changed meanwhile is
+//                             refused (`base_changed`), never overwritten.
+//                             Item 7: the request waits for the save, the
+//                             nodes and the shop config (at most
+//                             ACTION_SYNC_DEADLINE_MS); products that only
+//                             gain rules are written in the background.
+//                             Item 10: a code rule's save reads the shop's
+//                             native codes FRESH (bounded) for the hash check.
 //   resyncNow               → "Synchronizovat znovu" (resyncShop).
 //   moveNative / undoMove   → app/lib/native moveNative / undoMove behind the
 //                             canonical saveAndSync (native codes passed for the
@@ -29,31 +41,36 @@ import {
   type WonDiscountsConfig,
 } from "@won/core/discounts/config";
 import { parseEmbedStatus } from "@won/core/toasts/embed-status";
-import { resolveEntitlement } from "@won/app-kit/entitlement";
 
 import { EMBED_BLOCK_HANDLE, embedActivationUrl } from "../components/model/embed";
 import { BACKUP_ID, NATIVE_DISCOUNT_GID } from "../components/model/ids";
 import { currencyCodes, currencyViews, type MarketNames } from "../components/model/markets";
-import { readRuleForm, newRuleId, type FormDataLike } from "../components/model/rule-form";
+import { FIELD, readRuleForm, newRuleId, ruleVersionToken, type FormDataLike } from "../components/model/rule-form";
 import { NOT_WIRED_SIGNALS } from "../components/model/signals";
 import { readTryCartForm, type TryCartInput } from "../components/model/try-cart-form";
 import type { AdminSignals, CodeRuleLimit, EmbedState, UiResult } from "../components/model/types";
 import { activeCodeRules, MAX_ACTIVE_CODE_RULES, SHOPIFY_MAX_ACTIVE_DISCOUNT_FUNCTIONS } from "./config-guards.server";
 import { loadConfig, saveConfig, type LoadedConfig } from "./config.server";
 import type { ShopCtx } from "./integration/context.server";
+import { withinDeadline } from "./integration/deadline";
 import { withConfigLock } from "./integration/lock.server";
 import {
   cachedNativeCodes,
+  detectNative,
   forgetDetection,
   loadNativeView,
   moveNativeDiscounts,
+  nativeCodes,
   undoNativeDiscount,
 } from "./integration/native.server";
 import { uiFailureFromSave } from "./integration/results";
 import { ruleNames, syncOutcome } from "./integration/sync-copy";
-import { overviewSync, resyncNow as resyncStored } from "./integration/sync-status.server";
+import { ACTION_SYNC_DEADLINE_MS, overviewSync, refreshTargetingNow, resyncNow as resyncStored } from "./integration/sync-status.server";
 import { runTryCartPlan, type TryCartRun } from "./integration/try-cart.server";
-import { saveAndSync, type SaveAndSyncResult } from "./sync/save-and-sync.server";
+import { canReadMarkets, saveAndSync, type SaveAndSyncResult } from "./sync/save-and-sync.server";
+import { canonicalJson } from "./sync/util";
+
+export { resolvePlan } from "./plan.server";
 
 export { uiFailureFromSave } from "./integration/results";
 
@@ -66,17 +83,8 @@ export function graphqlFrom(admin: {
   return async (query, variables) => (await admin.graphql(query, variables ? { variables } : undefined)).json();
 }
 
-// --- Entitlement + shop context ---------------------------------------------------------
-
-/**
- * BILL-1: Pro only from a verified subscription, Free on any uncertainty. Billing
- * (spec §7, Tarif) is not built yet, so there is no subscription to verify and
- * this resolves Free; the check below is where the Billing API read goes.
- */
-export async function resolvePlan(): Promise<{ pro: boolean }> {
-  const entitlement = await resolveEntitlement(async () => null);
-  return { pro: entitlement.pro };
-}
+// --- Shop context ------------------------------------------------------------------------
+// (The plan: resolvePlan, re-exported above from app/lib/plan.server.ts — the one BILL-1 resolver.)
 
 export interface ShopContext {
   currencyCode: string | null;
@@ -123,10 +131,12 @@ export function clearSignalCache(): void {
 }
 
 /**
- * The shop's market names by handle (read_markets), so the admin shows "Česko",
- * not "cz" (§4c). Degrades to {} — the UI then falls back to the handle.
+ * The shop's market names by handle (read_markets — an OPTIONAL scope, item 9),
+ * so the admin shows "Česko", not "cz" (§4c). Without the scope (known from
+ * the session), or when the read fails, {} — the UI then falls back to the handle.
  */
-export async function readMarketNames(graphql: AdminGraphql, shop: string): Promise<MarketNames> {
+export async function readMarketNames(graphql: AdminGraphql, shop: string, scopes?: string | null): Promise<MarketNames> {
+  if (!canReadMarkets(scopes)) return {};
   return cached(`markets:${shop}`, async () => {
     try {
       const json = (await graphql(`#graphql
@@ -298,7 +308,7 @@ export async function readAdminContext(ctx: {
 }): Promise<AdminReads> {
   const [shopContext, marketNames, signals] = await Promise.all([
     readShopContext(ctx.graphql),
-    readMarketNames(ctx.graphql, ctx.shop),
+    readMarketNames(ctx.graphql, ctx.shop, ctx.scopes),
     ctx.signals ? loadAdminSignals(ctx) : Promise.resolve(null),
   ]);
   return { shopContext, marketNames, signals };
@@ -306,43 +316,83 @@ export async function readAdminContext(ctx: {
 
 // --- Config writes -------------------------------------------------------------------------
 
+/** How long a code rule's save waits for a fresh read of the shop's native codes (item 10). */
+export const NATIVE_CODES_DEADLINE_MS = 8_000;
+
 /**
- * Save `next` and write it into Shopify (canonical saveAndSync). The code-hash
- * collision check gets the shop's native codes when a fresh detection is at
- * hand (coverage: native.server.ts `nativeCodes`); a save never calls Shopify
- * just for them.
+ * The shop's native codes for the hash-collision check of a CODE rule's save,
+ * read FRESH (item 10: the 60 s detection cache could miss a native code
+ * created meanwhile). The read is native detection itself (paged, every page
+ * ≤ 1 000 requested points — app/lib/native/documents.ts) bounded by
+ * NATIVE_CODES_DEADLINE_MS; when it does not finish, the cached codes are
+ * used and the save says the check could not be made fresh.
  */
-async function writeAndSync(ctx: ShopCtx, next: WonDiscountsConfig, replaceUnreadable: boolean): Promise<SaveAndSyncResult> {
+async function freshNativeCodes(ctx: ShopCtx, config: WonDiscountsConfig): Promise<{ codes: string[] | undefined; warning?: string }> {
+  const outcome = await withinDeadline(detectNative(ctx, config, { fresh: true }), NATIVE_CODES_DEADLINE_MS);
+  if (outcome.done && "value" in outcome) return { codes: nativeCodes(outcome.value) };
+  if (outcome.done && "error" in outcome && outcome.error instanceof Response) throw outcome.error;
+  return {
+    codes: cachedNativeCodes(ctx.shop),
+    warning: "native discount codes could not be read fresh; the code collision check used what was known",
+  };
+}
+
+interface WriteOptions {
+  replaceUnreadable: boolean;
+  /** The stored version the change builds on (F12). */
+  expectedVersion: string | null;
+  /** Native codes for the hash check (default: the cached detection). */
+  otherCodes?: readonly string[];
+  warnings?: string[];
+}
+
+/**
+ * Save `next` and write it into Shopify (canonical saveAndSync) on top of
+ * `expectedVersion` only. The request waits at most ACTION_SYNC_DEADLINE_MS;
+ * products that only gain rules are written in the background (item 7).
+ */
+async function writeAndSync(ctx: ShopCtx, next: WonDiscountsConfig, opts: WriteOptions): Promise<SaveAndSyncResult> {
   const result = await saveAndSync({
     client: ctx.client,
     db: ctx.db,
     shop: ctx.shop,
     input: next,
-    otherCodes: cachedNativeCodes(ctx.shop),
-    replaceUnreadable,
+    otherCodes: opts.otherCodes ?? cachedNativeCodes(ctx.shop),
+    replaceUnreadable: opts.replaceUnreadable,
+    expectedVersion: opts.expectedVersion,
+    grantedScopes: ctx.scopes,
+    productWrites: "background",
+    deadlineMs: ACTION_SYNC_DEADLINE_MS,
     createSync: ctx.createSync,
     now: ctx.now,
     logger: ctx.logger,
   });
   // A rule change can start or end a conflict with a native discount.
   if (result.save.ok) forgetDetection(ctx.shop);
-  return result;
+  return opts.warnings && opts.warnings.length > 0 ? { ...result, warnings: [...opts.warnings, ...result.warnings] } : result;
 }
 
-/** The success result of a save: sanitizer notes for `prefix` + what reached Shopify. */
+/** The success result of a save: sanitizer notes for `prefix` + what reached Shopify (or that it still runs). */
 function savedResult(
   res: SaveAndSyncResult & { save: { ok: true } },
   message: "saved" | "deleted",
   prefix: string | null,
 ): UiResult {
   const fixes = prefix === null ? [] : res.save.issues.filter((i) => i.path === prefix || i.path.startsWith(`${prefix}.`)).map((i) => i.message);
+  const syncing = res.running ? { syncing: {} } : res.sync?.background ? { syncing: { products: res.sync.background.products } } : {};
   return {
     ok: true,
     message,
     ...(fixes.length > 0 ? { fixes } : {}),
     ...(res.sync ? { sync: syncOutcome(res.sync, res.warnings, ruleNames(res.save.config)) } : {}),
+    ...syncing,
   };
 }
+
+/** Save attempts on top of another instance's write (F12): the first, and one retry. */
+const SAVE_ATTEMPTS = 2;
+
+const sameRule = (a: unknown, b: unknown) => canonicalJson(a ?? null) === canonicalJson(b ?? null);
 
 /** The form's explicit confirmation to replace an unreadable stored config (I3). */
 export function readReplaceUnreadable(form: FormDataLike): boolean {
@@ -362,6 +412,12 @@ export interface SaveRuleOptions {
  * scoped to the session shop (SEC-2), sanitized again by saveConfig (DATA-2),
  * then written into Shopify (saveAndSync).
  */
+/** The rule version the editor loaded (hidden `ruleVersion`), or null (a new rule, an old form). */
+function formRuleVersion(form: FormDataLike): string | null {
+  const v = form.get(FIELD.ruleVersion);
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
 export async function saveRule(
   ctx: ShopCtx,
   form: FormDataLike,
@@ -369,62 +425,95 @@ export async function saveRule(
 ): Promise<{ result: UiResult; ruleId: string | null }> {
   return withConfigLock(ctx.shop, async () => {
     const replaceUnreadable = readReplaceUnreadable(form);
-    const { config, readOnly, unreadable } = await loadConfig(ctx.db, ctx.shop);
-    if (readOnly) return { result: { ok: false, reason: "newer_schema" }, ruleId: null };
-    // I3: never replace an unreadable stored config without the merchant's confirmation.
-    if (unreadable && !replaceUnreadable) return { result: { ok: false, reason: "unreadable_config" }, ruleId: null };
-
-    const rules = config.modules.codes.rules;
+    const loadedVersion = formRuleVersion(form);
     const isNew = opts.ruleId === "new";
-    const existing = isNew ? null : (rules.find((r) => r.id === opts.ruleId) ?? null);
-    if (!isNew && !existing) return { result: { ok: false, reason: "not_found" }, ruleId: null };
-    if (isNew && rules.length >= CONFIG_LIMITS.rules) {
-      return {
-        result: { ok: false, reason: "invalid", errors: [{ field: "name", key: "editor.error.tooManyRules", params: { max: CONFIG_LIMITS.rules } }] },
-        ruleId: null,
-      };
+    const id = isNew ? newRuleId() : opts.ruleId;
+    let firstRule: unknown;
+    let native: { codes: string[] | undefined; warning?: string } | null = null;
+    for (let attempt = 1; attempt <= SAVE_ATTEMPTS; attempt += 1) {
+      const loaded = await loadConfig(ctx.db, ctx.shop);
+      const { config, readOnly, unreadable } = loaded;
+      if (readOnly) return { result: { ok: false, reason: "newer_schema" }, ruleId: null };
+      // I3: never replace an unreadable stored config without the merchant's confirmation.
+      if (unreadable && !replaceUnreadable) return { result: { ok: false, reason: "unreadable_config" }, ruleId: null };
+
+      const rules = config.modules.codes.rules;
+      const existing = isNew ? null : (rules.find((r) => r.id === opts.ruleId) ?? null);
+      if (!isNew && !existing) return { result: { ok: false, reason: "not_found" }, ruleId: null };
+      // F12: the rule changed since the editor loaded it, or since this save first read it.
+      if (existing && loadedVersion && ruleVersionToken(existing) !== loadedVersion) return { result: { ok: false, reason: "base_changed" }, ruleId: null };
+      if (attempt === 1) firstRule = existing;
+      else if (!sameRule(existing, firstRule)) return { result: { ok: false, reason: "base_changed" }, ruleId: null };
+      if (isNew && rules.length >= CONFIG_LIMITS.rules) {
+        return {
+          result: { ok: false, reason: "invalid", errors: [{ field: "name", key: "editor.error.tooManyRules", params: { max: CONFIG_LIMITS.rules } }] },
+          ruleId: null,
+        };
+      }
+
+      const parsed = readRuleForm(form, {
+        id,
+        currencies: currencyCodes(currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules })),
+        timezone: opts.timezone,
+        pro: opts.pro,
+        existing,
+        marketHandles: config.markets.filter((m) => m.enabled).map((m) => m.handle),
+        otherRules: rules.filter((r) => r.id !== id).map((r) => ({ id: r.id, name: r.name, codes: r.codes })),
+      });
+      if (parsed.errors.length > 0) return { result: { ok: false, reason: "invalid", errors: parsed.errors }, ruleId: null };
+
+      const nextRules = existing ? rules.map((r) => (r.id === id ? parsed.rule : r)) : [...rules, parsed.rule];
+      const index = nextRules.findIndex((r) => r.id === id);
+      const next = { ...config, modules: { ...config.modules, codes: { rules: nextRules } } };
+      if (parsed.rule.method === "code" && native === null) native = await freshNativeCodes(ctx, next);
+      const res = await writeAndSync(ctx, next, {
+        replaceUnreadable,
+        expectedVersion: loaded.version,
+        ...(native ? { otherCodes: native.codes, warnings: native.warning ? [native.warning] : [] } : {}),
+      });
+      if (!res.save.ok && res.save.reason === "base_changed") continue;
+      if (!res.save.ok) return { result: uiFailureFromSave(res.save), ruleId: null };
+      return { result: savedResult({ ...res, save: res.save }, "saved", `modules.codes.rules[${index}]`), ruleId: id };
     }
-
-    const id = existing ? existing.id : newRuleId();
-    const parsed = readRuleForm(form, {
-      id,
-      currencies: currencyCodes(currencyViews(config.markets, { shopCurrency: opts.shopCurrency, rules })),
-      timezone: opts.timezone,
-      pro: opts.pro,
-      existing,
-      marketHandles: config.markets.filter((m) => m.enabled).map((m) => m.handle),
-      otherRules: rules.filter((r) => r.id !== id).map((r) => ({ id: r.id, name: r.name, codes: r.codes })),
-    });
-    if (parsed.errors.length > 0) return { result: { ok: false, reason: "invalid", errors: parsed.errors }, ruleId: null };
-
-    const nextRules = existing ? rules.map((r) => (r.id === id ? parsed.rule : r)) : [...rules, parsed.rule];
-    const index = nextRules.findIndex((r) => r.id === id);
-    const res = await writeAndSync(ctx, { ...config, modules: { ...config.modules, codes: { rules: nextRules } } }, replaceUnreadable);
-    if (!res.save.ok) return { result: uiFailureFromSave(res.save), ruleId: null };
-    return { result: savedResult({ ...res, save: res.save }, "saved", `modules.codes.rules[${index}]`), ruleId: id };
+    return { result: { ok: false, reason: "base_changed" }, ruleId: null };
   });
 }
 
-/** Delete one rule (the previous config stays in ConfigVersion history, §14b); its Won node goes with it. */
-export async function deleteRule(ctx: ShopCtx, ruleId: string): Promise<UiResult> {
+/**
+ * Delete one rule (the previous config stays in ConfigVersion history, §14b);
+ * its Won node goes with it. `ruleVersion` = the version the editor loaded
+ * (F12: a rule changed meanwhile is not deleted blindly).
+ */
+export async function deleteRule(ctx: ShopCtx, ruleId: string, opts: { ruleVersion?: string | null } = {}): Promise<UiResult> {
   return withConfigLock(ctx.shop, async () => {
-    const { config, readOnly, unreadable } = await loadConfig(ctx.db, ctx.shop);
-    if (readOnly) return { ok: false, reason: "newer_schema" };
-    if (unreadable) return { ok: false, reason: "unreadable_config" };
-    const rules = config.modules.codes.rules;
-    if (!rules.some((r) => r.id === ruleId)) return { ok: false, reason: "not_found" };
-    const res = await writeAndSync(
-      ctx,
-      { ...config, modules: { ...config.modules, codes: { rules: rules.filter((r) => r.id !== ruleId) } } },
-      false,
-    );
-    return res.save.ok ? savedResult({ ...res, save: res.save }, "deleted", null) : uiFailureFromSave(res.save);
+    for (let attempt = 1; attempt <= SAVE_ATTEMPTS; attempt += 1) {
+      const loaded = await loadConfig(ctx.db, ctx.shop);
+      const { config, readOnly, unreadable } = loaded;
+      if (readOnly) return { ok: false, reason: "newer_schema" };
+      if (unreadable) return { ok: false, reason: "unreadable_config" };
+      const rules = config.modules.codes.rules;
+      const rule = rules.find((r) => r.id === ruleId);
+      if (!rule) return { ok: false, reason: "not_found" };
+      if (opts.ruleVersion && ruleVersionToken(rule) !== opts.ruleVersion) return { ok: false, reason: "base_changed" };
+      const res = await writeAndSync(ctx, { ...config, modules: { ...config.modules, codes: { rules: rules.filter((r) => r.id !== ruleId) } } }, {
+        replaceUnreadable: false,
+        expectedVersion: loaded.version,
+      });
+      if (!res.save.ok && res.save.reason === "base_changed") continue;
+      return res.save.ok ? savedResult({ ...res, save: res.save }, "deleted", null) : uiFailureFromSave(res.save);
+    }
+    return { ok: false, reason: "base_changed" };
   });
 }
 
 /** "Synchronizovat znovu" (Přehled, and the Notice after a save that did not reach Shopify). */
 export function resyncNow(ctx: ShopCtx): Promise<UiResult> {
   return resyncStored(ctx);
+}
+
+/** "Obnovit cílení" (Přehled): re-read collection members and rewrite the product refs now (item 2). */
+export function refreshTargetingAction(ctx: ShopCtx): Promise<UiResult> {
+  return refreshTargetingNow(ctx);
 }
 
 export type OnboardingPatch = { goals?: OnboardingGoal[]; step?: number };
@@ -455,16 +544,25 @@ export function readOnboardingForm(form: FormDataLike): OnboardingPatch | null {
  */
 export async function saveOnboarding(ctx: Pick<ShopCtx, "db" | "shop">, patch: OnboardingPatch): Promise<UiResult> {
   return withConfigLock(ctx.shop, async () => {
-    const { config, readOnly } = await loadConfig(ctx.db, ctx.shop);
-    if (readOnly) return { ok: false, reason: "newer_schema" };
-    const onboarding = {
-      goals: patch.goals ?? config.onboarding.goals,
-      step: patch.step ?? config.onboarding.step,
-    };
-    const res = await saveConfig(ctx.db, ctx.shop, { ...config, onboarding });
-    return res.ok ? { ok: true, message: "saved" } : uiFailureFromSave(res);
+    // F12: on top of the version just read; another instance's write in between → the patch is re-applied on it.
+    for (let attempt = 1; attempt <= ONBOARDING_ATTEMPTS; attempt += 1) {
+      const loaded = await loadConfig(ctx.db, ctx.shop);
+      const { config, readOnly } = loaded;
+      if (readOnly) return { ok: false, reason: "newer_schema" };
+      const onboarding = {
+        goals: patch.goals ?? config.onboarding.goals,
+        step: patch.step ?? config.onboarding.step,
+      };
+      const res = await saveConfig(ctx.db, ctx.shop, { ...config, onboarding }, { expectedVersion: loaded.version });
+      if (!res.ok && res.reason === "base_changed") continue;
+      return res.ok ? { ok: true, message: "saved" } : uiFailureFromSave(res);
+    }
+    return { ok: false, reason: "base_changed" };
   });
 }
+
+/** An onboarding step is a patch that applies on top of any config: retried a few times on a concurrent write. */
+const ONBOARDING_ATTEMPTS = 3;
 
 // --- Native discounts + cart engine -----------------------------------------------------
 

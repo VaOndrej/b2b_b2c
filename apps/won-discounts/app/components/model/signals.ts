@@ -4,7 +4,7 @@
 import { formatDate } from "@won/core/discounts/describe";
 
 import type { MessageKey, Translator } from "../../i18n";
-import type { AdminSignals, CheckoutView, EmbedState, SyncView } from "./types";
+import type { AdminSignals, CheckoutView, EmbedState, SyncView, TargetingView } from "./types";
 
 /** What the app shows while sync / native detection / checkout checks are not connected yet. */
 export const NOT_WIRED_SIGNALS: AdminSignals = {
@@ -52,7 +52,7 @@ export function syncText(view: SyncView, tr: Translator): string {
     case "pending":
       return tr.t("overview.sync.pending");
     case "running":
-      return tr.t("overview.sync.running");
+      return view.products ? tr.t("overview.sync.runningProducts", { n: view.products }) : tr.t("overview.sync.running");
     case "never":
       return tr.t("overview.sync.never");
     case "error":
@@ -65,14 +65,28 @@ export function syncText(view: SyncView, tr: Translator): string {
   }
 }
 
-/** The sync line has a "Synchronizovat znovu" (a failed or waiting sync; never while one runs). */
+/** The sync line has a "Synchronizovat znovu" (a failed or waiting sync, or Won not running although synced; never while one runs). */
 export function syncNeedsRetry(view: SyncView): boolean {
-  return view.state === "error" || view.state === "pending";
+  return view.state === "error" || view.state === "pending" || (view.state === "ok" && (view.attention ?? []).length > 0);
 }
 
-/** Sync is fine for the "Stav v obchodě" summary: written, or nothing to write yet. */
+/** The targeting line (item 2): fresh as of when, or being refreshed. */
+export function targetingText(view: TargetingView, tr: Translator): string {
+  switch (view.state) {
+    case "refreshing":
+      if (view.products) return tr.t("overview.targeting.writing", { n: view.products });
+      return view.since ? tr.t("overview.targeting.refreshingSince", { date: formatDateTime(view.since, tr.locale) }) : tr.t("overview.targeting.refreshing");
+    case "fresh":
+      return view.at ? tr.t("overview.targeting.fresh", { date: formatDateTime(view.at, tr.locale) }) : tr.t("overview.targeting.unknown");
+    case "none":
+    default:
+      return "";
+  }
+}
+
+/** Sync is fine for the "Stav v obchodě" summary: written (and Won running), or nothing to write yet. */
 export function syncSettled(view: SyncView): boolean {
-  return view.state === "ok" || view.state === "never";
+  return (view.state === "ok" && (view.attention ?? []).length === 0) || view.state === "never";
 }
 
 /** The "Stav v obchodě" state line. */

@@ -5,6 +5,7 @@
 // NodeRole / NodeVars / ProductTargetingInput / ShopFunctionConfigCheck.
 
 import type { ReadonlyDeep, WonDiscountsConfig } from "@won/core/discounts/config";
+import type { ShopPlan } from "@won/core/discounts/plan-gate";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import type { AdminClient } from "../admin-client.server";
@@ -69,6 +70,12 @@ export interface RetryOptions {
 export interface SyncDeps {
   client: AdminClient;
   db: PrismaClient;
+  /**
+   * The shop's plan (BILL-1): the sync runs gateConfigForPlan(config, plan)
+   * before the function payload, the nodes and the product index, so a Free
+   * shop's checkout never sees Pro data. Production: app/lib/plan.server.ts.
+   */
+  plan: (shop: string) => Promise<ShopPlan>;
   /** Shared function config for the shop metafield (JSON carries `campaignVarsVersion`). */
   buildShopFunctionConfig: (config: ConfigView, options: ShopConfigBuildOptions) => { json: string; bytes: number; fits: boolean };
   /** `now` = shop-local `YYYY-MM-DDTHH:MM:SS`. */
@@ -101,7 +108,9 @@ export type PendingWork =
   | "failed_steps"
   | "campaign_switch_held"
   | "stale_product_refs"
-  | "codes_in_progress";
+  | "codes_in_progress"
+  /** Products that only gain rules are still being written after the flip (background lane, item 7). */
+  | "products_in_progress";
 
 export interface SyncResult {
   ok: boolean;
@@ -112,4 +121,6 @@ export interface SyncResult {
   pending: PendingWork[];
   /** The persisted SyncRun row (null when it could not be written). */
   runId: string | null;
+  /** Products still being written in the background after this run (item 7). */
+  background?: { products: number };
 }

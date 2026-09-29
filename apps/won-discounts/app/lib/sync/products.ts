@@ -4,35 +4,58 @@
 // on every targeted product, so the function never needs rule id lists.
 //
 // Which products carry our metafield is sync bookkeeping in Prisma
-// ProductTargetIndex {shop, productId, payloadHash} (DATA-1; no cap). Each run:
-//   1. targeted = product ids, products of targeted variants, collection
-//      members (paged 250); candidates = targeted ∪ indexed products;
-//   2. desired value per candidate (productRuleIndex → productMetafieldValue);
-//      skip where the stored payloadHash already equals it (no read, no write);
-//   3. the rest is checked once (nodes(), 100 per query): products deleted in
-//      Shopify are dropped; a product whose Shopify value already matches is
-//      just recorded;
-//   4. WRITE-AHEAD: rows for products about to get a value are set to
-//      payloadHash = null BEFORE the write, so a crash never leaves an
-//      untracked metafield (a stale ref would keep discounting a product that
-//      left the target);
-//   5. metafieldsSet ≤ 25 per call (row hash on success), metafieldsDelete
-//      ≤ 250 per call (row deleted on success); failures stay tracked and are
-//      retried next sync.
+// ProductTargetIndex {shop, productId, payloadHash} (DATA-1; no cap). A row
+// exists for every product that may carry the metafield (write-ahead), so a
+// product WITHOUT a row carries no Won refs.
+//
+// Two lanes around the shop-config flip (sync.server.ts, M1 + audit P2-8):
+//   plan    targeted = product ids, products of targeted variants, collection
+//           members (paged 250, at most MAX_COLLECTION_PRODUCTS per collection);
+//           candidates = targeted ∪ indexed; desired value per candidate
+//           (productRuleIndex → productMetafieldValue); skip where the stored
+//           payloadHash already equals it (no read, no write). Products that
+//           carry our metafield (indexed) and must change — and products that
+//           left every target — are read once (nodes(), 100 per query): deleted
+//           ones are dropped, an identical Shopify value is only recorded;
+//   before  (BEFORE the new shop config is written) every change to a product
+//           that already carries Won refs, and every clear: a product must lose
+//           a ref before the new config can give that rule a new value through
+//           it. WRITE-AHEAD: a row is set to payloadHash = null before its
+//           write. metafieldsSet ≤ 25 per call (row hash on success),
+//           metafieldsDelete ≤ 250 per call (row deleted on success);
+//   after   (AFTER the flip) products that carry no Won refs yet and only GAIN
+//           some: until written they simply lack the new rules (under-discount,
+//           never a wrong value). The admin save runs this lane in the
+//           background (in-process queue, sync.server.ts) so a rule on a large
+//           collection never holds the request.
 // `staleRisk` = some product may still carry refs the new config no longer
-// gives it (a clear failed, or the step could not finish): the orchestrator
-// then HOLDS the new shop config (M1, sync.server.ts). A failed SET only means
-// a product lacks a new ref (under-discount until the next sync), no hold.
+// gives it: a clear failed, a failed SET would have REMOVED a ref (its new set
+// of refs is not a superset of what Shopify has — audit P2-1), or the plan
+// could not finish. The orchestrator then HOLDS the new shop config (M1).
+// A failed SET that only adds refs does not hold anything.
 // `entry.oversized` (the engine had to shrink a product over its 9 000 B
 // budget) is surfaced as a warning step naming the product and the rules.
+//
+// Index trust (audit P2-4): when the shop's function config is missing in
+// Shopify (the first sync after an install or a reinstall — Shopify removes
+// app-owned metafields on uninstall), a sample of the indexed products is
+// read first; any product whose metafield is missing or different
+// invalidates every hash of the shop (payloadHash = null), so this run
+// re-verifies and rewrites them all.
 
 import { productMetafieldValue } from "@won/core/discounts/targeting";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import { PRODUCT_KEY, WON_NAMESPACE } from "./graphql";
+import { setSyncProgress } from "./progress";
 import { errorText, setMetafields, userErrorText, type Transport, type UserErrorLike } from "./transport";
 import type { ConfigView, SyncProductEntry, SyncProductInput, SyncStep } from "./types";
 import { canonicalJson, chunks, hashText, METAFIELDS_DELETE_BATCH, METAFIELDS_SET_BATCH, NODES_BATCH, sameJson } from "./util";
+
+/** Collection members read per collection per sync (100 pages of 250): a larger target is refused honestly. */
+export const MAX_COLLECTION_PRODUCTS = 25_000;
+/** Indexed products read to check the index after an install / reinstall. */
+export const INDEX_SAMPLE_SIZE = 25;
 
 /** No rule for the product nor for any of its variants: the metafield should not exist. */
 export function isEmptyEntry(entry: SyncProductEntry): boolean {
@@ -74,6 +97,12 @@ export function targetScopes(config: ConfigView): Scopes {
   return scopes;
 }
 
+/** True when some rule (or campaign re-target) targets products, variants or collections. */
+export function hasProductTargets(config: ConfigView): boolean {
+  const scopes = targetScopes(config);
+  return scopes.productIds.size + scopes.variantIds.size + scopes.collectionIds.size > 0;
+}
+
 interface Page<T> {
   pageInfo: { hasNextPage: boolean; endCursor: string | null };
   nodes: T[];
@@ -85,6 +114,33 @@ export interface ProductSyncArgs {
   shop: string;
   config: ConfigView;
   productRuleIndex: (config: ConfigView, products: readonly SyncProductInput[]) => Map<string, SyncProductEntry>;
+  /** Check a sample of the index against Shopify first (the shop config was missing: first sync after an install). */
+  verifyIndex?: boolean;
+}
+
+interface Write {
+  productId: string;
+  value: string;
+  hash: string;
+}
+
+/** A write to a product that already carries our metafield, with what Shopify has now. */
+interface IndexedWrite extends Write {
+  current: string | null;
+}
+
+export interface ProductPlan {
+  steps: SyncStep[];
+  /** The plan could not finish: some product may carry refs the new config no longer gives it. */
+  staleRisk: boolean;
+  /** False when the plan failed (nothing may be written from it). */
+  complete: boolean;
+  /** Before the flip: changes to products that carry Won refs already. */
+  sets: IndexedWrite[];
+  /** Before the flip: products that no longer belong to any target. */
+  clears: string[];
+  /** After the flip: products without Won refs that only gain some (not read yet). */
+  additions: Write[];
 }
 
 export interface ProductSyncResult {
@@ -93,12 +149,22 @@ export interface ProductSyncResult {
   staleRisk: boolean;
 }
 
-async function targetedProducts(transport: Transport, scopes: Scopes) {
+// --- Reading the targets ---------------------------------------------------------------------
+
+class CollectionTooLarge extends Error {
+  constructor(readonly collectionId: string) {
+    super(`the collection ${collectionId} has more than ${MAX_COLLECTION_PRODUCTS} products`);
+  }
+}
+
+async function targetedProducts(transport: Transport, scopes: Scopes, shop: string) {
   const productCollections = new Map<string, Set<string>>();
   const targeted = new Set<string>(scopes.productIds);
   const missing: string[] = [];
+  let read = 0;
   for (const collectionId of scopes.collectionIds) {
     let after: string | null = null;
+    let members = 0;
     for (;;) {
       const data: { collection: { products: Page<{ id: string }> } | null } = await transport.call("collectionProducts", {
         id: collectionId,
@@ -114,7 +180,11 @@ async function targetedProducts(transport: Transport, scopes: Scopes) {
         set.add(collectionId);
         productCollections.set(product.id, set);
       }
+      members += data.collection.products.nodes.length;
+      read += data.collection.products.nodes.length;
+      setSyncProgress(shop, { phase: "reading", done: read, total: null });
       if (!data.collection.products.pageInfo.hasNextPage) break;
+      if (members >= MAX_COLLECTION_PRODUCTS) throw new CollectionTooLarge(collectionId);
       after = data.collection.products.pageInfo.endCursor;
     }
   }
@@ -144,28 +214,134 @@ async function targetedProducts(transport: Transport, scopes: Scopes) {
   return { targeted, productCollections, allVariants, missing };
 }
 
-export async function syncProducts(args: ProductSyncArgs): Promise<ProductSyncResult> {
+type MetafieldNode = { id: string; metafield: { value: string } | null } | null;
+
+async function readProductValues(transport: Transport, ids: readonly string[]): Promise<Map<string, MetafieldNode>> {
+  const out = new Map<string, MetafieldNode>();
+  for (const batch of chunks(ids, NODES_BATCH)) {
+    const data: { nodes: MetafieldNode[] } = await transport.call("productMetafields", { ids: batch });
+    batch.forEach((productId, i) => out.set(productId, data.nodes[i]?.id ? data.nodes[i] : null));
+  }
+  return out;
+}
+
+// --- Refs: does a write only ADD? ----------------------------------------------------------------
+
+interface Refs {
+  ruleIds: Set<string>;
+  variants: Map<string, Set<string>>;
+}
+
+/** The refs a product metafield value carries ({} for none); null when it cannot be read. */
+function refsOf(value: string | null | undefined): Refs | null {
+  if (value === null || value === undefined) return { ruleIds: new Set(), variants: new Map() };
+  try {
+    const parsed = JSON.parse(value) as { ruleIds?: unknown; variantRuleIds?: unknown };
+    const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+    const variants = new Map<string, Set<string>>();
+    if (parsed.variantRuleIds && typeof parsed.variantRuleIds === "object") {
+      for (const [variant, refs] of Object.entries(parsed.variantRuleIds as Record<string, unknown>)) variants.set(variant, new Set(strings(refs)));
+    }
+    return { ruleIds: new Set(strings(parsed.ruleIds)), variants };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True when writing `next` over `current` only ADDS refs: every ref the
+ * product has now stays (product-wide, or on the same variant — a product-wide
+ * ref covers every variant). An unreadable current value is never "only adds".
+ */
+export function onlyAddsRefs(next: string, current: string | null | undefined): boolean {
+  const have = refsOf(current);
+  const want = refsOf(next);
+  if (!have || !want) return false;
+  for (const ref of have.ruleIds) if (!want.ruleIds.has(ref)) return false;
+  for (const [variant, refs] of have.variants) {
+    for (const ref of refs) if (!want.ruleIds.has(ref) && !want.variants.get(variant)?.has(ref)) return false;
+  }
+  return true;
+}
+
+// --- Index check after an install ------------------------------------------------------------------
+
+async function verifyIndexSample(args: ProductSyncArgs, indexed: Map<string, string | null>, steps: SyncStep[]): Promise<void> {
+  const { transport, db, shop } = args;
+  const hashed = [...indexed].filter(([, hash]) => hash !== null).map(([productId]) => productId);
+  if (hashed.length === 0) return;
+  const sample = hashed.slice(0, INDEX_SAMPLE_SIZE);
+  let mismatch: string | null = null;
+  try {
+    const values = await readProductValues(transport, sample);
+    for (const productId of sample) {
+      const node = values.get(productId);
+      if (!node) continue; // deleted product: dropped by the normal pass
+      const value = node.metafield?.value;
+      const hash = value === undefined ? null : hashText(canonicalJson(safeParse(value)));
+      if (hash !== indexed.get(productId)) {
+        mismatch = productId;
+        break;
+      }
+    }
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    mismatch = `(read failed: ${errorText(error)})`;
+  }
+  if (mismatch === null) {
+    steps.push({ step: "products.index", ok: true, detail: `index checked on ${sample.length} product(s) after the shop config was missing: it matches Shopify` });
+    return;
+  }
+  await db.productTargetIndex.updateMany({ where: { shop }, data: { payloadHash: null } });
+  for (const productId of indexed.keys()) indexed.set(productId, null);
+  steps.push({
+    step: "products.index",
+    ok: true,
+    detail: `the shop config was missing and the index does not match Shopify (${mismatch}): every indexed product is checked and rewritten`,
+  });
+}
+
+function safeParse(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+// --- Plan -------------------------------------------------------------------------------------
+
+function failedPlan(steps: SyncStep[], staleRisk: boolean): ProductPlan {
+  return { steps, staleRisk, complete: false, sets: [], clears: [], additions: [] };
+}
+
+export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> {
   const { transport, db, shop, config } = args;
   const steps: SyncStep[] = [];
   const scopes = targetScopes(config);
   const rows = await db.productTargetIndex.findMany({ where: { shop }, select: { productId: true, payloadHash: true } });
   const indexed = new Map(rows.map((row) => [row.productId, row.payloadHash]));
+  if (args.verifyIndex) await verifyIndexSample(args, indexed, steps);
 
   let found;
   try {
-    found = await targetedProducts(transport, scopes);
+    found = await targetedProducts(transport, scopes, shop);
   } catch (error) {
     if (error instanceof Response) throw error;
-    steps.push({ step: "products", ok: false, detail: `could not read the targeted products: ${errorText(error)}` });
+    const detail =
+      error instanceof CollectionTooLarge
+        ? `${error.message}; targeting a collection this large is not supported yet — pick smaller collections (nothing was written)`
+        : `could not read the targeted products: ${errorText(error)}`;
+    steps.push({ step: "products", ok: false, detail });
     // Nothing written: products that left a target may still carry old refs.
-    return { steps, staleRisk: indexed.size > 0 };
+    return failedPlan(steps, indexed.size > 0);
   }
   const { targeted, productCollections, allVariants, missing } = found;
 
   const candidates = [...new Set([...targeted, ...indexed.keys()])].sort();
   if (candidates.length === 0) {
     steps.push({ step: "products", ok: true, detail: "no targeted products and none to clean" });
-    return { steps, staleRisk: false };
+    return { steps, staleRisk: false, complete: true, sets: [], clears: [], additions: [] };
   }
   const inputs: SyncProductInput[] = candidates.map((productId) => ({
     productId,
@@ -202,6 +378,8 @@ export async function syncProducts(args: ProductSyncArgs): Promise<ProductSyncRe
       toClear.push(productId);
     }
   }
+  const wantedIndexed = [...wanted.keys()].filter((productId) => indexed.has(productId));
+  const additions = [...wanted].filter(([productId]) => !indexed.has(productId)).map(([productId, w]) => ({ productId, ...w }));
   steps.push({
     step: "products.scope",
     ok: true,
@@ -219,74 +397,99 @@ export async function syncProducts(args: ProductSyncArgs): Promise<ProductSyncRe
     });
   }
 
-  // Check the products that need a change: deleted ones are dropped, an identical Shopify value is only recorded.
-  const toSet: { productId: string; value: string; hash: string }[] = [];
+  // Read the products that already carry our metafield and must change: deleted ones are dropped, an identical value is only recorded.
+  const sets: IndexedWrite[] = [];
   const recorded: { productId: string; hash: string }[] = [];
   const gone: string[] = [];
   const clearing = new Set(toClear);
+  let values: Map<string, MetafieldNode>;
   try {
-    for (const batch of chunks([...wanted.keys(), ...toClear], NODES_BATCH)) {
-      const data: { nodes: ({ id: string; metafield: { value: string } | null } | null)[] } = await transport.call("productMetafields", { ids: batch });
-      batch.forEach((productId, i) => {
-        const node = data.nodes[i];
-        if (!node?.id) {
-          gone.push(productId);
-          clearing.delete(productId);
-          return;
-        }
-        const want = wanted.get(productId);
-        if (want) {
-          if (sameJson(node.metafield?.value, want.value)) recorded.push({ productId, hash: want.hash });
-          else toSet.push({ productId, ...want });
-        } else if (!node.metafield) {
-          clearing.delete(productId);
-          gone.push(productId); // already absent in Shopify: just untrack
-        }
-      });
-    }
+    values = await readProductValues(transport, [...wantedIndexed, ...toClear]);
   } catch (error) {
     if (error instanceof Response) throw error;
     steps.push({ step: "products", ok: false, detail: `could not read the products to update: ${errorText(error)}` });
-    return { steps, staleRisk: toClear.length > 0 };
+    // Every one of them may lose a ref: nothing may flip before they are written.
+    return failedPlan(steps, toClear.length > 0 || wantedIndexed.length > 0);
+  }
+  for (const productId of wantedIndexed) {
+    const node = values.get(productId);
+    const want = wanted.get(productId)!;
+    if (!node) gone.push(productId);
+    else if (sameJson(node.metafield?.value, want.value)) recorded.push({ productId, hash: want.hash });
+    else sets.push({ productId, ...want, current: node.metafield?.value ?? null });
+  }
+  for (const productId of toClear) {
+    const node = values.get(productId);
+    if (!node || !node.metafield) {
+      clearing.delete(productId);
+      gone.push(productId); // deleted, or already absent in Shopify: just untrack
+    }
   }
   if (gone.length) await db.productTargetIndex.deleteMany({ where: { shop, productId: { in: gone } } });
   for (const { productId, hash } of recorded) await upsertRow(db, shop, productId, hash);
+  return { steps, staleRisk: false, complete: true, sets, clears: [...clearing], additions };
+}
 
-  // Write-ahead, then writes.
+// --- Writes -----------------------------------------------------------------------------------
+
+async function writeBatch(args: ProductSyncArgs, batch: readonly Write[]): Promise<string | null> {
+  const { transport, db, shop } = args;
+  for (const { productId } of batch) await upsertRow(db, shop, productId, null);
+  const error = await setMetafields(
+    transport,
+    batch.map(({ productId, value }) => ({ ownerId: productId, namespace: WON_NAMESPACE, key: PRODUCT_KEY, type: "json", value })),
+  );
+  if (error) return error;
+  await db.$transaction(
+    batch.map(({ productId, hash }) =>
+      db.productTargetIndex.update({ where: { shop_productId: { shop, productId } }, data: { payloadHash: hash } }),
+    ),
+  );
+  return null;
+}
+
+/**
+ * The BEFORE lane: changes to products that carry Won refs, and clears. A
+ * failed write that would have removed a ref, or a failed clear, is `staleRisk`.
+ */
+export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPlan): Promise<ProductSyncResult> {
+  const { transport, db, shop } = args;
+  const steps: SyncStep[] = [];
+  let staleRisk = false;
+
   let setOk = 0;
   const setErrors: string[] = [];
-  for (const batch of chunks(toSet, METAFIELDS_SET_BATCH)) {
-    for (const { productId } of batch) await upsertRow(db, shop, productId, null);
-    const error = await setMetafields(
-      transport,
-      batch.map(({ productId, value }) => ({ ownerId: productId, namespace: WON_NAMESPACE, key: PRODUCT_KEY, type: "json", value })),
-    );
+  let reductionFailed = 0;
+  for (const batch of chunks(plan.sets, METAFIELDS_SET_BATCH)) {
+    const error = await writeBatch(args, batch);
     if (error) {
       setErrors.push(error);
+      const reductions = batch.filter((w) => !onlyAddsRefs(w.value, w.current)).length;
+      if (reductions > 0) {
+        reductionFailed += reductions;
+        staleRisk = true;
+      }
       continue;
     }
     setOk += batch.length;
-    await db.$transaction(
-      batch.map(({ productId, hash }) =>
-        db.productTargetIndex.update({ where: { shop_productId: { shop, productId } }, data: { payloadHash: hash } }),
-      ),
-    );
   }
-  if (toSet.length > 0) {
+  if (plan.sets.length > 0) {
     steps.push({
       step: "products.set",
       ok: setErrors.length === 0,
       detail:
         setErrors.length === 0
           ? `${setOk} product(s) updated`
-          : `${setOk}/${toSet.length} product(s) updated; ${setErrors.join("; ")} (they lack the new rules until the next sync)`,
+          : `${setOk}/${plan.sets.length} product(s) updated; ${setErrors.join("; ")}` +
+            (reductionFailed > 0
+              ? ` (${reductionFailed} of them still carry rules they should lose: the new config is held)`
+              : " (they lack the new rules until the next sync)"),
     });
   }
 
-  const clears = [...clearing];
   let clearOk = 0;
   const clearErrors: string[] = [];
-  for (const batch of chunks(clears, METAFIELDS_DELETE_BATCH)) {
+  for (const batch of chunks(plan.clears, METAFIELDS_DELETE_BATCH)) {
     try {
       const data: { metafieldsDelete: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsDelete", {
         metafields: batch.map((ownerId) => ({ ownerId, namespace: WON_NAMESPACE, key: PRODUCT_KEY })),
@@ -303,17 +506,86 @@ export async function syncProducts(args: ProductSyncArgs): Promise<ProductSyncRe
       clearErrors.push(errorText(error));
     }
   }
-  if (clears.length > 0) {
+  if (plan.clears.length > 0) {
     steps.push({
       step: "products.clear",
       ok: clearErrors.length === 0,
       detail:
         clearErrors.length === 0
           ? `${clearOk} product(s) no longer targeted, cleared`
-          : `${clearOk}/${clears.length} cleared; ${clearErrors.join("; ")} (they still carry old rules: the new config is held)`,
+          : `${clearOk}/${plan.clears.length} cleared; ${clearErrors.join("; ")} (they still carry old rules: the new config is held)`,
     });
+    if (clearErrors.length > 0) staleRisk = true;
   }
-  return { steps, staleRisk: clearErrors.length > 0 };
+  return { steps, staleRisk };
+}
+
+export interface AdditionsOptions {
+  /** Checked before every batch: true stops the lane (a newer sync redoes it). */
+  isCancelled?: () => boolean;
+}
+
+export interface AdditionsResult {
+  steps: SyncStep[];
+  /** Stopped because a newer sync superseded it (nothing recorded as done). */
+  cancelled: boolean;
+}
+
+/**
+ * The AFTER lane: products that carry no Won refs yet and only gain some.
+ * Read first (deleted products dropped, identical values recorded), then
+ * written ≤ 25 per call with progress. Failures never hold anything.
+ */
+export async function applyProductAdditions(args: ProductSyncArgs, additions: readonly Write[], options: AdditionsOptions = {}): Promise<AdditionsResult> {
+  const { transport, db, shop } = args;
+  const steps: SyncStep[] = [];
+  if (additions.length === 0) return { steps, cancelled: false };
+  const cancelled = () => options.isCancelled?.() === true;
+  const toSet: Write[] = [];
+  let skipped = 0;
+  try {
+    for (const batch of chunks(additions, NODES_BATCH)) {
+      if (cancelled()) return { steps, cancelled: true };
+      const values = await readProductValues(transport, batch.map((w) => w.productId));
+      for (const write of batch) {
+        const node = values.get(write.productId);
+        if (!node) skipped += 1;
+        else if (sameJson(node.metafield?.value, write.value)) await upsertRow(db, shop, write.productId, write.hash);
+        else toSet.push(write);
+      }
+    }
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    steps.push({ step: "products.add", ok: false, detail: `could not read the products that get new rules: ${errorText(error)} (they lack them until the next sync)` });
+    return { steps, cancelled: false };
+  }
+  let setOk = 0;
+  const errors: string[] = [];
+  setSyncProgress(shop, { phase: "writing", done: 0, total: toSet.length });
+  for (const batch of chunks(toSet, METAFIELDS_SET_BATCH)) {
+    if (cancelled()) return { steps, cancelled: true };
+    const error = await writeBatch(args, batch);
+    if (error) errors.push(error);
+    else setOk += batch.length;
+    setSyncProgress(shop, { phase: "writing", done: setOk, total: toSet.length });
+  }
+  steps.push({
+    step: "products.add",
+    ok: errors.length === 0,
+    detail:
+      (errors.length === 0 ? `${setOk} product(s) got their new rules` : `${setOk}/${toSet.length} product(s) got their new rules; ${errors.join("; ")} (the rest lack them until the next sync)`) +
+      (skipped > 0 ? `; ${skipped} deleted product(s) skipped` : ""),
+  });
+  return { steps, cancelled: false };
+}
+
+/** Plan + both lanes in order, no shop config in between (the products-only refresh). */
+export async function syncProducts(args: ProductSyncArgs, options: AdditionsOptions = {}): Promise<ProductSyncResult & { cancelled: boolean }> {
+  const plan = await planProducts(args);
+  if (!plan.complete) return { steps: plan.steps, staleRisk: plan.staleRisk, cancelled: false };
+  const changes = await applyProductChanges(args, plan);
+  const additions = await applyProductAdditions(args, plan.additions, options);
+  return { steps: [...plan.steps, ...changes.steps, ...additions.steps], staleRisk: changes.staleRisk, cancelled: additions.cancelled };
 }
 
 async function upsertRow(db: PrismaClient, shop: string, productId: string, payloadHash: string | null): Promise<void> {

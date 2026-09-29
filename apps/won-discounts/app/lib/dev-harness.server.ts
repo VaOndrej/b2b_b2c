@@ -18,16 +18,18 @@
 
 import { codeHash } from "@won/core/discounts/code-hash";
 import { DEFAULT_CONFIG, readStoredConfig, type WonDiscountsConfig } from "@won/core/discounts/config";
+import { explainGate, gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import type {
   AdminSignals,
   CartPlanView,
+  GateNoteView,
   NativeView,
   RuleSyncMap,
   TryCartLineView,
   UiResult,
 } from "../components/model/types";
-import { lossText, warningText } from "./native/copy";
+import { lossText, undoCostTexts, warningText } from "./native/copy";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
 import { planTryCart } from "./integration/try-cart-plan";
 
@@ -171,7 +173,17 @@ export function devNative(locale: "cs" | "en" = "cs"): Extract<NativeView, { sta
         losses: [],
       },
     ],
-    moved: [{ backupId: "bk_dev_1", title: "JARO10", movedAt: "2026-09-20T10:00:00", state: "moved" }],
+    moved: [
+      {
+        backupId: "bk_dev_1",
+        title: "JARO10",
+        movedAt: "2026-09-20T10:00:00",
+        state: "moved",
+        // What its undo changes (shown before the confirmation) and how it stacks now (F4, F11).
+        undoCosts: undoCostTexts({ method: "code", usageLimit: 100, oncePerCustomer: true }, locale),
+        stacking: [warningText({ code: "stacks_with_native", titles: ["Kup 2, třetí zdarma"] }, locale)],
+      },
+    ],
     conflicts: [],
   };
 }
@@ -185,7 +197,13 @@ export function devNativeMoved(locale: "cs" | "en" = "cs"): NativeView {
     ...base,
     discounts: base.discounts.filter((d) => d.id !== "gid://shopify/DiscountCodeNode/1001"),
     moved: [
-      { backupId: "bk_dev_2", title: "LETO15", movedAt: "2026-09-28T14:05:00", state: "moved" },
+      {
+        backupId: "bk_dev_2",
+        title: "LETO15",
+        movedAt: "2026-09-28T14:05:00",
+        state: "moved",
+        undoCosts: undoCostTexts({ method: "code", usageLimit: 100, oncePerCustomer: true }, locale),
+      },
       {
         backupId: "bk_dev_3",
         title: "PODZIM20",
@@ -274,6 +292,10 @@ export function devEditorResult(kind: string | null): UiResult | null {
       };
     case "saved":
       return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] } };
+    case "base-changed":
+      return { ok: false, reason: "base_changed" };
+    case "syncing":
+      return { ok: true, message: "saved", sync: { ok: true, problems: [], warnings: [] }, syncing: { products: 1240 } };
     default:
       return null;
   }
@@ -324,4 +346,79 @@ export function devTryCartPlan(locale: "cs" | "en"): CartPlanView {
     locale,
     market: DEV_MARKET_NAMES.cz,
   });
+}
+
+// --- F2 states (targeting freshness, Pro gate, checkout preview) ----------------------------
+
+/**
+ * The Přehled fixture plus a collection rule with a minimum counted on its own
+ * products, and a Pro rule that targets one market and combines with another
+ * rule — so the harness shows the targeting line, "Propisuje se", the minimum
+ * scope choice and what the Free plan does not run.
+ */
+export const DEV_F2_FIXTURE: WonDiscountsConfig = readStoredConfig({
+  ...DEV_OVERVIEW_FIXTURE,
+  modules: {
+    ...DEV_OVERVIEW_FIXTURE.modules,
+    codes: {
+      rules: [
+        ...DEV_OVERVIEW_FIXTURE.modules.codes.rules,
+        {
+          id: "dev-f2-collection",
+          enabled: true,
+          name: "Podzimní kolekce 20 %",
+          method: "automatic",
+          value: { kind: "percentage", percent: 20 },
+          target: { kind: "collections", ids: ["gid://shopify/Collection/7"] },
+          minimum: { subtotal: { CZK: 2000_00, EUR: 80_00 }, scope: "entitled" },
+        },
+        {
+          id: "dev-f2-market",
+          enabled: true,
+          name: "Jen Slovensko 5 %",
+          method: "automatic",
+          value: { kind: "percentage", percent: 5 },
+          target: { kind: "order" },
+          targeting: { markets: ["sk"] },
+          combinesWith: { ruleIds: ["dev-fixture-1"] },
+        },
+      ],
+    },
+  },
+});
+
+/** What the Free plan does not run of DEV_F2_FIXTURE (the real gate + its sentences). */
+export function devGate(locale: "cs" | "en"): { gate: GateNoteView[]; gateOff: string[] } {
+  const { stripped } = gateConfigForPlan(DEV_F2_FIXTURE, "free", { now: "2026-09-28T14:00:00" });
+  return {
+    gate: explainGate(stripped, locale).map((e) => ({ text: e.text, ...(e.ruleId !== undefined ? { ruleId: e.ruleId } : {}) })),
+    gateOff: stripped.filter((x) => x.reason === "rule_off" && x.ruleId).map((x) => x.ruleId as string),
+  };
+}
+
+/** Per-rule facts right after a collection changed in Shopify: the collection rule is being refreshed. */
+export const DEV_RULE_SYNC_F2: RuleSyncMap = {
+  ...Object.fromEntries(DEV_F2_FIXTURE.modules.codes.rules.map((rule) => [rule.id, "synced" as const])),
+  "dev-f2-collection": "refreshing",
+};
+
+/** Synced, but the automatic node was switched off in Shopify, and the targeting is being refreshed. */
+export const DEV_SIGNALS_F2: AdminSignals = {
+  ...DEV_SIGNALS,
+  embed: { state: "on", activateUrl: DEV_ACTIVATE_URL },
+  sync: { state: "ok", at: "2026-09-28T16:20:00", attention: [{ key: "sync.problem.autoInactive" }] },
+  targeting: { state: "refreshing", since: "2026-09-28T16:24:00" },
+};
+
+/** Vyzkoušet košík with the warnings checkout differences and sync state give. */
+export function devTryCartPlanWarnings(locale: "cs" | "en"): CartPlanView {
+  const plan = devTryCartPlan(locale);
+  return {
+    ...plan,
+    warnings: [
+      { key: "tryCart.warning.tie", params: { lines: "Čepice" } },
+      { key: "tryCart.warning.targeting" },
+      { key: "tryCart.warning.notApplied" },
+    ],
+  };
 }

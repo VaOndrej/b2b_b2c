@@ -4,12 +4,17 @@
 // SESSION shop, call the page — and tests/integration run these exact bodies
 // with a fake AdminClient and a throwaway database.
 
+import type { WonDiscountsConfig } from "@won/core/discounts/config";
+import { explainGate, gateConfigForPlan } from "@won/core/discounts/plan-gate";
+
 import type { LoadedConfig } from "../config.server";
 import { loadConfig } from "../config.server";
-import { loadSyncStatus } from "../sync/save-and-sync.server";
+import { canReadMarkets, loadSyncStatus } from "../sync/save-and-sync.server";
+import { syncProgress } from "../sync/progress";
+import { isSyncRunning, shopLocalDateTime } from "../sync/sync.server";
 import { resolveLocale } from "../../i18n";
 import { isRecipeKey, shopToday } from "../../components/model/rule-form";
-import type { UiResult } from "../../components/model/types";
+import type { GateNoteView, UiResult } from "../../components/model/types";
 import { buildDiscountsProps } from "../../components/screens/DiscountsScreen";
 import { buildOnboardingProps } from "../../components/screens/OnboardingScreen";
 import { buildOverviewProps } from "../../components/screens/OverviewScreen";
@@ -26,6 +31,7 @@ import {
   readOnboardingForm,
   readShopContext,
   readTryCart,
+  refreshTargetingAction,
   resolvePlan,
   resyncNow,
   runTryCart,
@@ -37,7 +43,7 @@ import {
 import { graphqlOf, nowOf, type ShopCtx } from "./context.server";
 import { formLocale } from "./locale.server";
 import { ruleNames, syncOutcome } from "./sync-copy";
-import { loadRuleSync, loadSyncView } from "./sync-status.server";
+import { autoNodeAttention, loadRuleSync, loadSyncView, loadTargetingView, readAutoNodeState } from "./sync-status.server";
 import type { TryCartRun } from "./try-cart.server";
 
 export interface PageOptions {
@@ -53,11 +59,36 @@ function graphql(ctx: ShopCtx): AdminGraphql {
 }
 
 /**
+ * BILL-1 for the admin: the plan in force and what of the STORED config it
+ * does not run (core gateConfigForPlan + explainGate, the same gate the sync
+ * applies): one sentence per Pro setting, and the rules it switches off.
+ */
+export async function planGateFor(
+  ctx: Pick<ShopCtx, "shop" | "locale" | "now">,
+  config: WonDiscountsConfig,
+  timezone: string | null,
+): Promise<{ pro: boolean; gate: GateNoteView[]; gateOff: string[] }> {
+  const plan = await resolvePlan(ctx.shop);
+  const now = shopLocalDateTime(nowOf(ctx), timezone ?? "UTC");
+  const { stripped } = gateConfigForPlan(config, plan.plan, { now });
+  return {
+    pro: plan.pro,
+    gate: explainGate(stripped, ctx.locale).map((e) => ({ text: e.text, ...(e.ruleId !== undefined ? { ruleId: e.ruleId } : {}) })),
+    gateOff: stripped.filter((s) => s.reason === "rule_off" && s.ruleId !== undefined).map((s) => s.ruleId as string),
+  };
+}
+
+/**
  * After a redirect (a new rule, a delete) the action's result is gone; the
  * latest sync run is what that save wrote, so the landing page reports it.
  */
 async function landingResult(ctx: ShopCtx, loaded: LoadedConfig, message: "saved" | "deleted"): Promise<UiResult> {
   const status = await loadSyncStatus(ctx.db, ctx.shop);
+  // The save's sync is still going on in the background (item 7): say so rather than an older run's outcome.
+  if (isSyncRunning(ctx.shop) && (!status || status.pending.includes("products_in_progress"))) {
+    const progress = syncProgress(ctx.shop);
+    return { ok: true, message, ...(status ? { sync: syncOutcome(status, [], ruleNames(loaded.config)) } : {}), syncing: progress?.total ? { products: progress.total } : {} };
+  }
   if (!status) return { ok: true, message };
   return { ok: true, message, sync: syncOutcome(status, [], ruleNames(loaded.config)) };
 }
@@ -70,24 +101,35 @@ export async function overviewData(ctx: ShopCtx, opts: PageOptions) {
     loadConfig(ctx.db, ctx.shop),
     readAdminContext({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: graphql(ctx) }),
   ]);
+  const timezone = reads.shopContext.timezone;
   const signals = await loadStoreSignals(ctx, loaded, {
     scopes: opts.scopes,
     graphql: graphql(ctx),
-    timezone: reads.shopContext.timezone,
+    timezone,
     sync: true,
     syncDeadlineMs: opts.syncDeadlineMs,
     nativeDeadlineMs: opts.nativeDeadlineMs,
   });
-  // After the (possible) resync: the per-rule facts include what it just wrote.
-  const ruleSync = await loadRuleSync(ctx, loaded.config);
+  // After the (possible) resync: the automatic node live (P2-3), the targeting line, the gate,
+  // and the per-rule facts including what the resync just wrote.
+  const [autoNode, targeting, gate] = await Promise.all([
+    signals.sync.state === "ok" ? readAutoNodeState(ctx) : Promise.resolve("unknown" as const),
+    loadTargetingView(ctx, loaded.config, timezone),
+    planGateFor(ctx, loaded.config, timezone),
+  ]);
+  const attention = autoNodeAttention(autoNode);
+  const sync = signals.sync.state === "ok" && attention.length > 0 ? { ...signals.sync, attention } : signals.sync;
+  const ruleSync = await loadRuleSync(ctx, loaded.config, { autoNode });
   return {
     config: loaded.config,
     options: {
       readOnly: loaded.readOnly,
-      signals,
+      signals: { ...signals, sync, targeting },
       ruleSync,
+      gate: gate.gate,
+      gateOff: gate.gateOff,
       shopCurrency: reads.shopContext.currencyCode,
-      timezone: reads.shopContext.timezone,
+      timezone,
       marketNames: reads.marketNames,
       now: nowOf(ctx),
     },
@@ -99,13 +141,14 @@ export async function overviewPage(ctx: ShopCtx, opts: PageOptions) {
   return buildOverviewProps(config, options);
 }
 
-/** Přehled actions: "Přesunout" / "Přesunout vše" / "Vrátit zpět" / "Synchronizovat znovu". */
+/** Přehled actions: "Přesunout" / "Přesunout vše" / "Vrátit zpět" / "Synchronizovat znovu" / "Obnovit cílení". */
 export async function overviewAction(ctx: ShopCtx, form: FormData): Promise<UiResult> {
   const intent = form.get("intent");
   const scoped = { ...ctx, locale: formLocale(form, ctx.locale) };
   if (intent === "move") return moveNative(scoped, readNativeIds(form));
   if (intent === "undo") return undoMove(scoped, readBackupId(form));
   if (intent === "resync") return resyncNow(scoped);
+  if (intent === "refresh_targeting") return refreshTargetingAction(scoped);
   return { ok: false, reason: "bad_request" };
 }
 
@@ -116,15 +159,18 @@ export async function discountsPage(ctx: ShopCtx, opts: PageOptions & { deleted:
     loadConfig(ctx.db, ctx.shop),
     readAdminContext({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: graphql(ctx) }),
   ]);
-  const [sync, ruleSync, result] = await Promise.all([
+  const [sync, ruleSync, result, gate] = await Promise.all([
     loadSyncView(ctx, loaded, reads.shopContext.timezone),
     loadRuleSync(ctx, loaded.config),
     opts.deleted ? landingResult(ctx, loaded, "deleted") : Promise.resolve(null),
+    planGateFor(ctx, loaded.config, reads.shopContext.timezone),
   ]);
   return buildDiscountsProps(loaded.config, {
     readOnly: loaded.readOnly,
     sync,
     ruleSync,
+    gate: gate.gate,
+    gateOff: gate.gateOff,
     codeRules: codeRuleLimit(loaded.config),
     shopCurrency: reads.shopContext.currencyCode,
     timezone: reads.shopContext.timezone,
@@ -140,17 +186,23 @@ export async function ruleEditorPage(
   ctx: ShopCtx,
   opts: PageOptions & { ruleId: string; recipe: string | null; saved: boolean },
 ) {
-  const [loaded, reads, plan] = await Promise.all([
+  const [loaded, reads] = await Promise.all([
     loadConfig(ctx.db, ctx.shop),
     readAdminContext({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: graphql(ctx) }),
-    resolvePlan(),
   ]);
-  const [sync, ruleSync] = await Promise.all([loadSyncView(ctx, loaded, reads.shopContext.timezone), loadRuleSync(ctx, loaded.config)]);
+  const [sync, ruleSync, gate] = await Promise.all([
+    loadSyncView(ctx, loaded, reads.shopContext.timezone),
+    loadRuleSync(ctx, loaded.config),
+    planGateFor(ctx, loaded.config, reads.shopContext.timezone),
+  ]);
   const props = buildRuleEditorProps(loaded.config, {
     ruleId: opts.ruleId,
     recipe: isRecipeKey(opts.recipe) ? opts.recipe : null,
     readOnly: loaded.readOnly,
-    pro: plan.pro,
+    pro: gate.pro,
+    gate: gate.gate,
+    gateOff: gate.gateOff,
+    marketsScope: canReadMarkets(opts.scopes),
     timezone: reads.shopContext.timezone,
     sync,
     ruleSync,
@@ -170,13 +222,14 @@ export type RuleEditorOutcome = { redirect: string } | { result: UiResult };
 export async function ruleEditorAction(ctx: ShopCtx, form: FormData, ruleId: string): Promise<RuleEditorOutcome> {
   const intent = form.get("intent");
   if (intent === "delete") {
-    const result = await deleteRule(ctx, ruleId);
+    const version = form.get("ruleVersion");
+    const result = await deleteRule(ctx, ruleId, { ruleVersion: typeof version === "string" ? version : null });
     // A deleted rule has no editor page to come back to; the list reports the sync.
     if (result.ok) return { redirect: "/app/discounts?deleted=1" };
     return { result };
   }
   if (intent !== "save") return { result: { ok: false, reason: "bad_request" } };
-  const [shopContext, plan] = await Promise.all([readShopContext(graphql(ctx)), resolvePlan()]);
+  const [shopContext, plan] = await Promise.all([readShopContext(graphql(ctx)), resolvePlan(ctx.shop)]);
   const { result, ruleId: savedId } = await saveRule(ctx, form, {
     ruleId,
     timezone: shopContext.timezone,

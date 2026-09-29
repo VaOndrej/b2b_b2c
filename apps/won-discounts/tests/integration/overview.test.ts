@@ -8,6 +8,9 @@ import { cachedNativeCodes, clearDetectionCache, forgetDetection } from "../../a
 import { onboardingPage, overviewAction, overviewPage } from "../../app/lib/integration/pages.server.ts";
 import { clearSignalCache } from "../../app/lib/ui-actions.server.ts";
 import { loadSyncStatus } from "../../app/lib/sync/save-and-sync.server.ts";
+import { configLockIdle } from "../../app/lib/integration/lock.server.ts";
+import { whenOverviewIdle } from "../../app/lib/integration/sync-status.server.ts";
+import { syncIdle } from "../../app/lib/sync/sync.server.ts";
 import { OverviewScreen } from "../../app/components/screens/OverviewScreen.tsx";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
 import { basicNode, otherNode } from "../lib/native/fake-shopify.ts";
@@ -77,8 +80,13 @@ test("REL-1: a slow Shopify does not hold the page — 'synchronizace právě b�
   assert.match(html, /Synchronizace právě běží/);
   assert.match(html, /Slevy v Shopify se ještě načítají/);
 
-  // The background resync finishes: the next load sees it (and does not resync again).
-  for (let i = 0; i < 200 && !(await loadSyncStatus(db.prisma, shop)); i++) await new Promise((r) => setTimeout(r, 20));
+  // The background resync finishes: the next load sees it (and does not resync again). Wait for
+  // the work the loader started and for the config lock it holds — not for the SyncRun row,
+  // which is written before the lock is released (that race made this test flaky).
+  await whenOverviewIdle(shop);
+  await configLockIdle(shop);
+  await syncIdle(shop);
+  assert.ok(await loadSyncStatus(db.prisma, shop), "the background resync recorded its run");
   store.delayMs = 0;
   const next = await overviewPage(testCtx(db.prisma, shop, store), PAGE);
   assert.equal(next.signals?.sync.state, "ok");

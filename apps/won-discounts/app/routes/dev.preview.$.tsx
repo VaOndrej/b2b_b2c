@@ -25,6 +25,11 @@ import {
   DEV_EMBED_OFF,
   DEV_EMBED_ON,
   DEV_EMPTY_FIXTURE,
+  DEV_F2_FIXTURE,
+  DEV_RULE_SYNC_F2,
+  DEV_SIGNALS_F2,
+  devGate,
+  devTryCartPlanWarnings,
   DEV_MARKET_NAMES,
   DEV_NOW,
   DEV_ONBOARDING_FIXTURE,
@@ -50,14 +55,17 @@ import {
 //
 //   /dev/preview/overview        Přehled without store signals (the v0 contract);
 //                                 ?state=live (wired: synced, native discounts),
+//                                 ?state=f2 (Free plan gate, targeting being refreshed,
+//                                 automatic node switched off in Shopify),
 //                                 ?state=sync-failed (last sync failed + Synchronizovat
 //                                 znovu), ?state=moved (a discount just moved, with
 //                                 its undo + an unfinished move), ?state=empty,
 //                                 ?readOnly=1
-//   /dev/preview/discounts       ?state=empty, ?sync=ok | ?sync=failed (per-rule facts)
+//   /dev/preview/discounts       ?state=empty, ?state=f2, ?sync=ok | ?sync=failed (per-rule facts)
 //   /dev/preview/rule-editor     ?rule=<fixture id> | ?rule=new&recipe=<recipe>, ?plan=pro,
-//                                 ?result=unreadable|too-many|collision|sync-failed|saved
-//   /dev/preview/try-cart        a REAL engine plan on fixture prices; ?state=empty | ?state=not-wired
+//                                 ?result=unreadable|too-many|collision|sync-failed|saved|base-changed|syncing,
+//                                 ?rule=dev-f2-collection | dev-f2-market (F2 fixture, Free gate)
+//   /dev/preview/try-cart        a REAL engine plan on fixture prices; ?state=empty | ?state=not-wired | ?state=warnings
 //   /dev/preview/onboarding      ?step=1|2|3, ?embed=on
 //   /dev/preview/move-dialog
 //   /dev/preview/coming-soon     ?module=tiers|rewards|outlet|margin|campaigns|appearance
@@ -130,10 +138,30 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
           nativeResult: devMovedResult(locale),
         };
       }
+      if (state === "f2") {
+        return buildOverviewProps(DEV_F2_FIXTURE, {
+          ...wired,
+          signals: { ...DEV_SIGNALS_F2, native: devNative(locale) },
+          ruleSync: DEV_RULE_SYNC_F2,
+          ...devGate(locale),
+        });
+      }
       if (state === "empty") return buildOverviewProps(DEV_EMPTY_FIXTURE, { readOnly, timezone: DEV_TIMEZONE, now: DEV_NOW });
       return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly });
     }
     case "discounts": {
+      if (state === "f2") {
+        return buildDiscountsProps(DEV_F2_FIXTURE, {
+          readOnly,
+          sync: DEV_SIGNALS_F2.sync,
+          ruleSync: DEV_RULE_SYNC_F2,
+          codeRules: codeRuleLimit(DEV_F2_FIXTURE),
+          timezone: DEV_TIMEZONE,
+          marketNames: names,
+          now: DEV_NOW,
+          ...devGate(locale),
+        });
+      }
       const config = state === "empty" ? DEV_EMPTY_FIXTURE : DEV_OVERVIEW_FIXTURE;
       const syncState = q.get("sync");
       return buildDiscountsProps(config, {
@@ -148,8 +176,12 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
     }
     case "rule-editor": {
       const recipe = q.get("recipe");
-      const props = buildRuleEditorProps(DEV_OVERVIEW_FIXTURE, {
-        ruleId: q.get("rule") ?? "dev-fixture-4",
+      const ruleParam = q.get("rule") ?? "dev-fixture-4";
+      const f2 = ruleParam.startsWith("dev-f2-");
+      const props = buildRuleEditorProps(f2 ? DEV_F2_FIXTURE : DEV_OVERVIEW_FIXTURE, {
+        ...(f2 && q.get("plan") !== "pro" ? devGate(locale) : {}),
+        ...(f2 ? { ruleSync: DEV_RULE_SYNC_F2, marketsScope: false } : {}),
+        ruleId: ruleParam,
         recipe: isRecipeKey(recipe) ? recipe : null,
         readOnly,
         pro: q.get("plan") === "pro",
@@ -166,6 +198,7 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
     case "try-cart": {
       const base = buildTryCartProps(DEV_OVERVIEW_FIXTURE, { timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW });
       if (state === "empty") return base;
+      if (state === "warnings") return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", currency: "CZK:cz", plan: devTryCartPlanWarnings(locale) };
       if (state === "not-wired") {
         return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", result: { ok: false as const, reason: "not_wired" as const, what: "tryCart" as const } };
       }

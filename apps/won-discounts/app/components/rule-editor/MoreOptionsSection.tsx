@@ -1,9 +1,12 @@
 // "Další možnosti" (§9: rare controls, collapsed, with a truthful summary):
-// minimum per currency, minimum quantity, schedule days, usage limits.
+// minimum per currency, minimum quantity and — for a product / collection rule
+// — where the minimum is measured (the whole cart or only the rule's products;
+// kept on edit, cart for new rules), schedule days, usage limits.
 
 import { describeLimits, describeMinimum, describeMoreOptions, describeSchedule } from "../model/describe";
 import { FIELD } from "../model/rule-form";
 import { boolAttr } from "../shell/attrs";
+import { SegmentedChoice } from "../shell/SegmentedChoice";
 import { WonBlock, WonSection } from "../shell/WonSection";
 import { FieldGrid, Shown, type EditorView } from "./parts";
 
@@ -11,6 +14,7 @@ export function MoreOptionsSection({ ed, defaultOpen }: { ed: EditorView; defaul
   const { draft, defaults, codes, errorFor, tr, timezone } = ed;
   const { t } = tr;
   const isCode = draft.method === "code";
+  const targetsProducts = draft.target.kind === "products" || draft.target.kind === "collections";
   return (
     <WonSection
       title={t("editor.more.title")}
@@ -46,6 +50,17 @@ export function MoreOptionsSection({ ed, defaultOpen }: { ed: EditorView; defaul
                 error={errorFor(FIELD.minQty)}
               />
             </FieldGrid>
+            <Shown when={targetsProducts}>
+              <SegmentedChoice
+                name={FIELD.minScope}
+                label={t("editor.minimum.scope")}
+                defaultValue={defaults.minScope}
+                options={[
+                  { value: "cart", label: t("editor.minimum.scope.cart") },
+                  { value: "entitled", label: t("editor.minimum.scope.entitled") },
+                ]}
+              />
+            </Shown>
           </s-stack>
         </WonBlock>
         <WonBlock title={t("editor.schedule.title")} summary={describeSchedule(draft, tr, timezone) || t("describe.schedule.always")}>

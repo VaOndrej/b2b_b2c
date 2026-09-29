@@ -1,11 +1,13 @@
 // Production wiring of the sync layer: the real engine payload builders from
-// @won/core/discounts (T1) + console logging + the default retry policy.
+// @won/core/discounts (T1), the shop's plan from the one server resolver
+// (BILL-1, app/lib/plan.server.ts) + console logging + the default retry policy.
 
 import { buildNodeVars, buildShopFunctionConfig, verifyShopFunctionConfig } from "@won/core/discounts/function-payload";
 import { productRuleIndex } from "@won/core/discounts/targeting";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import type { AdminClient } from "../admin-client.server";
+import { planOf } from "../plan.server";
 import { createSync, type Sync } from "./sync.server";
 import type { SyncDeps, SyncLogger } from "./types";
 
@@ -19,6 +21,7 @@ export function productionSyncDeps(client: AdminClient, db: PrismaClient, logger
   return {
     client,
     db,
+    plan: planOf,
     buildShopFunctionConfig: (config, options) => buildShopFunctionConfig(config, options),
     buildNodeVars: (role, config, now) => buildNodeVars(role, config, now),
     productRuleIndex: (config, products) => productRuleIndex(config, products),

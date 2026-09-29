@@ -90,3 +90,41 @@ test("the section summary counts real states, not `enabled`", () => {
   const unsynced = [rule(), rule(), rule()].map((r) => ruleStatus(r, ctx("2026-09-28", NOT_WIRED)));
   assert.equal(ruleStatusSummary(unsynced, cs), "3 slevy · 3 čekají na propsání");
 });
+
+// --- F2 item 5 (audit P2-3 / P3-6) + item 1: not running, and why ------------------------------------
+
+test("P3-6: no products / collections picked, no value in any shop currency, only switched-off markets → 'Neběží' with the reason", () => {
+  const live = { ...ctx("2026-09-28"), ruleSync: { r1: "synced" as const }, currencies: ["CZK", "EUR"], enabledMarkets: ["cz"] };
+  const noTarget = ruleStatus(rule({ target: { kind: "collections", ids: [] } }), live);
+  assert.deepEqual(noTarget, { kind: "no_target" });
+  assert.equal(statusLabel(noTarget, cs), "Neběží");
+  assert.equal(statusText(noTarget, cs), "Neběží: nemá vybrané produkty ani kolekce.");
+
+  const noValue = ruleStatus(rule({ value: { kind: "fixed", amount: { HUF: 3000_00 } } }), live);
+  assert.deepEqual(noValue, { kind: "no_value" });
+  assert.equal(statusText(noValue, cs), "Neběží: nemá hodnotu v žádné měně obchodu.");
+  assert.equal(ruleStatus(rule({ value: { kind: "fixed", amount: { CZK: 100_00 } } }), live).kind, "live", "one currency is enough");
+
+  const marketOff = ruleStatus(rule({ targeting: { markets: ["sk"] } }), live);
+  assert.deepEqual(marketOff, { kind: "market_off" });
+  assert.equal(statusText(marketOff, cs), "Neběží: cílí jen na trhy, které jsou ve Won vypnuté.");
+  assert.equal(ruleStatus(rule({ targeting: { markets: ["sk", "cz"] } }), live).kind, "live");
+});
+
+test("BILL-1: a rule the plan switches off is 'Neběží' (pro_off), counted with the ones that do not run", () => {
+  const s = ruleStatus(rule({ targeting: { markets: ["sk"] } }), { ...ctx("2026-09-28"), ruleSync: { r1: "synced" }, gateOff: ["r1"] });
+  assert.deepEqual(s, { kind: "pro_off" });
+  assert.equal(statusText(s, cs), "Neběží: používá funkci Pro, kterou tvůj tarif v pokladně nespouští.");
+  assert.equal(ruleStatusSummary([s, { kind: "live" }], cs), "2 slevy · 1 běží · 1 neběží");
+});
+
+test("items 2 + 7: a rule whose product targeting is being written is 'Propisuje se', neither green nor red", () => {
+  const s = ruleStatus(rule({ target: { kind: "collections", ids: ["gid://shopify/Collection/1"] } }), {
+    ...ctx("2026-09-28"),
+    ruleSync: { r1: "refreshing" },
+  });
+  assert.deepEqual(s, { kind: "refreshing" });
+  assert.equal(statusLabel(s, cs), "Propisuje se");
+  assert.match(statusText(s, cs) ?? "", /cílení na produkty se právě propisuje/);
+  assert.equal(ruleStatusSummary([s, s, { kind: "live" }], cs), "3 slevy · 1 běží · 2 se propisují");
+});

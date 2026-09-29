@@ -54,7 +54,7 @@ test("a refused save never reaches Shopify", async () => {
     input: { modules: { codes: { rules: Array.from({ length: MAX_ACTIVE_CODE_RULES + 1 }, (_, i) => codeRule(`r${i}`)) } } },
     createSync: () => {
       created += 1;
-      return { syncShop: async () => assert.fail("must not sync") } as Sync;
+      return { syncShop: async () => assert.fail("must not sync"), refreshProducts: async () => assert.fail("must not sync") } as unknown as Sync;
     },
   });
   assert.equal(result.save.ok, false);
@@ -76,6 +76,7 @@ test("a successful save syncs exactly the sanitized, saved config; saveAndSyncFr
         seen.push({ shop: syncShopDomain, codes: config.modules.codes.rules[0]!.codes });
         return { ok: true, steps: [], errors: [], pending: [], runId: null };
       },
+      refreshProducts: async () => assert.fail("not a products refresh"),
     }),
   });
   assert.equal(result.save.ok, true);
@@ -141,6 +142,9 @@ test("integration with the REAL engine builders: payload verifies, nodes in plac
 
 test("M11: the 3-phase campaign switch with the REAL builders (version key coupling included)", async () => {
   const fake = new FakeShopify();
+  // Campaigns are Pro (BILL-1): the sync runs as a Pro shop here.
+  const realSync = (client: AdminClient, prisma: PrismaClient) =>
+    createSync({ ...productionSyncDeps(client, prisma, quietLogger), now: () => NOW, sleep: async () => {}, plan: async () => "pro" });
   const campaign = {
     id: "bf",
     name: "Black Friday",

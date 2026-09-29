@@ -6,33 +6,39 @@
 //              market's buyers pay, in its currency (a currency Shopify does
 //              not price in = "unknown", never 0 and never converted);
 //   products   each variant's product (the form's product id is not trusted)
-//              and, when some rule targets collections, the product's
-//              collections;
-// then planTryCart (the engine on the function's payload). All documents are
-// validated against Admin 2026-04 (Shopify dev MCP) and request ≤ 1 000 points
-// (tests/integration/try-cart.test.ts).
+//              and the refs its `$app:won_discounts/product` metafield holds —
+//              exactly what checkout reads (item 2: never a fresh recompute of
+//              collection membership, which could promise a discount checkout
+//              does not give yet, or hide one it still gives);
+// then planTryCart on the config gated for the shop's plan (BILL-1), with
+// checkout's own output mapping (item 8), and warnings when the last sync
+// failed, the stored config is not in Shopify yet, or the targeting is being
+// refreshed. All documents are validated against Admin 2026-04 (Shopify dev
+// MCP) and request ≤ 1 000 points (tests/integration/try-cart.test.ts).
 
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
 import { toMinorUnits } from "@won/core/discounts/money";
+import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import { AdminTransportError } from "../admin-client.server";
+import { resolvePlan } from "../plan.server";
+import { storedConfigNotApplied } from "../sync/runs";
+import { canReadMarkets, loadSyncStatus } from "../sync/save-and-sync.server";
+import { loadShopSyncFacts } from "../sync/sync-state.server";
 import { shopLocalDateTime } from "../sync/sync.server";
-import { targetScopes } from "../sync/products";
 import type { TryCartInput } from "../../components/model/try-cart-form";
-import type { CartPlanView, TryCartLineView, UiResult } from "../../components/model/types";
+import type { CartPlanView, TryCartLineView, UiResult, UiText } from "../../components/model/types";
 import { nowOf, type ShopCtx } from "./context.server";
-import { planTryCart, type PricedLine } from "./try-cart-plan";
+import { parseProductRefs, planTryCart, type PricedLine, type ProductRefs } from "./try-cart-plan";
 
-/** Variants per WonTryCartVariants call: 25 × 27 points = 675 requested (≤ 1 000; tests/integration/try-cart.test.ts). */
+/** Variants per WonTryCartVariants call (≤ 1 000 requested points; tests/integration/try-cart.test.ts). */
 export const TRY_CART_VARIANTS_BATCH = 25;
-/** Collection pages read per product beyond the first (100 each). */
-const MAX_COLLECTION_PAGES = 10;
 /** Shopify markets read for the country (10 per page). */
 const MAX_MARKET_PAGES = 5;
 const MARKETS_TTL_MS = 60_000;
 
 export const TRY_CART_DOCUMENTS = Object.freeze({
-  variants: `query WonTryCartVariants($ids: [ID!]!, $country: CountryCode, $priced: Boolean!, $withCollections: Boolean!) {
+  variants: `query WonTryCartVariants($ids: [ID!]!, $country: CountryCode, $priced: Boolean!) {
   nodes(ids: $ids) {
     __typename
     ... on ProductVariant {
@@ -48,29 +54,9 @@ export const TRY_CART_DOCUMENTS = Object.freeze({
       product {
         id
         title
-        collections(first: 20) @include(if: $withCollections) {
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-          nodes {
-            id
-          }
+        wonRefs: metafield(namespace: "$app:won_discounts", key: "product") {
+          value
         }
-      }
-    }
-  }
-}`,
-  productCollections: `query WonTryCartProductCollections($id: ID!, $after: String) {
-  product(id: $id) {
-    id
-    collections(first: 100, after: $after) {
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
-      nodes {
-        id
       }
     }
   }
@@ -140,8 +126,9 @@ export function clearMarketCountryCache(): void {
 
 type Page<T> = { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: T[] };
 
-/** The shop's markets with one country each (read_markets; cached 60 s; [] when unreadable). */
+/** The shop's markets with one country each (read_markets — optional; cached 60 s; [] without it or when unreadable). */
 export async function readMarketCountries(ctx: ShopCtx): Promise<MarketCountry[]> {
+  if (!canReadMarkets(ctx.scopes)) return [];
   const hit = marketCache.get(ctx.shop);
   if (hit && Date.now() - hit.at < MARKETS_TTL_MS) return hit.value;
   const out: MarketCountry[] = [];
@@ -207,7 +194,7 @@ interface VariantNode {
   product?: {
     id?: string;
     title?: string;
-    collections?: Page<{ id: string }> | null;
+    wonRefs?: { value?: string | null } | null;
   } | null;
 }
 
@@ -218,32 +205,16 @@ interface ReadVariant {
   variantTitle: string | null;
   /** Price in the requested currency, as Shopify's decimal string; null = no price in that currency. */
   amount: string | null;
-  collectionIds: string[];
-}
-
-async function productCollections(ctx: ShopCtx, productId: string, after: string | null): Promise<string[]> {
-  const out: string[] = [];
-  let cursor = after;
-  for (let page = 0; cursor && page < MAX_COLLECTION_PAGES; page++) {
-    const data: { product: { collections: Page<{ id: string }> } | null } = await call(ctx, TRY_CART_DOCUMENTS.productCollections, {
-      id: productId,
-      after: cursor,
-    });
-    const connection = data.product?.collections;
-    if (!connection) break;
-    out.push(...connection.nodes.map((n) => n.id));
-    cursor = connection.pageInfo.hasNextPage ? connection.pageInfo.endCursor : null;
-  }
-  return out;
+  /** The refs the product's metafield holds (what checkout reads). */
+  refs: ProductRefs;
 }
 
 async function readVariants(
   ctx: ShopCtx,
   ids: readonly string[],
-  opts: { currency: string; country: string | null; shopCurrency: string | null; withCollections: boolean },
+  opts: { currency: string; country: string | null; shopCurrency: string | null },
 ): Promise<Map<string, ReadVariant>> {
   const out = new Map<string, ReadVariant>();
-  const extraPages = new Map<string, string>();
   for (let i = 0; i < ids.length; i += TRY_CART_VARIANTS_BATCH) {
     const batch = ids.slice(i, i + TRY_CART_VARIANTS_BATCH);
     // Without a country there is no market price to ask for: the base price (shop currency) is used.
@@ -251,7 +222,6 @@ async function readVariants(
       ids: batch,
       country: opts.country,
       priced: opts.country !== null,
-      withCollections: opts.withCollections,
     });
     for (const node of data.nodes ?? []) {
       if (!node || node.__typename !== "ProductVariant" || !node.id || !node.product?.id) continue;
@@ -262,22 +232,34 @@ async function readVariants(
       } else if (opts.currency === opts.shopCurrency && typeof node.price === "string") {
         amount = node.price;
       }
-      const collections = node.product.collections;
-      if (collections?.pageInfo.hasNextPage && collections.pageInfo.endCursor) extraPages.set(node.product.id, collections.pageInfo.endCursor);
       out.set(node.id, {
         variantId: node.id,
         productId: node.product.id,
         title: node.product.title ?? node.product.id,
         variantTitle: node.title && node.title !== "Default Title" ? node.title : null,
         amount,
-        collectionIds: collections ? collections.nodes.map((n) => n.id) : [],
+        refs: parseProductRefs(node.product.wonRefs?.value ?? null),
       });
     }
   }
-  for (const [productId, cursor] of extraPages) {
-    const more = await productCollections(ctx, productId, cursor);
-    for (const variant of out.values()) if (variant.productId === productId) variant.collectionIds.push(...more);
-  }
+  return out;
+}
+
+/**
+ * What the simulation cannot vouch for right now (item 8): the last sync
+ * failed, the stored config is not in Shopify yet, or the product targeting is
+ * being refreshed (checkout may not have the latest collection membership).
+ */
+export async function tryCartSyncWarnings(ctx: Pick<ShopCtx, "db" | "shop">): Promise<UiText[]> {
+  const [status, notApplied, facts] = await Promise.all([
+    loadSyncStatus(ctx.db, ctx.shop),
+    storedConfigNotApplied(ctx.db, ctx.shop),
+    loadShopSyncFacts(ctx.db, ctx.shop),
+  ]);
+  const out: UiText[] = [];
+  if (status && !status.ok) out.push({ key: "tryCart.warning.syncFailed" });
+  else if (!status || notApplied) out.push({ key: "tryCart.warning.notApplied" });
+  if (facts.targetingStaleAt || status?.pending.includes("products_in_progress")) out.push({ key: "tryCart.warning.targeting" });
   return out;
 }
 
@@ -307,16 +289,11 @@ export async function runTryCartPlan(
   try {
     const markets = await readMarketCountries(ctx);
     const { country, handle } = countryFor(opts.config, markets, input.currency, input.market ?? null);
-    const variants = await readVariants(
-      ctx,
-      [...new Set(input.lines.map((l) => l.variantId))],
-      {
-        currency: input.currency,
-        country,
-        shopCurrency: opts.shopCurrency,
-        withCollections: targetScopes(opts.config).collectionIds.size > 0,
-      },
-    );
+    const variants = await readVariants(ctx, [...new Set(input.lines.map((l) => l.variantId))], {
+      currency: input.currency,
+      country,
+      shopCurrency: opts.shopCurrency,
+    });
     if (input.lines.some((l) => !variants.has(l.variantId))) {
       return {
         result: { ok: false, reason: "invalid", errors: [{ field: "lines", key: "tryCart.error.unknownProduct" }] },
@@ -348,14 +325,19 @@ export async function runTryCartPlan(
         title,
         quantity: line.quantity,
         unitPrice: minor,
-        collectionIds: v.collectionIds,
+        collectionIds: [],
       });
     }
     if (missing.length > 0) {
       return { result: { ok: false, reason: "prices_unavailable", currency: input.currency, products: [...new Set(missing)] }, plan: null, lines };
     }
     const time = shopLocalDateTime(nowOf(ctx), opts.timezone).slice(11);
-    const plan = planTryCart(opts.config, {
+    const productRefs = new Map([...variants.values()].map((v) => [v.productId, v.refs]));
+    const [plan0, warnings] = await Promise.all([resolvePlan(ctx.shop), tryCartSyncWarnings(ctx)]);
+    const gated = gateConfigForPlan(opts.config, plan0.plan, { now: `${input.date}T${time}` }).config;
+    const plan = planTryCart(gated, {
+      productRefs,
+      warnings,
       lines: priced,
       currency: input.currency,
       countryCode: country,

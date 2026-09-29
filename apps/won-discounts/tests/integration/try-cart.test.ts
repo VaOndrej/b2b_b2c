@@ -10,16 +10,18 @@ import { saveConfig } from "../../app/lib/config.server.ts";
 import { overviewAction, tryCartAction, tryCartPage } from "../../app/lib/integration/pages.server.ts";
 import { clearMarketCountryCache, TRY_CART_DOCUMENTS, TRY_CART_VARIANTS_BATCH } from "../../app/lib/integration/try-cart.server.ts";
 import { planTryCart } from "../../app/lib/integration/try-cart-plan.ts";
+import { syncIdle } from "../../app/lib/sync/sync.server.ts";
 import { clearSignalCache } from "../../app/lib/ui-actions.server.ts";
 import { TryCartScreen } from "../../app/components/screens/TryCartScreen.tsx";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
 import { FakeStore, formOf, renderPage, testCtx, text } from "./helpers.ts";
 
 // Vyzkoušet košík (integration step 5): real variant prices for the chosen
-// market (contextual pricing by the market's country), collections read for
-// collection targeting, the engine run on the discount function's own payload
-// (the same JSON the sync writes), explainPlan → the screen. Every input is
-// validated on the server.
+// market (contextual pricing by the market's country), the product refs the
+// function reads (the product metafield the sync wrote — F2 item 2, never a
+// fresh recompute of collection membership), the engine run on the discount
+// function's own payload (the same JSON the sync writes) with checkout's own
+// output mapping, explainPlan → the screen. Every input is validated on the server.
 
 let db: TestDatabase;
 let seq = 0;
@@ -106,9 +108,11 @@ const cart = (entries: [string, string][]): FormData =>
     ...entries,
   ]);
 
-test("CZK · Česko + VIP20: prices from Shopify for CZ, collection targeting from the product's collections, the engine's plan and sentences", async () => {
+test("CZK · Česko + VIP20: prices from Shopify for CZ, collection targeting from the product's refs, the engine's plan and sentences", async () => {
   const { store } = await setup();
   const ctx = testCtx(db.prisma, shop, store);
+  assert.equal((await overviewAction(ctx, formOf([["intent", "resync"]]))).ok, true, "the config (and the refs) are in Shopify");
+  await syncIdle(shop);
   const run = await tryCartAction(ctx, cart([["currency", "CZK:cz"], ["codes", "vip20"], ["date", "2026-09-28"]]), PAGE);
   assert.equal(run.result, null, JSON.stringify(run.result));
   const plan = run.plan!;
@@ -117,7 +121,8 @@ test("CZK · Česko + VIP20: prices from Shopify for CZ, collection targeting fr
   const pricing = store.calls.find((c) => c.op === "WonTryCartVariants")!;
   assert.equal(pricing.variables.country, "CZ");
   assert.equal(pricing.variables.priced, true);
-  assert.equal(pricing.variables.withCollections, true, "a rule targets a collection");
+  assert.ok(!("withCollections" in pricing.variables), "collections are not re-read: the refs come from the product metafield");
+  assert.equal(plan.warnings, undefined, "in sync, nothing to warn about");
 
   const hoodie = plan.lines.find((l) => l.title === "Mikina Won (M / černá)")!;
   const capLine = plan.lines.find((l) => l.title === "Čepice")!;
@@ -147,6 +152,7 @@ test("the plan is computed on the SAME payload the function reads: planCart on t
   const { store } = await setup();
   const ctx = testCtx(db.prisma, shop, store);
   assert.equal((await overviewAction(ctx, formOf([["intent", "resync"]]))).ok, true, "the config is in Shopify");
+  await syncIdle(shop);
   const shopConfig = JSON.parse(store.sync.shopMetafieldValue("function_config")!);
   const hoodieRefs = store.sync.productMetafield("gid://shopify/Product/1") as { ruleIds: string[] };
 
@@ -297,5 +303,5 @@ function requestedCost(document: string, batch: number): number {
 test("every Vyzkoušet košík document requests ≤ 1 000 points (variants sized by the batch it is sent with)", () => {
   const costs = Object.fromEntries(Object.entries(TRY_CART_DOCUMENTS).map(([name, doc]) => [name, requestedCost(doc, TRY_CART_VARIANTS_BATCH)]));
   for (const [name, cost] of Object.entries(costs)) assert.ok(cost <= 1000, `${name}: ${cost}`);
-  assert.ok(costs.variants! > 500, `the estimate counts the batch (${costs.variants})`);
+  assert.ok(costs.variants! >= TRY_CART_VARIANTS_BATCH * 2, `the estimate counts the batch (${costs.variants})`);
 });

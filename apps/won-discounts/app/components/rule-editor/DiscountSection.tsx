@@ -149,6 +149,7 @@ export function DiscountSection({
                 onPick={() => onPick("collections")}
                 unavailable={pickUnavailable}
               />
+              <s-text color="subdued">{t("editor.target.collectionsRefresh")}</s-text>
             </Shown>
             {productIds.map((id) => (
               <input key={id} type="hidden" name={FIELD.productIds} value={id} />

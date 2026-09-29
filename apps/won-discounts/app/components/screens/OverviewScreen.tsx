@@ -26,9 +26,10 @@ import { orderedModules, UPCOMING_MODULES, UPCOMING_MODULE_META } from "../model
 import { shopToday } from "../model/rule-form";
 import { ruleStatus, ruleStatusSummary } from "../model/rule-status";
 import { uiText } from "../model/result-copy";
-import { NOT_WIRED_SIGNALS, checkoutText, embedText, statusSummary, syncNeedsRetry, syncText } from "../model/signals";
-import type { AdminSignals, CurrencyView, RuleSyncMap, UiResult } from "../model/types";
-import { ResyncButton } from "../shell/Notice";
+import { NOT_WIRED_SIGNALS, checkoutText, embedText, statusSummary, syncNeedsRetry, syncText, targetingText } from "../model/signals";
+import type { AdminSignals, CurrencyView, GateNoteView, RuleSyncMap, UiResult } from "../model/types";
+import { GateNotes } from "../shell/GateNotes";
+import { RefreshTargetingButton, ResyncButton } from "../shell/Notice";
 import { PlanBadge } from "../shell/PlanBadge";
 import { RowNote, WonRow, WonSection } from "../shell/WonSection";
 import { WON_ATTENTION, WON_FAINT } from "../shell/tokens";
@@ -53,6 +54,12 @@ export interface OverviewScreenProps {
   ruleSync?: RuleSyncMap;
   /** The last move / undo result, when the page (not the section's fetcher) has it. */
   nativeResult?: UiResult | null;
+  /** Pro settings stored but not in force on the shop's plan (BILL-1, explainGate). */
+  gate?: GateNoteView[];
+  /** Rules the plan switches off. */
+  gateOff?: string[];
+  /** Handles of the enabled Won markets (a rule targeting only others never runs). */
+  enabledMarkets?: string[];
 }
 
 export function buildOverviewProps(
@@ -61,6 +68,8 @@ export function buildOverviewProps(
     readOnly: boolean;
     signals?: AdminSignals;
     ruleSync?: RuleSyncMap;
+    gate?: GateNoteView[];
+    gateOff?: string[];
     shopCurrency?: string | null;
     timezone?: string | null;
     marketNames?: Readonly<Record<string, string>>;
@@ -79,9 +88,12 @@ export function buildOverviewProps(
     goals: [...config.onboarding.goals],
     today: shopToday(timezone, opts.now),
     timezone,
+    enabledMarkets: config.markets.filter((m) => m.enabled).map((m) => m.handle),
   };
   if (opts.signals) props.signals = opts.signals;
   if (opts.ruleSync) props.ruleSync = { ...opts.ruleSync };
+  if (opts.gate && opts.gate.length > 0) props.gate = opts.gate.map((g) => ({ ...g }));
+  if (opts.gateOff && opts.gateOff.length > 0) props.gateOff = [...opts.gateOff];
   return props;
 }
 
@@ -115,13 +127,18 @@ export function OverviewScreen({
   signals,
   ruleSync,
   nativeResult,
+  gate = [],
+  gateOff,
+  enabledMarkets,
 }: OverviewScreenProps) {
   const tr = useT();
   const { t } = tr;
   const codes = currencyCodes(currencies);
   const status = signals ?? NOT_WIRED_SIGNALS;
   const warnings = rules ? collectWarnings(rules, codes) : [];
-  const statusCtx = { today: today ?? null, timezone, sync: status.sync, ruleSync };
+  const statusCtx = { today: today ?? null, timezone, sync: status.sync, ruleSync, gateOff, currencies: codes, enabledMarkets };
+  const targeting = status.targeting;
+  const syncAttention = status.sync.state === "ok" ? (status.sync.attention ?? []) : [];
   const statuses = (rules ?? []).map((rule) => ruleStatus(rule, statusCtx));
   const liveCount = statuses.filter((s) => s.kind === "live").length;
   const showOnboarding = onboardingStep !== undefined && onboardingStep <= 3 && ruleCount === 0;
@@ -183,6 +200,8 @@ export function OverviewScreen({
           )}
         </WonSection>
 
+        {gate.length > 0 ? <GateNotes notes={gate} /> : null}
+
         {warnings.length > 0 ? (
           <WonSection title={t("overview.warnings.title")} glyph="alert" summary={tr.tp("count.warning", warnings.length)}>
             <div>
@@ -224,7 +243,7 @@ export function OverviewScreen({
               <RowNote>{checkoutText(status.checkout, tr)}</RowNote>
             </WonRow>
             <WonRow
-              tone={status.sync.state === "error" || status.sync.state === "blocked" ? "attention" : undefined}
+              tone={status.sync.state === "error" || status.sync.state === "blocked" || syncAttention.length > 0 ? "attention" : undefined}
               action={syncNeedsRetry(status.sync) ? <ResyncButton /> : undefined}
             >
               <s-text type="strong">{t("overview.sync.label")}</s-text>
@@ -232,10 +251,22 @@ export function OverviewScreen({
               {status.sync.state === "error"
                 ? (status.sync.problems ?? []).map((problem, i) => <RowNote key={i}>{uiText(problem, tr)}</RowNote>)
                 : null}
+              {syncAttention.map((problem, i) => (
+                <RowNote key={`a${i}`} tone="attention">
+                  {uiText(problem, tr)}
+                </RowNote>
+              ))}
               {status.sync.state === "ok"
                 ? (status.sync.warnings ?? []).map((warning, i) => <RowNote key={i}>{uiText(warning, tr)}</RowNote>)
                 : null}
             </WonRow>
+            {targeting && targeting.state !== "none" ? (
+              <WonRow action={<RefreshTargetingButton />}>
+                <s-text type="strong">{t("overview.targeting.label")}</s-text>
+                <RowNote>{targetingText(targeting, tr)}</RowNote>
+                <RowNote>{t("overview.targeting.model")}</RowNote>
+              </WonRow>
+            ) : null}
           </div>
         </WonSection>
 

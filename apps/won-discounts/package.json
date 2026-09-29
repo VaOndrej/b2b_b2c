@@ -6,6 +6,7 @@
     "node": ">=20.19 <22 || >=22.12"
   },
   "scripts": {
+    "prebuild": "prisma generate",
     "build": "react-router build",
     "build:all": "npm run build:functions && npm run build",
     "build:functions": "PATH=\"$HOME/.cargo/bin:$PATH\" shopify app function build --path extensions/won-discounts-engine",
@@ -15,6 +16,7 @@
     "setup": "npm run prisma:generate && npm run prisma:migrate:deploy",
     "start": "react-router-serve ./build/server/index.js",
     "config:link": "shopify app config link --path .",
+    "pretypecheck": "prisma generate",
     "typecheck": "react-router typegen && tsc --noEmit",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "test:unit": "node ./scripts/run-unit-tests.mjs",

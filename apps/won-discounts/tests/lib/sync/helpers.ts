@@ -157,6 +157,9 @@ export function makeDeps(fake: FakeShopify, db: PrismaClient, overrides: Partial
   return {
     client: fake,
     db,
+    // These suites pin the sync's own mechanics (campaigns, markets, combinations
+    // included), so the plan is Pro unless a test asks for Free (BILL-1 tests do).
+    plan: async () => "pro",
     ...fakeBuilders(log),
     now: () => NOW,
     logger,

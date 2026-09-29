@@ -10,6 +10,7 @@ import {
   readRuleForm,
   recipeRule,
   ruleFormDefaults,
+  ruleVersionToken,
   shopMidnightIso,
   type RuleFormContext,
 } from "../../app/components/model/rule-form.ts";
@@ -135,7 +136,7 @@ test("minimum per currency and minimum quantity", () => {
     CTX,
   );
   assert.deepEqual(errors, []);
-  assert.deepEqual(rule.minimum, { subtotal: { CZK: 100000 }, quantity: 3 });
+  assert.deepEqual(rule.minimum, { subtotal: { CZK: 100000 }, quantity: 3, scope: "cart" });
   assert.deepEqual(errorsOf([...base, [FIELD.minQty, "-2"]]), ["minQty:editor.error.minQty"]);
   assert.equal(readRuleForm(form(base), CTX).rule.minimum, undefined);
 });
@@ -247,11 +248,11 @@ test("§14a: stored values in currencies whose market is off are kept, unless re
   const kept = readRuleForm(form(fixedForm), { ...CTX, existing });
   assert.deepEqual(kept.errors, []);
   assert.deepEqual(kept.rule.value, { kind: "fixed", amount: { CZK: 20000, HUF: 300000 } });
-  assert.deepEqual(kept.rule.minimum, { subtotal: { CZK: 100000, HUF: 1500000 } });
+  assert.deepEqual(kept.rule.minimum, { subtotal: { CZK: 100000, HUF: 1500000 }, scope: "cart" });
 
   const dropped = readRuleForm(form([...fixedForm, [FIELD.dropCurrency, "HUF"]]), { ...CTX, existing });
   assert.deepEqual(dropped.rule.value, { kind: "fixed", amount: { CZK: 20000 } });
-  assert.deepEqual(dropped.rule.minimum, { subtotal: { CZK: 100000 } });
+  assert.deepEqual(dropped.rule.minimum, { subtotal: { CZK: 100000 }, scope: "cart" });
 
   // The form shows them read-only, never as editable fields that would be lost.
   const defaults = ruleFormDefaults(existing, ["CZK", "EUR"]);
@@ -270,4 +271,50 @@ test("money input: parsed and printed by the engine's converter", () => {
   assert.equal(minorToInput(10050, "CZK"), "100.5");
   assert.equal(minorToInput(10000, "CZK"), "100");
   assert.equal(minorToInput(500, "JPY"), "500");
+});
+
+// --- F2 item 15 (F1 concerns 3–4) + item 13 --------------------------------------------------------
+
+test("F1 concern 3: the minimum's scope is kept on edit (an old form without the field never resets it), chosen in the form, cart for new rules", () => {
+  const collections: [string, string][] = [
+    ...base.filter(([k]) => k !== FIELD.target),
+    [FIELD.target, "collections"],
+    [FIELD.collectionIds, "gid://shopify/Collection/1"],
+    [FIELD.minimum("CZK"), "1000"],
+  ];
+  const existing: DiscountRule = {
+    id: "r_new",
+    enabled: true,
+    name: "Kolekce",
+    method: "automatic",
+    value: { kind: "percentage", percent: 10 },
+    target: { kind: "collections", ids: ["gid://shopify/Collection/1"] },
+    minimum: { subtotal: { CZK: 100000 }, scope: "entitled" },
+  };
+  assert.equal(readRuleForm(form(collections), { ...CTX, existing }).rule.minimum?.scope, "entitled", "kept");
+  assert.equal(readRuleForm(form([...collections, [FIELD.minScope, "cart"]]), { ...CTX, existing }).rule.minimum?.scope, "cart", "changed");
+  assert.equal(readRuleForm(form([...collections, [FIELD.minScope, "entitled"]]), CTX).rule.minimum?.scope, "entitled", "chosen");
+  assert.equal(readRuleForm(form([...collections, [FIELD.minScope, "junk"]]), CTX).rule.minimum?.scope, "cart", "junk → cart");
+  assert.equal(readRuleForm(form(collections), CTX).rule.minimum?.scope, "cart", "new rule: cart");
+  assert.equal(ruleFormDefaults(existing, ["CZK"]).minScope, "entitled");
+  assert.equal(ruleFormDefaults(existing, ["CZK"]).fields[FIELD.minScope], "entitled", "an untouched submit sends it back");
+});
+
+test("F1 concern 4: shopMidnightIso is core shopDayStart — Santiago's spring-forward day starts at 01:00, never 23:00 the day before", () => {
+  assert.equal(shopMidnightIso("2026-09-06", "America/Santiago"), "2026-09-06T01:00:00-03:00");
+  assert.equal(shopMidnightIso("2026-11-01", "Europe/Prague"), "2026-11-01T00:00:00+01:00");
+  assert.equal(shopMidnightIso("2026-07-01", "Europe/Prague"), "2026-07-01T00:00:00+02:00");
+  assert.equal(shopMidnightIso("2026-07-01", null), "2026-07-01T00:00:00Z");
+  assert.equal(shopMidnightIso("2026-07-01", "Not/AZone"), "2026-07-01T00:00:00Z");
+  // A schedule starting that Santiago day is read back as that day.
+  const rule = readRuleForm(form([...base, [FIELD.startDate, "2026-09-06"]]), { ...CTX, timezone: "America/Santiago" }).rule;
+  assert.equal(rule.schedule?.startsAt, "2026-09-06T01:00:00-03:00");
+});
+
+test("F12: ruleVersionToken changes with the rule and not with key order", () => {
+  const a: DiscountRule = { id: "x", enabled: true, name: "A", method: "automatic", value: { kind: "percentage", percent: 10 }, target: { kind: "order" } };
+  const reordered = { target: { kind: "order" }, value: { percent: 10, kind: "percentage" }, method: "automatic", name: "A", enabled: true, id: "x" } as DiscountRule;
+  assert.equal(ruleVersionToken(a), ruleVersionToken(reordered));
+  assert.notEqual(ruleVersionToken(a), ruleVersionToken({ ...a, value: { kind: "percentage", percent: 11 } }));
+  assert.match(ruleVersionToken(a), /^rv[0-9a-f]{8}[0-9a-f]+$/);
 });

@@ -70,6 +70,8 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
     case "products":
     case "products.set":
     case "products.clear":
+    case "products.add":
+    case "products.index":
       return { key: "sync.problem.products", params: { detail } };
     case "nodes":
       return { key: "sync.problem.nodes", params: { detail } };
@@ -111,6 +113,8 @@ export function saveWarnings(warnings: readonly string[]): UiText[] {
   return dedupe(
     warnings.map((warning): UiText => {
       if (/time zone/i.test(warning)) return { key: "sync.warning.timezone" };
+      if (/native discount codes/i.test(warning)) return { key: "sync.warning.nativeCodes" };
+      if (/read_markets scope is not granted/i.test(warning)) return { key: "sync.warning.marketsScope" };
       if (/market countries changed/i.test(warning)) return { key: "sync.warning.marketsChanged" };
       if (/markets/i.test(warning)) return { key: "sync.warning.markets" };
       return { key: "sync.warning.other", params: { detail: shortDetail(warning) } };
@@ -136,12 +140,5 @@ export function ruleNames(config: { modules: { codes: { rules: readonly { id: st
   return new Map(config.modules.codes.rules.map((rule) => [rule.id, rule.name]));
 }
 
-/**
- * Did this run leave the shop function config APPLIED (written — or already
- * equal — and verified)? A held, failed or rolled-back write does not count.
- */
-export function shopConfigApplied(steps: readonly SyncStep[]): boolean {
-  const written = steps.some((step) => step.step === "shop_config.write" && step.ok);
-  const verifyFailed = steps.some((step) => step.step === "shop_config.verify" && !step.ok);
-  return written && !verifyFailed;
-}
+/** Did this run leave the shop function config APPLIED? (the sync layer's own fact, app/lib/sync/runs.ts) */
+export { shopConfigApplied } from "../sync/runs";

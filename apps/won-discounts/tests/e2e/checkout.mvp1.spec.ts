@@ -19,6 +19,7 @@ import {
   payWithBogusCard,
   priceSummary,
   rowAmount,
+  settledThankYou,
   SHIPPING,
   SUBTOTAL,
   TAX,
@@ -173,6 +174,9 @@ test.describe(`Won Discounts in cart and checkout (MVP 1)${THEME_LABEL ? ` — $
     await test.step("pay with the Bogus gateway (card 1)", () => payWithBogusCard(page));
 
     const thankYou = await test.step("thank-you page: discounts and total = planCart / cart", async () => {
+      // The page fades in over the payment form: read and screenshot only once it settled (audit P3-8).
+      const settled = await settledThankYou(page);
+      expect(settled.payFormGone, "the payment form is gone before the thank-you page is read").toBe(true);
       const rows = await priceSummary(page);
       const lines = await checkoutLines(page);
       const shipping = rowAmount(rows, SHIPPING);
@@ -186,6 +190,7 @@ test.describe(`Won Discounts in cart and checkout (MVP 1)${THEME_LABEL ? ` — $
         shipping,
         tax,
         total: rowAmount(rows, TOTAL),
+        charged: settled.charged,
       };
       expect(lines, "one line on the order").toHaveLength(1);
       expect(observed.lineDiscount, "thank-you line discount = planCart").toBe(-expected.lineDiscount);
@@ -195,6 +200,7 @@ test.describe(`Won Discounts in cart and checkout (MVP 1)${THEME_LABEL ? ` — $
       expect(observed.orderDiscount, "thank-you order discount (WONE2E15) = planCart").toBe(-expected.orderDiscount);
       expect(shipping, "shipping amount").not.toBeNull();
       expect(observed.total, "thank-you total = cart total (= planCart) + shipping + tax").toBe(expected.total + (shipping ?? 0) + tax);
+      expect(observed.charged, "the card was charged the thank-you total").toBe(observed.total);
       return { rows, lines, observed };
     });
 

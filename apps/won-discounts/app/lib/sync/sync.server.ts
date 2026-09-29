@@ -18,17 +18,31 @@
 //      update / activate / DEACTIVATE / delete, redeem codes; new nodes get
 //      their function_vars in the create;
 //   2. function_vars on every other active node;
-//   3. product metafields (products.ts);
-//   4. the final shared shop function_config LAST, read back and checked with
+//   3. product metafields, BEFORE lane (products.ts): every change to a product
+//      that already carries Won refs, and every clear;
+//   4. the final shared shop function_config, read back and checked with
 //      the engine's verifyShopFunctionConfig (C7: > 10 000 B reaches the
 //      function as null WITHOUT an error). It is HELD (not written) when:
 //        - a campaign switch's phase 2 is incomplete (some active node lacks
 //          its new vars) — the shop stays at "no campaign", consistent;
 //        - the product step leaves stale refs (a product that left a rule's
-//          target could not be cleared, or the step could not finish) — the
-//          previous config stays, so no product receives a rule's NEW value
-//          through a ref it should no longer have (M1).
-//   Steady state (campaign version unchanged) = steps 1–4, one shop write.
+//          target could not be cleared, a write that removes a ref failed, or
+//          the step could not finish) — the previous config stays, so no
+//          product receives a rule's NEW value through a ref it should no
+//          longer have (M1, audit P2-1);
+//   5. product metafields, AFTER lane: products that carry no Won refs yet and
+//      only gain some. `productWrites: "background"` (the admin save, item 7)
+//      runs it in this process's per-shop queue after the run returned; the
+//      run is recorded with pending `products_in_progress` and the lane
+//      records its own SyncRun. A newer sync of the shop cancels a queued or
+//      running lane at its next batch (it redoes the work). Held config →
+//      the lane is skipped (nothing runs ahead of the config).
+//   Steady state (campaign version unchanged) = steps 1–5, one shop write.
+//
+// BILL-1 (audit P1-1): before step 0's payload, the config is gated for the
+// shop's plan (deps.plan → gateConfigForPlan): a Free shop's payload, nodes
+// and product refs never carry Pro capabilities. The STORED config is never
+// changed (§14a); the admin explains what is not in force (explainGate).
 //
 // Failure behaviour (REL-3), exactly:
 //   - The shop config is only ever REPLACED by a complete payload that fits the
@@ -39,25 +53,31 @@
 //   - A failed node step (one rule) does not hold the config: a node whose rule
 //     the shop config does not know emits nothing; a node that lacks new vars
 //     plans without the campaign (varsVersion handshake). A failed product SET
-//     only leaves a product without a new ref (it lacks that discount until the
-//     next sync). These windows last until the next successful sync.
-//   - Remaining window: after a HELD config, nodes and product refs are
-//     already the new ones while the old config runs: a NEW rule's refs and
-//     nodes are inert (unknown to the old config); a product newly added to an
-//     EXISTING rule gets that rule's OLD value; a code rule just DEACTIVATED or
-//     DELETED stops at once (its node is expired / gone) although the old
-//     config still lists it. Each such run is marked pending and retried
-//     (resyncIfPending, on the next Přehled load).
+//     that only ADDS refs leaves a product without a new ref (it lacks that
+//     discount until the next sync). These windows last until the next
+//     successful sync.
+//   - Remaining window: after a HELD config, nodes and the BEFORE lane's refs
+//     are already the new ones while the old config runs: a NEW rule's nodes
+//     are inert (unknown to the old config); a product that already carried
+//     Won refs and gained a ref of an EXISTING rule gets that rule's OLD value;
+//     a code rule just DEACTIVATED or DELETED stops at once (its node is
+//     expired / gone) although the old config still lists it. Each such run is
+//     marked pending and retried (resyncIfPending, on the next Přehled load).
 //   - Everything is idempotent (unchanged state → no mutation); a lost create
 //     response is recovered by lookup, never duplicated (node-sync.ts).
-//   - Runs for one shop are serialised in this process. Two app instances
+//   - Runs for one shop (and their background lanes) are serialised in this
+//     process (isSyncRunning / syncIdle expose the queue). Two app instances
 //     syncing the same shop at once are not coordinated [unverified: MVP 1
 //     runs one instance]; adopt-before-create keeps it from duplicating nodes.
+
+import { gateConfigForPlan, type StrippedCapability } from "@won/core/discounts/plan-gate";
 
 import { SHOP_CONFIG_KEY, WON_NAMESPACE } from "./graphql";
 import { desiredNodes, SYNC_RUNS_KEPT, type DesiredNode } from "./nodes";
 import { NodeSync } from "./node-sync";
-import { syncProducts } from "./products";
+import { applyProductAdditions, applyProductChanges, planProducts, syncProducts, type ProductSyncArgs } from "./products";
+import { clearSyncProgress } from "./progress";
+import { recordProductsSynced, recordShopTimezone } from "./sync-state.server";
 import { errorText, setMetafields, Transport } from "./transport";
 import type { ConfigView, PendingWork, SyncDeps, SyncResult, SyncStep } from "./types";
 import { sameJson } from "./util";
@@ -87,32 +107,95 @@ export function shopLocalDateTime(date: Date, timeZone: string): string {
 
 const inflight = new Map<string, Promise<unknown>>();
 
+/** A queued or running AFTER lane (background product writes) of a shop. */
+interface BackgroundLane {
+  cancelled: boolean;
+}
+const lanes = new Map<string, BackgroundLane>();
+
+/** Chain `work` after everything queued for `shop` in this process. */
+function enqueue<T>(shop: string, work: () => Promise<T>): Promise<T> {
+  const previous = inflight.get(shop) ?? Promise.resolve();
+  const run = previous.catch(() => undefined).then(work);
+  inflight.set(shop, run);
+  void run
+    .finally(() => {
+      if (inflight.get(shop) === run) inflight.delete(shop);
+    })
+    .catch(() => undefined);
+  return run;
+}
+
+/** True while a sync, a product refresh or a background product lane of `shop` is queued or running here. */
+export function isSyncRunning(shop: string): boolean {
+  return inflight.has(shop);
+}
+
+/** Resolves when nothing is queued or running for `shop` any more (tests, scripts). */
+export async function syncIdle(shop: string): Promise<void> {
+  for (let current = inflight.get(shop); current; current = inflight.get(shop)) {
+    await current.catch(() => undefined);
+    if (inflight.get(shop) === current) break;
+  }
+}
+
+/** Per shop: bumped by every sync / refresh request, so a lane knows a newer one came after it. */
+const generations = new Map<string, number>();
+
+/**
+ * A newer sync of the shop supersedes its queued / running background lane
+ * (it redoes that work) — also a lane its run has not queued yet. Returns the
+ * new request's generation.
+ */
+function supersede(shop: string): number {
+  const lane = lanes.get(shop);
+  if (lane) lane.cancelled = true;
+  const next = (generations.get(shop) ?? 0) + 1;
+  generations.set(shop, next);
+  if (generations.size > 10_000) generations.delete(generations.keys().next().value as string);
+  return next;
+}
+
 export interface SyncShopOptions {
   /**
    * The ConfigVersion `config` was saved as, recorded on the SyncRun (the
    * version link the admin's "Běží" compares with; null/absent = unknown).
    */
   configVersionId?: string | null;
+  /**
+   * The AFTER lane (products that only gain rules): "inline" (default) waits
+   * for it; "background" returns after the shop config and writes them in
+   * this process's queue (the admin save, item 7).
+   */
+  productWrites?: "inline" | "background";
 }
 
 export interface Sync {
   syncShop(shop: string, config: ConfigView, options?: SyncShopOptions): Promise<SyncResult>;
+  /**
+   * Only the product targeting (webhook-driven refresh, "Obnovit cílení"): the
+   * shop config is not touched. Recorded as its own SyncRun.
+   */
+  refreshProducts(shop: string, config: ConfigView, options?: Pick<SyncShopOptions, "configVersionId">): Promise<SyncResult>;
 }
 
 export function createSync(deps: SyncDeps): Sync {
   return {
     syncShop(shop, config, options = {}) {
-      const previous = inflight.get(shop) ?? Promise.resolve();
-      const run = previous.catch(() => undefined).then(() => runSync(deps, shop, config, options.configVersionId ?? null));
-      inflight.set(shop, run);
-      void run
-        .finally(() => {
-          if (inflight.get(shop) === run) inflight.delete(shop);
-        })
-        .catch(() => undefined);
-      return run;
+      const generation = supersede(shop);
+      return enqueue(shop, () => runSync(deps, shop, config, options, generation));
+    },
+    refreshProducts(shop, config, options = {}) {
+      supersede(shop);
+      return enqueue(shop, () => runProductRefresh(deps, shop, config, options.configVersionId ?? null));
     },
   };
+}
+
+/** One line for support: what the plan gate took out of the payload. */
+function gateDetail(plan: string, stripped: readonly StrippedCapability[]): string {
+  const items = stripped.map((s) => `${s.capability}${s.ruleId ? `:${s.ruleId}` : s.entityId ? `:${s.entityId}` : ""}`);
+  return `plan ${plan}: ${stripped.length} Pro setting(s) not applied (${items.slice(0, 10).join(", ")}${items.length > 10 ? ", …" : ""})`;
 }
 
 interface ShopState {
@@ -121,8 +204,9 @@ interface ShopState {
   functionConfig: string | null;
 }
 
-async function runSync(deps: SyncDeps, shop: string, config: ConfigView, configVersionId: string | null): Promise<SyncResult> {
+async function runSync(deps: SyncDeps, shop: string, config: ConfigView, options: SyncShopOptions, generation: number): Promise<SyncResult> {
   const startedAt = deps.now();
+  const configVersionId = options.configVersionId ?? null;
   const steps: SyncStep[] = [];
   const pending = new Set<PendingWork>();
   const record = (step: SyncStep) => {
@@ -131,16 +215,106 @@ async function runSync(deps: SyncDeps, shop: string, config: ConfigView, configV
   };
   const transport = new Transport(deps.client, deps.retry, deps.sleep, deps.logger);
   let rethrow: unknown = null;
+  let after: AfterLane | null = null;
   try {
-    await syncSteps({ deps, transport, shop, config, now: startedAt, record, pending });
+    after = await syncSteps({ deps, transport, shop, config, now: startedAt, record, pending });
   } catch (error) {
     // A thrown Response is a re-auth redirect for the embedded admin: record, then let it reach the route.
     if (error instanceof Response) rethrow = error;
     record({ step: "sync", ok: false, detail: `stopped: ${errorText(error)}` });
   }
+  let background: SyncResult["background"];
+  if (after && after.additions.length > 0 && options.productWrites === "background" && !rethrow) {
+    pending.add("products_in_progress");
+    background = { products: after.additions.length };
+  } else if (after && !rethrow) {
+    // Inline: the AFTER lane now (the shop config is already in place).
+    try {
+      const added = await applyProductAdditions(after.args, after.additions);
+      for (const step of added.steps) record(step);
+    } catch (error) {
+      if (error instanceof Response) rethrow = error;
+      record({ step: "products.add", ok: false, detail: `products that get new rules: ${errorText(error)}` });
+    }
+  }
   if (steps.some((step) => !step.ok)) pending.add("failed_steps");
   if (steps.some((step) => /still running/.test(step.detail))) pending.add("codes_in_progress");
   const result = await persist(deps, shop, startedAt, steps, [...pending], configVersionId);
+  if (after?.productsComplete && !background && result.ok) await bookkeeping(deps, shop, () => recordProductsSynced(deps.db, shop, startedAt));
+  if (!background) clearSyncProgress(shop);
+  if (background && after) {
+    // Superseded already when a newer request came in while this run was going.
+    const lane: BackgroundLane = { cancelled: generations.get(shop) !== generation };
+    lanes.set(shop, lane);
+    const lanePlan = after;
+    void enqueue(shop, () => runBackgroundLane(deps, shop, lane, lanePlan, startedAt, configVersionId)).catch(() => undefined);
+  }
+  if (rethrow) throw rethrow;
+  return background ? { ...result, background } : result;
+}
+
+/** Bookkeeping never fails a sync (it is a hint for the admin, not a fact the sync relies on). */
+async function bookkeeping(deps: SyncDeps, shop: string, write: () => Promise<void>): Promise<void> {
+  try {
+    await write();
+  } catch (error) {
+    deps.logger.warn(`sync ${shop}: could not record sync state: ${errorText(error)}`);
+  }
+}
+
+/** The AFTER lane in the background: its own SyncRun, unless a newer sync superseded it. */
+async function runBackgroundLane(
+  deps: SyncDeps,
+  shop: string,
+  lane: BackgroundLane,
+  after: AfterLane,
+  mainStartedAt: Date,
+  configVersionId: string | null,
+): Promise<SyncResult | null> {
+  const startedAt = deps.now();
+  const steps: SyncStep[] = [];
+  try {
+    if (lane.cancelled) return null;
+    const added = await applyProductAdditions(after.args, after.additions, { isCancelled: () => lane.cancelled });
+    if (added.cancelled) return null;
+    steps.push(...added.steps);
+  } catch (error) {
+    steps.push({ step: "products.add", ok: false, detail: `products that get new rules: ${errorText(error)}` });
+  } finally {
+    if (lanes.get(shop) === lane) lanes.delete(shop);
+    clearSyncProgress(shop);
+  }
+  const failed = steps.some((step) => !step.ok);
+  const result = await persist(deps, shop, startedAt, steps, failed ? ["failed_steps"] : [], configVersionId);
+  if (!failed && after.productsComplete) await bookkeeping(deps, shop, () => recordProductsSynced(deps.db, shop, mainStartedAt));
+  return result;
+}
+
+/** Products only (no shop config): the targeting refresh. */
+async function runProductRefresh(deps: SyncDeps, shop: string, config: ConfigView, configVersionId: string | null): Promise<SyncResult> {
+  const startedAt = deps.now();
+  const steps: SyncStep[] = [];
+  const pending = new Set<PendingWork>();
+  const transport = new Transport(deps.client, deps.retry, deps.sleep, deps.logger);
+  let rethrow: unknown = null;
+  let complete = false;
+  try {
+    const plan = await deps.plan(shop);
+    const gated = gateConfigForPlan(config, plan).config;
+    const result = await syncProducts({ transport, db: deps.db, shop, config: gated, productRuleIndex: deps.productRuleIndex });
+    steps.push(...result.steps);
+    if (result.staleRisk) pending.add("stale_product_refs");
+    complete = !result.staleRisk && result.steps.every((step) => step.ok);
+  } catch (error) {
+    if (error instanceof Response) rethrow = error;
+    steps.push({ step: "products", ok: false, detail: `product targeting: ${errorText(error)}` });
+  } finally {
+    clearSyncProgress(shop);
+  }
+  if (steps.length === 0) steps.push({ step: "products", ok: true, detail: "no targeted products and none to clean" });
+  if (steps.some((step) => !step.ok)) pending.add("failed_steps");
+  const result = await persist(deps, shop, startedAt, steps, [...pending], configVersionId);
+  if (complete && result.ok) await bookkeeping(deps, shop, () => recordProductsSynced(deps.db, shop, startedAt));
   if (rethrow) throw rethrow;
   return result;
 }
@@ -155,7 +329,15 @@ interface StepsArgs {
   pending: Set<PendingWork>;
 }
 
-async function syncSteps({ deps, transport, shop, config, now, record, pending }: StepsArgs): Promise<void> {
+/** What is left for the AFTER lane once the shop config is written. */
+interface AfterLane {
+  args: ProductSyncArgs;
+  additions: Parameters<typeof applyProductAdditions>[1];
+  /** The product plan finished and the BEFORE lane had no failure (the targeting is fresh once the lane is done). */
+  productsComplete: boolean;
+}
+
+async function syncSteps({ deps, transport, shop, config: stored, now, record, pending }: StepsArgs): Promise<AfterLane | null> {
   // 0. Shop + payload.
   let shopState: ShopState;
   try {
@@ -164,11 +346,18 @@ async function syncSteps({ deps, transport, shop, config, now, record, pending }
   } catch (error) {
     if (error instanceof Response) throw error;
     record({ step: "shop.read", ok: false, detail: `could not read the shop: ${errorText(error)} — nothing was changed` });
-    return;
+    return null;
   }
   const shopTimezone = shopState.timeZone;
   const nowLocal = shopLocalDateTime(now, shopTimezone);
   record({ step: "shop.read", ok: true, detail: `${shopState.id}, shop time ${nowLocal} (${shopTimezone})` });
+  await bookkeeping(deps, shop, () => recordShopTimezone(deps.db, shop, shopTimezone));
+
+  // BILL-1: what this shop's plan may run.
+  const plan = await deps.plan(shop);
+  const gate = gateConfigForPlan(stored, plan, { now: nowLocal });
+  const config: ConfigView = gate.config;
+  if (gate.stripped.length > 0) record({ step: "plan", ok: true, detail: gateDetail(plan, gate.stripped) });
 
   const payload = deps.buildShopFunctionConfig(config, { now: nowLocal, shopTimezone });
   if (!payload.fits) {
@@ -177,18 +366,18 @@ async function syncSteps({ deps, transport, shop, config, now, record, pending }
       ok: false,
       detail: `the discount function config is ${payload.bytes} B, over the 9000 B budget — nothing was written`,
     });
-    return;
+    return null;
   }
-  let stored = shopState.functionConfig;
+  let storedJson = shopState.functionConfig;
 
   // P1. Campaign switch: no-campaign shop config first; stop if it fails (M2).
   const newVersion = campaignVersionOf(payload.json);
-  const oldVersion = stored === null ? null : campaignVersionOf(stored);
+  const oldVersion = storedJson === null ? null : campaignVersionOf(storedJson);
   const switching = newVersion !== oldVersion;
   if (switching) {
     const noCampaign = deps.buildShopFunctionConfig(config, { now: nowLocal, shopTimezone, forceNoCampaign: true });
-    const written = await writeShopConfig(deps, transport, shopState.id, stored, noCampaign, "shop_config.phase1", record);
-    stored = written.stored;
+    const written = await writeShopConfig(deps, transport, shopState.id, storedJson, noCampaign, "shop_config.phase1", record);
+    storedJson = written.stored;
     if (!written.ok) {
       record({
         step: "sync.stopped",
@@ -196,7 +385,7 @@ async function syncSteps({ deps, transport, shop, config, now, record, pending }
         detail: "the campaign switch could not start (the no-campaign config was not written); nothing else was changed, the running campaign continues",
       });
       pending.add("campaign_switch_held");
-      return;
+      return null;
     }
   }
 
@@ -220,19 +409,39 @@ async function syncSteps({ deps, transport, shop, config, now, record, pending }
     record({ step: "nodes", ok: false, detail: `discount nodes: ${errorText(error)}` });
   }
 
-  // 3. Product metafields.
+  // 3. Product metafields, BEFORE lane (products that already carry Won refs, and clears).
+  const productArgs: ProductSyncArgs = {
+    transport,
+    db: deps.db,
+    shop,
+    config,
+    productRuleIndex: deps.productRuleIndex,
+    // No shop config in Shopify: the first sync after an install (or a reinstall) — check the index.
+    verifyIndex: shopState.functionConfig === null,
+  };
   let staleRisk = false;
+  let after: AfterLane | null = null;
   try {
-    const result = await syncProducts({ transport, db: deps.db, shop, config, productRuleIndex: deps.productRuleIndex });
-    for (const step of result.steps) record(step);
-    staleRisk = result.staleRisk;
+    const plan = await planProducts(productArgs);
+    for (const step of plan.steps) record(step);
+    staleRisk = plan.staleRisk;
+    if (plan.complete) {
+      const changes = await applyProductChanges(productArgs, plan);
+      for (const step of changes.steps) record(step);
+      staleRisk = changes.staleRisk;
+      after = {
+        args: productArgs,
+        additions: plan.additions,
+        productsComplete: !changes.staleRisk && changes.steps.every((step) => step.ok),
+      };
+    }
   } catch (error) {
     if (error instanceof Response) throw error;
     staleRisk = true;
     record({ step: "products", ok: false, detail: `product targeting: ${errorText(error)}` });
   }
 
-  // 4. Final shop config, last (or held).
+  // 4. Final shop config (or held).
   if (switching && newVersion !== null && !nodes.varsComplete) {
     pending.add("campaign_switch_held");
     record({
@@ -240,7 +449,7 @@ async function syncSteps({ deps, transport, shop, config, now, record, pending }
       ok: false,
       detail: "campaign switch held at 'no campaign': not every discount got its new variables; the next sync finishes it",
     });
-    return;
+    return null;
   }
   if (staleRisk) {
     pending.add("stale_product_refs");
@@ -250,9 +459,11 @@ async function syncSteps({ deps, transport, shop, config, now, record, pending }
       detail:
         "held: some products could not be cleared of rules they no longer belong to, so the new config is not applied yet (the previous one stays); the next sync retries",
     });
-    return;
+    return null;
   }
-  await writeShopConfig(deps, transport, shopState.id, stored, payload, "shop_config", record);
+  const written = await writeShopConfig(deps, transport, shopState.id, storedJson, payload, "shop_config", record);
+  // 5. The AFTER lane (runSync runs it inline or queues it) — only behind a config that is in place.
+  return written.ok ? after : null;
 }
 
 /** `campaignVarsVersion` of a shop config JSON (null = no campaign, or unreadable). */

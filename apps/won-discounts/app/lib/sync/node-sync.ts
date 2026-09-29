@@ -1,9 +1,13 @@
 // Won discount nodes in Shopify ↔ the desired nodes of a config (nodes.ts),
 // tracked in Prisma WonNode (key "auto" | "code:<ruleId>"). Only nodes in
 // WonNode are ever updated, deactivated or deleted; a node of THIS app's
-// function that a lost response / crash left untracked is ADOPTED (matched by
-// the exact code for a code node, by title "Won Discounts" for the automatic
-// one) instead of being duplicated. Nothing else on the store is touched.
+// function that a lost response / crash / uninstall left untracked is ADOPTED
+// (matched by the exact code for a code node; for the automatic one by THIS
+// app's function id — never by title, which the merchant can rename, audit
+// P3-5) instead of being duplicated. When this app's function cannot be
+// identified, the automatic node is NOT created (a second one would give every
+// automatic discount twice); the step fails and the next sync retries.
+// Nothing else on the store is touched.
 //
 // Code node lifecycle (C1, doctrine §14a "off ≠ erased"):
 //   active    create / update / activate (discountCodeActivate: endsAt := null)
@@ -31,7 +35,7 @@
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import { NODE_VARS_KEY, WON_NAMESPACE } from "./graphql";
-import { ALL_COMBINE, AUTO_NODE_TITLE, codesHash, FUNCTION_HANDLE, type DesiredNode } from "./nodes";
+import { ALL_COMBINE, codesHash, FUNCTION_HANDLE, type DesiredNode } from "./nodes";
 import { errorText, setMetafields, userErrorText, type Transport, type UserErrorLike } from "./transport";
 import type { SyncStep } from "./types";
 import { chunks, METAFIELDS_SET_BATCH, NODES_BATCH, REDEEM_CODES_PER_CALL, sameJson } from "./util";
@@ -450,8 +454,11 @@ export class NodeSync {
   /**
    * A node of THIS app's function that already represents `desired` in
    * Shopify but is not tracked (lost create response, crash before the
-   * WonNode write). Code node: the node owning its first code; automatic:
-   * an automatic node titled "Won Discounts". Anything not ours → foreign.
+   * WonNode write, WonNode rows cleared at uninstall). Code node: the node
+   * owning its first code; automatic: an automatic app discount of this app's
+   * function (any title — the merchant may have renamed it). Anything not
+   * ours → foreign. Automatic node + unknown function → refused (never a
+   * second automatic node).
    */
   private async findExisting(desired: DesiredNode): Promise<{ ours: string } | { foreign: string } | null> {
     const functionId = await this.ourFunctionId();
@@ -473,7 +480,11 @@ export class NodeSync {
       }
       return { foreign: `the code ${code} is already used by the discount "${title}" — remove it there or pick another code` };
     }
-    if (!functionId) return null;
+    if (!functionId) {
+      return {
+        foreign: "this app's discount function could not be identified, so an existing Won automatic discount cannot be ruled out; not created (a second one would apply every automatic discount twice) — the next sync retries",
+      };
+    }
     let after: string | null = null;
     for (;;) {
       const data: {
@@ -485,7 +496,6 @@ export class NodeSync {
       const match = data.discountNodes.nodes.find(
         (node) =>
           node.discount.__typename === "DiscountAutomaticApp" &&
-          node.discount.title === AUTO_NODE_TITLE &&
           node.discount.appDiscountType?.functionId === functionId &&
           !tracked.has(node.id),
       );

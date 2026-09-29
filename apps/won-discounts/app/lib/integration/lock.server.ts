@@ -31,3 +31,11 @@ export function withConfigLock<T>(shop: string, run: () => Promise<T>): Promise<
 export function isConfigLocked(shop: string): boolean {
   return queues.has(shop);
 }
+
+/** Resolves once nobody holds or waits for the shop's lock (tests; never awaited inside a lock). */
+export async function configLockIdle(shop: string): Promise<void> {
+  for (let queued = queues.get(shop); queued; queued = queues.get(shop)) {
+    await queued;
+    if (queues.get(shop) === queued) await Promise.resolve();
+  }
+}

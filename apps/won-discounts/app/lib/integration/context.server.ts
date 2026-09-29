@@ -25,6 +25,11 @@ export interface ShopCtx {
   locale: Locale;
   /** This app's API key (client_id): its own app discounts are not "outside Won". */
   apiKey: string;
+  /**
+   * The session's granted scopes (comma list; `session.scope`). Optional scopes
+   * (read_markets, item 9) are used only when granted. Absent = unknown.
+   */
+  scopes?: string;
   /** Test hooks: the sync (default: production wiring), the clock, the sync logger. */
   createSync?: (client: AdminClient, db: PrismaClient) => Sync;
   now?: () => Date;
@@ -35,9 +40,16 @@ export function shopCtx(
   admin: AppAdminGraphql,
   shop: string,
   db: PrismaClient,
-  opts: { locale: Locale; apiKey?: string },
+  opts: { locale: Locale; apiKey?: string; scopes?: string | null },
 ): ShopCtx {
-  return { shop, db, client: adminClientFromApp(admin), locale: opts.locale, apiKey: opts.apiKey ?? "" };
+  return {
+    shop,
+    db,
+    client: adminClientFromApp(admin),
+    locale: opts.locale,
+    apiKey: opts.apiKey ?? "",
+    ...(typeof opts.scopes === "string" ? { scopes: opts.scopes } : {}),
+  };
 }
 
 /** The clock of a context. */

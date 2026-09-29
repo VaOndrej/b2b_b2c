@@ -1,4 +1,3 @@
-import type { Page } from "@playwright/test";
 import type { PlanLine } from "@won/core/discounts/plan";
 
 import {
@@ -23,6 +22,7 @@ import {
   payWithBogusCard,
   priceSummary,
   rowAmount,
+  settledThankYou,
   SHIPPING,
   SUBTOTAL,
   TAX,
@@ -117,26 +117,6 @@ function checkoutLineFor(lines: readonly CheckoutLine[], shape: LineShape): Chec
 /** The single allocation of a checkout line whose title is the plan's message (the checkout upper-cases titles). */
 function allocationOf(line: CheckoutLine, message: string): number | null {
   return line.allocations.find((a) => a.title.toUpperCase() === message.toUpperCase())?.amount ?? null;
-}
-
-/**
- * The thank-you page fades in over the payment form (a screenshot right after the
- * URL change shows both). Wait until the form is gone, then read what the card
- * was charged from the order details ("•••• 1 · 839,30 Kč CZK").
- */
-async function settledThankYou(page: Page): Promise<{ charged: number | null; payFormGone: boolean }> {
-  const card = page.getByText(/\u2022+\s*1\s*\u00b7/u).first();
-  await expect(card, "the order details show the charged card").toBeVisible({ timeout: 60_000 });
-  const payFormGone = await expect(page.locator("#checkout-pay-button"))
-    .toHaveCount(0, { timeout: 30_000 })
-    .then(
-      () => true,
-      () => false,
-    );
-  await page.waitForLoadState("networkidle").catch(() => undefined);
-  await page.waitForTimeout(1_500);
-  const text = (await card.textContent()) ?? "";
-  return { charged: minorUnits(text.slice(text.indexOf("\u00b7") + 1)), payFormGone };
 }
 
 /** "CELKOVÁ ÚSPORA51,23 Kč" (the amount sits in the label) → minor units, when the summary shows it. */

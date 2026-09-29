@@ -1,9 +1,10 @@
 // Vyzkoušet košík — build a cart (products/variants + market/currency + codes +
 // day) and see what applies and WHY, in human sentences (spec §5). The plan
-// itself is computed on the server — Shopify prices for the chosen market, then
-// the engine (planCart + explainPlan) on the discount function's own payload —
-// and arrives as a ready CartPlanView; this screen never does discount math
-// (DATA-4, §10b). The market choice submits `CZK:cz` (currency + market).
+// itself is computed on the server — Shopify prices for the chosen market and
+// the product refs checkout reads, then the engine (planCart + explainPlan) on
+// the discount function's own payload and checkout's own output mapping — and
+// arrives as a ready CartPlanView with its warnings; this screen never does
+// discount math (DATA-4, §10b). The market choice submits `CZK:cz` (currency + market).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form } from "react-router";
@@ -18,6 +19,7 @@ import { formatDate, formatMoney } from "@won/core/discounts/describe";
 import { currencyViews, type MarketNames } from "../model/markets";
 import { TRY_CART_LIMITS } from "../model/try-cart-form";
 import { shopToday } from "../model/rule-form";
+import { uiText } from "../model/result-copy";
 import type { CartPlanView, CurrencyView, ExplainView, FieldError, TryCartLineView, UiResult } from "../model/types";
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
@@ -307,6 +309,16 @@ export function TryCartScreen(props: TryCartScreenProps) {
         <WonSection title={t("tryCart.result.title")} glyph="receipt" summary={resultSummary(plan, tr)}>
           <s-stack direction="block" gap="base">
             {result && !(result.ok === false && result.reason === "invalid") ? <Notice result={result} /> : null}
+            {plan?.warnings && plan.warnings.length > 0 ? (
+              // Item 8: where checkout gives (or may give) something else than the plan, before the numbers.
+              <s-banner tone="warning" heading={t("tryCart.warning.heading")}>
+                <s-unordered-list>
+                  {plan.warnings.map((w, i) => (
+                    <s-list-item key={`${i}-${w.key}`}>{uiText(w, tr)}</s-list-item>
+                  ))}
+                </s-unordered-list>
+              </s-banner>
+            ) : null}
             {plan ? (
               <div>
                 {plan.market ? <s-text color="subdued">{t("tryCart.result.market", { market: plan.market })}</s-text> : null}

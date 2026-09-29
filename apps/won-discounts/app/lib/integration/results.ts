@@ -19,6 +19,8 @@ export function uiFailureFromSave(res: Exclude<SaveConfigResult, { ok: true }>):
       return { ok: false, reason: "newer_schema" };
     case "unreadable_config":
       return { ok: false, reason: "unreadable_config" };
+    case "base_changed":
+      return { ok: false, reason: "base_changed" };
     default:
       return { ok: false, reason: "error" };
   }

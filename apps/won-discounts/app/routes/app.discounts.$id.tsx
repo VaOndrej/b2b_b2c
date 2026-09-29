@@ -14,7 +14,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
-  const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "" });
+  const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "", scopes: session.scope });
   const url = new URL(request.url);
   const props = await ruleEditorPage(ctx, {
     scopes: session.scope ?? "",
@@ -32,7 +32,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const { admin, session, redirect } = await authenticate.admin(request);
   const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
-  const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "" });
+  const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "", scopes: session.scope });
   const outcome = await ruleEditorAction(ctx, await request.formData(), params.id ?? "new");
   if ("redirect" in outcome) return redirect(outcome.redirect);
   return outcome;

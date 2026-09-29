@@ -110,7 +110,7 @@ test("variant targets: the full variant list goes to productRuleIndex; variant k
   assert.deepEqual(fake.productMetafield(product.id), { ruleIds: [], variantRuleIds: { [variant.split("/").pop()!]: ["v"] } });
 });
 
-test("a failed product SET stays tracked (hash null) and is retried; it does NOT hold the shop config", async () => {
+test("a failed SET that only ADDS refs stays tracked (hash null) and is retried; it does NOT hold the shop config (one that removes a ref does: f2-sync.test.ts)", async () => {
   const fake = new FakeShopify();
   const p = fake.addProduct(1);
   const deps = makeDeps(fake, db.prisma);
@@ -126,7 +126,8 @@ test("a failed product SET stays tracked (hash null) and is retried; it does NOT
   };
   const first = await sync.syncShop(shop, config);
   assert.equal(first.ok, false);
-  assert.ok(first.steps.some((step) => step.step === "products.set" && !step.ok && /boom/.test(step.detail)));
+  // p carried no Won refs: it only GAINS r (the AFTER lane, behind the new config).
+  assert.ok(first.steps.some((step) => step.step === "products.add" && !step.ok && /boom/.test(step.detail)), JSON.stringify(first.steps));
   const row = await db.prisma.productTargetIndex.findFirst({ where: { shop } });
   assert.equal(row?.payloadHash, null, "write-ahead row, still tracked");
   assert.ok(fake.shopMetafieldValue("function_config"), "a missing NEW ref does not hold the config");

@@ -8,7 +8,7 @@
 // what the undo changes BEFORE the click too (F11). The bodies are separate
 // components so the harness and tests can render them without opening a modal.
 
-import type { MovedBackupExtras } from "../lib/native/types";
+import type { NativeDiscountExtras } from "../lib/native/types";
 import type { MovedDiscountView, NativeDiscountView } from "./model/types";
 import { useT } from "../i18n/context";
 
@@ -22,10 +22,18 @@ function List({ items }: { items: readonly string[] }) {
   );
 }
 
-/** One discount: its losses and notes. Several: the same, per discount (each says its own). */
-function LossBlock({ discount, titled }: { discount: NativeDiscountView; titled: boolean }) {
+/** A movable discount on Přehled with its stacking notes (NativeDiscountExtras, app/lib/integration). */
+export type MovableDiscount = NativeDiscountView & NativeDiscountExtras;
+
+/**
+ * One discount: its losses and notes. Several: the same, per discount (each
+ * says its own). How it stacks with other Shopify discounts (F4) is said only
+ * for those that stay in Shopify, not for those moved in the same batch.
+ */
+function LossBlock({ discount, titled, batch }: { discount: MovableDiscount; titled: boolean; batch: ReadonlySet<string> }) {
   const { t } = useT();
-  const warnings = discount.warnings ?? [];
+  const stacking = (discount.stacking ?? []).filter((note) => !batch.has(note.nativeId)).map((note) => note.text);
+  const warnings = [...(discount.warnings ?? []), ...new Set(stacking)];
   return (
     <s-stack direction="block" gap="small-200">
       {titled ? <s-text type="strong">{discount.title}</s-text> : null}
@@ -80,8 +88,9 @@ function Steps({ discounts }: { discounts: readonly NativeDiscountView[] }) {
   );
 }
 
-export function MoveDialogBody({ discounts }: { discounts: readonly NativeDiscountView[] }) {
+export function MoveDialogBody({ discounts }: { discounts: readonly MovableDiscount[] }) {
   const { t } = useT();
+  const batch = new Set(discounts.map((d) => d.id));
   return (
     <s-stack direction="block" gap="base">
       <s-stack direction="block" gap="small-200">
@@ -89,7 +98,7 @@ export function MoveDialogBody({ discounts }: { discounts: readonly NativeDiscou
         <Steps discounts={discounts} />
       </s-stack>
       {discounts.map((discount) => (
-        <LossBlock key={discount.id} discount={discount} titled={discounts.length > 1} />
+        <LossBlock key={discount.id} discount={discount} titled={discounts.length > 1} batch={batch} />
       ))}
       <s-paragraph>{t("move.uninstall")}</s-paragraph>
       <s-paragraph color="subdued">{t("move.undo")}</s-paragraph>
@@ -97,8 +106,8 @@ export function MoveDialogBody({ discounts }: { discounts: readonly NativeDiscou
   );
 }
 
-/** A backup on Přehled with what its undo will change (MovedBackupExtras, app/lib/integration). */
-export type UndoableBackup = MovedDiscountView & MovedBackupExtras;
+/** A backup on Přehled with what its undo will change (undoCosts / stacking live on MovedDiscountView, F3 concern 2). */
+export type UndoableBackup = MovedDiscountView;
 
 /** What "Vrátit zpět" will do and change, before the click (F11, §14c). */
 export function UndoDialogBody({ backup }: { backup: UndoableBackup }) {

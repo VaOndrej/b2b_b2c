@@ -13,12 +13,15 @@ import {
   DISCOUNT_METHODS,
   DISCOUNT_TARGET_KINDS,
   DISCOUNT_VALUE_KINDS,
+  MINIMUM_SCOPES,
   type DiscountMethod,
   type DiscountRule,
   type DiscountTarget,
   type DiscountTargetKind,
   type DiscountValueKind,
+  type MinimumScope,
 } from "@won/core/discounts/config";
+import { shopDayStart } from "@won/core/discounts/function-payload";
 
 import { fromMinorUnits, toMinorUnits } from "@won/core/discounts/money";
 
@@ -44,6 +47,10 @@ export const FIELD = {
   codes: "codes",
   minimum: (currency: string) => `min_${currency}`,
   minQty: "minQty",
+  /** Where the minimum is measured: "cart" (the whole cart) or "entitled" (the rule's products). */
+  minScope: "minScope",
+  /** The rule as the editor loaded it (ruleVersionToken): a save over a rule changed since is refused (F12). */
+  ruleVersion: "ruleVersion",
   startDate: "startDate",
   endDate: "endDate",
   usageLimit: "usageLimit",
@@ -121,53 +128,50 @@ function addDays(date: string, days: number): string {
   return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
 
-/** Minutes the zone is ahead of UTC at a given instant. Throws on an unknown zone. */
-function offsetMinutesAt(utcMs: number, timeZone: string): number {
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-  const p: Record<string, string> = {};
-  for (const part of dtf.formatToParts(new Date(utcMs))) p[part.type] = part.value;
-  const asUtc = Date.UTC(
-    Number(p.year),
-    Number(p.month) - 1,
-    Number(p.day),
-    Number(p.hour) % 24,
-    Number(p.minute),
-    Number(p.second),
-  );
-  return Math.round((asUtc - utcMs) / 60_000);
-}
-
-function formatOffset(minutes: number): string {
-  const sign = minutes < 0 ? "-" : "+";
-  const abs = Math.abs(minutes);
-  return `${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
-}
-
 /**
- * Midnight of `date` in the shop's zone as an ISO date-time with its offset
- * ("2026-11-01T00:00:00+01:00"), the shape a rule schedule stores. An unknown
- * zone falls back to UTC (the editor then says the days are UTC days).
+ * The first instant of `date` in the shop's zone as an ISO date-time with its
+ * offset ("2026-11-01T00:00:00+01:00"), the shape a rule schedule stores —
+ * core `shopDayStart`, the same function the sync reads the days back with
+ * (F1 concern 4): in zones whose clocks skip midnight (America/Santiago on
+ * its spring-forward day) the day starts at 01:00, never at 23:00 of the day
+ * before. An unknown zone falls back to UTC (the editor then says the days
+ * are UTC days).
  */
 export function shopMidnightIso(date: string, timeZone: string | null): string {
-  const [y, m, d] = date.split("-").map(Number);
-  const wallClock = Date.UTC(y, m - 1, d);
   if (!timeZone) return `${date}T00:00:00Z`;
   try {
-    let offset = offsetMinutesAt(wallClock, timeZone);
-    offset = offsetMinutesAt(wallClock - offset * 60_000, timeZone);
-    return `${date}T00:00:00${formatOffset(offset)}`;
+    return shopDayStart(date, timeZone);
   } catch {
     return `${date}T00:00:00Z`;
   }
+}
+
+/** Deterministic JSON (sorted keys) for comparing rules. */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+/**
+ * A short token of a stored rule (FNV-1a of its canonical JSON). The editor
+ * sends the token of the rule it loaded; the server refuses a save or delete
+ * when the stored rule no longer has it — someone else changed this rule
+ * meanwhile (F12, `base_changed`), never a silent overwrite.
+ */
+export function ruleVersionToken(rule: DiscountRule): string {
+  const text = canonical(rule);
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `rv${hash.toString(16).padStart(8, "0")}${text.length.toString(16)}`;
 }
 
 /** Today's date in the shop's zone (UTC when unknown). */
@@ -307,6 +311,11 @@ export function readRuleForm(form: FormDataLike, ctx: RuleFormContext): RuleForm
     rule.minimum = {};
     if (Object.keys(subtotal).length > 0) rule.minimum.subtotal = subtotal;
     if (quantity > 0) rule.minimum.quantity = quantity;
+    // Where it is measured (F1 concern 3): the form's choice, else what was
+    // stored (an edit never resets "z vybraných produktů" to the cart), else cart.
+    const scopeRaw = str(FIELD.minScope);
+    const scope: MinimumScope = isOneOf(scopeRaw, MINIMUM_SCOPES) ? scopeRaw : (existing?.minimum?.scope ?? "cart");
+    rule.minimum.scope = scope;
   }
 
   // Schedule: whole shop-local days, end day inclusive
@@ -391,6 +400,8 @@ export interface RuleFormDefaults {
   codes: string;
   minimums: Record<string, string>;
   minQty: string;
+  /** Where the minimum is measured ("cart" for new rules and rules without one). */
+  minScope: MinimumScope;
   startDate: string;
   endDate: string;
   usageLimit: string;
@@ -438,6 +449,7 @@ export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string
     codes: (rule.codes ?? []).join("\n"),
     minimums,
     minQty: rule.minimum?.quantity ? String(rule.minimum.quantity) : "",
+    minScope: rule.minimum?.scope ?? "cart",
     startDate: days.startsOn ?? "",
     endDate: days.endsOn ?? "",
     usageLimit: rule.limits?.usageLimit ? String(rule.limits.usageLimit) : "",
@@ -458,6 +470,7 @@ export function ruleFormDefaults(rule: DiscountRule, currencies: readonly string
     [FIELD.method]: d.method,
     [FIELD.codes]: d.codes,
     [FIELD.minQty]: d.minQty,
+    [FIELD.minScope]: d.minScope,
     [FIELD.startDate]: d.startDate,
     [FIELD.endDate]: d.endDate,
     [FIELD.usageLimit]: d.usageLimit,

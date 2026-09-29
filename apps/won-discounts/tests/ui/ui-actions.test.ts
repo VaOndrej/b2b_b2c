@@ -142,7 +142,12 @@ test("native seams validate their input before anything reaches Shopify", async 
 });
 
 test("BILL-1: without a verified subscription the plan resolves to Free", async () => {
-  assert.deepEqual(await resolvePlan(), { pro: false });
+  assert.deepEqual(await resolvePlan(), { plan: "free", pro: false });
+  // The dev-only override is ignored outside development / test.
+  assert.deepEqual(await resolvePlan("x.myshopify.com", { NODE_ENV: "production", WON_DEV_PLAN: "pro" }), { plan: "free", pro: false });
+  assert.deepEqual(await resolvePlan("x.myshopify.com", { NODE_ENV: undefined, WON_DEV_PLAN: "pro" }), { plan: "free", pro: false });
+  assert.deepEqual(await resolvePlan("x.myshopify.com", { NODE_ENV: "development", WON_DEV_PLAN: "pro" }), { plan: "pro", pro: true });
+  assert.deepEqual(await resolvePlan("x.myshopify.com", { NODE_ENV: "test", WON_DEV_PLAN: "PRO " }), { plan: "pro", pro: true });
 });
 
 // --- Store signals ------------------------------------------------------------------

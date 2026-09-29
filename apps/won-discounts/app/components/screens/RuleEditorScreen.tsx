@@ -18,9 +18,18 @@ import { useT } from "../../i18n/context";
 import { pickCollections, pickProducts } from "../model/app-bridge";
 import { ruleName } from "../model/describe";
 import { currencyCodes, currencyViews, marketViews, type MarketNames } from "../model/markets";
-import { FIELD, readRuleForm, recipeRule, ruleFormDefaults, shopToday, type RecipeKey, type RuleFormContext } from "../model/rule-form";
+import {
+  FIELD,
+  readRuleForm,
+  recipeRule,
+  ruleFormDefaults,
+  ruleVersionToken,
+  shopToday,
+  type RecipeKey,
+  type RuleFormContext,
+} from "../model/rule-form";
 import { ruleStatus } from "../model/rule-status";
-import type { CodeRuleLimit, CurrencyView, FieldError, MarketView, RuleSyncMap, SyncView, UiResult } from "../model/types";
+import type { CodeRuleLimit, CurrencyView, FieldError, GateNoteView, MarketView, RuleSyncMap, SyncView, UiResult } from "../model/types";
 import { ApplySection } from "../rule-editor/ApplySection";
 import { DiscountSection } from "../rule-editor/DiscountSection";
 import { MoreOptionsSection } from "../rule-editor/MoreOptionsSection";
@@ -50,6 +59,12 @@ export interface RuleEditorScreenProps {
   otherRules: { id: string; name: string; codes?: string[] }[];
   codeRules: CodeRuleLimit;
   result?: UiResult | null;
+  /** Pro settings of THIS rule stored but not in force on the shop's plan (BILL-1, explainGate). */
+  gate?: GateNoteView[];
+  /** The plan switches this rule off (market / segment targeting on Free). */
+  gateOff?: boolean;
+  /** read_markets (optional scope) is granted; without it the editor asks for it when a market is picked (item 9). */
+  marketsScope?: boolean;
 }
 
 export function buildRuleEditorProps(
@@ -66,6 +81,9 @@ export function buildRuleEditorProps(
     shopCurrency?: string | null;
     marketNames?: MarketNames;
     now?: Date;
+    gate?: GateNoteView[];
+    gateOff?: string[];
+    marketsScope?: boolean;
   },
 ): RuleEditorScreenProps | null {
   const rules = config.modules.codes.rules;
@@ -88,6 +106,9 @@ export function buildRuleEditorProps(
       .filter((r) => r.id !== opts.ruleId)
       .map((r) => ({ id: r.id, name: r.name, ...(r.codes ? { codes: r.codes } : {}) })),
     codeRules: opts.codeRules,
+    ...(rule && opts.gate ? { gate: opts.gate.filter((g) => g.ruleId === rule.id).map((g) => ({ ...g })) } : {}),
+    ...(rule && opts.gateOff?.includes(rule.id) ? { gateOff: true } : {}),
+    ...(opts.marketsScope !== undefined ? { marketsScope: opts.marketsScope } : {}),
   };
 }
 
@@ -95,6 +116,7 @@ const DELETE_DIALOG = "won-delete-dialog";
 
 export function RuleEditorScreen(props: RuleEditorScreenProps) {
   const { mode, rule, recipe, currencies, timezone, today, sync, ruleSync, pro, readOnly, markets, otherRules, codeRules, result } = props;
+  const gate = props.gate ?? [];
   const tr = useT();
   const { t } = tr;
   const codes = useMemo(() => currencyCodes(currencies), [currencies]);
@@ -184,7 +206,17 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
     !!(initial.minimum || initial.schedule || (initial.method === "code" && initial.limits));
 
   const ed: EditorView = { draft, defaults, codes, timezone, errorFor, tr };
-  const status = ruleStatus(draft, { today, timezone, sync, ruleSync, draft: mode === "new" });
+  const status = ruleStatus(draft, {
+    today,
+    timezone,
+    sync,
+    ruleSync,
+    draft: mode === "new",
+    gateOff: props.gateOff && rule ? [rule.id] : [],
+    currencies: codes,
+    enabledMarkets: markets.map((m) => m.handle),
+  });
+  const ruleVersion = rule ? ruleVersionToken(rule) : null;
   const submit = useSubmit();
   // I3: "Nahradit neplatnou konfiguraci" re-submits exactly this form, confirmed.
   const replaceUnreadable = () => {
@@ -209,6 +241,7 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
 
       <Form method="post" ref={formRef} data-save-bar>
         <input type="hidden" name="intent" value="save" />
+        {ruleVersion ? <input type="hidden" name={FIELD.ruleVersion} value={ruleVersion} /> : null}
         <s-stack key={formKey} direction="block" gap="base">
           {readOnly ? (
             <s-banner tone="warning" heading={t("common.readOnly.heading")}>
@@ -227,7 +260,7 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
           />
           <ApplySection ed={ed} codeRules={codeRules} />
           <MoreOptionsSection ed={ed} defaultOpen={moreOpen} />
-          <ProSection ed={ed} pro={pro} markets={markets} otherRules={otherRules} />
+          <ProSection ed={ed} pro={pro} markets={markets} otherRules={otherRules} gate={gate} marketsScope={props.marketsScope ?? true} />
           <div>
             <s-button type="submit" variant="primary" disabled={boolAttr(readOnly)}>
               {t("common.save")}
@@ -245,7 +278,7 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
             tone="critical"
             commandFor={DELETE_DIALOG}
             command="--hide"
-            onClick={() => submit({ intent: "delete" }, { method: "post" })}
+            onClick={() => submit(ruleVersion ? { intent: "delete", [FIELD.ruleVersion]: ruleVersion } : { intent: "delete" }, { method: "post" })}
           >
             {t("editor.delete")}
           </s-button>
