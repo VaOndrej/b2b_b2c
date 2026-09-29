@@ -379,6 +379,8 @@ export interface CartPlanLineView {
   subtotal: number;
   discount: number;
   total: number;
+  /** Margin protection lowered this line's discount (the explain sentence says why). */
+  marginCapped?: boolean;
 }
 
 /** One human sentence from explainPlan (engine), tied to lines when it is about them. */
@@ -406,4 +408,11 @@ export interface CartPlanView {
    * shipment, the last sync failed, targeting being refreshed.
    */
   warnings?: UiText[];
+  /**
+   * Margin protection in this simulation (absent = off). `rateEstimated`: the cart is not in
+   * the shop currency, so purchase costs were converted with a rate estimated from market
+   * prices — checkout uses Shopify's current rate. `linesWithoutCost`: lines capped by the
+   * "no purchase cost" percent ceiling.
+   */
+  margin?: { rateEstimated: boolean; linesWithoutCost: number };
 }
