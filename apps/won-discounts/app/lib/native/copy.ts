@@ -461,6 +461,8 @@ export type MoveState =
   | "restore_unknown" // the restore may or may not have landed (answer lost, look-up failed)
   | "unknown" //         the delete may or may not have happened
   | "still_there" //     no answer to the delete, but the re-checks still see the discount (backup kept)
+  | "rolled_back_unknown" // automatic, create-first: the delete got no answer, so the Won rule was taken out again
+  | "both_live" //       automatic, create-first: the native stayed and its Won rule could not be taken out
   | "in_progress"; //    another move or undo of it is running
 
 export type MoveErrorItem =
@@ -713,6 +715,22 @@ function stateText(state: MoveState, locale: NativeLocale, codes: MoveStateDetai
         {
           cs: "Nevíme, jestli Shopify slevu smazal. Záloha je uložená: klikni znovu na „Přesunout“, nebo ji vrať přes „Vrátit zpět“.",
           en: "We do not know whether Shopify deleted the discount. The backup is saved: click “Move” again, or put it back with “Undo”.",
+        },
+        locale,
+      );
+    case "rolled_back_unknown":
+      return pick(
+        {
+          cs: "Nevíme, jestli Shopify slevu smazal. Won pravidlo jsme zase odebrali, ať sleva neplatí dvakrát. Záloha je uložená: klikni znovu na „Přesunout“, nebo ji vrať přes „Vrátit zpět“.",
+          en: "We do not know whether Shopify deleted the discount. The Won rule was taken out again so it never applies twice. The backup is saved: click “Move” again, or put it back with “Undo”.",
+        },
+        locale,
+      );
+    case "both_live":
+      return pick(
+        {
+          cs: "Původní sleva v Shopify zůstala a Won pravidlo se nepodařilo odebrat, můžou teď platit obě. Klikni hned na „Vrátit zpět“.",
+          en: "The original discount stayed in Shopify and the Won rule could not be taken out, so both may apply now. Click “Undo” right away.",
         },
         locale,
       );

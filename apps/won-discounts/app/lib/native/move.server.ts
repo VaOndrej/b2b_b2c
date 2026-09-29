@@ -1,6 +1,15 @@
 // One-click move of a native Shopify discount into Won, and its undo
-// (spec §4.1, decision C6: backup → delete native → create in Won; undo =
-// restore the native from the backup and remove the Won rule).
+// (spec §4.1, docs/won-discounts/rozhodnuti.md "Přesun nativních slev":
+// backup → create in Won → delete the native; undo = restore the native from
+// the backup and remove the Won rule). The order depends on the discount:
+//   automatic   backup → Won rule saved, synced and confirmed LIVE → delete the
+//               native. Both may apply for a moment; if the delete fails (or
+//               its outcome is unknown) the Won rule is rolled back, checked
+//               live, so a double discount never lasts.
+//   code        backup → delete the native → Won rule. The exception the
+//               decision allows: Shopify refuses a code text that another
+//               discount holds, even an expired or deactivated one (verified
+//               live), so the native must release its code first.
 //
 // REL-3, "what if this request dies mid-way?":
 //   before the claim         nothing changed; a retry starts over.
@@ -97,6 +106,23 @@ export const DELETE_RECHECK_DELAYS_MS: readonly number[] = [2_000, 6_000, 12_000
 const CONFIG_WRITE_ATTEMPTS = 3;
 /** Stale claims resolved per sweep (each costs a Shopify read). */
 const STALE_SWEEP_BATCH = 10;
+
+/**
+ * Heartbeat of a running claim: its timestamp is refreshed at every step that
+ * may take long (each bulk code chunk of a restore, before and after a sync),
+ * so a long restore (up to 10 000 codes) is never taken over as stale.
+ * Best effort: a failed refresh never stops the operation.
+ */
+async function heartbeat(db: PrismaClient, rowId: string): Promise<void> {
+  try {
+    await db.nativeDiscountBackup.updateMany({
+      where: { id: rowId, status: { in: [BACKUP_STATUS.moving, BACKUP_STATUS.undoing] } },
+      data: { updatedAt: new Date() },
+    });
+  } catch {
+    // The next step's own write (or the stale-claim sweep) settles the row.
+  }
+}
 
 export interface NativeOpOptions extends RequestOptions {
   locale?: NativeLocale;
@@ -435,6 +461,7 @@ async function restoreChecked(
     ...input,
     now,
     usedSoFar,
+    onProgress: () => heartbeat(input.db, rowId),
     onBeforeCreate: async () => {
       envelope.restoring = { at: now().toISOString() };
       await updateRow(input.db, rowId, { snapshot: envelope });
@@ -572,7 +599,20 @@ async function moveLocked(input: MoveNativeInput): Promise<MoveResult> {
     }
   }
 
-  const ctx: AbortContext = { input, locale, now, fail, rowId, nativeId, native, envelope, ruleId: previous?.wonRuleId ?? null, deleted, resumable };
+  const ctx: AbortContext = {
+    input,
+    locale,
+    now,
+    fail,
+    rowId,
+    nativeId,
+    native,
+    envelope,
+    ruleId: previous?.wonRuleId ?? null,
+    deleted,
+    resumable,
+    ruleMayBeLive: false,
+  };
 
   // F7: whatever throws from here on, the claim is released and a deleted native restored.
   try {
@@ -602,12 +642,21 @@ interface AbortContext {
   /** True once the native is (known to be) deleted in Shopify. */
   deleted: boolean;
   resumable: boolean;
+  /** Automatic, create-first: the Won rule may run next to the live native until rolled back. */
+  ruleMayBeLive: boolean;
 }
 
-/** A refusal after the claim: put the discount back if it is gone, else release the row. */
+/**
+ * A refusal after the claim: put the discount back if it is gone, else take a
+ * Won rule that may run next to it out again (create-first), then release the row.
+ */
 async function refuse(ctx: AbortContext, item: MoveErrorItem): Promise<MoveResult> {
   const { input, locale, now, fail, rowId, nativeId, envelope } = ctx;
   if (ctx.deleted) return abortAfterDelete(ctx, item);
+  if (ctx.ruleMayBeLive) {
+    if (!(await rollbackRule(ctx))) return bothLive(ctx, item);
+    ctx.ruleMayBeLive = false;
+  }
   if (ctx.resumable) {
     // The native is live (just read): record where it is, so undo has nothing to do.
     await updateRow(input.db, rowId, {
@@ -619,6 +668,95 @@ async function refuse(ctx: AbortContext, item: MoveErrorItem): Promise<MoveResul
     await input.db.nativeDiscountBackup.delete({ where: { id: rowId } });
   }
   return fail(item, "unchanged", ctx.resumable ? { backupId: rowId } : {});
+}
+
+/**
+ * The Won rule of a create-first move out again, checked in the saved config
+ * AND live (the shop function config). False when that cannot be confirmed.
+ */
+async function rollbackRule(ctx: AbortContext): Promise<boolean> {
+  const { input, nativeId } = ctx;
+  const current = await loadConfig(input.db, input.shop);
+  if (current.config.modules.codes.rules.some((r) => isRuleOf(r, ctx.ruleId, nativeId))) {
+    const removed = await writeConfig(input, (config) => withoutRule(config, ctx.ruleId, nativeId));
+    if (!removed.ok) return false;
+  }
+  return (await ensureNotLive(input, ctx.ruleId, nativeId, null)).ok;
+}
+
+/** The native is live and its Won rule could not be taken out: both may apply until an undo. */
+async function bothLive(ctx: AbortContext, item: MoveErrorItem): Promise<MoveResult> {
+  await updateRow(ctx.input.db, ctx.rowId, { status: BACKUP_STATUS.backedUp, error: moveErrorText(item, ctx.locale, "both_live") });
+  return ctx.fail(item, "both_live", { backupId: ctx.rowId });
+}
+
+/** Does Shopify run `ruleId` (the shop function config lists it)? Null when unreadable. */
+async function ruleRunsLive(client: AdminClient, ruleId: string, options: RequestOptions): Promise<boolean | null> {
+  const result = await runGql(client, "shopFunctionConfig", undefined, options);
+  if (!result.ok) return null;
+  const value = result.data?.shop?.metafield?.value;
+  if (typeof value !== "string") return result.data?.shop ? false : null;
+  try {
+    const rules = JSON.parse(value)?.modules?.codes?.rules;
+    return Array.isArray(rules) && rules.some((r) => (r as { id?: unknown } | null)?.id === ruleId);
+  } catch {
+    return null;
+  }
+}
+
+function writeFailureItem(result: Extract<WriteResult, { ok: false }>): MoveErrorItem {
+  if (result.blocked === "read_only") return { code: "config_read_only" };
+  if (result.blocked === "unreadable") return { code: "config_unreadable" };
+  return { code: "sync_failed", detail: result.message };
+}
+
+/**
+ * Automatic discounts (rozhodnuti.md order): the Won rule first — saved,
+ * synced and confirmed live — while the native still runs; then the native is
+ * deleted. A delete that fails or cannot be confirmed takes the Won rule out
+ * again (checked live), so the two never keep applying together.
+ */
+async function moveCreateFirst(ctx: AbortContext, plan: MovePlan): Promise<MoveResult> {
+  const { input, locale, now, fail, rowId, nativeId, native, envelope } = ctx;
+  const { client, db } = input;
+
+  // 4. The Won rule, on top of the config as it is NOW (F12: retried on a conflict).
+  ctx.ruleMayBeLive = true;
+  await heartbeat(db, rowId);
+  const synced = await writeConfig(input, (config) => withRule(config, plan.rule, nativeId));
+  await heartbeat(db, rowId);
+  if (!synced.ok) return refuse(ctx, writeFailureItem(synced));
+  const live = await ruleRunsLive(client, plan.rule.id, input);
+  if (live !== true) {
+    const detail = live === null ? "could not confirm that Shopify runs the Won rule" : "Shopify does not run the Won rule yet";
+    return refuse(ctx, { code: "sync_failed", detail });
+  }
+
+  // 5. Now the native goes (until here both could apply for a moment; the dialog says so).
+  const removed = await deleteNative(client, native, input);
+  if (removed.outcome === "deleted") {
+    ctx.deleted = true;
+    ctx.ruleMayBeLive = false;
+    await updateRow(db, rowId, { status: BACKUP_STATUS.moved, error: null, wonRuleId: plan.rule.id });
+    return { ok: true, backupId: rowId, ruleId: plan.rule.id, alreadyMoved: false, losses: plan.losses, warnings: plan.warnings };
+  }
+  // Not deleted, or not sure: the Won rule goes again — never a lasting double discount.
+  const item: MoveErrorItem =
+    removed.outcome === "not_deleted" ? { code: "delete_failed", detail: removed.message } : { code: "outcome_unknown", detail: removed.message };
+  if (!(await rollbackRule(ctx))) return bothLive(ctx, item);
+  ctx.ruleMayBeLive = false;
+  if (removed.outcome === "not_deleted") {
+    // Shopify answered: the native is live under its own id, undo has nothing to do.
+    await updateRow(db, rowId, {
+      status: BACKUP_STATUS.failed,
+      error: moveErrorText(item, locale),
+      snapshot: settled(envelope, { nativeId, at: now().toISOString() }),
+    });
+    return fail(item, "unchanged", { backupId: rowId });
+  }
+  // The delete may land late: the backup stays listed (F3); a retry and undo both re-check the store.
+  await updateRow(db, rowId, { status: BACKUP_STATUS.backedUp, error: moveErrorText(item, locale, "rolled_back_unknown") });
+  return fail(item, "rolled_back_unknown", { backupId: rowId });
 }
 
 async function moveClaimed(ctx: AbortContext): Promise<MoveResult> {
@@ -670,7 +808,12 @@ async function moveClaimed(ctx: AbortContext): Promise<MoveResult> {
   if (!check.ok) return refuse(ctx, validationItem(check, loaded.config));
   await updateRow(db, rowId, { wonRuleId: plan.rule.id });
 
-  // 4. Delete the native discount (frees its code for the Won node).
+  // Automatic discounts: create first, delete after (the decision's order).
+  if (!ctx.deleted && native.method === "automatic") return moveCreateFirst(ctx, plan);
+
+  // 4. Code discounts: delete the native first — Shopify refuses a code text
+  //    another discount holds, even an expired or deactivated one (verified
+  //    live), so its code must be free before the Won node can take it.
   if (!ctx.deleted) {
     const removed = await deleteNative(client, native, input);
     if (removed.outcome === "not_deleted") {
@@ -694,16 +837,10 @@ async function moveClaimed(ctx: AbortContext): Promise<MoveResult> {
   }
 
   // 5. Add the rule and sync, on top of the config as it is NOW (F12: retried on a conflict).
+  await heartbeat(db, rowId);
   const synced = await writeConfig(input, (config) => withRule(config, plan.rule, nativeId));
-  if (!synced.ok) {
-    const item: MoveErrorItem =
-      synced.blocked === "read_only"
-        ? { code: "config_read_only" }
-        : synced.blocked === "unreadable"
-          ? { code: "config_unreadable" }
-          : { code: "sync_failed", detail: synced.message };
-    return abortAfterDelete(ctx, item);
-  }
+  await heartbeat(db, rowId);
+  if (!synced.ok) return abortAfterDelete(ctx, writeFailureItem(synced));
   await updateRow(db, rowId, { status: BACKUP_STATUS.moved, error: null, wonRuleId: plan.rule.id });
   return { ok: true, backupId: rowId, ruleId: plan.rule.id, alreadyMoved: false, losses: plan.losses, warnings: plan.warnings };
 }
@@ -867,7 +1004,7 @@ async function undoClaimed(undo: UndoContext): Promise<UndoResult> {
 
   // A partial restore: add the codes that are still missing, from the snapshot.
   if (envelope.restoredAs && codesStillMissing(envelope)) {
-    const finished = await finishRestoredCodes(client, envelope, { ...input, now });
+    const finished = await finishRestoredCodes(client, envelope, { ...input, now, onProgress: () => heartbeat(db, row.id) });
     if (!finished.ok) {
       await release();
       return fail({ code: "backup_unreadable" });

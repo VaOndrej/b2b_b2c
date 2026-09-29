@@ -44,7 +44,7 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   { path: "try-cart?state=not-wired", expect: [/Výpočet košíku zatím není zapojený/] },
   { path: "onboarding", expect: [/Co chceš řešit/, /Doprava zdarma nebo dárek/, /na první místo/] },
   { path: "onboarding?step=3&embed=on", expect: [/Zapnuto. Web je připravený/, /Vytvořit první slevu/] },
-  { path: "move-dialog", expect: [/Co se stane/, /Co se ztratí/, /Historie použití zůstane v Shopify \(zatím 42×\)/, /Na co myslet/, /zbývajících 58/] },
+  { path: "move-dialog", expect: [/Co se stane/, /Co se ztratí/, /Počítadlo použití \(zatím 42×\) se smazáním slevy v Shopify ztratí/, /Na co myslet/, /zbývajících 58/] },
   { path: "move-dialog?all=1", expect: [/Přesunout 2 slevy do Won/, /LETO15/, /Doprava zdarma nad 2 000 Kč/, /Doplň ji pro EUR/] },
   { path: "coming-soon?module=outlet", expect: [/Výprodej/, /Přijde v další verzi/, /Přejít na Přehled/] },
   { path: "plan", expect: [/Tarif/, /Pro · 29 USD/, /nejvýš 20 aktivních s kódem/, /nejvýš 25 slevových funkcí/] },

@@ -164,25 +164,25 @@ test("Important 1: resumed move whose read fails → 'unknown', never 'nothing c
 
 // --- Important 2: REL-3 checks the rollback and the codes -----------------------------
 
-test("Important 2: sync failed after save AND rollback fails → automatic native NOT recreated (no double discount), undo finishes", async () => {
+test("Important 2 (create-first): the Won rule's sync fails AND its rollback fails → the automatic native is never deleted, both_live said, undo takes the rule out", async () => {
   const { shop, shopify, common } = setup(["after_save", "before_save"]);
   const nativeId = shopify.add(basicNode({ method: "automatic", title: "Dvakrát ne", percentage: 0.2 }));
 
   const result = await moveNative({ ...common, nativeId });
   assert.ok(!result.ok);
   assert.equal(result.code, "sync_failed");
-  assert.equal((result as { state?: string }).state, "rule_stuck");
-  assert.equal(result.nativeRestored, false);
-  assert.doesNotMatch(result.error, /funguje jako dřív/);
-  assert.equal([...shopify.nodes.values()].filter((n) => n.discount.title === "Dvakrát ne").length, 0);
+  assert.equal((result as { state?: string }).state, "both_live");
+  assert.match(result.error, /můžou teď platit obě\. Klikni hned na „Vrátit zpět“/);
+  assert.ok(shopify.nodes.has(nativeId), "the native was never deleted");
+  assert.equal(shopify.callsTo("WonNativeAutomaticDelete").length, 0);
   assert.equal(shopify.callsTo("WonNativeAutomaticBasicCreate").length, 0);
   assert.equal((await loadConfig(db.prisma, shop)).config.modules.codes.rules.length, 1, "the rule could not be removed");
   const [row] = await rows(shop);
-  assert.equal(row.status, "failed");
+  assert.equal(row.status, "backed_up");
   assert.equal(parseSnapshot(row.snapshot)?.restoredAs, undefined);
 
   const undo = await undoMove({ ...common, backupId: row.id });
-  assert.ok(undo.ok, JSON.stringify(undo));
+  assert.ok(undo.ok && undo.alreadyRestored && undo.nativeId === nativeId, JSON.stringify(undo));
   assert.equal((await loadConfig(db.prisma, shop)).config.modules.codes.rules.length, 0);
   assert.equal([...shopify.nodes.values()].filter((n) => n.discount.title === "Dvakrát ne").length, 1);
 });

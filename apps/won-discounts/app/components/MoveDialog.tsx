@@ -1,7 +1,8 @@
 // "Přesunout do Won" confirmation (docs/won-discounts/rozhodnuti.md, "Přesun
 // nativních slev"): before the one click, say exactly what happens, in the
-// order the code does it (backup → delete → Won rule + sync, with the short
-// window without the discount), what is lost (§14c) — the planMove sentences
+// order the code does it (automatic: backup → Won rule + sync → delete, both
+// may apply for a moment; code: backup → delete → Won rule + sync, a short
+// window without the discount, and why), what is lost (§14c) — the planMove sentences
 // for THIS discount (app/lib/native) — that uninstalling the app ends moved
 // discounts, and how to undo it (§14b). The "Vrátit zpět" confirmation says
 // what the undo changes BEFORE the click too (F11). The bodies are separate
@@ -40,18 +41,52 @@ function LossBlock({ discount, titled }: { discount: NativeDiscountView; titled:
   );
 }
 
+/**
+ * The steps in the order the move runs them (app/lib/native/move.server.ts):
+ * automatic discounts create the Won rule first and delete after; code
+ * discounts must delete first (Shopify keeps a code text taken even by an
+ * ended discount). A dialog for both kinds shows both, titled.
+ */
+function Steps({ discounts }: { discounts: readonly NativeDiscountView[] }) {
+  const { t } = useT();
+  const code = discounts.some((d) => d.method === "code");
+  const automatic = discounts.some((d) => d.method === "automatic");
+  const titled = code && automatic;
+  return (
+    <>
+      {automatic || !code ? (
+        <s-stack direction="block" gap="small-200">
+          {titled ? <s-text>{t("move.auto.title")}</s-text> : null}
+          <s-ordered-list>
+            <s-list-item>{t("move.step.backup")}</s-list-item>
+            <s-list-item>{t("move.auto.create")}</s-list-item>
+            <s-list-item>{t("move.auto.delete")}</s-list-item>
+          </s-ordered-list>
+          <s-paragraph>{t("move.auto.window")}</s-paragraph>
+        </s-stack>
+      ) : null}
+      {code ? (
+        <s-stack direction="block" gap="small-200">
+          {titled ? <s-text>{t("move.code.title")}</s-text> : null}
+          <s-ordered-list>
+            <s-list-item>{t("move.step.backup")}</s-list-item>
+            <s-list-item>{t("move.step.delete")}</s-list-item>
+            <s-list-item>{t("move.step.create")}</s-list-item>
+          </s-ordered-list>
+          <s-paragraph>{t("move.window")}</s-paragraph>
+        </s-stack>
+      ) : null}
+    </>
+  );
+}
+
 export function MoveDialogBody({ discounts }: { discounts: readonly NativeDiscountView[] }) {
   const { t } = useT();
   return (
     <s-stack direction="block" gap="base">
       <s-stack direction="block" gap="small-200">
         <s-text type="strong">{t("move.what")}</s-text>
-        <s-ordered-list>
-          <s-list-item>{t("move.step.backup")}</s-list-item>
-          <s-list-item>{t("move.step.delete")}</s-list-item>
-          <s-list-item>{t("move.step.create")}</s-list-item>
-        </s-ordered-list>
-        <s-paragraph>{t("move.window")}</s-paragraph>
+        <Steps discounts={discounts} />
       </s-stack>
       {discounts.map((discount) => (
         <LossBlock key={discount.id} discount={discount} titled={discounts.length > 1} />

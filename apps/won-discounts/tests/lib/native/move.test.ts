@@ -134,19 +134,21 @@ test("REL-3: sync fails after the delete (Won node already holds the code) → n
   assert.ok(undo.ok && undo.alreadyRestored);
 });
 
-test("REL-3: sync refused before saving → native restored directly, config untouched", async () => {
+test("create-first (automatic): the Won rule's save is refused → nothing deleted, nothing changed", async () => {
   const { shop, shopify, sync, common } = setup(["before_save"]);
   const nativeId = shopify.add(freeShippingNode({ method: "automatic", title: "Doprava nad 1000", minimum: { subtotal: "1000.00" } }));
 
   const result = await moveNative({ ...common, nativeId });
   assert.ok(!result.ok);
   assert.equal(result.code, "sync_failed");
-  assert.equal(result.state, "restored");
+  assert.equal(result.state, "unchanged");
+  assert.equal(result.error, "Přesun se nepovedl (Shopify is not answering). Nic se nezměnilo.");
   assert.equal(sync.calls.length, 1, "no rollback save when nothing was saved");
-  const restored = shopify.nodes.get(result.restoredNativeId!);
-  assert.equal(restored.discount.__typename, "DiscountAutomaticFreeShipping");
-  assert.equal(restored.discount.minimumRequirement.greaterThanOrEqualToSubtotal.amount, "1000.00");
+  assert.ok(shopify.nodes.has(nativeId), "the same discount, same id");
+  assert.equal(shopify.callsTo("WonNativeAutomaticDelete").length, 0);
+  assert.equal(shopify.callsTo("WonNativeAutomaticFreeShippingCreate").length, 0);
   assert.equal((await loadConfig(db.prisma, shop)).config.modules.codes.rules.length, 0);
+  assert.equal((await backups(shop)).length, 0, "a fresh backup of a move that changed nothing is dropped");
 });
 
 test("REL-3: the restore fails too → the backup keeps the only copy; undo finishes the job later", async () => {

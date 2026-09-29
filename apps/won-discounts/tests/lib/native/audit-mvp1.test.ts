@@ -158,9 +158,9 @@ test("F1: a failed move's restore keeps the REMAINING uses and says exactly what
 // --- F2: before a restore, Shopify must no longer run the Won rule ----------------------------
 
 test("F2: rollback's sync failed while Shopify still runs the rule → Undo resyncs first, restores only on a clean live state", async () => {
-  // Move: the sync wrote the rule live, then failed; the rollback saved "no rule" but did not sync.
+  // Move (code: delete first): the sync wrote the rule live, then failed; the rollback saved "no rule" but did not sync.
   const { shop, shopify, sync, common } = setup(["after_node", "after_save"]);
-  const nativeId = shopify.add(basicNode({ method: "automatic", title: "Auto 10 %" }));
+  const nativeId = shopify.add(basicNode({ title: "Kód 10 %", codes: ["KOD10"] }));
   const moved = await moveNative({ ...common, nativeId });
   assert.ok(!moved.ok);
   assert.equal(moved.state, "rule_stuck");
@@ -169,18 +169,19 @@ test("F2: rollback's sync failed while Shopify still runs the rule → Undo resy
 
   let liveAtCreate: string | null = "unset";
   shopify.onCall = (name) => {
-    if (name === "WonNativeAutomaticBasicCreate") liveAtCreate = shopify.shopFunctionConfig;
+    if (name === "WonNativeCodeBasicCreate") liveAtCreate = shopify.shopFunctionConfig;
   };
   const undo = await undoMove({ ...common, backupId: moved.backupId! });
   assert.ok(undo.ok, JSON.stringify(undo));
   assert.equal(sync.calls.length, 3, "move, rollback, resync before the restore");
   assert.doesNotMatch(String(liveAtCreate), /native-/, "the native was created only once the rule was gone live");
-  assert.equal([...shopify.nodes.values()].filter((n) => n.discount.title === "Auto 10 %").length, 1);
+  assert.equal([...shopify.nodes.values()].filter((n) => n.discount.title === "Kód 10 %").length, 1);
+  assert.equal(shopify.holderOf("KOD10")?.discount.__typename, "DiscountCodeBasic");
 });
 
 test("F2: the resync fails → Undo refuses honestly and does NOT recreate the native (no double discount)", async () => {
   const { shopify, common } = setup(["after_node", "after_save", "before_save"]);
-  const nativeId = shopify.add(basicNode({ method: "automatic", title: "Auto 20 %", percentage: 0.2 }));
+  const nativeId = shopify.add(basicNode({ title: "Kód 20 %", codes: ["KOD20"], percentage: 0.2 }));
   const moved = await moveNative({ ...common, nativeId });
   assert.ok(!moved.ok);
 
@@ -188,18 +189,18 @@ test("F2: the resync fails → Undo refuses honestly and does NOT recreate the n
   assert.ok(!undo.ok);
   assert.equal(undo.code, "rule_still_live");
   assert.doesNotMatch(undo.error, /Nic se nezměnilo, sleva dál platí přes Won/);
-  assert.equal(shopify.callsTo("WonNativeAutomaticBasicCreate").length, 0);
+  assert.equal(shopify.callsTo("WonNativeCodeBasicCreate").length, 0);
 });
 
 test("F2: the live state cannot be read → no restore, honest 'could not check'", async () => {
   const { shopify, common } = setup(["throw"]);
-  const nativeId = shopify.add(basicNode({ method: "automatic", title: "Nečitelné" }));
+  const nativeId = shopify.add(basicNode({ title: "Nečitelné", codes: ["NECITELNE"] }));
   shopify.inject("WonSyncShopConfigReadBack", ...Array.from({ length: 8 }, () => ({ throws: "ETIMEDOUT" })));
   const moved = await moveNative({ ...common, nativeId });
   assert.ok(!moved.ok);
   assert.equal(moved.state, "rule_unverified");
   assert.match(moved.error, /Je v záloze/);
-  assert.equal(shopify.callsTo("WonNativeAutomaticBasicCreate").length, 0);
+  assert.equal(shopify.callsTo("WonNativeCodeBasicCreate").length, 0);
 });
 
 // --- F3: an unanswered delete is re-checked with backoff ----------------------------------------
@@ -322,20 +323,22 @@ test("F8: undo's create answer lost and the lookup fails → unknown, rule NOT p
 });
 
 test("F8: with a restore marker, a failed lookup never creates", async () => {
-  const { shopify, common } = setup(["throw"]);
+  const { shopify, common } = setup();
   const nativeId = shopify.add(basicNode({ method: "automatic", title: "Značka" }));
+  const moved = await moveNative({ ...common, nativeId });
+  assert.ok(moved.ok);
   shopify.inject("WonNativeAutomaticBasicCreate", { throwsAfterApply: "ETIMEDOUT" });
-  // After the (landed, unanswered) create every look-up fails: the move's and the undo's.
+  // After the (landed, unanswered) create every look-up fails: this undo's and the next one's.
   shopify.onCall = (name) => {
     if (name === "WonNativeAutomaticBasicCreate") shopify.inject("WonNativeRecentAutomatic", ...Array.from({ length: 8 }, () => ({ throws: "ETIMEDOUT" })));
   };
-  const moved = await moveNative({ ...common, nativeId });
-  assert.ok(!moved.ok);
-  assert.equal(moved.state, "restore_unknown");
+  const first = await undoMove({ ...common, backupId: moved.backupId });
+  assert.ok(!first.ok);
+  assert.equal(first.code, "restore_unknown");
 
-  const undo = await undoMove({ ...common, backupId: moved.backupId! });
-  assert.ok(!undo.ok);
-  assert.equal(undo.code, "restore_unknown");
+  const again = await undoMove({ ...common, backupId: moved.backupId });
+  assert.ok(!again.ok);
+  assert.equal(again.code, "restore_unknown");
   assert.equal(shopify.callsTo("WonNativeAutomaticBasicCreate").length, 1, "no second create while we cannot look");
 });
 

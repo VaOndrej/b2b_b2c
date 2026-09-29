@@ -70,6 +70,10 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 - Nová doména v core: **`packages/core/src/discounts/`** (množné číslo). Stávající
   `packages/core/src/discount/` a `margin/` zůstávají beze změny kvůli `guard:test:core`
   b2b-companionu; nový engine z nich převezme logiku (import nebo kopie s testy), nezmění je.
+- **Pořadí přesunu nativní slevy (výklad `rozhodnuti.md`, 2026-09-29):** automatické slevy jdou
+  „záloha → vytvoření ve Won → smazání nativní“ (jak říká rozhodnutí); kódové slevy „záloha →
+  smazání → vytvoření“, protože živě ověřeno, že vypršelý/existující kód blokuje stejný text
+  (výjimka, kterou rozhodnutí samo předvídá v „Technická rizika“).
 - **Ondřej 2026-09-28: všechny slevy jdou přes Won Discounts** — i slevové upsely Won
   Companion (Pro) budou pravidla ve Won Discounts, Companion vlastní slevovou funkci nemá.
   Roadmap karta Companion upravena.

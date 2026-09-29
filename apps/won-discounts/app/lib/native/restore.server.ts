@@ -194,6 +194,8 @@ export interface RestoreOptions extends RequestOptions {
   usedSoFar?: number;
   /** Records the restore marker in the backup (F8); runs right before the create. */
   onBeforeCreate?: () => Promise<void>;
+  /** Called after every chunk of codes (the caller's claim heartbeat: a 10 000-code restore takes long). */
+  onProgress?: () => Promise<void>;
 }
 
 async function lookupCode(
@@ -283,6 +285,7 @@ async function addRemainingCodes(
   let pending = false;
   const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   for (let i = 0; i < codes.length; i += REDEEM_CODES_PER_CALL) {
+    await options.onProgress?.();
     const chunk = codes.slice(i, i + REDEEM_CODES_PER_CALL);
     const added = await runGql(client, "redeemCodesAdd", { id: discountId, codes: chunk.map((code) => ({ code })) }, options);
     const payload = added.ok ? added.data?.discountRedeemCodeBulkAdd : null;

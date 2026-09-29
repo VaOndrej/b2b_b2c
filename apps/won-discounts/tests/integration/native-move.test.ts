@@ -237,3 +237,20 @@ test("F1: Přesunout vše stops after the first limit refusal: the rest is skipp
   const deletes = store.calls.filter((call) => call.op === "WonNativeCodeDelete").map((call) => call.variables.id);
   assert.deepEqual(deletes, [a]);
 });
+
+test("F3 follow-up: an automatic discount's dialog tells the create-first order; a mixed dialog shows both, titled", async () => {
+  const auto = { id: "gid://shopify/DiscountAutomaticNode/2", title: "Auto 10 %", method: "automatic" as const, movable: true, losses: [], warnings: [] };
+  const code = { id: "gid://shopify/DiscountCodeNode/1", title: "LETO15", method: "code" as const, movable: true, losses: [], warnings: [] };
+  const html = text(await renderPage(createElement(MoveDialogBody, { discounts: [auto] })));
+  const create = html.indexOf("Vytvoříme stejné pravidlo ve Won");
+  const remove = html.indexOf("Potom původní slevu v Shopify smažeme");
+  assert.ok(html.indexOf("Uložíme zálohu") < create && create < remove, html);
+  assert.match(html, /Krátce mohou platit obě slevy, pak smažeme původní/);
+  assert.doesNotMatch(html, /sleva chvíli neplatí/, "no gap without the discount for an automatic one");
+  assert.doesNotMatch(html, /Automatické slevy|Slevy s kódem/, "one kind: no titles");
+
+  const mixed = text(await renderPage(createElement(MoveDialogBody, { discounts: [code, auto] })));
+  assert.match(mixed, /Automatické slevy/);
+  assert.match(mixed, /Slevy s kódem/);
+  assert.match(mixed, /Shopify nepustí stejný kód ke dvěma slevám, ani když je jedna ukončená/);
+});
