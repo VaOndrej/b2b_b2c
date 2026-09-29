@@ -182,6 +182,96 @@ export interface AdminSignals {
   native: NativeView;
   /** Absent = not known (harness v0 states). */
   targeting?: TargetingView;
+  /** Ochrana marže card on Přehled (MVP 2). Absent = not known. */
+  margin?: MarginOverviewView;
+}
+
+// --- Ochrana marže (MVP 2) ------------------------------------------------------------------
+// Contract between the sync/integration layer (app/lib/integration/margin.server.ts,
+// Task 3) and the screens (Task 4). Money is minor units of `shopCurrency`.
+
+/** The cost mirror (inventoryItem.unitCost → variant metafield). Times shop-local. */
+export type CostMirrorView =
+  /** Margin protection is off: nothing is mirrored. */
+  | { state: "off" }
+  /** A full pass is running (`total` null until the first page tells). */
+  | { state: "running"; done: number; total: number | null; since: string }
+  | { state: "fresh"; at: string }
+  /** Last full pass older than 24 h, or never finished: a refresh is due. */
+  | { state: "stale"; at: string | null }
+  | { state: "failed"; at: string; problems: UiText[] };
+
+/** How many variants/products have a purchase cost (A2: the admin shows how many do not). */
+export interface CostCoverageView {
+  variants: number;
+  variantsWithCost: number;
+  productsWithoutCost: number;
+  /** Up to 20 products without a cost, most variants first. */
+  sample: { productId: string; title: string; variantsWithoutCost: number }[];
+}
+
+export interface MarginCollectionView {
+  collectionId: string;
+  /** The collection's Shopify title (the id when unknown). */
+  title: string;
+  minMarginPercent: number | null;
+  maxDiscountPercent: number | null;
+}
+
+/** The stored margin settings as the form edits them. */
+export interface MarginSettingsView {
+  enabled: boolean;
+  /** null = not set (never below the purchase cost). */
+  minMarginPercent: number | null;
+  maxDiscountPercent: number;
+  /** Pro. Stored even on Free (then folded into the global values, see gateNotes). */
+  collections: MarginCollectionView[];
+}
+
+/** One place where margin protection lowers an active product discount (1 item, shop currency). */
+export interface MarginImpactRowView {
+  ruleId: string;
+  ruleName: string;
+  productId: string;
+  variantId: string;
+  title: string;
+  wanted: number;
+  allowed: number;
+  basis: "cost" | "max_percent";
+  source: "global" | "collection";
+}
+
+/** Přehled zásahů (Pro): where protection lowers active discounts, from the config and the cost mirror. */
+export interface MarginImpactView {
+  /** Top 50 by lost amount. */
+  rows: MarginImpactRowView[];
+  /** Order rules whose percent would go below the floor on some variants (those lines are left out or the discount is lowered). */
+  orderRules: { ruleId: string; ruleName: string; variantsBelow: number }[];
+  withoutCost: number;
+}
+
+export interface MarginScreenData {
+  plan: "free" | "pro";
+  shopCurrency: string;
+  /** F12 expected-version token for the save. */
+  configVersion: string | null;
+  settings: MarginSettingsView;
+  mirror: CostMirrorView;
+  /** null = never scanned (margin never switched on). */
+  coverage: CostCoverageView | null;
+  /** Pro only; null on Free (BILL-1: Free sees the amber preview, never the data). */
+  impact: MarginImpactView | null;
+  /** Pro settings stored but not in force on this plan (core explainGate). */
+  gateNotes: GateNoteView[];
+}
+
+/** Přehled card. */
+export interface MarginOverviewView {
+  enabled: boolean;
+  minMarginPercent: number | null;
+  maxDiscountPercent: number;
+  productsWithoutCost: number | null;
+  mirror: CostMirrorView;
 }
 
 /**
@@ -265,7 +355,7 @@ export type UiResult =
        * written (`products` = how many); `targeting` = "Obnovit cílení" was
        * queued (collections are read again in the background).
        */
-      syncing?: { products?: number; targeting?: boolean };
+      syncing?: { products?: number; targeting?: boolean; costs?: boolean };
     }
   | UiFailure;
 
