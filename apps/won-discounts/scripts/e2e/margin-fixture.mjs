@@ -43,12 +43,29 @@ export const MARGIN_RULE_IDS = [MARGIN_AUTO_RULE_ID, MARGIN_CODE_RULE_ID];
 export const MARGIN_MIN_MARGIN_PERCENT = 25;
 export const MARGIN_MAX_DISCOUNT_PERCENT = 30;
 
-/** modules.margin of the seed config (the stored, admin shape). */
-export function marginModule() {
+// Phase B (Pro, profile `margin-pro`): a manual test collection holding
+// won-e2e-simple-b only, with its own maximum discount, stricter than the
+// global one. Created and deleted by scripts/e2e/margin-collection.mjs.
+// On Pro the sync ships it as `col` in the shop config and writes the
+// collection's numeric id into simple-b's product metafield (`marginRefs`), so
+// the function caps simple-b at 10 % while the payload's global max stays 30 %.
+// (On Free the plan gate would fold it into the global value instead.)
+export const MARGIN_COLLECTION_HANDLE = "won-e2e-margin";
+export const MARGIN_COLLECTION_TITLE = "Won E2E — Margin (Pro)";
+/** The collection's only member. */
+export const MARGIN_COLLECTION_MEMBER_HANDLE = MARGIN_PRODUCT_B_HANDLE;
+export const MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT = 10;
+
+/**
+ * modules.margin of the seed config (the stored, admin shape). With
+ * `collectionId` (the GID of won-e2e-margin): the Pro override on it,
+ * maximum discount 10 %, minimum margin left to the global value.
+ */
+export function marginModule(collectionId) {
   return {
     enabled: true,
     global: { minMarginPercent: MARGIN_MIN_MARGIN_PERCENT, maxDiscountPercent: MARGIN_MAX_DISCOUNT_PERCENT },
-    perCollection: [],
+    perCollection: collectionId ? [{ collectionId, maxDiscountPercent: MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT }] : [],
   };
 }
 

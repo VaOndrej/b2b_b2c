@@ -41,6 +41,8 @@ export interface MarginInputs extends LiveInputs {
   costByVariantId: Record<string, VariantCost | null>;
   /** Variant GID → "handle · variant title", for messages. */
   variantLabel: Record<string, string>;
+  /** Collection handle → its GID (null = not on the store), for the handles asked for. */
+  collectionIdByHandle: Record<string, string | null>;
 }
 
 interface ProductNode {
@@ -51,9 +53,15 @@ interface ProductNode {
 }
 
 // Validated with the Shopify dev MCP (admin 2026-04, read_products).
-function inputsQuery(count: number): string {
-  const vars = Array.from({ length: count }, (_, i) => `$h${i}: String!`).join(", ");
-  const products = Array.from({ length: count }, (_, i) => `  p${i}: productByIdentifier(identifier: { handle: $h${i} }) {\n    ...WonMarginProduct\n  }`).join("\n");
+function inputsQuery(count: number, collections: number): string {
+  const vars = [
+    ...Array.from({ length: count }, (_, i) => `$h${i}: String!`),
+    ...Array.from({ length: collections }, (_, i) => `$c${i}: String!`),
+  ].join(", ");
+  const products = [
+    ...Array.from({ length: count }, (_, i) => `  p${i}: productByIdentifier(identifier: { handle: $h${i} }) {\n    ...WonMarginProduct\n  }`),
+    ...Array.from({ length: collections }, (_, i) => `  c${i}: collectionByIdentifier(identifier: { handle: $c${i} }) {\n    id\n  }`),
+  ].join("\n");
   return `query WonE2eMarginInputs(${vars}) {
   shop {
     currencyCode
@@ -84,11 +92,14 @@ fragment WonMarginProduct on Product {
 `;
 }
 
-/** The function's inputs for a margin cart of `handles`, read as the app (one query). */
-export async function readMarginInputs(handles: readonly string[]): Promise<MarginInputs> {
+/** The function's inputs for a margin cart of `handles` (+ the GIDs of `collectionHandles`), read as the app (one query). */
+export async function readMarginInputs(handles: readonly string[], collectionHandles: readonly string[] = []): Promise<MarginInputs> {
   const data = await executeAsApp<Record<string, unknown> & {
     shop: { currencyCode: string; ianaTimezone: string; metafield: { value: string } | null };
-  }>(inputsQuery(handles.length), Object.fromEntries(handles.map((h, i) => [`h${i}`, h])));
+  }>(inputsQuery(handles.length, collectionHandles.length), {
+    ...Object.fromEntries(handles.map((h, i) => [`h${i}`, h])),
+    ...Object.fromEntries(collectionHandles.map((h, i) => [`c${i}`, h])),
+  });
   if (!data.shop.metafield) throw new Error("the shop has no $app:won_discounts.function_config: run the margin seed first");
   const refsByProductId: Record<string, ProductRefs> = {};
   const productIdByHandle: Record<string, string> = {};
@@ -115,6 +126,7 @@ export async function readMarginInputs(handles: readonly string[]): Promise<Marg
     productIdByHandle,
     costByVariantId,
     variantLabel,
+    collectionIdByHandle: Object.fromEntries(collectionHandles.map((h, i) => [h, (data[`c${i}`] as { id: string } | null)?.id ?? null])),
   };
 }
 

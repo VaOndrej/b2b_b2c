@@ -1,0 +1,10 @@
+# store: collection won-e2e-margin = gid://shopify/Collection/491958272241 "Won E2E — Margin (Pro)" (manual), products [won-e2e-simple-b]; won-e2e-simple-b is in [won-e2e-margin]
+
+--- sending WonE2eMarginCollectionDelete ---
+{
+  "input": {
+    "id": "gid://shopify/Collection/491958272241"
+  }
+}
+# read-back: collection won-e2e-margin does not exist; won-e2e-simple-b is in []
+Evidence: <scratchpad>/e2e5b-pro/margin-collection-delete-2026-09-29T17-02-33-269Z.json

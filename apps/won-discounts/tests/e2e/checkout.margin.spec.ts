@@ -13,6 +13,9 @@ import {
   MARGIN_CODE_PERCENT,
   MARGIN_CODE_RULE_ID,
   MARGIN_CODE_RULE_NAME,
+  MARGIN_COLLECTION_HANDLE,
+  MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT,
+  MARGIN_COLLECTION_MEMBER_HANDLE,
   MARGIN_MAX_DISCOUNT_PERCENT,
   MARGIN_MIN_MARGIN_PERCENT,
   MARGIN_PRODUCT_A_HANDLE,
@@ -80,9 +83,42 @@ import {
 // Invariant, asserted on its own arithmetic (not the plan's): no line's price
 // after ALL discounts (its product discount + its share of the order discount,
 // per the function's actual excludedCartLineIds) is below its floor.
+//
+// Pro (phase B), WON_E2E_PROFILE=margin-pro — the same cart and rules plus a
+// per-collection override: the manual collection won-e2e-margin (simple-b only)
+// has a maximum discount of 10 %:
+//   node apps/won-discounts/scripts/e2e/margin-collection.mjs --live
+//   NODE_ENV=development WON_DEV_PLAN=pro node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --profile margin-pro --live
+//   node apps/won-discounts/scripts/e2e/margin-costs.mjs --live
+//   WON_E2E_PROFILE=margin-pro npm run test:e2e:local:all -w won-discounts
+// (`shopify app dev` with NODE_ENV=development WON_DEV_PLAN=pro as well.) The
+// live payload keeps the GLOBAL maximum at 30 % and ships the override as `col`;
+// simple-b's product metafield carries the collection's id (`marginRefs`). So a
+// 10 % cap on simple-b can only come from the function reading marginRefs + col
+// — on Free the gate would instead fold the 10 % into the global value (which
+// this cart could not tell apart: simple-b is its only line without a cost).
+// simple-a keeps its cost floor; the order discount is as in phase A.
 
 const CHECKOUT_COUNTRY = "CZ"; // market cesko (CZK)
-const CHECKOUT_EMAIL = "won-e2e+margin@example.com";
+const PRO = E2E_PROFILE === "margin-pro";
+const CHECKOUT_EMAIL = PRO ? "won-e2e+margin-pro@example.com" : "won-e2e+margin@example.com";
+/** Evidence / screenshot names: "cart-margin" (phase A) or "cart-margin-pro". */
+const named = (name: string) => (PRO ? name.replace(/margin/u, "margin-pro") : name);
+
+interface Settings {
+  minMarginPercent: number;
+  maxDiscountPercent: number;
+  source: "global" | "collection";
+}
+
+/** The settings that must apply to a product, from the fixture (restated, not read from the payload). */
+function settingsFor(handle: string): Settings {
+  if (PRO && handle === MARGIN_COLLECTION_MEMBER_HANDLE) {
+    // The override leaves the minimum margin to the global value.
+    return { minMarginPercent: MARGIN_MIN_MARGIN_PERCENT, maxDiscountPercent: MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT, source: "collection" };
+  }
+  return { minMarginPercent: MARGIN_MIN_MARGIN_PERCENT, maxDiscountPercent: MARGIN_MAX_DISCOUNT_PERCENT, source: "global" };
+}
 
 interface Line {
   handle: string;
@@ -90,8 +126,9 @@ interface Line {
   index: number;
   variantId: string;
   planLine: PlanLine;
-  /** Floor of one item, minor units: from the cost (costed) or the 30 % ceiling — restated, not the engine's. */
+  /** Floor of one item, minor units: from the cost (costed) or the maximum-discount ceiling — restated, not the engine's. */
   floorUnit: number;
+  settings: Settings;
   basis: "cost" | "max_percent";
   cost: number | null;
 }
@@ -124,12 +161,15 @@ function analyse(cart: Cart, inputs: MarginInputs, rate: number): Analysis {
     const planLine = plan.lines.find((l) => l.lineId === `gid://shopify/CartLine/${index}`)!;
     const meta = inputs.costByVariantId[variantId];
     const cost = meta && typeof meta.cost === "number" && meta.cost > 0 && meta.cur === inputs.shopCurrency ? meta.cost : null;
+    const handle = handleOf.get(`gid://shopify/Product/${item.product_id}`) ?? `product ${item.product_id}`;
+    const settings = settingsFor(handle);
     const floorUnit =
       cost !== null
-        ? ceilTol((cost * rate * 100) / (1 - MARGIN_MIN_MARGIN_PERCENT / 100))
-        : ceilTol(item.original_price * (1 - MARGIN_MAX_DISCOUNT_PERCENT / 100));
+        ? ceilTol((cost * rate * 100) / (1 - settings.minMarginPercent / 100))
+        : ceilTol(item.original_price * (1 - settings.maxDiscountPercent / 100));
     return {
-      handle: handleOf.get(`gid://shopify/Product/${item.product_id}`) ?? `product ${item.product_id}`,
+      handle,
+      settings,
       item,
       index,
       variantId,
@@ -162,11 +202,19 @@ function expectMarginPlan(a: Analysis): void {
     expect(L.planLine.product?.components.map((c) => c.ruleId), `${L.handle}: the automatic rule`).toEqual([MARGIN_AUTO_RULE_ID]);
     expect(L.planLine.product?.amount, `${L.handle}: lowered exactly to its floor`).toBe(headroom);
     expect(L.planLine.product?.value, `${L.handle}: an exact total`).toEqual({ fixedTotal: headroom });
-    expect(L.planLine.marginCapped, `${L.handle}: margin cap recorded`).toMatchObject({ before: wanted, after: headroom, floorUnit: L.floorUnit, basis: L.basis });
+    expect(L.planLine.marginCapped, `${L.handle}: margin cap recorded`).toMatchObject({
+      before: wanted,
+      after: headroom,
+      floorUnit: L.floorUnit,
+      basis: L.basis,
+      source: L.settings.source,
+    });
   }
-  expect(A.planLine.marginCapped?.minMarginPercent).toBe(MARGIN_MIN_MARGIN_PERCENT);
-  expect(B.planLine.marginCapped?.maxDiscountPercent).toBe(MARGIN_MAX_DISCOUNT_PERCENT);
-  expect(Math.round((B.planLine.product?.amount ?? 0) * 100) / B.planLine.subtotal, "simple-b: ≈ 30 %").toBeCloseTo(MARGIN_MAX_DISCOUNT_PERCENT, 0);
+  expect(A.settings.source, "simple-a: the global settings (not in the collection)").toBe("global");
+  expect(A.planLine.marginCapped?.minMarginPercent).toBe(A.settings.minMarginPercent);
+  expect(B.settings.source, `simple-b: ${PRO ? "its collection's setting" : "the global settings"}`).toBe(PRO ? "collection" : "global");
+  expect(B.planLine.marginCapped?.maxDiscountPercent, `simple-b: the ${B.settings.source} maximum discount`).toBe(B.settings.maxDiscountPercent);
+  expect((B.planLine.product?.amount ?? 0) * 100 / B.planLine.subtotal, `simple-b: ≈ ${B.settings.maxDiscountPercent} %`).toBeCloseTo(B.settings.maxDiscountPercent, 0);
   expect(S.planLine.product, "Small: no product discount").toBeNull();
 
   const order = a.plan.order;
@@ -237,8 +285,61 @@ function invariant(lines: readonly Line[], afterProduct: (l: Line) => number, or
     const orderShare = !inBase ? 0 : base.length === 1 ? orderAmount : Math.ceil((orderAmount * after) / baseTotal);
     const final = after - orderShare;
     const floor = l.floorUnit * l.item.quantity;
-    return { handle: l.handle, basis: l.basis, cost: l.cost, afterProduct: after, orderShare, final, floor, margin: final - floor, holds: final >= floor };
+    return {
+      handle: l.handle,
+      basis: l.basis,
+      settings: l.settings,
+      cost: l.cost,
+      afterProduct: after,
+      orderShare,
+      final,
+      floor,
+      margin: final - floor,
+      holds: final >= floor,
+    };
   });
+}
+
+const numericId = (gid: string) => gid.slice(gid.lastIndexOf("/") + 1);
+
+/**
+ * The live function payload and product refs as the app reads them: margin on
+ * (m 25, global p 30, costs in the shop currency); Pro: the collection override
+ * as `col` {<numeric id>: [null, 10]} and simple-b's `marginRefs` = that id —
+ * the only products that carry it are the collection's.
+ */
+function expectLivePayload(inputs: MarginInputs): { collectionId: string | null } {
+  const rules = inputs.config.modules.codes.rules;
+  expect(rules.map((r) => r.id), "the live shop config carries the margin seed").toEqual(expect.arrayContaining([MARGIN_AUTO_RULE_ID, MARGIN_CODE_RULE_ID]));
+  for (const handle of [MARGIN_PRODUCT_A_HANDLE, MARGIN_PRODUCT_B_HANDLE]) {
+    expect(inputs.refsByProductId[inputs.productIdByHandle[handle]!]?.ruleIds ?? [], `${handle} is targeted by the automatic rule`).toContain(MARGIN_AUTO_RULE_ID);
+  }
+  const collectionGid = inputs.collectionIdByHandle[MARGIN_COLLECTION_HANDLE] ?? null;
+  const refsOf = (handle: string) => (inputs.refsByProductId[inputs.productIdByHandle[handle]!] as { marginRefs?: string[] } | undefined)?.marginRefs;
+  if (!PRO) {
+    expect(inputs.config.modules.margin, "live payload: margin on, m 25, p 30, costs in the shop currency").toEqual({
+      enabled: true,
+      min: MARGIN_MIN_MARGIN_PERCENT,
+      max: MARGIN_MAX_DISCOUNT_PERCENT,
+      cur: inputs.shopCurrency,
+    });
+    for (const handle of MARGIN_CART_HANDLES) expect(refsOf(handle), `${handle}: no marginRefs (no collection setting)`).toBeUndefined();
+    return { collectionId: null };
+  }
+  expect(collectionGid, `the test collection ${MARGIN_COLLECTION_HANDLE} exists (margin-collection.mjs --live)`).not.toBeNull();
+  const key = numericId(collectionGid!);
+  expect(inputs.config.modules.margin, "live payload (Pro): global m 25 / p 30 unchanged, the collection override as col").toEqual({
+    enabled: true,
+    min: MARGIN_MIN_MARGIN_PERCENT,
+    max: MARGIN_MAX_DISCOUNT_PERCENT,
+    cur: inputs.shopCurrency,
+    col: { [key]: [null, MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT] },
+  });
+  for (const handle of MARGIN_CART_HANDLES) {
+    const want = handle === MARGIN_COLLECTION_MEMBER_HANDLE ? [key] : undefined;
+    expect(refsOf(handle), `${handle}: marginRefs ${want ? `= [${key}] (in ${MARGIN_COLLECTION_HANDLE})` : "absent"}`).toEqual(want);
+  }
+  return { collectionId: collectionGid };
 }
 
 /** F-M1 / F-M2 / parity checks on the logged runs of this cart; returns their evidence. */
@@ -257,6 +358,15 @@ function checkRuns(runs: readonly FunctionRun[], cart: Cart, inputs: MarginInput
       const want = inputs.costByVariantId[variant] ?? null;
       expect(line.merchandise?.wonVariant === undefined, `${run.file}: the input query selects wonVariant`).toBe(false);
       expect(line.merchandise?.wonVariant?.jsonValue ?? null, `F-M2 ${inputs.variantLabel[variant]}: wonVariant in the function input`).toEqual(want);
+    }
+    // The function read the payload the app wrote: margin (with col on Pro) and simple-b's marginRefs.
+    expect(run.input?.shop?.config?.jsonValue?.modules?.margin, `${run.file}: the function read the live margin payload`).toEqual(inputs.config.modules.margin);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const line of (run.input?.cart?.lines ?? []) as any[]) {
+      const variant = String(line.merchandise?.id ?? "");
+      const handle = (inputs.variantLabel[variant] ?? "").split(" · ")[0]!;
+      const refs = inputs.refsByProductId[inputs.productIdByHandle[handle] ?? ""] as { marginRefs?: string[] } | undefined;
+      expect(line.merchandise?.product?.wonProduct?.jsonValue?.marginRefs, `${run.file} ${handle}: marginRefs in the function input`).toEqual(refs?.marginRefs);
     }
     // The logged output is exactly what the function's oracle computes from the logged input.
     expect(run.output, `${run.file}: logged output = reference-adapter runCartLines(logged input)`).toEqual(oracleFor(run).output);
@@ -305,6 +415,7 @@ function lineEvidence(a: Analysis) {
     cost: l.cost,
     floorUnit: l.floorUnit,
     basis: l.basis,
+    settings: l.settings,
     plan: { product: l.planLine.product, marginCapped: l.planLine.marginCapped ?? null, marginTight: l.planLine.marginTight ?? false },
     emitted: out.productFor(l.planLine.lineId)?.value ?? null,
     cart: {
@@ -319,27 +430,21 @@ function lineEvidence(a: Analysis) {
   }));
 }
 
-test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${THEME_LABEL ? ` — ${THEME_LABEL}` : ""}`, () => {
-  test.skip(E2E_PROFILE !== "margin", `WON_E2E_PROFILE=${E2E_PROFILE}: this spec needs the margin seed (seed-mvp1.mjs --profile margin --live + margin-costs.mjs --live) and WON_E2E_PROFILE=margin`);
+test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${PRO ? " [Pro: collection override]" : ""}${THEME_LABEL ? ` — ${THEME_LABEL}` : ""}`, () => {
+  test.skip(
+    E2E_PROFILE !== "margin" && E2E_PROFILE !== "margin-pro",
+    `WON_E2E_PROFILE=${E2E_PROFILE}: this spec needs the margin seed (seed-mvp1.mjs --profile margin|margin-pro --live + margin-costs.mjs --live) and WON_E2E_PROFILE=margin|margin-pro`,
+  );
 
   test.afterEach(async ({ page, baseURL }) => {
     if (page.url().startsWith(new URL(baseURL!).origin)) await clearCartQuietly(page);
   });
 
-  test("cart: simple-a to its cost floor, simple-b to 30 %, Small none, WONE2EM20 applicable as an exact amount = planCart with the logged rate", async ({ page }, testInfo) => {
+  const bLabel = PRO ? `simple-b to its collection's ${MARGIN_COLLECTION_MAX_DISCOUNT_PERCENT} %` : `simple-b to ${MARGIN_MAX_DISCOUNT_PERCENT} %`;
+  test(`cart: simple-a to its cost floor, ${bLabel}, Small none, WONE2EM20 applicable as an exact amount = planCart with the logged rate`, async ({ page }, testInfo) => {
     test.setTimeout(300_000);
-    const inputs = await readMarginInputs(MARGIN_CART_HANDLES);
-    const rules = inputs.config.modules.codes.rules;
-    expect(rules.map((r) => r.id), "the live shop config carries the margin seed").toEqual(expect.arrayContaining([MARGIN_AUTO_RULE_ID, MARGIN_CODE_RULE_ID]));
-    expect((inputs.config.modules as Record<string, unknown>).margin, "live payload: margin on, m 25, p 30, costs in the shop currency").toEqual({
-      enabled: true,
-      min: MARGIN_MIN_MARGIN_PERCENT,
-      max: MARGIN_MAX_DISCOUNT_PERCENT,
-      cur: inputs.shopCurrency,
-    });
-    for (const handle of [MARGIN_PRODUCT_A_HANDLE, MARGIN_PRODUCT_B_HANDLE]) {
-      expect(inputs.refsByProductId[inputs.productIdByHandle[handle]!]?.ruleIds ?? [], `${handle} is targeted by the automatic rule`).toContain(MARGIN_AUTO_RULE_ID);
-    }
+    const inputs = await readMarginInputs(MARGIN_CART_HANDLES, [MARGIN_COLLECTION_HANDLE]);
+    const payload = expectLivePayload(inputs);
     const usdA = usdPrice(inputs, MARGIN_PRODUCT_A_HANDLE);
 
     const response = await page.goto(`/products/${MARGIN_PRODUCT_A_HANDLE}`, { waitUntil: "load" });
@@ -408,9 +513,12 @@ test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${THE
       return rows;
     });
 
-    await saveEvidence(testInfo, "cart-margin", {
+    await saveEvidence(testInfo, named("cart-margin"), {
       at: new Date().toISOString(),
       theme: THEME_LABEL || null,
+      profile: E2E_PROFILE,
+      collection: payload.collectionId,
+      livePayloadMargin: inputs.config.modules.margin,
       currency: cart.currency,
       presentmentCurrencyRate: rate,
       fM1: runEvidence,
@@ -425,12 +533,13 @@ test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${THE
       loggedOrder: logged,
       invariant: inv,
     });
-    await saveEvidence(testInfo, "function-runs-cart-margin", runs.map(runSummary));
+    await saveEvidence(testInfo, named("function-runs-cart-margin"), runs.map(runSummary));
   });
 
   test("checkout (Bogus): margin never blocks; the thank-you page charges planCart with the checkout's logged rate, no line below its floor", async ({ page }, testInfo) => {
     test.setTimeout(480_000);
-    const inputs = await readMarginInputs(MARGIN_CART_HANDLES);
+    const inputs = await readMarginInputs(MARGIN_CART_HANDLES, [MARGIN_COLLECTION_HANDLE]);
+    const payload = expectLivePayload(inputs);
     const usdA = usdPrice(inputs, MARGIN_PRODUCT_A_HANDLE);
     await page.setViewportSize({ width: 1440, height: 900 });
 
@@ -546,15 +655,18 @@ test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${THE
       return rows;
     });
 
-    await saveScreenshot(page, testInfo, "thankyou-margin-1440");
+    await saveScreenshot(page, testInfo, named("thankyou-margin-1440"));
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(1_000);
     await expandMobileSummary(page);
-    await saveScreenshot(page, testInfo, "thankyou-margin-390");
+    await saveScreenshot(page, testInfo, named("thankyou-margin-390"));
 
-    await saveEvidence(testInfo, "checkout-margin", {
+    await saveEvidence(testInfo, named("checkout-margin"), {
       at: new Date().toISOString(),
       theme: THEME_LABEL || null,
+      profile: E2E_PROFILE,
+      collection: payload.collectionId,
+      livePayloadMargin: inputs.config.modules.margin,
       checkoutPath: new URL(page.url()).pathname.replace(/\/cn\/[^/]+/u, "/cn/<token>"),
       codeCarriedIntoCheckout,
       checkoutRunsLogged,
@@ -575,6 +687,6 @@ test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${THE
       loggedOrder: logged,
       invariant: inv,
     });
-    await saveEvidence(testInfo, "function-runs-checkout-margin", { checkoutRunsLogged, sinceCheckoutOpened: new Date(checkoutAt).toISOString(), runs: runs.map(runSummary) });
+    await saveEvidence(testInfo, named("function-runs-checkout-margin"), { checkoutRunsLogged, sinceCheckoutOpened: new Date(checkoutAt).toISOString(), runs: runs.map(runSummary) });
   });
 });

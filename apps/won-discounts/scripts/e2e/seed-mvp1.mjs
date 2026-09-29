@@ -21,6 +21,13 @@
 //           The variant cost metafields are the cost mirror's job, run after the
 //           seed: scripts/e2e/margin-costs.mjs (dry-run, then --live); after
 //           --cleanup, `margin-costs.mjs --clear` removes them again.
+//   margin-pro  the same + a Pro per-collection override: the test collection
+//           won-e2e-margin (won-e2e-simple-b only; create it first with
+//           scripts/e2e/margin-collection.mjs --live) gets a maximum discount of
+//           10 %. Run the seed with NODE_ENV=development WON_DEV_PLAN=pro (and
+//           `shopify app dev` likewise): on Free the plan gate folds the override
+//           into the global value; tests/e2e/checkout.margin.spec.ts with
+//           WON_E2E_PROFILE=margin-pro.
 // A seed REPLACES the E2E rules (and the margin settings) of the other profile
 // (one backup covers all of them).
 //
@@ -55,7 +62,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { register } from "tsx/esm/api";
 
 import { E2E_AUTO_RULE_ID, E2E_CODE, E2E_PRODUCT_HANDLE, E2E_RULE_IDS, e2eRules } from "./mvp1-fixture.mjs";
-import { MARGIN_CODE, MARGIN_HANDLES, MARGIN_RULE_IDS, marginModule, marginRules } from "./margin-fixture.mjs";
+import { MARGIN_CODE, MARGIN_COLLECTION_HANDLE, MARGIN_HANDLES, MARGIN_RULE_IDS, marginModule, marginRules } from "./margin-fixture.mjs";
 import { SHAPES_HANDLES, SHAPES_PRODUCT_B_HANDLE, SHAPES_RULE_IDS, shapesRules } from "./shapes-fixture.mjs";
 
 register();
@@ -138,8 +145,15 @@ const PROFILES = {
   margin: {
     handles: MARGIN_HANDLES,
     rules: marginRules,
-    margin: marginModule,
+    margin: () => marginModule(),
     label: `margin protection on (min margin 25 %, max discount 30 %), auto 50 % + code ${MARGIN_CODE}`,
+  },
+  "margin-pro": {
+    handles: MARGIN_HANDLES,
+    rules: marginRules,
+    collections: [MARGIN_COLLECTION_HANDLE],
+    margin: (collectionIds) => marginModule(collectionIds[MARGIN_COLLECTION_HANDLE]),
+    label: `margin protection on (min margin 25 %, max discount 30 %) + Pro: collection ${MARGIN_COLLECTION_HANDLE} max discount 10 %, auto 50 % + code ${MARGIN_CODE}`,
   },
 };
 const PROFILE = option("--profile") ?? "mvp1";
@@ -262,13 +276,13 @@ function isFixtureMargin(margin) {
   );
 }
 
-function seedConfig(previous, productIds) {
+function seedConfig(previous, productIds, collectionIds) {
   // Only the profile's E2E rules (no campaigns, default engine switches) so the
   // carts the spec checks are decided by these rules alone; markets are kept.
   const config = createDefaultConfig();
   config.markets = previous.markets ?? [];
   config.modules.codes.rules = PROFILES[PROFILE].rules(productIds);
-  if (PROFILES[PROFILE].margin) config.modules.margin = PROFILES[PROFILE].margin();
+  if (PROFILES[PROFILE].margin) config.modules.margin = PROFILES[PROFILE].margin(collectionIds);
   return config;
 }
 
@@ -424,9 +438,29 @@ async function main() {
       if (!found?.id) throw new Error(`product ${handle} not found on ${STORE}`);
       productIds[handle] = found.id;
     }
+    const collectionIds = {};
+    for (const handle of PROFILES[PROFILE].collections ?? []) {
+      const found = (
+        await query(
+          `query WonE2eCollection($handle: String!) {
+  collectionByIdentifier(identifier: { handle: $handle }) {
+    id
+    handle
+    productsCount {
+      count
+    }
+  }
+}`,
+          { handle },
+        )
+      ).collectionByIdentifier;
+      if (!found?.id) throw new Error(`collection ${handle} not found on ${STORE}: run scripts/e2e/margin-collection.mjs --live first`);
+      collectionIds[handle] = found.id;
+      console.log(`# collection ${handle} = ${found.id} (${found.productsCount?.count ?? "?"} product(s))`);
+    }
     const backup = readBackup();
     const previous = backup ? (backup.exists ? backup.config : createDefaultConfig()) : loaded.config;
-    const config = seedConfig(previous, productIds);
+    const config = seedConfig(previous, productIds, collectionIds);
     console.log(
       `\n# seed (profile ${PROFILE}): ${Object.entries(productIds).map(([handle, id]) => `${handle} = ${id}`).join(", ")}; ${PROFILES[PROFILE].label}`,
     );

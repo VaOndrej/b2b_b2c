@@ -1,0 +1,105 @@
+{
+  "name": "seed-mvp1-cleanup",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "at": "2026-09-29T17:01:26.827Z",
+  "restored": [],
+  "margin": "margin protection off",
+  "result": {
+    "save": {
+      "ok": true,
+      "versionId": "cmumxahpm0000sna93b4b0pzm",
+      "functionConfigBytes": 389,
+      "issues": []
+    },
+    "sync": {
+      "ok": true,
+      "steps": [
+        {
+          "step": "shop.read",
+          "ok": true,
+          "detail": "gid://shopify/Shop/78971076849, shop time 2026-09-29T13:00:52 (America/New_York), currency USD"
+        },
+        {
+          "step": "plan",
+          "ok": true,
+          "detail": "plan pro: nothing to gate"
+        },
+        {
+          "step": "node.delete:code:e2e-margin-code-20",
+          "ok": true,
+          "detail": "deleted \"E2E marže kód 20 %\" (its rule was deleted)"
+        },
+        {
+          "step": "products.scope",
+          "ok": true,
+          "detail": "0 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date"
+        },
+        {
+          "step": "products.clear",
+          "ok": true,
+          "detail": "2 product(s) no longer targeted, cleared"
+        },
+        {
+          "step": "shop_config.write",
+          "ok": true,
+          "detail": "389 B written"
+        },
+        {
+          "step": "shop_config.verify",
+          "ok": true,
+          "detail": "read back and verified (389 B)"
+        }
+      ],
+      "errors": [],
+      "pending": [],
+      "runId": "cmumxb7vs0001sna9kmh95jtp"
+    },
+    "warnings": []
+  },
+  "syncRun": {
+    "runId": "cmumxb7vs0001sna9kmh95jtp",
+    "ok": true,
+    "startedAt": "2026-09-29T17:00:52.907Z",
+    "finishedAt": "2026-09-29T17:01:26.824Z",
+    "errorCount": 0,
+    "steps": [
+      {
+        "step": "shop.read",
+        "ok": true,
+        "detail": "gid://shopify/Shop/78971076849, shop time 2026-09-29T13:00:52 (America/New_York), currency USD"
+      },
+      {
+        "step": "plan",
+        "ok": true,
+        "detail": "plan pro: nothing to gate"
+      },
+      {
+        "step": "node.delete:code:e2e-margin-code-20",
+        "ok": true,
+        "detail": "deleted \"E2E marže kód 20 %\" (its rule was deleted)"
+      },
+      {
+        "step": "products.scope",
+        "ok": true,
+        "detail": "0 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date"
+      },
+      {
+        "step": "products.clear",
+        "ok": true,
+        "detail": "2 product(s) no longer targeted, cleared"
+      },
+      {
+        "step": "shop_config.write",
+        "ok": true,
+        "detail": "389 B written"
+      },
+      {
+        "step": "shop_config.verify",
+        "ok": true,
+        "detail": "read back and verified (389 B)"
+      }
+    ],
+    "pending": [],
+    "configVersionId": "cmumxahpm0000sna93b4b0pzm"
+  }
+}

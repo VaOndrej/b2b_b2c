@@ -1,0 +1,12 @@
+
+# read-back 2026-09-29T17:03:58.230Z: 9 won-e2e variant(s), 6 with a Shopify cost, 0 with the variant metafield
+  won-e2e-simple-a       Default Title gid://shopify/ProductVariant/48468678902001  price 10.00  cost 6.0 USD  metafield —
+  won-e2e-simple-b       Default Title gid://shopify/ProductVariant/48468678934769  price 12.00  cost —  metafield —
+  won-e2e-two-variants   Small        gid://shopify/ProductVariant/48468678967537  price 15.00  cost 5.0 USD  metafield —
+  won-e2e-two-variants   Large        gid://shopify/ProductVariant/48468679000305  price 18.00  cost —  metafield —
+  won-e2e-multiaxis      S / Red      gid://shopify/ProductVariant/48468679033073  price 20.00  cost 8.0 USD  metafield —
+  won-e2e-multiaxis      S / Blue     gid://shopify/ProductVariant/48468679065841  price 20.00  cost 8.0 USD  metafield —
+  won-e2e-multiaxis      M / Red      gid://shopify/ProductVariant/48468679098609  price 22.00  cost 8.0 USD  metafield —
+  won-e2e-multiaxis      M / Blue     gid://shopify/ProductVariant/48468679131377  price 22.00  cost 8.0 USD  metafield —
+  won-e2e-spare          Default Title gid://shopify/ProductVariant/48468679164145  price 9.00  cost —  metafield —
+Evidence: <scratchpad>/e2e5b-pro/margin-costs-readback-2026-09-29T17-03-58-231Z.json

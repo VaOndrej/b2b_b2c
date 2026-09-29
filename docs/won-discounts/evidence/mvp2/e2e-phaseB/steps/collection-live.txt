@@ -1,0 +1,14 @@
+# store: collection won-e2e-margin does not exist; won-e2e-simple-b is in []
+
+--- sending WonE2eMarginCollectionCreate ---
+{
+  "input": {
+    "title": "Won E2E — Margin (Pro)",
+    "handle": "won-e2e-margin",
+    "products": [
+      "gid://shopify/Product/9692429091057"
+    ]
+  }
+}
+# read-back: collection won-e2e-margin = gid://shopify/Collection/491958272241 "Won E2E — Margin (Pro)" (manual), products [won-e2e-simple-b]; won-e2e-simple-b is in [won-e2e-margin]
+Evidence: <scratchpad>/e2e5b-pro/margin-collection-create-2026-09-29T16-52-36-478Z.json

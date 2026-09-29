@@ -1,0 +1,43 @@
+{
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "created": {
+    "id": "gid://shopify/Collection/491958272241",
+    "handle": "won-e2e-margin",
+    "title": "Won E2E — Margin (Pro)",
+    "productsCount": {
+      "count": 0
+    }
+  },
+  "before": {
+    "checkedAt": "2026-09-29T16:52:23.408Z",
+    "collection": null,
+    "member": {
+      "id": "gid://shopify/Product/9692429091057",
+      "handle": "won-e2e-simple-b",
+      "collections": []
+    }
+  },
+  "after": {
+    "checkedAt": "2026-09-29T16:52:36.478Z",
+    "collection": {
+      "id": "gid://shopify/Collection/491958272241",
+      "handle": "won-e2e-margin",
+      "title": "Won E2E — Margin (Pro)",
+      "smart": false,
+      "productsCount": {
+        "count": 1,
+        "precision": "EXACT"
+      },
+      "products": [
+        "won-e2e-simple-b"
+      ]
+    },
+    "member": {
+      "id": "gid://shopify/Product/9692429091057",
+      "handle": "won-e2e-simple-b",
+      "collections": [
+        "won-e2e-margin"
+      ]
+    }
+  }
+}
