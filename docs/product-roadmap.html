@@ -957,7 +957,7 @@
           <div class="bq-slot now">
             <p class="lab">Build fronta · teď</p>
             <h3>Won Discounts</h3>
-            <p>Autonomní stavba MVP 0–7 na dev storu (Tiers + Rewards + Outlet + MarginGuard v jedné appce). Stav <strong>Scaffold</strong>: MVP 0 hotové (brána + živé E2E Horizon/Dawn, verdikty rizik C1–C5), MVP 1 rozpracované, nic nasazené. „Hotovo“ = MVP 0–7 zelené na bráně i živém E2E Horizon + Dawn, připravené k nasazení, nenasazené. Vzor a harness: pilot Won Toasts (Beta).</p>
+            <p>Autonomní stavba MVP 0–7 na dev storu (Tiers + Rewards + Outlet + MarginGuard v jedné appce). Stav <strong>Alpha</strong>: MVP 0–1 hotové (engine, Slevy a kódy, přesun nativních slev, Rust discount funkce; pokladna přes Bogus = plán na Horizon i Dawn), MVP 2 rozpracované, nic nasazené. „Hotovo“ = MVP 0–7 zelené na bráně i živém E2E Horizon + Dawn, připravené k nasazení, nenasazené. Vzor a harness: pilot Won Toasts (Beta).</p>
           </div>
           <div class="bq-slot">
             <p class="lab">Build fronta · další (gated)</p>
@@ -2280,7 +2280,7 @@
                 </span>
                 <span class="app-code">WON·DISC</span>
               </span>
-              <span class="mvp-badge mvp-scaffold">Scaffold</span>
+              <span class="mvp-badge mvp-alpha">Alpha</span>
               <span class="price">$29/mo</span>
             </div>
             <h3>Won Discounts</h3>
@@ -2317,7 +2317,7 @@
             <details class="app-guide">
               <summary>Návod k implementaci (MVP 0–7)</summary>
               <p class="guide-idea">
-                <strong>Stav (2026-09-28): Scaffold, MVP 0 hotové, MVP 1 rozpracované.</strong>
+                <strong>Stav (2026-09-29): Alpha, MVP 0–1 hotové, MVP 2 rozpracované.</strong>
                 Kostra <code>apps/won-discounts</code> stojí: config v0, discount
                 funkce, app embed ověřený živým E2E na Horizon i Dawn, dev harness
                 adminu. Nic není nasazené. Staví se autonomně podle
@@ -2471,16 +2471,20 @@
                   z tokenů tématu). Důkazy: <code>docs/won-discounts/evidence/mvp0/</code>.
                 </li>
                 <li>
-                  <strong>MVP 1 · rozpracované:</strong> engine
+                  <strong>MVP 1 · hotové (2026-09-29):</strong> engine
                   (<code>@won/core/discounts</code>: plán slev pro košík,
-                  kombinování, vysvětlení) + <strong>Slevy a kódy</strong> +
-                  detekce nativních slev + jednoklikový přesun + Vyzkoušet košík
-                  + Přehled v1 + onboarding kroky 1–3. <em>Exit:</em> kód i
-                  automatická sleva platí v pokladně (E2E přes Bogus); přesun a
-                  undo fungují na dev storu.
+                  kombinování, vysvětlení, Pro gate) + <strong>Slevy a kódy</strong> +
+                  detekce nativních slev + jednoklikový přesun s undo + Vyzkoušet košík
+                  (= skutečný výstup funkce) + Přehled v1 + onboarding 1–3.
+                  Discount funkce je v <strong>Rustu</strong> (JS nestačil na limit
+                  instrukcí; TS engine je reference, shodu hlídají testy). Sdílený
+                  config ve shop metafieldu (C7 platí), webhooky produktů/kolekcí
+                  obnovují cílení. <em>Důkaz:</em> pokladna přes Bogus = plán na
+                  Horizon i Dawn (Free i Pro), přesun + undo naživo, audit + opravy.
+                  Důkazy: <code>docs/won-discounts/evidence/mvp1/</code>.
                 </li>
                 <li>
-                  <strong>MVP 2 · plánované:</strong> <strong>Ochrana
+                  <strong>MVP 2 · rozpracované:</strong> <strong>Ochrana
                   marže</strong> (globální minimum Free; per kolekce + přehled
                   zásahů Pro; produkty bez <code>unitCost</code> → max. sleva %).
                   <em>Exit:</em> žádná kombinace slev v E2E nepodleze minimum;

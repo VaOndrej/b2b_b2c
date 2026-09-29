@@ -74,7 +74,7 @@ Sync vrstva (server, jediný zapisovač do Shopify)
         N-code-<pravidlo>                 code app discount na KAŽDÉ kódové pravidlo, všechny
                                           jeho kódy jako redeem kódy (C2 fallback, §3)
                                           ▼
-                       Discount Function `won-discounts-engine` (JS, 2 targety)
+                       Discount Function `won-discounts-engine` (Rust, 2 targety; MVP 1)
                          cart.lines.discounts.generate.run
                          cart.delivery-options.discounts.generate.run
                          → planCart(...) (tentýž core, bundlovaný) → vydá jen svůj díl
@@ -85,15 +85,22 @@ Theme app extension `won-discounts-storefront`
              (PDP), štítek výprodeje · config z app-data metafieldu (bez síťového volání)
 App proxy `/apps/won-discounts/*`  health · (MVP4) živý plán košíku · náhledový parametr pro
                                    „Zobrazit na mém webu“ (C5 fallback: storefront nejde do iframe)
-Webhooky  orders/create · orders/cancelled · refunds/create (výprodej, analytika) ·
-          app/uninstalled · GDPR (WBH-3) · app_subscriptions/update (billing)
+Webhooky  products/update|delete · collections/update|delete (MVP 1: obnova cílení) ·
+          orders/create · orders/cancelled · refunds/create (MVP 5+: výprodej, analytika) ·
+          app/uninstalled · GDPR (WBH-3) · app_subscriptions/update (billing, MVP 7)
 ```
 
-**Proč funkce v JS a ne v Rustu [spec]:** engine musí být *jeden* kód pro admin, storefront
-i funkci (DATA-4). JS funkce bundluje `@won/core/discounts` přímo (esbuild přes
-`shopify app function build`). Riziko je výkon (instrukční limit funkce); hlídá ho
-contract test s velkým košíkem (200 řádků) přes `shopify app function run` a měřením
-instrukcí. Fallback, pokud limit nestačí: Rust port jen hot path, stejné fixture testy.
+**Funkce je v Rustu, TS engine je reference (MVP 1, fallback tohoto odstavce uplatněn):**
+JS funkce s TS enginem stála na 200řádkovém košíku ~96 M instrukcí (limit 11 M, limit padal
+už kolem 22 řádků). Produkční funkce je proto Rust port hot path (`planCart` → emise →
+mapování výstupu); TS engine v `@won/core/discounts` zůstává jediným zdrojem pravdy pro admin,
+Vyzkoušet košík a storefront. DATA-4 hlídá: fixtures generované z TS enginu (shoda textu
+výstupu), randomizovaná shoda (≥ 2 400 košíků, per-větev počty zásahů), TS dvojčata Rust
+unit testů a mapování výstupu `function-output.ts` sdílené testy i adminem. Rozpočty: 200
+řádků ≤ 7,7 M instrukcí (dnes ~7,1 M), výstup ≤ 20 kB (nad rozpočtem postupné uvolnění:
+remízy → procenta, Pro stack → hlavní pravidlo, až pak zahození nejmenších kandidátů; admin
+to ukáže), Wasm < 256 kB. **CI funkci netestuje** (`.github` mimo rozsah) — gate běží lokálně
+přes `npm run test:unit -w won-discounts`.
 
 **Co kde žije (DATA-1):**
 
@@ -142,7 +149,7 @@ interface WonDiscountsConfig {
   `{ id, enabled, name, method: "automatic"|"code", codes?: string[], value:
   {kind:"percentage", percent} | {kind:"fixed", amount: MoneyByCurrency} | {kind:"freeShipping"},
   target: {kind:"order"} | {kind:"products", productIds, variantIds} | {kind:"collections", ids}
-  | {kind:"shipping"}, minimum?: {subtotal?: MoneyByCurrency, quantity?}, schedule?:
+  | {kind:"shipping"}, minimum?: {subtotal?: MoneyByCurrency, quantity?, scope: "cart" | "entitled"}, schedule?:
   {startsAt, endsAt}, limits?: {usageLimit?, oncePerCustomer?}, targeting?: {segments?,
   markets?} (Pro), combinesWith?: {ruleIds…} (Pro per-sleva), origin?: {nativeId} }`.
 - **`TierSet`** (Množstevní): `{ id, scope: "global" | {productIds|collectionIds} (Pro),
@@ -282,8 +289,13 @@ interface CartPlan {
   automaticky; minimum košíku per měna; plán `startsAt/endsAt`; limity použití (nativní pole
   kódového uzlu); uvítací / newsletter kód jako recept.
 - **Detekce nativních slev** (vždy): Přehled ukáže slevy mimo Won + konflikty.
-- **Přesun** (jedno tlačítko, C6): záloha → smazání nativní → vytvoření ve Won. Dialog
-  předem řekne, co se ztratí (historie použití, „1× na zákazníka“), podle verdiktu prototypu.
+- **Přesun** (jedno tlačítko): **automatické** slevy záloha → vytvoření ve Won (ověřeno živě)
+  → smazání nativní (pořadí z `rozhodnuti.md`); **kódové** záloha → smazání → vytvoření, protože
+  živě ověřeno, že i vypršelý kód blokuje stejný text (výjimka, kterou rozhodnutí předvídá).
+  Všechny kontroly uložení běží před smazáním; obnova po selhání vrací zbylý limit použití.
+  Minimum nativní slevy se mapuje jako `scope: "entitled"` (Shopify počítá minimum z vybraných
+  produktů — ověřeno živě). Dialog předem řekne, co se ztratí a s čím se sleva nově sečte nebo
+  koho zablokuje (Shopify kombinuje, jen když souhlasí obě slevy — ověřeno živě).
   **Undo** = obnova nativní ze zálohy a smazání Won pravidla. Nepřenositelné typy (BOGO,
   cizí app slevy) se nepřesouvají, admin řekne proč.
 
@@ -381,6 +393,10 @@ interface CartPlan {
   `@won/app-kit/entitlement` `resolveEntitlement`, default Free (BILL-1).
 - Pro funkce se ve Free **ukazují** s amber markerem a náhledem (§16), na storefrontu se bez
   entitlementu nevydají (sanitizace configu podle plánu na serveru: `gateConfigForPlan`).
+  **MVP 1:** `gateConfigForPlan` běží v syncu před payloadem funkce i indexem produktů; pravidlo
+  s Pro cílením na trh/segment se ve Free vypne (odebrání cílení by ho rozšířilo). Plán, pro který
+  byl živý config postaven, se zaznamenává; nesoulad (např. downgrade) vyvolá resync. Dev-only
+  `WON_DEV_PLAN=pro` jen v development/test, z produkčního bundlu vypuštěn. Ověřeno živě v pokladně.
 - **Downgrade (A6):** běžící výprodeje a kampaně doběhnou, nové nejdou založit.
 - **Odinstalace (A7):** „Připravit na odinstalaci“ (i v Tarifu) ukončí výprodeje (vrátí ceny)
   a obnoví nativní slevy ze zálohy.
@@ -454,6 +470,7 @@ s každým MVP; MVP 7 je jen dotahuje.
 | C3 | Kolik pravidel se vejde do 9 000 B; čte funkce per-produkt metafieldy? | Globální pravidla na uzlu, data per produkt v metafieldech | Tvrdý strop počtu pravidel v adminu | **platí** (hranice přesně 10 000 B) |
 | C4 | Pozná funkce okno kampaně přes `shop.localTime.dateTimeBetween` s proměnnými z metafieldu? | `shop.localTime` ve funkci | Nativní `startsAt`/`endsAt` na uzlech | **platí** (klíče povinné) |
 | C5 | Jde storefront vložit do iframe adminu (frame-ancestors) s náhledovým tokenem přes app proxy? | Iframe + náhledový token | Náhled s tokeny tématu + „Zobrazit na mém webu“ | **fallback** |
-| C6 | — | Rozhodnuto: záloha → smazání nativní → vytvoření ve Won | — | rozhodnuto |
+| C6 | — | Rozhodnuto: záloha → smazání nativní → vytvoření ve Won | — | rozhodnuto; upřesněno MVP 1: automatické vytvoř → smaž, kódové smaž → vytvoř (§4.1) |
+| C7 | Čtou všechny uzly sdílený config ze shop metafieldu? | Shop metafield `$app:won_discounts/function_config` | Config kopírovaný do každého uzlu | **platí** (MVP 1; nad 10 000 B tiše null) |
 
 Verdikty a důkazy: build log.

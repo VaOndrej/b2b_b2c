@@ -7,20 +7,10 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
-- **Fáze:** MVP 0 ✅ uzavřené a pushnuté (`fd416e5..f678cd4`). MVP 1 běží podle
-  `docs/plans/2026-09-28-won-discounts-mvp1.md`: T0 prototyp C7 ‖ T1 engine (SDD ledger
-  `.superpowers/sdd/2026-09-28-won-discounts-mvp1/progress.md`).
-- **Hotovo v MVP 0:** spec + plán, scaffold, config v0 (`@won/core/discounts`), Prisma config
-  s historií, Přehled v0, JS discount funkce (prototypové módy), theme app extension s embedem,
-  app proxy health, dev harness mimo produkci, živé E2E embedu ✓ Horizon ✓ Dawn, verdikty
-  C1–C5 (viz tabulka), audit MVP 0 (0× P0, 2× P1, 8× P2, 11× P3).
-- **Blokováno:** nic. Operace appky na dev storu jdou přes `shopify app execute`. Token ze
-  `shpat.md` je potřeba jen pro sdílený seed `seed:e2e-products` (nákupní ceny v MVP 2);
-  pokud nebude dostupný, nákupní ceny nastavím přes appku (vyžaduje scope `write_inventory`
-  → rozhodnutí v plánu MVP 2).
-- **Ondřej 2026-09-28:** „oprav vše, pak pokračuj na další MVP autonomně, chyby vždy oprav,
-  než se posuneš dál.“ → opravuju všechny nálezy auditu (i P2/P3) a glob v `apps/_template`.
-- **Poslední push:** `f678cd4` (MVP 0 uzavřené).
+- **Fáze:** MVP 1 ✅ uzavřené (checkpoint níž), push níž. Další: MVP 2 (Ochrana marže).
+- **Blokováno:** nic. Pozn.: `shopify app dev` běží s dev přepínačem `WON_DEV_PLAN=pro` z finální
+  brány — před MVP 2 restartovat bez něj (dev store je Free).
+- **Poslední push:** viz checkpoint MVP 1.
 - **Pro Ondřeje (mimo rozsah, neřeším):** v gitu je sledovaný `apps/won-toasts/prisma/prisma/dev.sqlite`
   (lokální DB Won Toasts, může obsahovat sessions/tokeny) → doporučuju `git rm --cached` + gitignore.
 
@@ -94,6 +84,53 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 | C6 | kód při přesunu | rozhodnuto: záloha → smazání → vytvoření ve Won | `rozhodnuti.md` |
 
 ## Checkpointy MVP
+
+### MVP 1 — Engine + Slevy a kódy + přesun nativních slev ✅ (badge → `Alpha`)
+
+**Hotové a ověřené**
+- **Engine** `@won/core/discounts` (`planCart`, emise per uzel, vysvětlení cs/en, cílení,
+  sdílený payload, Pro gate `gateConfigForPlan`, rozsah minima cart/entitled, mapování výstupu
+  funkce `function-output.ts`, DST-bezpečné lokální datum obchodu, strop částek).
+- **Discount funkce v Rustu** (JS verze nestačila na limit instrukcí): shoda s TS enginem
+  (fixtures + 2 400 náhodných košíků + TS dvojčata), 200 řádků ~7,1 M / 11 M instrukcí,
+  výstup ≤ 20 kB s postupným uvolněním, Wasm 209 kB / 256 kB.
+- **Sync vrstva**: sdílený config ve shop metafieldu (C7 platí), 1 automatický + 1 kódový uzel
+  na kódové pravidlo, deaktivace místo mazání (historie použití zůstává), proměnné uzlů,
+  produktové metafieldy + `ProductTargetIndex`, webhooky produktů/kolekcí → obnova cílení na
+  pozadí, SyncRun s vazbou na verzi configu a plán, zámek s deadlinem, verze configu všude.
+- **Nativní slevy**: detekce, přesun (automatické vytvoř → ověř → smaž, kódové smaž → vytvoř),
+  undo, živé ověření před obnovou, sweep zaseklých přesunů (Přehled + periodicky po 5 min).
+- **Admin**: Přehled v1, Slevy a kódy + editor (hodnoty per měna, rozsah minima, Pro amber),
+  Vyzkoušet košík (= skutečný výstup funkce + varování), onboarding 1–3, i18n cs/en, dev harness.
+- **Živé důkazy (dev store)**: pokladna přes Bogus = `planCart` na obou tématech (MVP 1 profil;
+  tvary výstupu: zastropovaná částka → ZDARMA; Pro stack 15 % s dev Pro, **ve Free se neuplatní**
+  → BILL-1 ověřen v pokladně); přesun + undo naživo 14/14; úklid ověřen. Fakta F0: minimum =
+  vybrané produkty, kombinace jen když souhlasí obě, limit použití na slevu, 10 000 B = UTF-8.
+  → `docs/won-discounts/evidence/mvp1/` (final-gate-phaseA/B, gate-*, t6-*, c7-*, f0-*).
+- **Audit MVP 1** (0 P0 / 2 P1 / 10 P2 / 8 P3 + dílčí audity nativních slev (6× P1) a driftu
+  Rust↔TS (žádný drift, 2× P1 procesní)) → **všechny nálezy opraveny** ve vlnách F0–F3 + sweep,
+  každá s re-review.
+
+**Brána (HEAD `733727a` + docs)**: core 582 + testing 21 ✓ · guard 301 ✓ · `test:unit -w
+won-discounts` node 554 + cargo 43 + vitest 213 ✓ · typecheck ✓ · lint ✓ · `build:all` ✓ ·
+validate 0 nálezů ✓ · `_template` 18 + typecheck ✓ · Toasts typecheck ✓. Živé E2E ✓ Horizon ✓ Dawn
+(Free i Pro profil).
+
+**Vědomé kompromisy**
+- Funkce ve dvou jazycích (TS reference + Rust produkce) — hlídá shoda, ne jeden kód; **CI shodu
+  netestuje** (`.github` mimo rozsah) → doporučení pro Ondřeje: CI job s Rustem.
+- Obnova cílení na kolekce: webhooky + debounce 60 s + auto-refresh po 24 h; nové produkty v
+  kolekci dostanou slevu se zpožděním sekund až minut (zákazník dostane méně, nikdy víc).
+- Pevná sleva na dopravu jde jen na první doručovací skupinu (Shopify neříká, zda se bere jednou).
+- Zámky, fronty a sweep jsou per proces (předpoklad jedné instance na Fly — MVP 7).
+- `read_markets` je volitelný scope (API-1) — Pro cílení na trh si o něj řekne až při zapnutí.
+
+**Neověřeno**
+- Vložení adminu do Shopify adminu (App Bridge navigace, resource picker, save bar, `?locale=`) —
+  ověří Ondřej.
+- Pokladna v měně EUR/USD živě (jen CZK); rozdělené doručení; zaokrouhlení půlek na straně
+  Shopify (engine remízám předchází přesnou částkou).
+- Chování na Postgresu (claim index je jen v SQLite migraci — port ručně, MVP 7).
 
 ### MVP 0 — Scaffold + verdikty rizik ✅ (badge zůstává `Scaffold`)
 
