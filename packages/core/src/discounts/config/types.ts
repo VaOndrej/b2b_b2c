@@ -213,6 +213,9 @@ export interface ConfigIssue {
    * The values the message names, structured (limits, counts, the value
    * given and the value kept, ids, codes…), so a UI can word the issue in its
    * own language without reading `message`. Absent when the message names none.
+   * A list (codes, ids, currencies, values) is its first five values joined by
+   * ", " plus `more` = how many it leaves out (0 when none): the UI words
+   * "and N more" itself, never the English message's.
    */
   params?: Record<string, string | number>;
 }

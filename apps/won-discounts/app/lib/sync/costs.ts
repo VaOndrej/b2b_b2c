@@ -38,7 +38,9 @@
 // delete is confirmed) the switch-off clear works from. A write Shopify
 // REFUSES (userErrors; metafieldsSet is all-or-nothing) is split per variant,
 // recorded on the variant (`writeError`, shown in the mirror status) and not
-// re-sent for COST_WRITE_RETRY_MS — the pass still completes.
+// re-sent for COST_WRITE_RETRY_MS — the pass still completes. `writeFailedAt`
+// is the refusal's time, or the last retry attempt's (cost-lane.server.ts
+// records it before a retry goes out, so a retry that fails early waits too).
 // Every Shopify call goes through Transport (API-3: THROTTLED / 429 / 5xx
 // retried with exponential backoff; metafieldsSet/Delete are idempotent).
 // `isCancelled` is checked before every Shopify call: a newer job of the shop
@@ -325,7 +327,8 @@ const ROW_FIELDS = ["productId", "inventoryItemId", "title", "variantTitle", "pr
  * A write Shopify refuses is recorded on the variant (`writeError`) and not
  * re-sent for COST_WRITE_RETRY_MS; the job goes on — and when the variant
  * still carries an OLDER, different value, that value is deleted (the
- * stricter "no purchase cost" ceiling then applies, never a stale cost).
+ * stricter "no purchase cost" ceiling then applies, never a stale cost), in
+ * the call that saw the refusal and in every later one while it backs off.
  * A row is only written when something in it changes: a no-op pass or
  * products/update never moves `updatedAt` (the impact cache keys on it); the
  * pass token (`scanId`) is set with a plain UPDATE that leaves it alone.
@@ -415,8 +418,13 @@ export async function applySnapshots(ctx: CostCtx, snapshots: readonly VariantSn
   };
   const currentOf = new Map(snapshots.map((s) => [s.variantId, s.current]));
   const valueOf = new Map(sets.map((w) => [w.s.variantId, w.value]));
-  /** Refused sets on variants that still carry an older value: that value goes (the ceiling applies). */
-  const staleAfterRefusal: string[] = [];
+  /**
+   * Refused sets on variants that still carry an older value: that value goes
+   * (the stricter ceiling applies until a retry writes the right cost). Also
+   * the backed-off ones: a delete that failed earlier is tried again on every
+   * pass or mirror, not only in the call where Shopify refused the write.
+   */
+  const staleAfterRefusal: string[] = sets.filter((w) => !toSend(w.s.variantId) && w.s.current !== null).map((w) => w.s.variantId);
   for (const batch of chunks(sets.filter((w) => toSend(w.s.variantId)), METAFIELDS_SET_BATCH)) {
     out.written += await sendBatch(
       ctx,

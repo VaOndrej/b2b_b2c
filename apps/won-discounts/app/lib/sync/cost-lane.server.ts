@@ -44,7 +44,13 @@ import type { RetryOptions, SyncLogger } from "./types";
 export type CostJob =
   | { kind: "full"; restart?: boolean }
   | { kind: "clear" }
-  | { kind: "items"; inventoryItemIds?: readonly string[]; productIds?: readonly string[] };
+  | {
+      kind: "items";
+      inventoryItemIds?: readonly string[];
+      productIds?: readonly string[];
+      /** A retry of refused writes: re-send them although their attempt was just recorded (no back-off). */
+      retryRefused?: boolean;
+    };
 
 export interface CostLaneDeps {
   client: AdminClient;
@@ -117,7 +123,7 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
       if (job.kind !== "clear" && !enabled) return { done: "skipped", reason: "margin_off" };
       const transport = new Transport(deps.client, deps.retry, deps.sleep, logger);
       const isCancelled = () => lane?.cancelled === true;
-      const ctx = { transport, db: deps.db, shop, isCancelled, now: deps.now };
+      const ctx = { transport, db: deps.db, shop, isCancelled, now: deps.now, ...(job.kind === "items" && job.retryRefused ? { retryRefused: true } : {}) };
       if (job.kind === "full") {
         const result = await runCostPass({
           ...ctx,
@@ -202,7 +208,8 @@ export type CostDue = "full" | "clear" | "retry";
  * (or none finished, or one was cut short — its cursor is resumed); a failed
  * pass is retried after COST_RETRY_MIN_INTERVAL_MS; a "retry" of the
  * variants whose cost Shopify refused once their back-off
- * (COST_WRITE_RETRY_MS) has passed — the pass itself counted as fresh. A clear
+ * (COST_WRITE_RETRY_MS, from `writeFailedAt`: the refusal or the last retry
+ * attempt, see launchClaimed) has passed — the pass itself counted as fresh. A clear
  * while protection is off and some variant still carries a metafield the sync
  * wrote.
  */
@@ -233,44 +240,89 @@ export async function jobFor(db: PrismaClient, shop: string, due: CostDue, now: 
     take: COST_RETRY_ITEMS + 1,
   });
   if (refused.length > COST_RETRY_ITEMS) return { kind: "full" };
-  return { kind: "items", inventoryItemIds: refused.map((row) => row.inventoryItemId) };
+  return { kind: "items", inventoryItemIds: refused.map((row) => row.inventoryItemId), retryRefused: true };
 }
 
-/** Shops whose refused-variant retry is queued or running here (never two at once). */
+/**
+ * Shops claimed here: a due job being decided (Přehled, margin screen,
+ * reconcile), or a refused-variant retry queued or running. Claimed
+ * synchronously before the first await, so two simultaneous loads never
+ * queue two jobs; released when nothing was due, when a full pass / clear is
+ * in the lane (costJobKind covers it from there), or when the retry ends.
+ */
 const retrying = new Set<string>();
+
+/** Claim `shop` unless a job of it is queued, running or being decided here. */
+function claim(shop: string): boolean {
+  if (costJobKind(shop) !== null || retrying.has(shop)) return false;
+  retrying.add(shop);
+  return true;
+}
 
 /**
  * Start the job the mirror needs (background, never awaited here) unless one
- * of this shop is already queued or running. `enabled` = margin protection in
- * the gated config the caller has. Returns what it did.
+ * of this shop is already queued, running or being decided. `enabled` =
+ * margin protection in the gated config the caller has. Returns what it did.
  */
 export async function ensureCostsFresh(
   shop: string,
   deps: CostLaneDeps,
   enabled: boolean,
 ): Promise<"running" | "started_full" | "started_clear" | "started_retry" | "up_to_date"> {
-  if (costJobKind(shop) !== null || retrying.has(shop)) return "running";
+  if (!claim(shop)) return "running";
+  let due: CostDue | null;
   const now = (deps.now ?? (() => new Date()))();
-  const due = await costsDue(deps.db, shop, enabled, now);
-  if (due === null) return "up_to_date";
-  if (costJobKind(shop) !== null || retrying.has(shop)) return "running";
-  const kind = await startDueJob(shop, deps, due, now);
+  try {
+    due = await costsDue(deps.db, shop, enabled, now);
+  } catch (error) {
+    retrying.delete(shop);
+    throw error;
+  }
+  if (due === null) {
+    retrying.delete(shop);
+    return "up_to_date";
+  }
+  const kind = await launchClaimed(shop, deps, due, now);
   return kind === "items" ? "started_retry" : kind === "full" ? "started_full" : "started_clear";
 }
 
-/** Start the job for `due` in the background (a retry is marked so it never runs twice at once). */
-export async function startDueJob(shop: string, deps: CostLaneDeps, due: CostDue, now: Date): Promise<CostJob["kind"]> {
-  const job = await jobFor(deps.db, shop, due, now);
-  if (job.kind === "items") {
-    retrying.add(shop);
-    void startCostJob(shop, deps, job).finally(() => retrying.delete(shop));
-  } else {
-    void startCostJob(shop, deps, job);
-  }
-  return job.kind;
+/**
+ * Start the job for `due` in the background (the reconcile), unless a job of
+ * the shop is queued, running or being decided here (null then).
+ */
+export async function startDueJob(shop: string, deps: CostLaneDeps, due: CostDue, now: Date): Promise<CostJob["kind"] | null> {
+  if (!claim(shop)) return null;
+  return launchClaimed(shop, deps, due, now);
 }
 
-/** Is a refused-variant retry of `shop` queued or running here? */
+/**
+ * With `shop` claimed: its job for `due`, started in the background. A retry
+ * first records its attempt on the refused rows (`writeFailedAt` = now), so a
+ * retry that fails before it reaches them (the read fails, an item has no
+ * variant) is not queued again by the next load: it waits out the back-off
+ * like a refusal. The retry job itself re-sends them regardless (retryRefused).
+ */
+async function launchClaimed(shop: string, deps: CostLaneDeps, due: CostDue, now: Date): Promise<CostJob["kind"]> {
+  try {
+    const job = await jobFor(deps.db, shop, due, now);
+    if (job.kind === "items") {
+      await deps.db.variantCost.updateMany({
+        where: { shop, inventoryItemId: { in: [...(job.inventoryItemIds ?? [])] }, writeError: { not: null } },
+        data: { writeFailedAt: now },
+      });
+      void startCostJob(shop, deps, job).finally(() => retrying.delete(shop));
+    } else {
+      void startCostJob(shop, deps, job);
+      retrying.delete(shop);
+    }
+    return job.kind;
+  } catch (error) {
+    retrying.delete(shop);
+    throw error;
+  }
+}
+
+/** Is a refused-variant retry of `shop` queued or running here (or a due job being decided)? */
 export function costRetryRunning(shop: string): boolean {
   return retrying.has(shop);
 }

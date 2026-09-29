@@ -199,12 +199,42 @@ test("params carry what a UI needs: the two duplicate_code cases are told apart,
   const merged = all.find((i) => i.code === "duplicate_code" && i.params?.reason === "merged");
   const taken = all.find((i) => i.code === "duplicate_code" && i.params?.reason === "taken");
   assert.deepEqual(merged?.params, { reason: "merged", count: 1 });
-  assert.deepEqual(taken?.params, { reason: "taken", codes: "ZIMA", count: 1 });
+  assert.deepEqual(taken?.params, { reason: "taken", codes: "ZIMA", more: 0, count: 1 });
   const rounded = all.find((i) => i.code === "rounded_percent")!;
   assert.deepEqual(rounded.params, { value: 12.35, to: 12.4, decimals: 1 });
   const clamped = all.find((i) => i.code === "clamped_percent" && i.path === "modules.margin.global.maxDiscountPercent")!;
   assert.deepEqual(clamped.params, { value: 120, min: 0, max: 100, to: 100 });
   assert.equal(rounded.message, "Margin percents keep one decimal; 12.35 was rounded to 12.4 (the stricter side, never a larger discount).", "message unchanged");
+});
+
+test("a list in params is its first five values plus how many more — never the English 'and N more' (a UI words that itself)", () => {
+  const codes = ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"];
+  const { issues: list } = sanitizeConfig({
+    modules: {
+      codes: {
+        rules: [
+          rule("first", { method: "code", codes }),
+          rule("second", { method: "code", codes }),
+          rule("comb", { combinesWith: { ruleIds: ["g1", "g2", "g3", "g4", "g5", "g6", "g7"] } }),
+          rule("money", { value: { kind: "fixed", amount: Object.fromEntries(["CZK", "EUR", "USD", "GBP", "PLN", "HUF"].map((c) => [c, 5e12])) } }),
+        ],
+      },
+    },
+    onboarding: { goals: ["u1", "u2", "u3", "u4", "u5", "u6"], step: 1 },
+  });
+  const byCode = (code: string) => list.find((i) => i.code === code)?.params;
+  assert.deepEqual(byCode("duplicate_code"), { reason: "taken", codes: "A1, A2, A3, A4, A5", more: 3, count: 8 });
+  assert.deepEqual(byCode("orphan_combines_with"), { ids: '"g1", "g2", "g3", "g4", "g5"', more: 2, count: 7 });
+  assert.deepEqual(byCode("clamped_money"), { max: CONFIG_LIMITS.moneyMinorUnits, currencies: "CZK, EUR, USD, GBP, PLN", more: 1, count: 6 });
+  assert.equal(byCode("unknown_onboarding_goal")?.values, '"u1", "u2", "u3", "u4", "u5"');
+  assert.equal(byCode("unknown_onboarding_goal")?.more, 1);
+  // The English message is unchanged (logs).
+  assert.equal(list.find((i) => i.code === "duplicate_code")!.message, "Code(s) A1, A2, A3, A4, A5 and 3 more already belong to an earlier rule and were removed from this one.");
+  for (const issue of [...list, ...issues()]) {
+    for (const [name, value] of Object.entries(issue.params ?? {})) {
+      assert.doesNotMatch(String(value), /\band \d+ more\b/, `${issue.code}.${name}: English inside a param`);
+    }
+  }
 });
 
 test("an issue without values carries no params (and the shape stays JSON-serialisable)", () => {

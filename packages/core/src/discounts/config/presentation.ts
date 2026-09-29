@@ -3,7 +3,7 @@
 import { DEFAULT_CONFIG } from "./defaults.ts";
 import { ONBOARDING_GOALS, type OnboardingGoal } from "./enums.ts";
 import { CONFIG_LIMITS } from "./limits.ts";
-import { isRecord, listPreview, preview, pushIssue, sanitizeBool, sanitizeString } from "./sanitize-helpers.ts";
+import { isRecord, listParams, listPreview, preview, pushIssue, sanitizeBool, sanitizeString } from "./sanitize-helpers.ts";
 import type { ConfigIssue, LocaleDictionary, OnboardingState, StorefrontSettings } from "./types.ts";
 
 export function sanitizeStorefront(v: unknown): StorefrontSettings {
@@ -77,7 +77,7 @@ function sanitizeGoals(v: unknown, issues: ConfigIssue[]): OnboardingGoal[] {
       "onboarding.goals",
       "unknown_onboarding_goal",
       `${unknown.length} unknown onboarding goal(s) (${listPreview(unknown.map((g) => preview(g, 30)))}) were dropped; known goals: ${ONBOARDING_GOALS.join(", ")}.`,
-      { count: unknown.length, values: listPreview(unknown.map((g) => preview(g, 30))), allowed: ONBOARDING_GOALS.join(", ") },
+      { count: unknown.length, ...listParams("values", unknown.map((g) => preview(g, 30))), allowed: ONBOARDING_GOALS.join(", ") },
     );
   }
   return out;

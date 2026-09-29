@@ -212,9 +212,12 @@ model VariantCost {
   /// a write goes out, cleared when Shopify is read without it or a delete is
   /// confirmed). The switch-off clear deletes every such variant's metafield.
   mayCarry        Boolean  @default(false)
-  /// The last write Shopify refused for this variant (userErrors) and when;
-  /// retried after a back-off, shown in the mirror status. Null = none.
+  /// The last write Shopify refused for this variant (userErrors). Null = none.
   writeError      String?
+  /// When the refusal was last acted on: the refused write, then each retry
+  /// attempt (set before the retry goes out, so a retry that fails before
+  /// touching the row is not re-queued until the back-off passes again).
+  /// Shown in the mirror status as the time of the last failed attempt.
   writeFailedAt   DateTime?
   /// The full pass that last saw this variant (rows no pass saw are re-checked, then dropped).
   scanId          String?

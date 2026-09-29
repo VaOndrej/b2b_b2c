@@ -77,7 +77,8 @@ export async function runCostReconcileOnce(deps: CostReconcileDeps): Promise<Cos
         result.skippedNoSession += 1;
         continue;
       }
-      await startDueJob(shop, { client, db: deps.db, plan, now: deps.now, logger }, due, now);
+      // null: a Přehled / margin screen load claimed the shop meanwhile (it starts the job).
+      if ((await startDueJob(shop, { client, db: deps.db, plan, now: deps.now, logger }, due, now)) === null) continue;
       result.started.push({ shop, kind: due });
     } catch (error) {
       logger.error(`cost reconcile ${shop}: ${errorText(error)}`);

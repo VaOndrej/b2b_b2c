@@ -15,6 +15,15 @@ export function listPreview(values: string[], max = 5): string {
   return values.length > max ? `${shown} and ${values.length - max} more` : shown;
 }
 
+/**
+ * The same list as issue params: the values listPreview names under `name`
+ * (the first `max`, joined by ", ") and `more` = how many it leaves out (0 when
+ * none). No "and N more" wording: a UI words that in its own language.
+ */
+export function listParams(name: string, values: string[], max = 5): Record<string, string | number> {
+  return { [name]: values.slice(0, max).join(", "), more: Math.max(0, values.length - max) };
+}
+
 /** Record an issue; `params` = the values `message` names, structured (see ConfigIssue.params). */
 export function pushIssue(issues: ConfigIssue[], path: string, code: string, message: string, params?: ConfigIssue["params"]): void {
   issues.push(params ? { path, code, message, params } : { path, code, message });
@@ -222,7 +231,7 @@ export function sanitizeMoney(v: unknown, issues: ConfigIssue[], path: string): 
       path,
       "clamped_money",
       `An amount can be at most ${CONFIG_LIMITS.moneyMinorUnits} minor units; ${listPreview(over)} was lowered to that.`,
-      { max: CONFIG_LIMITS.moneyMinorUnits, currencies: listPreview(over), count: over.length },
+      { max: CONFIG_LIMITS.moneyMinorUnits, ...listParams("currencies", over), count: over.length },
     );
   }
   const keys = Object.keys(money);

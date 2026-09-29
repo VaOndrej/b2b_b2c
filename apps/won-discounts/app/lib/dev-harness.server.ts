@@ -40,6 +40,7 @@ import type {
 } from "../components/model/types";
 import { lossText, undoCostTexts, warningText } from "./native/copy";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
+import { wordIssues } from "./integration/issue-copy";
 import { planTryCart } from "./integration/try-cart-plan";
 
 export function isDevHarnessEnabled(): boolean {
@@ -661,7 +662,7 @@ export function devMarginScreen(opts: { plan: "free" | "pro"; state: string | nu
 }
 
 /** Margin page action results (harness `?result=`). */
-export function devMarginResult(kind: string | null): UiResult | null {
+export function devMarginResult(kind: string | null, locale: "cs" | "en" = "cs"): UiResult | null {
   switch (kind) {
     case "refreshed":
       return { ok: true, message: "synced", syncing: { costs: true } };
@@ -680,7 +681,8 @@ export function devMarginResult(kind: string | null): UiResult | null {
       return { ok: false, reason: "unreadable_config" };
     case "fixes": {
       // What the core sanitizer reports when a percent with two decimals got past the form
-      // (it keeps one decimal, rounded to the stricter side): the save's `fixes`, as the server returns them.
+      // (it keeps one decimal, rounded to the stricter side): the save's `fixes`, worded from
+      // code + params in the admin language exactly as the server's savedResult words them.
       const { issues } = sanitizeConfig({
         ...DEV_MARGIN_FIXTURE,
         modules: { ...DEV_MARGIN_FIXTURE.modules, margin: { ...DEV_MARGIN_FIXTURE.modules.margin, global: { minMarginPercent: 12.55, maxDiscountPercent: 40 } } },
@@ -688,7 +690,10 @@ export function devMarginResult(kind: string | null): UiResult | null {
       return {
         ok: true,
         message: "saved",
-        fixes: issues.filter((i) => i.path.startsWith("modules.margin")).map((i) => i.message),
+        fixes: wordIssues(
+          issues.filter((i) => i.path === "modules.margin" || i.path.startsWith("modules.margin.")),
+          locale,
+        ),
         sync: { ok: true, problems: [], warnings: [] },
       };
     }

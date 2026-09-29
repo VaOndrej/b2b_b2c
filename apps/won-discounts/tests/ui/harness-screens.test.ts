@@ -82,7 +82,9 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   { path: "margin?state=failed&result=refreshed", expect: [/Načtení selhalo 28\. 9\. 2026 06:10/, /Načítání nákupních cen běží/] },
   { path: "margin?plan=pro&rule=dev-f2-collection", expect: [/Jen sleva „Podzimní kolekce 20 %“/, /Zobrazit všechny zásahy/] },
   { path: "margin?result=invalid", expect: [/Zadej 0 až 95 %/] },
-  { path: "margin?result=fixes", expect: [/Uloženo\. Pár věcí jsme upravili/, /12\.55 was rounded to 12\.6/] },
+  // The save's fixes worded like the server words them (issue-copy), never the core's English message.
+  { path: "margin?result=fixes", expect: [/Uloženo\. Pár věcí jsme upravili/, /Procenta marže mají jedno desetinné místo\. 12,55\u00a0% se zaokrouhlilo na 12,6\u00a0%/] },
+  { path: "margin?result=fixes&locale=en", expect: [/Margin percents have one decimal\. 12\.55% was rounded to 12\.6%/] },
   { path: "overview?state=margin", expect: [/Hlídá jen slevy ve Won\. Slevy mimo Won \(níž\) nevidí\./, /id="native"/, /Ochrana marže/, /8 produktů nemá nákupní cenu\. Sleva na ně je nejvýš 40\u00a0%/, /Naposledy načteno 26\. 9\. 2026 06:10/, /Obnovit nákupní ceny/, /Upravit ochranu/] },
   { path: "overview?state=margin-off", expect: [/Ochrana marže je vypnutá/, /Nastavit ochranu marže/] },
   { path: "rule-editor?rule=dev-f2-collection&margin=1&plan=pro", expect: [/Na 3 produktech se sleva sníží na hranici marže/, /\/app\/margin\?rule=dev-f2-collection#impact/] },

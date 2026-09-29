@@ -261,7 +261,7 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
     case "margin":
       return {
         ...devMarginScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }),
-        result: devMarginResult(q.get("result")),
+        result: devMarginResult(q.get("result"), locale),
         focusRuleId: q.get("rule"),
       };
     default:

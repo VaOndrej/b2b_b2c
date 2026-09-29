@@ -584,12 +584,12 @@ test("a cs save that the sanitizer adjusts reports the adjustments in Czech (rou
   const result = await saveMarginSettings(ctx, settings({ minMarginPercent: 12.35, maxDiscountPercent: 120 }), { configVersion: null });
   assert.equal(result.ok, true, JSON.stringify(result));
   assert.deepEqual(result.ok ? result.fixes : null, [
-    "Procento 120 je mimo rozsah 0 až 100, uložilo se 100.",
-    "Procenta marže mají jedno desetinné místo. 12.35 se zaokrouhlilo na 12.4, na přísnější stranu.",
+    "Hodnota 120\u00a0% je mimo rozsah 0 až 100\u00a0%, uložilo se 100\u00a0%.",
+    "Procenta marže mají jedno desetinné místo. 12,35\u00a0% se zaokrouhlilo na 12,4\u00a0%, na přísnější stranu.",
   ]);
   await settle();
   const en = await saveMarginSettings({ ...ctx, locale: "en" }, settings({ minMarginPercent: 20.05 }), { configVersion: (await loadConfig(db.prisma, shop)).version });
-  assert.deepEqual(en.ok ? en.fixes : null, ["Margin percents have one decimal. 20.05 was rounded to 20.1, the stricter way."]);
+  assert.deepEqual(en.ok ? en.fixes : null, ["Margin percents have one decimal. 20.05% was rounded to 20.1%, the stricter way."]);
   await settle();
 });
 

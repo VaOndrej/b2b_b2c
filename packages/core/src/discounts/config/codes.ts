@@ -10,6 +10,7 @@ import { CONFIG_LIMITS } from "./limits.ts";
 import {
   type IdAliases,
   isRecord,
+  listParams,
   listPreview,
   preview,
   pushIssue,
@@ -347,7 +348,7 @@ export function pruneCombinesWith(
       path,
       "orphan_combines_with",
       `Combines-with points to rule(s) that do not exist (${listPreview(orphans.map((o) => preview(o, 40)))}); they were removed.`,
-      { ids: listPreview(orphans.map((o) => preview(o, 40))), count: orphans.length },
+      { ...listParams("ids", orphans.map((o) => preview(o, 40))), count: orphans.length },
     );
   }
   return out;
@@ -395,7 +396,7 @@ export function sanitizeRules(v: unknown, issues: ConfigIssue[]): { rules: Disco
           `${path}.codes`,
           "duplicate_code",
           `Code(s) ${listPreview(taken)} already belong to an earlier rule and were removed from this one.`,
-          { reason: "taken", codes: listPreview(taken), count: taken.length },
+          { reason: "taken", ...listParams("codes", taken), count: taken.length },
         );
       }
       for (const code of rule.codes) usedCodes.add(code);

@@ -7,31 +7,52 @@
 // never read and never shown. A code this table does not know — or a known
 // code without the params its sentence needs — gets the generic `fix.unknown`
 // sentence (no English inside); `unworded` tells the caller to log it.
+// Numbers are written the admin's way (cs: decimal comma, grouped thousands;
+// a percent with its sign, as the margin screen's formatPercent writes it); a
+// list the core cut short (`more` > 0) ends "a další N" / "and N more".
 // Pure; tests/integration/issue-copy.test.ts.
 
 import type { ConfigIssue } from "@won/core/discounts/config";
 
-import { t, type Locale, type MessageKey, type MessageParams } from "../../i18n";
+import { t, tp, type Locale, type MessageKey, type MessageParams } from "../../i18n";
+
+/** How one placeholder is filled: a core param as a number / text, as a percent, or as a list the core may have cut short. */
+type ParamSpec = string | { param: string; as: "percent" | "list" };
 
 /** One code: its key, the params its sentence needs, and how to name them for it. */
 interface IssueCopy {
   key: MessageKey;
-  /** Sentence placeholder → the core's param name (the same name when omitted). */
-  params?: Readonly<Record<string, string>>;
+  /** Sentence placeholder → the core param that fills it. */
+  params?: Readonly<Record<string, ParamSpec>>;
 }
 
 const limit: IssueCopy["params"] = { max: "max", count: "count" };
+const percent = (param: string): ParamSpec => ({ param, as: "percent" });
+const list = (param: string): ParamSpec => ({ param, as: "list" });
+
+const NBSP = "\u00a0";
+
+/** A number in the admin language: cs "12,35" / "10 000", en "12.35" / "10,000" (exact, never rounded). */
+export function issueNumber(n: number, locale: Locale): string {
+  return new Intl.NumberFormat(locale === "cs" ? "cs-CZ" : "en-US", { maximumFractionDigits: 20 }).format(n);
+}
+
+/** A percent as the margin screen writes it (core formatPercent): cs "12,5 %", en "12.5%" — exact, never rounded. */
+export function issuePercent(n: number, locale: Locale): string {
+  const number = issueNumber(n, locale);
+  return locale === "cs" ? `${number}${NBSP}%` : `${number}%`;
+}
 
 const COPY: Readonly<Record<string, IssueCopy | ((issue: ConfigIssue) => IssueCopy)>> = {
   ambiguous_override: { key: "fix.ambiguous_override" },
   clamped_money: { key: "fix.clamped_money" },
-  clamped_percent: { key: "fix.clamped_percent", params: { from: "value", max: "max", to: "to" } },
+  clamped_percent: { key: "fix.clamped_percent", params: { from: percent("value"), max: percent("max"), to: percent("to") } },
   clamped_priority: { key: "fix.clamped_priority", params: { from: "value", max: "max", to: "to" } },
   code_too_long: { key: "fix.code_too_long", params: limit },
   duplicate_campaign_id: { key: "fix.duplicate_campaign_id" },
   // Two cases share the code (params.reason): repeats merged within a rule, or codes an earlier rule already has.
   duplicate_code: (issue): IssueCopy =>
-    issue.params?.reason === "taken" ? { key: "fix.duplicate_code_taken", params: { codes: "codes" } } : { key: "fix.duplicate_code", params: { count: "count" } },
+    issue.params?.reason === "taken" ? { key: "fix.duplicate_code_taken", params: { codes: list("codes") } } : { key: "fix.duplicate_code", params: { count: "count" } },
   duplicate_rule_id: { key: "fix.duplicate_rule_id" },
   empty_override: { key: "fix.empty_override" },
   invalid_boolean: { key: "fix.invalid_boolean" },
@@ -41,7 +62,11 @@ const COPY: Readonly<Record<string, IssueCopy | ((issue: ConfigIssue) => IssueCo
   invalid_enum: { key: "fix.invalid_enum" },
   invalid_id: { key: "fix.invalid_id" },
   invalid_origin: { key: "fix.invalid_origin" },
-  invalid_percent: { key: "fix.invalid_percent", params: { max: "max" } },
+  // A collection's field falls back to the store-wide setting (params.fallback "global"); a store-wide field to its default.
+  invalid_percent: (issue): IssueCopy =>
+    issue.params?.fallback === "global"
+      ? { key: "fix.invalid_percent_global", params: { max: percent("max") } }
+      : { key: "fix.invalid_percent", params: { max: percent("max"), fallback: percent("fallback") } },
   invalid_priority: { key: "fix.invalid_priority" },
   invalid_schedule: { key: "fix.invalid_schedule" },
   invalid_target: { key: "fix.invalid_target" },
@@ -55,7 +80,7 @@ const COPY: Readonly<Record<string, IssueCopy | ((issue: ConfigIssue) => IssueCo
   overlapping_campaign: { key: "fix.overlapping_campaign" },
   override_field_not_allowed: { key: "fix.override_field_not_allowed" },
   reference_too_long: { key: "fix.reference_too_long", params: { max: "max" } },
-  rounded_percent: { key: "fix.rounded_percent", params: { from: "value", to: "to" } },
+  rounded_percent: { key: "fix.rounded_percent", params: { from: percent("value"), to: percent("to") } },
   too_many_campaigns: { key: "fix.too_many_campaigns", params: limit },
   too_many_codes: { key: "fix.too_many_codes", params: limit },
   too_many_currencies: { key: "fix.too_many_currencies", params: limit },
@@ -87,13 +112,26 @@ export function wordIssue(issue: ConfigIssue, locale: Locale): WordedIssue {
   const copy = typeof entry === "function" ? entry(issue) : entry;
   if (!copy) return { text: t(locale, "fix.unknown"), unworded: true };
   if (!copy.params) return { text: t(locale, copy.key), unworded: false };
-  const params: Record<string, string | number> = {};
-  for (const [placeholder, name] of Object.entries(copy.params)) {
-    const value = issue.params?.[name];
-    if (value === undefined) return { text: t(locale, "fix.unknown"), unworded: true };
-    params[placeholder] = value;
+  const params: Record<string, string> = {};
+  for (const [placeholder, spec] of Object.entries(copy.params)) {
+    const text = paramText(issue, spec, locale);
+    if (text === null) return { text: t(locale, "fix.unknown"), unworded: true };
+    params[placeholder] = text;
   }
   return { text: t(locale, copy.key, params as MessageParams), unworded: false };
+}
+
+/** One placeholder's text in `locale`, or null when the issue lacks the param (or a percent is not a number). */
+function paramText(issue: ConfigIssue, spec: ParamSpec, locale: Locale): string | null {
+  const name = typeof spec === "string" ? spec : spec.param;
+  const value = issue.params?.[name];
+  if (value === undefined) return null;
+  if (typeof spec === "string") return typeof value === "number" ? issueNumber(value, locale) : value;
+  if (spec.as === "percent") return typeof value === "number" ? issuePercent(value, locale) : null;
+  // A list: the values the core names, then how many it left out (`more`; absent = none).
+  const more = issue.params?.more;
+  const shown = String(value);
+  return typeof more === "number" && more > 0 ? tp(locale, "fix.andMore", more, { list: shown, n: issueNumber(more, locale) }) : shown;
 }
 
 /** The sentence alone (see wordIssue). */

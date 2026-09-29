@@ -89,6 +89,21 @@ test("reconcile: a full pass for an on-shop that is due, a clear for an off-shop
   assert.equal(await db.prisma.variantCost.count({ where: { shop: off } }), 0, "cleared");
 });
 
+test("a Přehled load and the reconcile at the same moment start ONE job (the shop is claimed while the job is decided)", async () => {
+  const { ensureCostsFresh } = await import("../../../app/lib/sync/cost-lane.server.ts");
+  const fake = new FakeShopify();
+  fake.setCost(fake.addProduct(1, 1).variantIds[0]!, "2.00");
+  await saveMargin(shop, true);
+  const [load, reconcile] = await Promise.all([
+    ensureCostsFresh(shop, { client: fake, db: db.prisma, plan: async () => "free" }, true),
+    runCostReconcileOnce({ db: db.prisma, clientFor: async () => fake, plan: async () => "free" }),
+  ]);
+  assert.equal(load, "started_full");
+  assert.deepEqual(reconcile.started, [], "the reconcile left the shop to the load");
+  await costIdle(shop);
+  assert.equal(fake.callsOf("WonSyncCostVariantsCount").length, 1);
+});
+
 test("reconcile starts at most maxShops jobs per run", async () => {
   const fake = new FakeShopify();
   for (let i = 0; i < 4; i += 1) await saveMargin(`${shop}-${i}`, true);
