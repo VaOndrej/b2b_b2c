@@ -468,6 +468,63 @@ test("a backed-off write on a variant that still carries an older cost: a later 
   assert.equal(deleteCalls(fake).length, deletesBefore);
 });
 
+/**
+ * Margin protection as checkout runs it, for the refusal decision (audit P2-1b): global
+ * min-margin / max-discount, one collection setting, and each product's marginRefs.
+ */
+function floorsOf(opts: { min?: number; max: number; col?: Record<string, [number | null, number | null]>; refs?: Record<string, string[]> }) {
+  return {
+    payload: { enabled: true as const, ...(opts.min !== undefined ? { min: opts.min } : {}), max: opts.max, ...(opts.col ? { col: opts.col } : {}) },
+    marginRefs: async (productIds: readonly string[]) => new Map(productIds.map((id) => [id, opts.refs?.[id] ?? []])),
+  };
+}
+
+/** Pass 1 writes 201 = {"cost": old}; its cost becomes `next` and Shopify refuses the write (pass 2, with `floors`). */
+async function refusedWithFloors(fake: FakeShopify, old: string, next: string, floors: ReturnType<typeof floorsOf>) {
+  const product = fake.addProduct(2, 1); // variant 201, price 10.00 CZK
+  const variant = product.variantIds[0]!;
+  fake.setCost(variant, old);
+  await runCostPass(ctxFor(fake));
+  fake.setCost(variant, next);
+  fake.refusedOwners.add(variant);
+  const result = await runCostPass({ ...ctxFor(fake), floors });
+  return { variant, product, result };
+}
+
+test("refused higher cost: the OLDER cost stays when its floor is stricter than the percent floor at the current price", async () => {
+  const fake = new FakeShopify();
+  // Price 10.00: old cost 8 → floor 8.00; the 50 % ceiling → floor 5.00. The older cost is stricter: it stays.
+  const { variant, result } = await refusedWithFloors(fake, "8.00", "9.00", floorsOf({ max: 50 }));
+  assert.equal(result.outcome, "done", JSON.stringify(result.errors));
+  assert.deepEqual(fake.variantCostMetafield(variant), { cost: 8, cur: "CZK" }, "kept: stricter than the ceiling");
+  const row = (await rows()).find((r) => r.variantId === variant)!;
+  assert.deepEqual([row.metafieldValue ? JSON.parse(row.metafieldValue) : null, row.mayCarry], [{ cost: 8, cur: "CZK" }, true]);
+  assert.match(row.writeError ?? "", /Value is invalid/, "the refusal stays recorded and is retried");
+  // Later passes in the back-off keep it too (no delete call for it).
+  const deletes = deleteCalls(fake).flat().filter((mf) => mf.ownerId === variant).length;
+  await runCostPass({ ...ctxFor(fake, { now: () => new Date(NOW.getTime() + 20 * 60_000) }), floors: floorsOf({ max: 50 }) });
+  assert.equal(deleteCalls(fake).flat().filter((mf) => mf.ownerId === variant).length, deletes);
+  assert.deepEqual(fake.variantCostMetafield(variant), { cost: 8, cur: "CZK" });
+});
+
+test("refused higher cost: the older cost goes when the percent floor is the stricter one (global, or the product's collection setting)", async () => {
+  // Old cost 2.5 → floor 2.50 < the 50 % ceiling's 5.00: deleted (the ceiling applies).
+  const global = new FakeShopify();
+  const low = await refusedWithFloors(global, "2.50", "4.00", floorsOf({ max: 50 }));
+  assert.equal(global.variantCostMetafield(low.variant), undefined);
+  // Old cost 8 with min margin 0 → floor 8.00; the product's collection allows at most 10 % off → floor 9.00: the ceiling is stricter.
+  shop = `${shop}-collection`; // a shop of its own: the rows (and the refusal's back-off) are per shop
+  const collection = new FakeShopify();
+  const product = "gid://shopify/Product/2";
+  const inCollection = await refusedWithFloors(collection, "8.00", "9.00", floorsOf({ max: 50, col: { "5": [null, 10] }, refs: { [product]: ["5"] } }));
+  assert.equal(collection.variantCostMetafield(inCollection.variant), undefined, "the collection's 10 % ceiling (floor 9.00) beats the older cost's 8.00");
+  // A minimum margin raises the cost floor: 8 / (1 − 0.2) = 10.00 ≥ 9.00 → kept.
+  shop = `${shop}-margin`;
+  const margin = new FakeShopify();
+  const kept = await refusedWithFloors(margin, "8.00", "9.00", floorsOf({ min: 20, max: 50, col: { "5": [null, 10] }, refs: { [product]: ["5"] } }));
+  assert.deepEqual(margin.variantCostMetafield(kept.variant), { cost: 8, cur: "CZK" });
+});
+
 test("a refused-variant retry that fails before touching its rows is recorded: not re-queued on every load, due again after the back-off", async () => {
   const { costsDue, ensureCostsFresh, costIdle } = await import("../../../app/lib/sync/cost-lane.server.ts");
   const { saveConfig } = await import("../../../app/lib/config.server.ts");
@@ -536,4 +593,23 @@ test("no-op passes and mirrors never move updatedAt (the impact cache keys on it
   assert.ok(token);
   const scanIds = new Set((await rows()).map((r) => r.scanId));
   assert.equal(scanIds.size, 1, "every row carries the newest pass's token (set without touching updatedAt)");
+});
+
+test("OQ3: products/update echoes of the mirror's own metafield writes end the loop — the re-read writes nothing", async () => {
+  // Shopify may fire products/update for an app-owned variant metafield write (shopify.dev does not say it
+  // does not); the echo cannot be told apart from a merchant edit (the payload has only id + updated_at),
+  // so it is not filtered: the product's variants are re-read and diffed against what Shopify now holds.
+  const fake = new FakeShopify();
+  const products = catalogue(fake, 6);
+  const first = await runCostPass(ctxFor(fake));
+  assert.ok(first.written > 0);
+  const setsBefore = setCalls(fake).length;
+  const deletesBefore = deleteCalls(fake).length;
+  const echo = await mirrorProducts(ctxFor(fake), products.map((p) => p.id));
+  assert.deepEqual([echo.written, echo.cleared, echo.errors.length], [0, 0, 0]);
+  assert.equal(setCalls(fake).length, setsBefore, "no write → no further echo");
+  assert.equal(deleteCalls(fake).length, deletesBefore);
+  // A collapsed queue (more than COST_QUEUE_MAX echoes) becomes one full pass: also no write.
+  const again = await runCostPass(ctxFor(fake));
+  assert.deepEqual([again.written, again.cleared], [0, 0]);
 });

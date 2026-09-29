@@ -1,6 +1,8 @@
-// Ochrana marže (MVP 2) — the module screen. A discount never takes a price
+// Ochrana marže (MVP 2) — the module screen. A Won discount never takes a price
 // below the floor the merchant sets here; protection never blocks an order, it
-// only lowers the discount (spec principle 5). Studio shell (§7b, A7):
+// only lowers the discount to the floor (spec principle 5). Until the first
+// complete read of the purchase costs, unread products have only the percent
+// ceiling — the settings section says so (audit P2-1). Studio shell (§7b, A7):
 //   1. the settings — on/off, minimum margin (how it is computed, said in the
 //      field), the ceiling for products without a cost price (A2) — leading
 //      with the live state line (§17b: re-read from the form on every native
@@ -29,6 +31,7 @@ import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import { useT } from "../../i18n/context";
 import { pickCollections } from "../model/app-bridge";
 import {
+  ceilingOnlyText,
   MARGIN_FIELD,
   MARGIN_INTENT,
   MARGIN_PERCENT_STEP,
@@ -51,12 +54,10 @@ import { WonSection } from "../shell/WonSection";
 export interface MarginScreenProps extends MarginScreenData {
   /** The last save / refresh outcome. */
   result?: UiResult | null;
-  /** Přehled zásahů narrowed to one rule (the rule editor's link, §13c). */
-  focusRuleId?: string | null;
 }
 
 export function MarginScreen(props: MarginScreenProps) {
-  const { plan, shopCurrency, configVersion, settings, mirror, coverage, impact, gateNotes, result, focusRuleId } = props;
+  const { plan, shopCurrency, configVersion, settings, mirror, coverage, impact, gateNotes, result, tooLarge } = props;
   const pro = plan === "pro";
   const tr = useT();
   const { t } = tr;
@@ -160,6 +161,9 @@ export function MarginScreen(props: MarginScreenProps) {
   // the proof and the ceiling sentence show THAT, like the state line (§10b, §17c).
   const global = marginInForce(draft, plan).global;
   const inForce: MarginSettingsView = { ...draft, minMarginPercent: global.minMarginPercent ?? null, maxDiscountPercent: global.maxDiscountPercent };
+  // Audit P2-1: before the first complete read of the costs, unread products have only the ceiling (what is STORED runs).
+  const storedCeiling = marginInForce(settings, plan).global.maxDiscountPercent;
+  const ceilingOnly = ceilingOnlyText({ enabled: settings.enabled, mirror, costsKnown: coverage !== null, maxDiscountPercent: storedCeiling }, tr);
 
   const submit = useSubmit();
   // I3: "Nahradit neplatnou konfiguraci" re-submits exactly this form, confirmed.
@@ -205,6 +209,8 @@ export function MarginScreen(props: MarginScreenProps) {
                 <s-text color="subdued">
                   {t("margin.scope")} <s-link href="/app#native">{t("margin.scope.link")}</s-link>
                 </s-text>
+                {/* §12: until the first complete read, the ceiling is all there is for unread products (also those with a cost). */}
+                {ceilingOnly ? <s-text type="strong">{ceilingOnly}</s-text> : null}
               </s-stack>
               <s-number-field
                 name={MARGIN_FIELD.minMarginPercent}
@@ -246,14 +252,9 @@ export function MarginScreen(props: MarginScreenProps) {
             errorFor={errorFor}
             decimalErrorFor={decimalErrorFor}
             error={collectionError ? t(collectionError.key, collectionError.params) : undefined}
+            tooLarge={tooLarge}
           />
-          <ImpactSection
-            pro={pro}
-            enabled={settings.enabled}
-            impact={impact}
-            currency={shopCurrency}
-            focusRuleId={focusRuleId}
-          />
+          <ImpactSection pro={pro} enabled={settings.enabled} impact={impact} currency={shopCurrency} />
           {/* One save for the whole form, last on the page like the rule editor (plus the App Bridge save bar). */}
           <div>
             <s-button type="submit" variant="primary">

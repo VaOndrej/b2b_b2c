@@ -9,8 +9,26 @@
 //
 // Checked every COST_RECONCILE_INTERVAL_MS (hourly: "older than 24 h" is then
 // at most an hour late), at most COST_RECONCILE_SHOPS jobs started per run
-// (each runs in its shop's cost lane, in the background). Single instance
+// (each runs in its shop's cost lane, in the background). Rotation (audit
+// P3-1): the shops are taken least recently attempted first — never scanned,
+// then the oldest `costsScannedAt`, a failed pass counting as attempted at its
+// `failedAt` — never alphabetically; and a shop whose last pass FAILED gets a
+// slot from the reconcile at most once per COST_RECONCILE_FAILED_INTERVAL_MS
+// (the admin still retries it after 15 min when someone opens it), so a few
+// shops whose pass keeps failing never take every slot. Single instance
 // assumption as the rest of the sync; MVP 5's scheduler takes it over.
+//
+// Offline sessions (OQ4, verified 2026-09-29 in @shopify/shopify-app-react-router
+// 1.1.1 dist/esm/server/helpers/ensure-offline-token-is-not-expired.mjs):
+// with `future.expiringOfflineAccessTokens` (packages/app-kit) the offline
+// access token lives 1 h and its refresh token 90 days (shopify.dev "Access
+// tokens"); `unauthenticated.admin` refreshes the access token when it is
+// within 5 min of expiry and stores the new pair. Only a refresh that fails
+// (the refresh token expired or was revoked) or a missing session leaves a
+// shop without a client: clientFor → null (skippedNoSession), recorded on the
+// shop's cost state (costs.ts recordCostsFailed, COST_NO_SESSION) so the admin
+// says "open the app" — opening the embedded app exchanges a new token, and
+// that load retries the pass at once.
 // Started once per process on server boot (app/entry.server.tsx, next to the
 // stale-claim sweep); the margin screen, the Přehled card and the app's cost
 // refresher also ensure it (idempotent) — so it runs whether or not anybody
@@ -23,6 +41,7 @@ import type { AdminClient } from "../admin-client.server";
 import { loadConfig } from "../config.server";
 import { planOf } from "../plan.server";
 import { costJobKind, costRetryRunning, costsDue, startDueJob, type CostDue } from "../sync/cost-lane.server";
+import { COST_NO_SESSION, parseCostPending, recordCostsFailed } from "../sync/costs";
 import { errorText } from "../sync/transport";
 import type { SyncLogger } from "../sync/types";
 
@@ -30,6 +49,8 @@ export const COST_RECONCILE_FIRST_DELAY_MS = 2 * 60_000;
 export const COST_RECONCILE_INTERVAL_MS = 60 * 60_000;
 /** Jobs started per run (bounded load; the rest waits for the next run). */
 export const COST_RECONCILE_SHOPS = 5;
+/** A shop whose last pass failed gets a reconcile slot at most this often (the per-shop cap, audit P3-1). */
+export const COST_RECONCILE_FAILED_INTERVAL_MS = 6 * 60 * 60_000;
 
 const quiet: SyncLogger = { info() {}, warn() {}, error() {} };
 
@@ -55,16 +76,18 @@ export async function runCostReconcileOnce(deps: CostReconcileDeps): Promise<Cos
   const now = (deps.now ?? (() => new Date()))();
   const plan = deps.plan ?? planOf;
   const result: CostReconcileResult = { checked: 0, started: [], skippedNoSession: 0 };
-  let shops: { shop: string }[];
+  let shops: { shop: string; failedAt: number | null }[];
   try {
-    shops = await deps.db.shopConfig.findMany({ select: { shop: true }, orderBy: { shop: "asc" } });
+    shops = await rotation(deps.db);
   } catch (error) {
     logger.error(`cost reconcile: could not read the shops: ${errorText(error)}`);
     return result;
   }
-  for (const { shop } of shops) {
+  for (const { shop, failedAt } of shops) {
     if (result.started.length >= (deps.maxShops ?? COST_RECONCILE_SHOPS)) break;
     if (costJobKind(shop) !== null) continue;
+    // The per-shop cap: a shop whose pass failed recently waits (it cannot take a slot every hour).
+    if (failedAt !== null && now.getTime() - failedAt < COST_RECONCILE_FAILED_INTERVAL_MS) continue;
     try {
       result.checked += 1;
       const loaded = await loadConfig(deps.db, shop);
@@ -75,6 +98,8 @@ export async function runCostReconcileOnce(deps: CostReconcileDeps): Promise<Cos
       const client = await deps.clientFor(shop);
       if (!client) {
         result.skippedNoSession += 1;
+        // OQ4: said on the margin screen and Přehled ("open the app"), not a silent skip.
+        if (enabled) await recordCostsFailed(deps.db, shop, now, COST_NO_SESSION);
         continue;
       }
       // null: a Přehled / margin screen load claimed the shop meanwhile (it starts the job).
@@ -85,6 +110,29 @@ export async function runCostReconcileOnce(deps: CostReconcileDeps): Promise<Cos
     }
   }
   return result;
+}
+
+/**
+ * Every shop with a stored config, least recently attempted first: never
+ * scanned (no complete pass, no failure) first, then by the later of its last
+ * complete pass and its last failed one; shop name only breaks ties.
+ */
+async function rotation(db: PrismaClient): Promise<{ shop: string; failedAt: number | null }[]> {
+  const [configs, states] = await Promise.all([
+    db.shopConfig.findMany({ select: { shop: true } }),
+    db.shopSyncState.findMany({ select: { shop: true, costsScannedAt: true, costsPending: true } }),
+  ]);
+  const stateOf = new Map(states.map((row) => [row.shop, row]));
+  const shops = configs.map(({ shop }) => {
+    const state = stateOf.get(shop);
+    const failed = parseCostPending(state?.costsPending)?.failedAt;
+    const failedAt = failed ? Date.parse(failed) : null;
+    const scannedAt = state?.costsScannedAt?.getTime() ?? null;
+    const attempted = Math.max(scannedAt ?? Number.NEGATIVE_INFINITY, failedAt ?? Number.NEGATIVE_INFINITY);
+    return { shop, failedAt: failedAt !== null && Number.isFinite(failedAt) ? failedAt : null, attempted };
+  });
+  shops.sort((a, b) => a.attempted - b.attempted || (a.shop < b.shop ? -1 : a.shop > b.shop ? 1 : 0));
+  return shops.map(({ shop, failedAt }) => ({ shop, failedAt }));
 }
 
 let job: { firstRun: ReturnType<typeof setTimeout>; interval: ReturnType<typeof setInterval> | null } | null = null;

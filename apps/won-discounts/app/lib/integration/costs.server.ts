@@ -17,7 +17,18 @@
 //   as an "items" job of the shop's cost lane (sync/cost-lane.server.ts),
 //   with the shop's offline Admin API session. A restart loses what was
 //   queued; the daily reconcile (jobs/cost-reconcile.server.ts) and the
-//   Přehled's 24 h check catch up.
+//   Přehled's 24 h check catch up. No offline session (OQ4: the refresh token
+//   expired or was revoked — unauthenticated.admin refreshes an expiring
+//   access token by itself) is recorded for the admin ("open the app").
+//   Our own writes (OQ3, checked 2026-09-29): shopify.dev says products/update
+//   "occurs whenever a product is updated … or variants are … updated" and
+//   does not exclude metafield writes, so the mirror's own variant metafield
+//   writes may echo back as products/update. The echo cannot be told from a
+//   merchant edit (the payload is id + updated_at only), so it is not
+//   filtered: its re-read diffs against what Shopify now holds and writes
+//   nothing, so the loop ends there (tests/lib/sync/costs.test.ts "OQ3"). The
+//   bounded double work: one read of each written product's variants, or —
+//   past COST_QUEUE_MAX echoes — one extra full pass that writes nothing.
 //   Admin: costMirrorView / costCoverage for the margin screen and Přehled.
 
 import type { PrismaClient } from "../../generated/prisma/client";
@@ -25,12 +36,14 @@ import { adminClientFromApp, type AdminClient, type AppAdminGraphql } from "../a
 import { loadConfig } from "../config.server";
 import { ensureCostReconcileJob } from "../jobs/cost-reconcile.server";
 import { costJobKind, costPassProgress, startCostJob, type CostJobOutcome } from "../sync/cost-lane.server";
-import { COSTS_MAX_AGE_MS, loadCostState } from "../sync/costs";
+import { COST_NO_SESSION, COSTS_MAX_AGE_MS, loadCostState, recordCostsFailed } from "../sync/costs";
 import { shopLocalDateTime } from "../sync/sync.server";
 import { errorText } from "../sync/transport";
 import type { SyncLogger } from "../sync/types";
-import type { CostCoverageView, CostMirrorView } from "../../components/model/types";
+import type { CostCoverageView, CostMirrorView, UiText } from "../../components/model/types";
 import { shortDetail } from "./sync-copy";
+// Registers the impact recompute after every cost job (onCostJobSettled) wherever the mirror runs.
+import "./margin-impact.server";
 
 /** One mirror per shop at most this long after the first relevant webhook. */
 export const COST_WEBHOOK_DEBOUNCE_MS = 5_000;
@@ -141,6 +154,8 @@ export function createCostRefresher(deps: CostRefresherDeps): CostRefresher {
     const client = await deps.clientFor(shop);
     if (!client) {
       logger.warn(`costs ${shop}: no Admin API session, the queued mirror was dropped`);
+      // OQ4: recorded for the admin ("open the app"); the next load with a session runs a full pass.
+      await recordCostsFailed(deps.db, shop, (deps.now ?? (() => new Date()))(), COST_NO_SESSION).catch(() => undefined);
       return { done: "no_session" };
     }
     const lane = { client, db: deps.db, now: deps.now, logger };
@@ -218,6 +233,23 @@ export function appCostRefresher(db: PrismaClient): CostRefresher {
 
 const local = (date: Date, timezone: string | null) => shopLocalDateTime(date, timezone ?? "UTC");
 
+/** Shopify's / the transport's own words, as a secondary detail after the Czech sentence (§4c; never the whole sentence). */
+function detailOf(error: string): UiText[] {
+  const detail = shortDetail(error.replace(/gid:\/\/shopify\/[A-Za-z]+\/\d+/g, "…"));
+  return detail ? [{ key: "margin.mirror.detail", params: { detail } }] : [];
+}
+
+/**
+ * Why the last full pass failed, in the admin language (audit P3-2): no
+ * offline session ("open the app"), a failed READ of the costs, or writes
+ * that did not get through — never the generic "not written to Shopify".
+ */
+function passProblems(error: string): UiText[] {
+  if (error === COST_NO_SESSION) return [{ key: "margin.mirror.reauth" }];
+  const key = error.includes("costs.read") || error === "" ? "margin.mirror.readFailed" : "margin.mirror.writeFailed";
+  return [{ key }, ...detailOf(error)];
+}
+
 /** The mirror's state (margin screen, Přehled card). Times shop-local. */
 export async function costMirrorView(
   ctx: { db: PrismaClient; shop: string; now?: () => Date },
@@ -231,11 +263,7 @@ export async function costMirrorView(
     return { state: "running", done: p?.done ?? 0, total: p?.total ?? null, since: local(p ? new Date(p.since) : now, opts.timezone) };
   }
   if (state.pending?.failedAt) {
-    return {
-      state: "failed",
-      at: local(new Date(state.pending.failedAt), opts.timezone),
-      problems: [{ key: "sync.problem.other", params: { detail: shortDetail(state.pending.error ?? "") } }],
-    };
+    return { state: "failed", at: local(new Date(state.pending.failedAt), opts.timezone), problems: passProblems(state.pending.error ?? "") };
   }
   // Variants whose cost Shopify refused (the pass completed; they are retried after a back-off).
   const refused = await ctx.db.variantCost.count({ where: { shop: ctx.shop, writeError: { not: null } } });
@@ -243,13 +271,17 @@ export async function costMirrorView(
     const latest = await ctx.db.variantCost.findFirst({
       where: { shop: ctx.shop, writeError: { not: null } },
       orderBy: [{ writeFailedAt: "desc" }, { variantId: "asc" }],
-      select: { variantId: true, title: true, variantTitle: true, writeError: true, writeFailedAt: true },
+      select: { title: true, variantTitle: true, writeError: true, writeFailedAt: true },
     });
-    const title = latest ? (latest.variantTitle ? `${latest.title ?? latest.variantId} (${latest.variantTitle})` : (latest.title ?? latest.variantId)) : "";
+    // Titles only, never a raw GID (§4c): a variant without a product title is named by its variant title, else not at all.
+    const name = latest?.title ? (latest.variantTitle ? `${latest.title} (${latest.variantTitle})` : latest.title) : (latest?.variantTitle ?? null);
     return {
       state: "failed",
       at: local(latest?.writeFailedAt ?? now, opts.timezone),
-      problems: [{ key: "margin.mirror.refused", params: { n: refused, title, detail: shortDetail(latest?.writeError ?? "") } }],
+      problems: [
+        name ? { key: "margin.mirror.refused", params: { n: refused, title: name } } : { key: "margin.mirror.refusedUntitled", params: { n: refused } },
+        ...detailOf(latest?.writeError ?? ""),
+      ],
     };
   }
   if (state.scannedAt && state.cursor === null && now.getTime() - state.scannedAt.getTime() < COSTS_MAX_AGE_MS) {

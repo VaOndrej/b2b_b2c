@@ -29,7 +29,7 @@ import {
   type RuleFormContext,
 } from "../model/rule-form";
 import { ruleStatus } from "../model/rule-status";
-import type { CodeRuleLimit, CurrencyView, FieldError, GateNoteView, MarketView, RuleSyncMap, SyncView, UiResult } from "../model/types";
+import type { CodeRuleLimit, CurrencyView, FieldError, GateNoteView, MarginRuleImpactView, MarketView, RuleSyncMap, SyncView, UiResult } from "../model/types";
 import { ApplySection } from "../rule-editor/ApplySection";
 import { DiscountSection } from "../rule-editor/DiscountSection";
 import { MoreOptionsSection } from "../rule-editor/MoreOptionsSection";
@@ -68,10 +68,11 @@ export interface RuleEditorScreenProps {
   /** Checkout still runs a config built with this rule's Pro settings; a resync is under way (I-2). */
   gatePending?: boolean;
   /**
-   * Ochrana marže (MVP 2): on how many products margin protection lowers this
-   * (saved) rule's discount — ruleMarginImpact; null/absent = protection off or none.
+   * Ochrana marže (MVP 2): margin protection lowers this (saved) rule's
+   * discount — ruleMarginImpact (Pro: on how many variants; Free: no number);
+   * null/absent = protection off or none.
    */
-  marginImpact?: number | null;
+  marginImpact?: MarginRuleImpactView | null;
 }
 
 export function buildRuleEditorProps(

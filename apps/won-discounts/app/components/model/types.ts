@@ -230,10 +230,9 @@ export interface MarginSettingsView {
 
 /** One place where margin protection lowers an active product discount (1 item, shop currency). */
 export interface MarginImpactRowView {
-  ruleId: string;
-  ruleName: string;
   productId: string;
   variantId: string;
+  /** Product (variant) title from the cost mirror; "" when Shopify gave none (the screen says "bez názvu"). */
   title: string;
   wanted: number;
   allowed: number;
@@ -241,13 +240,43 @@ export interface MarginImpactRowView {
   source: "global" | "collection";
 }
 
+/** One rule margin protection lowers (Přehled zásahů, audit P2-2: counted per rule, never from the shown rows). */
+export interface MarginImpactRuleView {
+  ruleId: string;
+  ruleName: string;
+  discountClass: "product" | "order";
+  /**
+   * Variants protection lowers this rule on — ALL of them (core marginImpact),
+   * the same number the rule editor's note gives. An order rule: variants on
+   * which the discount would go below the floor if the item were the whole order.
+   */
+  variants: number;
+  /** Product rules: its largest losses first (at most 10; fewer when the screen's 200-row cap was reached). Order rules: none. */
+  rows: MarginImpactRowView[];
+}
+
 /** Přehled zásahů (Pro): where protection lowers active discounts, from the config and the cost mirror. */
 export interface MarginImpactView {
-  /** Top 50 by lost amount. */
-  rows: MarginImpactRowView[];
-  /** Order rules whose percent would go below the floor on some variants (those lines are left out or the discount is lowered). */
-  orderRules: { ruleId: string; ruleName: string; variantsBelow: number }[];
+  /** The rules protection lowers (variants > 0), config order — only `focus`'s when narrowed. */
+  rules: MarginImpactRuleView[];
   withoutCost: number;
+  /**
+   * ready     computed for the current settings and costs;
+   * updating  a recompute runs in the background: these are the previous numbers ("počítá se");
+   * computing nothing computed yet (rules empty).
+   */
+  status: "ready" | "updating" | "computing";
+  /** Narrowed on the server to one rule (`?rule=`, the rule editor's link). */
+  focus?: { ruleId: string; ruleName: string };
+}
+
+/** A margin collection the sync could not read (over the 10 000-product limit): its values apply to the whole store (P1-1). */
+export interface MarginTooLargeView {
+  collectionId: string;
+  /** Its Shopify title at the sync ("" when unknown). */
+  title: string;
+  /** Products in it; null = Shopify only said "more than 10 000". */
+  count: number | null;
 }
 
 export interface MarginScreenData {
@@ -257,21 +286,36 @@ export interface MarginScreenData {
   configVersion: string | null;
   settings: MarginSettingsView;
   mirror: CostMirrorView;
-  /** null = never scanned (margin never switched on). */
+  /** null = no complete read of the costs yet (never switched on, or the first pass has not finished). */
   coverage: CostCoverageView | null;
   /** Pro only; null on Free (BILL-1: Free sees the amber preview, never the data). */
   impact: MarginImpactView | null;
   /** Pro settings stored but not in force on this plan (core explainGate). */
   gateNotes: GateNoteView[];
+  /** Pro collections the last product pass could not read (their values apply to the whole store). */
+  tooLarge: MarginTooLargeView[];
 }
+
+/**
+ * The rule editor's margin note (null = protection off, or it lowers nothing here).
+ * computing  no result yet (the background computes it);
+ * ready / updating  protection lowers the saved rule; `variants` only on Pro — Free gets no
+ *            number ("přehled zásahů" is Pro), just that it happens, with the Pro preview.
+ */
+export type MarginRuleImpactView =
+  | { state: "computing" }
+  | { state: "ready" | "updating"; discountClass: "product" | "order"; variants?: number };
 
 /** Přehled card. */
 export interface MarginOverviewView {
   enabled: boolean;
   minMarginPercent: number | null;
   maxDiscountPercent: number;
+  /** null = not known yet: no complete read of the costs (the percent ceiling is then all there is for unread products). */
   productsWithoutCost: number | null;
   mirror: CostMirrorView;
+  /** Pro collections the last product pass could not read (absent = none). */
+  tooLarge?: MarginTooLargeView[];
 }
 
 /**
@@ -415,10 +459,12 @@ export interface CartPlanView {
   /**
    * Margin protection in this simulation (absent = off). `rateEstimated`: the cart is not in
    * the shop currency, so purchase costs were converted with a rate estimated from market
-   * prices — checkout uses Shopify's current rate. `linesWithoutCost`: lines margin
-   * protection applies to (not outlet, not gift lines) whose purchase cost is unknown in the
-   * cart currency (no cost in Shopify yet, or it could not be converted) — the "no purchase
-   * cost" percent ceiling is their floor, whether or not it lowered their discount in this cart.
+   * prices — checkout uses Shopify's current rate. Lines margin protection applies to (not
+   * outlet, not gift lines) whose purchase cost is unknown in the cart currency — the "no
+   * purchase cost" percent ceiling is their floor, whether or not it lowered their discount
+   * in this cart: `linesWithoutCost` have no cost at all (none in Shopify, or not read yet);
+   * `linesCostNotConverted` HAVE one that could not be converted into the cart currency (no
+   * usable rate, or a cost in another currency) — never called "no purchase cost".
    */
-  margin?: { rateEstimated: boolean; linesWithoutCost: number };
+  margin?: { rateEstimated: boolean; linesWithoutCost: number; linesCostNotConverted: number };
 }

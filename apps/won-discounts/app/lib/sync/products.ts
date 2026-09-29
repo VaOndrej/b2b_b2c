@@ -8,25 +8,41 @@
 // config the sync passes in, so a Free shop never gets them) are read like
 // targeted collections; their products carry `marginRefs` (the engine takes
 // the strictest collection setting from them). A product in such a collection
-// gets the metafield even without any rule. marginRefs never decide
-// `staleRisk`: a ref the product keeps a little longer only names a
-// collection whose setting the running config still has (or no longer has,
-// then it is ignored) — the same freshness window as the collection targets.
+// gets the metafield even without any rule. The core writes a product's
+// DECISIVE collections, so a collection's value change can replace a ref, not
+// only add one (MVP 2 audit P2-3): every write that CHANGES a product's
+// marginRefs goes in the BEFORE lane (also for a product that carries no Won
+// refs yet), and when it fails the new shop config is held (staleRisk,
+// retried) — so the new config never relies on refs its products do not
+// carry. The one exception: dropping a ref whose collection has no setting in
+// force any more holds nothing — checkout ignores a ref its config does not
+// name, so the stale ref never loosens a floor (onlyAddsRefs).
 //
 // Which products carry our metafield is sync bookkeeping in Prisma
 // ProductTargetIndex {shop, productId, payloadHash} (DATA-1; no cap). A row
 // exists for every product that may carry the metafield (write-ahead), so a
 // product WITHOUT a row carries no Won refs.
 //
-// Collection size limit (F2 re-review M-4/M-5): Won reads at most
-// MAX_COLLECTION_PRODUCTS collection members per sync, all targeted
+// Collection size limit (F2 re-review M-4/M-5, MVP 2 audit P1-1): Won reads
+// at most MAX_COLLECTION_PRODUCTS collection members per sync, all targeted
 // collections together. Their sizes are read first (productsCount, one cheap
-// query); a collection that does not fit (or that Shopify only counts as "at
-// least") is left out of the product refs of the rules that target it — those
-// rules do not apply to it at checkout, each says so in a failed step
-// `products.too_large:<ruleId>` — and EVERYTHING ELSE goes on: one huge
-// collection never holds the other rules' changes (narrower, never wider).
-// A paging backstop still stops a read that runs past the limit anyway.
+// query), the MARGIN collections first (they protect the floor; a rule
+// collection left out only means less discount), then the rules' in config
+// order. A collection that does not fit (or that Shopify only counts as "at
+// least") is left out:
+//   - a rule collection: out of the product refs of the rules that target it
+//     — those rules do not apply to it at checkout, each says so in a failed
+//     step `products.too_large:<ruleId>` (fail closed: less discount);
+//   - a margin collection: its products get no NEW marginRef (they cannot be
+//     read), and the shop payload the sync writes FOLDS its values into the
+//     global values and into every other collection's own values — strictest
+//     wins (max min-margin, min max-discount), like core gateConfigForPlan does
+//     for Free — so no product can get a looser floor than that collection's;
+//     a product that already carries its ref keeps it (never loosened before
+//     the flip). Failed step `margin.too_large` per collection, with its id,
+//     title and count as `params` for the admin (sync-copy.ts).
+// EVERYTHING ELSE goes on: one huge collection never holds the other rules'
+// changes. A paging backstop still stops a read that runs past the limit anyway.
 //
 // Two lanes around the shop-config flip (sync.server.ts, M1 + audit P2-8):
 //   plan    targeted = product ids, products of targeted variants, collection
@@ -38,21 +54,26 @@
 //           left every target — are read once (nodes(), 100 per query): deleted
 //           ones are dropped, an identical Shopify value is only recorded;
 //   before  (BEFORE the new shop config is written) every change to a product
-//           that already carries Won refs, and every clear: a product must lose
-//           a ref before the new config can give that rule a new value through
-//           it. WRITE-AHEAD: a row is set to payloadHash = null before its
-//           write. metafieldsSet ≤ 25 per call (row hash on success),
-//           metafieldsDelete ≤ 250 per call (row deleted on success);
+//           that already carries Won refs (a marginRef change included), every
+//           clear, and every product that GAINS a marginRef (read first, like
+//           the indexed ones): a product
+//           must lose a rule ref before the new config can give that rule a
+//           new value through it, and carry a stricter collection before the
+//           new config relies on it. WRITE-AHEAD: a row is set to payloadHash =
+//           null before its write. metafieldsSet ≤ 25 per call (row hash on
+//           success), metafieldsDelete ≤ 250 per call (row deleted on success);
 //   after   (AFTER the flip) products that carry no Won refs yet and only GAIN
-//           some: until written they simply lack the new rules (under-discount,
-//           never a wrong value). The admin save runs this lane in the
-//           background (in-process queue, sync.server.ts) so a rule on a large
-//           collection never holds the request.
-// `staleRisk` = some product may still carry refs the new config no longer
-// gives it: a clear failed, a failed SET would have REMOVED a ref (its new set
-// of refs is not a superset of what Shopify has — audit P2-1), or the plan
-// could not finish. The orchestrator then HOLDS the new shop config (M1).
-// A failed SET that only adds refs does not hold anything.
+//           rule refs: until written they simply lack the new rules
+//           (under-discount, never a wrong value). The admin save runs this
+//           lane in the background (in-process queue, sync.server.ts) so a
+//           rule on a large collection never holds the request.
+// `staleRisk` = some product may not carry what the new config relies on: a
+// clear failed, a failed SET would have REMOVED a rule ref (its new set of
+// rule refs is not a superset of what Shopify has — audit P2-1) or CHANGED
+// its marginRefs (MVP 2 audit P2-3, see above), or the plan could not finish.
+// The orchestrator then HOLDS the new shop config (M1) and the run is retried.
+// A failed SET that only adds rule refs (or only drops marginRefs no setting
+// names any more) does not hold anything.
 // `entry.oversized` (the engine had to shrink a product over its 9 000 B
 // budget) is surfaced as a warning step naming the product and the rules.
 //
@@ -64,7 +85,7 @@
 // re-verifies and rewrites them all.
 
 import { marginCollectionIds } from "@won/core/discounts/margin";
-import { parseRuleRef, productMetafieldValue } from "@won/core/discounts/targeting";
+import { parseRuleRef, productMetafieldValue, variantKey } from "@won/core/discounts/targeting";
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import { PRODUCT_KEY, WON_NAMESPACE } from "./graphql";
@@ -187,6 +208,8 @@ export interface ProductSyncArgs {
   productRuleIndex: (config: ConfigView, products: readonly SyncProductInput[]) => Map<string, SyncProductEntry>;
   /** Check a sample of the index against Shopify first (the shop config was missing: first sync after an install). */
   verifyIndex?: boolean;
+  /** The collection size check already made for this sync (step 0 builds the payload from it); absent = made here. */
+  limits?: CollectionLimits;
   /**
    * Checked before every Shopify read and write: true stops the pass with
    * SyncCancelled (a products-only refresh superseded by a newer sync). The
@@ -220,8 +243,10 @@ export interface ProductPlan {
   sets: IndexedWrite[];
   /** Before the flip: products that no longer belong to any target. */
   clears: string[];
-  /** After the flip: products without Won refs that only gain some (not read yet). */
+  /** After the flip: products without Won refs that only gain rule refs (not read yet). */
   additions: Write[];
+  /** The numeric ids the margin collections of this pass ship under (onlyAddsRefs: a dropped ref to anything else holds nothing). */
+  liveMarginRefs: string[];
 }
 
 export interface ProductSyncResult {
@@ -239,33 +264,90 @@ class CollectionTooLarge extends Error {
 }
 
 type RuleView = ConfigView["modules"]["codes"]["rules"][number];
+type MarginView = { enabled: boolean; global: { minMarginPercent?: number; maxDiscountPercent: number }; perCollection: { collectionId: string; minMarginPercent?: number; maxDiscountPercent?: number }[] };
+
+/** A margin collection that did not fit MAX_COLLECTION_PRODUCTS (folded into the payload's global values). */
+export interface MarginTooLarge {
+  collectionId: string;
+  /** Its Shopify title (null when Shopify did not say). */
+  title: string | null;
+  /** Its product count; null when Shopify only counted "at least" (over its own limit). */
+  count: number | null;
+}
+
+/** What the collection size check decided for one sync (see the header). */
+export interface CollectionLimits {
+  /** The config whose product refs this pass computes: collections that do not fit are left out. */
+  config: ConfigView;
+  /**
+   * The config the SHOP PAYLOAD is built from (sync.server.ts step 0): the
+   * margin collections that do not fit folded into the global values and into
+   * every other collection's own values, strictest wins. Rule targets are as
+   * given (the payload does not carry them; the product refs do).
+   */
+  payloadConfig: ConfigView;
+  steps: SyncStep[];
+  marginTooLarge: MarginTooLarge[];
+}
 
 /**
- * The config whose product refs this pass computes: collections that do not
- * fit MAX_COLLECTION_PRODUCTS (together, in config order) are taken out of
- * every rule's and campaign re-target's collection list, with one failed step
- * per rule they are taken from. Sizes unreadable → unchanged (the backstop).
+ * Fold `dropped` margin collections into the global values AND into every
+ * remaining collection's own values (max min-margin, min max-discount): a
+ * product whose refs name only remaining collections (or none) never gets a
+ * looser floor than a dropped collection it may be in. Fail closed: products
+ * in none of them get the stricter values too ("platí přísnější hodnota pro
+ * celý obchod"). The input is never changed.
  */
-async function limitCollections(args: ProductSyncArgs): Promise<{ config: ConfigView; steps: SyncStep[] }> {
+export function foldMarginCollections(config: ConfigView, dropped: ReadonlySet<string>): ConfigView {
+  const out = JSON.parse(JSON.stringify(config)) as ConfigView & { modules: { margin: MarginView } };
+  const margin = out.modules.margin;
+  let min: number | undefined;
+  let max: number | undefined;
+  for (const o of margin.perCollection) {
+    if (!dropped.has(o.collectionId)) continue;
+    if (o.minMarginPercent !== undefined) min = Math.max(min ?? 0, o.minMarginPercent);
+    if (o.maxDiscountPercent !== undefined) max = Math.min(max ?? 100, o.maxDiscountPercent);
+  }
+  if (min !== undefined) margin.global.minMarginPercent = Math.max(margin.global.minMarginPercent ?? 0, min);
+  if (max !== undefined) margin.global.maxDiscountPercent = Math.min(margin.global.maxDiscountPercent, max);
+  margin.perCollection = margin.perCollection
+    .filter((o) => !dropped.has(o.collectionId))
+    .map((o) => ({
+      ...o,
+      ...(o.minMarginPercent !== undefined && min !== undefined ? { minMarginPercent: Math.max(o.minMarginPercent, min) } : {}),
+      ...(o.maxDiscountPercent !== undefined && max !== undefined ? { maxDiscountPercent: Math.min(o.maxDiscountPercent, max) } : {}),
+    }));
+  return out;
+}
+
+/**
+ * The collection size check (see the header): sizes read once, the margin
+ * collections counted first, then the rules' in config order. Sizes
+ * unreadable → nothing left out (the paging backstop still stops a read that
+ * runs past the limit).
+ */
+export async function collectionLimits(args: Pick<ProductSyncArgs, "transport" | "config" | "isCancelled">): Promise<CollectionLimits> {
   const { transport, config } = args;
-  const ids = [...targetScopes(config).collectionIds];
-  if (ids.length === 0) return { config, steps: [] };
-  const sizes = new Map<string, { count: number; exact: boolean }>();
+  const marginIds = marginCollectionIds(config.modules.margin);
+  const marginSet = new Set(marginIds);
+  const ids = [...marginIds, ...[...targetScopes(config).collectionIds].filter((id) => !marginSet.has(id))];
+  const unchanged: CollectionLimits = { config, payloadConfig: config, steps: [], marginTooLarge: [] };
+  if (ids.length === 0) return unchanged;
+  const sizes = new Map<string, { count: number; exact: boolean; title: string | null }>();
   try {
     for (const batch of chunks(ids, NODES_BATCH)) {
       checkCancelled(args);
-      const data: { nodes: ({ id?: string; productsCount?: { count: number; precision: string } | null } | null)[] } = await transport.call(
-        "collectionSizes",
-        { ids: batch },
-      );
+      const data: { nodes: ({ id?: string; title?: string | null; productsCount?: { count: number; precision: string } | null } | null)[] } =
+        await transport.call("collectionSizes", { ids: batch });
       batch.forEach((id, i) => {
-        const count = data.nodes[i]?.productsCount;
-        if (count) sizes.set(id, { count: count.count, exact: count.precision === "EXACT" });
+        const node = data.nodes[i];
+        const count = node?.productsCount;
+        if (count) sizes.set(id, { count: count.count, exact: count.precision === "EXACT", title: typeof node?.title === "string" ? node.title : null });
       });
     }
   } catch (error) {
     if (error instanceof Response || error instanceof SyncCancelled) throw error;
-    return { config, steps: [] };
+    return unchanged;
   }
   const tooLarge = new Set<string>();
   let total = 0;
@@ -275,9 +357,10 @@ async function limitCollections(args: ProductSyncArgs): Promise<{ config: Config
     if (!size.exact || total + size.count > MAX_COLLECTION_PRODUCTS) tooLarge.add(id);
     else total += size.count;
   }
-  if (tooLarge.size === 0) return { config, steps: [] };
+  if (tooLarge.size === 0) return unchanged;
+  const titleOf = (id: string) => sizes.get(id)?.title ?? null;
 
-  const out = JSON.parse(JSON.stringify(config)) as ConfigView & { modules: { codes: { rules: RuleView[] } } };
+  const out = JSON.parse(JSON.stringify(config)) as ConfigView & { modules: { codes: { rules: RuleView[] }; margin: MarginView } };
   const affected = new Map<string, { name: string; collections: Set<string> }>();
   const strip = (ruleId: string, name: string, target: unknown) => {
     const t = target as { kind?: unknown; ids?: unknown } | null;
@@ -295,27 +378,33 @@ async function limitCollections(args: ProductSyncArgs): Promise<{ config: Config
     if (campaign.killed) continue;
     for (const override of campaign.overrides) strip(override.ruleId, names.get(override.ruleId) ?? override.ruleId, (override.patch as { target?: unknown }).target);
   }
+  const quoted = (ids: Iterable<string>) => [...ids].map((id) => `"${titleOf(id) ?? "(untitled collection)"}"`).join(", ");
   const steps: SyncStep[] = [...affected].map(([ruleId, { name, collections }]) => ({
     step: `products.too_large:${ruleId}`,
     ok: false,
     detail:
-      `"${name || ruleId}" does not apply at checkout to ${[...collections].join(", ")}: the targeted collections have more than ` +
+      `"${name || ruleId}" does not apply at checkout to ${quoted(collections)}: the targeted collections have more than ` +
       `${MAX_COLLECTION_PRODUCTS} products together, more than Won reads per sync — every other rule is synced as usual`,
   }));
-  // A margin collection that does not fit: its products keep the global margin setting (said, never silent).
-  const margin = out.modules.margin as unknown as { perCollection: { collectionId: string }[] };
-  const droppedMargin = margin.perCollection.filter((o) => tooLarge.has(o.collectionId)).map((o) => o.collectionId);
-  if (droppedMargin.length > 0) {
-    margin.perCollection = margin.perCollection.filter((o) => !tooLarge.has(o.collectionId));
+  // A margin collection that does not fit: no new refs for its products; the payload folds it (fail closed).
+  const droppedMargin = marginIds.filter((id) => tooLarge.has(id));
+  const marginTooLarge: MarginTooLarge[] = droppedMargin.map((collectionId) => {
+    const size = sizes.get(collectionId)!;
+    return { collectionId, title: size.title, count: size.exact ? size.count : null };
+  });
+  for (const m of marginTooLarge) {
     steps.push({
       step: "margin.too_large",
       ok: false,
       detail:
-        `the margin setting of ${[...new Set(droppedMargin)].join(", ")} does not apply at checkout (its products get the global setting): ` +
-        `the collections Won reads have more than ${MAX_COLLECTION_PRODUCTS} products together`,
+        `the margin setting of ${m.collectionId} ("${m.title ?? "untitled"}", ${m.count ?? `more than ${MAX_COLLECTION_PRODUCTS}`} products) does not fit the ` +
+        `${MAX_COLLECTION_PRODUCTS} products Won reads per sync: its values are folded into the whole store's (the stricter value applies everywhere)`,
+      params: { collectionId: m.collectionId, collection: m.title ?? "", count: m.count },
     });
   }
-  return { config: out, steps };
+  const dropped = new Set(droppedMargin);
+  if (dropped.size > 0) out.modules.margin.perCollection = out.modules.margin.perCollection.filter((o) => !dropped.has(o.collectionId));
+  return { config: out, payloadConfig: dropped.size > 0 ? foldMarginCollections(config, dropped) : config, steps, marginTooLarge };
 }
 
 async function targetedProducts(args: ProductSyncArgs, scopes: Scopes) {
@@ -395,30 +484,41 @@ async function readProductValues(transport: Transport, ids: readonly string[], i
 interface Refs {
   ruleIds: Set<string>;
   variants: Map<string, Set<string>>;
+  marginRefs: Set<string>;
 }
 
 /** The refs a product metafield value carries ({} for none); null when it cannot be read. */
 function refsOf(value: string | null | undefined): Refs | null {
-  if (value === null || value === undefined) return { ruleIds: new Set(), variants: new Map() };
+  if (value === null || value === undefined) return { ruleIds: new Set(), variants: new Map(), marginRefs: new Set() };
   try {
-    const parsed = JSON.parse(value) as { ruleIds?: unknown; variantRuleIds?: unknown };
+    const parsed = JSON.parse(value) as { ruleIds?: unknown; variantRuleIds?: unknown; marginRefs?: unknown };
     const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
     const variants = new Map<string, Set<string>>();
     if (parsed.variantRuleIds && typeof parsed.variantRuleIds === "object") {
       for (const [variant, refs] of Object.entries(parsed.variantRuleIds as Record<string, unknown>)) variants.set(variant, new Set(strings(refs)));
     }
-    return { ruleIds: new Set(strings(parsed.ruleIds)), variants };
+    return { ruleIds: new Set(strings(parsed.ruleIds)), variants, marginRefs: new Set(strings(parsed.marginRefs)) };
   } catch {
     return null;
   }
 }
 
 /**
- * True when writing `next` over `current` only ADDS refs: every ref the
- * product has now stays (product-wide, or on the same variant — a product-wide
- * ref covers every variant). An unreadable current value is never "only adds".
+ * True when a FAILED write of `next` over `current` is harmless — it holds
+ * nothing (see the header): every rule ref the product has now stays
+ * (product-wide, or on the same variant — a product-wide ref covers every
+ * variant) and its marginRefs do not change (MVP 2 audit P2-3: the core writes
+ * the DECISIVE collections, so a value change can replace a ref, not only add
+ * one). The one harmless marginRef change is dropping refs whose collections
+ * have no setting in force any more (`liveMarginRefs` = the numeric ids the
+ * new config's margin collections ship under): checkout ignores a ref its
+ * config does not name (core resolveMargin), so the stale ref never loosens a
+ * floor. Any other stale ref could — a collection may be looser than the
+ * global values, and a product whose only ref it is gets its values. Without
+ * `liveMarginRefs` every marginRef change holds. An unreadable current value
+ * is never "only adds".
  */
-export function onlyAddsRefs(next: string, current: string | null | undefined): boolean {
+export function onlyAddsRefs(next: string, current: string | null | undefined, liveMarginRefs?: ReadonlySet<string>): boolean {
   const have = refsOf(current);
   const want = refsOf(next);
   if (!have || !want) return false;
@@ -426,7 +526,14 @@ export function onlyAddsRefs(next: string, current: string | null | undefined): 
   for (const [variant, refs] of have.variants) {
     for (const ref of refs) if (!want.ruleIds.has(ref) && !want.variants.get(variant)?.has(ref)) return false;
   }
+  for (const ref of want.marginRefs) if (!have.marginRefs.has(ref)) return false;
+  for (const ref of have.marginRefs) if (!want.marginRefs.has(ref) && (!liveMarginRefs || liveMarginRefs.has(ref))) return false;
   return true;
+}
+
+/** The marginRefs a product metafield value carries (junk → none). */
+function marginRefsOf(value: string | null | undefined): string[] {
+  return [...(refsOf(value)?.marginRefs ?? [])];
 }
 
 // --- Index check after an install ------------------------------------------------------------------
@@ -477,18 +584,23 @@ function safeParse(value: string): unknown {
 // --- Plan -------------------------------------------------------------------------------------
 
 function failedPlan(steps: SyncStep[], staleRisk: boolean): ProductPlan {
-  return { steps, staleRisk, complete: false, sets: [], clears: [], additions: [] };
+  return { steps, staleRisk, complete: false, sets: [], clears: [], additions: [], liveMarginRefs: [] };
 }
 
 export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> {
   const { transport, db, shop } = args;
   const steps: SyncStep[] = [];
-  const limited = await limitCollections(args);
+  const limited = args.limits ?? (await collectionLimits(args));
   steps.push(...limited.steps);
   const config = limited.config;
   const scopes = targetScopes(config);
   const rows = await db.productTargetIndex.findMany({ where: { shop }, select: { productId: true, payloadHash: true, value: true } });
   const indexed = new Map(rows.map((row) => [row.productId, row.payloadHash]));
+  // A margin collection too large to read: products that already carry its ref keep it (see the header).
+  const keepRefs = new Set(limited.marginTooLarge.map((m) => variantKey(m.collectionId)));
+  // What the payload's `col` names after this pass (the collections that fit): a dropped ref to anything else is ignored at checkout.
+  const liveMarginRefs = marginCollectionIds(config.modules.margin).map(variantKey);
+  const storedValue = new Map(rows.map((row) => [row.productId, row.value]));
   // Rows whose value is recorded (the impact overview reads it); an up-to-date row without one gets it below.
   const valued = new Set(rows.filter((row) => row.value !== null).map((row) => row.productId));
   const unrecorded: { productId: string; value: string }[] = [];
@@ -512,7 +624,7 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
   const candidates = [...new Set([...targeted, ...indexed.keys()])].sort();
   if (candidates.length === 0) {
     steps.push({ step: "products", ok: true, detail: "no targeted products and none to clean" });
-    return { steps, staleRisk: false, complete: true, sets: [], clears: [], additions: [] };
+    return { steps, staleRisk: false, complete: true, sets: [], clears: [], additions: [], liveMarginRefs };
   }
   const inputs: SyncProductInput[] = candidates.map((productId) => ({
     productId,
@@ -526,7 +638,14 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
   const toClear: string[] = [];
   const oversized: string[] = [];
   for (const productId of candidates) {
-    const entry = entries.get(productId);
+    let entry = entries.get(productId);
+    if (keepRefs.size > 0) {
+      const kept = marginRefsOf(storedValue.get(productId)).filter((ref) => keepRefs.has(ref));
+      if (kept.length > 0) {
+        const base: SyncProductEntry = entry ?? { ruleIds: [], variantRuleIds: {} };
+        entry = { ...base, marginRefs: [...new Set([...(base.marginRefs ?? []), ...kept])].sort() };
+      }
+    }
     const reduced = entry?.oversized;
     if (reduced) {
       const parts = [
@@ -557,7 +676,10 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
     );
   }
   const wantedIndexed = [...wanted.keys()].filter((productId) => indexed.has(productId));
-  const additions = [...wanted].filter(([productId]) => !indexed.has(productId)).map(([productId, w]) => ({ productId, ...w }));
+  // Products without Won refs yet: only-rule gains go AFTER the flip; a gained marginRef goes BEFORE it (audit P2-3).
+  const newcomers = [...wanted].filter(([productId]) => !indexed.has(productId)).map(([productId, w]) => ({ productId, ...w }));
+  const additions = newcomers.filter((w) => marginRefsOf(w.value).length === 0);
+  const marginNewcomers = newcomers.filter((w) => marginRefsOf(w.value).length > 0);
   steps.push({
     step: "products.scope",
     ok: true,
@@ -575,19 +697,26 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
     });
   }
 
-  // Read the products that already carry our metafield and must change: deleted ones are dropped, an identical value is only recorded.
+  // Read the products that already carry our metafield and must change, and the newcomers that gain a
+  // marginRef: deleted ones are dropped, an identical value is only recorded.
   const sets: IndexedWrite[] = [];
   const recorded: { productId: string; hash: string; value: string }[] = [];
   const gone: string[] = [];
   const clearing = new Set(toClear);
   let values: Map<string, MetafieldNode>;
   try {
-    values = await readProductValues(transport, [...wantedIndexed, ...toClear], args.isCancelled);
+    values = await readProductValues(transport, [...wantedIndexed, ...toClear, ...marginNewcomers.map((w) => w.productId)], args.isCancelled);
   } catch (error) {
     if (error instanceof Response || error instanceof SyncCancelled) throw error;
     steps.push({ step: "products", ok: false, detail: `could not read the products to update: ${errorText(error)}` });
-    // Every one of them may lose a ref: nothing may flip before they are written.
-    return failedPlan(steps, toClear.length > 0 || wantedIndexed.length > 0);
+    // Every one of them may lose a ref, or lack a stricter collection the new config relies on: nothing may flip.
+    return failedPlan(steps, toClear.length > 0 || wantedIndexed.length > 0 || marginNewcomers.length > 0);
+  }
+  for (const write of marginNewcomers) {
+    const node = values.get(write.productId);
+    if (!node) continue; // deleted meanwhile: nothing to write, nothing indexed
+    if (sameJson(node.metafield?.value, write.value)) recorded.push(write);
+    else sets.push({ ...write, current: node.metafield?.value ?? null });
   }
   for (const productId of wantedIndexed) {
     const node = values.get(productId);
@@ -605,7 +734,7 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
   }
   if (gone.length) await db.productTargetIndex.deleteMany({ where: { shop, productId: { in: gone } } });
   for (const { productId, hash, value } of recorded) await upsertRow(db, shop, productId, hash, value);
-  return { steps, staleRisk: false, complete: true, sets, clears: [...clearing], additions };
+  return { steps, staleRisk: false, complete: true, sets, clears: [...clearing], additions, liveMarginRefs };
 }
 
 // --- Writes -----------------------------------------------------------------------------------
@@ -627,8 +756,9 @@ async function writeBatch(args: ProductSyncArgs, batch: readonly Write[]): Promi
 }
 
 /**
- * The BEFORE lane: changes to products that carry Won refs, and clears. A
- * failed write that would have removed a ref, or a failed clear, is `staleRisk`.
+ * The BEFORE lane: changes to products that carry Won refs, products that gain
+ * a marginRef, and clears. A failed write that would have removed a rule ref
+ * or added a marginRef (onlyAddsRefs false), or a failed clear, is `staleRisk`.
  */
 export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPlan): Promise<ProductSyncResult> {
   const { transport, db, shop } = args;
@@ -638,12 +768,13 @@ export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPl
   let setOk = 0;
   const setErrors: string[] = [];
   let reductionFailed = 0;
+  const live = new Set(plan.liveMarginRefs);
   for (const batch of chunks(plan.sets, METAFIELDS_SET_BATCH)) {
     checkCancelled(args);
     const error = await writeBatch(args, batch);
     if (error) {
       setErrors.push(error);
-      const reductions = batch.filter((w) => !onlyAddsRefs(w.value, w.current)).length;
+      const reductions = batch.filter((w) => !onlyAddsRefs(w.value, w.current, live)).length;
       if (reductions > 0) {
         reductionFailed += reductions;
         staleRisk = true;
@@ -661,7 +792,7 @@ export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPl
           ? `${setOk} product(s) updated`
           : `${setOk}/${plan.sets.length} product(s) updated; ${setErrors.join("; ")}` +
             (reductionFailed > 0
-              ? ` (${reductionFailed} of them still carry rules they should lose: the new config is held)`
+              ? ` (${reductionFailed} of them do not carry what the new config relies on — a rule they should lose, or a stricter margin collection: the new config is held)`
               : " (they lack the new rules until the next sync)"),
     });
   }

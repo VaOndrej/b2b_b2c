@@ -106,6 +106,12 @@ export interface SyncStep {
   detail: string;
   /** ok, but the merchant should know (e.g. a product reduced to fit its budget). */
   warning?: boolean;
+  /**
+   * The values the admin words the step with (sync-copy.ts), when `detail`
+   * alone would need parsing — e.g. `margin.too_large:<collectionId>`:
+   * {collection: title, count: products or null when Shopify only said "at least"}.
+   */
+  params?: Record<string, string | number | null>;
 }
 
 /**

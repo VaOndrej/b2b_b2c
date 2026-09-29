@@ -17,7 +17,9 @@
 //                  VariantCost), the shop currency as the config's `cur`, and
 //                  `shopToCartRate` (1 in the shop currency; otherwise an
 //                  estimate from market prices — checkout uses Shopify's
-//                  presentmentCurrencyRate, so the view says it is an estimate);
+//                  presentmentCurrencyRate, so the view says it is an estimate;
+//                  a line whose cost could not be converted is never said to
+//                  have "no purchase cost", audit P2-1c);
 //   day            `today` = the chosen shop-local date;
 //   output         core checkoutPreview (item 8): every node's output mapped
 //                  exactly as the function maps it — the per-line amounts and
@@ -30,7 +32,7 @@
 // read from Shopify by try-cart.server.ts), so the harness renders a real plan.
 
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
-import { formatMoney } from "@won/core/discounts/describe";
+import { describeMarginReason, formatMoney, formatPercent } from "@won/core/discounts/describe";
 import { costMinorUnits } from "@won/core/discounts/margin";
 import { explainPlan } from "@won/core/discounts/explain";
 import { checkoutPreview, roundingTiePossible, type CheckoutPreview } from "@won/core/discounts/function-output";
@@ -39,6 +41,7 @@ import { planCart, type CartPlan, type PlanConfig } from "@won/core/discounts/pl
 import type { CartLineInput, CartPlanInput } from "@won/core/discounts/cart";
 import { productRuleIndex, ruleRef, variantKey } from "@won/core/discounts/targeting";
 
+import { t } from "../../i18n";
 import { refTargetsCollections } from "../sync/products";
 import type { CartPlanView, UiText } from "../../components/model/types";
 
@@ -236,6 +239,34 @@ function previewWarnings(plan: CartPlan, preview: CheckoutPreview, locale: "cs" 
   return out;
 }
 
+/**
+ * Audit P2-1c: the engine explains a line capped by the percent ceiling as
+ * "the item has no cost price" (core describeMarginReason: basis
+ * `max_percent`). For a line that HAS a cost which could not be converted into
+ * the cart currency that would be untrue, so its sentence is worded here:
+ * the engine's item is recognised by its line and its own reason text (the
+ * same core function), and replaced — nothing else is touched.
+ */
+function notConvertedText(
+  item: { text: string; lineIds?: readonly string[] },
+  plan: CartPlan,
+  notConverted: ReadonlySet<string>,
+  input: Pick<TryCartPlanInput, "locale" | "currency">,
+): string | null {
+  if (!item.lineIds || item.lineIds.length !== 1 || !notConverted.has(item.lineIds[0]!)) return null;
+  const line = plan.lines.find((l) => l.lineId === item.lineIds![0]);
+  const cap = line?.marginCapped;
+  if (!cap || cap.basis !== "max_percent" || !item.text.includes(describeMarginReason(cap, input.locale))) return null;
+  const params = {
+    before: formatMoney(cap.before, plan.currency, input.locale),
+    after: formatMoney(cap.after, plan.currency, input.locale),
+    currency: input.currency,
+    percent: formatPercent(cap.maxDiscountPercent ?? 0, input.locale),
+    source: cap.source === "collection" ? ` (${t(input.locale, "margin.impact.source.collection")})` : "",
+  };
+  return t(input.locale, cap.after > 0 ? "tryCart.margin.noRate.lowered" : "tryCart.margin.noRate.dropped", params);
+}
+
 export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput): CartPlanView {
   const now = `${input.date}T${input.time}`;
   const encoded = buildShopFunctionConfig(config, {
@@ -296,6 +327,19 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
   const marginOn = config.modules.margin.enabled === true;
   const orderExcluded = new Set(plan.order?.marginExcludedLineIds ?? []);
   const capped = (line: (typeof plan.lines)[number]) => line.marginCapped !== undefined || orderExcluded.has(line.lineId);
+  // Lines margin applies to whose cost is unknown in the cart currency: none at all, or one that
+  // could not be converted (audit P2-1c: never said as "no purchase cost").
+  const inputOf = new Map(lines.map((l) => [l.id, l]));
+  const costUnknown = (lineId: string) => {
+    const line = inputOf.get(lineId);
+    return !line || costMinorUnits(line.unitCost, line.unitCostCurrency, input.shopToCartRate ?? undefined, input.currency, input.shopCurrency ?? undefined) === null;
+  };
+  const hasCost = (lineId: string) => {
+    const cost = inputOf.get(lineId)?.unitCost;
+    return typeof cost === "number" && Number.isFinite(cost) && cost > 0;
+  };
+  const marginLines = plan.lines.filter((planLine) => planLine.excluded === null && costUnknown(planLine.lineId));
+  const notConverted = new Set(marginLines.filter((l) => hasCost(l.lineId)).map((l) => l.lineId));
   return {
     currency: input.currency,
     date: input.date,
@@ -316,20 +360,15 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
       ? {
           margin: {
             rateEstimated: input.rateEstimated === true,
-            // Lines margin protection applies to (not outlet, not gift) whose cost is unknown in the cart
-            // currency (none in the mirror, or not convertible): the "no purchase cost" percent ceiling is
-            // their floor (types.ts CartPlanView.margin).
-            linesWithoutCost: plan.lines.filter((planLine) => {
-              if (planLine.excluded !== null) return false;
-              const line = lines.find((l) => l.id === planLine.lineId);
-              return !line || costMinorUnits(line.unitCost, line.unitCostCurrency, input.shopToCartRate ?? undefined, input.currency, input.shopCurrency ?? undefined) === null;
-            }).length,
+            // types.ts CartPlanView.margin: the "no purchase cost" percent ceiling is these lines' floor.
+            linesWithoutCost: marginLines.length - notConverted.size,
+            linesCostNotConverted: notConverted.size,
           },
         }
       : {}),
     explain: explainPlan(plan, input.locale, { audience: "admin" }).map((item) => ({
       tone: item.tone,
-      text: item.text,
+      text: notConvertedText(item, plan, notConverted, input) ?? item.text,
       ...(item.lineIds && item.lineIds.length > 0 ? { lineIds: [...item.lineIds] } : {}),
     })),
     totals: {

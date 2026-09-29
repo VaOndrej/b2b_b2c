@@ -112,6 +112,40 @@ test("reconcile starts at most maxShops jobs per run", async () => {
   await Promise.all(result.started.map((s) => costIdle(s.shop)));
 });
 
+test("reconcile rotates (audit P3-1): the least recently attempted shops first — never scanned, then the oldest scan — not alphabetically; failing shops never take every slot", async () => {
+  const fake = new FakeShopify();
+  const failedAt = (ms: number) => JSON.stringify({ token: "t", since: new Date(NOW.getTime() - ms).toISOString(), done: 0, total: null, failedAt: new Date(NOW.getTime() - ms).toISOString(), error: "costs.read: Throttled" });
+  // Alphabetically first: three shops whose pass keeps failing (failed 20 min ago, never scanned).
+  const failing = [1, 2, 3].map((i) => `a-${i}-${shop}`);
+  for (const s of failing) {
+    await saveMargin(s, true);
+    await db.prisma.shopSyncState.create({ data: { shop: s, costsPending: failedAt(20 * 60_000) } });
+  }
+  const never = `n-never-${shop}`;
+  const older = `m-older-${shop}`;
+  const old = `z-old-${shop}`;
+  await saveMargin(never, true);
+  await saveMargin(older, true);
+  await saveMargin(old, true);
+  await db.prisma.shopSyncState.create({ data: { shop: older, costsScannedAt: new Date(NOW.getTime() - 40 * HOUR) } });
+  await db.prisma.shopSyncState.create({ data: { shop: old, costsScannedAt: new Date(NOW.getTime() - 30 * HOUR) } });
+  const run = (maxShops: number) =>
+    runCostReconcileOnce({ db: db.prisma, clientFor: async () => fake, plan: async () => "free", now: () => NOW, maxShops });
+  const first = await run(2);
+  assert.deepEqual(first.started.map((s) => s.shop), [never, older], "never scanned first, then the oldest scan — the failing shops wait");
+  await Promise.all(first.started.map((s) => costIdle(s.shop)));
+  // Per-shop cap: a shop whose pass failed within COST_RECONCILE_FAILED_INTERVAL_MS gets no slot from the reconcile.
+  const second = await run(5);
+  assert.deepEqual(second.started.map((s) => s.shop), [old], "the recently failed shops are capped");
+  await Promise.all(second.started.map((s) => costIdle(s.shop)));
+  // Once their cap has passed they rotate in, the least recently attempted first.
+  await db.prisma.shopSyncState.update({ where: { shop: failing[1]! }, data: { costsPending: failedAt(8 * HOUR) } });
+  await db.prisma.shopSyncState.update({ where: { shop: failing[2]! }, data: { costsPending: failedAt(7 * HOUR) } });
+  const third = await run(1);
+  assert.deepEqual(third.started.map((s) => s.shop), [failing[1]], "failed 8 h ago before 7 h ago, never the one that failed 20 min ago");
+  await Promise.all(third.started.map((s) => costIdle(s.shop)));
+});
+
 test("webhook refresher: queued items and products flush as ONE mirror job with the offline session; no session → dropped", async () => {
   const fake = new FakeShopify();
   const a = fake.addProduct(1, 1);

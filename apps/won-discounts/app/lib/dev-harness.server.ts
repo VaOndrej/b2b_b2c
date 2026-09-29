@@ -18,7 +18,7 @@
 
 import { codeHash } from "@won/core/discounts/code-hash";
 import { DEFAULT_CONFIG, readStoredConfig, sanitizeConfig, type WonDiscountsConfig } from "@won/core/discounts/config";
-import { buildMarginPayload, marginImpact, resolveMargin, type MarginVariant } from "@won/core/discounts/margin";
+import type { MarginVariant } from "@won/core/discounts/margin";
 import { explainGate, gateConfigForPlan } from "@won/core/discounts/plan-gate";
 import { productRuleIndex, variantKey } from "@won/core/discounts/targeting";
 
@@ -28,9 +28,9 @@ import type {
   CostCoverageView,
   CostMirrorView,
   GateNoteView,
-  MarginImpactRowView,
   MarginImpactView,
   MarginOverviewView,
+  MarginRuleImpactView,
   MarginScreenData,
   MarginSettingsView,
   NativeView,
@@ -41,6 +41,8 @@ import type {
 import { lossText, undoCostTexts, warningText } from "./native/copy";
 import { isDevHarnessEnvironment } from "./dev-harness-env";
 import { wordIssues } from "./integration/issue-copy";
+import { impactRulesOf, impactView } from "./integration/margin-impact-view";
+import { foldMarginCollections } from "./sync/products";
 import { planTryCart } from "./integration/try-cart-plan";
 
 export function isDevHarnessEnabled(): boolean {
@@ -510,10 +512,11 @@ function marginSettingsView(config: WonDiscountsConfig, opts: { collections: boo
 
 /**
  * Přehled zásahů for the fixture catalogue: the REAL core marginImpact on the
- * config and the fixture costs (what margin.server.ts computes from the cost
- * mirror), mapped to the view (source = core resolveMargin's).
+ * config and the fixture costs (what margin-impact.server.ts computes from the
+ * cost mirror in the background), per rule, through the same view the server
+ * sends (margin-impact-view.ts; `focusRuleId` = `?rule=`, filtered there).
  */
-export function devMarginImpact(config: WonDiscountsConfig, variants: readonly DevCostVariant[] = DEV_COST_VARIANTS): MarginImpactView {
+function devImpactRules(config: WonDiscountsConfig, variants: readonly DevCostVariant[] = DEV_COST_VARIANTS) {
   const byProduct = new Map<string, { variantIds: string[]; collectionIds: Set<string> }>();
   for (const v of variants) {
     const entry = byProduct.get(v.productId) ?? { variantIds: [], collectionIds: new Set<string>() };
@@ -537,42 +540,27 @@ export function devMarginImpact(config: WonDiscountsConfig, variants: readonly D
       marginRefs: entry?.marginRefs ?? [],
     };
   });
-  const impact = marginImpact(config, measured, "CZK");
-  const payload = buildMarginPayload({ ...config.modules.margin, enabled: true }, "CZK");
-  const refsOf = new Map(measured.map((m) => [m.variantId, m.marginRefs]));
-  const names = new Map(config.modules.codes.rules.map((r) => [r.id, r.name]));
-  const rows: MarginImpactRowView[] = impact.rules
-    .filter((r) => r.discountClass === "product")
-    .flatMap((r) =>
-      r.capped.map((c) => ({
-        ruleId: r.ruleId,
-        ruleName: names.get(r.ruleId) ?? "",
-        productId: c.productId,
-        variantId: c.variantId,
-        title: c.title,
-        wanted: c.wanted,
-        allowed: c.allowed,
-        basis: c.basis,
-        source: resolveMargin(payload, refsOf.get(c.variantId) ?? [])?.source ?? ("global" as const),
-      })),
-    )
-    .sort((a, b) => b.wanted - b.allowed - (a.wanted - a.allowed))
-    .slice(0, 50);
-  return {
-    rows,
-    orderRules: impact.rules
-      .filter((r) => r.discountClass === "order" && r.variants > 0)
-      .map((r) => ({ ruleId: r.ruleId, ruleName: names.get(r.ruleId) ?? "", variantsBelow: r.variants })),
-    withoutCost: impact.withoutCost,
-  };
+  return impactRulesOf(config, measured, "CZK");
 }
 
-/** The rule editor's note: on how many products protection lowers this rule (ruleMarginImpact on the fixture). */
-export function devRuleMarginImpact(ruleId: string): number | null {
-  const impact = devMarginImpact(DEV_MARGIN_FIXTURE);
-  const products = new Set(impact.rows.filter((r) => r.ruleId === ruleId).map((r) => r.productId));
-  const order = impact.orderRules.find((r) => r.ruleId === ruleId)?.variantsBelow ?? 0;
-  return products.size + order;
+export function devMarginImpact(
+  config: WonDiscountsConfig,
+  opts: { variants?: readonly DevCostVariant[]; focusRuleId?: string | null; status?: MarginImpactView["status"] } = {},
+): MarginImpactView {
+  const status = opts.status ?? "ready";
+  const impact = status === "computing" ? null : devImpactRules(config, opts.variants);
+  return impactView({ impact, status }, config, opts.focusRuleId);
+}
+
+/**
+ * The rule editor's note (ruleMarginImpact on the fixture): `pro` = the count
+ * of variants (Pro), else no number (Free); `computing` = nothing computed yet.
+ */
+export function devRuleMarginImpact(ruleId: string, opts: { pro?: boolean; computing?: boolean } = {}): MarginRuleImpactView | null {
+  if (opts.computing) return { state: "computing" };
+  const rule = devImpactRules(DEV_MARGIN_FIXTURE).rules.find((r) => r.ruleId === ruleId);
+  if (!rule || rule.variants === 0) return null;
+  return opts.pro ? { state: "ready", discountClass: rule.discountClass, variants: rule.variants } : { state: "ready", discountClass: rule.discountClass };
 }
 
 const DEV_MIRROR_FRESH: CostMirrorView = { state: "fresh", at: "2026-09-28T06:10:00" };
@@ -593,22 +581,45 @@ const DEV_COVERAGE: CostCoverageView = {
   ],
 };
 
+/** A larger catalogue for Přehled zásahů (state `many`): 16 more Mikina Won variants in Podzimní kolekce. */
+const DEV_MANY_VARIANTS: DevCostVariant[] = [
+  ...DEV_COST_VARIANTS,
+  ...["S", "M", "L", "XL"].flatMap((size, i) =>
+    ["šedá", "modrá", "zelená", "bílá"].map((color, j) => ({
+      productId: "gid://shopify/Product/1",
+      variantId: `gid://shopify/ProductVariant/11${i}${j}`,
+      title: `Mikina Won — ${size} / ${color}`,
+      price: 1290_00,
+      cost: 900 + i * 10 + j,
+      collectionIds: [DEV_C7],
+    })),
+  ),
+];
+
 /**
  * Ochrana marže as loadMarginScreen hands it over, per harness state:
- *   default  on, costs read this morning, 8 products without a cost;
- *   running  just switched on: the first read of the costs is running (nothing known yet);
- *   zero     every product has a cost;
- *   off      protection off, never read;
- *   stale    the last full read is 2 days old ("Obnovit nákupní ceny");
- *   failed   the last read failed;
- *   gate     Free with collection settings stored (folded, core explainGate).
- * Pro (`plan`) gets the collection settings and Přehled zásahů (core marginImpact);
- * Free gets `impact: null` (BILL-1).
+ *   default          on, costs read this morning, 8 products without a cost;
+ *   running          just switched on: the first read of the costs is running (nothing known yet:
+ *                    the ceiling-only sentence, audit P2-1; the impact is still being computed);
+ *   failed-first     the first read failed (coverage unknown: the ceiling-only sentence);
+ *   reauth           the background has no Shopify session (OQ4: "open the app");
+ *   zero             every product has a cost;
+ *   off              protection off, never read;
+ *   stale            the last full read is 2 days old ("Obnovit nákupní ceny");
+ *   failed           a later read failed (the costs of the last complete read stay);
+ *   too-large        Pro: Podzimní kolekce did not fit the 10 000-product limit (P1-1);
+ *   many             Pro: a rule lowered on 19 variants (10 rows shown, the count says all);
+ *   impact-updating  Pro: the numbers are being recomputed (the previous ones shown);
+ *   impact-computing Pro: nothing computed yet;
+ *   gate             Free with collection settings stored (folded, core explainGate).
+ * Pro (`plan`) gets the collection settings and Přehled zásahů (core marginImpact,
+ * `focusRuleId` = `?rule=`, narrowed like the server does); Free gets `impact: null` (BILL-1).
  */
-export function devMarginScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en" }): MarginScreenData {
+export function devMarginScreen(opts: { plan: "free" | "pro"; state: string | null; locale: "cs" | "en"; focusRuleId?: string | null }): MarginScreenData {
   const { plan, state } = opts;
   const pro = plan === "pro";
   const collections = pro || state === "gate";
+  const impact = (o: Parameters<typeof devMarginImpact>[1] = {}) => (pro ? devMarginImpact(DEV_MARGIN_FIXTURE, { focusRuleId: opts.focusRuleId, ...o }) : null);
   const base: MarginScreenData = {
     plan,
     shopCurrency: "CZK",
@@ -616,8 +627,9 @@ export function devMarginScreen(opts: { plan: "free" | "pro"; state: string | nu
     settings: marginSettingsView(DEV_MARGIN_FIXTURE, { collections }),
     mirror: DEV_MIRROR_FRESH,
     coverage: DEV_COVERAGE,
-    impact: pro ? devMarginImpact(DEV_MARGIN_FIXTURE) : null,
+    impact: impact(),
     gateNotes: [],
+    tooLarge: [],
   };
   if (state === "gate" && !pro) {
     const { stripped } = gateConfigForPlan(DEV_MARGIN_FIXTURE, "free", { now: "2026-09-28T14:00:00" });
@@ -628,13 +640,26 @@ export function devMarginScreen(opts: { plan: "free" | "pro"; state: string | nu
   }
   switch (state) {
     case "running":
-      return { ...base, mirror: { state: "running", done: 340, total: 1240, since: "2026-09-28T13:55:00" }, coverage: null, impact: null };
+      return { ...base, mirror: { state: "running", done: 340, total: 1240, since: "2026-09-28T13:55:00" }, coverage: null, impact: impact({ status: "computing" }) };
+    case "failed-first":
+      return {
+        ...base,
+        mirror: {
+          state: "failed",
+          at: "2026-09-28T06:10:00",
+          problems: [{ key: "margin.mirror.readFailed" }, { key: "margin.mirror.detail", params: { detail: "costs.read: Throttled (3 attempts)" } }],
+        },
+        coverage: null,
+        impact: impact({ status: "computing" }),
+      };
+    case "reauth":
+      return { ...base, mirror: { state: "failed", at: "2026-09-28T06:10:00", problems: [{ key: "margin.mirror.reauth" }] } };
     case "zero": {
       const withCosts = DEV_COST_VARIANTS.map((v) => ({ ...v, cost: v.cost ?? Math.round(v.price / 200) }));
       return {
         ...base,
         coverage: { variants: 1240, variantsWithCost: 1240, productsWithoutCost: 0, sample: [] },
-        impact: pro ? devMarginImpact(DEV_MARGIN_FIXTURE, withCosts) : null,
+        impact: impact({ variants: withCosts }),
       };
     }
     case "off":
@@ -653,9 +678,22 @@ export function devMarginScreen(opts: { plan: "free" | "pro"; state: string | nu
         mirror: {
           state: "failed",
           at: "2026-09-28T06:10:00",
-          problems: [{ key: "sync.problem.other", params: { detail: "Throttled (3 attempts)" } }],
+          problems: [{ key: "margin.mirror.readFailed" }, { key: "margin.mirror.detail", params: { detail: "costs.read: Throttled (3 attempts)" } }],
         },
       };
+    case "too-large":
+      // What checkout runs: the collection's values folded into the whole store's (the server counts the impact the same way).
+      return {
+        ...base,
+        tooLarge: pro ? [{ collectionId: DEV_C7, title: "Podzimní kolekce", count: 10_400 }] : [],
+        impact: pro ? devMarginImpact(foldMarginCollections(DEV_MARGIN_FIXTURE, new Set([DEV_C7])) as WonDiscountsConfig, { focusRuleId: opts.focusRuleId }) : null,
+      };
+    case "many":
+      return { ...base, impact: impact({ variants: DEV_MANY_VARIANTS }) };
+    case "impact-updating":
+      return { ...base, impact: impact({ status: "updating" }) };
+    case "impact-computing":
+      return { ...base, impact: impact({ status: "computing" }) };
     default:
       return base;
   }
@@ -702,9 +740,35 @@ export function devMarginResult(kind: string | null, locale: "cs" | "en" = "cs")
   }
 }
 
-/** The Přehled card (AdminSignals.margin, filled by loadAdminSignals). */
-export function devMarginOverview(state: "fresh" | "stale" | "off"): MarginOverviewView {
+/**
+ * The Přehled card (AdminSignals.margin, filled by loadStoreSignals): `running` = the
+ * first read of the costs (no green "Běží", the ceiling-only line), `reauth` = the
+ * background has no session (OQ4), `too-large` = a Pro collection over the limit.
+ */
+export function devMarginOverview(state: "fresh" | "stale" | "off" | "running" | "reauth" | "too-large"): MarginOverviewView {
   if (state === "off") return { enabled: false, minMarginPercent: null, maxDiscountPercent: 50, productsWithoutCost: null, mirror: { state: "off" } };
+  if (state === "running") {
+    return { enabled: true, minMarginPercent: 20, maxDiscountPercent: 40, productsWithoutCost: null, mirror: { state: "running", done: 340, total: 1240, since: "2026-09-28T13:55:00" } };
+  }
+  if (state === "reauth") {
+    return {
+      enabled: true,
+      minMarginPercent: 20,
+      maxDiscountPercent: 40,
+      productsWithoutCost: DEV_COVERAGE.productsWithoutCost,
+      mirror: { state: "failed", at: "2026-09-28T06:10:00", problems: [{ key: "margin.mirror.reauth" }] },
+    };
+  }
+  if (state === "too-large") {
+    return {
+      enabled: true,
+      minMarginPercent: 20,
+      maxDiscountPercent: 40,
+      productsWithoutCost: DEV_COVERAGE.productsWithoutCost,
+      mirror: DEV_MIRROR_FRESH,
+      tooLarge: [{ collectionId: DEV_C7, title: "Podzimní kolekce", count: 10_400 }],
+    };
+  }
   return {
     enabled: true,
     minMarginPercent: 20,

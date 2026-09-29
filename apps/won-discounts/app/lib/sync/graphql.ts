@@ -402,6 +402,7 @@ export const GQL = {
     __typename
     ... on Collection {
       id
+      title
       productsCount {
         count
         precision

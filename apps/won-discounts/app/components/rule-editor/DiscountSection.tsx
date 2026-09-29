@@ -10,6 +10,7 @@ import { RowNote, WonSection } from "../shell/WonSection";
 import { describeRuleLine } from "../model/describe";
 import { FIELD, NAME_MAX } from "../model/rule-form";
 import { statusText, type RuleStatus } from "../model/rule-status";
+import type { MarginRuleImpactView } from "../model/types";
 import { CustomerPreview } from "./CustomerPreview";
 import { MarginNote } from "./MarginNote";
 import { FieldGrid, FieldMessage, PickerRow, Shown, type EditorView } from "./parts";
@@ -31,8 +32,8 @@ export function DiscountSection({
   collectionIds: string[];
   onPick: (kind: "products" | "collections") => void;
   pickUnavailable: boolean;
-  /** Products whose discount margin protection lowers (saved rule, protection on); null/absent = none or off. */
-  marginImpact?: number | null;
+  /** Margin protection lowers the saved rule (ruleMarginImpact; Free without a number); null/absent = none or off. */
+  marginImpact?: MarginRuleImpactView | null;
 }) {
   const { draft, defaults, codes, errorFor, tr } = ed;
   const { t } = tr;
@@ -103,7 +104,7 @@ export function DiscountSection({
             <FieldMessage text={errorFor("amount")} />
           </s-stack>
         </Shown>
-        {marginImpact && draft.id !== "new" ? <MarginNote count={marginImpact} ruleId={draft.id} /> : null}
+        {marginImpact && draft.id !== "new" ? <MarginNote impact={marginImpact} ruleId={draft.id} /> : null}
         {defaults.outside.length > 0 ? (
           // §14a: values in currencies whose market is off stay stored; removing one is explicit.
           <s-stack direction="block" gap="small-200">

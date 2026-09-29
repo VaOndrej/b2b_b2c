@@ -6,11 +6,16 @@
 // (markets.ts), nothing is swapped here.
 //
 // Order (T1 function-payload.ts "Sync sequences"; the shop config is the flip):
-//   0. read the shop (id, time zone, currency, current function_config); build
-//      the shop payload with the shop currency (the margin's `cur`: without it
-//      every cost is unknown) — if it does not fit the 9 000 B budget, STOP
-//      before any write (saveConfig measured the same payload, so an accepted
-//      save never stops here);
+//   0. read the shop (id, time zone, currency, current function_config); with
+//      margin protection on and NO shop currency, STOP before any write (the
+//      margin's `cur`: without it every cost would be unknown at checkout, the
+//      percent ceiling alone — the previous config holds, the failed step is
+//      retried); read the targeted collections' sizes (products.ts
+//      collectionLimits: a margin collection over the 10 000-product limit is
+//      FOLDED into the payload's global values, fail closed); build the shop
+//      payload with the shop currency — if it does not fit the 9 000 B budget,
+//      STOP before any write (saveConfig measured the same payload, so an
+//      accepted save never stops here);
 //   P1. only when the campaign version changes (another selected campaign or
 //      window, or the campaign ended/was killed): write a NO-CAMPAIGN shop
 //      config first (`forceNoCampaign`), read back + verified. If P1 fails, the
@@ -77,7 +82,7 @@ import { gateConfigForPlan, type ShopPlan, type StrippedCapability } from "@won/
 import { SHOP_CONFIG_KEY, WON_NAMESPACE } from "./graphql";
 import { desiredNodes, SYNC_RUNS_KEPT, type DesiredNode } from "./nodes";
 import { NodeSync } from "./node-sync";
-import { applyProductAdditions, applyProductChanges, planProducts, syncProducts, type ProductSyncArgs } from "./products";
+import { applyProductAdditions, applyProductChanges, collectionLimits, planProducts, syncProducts, type ProductSyncArgs } from "./products";
 import { clearSyncProgress } from "./progress";
 import { recordAppliedPlan, recordProductsSynced, recordShopTimezone } from "./sync-state.server";
 import { errorText, setMetafields, Transport } from "./transport";
@@ -449,7 +454,19 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
   record({ step: "plan", ok: true, detail: gate.stripped.length > 0 ? gateDetail(plan, gate.stripped) : `plan ${plan}: nothing to gate` });
 
   const shopCurrency = shopState.currency;
-  const payload = deps.buildShopFunctionConfig(config, { now: nowLocal, shopTimezone, shopCurrency });
+  if (config.modules.margin.enabled === true && !shopCurrency) {
+    // Audit P2-1(d): never a margin payload without `cur` (every cost unknown, the % ceiling alone).
+    record({
+      step: "shop.currency",
+      ok: false,
+      detail: "Shopify did not say the shop currency, which margin protection needs to know the purchase costs — nothing was changed, the previous config stays; the next sync retries",
+    });
+    return null;
+  }
+  // The collection size check, once: the product refs use `limits.config`, the payload `limits.payloadConfig` (P1-1).
+  const limits = await collectionLimits({ transport, config });
+  const payloadConfig = limits.payloadConfig;
+  const payload = deps.buildShopFunctionConfig(payloadConfig, { now: nowLocal, shopTimezone, shopCurrency });
   if (!payload.fits) {
     record({
       step: "shop_config.build",
@@ -465,7 +482,7 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
   const oldVersion = storedJson === null ? null : campaignVersionOf(storedJson);
   const switching = newVersion !== oldVersion;
   if (switching) {
-    const noCampaign = deps.buildShopFunctionConfig(config, { now: nowLocal, shopTimezone, shopCurrency, forceNoCampaign: true });
+    const noCampaign = deps.buildShopFunctionConfig(payloadConfig, { now: nowLocal, shopTimezone, shopCurrency, forceNoCampaign: true });
     const written = await writeShopConfig(deps, transport, shopState.id, storedJson, noCampaign, "shop_config.phase1", record);
     storedJson = written.stored;
     if (written.ok) await bookkeeping(deps, shop, () => recordAppliedPlan(deps.db, shop, plan));
@@ -509,6 +526,7 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
     productRuleIndex: deps.productRuleIndex,
     // No shop config in Shopify: the first sync after an install (or a reinstall) — check the index.
     verifyIndex: shopState.functionConfig === null,
+    limits,
   };
   let staleRisk = false;
   let after: AfterLane | null = null;

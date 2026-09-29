@@ -405,17 +405,21 @@ function MarginCappedChip() {
 /**
  * What the simulation assumed about margin protection (§12): costs converted
  * with a rate ESTIMATED from market prices when the cart is not in the shop
- * currency (checkout uses Shopify's current rate), and how many lines had no
- * cost price — with the way to the settings (§13).
+ * currency (checkout uses Shopify's current rate), how many lines had no
+ * cost price, and how many had one that could not be converted into the cart
+ * currency (never called "no cost price", audit P2-1c) — with the way to the
+ * settings (§13).
  */
 function MarginNotes({ margin, currency }: { margin: NonNullable<CartPlanView["margin"]>; currency: string }) {
   const tr = useT();
   const { t } = tr;
-  if (!margin.rateEstimated && margin.linesWithoutCost === 0) return null;
+  const notConverted = margin.linesCostNotConverted ?? 0;
+  if (!margin.rateEstimated && margin.linesWithoutCost === 0 && notConverted === 0) return null;
   return (
     <WonRow action={<s-link href="/app/margin">{t("tryCart.margin.settings")}</s-link>}>
       {margin.rateEstimated ? <RowNote>{t("tryCart.margin.rateEstimated", { currency })}</RowNote> : null}
       {margin.linesWithoutCost > 0 ? <RowNote>{tr.tp("tryCart.margin.withoutCost", margin.linesWithoutCost)}</RowNote> : null}
+      {notConverted > 0 ? <RowNote>{tr.tp("tryCart.margin.notConverted", notConverted, { currency })}</RowNote> : null}
     </WonRow>
   );
 }

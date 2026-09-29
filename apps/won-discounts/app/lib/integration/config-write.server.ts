@@ -15,7 +15,8 @@ import { CONFIG_LOCK_WAIT_MS, ConfigLockBusy, withConfigLock } from "./lock.serv
 import { cachedNativeCodes, forgetDetection } from "./native.server";
 import { wordIssues } from "./issue-copy";
 import { ruleNames, syncOutcome } from "./sync-copy";
-import { ACTION_SYNC_DEADLINE_MS } from "./sync-status.server";
+import { refreshMarginImpact } from "./margin-impact.server";
+import { ACTION_SYNC_DEADLINE_MS, ctxPlan } from "./sync-status.server";
 
 
 /** Save attempts on top of another instance's write (F12): the first, and one retry. */
@@ -53,6 +54,8 @@ export async function writeAndSync(ctx: ShopCtx, next: WonDiscountsConfig, opts:
   });
   // A rule change can start or end a conflict with a native discount.
   if (result.save.ok) forgetDetection(ctx.shop);
+  // The margin impact overview / editor note follow the saved config: recomputed in the background (P3-5).
+  if (result.save.ok) void refreshMarginImpact(ctx.shop, { db: ctx.db, client: ctx.client, plan: () => ctxPlan(ctx) });
   return opts.warnings && opts.warnings.length > 0 ? { ...result, warnings: [...opts.warnings, ...result.warnings] } : result;
 }
 

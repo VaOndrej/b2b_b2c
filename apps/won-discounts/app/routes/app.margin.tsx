@@ -29,8 +29,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const locale = await adminLocale(request, session, db);
   // eslint-disable-next-line no-undef
   const ctx = shopCtx(admin, session.shop, db, { locale, apiKey: process.env.SHOPIFY_API_KEY || "", scopes: session.scope });
-  const focusRuleId = new URL(request.url).searchParams.get("rule");
-  return { ...(await loadMarginScreen(ctx)), focusRuleId };
+  // `?rule=` narrows Přehled zásahů ON THE SERVER (audit P2-2): never an empty filter of the largest rows.
+  return loadMarginScreen(ctx, { focusRuleId: new URL(request.url).searchParams.get("rule") });
 };
 
 // `intent=save`: the settings form, parsed and validated on the server

@@ -17,7 +17,7 @@ import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 import type { Translator } from "../../i18n";
 import type { FormDataLike } from "./rule-form";
 import { formatDateTime } from "./signals";
-import type { CostMirrorView, FieldError, MarginImpactRowView, MarginImpactView, MarginSettingsView } from "./types";
+import type { CostMirrorView, FieldError, MarginImpactRowView, MarginImpactRuleView, MarginImpactView, MarginRuleImpactView, MarginSettingsView } from "./types";
 
 /** Form fields the margin action posts (app/lib/integration/margin.server.ts readMarginForm parses them). */
 export const MARGIN_FIELD = {
@@ -233,28 +233,50 @@ export function marginProof(settings: Pick<MarginSettingsView, "minMarginPercent
 }
 
 // --- Přehled zásahů ------------------------------------------------------------------------
+// Counted PER RULE from the core's full counts (audit P2-2): the rows are only
+// the largest losses of each rule, never what the numbers are counted from.
 
-export interface ImpactGroup {
-  ruleId: string;
-  ruleName: string;
-  rows: MarginImpactRowView[];
+/** The section's state line: how many discounts protection lowers (never counted from the shown rows). */
+export function impactSummary(impact: MarginImpactView | null, pro: boolean, enabled: boolean, tr: Translator): string {
+  if (!pro) return tr.t("margin.impact.freeSummary");
+  if (!impact) return tr.t(enabled ? "margin.impact.waiting" : "margin.impact.unknown");
+  if (impact.status === "computing") return tr.t("margin.impact.computing");
+  const n = impact.rules.length;
+  let text = n === 0 ? tr.t("margin.impact.none") : tr.tp("margin.impact.rules", n);
+  if (impact.status === "updating") text = `${text} · ${tr.t("margin.impact.updating")}`;
+  return enabled ? text : `${text} · ${tr.t("margin.impact.off")}`;
 }
 
-/** The rows grouped by rule (pravidlo → produkt), in the order of their biggest loss. */
-export function impactGroups(rows: readonly MarginImpactRowView[], ruleId?: string | null): ImpactGroup[] {
-  const groups = new Map<string, ImpactGroup>();
-  for (const row of rows) {
-    if (ruleId && row.ruleId !== ruleId) continue;
-    const group = groups.get(row.ruleId) ?? { ruleId: row.ruleId, ruleName: row.ruleName, rows: [] };
-    group.rows.push(row);
-    groups.set(row.ruleId, group);
+/** One rule's line: on how many variants (all of them, the editor's number too). */
+export function impactRuleSummary(rule: Pick<MarginImpactRuleView, "discountClass" | "variants">, tr: Translator): string {
+  return rule.discountClass === "order" ? tr.tp("margin.impact.orderRule", rule.variants) : tr.tp("margin.impact.ruleVariants", rule.variants);
+}
+
+// --- The rule editor's note ------------------------------------------------------------------
+
+/** The editor note's sentence (null = no note): Pro counts variants (noun and number agree), Free gets no number. */
+export function marginNoteText(view: MarginRuleImpactView, tr: Translator): string {
+  if (view.state === "computing") return tr.t("editor.margin.computing");
+  if (view.variants === undefined) return tr.t("editor.margin.noteFree");
+  return view.discountClass === "order" ? tr.tp("editor.margin.noteOrder", view.variants) : tr.tp("editor.margin.note", view.variants);
+}
+
+// --- Before the first complete read of the costs (audit P2-1) --------------------------------
+
+/**
+ * Until the first complete read of the costs (coverage unknown), every product
+ * whose cost is not read yet has only the percent ceiling — also products that
+ * DO have a cost in Shopify. Said on the margin screen and the Přehled card
+ * while protection is on and the mirror is running, failed or behind; null
+ * otherwise (after a complete read, the costs from it stay in force).
+ */
+export function ceilingOnlyText(opts: { enabled: boolean; mirror: CostMirrorView; costsKnown: boolean; maxDiscountPercent: number }, tr: Translator): string | null {
+  if (!opts.enabled || opts.costsKnown || opts.mirror.state === "off" || opts.mirror.state === "fresh") return null;
+  const percent = percentText(opts.maxDiscountPercent, tr);
+  if (opts.mirror.state === "running" && opts.mirror.total !== null) {
+    return tr.t("margin.ceilingOnly.progress", { done: opts.mirror.done, total: opts.mirror.total, percent });
   }
-  return [...groups.values()];
-}
-
-/** Distinct products the protection lowers a discount on (the section's state line). */
-export function impactProductCount(impact: MarginImpactView): number {
-  return new Set(impact.rows.map((r) => r.productId)).size;
+  return tr.t("margin.ceilingOnly", { percent });
 }
 
 /** Why one row is lowered, in words (§4c: basis/source never render raw). */

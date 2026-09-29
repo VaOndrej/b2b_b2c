@@ -11,9 +11,9 @@ import { RuleEditorScreen } from "../components/screens/RuleEditorScreen";
 
 // Rule editor: /app/discounts/new(?recipe=…) or /app/discounts/<rule id>.
 // `?saved=1` is the landing right after creating a rule (it reports that save's sync).
-// Ochrana marže (MVP 2): `marginImpact` = on how many products margin protection
-// lowers this SAVED rule (null = protection off or a new rule); the note links to
-// those rows in Přehled zásahů. It is read beside the page (REL-1: a failed count
+// Ochrana marže (MVP 2): `marginImpact` = margin protection lowers this SAVED rule
+// (Pro: on how many variants; Free: no number; null = protection off, none, or a
+// new rule); the note links to those rows in Přehled zásahů (Free: its Pro preview). It is read beside the page (REL-1: a failed count
 // only leaves the note out — the margin page shows the full picture). After a
 // save the loader runs again, so the note follows the saved rule.
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {

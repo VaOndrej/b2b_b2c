@@ -28,9 +28,13 @@
 //   mirrorProducts        products/create|update (webhook): the product's variants.
 // clearCostMirror (margin protection switched off): every metafield the sync
 // wrote is deleted and the rows go — so a cost that changed while protection
-// was off can never be trusted after it is switched on again (the config then
-// treats every cost as unknown until the next pass writes it: the stricter
-// percent ceiling, never a stale cost).
+// was off is never trusted from a COMPLETED clear after it is switched on
+// again: until the next pass writes a variant's cost, checkout treats it as
+// unknown and applies the percent ceiling — stricter than no protection, NOT
+// necessarily stricter than the cost floor (a cost of 70 % of the price with a
+// 50 % ceiling is sold below cost in that window; the admin says so, audit
+// P2-1). A clear that did not finish (switched off and on again quickly, or a
+// reinstall) leaves older metafields that are read until the pass rewrites them.
 // Row semantics: `metafieldValue` is only ever CONFIRMED (read from Shopify,
 // or set by a write Shopify accepted) — Vyzkoušet košík and the impact
 // overview read only that; `mayCarry` is the write-ahead marker (set before a
@@ -47,6 +51,9 @@
 // supersedes this one (cost-lane.server.ts).
 
 import { randomUUID } from "node:crypto";
+
+import { costMinorUnits, marginFloorUnit, resolveMargin, type FunctionMarginPayload } from "@won/core/discounts/margin";
+import { toMinorUnits } from "@won/core/discounts/money";
 
 import { Prisma, type PrismaClient } from "../../generated/prisma/client";
 import { VARIANT_COST_KEY, WON_NAMESPACE } from "./graphql";
@@ -141,6 +148,25 @@ export async function loadCostState(db: PrismaClient, shop: string): Promise<Cos
   return { scannedAt: row?.costsScannedAt ?? null, cursor: row?.costsCursor ?? null, pending: parseCostPending(row?.costsPending) };
 }
 
+/**
+ * `CostPending.error` of a job that could not start because the shop has no
+ * usable offline Admin API session (OQ4: the refresh token expired or was
+ * revoked, or no session is stored). The admin says "open the app"; a load
+ * with a session retries at once (cost-lane.server.ts costsDue).
+ */
+export const COST_NO_SESSION = "no_offline_session";
+
+/**
+ * Record a job that failed before it could run (no session): the pass under
+ * way (if any) is marked failed with `error`, else a failed pending state is
+ * created — the admin shows it, costsDue retries it.
+ */
+export async function recordCostsFailed(db: PrismaClient, shop: string, now: Date, error: string): Promise<void> {
+  const state = await loadCostState(db, shop);
+  const base: CostPending = state.pending ?? { token: randomUUID(), since: now.toISOString(), done: 0, total: null };
+  await saveCostState(db, shop, { costsCursor: null, costsPending: { ...base, failedAt: now.toISOString(), error: error.slice(0, ERROR_MAX) } });
+}
+
 async function saveCostState(db: PrismaClient, shop: string, data: { costsScannedAt?: Date | null; costsCursor?: string | null; costsPending?: CostPending | null }): Promise<void> {
   const row = {
     ...(data.costsScannedAt !== undefined ? { costsScannedAt: data.costsScannedAt } : {}),
@@ -203,6 +229,21 @@ export interface CostCtx {
   now?: () => Date;
   /** Re-send writes Shopify refused recently too ("Obnovit nákupní ceny"): no back-off. */
   retryRefused?: boolean;
+  /**
+   * Margin protection as checkout runs it (the lane builds it from the gated
+   * stored config and the product refs the sync wrote): decides whether an
+   * older cost stays after a refused write (olderCostsThatStay). Absent = it
+   * is deleted.
+   */
+  floors?: CostFloors;
+}
+
+/** What olderCostsThatStay needs to compute a variant's floors the way the engine does. */
+export interface CostFloors {
+  /** The margin payload (buildMarginPayload, `cur` not needed: the variant's cost currency stands in for the shop's). */
+  payload: FunctionMarginPayload;
+  /** Product GID → the `marginRefs` its product metafield carries. */
+  marginRefs: (productIds: readonly string[]) => Promise<ReadonlyMap<string, readonly string[]>>;
 }
 
 /** A variant whose write Shopify refused is not re-sent for this long (unless the merchant asks). */
@@ -319,6 +360,39 @@ type RowState = {
 const ROW_FIELDS = ["productId", "inventoryItemId", "title", "variantTitle", "price", "cost", "currency", "metafieldValue", "mayCarry"] as const;
 
 /**
+ * After Shopify refused a new cost (audit P2-1b): the variants whose OLDER
+ * cost stays. It stays only when, at the variant's current price, its cost
+ * floor is at least as strict as the percent floor that applies without it —
+ * core marginFloorUnit with the settings the engine resolves for the product
+ * (resolveMargin over its marginRefs) and the variant's price in the shop
+ * currency (Shopify keeps unit costs in the shop currency, so the new cost's
+ * currency stands in for it; an older cost in another currency is ignored by
+ * checkout anyway and goes). A higher cost can only be written by replacing
+ * the older one, so while the write is refused the older, lower cost is the
+ * best floor there is when it beats the ceiling. The floor is compared at the
+ * shop price; a market price differs, the comparison is the same ratio.
+ */
+export async function olderCostsThatStay(ctx: Pick<CostCtx, "floors">, snapshots: readonly VariantSnapshot[]): Promise<Set<string>> {
+  const out = new Set<string>();
+  const floors = ctx.floors;
+  if (!floors || !floors.payload.enabled || snapshots.length === 0) return out;
+  const refs = await floors.marginRefs([...new Set(snapshots.map((s) => s.productId))]);
+  for (const s of snapshots) {
+    const older = parseCostValue(s.current);
+    const currency = s.unitCost?.currencyCode.trim().toUpperCase() ?? "";
+    if (!older || older.cur !== currency) continue;
+    const settings = resolveMargin(floors.payload, refs.get(s.productId) ?? []);
+    const price = toMinorUnits(s.price, currency);
+    if (!settings || price === null) continue;
+    const costMinor = costMinorUnits(older.cost, older.cur, 1, currency, currency);
+    const withCost = marginFloorUnit({ unitPrice: price, costMinor, minMarginPercent: settings.minMarginPercent, maxDiscountPercent: settings.maxDiscountPercent });
+    const ceiling = marginFloorUnit({ unitPrice: price, costMinor: null, minMarginPercent: settings.minMarginPercent, maxDiscountPercent: settings.maxDiscountPercent });
+    if (withCost.basis === "cost" && withCost.floorUnit >= ceiling.floorUnit) out.add(s.variantId);
+  }
+  return out;
+}
+
+/**
  * Record the snapshots and bring each variant's metafield to its desired value
  * (only where it differs). `metafieldValue` is only ever a CONFIRMED value
  * (read from Shopify, or set by a write Shopify accepted); before a write goes
@@ -326,9 +400,10 @@ const ROW_FIELDS = ["productId", "inventoryItemId", "title", "variantTitle", "pr
  * misses a metafield the sync may have written), and the answer settles it.
  * A write Shopify refuses is recorded on the variant (`writeError`) and not
  * re-sent for COST_WRITE_RETRY_MS; the job goes on — and when the variant
- * still carries an OLDER, different value, that value is deleted (the
- * stricter "no purchase cost" ceiling then applies, never a stale cost), in
- * the call that saw the refusal and in every later one while it backs off.
+ * still carries an OLDER, different value, that value stays only while it is
+ * the stricter floor (olderCostsThatStay); otherwise it is deleted and the
+ * "no purchase cost" ceiling applies — decided in the call that saw the
+ * refusal and again in every later one while it backs off.
  * A row is only written when something in it changes: a no-op pass or
  * products/update never moves `updatedAt` (the impact cache keys on it); the
  * pass token (`scanId`) is set with a plain UPDATE that leaves it alone.
@@ -420,9 +495,10 @@ export async function applySnapshots(ctx: CostCtx, snapshots: readonly VariantSn
   const valueOf = new Map(sets.map((w) => [w.s.variantId, w.value]));
   /**
    * Refused sets on variants that still carry an older value: that value goes
-   * (the stricter ceiling applies until a retry writes the right cost). Also
-   * the backed-off ones: a delete that failed earlier is tried again on every
-   * pass or mirror, not only in the call where Shopify refused the write.
+   * unless it is the stricter floor (olderCostsThatStay) — until a retry writes
+   * the right cost. Also the backed-off ones: a delete that failed earlier is
+   * tried again on every pass or mirror, not only in the call where Shopify
+   * refused the write.
    */
   const staleAfterRefusal: string[] = sets.filter((w) => !toSend(w.s.variantId) && w.s.current !== null).map((w) => w.s.variantId);
   for (const batch of chunks(sets.filter((w) => toSend(w.s.variantId)), METAFIELDS_SET_BATCH)) {
@@ -449,7 +525,9 @@ export async function applySnapshots(ctx: CostCtx, snapshots: readonly VariantSn
       },
     );
   }
-  for (const batch of chunks(staleAfterRefusal, METAFIELDS_DELETE_BATCH)) {
+  const snapshotOfId = new Map(snapshots.map((s) => [s.variantId, s]));
+  const staying = await olderCostsThatStay(ctx, staleAfterRefusal.map((id) => snapshotOfId.get(id)!));
+  for (const batch of chunks(staleAfterRefusal.filter((id) => !staying.has(id)), METAFIELDS_DELETE_BATCH)) {
     await sendBatch(
       ctx,
       "metafieldsDelete",
@@ -459,8 +537,8 @@ export async function applySnapshots(ctx: CostCtx, snapshots: readonly VariantSn
         // Gone from Shopify; the refusal stays recorded (retried after the back-off).
         await db.variantCost.updateMany({ where: { shop, variantId: { in: ids } }, data: { metafieldValue: null, mayCarry: false } });
       },
-      async (variantId, error) => {
-        out.errors.push(`costs.delete: the stale cost of ${variantId} could not be removed after a refused write: ${error}`);
+      async (_variantId, error) => {
+        out.errors.push(`costs.delete: an older cost could not be removed after a refused write: ${error}`);
       },
     );
   }

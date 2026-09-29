@@ -7,15 +7,17 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { marginFloorUnit } from "@won/core/discounts/margin";
 
 import {
-  impactGroups,
-  impactProductCount,
+  ceilingOnlyText,
   impactReason,
+  impactRuleSummary,
+  impactSummary,
   MARGIN_ACTION,
   marginDecimalErrors,
   MARGIN_FIELD,
   MARGIN_INTENT,
   marginImpactHref,
   marginInForce,
+  marginNoteText,
   marginProof,
   marginSummary,
   mirrorCanRefresh,
@@ -25,7 +27,8 @@ import {
   readPercentField,
   tooManyDecimals,
 } from "../../app/components/model/margin.ts";
-import type { CostMirrorView, MarginImpactRowView, MarginSettingsView, UiResult } from "../../app/components/model/types.ts";
+import type { CostMirrorView, MarginImpactView, MarginOverviewView, MarginSettingsView, SyncView, UiResult } from "../../app/components/model/types.ts";
+import { MarginOverviewCard } from "../../app/components/margin/MarginOverviewCard.tsx";
 import { Notice } from "../../app/components/shell/Notice.tsx";
 import { LocaleProvider } from "../../app/i18n/context.tsx";
 import { translator } from "../../app/i18n/index.ts";
@@ -149,29 +152,18 @@ test("cost mirror: one sentence per state, the refresh button only where it can 
   assert.deepEqual(states.map(mirrorCanRefresh), [false, false, false, true, true, true, true]);
 });
 
-test("Přehled zásahů: rows grouped by rule in loss order, one rule on demand, reasons in words", () => {
-  const row = (ruleId: string, productId: string, variantId: string, over: Partial<MarginImpactRowView> = {}): MarginImpactRowView => ({
-    ruleId,
-    ruleName: ruleId.toUpperCase(),
-    productId,
-    variantId,
-    title: variantId,
-    wanted: 100,
-    allowed: 50,
-    basis: "cost",
-    source: "global",
-    ...over,
-  });
-  const rows = [row("b", "p1", "v1"), row("a", "p2", "v2"), row("b", "p1", "v3"), row("a", "p3", "v4")];
-  assert.deepEqual(
-    impactGroups(rows).map((g) => [g.ruleId, g.rows.map((r) => r.variantId)]),
-    [
-      ["b", ["v1", "v3"]],
-      ["a", ["v2", "v4"]],
-    ],
-  );
-  assert.deepEqual(impactGroups(rows, "a").map((g) => g.ruleId), ["a"]);
-  assert.equal(impactProductCount({ rows, orderRules: [], withoutCost: 0 }), 3);
+test("Přehled zásahů is counted per rule from the full counts (audit P2-2), never from the shown rows; reasons in words", () => {
+  const rule = (ruleId: string, variants: number, discountClass: "product" | "order" = "product") => ({ ruleId, ruleName: ruleId, discountClass, variants, rows: [] });
+  const view = (over: Partial<MarginImpactView> = {}): MarginImpactView => ({ rules: [rule("a", 834), rule("b", 2), rule("o", 5, "order")], withoutCost: 0, status: "ready", ...over });
+  assert.equal(impactSummary(view(), true, true, cs), "Ochrana sníží 3 slevy");
+  assert.equal(impactSummary(view({ rules: [rule("a", 1)] }), true, true, en), "Protection lowers 1 discount");
+  assert.equal(impactSummary(view({ status: "updating" }), true, true, cs), "Ochrana sníží 3 slevy · přepočítává se");
+  assert.equal(impactSummary(view({ status: "computing", rules: [] }), true, true, cs), "Počítáme, kde ochrana zasáhne");
+  assert.equal(impactSummary(view({ rules: [] }), true, true, cs), "Žádná aktivní sleva teď pod hranici nejde");
+  assert.equal(impactSummary(null, false, true, cs), "Kde ochrana sníží slevy a o kolik");
+  assert.equal(impactRuleSummary(rule("a", 834), cs), "Sníží se u 834 variant");
+  assert.equal(impactRuleSummary(rule("a", 1), cs), "Sníží se u 1 varianty");
+  assert.match(impactRuleSummary(rule("o", 5, "order"), cs), /^U 5 variant by sleva šla pod hranici/);
   assert.equal(impactReason({ basis: "cost", source: "global" }, cs), "hranice z nákupní ceny");
   assert.equal(impactReason({ basis: "max_percent", source: "collection" }, cs), "nemá nákupní cenu, platí strop slevy · nastavení kolekce");
   for (const tr of [cs, en]) {
@@ -182,6 +174,48 @@ test("Přehled zásahů: rows grouped by rule in loss order, one rule on demand,
     }
   }
   assert.doesNotMatch(impactReason({ basis: "max_percent", source: "collection" }, cs), NO_RAW);
+});
+
+test("rule editor note: Pro counts VARIANTS (noun and number agree), an order rule has its own sentence, Free gets no number", () => {
+  assert.equal(marginNoteText({ state: "ready", discountClass: "product", variants: 1 }, cs), "Na 1 variantě se sleva sníží na hranici marže.");
+  assert.equal(marginNoteText({ state: "ready", discountClass: "product", variants: 3 }, cs), "Na 3 variantách se sleva sníží na hranici marže.");
+  assert.equal(
+    marginNoteText({ state: "updating", discountClass: "order", variants: 5 }, cs),
+    "U 5 variant by sleva z objednávky šla pod hranici. Pokladna ji tam sníží nebo tyto položky vynechá.",
+  );
+  assert.equal(marginNoteText({ state: "ready", discountClass: "product" }, cs), "Ochrana marže tuhle slevu u některých produktů sníží.");
+  assert.doesNotMatch(marginNoteText({ state: "ready", discountClass: "order" }, cs), /\d/, "Free: no number");
+  assert.equal(marginNoteText({ state: "computing" }, cs), "Dopad ochrany marže na tuhle slevu se právě počítá.");
+  assert.equal(marginNoteText({ state: "ready", discountClass: "product", variants: 2 }, en), "On 2 variants the discount is lowered to the margin floor.");
+});
+
+test("before the first complete read of the costs, the screen and the card say only the ceiling applies to unread products (audit P2-1)", () => {
+  const running: CostMirrorView = { state: "running", done: 340, total: 1240, since: "2026-09-28T13:55:00" };
+  const failed: CostMirrorView = { state: "failed", at: "2026-09-28T06:10:00", problems: [] };
+  const on = { enabled: true, costsKnown: false, maxDiscountPercent: 40 };
+  assert.equal(ceilingOnlyText({ ...on, mirror: running }, cs), "Dokud nenačteme nákupní ceny (340 z 1240), platí u nenačtených produktů jen strop 40\u00a0%.");
+  assert.equal(ceilingOnlyText({ ...on, mirror: failed }, cs), "Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen strop 40\u00a0%.");
+  assert.equal(ceilingOnlyText({ ...on, mirror: { state: "stale", at: null } }, cs), "Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen strop 40\u00a0%.");
+  assert.equal(ceilingOnlyText({ ...on, mirror: running, costsKnown: true }, cs), null, "after a complete read its costs stay in force");
+  assert.equal(ceilingOnlyText({ ...on, mirror: running, enabled: false }, cs), null);
+  assert.equal(ceilingOnlyText({ ...on, mirror: { state: "fresh", at: "2026-09-28T06:10:00" } }, cs), null);
+  assert.match(ceilingOnlyText({ ...on, mirror: running }, en) ?? "", /^Until the cost prices are read \(340 of 1240\), only the 40% ceiling applies/);
+  // The max-discount field says the ceiling is also the fallback.
+  assert.match(cs.t("margin.max.details"), /nákupní cenu jsme ještě nenačetli/);
+
+  // The Přehled card: no green "Běží" before the first read finished; the sentence is on the card.
+  const Provider = LocaleProvider as unknown as (props: { locale: "cs" | "en"; children?: ReactNode }) => ReactElement;
+  const sync: SyncView = { state: "ok", at: "2026-09-28T16:20:00" };
+  const card = (margin: MarginOverviewView) => renderToStaticMarkup(createElement(Provider, { locale: "cs" }, createElement(MarginOverviewCard, { margin, sync })));
+  const first = card({ enabled: true, minMarginPercent: 20, maxDiscountPercent: 40, productsWithoutCost: null, mirror: running });
+  assert.doesNotMatch(first, /Běží/);
+  assert.match(first, /Dokud nenačteme nákupní ceny \(340 z 1240\)/);
+  const read = card({ enabled: true, minMarginPercent: 20, maxDiscountPercent: 40, productsWithoutCost: 3, mirror: { state: "fresh", at: "2026-09-28T06:10:00" } });
+  assert.match(read, /Běží/);
+  assert.doesNotMatch(read, /Dokud nenačteme/);
+  // The promise is not absolute any more (P3-3).
+  assert.equal(cs.t("soon.margin"), "Sleva ve Won nikdy nesrazí cenu pod hranici, kterou tu nastavíš.");
+  assert.match(cs.t("margin.never"), /neklesla pod hranici/);
 });
 
 test("Notice: 'Obnovit nákupní ceny' answers that the read runs in the background; a save that starts it says so too", () => {

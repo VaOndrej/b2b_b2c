@@ -97,6 +97,10 @@ export class FakeShopify implements AdminClient {
   asyncPollsBeforeDone = 0;
   /** Shopify's count limit for `productsCount` (precision AT_LEAST above it). */
   countLimit = 10_000;
+  /** Collection sizes Shopify reports instead of the member count (a large collection without seeding thousands of products). */
+  collectionCounts = new Map<string, number>();
+  /** Collection titles (`productsCount` query); default "Collection <n>". */
+  collectionTitles = new Map<string, string>();
   /** metafieldsSet refuses more than this many inputs (Shopify: 25). */
   metafieldsSetLimit = 25;
   /** Owners whose metafield writes Shopify refuses (userErrors; metafieldsSet is all-or-nothing). */
@@ -574,8 +578,14 @@ export class FakeShopify implements AdminClient {
             const members = this.collections.get(id);
             if (!members) return null;
             // Shopify stops counting at its limit (10 000) and says so.
-            const limited = members.length > this.countLimit;
-            return { __typename: "Collection", id, productsCount: { count: limited ? this.countLimit : members.length, precision: limited ? "AT_LEAST" : "EXACT" } };
+            const size = this.collectionCounts.get(id) ?? members.length;
+            const limited = size > this.countLimit;
+            return {
+              __typename: "Collection",
+              id,
+              title: this.collectionTitles.get(id) ?? `Collection ${id.split("/").pop()}`,
+              productsCount: { count: limited ? this.countLimit : size, precision: limited ? "AT_LEAST" : "EXACT" },
+            };
           }),
         };
       case "WonSyncVariantProducts":

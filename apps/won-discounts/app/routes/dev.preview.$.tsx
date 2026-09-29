@@ -69,17 +69,21 @@ import {
 //                                 its undo + an unfinished move), ?state=empty,
 //                                 ?state=margin (Ochrana marže card, costs read
 //                                 2 days ago + Obnovit nákupní ceny), ?state=margin-off,
+//                                 ?state=margin-running (first read: the ceiling-only line,
+//                                 no green) | margin-reauth | margin-too-large,
 //                                 ?readOnly=1
 //   /dev/preview/discounts       ?state=empty, ?state=f2, ?state=f2-pending, ?sync=ok | ?sync=failed (per-rule facts)
 //   /dev/preview/rule-editor     ?rule=<fixture id> | ?rule=new&recipe=<recipe>, ?plan=pro,
 //                                 ?result=unreadable|too-many|collision|sync-failed|saved|base-changed|busy|syncing,
 //                                 ?rule=dev-f2-collection | dev-f2-market (F2 fixture, Free gate),
-//                                 &margin=1 (the margin note: protection lowers the rule)
+//                                 &margin=1 (the margin note: protection lowers the rule; with
+//                                 ?plan=pro the count of variants, else no number) | &margin=computing
 //   /dev/preview/try-cart        a REAL engine plan on fixture prices; ?state=empty | ?state=not-wired | ?state=warnings
 //                                 | ?state=margin (EUR cart, costs by an estimated rate, capped lines)
-//   /dev/preview/margin          Ochrana marže: Free by default, ?plan=pro; ?state=running | zero | off |
-//                                 stale | failed | gate (Free with collection settings stored);
-//                                 ?rule=<id> (Přehled zásahů of one rule);
+//   /dev/preview/margin          Ochrana marže: Free by default, ?plan=pro; ?state=running | failed-first |
+//                                 reauth | zero | off | stale | failed | too-large | many | impact-updating |
+//                                 impact-computing | gate (Free with collection settings stored);
+//                                 ?rule=<id> (Přehled zásahů of one rule, narrowed like the server does);
 //                                 ?result=refreshed | saved | invalid | unreadable | fixes (sanitizer notes of a save)
 //   /dev/preview/onboarding      ?step=1|2|3, ?embed=on
 //   /dev/preview/move-dialog
@@ -162,10 +166,11 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
           ...devGate(locale),
         });
       }
-      if (state === "margin" || state === "margin-off") {
+      if (state === "margin" || state === "margin-off" || state === "margin-running" || state === "margin-reauth" || state === "margin-too-large") {
+        const card = state === "margin" ? "stale" : state === "margin-off" ? "off" : state === "margin-running" ? "running" : state === "margin-reauth" ? "reauth" : "too-large";
         return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
           ...wired,
-          signals: { ...DEV_SIGNALS, native: devNative(locale), margin: devMarginOverview(state === "margin" ? "stale" : "off") },
+          signals: { ...DEV_SIGNALS, native: devNative(locale), margin: devMarginOverview(card) },
           ruleSync: DEV_RULE_SYNC_OK,
         });
       }
@@ -222,7 +227,9 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       return {
         ...props,
         result: devEditorResult(q.get("result")),
-        ...(q.get("margin") === "1" ? { marginImpact: devRuleMarginImpact(ruleParam) } : {}),
+        ...(q.get("margin") === "1" || q.get("margin") === "computing"
+          ? { marginImpact: devRuleMarginImpact(ruleParam, { pro: q.get("plan") === "pro", computing: q.get("margin") === "computing" }) }
+          : {}),
       };
     }
     case "try-cart": {
@@ -260,9 +267,8 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       return { currencies: currencyViews(DEV_OVERVIEW_FIXTURE.markets, { marketNames: names }) };
     case "margin":
       return {
-        ...devMarginScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }),
+        ...devMarginScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale, focusRuleId: q.get("rule") }),
         result: devMarginResult(q.get("result"), locale),
-        focusRuleId: q.get("rule"),
       };
     default:
       throw notFound();

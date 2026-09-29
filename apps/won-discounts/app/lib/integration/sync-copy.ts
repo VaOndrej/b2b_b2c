@@ -51,9 +51,19 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
     const ruleId = step.step.slice("products.too_large:".length);
     return { key: "sync.problem.collectionTooLarge", params: { rule: ruleLabel(ruleId, names), detail } };
   }
+  if (step.step === "margin.too_large") {
+    // The collection's title and size (products.ts collectionLimits): the stricter value applies to the whole store.
+    const collection = typeof step.params?.collection === "string" ? step.params.collection : "";
+    const count = typeof step.params?.count === "number" ? step.params.count : null;
+    return count === null
+      ? { key: "sync.problem.marginTooLargeUncounted", params: { collection } }
+      : { key: "sync.problem.marginTooLarge", params: { collection, count } };
+  }
   switch (step.step) {
     case "shop.read":
       return { key: "sync.problem.shopRead", params: { detail } };
+    case "shop.currency":
+      return { key: "sync.problem.currency" };
     case "shop_config.build":
       return { key: "sync.problem.tooLarge" };
     case "sync.stopped":

@@ -146,3 +146,17 @@ test("a webhook mirror waits for the running pass (never interleaves) and then r
   const firstItem = order.indexOf("WonSyncCostInventoryItems");
   assert.ok(firstItem > order.lastIndexOf("WonSyncCostVariants"), order.join(" "));
 });
+
+test("a refused higher cost through the lane: the older cost stays while it is the stricter floor (the stored settings decide)", async () => {
+  const fake = new FakeShopify();
+  const product = fake.addProduct(1, 1); // variant 101, price 10.00
+  const variant = product.variantIds[0]!;
+  fake.setCost(variant, "8.00");
+  await saveMargin(true); // no minimum margin, at most 50 % off without a cost: the ceiling's floor is 5.00
+  await startCostJob(shop, deps(fake), { kind: "full" });
+  fake.setCost(variant, "9.00");
+  fake.refusedOwners.add(variant);
+  const outcome = await startCostJob(shop, deps(fake), { kind: "items", inventoryItemIds: ["gid://shopify/InventoryItem/101"] });
+  assert.equal(outcome.done, "items");
+  assert.deepEqual(fake.variantCostMetafield(variant), { cost: 8, cur: "CZK" }, "the older cost (floor 8.00) beats the ceiling (5.00): kept");
+});

@@ -14,11 +14,17 @@
 // merchant switched protection off or on never does the wrong thing.
 // The cost jobs never touch the shop config, so they need neither the config
 // lock nor the settings sync queue: the config is written at once when
-// protection is switched on (an unknown cost = the stricter percent ceiling).
+// protection is switched on — until a variant's cost is written, checkout
+// applies the percent ceiling to it: stricter than no protection, NOT
+// necessarily stricter than its cost floor (audit P2-1; the admin says so while
+// the first pass runs). A refused write keeps an older cost only while it is
+// the stricter floor (costs.ts olderCostsThatStay, from `floors` built here).
 // Single instance assumption as the rest of the sync (MVP 7 note): two
 // instances would each run their own jobs — harmless, every write is an
 // idempotent diff against what Shopify has.
 
+import type { MarginModule } from "@won/core/discounts/config";
+import { buildMarginPayload } from "@won/core/discounts/margin";
 import { gateConfigForPlan, type ShopPlan } from "@won/core/discounts/plan-gate";
 
 import type { PrismaClient } from "../../generated/prisma/client";
@@ -27,6 +33,7 @@ import { loadConfig } from "../config.server";
 import { planOf } from "../plan.server";
 import {
   clearCostMirror,
+  COST_NO_SESSION,
   COST_WRITE_RETRY_MS,
   COSTS_MAX_AGE_MS,
   loadCostState,
@@ -34,12 +41,14 @@ import {
   mirrorProducts,
   runCostPass,
   type ClearResult,
+  type CostFloors,
   type CostPassResult,
   type CostPending,
   type MirrorResult,
 } from "./costs";
 import { errorText, Transport } from "./transport";
 import type { RetryOptions, SyncLogger } from "./types";
+import { chunks } from "./util";
 
 export type CostJob =
   | { kind: "full"; restart?: boolean }
@@ -81,6 +90,29 @@ const progress = new Map<string, CostPending>();
 
 const quiet: SyncLogger = { info() {}, warn() {}, error() {} };
 
+type SettledListener = (shop: string, deps: CostLaneDeps) => void;
+const settledListeners = new Set<SettledListener>();
+
+/**
+ * Called after every full pass (done or failed) and webhook-sized mirror that
+ * ran — the mirror may have changed (integration/margin-impact.server.ts
+ * recomputes the impact overview in the background). Returns the unsubscribe.
+ */
+export function onCostJobSettled(listener: SettledListener): () => void {
+  settledListeners.add(listener);
+  return () => settledListeners.delete(listener);
+}
+
+function settled(shop: string, deps: CostLaneDeps): void {
+  for (const listener of settledListeners) {
+    try {
+      listener(shop, deps);
+    } catch {
+      // a listener never fails a job
+    }
+  }
+}
+
 function chain<T>(shop: string, work: () => Promise<T>): Promise<T> {
   const previous = queues.get(shop) ?? Promise.resolve();
   const run = previous.catch(() => undefined).then(work);
@@ -95,13 +127,38 @@ function chain<T>(shop: string, work: () => Promise<T>): Promise<T> {
   return run;
 }
 
-/** Is margin protection on in the stored config, as the shop's plan runs it? Null = nothing syncable. */
-async function marginEnabled(deps: CostLaneDeps, shop: string): Promise<boolean | null> {
+/** Margin protection in the stored config, as the shop's plan runs it. Null = nothing syncable. */
+async function gatedMargin(deps: CostLaneDeps, shop: string): Promise<MarginModule | null> {
   const loaded = await loadConfig(deps.db, shop);
   if (loaded.unreadable || loaded.readOnly) return null;
-  if (!loaded.exists) return false;
+  if (!loaded.exists) return { ...loaded.config.modules.margin, enabled: false };
   const plan = await (deps.plan ?? planOf)(shop);
-  return gateConfigForPlan(loaded.config, plan).config.modules.margin.enabled === true;
+  return gateConfigForPlan(loaded.config, plan).config.modules.margin;
+}
+
+/** Product ids read per query (SQLite's bound-parameter limit). */
+const REFS_CHUNK = 500;
+
+/** The floors a refused write is judged by (costs.ts olderCostsThatStay): the gated settings + the refs the sync wrote. */
+function costFloors(deps: CostLaneDeps, shop: string, margin: MarginModule): CostFloors {
+  return {
+    payload: buildMarginPayload({ ...margin, enabled: true }),
+    marginRefs: async (productIds) => {
+      const out = new Map<string, string[]>();
+      for (const ids of chunks(productIds, REFS_CHUNK)) {
+        const rows = await deps.db.productTargetIndex.findMany({ where: { shop, productId: { in: ids } }, select: { productId: true, value: true } });
+        for (const row of rows) {
+          try {
+            const refs = (JSON.parse(row.value ?? "{}") as { marginRefs?: unknown }).marginRefs;
+            out.set(row.productId, Array.isArray(refs) ? refs.filter((x): x is string => typeof x === "string") : []);
+          } catch {
+            out.set(row.productId, []);
+          }
+        }
+      }
+      return out;
+    },
+  };
 }
 
 /** Queue a cost job for `shop` (see the header). Never rejects: failures come back as `error`. */
@@ -117,13 +174,22 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
   return chain(shop, async (): Promise<CostJobOutcome> => {
     try {
       if (lane?.cancelled) return { done: "skipped", reason: "superseded" };
-      const enabled = await marginEnabled(deps, shop);
-      if (enabled === null) return { done: "skipped", reason: "no_config" };
+      const margin = await gatedMargin(deps, shop);
+      if (margin === null) return { done: "skipped", reason: "no_config" };
+      const enabled = margin.enabled === true;
       if (job.kind === "clear" && enabled) return { done: "skipped", reason: "margin_on" };
       if (job.kind !== "clear" && !enabled) return { done: "skipped", reason: "margin_off" };
       const transport = new Transport(deps.client, deps.retry, deps.sleep, logger);
       const isCancelled = () => lane?.cancelled === true;
-      const ctx = { transport, db: deps.db, shop, isCancelled, now: deps.now, ...(job.kind === "items" && job.retryRefused ? { retryRefused: true } : {}) };
+      const ctx = {
+        transport,
+        db: deps.db,
+        shop,
+        isCancelled,
+        now: deps.now,
+        floors: costFloors(deps, shop, margin),
+        ...(job.kind === "items" && job.retryRefused ? { retryRefused: true } : {}),
+      };
       if (job.kind === "full") {
         const result = await runCostPass({
           ...ctx,
@@ -135,6 +201,7 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
         else if (result.outcome === "done") {
           logger.info(`costs ${shop}: full pass done (${result.read} read, ${result.written} written, ${result.cleared} cleared, ${result.refused} refused)`);
         }
+        if (result.outcome !== "cancelled") settled(shop, deps);
         return { done: "full", result };
       }
       if (job.kind === "clear") {
@@ -154,6 +221,7 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
       };
       if (result.errors.length > 0) logger.warn(`costs ${shop}: mirror failed: ${result.errors.join("; ")}`);
       if (result.refused > 0) logger.warn(`costs ${shop}: Shopify refused ${result.refused} variant cost write(s)`);
+      settled(shop, deps);
       return { done: "items", result };
     } catch (error) {
       if (error instanceof Response) {
@@ -206,7 +274,8 @@ export type CostDue = "full" | "clear" | "retry";
  * What the shop's cost mirror needs now, or null: a full pass while
  * protection is on and the last complete pass is older than COSTS_MAX_AGE_MS
  * (or none finished, or one was cut short — its cursor is resumed); a failed
- * pass is retried after COST_RETRY_MIN_INTERVAL_MS; a "retry" of the
+ * pass is retried after COST_RETRY_MIN_INTERVAL_MS (one that could not start
+ * for want of an offline session at once: the caller has a client); a "retry" of the
  * variants whose cost Shopify refused once their back-off
  * (COST_WRITE_RETRY_MS, from `writeFailedAt`: the refusal or the last retry
  * attempt, see launchClaimed) has passed — the pass itself counted as fresh. A clear
@@ -220,6 +289,8 @@ export async function costsDue(db: PrismaClient, shop: string, enabled: boolean,
   }
   const state = await loadCostState(db, shop);
   if (state.pending?.failedAt) {
+    // No offline session: whoever asks now has a client (an admin load) — retry at once.
+    if (state.pending.error === COST_NO_SESSION) return "full";
     return now.getTime() - Date.parse(state.pending.failedAt) >= COST_RETRY_MIN_INTERVAL_MS ? "full" : null;
   }
   if (state.cursor !== null) return "full";

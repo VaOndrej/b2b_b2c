@@ -5,6 +5,9 @@
 // picker (model/app-bridge.ts); outside Shopify admin (the dev harness) the
 // picker is unavailable and the section says so.
 //
+// A Pro collection the last sync could not read (over the 10 000-product
+// limit) says so at its row: its values then apply to the whole store (P1-1).
+//
 // On Free the rows stay visible and removable (§14a: off ≠ erased — removing a
 // Pro setting the plan folds into a stricter global value is always allowed),
 // their values travel as hidden inputs so a save never drops them, and the
@@ -15,7 +18,7 @@ import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
 import { MARGIN_FIELD, MARGIN_PERCENT_STEP, percentInput } from "../model/margin";
-import type { GateNoteView, MarginCollectionView } from "../model/types";
+import type { GateNoteView, MarginCollectionView, MarginTooLargeView } from "../model/types";
 import { FieldGrid, FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
 import { GateNotes } from "../shell/GateNotes";
@@ -83,6 +86,7 @@ export function CollectionsSection({
   errorFor,
   decimalErrorFor,
   error,
+  tooLarge = [],
 }: {
   pro: boolean;
   collections: readonly MarginCollectionView[];
@@ -97,10 +101,13 @@ export function CollectionsSection({
   decimalErrorFor: (field: string) => string | undefined;
   /** A collection error that is not about one row. */
   error?: string;
+  /** Collections the last sync could not read (over the 10 000-product limit): said at their row (P1-1). */
+  tooLarge?: readonly MarginTooLargeView[];
 }) {
   const tr = useT();
   const { t } = tr;
   const full = collections.length >= CONFIG_LIMITS.marginOverrides;
+  const tooLargeOf = new Map(tooLarge.map((c) => [c.collectionId, c]));
   // §17c: on Free one setting applies to the whole shop, whatever is stored.
   const summary =
     pro && collections.length > 0
@@ -144,6 +151,13 @@ export function CollectionsSection({
                     <div style={{ marginBottom: 8 }}>
                       <s-text type="strong">{c.title}</s-text>
                       <FieldMessage text={errorFor(`collectionId[${i}]`)} />
+                      {pro && tooLargeOf.has(c.collectionId) ? (
+                        <RowNote tone="attention">
+                          {tooLargeOf.get(c.collectionId)!.count === null
+                            ? t("margin.collections.tooLargeUncounted")
+                            : t("margin.collections.tooLarge", { count: new Intl.NumberFormat(tr.locale === "cs" ? "cs-CZ" : "en-US").format(tooLargeOf.get(c.collectionId)!.count!) })}
+                        </RowNote>
+                      ) : null}
                     </div>
                     <PercentFields
                       min={c.minMarginPercent}

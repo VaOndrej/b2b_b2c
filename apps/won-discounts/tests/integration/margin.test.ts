@@ -10,6 +10,7 @@ import {
   loadMarginOverview,
   loadMarginScreen,
   marginCatalogueReads,
+  marginImpactIdle,
   readMarginForm,
   refreshCostsAction,
   ruleMarginImpact,
@@ -98,6 +99,7 @@ const settings = (patch: Partial<MarginSettingsView> = {}): MarginSettingsView =
 async function settle(s = shop) {
   await syncIdle(s);
   await costIdle(s);
+  await marginImpactIdle(s);
 }
 
 // --- readMarginForm -------------------------------------------------------------------------
@@ -307,23 +309,31 @@ test("Pro: the impact overview — where protection lowers active discounts (rul
   assert.equal(on.ok, true, JSON.stringify(on));
   await settle();
   assert.deepEqual(store.sync.productMetafield("gid://shopify/Product/3"), { ruleIds: [], variantRuleIds: {}, marginRefs: ["5"] });
+  await loadMarginScreen(ctx); // schedules the impact if the background has not computed this state yet
+  await settle();
   const data = await loadMarginScreen(ctx);
   assert.equal(data.plan, "pro");
   assert.deepEqual(data.gateNotes, []);
   const impact = data.impact!;
   assert.ok(impact);
+  assert.equal(impact.status, "ready");
   // Tričko: price 1000, cost 600, m 25 % → floor 800 → allowed 200 (wanted 500). Mikina: no cost, p 30 % → allowed 600 (wanted 1000).
+  const half = impact.rules.find((r) => r.ruleId === "half")!;
+  assert.deepEqual([half.ruleName, half.discountClass, half.variants], ["Půlka", "product", 3]);
   assert.deepEqual(
-    impact.rows.map((r) => [r.ruleId, r.ruleName, r.variantId, r.wanted, r.allowed, r.basis, r.source]),
+    half.rows.map((r) => [r.variantId, r.wanted, r.allowed, r.basis, r.source]),
     [
-      ["half", "Půlka", "gid://shopify/ProductVariant/201", 1000, 600, "max_percent", "global"],
-      ["half", "Půlka", "gid://shopify/ProductVariant/202", 1000, 600, "max_percent", "global"],
-      ["half", "Půlka", "gid://shopify/ProductVariant/101", 500, 200, "cost", "global"],
+      ["gid://shopify/ProductVariant/201", 1000, 600, "max_percent", "global"],
+      ["gid://shopify/ProductVariant/202", 1000, 600, "max_percent", "global"],
+      ["gid://shopify/ProductVariant/101", 500, 200, "cost", "global"],
     ],
   );
-  assert.equal(impact.rows[2]!.title, "Tričko");
+  assert.equal(half.rows[2]!.title, "Tričko");
   // The order rule (20 %): Tričko 200 ≤ 200 fine; Čepice (collection m 60 %: floor 1000 ≥ price) → below.
-  assert.deepEqual(impact.orderRules, [{ ruleId: "order", ruleName: "Objednávka", variantsBelow: 1 }]);
+  assert.deepEqual(
+    impact.rules.filter((r) => r.discountClass === "order").map((r) => [r.ruleId, r.ruleName, r.variants, r.rows.length]),
+    [["order", "Objednávka", 1, 0]],
+  );
   assert.equal(impact.withoutCost, 2);
 });
 
@@ -342,7 +352,7 @@ test("Obnovit nákupní ceny: a full pass from the start while on (syncing.costs
   assert.deepEqual(store.sync.variantCostMetafield("gid://shopify/ProductVariant/201"), { cost: 9, cur: "CZK" });
 });
 
-test("ruleMarginImpact: null while protection is off; the number of variants it is lowered on when on", async () => {
+test("ruleMarginImpact: null while protection is off; on: Pro gets the number of variants, Free no number", async () => {
   const store = storeWithCatalogue();
   const ctx = ctxFor(store);
   await saveConfig(db.prisma, shop, {
@@ -359,9 +369,17 @@ test("ruleMarginImpact: null while protection is off; the number of variants it 
   assert.equal(await ruleMarginImpact(ctx, "half"), null);
   await saveMarginSettings(ctx, settings(), { configVersion: (await loadConfig(db.prisma, shop)).version });
   await settle();
-  assert.equal(await ruleMarginImpact(ctx, "half"), 3);
-  assert.equal(await ruleMarginImpact(ctx, "tiny"), 0);
-  assert.equal(await ruleMarginImpact(ctx, "missing"), 0);
+  await ruleMarginImpact(ctx, "half"); // the product refs changed after the save's own recompute: this load schedules the current state
+  await settle();
+  // Free: protection lowers "half" somewhere — said without a number (přehled zásahů is Pro).
+  assert.deepEqual(await ruleMarginImpact(ctx, "half"), { state: "ready", discountClass: "product" });
+  assert.equal(await ruleMarginImpact(ctx, "tiny"), null, "never lowered: no note");
+  assert.equal(await ruleMarginImpact(ctx, "missing"), null);
+  // Pro: the count of variants.
+  const pro = ctxFor(store, "pro");
+  await ruleMarginImpact(pro, "half");
+  await settle();
+  assert.deepEqual(await ruleMarginImpact(pro, "half"), { state: "ready", discountClass: "product", variants: 3 });
 });
 
 // --- Přehled + Vyzkoušet košík ---------------------------------------------------------------
@@ -416,7 +434,7 @@ test("Vyzkoušet košík: the cost from the mirror caps the line (admin explanat
   const run = await tryCartAction(ctx, cart, { scopes: "write_discounts,read_products,read_themes" });
   assert.equal(run.result, null, JSON.stringify(run.result));
   const plan = run.plan!;
-  assert.deepEqual(plan.margin, { rateEstimated: false, linesWithoutCost: 1 });
+  assert.deepEqual(plan.margin, { rateEstimated: false, linesWithoutCost: 1, linesCostNotConverted: 0 });
   assert.deepEqual(plan.lines.map((l) => [l.discount, l.marginCapped ?? false]), [
     [200, true], // 1000 − floor 800 (cost 600, 25 %)
     [600, true], // no cost: at most 30 %
@@ -459,7 +477,7 @@ test("Vyzkoušet košík in another currency: the cost is converted with the med
   );
   assert.equal(run.result, null, JSON.stringify(run.result));
   // Rate 0.40 / 10.00 = 0.04: cost 6.00 CZK → 0.24 EUR = 24 cents; price 40 cents → at most 16 off (wanted 20).
-  assert.deepEqual(run.plan!.margin, { rateEstimated: true, linesWithoutCost: 0 });
+  assert.deepEqual(run.plan!.margin, { rateEstimated: true, linesWithoutCost: 0, linesCostNotConverted: 0 });
   assert.equal(run.plan!.lines[0]!.discount, 16);
   assert.equal(run.plan!.lines[0]!.marginCapped, true);
 });
@@ -516,7 +534,7 @@ function bounded(args: unknown): boolean {
   return (typeof a.take === "number" && a.take <= 100) || Array.isArray(a.where?.variantId?.in) || Array.isArray(a.where?.productId?.in);
 }
 
-test("the impact is computed once per state: a second screen load and the editor's count reuse it; a changed cost recomputes it", async () => {
+test("a loader never reads the catalogue (audit P3-5): the impact is computed in the background, the page says 'počítá se' meanwhile", async () => {
   const store = storeWithCatalogue();
   const ctx = ctxFor(store, "pro");
   await saveConfig(db.prisma, shop, {
@@ -527,25 +545,81 @@ test("the impact is computed once per state: a second screen load and the editor
     },
   });
   await saveMarginSettings(ctx, settings(), { configVersion: (await loadConfig(db.prisma, shop)).version });
-  await settle();
-  const before = marginCatalogueReads();
-  const first = await loadMarginScreen(ctx);
-  assert.equal(marginCatalogueReads(), before + 1, "computed once");
+  await settle(); // the save and the cost pass recomputed it in the background
   const spy = spyFindMany(db.prisma);
-  const second = await loadMarginScreen({ ...ctx, db: spy.db });
-  assert.deepEqual(second.impact, first.impact);
-  assert.equal(await ruleMarginImpact({ ...ctx, db: spy.db }, "half"), 3);
+  const reads = marginCatalogueReads();
+  const first = await loadMarginScreen({ ...ctx, db: spy.db });
+  assert.equal(first.impact?.status, "ready", "computed after the save / the cost pass, before anyone opened the page");
+  assert.equal(await ruleMarginImpact({ ...ctx, db: spy.db }, "half").then((v) => (v && v.state !== "computing" ? v.variants : null)), 3);
   await loadMarginOverview({ ...ctx, db: spy.db }, await loadConfig(db.prisma, shop), { timezone: null, trigger: true, shopCurrency: "CZK" });
-  assert.equal(marginCatalogueReads(), before + 1, "the second load, the editor and Přehled did not re-read the catalogue");
+  assert.equal(marginCatalogueReads(), reads, "the screen, the editor and Přehled read no catalogue");
   assert.ok(spy.calls.every(bounded), `every VariantCost read on those loads is bounded: ${JSON.stringify(spy.calls)}`);
 
-  // A cost change (webhook mirror) changes the state: the next load recomputes once.
+  // A cost change (webhook mirror): the lane recomputes in the background; a load meanwhile shows the last numbers.
   store.sync.setCost("gid://shopify/ProductVariant/201", "15.00");
   const { startCostJob } = await import("../../app/lib/sync/cost-lane.server.ts");
   await startCostJob(shop, { client: store, db: db.prisma, plan: async () => "pro" }, { kind: "items", inventoryItemIds: ["gid://shopify/InventoryItem/201"] });
-  const third = await loadMarginScreen(ctx);
-  assert.equal(marginCatalogueReads(), before + 2);
-  assert.notDeepEqual(third.impact, first.impact);
+  await settle();
+  const second = await loadMarginScreen(ctx);
+  assert.equal(second.impact?.status, "ready");
+  assert.notDeepEqual(second.impact, first.impact);
+  assert.equal(marginCatalogueReads(), reads + 1, "one background computation for the cost change");
+
+  // A state no trigger saw (a restart, a product sync): the load does not compute it — it schedules it and says so.
+  const { clearMarginImpactCache } = await import("../../app/lib/integration/margin.server.ts");
+  clearMarginImpactCache();
+  const before = marginCatalogueReads();
+  const cold = await loadMarginScreen(ctx);
+  assert.equal(cold.impact?.status, "computing");
+  assert.deepEqual(cold.impact?.rules, []);
+  assert.equal(marginCatalogueReads(), before, "not inside the request");
+  await marginImpactIdle(shop);
+  assert.equal(marginCatalogueReads(), before + 1, "computed once in the background");
+  assert.equal((await loadMarginScreen(ctx)).impact?.status, "ready");
+  // The editor's note on a cold state says the same.
+  clearMarginImpactCache();
+  assert.deepEqual(await ruleMarginImpact(ctx, "half"), { state: "computing" });
+  await marginImpactIdle(shop);
+  assert.deepEqual(await ruleMarginImpact(ctx, "half"), { state: "ready", discountClass: "product", variants: 3 });
+});
+
+test("Přehled zásahů per rule (audit P2-2): a rule outside the largest losses still has its rows and its full count; the counts equal the editor's", async () => {
+  const store = new FakeStore();
+  const big: string[] = [];
+  for (let i = 1; i <= 60; i += 1) {
+    const product = store.sync.addProduct(100 + i, 1); // price 10.00, no cost: the 30 % ceiling
+    big.push(product.id);
+  }
+  const small = [store.sync.addProduct(201, 1).id, store.sync.addProduct(202, 1).id];
+  const ctx = ctxFor(store, "pro");
+  await saveConfig(db.prisma, shop, {
+    modules: {
+      codes: {
+        rules: [
+          // 60 % off 60 products: 30 % more than the ceiling allows — the largest losses.
+          { id: "big", name: "Velká", method: "automatic", value: { kind: "percentage", percent: 60 }, target: { kind: "products", productIds: big, variantIds: [] } },
+          // 40 % off 2 products: 10 % over — never among a global top 50.
+          { id: "small", name: "Malá", method: "automatic", value: { kind: "percentage", percent: 40 }, target: { kind: "products", productIds: small, variantIds: [] } },
+        ],
+      },
+    },
+  });
+  await saveMarginSettings(ctx, settings(), { configVersion: (await loadConfig(db.prisma, shop)).version });
+  await settle();
+  await loadMarginScreen(ctx);
+  await settle();
+  const all = (await loadMarginScreen(ctx)).impact!;
+  assert.deepEqual(all.rules.map((r) => [r.ruleId, r.variants, r.rows.length]), [
+    ["big", 60, 10],
+    ["small", 2, 2],
+  ]);
+  const focused = (await loadMarginScreen(ctx, { focusRuleId: "small" })).impact!;
+  assert.deepEqual(focused.focus, { ruleId: "small", ruleName: "Malá" });
+  assert.deepEqual(focused.rules.map((r) => [r.ruleId, r.variants, r.rows.length]), [["small", 2, 2]], "the filter is applied on the server: never empty");
+  for (const rule of all.rules) {
+    const note = await ruleMarginImpact(ctx, rule.ruleId);
+    assert.deepEqual(note, { state: "ready", discountClass: "product", variants: rule.variants }, "the editor's number is the overview's");
+  }
 });
 
 test("coverage: the margin screen and the Přehled card count in the same currency with the same bounded queries", async () => {
@@ -569,13 +643,53 @@ test("a variant whose cost Shopify refuses is surfaced in the mirror status (the
   assert.deepEqual(store.sync.variantCostMetafield("gid://shopify/ProductVariant/101"), { cost: 6, cur: "CZK" });
   const data = await loadMarginScreen(ctx);
   assert.equal(data.mirror.state, "failed");
-  const problem = data.mirror.state === "failed" ? data.mirror.problems[0] : undefined;
-  assert.equal(problem?.key, "margin.mirror.refused", "its own sentence, not an English detail in a generic one");
-  assert.equal(problem?.params?.n, 1);
-  assert.equal(problem?.params?.title, "Čepice");
-  assert.match(String(problem?.params?.detail), /Value is invalid/);
+  const problems = data.mirror.state === "failed" ? data.mirror.problems : [];
+  assert.equal(problems[0]?.key, "margin.mirror.refused", "its own sentence, not an English detail in a generic one");
+  assert.deepEqual(problems[0]?.params, { n: 1, title: "Čepice" }, "the Czech sentence carries no Shopify text");
+  assert.equal(problems[1]?.key, "margin.mirror.detail", "Shopify's own words only as a secondary detail");
+  assert.match(String(problems[1]?.params?.detail), /Value is invalid/);
   const { t } = await import("../../app/i18n/index.ts");
-  assert.match(t("cs", problem!.key, problem!.params), /^Shopify odmítl zapsat nákupní cenu u variant: 1 \(např\. Čepice\)/);
+  assert.match(t("cs", problems[0]!.key, problems[0]!.params), /^Shopify odmítl zapsat nákupní cenu u variant: 1 \(např\. Čepice\)\./);
+  assert.doesNotMatch(t("cs", problems[0]!.key, problems[0]!.params), /Value is invalid|gid:\/\//);
+});
+
+test("a failed cost READ is said as a read failure in its own sentence (never 'Část změn se do Shopify nepropsala'), the technical detail second", async () => {
+  const { costMirrorView } = await import("../../app/lib/integration/costs.server.ts");
+  const failed = { token: "t", since: "2026-09-29T08:00:00.000Z", done: 150, total: 900, failedAt: "2026-09-29T08:05:00.000Z", error: "costs.read: Throttled (3 attempts)" };
+  await db.prisma.shopSyncState.create({ data: { shop, costsPending: JSON.stringify(failed) } });
+  const view = await costMirrorView({ db: db.prisma, shop }, { enabled: true, timezone: "Europe/Prague" });
+  assert.equal(view.state, "failed");
+  const problems = view.state === "failed" ? view.problems : [];
+  assert.deepEqual(problems, [
+    { key: "margin.mirror.readFailed" },
+    { key: "margin.mirror.detail", params: { detail: "costs.read: Throttled (3 attempts)" } },
+  ]);
+  const { t } = await import("../../app/i18n/index.ts");
+  assert.match(t("cs", "margin.mirror.readFailed"), /^Nákupní ceny se nepodařilo načíst/);
+  await db.prisma.shopSyncState.update({ where: { shop }, data: { costsPending: JSON.stringify({ ...failed, error: "costs.set: HTTP 502" }) } });
+  const write = await costMirrorView({ db: db.prisma, shop }, { enabled: true, timezone: null });
+  assert.equal(write.state === "failed" ? write.problems[0]?.key : null, "margin.mirror.writeFailed");
+});
+
+test("no usable offline session (OQ4): the reconcile records it, the admin says 'open the app', and a load with a session retries at once", async () => {
+  const { runCostReconcileOnce } = await import("../../app/lib/jobs/cost-reconcile.server.ts");
+  const { costMirrorView } = await import("../../app/lib/integration/costs.server.ts");
+  const { ensureCostsFresh } = await import("../../app/lib/sync/cost-lane.server.ts");
+  const store = storeWithCatalogue();
+  await saveConfig(db.prisma, shop, { modules: { margin: { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: [] } } });
+  const now = new Date("2026-09-29T10:00:00Z");
+  const result = await runCostReconcileOnce({ db: db.prisma, clientFor: async () => null, plan: async () => "free", now: () => now });
+  assert.ok(result.skippedNoSession >= 1);
+  const view = await costMirrorView({ db: db.prisma, shop, now: () => now }, { enabled: true, timezone: null });
+  assert.equal(view.state, "failed");
+  assert.deepEqual(view.state === "failed" ? view.problems : null, [{ key: "margin.mirror.reauth" }]);
+  const { t } = await import("../../app/i18n/index.ts");
+  assert.match(t("cs", "margin.mirror.reauth"), /Otevři appku, ať můžeme pokračovat na pozadí/);
+  // The next admin load has a session: the pass starts at once (no 15-min retry wait for this failure).
+  const started = await ensureCostsFresh(shop, { client: store, db: db.prisma, plan: async () => "free", now: () => new Date(now.getTime() + 60_000) }, true);
+  assert.equal(started, "started_full");
+  await settle();
+  assert.equal((await costMirrorView({ db: db.prisma, shop, now: () => now }, { enabled: true, timezone: null })).state, "fresh");
 });
 
 test("a cs save that the sanitizer adjusts reports the adjustments in Czech (rounded + clamped percent)", async () => {
@@ -606,6 +720,7 @@ test("a no-op products/update or a no-op full pass does not invalidate the impac
   await saveMarginSettings(ctx, settings(), { configVersion: (await loadConfig(db.prisma, shop)).version });
   await settle();
   await loadMarginScreen(ctx);
+  await settle();
   const reads = marginCatalogueReads();
   const { startCostJob } = await import("../../app/lib/sync/cost-lane.server.ts");
   const lane = { client: store, db: db.prisma, plan: async () => "pro" as const };
@@ -613,8 +728,9 @@ test("a no-op products/update or a no-op full pass does not invalidate the impac
   assert.equal(mirrored.done, "items");
   const pass = await startCostJob(shop, lane, { kind: "full", restart: true });
   assert.equal(pass.done === "full" && pass.result.outcome, "done");
-  await loadMarginScreen(ctx);
-  assert.equal(marginCatalogueReads(), reads, "nothing meaningful changed: the cached impact is reused");
+  await settle();
+  assert.equal((await loadMarginScreen(ctx)).impact?.status, "ready");
+  assert.equal(marginCatalogueReads(), reads, "nothing meaningful changed: the stored impact is reused");
 });
 
 
@@ -661,6 +777,92 @@ test("linesWithoutCost counts the lines margin protection applies to whose cost 
     shopTimezone: "Europe/Prague",
     locale: "cs",
   });
-  assert.deepEqual(plan.margin, { rateEstimated: false, linesWithoutCost: 2 });
+  assert.deepEqual(plan.margin, { rateEstimated: false, linesWithoutCost: 2, linesCostNotConverted: 0 });
   assert.deepEqual(plan.lines.map((l) => l.marginCapped ?? false), [true, true, false, false, false]);
+});
+
+test("Vyzkoušet košík: a line that HAS a cost it could not convert (no usable rate) is never said to have 'no cost price' (audit P2-1c)", async () => {
+  const { planTryCart } = await import("../../app/lib/integration/try-cart-plan.ts");
+  const { sanitizeConfig } = await import("@won/core/discounts/config");
+  const { config } = sanitizeConfig({
+    modules: {
+      codes: {
+        rules: [{ id: "half", name: "Půlka", method: "automatic", value: { kind: "percentage", percent: 50 }, target: { kind: "products", productIds: ["gid://shopify/Product/1", "gid://shopify/Product/2"], variantIds: [] } }],
+      },
+      margin: { enabled: true, global: { minMarginPercent: 0, maxDiscountPercent: 30 }, perCollection: [] },
+    },
+  });
+  const line = (n: number, extra: Record<string, unknown> = {}) => ({
+    variantId: `gid://shopify/ProductVariant/${n}01`,
+    productId: `gid://shopify/Product/${n}`,
+    title: `P${n}`,
+    quantity: 1,
+    unitPrice: 1000,
+    collectionIds: [],
+    ...extra,
+  });
+  const run = (locale: "cs" | "en") =>
+    planTryCart(config, {
+      lines: [line(1, { unitCost: 6, unitCostCurrency: "CZK" }), line(2)],
+      productRefs: new Map([
+        ["gid://shopify/Product/1", { ruleIds: ["half"], variantRuleIds: {} }],
+        ["gid://shopify/Product/2", { ruleIds: ["half"], variantRuleIds: {} }],
+      ]),
+      currency: "EUR",
+      shopCurrency: "CZK",
+      shopToCartRate: null, // no usable rate: the cost cannot be converted
+      countryCode: null,
+      codes: [],
+      date: "2026-09-29",
+      time: "12:00:00",
+      shopTimezone: "Europe/Prague",
+      locale,
+    });
+  const plan = run("cs");
+  assert.deepEqual(plan.margin, { rateEstimated: false, linesWithoutCost: 1, linesCostNotConverted: 1 });
+  const only = (id: string) => (e: { lineIds?: string[] }) => e.lineIds?.length === 1 && e.lineIds[0] === id;
+  const costed = plan.explain.filter(only("L1"));
+  const bare = plan.explain.filter(only("L2"));
+  assert.ok(costed.length > 0 && bare.length > 0, JSON.stringify(plan.explain));
+  for (const item of costed) {
+    assert.doesNotMatch(item.text, /nemá nákupní cenu/, item.text);
+    assert.match(item.text, /nákupní cenu nešlo přepočítat do EUR, proto je sleva nejvýš 30\u00a0%/);
+  }
+  assert.ok(bare.some((e) => /položka nemá nákupní cenu/.test(e.text)), "a line without any cost keeps the engine's sentence");
+  const en = run("en").explain.filter(only("L1"));
+  assert.ok(en.every((e) => !/has no cost price/.test(e.text)) && en.some((e) => /could not be converted to EUR/.test(e.text)), JSON.stringify(en));
+});
+
+test("a Pro collection too large to read (P1-1): the margin screen and the Přehled card name it, and the impact counts with the folded, stricter values checkout runs", async () => {
+  const store = storeWithCatalogue();
+  store.sync.collectionCounts.set(COLLECTION, 12_000);
+  store.sync.collectionTitles.set(COLLECTION, "Zimní");
+  const ctx = ctxFor(store, "pro");
+  await saveConfig(db.prisma, shop, {
+    modules: {
+      codes: {
+        rules: [{ id: "half", name: "Půlka", method: "automatic", value: { kind: "percentage", percent: 50 }, target: { kind: "products", productIds: ["gid://shopify/Product/1"], variantIds: [] } }],
+      },
+    },
+  });
+  await saveMarginSettings(
+    ctx,
+    settings({ minMarginPercent: 25, collections: [{ collectionId: COLLECTION, title: "", minMarginPercent: 60, maxDiscountPercent: null }] }),
+    { configVersion: (await loadConfig(db.prisma, shop)).version },
+  );
+  await settle();
+  await loadMarginScreen(ctx);
+  await settle();
+  const data = await loadMarginScreen(ctx);
+  assert.deepEqual(data.tooLarge, [{ collectionId: COLLECTION, title: "Zimní", count: null }]);
+  // Tričko (price 10.00, cost 6.00) is not in the collection, but checkout runs the folded 60 %: floor 15.00 ≥ price → nothing allowed.
+  const half = data.impact!.rules.find((r) => r.ruleId === "half")!;
+  assert.deepEqual(half.rows.map((r) => [r.variantId, r.wanted, r.allowed]), [["gid://shopify/ProductVariant/101", 500, 0]]);
+  const card = await loadMarginOverview(ctx, await loadConfig(db.prisma, shop), { timezone: null, trigger: false, shopCurrency: "CZK" });
+  assert.deepEqual(card.tooLarge, [{ collectionId: COLLECTION, title: "Zimní", count: null }]);
+  // Přehled's card carries it from the last product pass — the sync line only shows the LATEST run, which a
+  // later background lane may have replaced with an OK one.
+  const overview = await overviewData(ctx, { scopes: "write_discounts,read_products,read_themes", syncDeadlineMs: 2_000, nativeDeadlineMs: 50 });
+  assert.deepEqual(overview.options.signals.margin?.tooLarge, [{ collectionId: COLLECTION, title: "Zimní", count: null }]);
+  await settle();
 });

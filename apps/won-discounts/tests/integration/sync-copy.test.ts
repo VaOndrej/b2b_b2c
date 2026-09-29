@@ -43,6 +43,32 @@ test("failed steps → sentences that name the rule and keep the detail", () => 
   assert.match(say({ step: "something.new", ok: false, detail: "y".repeat(400) }), /…\)\.$/, "long details are shortened");
 });
 
+test("margin sync problems have their own sentences with the collection title and the count — never an English detail or a GID (audit P1-1, P3-2)", () => {
+  const exact = stepProblem(
+    {
+      step: "margin.too_large",
+      ok: false,
+      detail: "the margin setting of gid://shopify/Collection/5 …",
+      params: { collectionId: "gid://shopify/Collection/5", collection: "Nízká marže", count: 10_400 },
+    },
+    names,
+  );
+  assert.deepEqual(exact, { key: "sync.problem.marginTooLarge", params: { collection: "Nízká marže", count: 10_400 } });
+  const cs = t("cs", exact.key, exact.params);
+  assert.match(cs, /„Nízká marže“/);
+  assert.match(cs, /platí přísnější hodnota pro celý obchod/);
+  assert.doesNotMatch(cs, /gid:\/\/|the margin setting/);
+  const uncounted = stepProblem(
+    { step: "margin.too_large", ok: false, detail: "x", params: { collectionId: "gid://shopify/Collection/5", collection: "Nízká marže", count: null } },
+    names,
+  );
+  assert.equal(uncounted.key, "sync.problem.marginTooLargeUncounted");
+  assert.match(t("en", uncounted.key, uncounted.params), /“Nízká marže”.*stricter value applies to the whole store/);
+  const currency = stepProblem({ step: "shop.currency", ok: false, detail: "Shopify did not say the shop currency" }, names);
+  assert.equal(currency.key, "sync.problem.currency");
+  assert.match(t("cs", currency.key, currency.params), /měn/);
+});
+
 test("only failed steps become problems (deduplicated); warnings are the sync's `warning` steps and the save's notes", () => {
   const steps = [
     { step: "shop.read", ok: true, detail: "ok" },
