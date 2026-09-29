@@ -17,6 +17,7 @@ import { buildOverviewProps, OverviewScreen, type OverviewScreenProps } from "..
 import { PlanScreen, type PlanScreenProps } from "../components/screens/PlanScreen";
 import { buildRuleEditorProps, RuleEditorScreen, type RuleEditorScreenProps } from "../components/screens/RuleEditorScreen";
 import { SettingsScreen, type SettingsScreenProps } from "../components/screens/SettingsScreen";
+import { MarginScreen, type MarginScreenProps } from "../components/screens/MarginScreen";
 import { buildTryCartProps, TryCartScreen, type TryCartScreenProps } from "../components/screens/TryCartScreen";
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
@@ -45,6 +46,12 @@ import {
   devNative,
   devNativeMoved,
   devTryCartPlan,
+  devMarginOverview,
+  devMarginResult,
+  devMarginScreen,
+  devRuleMarginImpact,
+  devTryCartPlanMargin,
+  DEV_TRY_CART_MARGIN_LINES,
   isDevHarnessEnabled,
 } from "../lib/dev-harness.server";
 
@@ -60,15 +67,22 @@ import {
 //                                 ?state=sync-failed (last sync failed + Synchronizovat
 //                                 znovu), ?state=moved (a discount just moved, with
 //                                 its undo + an unfinished move), ?state=empty,
+//                                 ?state=margin (Ochrana marže card, costs read
+//                                 2 days ago + Obnovit nákupní ceny), ?state=margin-off,
 //                                 ?readOnly=1
 //   /dev/preview/discounts       ?state=empty, ?state=f2, ?state=f2-pending, ?sync=ok | ?sync=failed (per-rule facts)
 //   /dev/preview/rule-editor     ?rule=<fixture id> | ?rule=new&recipe=<recipe>, ?plan=pro,
 //                                 ?result=unreadable|too-many|collision|sync-failed|saved|base-changed|busy|syncing,
-//                                 ?rule=dev-f2-collection | dev-f2-market (F2 fixture, Free gate)
+//                                 ?rule=dev-f2-collection | dev-f2-market (F2 fixture, Free gate),
+//                                 &margin=1 (the margin note: protection lowers the rule)
 //   /dev/preview/try-cart        a REAL engine plan on fixture prices; ?state=empty | ?state=not-wired | ?state=warnings
+//                                 | ?state=margin (EUR cart, costs by an estimated rate, capped lines)
+//   /dev/preview/margin          Ochrana marže: Free by default, ?plan=pro; ?state=running | zero | off |
+//                                 stale | failed | gate (Free with collection settings stored);
+//                                 ?rule=<id> (Přehled zásahů of one rule); ?result=refreshed | saved | invalid | unreadable
 //   /dev/preview/onboarding      ?step=1|2|3, ?embed=on
 //   /dev/preview/move-dialog
-//   /dev/preview/coming-soon     ?module=tiers|rewards|outlet|margin|campaigns|appearance
+//   /dev/preview/coming-soon     ?module=tiers|rewards|outlet|campaigns|appearance
 //   /dev/preview/plan, /dev/preview/settings
 //   Any screen: ?locale=en for the English admin.
 //
@@ -93,6 +107,7 @@ export const HARNESS_SCREENS = [
   "coming-soon",
   "plan",
   "settings",
+  "margin",
 ] as const;
 export type HarnessScreen = (typeof HARNESS_SCREENS)[number];
 
@@ -146,6 +161,13 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
           ...devGate(locale),
         });
       }
+      if (state === "margin" || state === "margin-off") {
+        return buildOverviewProps(DEV_OVERVIEW_FIXTURE, {
+          ...wired,
+          signals: { ...DEV_SIGNALS, native: devNative(locale), margin: devMarginOverview(state === "margin" ? "stale" : "off") },
+          ruleSync: DEV_RULE_SYNC_OK,
+        });
+      }
       if (state === "empty") return buildOverviewProps(DEV_EMPTY_FIXTURE, { readOnly, timezone: DEV_TIMEZONE, now: DEV_NOW });
       return buildOverviewProps(DEV_OVERVIEW_FIXTURE, { readOnly });
     }
@@ -196,12 +218,17 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
         now: DEV_NOW,
       });
       if (!props) throw notFound();
-      return { ...props, result: devEditorResult(q.get("result")) };
+      return {
+        ...props,
+        result: devEditorResult(q.get("result")),
+        ...(q.get("margin") === "1" ? { marginImpact: devRuleMarginImpact(ruleParam) } : {}),
+      };
     }
     case "try-cart": {
       const base = buildTryCartProps(DEV_OVERVIEW_FIXTURE, { timezone: DEV_TIMEZONE, marketNames: names, now: DEV_NOW });
       if (state === "empty") return base;
       if (state === "warnings") return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", currency: "CZK:cz", plan: devTryCartPlanWarnings(locale) };
+      if (state === "margin") return { ...base, lines: DEV_TRY_CART_MARGIN_LINES, currency: "EUR:sk", plan: devTryCartPlanMargin(locale) };
       if (state === "not-wired") {
         return { ...base, lines: DEV_TRY_CART_LINES, codes: "VIP10", result: { ok: false as const, reason: "not_wired" as const, what: "tryCart" as const } };
       }
@@ -230,6 +257,12 @@ export const loader = ({ request }: LoaderFunctionArgs) => {
       return { pro: q.get("plan") === "pro", codeRules: codeRuleLimit(DEV_OVERVIEW_FIXTURE), maxRules: CONFIG_LIMITS.rules };
     case "settings":
       return { currencies: currencyViews(DEV_OVERVIEW_FIXTURE.markets, { marketNames: names }) };
+    case "margin":
+      return {
+        ...devMarginScreen({ plan: q.get("plan") === "pro" ? "pro" : "free", state, locale }),
+        result: devMarginResult(q.get("result")),
+        focusRuleId: q.get("rule"),
+      };
     default:
       throw notFound();
   }
@@ -299,6 +332,9 @@ export default function DevPreview() {
       break;
     case "settings":
       content = <SettingsScreen {...(data as SettingsScreenProps)} />;
+      break;
+    case "margin":
+      content = <MarginScreen {...(data as MarginScreenProps)} result={submitted ?? (data as MarginScreenProps).result} />;
       break;
   }
 

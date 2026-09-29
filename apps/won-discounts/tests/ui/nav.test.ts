@@ -4,14 +4,21 @@ import { test } from "node:test";
 import React, { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { navItems, orderedModules, UPCOMING_MODULES } from "../../app/components/model/modules.ts";
+import {
+  ADMIN_MODULES,
+  isUpcomingModule,
+  navItems,
+  orderedModules,
+  orderedUpcomingModules,
+  UPCOMING_MODULES,
+} from "../../app/components/model/modules.ts";
 
 // Onboarding step 1 promises "Vybrané moduly dáme v menu a v Přehledu na první
 // místo" — goals only ORDER, every module stays. The nav is the shared Won one
 // (@won/app-kit/admin-nav, SHARE-1) with a localized home label.
 
 test("goals put their modules first, in the order picked; every module stays", () => {
-  assert.deepEqual(orderedModules([]), [...UPCOMING_MODULES]);
+  assert.deepEqual(orderedModules([]), [...ADMIN_MODULES]);
   assert.deepEqual(orderedModules(["margin", "migrate", "rewards", "margin"]), [
     "margin",
     "rewards",
@@ -21,8 +28,19 @@ test("goals put their modules first, in the order picked; every module stays", (
     "appearance",
   ]);
   for (const goals of [[], ["outlet"], ["tiers", "rewards", "outlet", "margin"]] as const) {
-    assert.deepEqual([...orderedModules(goals)].sort(), [...UPCOMING_MODULES].sort());
+    assert.deepEqual([...orderedModules(goals)].sort(), [...ADMIN_MODULES].sort());
   }
+});
+
+test("MVP 2: Ochrana marže is built — out of the coming-soon list, still in the nav in goal order", () => {
+  assert.ok(!(UPCOMING_MODULES as readonly string[]).includes("margin"));
+  assert.equal(isUpcomingModule("margin"), false);
+  assert.equal(isUpcomingModule("tiers"), true);
+  assert.deepEqual(orderedUpcomingModules(["margin", "outlet"]), ["outlet", "tiers", "rewards", "campaigns", "appearance"]);
+  assert.deepEqual(
+    navItems("cs", ["margin"]).map((i) => i.to),
+    ["/app/discounts", "/app/try-cart", "/app/margin", "/app/tiers", "/app/rewards", "/app/outlet", "/app/campaigns", "/app/appearance", "/app/settings", "/app/plan"],
+  );
 });
 
 test("nav: Slevy a kódy and Vyzkoušet košík first, modules by goals, Tarif last", () => {

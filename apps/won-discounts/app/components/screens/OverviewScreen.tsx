@@ -5,6 +5,9 @@
 // screenshots the real screen (audit P2-5). Props are plain serializable data
 // built by buildOverviewProps(); every word comes from i18n + the core formatter.
 //
+// Ochrana marže (MVP 2) has its own card once the signals know its state
+// (AdminSignals.margin; absent = not known, no card).
+//
 // "Běží" is green only for a rule that really runs (model/rule-status.ts):
 // switched on, inside its schedule, evaluable at checkout, and THIS version of
 // it written to Shopify (per-rule sync facts). The sync line shows what did
@@ -18,11 +21,12 @@ import type { DiscountRule, OnboardingGoal, WonDiscountsConfig } from "@won/core
 import { useT } from "../../i18n/context";
 import type { Translator } from "../../i18n";
 import { NativeDiscountsPanel, nativeSummary } from "../NativeDiscounts";
+import { MarginOverviewCard } from "../margin/MarginOverviewCard";
 import { RecipeGrid } from "../RecipeGrid";
 import { RuleRow } from "../RuleRow";
 import { collectWarnings, type RuleWarning } from "../model/describe";
 import { currencyCodes, currencyViews } from "../model/markets";
-import { orderedModules, UPCOMING_MODULES, UPCOMING_MODULE_META } from "../model/modules";
+import { orderedUpcomingModules, UPCOMING_MODULES, UPCOMING_MODULE_META } from "../model/modules";
 import { shopToday } from "../model/rule-form";
 import { ruleStatus, ruleStatusSummary } from "../model/rule-status";
 import { uiText } from "../model/result-copy";
@@ -275,6 +279,8 @@ export function OverviewScreen({
           </div>
         </WonSection>
 
+        {status.margin ? <MarginOverviewCard margin={status.margin} sync={status.sync} /> : null}
+
         <WonSection title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)}>
           <NativeDiscountsPanel native={status.native} mode="each" result={nativeResult} />
         </WonSection>
@@ -287,7 +293,7 @@ export function OverviewScreen({
           defaultOpen={false}
         >
           <div>
-            {orderedModules(goals).map((key) => {
+            {orderedUpcomingModules(goals).map((key) => {
               const meta = UPCOMING_MODULE_META[key];
               return (
                 <WonRow key={key} action={<s-link href={`/app/${key}`}>{t("soon.state")}</s-link>}>

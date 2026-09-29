@@ -10,6 +10,7 @@ import { useFetcher } from "react-router";
 
 import { useT } from "../../i18n/context";
 import type { MessageKey } from "../../i18n";
+import { MARGIN_ACTION } from "../model/margin";
 import { failureCopy, uiText } from "../model/result-copy";
 import type { SyncOutcomeView, UiResult } from "../model/types";
 import { boolAttr } from "./attrs";
@@ -98,8 +99,41 @@ export function RefreshTargetingButton() {
   );
 }
 
-function syncHeading(message: string, sync: SyncOutcomeView | undefined, syncing: { products?: number; targeting?: boolean } | undefined): MessageKey {
-  if (syncing && !sync) return message === "deleted" ? "result.deletedSyncing" : message === "synced" ? "result.syncing" : "result.savedSyncing";
+/**
+ * "Obnovit nákupní ceny": asks for a new read of the cost prices now (Ochrana
+ * marže action, MVP 2) — on the margin screen and on Přehled when the cost
+ * mirror is behind (§13a: the diagnosis carries its fix).
+ */
+export function RefreshCostsButton({ variant = "secondary" }: { variant?: "primary" | "secondary" }) {
+  const tr = useT();
+  const fetcher = useFetcher<UiResult>();
+  const busy = fetcher.state !== "idle";
+  const button = (
+    <s-button
+      variant={variant}
+      loading={boolAttr(busy)}
+      disabled={boolAttr(busy)}
+      onClick={() => fetcher.submit({ intent: "refreshCosts" }, { method: "post", action: MARGIN_ACTION })}
+    >
+      {tr.t("margin.mirror.refresh")}
+    </s-button>
+  );
+  if (!fetcher.data) return button;
+  return (
+    <s-stack direction="block" gap="small-200">
+      {button}
+      <Notice result={fetcher.data} />
+    </s-stack>
+  );
+}
+
+type Syncing = { products?: number; targeting?: boolean; costs?: boolean };
+
+function syncHeading(message: string, sync: SyncOutcomeView | undefined, syncing: Syncing | undefined): MessageKey {
+  if (syncing && !sync) {
+    if (message === "synced" && syncing.costs) return "result.syncingCostsHeading";
+    return message === "deleted" ? "result.deletedSyncing" : message === "synced" ? "result.syncing" : "result.savedSyncing";
+  }
   if (message === "synced") return "result.synced";
   if (message === "deleted") return sync && !sync.ok ? "result.deletedNotSynced" : "result.deleted";
   if (sync && !sync.ok) return "result.savedNotSynced";
@@ -134,11 +168,13 @@ export function Notice({ result, onReplace }: { result: UiResult | null | undefi
     const problems = (sync?.problems ?? []).map((p) => uiText(p, tr));
     const syncing = result.syncing
       ? [
-          result.syncing.targeting
-            ? t("result.syncingTargeting")
-            : result.syncing.products
-              ? t("result.syncingProducts", { n: result.syncing.products })
-              : t("result.syncingBackground"),
+          result.syncing.costs
+            ? t("result.syncingCosts")
+            : result.syncing.targeting
+              ? t("result.syncingTargeting")
+              : result.syncing.products
+                ? t("result.syncingProducts", { n: result.syncing.products })
+                : t("result.syncingBackground"),
         ]
       : [];
     return (

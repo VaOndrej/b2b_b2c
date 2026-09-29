@@ -67,6 +67,11 @@ export interface RuleEditorScreenProps {
   marketsScope?: boolean;
   /** Checkout still runs a config built with this rule's Pro settings; a resync is under way (I-2). */
   gatePending?: boolean;
+  /**
+   * Ochrana marže (MVP 2): on how many products margin protection lowers this
+   * (saved) rule's discount — ruleMarginImpact; null/absent = protection off or none.
+   */
+  marginImpact?: number | null;
 }
 
 export function buildRuleEditorProps(
@@ -261,6 +266,7 @@ export function RuleEditorScreen(props: RuleEditorScreenProps) {
             collectionIds={collectionIds}
             onPick={(kind) => void choose(kind)}
             pickUnavailable={pickUnavailable}
+            marginImpact={mode === "edit" ? props.marginImpact : null}
           />
           <ApplySection ed={ed} codeRules={codeRules} />
           <MoreOptionsSection ed={ed} defaultOpen={moreOpen} />

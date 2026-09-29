@@ -6,9 +6,9 @@ import { isUpcomingModule } from "../components/model/modules";
 import { ComingSoonScreen } from "../components/screens/ComingSoonScreen";
 
 // Modules that are visible but not built yet: /app/tiers, /app/rewards,
-// /app/outlet, /app/margin, /app/campaigns, /app/appearance. A module that
-// ships gets its own static route (e.g. app.tiers.tsx), which wins over this
-// one, so the URLs in the nav and in deep links stay valid.
+// /app/outlet, /app/campaigns, /app/appearance. A module that ships gets its
+// own static route (app.margin.tsx since MVP 2), which wins over this one, so
+// the URLs in the nav and in deep links stay valid.
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
   if (!isUpcomingModule(params.module)) throw new Response("Not Found", { status: 404 });

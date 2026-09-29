@@ -35,8 +35,8 @@ test("every admin route authenticates in its loader and action", () => {
       assert.match(firstStatement ?? "", /authenticate\.admin\(request\)/, `${file} ${kind}: authenticate before anything else`);
     }
   }
-  // 9 loaders (app, index, discounts, editor, try-cart, onboarding, module, settings, plan) + 4 actions.
-  assert.ok(checked >= 13, `checked ${checked} loaders/actions`);
+  // 10 loaders (app, index, discounts, editor, try-cart, onboarding, module, settings, plan, margin) + 5 actions.
+  assert.ok(checked >= 15, `checked ${checked} loaders/actions`);
 });
 
 test("no admin route takes the shop from the request; the request context is built from the session shop", () => {
@@ -56,8 +56,9 @@ test("no admin route takes the shop from the request; the request context is bui
     // Config writes only through the seam (it validates the form server-side).
     assert.doesNotMatch(source, /\bsaveConfig\(/, `${file} writes config directly instead of through ui-actions`);
   }
-  // Přehled (loader + action), Slevy a kódy, editor (loader + action), try-cart (loader + action), onboarding (loader + action).
-  assert.ok(wired >= 9, `${wired} wired contexts`);
+  // Přehled (loader + action), Slevy a kódy, editor (loader + action), try-cart (loader + action), onboarding (loader + action),
+  // Ochrana marže (loader + action).
+  assert.ok(wired >= 11, `${wired} wired contexts`);
 });
 
 test("the integration layer never reads a shop from a form or a URL", () => {
@@ -94,6 +95,7 @@ for (const [file, params] of [
   ["app._index.tsx", {}],
   ["app.onboarding.tsx", {}],
   ["app.try-cart.tsx", {}],
+  ["app.margin.tsx", {}],
 ] as const) {
   test(`${file}: an unauthenticated POST is refused by Shopify auth and writes nothing`, async () => {
     const mod = (await import(`../../app/routes/${file}`)) as { action: Action };
@@ -120,6 +122,8 @@ for (const [file, params] of [
     }
     assert.ok(outcome instanceof Response, "Shopify auth answers with a Response");
     assert.ok(outcome.status >= 300, `refused (status ${outcome.status})`);
-    assert.deepEqual((await loadConfig(db.prisma, SHOP)).config.modules.codes.rules, []);
+    const stored = (await loadConfig(db.prisma, SHOP)).config;
+    assert.deepEqual(stored.modules.codes.rules, []);
+    assert.equal(stored.modules.margin.enabled, false, "margin protection stays off");
   });
 }

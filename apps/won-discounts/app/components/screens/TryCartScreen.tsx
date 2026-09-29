@@ -5,6 +5,9 @@
 // the discount function's own payload and checkout's own output mapping — and
 // arrives as a ready CartPlanView with its warnings; this screen never does
 // discount math (DATA-4, §10b). The market choice submits `CZK:cz` (currency + market).
+// Ochrana marže (MVP 2): a line the protection lowered carries a "Hranice marže"
+// marker (the engine's sentence says why), and the plan says when the cost
+// prices were converted with an estimated rate (checkout uses Shopify's own).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form } from "react-router";
@@ -24,7 +27,7 @@ import type { CartPlanView, CurrencyView, ExplainView, FieldError, TryCartLineVi
 import { boolAttr } from "../shell/attrs";
 import { Notice } from "../shell/Notice";
 import { RowNote, WonBlock, WonRow, WonSection } from "../shell/WonSection";
-import { WON_FONT, WON_INK, WON_LINE, WON_MUTED } from "../shell/tokens";
+import { WON_FONT, WON_INK, WON_LINE, WON_MUTED, WON_WASH } from "../shell/tokens";
 
 export interface TryCartScreenProps {
   currencies: CurrencyView[];
@@ -325,9 +328,12 @@ export function TryCartScreen(props: TryCartScreenProps) {
                 {plan.lines.map((line) => (
                   <WonRow key={line.lineId}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                      <s-text type="strong">
-                        {line.title} × {line.quantity}
-                      </s-text>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <s-text type="strong">
+                          {line.title} × {line.quantity}
+                        </s-text>
+                        {line.marginCapped ? <MarginCappedChip /> : null}
+                      </span>
                       <span style={{ fontFamily: WON_FONT, fontSize: 13 }}>
                         {line.discount > 0 ? (
                           <>
@@ -348,6 +354,7 @@ export function TryCartScreen(props: TryCartScreenProps) {
                     <ExplainList items={explainFor(plan.explain, null)} />
                   </WonRow>
                 ) : null}
+                {plan.margin ? <MarginNotes margin={plan.margin} currency={plan.currency} /> : null}
                 <div style={{ borderTop: `1px solid ${WON_LINE}`, paddingTop: 10, fontFamily: WON_FONT, fontSize: 13 }}>
                   <TotalRow label={t("tryCart.totals.subtotal")} value={formatMoney(plan.totals.subtotal, plan.currency, tr.locale)} />
                   {plan.totals.productDiscount > 0 ? (
@@ -365,6 +372,51 @@ export function TryCartScreen(props: TryCartScreenProps) {
         </WonSection>
       </s-stack>
     </s-page>
+  );
+}
+
+/**
+ * Margin protection lowered this line's discount (the engine's sentence under
+ * it says from what, to what and why). Neutral ink, never red: protection
+ * working is not a problem (§11a), and never amber: it is not a plan marker.
+ */
+function MarginCappedChip() {
+  const { t } = useT();
+  return (
+    <span
+      style={{
+        fontFamily: WON_FONT,
+        fontSize: 11,
+        fontWeight: 700,
+        lineHeight: 1.4,
+        padding: "1px 8px",
+        borderRadius: 999,
+        whiteSpace: "nowrap",
+        color: WON_INK,
+        background: WON_WASH,
+        border: "1px solid #c9d0d8",
+      }}
+    >
+      {t("tryCart.margin.capped")}
+    </span>
+  );
+}
+
+/**
+ * What the simulation assumed about margin protection (§12): costs converted
+ * with a rate ESTIMATED from market prices when the cart is not in the shop
+ * currency (checkout uses Shopify's current rate), and how many lines had no
+ * cost price — with the way to the settings (§13).
+ */
+function MarginNotes({ margin, currency }: { margin: NonNullable<CartPlanView["margin"]>; currency: string }) {
+  const tr = useT();
+  const { t } = tr;
+  if (!margin.rateEstimated && margin.linesWithoutCost === 0) return null;
+  return (
+    <WonRow action={<s-link href="/app/margin">{t("tryCart.margin.settings")}</s-link>}>
+      {margin.rateEstimated ? <RowNote>{t("tryCart.margin.rateEstimated", { currency })}</RowNote> : null}
+      {margin.linesWithoutCost > 0 ? <RowNote>{tr.tp("tryCart.margin.withoutCost", margin.linesWithoutCost)}</RowNote> : null}
+    </WonRow>
   );
 }
 

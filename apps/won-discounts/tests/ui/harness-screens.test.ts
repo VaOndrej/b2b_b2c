@@ -47,6 +47,46 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   { path: "move-dialog", expect: [/Co se stane/, /Co se ztratí/, /Počítadlo použití \(zatím 42×\) se smazáním slevy v Shopify ztratí/, /Na co myslet/, /zbývajících 58/] },
   { path: "move-dialog?all=1", expect: [/Přesunout 2 slevy do Won/, /LETO15/, /Doprava zdarma nad 2 000 Kč/, /Doplň ji pro EUR/] },
   { path: "coming-soon?module=outlet", expect: [/Výprodej/, /Přijde v další verzi/, /Přejít na Přehled/] },
+  // Ochrana marže (MVP 2): the module screen per state, the Přehled card, the editor note, a capped cart line.
+  {
+    path: "margin",
+    expect: [
+      /Ochrana marže/,
+      /Min\. marže 20\u00a0% · bez nákupní ceny sleva nejvýš 40\u00a0%/,
+      /\(cena po slevách − nákupní cena\) \/ cena po slevách, z ceny, kterou platí zákazník — u cen s DPH včetně DPH/,
+      /nikdy neblokuje objednávku/,
+      /Produkty bez nákupní ceny: sleva nejvýš/,
+      /8 produktů nemá nákupní cenu/,
+      /Ponožky Won/,
+      /shopify:\/\/admin\/products\/3/,
+      /Obnovit nákupní ceny/,
+      /Jednou denně navíc zkontrolujeme všechny/,
+      /Nastavení podle kolekcí/,
+      /Pro · odemknout/,
+      /Ukázka/,
+      /Přehled zásahů/,
+      /Zaplatí 750|zaplatí 750\u00a0Kč/,
+    ],
+  },
+  {
+    path: "margin?plan=pro",
+    expect: [/2 kolekce s vlastním nastavením/, /Podzimní kolekce/, /Doplňky/, /3 produkty dostanou nižší slevu/, /Mikina Won — M \/ černá/, /hranice z nákupní ceny/, /nastavení kolekce/, /Slevy z objednávky/, /ne z objednávek/],
+  },
+  { path: "margin?plan=pro&state=running", expect: [/Právě načítáme nákupní ceny: 340 z 1240/, /Spočítáme, až se načtou nákupní ceny/] },
+  { path: "margin?plan=pro&state=zero", expect: [/Nákupní cenu mají všechny produkty/] },
+  { path: "margin?state=off", expect: [/Ochrana marže je vypnutá/, /Vypnuto/, /Načteme je ze Shopify, až ochranu zapneš a uložíš/] },
+  { path: "margin?state=gate", expect: [/Pro funkce není aktivní/, /Ochrana marže pro jednotlivé kolekce je funkce Pro/, /Min\. marže 30\u00a0% · bez nákupní ceny sleva nejvýš 10\u00a0%/] },
+  { path: "margin?state=failed&result=refreshed", expect: [/Načtení selhalo 28\. 9\. 2026 06:10/, /Načítání nákupních cen běží/] },
+  { path: "margin?plan=pro&rule=dev-f2-collection", expect: [/Jen sleva „Podzimní kolekce 20 %“/, /Zobrazit všechny zásahy/] },
+  { path: "margin?result=invalid", expect: [/Zadej 0 až 95 %/] },
+  { path: "overview?state=margin", expect: [/Ochrana marže/, /8 produktů nemá nákupní cenu\. Sleva na ně je nejvýš 40\u00a0%/, /Naposledy načteno 26\. 9\. 2026 06:10/, /Obnovit nákupní ceny/, /Upravit ochranu/] },
+  { path: "overview?state=margin-off", expect: [/Ochrana marže je vypnutá/, /Nastavit ochranu marže/] },
+  { path: "rule-editor?rule=dev-f2-collection&margin=1&plan=pro", expect: [/Na 3 produktech se sleva sníží na hranici marže/, /\/app\/margin\?rule=dev-f2-collection#impact/] },
+  {
+    path: "try-cart?state=margin",
+    expect: [/Hranice marže/, /kurzem odhadnutým z cen v trhu/, /pokladna použije aktuální kurz Shopify/, /1 položka nemá nákupní cenu/, /cena neklesne pod nákupní cenu s minimální marží 30/],
+  },
+  { path: "margin?plan=pro&locale=en", expect: [/Margin protection/, /tax included for tax-inclusive prices/, /Refresh cost prices/, /Where protection steps in/] },
   { path: "plan", expect: [/Tarif/, /Pro · 29 USD/, /nejvýš 20 aktivních s kódem/, /nejvýš 25 slevových funkcí/] },
   { path: "settings", expect: [/Trhy a měny/, /CZK \(Česko\)/] },
   {
@@ -91,7 +131,7 @@ for (const screen of SCREENS) {
     const text = html.replace(/<script[\s\S]*?<\/script>/g, "");
     assert.doesNotMatch(text, /\{(n|name|value|currency|rule|currencies|date|count)\}/, `${screen.path}: leftover placeholder`);
     assert.doesNotMatch(text, />[^<]*\bundefined\b[^<]*</, `${screen.path}: "undefined" in text`);
-    assert.doesNotMatch(text, />[^<]*\b(freeShipping|percentage|not_wired|draft_only|not_synced)\b[^<]*</, `${screen.path}: raw enum in text`);
+    assert.doesNotMatch(text, />[^<]*\b(freeShipping|percentage|not_wired|draft_only|not_synced|max_percent|rateEstimated|linesWithoutCost)\b[^<]*</, `${screen.path}: raw enum in text`);
     // Copy must not promise what does not exist: no "unlimited", no segments "after connecting".
     assert.doesNotMatch(text, /neomezeně|unlimited|po napojení/i, `${screen.path}: overclaiming copy`);
   });

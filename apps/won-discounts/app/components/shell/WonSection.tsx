@@ -50,7 +50,8 @@ export type SectionGlyphName =
   | "target"
   | "sliders"
   | "plan"
-  | "check";
+  | "check"
+  | "shield";
 
 /** Small neutral line glyphs: identity, not meaning (§17e). */
 function Glyph({ name }: { name: SectionGlyphName }) {
@@ -160,6 +161,13 @@ function Glyph({ name }: { name: SectionGlyphName }) {
         <svg {...common}>
           <circle cx="12" cy="12" r="9" />
           <path d="M8 12.5l2.6 2.5L16 9.5" />
+        </svg>
+      );
+    case "shield":
+      return (
+        <svg {...common}>
+          <path d="M12 3l7 3v5.5c0 4.4-3 8-7 9.5-4-1.5-7-5.1-7-9.5V6z" />
+          <path d="M9 12l2.2 2.2L15.5 10" />
         </svg>
       );
     case "tag":
