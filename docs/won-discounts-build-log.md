@@ -10,9 +10,12 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 - **Fáze:** MVP 1 ✅ uzavřené a pushnuté (`801d2e9`). **Další krok: MVP 2 (Ochrana marže)** —
   napsat plán `docs/plans/2026-09-29-won-discounts-mvp2.md` (skill writing-plans), SDD ledger
   `.superpowers/sdd/<plán>/progress.md`, pak smyčka MVP (TS engine + Rust + shoda, sync, UI, živé E2E).
-  Otevřená otázka MVP 2: nákupní ceny e2e produktů — `inventoryItem.unitCost` čte scope
-  `read_inventory`; zápis pro seed (write_inventory nebo admin token) ověřit přes MCP; bez nich
-  E2E pokryje cestu „produkt bez nákupní ceny → max. sleva %“ (A2).
+  Nákupní ceny e2e produktů: **vyřešeno bez tokenu** (2026-09-29, `shopify app execute` jménem
+  appky, stávající scopy): čtení `variant.inventoryItem.unitCost` funguje s `read_products`
+  (bez `read_inventory`), zápis přes `productVariantsBulkUpdate(variants: [{ inventoryItem: { cost } }])`
+  s `write_products` (bez `write_inventory`; `inventoryItemUpdate` by write_inventory chtěl).
+  Důkaz: won-e2e-simple-a (varianta 48468678902001, cena 10.00 USD) má teď nákupní cenu 6.0 USD.
+  Admin token (shpat) ani client secret nejsou potřeba; seed MVP 2 nastaví ceny idempotentně sám.
 - **Ondřej 2026-09-29: funkce zůstává v Rustu** (JS nestačí na limit instrukcí; TS engine = reference).
 - **Blokováno:** nic. Pozn.: `shopify app dev` běží s dev přepínačem `WON_DEV_PLAN=pro` z finální
   brány — před MVP 2 restartovat bez něj (dev store je Free).
