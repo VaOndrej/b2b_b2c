@@ -8,6 +8,12 @@
 //
 // `options: {}` variants use a map of { optionName: value }; the seed script
 // turns them into Admin `productSet` optionValues.
+//
+// `cost: "<amount>"` (optional, shop currency, e.g. "6.00") is the variant's
+// purchase cost (Shopify `inventoryItem.unitCost`) — margin-protection E2E
+// coverage (MVP 2). A variant with no `cost` key deliberately has none (the
+// "no purchase cost" / percent-cap path); the seed script never invents or
+// clears a cost that isn't in this catalog.
 
 export const WON_E2E_PRODUCTS = {
   // Single-variant baseline product.
@@ -15,7 +21,7 @@ export const WON_E2E_PRODUCTS = {
     handle: "won-e2e-simple-a",
     title: "Won E2E — Simple A",
     options: [],
-    variants: [{ price: "10.00" }],
+    variants: [{ price: "10.00", cost: "6.00" }],
   },
   // Second single-variant product (for roles that need a distinct product).
   simpleB: {
@@ -30,7 +36,9 @@ export const WON_E2E_PRODUCTS = {
     title: "Won E2E — Two Variants",
     options: [{ name: "Size", values: ["Small", "Large"] }],
     variants: [
-      { price: "15.00", options: { Size: "Small" } },
+      // Small has a purchase cost (margin-protected path); Large deliberately
+      // has none (margin-unprotected / percent-cap path) — MVP 2 margin E2E.
+      { price: "15.00", options: { Size: "Small" }, cost: "5.00" },
       { price: "18.00", options: { Size: "Large" } },
     ],
   },
@@ -44,10 +52,10 @@ export const WON_E2E_PRODUCTS = {
       { name: "Color", values: ["Red", "Blue"] },
     ],
     variants: [
-      { price: "20.00", options: { Size: "S", Color: "Red" } },
-      { price: "20.00", options: { Size: "S", Color: "Blue" } },
-      { price: "22.00", options: { Size: "M", Color: "Red" } },
-      { price: "22.00", options: { Size: "M", Color: "Blue" } },
+      { price: "20.00", options: { Size: "S", Color: "Red" }, cost: "8.00" },
+      { price: "20.00", options: { Size: "S", Color: "Blue" }, cost: "8.00" },
+      { price: "22.00", options: { Size: "M", Color: "Red" }, cost: "8.00" },
+      { price: "22.00", options: { Size: "M", Color: "Blue" }, cost: "8.00" },
     ],
   },
   // Spare single-variant product held in reserve for future roles.

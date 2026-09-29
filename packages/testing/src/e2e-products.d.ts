@@ -2,6 +2,11 @@ export interface WonE2EVariant {
   price: string;
   /** Map of optionName → value; empty/omitted for single-variant products. */
   options?: Record<string, string>;
+  /**
+   * Purchase cost (shop currency, e.g. "6.00") → Shopify `inventoryItem.unitCost`.
+   * Omitted means the variant deliberately has no purchase cost.
+   */
+  cost?: string;
 }
 
 export interface WonE2EProductOption {
