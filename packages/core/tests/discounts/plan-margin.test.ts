@@ -10,6 +10,7 @@ import { test } from "node:test";
 import type { CartLineInput } from "../../src/discounts/cart.ts";
 import { emitForNode } from "../../src/discounts/emit.ts";
 import { planCart } from "../../src/discounts/plan.ts";
+import { searchOrderSets } from "../../src/discounts/plan-margin.ts";
 import {
   cartOf,
   code,
@@ -403,17 +404,63 @@ test("order stage: equal D → the LARGER set wins (no line is left out for noth
   assert.equal(plan.order?.base, 1200_00);
 });
 
-test("order stage: lines with the same k = h/s enter the candidate sets together, never split", () => {
-  // A: 1 000 Kč, 90 % product off → 100 Kč after, floor 49,99 → h = 50 Kč, k = 0,05.
-  // B: 100 Kč, floor 94,99 → h = 5 Kč, k = 0,05 as well.
-  // {A} alone would allow 50 Kč, but A and B share k, so the only candidate is {A, B}: B's
-  // after-product share limits D to 10 Kč (fixed, both lines stay in).
+test("order stage: both orderings are searched — h/s groups A and B (10 Kč), h/a finds A alone (50 Kč), the better wins", () => {
+  // A: 1 000 Kč, 90 % product off → 100 Kč after, floor 49,99 → h = 50 Kč: h/s = 0,05, h/a = 0,5.
+  // B: 100 Kč, floor 94,99 → h = 5 Kč: h/s = 0,05, h/a = 0,05.
+  // By h/s, A and B share k and enter together: B's after-product share limits D to 10 Kč.
+  // By h/a, A comes first alone: 50 % of its 100 Kč = 50 Kč fits its headroom → B is left out.
   const plan = planCart(
     cartOf([costLine("A", 1000_00, 49.99, 1, ["P"]), costLine("B", 100_00, 94.99)]),
     marginPayloadOf([pct("P", 90), orderPct("O", 50)], { global: { maxDiscountPercent: 100 } }),
   );
   assert.equal(lineOf(plan, "A").product?.amount, 900_00);
-  assert.equal(plan.order?.amount, 10_00);
-  assert.deepEqual(plan.order?.value, { fixedTotal: 10_00 });
-  assert.deepEqual(plan.order?.marginExcludedLineIds, []);
+  assert.equal(plan.order?.amount, 50_00);
+  assert.deepEqual(plan.order?.value, { percent: 50 }, "the natural percent, now over A only");
+  assert.equal(plan.order?.base, 100_00);
+  assert.deepEqual(plan.order?.marginExcludedLineIds, ["B"]);
+  assert.deepEqual(plan.order?.marginCapped, { before: 100_00, after: 50_00 });
+});
+
+test("order search (pure): h/s groups lines with an equal key, h/a is searched too, the better D wins", () => {
+  // The plan case above as raw search input (minor units): A a=10 000 s=100 000 h=5 000; B a=s=10 000 h=500.
+  const lines = [
+    { after: 10_000, before: 100_000, headroom: 5_000 },
+    { after: 10_000, before: 10_000, headroom: 500 },
+  ];
+  const fiftyPercent = (base: number) => Math.min(Math.round((base * 50) / 100), base);
+  const { byBefore, byAfter, best } = searchOrderSets(lines, fiftyPercent);
+  assert.deepEqual(byBefore, { members: [0, 1], amount: 1_000, base: 20_000, wanted: 10_000 }, "equal h/s: A and B only together");
+  assert.deepEqual(byAfter, { members: [0], amount: 5_000, base: 10_000, wanted: 5_000 });
+  assert.equal(best, byAfter);
+});
+
+test("order search (pure): equal D across the orderings → the larger set; equal size too → the h/s set", () => {
+  // Found by search: h/s allows 30 on line 0 alone, h/a allows 30 on lines 0, 2 and 3 → the larger set.
+  const lines = [
+    { after: 98, before: 140, headroom: 47 },
+    { after: 30, before: 30, headroom: 3 },
+    { after: 65, before: 130, headroom: 11 },
+    { after: 40, before: 100, headroom: 10 },
+  ];
+  const upTo30 = (base: number) => Math.min(30, base);
+  const larger = searchOrderSets(lines, upTo30);
+  assert.deepEqual(larger.byBefore.members, [0]);
+  assert.deepEqual(larger.byAfter.members, [0, 2, 3]);
+  assert.equal(larger.byBefore.amount, 30);
+  assert.equal(larger.byAfter.amount, 30);
+  assert.equal(larger.best, larger.byAfter);
+  // Same D and same size but different sets did not turn up in 2 million random monotone cases; the
+  // last tie-break is pinned with a synthetic wanted amount (only a base of exactly 10 wants 5):
+  // h/s picks Y alone, h/a picks X alone, both 5 → the h/s set.
+  const onlyTen = (base: number) => (base === 10 ? 5 : 0);
+  const tie = searchOrderSets(
+    [
+      { after: 10, before: 20, headroom: 9 }, // X: h/s 0,45, h/a 0,9
+      { after: 10, before: 10, headroom: 5 }, // Y: h/s 0,5,  h/a 0,5
+    ],
+    onlyTen,
+  );
+  assert.deepEqual(tie.byBefore, { members: [1], amount: 5, base: 10, wanted: 5 });
+  assert.deepEqual(tie.byAfter, { members: [0], amount: 5, base: 10, wanted: 5 });
+  assert.equal(tie.best, tie.byBefore);
 });

@@ -381,9 +381,10 @@ export function mapToFunctionOutput(emission: NodeEmission, input: FunctionOutpu
   if (plan === null) return none;
   const currency = plan.currency;
 
-  /** The node's order operation; `exact`: every candidate as its exact amount (margin protection on). */
-  const orderOperationsFor = (exact: boolean): CartLinesOperation[] => {
-    if (!classes.includes("ORDER")) return [];
+  const orderOperations: CartLinesOperation[] = [];
+  if (classes.includes("ORDER")) {
+    // Margin protection on: every order candidate is its exact amount (header, item 4).
+    const exact = plan.order?.marginProtected === true;
     const candidates: OrderDiscountCandidateOutput[] = [];
     for (const c of emission.orderCandidates) {
       const base = plan.order?.base ?? 0;
@@ -394,9 +395,8 @@ export function mapToFunctionOutput(emission: NodeEmission, input: FunctionOutpu
       if (!value) continue;
       candidates.push({ message: c.message, targets: [{ orderSubtotal: { excludedCartLineIds: [...c.excludedLineIds] } }], value });
     }
-    return candidates.length > 0 ? [{ orderDiscountsAdd: { candidates, selectionStrategy: "FIRST" } }] : [];
-  };
-  const orderOperations = orderOperationsFor(plan.order?.marginProtected === true);
+    if (candidates.length > 0) orderOperations.push({ orderDiscountsAdd: { candidates, selectionStrategy: "FIRST" } });
+  }
 
   const delivery: DeliveryFunctionResult = { operations: [] };
   const groups = input.deliveryGroupIds ?? [];
