@@ -32,7 +32,7 @@ test("test:unit runs the unit gate runner (node tests + engine vitest)", async (
   const { UNIT_STEPS } = await import("../../scripts/run-unit-tests.mjs");
   assert.deepEqual(
     UNIT_STEPS.map((step: { command: string; args: string[] }) => [step.command, ...step.args].join(" ")),
-    ["npx tsx --test tests/**/*.test.ts", "npm test -w won-discounts-engine"],
+    ["npx tsx --test tests/**/*.test.ts scripts/**/*.test.mjs", "npm test -w won-discounts-engine"],
   );
 });
 

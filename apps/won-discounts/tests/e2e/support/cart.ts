@@ -130,6 +130,33 @@ export async function freshCartOfVariants(
   return storefrontJson<Cart>(page, "GET", "/cart.js");
 }
 
+/**
+ * Switch the storefront's buyer country (and with it the market and the cart's
+ * currency) the way a theme's country selector does: the `localization` form,
+ * POST /localization with `_method=PUT` and `country_code` (shopify.dev
+ * "Detect and set a visitor's optimal localization"). Sent as a same-origin
+ * form POST with `redirect: "manual"`, so the page never follows the redirect
+ * to another origin (on the theme-dev origin `shopify theme dev` proxies every
+ * non-GET request to the store and hands its cookies to the browser), then the
+ * page is reloaded on its own origin. Returns what the page then reports
+ * (window.Shopify.country / currency.active); the caller checks the cart's
+ * currency, which is what the function sees.
+ */
+export async function setStorefrontCountry(page: Page, countryCode: string): Promise<{ status: number; country: string | null; currency: string | null }> {
+  await pace(page);
+  const status = await page.evaluate(async (country) => {
+    const body = new URLSearchParams({ form_type: "localization", utf8: "\u2713", _method: "PUT", country_code: country, return_to: "/" });
+    const response = await fetch("/localization", { method: "POST", body, credentials: "same-origin", redirect: "manual" });
+    return response.status; // 0 = an opaque redirect (the expected 302)
+  }, countryCode);
+  await page.reload({ waitUntil: "load" });
+  const reported = await page.evaluate(() => {
+    const shopify = (window as unknown as { Shopify?: { country?: string; currency?: { active?: string } } }).Shopify;
+    return { country: shopify?.country ?? null, currency: shopify?.currency?.active ?? null };
+  });
+  return { status, ...reported };
+}
+
 /** Best effort, bounded: no code, no line (one attempt each, never throws). */
 export async function clearCartQuietly(page: Page, timeoutMs = 15_000): Promise<void> {
   const run = async () => {

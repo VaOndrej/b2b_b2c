@@ -16,8 +16,9 @@
 //           tests/e2e/checkout.shapes.spec.ts (matrix with WON_E2E_PROFILE=shapes).
 //   margin  scripts/e2e/margin-fixture.mjs (MVP 2): margin protection ON (minimum
 //           margin 25 %, maximum discount 30 %), "E2E marže auto 50 %" on
-//           won-e2e-simple-a + won-e2e-simple-b and code WONE2EM20 = 20 % on the
-//           order; tests/e2e/checkout.margin.spec.ts (WON_E2E_PROFILE=margin).
+//           won-e2e-simple-a, won-e2e-simple-b and won-e2e-spare, codes WONE2EM20
+//           = 20 % and WONE2EM60 = 60 % on the order;
+//           tests/e2e/checkout.margin.spec.ts (WON_E2E_PROFILE=margin).
 //           The variant cost metafields are the cost mirror's job, run after the
 //           seed: scripts/e2e/margin-costs.mjs (dry-run, then --live); after
 //           --cleanup, `margin-costs.mjs --clear` removes them again.
@@ -40,7 +41,10 @@
 //       never backs up its own seed), saves the seed config and syncs it.
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --cleanup [--live]
 //       restores the backed-up config (no row before → the defaults, i.e. no
-//       rules) and syncs it; dry-run by default.
+//       rules) and syncs it; dry-run by default. Without the backup: removes
+//       the E2E rules and resets the margin settings only when they are the
+//       margin / margin-pro seed's (scripts/e2e/margin-cleanup.mjs); any other
+//       margin settings stay, the cleanup says so (exit 3 if still on).
 //   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --state
 //       read-only: Won nodes of the app's function, the shop function_config
 //       metafield and the won-e2e-simple-a / won-e2e-simple-b product metafields.
@@ -62,7 +66,16 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { register } from "tsx/esm/api";
 
 import { E2E_AUTO_RULE_ID, E2E_CODE, E2E_PRODUCT_HANDLE, E2E_RULE_IDS, e2eRules } from "./mvp1-fixture.mjs";
-import { MARGIN_CODE, MARGIN_COLLECTION_HANDLE, MARGIN_HANDLES, MARGIN_RULE_IDS, marginModule, marginRules } from "./margin-fixture.mjs";
+import { classifyStoredMargin } from "./margin-cleanup.mjs";
+import {
+  MARGIN_CODE,
+  MARGIN_COLLECTION_HANDLE,
+  MARGIN_HANDLES,
+  MARGIN_ORDER_CAP_CODE,
+  MARGIN_RULE_IDS,
+  marginModule,
+  marginRules,
+} from "./margin-fixture.mjs";
 import { SHAPES_HANDLES, SHAPES_PRODUCT_B_HANDLE, SHAPES_RULE_IDS, shapesRules } from "./shapes-fixture.mjs";
 
 register();
@@ -146,14 +159,14 @@ const PROFILES = {
     handles: MARGIN_HANDLES,
     rules: marginRules,
     margin: () => marginModule(),
-    label: `margin protection on (min margin 25 %, max discount 30 %), auto 50 % + code ${MARGIN_CODE}`,
+    label: `margin protection on (min margin 25 %, max discount 30 %), auto 50 % on ${MARGIN_HANDLES.length} products + codes ${MARGIN_CODE}, ${MARGIN_ORDER_CAP_CODE}`,
   },
   "margin-pro": {
     handles: MARGIN_HANDLES,
     rules: marginRules,
     collections: [MARGIN_COLLECTION_HANDLE],
     margin: (collectionIds) => marginModule(collectionIds[MARGIN_COLLECTION_HANDLE]),
-    label: `margin protection on (min margin 25 %, max discount 30 %) + Pro: collection ${MARGIN_COLLECTION_HANDLE} max discount 10 %, auto 50 % + code ${MARGIN_CODE}`,
+    label: `margin protection on (min margin 25 %, max discount 30 %) + Pro: collection ${MARGIN_COLLECTION_HANDLE} max discount 10 %, auto 50 % on ${MARGIN_HANDLES.length} products + codes ${MARGIN_CODE}, ${MARGIN_ORDER_CAP_CODE}`,
   },
 };
 const PROFILE = option("--profile") ?? "mvp1";
@@ -265,15 +278,36 @@ function marginText(config) {
   return `margin protection ON (min margin ${min ?? "—"} %, max discount ${margin.global?.maxDiscountPercent} %, ${margin.perCollection?.length ?? 0} collection setting(s))`;
 }
 
-/** The fixture's margin module is what the stored config has (a cleanup without a backup may then switch it off). */
-function isFixtureMargin(margin) {
-  const fixture = marginModule();
-  return (
-    margin?.enabled === fixture.enabled &&
-    margin?.global?.minMarginPercent === fixture.global.minMarginPercent &&
-    margin?.global?.maxDiscountPercent === fixture.global.maxDiscountPercent &&
-    (margin?.perCollection?.length ?? 0) === 0
-  );
+/**
+ * The stored margin settings as a cleanup without a backup sees them
+ * (scripts/e2e/margin-cleanup.mjs): the E2E fixture's (phase A or Pro) → reset;
+ * anything else → left alone. An override's collection is the E2E test
+ * collection when it is `won-e2e-margin`'s GID, or — that collection deleted —
+ * a GID that no longer resolves on the store.
+ */
+async function classifyMargin(margin) {
+  const overrideIds = (Array.isArray(margin?.perCollection) ? margin.perCollection : [])
+    .map((o) => o?.collectionId)
+    .filter((id) => typeof id === "string");
+  const fixtureIds = new Set();
+  if (overrideIds.length > 0) {
+    const data = await query(
+      `query WonE2eMarginCollections($handle: String!, $ids: [ID!]!) {
+  collectionByIdentifier(identifier: { handle: $handle }) {
+    id
+  }
+  nodes(ids: $ids) {
+    id
+  }
+}`,
+      { handle: MARGIN_COLLECTION_HANDLE, ids: overrideIds },
+    );
+    const current = data.collectionByIdentifier?.id ?? null;
+    overrideIds.forEach((id, i) => {
+      if (id === current || (current === null && !data.nodes[i])) fixtureIds.add(id);
+    });
+  }
+  return classifyStoredMargin(margin, { isFixtureCollection: (id) => fixtureIds.has(id) });
 }
 
 function seedConfig(previous, productIds, collectionIds) {
@@ -373,23 +407,33 @@ async function main() {
     if (cleanup) {
       const backup = readBackup();
       let target;
+      let foreignMargin = null;
       if (backup) {
         target = backup.exists ? backup.config : createDefaultConfig();
         console.log(`\n# cleanup: restore the backup of ${backup.backedUpAt} (${backup.exists ? `${summarize(backup.config).length} rule(s)` : "there was no row: the defaults, no rules"})`);
-      } else if (hasSeed) {
-        target = { ...loaded.config, modules: { ...loaded.config.modules, codes: { rules: loaded.config.modules.codes.rules.filter((rule) => !ALL_E2E_RULE_IDS.includes(rule.id)) } } };
-        // The margin seed's own settings go with its rules (anything else in the module is the merchant's).
-        if (isFixtureMargin(loaded.config.modules.margin)) target.modules.margin = createDefaultConfig().modules.margin;
-        console.log(`\n# cleanup: no backup in ${OUT_DIR}; removing only the E2E rules (and the margin seed's settings) from the stored config`);
       } else {
-        console.log(`\n# cleanup: no backup in ${OUT_DIR} and no E2E rule stored — nothing to do`);
-        return;
+        // No backup: the E2E rules go; the margin settings go only when they are the fixture's.
+        const margin = await classifyMargin(loaded.config.modules.margin);
+        if (!hasSeed && margin.kind !== "fixture") {
+          console.log(`\n# cleanup: no backup in ${OUT_DIR}, no E2E rule stored and ${margin.kind === "foreign" ? `margin settings that are not the fixture's (${margin.reason})` : "default margin settings"} — nothing to do`);
+          return;
+        }
+        target = { ...loaded.config, modules: { ...loaded.config.modules, codes: { rules: loaded.config.modules.codes.rules.filter((rule) => !ALL_E2E_RULE_IDS.includes(rule.id)) } } };
+        console.log(`\n# cleanup: no backup in ${OUT_DIR}; removing only the E2E rules from the stored config`);
+        if (margin.kind === "fixture") {
+          target.modules.margin = createDefaultConfig().modules.margin;
+          console.log(`  margin settings = the ${margin.profile} seed's${margin.collectionId ? ` (override of ${margin.collectionId})` : ""} → reset to the defaults (off, no override)`);
+        } else if (margin.kind === "foreign") {
+          foreignMargin = margin.reason;
+          console.log(`  ! margin settings LEFT UNTOUCHED: they are not the E2E fixture's (${margin.reason}). If an E2E run left them, switch margin protection off in the admin (Ochrana marže).`);
+        }
       }
       console.log(`  after the cleanup: ${summarize(target).length} rule(s), ${marginText(target)}`);
       const marginWasOn = loaded.config.modules.margin?.enabled === true && target.modules?.margin?.enabled !== true;
       if (!live) {
         process.exitCode = dryRunPlan(target, "cleanup");
         if (marginWasOn) console.log("\nnote: margin protection goes off → then clear the cost metafields: node apps/won-discounts/scripts/e2e/margin-costs.mjs --clear [--live]");
+        if (foreignMargin) console.log(`\nnote: the margin settings stay as they are (${foreignMargin})`);
         console.log("\n(dry-run: nothing written; pass --live)");
         return;
       }
@@ -402,6 +446,7 @@ async function main() {
         at: new Date().toISOString(),
         restored: summarize(target),
         margin: marginText(target),
+        ...(foreignMargin ? { marginLeftUntouched: foreignMargin } : {}),
         result: syncSummary(result),
         syncRun: status,
       };
@@ -410,6 +455,11 @@ async function main() {
       if (printJson) console.log(JSON.stringify(evidence, null, 2));
       if (result.save.ok && result.sync?.ok && backup) fs.renameSync(BACKUP_FILE, BACKUP_FILE.replace(/\.json$/, `.restored-${stamp()}.json`));
       process.exitCode = result.save.ok && result.sync?.ok ? 0 : 1;
+      if (process.exitCode === 0 && foreignMargin && target.modules?.margin?.enabled === true) {
+        // The rules are gone, but protection is still on with settings this script does not own.
+        console.error(`\n! cleanup incomplete: margin protection is still ON with settings that are not the E2E fixture's (${foreignMargin})`);
+        process.exitCode = 3;
+      }
       return;
     }
 

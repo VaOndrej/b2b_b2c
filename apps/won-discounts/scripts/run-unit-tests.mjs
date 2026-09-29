@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // The app's unit gate (`npm run test:unit`, audit P3-7): runs BOTH suites and
 // fails if EITHER fails.
-//   1. node tests   — tests/**/*.test.ts (node:test via tsx, files in parallel)
+//   1. node tests   — tests/**/*.test.ts + scripts/**/*.test.mjs (node:test via
+//                     tsx, files in parallel; scripts/ holds offline tests of the
+//                     live seed/cleanup scripts, kept out of tests/e2e so
+//                     Playwright never loads them as specs)
 //   2. engine tests — `npm test -w won-discounts-engine`: `cargo test` (the Rust
 //                     function natively, every fixture included), then vitest
 //                     (every fixture validated against the input query and the
@@ -23,7 +26,11 @@ const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 export const UNIT_STEPS = [
   // The glob is passed to tsx as ONE argument (no shell), so node's own test
   // runner expands `**` — sh would narrow it to one directory level.
-  { name: "node tests (tests/**/*.test.ts)", command: "npx", args: ["tsx", "--test", "tests/**/*.test.ts"] },
+  {
+    name: "node tests (tests/**/*.test.ts, scripts/**/*.test.mjs)",
+    command: "npx",
+    args: ["tsx", "--test", "tests/**/*.test.ts", "scripts/**/*.test.mjs"],
+  },
   { name: "engine tests (npm test -w won-discounts-engine)", command: "npm", args: ["test", "-w", "won-discounts-engine"] },
 ];
 

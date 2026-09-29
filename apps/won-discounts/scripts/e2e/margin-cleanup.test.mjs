@@ -1,0 +1,68 @@
+// Unit tests of the no-backup cleanup's recognition of the stored margin
+// settings (scripts/e2e/margin-cleanup.mjs, Task 5b fix round 1).
+//
+//   node --test apps/won-discounts/scripts/e2e/margin-cleanup.test.mjs
+//
+// Kept next to the script, not under tests/: tests/e2e is Playwright's testDir
+// and its default testMatch would load a *.test file there as a browser spec.
+
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import { DEFAULT_MAX_DISCOUNT_PERCENT, classifyStoredMargin } from "./margin-cleanup.mjs";
+import { marginModule } from "./margin-fixture.mjs";
+
+const COLLECTION = "gid://shopify/Collection/491958272241";
+const OTHER_COLLECTION = "gid://shopify/Collection/1";
+const onlyFixture = { isFixtureCollection: (id) => id === COLLECTION };
+const none = { isFixtureCollection: () => false };
+const defaults = () => ({ enabled: false, global: { maxDiscountPercent: DEFAULT_MAX_DISCOUNT_PERCENT }, perCollection: [] });
+
+describe("classifyStoredMargin", () => {
+  it("the defaults (and a missing module) need nothing", () => {
+    assert.deepEqual(classifyStoredMargin(defaults(), none), { kind: "default" });
+    assert.deepEqual(classifyStoredMargin(undefined, none), { kind: "default" });
+  });
+
+  it("recognises the phase A seed (margin): on, and switched off with its values kept", () => {
+    assert.deepEqual(classifyStoredMargin(marginModule(), none), { kind: "fixture", profile: "margin" });
+    assert.deepEqual(classifyStoredMargin({ ...marginModule(), enabled: false }, none), { kind: "fixture", profile: "margin" });
+  });
+
+  it("recognises the Pro seed (margin-pro) with the E2E test collection", () => {
+    assert.deepEqual(classifyStoredMargin(marginModule(COLLECTION), onlyFixture), { kind: "fixture", profile: "margin-pro", collectionId: COLLECTION });
+  });
+
+  it("does not depend on key order (the sanitizer may rebuild the objects)", () => {
+    const reordered = {
+      perCollection: [{ maxDiscountPercent: 10, collectionId: COLLECTION }],
+      global: { maxDiscountPercent: 30, minMarginPercent: 25 },
+      enabled: true,
+    };
+    assert.equal(classifyStoredMargin(reordered, onlyFixture).kind, "fixture");
+  });
+
+  it("refuses the Pro shape on another collection", () => {
+    const result = classifyStoredMargin(marginModule(OTHER_COLLECTION), onlyFixture);
+    assert.equal(result.kind, "foreign");
+    assert.match(result.reason, /not the E2E test collection/u);
+  });
+
+  it("refuses foreign shapes and says why", () => {
+    const cases = [
+      [{ enabled: true, global: { maxDiscountPercent: 40 }, perCollection: [] }, /global settings/u],
+      [{ enabled: true, global: { minMarginPercent: 25, maxDiscountPercent: 20 }, perCollection: [] }, /global settings/u],
+      [{ ...marginModule(COLLECTION), perCollection: [{ collectionId: COLLECTION, maxDiscountPercent: 15 }] }, /collection override/u],
+      [{ ...marginModule(COLLECTION), perCollection: [{ collectionId: COLLECTION, minMarginPercent: 40, maxDiscountPercent: 10 }] }, /collection override/u],
+      [{ ...marginModule(COLLECTION), perCollection: [{ collectionId: COLLECTION, maxDiscountPercent: 10 }, { collectionId: OTHER_COLLECTION, maxDiscountPercent: 10 }] }, /2 collection overrides/u],
+      [{ ...marginModule(), extra: 1 }, /unexpected fields/u],
+      [{ enabled: "true", global: { minMarginPercent: 25, maxDiscountPercent: 30 }, perCollection: [] }, /not a boolean/u],
+      ["on", /not an object/u],
+    ];
+    for (const [margin, reason] of cases) {
+      const result = classifyStoredMargin(margin, onlyFixture);
+      assert.equal(result.kind, "foreign", JSON.stringify(margin));
+      assert.match(result.reason, reason, JSON.stringify(margin));
+    }
+  });
+});

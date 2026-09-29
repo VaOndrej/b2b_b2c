@@ -9,17 +9,18 @@ import { expect } from "./fixtures.ts";
 //     reduced price;
 //   - the price summary (aria-labelledby "MoneyLine-Heading…"): subtotal,
 //     order discounts (one row per code), shipping, taxes, total.
-// The page language follows the market (cesko → cs-CZ); summary labels are
-// matched in Czech and English.
+// The page language follows the market (cesko → cs-CZ; slovensko → its own
+// language, sk or en depending on the store's languages); summary labels are
+// matched in Czech, Slovak and English.
 
-export const SUBTOTAL = /^(Mezisoučet|Subtotal)/iu;
-export const SHIPPING = /^(Expedice|Doprava|Shipping)/iu;
-export const TOTAL = /^(Celkem|Total)$/iu;
-export const TAX = /(Daně|Daň|DPH|Taxes|Tax)/iu;
+export const SUBTOTAL = /^(Mezisoučet|Medzisúčet|Subtotal)/iu;
+export const SHIPPING = /^(Expedice|Doprava|Expedícia|Doručenie|Shipping)/iu;
+export const TOTAL = /^(Celkem|Celkom|Spolu|Total)$/iu;
+export const TAX = /(Daně|Daň|Dane|DPH|Taxes|Tax)/iu;
 /** A line or row the checkout prints as free instead of "0,00 Kč". */
-export const FREE = /^(Zdarma|Free|ZDARMA|FREE)$/u;
+export const FREE = /^(Zdarma|Zadarmo|Free|ZDARMA|ZADARMO|FREE)$/u;
 
-/** "1 234,56 Kč" / "− 29,43 Kč" / "(-21,80 Kč)" / "CZK 819,77 Kč" → signed minor units (2-digit currency); null when there is no amount. */
+/** "1 234,56 Kč" / "− 29,43 Kč" / "(-21,80 Kč)" / "CZK 819,77 Kč" / "8,60 €" → signed minor units (2-digit currency); null when there is no amount. */
 export function minorUnits(text: string): number | null {
   const match = /([\u2212-])?\s*(\d[\d\s\u00a0\u202f.]*[.,]\d{2})(?!\d)/u.exec(text);
   if (!match) return null;
@@ -130,15 +131,32 @@ export async function applyCodeInCheckout(page: Page, code: string): Promise<voi
   await expect.poll(async () => rowAmount(await priceSummary(page), code), { timeout: 60_000 }).not.toBeNull();
 }
 
+export interface ShippingAddress {
+  countryCode: "CZ" | "SK";
+  address1: string;
+  postalCode: string;
+  city: string;
+}
+
+/** Market cesko. */
+export const CZECH_ADDRESS: ShippingAddress = { countryCode: "CZ", address1: "Václavské náměstí 1", postalCode: "110 00", city: "Praha" };
+/** Market slovensko. */
+export const SLOVAK_ADDRESS: ShippingAddress = { countryCode: "SK", address1: "Hlavné námestie 1", postalCode: "811 01", city: "Bratislava" };
+
 /** Contact + a Czech shipping address (market cesko), then the first shipping rate. */
 export async function fillCzechShippingAddress(page: Page, email = "won-e2e+mvp1@example.com"): Promise<void> {
+  await fillShippingAddress(page, CZECH_ADDRESS, email);
+}
+
+/** Contact + a shipping address in `address.countryCode`, then the first shipping rate. */
+export async function fillShippingAddress(page: Page, address: ShippingAddress, email: string): Promise<void> {
   await page.locator("#email").fill(email);
-  await page.locator('select[name="countryCode"]').selectOption("CZ");
+  await page.locator('select[name="countryCode"]').selectOption(address.countryCode);
   await page.locator('input[name="firstName"]:visible').first().fill("Won");
   await page.locator('input[name="lastName"]:visible').first().fill("Tester");
-  await page.locator('input[name="address1"]:visible').first().fill("Václavské náměstí 1");
-  await page.locator('input[name="postalCode"]:visible').first().fill("110 00");
-  await page.locator('input[name="city"]:visible').first().fill("Praha");
+  await page.locator('input[name="address1"]:visible').first().fill(address.address1);
+  await page.locator('input[name="postalCode"]:visible').first().fill(address.postalCode);
+  await page.locator('input[name="city"]:visible').first().fill(address.city);
   await page.locator('input[name="city"]:visible').first().press("Tab");
   // Several rates → radios, pick the first; a single rate is preselected. Either way the summary gets a shipping amount.
   const radios = page.locator('#shippingMethod ~ * input[type="radio"], input[type="radio"][name^="shipping"]');
@@ -186,7 +204,7 @@ export async function settledThankYou(page: Page): Promise<{ charged: number | n
 
 /** On a phone the order summary is collapsed: open it (best effort) so a screenshot shows the discount lines. */
 export async function expandMobileSummary(page: Page): Promise<void> {
-  const toggle = page.getByRole("button", { name: /Shrnutí objednávky|order summary/iu }).first();
+  const toggle = page.getByRole("button", { name: /Shrnutí objednávky|Súhrn objednávky|order summary/iu }).first();
   if (await toggle.isVisible().catch(() => false)) {
     await toggle.click();
     await page.waitForTimeout(1_000);
