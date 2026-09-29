@@ -8,8 +8,15 @@
 //   2. Nákupní ceny — how many products lack a cost, which, and how fresh the
 //      cost mirror is, with the one "Obnovit nákupní ceny" button (§13);
 //   3. Pro (amber, visible, never blocking Free — A2, §16): settings per
-//      collection and Přehled zásahů. BILL-1 on the server: Free gets no impact
-//      data, only the sample preview.
+//      collection and Přehled zásahů (read-only). BILL-1 on the server: Free
+//      gets no impact data, only the sample preview.
+// One save for the whole form, like the rule editor: the App Bridge save bar
+// (`data-save-bar`) and "Uložit" as the last thing on the page — never between
+// sections, so it cannot read as saving only the section above it.
+// Percents keep ONE decimal (the core sanitizer rounds to the stricter side):
+// the fields step by a tenth and a second decimal is refused before the save
+// (model/margin.ts marginDecimalErrors), so no value changes silently (§12);
+// whatever the sanitizer still adjusts comes back as the save's `fixes` (Notice).
 // A presentational component: app/routes/app.margin.tsx renders it from
 // loadMarginScreen (app/lib/integration/margin.server.ts), the dev harness from
 // fixtures (app/routes/dev.preview.$.tsx).
@@ -21,7 +28,16 @@ import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
 import { pickCollections } from "../model/app-bridge";
-import { MARGIN_FIELD, MARGIN_INTENT, marginInForce, marginSummary, percentInput, readMarginDraft } from "../model/margin";
+import {
+  MARGIN_FIELD,
+  MARGIN_INTENT,
+  MARGIN_PERCENT_STEP,
+  marginDecimalErrors,
+  marginInForce,
+  marginSummary,
+  percentInput,
+  readMarginDraft,
+} from "../model/margin";
 import type { FieldError, MarginCollectionView, MarginScreenData, MarginSettingsView, UiResult } from "../model/types";
 import { CollectionsSection } from "../margin/CollectionsSection";
 import { CostsSection } from "../margin/CostsSection";
@@ -48,9 +64,14 @@ export function MarginScreen(props: MarginScreenProps) {
   // §2/§17b: the live draft, re-read from the whole form on native events.
   const formRef = useRef<HTMLFormElement>(null);
   const [draft, setDraft] = useState<MarginSettingsView>(settings);
+  // Percents typed with a second decimal, said at the field while typing (the save is refused until fixed).
+  const [decimalErrors, setDecimalErrors] = useState<FieldError[]>([]);
   const recompute = useCallback(() => {
     const form = formRef.current;
-    if (form) setDraft(readMarginDraft(new FormData(form), settings));
+    if (!form) return;
+    const data = new FormData(form);
+    setDraft(readMarginDraft(data, settings));
+    setDecimalErrors(marginDecimalErrors(data));
   }, [settings]);
   useEffect(() => {
     const el = formRef.current;
@@ -113,9 +134,25 @@ export function MarginScreen(props: MarginScreenProps) {
   }, [settings, recompute]);
 
   const errors: FieldError[] = result && !result.ok && result.reason === "invalid" ? result.errors : [];
+  /** The server's refusal, on the field itself (it arrives with a full render). */
   const errorFor = (field: string): string | undefined => {
     const e = errors.find((x) => x.field === field);
     return e ? t(e.key, e.params) : undefined;
+  };
+  // The live decimal check is said UNDER the field, never through its `error`
+  // attribute: a Polaris field re-rendered mid-typing goes back to its initial
+  // value (seen in the harness), which would silently undo what was typed.
+  const decimalErrorFor = (field: string): string | undefined => {
+    const e = decimalErrors.find((x) => x.field === field);
+    return e ? t(e.key, e.params) : undefined;
+  };
+  /** A second decimal never reaches the server (it would be rounded, §12): the save waits until it is fixed. */
+  const blockedByDecimals = (): boolean => {
+    const form = formRef.current;
+    if (!form) return false;
+    const found = marginDecimalErrors(new FormData(form));
+    setDecimalErrors(found);
+    return found.length > 0;
   };
   // A collection error not tied to one row (readMarginForm indexes row errors: `collectionMax[1]`).
   const collectionError = errors.find((e) => e.field.startsWith("collection") && !/\[\d+\]$/.test(e.field));
@@ -128,7 +165,7 @@ export function MarginScreen(props: MarginScreenProps) {
   // I3: "Nahradit neplatnou konfiguraci" re-submits exactly this form, confirmed.
   const replaceUnreadable = () => {
     const form = formRef.current;
-    if (!form) return;
+    if (!form || blockedByDecimals()) return;
     const data = new FormData(form);
     data.set(MARGIN_FIELD.replaceUnreadable, "1");
     submit(data, { method: "post" });
@@ -136,7 +173,14 @@ export function MarginScreen(props: MarginScreenProps) {
 
   return (
     <s-page heading={t("module.margin")}>
-      <Form method="post" ref={formRef} data-save-bar>
+      <Form
+        method="post"
+        ref={formRef}
+        data-save-bar
+        onSubmit={(event) => {
+          if (blockedByDecimals()) event.preventDefault();
+        }}
+      >
         <input type="hidden" name={MARGIN_FIELD.intent} value={MARGIN_INTENT.save} />
         {configVersion ? <input type="hidden" name={MARGIN_FIELD.configVersion} value={configVersion} /> : null}
         <s-stack key={formKey} direction="block" gap="base">
@@ -155,29 +199,39 @@ export function MarginScreen(props: MarginScreenProps) {
           >
             <s-stack direction="block" gap="base">
               <s-switch name={MARGIN_FIELD.enabled} value="on" label={t("margin.enabled")} checked={boolAttr(settings.enabled)} />
-              <s-text color="subdued">{t("margin.never")}</s-text>
+              <s-stack direction="block" gap="small-200">
+                <s-text color="subdued">{t("margin.never")}</s-text>
+                {/* Honest scope (§12): discounts outside Won are not seen by the protection; the fix is on Přehled (§13c). */}
+                <s-text color="subdued">
+                  {t("margin.scope")} <s-link href="/app#native">{t("margin.scope.link")}</s-link>
+                </s-text>
+              </s-stack>
               <s-number-field
                 name={MARGIN_FIELD.minMarginPercent}
                 label={t("margin.min.label")}
                 value={percentInput(settings.minMarginPercent)}
                 min={0}
                 max={95}
+                step={MARGIN_PERCENT_STEP}
                 suffix="%"
                 inputMode="decimal"
                 details={t("margin.min.details")}
                 error={errorFor(MARGIN_FIELD.minMarginPercent)}
               />
+              <FieldMessage text={decimalErrorFor(MARGIN_FIELD.minMarginPercent)} />
               <s-number-field
                 name={MARGIN_FIELD.maxDiscountPercent}
                 label={t("margin.max.label")}
                 value={percentInput(settings.maxDiscountPercent)}
                 min={0}
                 max={100}
+                step={MARGIN_PERCENT_STEP}
                 suffix="%"
                 inputMode="decimal"
                 details={t("margin.max.details")}
                 error={errorFor(MARGIN_FIELD.maxDiscountPercent)}
               />
+              <FieldMessage text={decimalErrorFor(MARGIN_FIELD.maxDiscountPercent)} />
               <FieldMessage text={errorFor(MARGIN_FIELD.enabled)} />
             </s-stack>
           </WonSection>
@@ -190,13 +244,9 @@ export function MarginScreen(props: MarginScreenProps) {
             onRemove={remove}
             pickUnavailable={pickUnavailable}
             errorFor={errorFor}
+            decimalErrorFor={decimalErrorFor}
             error={collectionError ? t(collectionError.key, collectionError.params) : undefined}
           />
-          <div>
-            <s-button type="submit" variant="primary">
-              {t("common.save")}
-            </s-button>
-          </div>
           <ImpactSection
             pro={pro}
             enabled={settings.enabled}
@@ -204,6 +254,12 @@ export function MarginScreen(props: MarginScreenProps) {
             currency={shopCurrency}
             focusRuleId={focusRuleId}
           />
+          {/* One save for the whole form, last on the page like the rule editor (plus the App Bridge save bar). */}
+          <div>
+            <s-button type="submit" variant="primary">
+              {t("common.save")}
+            </s-button>
+          </div>
         </s-stack>
       </Form>
     </s-page>

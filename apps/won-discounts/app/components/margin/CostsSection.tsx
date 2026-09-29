@@ -25,7 +25,7 @@ export function coverageSummary(coverage: CostCoverageView | null, mirror: CostM
 /** The collapsed list names its first products (§9d: collapsed still tells the truth). */
 function sampleSummary(sample: CostCoverageView["sample"], missing: number, tr: Translator): string {
   const names = sample.slice(0, 3).map((p) => p.title);
-  const rest = Math.max(missing, sample.length) - names.length;
+  const rest = Math.max(0, missing - names.length);
   return rest > 0 ? `${names.join(", ")} ${tr.t("margin.costs.more", { n: rest })}` : tr.list(names);
 }
 

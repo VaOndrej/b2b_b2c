@@ -46,7 +46,8 @@ export function MarginOverviewCard({ margin, sync }: { margin: MarginOverviewVie
   const missing = margin.productsWithoutCost;
   const refresh = mirrorNeedsRefresh(margin.mirror);
   return (
-    <WonSection title={t("module.margin")} glyph="shield" summary={summary} on={on} anchor="margin">
+    // Honest scope (§12): the hint says protection does not see the discounts outside Won (the section below).
+    <WonSection title={t("module.margin")} glyph="shield" summary={summary} on={on} hint={t("overview.margin.scope")} anchor="margin">
       <div>
         <WonRow
           action={

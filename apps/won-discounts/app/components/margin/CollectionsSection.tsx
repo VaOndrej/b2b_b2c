@@ -14,7 +14,7 @@
 import { CONFIG_LIMITS } from "@won/core/discounts/config";
 
 import { useT } from "../../i18n/context";
-import { MARGIN_FIELD, percentInput } from "../model/margin";
+import { MARGIN_FIELD, MARGIN_PERCENT_STEP, percentInput } from "../model/margin";
 import type { GateNoteView, MarginCollectionView } from "../model/types";
 import { FieldGrid, FieldMessage } from "../rule-editor/parts";
 import { boolAttr } from "../shell/attrs";
@@ -50,6 +50,7 @@ function PercentFields({
         placeholder={t("margin.collections.inherit")}
         min={0}
         max={95}
+        step={MARGIN_PERCENT_STEP}
         suffix="%"
         inputMode="decimal"
         disabled={boolAttr(disabled)}
@@ -62,6 +63,7 @@ function PercentFields({
         placeholder={t("margin.collections.inherit")}
         min={0}
         max={100}
+        step={MARGIN_PERCENT_STEP}
         suffix="%"
         inputMode="decimal"
         disabled={boolAttr(disabled)}
@@ -79,6 +81,7 @@ export function CollectionsSection({
   onRemove,
   pickUnavailable,
   errorFor,
+  decimalErrorFor,
   error,
 }: {
   pro: boolean;
@@ -90,6 +93,8 @@ export function CollectionsSection({
   pickUnavailable: boolean;
   /** The server's error for one field (`collectionMin[1]`: readMarginForm indexes the rows as posted). */
   errorFor: (field: string) => string | undefined;
+  /** The live one-decimal check (said under the row, never on the field: see MarginScreen). */
+  decimalErrorFor: (field: string) => string | undefined;
   /** A collection error that is not about one row. */
   error?: string;
 }) {
@@ -148,6 +153,7 @@ export function CollectionsSection({
                       minError={errorFor(`collectionMin[${i}]`)}
                       maxError={errorFor(`collectionMax[${i}]`)}
                     />
+                    <FieldMessage text={decimalErrorFor(`collectionMin[${i}]`) ?? decimalErrorFor(`collectionMax[${i}]`)} />
                   </WonRow>
                 ))}
               </div>

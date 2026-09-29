@@ -55,6 +55,9 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
       /Min\. marže 20\u00a0% · bez nákupní ceny sleva nejvýš 40\u00a0%/,
       /\(cena po slevách − nákupní cena\) \/ cena po slevách, z ceny, kterou platí zákazník — u cen s DPH včetně DPH/,
       /nikdy neblokuje objednávku/,
+      /Ochrana hlídá jen slevy, které běží přes Won Discounts\. Slevy mimo Won nevidí\./,
+      /href="\/app#native"/,
+      /step="0\.1"/,
       /Produkty bez nákupní ceny: sleva nejvýš/,
       /8 produktů nemá nákupní cenu/,
       /Ponožky Won/,
@@ -79,7 +82,8 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   { path: "margin?state=failed&result=refreshed", expect: [/Načtení selhalo 28\. 9\. 2026 06:10/, /Načítání nákupních cen běží/] },
   { path: "margin?plan=pro&rule=dev-f2-collection", expect: [/Jen sleva „Podzimní kolekce 20 %“/, /Zobrazit všechny zásahy/] },
   { path: "margin?result=invalid", expect: [/Zadej 0 až 95 %/] },
-  { path: "overview?state=margin", expect: [/Ochrana marže/, /8 produktů nemá nákupní cenu\. Sleva na ně je nejvýš 40\u00a0%/, /Naposledy načteno 26\. 9\. 2026 06:10/, /Obnovit nákupní ceny/, /Upravit ochranu/] },
+  { path: "margin?result=fixes", expect: [/Uloženo\. Pár věcí jsme upravili/, /12\.55 was rounded to 12\.6/] },
+  { path: "overview?state=margin", expect: [/Hlídá jen slevy ve Won\. Slevy mimo Won \(níž\) nevidí\./, /id="native"/, /Ochrana marže/, /8 produktů nemá nákupní cenu\. Sleva na ně je nejvýš 40\u00a0%/, /Naposledy načteno 26\. 9\. 2026 06:10/, /Obnovit nákupní ceny/, /Upravit ochranu/] },
   { path: "overview?state=margin-off", expect: [/Ochrana marže je vypnutá/, /Nastavit ochranu marže/] },
   { path: "rule-editor?rule=dev-f2-collection&margin=1&plan=pro", expect: [/Na 3 produktech se sleva sníží na hranici marže/, /\/app\/margin\?rule=dev-f2-collection#impact/] },
   {
@@ -153,5 +157,16 @@ test("the harness action (forms posted in a preview) is guarded like the loader"
     );
   } finally {
     process.env.NODE_ENV = "test";
+  }
+});
+
+test("Ochrana marže: one save for the whole form, last on the page — after the read-only Přehled zásahů", async () => {
+  for (const path of ["margin", "margin?plan=pro"]) {
+    const { html } = await render(path);
+    const submit = html.lastIndexOf('type="submit"');
+    assert.equal(html.indexOf('type="submit"'), submit, `${path}: exactly one submit button`);
+    for (const section of ["Ochrana marže", "Nákupní ceny", "Nastavení podle kolekcí", "Přehled zásahů"]) {
+      assert.ok(html.indexOf(section) < submit, `${path}: "${section}" comes before Uložit`);
+    }
   }
 });

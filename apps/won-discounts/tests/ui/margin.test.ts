@@ -11,6 +11,7 @@ import {
   impactProductCount,
   impactReason,
   MARGIN_ACTION,
+  marginDecimalErrors,
   MARGIN_FIELD,
   MARGIN_INTENT,
   marginImpactHref,
@@ -22,6 +23,7 @@ import {
   mirrorText,
   readMarginDraft,
   readPercentField,
+  tooManyDecimals,
 } from "../../app/components/model/margin.ts";
 import type { CostMirrorView, MarginImpactRowView, MarginSettingsView, UiResult } from "../../app/components/model/types.ts";
 import { Notice } from "../../app/components/shell/Notice.tsx";
@@ -194,4 +196,20 @@ test("Notice: 'Obnovit nákupní ceny' answers that the read runs in the backgro
   assert.match(saved, /Uloženo a propsáno do Shopify/);
   assert.match(saved, /Nákupní ceny načítáme ze Shopify na pozadí/);
   assert.match(render({ ok: true, message: "synced", syncing: { costs: true } }, "en"), /Reading cost prices/);
+});
+
+test("percents keep one decimal: a second decimal is refused before the save, never silently rounded (§12)", () => {
+  for (const ok of ["", "12", "12,5", "12.5", "12.50", " 7.0 ", "abc"]) assert.equal(tooManyDecimals(ok), false, ok);
+  for (const bad of ["12.55", "12,55", "0.05", "99.999"]) assert.equal(tooManyDecimals(bad), true, bad);
+  const form = new FormData();
+  form.set("minMarginPercent", "12.55");
+  form.set("maxDiscountPercent", "40");
+  form.append("collectionId[]", "gid://shopify/Collection/7");
+  form.append("collectionMin[]", "30");
+  form.append("collectionMax[]", "10,25");
+  assert.deepEqual(marginDecimalErrors(form), [
+    { field: "minMarginPercent", key: "margin.error.decimals" },
+    { field: "collectionMax[0]", key: "margin.error.decimals" },
+  ]);
+  assert.equal(cs.t("margin.error.decimals"), "Zadej nejvýš jedno desetinné místo, třeba 12,5.");
 });

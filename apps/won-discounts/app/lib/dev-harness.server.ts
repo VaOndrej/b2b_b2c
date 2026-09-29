@@ -17,7 +17,7 @@
 // authenticates.
 
 import { codeHash } from "@won/core/discounts/code-hash";
-import { DEFAULT_CONFIG, readStoredConfig, type WonDiscountsConfig } from "@won/core/discounts/config";
+import { DEFAULT_CONFIG, readStoredConfig, sanitizeConfig, type WonDiscountsConfig } from "@won/core/discounts/config";
 import { buildMarginPayload, marginImpact, resolveMargin, type MarginVariant } from "@won/core/discounts/margin";
 import { explainGate, gateConfigForPlan } from "@won/core/discounts/plan-gate";
 import { productRuleIndex, variantKey } from "@won/core/discounts/targeting";
@@ -678,6 +678,20 @@ export function devMarginResult(kind: string | null): UiResult | null {
       };
     case "unreadable":
       return { ok: false, reason: "unreadable_config" };
+    case "fixes": {
+      // What the core sanitizer reports when a percent with two decimals got past the form
+      // (it keeps one decimal, rounded to the stricter side): the save's `fixes`, as the server returns them.
+      const { issues } = sanitizeConfig({
+        ...DEV_MARGIN_FIXTURE,
+        modules: { ...DEV_MARGIN_FIXTURE.modules, margin: { ...DEV_MARGIN_FIXTURE.modules.margin, global: { minMarginPercent: 12.55, maxDiscountPercent: 40 } } },
+      });
+      return {
+        ok: true,
+        message: "saved",
+        fixes: issues.filter((i) => i.path.startsWith("modules.margin")).map((i) => i.message),
+        sync: { ok: true, problems: [], warnings: [] },
+      };
+    }
     default:
       return null;
   }

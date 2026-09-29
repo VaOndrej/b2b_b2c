@@ -17,7 +17,7 @@ import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 import type { Translator } from "../../i18n";
 import type { FormDataLike } from "./rule-form";
 import { formatDateTime } from "./signals";
-import type { CostMirrorView, MarginImpactRowView, MarginImpactView, MarginSettingsView } from "./types";
+import type { CostMirrorView, FieldError, MarginImpactRowView, MarginImpactView, MarginSettingsView } from "./types";
 
 /** Form fields the margin action posts (app/lib/integration/margin.server.ts readMarginForm parses them). */
 export const MARGIN_FIELD = {
@@ -112,6 +112,35 @@ export function readMarginDraft(form: FormDataLike, stored: MarginSettingsView):
       maxDiscountPercent: pct(maxes[i] ?? null, 100) ?? null,
     })),
   };
+}
+
+/** Margin percents keep ONE decimal (core sanitizer): the fields step by a tenth. */
+export const MARGIN_PERCENT_STEP = 0.1;
+
+/** "12", "12,5", "12.50" → fine; "12.55" → more than one decimal. Anything else is left to the server. */
+export function tooManyDecimals(raw: FormDataEntryValue | null | undefined): boolean {
+  if (typeof raw !== "string") return false;
+  const decimals = /^\s*\d+[.,](\d+)\s*$/.exec(raw)?.[1];
+  return decimals !== undefined && decimals.replace(/0+$/, "").length > 1;
+}
+
+/**
+ * The percent fields typed with more than one decimal (field names as the
+ * server reports them: `minMarginPercent`, `collectionMin[1]`). The core
+ * sanitizer keeps one decimal and rounds to the STRICTER side (rounded_percent);
+ * refusing here, before the save, means the merchant never gets a silently
+ * different value (§12). The server still validates and rounds (SEC-1).
+ */
+export function marginDecimalErrors(form: FormDataLike): FieldError[] {
+  const errors: FieldError[] = [];
+  const check = (raw: FormDataEntryValue | null | undefined, field: string) => {
+    if (tooManyDecimals(raw)) errors.push({ field, key: "margin.error.decimals" });
+  };
+  check(form.get(MARGIN_FIELD.minMarginPercent), MARGIN_FIELD.minMarginPercent);
+  check(form.get(MARGIN_FIELD.maxDiscountPercent), MARGIN_FIELD.maxDiscountPercent);
+  form.getAll(MARGIN_FIELD.collectionMin).forEach((raw, i) => check(raw, `collectionMin[${i}]`));
+  form.getAll(MARGIN_FIELD.collectionMax).forEach((raw, i) => check(raw, `collectionMax[${i}]`));
+  return errors;
 }
 
 /** A stored percent as the field value ("" when not set). */

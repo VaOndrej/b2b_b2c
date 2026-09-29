@@ -79,7 +79,8 @@ import {
 //                                 | ?state=margin (EUR cart, costs by an estimated rate, capped lines)
 //   /dev/preview/margin          Ochrana marže: Free by default, ?plan=pro; ?state=running | zero | off |
 //                                 stale | failed | gate (Free with collection settings stored);
-//                                 ?rule=<id> (Přehled zásahů of one rule); ?result=refreshed | saved | invalid | unreadable
+//                                 ?rule=<id> (Přehled zásahů of one rule);
+//                                 ?result=refreshed | saved | invalid | unreadable | fixes (sanitizer notes of a save)
 //   /dev/preview/onboarding      ?step=1|2|3, ?embed=on
 //   /dev/preview/move-dialog
 //   /dev/preview/coming-soon     ?module=tiers|rewards|outlet|campaigns|appearance

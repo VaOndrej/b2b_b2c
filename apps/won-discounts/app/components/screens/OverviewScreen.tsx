@@ -281,7 +281,7 @@ export function OverviewScreen({
 
         {status.margin ? <MarginOverviewCard margin={status.margin} sync={status.sync} /> : null}
 
-        <WonSection title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)}>
+        <WonSection title={t("overview.native.title")} glyph="move" summary={nativeSummary(status.native, tr)} anchor="native">
           <NativeDiscountsPanel native={status.native} mode="each" result={nativeResult} />
         </WonSection>
 
