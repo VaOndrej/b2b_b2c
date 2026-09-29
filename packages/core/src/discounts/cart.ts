@@ -23,7 +23,12 @@ export interface CartLineInput {
    * (margin.ts costMinorUnits: a finite number > 0 in the shop currency).
    */
   unitCost?: number;
-  /** The currency `unitCost` is in (the metafield's `cur`); must equal the shop config's margin `cur`. */
+  /**
+   * The currency `unitCost` is in (the metafield's `cur`). Adapters pass
+   * Shopify's currency code AS-IS (an upper-case ISO 4217 enum, e.g. "CZK"): the
+   * engine compares it case-sensitively with the shop config's margin `cur`, and
+   * anything else (another currency, "czk", missing) makes the cost unknown.
+   */
   unitCostCurrency?: string;
   /**
    * Numeric ids of the product's collections that have a margin setting (the

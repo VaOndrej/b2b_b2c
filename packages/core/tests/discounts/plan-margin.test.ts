@@ -50,12 +50,20 @@ test("margin OFF: cost prices, collection refs and the rate change nothing — t
   assert.deepEqual(mvp1.order?.marginExcludedLineIds, []);
 });
 
-test("margin ON but nothing reaches a floor: the same plan as with protection off", () => {
+test("margin ON but nothing reaches a floor: the same plan as with protection off (plus the output markers)", () => {
   const rules = [pct("A", 10), orderPct("O", 5)];
   const lines = [costLine("L1", 1000_00, 100, 2, ["A"]), line("L2", 300_00, 1)];
   const off = planCart(cartOf(lines), payloadOf(rules));
   const on = planCart(cartOf(lines), marginPayloadOf(rules, { global: { minMarginPercent: 20, maxDiscountPercent: 50 } }));
-  assert.deepEqual(on, off);
+  // The markers only tell the output to stay exact: the order was sized under margin protection, and
+  // L1 (a product discount, in the order base) must not have a rounding tie relaxed.
+  assert.equal(on.order?.marginProtected, true);
+  assert.equal(lineOf(on, "L1").marginTight, true);
+  assert.equal(lineOf(on, "L2").marginTight, undefined, "no product discount: nothing to relax");
+  const stripped = JSON.parse(JSON.stringify(on));
+  delete stripped.order.marginProtected;
+  for (const l of stripped.lines) delete l.marginTight;
+  assert.deepEqual(stripped, off);
 });
 
 // --- product stage --------------------------------------------------------------------------------
@@ -348,4 +356,64 @@ test("the payload built from a config without `enabled` (MVP 1 stored config) pl
   assert.equal(config.modules.margin.enabled, false);
   const plan = planCart(cartOf([line("L1", 1000_00, 1, ["A"])]), payloadOf([pct("A", 90)], { modules: { margin: config.modules.margin } }));
   assert.equal(lineOf(plan, "L1").product?.amount, 900_00);
+});
+
+// --- fix round 1: rule-state precedence, order-stage candidate sets ----------------------------------
+
+test("precedence: a rule dropped by a category switch is not_combinable even if margin also zeroed it", () => {
+  const exclusive = { engine: { combination: { productWithOrder: false } } };
+  // Product A is zeroed on its only line; the order-only scenario wins → A is not combinable (the switch decided).
+  const orderWins = planCart(
+    cartOf([costLine("L1", 1000_00, 1000, 1, ["A"]), line("L2", 1000_00)]),
+    marginPayloadOf([pct("A", 30), orderPct("O", 10)], { global: { maxDiscountPercent: 50 } }, exclusive),
+  );
+  assert.equal(orderWins.order?.amount, 100_00);
+  assert.equal(outcome(orderWins, "A").state, "not_combinable");
+  // Every line at its floor: the order-only scenario gives 0 (O zeroed) and products win the tie → O is
+  // not combinable; A, zeroed on the winning (product) side, is margin_floor.
+  const productsWin = planCart(
+    cartOf([costLine("L1", 1000_00, 1000, 1, ["A"])]),
+    marginPayloadOf([pct("A", 30), orderPct("O", 10)], { global: { maxDiscountPercent: 50 } }, exclusive),
+  );
+  assert.equal(productsWin.order, null);
+  assert.equal(outcome(productsWin, "O").state, "not_combinable");
+  assert.equal(outcome(productsWin, "A").state, "margin_floor");
+});
+
+test("precedence: outranked on one line but zeroed on the line it won → margin_floor (margin is why it gives nothing)", () => {
+  const plan = planCart(
+    cartOf([line("L1", 1000_00, 1, ["A", "B"]), costLine("L2", 1000_00, 1000, 1, ["B"])]),
+    marginPayloadOf([pct("A", 30), pct("B", 20)], { global: { maxDiscountPercent: 50 } }),
+  );
+  assert.deepEqual(winners(plan, "L1"), ["A"]);
+  assert.equal(lineOf(plan, "L2").product, null);
+  assert.equal(outcome(plan, "B").state, "margin_floor");
+  assert.equal(outcome(plan, "A").state, "applied");
+});
+
+test("order stage: equal D → the LARGER set wins (no line is left out for nothing)", () => {
+  // 100 Kč off: L1 alone can carry it, and so can L1 + L2 → both stay in, nothing excluded.
+  const plan = planCart(
+    cartOf([line("L1", 1000_00), line("L2", 200_00)]),
+    marginPayloadOf([orderFixed("O", { CZK: 100_00 })], { global: { maxDiscountPercent: 50 } }),
+  );
+  assert.equal(plan.order?.amount, 100_00);
+  assert.deepEqual(plan.order?.marginExcludedLineIds, []);
+  assert.deepEqual(plan.order?.excludedLineIds, []);
+  assert.equal(plan.order?.base, 1200_00);
+});
+
+test("order stage: lines with the same k = h/s enter the candidate sets together, never split", () => {
+  // A: 1 000 Kč, 90 % product off → 100 Kč after, floor 49,99 → h = 50 Kč, k = 0,05.
+  // B: 100 Kč, floor 94,99 → h = 5 Kč, k = 0,05 as well.
+  // {A} alone would allow 50 Kč, but A and B share k, so the only candidate is {A, B}: B's
+  // after-product share limits D to 10 Kč (fixed, both lines stay in).
+  const plan = planCart(
+    cartOf([costLine("A", 1000_00, 49.99, 1, ["P"]), costLine("B", 100_00, 94.99)]),
+    marginPayloadOf([pct("P", 90), orderPct("O", 50)], { global: { maxDiscountPercent: 100 } }),
+  );
+  assert.equal(lineOf(plan, "A").product?.amount, 900_00);
+  assert.equal(plan.order?.amount, 10_00);
+  assert.deepEqual(plan.order?.value, { fixedTotal: 10_00 });
+  assert.deepEqual(plan.order?.marginExcludedLineIds, []);
 });

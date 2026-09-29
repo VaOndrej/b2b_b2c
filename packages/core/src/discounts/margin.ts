@@ -124,11 +124,23 @@ function readTuplePart(v: unknown, max: number): number | null | undefined {
 }
 
 /**
- * The margin payload as the engine reads it (tolerant reader): anything but the
- * enabled compact shape — `enabled === true` and a numeric `max` — is OFF (the
- * MVP 1 module shape included). Numbers are clamped (min 0–95, max 0–100); a
- * non-numeric `min` is ignored (0); `cur` only as an upper-case ISO code; a
- * `col` entry that is not exactly `[number|null, number|null]` is ignored.
+ * The margin payload as the engine reads it — the tolerant reader, field by
+ * field (amends the plan's resolution #2; the Rust function reads exactly this):
+ *   - not an object, `enabled !== true` (a string "true" included), or `max`
+ *     not a finite number → OFF (`{enabled: false}`); so is the MVP 1 module
+ *     shape (`global` / `perCollection`, no top-level `max`);
+ *   - `max`: clamped to 0–100;
+ *   - `min`: a finite number is clamped to 0–95; anything else (absent, a
+ *     string, NaN, null) is ignored → 0 = never below the cost;
+ *   - `cur`: kept only when it is exactly 3 upper-case letters (A–Z); anything
+ *     else is dropped → every cost is unknown and the `max` ceiling applies;
+ *   - `col`: ignored unless an object; each entry is kept only when it is an
+ *     array of exactly 2 elements, each `null` or a finite number (clamped: the
+ *     first to 0–95, the second to 0–100); any other entry is ignored (its
+ *     collection then has no own setting: the global values apply).
+ * Never throws. Protection that is ON never reads as off because of a junk
+ * optional field: a junk `min` means "never below the cost", a junk `cur` the
+ * `max` ceiling for every line, a junk `col` entry the global values.
  */
 export function readMarginPayload(raw: unknown): FunctionMarginPayload {
   if (!isRecord(raw) || raw.enabled !== true || !finite(raw.max)) return { enabled: false };

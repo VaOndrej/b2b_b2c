@@ -1,3 +1,5 @@
+/// <reference lib="es2024.string" />
+// (String.prototype.isWellFormed below: the base tsconfig targets ES2022.)
 // Value hardening from the Rust ↔ TS drift audit (MVP 1): money is capped so
 // the TS engine (floats) and the Rust function (i64) can never read a stored
 // amount differently (#6); texts are cut by whole code points and never carry a

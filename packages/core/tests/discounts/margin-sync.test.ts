@@ -105,19 +105,29 @@ test("shop config: margin ships compact (tuples keyed by numeric collection id) 
   assert.deepEqual(off.modules.margin, { enabled: false });
 });
 
-test("shop config budget: 500 codes AND the worst-case margin (100 collections, both values with a decimal, 13-digit ids) fit 9 000 B", () => {
+test("shop config budget: 500 codes AND the worst-case margin (100 collections, 13-digit ids, two-decimal min and max) fit 9 000 B", () => {
+  // The limits guarantee it: at most CONFIG_LIMITS.marginOverrides collections, and margin percents
+  // keep one decimal (the sanitizer rounds 33.33 → 33.4 and 66.67 → 66.6), so no entry is longer than
+  // "1234567890123":[94.9,99.9] whatever the merchant typed.
+  assert.equal(CONFIG_LIMITS.marginOverrides, 100);
   const codes = Array.from({ length: 500 }, (_, i) => `INFLUENCER-${String(i).padStart(4, "0")}-PODZIM2026`);
   const perCollection = Array.from({ length: CONFIG_LIMITS.marginOverrides }, (_, i) => ({
-    collectionId: C(1_000_000_000_000 + i),
-    minMarginPercent: 33.3,
-    maxDiscountPercent: 66.7,
+    collectionId: C(9_000_000_000_000 + i),
+    minMarginPercent: 33.33,
+    maxDiscountPercent: 66.67,
   }));
   const config = configOf([orderPct("r", 10, code(codes))], {
-    modules: { margin: { enabled: true, global: { minMarginPercent: 12.5, maxDiscountPercent: 45.5 }, perCollection } },
+    modules: { margin: { enabled: true, global: { minMarginPercent: 12.34, maxDiscountPercent: 45.67 }, perCollection } },
   });
   const encoded = buildShopFunctionConfig(config, { now: FIXTURE_NOW, shopTimezone: FIXTURE_TZ, shopCurrency: "CZK" });
-  assert.equal(Object.keys((encoded.payload.modules.margin as { col: object }).col).length, 100);
+  const col = (encoded.payload.modules.margin as { col: Record<string, unknown> }).col;
+  assert.equal(Object.keys(col).length, 100);
+  assert.deepEqual(col["9000000000000"], [33.4, 66.6]);
   assert.equal(encoded.fits, true, `${encoded.bytes} B`);
+  // Even with 3-decimal junk the stored values stay one decimal.
+  const junk = configOf([], { modules: { margin: { enabled: true, global: { maxDiscountPercent: 33.333333333 }, perCollection: [{ collectionId: C(1), minMarginPercent: 94.99999 }] } } });
+  assert.deepEqual(junk.modules.margin.global, { maxDiscountPercent: 33.3 });
+  assert.equal(junk.modules.margin.perCollection[0].minMarginPercent, 95);
   // The save-time worst case measures the shop currency too (any 3-letter code costs the same bytes).
   const worst = buildShopFunctionConfigWorstCase(config);
   assert.equal(worst.bytes, encoded.bytes);

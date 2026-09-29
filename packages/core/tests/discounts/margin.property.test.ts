@@ -14,9 +14,10 @@ import { test } from "node:test";
 import type { CartLineInput, CartPlanInput } from "../../src/discounts/cart.ts";
 import { emitForNode, type NodeEmission } from "../../src/discounts/emit.ts";
 import { explainPlan } from "../../src/discounts/explain.ts";
-import { checkoutPreview } from "../../src/discounts/function-output.ts";
+import { type CandidateValue, checkoutPreview } from "../../src/discounts/function-output.ts";
 import { costMinorUnits, marginFloorUnit, readMarginPayload, resolveMargin } from "../../src/discounts/margin.ts";
-import { planCart } from "../../src/discounts/plan.ts";
+import { toMinorUnits } from "../../src/discounts/money.ts";
+import { planCart, type PlanLine } from "../../src/discounts/plan.ts";
 import { payloadOf, type RawRule } from "./engine-fixtures.ts";
 
 /** mulberry32: tiny deterministic PRNG, so a failure always reproduces. */
@@ -39,6 +40,10 @@ type Rng = ReturnType<typeof rng>;
 const SHOP_CURRENCY = "CZK";
 const CART_CURRENCIES = ["CZK", "CZK", "EUR", "JPY", "KWD"] as const;
 const COLLECTIONS = ["11", "22", "33", "44"];
+
+function pctRule(id: string, percent: number, extra: RawRule = {}): RawRule {
+  return { id, name: id, method: "automatic", value: { kind: "percentage", percent }, target: { kind: "collections", ids: [] }, ...extra };
+}
 
 function randomRule(r: Rng, i: number, ids: string[]): RawRule {
   const id = `r${i}`;
@@ -225,6 +230,126 @@ test("property: with margin ON, emissions sum to the plan and no line ends below
   assert.ok(seen.marginFloor > 10, `margin_floor rules: ${seen.marginFloor}`);
   assert.ok(seen.costBasis > 100, `floors from a cost: ${seen.costBasis}`);
   assert.ok(seen.collection > 50, `collection settings: ${seen.collection}`);
+});
+
+// --- degraded output (over the output budget) ------------------------------------------------------
+
+/** Minor units of a percent of `base`, rounded half UP in decimal: the most Shopify can take (percents ≤ 2 decimals). */
+function worstPercent(base: number, percent: number): number {
+  return Math.floor((base * Math.round(percent * 100) + 5000) / 10000);
+}
+
+/** What one output value can take off a plan line at most (a decimal tie rounded up). */
+function worstOnLine(value: CandidateValue, line: PlanLine): number {
+  if ("percentage" in value) return worstPercent(line.subtotal, value.percentage.value);
+  const amount = toMinorUnits(value.fixedAmount.amount, "CZK") ?? 0;
+  return value.fixedAmount.appliesToEachItem ? Math.min(amount, line.unitPrice) * line.quantity : Math.min(amount, line.subtotal);
+}
+
+test("property: DEGRADED outputs never take a line below its floor — any tie rounding, BOTH order allocations, code-owned orders included (16 carts × 200 lines, seed 20260930)", () => {
+  const r = rng(20260930);
+  const seen = { degraded: 0, relaxedTies: 0, relaxedStacks: 0, dropped: 0, tight: 0, orders: 0, fixedOrders: 0, codeOrders: 0 };
+  const longName = (id: string) => `${id} ${"Velmi dlouhý název slevy ".repeat(10)}`.slice(0, r.int(120, 200));
+  for (let n = 0; n < 16; n++) {
+    const orderCode = r.chance(0.3);
+    const rules: RawRule[] = [
+      pctRule("A", r.pick([1.4, 10, 12.5]), { name: longName("A"), combinesWith: { ruleIds: ["B"] } }),
+      { id: "B", name: longName("B"), method: "automatic", value: { kind: "fixed", amount: { CZK: r.int(1, 30) * 33 } }, target: { kind: "collections", ids: [] } },
+      pctRule("C", r.pick([1.4, 15, 20]), { name: longName("C") }),
+      {
+        id: "O",
+        name: "Objednávka",
+        method: orderCode ? "code" : "automatic",
+        ...(orderCode ? { codes: ["OBJ"] } : {}),
+        value: { kind: "percentage", percent: r.pick([5, 10]) },
+        target: { kind: "order" },
+      },
+    ];
+    const baseLines: CartLineInput[] = Array.from({ length: 200 }, (_, i) => ({
+      id: `L${i}`,
+      variantId: `gid://shopify/ProductVariant/${i}`,
+      productId: `gid://shopify/Product/${i}`,
+      quantity: r.chance(0.7) ? 1 : r.int(2, 3),
+      unitPrice: r.chance(0.5) ? 250 + 500 * r.int(0, 300) : r.int(10, 3000) * r.pick([10, 100]),
+      ruleIds: r.chance(0.6) ? ["A", "B"] : r.chance(0.5) ? ["C"] : ["A"],
+    }));
+    const enteredCodes = orderCode ? ["OBJ"] : [];
+    // Margin OFF first, to learn each line's product discount; then put ~30 % of the lines exactly at
+    // their floor (cost = what the discount leaves) and give others a cost below or near the price.
+    const off = planCart({ currency: "CZK", lines: baseLines, enteredCodes, today: "2026-10-01" }, payloadOf(rules));
+    const lines = baseLines.map((l, i): CartLineInput => {
+      const amount = off.lines[i].product?.amount ?? 0;
+      if (l.quantity === 1 && amount > 0 && r.chance(0.3)) return { ...l, unitCost: (l.unitPrice - amount) / 100, unitCostCurrency: "CZK" };
+      if (r.chance(0.3)) return { ...l, unitCost: (l.unitPrice / 100) * r.pick([0.5, 0.8, 0.95]), unitCostCurrency: "CZK" };
+      return l;
+    });
+    const margin = { enabled: true, global: { maxDiscountPercent: r.pick([20, 50, 90]) }, perCollection: [] };
+    const payload = payloadOf(rules, { modules: { margin } }, { shopCurrency: "CZK" });
+    const plan = planCart({ currency: "CZK", lines, enteredCodes, today: "2026-10-01" }, payload);
+    const where = `case ${n}`;
+    assert.equal(plan.reason, undefined, where);
+    const preview = checkoutPreview(plan);
+    if (!preview.degraded) continue;
+    seen.degraded++;
+    seen.relaxedTies += preview.relaxedTies.length;
+    seen.relaxedStacks += preview.degradedStacks.length;
+    seen.dropped += preview.droppedCandidates.length;
+    seen.tight += plan.lines.filter((l) => l.marginTight).length;
+    const tight = new Set(plan.lines.filter((l) => l.marginTight).map((l) => l.lineId));
+    assert.ok(preview.relaxedTies.every((t) => !tight.has(t.lineId)), `${where}: a tight line was relaxed to its percent`);
+
+    const settings = readMarginPayload(payload.modules.margin);
+    const floorOf = (l: PlanLine) => {
+      const input = lines.find((x) => x.id === l.lineId)!;
+      const s = resolveMargin(settings, input.marginRefs ?? [])!;
+      const costMinor = costMinorUnits(input.unitCost, input.unitCostCurrency, undefined, "CZK", "CZK");
+      return marginFloorUnit({ unitPrice: l.unitPrice, costMinor, ...s }).floorUnit * l.quantity;
+    };
+    // The most the output can take off each line as a product discount (every node).
+    const product = new Map<string, number>();
+    const orderCandidates: { value: CandidateValue; excluded: string[] }[] = [];
+    for (const node of preview.nodes) {
+      for (const op of node.output.lines.operations) {
+        if ("productDiscountsAdd" in op) {
+          for (const c of op.productDiscountsAdd.candidates) {
+            for (const t of c.targets) {
+              const pl = plan.lines.find((l) => l.lineId === t.cartLine.id)!;
+              product.set(pl.lineId, (product.get(pl.lineId) ?? 0) + worstOnLine(c.value, pl));
+            }
+          }
+        } else {
+          for (const c of op.orderDiscountsAdd.candidates) orderCandidates.push({ value: c.value, excluded: c.targets[0].orderSubtotal.excludedCartLineIds });
+        }
+      }
+    }
+    for (const l of plan.lines) {
+      if (l.excluded) continue;
+      assert.ok(l.subtotal - (product.get(l.lineId) ?? 0) >= floorOf(l), `${where}: ${l.lineId} below its floor after the product output`);
+    }
+    // The order discount on what the lines really are after the (worst) product output.
+    for (const c of orderCandidates) {
+      seen.orders++;
+      const inBase = plan.lines.filter((l) => !l.excluded && !c.excluded.includes(l.lineId));
+      const after = (l: PlanLine) => l.subtotal - (product.get(l.lineId) ?? 0);
+      const base = inBase.reduce((sum, l) => sum + after(l), 0);
+      const carrying = inBase.filter((l) => after(l) > 0);
+      const baseBefore = carrying.reduce((sum, l) => sum + l.subtotal, 0);
+      // Margin on: every node emits its order discount as the plan's exact amount, never a percent.
+      assert.ok("fixedAmount" in c.value, `${where}: an order percent with margin on`);
+      const d = Math.min(toMinorUnits((c.value as { fixedAmount: { amount: string } }).fixedAmount.amount, "CZK") ?? 0, base);
+      seen.fixedOrders++;
+      if (orderCode) seen.codeOrders++;
+      for (const l of carrying) {
+        const a = after(l);
+        assert.ok(a - Math.ceil((d * a) / base) >= floorOf(l), `${where}: ${l.lineId} below its floor (after-product allocation)`);
+        assert.ok(a - Math.ceil((d * l.subtotal) / baseBefore) >= floorOf(l), `${where}: ${l.lineId} below its floor (before-product allocation)`);
+      }
+    }
+  }
+  assert.ok(seen.degraded >= 10, `degraded outputs: ${JSON.stringify(seen)}`);
+  assert.ok(seen.relaxedTies > 0 && seen.relaxedStacks > 0 && seen.dropped > 0, JSON.stringify(seen));
+  assert.ok(seen.tight > 100, JSON.stringify(seen));
+  assert.ok(seen.fixedOrders > 10 && seen.codeOrders > 2, JSON.stringify(seen));
 });
 
 // --- performance -------------------------------------------------------------------------------

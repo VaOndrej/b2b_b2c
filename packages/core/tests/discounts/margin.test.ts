@@ -81,6 +81,48 @@ test("sanitizer: per-collection values are clamped the same way (min 0–95, max
   assert.deepEqual(again.issues, []);
 });
 
+test("sanitizer: a global minimum margin over 100 gives ONE issue (clamped to 95), junk one invalid issue", () => {
+  const high = sanitizeConfig({ modules: { margin: { global: { maxDiscountPercent: 50, minMarginPercent: 150 } } } });
+  assert.equal(high.config.modules.margin.global.minMarginPercent, 95);
+  const highIssues = high.issues.filter((i) => i.path === "modules.margin.global.minMarginPercent");
+  assert.equal(highIssues.length, 1, JSON.stringify(highIssues));
+  assert.equal(highIssues[0].code, "clamped_percent");
+  assert.match(highIssues[0].message, /0-95/);
+  const junk = sanitizeConfig({ modules: { margin: { global: { maxDiscountPercent: 50, minMarginPercent: "20" } } } });
+  assert.equal(junk.config.modules.margin.global.minMarginPercent, 0);
+  assert.deepEqual(junk.issues.map((i) => [i.path, i.code]), [["modules.margin.global.minMarginPercent", "invalid_percent"]]);
+});
+
+test("sanitizer: margin percents keep one decimal, rounded to the STRICTER side (min up, max down), with an issue", () => {
+  const { config, issues } = sanitizeConfig({
+    modules: {
+      margin: {
+        enabled: true,
+        global: { minMarginPercent: 12.34, maxDiscountPercent: 45.67 },
+        perCollection: [{ collectionId: "gid://shopify/Collection/1", minMarginPercent: 33.33, maxDiscountPercent: 66.67 }],
+      },
+    },
+  });
+  assert.deepEqual(config.modules.margin.global, { minMarginPercent: 12.4, maxDiscountPercent: 45.6 });
+  assert.deepEqual(config.modules.margin.perCollection, [{ collectionId: "gid://shopify/Collection/1", minMarginPercent: 33.4, maxDiscountPercent: 66.6 }]);
+  assert.deepEqual(
+    issues.map((i) => [i.path, i.code]),
+    [
+      ["modules.margin.global.maxDiscountPercent", "rounded_percent"],
+      ["modules.margin.global.minMarginPercent", "rounded_percent"],
+      ["modules.margin.perCollection[0].minMarginPercent", "rounded_percent"],
+      ["modules.margin.perCollection[0].maxDiscountPercent", "rounded_percent"],
+    ],
+  );
+  // One decimal already: untouched, no issue (idempotent, float noise included: 0.1 × 3 = 0.30000000000000004).
+  const again = sanitizeConfig(config);
+  assert.deepEqual(again.config.modules.margin, config.modules.margin);
+  assert.deepEqual(again.issues, []);
+  const noisy = sanitizeConfig({ modules: { margin: { global: { maxDiscountPercent: 0.1 * 3, minMarginPercent: 0.1 * 3 } } } });
+  assert.deepEqual(noisy.config.modules.margin.global, { maxDiscountPercent: 0.3, minMarginPercent: 0.3 });
+  assert.deepEqual(noisy.issues, []);
+});
+
 // --- ceilTol / marginFloorUnit ------------------------------------------------------------------
 
 test("ceilTol: ceil with a 1e-6 tolerance, so float noise never adds a minor unit", () => {

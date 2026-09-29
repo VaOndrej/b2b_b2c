@@ -29,7 +29,11 @@ export const CONFIG_LIMITS = Object.freeze({
   listItems: 250,
   /** Length of one reference (a Shopify GID, a market handle, a segment id). */
   referenceLength: 100,
-  /** Margin overrides per collection. */
+  /**
+   * Margin overrides per collection. With margin percents kept to one decimal
+   * (config/margin.ts) the compact margin of 100 collections (13-digit ids) fits
+   * the function config budget next to the largest codes content.
+   */
   marginOverrides: 100,
   /**
    * Highest minimum margin, percent (MVP 2). The floor is cost / (1 − m/100):

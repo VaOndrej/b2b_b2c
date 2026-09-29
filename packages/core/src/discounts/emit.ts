@@ -14,6 +14,9 @@
 //   fixedPerItem  → value.fixedAmount { amount, appliesToEachItem: true }
 //   fixedTotal    → value.fixedAmount { amount, appliesToEachItem: false }
 // with amounts in minor units (money.ts fromMinorUnits for the decimal string).
+// function-output.ts may still emit a value as its exact amount instead: a
+// rounding tie, a margin-capped line, and — with margin protection on — every
+// order discount (`plan.order.marginProtected`).
 // `amount` is what the plan expects Shopify to take off, for checks and logs.
 
 import { normalizeCode } from "./cart.ts";

@@ -38,7 +38,19 @@
 //      then, as a last resort, the product candidates that save the least are
 //      dropped until the output fits. A step whose relaxation changes nothing
 //      (no tie, no stack) is skipped. A margin-capped line is never relaxed
-//      (neither step touches it): it keeps its exact value or is dropped.
+//      (neither step touches it): it keeps its exact value or is dropped. A
+//      margin-tight line (`line.marginTight`, plan-margin.ts markTightLines)
+//      never has its tie relaxed to a percent: Shopify could round it 1 minor
+//      unit up, below the floor (its stack may still drop to the top rule,
+//      which only ever gives less);
+//   4. margin protection on (`plan.order.marginProtected`): EVERY node emits
+//      its order discount as the plan's exact amount, never a percent, degraded
+//      or not. If any node's product output is degraded (less product discount
+//      than planned) the order base Shopify sees is larger, and a percent of it
+//      could take a line below its floor under a pre-discount allocation; a fixed
+//      amount sized to the plan only gets safer (each line has more headroom).
+//      The checkout shows the rule name and the amount either way. Margin off:
+//      unchanged (percents stay percents, a rounding tie is its exact amount).
 // Sizes are the UTF-8 bytes of the compact JSON (what JSON.stringify writes).
 //
 // Delivery: a percent applies to every delivery group; a FIXED amount goes to
@@ -241,9 +253,13 @@ interface PassInfo {
   degradedStacks: DegradedStack[];
 }
 
-/** A percent `p` on `line` whose amount is `amount`: exact on a tie unless ties are relaxed. */
+/**
+ * A percent `p` on `line` whose amount is `amount`: exact on a tie unless ties
+ * are relaxed — and always exact on a margin-tight line (never a relaxable tie).
+ */
 function percentOnLine(p: number, amount: number, line: PlanLine, currency: string, relax: Relax, info: PassInfo): Mapped {
   if (!roundingTiePossible(line.subtotal, p)) return percentValue(p);
+  if (line.marginTight) return exactAmount(amount, line, currency);
   info.ties.push({ lineId: line.lineId, percent: p });
   return relax.ties ? percentValue(p) : exactAmount(amount, line, currency);
 }
@@ -365,20 +381,22 @@ export function mapToFunctionOutput(emission: NodeEmission, input: FunctionOutpu
   if (plan === null) return none;
   const currency = plan.currency;
 
-  const orderOperations: CartLinesOperation[] = [];
-  if (classes.includes("ORDER")) {
+  /** The node's order operation; `exact`: every candidate as its exact amount (margin protection on). */
+  const orderOperationsFor = (exact: boolean): CartLinesOperation[] => {
+    if (!classes.includes("ORDER")) return [];
     const candidates: OrderDiscountCandidateOutput[] = [];
     for (const c of emission.orderCandidates) {
       const base = plan.order?.base ?? 0;
       const value =
-        c.percent !== undefined && roundingTiePossible(base, c.percent)
+        c.percent !== undefined && (exact || roundingTiePossible(base, c.percent))
           ? { fixedAmount: { amount: fromMinorUnits(c.amount, currency) } }
           : totalValue(c, currency);
       if (!value) continue;
       candidates.push({ message: c.message, targets: [{ orderSubtotal: { excludedCartLineIds: [...c.excludedLineIds] } }], value });
     }
-    if (candidates.length > 0) orderOperations.push({ orderDiscountsAdd: { candidates, selectionStrategy: "FIRST" } });
-  }
+    return candidates.length > 0 ? [{ orderDiscountsAdd: { candidates, selectionStrategy: "FIRST" } }] : [];
+  };
+  const orderOperations = orderOperationsFor(plan.order?.marginProtected === true);
 
   const delivery: DeliveryFunctionResult = { operations: [] };
   const groups = input.deliveryGroupIds ?? [];
