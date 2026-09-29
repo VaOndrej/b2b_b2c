@@ -7,7 +7,13 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
-- **Fáze:** MVP 1 ✅ uzavřené (checkpoint níž), push níž. Další: MVP 2 (Ochrana marže).
+- **Fáze:** MVP 1 ✅ uzavřené a pushnuté (`801d2e9`). **Další krok: MVP 2 (Ochrana marže)** —
+  napsat plán `docs/plans/2026-09-29-won-discounts-mvp2.md` (skill writing-plans), SDD ledger
+  `.superpowers/sdd/<plán>/progress.md`, pak smyčka MVP (TS engine + Rust + shoda, sync, UI, živé E2E).
+  Otevřená otázka MVP 2: nákupní ceny e2e produktů — `inventoryItem.unitCost` čte scope
+  `read_inventory`; zápis pro seed (write_inventory nebo admin token) ověřit přes MCP; bez nich
+  E2E pokryje cestu „produkt bez nákupní ceny → max. sleva %“ (A2).
+- **Ondřej 2026-09-29: funkce zůstává v Rustu** (JS nestačí na limit instrukcí; TS engine = reference).
 - **Blokováno:** nic. Pozn.: `shopify app dev` běží s dev přepínačem `WON_DEV_PLAN=pro` z finální
   brány — před MVP 2 restartovat bez něj (dev store je Free).
 - **Poslední push:** viz checkpoint MVP 1.
