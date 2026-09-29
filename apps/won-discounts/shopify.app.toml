@@ -31,13 +31,16 @@ api_version = "2026-10"
   # Collection / product targeting freshness (MVP 1 audit P1-2, F2 item 2):
   # a change to a targeted collection (products added or removed by hand, new
   # rules) or to any product (it may join or leave a smart collection — Shopify
-  # does NOT fire collections/update for that) marks the shop's targeting
-  # stale and schedules one debounced re-index of the product refs
-  # (app/lib/integration/targeting.server.ts). read_products covers all four.
+  # does NOT fire collections/update for that; a NEW product may be born into
+  # one: products/create, MVP 2) marks the shop's targeting stale and schedules
+  # one debounced re-index of the product refs
+  # (app/lib/integration/targeting.server.ts). The product topics also keep the
+  # margin cost mirror fresh while protection is on (the product's variants,
+  # app/lib/integration/costs.server.ts). read_products covers all five.
   # include_fields keeps the payload to what the handler reads; updated_at keeps
   # consecutive deliveries distinct (Shopify debounces identical payloads).
   [[webhooks.subscriptions]]
-  topics = [ "products/update", "collections/update" ]
+  topics = [ "products/create", "products/update", "collections/update" ]
   uri = "/webhooks/targeting"
   include_fields = [ "id", "admin_graphql_api_id", "updated_at" ]
 
@@ -45,12 +48,25 @@ api_version = "2026-10"
   topics = [ "products/delete", "collections/delete" ]
   uri = "/webhooks/targeting"
 
+  # Margin protection cost mirror (MVP 2): a changed purchase cost (inventory
+  # item unit cost) re-writes that variant's `$app:won_discounts/variant`
+  # metafield — one debounced mirror per shop, only while protection is on
+  # (app/lib/integration/costs.server.ts). INVENTORY_ITEMS_UPDATE needs
+  # read_inventory OR read_products (changelog 2025-03-31): no new scope.
+  # The handler reads only the item id; the mirror re-reads the current cost.
+  [[webhooks.subscriptions]]
+  topics = [ "inventory_items/update" ]
+  uri = "/webhooks/costs"
+  include_fields = [ "id", "cost", "updated_at", "admin_graphql_api_id" ]
+
 [access_scopes]
 # Minimum scopes (API-1), each mapped to a feature (docs/won-discounts-mvp-plan.md §1):
 # - write_discounts: Won discount nodes (automatic + code) and moving native discounts
 #   (backup → delete → recreate, C6); also reads native discounts for detection.
-# - read_products, write_products: per-product metafields for the function (C3) and,
-#   from MVP 5, outlet price / compare-at changes.
+# - read_products, write_products: per-product metafields for the function (C3),
+#   per-variant purchase-cost metafields for margin protection (MVP 2: reads
+#   inventoryItem.unitCost, inventory_items/update webhooks — both covered by
+#   read_products, no read_inventory) and, from MVP 5, outlet price / compare-at changes.
 # - read_themes: app-embed auto-detection (onboarding step 3, embed-status pattern).
 # Optional (requested after install, only when needed — API-1, MVP 1 audit P3-2):
 # - read_markets: Pro market targeting — the sync reads each Shopify market's

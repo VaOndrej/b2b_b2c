@@ -47,6 +47,18 @@ export interface FakeProduct {
   id: string;
   variantIds: string[];
   metafields: Map<string, FakeMetafield>;
+  title?: string;
+}
+
+/** A variant with its inventory item (cost mirror, MVP 2). */
+export interface FakeVariant {
+  id: string;
+  productId: string;
+  title: string;
+  price: string;
+  inventoryItemId: string;
+  unitCost: { amount: string; currencyCode: string } | null;
+  metafields: Map<string, FakeMetafield>;
 }
 
 export type Failure =
@@ -67,6 +79,9 @@ const mfKey = (namespace: string, key: string) => `${namespace}/${key}`;
 export class FakeShopify implements AdminClient {
   shopId = "gid://shopify/Shop/1";
   ianaTimezone = "Europe/Prague";
+  currencyCode = "CZK";
+  /** Variants by GID (created with their product; cost mirror). */
+  variants = new Map<string, FakeVariant>();
   shopMetafields = new Map<string, FakeMetafield>();
   nodes = new Map<string, FakeNode>();
   products = new Map<string, FakeProduct>();
@@ -121,9 +136,76 @@ export class FakeShopify implements AdminClient {
       id,
       variantIds: Array.from({ length: variants }, (_, i) => `gid://shopify/ProductVariant/${numericId * 100 + i + 1}`),
       metafields: new Map(),
+      title: `Product ${numericId}`,
     };
     this.products.set(id, product);
+    product.variantIds.forEach((variantId, i) => this.addVariant(product, variantId, i));
     return product;
+  }
+
+  /** A variant of `product` (price 10.00, no cost), its inventory item numbered after it. */
+  addVariant(product: FakeProduct, variantId: string, index = product.variantIds.length): FakeVariant {
+    if (!product.variantIds.includes(variantId)) product.variantIds.push(variantId);
+    const numeric = variantId.split("/").pop();
+    const variant: FakeVariant = {
+      id: variantId,
+      productId: product.id,
+      title: index === 0 && product.variantIds.length === 1 ? "Default Title" : `V${index + 1}`,
+      price: "10.00",
+      inventoryItemId: `gid://shopify/InventoryItem/${numeric}`,
+      unitCost: null,
+      metafields: new Map(),
+    };
+    this.variants.set(variantId, variant);
+    return variant;
+  }
+
+  /** Set (or clear, null) a variant's inventory item cost in the shop currency. */
+  setCost(variantId: string, amount: string | null, currencyCode = this.currencyCode): void {
+    const variant = this.variants.get(variantId);
+    if (!variant) throw new Error(`no variant ${variantId}`);
+    variant.unitCost = amount === null ? null : { amount, currencyCode };
+  }
+
+  /** Delete a variant (its inventory item and metafields go with it). */
+  deleteVariant(variantId: string): void {
+    const variant = this.variants.get(variantId);
+    if (!variant) return;
+    this.variants.delete(variantId);
+    const product = this.products.get(variant.productId);
+    if (product) product.variantIds = product.variantIds.filter((id) => id !== variantId);
+  }
+
+  /** The parsed `$app:won_discounts/variant` value of a variant (undefined = none). */
+  variantCostMetafield(variantId: string): unknown {
+    const value = this.variants.get(variantId)?.metafields.get(mfKey("$app:won_discounts", "variant"))?.value;
+    return value === undefined ? undefined : JSON.parse(value);
+  }
+
+  private variantView(variant: FakeVariant, opts: { product?: boolean; inventoryItem?: boolean } = {}) {
+    const product = this.products.get(variant.productId);
+    const mf = variant.metafields.get(mfKey("$app:won_discounts", "variant"));
+    return {
+      __typename: "ProductVariant",
+      id: variant.id,
+      title: variant.title,
+      price: variant.price,
+      ...(opts.product === false ? {} : { product: { id: variant.productId, title: product?.title ?? null } }),
+      ...(opts.inventoryItem === false ? {} : { inventoryItem: { id: variant.inventoryItemId, unitCost: variant.unitCost ? { ...variant.unitCost } : null } }),
+      cost: mf ? { value: mf.value } : null,
+    };
+  }
+
+  /** Every variant in product order (the productVariants connection). */
+  allVariants(): FakeVariant[] {
+    const out: FakeVariant[] = [];
+    for (const product of this.products.values()) {
+      for (const id of product.variantIds) {
+        const variant = this.variants.get(id);
+        if (variant) out.push(variant);
+      }
+    }
+    return out;
   }
 
   addCollection(numericId: number, productIds: string[]): string {
@@ -219,6 +301,8 @@ export class FakeShopify implements AdminClient {
     if (node) return node.metafields;
     const product = this.products.get(ownerId);
     if (product) return product.metafields;
+    const variant = this.variants.get(ownerId);
+    if (variant) return variant.metafields;
     return null;
   }
 
@@ -304,6 +388,7 @@ export class FakeShopify implements AdminClient {
           shop: {
             id: this.shopId,
             ianaTimezone: this.ianaTimezone,
+            currencyCode: this.currencyCode,
             functionConfig: this.shopMetafields.get(mfKey("$app:won_discounts", "function_config")) ?? null,
           },
         };
@@ -533,6 +618,42 @@ export class FakeShopify implements AdminClient {
                 regions: this.page(market.countries.map((code) => ({ __typename: "MarketRegionCountry", code })), v.after),
               },
             },
+          },
+        };
+      }
+      case "WonSyncCostVariantsCount":
+        return { productVariantsCount: { count: this.allVariants().length, precision: "EXACT" } };
+      case "WonSyncCostVariants":
+        return { productVariants: this.page(this.allVariants().map((variant) => this.variantView(variant)), v.after) };
+      case "WonSyncCostVariantNodes":
+        return {
+          nodes: (v.ids as string[]).map((id) => {
+            const variant = this.variants.get(id);
+            return variant ? this.variantView(variant) : null;
+          }),
+        };
+      case "WonSyncCostInventoryItems":
+        return {
+          nodes: (v.ids as string[]).map((id) => {
+            const variant = [...this.variants.values()].find((x) => x.inventoryItemId === id);
+            if (!variant) return null;
+            return {
+              __typename: "InventoryItem",
+              id,
+              unitCost: variant.unitCost ? { ...variant.unitCost } : null,
+              variants: { nodes: [this.variantView(variant, { inventoryItem: false })] },
+            };
+          }),
+        };
+      case "WonSyncCostProductVariants": {
+        const product = this.products.get(v.id);
+        if (!product) return { product: null };
+        const variants = product.variantIds.map((id) => this.variants.get(id)).filter((x): x is FakeVariant => x !== undefined);
+        return {
+          product: {
+            id: product.id,
+            title: product.title ?? null,
+            variants: this.page(variants.map((variant) => this.variantView(variant, { product: false })), v.after),
           },
         };
       }

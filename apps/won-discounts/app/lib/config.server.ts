@@ -158,6 +158,15 @@ function versionOf(data: string): string {
   return createHash("sha256").update(data).digest("hex").slice(0, 32);
 }
 
+/**
+ * The F12 token a stored row (or a ConfigVersion snapshot of it — the same
+ * `data` string) has: lets a save find the config version a page was loaded
+ * from (the margin screen, integration/margin.server.ts).
+ */
+export function configVersionToken(data: string): string {
+  return versionOf(data);
+}
+
 function parseStoredData(data: string): { ok: true; value: unknown } | { ok: false } {
   try {
     return { ok: true, value: JSON.parse(data) };
@@ -479,6 +488,7 @@ export async function deleteShopData(db: PrismaClient, shop: string): Promise<vo
     db.nativeDiscountBackup.deleteMany({ where: { shop } }),
     db.syncRun.deleteMany({ where: { shop } }),
     db.productTargetIndex.deleteMany({ where: { shop } }),
+    db.variantCost.deleteMany({ where: { shop } }),
     db.shopSyncState.deleteMany({ where: { shop } }),
   ]);
 }

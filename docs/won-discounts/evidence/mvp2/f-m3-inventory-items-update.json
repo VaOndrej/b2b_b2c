@@ -1,0 +1,96 @@
+{
+  "fact": "F-M3: a purchase-cost change through productVariantsBulkUpdate fires inventory_items/update to the app, which holds read_products (no read_inventory)",
+  "date": "2026-09-29",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "app": "won-discounts (shopify app dev, running since before this check; WON_DEV_PLAN=pro)",
+  "scopes_granted": "read_products, read_themes, write_discounts, write_products (app dev log: 'Access scopes auto-granted')",
+  "subscription": {
+    "toml": "[[webhooks.subscriptions]] topics = [\"inventory_items/update\"] uri = \"/webhooks/costs\" include_fields = [\"id\",\"cost\",\"updated_at\",\"admin_graphql_api_id\"]",
+    "picked_up_by_running_app_dev": "yes — the app dev log shows 'App config updated … Updated dev preview' right after shopify.app.toml was saved (14:04:35 local)",
+    "app_dev_config_line": [
+      "App config updatedBuilding function won-discounts-engine...    Finished `release` profile [optimized] target(s) in 0.02s"
+    ]
+  },
+  "variant": {
+    "product": "won-e2e-simple-a (gid://shopify/Product/9692429058289)",
+    "variant": "gid://shopify/ProductVariant/48468678902001",
+    "inventoryItem": "gid://shopify/InventoryItem/50552640471281"
+  },
+  "steps": [
+    {
+      "at": "2026-09-29T12:15:21Z",
+      "mutation": "productVariantsBulkUpdate cost 6.00 → 6.50 (shopify app execute, as the app)",
+      "variables": {
+        "productId": "gid://shopify/Product/9692429058289",
+        "variants": [
+          {
+            "id": "gid://shopify/ProductVariant/48468678902001",
+            "inventoryItem": {
+              "cost": "6.50"
+            }
+          }
+        ]
+      },
+      "response": {
+        "productVariantsBulkUpdate": {
+          "productVariants": [
+            {
+              "id": "gid://shopify/ProductVariant/48468678902001",
+              "inventoryItem": {
+                "id": "gid://shopify/InventoryItem/50552640471281",
+                "unitCost": {
+                  "amount": "6.5",
+                  "currencyCode": "USD"
+                }
+              }
+            }
+          ],
+          "userErrors": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-29T12:16:01Z",
+      "mutation": "productVariantsBulkUpdate cost 6.50 → 6.00 (restored)",
+      "variables": {
+        "productId": "gid://shopify/Product/9692429058289",
+        "variants": [
+          {
+            "id": "gid://shopify/ProductVariant/48468678902001",
+            "inventoryItem": {
+              "cost": "6.00"
+            }
+          }
+        ]
+      },
+      "response": {
+        "productVariantsBulkUpdate": {
+          "productVariants": [
+            {
+              "id": "gid://shopify/ProductVariant/48468678902001",
+              "inventoryItem": {
+                "id": "gid://shopify/InventoryItem/50552640471281",
+                "unitCost": {
+                  "amount": "6.0",
+                  "currencyCode": "USD"
+                }
+              }
+            }
+          ],
+          "userErrors": []
+        }
+      }
+    }
+  ],
+  "app_dev_log_after_the_mutations": [
+    "[shopify-api/DEBUG] webhook request is valid",
+    "[shopify-app/DEBUG] Loading offline session from session storage | {shop: b2b-b2c-store-development.myshopify.com}",
+    "Received INVENTORY_ITEMS_UPDATE webhook for b2b-b2c-store-development.myshopify.com",
+    "[shopify-api/DEBUG] webhook request is valid",
+    "[shopify-app/DEBUG] Loading offline session from session storage | {shop: b2b-b2c-store-development.myshopify.com}",
+    "Received INVENTORY_ITEMS_UPDATE webhook for b2b-b2c-store-development.myshopify.com"
+  ],
+  "result": "two inventory_items/update deliveries, one per cost change, HMAC-valid, handled by app/routes/webhooks.costs.tsx ('Received INVENTORY_ITEMS_UPDATE webhook for …'). Margin protection is off in the dev store's stored config, so the handler queued nothing (no mirror while off) — by design.",
+  "not_observed": "no products/update delivery was logged for these cost-only updates (the targeting route logs only relevant deliveries, so an irrelevant one would also be silent — not a conclusion either way)",
+  "final_state": "cost restored to 6.00 USD (response above)"
+}

@@ -11,6 +11,8 @@ import { forgetShopifyState } from "../lib/sync/sync-state.server";
 // and every ProductTargetIndex hash is cleared (the next sync re-reads and
 // rewrites the products; rows stay so a product that still carries a ref is
 // still cleared — safe also for a delayed delivery after a quick reinstall).
+// The margin cost mirror (VariantCost, MVP 2) is deleted: its metafields went
+// with the app and a reinstall runs a new full pass once protection is on.
 // Won Discounts data (ShopConfig, ConfigVersion, native-discount backups) is
 // deliberately kept until GDPR shop/redact (~48 h later, PRIV-2 allows up to
 // 30 days; see webhooks.shop.redact.tsx):

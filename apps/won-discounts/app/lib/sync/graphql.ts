@@ -8,9 +8,13 @@
 // it, and the discount function reads the same keys:
 //   shop     function_config  the shared config (C7), one atomic write for all nodes
 //   node     function_vars    per-node input-query variables (role, campaign window)
-//   product  product          productMetafieldValue(entry) = {"ruleIds", "variantRuleIds"}
+//   product  product          productMetafieldValue(entry) = {"ruleIds", "variantRuleIds", "marginRefs"?}
+//   variant  variant          the cost mirror (margin protection, MVP 2, costs.ts):
+//                              {"cost": <inventoryItem.unitCost.amount>, "cur": "<its currency>"},
+//                              only on variants with a cost > 0
 // Which products carry `product` is sync bookkeeping in Prisma
-// ProductTargetIndex (DATA-1), not in Shopify.
+// ProductTargetIndex (DATA-1), not in Shopify; which variants carry `variant`,
+// Prisma VariantCost.
 //
 // Every document stays under Shopify's 1 000-point requested-cost cap per
 // query (connections cost 2 + first × node cost); tests/lib/sync/query-cost.test.ts
@@ -20,12 +24,23 @@ export const WON_NAMESPACE = "$app:won_discounts";
 export const SHOP_CONFIG_KEY = "function_config";
 export const NODE_VARS_KEY = "function_vars";
 export const PRODUCT_KEY = "product";
+export const VARIANT_COST_KEY = "variant";
+
+/**
+ * Variants per page of the cost mirror's full pass. Shopify accepted
+ * `productVariants(first: 250)` with this selection live (2026-09-29), but
+ * the conservative requested-cost estimate (tests/lib/sync/query-cost.test.ts:
+ * every object 1 point, MoneyV2 included) is 5 per variant, so a page of 150
+ * (~753 points) stays under the 1 000-point cap by the book too.
+ */
+export const COST_PAGE_SIZE = 150;
 
 export const GQL = {
   shop: `query WonSyncShop {
   shop {
     id
     ianaTimezone
+    currencyCode
     functionConfig: metafield(namespace: "$app:won_discounts", key: "function_config") {
       id
       value
@@ -475,6 +490,126 @@ export const GQL = {
               code
             }
           }
+        }
+      }
+    }
+  }
+}`,
+  // --- Cost mirror (margin protection, MVP 2, costs.ts) ------------------------------------
+  // inventoryItem.unitCost reads with read_products alone (live, MVP 2 build
+  // log; the MCP validator lists read_inventory as an alternative scope).
+  costVariantsCount: `query WonSyncCostVariantsCount {
+  productVariantsCount {
+    count
+    precision
+  }
+}`,
+
+  costVariants: `query WonSyncCostVariants($after: String) {
+  productVariants(first: 150, after: $after) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    nodes {
+      id
+      title
+      price
+      product {
+        id
+        title
+      }
+      inventoryItem {
+        id
+        unitCost {
+          amount
+          currencyCode
+        }
+      }
+      cost: metafield(namespace: "$app:won_discounts", key: "variant") {
+        value
+      }
+    }
+  }
+}`,
+
+  costVariantNodes: `query WonSyncCostVariantNodes($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    __typename
+    ... on ProductVariant {
+      id
+      title
+      price
+      product {
+        id
+        title
+      }
+      inventoryItem {
+        id
+        unitCost {
+          amount
+          currencyCode
+        }
+      }
+      cost: metafield(namespace: "$app:won_discounts", key: "variant") {
+        value
+      }
+    }
+  }
+}`,
+
+  // inventory_items/update names the inventory item; its variant is looked up
+  // here (InventoryItem.variant is deprecated in favour of `variants`; an
+  // inventory item belongs to one variant).
+  costInventoryItems: `query WonSyncCostInventoryItems($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    __typename
+    ... on InventoryItem {
+      id
+      unitCost {
+        amount
+        currencyCode
+      }
+      variants(first: 1) {
+        nodes {
+          id
+          title
+          price
+          product {
+            id
+            title
+          }
+          cost: metafield(namespace: "$app:won_discounts", key: "variant") {
+            value
+          }
+        }
+      }
+    }
+  }
+}`,
+
+  costProductVariants: `query WonSyncCostProductVariants($id: ID!, $after: String) {
+  product(id: $id) {
+    id
+    title
+    variants(first: 150, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+        title
+        price
+        inventoryItem {
+          id
+          unitCost {
+            amount
+            currencyCode
+          }
+        }
+        cost: metafield(namespace: "$app:won_discounts", key: "variant") {
+          value
         }
       }
     }

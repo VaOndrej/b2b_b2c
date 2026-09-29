@@ -30,7 +30,9 @@
 //   runTryCart              → Shopify prices (market country) + the engine on
 //                             the function's own payload (planCart + explainPlan).
 //   loadStoreSignals        → embed (read_themes), sync (resyncIfPending,
-//                             bounded, REL-1) and native detection (cached).
+//                             bounded, REL-1), native detection (cached) and
+//                             the Ochrana marže card (AdminSignals.margin,
+//                             integration/margin.server.ts; Přehled only).
 // Every config read-modify-write runs under one per-shop lock (lock.server.ts).
 // Checkout verification is still not wired and says so.
 
@@ -52,22 +54,21 @@ import type { AdminSignals, CodeRuleLimit, EmbedState, UiResult } from "../compo
 import { activeCodeRules, MAX_ACTIVE_CODE_RULES, SHOPIFY_MAX_ACTIVE_DISCOUNT_FUNCTIONS } from "./config-guards.server";
 import { loadConfig, saveConfig, type LoadedConfig } from "./config.server";
 import type { ShopCtx } from "./integration/context.server";
+import { lockedWrite, SAVE_ATTEMPTS, savedResult, writeAndSync } from "./integration/config-write.server";
 import { withinDeadline } from "./integration/deadline";
-import { CONFIG_LOCK_WAIT_MS, ConfigLockBusy, withConfigLock } from "./integration/lock.server";
 import {
   cachedNativeCodes,
   detectNative,
-  forgetDetection,
   loadNativeView,
   moveNativeDiscounts,
   nativeCodes,
   undoNativeDiscount,
 } from "./integration/native.server";
+import { loadMarginOverview } from "./integration/margin.server";
 import { uiFailureFromSave } from "./integration/results";
-import { ruleNames, syncOutcome } from "./integration/sync-copy";
-import { ACTION_SYNC_DEADLINE_MS, overviewSync, refreshTargetingNow, resyncNow as resyncStored } from "./integration/sync-status.server";
+import { overviewSync, refreshTargetingNow, resyncNow as resyncStored } from "./integration/sync-status.server";
 import { runTryCartPlan, type TryCartRun } from "./integration/try-cart.server";
-import { canReadMarkets, saveAndSync, type SaveAndSyncResult } from "./sync/save-and-sync.server";
+import { canReadMarkets } from "./sync/save-and-sync.server";
 import { canonicalJson } from "./sync/util";
 
 export { resolvePlan } from "./plan.server";
@@ -275,13 +276,16 @@ export async function loadStoreSignals(
     nativeDeadlineMs?: number;
   },
 ): Promise<AdminSignals> {
-  const [base, sync, native] = await Promise.all([
+  const [base, sync, native, margin] = await Promise.all([
     loadAdminSignals({ shop: ctx.shop, scopes: opts.scopes, apiKey: ctx.apiKey, graphql: opts.graphql, fresh: opts.fresh }),
     opts.sync ? overviewSync(ctx, loaded, { timezone: opts.timezone, deadlineMs: opts.syncDeadlineMs }) : Promise.resolve(NOT_WIRED_SIGNALS.sync),
     // `fresh` re-reads the theme only (onboarding's focus re-check); detection keeps its 60 s cache.
     loadNativeView(ctx, loaded.config, { timezone: opts.timezone, deadlineMs: opts.nativeDeadlineMs }),
+    // Ochrana marže card (MVP 2, Přehled only): also starts a due cost pass / clear in the background.
+    // A failure leaves the card out (absent = not known), never the page (REL-1).
+    opts.sync ? loadMarginOverview(ctx, loaded, { timezone: opts.timezone, trigger: true }).catch(() => undefined) : Promise.resolve(undefined),
   ]);
-  return { ...base, sync, native };
+  return { ...base, sync, native, ...(margin ? { margin } : {}) };
 }
 
 // --- One call per loader ------------------------------------------------------------------
@@ -337,74 +341,7 @@ async function freshNativeCodes(ctx: ShopCtx, config: WonDiscountsConfig): Promi
   };
 }
 
-interface WriteOptions {
-  replaceUnreadable: boolean;
-  /** The stored version the change builds on (F12). */
-  expectedVersion: string | null;
-  /** Native codes for the hash check (default: the cached detection). */
-  otherCodes?: readonly string[];
-  warnings?: string[];
-}
-
-/**
- * Save `next` and write it into Shopify (canonical saveAndSync) on top of
- * `expectedVersion` only. The request waits at most ACTION_SYNC_DEADLINE_MS;
- * products that only gain rules are written in the background (item 7).
- */
-async function writeAndSync(ctx: ShopCtx, next: WonDiscountsConfig, opts: WriteOptions): Promise<SaveAndSyncResult> {
-  const result = await saveAndSync({
-    client: ctx.client,
-    db: ctx.db,
-    shop: ctx.shop,
-    input: next,
-    otherCodes: opts.otherCodes ?? cachedNativeCodes(ctx.shop),
-    replaceUnreadable: opts.replaceUnreadable,
-    expectedVersion: opts.expectedVersion,
-    grantedScopes: ctx.scopes,
-    productWrites: "background",
-    deadlineMs: ACTION_SYNC_DEADLINE_MS,
-    createSync: ctx.createSync,
-    now: ctx.now,
-    logger: ctx.logger,
-  });
-  // A rule change can start or end a conflict with a native discount.
-  if (result.save.ok) forgetDetection(ctx.shop);
-  return opts.warnings && opts.warnings.length > 0 ? { ...result, warnings: [...opts.warnings, ...result.warnings] } : result;
-}
-
-/** The success result of a save: sanitizer notes for `prefix` + what reached Shopify (or that it still runs). */
-function savedResult(
-  res: SaveAndSyncResult & { save: { ok: true } },
-  message: "saved" | "deleted",
-  prefix: string | null,
-): UiResult {
-  const fixes = prefix === null ? [] : res.save.issues.filter((i) => i.path === prefix || i.path.startsWith(`${prefix}.`)).map((i) => i.message);
-  const syncing = res.running ? { syncing: {} } : res.sync?.background ? { syncing: { products: res.sync.background.products } } : {};
-  return {
-    ok: true,
-    message,
-    ...(fixes.length > 0 ? { fixes } : {}),
-    ...(res.sync ? { sync: syncOutcome(res.sync, res.warnings, ruleNames(res.save.config)) } : {}),
-    ...syncing,
-  };
-}
-
-/**
- * An admin write under the shop's config lock, waiting at most
- * CONFIG_LOCK_WAIT_MS for it (F2 re-review I-1): another writer still at work
- * → `busy` ("Nastavení se právě propisuje, zkus to za chvíli"), nothing ran.
- */
-async function lockedWrite<T>(ctx: Pick<ShopCtx, "shop" | "lockWaitMs">, busy: T, run: () => Promise<T>): Promise<T> {
-  try {
-    return await withConfigLock(ctx.shop, run, { waitMs: ctx.lockWaitMs ?? CONFIG_LOCK_WAIT_MS });
-  } catch (error) {
-    if (error instanceof ConfigLockBusy) return busy;
-    throw error;
-  }
-}
-
-/** Save attempts on top of another instance's write (F12): the first, and one retry. */
-const SAVE_ATTEMPTS = 2;
+// writeAndSync / savedResult / lockedWrite: integration/config-write.server.ts (the margin screen saves the same way).
 
 const sameRule = (a: unknown, b: unknown) => canonicalJson(a ?? null) === canonicalJson(b ?? null);
 

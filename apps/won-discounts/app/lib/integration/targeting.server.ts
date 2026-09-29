@@ -11,9 +11,9 @@
 //            (Shopify fires update when products are added/removed by hand or
 //            the rules change — NOT when a product's own attributes make it
 //            join/leave a smart collection);
-//        products/update  any product changed — it may have joined/left a
-//            smart collection; relevant only while some rule targets a
-//            collection;
+//        products/create, products/update  a product was created or changed —
+//            it may have joined/left a smart collection; relevant only while
+//            some rule (or a margin setting, MVP 2) targets a collection;
 //        products/delete  the product's index row is dropped (its metafield is
 //            gone with it).
 //      A relevant delivery marks the shop's targeting stale (ShopSyncState,
@@ -41,7 +41,10 @@
 // process; with several instances each schedules its own (harmless: the
 // refresh is idempotent).
 
+import { gateConfigForPlan, type ShopPlan } from "@won/core/discounts/plan-gate";
+
 import type { PrismaClient } from "../../generated/prisma/client";
+import { planOf } from "../plan.server";
 import { adminClientFromApp, type AdminClient, type AppAdminGraphql } from "../admin-client.server";
 import { loadConfig } from "../config.server";
 import { targetScopes } from "../sync/products";
@@ -59,7 +62,7 @@ export const TARGETING_MIN_INTERVAL_MS = 5 * 60_000;
 /** Přehled refreshes the targeting when the last product pass is older than this. */
 export const TARGETING_MAX_AGE_MS = 24 * 60 * 60_000;
 
-export const TARGETING_TOPICS = ["products/update", "products/delete", "collections/update", "collections/delete"] as const;
+export const TARGETING_TOPICS = ["products/create", "products/update", "products/delete", "collections/update", "collections/delete"] as const;
 export type TargetingTopic = (typeof TARGETING_TOPICS)[number];
 
 /** "PRODUCTS_UPDATE" (what authenticate.webhook reports) or "products/update" → the topic; anything else → null. */
@@ -84,6 +87,8 @@ export interface TargetingWebhookDeps {
   /** Schedule the shop's debounced refresh. */
   schedule: (shop: string) => void;
   now?: () => Date;
+  /** The shop's plan (BILL-1; default: the app's resolver). */
+  plan?: (shop: string) => Promise<ShopPlan>;
 }
 
 export type TargetingWebhookOutcome =
@@ -113,12 +118,14 @@ export async function handleTargetingWebhook(
 
   const loaded = await loadConfig(db, shop);
   if (!loaded.exists || loaded.unreadable || loaded.readOnly) return { handled: "ignored", reason: "no syncable config" };
-  const scopes = targetScopes(loaded.config);
-  const relevant =
-    topic === "products/update"
-      ? scopes.collectionIds.size > 0 // smart-collection membership follows product attributes
-      : scopes.collectionIds.has(gid);
-  if (!relevant) return { handled: "ignored", reason: topic === "products/update" ? "no rule targets a collection" : "collection not targeted" };
+  // The sync reads what the shop's plan runs (BILL-1): a Free shop's margin collections are not read.
+  const plan = await (deps.plan ?? planOf)(shop);
+  const scopes = targetScopes(gateConfigForPlan(loaded.config, plan).config);
+  const productTopic = topic === "products/update" || topic === "products/create";
+  const relevant = productTopic
+    ? scopes.collectionIds.size > 0 // smart-collection membership follows product attributes
+    : scopes.collectionIds.has(gid);
+  if (!relevant) return { handled: "ignored", reason: productTopic ? "no rule targets a collection" : "collection not targeted" };
   const note = `${topic} ${gid}`;
   await markTargetingStale(db, shop, note, (deps.now ?? (() => new Date()))());
   deps.schedule(shop);

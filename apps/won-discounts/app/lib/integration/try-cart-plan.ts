@@ -9,8 +9,15 @@
 //   targeting      each line's refs FROM THE PRODUCT METAFIELD Shopify holds
 //                  (`productRefs`, read by try-cart.server.ts — item 2: what
 //                  checkout reads, even while a collection change is still
-//                  being propagated); only the dev harness, which has no
-//                  Shopify, recomputes them with productRuleIndex;
+//                  being propagated) — rule refs and margin refs (MVP 2); only
+//                  the dev harness, which has no Shopify, recomputes them with
+//                  productRuleIndex;
+//   margin (MVP 2) each line's purchase cost as the variant metafield the
+//                  mirror wrote holds it (`unitCost`/`unitCostCurrency`, from
+//                  VariantCost), the shop currency as the config's `cur`, and
+//                  `shopToCartRate` (1 in the shop currency; otherwise an
+//                  estimate from market prices — checkout uses Shopify's
+//                  presentmentCurrencyRate, so the view says it is an estimate);
 //   day            `today` = the chosen shop-local date;
 //   output         core checkoutPreview (item 8): every node's output mapped
 //                  exactly as the function maps it — the per-line amounts and
@@ -47,12 +54,18 @@ export interface PricedLine {
    * with `liveCollections` — its LIVE Shopify membership (membership warning).
    */
   collectionIds: readonly string[];
+  /** Purchase cost of one item, MAJOR units (the variant metafield's `cost`); absent = unknown. */
+  unitCost?: number;
+  /** Its currency (the metafield's `cur`). */
+  unitCostCurrency?: string;
 }
 
 /** A product's refs as its `$app:won_discounts/product` metafield holds them. */
 export interface ProductRefs {
   ruleIds: readonly string[];
   variantRuleIds: Readonly<Record<string, readonly string[]>>;
+  /** Numeric ids of its collections with a margin setting (MVP 2; absent = none). */
+  marginRefs?: readonly string[];
 }
 
 export interface TryCartPlanInput {
@@ -69,6 +82,12 @@ export interface TryCartPlanInput {
   locale: "cs" | "en";
   /** Market name shown with the result. */
   market?: string | null;
+  /** Shopify shop.currencyCode: the margin's `cur` (without it every cost is unknown, like checkout). */
+  shopCurrency?: string | null;
+  /** Shop currency → cart currency (1 in the shop currency); absent/null = unknown. */
+  shopToCartRate?: number | null;
+  /** `shopToCartRate` was estimated from market prices (the cart is not in the shop currency). */
+  rateEstimated?: boolean;
   /**
    * The refs checkout reads, per product id (a product without a metafield =
    * no refs). Absent → recomputed from `lines[].collectionIds` (dev harness only).
@@ -143,7 +162,7 @@ export function cartInvolvesCollectionRules(config: WonDiscountsConfig, lines: r
 export function parseProductRefs(value: string | null | undefined): ProductRefs {
   if (!value) return { ruleIds: [], variantRuleIds: {} };
   try {
-    const parsed = JSON.parse(value) as { ruleIds?: unknown; variantRuleIds?: unknown };
+    const parsed = JSON.parse(value) as { ruleIds?: unknown; variantRuleIds?: unknown; marginRefs?: unknown };
     const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
     const variantRuleIds: Record<string, string[]> = {};
     if (parsed.variantRuleIds && typeof parsed.variantRuleIds === "object" && !Array.isArray(parsed.variantRuleIds)) {
@@ -152,7 +171,8 @@ export function parseProductRefs(value: string | null | undefined): ProductRefs 
         if (list.length > 0) variantRuleIds[variant] = list;
       }
     }
-    return { ruleIds: strings(parsed.ruleIds), variantRuleIds };
+    const marginRefs = strings(parsed.marginRefs);
+    return { ruleIds: strings(parsed.ruleIds), variantRuleIds, ...(marginRefs.length > 0 ? { marginRefs } : {}) };
   } catch {
     return { ruleIds: [], variantRuleIds: {} };
   }
@@ -170,7 +190,12 @@ function recomputedRefs(config: WonDiscountsConfig, lines: readonly PricedLine[]
     config,
     [...byProduct].map(([productId, e]) => ({ productId, variantIds: [...e.variantIds], collectionIds: [...e.collectionIds] })),
   );
-  return new Map([...index].map(([productId, entry]) => [productId, { ruleIds: entry.ruleIds, variantRuleIds: entry.variantRuleIds }]));
+  return new Map(
+    [...index].map(([productId, entry]) => [
+      productId,
+      { ruleIds: entry.ruleIds, variantRuleIds: entry.variantRuleIds, ...(entry.marginRefs ? { marginRefs: entry.marginRefs } : {}) },
+    ]),
+  );
 }
 
 /** Where the checkout output differs, or may differ, from the plan (item 8). */
@@ -209,7 +234,11 @@ function previewWarnings(plan: CartPlan, preview: CheckoutPreview, locale: "cs" 
 
 export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput): CartPlanView {
   const now = `${input.date}T${input.time}`;
-  const encoded = buildShopFunctionConfig(config, { now, shopTimezone: input.shopTimezone });
+  const encoded = buildShopFunctionConfig(config, {
+    now,
+    shopTimezone: input.shopTimezone,
+    ...(input.shopCurrency ? { shopCurrency: input.shopCurrency } : {}),
+  });
   // Exactly what the function reads: the JSON as written, or null over the budget (C7).
   const shared = encoded.fits ? (JSON.parse(encoded.json) as PlanConfig) : null;
   const refs = input.productRefs ?? recomputedRefs(config, input.lines);
@@ -224,6 +253,9 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
       unitPrice: line.unitPrice,
       ruleIds: entry ? [...entry.ruleIds] : [],
       ...(entry && Object.keys(entry.variantRuleIds).length > 0 ? { variantRuleIds: entry.variantRuleIds } : {}),
+      ...(entry?.marginRefs && entry.marginRefs.length > 0 ? { marginRefs: entry.marginRefs } : {}),
+      ...(line.unitCost !== undefined ? { unitCost: line.unitCost } : {}),
+      ...(line.unitCostCurrency !== undefined ? { unitCostCurrency: line.unitCostCurrency } : {}),
     };
   });
 
@@ -236,6 +268,7 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
     today: input.date,
     now,
     locale: input.locale,
+    ...(typeof input.shopToCartRate === "number" ? { shopToCartRate: input.shopToCartRate } : {}),
   };
   const plan = planCart(cart, shared);
   const preview = checkoutPreview(plan, { lineCount: plan.lines.length });
@@ -252,6 +285,11 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
     ...membership,
     ...(membership.length === 0 && input.targetingStale && cartInvolvesCollectionRules(config, lines) ? [{ key: "tryCart.warning.targeting" as const }] : []),
   ];
+  // Margin protection (MVP 2): a line is capped when its product discount was lowered or the
+  // order discount left it out at its floor; the explanation (admin audience) says why.
+  const marginOn = config.modules.margin.enabled === true;
+  const orderExcluded = new Set(plan.order?.marginExcludedLineIds ?? []);
+  const capped = (line: (typeof plan.lines)[number]) => line.marginCapped !== undefined || orderExcluded.has(line.lineId);
   return {
     currency: input.currency,
     date: input.date,
@@ -265,9 +303,18 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
         subtotal: line.subtotal,
         discount,
         total: line.subtotal - discount,
+        ...(marginOn && capped(line) ? { marginCapped: true } : {}),
       };
     }),
-    explain: explainPlan(plan, input.locale).map((item) => ({
+    ...(marginOn
+      ? {
+          margin: {
+            rateEstimated: input.rateEstimated === true,
+            linesWithoutCost: plan.lines.filter((line) => line.marginCapped?.basis === "max_percent").length,
+          },
+        }
+      : {}),
+    explain: explainPlan(plan, input.locale, { audience: "admin" }).map((item) => ({
       tone: item.tone,
       text: item.text,
       ...(item.lineIds && item.lineIds.length > 0 ? { lineIds: [...item.lineIds] } : {}),

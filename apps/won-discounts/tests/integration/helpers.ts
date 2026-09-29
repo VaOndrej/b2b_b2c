@@ -12,7 +12,8 @@
 //                   wrote) / markets for Vyzkoušet košík, from the sync fake's
 //                   products + `prices` below;
 //   WonDiscounts* → the admin's own reads (shop context, market names, themes,
-//                   the automatic Won node's status).
+//                   the automatic Won node's status);
+//   WonMargin*    → the margin screen's collection titles (`collectionTitles`).
 // Anything else fails the test (an unexpected document).
 
 import type { PrismaClient } from "../../app/generated/prisma/client.ts";
@@ -40,6 +41,8 @@ export class FakeStore implements AdminClient {
   /** variant id → currency → decimal price (contextual pricing answers in the country's market currency). */
   prices = new Map<string, Record<string, string>>();
   titles = new Map<string, { product: string; variant: string }>();
+  /** Collection GID → title (the margin screen's collection names; unknown ids answer null). */
+  collectionTitles = new Map<string, string>();
   /** Operation names in call order. */
   ops: string[] = [];
   /** Every call with its variables. */
@@ -126,6 +129,13 @@ export class FakeStore implements AdminClient {
       }
       case "WonTryCartProductCollections":
         return { product: null };
+      case "WonMarginCollectionTitles":
+        return {
+          nodes: ((variables.ids as string[]) ?? []).map((id) => {
+            const title = this.collectionTitles.get(id);
+            return title ? { __typename: "Collection", id, title } : null;
+          }),
+        };
       case "WonDiscountsAutoNodeStatus": {
         const node = this.sync.nodes.get(String(variables.id));
         if (!node) return { node: null };

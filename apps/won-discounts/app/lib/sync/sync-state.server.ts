@@ -106,7 +106,11 @@ export async function recordProductsSynced(db: PrismaClient, shop: string, start
  *     null = "unknown"): the next sync reads and rewrites every indexed
  *     product, and a product that carries a ref still gets cleared — safe in
  *     both orders, also when a delayed webhook arrives after a reinstall;
- *   - the targeting freshness is forgotten (productsSyncedAt = null).
+ *   - the targeting freshness is forgotten (productsSyncedAt = null);
+ *   - the cost mirror (MVP 2) is deleted: its variant metafields went with
+ *     the app, and its rows hold the shop's purchase costs, which Won does not
+ *     keep for an uninstalled shop (a reinstall runs a new full pass once
+ *     protection is on). Its pass bookkeeping goes with it.
  * ShopConfig, history and native-discount backups stay until shop/redact (A7).
  * Idempotent.
  */
@@ -114,6 +118,10 @@ export async function forgetShopifyState(db: PrismaClient, shop: string): Promis
   await db.$transaction([
     db.wonNode.deleteMany({ where: { shop } }),
     db.productTargetIndex.updateMany({ where: { shop }, data: { payloadHash: null } }),
-    db.shopSyncState.updateMany({ where: { shop }, data: { productsSyncedAt: null } }),
+    db.variantCost.deleteMany({ where: { shop } }),
+    db.shopSyncState.updateMany({
+      where: { shop },
+      data: { productsSyncedAt: null, costsScannedAt: null, costsCursor: null, costsPending: null },
+    }),
   ]);
 }

@@ -6,9 +6,11 @@
 // (markets.ts), nothing is swapped here.
 //
 // Order (T1 function-payload.ts "Sync sequences"; the shop config is the flip):
-//   0. read the shop (id, time zone, current function_config); build the shop
-//      payload — if it does not fit the 9 000 B budget, STOP before any write
-//      (saveConfig measured the same payload, so an accepted save never stops here);
+//   0. read the shop (id, time zone, currency, current function_config); build
+//      the shop payload with the shop currency (the margin's `cur`: without it
+//      every cost is unknown) — if it does not fit the 9 000 B budget, STOP
+//      before any write (saveConfig measured the same payload, so an accepted
+//      save never stops here);
 //   P1. only when the campaign version changes (another selected campaign or
 //      window, or the campaign ended/was killed): write a NO-CAMPAIGN shop
 //      config first (`forceNoCampaign`), read back + verified. If P1 fails, the
@@ -261,6 +263,8 @@ function gateDetail(plan: string, stripped: readonly StrippedCapability[]): stri
 interface ShopState {
   id: string;
   timeZone: string;
+  /** Shopify shop.currencyCode (undefined when Shopify did not say). */
+  currency: string | undefined;
   functionConfig: string | null;
 }
 
@@ -420,8 +424,14 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
   // 0. Shop + payload.
   let shopState: ShopState;
   try {
-    const data: { shop: { id: string; ianaTimezone: string; functionConfig: { value: string } | null } } = await transport.call("shop");
-    shopState = { id: data.shop.id, timeZone: data.shop.ianaTimezone, functionConfig: data.shop.functionConfig?.value ?? null };
+    const data: { shop: { id: string; ianaTimezone: string; currencyCode?: string | null; functionConfig: { value: string } | null } } =
+      await transport.call("shop");
+    shopState = {
+      id: data.shop.id,
+      timeZone: data.shop.ianaTimezone,
+      currency: typeof data.shop.currencyCode === "string" && data.shop.currencyCode ? data.shop.currencyCode : undefined,
+      functionConfig: data.shop.functionConfig?.value ?? null,
+    };
   } catch (error) {
     if (error instanceof Response) throw error;
     record({ step: "shop.read", ok: false, detail: `could not read the shop: ${errorText(error)} — nothing was changed` });
@@ -429,7 +439,7 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
   }
   const shopTimezone = shopState.timeZone;
   const nowLocal = shopLocalDateTime(now, shopTimezone);
-  record({ step: "shop.read", ok: true, detail: `${shopState.id}, shop time ${nowLocal} (${shopTimezone})` });
+  record({ step: "shop.read", ok: true, detail: `${shopState.id}, shop time ${nowLocal} (${shopTimezone}), currency ${shopState.currency ?? "unknown"}` });
   await bookkeeping(deps, shop, () => recordShopTimezone(deps.db, shop, shopTimezone));
 
   // BILL-1: what this shop's plan may run.
@@ -438,7 +448,8 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
   const config: ConfigView = gate.config;
   record({ step: "plan", ok: true, detail: gate.stripped.length > 0 ? gateDetail(plan, gate.stripped) : `plan ${plan}: nothing to gate` });
 
-  const payload = deps.buildShopFunctionConfig(config, { now: nowLocal, shopTimezone });
+  const shopCurrency = shopState.currency;
+  const payload = deps.buildShopFunctionConfig(config, { now: nowLocal, shopTimezone, shopCurrency });
   if (!payload.fits) {
     record({
       step: "shop_config.build",
@@ -454,7 +465,7 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
   const oldVersion = storedJson === null ? null : campaignVersionOf(storedJson);
   const switching = newVersion !== oldVersion;
   if (switching) {
-    const noCampaign = deps.buildShopFunctionConfig(config, { now: nowLocal, shopTimezone, forceNoCampaign: true });
+    const noCampaign = deps.buildShopFunctionConfig(config, { now: nowLocal, shopTimezone, shopCurrency, forceNoCampaign: true });
     const written = await writeShopConfig(deps, transport, shopState.id, storedJson, noCampaign, "shop_config.phase1", record);
     storedJson = written.stored;
     if (written.ok) await bookkeeping(deps, shop, () => recordAppliedPlan(deps.db, shop, plan));

@@ -149,6 +149,18 @@ model ShopSyncState {
   /// then the admin says checkout still runs the older settings. Null = not
   /// recorded (a config written before this column: see sync/runs.ts).
   appliedPlan        String?
+  /// Margin protection (MVP 2) cost mirror (app/lib/sync/costs.ts): when the
+  /// last FULL pass that finished without errors STARTED. Older than 24 h (or
+  /// null) → the Přehled and the daily reconcile run a new pass.
+  costsScannedAt     DateTime?
+  /// Resume point of an unfinished full pass: the productVariants endCursor of
+  /// the last page it finished (a pass cancelled by a newer one, or cut short
+  /// by a restart, continues here). Null = no pass to resume.
+  costsCursor        String?
+  /// JSON of the pass under way or the last one that failed, for the admin
+  /// ("propisujeme nákupní ceny N z M"): {token, since, done, total,
+  /// failedAt?, error?}. Null = nothing pending.
+  costsPending       String?
   updatedAt          DateTime  @updatedAt
 }
 
@@ -161,7 +173,42 @@ model ProductTargetIndex {
   shop        String
   productId   String   // Shopify product GID
   payloadHash String?
+  /// The value last written (productMetafieldValue JSON: ruleIds,
+  /// variantRuleIds, marginRefs). The margin impact overview (Pro) reads the
+  /// refs from here instead of re-reading collection membership. Null = not
+  /// recorded yet (a row from before MVP 2; the next product pass fills it).
+  value       String?
   updatedAt   DateTime @updatedAt
   @@unique([shop, productId])
   @@index([shop])
+}
+
+/// Cost mirror (margin protection, MVP 2, app/lib/sync/costs.ts): one row per
+/// variant of the shop, as the last pass / webhook read it from Shopify, and
+/// the `$app:won_discounts/variant` metafield value the sync last wrote for it
+/// ({"cost": n, "cur": "USD"}; null = the variant carries no such metafield).
+/// Source of the admin's counts ("N produktů nemá nákupní cenu"), the impact
+/// overview and Vyzkoušet košík. Only kept while margin protection is on;
+/// deleted on uninstall and shop/redact.
+model VariantCost {
+  id              String   @id @default(cuid())
+  shop            String
+  variantId       String   // Shopify ProductVariant GID
+  productId       String   // Shopify Product GID
+  inventoryItemId String   // Shopify InventoryItem GID (inventory_items/update webhooks name it)
+  /// Product title and variant title (null = "Default Title"), for the admin lists.
+  title           String?
+  variantTitle    String?
+  /// Variant price, decimal string in the shop currency.
+  price           String
+  /// inventoryItem.unitCost (decimal string + currency); null = no cost in Shopify.
+  cost            String?
+  currency        String?
+  metafieldValue  String?
+  /// The full pass that last saw this variant (rows no pass saw are re-checked, then dropped).
+  scanId          String?
+  updatedAt       DateTime @updatedAt
+  @@unique([shop, variantId])
+  @@index([shop, inventoryItemId])
+  @@index([shop, productId])
 }

@@ -1,7 +1,17 @@
 // Product targeting write (spec §1 C3, T1 targeting.ts): the engine's
 // `productRuleIndex` → `$app:won_discounts`/`product` =
-// productMetafieldValue(entry) = {"ruleIds": [...], "variantRuleIds": {"<variant numeric id>": [...]}}
+// productMetafieldValue(entry) = {"ruleIds": [...], "variantRuleIds": {"<variant numeric id>": [...]}, "marginRefs"?: [...]}
 // on every targeted product, so the function never needs rule id lists.
+//
+// Margin protection (MVP 2): the collections with a margin setting (core
+// marginCollectionIds — only while protection is on, and read from the GATED
+// config the sync passes in, so a Free shop never gets them) are read like
+// targeted collections; their products carry `marginRefs` (the engine takes
+// the strictest collection setting from them). A product in such a collection
+// gets the metafield even without any rule. marginRefs never decide
+// `staleRisk`: a ref the product keeps a little longer only names a
+// collection whose setting the running config still has (or no longer has,
+// then it is ignored) — the same freshness window as the collection targets.
 //
 // Which products carry our metafield is sync bookkeeping in Prisma
 // ProductTargetIndex {shop, productId, payloadHash} (DATA-1; no cap). A row
@@ -53,6 +63,7 @@
 // invalidates every hash of the shop (payloadHash = null), so this run
 // re-verifies and rewrites them all.
 
+import { marginCollectionIds } from "@won/core/discounts/margin";
 import { parseRuleRef, productMetafieldValue } from "@won/core/discounts/targeting";
 
 import type { PrismaClient } from "../../generated/prisma/client";
@@ -77,9 +88,13 @@ export class SyncCancelled extends Error {
 /** Indexed products read to check the index after an install / reinstall. */
 export const INDEX_SAMPLE_SIZE = 25;
 
-/** No rule for the product nor for any of its variants: the metafield should not exist. */
+/** No rule for the product nor for any of its variants, and no margin collection: the metafield should not exist. */
 export function isEmptyEntry(entry: SyncProductEntry): boolean {
-  return entry.ruleIds.length === 0 && Object.values(entry.variantRuleIds ?? {}).every((refs) => refs.length === 0);
+  return (
+    entry.ruleIds.length === 0 &&
+    Object.values(entry.variantRuleIds ?? {}).every((refs) => refs.length === 0) &&
+    (entry.marginRefs ?? []).length === 0
+  );
 }
 
 interface Scopes {
@@ -100,7 +115,11 @@ function addScope(scopes: Scopes, target: unknown): void {
   }
 }
 
-/** Every product/variant/collection any rule (or non-killed campaign re-target) points at — the set productRuleIndex reads. */
+/**
+ * Every product/variant/collection any rule (or non-killed campaign re-target)
+ * points at, plus the collections with a margin setting while protection is
+ * on — the set productRuleIndex reads. Pass the GATED config (BILL-1).
+ */
 export function targetScopes(config: ConfigView): Scopes {
   const scopes: Scopes = { productIds: new Set(), variantIds: new Set(), collectionIds: new Set() };
   const ruleIds = new Set<string>();
@@ -114,6 +133,7 @@ export function targetScopes(config: ConfigView): Scopes {
       if (ruleIds.has(override.ruleId)) addScope(scopes, (override.patch as { target?: unknown }).target);
     }
   }
+  for (const id of marginCollectionIds(config.modules.margin)) scopes.collectionIds.add(id);
   return scopes;
 }
 
@@ -282,6 +302,19 @@ async function limitCollections(args: ProductSyncArgs): Promise<{ config: Config
       `"${name || ruleId}" does not apply at checkout to ${[...collections].join(", ")}: the targeted collections have more than ` +
       `${MAX_COLLECTION_PRODUCTS} products together, more than Won reads per sync — every other rule is synced as usual`,
   }));
+  // A margin collection that does not fit: its products keep the global margin setting (said, never silent).
+  const margin = out.modules.margin as unknown as { perCollection: { collectionId: string }[] };
+  const droppedMargin = margin.perCollection.filter((o) => tooLarge.has(o.collectionId)).map((o) => o.collectionId);
+  if (droppedMargin.length > 0) {
+    margin.perCollection = margin.perCollection.filter((o) => !tooLarge.has(o.collectionId));
+    steps.push({
+      step: "margin.too_large",
+      ok: false,
+      detail:
+        `the margin setting of ${[...new Set(droppedMargin)].join(", ")} does not apply at checkout (its products get the global setting): ` +
+        `the collections Won reads have more than ${MAX_COLLECTION_PRODUCTS} products together`,
+    });
+  }
   return { config: out, steps };
 }
 
@@ -454,8 +487,11 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
   steps.push(...limited.steps);
   const config = limited.config;
   const scopes = targetScopes(config);
-  const rows = await db.productTargetIndex.findMany({ where: { shop }, select: { productId: true, payloadHash: true } });
+  const rows = await db.productTargetIndex.findMany({ where: { shop }, select: { productId: true, payloadHash: true, value: true } });
   const indexed = new Map(rows.map((row) => [row.productId, row.payloadHash]));
+  // Rows whose value is recorded (the impact overview reads it); an up-to-date row without one gets it below.
+  const valued = new Set(rows.filter((row) => row.value !== null).map((row) => row.productId));
+  const unrecorded: { productId: string; value: string }[] = [];
   if (args.verifyIndex) await verifyIndexSample(args, indexed, steps);
 
   let found;
@@ -505,13 +541,20 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
         productMetafieldValue({
           ruleIds: [...entry.ruleIds],
           variantRuleIds: Object.fromEntries(Object.entries(entry.variantRuleIds ?? {}).map(([k, v]) => [k, [...v]])),
+          ...(entry.marginRefs && entry.marginRefs.length > 0 ? { marginRefs: [...entry.marginRefs] } : {}),
         }),
       );
       const hash = hashText(canonicalJson(JSON.parse(value)));
       if (indexed.get(productId) !== hash) wanted.set(productId, { value, hash });
+      else if (!valued.has(productId)) unrecorded.push({ productId, value });
     } else if (indexed.has(productId)) {
       toClear.push(productId);
     }
+  }
+  if (unrecorded.length > 0) {
+    await db.$transaction(
+      unrecorded.map(({ productId, value }) => db.productTargetIndex.updateMany({ where: { shop, productId }, data: { value } })),
+    );
   }
   const wantedIndexed = [...wanted.keys()].filter((productId) => indexed.has(productId));
   const additions = [...wanted].filter(([productId]) => !indexed.has(productId)).map(([productId, w]) => ({ productId, ...w }));
@@ -534,7 +577,7 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
 
   // Read the products that already carry our metafield and must change: deleted ones are dropped, an identical value is only recorded.
   const sets: IndexedWrite[] = [];
-  const recorded: { productId: string; hash: string }[] = [];
+  const recorded: { productId: string; hash: string; value: string }[] = [];
   const gone: string[] = [];
   const clearing = new Set(toClear);
   let values: Map<string, MetafieldNode>;
@@ -550,7 +593,7 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
     const node = values.get(productId);
     const want = wanted.get(productId)!;
     if (!node) gone.push(productId);
-    else if (sameJson(node.metafield?.value, want.value)) recorded.push({ productId, hash: want.hash });
+    else if (sameJson(node.metafield?.value, want.value)) recorded.push({ productId, hash: want.hash, value: want.value });
     else sets.push({ productId, ...want, current: node.metafield?.value ?? null });
   }
   for (const productId of toClear) {
@@ -561,7 +604,7 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
     }
   }
   if (gone.length) await db.productTargetIndex.deleteMany({ where: { shop, productId: { in: gone } } });
-  for (const { productId, hash } of recorded) await upsertRow(db, shop, productId, hash);
+  for (const { productId, hash, value } of recorded) await upsertRow(db, shop, productId, hash, value);
   return { steps, staleRisk: false, complete: true, sets, clears: [...clearing], additions };
 }
 
@@ -576,8 +619,8 @@ async function writeBatch(args: ProductSyncArgs, batch: readonly Write[]): Promi
   );
   if (error) return error;
   await db.$transaction(
-    batch.map(({ productId, hash }) =>
-      db.productTargetIndex.update({ where: { shop_productId: { shop, productId } }, data: { payloadHash: hash } }),
+    batch.map(({ productId, hash, value }) =>
+      db.productTargetIndex.update({ where: { shop_productId: { shop, productId } }, data: { payloadHash: hash, value } }),
     ),
   );
   return null;
@@ -687,7 +730,7 @@ export async function applyProductAdditions(args: ProductSyncArgs, additions: re
       for (const write of batch) {
         const node = values.get(write.productId);
         if (!node) skipped += 1;
-        else if (sameJson(node.metafield?.value, write.value)) await upsertRow(db, shop, write.productId, write.hash);
+        else if (sameJson(node.metafield?.value, write.value)) await upsertRow(db, shop, write.productId, write.hash, write.value);
         else toSet.push(write);
       }
     }
@@ -735,10 +778,11 @@ export async function syncProducts(args: ProductSyncArgs, options: AdditionsOpti
   }
 }
 
-async function upsertRow(db: PrismaClient, shop: string, productId: string, payloadHash: string | null): Promise<void> {
+/** payloadHash null = a write is in flight (the value is then left as it was). */
+async function upsertRow(db: PrismaClient, shop: string, productId: string, payloadHash: string | null, value?: string): Promise<void> {
   await db.productTargetIndex.upsert({
     where: { shop_productId: { shop, productId } },
-    create: { shop, productId, payloadHash },
-    update: { payloadHash },
+    create: { shop, productId, payloadHash, ...(value !== undefined ? { value } : {}) },
+    update: { payloadHash, ...(value !== undefined ? { value } : {}) },
   });
 }

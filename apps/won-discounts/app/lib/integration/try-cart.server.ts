@@ -13,6 +13,13 @@
 //              targeting is being refreshed, the product's collections are
 //              read LIVE as well, only to say where Shopify and checkout
 //              differ right now (a fresh joiner / a leaver);
+//   costs      (margin protection on, MVP 2) each variant's purchase cost as
+//              the cost mirror wrote it into the variant metafield checkout
+//              reads (VariantCost.metafieldValue — no Shopify read); a cart in
+//              another currency than the shop's converts it with a rate
+//              ESTIMATED from market prices (median of market price / base
+//              price over the cart's variants) — checkout uses Shopify's own
+//              presentmentCurrencyRate, and the view says so (`rateEstimated`);
 // then planTryCart on the config gated for the shop's plan (BILL-1), with
 // checkout's own output mapping (item 8), and warnings when the last sync
 // failed, the stored config is not in Shopify yet, or the targeting is being
@@ -35,6 +42,7 @@ import type { CartPlanView, TryCartLineView, UiResult, UiText } from "../../comp
 import { nowOf, type ShopCtx } from "./context.server";
 import { ctxPlan } from "./sync-status.server";
 import { parseProductRefs, planTryCart, type PricedLine, type ProductRefs } from "./try-cart-plan";
+import { parseCostValue } from "../sync/costs";
 
 /** Variants per WonTryCartVariants call (≤ 1 000 requested points; tests/integration/try-cart.test.ts). */
 export const TRY_CART_VARIANTS_BATCH = 25;
@@ -236,6 +244,8 @@ interface ReadVariant {
   variantTitle: string | null;
   /** Price in the requested currency, as Shopify's decimal string; null = no price in that currency. */
   amount: string | null;
+  /** The variant's base price (shop currency), for the rate estimate. */
+  basePrice: string | null;
   /** The refs the product's metafield holds (what checkout reads). */
   refs: ProductRefs;
   /** The collections the product is in NOW in Shopify (read only with `withCollections`). */
@@ -291,6 +301,7 @@ async function readVariants(
         title: node.product.title ?? node.product.id,
         variantTitle: node.title && node.title !== "Default Title" ? node.title : null,
         amount,
+        basePrice: typeof node.price === "string" ? node.price : null,
         refs: parseProductRefs(node.product.wonRefs?.value ?? null),
         collectionIds: collections ? collections.nodes.map((n) => n.id) : [],
       });
@@ -329,6 +340,42 @@ export async function tryCartSyncWarnings(
   // The targeting warning is the plan's to give: only when the cart involves a collection rule (planTryCart).
   const targetingStale = facts.targetingStaleAt !== null || (status?.pending.includes("products_in_progress") ?? false);
   return { warnings: out, targetingStale };
+}
+
+// --- Margin protection (MVP 2) -------------------------------------------------------------------
+
+/** The purchase costs checkout reads (the variant metafield the mirror wrote), by variant id. */
+export async function mirroredCosts(ctx: Pick<ShopCtx, "db" | "shop">, variantIds: readonly string[]): Promise<Map<string, { cost: number; cur: string }>> {
+  const rows = await ctx.db.variantCost.findMany({
+    where: { shop: ctx.shop, variantId: { in: [...variantIds] }, metafieldValue: { not: null } },
+    select: { variantId: true, metafieldValue: true },
+  });
+  const out = new Map<string, { cost: number; cur: string }>();
+  for (const row of rows) {
+    const value = parseCostValue(row.metafieldValue);
+    if (value) out.set(row.variantId, value);
+  }
+  return out;
+}
+
+/**
+ * Shop currency → cart currency: 1 in the shop currency; otherwise the median
+ * of market price / base price over the given variants (an ESTIMATE: market
+ * price adjustments and rounding are in it) — null when none has both.
+ */
+export function estimateShopToCartRate(
+  variants: readonly { amount: string | null; basePrice: string | null }[],
+  opts: { currency: string; shopCurrency: string | null },
+): { rate: number | null; estimated: boolean } {
+  if (opts.shopCurrency && opts.currency === opts.shopCurrency) return { rate: 1, estimated: false };
+  const ratios = variants
+    .map((v) => (v.amount !== null && v.basePrice !== null ? Number(v.amount) / Number(v.basePrice) : NaN))
+    .filter((r) => Number.isFinite(r) && r > 0)
+    .sort((a, b) => a - b);
+  if (ratios.length === 0) return { rate: null, estimated: false };
+  const mid = Math.floor(ratios.length / 2);
+  const rate = ratios.length % 2 === 1 ? ratios[mid]! : (ratios[mid - 1]! + ratios[mid]!) / 2;
+  return { rate, estimated: true };
 }
 
 // --- The action ---------------------------------------------------------------------------
@@ -409,7 +456,20 @@ export async function runTryCartPlan(
       return { result: { ok: false, reason: "prices_unavailable", currency: input.currency, products: [...new Set(missing)] }, plan: null, lines };
     }
     const productRefs = new Map([...variants.values()].map((v) => [v.productId, v.refs]));
+    // Margin protection: costs as checkout reads them, and the shop → cart rate (estimated outside the shop currency).
+    let margin: { shopToCartRate: number | null; rateEstimated: boolean } = { shopToCartRate: null, rateEstimated: false };
+    if (gated.modules.margin.enabled) {
+      const costs = await mirroredCosts(ctx, priced.map((line) => line.variantId));
+      for (const line of priced) {
+        const cost = costs.get(line.variantId);
+        if (cost) Object.assign(line, { unitCost: cost.cost, unitCostCurrency: cost.cur });
+      }
+      const estimate = estimateShopToCartRate([...variants.values()], { currency: input.currency, shopCurrency: opts.shopCurrency });
+      margin = { shopToCartRate: estimate.rate, rateEstimated: estimate.estimated };
+    }
     const plan = planTryCart(gated, {
+      shopCurrency: opts.shopCurrency,
+      ...margin,
       productRefs,
       warnings,
       targetingStale,

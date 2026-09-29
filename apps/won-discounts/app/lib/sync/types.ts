@@ -35,6 +35,8 @@ export interface SyncProductEntry {
   ruleIds: readonly string[];
   /** Variant numeric id → rule refs for rules targeting single variants (only variants with refs). */
   variantRuleIds?: Readonly<Record<string, readonly string[]>>;
+  /** Numeric ids of the product's collections with a margin setting (MVP 2; absent/empty = none). */
+  marginRefs?: readonly string[];
   /** The engine shrank the value to fit the product budget (never written; surfaced as a warning step). */
   oversized?: { bytes: number; collapsedRefs: readonly string[]; droppedRefs: readonly string[] };
 }
@@ -46,6 +48,12 @@ export interface ShopConfigBuildOptions {
   shopTimezone: string;
   /** Phase 1 of a campaign switch: ship no campaign and no version. */
   forceNoCampaign?: boolean;
+  /**
+   * Shopify `shop.currencyCode` (step 0): the currency of the variants' costs,
+   * shipped as the margin's `cur`. Without it every cost is unknown at
+   * checkout (the maximum discount % applies).
+   */
+  shopCurrency?: string;
 }
 
 export type ShopConfigCheck = { ok: true; bytes: number } | { ok: false; bytes: number; reason: string };
