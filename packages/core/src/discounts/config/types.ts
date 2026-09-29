@@ -5,6 +5,7 @@ import type { CurrencyCode, MoneyByCurrency } from "../money.ts";
 import type {
   DiscountMethod,
   LocaleCode,
+  MinimumScope,
   OnboardingGoal,
   OutletDisplay,
   ProductWithProductMode,
@@ -79,7 +80,8 @@ export interface DiscountRule {
   codes?: string[];
   value: DiscountRuleValue;
   target: DiscountTarget;
-  minimum?: { subtotal?: MoneyByCurrency; quantity?: number };
+  /** `scope` (MINIMUM_SCOPES): the sanitizer always sets it, "cart" unless the rule says "entitled". */
+  minimum?: { subtotal?: MoneyByCurrency; quantity?: number; scope?: MinimumScope };
   schedule?: { startsAt?: string; endsAt?: string };
   limits?: { usageLimit?: number; oncePerCustomer?: boolean };
   /** Tie-break (A1: `priority desc, id asc`) and owner of a Pro stack; absent = 0. */

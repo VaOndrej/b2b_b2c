@@ -81,6 +81,7 @@ test("the split keeps the public surface of @won/core/discounts/config", () => {
     "DISCOUNT_TARGET_KINDS",
     "DISCOUNT_VALUE_KINDS",
     "LOCALE_CODES",
+    "MINIMUM_SCOPES",
     "ONBOARDING_GOALS",
     "OUTLET_DISPLAY_MODES",
     "PRODUCT_WITH_PRODUCT_MODES",

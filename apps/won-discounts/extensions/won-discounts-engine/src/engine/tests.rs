@@ -12,6 +12,7 @@ use super::config::Config;
 use super::emit::{emit_for_node, NodeEmission, NodeRole};
 use super::plan::{plan_cart, CartPlan, EmittedValue, Excluded, PlanFailure, RuleState, ShippingValue};
 use crate::json::ShopConfig;
+use crate::output::{cart_lines_result, delivery_result, tie_possible, JsonText};
 
 fn config(json: &str) -> Config {
     run_function_with_input(|c: ShopConfig| Ok(c), json).unwrap().0.expect("a valid config")
@@ -416,4 +417,99 @@ fn unnamed_rules_are_described_in_the_cart_language() {
     en.locale_en = true;
     let plan = plan_cart(en, Some(&c));
     assert_eq!(plan.lines[0].product.as_ref().unwrap().message, "12.5% off selected collections");
+}
+
+#[test]
+fn an_entitled_minimum_counts_only_the_rules_own_lines() {
+    let c = rules(
+        &[
+            pct("a", 10.0, r#", "minimum": {"subtotal": {"CZK": 100000}, "quantity": 3}"#),
+            pct("e", 5.0, r#", "minimum": {"subtotal": {"CZK": 100000}, "quantity": 3, "scope": "entitled"}"#),
+        ]
+        .join(","),
+        "",
+    );
+    let mut lines =
+        vec![line("l1", 1, 60000, &["a", "e"]), line("l2", 1, 30000, &[]), line("l3", 1, 10000, &["a", "e"]), line("g", 1, 90000, &["a", "e"])];
+    lines[2].outlet = true;
+    lines[3].gift = true;
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    // The cart: 600 + 300 + 100 (outlet) = 1 000 Kč, 3 items. The rule's own lines: 700 Kč, 2 items.
+    assert_eq!(state(&plan, "a"), None);
+    assert_eq!(state(&plan, "e"), Some(RuleState::BelowMinimum));
+    let enough = [line("l1", 3, 100000, &["e"]), line("l2", 1, 100, &[])];
+    let plan = plan_cart(cart(&enough, &[]), Some(&c));
+    assert_eq!(state(&plan, "e"), None);
+    assert_eq!(product_of(&plan, "l1"), Some(("e", &EmittedValue::Percent(5.0), 15000)));
+}
+
+#[test]
+fn money_over_the_cap_reads_as_the_cap() {
+    let order = r#"{"id": "o", "enabled": true, "name": "o", "method": "automatic",
+        "value": {"kind": "fixed", "amount": {"CZK": 9e18}}, "target": {"kind": "order"}}"#;
+    let c = rules(order, "");
+    let lines = [line("l1", 1, 5_000_000_000_000, &[])];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    assert_eq!(plan.order.as_ref().unwrap().stack.value, EmittedValue::FixedTotal(1_000_000_000_000));
+}
+
+/// The automatic node's lines output, as JSON.stringify would write it.
+fn lines_json(plan: &CartPlan, line_count: usize) -> String {
+    let emission = emit_for_node(plan, &NodeRole::Automatic, None);
+    let mut json = JsonText::default();
+    cart_lines_result(&emission, plan, true, true, line_count).write(&mut json).unwrap();
+    json.out
+}
+
+#[test]
+fn a_rounding_tie_is_emitted_as_its_exact_amount() {
+    assert!(tie_possible(1005, 10.0) && tie_possible(2750, 1.4) && tie_possible(9990, 15.0));
+    assert!(!tie_possible(1004, 10.0) && !tie_possible(0, 50.0));
+    let order = r#"{"id": "o", "enabled": true, "name": "o", "method": "automatic",
+        "value": {"kind": "percentage", "percent": 10}, "target": {"kind": "order"}}"#;
+    let c = rules(
+        &[pct("t", 10.0, ""), pct("a", 10.0, r#", "combinesWith": {"ruleIds": ["b"]}"#), pct("b", 5.0, ""), order.to_string()].join(","),
+        "",
+    );
+    let lines = [line("l1", 1, 1005, &["t"]), line("l2", 1, 1004, &["t"]), line("l3", 3, 3330, &["a", "b"]), line("l4", 1, 106, &[])];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    // l1: 100.5 → 1.01 per item; l2: the percent; l3: 10 % + 5 % of 99.90 = 1 498.5 → 14.99 once;
+    // the order: 10 % of 104.05 = 1 040.5 → 10.41.
+    assert_eq!(
+        lines_json(&plan, lines.len()),
+        concat!(
+            r#"{"operations":[{"productDiscountsAdd":{"candidates":["#,
+            r#"{"message":"t","targets":[{"cartLine":{"id":"l1"}}],"value":{"fixedAmount":{"amount":"1.01","appliesToEachItem":true}}},"#,
+            r#"{"message":"t","targets":[{"cartLine":{"id":"l2"}}],"value":{"percentage":{"value":10}}},"#,
+            r#"{"message":"a + b","targets":[{"cartLine":{"id":"l3"}}],"value":{"fixedAmount":{"amount":"14.99","appliesToEachItem":false}}}"#,
+            r#"],"selectionStrategy":"ALL"}},{"orderDiscountsAdd":{"candidates":["#,
+            r#"{"message":"o","targets":[{"orderSubtotal":{"excludedCartLineIds":[]}}],"value":{"fixedAmount":{"amount":"10.41"}}}"#,
+            r#"],"selectionStrategy":"FIRST"}}]}"#,
+        )
+    );
+}
+
+#[test]
+fn a_fixed_shipping_amount_goes_to_the_first_delivery_group_only() {
+    let groups = vec!["g1".to_string(), "g2".to_string()];
+    let lines = [line("l1", 1, 10000, &[])];
+    let json = |value: &str| {
+        let c = rules(
+            &format!(r#"{{"id": "s", "enabled": true, "name": "s", "method": "automatic", "value": {value}, "target": {{"kind": "shipping"}}}}"#),
+            "",
+        );
+        let plan = plan_cart(cart(&lines, &[]), Some(&c));
+        let emission = emit_for_node(&plan, &NodeRole::Automatic, None);
+        let mut out = JsonText::default();
+        delivery_result(&emission, true, &groups, &plan.currency).write(&mut out).unwrap();
+        out.out
+    };
+    assert_eq!(
+        json(r#"{"kind": "fixed", "amount": {"CZK": 5000}}"#),
+        r#"{"operations":[{"deliveryDiscountsAdd":{"candidates":[{"message":"s","targets":[{"deliveryGroup":{"id":"g1"}}],"value":{"fixedAmount":{"amount":"50.00"}}}],"selectionStrategy":"ALL"}}]}"#
+    );
+    assert_eq!(
+        json(r#"{"kind": "freeShipping"}"#),
+        r#"{"operations":[{"deliveryDiscountsAdd":{"candidates":[{"message":"s","targets":[{"deliveryGroup":{"id":"g1"}},{"deliveryGroup":{"id":"g2"}}],"value":{"percentage":{"value":100}}}],"selectionStrategy":"ALL"}}]}"#
+    );
 }

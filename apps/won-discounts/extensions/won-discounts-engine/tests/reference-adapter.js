@@ -5,7 +5,7 @@
 //
 //   function input ─adaptInput→ CartPlanInput ─planCart→ CartPlan
 //                  ─emitForNode(role, triggering code)→ NodeEmission
-//                  ─toCartLinesResult / toDeliveryResult→ function output
+//                  ─mapToFunctionOutput (@won/core function-output.ts)→ function output
 //
 // Where each input comes from (input queries in src/, T0/C7):
 //   - shared config: app-owned SHOP metafield `$app:won_discounts`/`function_config`
@@ -25,9 +25,16 @@
 // Never throws: the run wrappers turn any error into `{ operations: [] }`.
 // Used by tests/parity.test.js and apps/won-discounts/tests/contracts/function.contract.test.ts.
 
-import { describeRule } from "@won/core/discounts/describe";
 import { emitForNode } from "@won/core/discounts/emit";
-import { fromMinorUnits, toMinorUnits } from "@won/core/discounts/money";
+import {
+  mapToFunctionOutput,
+  OUTPUT_BUDGET_BYTES,
+  OUTPUT_LIMIT_BYTES,
+  outputBudget,
+  outputBytes,
+  outputLimit,
+} from "@won/core/discounts/function-output";
+import { toMinorUnits } from "@won/core/discounts/money";
 import { planCart } from "@won/core/discounts/plan";
 
 /** Cart line attribute that marks a Won gift line (A1.2); its value is the gift tier id. */
@@ -38,7 +45,6 @@ export const GIFT_ATTRIBUTE = "_won_gift";
  * @typedef {import("@won/core/discounts/cart").CartLineInput} CartLineInput
  * @typedef {import("@won/core/discounts/emit").NodeRole} NodeRole
  * @typedef {import("@won/core/discounts/emit").NodeEmission} NodeEmission
- * @typedef {import("@won/core/discounts/emit").ProductCandidate} ProductCandidate
  *
  * @typedef {object} AdaptedInput
  * @property {CartPlanInput} cart
@@ -49,8 +55,6 @@ export const GIFT_ATTRIBUTE = "_won_gift";
  * @property {string[]} deliveryGroupIds
  * @property {number} lineCount       cart lines in the input (Shopify scales the output limit with it)
  *
- * @typedef {{ percentage: { value: number } }
- *   | { fixedAmount: { amount: string, appliesToEachItem?: boolean } }} CandidateValue
  * @typedef {{ operations: Record<string, unknown>[] }} RunResult
  */
 
@@ -237,244 +241,52 @@ export function emissionFor(adapted) {
   return { plan, emission: emitForNode(plan, adapted.role, adapted.triggeringCode) };
 }
 
-/**
- * Order / delivery values have no per-item variant.
- * @param {{ percent?: number, fixedTotal?: number }} value
- * @param {string} currency
- * @returns {CandidateValue | null}
- */
-function totalValue(value, currency) {
-  if (value.percent !== undefined) return { percentage: { value: value.percent } };
-  if (value.fixedTotal !== undefined) return { fixedAmount: { amount: fromMinorUnits(value.fixedTotal, currency) } };
-  return null;
-}
-
-// --- Product candidates and the output size ------------------------------------------------
+// --- The output mapping ------------------------------------------------------------------
 //
-// Shopify refuses a function output over 20 kB (1 kB = 1000 B) for carts up to
-// 200 lines — the limit scales with the line count above that
-// (shopify.dev/docs/api/functions/2026-04, "Resource limits") — and then the
-// node gives NO discount at all. So:
-//   1. every product value is emitted exactly, in the most groupable form:
-//      - a fixed amount per item equal to the unit price (the item is free) → 100 %;
-//      - a Pro stack (fixed total T on a line of subtotal S, quantity q):
-//        T = S → 100 %; a stack of whole percents P whose Math.round(S × ΣP / 100)
-//        is T → ΣP %; T divisible by q → T / q per item; else T once on that line;
-//   2. candidates with the same message and value share one candidate with
-//      several targets (a fixed total on one line never groups: shared, it would
-//      be applied ONCE across all its targets);
-//   3. over the budget (19 000 B, scaled like Shopify's limit) every Pro stack
-//      is emitted as its top rule's own value instead (it groups; the customer
-//      keeps the larger part of the stack), then, as a last resort, the product
-//      candidates that save the least are dropped until the output fits.
-// Sizes are the UTF-8 bytes of the compact JSON (what JSON.stringify writes).
+// NodeEmission → function output lives in @won/core (function-output.ts): one
+// TS implementation for this oracle and for the admin's "Vyzkoušet košík"
+// (checkoutPreview). It groups candidates, emits exact values (a rounding tie
+// as its exact amount), keeps the output under Shopify's 20 kB limit (Pro
+// stacks → top rule, then the smallest candidates dropped) and puts a fixed
+// shipping amount on the first delivery group only. src/output.rs reproduces it.
 
-/** Shopify's function output limit for carts up to 200 lines, bytes. */
-export const OUTPUT_LIMIT_BYTES = 20000;
-/** What the function allows itself, ≥ 5 % under the limit. */
-export const OUTPUT_BUDGET_BYTES = 19000;
-
-/** @param {number} lineCount */
-export function outputBudget(lineCount) {
-  return Math.floor((OUTPUT_BUDGET_BYTES * Math.max(200, lineCount)) / 200);
-}
-
-/** @param {unknown} value */
-export function outputBytes(value) {
-  return new TextEncoder().encode(JSON.stringify(value)).length;
-}
-
-/** @param {number} value @returns {{ key: string, value: CandidateValue }} */
-const percentValue = (value) => ({ key: `p${value}`, value: { percentage: { value } } });
+export { OUTPUT_BUDGET_BYTES, OUTPUT_LIMIT_BYTES, outputBudget, outputBytes, outputLimit };
 
 /**
- * @param {number} minor @param {string} currency
- * @returns {{ key: string, value: CandidateValue }}
- */
-const perItemValue = (minor, currency) => ({
-  key: `e${minor}`,
-  value: { fixedAmount: { amount: fromMinorUnits(minor, currency), appliesToEachItem: true } },
-});
-
-/**
- * The rule outcome of a stack component (what the plan knows of the rule).
- * @param {import("@won/core/discounts/plan").CartPlan} plan @param {string} ruleId
- */
-function ruleOf(plan, ruleId) {
-  return plan.rules.find((r) => r.ruleId === ruleId);
-}
-
-/**
- * ΣP when every component of the stack is a whole-percent rule, else null.
- * @param {import("@won/core/discounts/plan").CartPlan} plan
- * @param {import("@won/core/discounts/plan").PlanStack} stack
- */
-function wholePercentSum(plan, stack) {
-  let sum = 0;
-  for (const component of stack.components) {
-    const value = ruleOf(plan, component.ruleId)?.describable.value;
-    if (value?.kind !== "percentage" || !Number.isInteger(value.percent)) return null;
-    sum += value.percent;
-  }
-  return sum;
-}
-
-/**
- * One emitted product candidate → its exact output value, grouping key (null =
- * never grouped) and message.
- * @param {ProductCandidate} c
- * @param {import("@won/core/discounts/plan").PlanLine} line
- * @param {import("@won/core/discounts/plan").CartPlan} plan
- * @returns {{ key: string | null, value: CandidateValue }}
- */
-function exactProductValue(c, line, plan) {
-  const currency = plan.currency;
-  if (c.percent !== undefined) return percentValue(c.percent);
-  if (c.fixedPerItem !== undefined) {
-    return c.fixedPerItem === line.unitPrice ? percentValue(100) : perItemValue(c.fixedPerItem, currency);
-  }
-  const total = /** @type {number} */ (c.fixedTotal);
-  if (total === line.subtotal) return percentValue(100);
-  const stack = /** @type {import("@won/core/discounts/plan").PlanStack} */ (line.product);
-  const percent = wholePercentSum(plan, stack);
-  if (percent !== null && Math.round((line.subtotal * percent) / 100) === total) return percentValue(percent);
-  if (line.quantity > 0 && total % line.quantity === 0) return perItemValue(total / line.quantity, currency);
-  return { key: null, value: { fixedAmount: { amount: fromMinorUnits(total, currency), appliesToEachItem: false } } };
-}
-
-/**
- * A Pro stack emitted as its top rule's own value (the first component, which
- * the stack never caps): the rule's percent, or its fixed amount per item.
- * @param {import("@won/core/discounts/plan").PlanLine} line
- * @param {import("@won/core/discounts/plan").CartPlan} plan
- * @returns {{ key: string, value: CandidateValue, message: string, amount: number }}
- */
-function topRuleValue(line, plan) {
-  const stack = /** @type {import("@won/core/discounts/plan").PlanStack} */ (line.product);
-  const top = stack.components[0];
-  const rule = /** @type {import("@won/core/discounts/plan").RuleOutcome} */ (ruleOf(plan, top.ruleId));
-  const message = rule.name || describeRule(rule.describable, plan.locale, plan.currency, { short: true });
-  if (rule.describable.value.kind === "percentage") return { ...percentValue(rule.describable.value.percent), message, amount: top.amount };
-  const perItem = top.amount / line.quantity;
-  const value = perItem === line.unitPrice ? percentValue(100) : perItemValue(perItem, plan.currency);
-  return { ...value, message, amount: top.amount };
-}
-
-/**
- * The node's product candidates, grouped. Each emitted candidate is matched to
- * its plan line (the emission follows the plan's line order).
+ * The node's output for both targets, and what the output budget cost.
  * @param {NodeEmission} emission
- * @param {import("@won/core/discounts/plan").CartPlan} plan
- * @param {boolean} degradeStacks
- * @returns {{ message: string, targets: { cartLine: { id: string } }[], value: CandidateValue, amount: number }[]}
+ * @param {AdaptedInput} adapted
+ * @param {import("@won/core/discounts/plan").CartPlan | null} plan
  */
-function productCandidates(emission, plan, degradeStacks) {
-  /** @type {{ message: string, targets: { cartLine: { id: string } }[], value: CandidateValue, amount: number }[]} */
-  const out = [];
-  /** @type {Map<string, (typeof out)[number]>} */
-  const shared = new Map();
-  let next = 0;
-  for (const c of emission.productCandidates) {
-    while (next < plan.lines.length && !(plan.lines[next].lineId === c.lineId && plan.lines[next].product)) next += 1;
-    const line = plan.lines[next];
-    next += 1;
-    if (!line?.product) continue;
-    const stacked = line.product.components.length > 1;
-    const mapped =
-      degradeStacks && stacked
-        ? topRuleValue(line, plan)
-        : { ...exactProductValue(c, line, plan), message: c.message, amount: c.amount };
-    const target = { cartLine: { id: c.lineId } };
-    const key = mapped.key === null ? null : JSON.stringify([mapped.message, mapped.key]);
-    const existing = key === null ? undefined : shared.get(key);
-    if (existing) {
-      existing.targets.push(target);
-      existing.amount += mapped.amount;
-      continue;
-    }
-    const candidate = { message: mapped.message, targets: [target], value: mapped.value, amount: mapped.amount };
-    out.push(candidate);
-    if (key !== null) shared.set(key, candidate);
-  }
-  return out;
+export function mapOutput(emission, adapted, plan) {
+  return mapToFunctionOutput(emission, {
+    plan,
+    classes: adapted.classes,
+    lineCount: adapted.lineCount,
+    deliveryGroupIds: adapted.deliveryGroupIds,
+  });
 }
 
 /**
- * NodeEmission → `cart.lines.discounts.generate.run` output. Only the classes the
- * node was created with (a candidate of another class would be refused), within
- * the output budget (see "Product candidates and the output size").
+ * NodeEmission → `cart.lines.discounts.generate.run` output.
  * @param {NodeEmission} emission
  * @param {AdaptedInput} adapted
  * @param {import("@won/core/discounts/plan").CartPlan | null} plan
  * @returns {RunResult}
  */
 export function toCartLinesResult(emission, adapted, plan) {
-  const currency = adapted.cart.currency;
-  /** @type {Record<string, unknown>[]} */
-  const orderOperations = [];
-  if (adapted.classes.includes("ORDER")) {
-    const candidates = [];
-    for (const c of emission.orderCandidates) {
-      const value = totalValue(c, currency);
-      if (!value) continue;
-      candidates.push({
-        message: c.message,
-        targets: [{ orderSubtotal: { excludedCartLineIds: [...c.excludedLineIds] } }],
-        value,
-      });
-    }
-    if (candidates.length > 0) orderOperations.push({ orderDiscountsAdd: { candidates, selectionStrategy: "FIRST" } });
-  }
-  /** @param {{ message: string, targets: unknown[], value: CandidateValue }[]} products */
-  const result = (products) => {
-    const operations = [];
-    // Every candidate targets different lines (≤ 1 product allocation per line), so all apply.
-    if (products.length > 0) {
-      operations.push({
-        productDiscountsAdd: {
-          candidates: products.map(({ message, targets, value }) => ({ message, targets, value })),
-          selectionStrategy: "ALL",
-        },
-      });
-    }
-    return { operations: [...operations, ...orderOperations] };
-  };
-  if (!adapted.classes.includes("PRODUCT") || plan === null) return result([]);
-
-  const budget = outputBudget(adapted.lineCount);
-  let products = productCandidates(emission, plan, false);
-  if (outputBytes(result(products)) <= budget) return result(products);
-  products = productCandidates(emission, plan, true);
-  while (products.length > 0 && outputBytes(result(products)) > budget) {
-    // Last resort: drop the candidate that saves the least (ties: the later one).
-    let drop = 0;
-    for (let k = 1; k < products.length; k += 1) if (products[k].amount <= products[drop].amount) drop = k;
-    products = products.filter((_, k) => k !== drop);
-  }
-  return result(products);
+  return /** @type {RunResult} */ (mapOutput(emission, adapted, plan).lines);
 }
 
 /**
- * NodeEmission → `cart.delivery-options.discounts.generate.run` output: the
- * shipping winner on every delivery group of the cart.
+ * NodeEmission → `cart.delivery-options.discounts.generate.run` output.
  * @param {NodeEmission} emission
  * @param {AdaptedInput} adapted
+ * @param {import("@won/core/discounts/plan").CartPlan | null} plan
  * @returns {RunResult}
  */
-export function toDeliveryResult(emission, adapted) {
-  if (!adapted.classes.includes("SHIPPING") || adapted.deliveryGroupIds.length === 0) return { operations: [] };
-  const candidates = [];
-  for (const c of emission.deliveryCandidates) {
-    const value = totalValue(c, adapted.cart.currency);
-    if (!value) continue;
-    candidates.push({
-      message: c.message,
-      targets: adapted.deliveryGroupIds.map((id) => ({ deliveryGroup: { id } })),
-      value,
-    });
-  }
-  if (candidates.length === 0) return { operations: [] };
-  return { operations: [{ deliveryDiscountsAdd: { candidates, selectionStrategy: "ALL" } }] };
+export function toDeliveryResult(emission, adapted, plan) {
+  return /** @type {RunResult} */ (mapOutput(emission, adapted, plan).delivery);
 }
 
 /**
@@ -501,7 +313,8 @@ export function runDelivery(input) {
   try {
     if (!arr(rec(rec(input).discount).discountClasses).includes("SHIPPING")) return { operations: [] };
     const adapted = adaptInput(input);
-    return toDeliveryResult(emissionFor(adapted).emission, adapted);
+    const { plan, emission } = emissionFor(adapted);
+    return toDeliveryResult(emission, adapted, plan);
   } catch {
     return { operations: [] };
   }

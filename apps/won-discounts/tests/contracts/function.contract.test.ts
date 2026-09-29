@@ -14,6 +14,7 @@ import {
   GIFT_ATTRIBUTE,
   OUTPUT_LIMIT_BYTES,
   outputBytes,
+  outputLimit,
   runCartLines,
   runDelivery,
 } from "../../extensions/won-discounts-engine/tests/reference-adapter.js";
@@ -287,7 +288,9 @@ describe("shopify app function run", { concurrency: 6 }, () => {
       const result = await runInput(workDir, file, fixture.payload.input, fixture.payload.export);
       assert.deepEqual(result.output, fixture.payload.output, "Wasm output = the fixture's expected output");
       assert.deepEqual(result.output, engineOutput(fixture), "PARITY: Wasm output = the engine run directly in node");
-      assert.ok(outputBytes(result.output) < OUTPUT_LIMIT_BYTES, `${file}: output ${outputBytes(result.output)} B ≥ Shopify's ${OUTPUT_LIMIT_BYTES} B`);
+      // Shopify's output limit scales with the line count above 200 lines.
+      const limit = outputLimit(fixture.payload.input.cart?.lines?.length ?? 0);
+      assert.ok(limit >= OUTPUT_LIMIT_BYTES && outputBytes(result.output) < limit, `${file}: output ${outputBytes(result.output)} B ≥ Shopify's ${limit} B`);
       assert.equal(typeof result.instructions, "number", "function-runner reports the instruction count");
       instructions.set(file, result.instructions as number);
       t.diagnostic(`${file}: ${result.instructions} instructions`);

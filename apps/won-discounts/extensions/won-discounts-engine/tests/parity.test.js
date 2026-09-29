@@ -9,12 +9,19 @@
 //      not a float 10.0) must match, not only the parsed value;
 //   3. output size: every output stays within the function's budget, under
 //      Shopify's 20 kB output limit; the Wasm stays under the 256 kB size limit;
-//   4. random: seeded random carts (up to 50 lines) and configs — junk included,
+//   4. random: seeded random carts (up to 260 lines) and configs — junk included,
 //      since the shop config and product metafields are data the function must
 //      read tolerantly, and rule ids with non-ASCII, astral and long text so the
 //      UTF-16 tie order is compared — through the compiled Wasm and through the
 //      TS reference; the outputs must be deep-equal, AND every engine branch must
 //      have been hit a minimum number of times (thin coverage fails loudly).
+//      Besides ordinary carts the generator makes "big" carts (150–260 lines,
+//      200-character names, distinct Pro stack amounts or rounding ties: the
+//      output goes over the budget, stacks degrade and candidates are dropped)
+//      and "large" carts (quantities up to 5 000, prices up to 99 999 999.99,
+//      amounts at the money cap); codes padded with NBSP / BOM / tab, astral and
+//      case-mapping codes; lower-case and padded countries; priorities up to
+//      1 000; CZK / EUR / JPY / KWD / HUF / BHD / USD; entitled minimums.
 //
 // PARITY_CASES (per seed, default 400) and PARITY_SEEDS (comma-separated) override
 // the random run.
@@ -29,11 +36,15 @@ import { buildFunction, getFunctionInfo } from "@shopify/shopify-function-test-h
 import { codeHash } from "@won/core/discounts/code-hash";
 import { beforeAll, describe, expect, test } from "vitest";
 
+import { roundingTiePossible } from "@won/core/discounts/function-output";
+
 import {
   adaptInput,
   emissionFor,
+  mapOutput,
   OUTPUT_BUDGET_BYTES,
   OUTPUT_LIMIT_BYTES,
+  outputBudget,
   outputBytes,
   runCartLines,
   runDelivery,
@@ -78,8 +89,10 @@ describe("output size: every fixture output fits the budget", () => {
   });
   for (const file of fixtureFiles) {
     test(file, () => {
-      const bytes = outputBytes(readFixture(file).payload.output);
-      expect(bytes).toBeLessThanOrEqual(OUTPUT_BUDGET_BYTES);
+      const { payload } = readFixture(file);
+      // The budget scales with the line count above 200, like Shopify's limit.
+      const bytes = outputBytes(payload.output);
+      expect(bytes).toBeLessThanOrEqual(outputBudget(payload.input.cart.lines.length));
     });
   }
 });
@@ -104,7 +117,24 @@ function prng(seed) {
  * with "@" (a ref splits at the first "@") and a line break.
  */
 const RULE_IDS = ["r0", "r1", "ř2", "Ω3", "日本4", "😀5", "｡6", `long-${"x".repeat(59)}`, "a@b", "n\nl"];
-const CODES = ["SAVE10", "VIP", "Léto", "straße", "  spaced ", "X1"];
+const CODES = [
+  "SAVE10",
+  "VIP",
+  "Léto",
+  "straße",
+  "  spaced ",
+  "X1",
+  // Padding String.prototype.trim removes (NBSP, BOM, tab), an astral code,
+  // and full case mappings (ligature ﬁ → FI, dotless ı → I, ß → SS).
+  "\u00a0NBSP10\u00a0",
+  "\ufeffBOM5",
+  "\tTAB\t",
+  "😀EMOJI",
+  "ﬁx",
+  "ıstanbul",
+];
+/** A 200-character rule name (big carts: long messages make the output large). */
+const longName = (id) => `${id} ${"Velmi dlouhý název slevy ".repeat(9)}`.slice(0, 200);
 const vid = (n) => `gid://shopify/ProductVariant/${n}`;
 
 function generator(seed) {
@@ -118,10 +148,21 @@ function generator(seed) {
   let hostile = false;
   const junk = (p) => hostile && chance(p);
 
+  // "large" carts: huge quantities, prices and amounts (up to the money cap and past it).
+  let large = false;
   const money = () =>
     junk(0.3)
-      ? pick([{ CZK: -100 }, { CZK: "50" }, {}, null, { CZK: 150.5 }, { JPY: 500 }])
-      : pick([{ CZK: pick([5000, 10000, 2550, 999999]) }, { CZK: 3000, EUR: 200 }, { EUR: pick([100, 500]) }, { CZK: 1500, JPY: 500, KWD: 1234 }]);
+      ? pick([{ CZK: -100 }, { CZK: "50" }, {}, null, { CZK: 150.5 }, { JPY: 500 }, { CZK: 5e12, HUF: 9e18 }])
+      : large && chance(0.5)
+        ? pick([{ CZK: 1e12, EUR: 999999999, HUF: 5e11 }, { CZK: pick([123456789, 99999999999]), KWD: 1e12 }, { USD: 1e12, BHD: 7654321 }])
+        : pick([
+            { CZK: pick([5000, 10000, 2550, 999999]) },
+            { CZK: 3000, EUR: 200 },
+            { EUR: pick([100, 500]) },
+            { CZK: 1500, JPY: 500, KWD: 1234 },
+            { HUF: pick([150000, 99900]), USD: 999 },
+            { BHD: pick([1250, 7005]), USD: 500, CZK: 4005 },
+          ]);
   const value = () =>
     junk(0.25)
       ? pick([{ kind: "percentage", percent: pick([0, 120, -5, "10"]) }, { kind: "bogus" }, null, { kind: "fixed", amount: money() }])
@@ -153,8 +194,21 @@ function generator(seed) {
     if (method === "code") r.codeHashes = some(CODES, 0.4).map(codeHash).concat(junk(0.2) ? ["ZZZZZZZZ", 3] : []);
     r.value = value();
     r.target = target();
-    if (chance(0.3)) r.priority = junk(0.3) ? pick([1.7, "5", -3]) : pick([0, 1, 2, 3]);
-    if (chance(0.2)) r.minimum = junk(0.3) ? pick([{}, "x", { quantity: 2.5 }]) : pick([{ subtotal: money() }, { quantity: pick([1, 2, 4]) }, { subtotal: { CZK: 30000 }, quantity: 2 }]);
+    if (chance(0.3)) r.priority = junk(0.3) ? pick([1.7, "5", -3, 1e20]) : pick([0, 1, 2, 3, 7, 999, 1000]);
+    if (chance(0.35)) {
+      r.minimum = junk(0.3)
+        ? pick([{}, "x", { quantity: 2.5 }, { subtotal: { CZK: 1000 }, scope: "ENTITLED" }, { quantity: 2, scope: 5 }])
+        : pick([
+            { subtotal: money() },
+            { quantity: pick([1, 2, 4]) },
+            { subtotal: { CZK: 30000 }, quantity: 2 },
+            { subtotal: pick([{ CZK: 30000 }, { EUR: 1500 }, { HUF: 900000 }]), scope: "entitled" },
+            { subtotal: { CZK: 50000, EUR: 2000, JPY: 5000, KWD: 50000, HUF: 500000, BHD: 20000, USD: 2500 }, scope: "entitled" },
+            { quantity: pick([2, 3]), scope: "entitled" },
+            { quantity: pick([2, 4]), scope: "entitled" },
+            { subtotal: { CZK: 50000, EUR: 2000, USD: 2500 }, quantity: 2, scope: pick(["entitled", "cart"]) },
+          ]);
+    }
     const s = schedule();
     if (s !== undefined) r.schedule = s;
     if (chance(0.15)) r.targeting = junk(0.4) ? pick([{ markets: ["us", 4] }, { markets: [] }, null]) : pick([{ markets: ["eu"] }, { markets: ["us"] }, { segments: ["vip"] }]);
@@ -203,6 +257,11 @@ function generator(seed) {
     if (ids.length < 2) ids.push("r0", "r1");
     const rules = ids.map((id) => rule(id, ids));
     if (junk(0.3)) rules.push(rule(pick(ids), ids), "junk", null);
+    // A fixed shipping discount (on a split shipment it must go to one delivery group).
+    if (chance(0.4)) {
+      const amount = chance(0.8) ? { CZK: 5000, EUR: 300, JPY: 800, KWD: 1500, HUF: 150000, BHD: 1200, USD: 400 } : money();
+      rules.push({ id: "ship-fixed", enabled: true, name: "Doprava fix", method: "automatic", value: { kind: "fixed", amount }, target: { kind: "shipping" } });
+    }
     const campaignId = chance(0.45) ? "bf" : pick([null, "old"]);
     const c = {
       schemaVersion: 1,
@@ -261,8 +320,14 @@ function generator(seed) {
     const variant = product.p * 100 + 1 + int(4);
     return {
       id: `gid://shopify/CartLine/${n}`,
-      quantity: pick([1, 1, 2, 3, 5, 0]),
-      cost: { amountPerQuantity: { amount: pick(["100.0", "249.9", "30.0", "0.5", "1000", "12.345", "10.05", "999.99", "0.0", "49.95"]) } },
+      quantity: large ? pick([1, 7, 999, 5000, 5000]) : pick([1, 1, 2, 3, 5, 0]),
+      cost: {
+        amountPerQuantity: {
+          amount: large
+            ? pick(["99999999.99", "12345678", "0.01", "5000000.05", "77777.775"])
+            : pick(["100.0", "249.9", "30.0", "0.5", "1000", "12.345", "10.05", "999.99", "0.0", "49.95", "27.5", "3.35"]),
+        },
+      },
       gift: chance(0.07) ? { value: pick(["tier-1", "", null]) } : null,
       merchandise: chance(0.93)
         ? { __typename: "ProductVariant", id: vid(variant), product: { wonProduct: product.won } }
@@ -270,8 +335,72 @@ function generator(seed) {
     };
   }
 
+  /**
+   * A big cart for the output budget: 150–260 lines of distinct prices, rules
+   * with 200-character names. "stacks": two combinable rules, every line a
+   * different stack amount (exact output far over the budget → the stacks
+   * degrade to their top rule). "ties": a percent on prices ending in 5
+   * haléřů / cents — every line a rounding tie emitted as its own exact amount,
+   * nothing to degrade → the smallest candidates are dropped.
+   */
+  function bigCase() {
+    const ties = chance(0.5);
+    const ids = ["big1", "big2", "big3"];
+    const rules = [
+      { id: "big1", enabled: true, name: longName("big1"), method: "automatic", value: { kind: "percentage", percent: pick([10, 12.5, 30]) }, target: { kind: "products" } },
+      {
+        id: "big2",
+        enabled: true,
+        name: longName("big2"),
+        method: "automatic",
+        value: ties ? { kind: "percentage", percent: 10 } : { kind: "fixed", amount: { CZK: pick([999, 1500, 12345]), EUR: 99, USD: 250 } },
+        target: { kind: "products" },
+        ...(ties ? {} : { combinesWith: { ruleIds: ["big1"] } }),
+      },
+      { id: "big3", enabled: true, name: longName("big3"), method: "automatic", value: { kind: "percentage", percent: 10 }, target: { kind: "order" } },
+    ];
+    const cents = ties ? ["05", "15", "25", "35", "45", "55", "65", "75", "85", "95"] : ["00", "10", "20", "40", "50", "90"];
+    const count = 150 + int(111);
+    const lines = Array.from({ length: count }, (_, i) => ({
+      id: `gid://shopify/CartLine/${i + 1}`,
+      quantity: pick([1, 1, 1, 2]),
+      cost: { amountPerQuantity: { amount: `${10 + int(990)}.${pick(cents)}` } },
+      gift: null,
+      merchandise: {
+        __typename: "ProductVariant",
+        id: vid(10000 + i),
+        product: { wonProduct: { jsonValue: { ruleIds: ties ? [pick(["big1", "big2"])] : ["big1", "big2"] } } },
+      },
+    }));
+    return {
+      exportName: LINES,
+      tie: false,
+      input: {
+        triggeringDiscountCode: null,
+        enteredDiscountCodes: [],
+        discount: {
+          discountClasses: ["PRODUCT", "ORDER", "SHIPPING"],
+          vars: { jsonValue: { role: "automatic", campaignId: null, campaignStart: "1970-01-01T00:00:00", campaignEnd: "1970-01-01T00:00:00", varsVersion: null } },
+        },
+        shop: {
+          config: { jsonValue: { schemaVersion: 1, campaignId: null, campaignVarsVersion: null, marketCountries: {}, modules: { codes: { rules } }, campaigns: [] } },
+          localTime: { date: "2026-10-01", campaignActive: false },
+        },
+        localization: { country: { isoCode: "CZ" }, language: { isoCode: pick(["CS", "EN"]) } },
+        cart: { cost: { subtotalAmount: { currencyCode: pick(["CZK", "CZK", "EUR", "USD"]) } }, lines },
+      },
+      ids,
+    };
+  }
+
   return function nextCase() {
+    if (chance(0.07)) {
+      hostile = false;
+      large = false;
+      return bigCase();
+    }
     hostile = chance(0.25);
+    large = chance(0.1);
     const exportName = chance(0.65) ? LINES : DELIVERY;
     const built = config();
     const entered = some(CODES, 0.5)
@@ -290,12 +419,15 @@ function generator(seed) {
           varsVersion: pick(["v1", "v1", "v1", "v2", null]),
         };
     const triggering = role === "code" ? (entered.length > 0 && chance(0.85) ? pick(entered) : pick([null, "nope"])) : junk(0.2) ? "SAVE10" : null;
-    const cart = { cost: { subtotalAmount: { currencyCode: pick(["CZK", "CZK", "CZK", "CZK", "EUR", "EUR", "JPY", "KWD"]) } } };
+    const cart = {
+      cost: { subtotalAmount: { currencyCode: pick(["CZK", "CZK", "CZK", "CZK", "EUR", "EUR", "JPY", "KWD", "HUF", "BHD", "USD", "czk"]) } },
+    };
     if (exportName === DELIVERY) {
-      cart.deliveryGroups = Array.from({ length: chance(0.9) ? 1 + int(2) : 0 }, (_, i) => ({ id: `gid://shopify/CartDeliveryGroup/${i + 1}` }));
+      cart.deliveryGroups = Array.from({ length: chance(0.9) ? 1 + int(3) : 0 }, (_, i) => ({ id: `gid://shopify/CartDeliveryGroup/${i + 1}` }));
     }
     const catalog = products(built.ids);
-    const lineCount = chance(0.5) ? int(9) : 9 + int(42);
+    // Large amounts stay on small carts: the cart total must stay exact in a JS number (< 2^53).
+    const lineCount = large ? 1 + int(4) : chance(0.45) ? int(9) : chance(0.75) ? 9 + int(42) : 51 + int(210);
     cart.lines = Array.from({ length: lineCount }, (_, i) => line(i + 1, catalog));
     const input = {
       triggeringDiscountCode: triggering,
@@ -308,7 +440,10 @@ function generator(seed) {
         config: built.config === null ? null : { jsonValue: built.config },
         localTime: { date: pick(["2026-10-01", "2026-10-01", "2026-10-01", "2026-09-15"]), campaignActive: chance(0.6) },
       },
-      localization: { country: { isoCode: pick(["CZ", "CZ", "SK", "US", "DE"]) }, language: { isoCode: pick(["CS", "CS", "EN", "SK", "DE"]) } },
+      localization: {
+        country: { isoCode: pick(["CZ", "CZ", "SK", "US", "DE", "cz", " sk ", "XX", "", "CZE"]) },
+        language: { isoCode: pick(["CS", "CS", "EN", "SK", "DE"]) },
+      },
       cart,
     };
     return { exportName, input, tie: built.tie === true };
@@ -319,6 +454,13 @@ function generator(seed) {
 function branchesOf(exportName, input, output, tie) {
   const hits = new Set();
   const ops = output.operations;
+  if (
+    exportName === DELIVERY &&
+    (input.cart.deliveryGroups?.length ?? 0) >= 2 &&
+    ops.some((op) => op.deliveryDiscountsAdd?.candidates.some((c) => c.value.fixedAmount))
+  ) {
+    hits.add("fixed shipping amount on a split shipment");
+  }
   if (tie && ops.some((op) => op.productDiscountsAdd)) hits.add("UTF-16 id tie decides the winner");
   if (ops.some((op) => op.productDiscountsAdd)) hits.add("product candidates");
   if (ops.some((op) => op.orderDiscountsAdd)) hits.add("order candidates");
@@ -326,8 +468,33 @@ function branchesOf(exportName, input, output, tie) {
   const adapted = adaptInput(input);
   if (adapted.role?.kind === "code" && ops.length > 0) hits.add("code node emits (code triggered)");
   if (adapted.cart.currency !== "CZK" && ops.length > 0) hits.add("non-CZK currency emits");
-  const { plan } = emissionFor(adapted);
+  if (["HUF", "BHD", "USD"].includes(adapted.cart.currency) && ops.length > 0) hits.add("HUF / BHD / USD cart emits");
+  const rawCountry = input.localization?.country?.isoCode;
+  if (typeof rawCountry === "string" && rawCountry !== "" && !/^[A-Z]{2}$/.test(rawCountry) && ops.length > 0) hits.add("lower-case, padded or invalid country");
+  const { plan, emission } = emissionFor(adapted);
   if (!plan || plan.reason) return hits;
+  const mapped = mapOutput(emission, adapted, plan);
+  if (mapped.degradedStacks.length > 0) hits.add("over the budget: Pro stacks as their top rule");
+  if (mapped.droppedCandidates.length > 0) hits.add("over the budget: candidates dropped");
+  if (exportName === LINES && input.cart.lines.length > 200 && ops.length > 0) hits.add("200+ line cart emits");
+  const tieLine = emission.productCandidates.some((c) => {
+    const line = plan.lines.find((l) => l.lineId === c.lineId);
+    return c.percent !== undefined && line !== undefined && roundingTiePossible(line.subtotal, c.percent);
+  });
+  if (exportName === LINES && tieLine && ops.length > 0) hits.add("rounding tie emitted as its exact amount");
+  if (plan.rules.some((r) => r.missing?.scope === "entitled")) hits.add("entitled minimum not reached");
+  if (plan.totals.subtotal >= 1e12 && ops.length > 0) hits.add("amounts ≥ 10^12 minor units emit");
+  const exotic = /[\u00a0\ufeff\t]|[\ud800-\udfff]|ﬁ|ı/;
+  const matched = new Set(plan.codes.filter((c) => c.ruleId !== null).map((c) => c.code));
+  if ((input.enteredDiscountCodes ?? []).some((e) => exotic.test(e.code) && matched.has(e.code.trim().toUpperCase()))) {
+    hits.add("padded / astral / case-mapped code matched");
+  }
+  const priorities = new Map(
+    (input.shop?.config?.jsonValue?.modules?.codes?.rules ?? []).filter((r) => r && typeof r.id === "string").map((r) => [r.id, r.priority]),
+  );
+  if (plan.lines.some((l) => l.product && typeof priorities.get(l.product.ownerRuleId) === "number" && priorities.get(l.product.ownerRuleId) > 3)) {
+    hits.add("a priority above 3 owns a stack");
+  }
   const state = (s) => plan.rules.some((r) => r.state === s);
   if (plan.lines.some((l) => l.excluded === "outlet")) hits.add("outlet line excluded");
   if (plan.lines.some((l) => l.excluded === "gift")) hits.add("gift line excluded");
@@ -354,6 +521,10 @@ function runWasm(runnerPath, wasmPath, exportName, input) {
     const child = spawn(runnerPath, ["-f", wasmPath, "--export", exportName, "--json"], { stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
+    // Decode as a stream: a multi-byte character split across two pipe chunks
+    // (outputs over 64 kB) must not turn into U+FFFD.
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
     child.stdout.on("data", (d) => (stdout += d));
     child.stderr.on("data", (d) => (stderr += d));
     child.on("error", reject);
@@ -431,6 +602,7 @@ describe("Wasm (function-runner)", () => {
     const hits = new Map();
     let nonEmpty = 0;
     let maxBytes = 0;
+    const overBudget = [];
     for (const seed of SEEDS) {
       const next = generator(seed);
       const cases = Array.from({ length: CASES }, next);
@@ -442,6 +614,8 @@ describe("Wasm (function-runner)", () => {
           const expected = referenceOutput(c.exportName, c.input);
           if (expected.operations.length > 0) nonEmpty += 1;
           maxBytes = Math.max(maxBytes, outputBytes(expected));
+          // The budget scales with the line count above 200, like Shopify's limit.
+          if (outputBytes(expected) > outputBudget(c.input.cart.lines.length)) overBudget.push({ seed, index: i + j });
           for (const branch of branchesOf(c.exportName, c.input, expected, c.tie)) hits.set(branch, (hits.get(branch) ?? 0) + 1);
           if (!result.success || !isDeepStrictEqual(result.output, expected)) {
             failures.push({ seed, index: i + j, exportName: c.exportName, got: result.output, logs: result.logs, expected, input: c.input });
@@ -480,9 +654,20 @@ describe("Wasm (function-runner)", () => {
       "non-ASCII winner id",
       "UTF-16 id tie decides the winner",
       "30+ line cart emits",
+      "200+ line cart emits",
+      "over the budget: Pro stacks as their top rule",
+      "over the budget: candidates dropped",
+      "rounding tie emitted as its exact amount",
+      "entitled minimum not reached",
+      "fixed shipping amount on a split shipment",
+      "amounts ≥ 10^12 minor units emit",
+      "HUF / BHD / USD cart emits",
+      "lower-case, padded or invalid country",
+      "padded / astral / case-mapped code matched",
+      "a priority above 3 owns a stack",
     ];
     const thin = BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS);
     expect(thin, `branches hit fewer than ${MIN_HITS} times:\n${table}`).toEqual([]);
-    expect(maxBytes).toBeLessThanOrEqual(OUTPUT_BUDGET_BYTES);
+    expect(overBudget).toEqual([]);
   }, 900_000);
 });

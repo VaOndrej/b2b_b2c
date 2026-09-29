@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { normalizeCart } from "@won/core/discounts/cart";
 import { codeHash } from "@won/core/discounts/code-hash";
 import { emitForNode } from "@won/core/discounts/emit";
+import { mapToFunctionOutput, roundingTiePossible } from "@won/core/discounts/function-output";
 import { planCart } from "@won/core/discounts/plan";
 import { describe, expect, test } from "vitest";
 
@@ -258,6 +259,69 @@ const TWINS = {
     const lines = [line("l1", 1, 10000, ["u"])];
     expect(planCart(cart(lines), cfg([u])).lines[0].product.message).toBe("12,5 % na vybrané kolekce");
     expect(planCart(cart(lines, [], { locale: "en" }), cfg([u])).lines[0].product.message).toBe("12.5% off selected collections");
+  },
+
+  an_entitled_minimum_counts_only_the_rules_own_lines() {
+    const c = cfg([
+      pct("a", 10, { minimum: { subtotal: { CZK: 100000 }, quantity: 3 } }),
+      pct("e", 5, { minimum: { subtotal: { CZK: 100000 }, quantity: 3, scope: "entitled" } }),
+    ]);
+    const lines = [
+      line("l1", 1, 60000, ["a", "e"]),
+      line("l2", 1, 30000, []),
+      line("l3", 1, 10000, ["a", "e"], { outlet: true }),
+      line("g", 1, 90000, ["a", "e"], { giftTierId: "t" }),
+    ];
+    const plan = planCart(cart(lines), c);
+    expect(gated(plan, "a")).toBeNull();
+    expect(gated(plan, "e")).toBe("below_minimum");
+    const enough = planCart(cart([line("l1", 3, 100000, ["e"]), line("l2", 1, 100, [])]), c);
+    expect(gated(enough, "e")).toBeNull();
+    expect(productOf(enough, "l1")).toEqual(["e", { percent: 5 }, 15000]);
+  },
+
+  money_over_the_cap_reads_as_the_cap() {
+    const plan = planCart(cart([line("l1", 1, 5_000_000_000_000, [])]), cfg([order("o", { kind: "fixed", amount: { CZK: 9e18 } })]));
+    expect(plan.order.value).toEqual({ fixedTotal: 1_000_000_000_000 });
+  },
+
+  a_rounding_tie_is_emitted_as_its_exact_amount() {
+    expect(roundingTiePossible(1005, 10) && roundingTiePossible(2750, 1.4) && roundingTiePossible(9990, 15)).toBe(true);
+    expect(roundingTiePossible(1004, 10) || roundingTiePossible(0, 50)).toBe(false);
+    const c = cfg([pct("t", 10), pct("a", 10, { combinesWith: { ruleIds: ["b"] } }), pct("b", 5), order("o", { kind: "percentage", percent: 10 })]);
+    const lines = [line("l1", 1, 1005, ["t"]), line("l2", 1, 1004, ["t"]), line("l3", 3, 3330, ["a", "b"]), line("l4", 1, 106, [])];
+    const plan = planCart(cart(lines), c);
+    const out = mapToFunctionOutput(emitForNode(plan, { kind: "automatic" }, null), { plan, classes: ["PRODUCT", "ORDER"], lineCount: lines.length });
+    expect(JSON.stringify(out.lines)).toBe(
+      [
+        '{"operations":[{"productDiscountsAdd":{"candidates":[',
+        '{"message":"t","targets":[{"cartLine":{"id":"l1"}}],"value":{"fixedAmount":{"amount":"1.01","appliesToEachItem":true}}},',
+        '{"message":"t","targets":[{"cartLine":{"id":"l2"}}],"value":{"percentage":{"value":10}}},',
+        '{"message":"a + b","targets":[{"cartLine":{"id":"l3"}}],"value":{"fixedAmount":{"amount":"14.99","appliesToEachItem":false}}}',
+        '],"selectionStrategy":"ALL"}},{"orderDiscountsAdd":{"candidates":[',
+        '{"message":"o","targets":[{"orderSubtotal":{"excludedCartLineIds":[]}}],"value":{"fixedAmount":{"amount":"10.41"}}}',
+        '],"selectionStrategy":"FIRST"}}]}',
+      ].join(""),
+    );
+  },
+
+  a_fixed_shipping_amount_goes_to_the_first_delivery_group_only() {
+    const json = (value) => {
+      const plan = planCart(cart([line("l1", 1, 10000, [])]), cfg([{ id: "s", enabled: true, name: "s", method: "automatic", value, target: { kind: "shipping" } }]));
+      const out = mapToFunctionOutput(emitForNode(plan, { kind: "automatic" }, null), {
+        plan,
+        classes: ["SHIPPING"],
+        lineCount: 1,
+        deliveryGroupIds: ["g1", "g2"],
+      });
+      return JSON.stringify(out.delivery);
+    };
+    expect(json({ kind: "fixed", amount: { CZK: 5000 } })).toBe(
+      '{"operations":[{"deliveryDiscountsAdd":{"candidates":[{"message":"s","targets":[{"deliveryGroup":{"id":"g1"}}],"value":{"fixedAmount":{"amount":"50.00"}}}],"selectionStrategy":"ALL"}}]}',
+    );
+    expect(json({ kind: "freeShipping" })).toBe(
+      '{"operations":[{"deliveryDiscountsAdd":{"candidates":[{"message":"s","targets":[{"deliveryGroup":{"id":"g1"}},{"deliveryGroup":{"id":"g2"}}],"value":{"percentage":{"value":100}}}],"selectionStrategy":"ALL"}}]}',
+    );
   },
 
   // src/json.rs: the product metafield read (adapter + normalizeCart).

@@ -12,12 +12,14 @@
 //                   thresholds included; precomputed targeting per line;
 //   gateRules       enabled, code entered, schedule (shop days), market
 //                   (country), segment (unsupported), currency, targets,
-//                   minimum (the WHOLE cart, [spec] „minimum košíku“);
+//                   minimum (the WHOLE cart, [spec] „minimum košíku“, or the
+//                   rule's own lines when its minimum scope is "entitled");
 //   planProducts    per line the better one for the customer wins, never a sum
 //                   (ties: priority desc, id asc); Pro `combinesWith` may stack;
 //   planOrderStage  on the subtotal AFTER product discounts [spec], better wins
 //                   [spec]; the Free product-with-order switch;
-//   planShipping    one winner; the Free product/order-with-shipping switches;
+//   planShipping    one winner (percent above fixed: the function knows no
+//                   delivery cost); the Free product/order-with-shipping switches;
 //   applyMarginProtection  MVP 2 hook, identity for now;
 //   buildOutcomes   per-rule and per-code states for explain/admin.
 //
@@ -35,8 +37,9 @@
 
 import { type CartPlanInput, type NormalizedCart, type NormalizedLine, normalizeCart, type PlanLocale } from "./cart.ts";
 import { codeHash } from "./code-hash.ts";
-import type { DiscountMethod, DiscountRuleValue, DiscountTargetKind, ReadonlyDeep } from "./config.ts";
+import type { DiscountMethod, DiscountRuleValue, DiscountTargetKind, MinimumScope, ReadonlyDeep } from "./config.ts";
 import { DEFAULT_CONFIG } from "./config/defaults.ts";
+import { CONFIG_LIMITS } from "./config/limits.ts";
 import { DISCOUNT_TARGET_KINDS } from "./config/enums.ts";
 import { type DescribableRule, describeRule } from "./describe.ts";
 import type { FunctionConfigPayload } from "./function-payload.ts";
@@ -128,7 +131,7 @@ export interface PlanShipping {
   ownerRuleId: string;
   ownerMethod: DiscountMethod;
   value: ShippingValue;
-  /** Minor units when the delivery cost is known (CartPlanInput.shippingAmount), else null. */
+  /** Always null: the function does not know the delivery cost (see CartPlanInput). */
   amount: number | null;
   message: string;
 }
@@ -147,8 +150,11 @@ export interface RuleOutcome {
   enteredCodes: string[];
   /** What describeRule needs to phrase the rule (explain.ts names unnamed rules with it). */
   describable: DescribableRule;
-  /** below_minimum: what is missing (minor units / items) and the minimum itself. */
-  missing?: { subtotal?: number; quantity?: number; minimumSubtotal?: number; minimumQuantity?: number };
+  /**
+   * below_minimum: what is missing (minor units / items) and the minimum itself;
+   * `scope: "entitled"` when only the rule's own lines count (absent = the cart).
+   */
+  missing?: { subtotal?: number; quantity?: number; minimumSubtotal?: number; minimumQuantity?: number; scope?: "entitled" };
   /** Schedule at day granularity (shop dates, inclusive). */
   startsOn?: string;
   endsOn?: string;
@@ -260,6 +266,8 @@ interface Rule {
   minSubtotal: number | null;
   minSubtotalMissing: boolean;
   minQuantity: number;
+  /** The minimum counts only the lines the rule targets (scope "entitled"). */
+  minEntitled: boolean;
   scheduled: boolean;
   /** Scheduled, but the payload's schedule is not a pair of valid shop days: never live. */
   scheduleInvalid: boolean;
@@ -320,10 +328,15 @@ const MAX_BETTER_RULES = 3;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
+/**
+ * A finite amount ≥ 0 for the currency, floored, at most the config's money cap
+ * (the sanitizer caps every stored amount; a hand-made payload is read the same
+ * way by the Rust function, which could not hold a larger one exactly).
+ */
 function amountIn(money: unknown, currency: string): number | null {
   if (!isRecord(money)) return null;
   const v = money[currency];
-  return typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(v) : null;
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(Math.min(v, CONFIG_LIMITS.moneyMinorUnits)) : null;
 }
 
 function clampPercent(v: unknown): number {
@@ -375,6 +388,7 @@ function readRule(raw: Rec, currency: string): Rule | null {
     typeof minimum.quantity === "number" && Number.isFinite(minimum.quantity) && minimum.quantity > 0
       ? Math.floor(minimum.quantity)
       : 0;
+  const minScope: MinimumScope = minimum.scope === "entitled" ? "entitled" : "cart";
   // Schedules arrive as shop-local days (buildShopFunctionConfig converted them with
   // the shop's time zone). Fail closed: any schedule that is not exactly valid
   // `startsOn`/`endsOn` days — `{invalid: true}`, raw ISO strings, junk, `{}` — is
@@ -403,6 +417,7 @@ function readRule(raw: Rec, currency: string): Rule | null {
     minSubtotal,
     minSubtotalMissing: hasSubtotal && minSubtotal === null,
     minQuantity,
+    minEntitled: minScope === "entitled",
     scheduled,
     scheduleInvalid,
     startsOn: localDate(schedule.startsOn),
@@ -415,7 +430,13 @@ function readRule(raw: Rec, currency: string): Rule | null {
       value: describedValue,
       target: { kind: target },
       ...(hasSubtotal || minQuantity > 0
-        ? { minimum: { ...(hasSubtotal ? { subtotal: subtotalMap as Record<string, number> } : {}), quantity: minQuantity } }
+        ? {
+            minimum: {
+              ...(hasSubtotal ? { subtotal: subtotalMap as Record<string, number> } : {}),
+              quantity: minQuantity,
+              ...(minScope === "entitled" ? { scope: minScope } : {}),
+            },
+          }
         : {}),
     },
     state: null,
@@ -582,13 +603,18 @@ function gate(rule: Rule, ctx: GateContext, targetScope: Scope, entered: boolean
   if (rule.cls !== "shipping" && targetScope.discountable === 0) return "outlet_only";
   // [spec] „Minimum košíku“ = the WHOLE cart: every non-gift line at its
   // pre-discount price, outlet included (it is what the customer pays), whatever
-  // the rule targets; the same for the quantity minimum.
-  const missingSubtotal = rule.minSubtotal !== null ? Math.max(0, rule.minSubtotal - cartScope.subtotal) : 0;
-  const missingQuantity = rule.minQuantity > 0 ? Math.max(0, rule.minQuantity - cartScope.quantity) : 0;
+  // the rule targets; the same for the quantity minimum. An "entitled" minimum
+  // (a migrated native's semantics) counts only the product rule's own lines,
+  // measured the same way; an order or shipping rule is entitled to the cart.
+  const entitled = rule.minEntitled && rule.cls === "product";
+  const scope = entitled ? targetScope : cartScope;
+  const missingSubtotal = rule.minSubtotal !== null ? Math.max(0, rule.minSubtotal - scope.subtotal) : 0;
+  const missingQuantity = rule.minQuantity > 0 ? Math.max(0, rule.minQuantity - scope.quantity) : 0;
   if (missingSubtotal > 0 || missingQuantity > 0) {
     rule.missing = {
       ...(missingSubtotal > 0 ? { subtotal: missingSubtotal, minimumSubtotal: rule.minSubtotal as number } : {}),
       ...(missingQuantity > 0 ? { quantity: missingQuantity, minimumQuantity: rule.minQuantity } : {}),
+      ...(entitled ? { scope: "entitled" as const } : {}),
     };
     return "below_minimum";
   }
@@ -822,11 +848,12 @@ function planOrderStage(rules: Rule[], work: WorkLine[], engine: EngineFlags, ct
 // --- Stage: shipping -----------------------------------------------------------------------------
 
 /**
- * One shipping winner. With a known delivery cost by amount; otherwise [spec]
- * percent (free = 100 %) ranks above a fixed amount, larger first. When a Free
- * switch forbids shipping next to the product/order discounts that apply, EVERY
- * shipping candidate is dropped as not combinable — none is "outranked" by a
- * winner that does not apply either.
+ * One shipping winner. The function does not know the delivery cost, so
+ * [spec] percent (free = 100 %) ranks above a fixed amount, larger first —
+ * never by a cost only the TS side could see (audit MVP 1 drift #7). When a
+ * Free switch forbids shipping next to the product/order discounts that apply,
+ * EVERY shipping candidate is dropped as not combinable — none is "outranked"
+ * by a winner that does not apply either.
  */
 function planShipping(
   rules: Rule[],
@@ -835,18 +862,15 @@ function planShipping(
   engine: EngineFlags,
   cart: NormalizedCart,
 ): PlanShipping | null {
-  const cost = cart.shippingAmount;
   const candidates = rules
     .filter((r) => r.cls === "shipping" && r.state === null)
     .map((rule) => {
       const percent = rule.valueKind === "freeShipping" ? 100 : rule.valueKind === "percentage" ? rule.percent : null;
       const fixed = rule.valueKind === "fixed" ? (rule.fixed ?? 0) : null;
-      const amount = cost === null ? null : percent !== null ? Math.round((cost * percent) / 100) : Math.min(fixed ?? 0, cost);
-      const value: ShippingValue =
-        percent !== null ? { percent } : { fixedTotal: cost === null ? (fixed ?? 0) : Math.min(fixed ?? 0, cost) };
+      const value: ShippingValue = percent !== null ? { percent } : { fixedTotal: fixed ?? 0 };
       const worth = percent !== null ? percent > 0 : (fixed ?? 0) > 0;
-      const key = amount !== null ? [amount, 0] : percent !== null ? [1, percent] : [0, fixed ?? 0];
-      return { rule, value, amount, worth, key };
+      const key = percent !== null ? [1, percent] : [0, fixed ?? 0];
+      return { rule, value, worth, key };
     })
     .filter((c) => c.worth)
     .sort((a, b) => b.key[0] - a.key[0] || b.key[1] - a.key[1] || b.rule.priority - a.rule.priority || byId(a.rule, b.rule));
@@ -866,7 +890,7 @@ function planShipping(
     ownerRuleId: winner.rule.id,
     ownerMethod: winner.rule.method,
     value: winner.value,
-    amount: winner.amount,
+    amount: null,
     message: label(winner.rule, cart.locale, cart.currency),
   };
 }

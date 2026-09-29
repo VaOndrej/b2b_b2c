@@ -7,6 +7,7 @@ import {
   csPlural,
   describeRule,
   echoCode as echo,
+  entitledMinimumPhrase,
   enPlural,
   formatDate,
   formatMoney,
@@ -53,6 +54,21 @@ function shippingPhrase(value: ShippingValue, plan: CartPlan, locale: UiLocale):
   }
   const m = formatMoney(value.fixedTotal, plan.currency, locale);
   return cs ? `${m} z dopravy` : `${m} off shipping`;
+}
+
+/** " z vybraných produktů" / " of selected products" when only the rule's own lines count toward its minimum, else "". */
+function entitledTail(rule: RuleOutcome, locale: UiLocale): string {
+  if (rule.missing?.scope !== "entitled") return "";
+  const phrase = entitledMinimumPhrase(rule.describable.target.kind, locale);
+  return phrase ? ` ${locale === "cs" ? phrase.cs : phrase.en}` : "";
+}
+
+/** "1 more selected item" (products, entitled) / "1 more item in selected collections" / "1 more item". */
+function moreItems(n: number, rule: RuleOutcome, locale: UiLocale): string {
+  const items = enPlural(n, "item", "items");
+  if (rule.missing?.scope !== "entitled") return `${n} more ${items}`;
+  if (rule.describable.target.kind === "collections") return `${n} more ${items} in selected collections`;
+  return `${n} more selected ${items}`;
 }
 
 function capitalize(text: string): string {
@@ -141,10 +157,17 @@ function codeSentences(code: CodeOutcome, plan: CartPlan, locale: UiLocale): Exp
     case "below_minimum": {
       const out: ExplainItem[] = [];
       const m = rule.missing ?? {};
+      const tail = entitledTail(rule, locale);
       if (m.subtotal !== undefined) {
         const missing = formatMoney(m.subtotal, plan.currency, locale);
         const minimum = formatMoney(m.minimumSubtotal ?? 0, plan.currency, locale);
-        out.push(item("warning", cs ? `Ke kódu ${c} chybí ${missing} do minima ${minimum}.` : `Code ${c} needs ${missing} more (minimum ${minimum}).`, refs));
+        out.push(
+          item(
+            "warning",
+            cs ? `Ke kódu ${c} chybí ${missing}${tail} do minima ${minimum}.` : `Code ${c} needs ${missing} more${tail} (minimum ${minimum}).`,
+            refs,
+          ),
+        );
       }
       if (m.quantity !== undefined) {
         const n = m.quantity;
@@ -152,8 +175,8 @@ function codeSentences(code: CodeOutcome, plan: CartPlan, locale: UiLocale): Exp
           item(
             "warning",
             cs
-              ? `Ke kódu ${c} chybí ${n} ks do minima ${m.minimumQuantity} ks.`
-              : `Code ${c} needs ${n} more ${enPlural(n, "item", "items")} (minimum ${m.minimumQuantity}).`,
+              ? `Ke kódu ${c} chybí ${n} ks${tail} do minima ${m.minimumQuantity} ks.`
+              : `Code ${c} needs ${moreItems(n, rule, locale)} (minimum ${m.minimumQuantity}).`,
             refs,
           ),
         );
@@ -211,13 +234,14 @@ function automaticSentences(rule: RuleOutcome, plan: CartPlan, locale: UiLocale)
     case "below_minimum": {
       const out: ExplainItem[] = [];
       const m = rule.missing ?? {};
+      const tail = entitledTail(rule, locale);
       if (m.subtotal !== undefined) {
         const missing = formatMoney(m.subtotal, plan.currency, locale);
-        out.push(item("info", cs ? `Do slevy ${name} chybí ${missing}.` : `${name} needs ${missing} more.`, refs));
+        out.push(item("info", cs ? `Do slevy ${name} chybí ${missing}${tail}.` : `${name} needs ${missing} more${tail}.`, refs));
       }
       if (m.quantity !== undefined) {
         const n = m.quantity;
-        out.push(item("info", cs ? `Do slevy ${name} chybí ${n} ks.` : `${name} needs ${n} more ${enPlural(n, "item", "items")}.`, refs));
+        out.push(item("info", cs ? `Do slevy ${name} chybí ${n} ks${tail}.` : `${name} needs ${moreItems(n, rule, locale)}.`, refs));
       }
       return out;
     }

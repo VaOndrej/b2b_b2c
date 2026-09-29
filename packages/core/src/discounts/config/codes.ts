@@ -2,6 +2,7 @@ import {
   DISCOUNT_METHODS,
   DISCOUNT_TARGET_KINDS,
   DISCOUNT_VALUE_KINDS,
+  MINIMUM_SCOPES,
   type DiscountTargetKind,
   type DiscountValueKind,
 } from "./enums.ts";
@@ -256,6 +257,9 @@ export function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], path: st
     if (typeof v.minimum.quantity === "number" && Number.isFinite(v.minimum.quantity)) {
       minimum.quantity = Math.max(0, Math.floor(v.minimum.quantity));
     }
+    // What the minimum is measured on (audit MVP 1 native F5): the whole cart
+    // unless the rule says its entitled lines (a migrated native's semantics).
+    minimum.scope = sanitizeEnum(v.minimum.scope, MINIMUM_SCOPES, "cart", `${path}.minimum.scope`, issues);
     rule.minimum = minimum;
   }
 

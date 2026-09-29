@@ -72,8 +72,10 @@ export interface CartPlanInput {
   today?: string;
   /** Shop-local `YYYY-MM-DDTHH:MM:SS` (admin simulation); `today` is taken from it when missing. */
   now?: string;
-  /** Delivery target only: cost of the delivery option in minor units, when known. */
-  shippingAmount?: number;
+  // No delivery cost: the function's input query does not read one, so the
+  // engine never ranks shipping discounts by it (a TS-only ranking would let
+  // the admin or storefront promise what checkout does not give, audit MVP 1
+  // drift #7). A cost-aware ranking needs the Rust function to read the cost first.
   /** Language of generated messages (rule names win; this only phrases the fallback). */
   locale?: PlanLocale;
 }
@@ -100,7 +102,6 @@ export interface NormalizedCart {
   enteredCodes: string[];
   campaign: CartCampaignInput | null;
   today: string | null;
-  shippingAmount: number | null;
   locale: PlanLocale;
 }
 
@@ -200,10 +201,6 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
     enteredCodes,
     campaign: readCampaign(input.campaign),
     today,
-    shippingAmount:
-      typeof input.shippingAmount === "number" && Number.isFinite(input.shippingAmount) && input.shippingAmount >= 0
-        ? Math.floor(input.shippingAmount)
-        : null,
     locale: input.locale === "en" ? "en" : "cs",
   };
 }

@@ -31,6 +31,13 @@ export const CONFIG_LIMITS = Object.freeze({
   referenceLength: 100,
   /** Margin overrides per collection. */
   marginOverrides: 100,
+  /**
+   * Highest amount of money anywhere in the config, minor units (10 000 000 000
+   * CZK / EUR): far above any real price or threshold, and far below where the
+   * TS engine (floats) and the Rust function (i64) could read an amount
+   * differently (audit MVP 1 drift #6). Higher amounts are clamped, with an issue.
+   */
+  moneyMinorUnits: 1e12,
   /** Highest rule priority (0 = default); ties in the engine go to priority desc, id asc. */
   rulePriority: 1000,
   /**

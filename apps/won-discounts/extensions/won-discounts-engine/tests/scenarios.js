@@ -443,10 +443,106 @@ function allScenarios() {
   // --- a big variant outlet list on many lines of one product --------------------------------
   outletListShared(),
 
+  // --- minimum scope (audit MVP 1 native F5) ---------------------------------------------------
+  {
+    name: "lines-minimum-cart-vs-entitled",
+    description:
+      "Two product rules with a 1 000 Kč minimum. The cart minimum counts the whole cart (1 100 Kč: applies); the entitled minimum counts only its own lines (300 Kč: does not apply).",
+    target: "lines",
+    rules: [
+      pct("cart", 10, { name: "Košík nad 1000", minimum: { subtotal: { CZK: 100000 } } }),
+      pct("entitled", 20, { name: "Nákup nad 1000 z vybraných", minimum: { subtotal: { CZK: 100000 }, scope: "entitled" } }),
+    ],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "600.0", won: won("cart") },
+      { n: 2, price: "300.0", won: won("entitled") },
+      { n: 3, price: "200.0", won: null },
+    ],
+    expected: out(products(pc("Košík nad 1000", [1], percent(10)))),
+  },
+  {
+    name: "lines-minimum-entitled-reached",
+    description:
+      "The entitled minimum (1 000 Kč and 3 items of its own lines, an outlet line of the rule included, a gift line never) is reached: 20 % on its discountable lines.",
+    target: "lines",
+    rules: [pct("entitled", 20, { name: "Nákup nad 1000 z vybraných", minimum: { subtotal: { CZK: 100000 }, quantity: 3, scope: "entitled" } })],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "400.0", qty: 2, won: won("entitled") },
+      { n: 2, price: "200.0", won: { ruleIds: ["entitled"], outlet: true } },
+      { n: 3, price: "900.0", gift: "tier-1", won: won("entitled") },
+    ],
+    expected: out(products(pc("Nákup nad 1000 z vybraných", [1], percent(20)))),
+  },
+
+  // --- rounding ties are emitted as exact amounts (audit MVP 1 drift #4) ---------------------------
+  {
+    name: "lines-rounding-tie-exact",
+    description:
+      "10 % of 10.05 Kč is 100.5 haléřů: Shopify might round that tie down, so the line gets its exact 1.01 Kč per item; 10.04 Kč keeps the percent. A Pro stack 10 % + 5 % on 3 × 33.30 Kč (1 498.5 → 14.99 Kč) is its exact total once, not 15 %. The order percent on a half-way base (10 % of 104.05 Kč) is its exact 10.41 Kč.",
+    target: "lines",
+    rules: [
+      pct("ten", 10, { name: "Deset" }),
+      pct("a", 10, { name: "A", combinesWith: { ruleIds: ["b"] } }),
+      pct("b", 5, { name: "B" }),
+      orderPct("obj", 10, { name: "Objednávka" }),
+    ],
+    role: AUTO,
+    lines: [
+      { n: 1, price: "10.05", won: won("ten") },
+      { n: 2, price: "10.04", won: won("ten") },
+      { n: 3, price: "33.30", qty: 3, won: won("a", "b") },
+      { n: 4, price: "1.06", won: null },
+    ],
+    // Order base: 10.05 + 10.04 + 99.90 + 1.06 − (1.01 + 1.00 + 14.99) = 104.05 Kč → 1 040.5 haléřů → 10.41 Kč.
+    expected: out(
+      products(pc("Deset", [1], perItem("1.01")), pc("Deset", [2], percent(10)), pc("A + B", [3], lineTotal("14.99"))),
+      { orderDiscountsAdd: { candidates: [{ message: "Objednávka", targets: [{ orderSubtotal: { excludedCartLineIds: [] } }], value: { fixedAmount: { amount: "10.41" } } }], selectionStrategy: "FIRST" } },
+    ),
+  },
+
+  // --- a fixed shipping amount on a split shipment (audit MVP 1 drift #5) ------------------------
+  {
+    name: "delivery-fixed-shipping-first-group",
+    description:
+      "A fixed 50 Kč off shipping with two delivery groups: only the first group gets it (the plan gives 50 Kč once; a candidate on both groups could be applied to each).",
+    target: "delivery",
+    rules: [fixed("flat", { CZK: 5000 }, { name: "50 Kč z dopravy", target: { kind: "shipping" } })],
+    role: AUTO,
+    lines: [{ n: 1, price: "700.0", won: null }],
+    deliveryGroups: [DEFAULT_GROUP, "gid://shopify/CartDeliveryGroup/2"],
+    expected: out({
+      deliveryDiscountsAdd: {
+        candidates: [{ message: "50 Kč z dopravy", targets: [{ deliveryGroup: { id: DEFAULT_GROUP } }], value: { fixedAmount: { amount: "50.00" } } }],
+        selectionStrategy: "ALL",
+      },
+    }),
+  },
+
+  // --- a 3-decimal currency (fixtures were CZK / EUR only) ------------------------------------------
+  {
+    name: "lines-currency-bhd",
+    description: "A BHD cart (3 decimals): 1.250 BHD per item and 10 % print in the currency's minor units.",
+    target: "lines",
+    rules: [fixed("bhd", { BHD: 1250 }, { name: "1.250 BHD" }), pct("ten", 10, { name: "Deset" })],
+    role: AUTO,
+    currency: "BHD",
+    country: "BH",
+    language: "EN",
+    lines: [
+      { n: 1, price: "12.5", qty: 2, won: won("bhd") },
+      { n: 2, price: "7.25", won: won("ten") },
+    ],
+    // 10 % of 7.250 BHD = 725 fils (no tie): the percent.
+    expected: out(products(pc("1.250 BHD", [1], perItem("1.250")), pc("Deset", [2], percent(10)))),
+  },
+
   // --- output size (Shopify: 20 kB for ≤ 200 lines) ----------------------------------------
   proStackPercentOutput(),
   proStackDegradedOutput(),
   truncatedOutput(),
+  scaledBudgetOutput(),
 
   // --- instruction budget ------------------------------------------------------------------
   budget("lines"),
@@ -652,6 +748,11 @@ function outletListShared() {
 const OUTPUT_BUDGET = 19000;
 const bytes = (/** @type {unknown} */ value) => new TextEncoder().encode(JSON.stringify(value)).length;
 const minor = (/** @type {string} */ price) => Math.round(Number(price) * 100);
+/** A percent of S (minor units) that is half a minor unit: emitted as its exact amount. */
+const tie = (/** @type {number} */ s, /** @type {number} */ p) => {
+  const x = (s * p) / 100;
+  return Math.abs(x - Math.floor(x) - 0.5) <= 1e-7 * Math.max(1, x);
+};
 
 /** Groups `{ key, message, value, target }` rows into candidates, first appearance first. */
 function groupRows(/** @type {{ key: string | null, message: string, value: unknown, target: unknown, amount: number }[]} */ rows) {
@@ -694,7 +795,7 @@ function proStackPercentOutput() {
     const target = { cartLine: { id: lineId(i) } };
     const message = "Black Friday + VIP";
     if (total === s) rows.push({ key: "p100", message, value: percent(100), target, amount: total });
-    else if (Math.round((s * 32) / 100) === total) rows.push({ key: "p32", message, value: percent(32), target, amount: total });
+    else if (Math.round((s * 32) / 100) === total && !tie(s, 32)) rows.push({ key: "p32", message, value: percent(32), target, amount: total });
     else if (total % qty === 0) rows.push({ key: `e${total / qty}`, message, value: perItem(kc(total / qty)), target, amount: total });
     else rows.push({ key: null, message, value: lineTotal(kc(total)), target, amount: total });
   }
@@ -737,7 +838,10 @@ function proStackDegradedOutput() {
     degradedRows.push(
       fixFirst
         ? { key: `e${fix}`, message: "9,99 Kč z kusu", value: perItem(kc(fix)), target, amount: fix }
-        : { key: "p10", message: "Deset procent", value: percent(10), target, amount: ten },
+        : tie(s, 10)
+          ? // 10 % of a price ending in 5 haléřů is a rounding tie: the exact amount per item.
+            { key: `e${ten}`, message: "Deset procent", value: perItem(kc(ten)), target, amount: ten }
+          : { key: "p10", message: "Deset procent", value: percent(10), target, amount: ten },
     );
   }
   const exact = productsOf(groupRows(exactRows));
@@ -801,6 +905,57 @@ function truncatedOutput() {
     role: AUTO,
     lines,
     expected: productsOf(kept),
+  };
+}
+
+/**
+ * Over 200 lines Shopify scales the output limit with the line count, and so
+ * does the budget (240 lines → 22 800 B). 240 lines: the first N each carry a
+ * different Pro stack amount (one candidate each), the rest share one 10 %
+ * candidate; N is the largest for which the exact output fits the SCALED budget
+ * but not the 200-line one, so the output stays exact (not degraded).
+ * @returns {Scenario}
+ */
+function scaledBudgetOutput() {
+  const LINES = 240;
+  const scaled = Math.floor((OUTPUT_BUDGET * LINES) / 200);
+  const build = (/** @type {number} */ stacked) => {
+    const lines = [];
+    const rows = [];
+    for (let i = 1; i <= LINES; i += 1) {
+      const target = { cartLine: { id: lineId(i) } };
+      if (i <= stacked) {
+        const price = `${60 + i}.00`;
+        lines.push({ n: i, price, won: won("fix", "ten") });
+        const s = minor(price);
+        const ten = Math.round(s / 10);
+        const total = Math.min(s, 999 + ten);
+        // Rank: amount desc, then id asc ("fix" < "ten").
+        const message = 999 >= ten ? "9,99 Kč z kusu + Deset procent" : "Deset procent + 9,99 Kč z kusu";
+        rows.push({ key: `e${total}`, message, value: perItem(kc(total)), target, amount: total });
+      } else {
+        lines.push({ n: i, price: "100.0", won: won("ten") });
+        rows.push({ key: "p10", message: "Deset procent", value: percent(10), target, amount: 1000 });
+      }
+    }
+    return { lines, expected: productsOf(groupRows(rows)) };
+  };
+  let stacked = 0;
+  while (stacked < LINES && bytes(build(stacked + 1).expected) <= scaled) stacked += 1;
+  const { lines, expected } = build(stacked);
+  if (bytes(expected) <= OUTPUT_BUDGET) throw new Error("scaledBudgetOutput: must be over the 200-line budget");
+  return {
+    name: "lines-240-lines-scaled-budget",
+    description:
+      "Output size above 200 lines: Shopify's limit (and the function's budget) scale with the line count, so a 240-line output over 19 000 B but within the scaled 22 800 B stays exact.",
+    target: "lines",
+    rules: [
+      fixed("fix", { CZK: 999 }, { name: "9,99 Kč z kusu", combinesWith: { ruleIds: ["ten"] } }),
+      pct("ten", 10, { name: "Deset procent" }),
+    ],
+    role: AUTO,
+    lines,
+    expected,
   };
 }
 

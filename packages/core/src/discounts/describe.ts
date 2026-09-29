@@ -4,7 +4,7 @@
 // runtime is not guaranteed to ship it, so money/percent/date are formatted by hand.
 
 import type { PlanLocale } from "./cart.ts";
-import type { DiscountMethod, DiscountRuleValue, DiscountTargetKind } from "./config.ts";
+import type { DiscountMethod, DiscountRuleValue, DiscountTargetKind, MinimumScope } from "./config.ts";
 import { currencyExponent, type MoneyByCurrency, moneyFor } from "./money.ts";
 
 export type UiLocale = PlanLocale;
@@ -81,7 +81,7 @@ export interface DescribableRule {
   codes?: readonly string[];
   value: DiscountRuleValue;
   target: { readonly kind: DiscountTargetKind };
-  minimum?: { readonly subtotal?: MoneyByCurrency; readonly quantity?: number };
+  minimum?: { readonly subtotal?: MoneyByCurrency; readonly quantity?: number; readonly scope?: MinimumScope };
 }
 
 function firstCurrency(amount: MoneyByCurrency): string | undefined {
@@ -216,7 +216,26 @@ function describeMethod(rule: DescribableRule, locale: UiLocale, codesKnown: boo
   return `${label} ${shown}${tail}`;
 }
 
-/** "od 1 000 Kč" (engine: the cart currency) / "od 1 000 Kč / 40 €" (admin) and "od 3 ks". */
+/**
+ * "z vybraných produktů" / "of selected products": what an entitled minimum
+ * counts (MinimumScope "entitled" on a product or collection rule), else null.
+ */
+export function entitledMinimumPhrase(
+  target: DiscountTargetKind,
+  locale: UiLocale,
+): { cs: string; en: string } | null {
+  if (target === "products") return { cs: "z vybraných produktů", en: "of selected products" };
+  if (target === "collections") return { cs: "z vybraných kolekcí", en: "in selected collections" };
+  return null;
+}
+
+/**
+ * The minimum, in the words of what it is measured on:
+ *   - order / shipping rules: "od 1 000 Kč", "od 3 ks" (the order is the cart);
+ *   - product / collection rules, cart scope: "košík od 1 000 Kč", "košík od 3 ks";
+ *   - entitled scope: "nákup od 1 000 Kč z vybraných produktů", "od 3 ks z vybraných produktů".
+ * Engine: the cart currency; admin: "od 1 000 Kč / 40 €".
+ */
 function describeMinimum(
   rule: DescribableRule,
   locale: UiLocale,
@@ -224,24 +243,47 @@ function describeMinimum(
   currencies: readonly string[] | undefined,
 ): string[] {
   const cs = locale === "cs";
+  const target = rule.target.kind;
+  const lineTarget = target === "products" || target === "collections";
+  const entitled = rule.minimum?.scope === "entitled" ? entitledMinimumPhrase(target, locale) : null;
+  const moneyPhrase = (m: string) => {
+    if (entitled) return cs ? `nákup od ${m} ${entitled.cs}` : `from ${m} ${entitled.en}`;
+    if (lineTarget) return cs ? `košík od ${m}` : `cart from ${m}`;
+    return cs ? `od ${m}` : `orders from ${m}`;
+  };
   const parts: string[] = [];
   const subtotal = rule.minimum?.subtotal;
   if (subtotal && Object.keys(subtotal).length > 0) {
     if (currency === undefined && currencies) {
       const all = formatAmounts(subtotal, currencies, locale);
-      if (all) parts.push(cs ? `od ${all}` : `orders from ${all}`);
+      if (all) parts.push(moneyPhrase(all));
     } else {
       const code = currency ?? firstCurrency(subtotal);
       const minor = code ? moneyFor(subtotal, code) : null;
       if (code && minor !== null) {
-        parts.push(cs ? `od ${formatMoney(minor, code, locale)}` : `orders from ${formatMoney(minor, code, locale)}`);
+        parts.push(moneyPhrase(formatMoney(minor, code, locale)));
       } else if (code) {
         parts.push(cs ? `v ${code} se nenabízí (minimum bez hodnoty)` : `not offered in ${code} (no minimum amount)`);
       }
     }
   }
   const quantity = rule.minimum?.quantity ?? 0;
-  if (quantity > 0) parts.push(cs ? `od ${quantity} ks` : `from ${quantity} ${enPlural(quantity, "item", "items")}`);
+  if (quantity > 0) {
+    const items = enPlural(quantity, "item", "items");
+    if (entitled) {
+      parts.push(
+        cs
+          ? `od ${quantity} ks ${entitled.cs}`
+          : target === "collections"
+            ? `from ${quantity} ${items} ${entitled.en}`
+            : `from ${quantity} selected ${items}`,
+      );
+    } else if (lineTarget) {
+      parts.push(cs ? `košík od ${quantity} ks` : `cart from ${quantity} ${items}`);
+    } else {
+      parts.push(cs ? `od ${quantity} ks` : `from ${quantity} ${items}`);
+    }
+  }
   return parts;
 }
 

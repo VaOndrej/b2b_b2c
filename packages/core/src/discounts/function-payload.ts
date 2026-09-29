@@ -45,7 +45,10 @@
 //     shop's IANA time zone, because the function can only compare
 //     `shop.localTime.date`;
 //   - Pro market targeting as `marketCountries` (the function's
-//     `localization.market` is deprecated; the engine matches the cart country).
+//     `localization.market` is deprecated; the engine matches the cart country);
+//   - a minimum's `scope` only when it is "entitled" (absent = the whole cart).
+// A Free shop's config goes through plan-gate.ts gateConfigForPlan first, so
+// none of its Pro data (targeting, combinesWith, campaigns) ever ships.
 
 import { codeHash } from "./code-hash.ts";
 import { normalizeCode, type CartCampaignInput } from "./cart.ts";
@@ -84,7 +87,8 @@ export interface FunctionRule {
   value: DiscountRuleValue;
   target: { kind: DiscountTargetKind };
   priority?: number;
-  minimum?: { subtotal?: MoneyByCurrency; quantity?: number };
+  /** `scope: "entitled"` only when the minimum counts the rule's own lines; absent = the whole cart. */
+  minimum?: { subtotal?: MoneyByCurrency; quantity?: number; scope?: "entitled" };
   /**
    * Shop-local calendar days, inclusive (`YYYY-MM-DD`). `{ invalid: true }` when a
    * date could not be converted: the engine then never applies the rule (fail
@@ -198,17 +202,85 @@ function formatterFor(timeZone: unknown, where: string): Intl.DateTimeFormat {
   return formatter;
 }
 
-/** An instant as shop-local { date: "YYYY-MM-DD", midnight } (DST-safe: Intl does the zone math). */
-function localParts(iso: string, formatter: Intl.DateTimeFormat): { date: string; midnight: boolean } | null {
-  const ms = Date.parse(iso);
-  if (!Number.isFinite(ms)) return null;
+interface LocalTime {
+  /** Shop-local "YYYY-MM-DD". */
+  date: string;
+  /** Shop-local "HH:MM:SS". */
+  time: string;
+  /** Offset from UTC at that instant, minutes (Prague summer: +120). */
+  offset: number;
+}
+
+/** An instant (epoch ms) in the shop's zone (DST-safe: Intl does the zone math). */
+function localAt(ms: number, formatter: Intl.DateTimeFormat): LocalTime {
   const parts: Record<string, string> = {};
   for (const p of formatter.formatToParts(new Date(ms))) parts[p.type] = p.value;
-  const subSecond = ms % 1000 !== 0;
+  const wall = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second));
   return {
     date: `${parts.year}-${parts.month}-${parts.day}`,
-    midnight: parts.hour === "00" && parts.minute === "00" && parts.second === "00" && !subSecond,
+    time: `${parts.hour}:${parts.minute}:${parts.second}`,
+    offset: Math.round((wall - Math.floor(ms / 1000) * 1000) / 60_000),
   };
+}
+
+const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * The first instant (epoch ms, whole seconds) whose shop-local date is `date`.
+ * Found by search, not by "local midnight": in zones whose clocks jump at
+ * midnight (America/Santiago, America/Havana on their spring-forward day) the
+ * day starts at 01:00, and there is no local 00:00 to convert (audit MVP 1
+ * drift #8). Every offset lies within −12 h … +14 h, so the answer lies within
+ * 15 h of that day's UTC midnight.
+ */
+function dayStartMs(date: string, formatter: Intl.DateTimeFormat): number {
+  const key = `${formatter.resolvedOptions().timeZone}|${date}`;
+  const cached = DAY_STARTS.get(key);
+  if (cached !== undefined) return cached;
+  const ms = searchDayStart(date, formatter);
+  if (DAY_STARTS.size >= 10_000) DAY_STARTS.clear();
+  DAY_STARTS.set(key, ms);
+  return ms;
+}
+
+/** zone|date → dayStartMs (a sync builds the payload once per live campaign; the search is ~17 Intl calls). */
+const DAY_STARTS = new Map<string, number>();
+
+function searchDayStart(date: string, formatter: Intl.DateTimeFormat): number {
+  const m = DAY_RE.exec(date);
+  const utcMidnight = m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : Number.NaN;
+  if (!m || !Number.isFinite(utcMidnight) || new Date(utcMidnight).toISOString().slice(0, 10) !== date) {
+    throw new TypeError(`shopDayStart: ${JSON.stringify(date)} is not a calendar date YYYY-MM-DD`);
+  }
+  let lo = utcMidnight / 1000 - 15 * 3600; // local date before `date`
+  let hi = utcMidnight / 1000 + 15 * 3600; // local date at or after `date`
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (localAt(mid * 1000, formatter).date < date) lo = mid;
+    else hi = mid;
+  }
+  return hi * 1000;
+}
+
+function offsetText(minutes: number): string {
+  const abs = Math.abs(minutes);
+  return `${minutes < 0 ? "-" : "+"}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
+}
+
+/**
+ * The start of a shop-local day as an ISO date-time with the zone's offset at
+ * that instant: "2026-07-01T00:00:00+02:00" in Prague, and
+ * "2026-09-06T01:00:00-03:00" in Santiago, where that day has no midnight. What
+ * a whole-day rule schedule stores (the admin's day picker: start = start of the
+ * first day, end = start of the day after the last one), and what
+ * shopLocalDates reads back as exactly those days. Throws TypeError on an
+ * invalid date or zone (a programming error).
+ */
+export function shopDayStart(date: string, shopTimezone: string): string {
+  const formatter = formatterFor(shopTimezone, "shopDayStart");
+  const ms = dayStartMs(date, formatter);
+  const local = localAt(ms, formatter);
+  return `${local.date}T${local.time}${offsetText(local.offset)}`;
 }
 
 function previousDay(date: string): string {
@@ -219,7 +291,9 @@ function previousDay(date: string): string {
 /**
  * A rule schedule (ISO date-times with any offset, `Z` included) as the shop's
  * calendar days: `startsOn` = the local day of `startsAt`; `endsOn` = the local
- * day of `endsAt`, or the day before when it ends exactly at local midnight.
+ * day of `endsAt`, or the day before when it ends exactly at the START of its
+ * local day (an exclusive end; the start of a day is local midnight, or 01:00
+ * where the clocks skip midnight — shopDayStart).
  * [spec] Day granularity: the rule is live the whole of both days.
  */
 export function shopLocalDates(
@@ -229,12 +303,15 @@ export function shopLocalDates(
   const formatter = formatterFor(shopTimezone, "shopLocalDates");
   const out: { startsOn?: string; endsOn?: string } = {};
   if (schedule.startsAt) {
-    const start = localParts(schedule.startsAt, formatter);
-    if (start) out.startsOn = start.date;
+    const ms = Date.parse(schedule.startsAt);
+    if (Number.isFinite(ms)) out.startsOn = localAt(ms, formatter).date;
   }
   if (schedule.endsAt) {
-    const end = localParts(schedule.endsAt, formatter);
-    if (end) out.endsOn = end.midnight ? previousDay(end.date) : end.date;
+    const ms = Date.parse(schedule.endsAt);
+    if (Number.isFinite(ms)) {
+      const date = localAt(ms, formatter).date;
+      out.endsOn = ms === dayStartMs(date, formatter) ? previousDay(date) : date;
+    }
   }
   return out;
 }
@@ -267,6 +344,8 @@ function shipRule(r: ReadonlyDeep<DiscountRule>, shopTimezone: string): Function
     out.minimum = {};
     if (hasSubtotal) out.minimum.subtotal = { ...subtotal };
     if (quantity > 0) out.minimum.quantity = quantity;
+    // Absent = the whole cart (the default), so only "entitled" costs bytes.
+    if (r.minimum?.scope === "entitled") out.minimum.scope = "entitled";
   }
   if (r.schedule && (r.schedule.startsAt || r.schedule.endsAt)) {
     // Fail closed: a side that was set but did not convert must not become "unbounded".

@@ -1,6 +1,7 @@
 // planCart (plan.ts): the one discount brain, the part of it a node's emission
 // depends on. Same stages, same order, same ties:
-//   resolveRules → matchCodes → prepareLines → gateRules → planProducts →
+//   resolveRules → matchCodes → prepareLines → gateRules (minimum: the whole
+//   cart, or the rule's own lines when its scope is "entitled") → planProducts →
 //   (margin hook: identity) → planOrderStage → planShipping.
 // Left out on purpose (explain/admin only, never emitted): rule outcomes and
 // their states beyond "eligible or not", `betterRuleIds`, `combinedInto`,
@@ -96,6 +97,8 @@ pub struct Rule<'a> {
     pub min_subtotal: Option<i64>,
     pub min_subtotal_missing: bool,
     pub min_quantity: i64,
+    /// The minimum counts only the rule's own lines (scope "entitled").
+    pub min_entitled: bool,
     pub scheduled: bool,
     pub schedule_invalid: bool,
     pub starts_on: Option<&'a str>,
@@ -217,6 +220,7 @@ fn read_rule<'a>(raw: &'a RawRule, fields: FieldsRef<'a>, cart: &NormalizedCart)
         min_subtotal,
         min_subtotal_missing: has_subtotal && min_subtotal.is_none(),
         min_quantity: fields.minimum.quantity,
+        min_entitled: fields.minimum.entitled,
         scheduled: raw.scheduled,
         schedule_invalid: raw.schedule_invalid,
         starts_on: raw.starts_on.as_deref(),
@@ -400,8 +404,11 @@ fn gate(
     }
     // [spec] „Minimum košíku“ = the WHOLE cart (every non-gift line, outlet
     // included), whatever the rule targets; the same for the quantity minimum.
-    let missing_subtotal = rule.min_subtotal.map_or(0, |m| m.saturating_sub(cart_scope.subtotal).max(0));
-    let missing_quantity = if rule.min_quantity > 0 { rule.min_quantity.saturating_sub(cart_scope.quantity).max(0) } else { 0 };
+    // An "entitled" minimum counts only a product rule's own lines, measured the
+    // same way; an order or shipping rule is entitled to the whole cart.
+    let scope = if rule.min_entitled && rule.cls == DiscountClass::Product { target_scope } else { cart_scope };
+    let missing_subtotal = rule.min_subtotal.map_or(0, |m| m.saturating_sub(scope.subtotal).max(0));
+    let missing_quantity = if rule.min_quantity > 0 { rule.min_quantity.saturating_sub(scope.quantity).max(0) } else { 0 };
     if missing_subtotal > 0 || missing_quantity > 0 {
         return Some(RuleState::BelowMinimum);
     }

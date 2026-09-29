@@ -11,9 +11,11 @@ The Won Discounts discount function (Discount Function API 2026-04), targets
   except the short text of an unnamed rule, which is the checkout message.
 - **TS engine (`packages/core/src/discounts`): the reference.** The admin
   ("Vyzkoušet košík") and the storefront use it, and it defines what is correct.
-  `tests/reference-adapter.js` holds the reference adapter and the output
-  mapping. With the TS engine it computes the reference output for any
-  function input.
+  The output mapping lives there too (`function-output.ts`
+  `mapToFunctionOutput`), so the admin's `checkoutPreview` shows what the
+  checkout will actually apply and warns when the output was degraded.
+  `tests/reference-adapter.js` is the function-input adapter around it: with
+  the TS engine it computes the reference output for any function input.
 
 Why Rust: the JS function (Javy) cost ~96 M instructions on a 200-line cart,
 against Shopify's limit of 11 M. Reading the input alone cost 12.3 M. Over the
@@ -41,7 +43,9 @@ Details:
 - **Wasm output text.** The output text function-runner prints (sorted keys, and numbers in the form the Wasm wrote them, e.g. `10` not `10.0`) must equal the expected output rendered the same way.
 - **Native Rust output text.** Compared character for character. The same run checks that the output-size arithmetic equals the written JSON.
 - **Random carts.**
-  - Seeds `20260928,1,2,3,5,8` × 400 cases, up to 50 lines, junk data included.
+  - Seeds `20260928,1,2,3,5,8` × 400 cases, up to 260 lines, junk data included.
+  - "Big" carts (150–260 lines, 200-character names, distinct Pro stack amounts or rounding ties) go over the output budget, so the degraded and truncated outputs are compared too; "large" carts reach quantities of 5 000, prices of 99 999 999.99 and amounts at the money cap.
+  - Codes padded with NBSP, BOM and tab, astral and case-mapped codes; lower-case, padded and invalid countries; priorities up to 1 000; CZK, EUR, JPY, KWD, HUF, BHD and USD; entitled minimums; a fixed shipping amount on split shipments.
   - Rule ids include non-ASCII, astral and 64-character text, plus a UTF-16 tie mode, so the tie order is compared too.
   - Every engine branch must be hit ≥ 20 times, or the test fails.
   - Env overrides: `PARITY_SEEDS=…`, `PARITY_CASES=…`.
@@ -69,16 +73,25 @@ gives no discount at all. The output mapping (the same in
      - whole-percent stack ΣP with `Math.round(S × ΣP / 100)` = T → ΣP %;
      - T divisible by the quantity q → T / q per item;
      - otherwise T once, on that line only. A shared `appliesToEachItem: false` amount would be applied once across all its targets, so it is never grouped.
+   - A percent whose amount is half a minor unit (a rounding tie, `roundingTiePossible` / `tie_possible`: 10 % of 10.05 Kč) is emitted as its exact amount the same way (per item, else once on the line). Shopify rounds the decimal S × P / 100 itself and may round a tie the other way than the plan. The same holds for a stack's ΣP and for an order percent (then a fixed amount off the order).
 2. **Over the budget, stacks drop to their top rule.** The budget is 19 000 B, scaled like Shopify's limit. Every Pro stack is emitted as its top rule's own value, which groups; the customer keeps the larger part of the stack. The function logs it.
 3. **Last resort, drop the smallest.** The product candidates that save the least are dropped until the output fits.
+
+Above 200 lines the budget scales like Shopify's limit (`lines-240-lines-scaled-budget`: 22.7 kB, exact, under the 22 800 B budget of 240 lines).
+
+Delivery: a percent (free shipping = 100 %) targets every delivery group; a
+fixed amount targets the first group only. Shopify's docs do not say that one
+fixed candidate on several groups is taken once, and the plan counts it once,
+so a split shipment never gets it N times (`delivery-fixed-shipping-first-group`).
 
 Worst-case fixtures:
 
 | Fixture | Exact output | Emitted output |
 |---|---|---|
 | `lines-pro-stack-output-percent` | 32.7 kB before the change | 14.9 kB |
-| `lines-pro-stack-output-degraded` | 35.0 kB | 10.0 kB |
+| `lines-pro-stack-output-degraded` | 35.0 kB | 11.6 kB (15 rounding ties as exact amounts) |
 | `lines-output-truncated` | 47.5 kB | 18.2 kB |
+| `lines-240-lines-scaled-budget` | 22.7 kB | 22.7 kB (exact: the 240-line budget is 22 800 B) |
 
 ## Layout
 
@@ -88,7 +101,7 @@ Worst-case fixtures:
 | `src/cart_lines_discounts_generate_run.rs`, `src/cart_delivery_options_discounts_generate_run.rs` | the two targets |
 | `src/input.rs` | function input → engine cart, config and node role (the reference adapter's `adaptInput`) |
 | `src/json.rs` | tolerant readers for the `jsonValue` metafields and the line price (`custom_scalar_overrides`), the per-run outlet-list cache |
-| `src/output.rs` | emission → function output: exact values, grouping, the output budget; written through the Wasm API |
+| `src/output.rs` | emission → function output (`@won/core` `function-output.ts`): exact values, rounding ties, grouping, the output budget, delivery groups; written through the Wasm API |
 | `src/engine/` | `config.rs` (shared config), `cart.rs` (normalizeCart), `plan.rs` (planCart), `emit.rs` (emitForNode), `hash.rs` (code hash), `money.rs`, `describe.rs`, `fnv.rs`, `js.rs` (the JS semantics the engine relies on: Math.round, trim, string order) |
 
 Invariants:
@@ -96,6 +109,7 @@ Invariants:
 - Money is in integer minor units (i64). Sums saturate.
 - Percentages use the TS float expression and `Math.round` semantics.
 - Ties go to amount desc, then priority desc, then id asc (JS string order, by UTF-16 unit).
+- A minimum counts the whole cart (every non-gift line, pre-discount, outlet included), or only a product rule's own lines when the payload says `minimum.scope: "entitled"` (a migrated native's semantics; absent = the cart).
 - Parsing never fails. Junk in a metafield reads as "nothing". A missing or invalid shared config emits no operations.
 
 ## Accepted edge differences (junk data only)
@@ -105,7 +119,7 @@ These differ from the TS reference only for values that the admin's
 not covered by the random parity test.
 
 - **Priority.** A priority beyond ±9.2·10¹⁸ saturates in `i64`, while TS still orders such priorities. The sanitizer clamps priority to 0–1000 (`CONFIG_LIMITS.rulePriority`).
-- **Huge money.** Amounts at or beyond 2⁶³ minor units saturate. TS loses precision already beyond 2⁵³ (~90 trillion CZK).
+- **Huge money.** Config amounts are capped at 10¹² minor units by the sanitizer (`CONFIG_LIMITS.moneyMinorUnits`) and both engines read a larger hand-made amount as that cap, so they always agree on it. Cart prices arrive as decimal strings and are refused above 2⁵³ − 1 minor units on both sides. What remains: a cart whose TOTAL passes 2⁵³ minor units (~90 trillion CZK) saturates in Rust and loses precision in TS.
 - **Number text.** Rust prints plain decimals where JS switches to exponent notation (≥ 10²¹ or < 10⁻⁶).
   - For a line price given as a JSON number, both read the same value: Shopify sends prices as strings, and such numbers end as "no price" or 0 on both sides.
   - Percentages are clamped to 0–100 and messages round them to 2 decimals. A percent below 10⁻⁶ would print differently but parse to the same number.

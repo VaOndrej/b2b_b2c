@@ -34,6 +34,18 @@ export const DISCOUNT_TARGET_KINDS = [
 ] as const;
 export type DiscountTargetKind = (typeof DISCOUNT_TARGET_KINDS)[number];
 
+/**
+ * What a rule's minimum (subtotal / quantity) is measured on:
+ *   - "cart": the whole cart, every non-gift line at its pre-discount price,
+ *     outlet included — the spec's „minimum košíku“, the default for a rule
+ *     made in Won;
+ *   - "entitled": only the lines the rule targets (for an order or shipping
+ *     rule that is the whole cart too) — Shopify's semantics for a product /
+ *     collection discount's minimum, which a migrated native keeps.
+ */
+export const MINIMUM_SCOPES = ["cart", "entitled"] as const;
+export type MinimumScope = (typeof MINIMUM_SCOPES)[number];
+
 export const TIER_COUNT_ACROSS_MODES = ["line", "product", "cart"] as const;
 export type TierCountAcross = (typeof TIER_COUNT_ACROSS_MODES)[number];
 

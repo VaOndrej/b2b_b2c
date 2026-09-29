@@ -97,9 +97,36 @@ export function sanitizePercent(
   return n;
 }
 
+/**
+ * A text of at most `maxLen` UTF-16 units, cut at a whole code point (a
+ * surrogate pair is never split) and without lone surrogates: those are not
+ * valid UTF-8, so they must never reach the function payload, which Shopify
+ * stores as UTF-8 (audit MVP 1 drift #10). Anything but a string → `fallback`.
+ */
 export function sanitizeString(v: unknown, fallback: string, maxLen = 200): string {
-  return typeof v === "string" ? v.slice(0, maxLen) : fallback;
+  if (typeof v !== "string") return fallback;
+  const head = v.length > maxLen ? v.slice(0, maxLen + 1) : v;
+  if (!SURROGATE_RE.test(head)) return head.slice(0, maxLen);
+  let out = "";
+  for (let i = 0; i < v.length; i++) {
+    const unit = v.charCodeAt(i);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const next = v.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        if (out.length + 2 > maxLen) break;
+        out += v[i] + v[i + 1];
+        i++;
+      }
+      continue; // a lone high surrogate is dropped
+    }
+    if (unit >= 0xdc00 && unit <= 0xdfff) continue; // a lone low surrogate is dropped
+    if (out.length + 1 > maxLen) break;
+    out += v[i];
+  }
+  return out;
 }
+
+const SURROGATE_RE = /[\uD800-\uDFFF]/;
 
 /** A raw key echoed into an issue's path or message, bounded so an unbounded
  * input (e.g. a multi-MB patch key) can never blow up the issues payload
@@ -174,9 +201,21 @@ export function sanitizeReference(v: unknown, issues: ConfigIssue[], path: strin
   return undefined;
 }
 
-/** MoneyByCurrency with at most CONFIG_LIMITS.currenciesPerAmount currencies (first ones win). */
+/**
+ * MoneyByCurrency with at most CONFIG_LIMITS.currenciesPerAmount currencies
+ * (first ones win), each amount at most CONFIG_LIMITS.moneyMinorUnits.
+ */
 export function sanitizeMoney(v: unknown, issues: ConfigIssue[], path: string): MoneyByCurrency {
-  const money = sanitizeMoneyByCurrency(v);
+  const money = sanitizeMoneyByCurrency(v, { max: CONFIG_LIMITS.moneyMinorUnits });
+  const over = Object.keys(money).filter((k) => money[k] === CONFIG_LIMITS.moneyMinorUnits && overCap(v, k));
+  if (over.length > 0) {
+    pushIssue(
+      issues,
+      path,
+      "clamped_money",
+      `An amount can be at most ${CONFIG_LIMITS.moneyMinorUnits} minor units; ${listPreview(over)} was lowered to that.`,
+    );
+  }
   const keys = Object.keys(money);
   if (keys.length <= CONFIG_LIMITS.currenciesPerAmount) return money;
   pushIssue(
@@ -186,6 +225,14 @@ export function sanitizeMoney(v: unknown, issues: ConfigIssue[], path: string): 
     `An amount can have at most ${CONFIG_LIMITS.currenciesPerAmount} currencies; ${keys.length - CONFIG_LIMITS.currenciesPerAmount} more were dropped.`,
   );
   return Object.fromEntries(keys.slice(0, CONFIG_LIMITS.currenciesPerAmount).map((k) => [k, money[k]]));
+}
+
+/** True when the raw map's value for currency `key` (any key casing) was above the money cap. */
+function overCap(raw: unknown, key: string): boolean {
+  if (!isRecord(raw)) return false;
+  return Object.entries(raw).some(
+    ([k, value]) => k.toUpperCase() === key && typeof value === "number" && Math.floor(value) > CONFIG_LIMITS.moneyMinorUnits,
+  );
 }
 
 /** FNV-1a (32 bit): a tiny, stable string hash — the same input always gives the same id. */

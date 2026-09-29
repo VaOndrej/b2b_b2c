@@ -1,5 +1,5 @@
-// The function output (tests/reference-adapter.js toCartLinesResult /
-// toDeliveryResult), written through the Wasm API directly instead of the
+// The function output (@won/core function-output.ts mapToFunctionOutput, the
+// parity oracle through tests/reference-adapter.js), written through the Wasm API directly instead of the
 // generated output types: the generated `Decimal` serializes as a string
 // ("10.0") while the TS reference emits a JSON number (10), and the fixtures
 // are the parity oracle. Keys are written in the reference's order; every
@@ -71,7 +71,7 @@ pub struct DeliveryResult {
     pub candidates: Vec<DeliveryCandidateOut>,
 }
 
-// --- Emission → output (tests/reference-adapter.js) -------------------------------------------
+// --- Emission → output (@won/core function-output.ts) ------------------------------------------
 //
 // Shopify refuses a function output over 20 kB (1 kB = 1000 B) for carts up to
 // 200 lines — the limit scales with the line count above that
@@ -82,6 +82,10 @@ pub struct DeliveryResult {
 //      - a Pro stack (fixed total T on a line of subtotal S, quantity q):
 //        T = S → 100 %; a stack of whole percents P whose Math.round(S × ΣP / 100)
 //        is T → ΣP %; T divisible by q → T / q per item; else T once on that line;
+//      - a percent whose amount lands on half a minor unit (`tie_possible`) →
+//        its exact amount: Shopify rounds the decimal S × P / 100 itself and may
+//        round a tie the other way than the plan. The same for a stack's summed
+//        percent and for an order percent;
 //   2. candidates with the same message and value share one candidate with
 //      several targets (a fixed total on one line never groups: shared, it would
 //      be applied ONCE across all its targets);
@@ -134,6 +138,26 @@ struct Draft<'p> {
     saves: i64,
 }
 
+/// `roundingTiePossible` (function-output.ts): `base × percent / 100` minor
+/// units may be half a minor unit in decimal (Shopify's arithmetic). The same
+/// IEEE expression as the TS reference, so both decide identically.
+pub fn tie_possible(base: i64, percent: f64) -> bool {
+    let exact = (base as f64 * percent) / 100.0;
+    let fraction = exact - exact.floor();
+    (fraction - 0.5).abs() <= 1e-7 * exact.max(1.0)
+}
+
+/// An exact amount on one line: the whole line → 100 %, divisible → per item, else once on that line.
+fn exact_amount(total: i64, line: &PlanLine) -> DraftValue {
+    if total == line.subtotal {
+        DraftValue::Percent(100.0)
+    } else if line.quantity > 0 && total % line.quantity == 0 {
+        DraftValue::PerItem(total / line.quantity)
+    } else {
+        DraftValue::Total(total)
+    }
+}
+
 /// ΣP when every component of the stack is a whole-percent rule.
 fn whole_percent_sum(plan: &CartPlan, stack: &PlanStack) -> Option<f64> {
     let mut sum = 0.0;
@@ -150,6 +174,7 @@ fn whole_percent_sum(plan: &CartPlan, stack: &PlanStack) -> Option<f64> {
 /// One emitted product candidate → its exact output value, in the most groupable form.
 fn exact_value(c: &ProductCandidate, line: &PlanLine, plan: &CartPlan) -> DraftValue {
     match c.value {
+        EmittedValue::Percent(p) if tie_possible(line.subtotal, p) => exact_amount(c.amount, line),
         EmittedValue::Percent(p) => DraftValue::Percent(p),
         EmittedValue::FixedPerItem(v) if v == line.unit_price => DraftValue::Percent(100.0),
         EmittedValue::FixedPerItem(v) => DraftValue::PerItem(v),
@@ -159,25 +184,27 @@ fn exact_value(c: &ProductCandidate, line: &PlanLine, plan: &CartPlan) -> DraftV
             }
             let percent = line.product.as_ref().and_then(|stack| whole_percent_sum(plan, stack));
             if let Some(p) = percent {
-                if js::round((line.subtotal as f64 * p) / 100.0) as i64 == total {
+                if js::round((line.subtotal as f64 * p) / 100.0) as i64 == total && !tie_possible(line.subtotal, p) {
                     return DraftValue::Percent(p);
                 }
             }
-            if line.quantity > 0 && total % line.quantity == 0 {
-                return DraftValue::PerItem(total / line.quantity);
-            }
-            DraftValue::Total(total)
+            exact_amount(total, line)
         }
     }
 }
 
 /// A Pro stack emitted as its top rule's own value (the first component, which
-/// the stack never caps): the rule's percent, or its fixed amount per item.
+/// the stack never caps): the rule's percent (its exact amount on a tie), or
+/// its fixed amount per item.
 fn top_rule_value<'p>(line: &PlanLine, plan: &'p CartPlan) -> Option<(DraftValue, &'p str, i64)> {
     let top = *line.product.as_ref()?.components.first()?;
     let rule = &plan.rules[top.rule];
     let value = if rule.value_kind == ValueKind::Percentage {
-        DraftValue::Percent(rule.percent)
+        if tie_possible(line.subtotal, rule.percent) {
+            exact_amount(top.amount, line)
+        } else {
+            DraftValue::Percent(rule.percent)
+        }
     } else {
         let per_item = top.amount / line.quantity.max(1);
         if per_item == line.unit_price {
@@ -358,15 +385,23 @@ pub fn cart_lines_result(
     line_count: usize,
 ) -> CartLinesResult {
     let currency = plan.currency.as_str();
+    let base = plan.order.as_ref().map_or(0, |o| o.base);
     let order_candidates: Vec<OrderCandidateOut> = if order {
         emission
             .order
             .iter()
             .filter_map(|c| {
+                let value = match c.value {
+                    // A rounding tie: the exact amount (Shopify rounds the percent itself).
+                    EmittedValue::Percent(p) if tie_possible(base, p) => {
+                        TotalValue::FixedAmount(from_minor_units(c.amount, currency))
+                    }
+                    ref value => total_value(value, currency)?,
+                };
                 Some(OrderCandidateOut {
                     message: c.message.to_string(),
                     excluded_cart_line_ids: c.excluded_line_ids.iter().map(|id| id.to_string()).collect(),
-                    value: total_value(&c.value, currency)?,
+                    value,
                 })
             })
             .collect()
@@ -425,7 +460,10 @@ pub fn cart_lines_result(
     result
 }
 
-/// `cart.delivery-options.discounts.generate.run` output: the shipping winner on every delivery group.
+/// `cart.delivery-options.discounts.generate.run` output: the shipping winner,
+/// a percent on every delivery group, a fixed amount on the first group only
+/// (Shopify's docs do not say one fixed candidate on several groups is taken
+/// once; the plan counts it once).
 pub fn delivery_result(emission: &NodeEmission, shipping: bool, group_ids: &[String], currency: &str) -> DeliveryResult {
     if !shipping || group_ids.is_empty() {
         return DeliveryResult::default();
@@ -433,12 +471,16 @@ pub fn delivery_result(emission: &NodeEmission, shipping: bool, group_ids: &[Str
     let candidates = emission
         .delivery
         .iter()
-        .map(|c| DeliveryCandidateOut {
-            message: c.message.to_string(),
-            targets: group_ids.to_vec(),
-            value: match c.value {
-                ShippingValue::Percent(p) => TotalValue::Percentage(p),
-                ShippingValue::FixedTotal(amount) => TotalValue::FixedAmount(from_minor_units(amount, currency)),
+        .map(|c| match c.value {
+            ShippingValue::Percent(p) => DeliveryCandidateOut {
+                message: c.message.to_string(),
+                targets: group_ids.to_vec(),
+                value: TotalValue::Percentage(p),
+            },
+            ShippingValue::FixedTotal(amount) => DeliveryCandidateOut {
+                message: c.message.to_string(),
+                targets: group_ids[..1].to_vec(),
+                value: TotalValue::FixedAmount(from_minor_units(amount, currency)),
             },
         })
         .collect();

@@ -31,6 +31,10 @@ pub enum Money {
     Record(Vec<(String, Option<f64>)>),
 }
 
+/// CONFIG_LIMITS.moneyMinorUnits (limits.ts): the sanitizer caps every stored
+/// amount there, and both engines read a larger hand-made one as the cap.
+pub const MAX_MONEY_MINOR: f64 = 1e12;
+
 impl Money {
     fn lookup(&self, currency: &str) -> Option<f64> {
         match self {
@@ -40,9 +44,9 @@ impl Money {
         }
     }
 
-    /// `amountIn` (plan.ts): a finite number ≥ 0, floored; else none.
+    /// `amountIn` (plan.ts): a finite number ≥ 0, at most MAX_MONEY_MINOR, floored; else none.
     pub fn amount_in(&self, currency: &str) -> Option<i64> {
-        self.lookup(currency).filter(|v| *v >= 0.0).map(js::floor_to_i64)
+        self.lookup(currency).filter(|v| *v >= 0.0).map(|v| js::floor_to_i64(v.min(MAX_MONEY_MINOR)))
     }
 
     /// `moneyFor` (money.ts), as describe.ts phrases it: the raw number.
@@ -73,6 +77,8 @@ pub struct Minimum {
     pub subtotal: Money,
     /// `minimum.quantity` when a number > 0, floored; else 0.
     pub quantity: i64,
+    /// `minimum.scope === "entitled"`: only the rule's own lines count (else the whole cart).
+    pub entitled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -263,6 +269,7 @@ fn read_minimum(value: &Value) -> Minimum {
     Minimum {
         subtotal: read_money(&prop(value, "subtotal")),
         quantity: number(&prop(value, "quantity")).filter(|q| *q > 0.0).map_or(0, js::floor_to_i64),
+        entitled: string(&prop(value, "scope")).as_deref() == Some("entitled"),
     }
 }
 

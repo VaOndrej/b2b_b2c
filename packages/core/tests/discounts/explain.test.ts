@@ -141,9 +141,10 @@ test("describeRule: admin headers, Czech and English", () => {
   ]).modules.codes.rules;
   assert.equal(describeRule(a, "cs", "CZK"), `10${NBSP}% z objednávky · kódy LETO, ZIMA, JARO · od 1${NBSP}000${NBSP}Kč`);
   assert.equal(describeRule(a, "en", "CZK"), "10% off the order · codes LETO, ZIMA, JARO · orders from CZK 1,000");
-  assert.equal(describeRule(b, "cs", "CZK"), `200${NBSP}Kč z každého kusu vybraných produktů · automaticky · od 3 ks`);
-  assert.equal(describeRule(b, "en", "CZK"), "CZK 200 off each selected item · automatic · from 3 items");
-  assert.equal(describeRule(b, "cs", "EUR"), "Pevná sleva (pro EUR bez hodnoty) · automaticky · od 3 ks");
+  // A product rule's minimum says what it is measured on: the whole cart (minimum-scope.test.ts).
+  assert.equal(describeRule(b, "cs", "CZK"), `200${NBSP}Kč z každého kusu vybraných produktů · automaticky · košík od 3 ks`);
+  assert.equal(describeRule(b, "en", "CZK"), "CZK 200 off each selected item · automatic · cart from 3 items");
+  assert.equal(describeRule(b, "cs", "EUR"), "Pevná sleva (pro EUR bez hodnoty) · automaticky · košík od 3 ks");
   assert.equal(describeRule(c, "cs", "CZK"), "Doprava zdarma · automaticky");
   assert.equal(describeRule(d, "en", "CZK"), "15% off selected collections · automatic");
   assert.equal(describeRule(a, "cs", "CZK", { short: true }), `10${NBSP}% z objednávky`);

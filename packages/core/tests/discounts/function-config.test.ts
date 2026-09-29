@@ -199,7 +199,8 @@ test("rules ship without admin-only fields (origin, limits) but keep what the en
   assert.equal(shipped.id, "r1");
   assert.deepEqual(shipped.codes, ["VIP"]);
   assert.deepEqual(shipped.value, { kind: "percentage", percent: 15 });
-  assert.deepEqual(shipped.minimum, { subtotal: { CZK: 1000_00 } });
+  // The legacy (MVP 0) transport ships the sanitized minimum as stored, scope included.
+  assert.deepEqual(shipped.minimum, { subtotal: { CZK: 1000_00 }, scope: "cart" });
   assert.ok(!("origin" in shipped));
   assert.ok(!("limits" in shipped));
 });
