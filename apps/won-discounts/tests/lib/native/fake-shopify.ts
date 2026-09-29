@@ -79,6 +79,8 @@ export class FakeShopify implements AdminClient {
   now: () => Date = () => new Date("2026-09-28T12:00:00Z");
   /** The shop's `$app:won_discounts.function_config` value (null = no metafield). */
   shopFunctionConfig: string | null = null;
+  /** Automatic discounts the "recent automatic" list does not show yet (a search index that lags). */
+  hiddenFromRecent = new Set<string>();
   /** Called with every operation before it is answered (after injections are picked). */
   onCall: ((name: string, variables: Record<string, unknown>) => void) | null = null;
 
@@ -269,12 +271,16 @@ export class FakeShopify implements AdminClient {
         };
       }
       case "WonNativeRecentAutomatic": {
-        const automatic = [...this.nodes.values()]
-          .filter((n) => n.id.includes("DiscountAutomaticNode"))
-          .sort((a, b) => Date.parse(b.discount.createdAt ?? "1970-01-01") - Date.parse(a.discount.createdAt ?? "1970-01-01"))
-          .slice(0, 10);
+        // Newest first, 50 per page (the document's `first`), paged by `after`.
+        const all = [...this.nodes.values()]
+          .filter((n) => n.id.includes("DiscountAutomaticNode") && !this.hiddenFromRecent.has(n.id))
+          .sort((a, b) => Date.parse(b.discount.createdAt ?? "1970-01-01") - Date.parse(a.discount.createdAt ?? "1970-01-01"));
+        const from = v.after ? Number(v.after) : 0;
+        const automatic = all.slice(from, from + 50);
+        const end = from + automatic.length;
         return {
           discountNodes: {
+            pageInfo: { hasNextPage: end < all.length, endCursor: String(end) },
             nodes: automatic.map((n) => ({
               id: n.id,
               discount: {

@@ -61,6 +61,8 @@ export class NotMovableError extends Error {
 
 /** A Shopify discount that stays in Shopify, with how it combines (F4). */
 export interface RemainingNative {
+  /** Its Shopify id (a batch that moves it too leaves it out). */
+  id?: string;
   title: string;
   stacking: NativeStacking;
 }
@@ -147,6 +149,20 @@ export function stackingWarnings(native: NativeDiscount, remaining: readonly Rem
   if (stacks.size > 0) out.push({ code: "stacks_with_native", titles: [...stacks] });
   if (blocks.size > 0) out.push({ code: "blocked_by_native", titles: [...blocks] });
   return out;
+}
+
+/**
+ * stackingWarnings per other discount (F4): one sentence each, tagged with the
+ * other discount's id, so a dialog that moves both can leave it out.
+ */
+export function stackingNotes(
+  native: NativeDiscount,
+  others: readonly (RemainingNative & { id: string })[],
+  locale: NativeLocale,
+): { nativeId: string; text: string }[] {
+  return others
+    .filter((other) => other.id !== native.id)
+    .flatMap((other) => stackingWarnings(native, [other]).map((item) => ({ nativeId: other.id, text: warningText(item, locale) })));
 }
 
 function dedupeCodes(codes: string[]): string[] {
@@ -253,7 +269,7 @@ export function planMove(native: NativeDiscount, config: WonDiscountsConfig, opt
     if (limits.usageLimit !== undefined || limits.oncePerCustomer !== undefined) rule.limits = limits;
   }
   // Only a count that exists is lost (with none, the dialog can say "Nic.").
-  if (native.usageCount > 0) losses.unshift({ code: "usage_history", used: native.usageCount });
+  if (native.usageCount > 0) losses.unshift({ code: "usage_history", used: native.usageCount, method: native.method });
 
   // Subscriptions: Won does not tell them apart. Say both ways it differs (never widen quietly).
   if (!native.appliesOnSubscription) warnings.push({ code: "subscriptions_included" });

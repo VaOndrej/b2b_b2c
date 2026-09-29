@@ -224,6 +224,16 @@ export type SaveAndSyncResult = { ok: true } | { ok: false; message: string; con
  *   undoCosts  what an undo will change, shown BEFORE the merchant confirms it (F11, §14c);
  *   stacking   how the moved discount now stacks with discounts that stayed in Shopify (F4).
  */
+/**
+ * Extra facts about a movable discount on Přehled, carried next to a
+ * NativeDiscountView: how it would stack with each discount that may stay in
+ * Shopify (F4), tagged with that discount's id so a dialog moving both leaves
+ * the note out.
+ */
+export interface NativeDiscountExtras {
+  stacking?: { nativeId: string; text: string }[];
+}
+
 export interface MovedBackupExtras {
   undoCosts?: string[];
   stacking?: string[];

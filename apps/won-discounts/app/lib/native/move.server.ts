@@ -3,9 +3,15 @@
 // backup → create in Won → delete the native; undo = restore the native from
 // the backup and remove the Won rule). The order depends on the discount:
 //   automatic   backup → Won rule saved, synced and confirmed LIVE → delete the
-//               native. Both may apply for a moment; if the delete fails (or
-//               its outcome is unknown) the Won rule is rolled back, checked
-//               live, so a double discount never lasts.
+//               native. Both apply for a moment (seconds; up to ~1 min when the
+//               delete gets no answer); if the delete fails or its outcome is
+//               unknown the Won rule is rolled back, checked live. If that
+//               rollback fails, the merchant is told both apply ("both_live",
+//               click Undo). If the PROCESS dies between the create and the
+//               delete, both apply until the stale-claim sweep (the first
+//               Přehled load at least CLAIM_STALE_MS later) rolls the rule back
+//               from what Shopify runs; with nobody opening Přehled that is
+//               unbounded.
 //   code        backup → delete the native → Won rule. The exception the
 //               decision allows: Shopify refuses a code text that another
 //               discount holds, even an expired or deactivated one (verified
@@ -42,7 +48,11 @@
 //   any exception after the  (F7) the claim is released; if the native was
 //   claim                    deleted, the REL-3 restore above runs at once.
 //                            A claim left by a dead process is resolved from
-//                            the live state by resolveStaleClaims (Přehled).
+//                            what SHOPIFY runs by resolveStaleClaims (Přehled):
+//                            a native that is live with its Won rule still
+//                            live (or in the saved config) gets the rule
+//                            rolled back and checked; if that fails, the row
+//                            says both apply. Never "untouched" from the DB.
 //   undo: Won rule removed, restore fails
 //                            the rule is put back (checked, F9: "still runs
 //                            through Won" only when it is); if that fails too,
@@ -60,6 +70,8 @@ import type { DiscountRule, WonDiscountsConfig } from "@won/core/discounts/confi
 import type { PrismaClient } from "../../generated/prisma/client";
 import { type ConfigValidationFailure, loadConfig, validateConfigForSave } from "../config.server";
 import { checkActiveCodeRuleLimit } from "../config-guards.server";
+import type { ShopMarket } from "../sync/markets";
+import { shopLocalDateTime } from "../sync/sync.server";
 import { classifyNative, incompleteSnapshot } from "./classify.ts";
 import {
   type MoveErrorItem,
@@ -69,6 +81,7 @@ import {
   type NotRestoredItem,
   notMovableReasonText,
   notRestoredText,
+  type StaleNote,
   staleClaimText,
   type UndoErrorItem,
   undoErrorText,
@@ -139,6 +152,11 @@ interface Common extends NativeOpOptions {
   db: PrismaClient;
   shop: string;
   saveAndSync: SaveAndSync;
+  /**
+   * Internal: the backup row this operation holds a claim on. Every config
+   * write refreshes the claim before and after its sync (heartbeat).
+   */
+  claimRowId?: string;
 }
 
 export type MoveResult =
@@ -279,7 +297,9 @@ async function writeConfig(input: Common, change: (config: WonDiscountsConfig) =
     const loaded = await loadConfig(input.db, input.shop);
     if (loaded.readOnly) return { ok: false, message: "the settings belong to a newer app version", blocked: "read_only" };
     if (loaded.unreadable) return { ok: false, message: "the saved settings cannot be read", blocked: "unreadable" };
+    if (input.claimRowId) await heartbeat(input.db, input.claimRowId);
     const result = await safeSaveAndSync(input.saveAndSync, input.shop, change(loaded.config), loaded.version);
+    if (input.claimRowId) await heartbeat(input.db, input.claimRowId);
     if (result.ok) return result;
     last = { ok: false, message: result.message };
     if (!result.conflict) return last;
@@ -483,6 +503,11 @@ export interface MoveNativeInput extends Common {
   nativeId: string;
   /** Codes of the shop's other native discounts (the dry run's hash-collision check, F1). */
   otherCodes?: readonly string[];
+  /**
+   * The shop's Shopify markets when the config targets one: the dry run merges
+   * their countries like the real save does before it measures the budget.
+   */
+  shopMarkets?: readonly ShopMarket[];
 }
 
 export function moveNative(input: MoveNativeInput): Promise<MoveResult> {
@@ -600,7 +625,7 @@ async function moveLocked(input: MoveNativeInput): Promise<MoveResult> {
   }
 
   const ctx: AbortContext = {
-    input,
+    input: { ...input, claimRowId: rowId },
     locale,
     now,
     fail,
@@ -722,9 +747,7 @@ async function moveCreateFirst(ctx: AbortContext, plan: MovePlan): Promise<MoveR
 
   // 4. The Won rule, on top of the config as it is NOW (F12: retried on a conflict).
   ctx.ruleMayBeLive = true;
-  await heartbeat(db, rowId);
   const synced = await writeConfig(input, (config) => withRule(config, plan.rule, nativeId));
-  await heartbeat(db, rowId);
   if (!synced.ok) return refuse(ctx, writeFailureItem(synced));
   const live = await ruleRunsLive(client, plan.rule.id, input);
   if (live !== true) {
@@ -804,7 +827,11 @@ async function moveClaimed(ctx: AbortContext): Promise<MoveResult> {
     const codes = (holder.codes ?? []).filter((c) => planCodes.has(c));
     return refuse(ctx, { code: "code_taken", codes, ruleName: holder.name || holder.id });
   }
-  const check = validateConfigForSave(withRule(loaded.config, plan.rule, nativeId), { otherCodes: input.otherCodes });
+  const check = validateConfigForSave(withRule(loaded.config, plan.rule, nativeId), {
+    otherCodes: input.otherCodes,
+    shopMarkets: input.shopMarkets,
+    shopLocalNow: shopLocalDateTime(now(), native.shop.ianaTimezone),
+  });
   if (!check.ok) return refuse(ctx, validationItem(check, loaded.config));
   await updateRow(db, rowId, { wonRuleId: plan.rule.id });
 
@@ -837,9 +864,7 @@ async function moveClaimed(ctx: AbortContext): Promise<MoveResult> {
   }
 
   // 5. Add the rule and sync, on top of the config as it is NOW (F12: retried on a conflict).
-  await heartbeat(db, rowId);
   const synced = await writeConfig(input, (config) => withRule(config, plan.rule, nativeId));
-  await heartbeat(db, rowId);
   if (!synced.ok) return abortAfterDelete(ctx, writeFailureItem(synced));
   await updateRow(db, rowId, { status: BACKUP_STATUS.moved, error: null, wonRuleId: plan.rule.id });
   return { ok: true, backupId: rowId, ruleId: plan.rule.id, alreadyMoved: false, losses: plan.losses, warnings: plan.warnings };
@@ -967,7 +992,18 @@ async function undoLocked(input: UndoMoveInput): Promise<UndoResult> {
   const releaseStatus = isClaim(row.status) ? BACKUP_STATUS.backedUp : row.status;
   if (!(await claim(db, row, { status: BACKUP_STATUS.undoing }))) return fail({ code: "in_progress" });
 
-  const undo: UndoContext = { input, locale, now, fail, row, envelope, native, unknownState, releaseStatus, ruleRemoved: false };
+  const undo: UndoContext = {
+    input: { ...input, claimRowId: row.id },
+    locale,
+    now,
+    fail,
+    row,
+    envelope,
+    native,
+    unknownState,
+    releaseStatus,
+    ruleRemoved: false,
+  };
   // F7: whatever throws from here on, the claim is released.
   try {
     return await undoClaimed(undo);
@@ -1141,47 +1177,86 @@ export interface StaleSweepInput extends NativeOpOptions {
   client: AdminClient;
   db: PrismaClient;
   shop: string;
+  /** For rolling back a Won rule a dead create-first move left running next to its native. */
+  saveAndSync: SaveAndSync;
 }
 
 /**
  * Settle `moving` / `undoing` claims older than CLAIM_STALE_MS (their process
- * died: a crash, a deploy) from the LIVE state, so no row hangs as "in
- * progress": a native that is still in Shopify with no Won rule for it had
- * nothing changed (failed, restoredAs = itself); anything else becomes
- * `backed_up` with a note, which a retried move and an undo both converge
- * from. Compare-and-set, so a process that is alive after all wins. Returns
- * how many rows it settled.
+ * died: a crash, a deploy), deciding from what SHOPIFY runs, never from the
+ * saved config alone (N1):
+ *   native gone                   `backed_up` with a note: a retried move or an
+ *                                 undo converges from the backup;
+ *   native live, its Won rule     the rule is rolled back — saved config AND
+ *   live or saved                 live, resynced once (a create-first move died
+ *                                 between its create and its delete, or during
+ *                                 the rollback's sync) — then "nothing
+ *                                 changed" once Shopify is clean; if that
+ *                                 fails, `backed_up` saying both may apply
+ *                                 (click Undo now), listed until clean;
+ *   native live, rule neither     nothing changed (failed, restoredAs itself);
+ *   Shopify unreadable            `backed_up` with a note, listed.
+ * The row is taken over with compare-and-set first (a process that is alive
+ * after all wins) and refreshed during the rollback's syncs. Returns how many
+ * rows it settled.
  */
 export function resolveStaleClaims(input: StaleSweepInput): Promise<number> {
   return withShopLock(input.shop, () => sweepStaleClaims(input));
 }
 
 async function sweepStaleClaims(input: StaleSweepInput): Promise<number> {
-  const { client, db, shop } = input;
-  const locale = input.locale ?? "cs";
-  const stale = await db.nativeDiscountBackup.findMany({
-    where: { shop, status: { in: [BACKUP_STATUS.moving, BACKUP_STATUS.undoing] }, updatedAt: { lt: new Date(Date.now() - CLAIM_STALE_MS) } },
+  const stale = await input.db.nativeDiscountBackup.findMany({
+    where: {
+      shop: input.shop,
+      status: { in: [BACKUP_STATUS.moving, BACKUP_STATUS.undoing] },
+      updatedAt: { lt: new Date(Date.now() - CLAIM_STALE_MS) },
+    },
     orderBy: { updatedAt: "asc" },
     take: STALE_SWEEP_BATCH,
   });
   let resolved = 0;
   for (const row of stale) {
-    const envelope = parseSnapshot(row.snapshot);
-    const exists = await nativeExists(client, row.nativeId, input);
-    if (exists === null) continue; // cannot tell now: the next sweep tries again
-    const loaded = await loadConfig(db, shop);
-    const ruleSaved = loaded.config.modules.codes.rules.some((r) => isRuleOf(r, row.wonRuleId, row.nativeId));
-    const untouched = envelope !== null && exists && !ruleSaved && !envelope.restoring;
-    const data = untouched
-      ? {
-          status: BACKUP_STATUS.failed,
-          error: null,
-          snapshot: JSON.stringify(settled(envelope, { nativeId: row.nativeId, at: new Date().toISOString() })),
-        }
-      : { status: BACKUP_STATUS.backedUp, error: staleClaimText(locale) };
-    if (await claim(db, row, data)) resolved += 1;
+    // Take it over (fresh updatedAt): a live process refreshed it meanwhile → it wins.
+    if (!(await claim(input.db, row, { status: row.status }))) continue;
+    try {
+      await settleStaleClaim({ ...input, claimRowId: row.id }, row);
+      resolved += 1;
+    } catch {
+      // Left claimed: it goes stale again and the next sweep retries.
+    }
   }
   return resolved;
+}
+
+async function settleStaleClaim(input: StaleSweepInput & { claimRowId: string }, row: BackupRow): Promise<void> {
+  const { client, db, shop } = input;
+  const locale = input.locale ?? "cs";
+  const envelope = parseSnapshot(row.snapshot);
+  const note = (kind: StaleNote) => updateRow(db, row.id, { status: BACKUP_STATUS.backedUp, error: staleClaimText(locale, kind) });
+
+  const exists = await nativeExists(client, row.nativeId, input);
+  if (exists !== true) return note(exists === null ? "unverified" : "interrupted");
+
+  // The native is live: Shopify must not run its Won rule next to it.
+  const loaded = await loadConfig(db, shop);
+  const saved = loaded.config.modules.codes.rules.some((r) => isRuleOf(r, row.wonRuleId, row.nativeId));
+  const live = row.wonRuleId ? await ruleRunsLive(client, row.wonRuleId, input) : false;
+  if (live === null) return note("unverified");
+  if (saved || live) {
+    if (saved) {
+      const removed = await writeConfig(input, (config) => withoutRule(config, row.wonRuleId, row.nativeId));
+      if (!removed.ok) return note("both_live");
+    }
+    const gone = await ensureNotLive(input, row.wonRuleId, row.nativeId, null);
+    if (!gone.ok) return note(gone.unknown ? "unverified" : "both_live");
+  }
+  if (!envelope || envelope.restoring) return note("interrupted");
+  // Nothing of Won runs next to it: nothing changed.
+  await updateRow(db, row.id, {
+    status: BACKUP_STATUS.failed,
+    error: null,
+    snapshot: settled(envelope, { nativeId: row.nativeId, at: new Date().toISOString() }),
+  });
 }
 
 // --- Preview for the dialog -------------------------------------------------------------

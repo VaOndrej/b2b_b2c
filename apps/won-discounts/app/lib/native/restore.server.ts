@@ -224,10 +224,17 @@ function sameValue(a: any, b: any): boolean {
   return true;
 }
 
+/** Pages of the newest automatic discounts read at most (50 each) while looking for a restored copy. */
+const RECENT_AUTOMATIC_PAGES = 5;
+/** A marked retry that finds no copy looks once more after this (Shopify's search index may lag). */
+export const RESTORE_RECHECK_DELAY_MS = 5_000;
+
 /**
  * An automatic discount an earlier restore created (F8): same type, title,
- * start and value, created after the backup was taken. `ok: false` when the
- * list cannot be read (never treated as "none").
+ * start and value, created after the backup was taken. Pages through the
+ * newest automatic discounts (newest first) until they are older than the
+ * backup, so newer discounts never push the copy out of view. `ok: false`
+ * when a page cannot be read (never treated as "none").
  */
 async function findMatchingAutomatic(
   client: AdminClient,
@@ -236,21 +243,32 @@ async function findMatchingAutomatic(
   since: Date,
   options: RequestOptions,
 ): Promise<{ ok: true; id: string | null } | { ok: false; message: string }> {
-  const result = await runGql(client, "recentAutomatic", undefined, options);
-  if (!result.ok) return { ok: false, message: result.message };
-  if (result.partialErrors?.length) return { ok: false, message: result.partialErrors.join("; ") };
-  const nodes: any[] = Array.isArray(result.data?.discountNodes?.nodes) ? result.data.discountNodes.nodes : [];
   const typename = CREATE[native.kind].typename;
   const wantedValue = raw?.discount?.customerGets?.value;
-  const match = nodes.find(
-    (n) =>
-      n?.discount?.__typename === typename &&
-      n.discount.title === native.title &&
-      Date.parse(n.discount.startsAt) === Date.parse(native.startsAt) &&
-      (native.kind !== "automatic_basic" || sameValue(n.discount.customerGets?.value, wantedValue)) &&
-      Date.parse(n.discount.createdAt) >= since.getTime() - 60_000,
-  );
-  return { ok: true, id: typeof match?.id === "string" ? match.id : null };
+  const oldest = since.getTime() - 60_000;
+  let after: string | null = null;
+  for (let page = 0; page < RECENT_AUTOMATIC_PAGES; page++) {
+    const result = await runGql(client, "recentAutomatic", { after }, options);
+    if (!result.ok) return { ok: false, message: result.message };
+    if (result.partialErrors?.length) return { ok: false, message: result.partialErrors.join("; ") };
+    const connection = result.data?.discountNodes;
+    const nodes: any[] = Array.isArray(connection?.nodes) ? connection.nodes : [];
+    const match = nodes.find(
+      (n) =>
+        n?.discount?.__typename === typename &&
+        n.discount.title === native.title &&
+        Date.parse(n.discount.startsAt) === Date.parse(native.startsAt) &&
+        (native.kind !== "automatic_basic" || sameValue(n.discount.customerGets?.value, wantedValue)) &&
+        Date.parse(n.discount.createdAt) >= oldest,
+    );
+    if (typeof match?.id === "string") return { ok: true, id: match.id };
+    const olderThanBackup = nodes.some((n) => Date.parse(n?.discount?.createdAt) < oldest);
+    const next = connection?.pageInfo?.hasNextPage === true ? connection.pageInfo.endCursor : null;
+    if (olderThanBackup || typeof next !== "string" || nodes.length === 0) return { ok: true, id: null };
+    after = next;
+  }
+  // Still newer than the backup after every page read: cannot say "none".
+  return { ok: false, message: "too many automatic discounts created since the backup to look through" };
 }
 
 /**
@@ -341,10 +359,17 @@ export async function restoreNative(
       return { ok: false, message: `the code ${native.codes[0]} belongs to another discount`, codeTaken: true };
     }
   } else {
-    const existing = await findMatchingAutomatic(client, native, envelope.node, backupTakenAt, options);
+    let existing = await findMatchingAutomatic(client, native, envelope.node, backupTakenAt, options);
     // An automatic discount has no unique key: without the look-up a create
     // could duplicate one an earlier attempt made (its marker says so).
     if (!existing.ok) return { ok: false, message: existing.message, unknown: envelope.restoring !== undefined };
+    if (!existing.id && envelope.restoring) {
+      // An earlier attempt may have created it moments ago and the list (a
+      // search index) may not show it yet: look once more before creating.
+      await (options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))))(RESTORE_RECHECK_DELAY_MS);
+      existing = await findMatchingAutomatic(client, native, envelope.node, backupTakenAt, options);
+      if (!existing.ok) return { ok: false, message: existing.message, unknown: true };
+    }
     if (existing.id) return done(existing.id, true);
   }
 

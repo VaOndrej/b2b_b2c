@@ -358,9 +358,13 @@ fragment WonNativeCodesPage on DiscountRedeemCodeConnection {
    */
   shopFunctionConfig: SYNC_GQL.shopConfigReadBack,
 
-  /** Newest automatic discounts (F8: matched by type, title, start and value before any create). */
-  recentAutomatic: `query WonNativeRecentAutomatic {
-  discountNodes(first: 10, query: "method:automatic", sortKey: CREATED_AT, reverse: true) {
+  /**
+   * Newest automatic discounts, 50 per page (F8: matched by type, title, start
+   * and value before any create; paged until older than the backup).
+   */
+  recentAutomatic: `query WonNativeRecentAutomatic($after: String) {
+  discountNodes(first: 50, after: $after, query: "method:automatic", sortKey: CREATED_AT, reverse: true) {
+    pageInfo { hasNextPage endCursor }
     nodes {
       id
       discount {

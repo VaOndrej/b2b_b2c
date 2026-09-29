@@ -552,7 +552,11 @@ test("F4: detection reads how the discounts that stay combine, and the move dial
   assert.deepEqual(entry?.stacking, { classes: ["product"], combinesWith: { productDiscounts: false, orderDiscounts: true, shippingDiscounts: false } });
   const { discounts } = nativeViews(detection, createDefaultConfig(), "cs", NOW);
   const view = discounts.find((d) => d.title === "5 % z objednávky");
-  assert.ok(view?.warnings?.some((w) => /„2\+1 trička“/.test(w) && /sečtou/.test(w)), JSON.stringify(view?.warnings));
+  // Tagged per other discount (a batch that moves it too leaves the note out, F4 remainder).
+  assert.ok(
+    view?.stacking?.some((note) => note.nativeId === bxgy.id && /„2\+1 trička“/.test(note.text) && /sečtou/.test(note.text)),
+    JSON.stringify(view),
+  );
 });
 
 // --- F5: minimums measured like Shopify measures them ----------------------------------------

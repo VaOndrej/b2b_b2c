@@ -254,3 +254,20 @@ test("F3 follow-up: an automatic discount's dialog tells the create-first order;
   assert.match(mixed, /Slevy s kódem/);
   assert.match(mixed, /Shopify nepustí stejný kód ke dvěma slevám, ani když je jedna ukončená/);
 });
+
+test("F4 remainder: the dialog says how a discount stacks with one that stays in Shopify, not with one moved in the same batch", async () => {
+  const a = {
+    id: "gid://shopify/DiscountAutomaticNode/1",
+    title: "A",
+    method: "automatic" as const,
+    movable: true,
+    losses: [],
+    warnings: [],
+    stacking: [{ nativeId: "gid://shopify/DiscountAutomaticNode/2", text: "V Shopify se nesčítala s „B“. Po přesunu se sečtou." }],
+  };
+  const b = { id: "gid://shopify/DiscountAutomaticNode/2", title: "B", method: "automatic" as const, movable: true, losses: [], warnings: [] };
+  const alone = text(await renderPage(createElement(MoveDialogBody, { discounts: [a] })));
+  assert.match(alone, /Po přesunu se sečtou/, "B stays in Shopify");
+  const both = text(await renderPage(createElement(MoveDialogBody, { discounts: [a, b] })));
+  assert.doesNotMatch(both, /Po přesunu se sečtou/, "B moves too");
+});

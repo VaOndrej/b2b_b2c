@@ -23,15 +23,24 @@ import type { AdminClient } from "../admin-client.server";
 import { loadConfig, withExpectedConfigVersion } from "../config.server";
 import { detectNativeDiscounts, NativeDetectError } from "../native/detect.server";
 import { LIMIT_REFUSALS, moveErrorText, undoCostTexts, warningText } from "../native/copy";
-import { planMove, type RemainingNative, stackingWarnings } from "../native/map.server";
+import { planMove, type RemainingNative, stackingNotes, stackingWarnings } from "../native/map.server";
+import { classOfTarget } from "../native/normalize";
 import {
+  CLAIM_STALE_MS,
   moveNative as moveNativeDiscount,
   resolveStaleClaims,
   undoMove as undoNativeMove,
   type MoveResult,
 } from "../native/move.server";
 import { nativeFromSnapshot, parseSnapshot } from "../native/restore.server";
-import { BACKUP_STATUS, type MovedBackupExtras, type NativeDetection, type SaveAndSync } from "../native/types";
+import {
+  BACKUP_STATUS,
+  type MovedBackupExtras,
+  type NativeDetection,
+  type NativeDiscountExtras,
+  type SaveAndSync,
+} from "../native/types";
+import { loadShopMarketsWith, targetsMarkets } from "../sync/markets";
 import { saveAndSync } from "../sync/save-and-sync.server";
 import type { Sync } from "../sync/sync.server";
 import { shopLocalDateTime } from "../sync/sync.server";
@@ -63,8 +72,6 @@ const MOVED_SHOWN = 50;
 const MOVED_PAGE = MOVED_SHOWN * 4;
 /** Pages read at most (a bound on a shop with a very long history). */
 const MOVED_MAX_PAGES = 50;
-/** How long a Přehled load waits for the stale-claim sweep (it finishes in the background). */
-const STALE_SWEEP_DEADLINE_MS = 2_000;
 
 type BackupRow = NonNullable<Awaited<ReturnType<PrismaClient["nativeDiscountBackup"]["findFirst"]>>>;
 
@@ -161,10 +168,23 @@ export function nativeCodes(detection: NativeDetection, exceptId?: string): stri
 
 const BLOCKED: Record<string, NativeBlockedReason> = { bxgy: "bxgy", other_app: "app" };
 
-/** The discounts that stay in Shopify, with how they combine (F4). */
-export function remainingNatives(detection: NativeDetection): RemainingNative[] {
-  return detection.notMovable.flatMap((entry) => (entry.stacking ? [{ title: entry.title, stacking: entry.stacking }] : []));
+/**
+ * The discounts that may stay in Shopify, with how they combine (F4): every one
+ * Won cannot take over AND every movable one (the merchant may keep it, a
+ * batch may skip it). Each carries its id, so a batch moving it leaves it out.
+ */
+export function remainingNatives(detection: NativeDetection): (RemainingNative & { id: string })[] {
+  const notMovable = detection.notMovable.flatMap((entry) =>
+    entry.stacking ? [{ id: entry.id, title: entry.title, stacking: entry.stacking }] : [],
+  );
+  const movable = detection.movable.flatMap((native) =>
+    native.target ? [{ id: native.id, title: native.title, stacking: { classes: [classOfTarget(native.target)], combinesWith: native.combinesWith } }] : [],
+  );
+  return [...notMovable, ...movable];
 }
+
+/** A movable discount on Přehled with its F4 stacking notes (NativeDiscountExtras). */
+export type NativeDiscountViewWithExtras = NativeDiscountView & NativeDiscountExtras;
 
 /** Detection → the discounts and conflicts the admin lists (pure). */
 export function nativeViews(
@@ -172,12 +192,14 @@ export function nativeViews(
   config: WonDiscountsConfig,
   locale: Locale,
   now: Date,
-): { discounts: NativeDiscountView[]; conflicts: NativeConflictView[] } {
-  const discounts: NativeDiscountView[] = [];
+): { discounts: NativeDiscountViewWithExtras[]; conflicts: NativeConflictView[] } {
+  const discounts: NativeDiscountViewWithExtras[] = [];
   const remaining = remainingNatives(detection);
   for (const native of detection.movable) {
     try {
-      const plan = planMove(native, config, { locale, now, remaining });
+      // Stacking with the others is per other discount (the dialog drops those moved in the same batch).
+      const plan = planMove(native, config, { locale, now });
+      const stacking = stackingNotes(native, remaining, locale);
       const parts = describeRuleParts(plan.rule, locale, { currency: detection.shop.currencyCode });
       discounts.push({
         id: native.id,
@@ -188,6 +210,7 @@ export function nativeViews(
         movable: true,
         losses: plan.losses,
         warnings: plan.warnings,
+        ...(stacking.length > 0 ? { stacking } : {}),
       });
     } catch (error) {
       // planMove's backstop (e.g. an amount it cannot read): stays in Shopify, with its reason.
@@ -232,8 +255,18 @@ export async function movedBackups(
   timezone: string | null,
   locale: Locale = "cs",
 ): Promise<MovedBackupView[]> {
+  return (await listBackups(ctx, timezone, locale)).views;
+}
+
+/** movedBackups, plus whether a listed row is a claim a dead process left (the sweep settles it). */
+async function listBackups(
+  ctx: Pick<ShopCtx, "db" | "shop">,
+  timezone: string | null,
+  locale: Locale,
+): Promise<{ views: MovedBackupView[]; staleClaims: boolean }> {
   const seen = new Set<string>();
   const out: MovedBackupView[] = [];
+  let staleClaims = false;
   let cursor: string | null = null;
   for (let page = 0; page < MOVED_MAX_PAGES && out.length < MOVED_SHOWN; page++) {
     const rows: BackupRow[] = await ctx.db.nativeDiscountBackup.findMany({
@@ -245,6 +278,8 @@ export async function movedBackups(
     for (const row of rows) {
       if (seen.has(row.nativeId)) continue;
       seen.add(row.nativeId);
+      const claimed = row.status === BACKUP_STATUS.moving || row.status === BACKUP_STATUS.undoing;
+      if (claimed && Date.now() - row.updatedAt.getTime() >= CLAIM_STALE_MS) staleClaims = true;
       const envelope = parseSnapshot(row.snapshot);
       const restoredAs = envelope?.restoredAs;
       const partly = (restoredAs?.codesMissing ?? 0) > 0;
@@ -254,7 +289,19 @@ export async function movedBackups(
         backupId: row.id,
         title: row.title,
         movedAt: shopLocalDateTime(row.updatedAt, timezone ?? "UTC"),
-        ...(native && !restoredAs ? { undoCosts: undoCostTexts(native, locale) } : {}),
+        ...(native
+          ? {
+              undoCosts: undoCostTexts(
+                native,
+                locale,
+                restoredAs
+                  ? { kind: "add_codes", missing: restoredAs.codesMissing ?? 0 }
+                  : row.status === BACKUP_STATUS.backedUp || row.status === BACKUP_STATUS.moving || row.status === BACKUP_STATUS.undoing
+                    ? { kind: "maybe_live" }
+                    : { kind: "recreate" },
+              ),
+            }
+          : {}),
       };
       if (row.status === BACKUP_STATUS.moved) out.push({ ...view, state: "moved" });
       else {
@@ -267,7 +314,7 @@ export async function movedBackups(
     if (rows.length < MOVED_PAGE) break;
     cursor = rows[rows.length - 1].id;
   }
-  return out;
+  return { views: out, staleClaims };
 }
 
 /** F4 on Přehled: how each moved discount now stacks with the discounts that stayed in Shopify. */
@@ -277,6 +324,7 @@ async function withStacking(
   detection: NativeDetection,
   locale: Locale,
 ): Promise<MovedBackupView[]> {
+  // What is in Shopify now stays there (a moved discount's own native is gone).
   const remaining = remainingNatives(detection);
   const ids = moved.filter((m) => m.state === "moved").map((m) => m.backupId);
   if (remaining.length === 0 || ids.length === 0) return moved;
@@ -299,19 +347,28 @@ export async function loadNativeView(
   opts: { timezone: string | null; deadlineMs?: number; fresh?: boolean },
 ): Promise<NativeView> {
   // F7: a move / undo whose process died must not hang as "in progress": settle it from the live state.
-  const pending = await ctx.db.nativeDiscountBackup.count({
-    where: { shop: ctx.shop, status: { in: [BACKUP_STATUS.moving, BACKUP_STATUS.undoing] } },
-  });
-  if (pending > 0) {
-    await withinDeadline(
-      resolveStaleClaims({ client: ctx.client, db: ctx.db, shop: ctx.shop, locale: ctx.locale }),
-      STALE_SWEEP_DEADLINE_MS,
+  const [outcome, listing] = await Promise.all([
+    withinDeadline(detectNative(ctx, config, { fresh: opts.fresh }), opts.deadlineMs ?? NATIVE_DETECTION_DEADLINE_MS),
+    listBackups(ctx, opts.timezone, ctx.locale),
+  ]);
+  const listed = listing.views;
+  if (listing.staleClaims) {
+    // F7 / N1: a move or undo whose process died is settled from what Shopify
+    // runs, in the background under the config lock (it may roll a Won rule
+    // back); the row stays listed until then (REL-1: the page never waits).
+    void withinDeadline(
+      withConfigLock(ctx.shop, () =>
+        resolveStaleClaims({
+          client: ctx.client,
+          db: ctx.db,
+          shop: ctx.shop,
+          locale: ctx.locale,
+          saveAndSync: createSaveAndSync(nativeCtxOptions(ctx)),
+        }),
+      ),
+      0,
     );
   }
-  const [outcome, listed] = await Promise.all([
-    withinDeadline(detectNative(ctx, config, { fresh: opts.fresh }), opts.deadlineMs ?? NATIVE_DETECTION_DEADLINE_MS),
-    movedBackups(ctx, opts.timezone, ctx.locale),
-  ]);
   const moved = outcome.done && "value" in outcome ? await withStacking(ctx, listed, outcome.value, ctx.locale) : listed;
   if (!outcome.done) return { state: "loading", moved };
   if ("error" in outcome) {
@@ -446,6 +503,8 @@ export async function moveNativeDiscounts(ctx: ShopCtx, nativeIds: readonly stri
     const detected = await withinDeadline(detectNative(ctx, loaded.config), MOVE_DETECTION_DEADLINE_MS);
     const detection = detected.done && "value" in detected ? detected.value : null;
     const titles = new Map(detection ? detection.movable.map((n) => [n.id, n.title]) : []);
+    // The dry run measures the budget with the same market countries the real save merges (F1).
+    const shopMarkets = targetsMarkets(loaded.config) ? await loadShopMarketsWith(ctx.client).catch(() => undefined) : undefined;
     const out: { nativeId: string; title: string | null; result: MoveResult }[] = [];
     let stopped = false;
     for (const nativeId of nativeIds) {
@@ -462,6 +521,7 @@ export async function moveNativeDiscounts(ctx: ShopCtx, nativeIds: readonly stri
         shop: ctx.shop,
         nativeId,
         otherCodes,
+        shopMarkets,
         saveAndSync: createSaveAndSync(nativeCtxOptions(ctx, otherCodes)),
         locale: ctx.locale,
         now: ctx.now,
