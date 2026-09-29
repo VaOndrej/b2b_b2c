@@ -86,6 +86,9 @@ pub struct DeliveryResult {
 //        its exact amount: Shopify rounds the decimal S × P / 100 itself and may
 //        round a tie the other way than the plan. The same for a stack's summed
 //        percent and for an order percent;
+//      - a value margin protection lowered (`PlanLine::margin_capped`) is always
+//        its exact amount, never a percent: a tie rounded the other way would
+//        take the line 1 minor unit under its floor;
 //   2. candidates with the same message and value share one candidate with
 //      several targets (a fixed total on one line never groups: shared, it would
 //      be applied ONCE across all its targets);
@@ -95,7 +98,15 @@ pub struct DeliveryResult {
 //      percent (at worst 1 minor unit per line); (b) every Pro stack as its top
 //      rule's own value, ties exact again; (c) both. A step that changes nothing
 //      (no tie, no stack) is skipped. Then, as a last resort, the product
-//      candidates that save the least are dropped until it fits.
+//      candidates that save the least are dropped until it fits. A margin-capped
+//      line is never relaxed (neither step touches it): it keeps its exact value
+//      or is dropped. A margin-tight line (`PlanLine::margin_tight`) never has
+//      its tie relaxed to a percent (its stack may still drop to its top rule,
+//      which only ever gives less);
+//   4. margin protection on (`PlanOrder::margin_protected`): every node emits its
+//      order discount as the plan's exact amount, never a percent — a degraded
+//      product output anywhere makes the order base Shopify sees larger, and a
+//      percent of it could take a line under its floor. Margin off: unchanged.
 // Sizes are the UTF-8 bytes of the compact JSON (what JSON.stringify writes).
 
 /// Shopify's function output limit for carts up to 200 lines, bytes.
@@ -164,10 +175,14 @@ struct Relax {
     ties: bool,
 }
 
-/// A percent `p` on `line` whose amount is `amount`: exact on a tie unless ties are relaxed.
+/// A percent `p` on `line` whose amount is `amount`: exact on a tie unless ties
+/// are relaxed — and always exact on a margin-tight line (never a relaxable tie).
 fn percent_on_line(p: f64, amount: i64, line: &PlanLine, relax: Relax, any_tie: &mut bool) -> DraftValue {
     if !tie_possible(line.subtotal, p) {
         return DraftValue::Percent(p);
+    }
+    if line.margin_tight {
+        return exact_amount(amount, line);
     }
     *any_tie = true;
     if relax.ties {
@@ -203,6 +218,9 @@ fn whole_percent_sum(plan: &CartPlan, stack: &PlanStack) -> Option<f64> {
 
 /// One emitted product candidate → its exact output value, in the most groupable form.
 fn exact_value(c: &ProductCandidate, line: &PlanLine, plan: &CartPlan, relax: Relax, any_tie: &mut bool) -> DraftValue {
+    if line.margin_capped {
+        return exact_amount(c.amount, line);
+    }
     match c.value {
         EmittedValue::Percent(p) => percent_on_line(p, c.amount, line, relax, any_tie),
         EmittedValue::FixedPerItem(v) if v == line.unit_price => DraftValue::Percent(100.0),
@@ -278,8 +296,10 @@ fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> 
     for c in &emission.product {
         let Some(line) = plan.lines.get(c.line) else { continue };
         let Some(stack) = line.product.as_ref() else { continue };
-        any_stack |= stack.components.len() > 1;
-        let top = if relax.stacks && stack.components.len() > 1 { top_rule_value(line, plan, relax, &mut any_tie) } else { None };
+        // A margin-capped stack is never relaxed to its top rule (its value stays exact).
+        let stacked = stack.components.len() > 1 && !line.margin_capped;
+        any_stack |= stacked;
+        let top = if relax.stacks && stacked { top_rule_value(line, plan, relax, &mut any_tie) } else { None };
         let (value, message, saves) = match top {
             Some(top) => top,
             None => (exact_value(c, line, plan, relax, &mut any_tie), c.message, c.amount),
@@ -442,14 +462,15 @@ pub fn cart_lines_result(
 ) -> CartLinesResult {
     let currency = plan.currency.as_str();
     let base = plan.order.as_ref().map_or(0, |o| o.base);
+    let exact_order = plan.order.as_ref().is_some_and(|o| o.margin_protected);
     let order_candidates: Vec<OrderCandidateOut> = if order {
         emission
             .order
             .iter()
             .filter_map(|c| {
                 let value = match c.value {
-                    // A rounding tie: the exact amount (Shopify rounds the percent itself).
-                    EmittedValue::Percent(p) if tie_possible(base, p) => {
+                    // Margin on, or a rounding tie: the exact amount (Shopify rounds a percent itself).
+                    EmittedValue::Percent(p) if exact_order || tie_possible(base, p) => {
                         TotalValue::FixedAmount(from_minor_units(c.amount, currency))
                     }
                     ref value => total_value(value, currency)?,

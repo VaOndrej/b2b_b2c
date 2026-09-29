@@ -1,0 +1,170 @@
+{
+  "scenario": "A live campaign overrides the rule first (10 % → 70 %), then margin protection caps it: 40 % ceiling → 400 Kč of the 700 Kč.",
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [],
+      "discount": {
+        "discountClasses": [
+          "PRODUCT",
+          "ORDER",
+          "SHIPPING"
+        ],
+        "vars": {
+          "jsonValue": {
+            "role": "automatic",
+            "campaignId": "bf",
+            "campaignStart": "2026-09-30T00:00:00",
+            "campaignEnd": "2026-10-05T23:59:59",
+            "varsVersion": "v1wv2n8s"
+          }
+        }
+      },
+      "shop": {
+        "config": {
+          "jsonValue": {
+            "schemaVersion": 1,
+            "campaignId": "bf",
+            "campaignVarsVersion": "v1wv2n8s",
+            "engine": {
+              "combination": {
+                "outletWithAnything": false,
+                "productWithProduct": "best",
+                "productWithOrder": true,
+                "productWithShipping": true,
+                "orderWithShipping": true
+              }
+            },
+            "marketCountries": {},
+            "modules": {
+              "codes": {
+                "rules": [
+                  {
+                    "id": "summer",
+                    "enabled": true,
+                    "name": "Letní sleva",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 10
+                    },
+                    "target": {
+                      "kind": "products"
+                    }
+                  }
+                ]
+              },
+              "tiers": {
+                "sets": []
+              },
+              "rewards": {
+                "gifts": [],
+                "countOtherDiscounts": false
+              },
+              "margin": {
+                "enabled": true,
+                "max": 40,
+                "cur": "CZK"
+              }
+            },
+            "campaigns": [
+              {
+                "id": "bf",
+                "window": {
+                  "start": "2026-09-30T00:00:00",
+                  "end": "2026-10-05T23:59:59"
+                },
+                "overrides": [
+                  {
+                    "ruleId": "summer",
+                    "patch": {
+                      "value": {
+                        "kind": "percentage",
+                        "percent": 70
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "localTime": {
+          "date": "2026-10-01",
+          "campaignActive": true
+        }
+      },
+      "localization": {
+        "country": {
+          "isoCode": "CZ"
+        },
+        "language": {
+          "isoCode": "CS"
+        }
+      },
+      "presentmentCurrencyRate": "1.0",
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "currencyCode": "CZK"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1000.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1001",
+              "wonVariant": null,
+              "product": {
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [
+                      "summer"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "productDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Letní sleva",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/1"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "400.00",
+                    "appliesToEachItem": true
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "ALL"
+          }
+        }
+      ]
+    }
+  }
+}

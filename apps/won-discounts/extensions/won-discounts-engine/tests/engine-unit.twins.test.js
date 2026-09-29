@@ -13,10 +13,11 @@ import { normalizeCart } from "@won/core/discounts/cart";
 import { codeHash } from "@won/core/discounts/code-hash";
 import { emitForNode } from "@won/core/discounts/emit";
 import { mapToFunctionOutput, roundingTiePossible } from "@won/core/discounts/function-output";
+import { ceilTol, costMinorUnits, MARGIN_TOLERANCE, marginFloorUnit, readMarginPayload, resolveMargin } from "@won/core/discounts/margin";
 import { planCart } from "@won/core/discounts/plan";
 import { describe, expect, test } from "vitest";
 
-import { adaptInput } from "./reference-adapter.js";
+import { adaptInput, decimalNumber } from "./reference-adapter.js";
 
 const EXT_DIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -49,6 +50,16 @@ const gated = (plan, id) => {
 };
 const lineIds = (emission) => emission.productCandidates.map((c) => c.lineId);
 const order = (id, value, more = {}) => ({ id, enabled: true, name: id, method: "automatic", value, target: { kind: "order" }, ...more });
+/** A config with `modules.margin` = the compact payload (margin_rules in tests.rs). */
+const mcfg = (rules, margin, extra = {}) => ({ modules: { codes: { rules }, margin }, ...extra });
+/** A line with a cost price in CZK (cost_line in tests.rs). */
+const costLine = (id, quantity, unitPrice, cost, ruleIds) => line(id, quantity, unitPrice, ruleIds, { unitCost: cost, unitCostCurrency: "CZK" });
+const close = (actual, expected, eps) => {
+  expect(actual).not.toBeNull();
+  expect(Math.abs(actual - expected)).toBeLessThanOrEqual(eps);
+};
+const autoLines = (plan, lineCount) =>
+  mapToFunctionOutput(emitForNode(plan, { kind: "automatic" }, null), { plan, classes: ["PRODUCT", "ORDER"], lineCount });
 
 // --- Twins, by the name of their Rust test --------------------------------------------------------
 
@@ -339,6 +350,290 @@ const TWINS = {
     expect(json).toContain('"value":{"percentage":{"value":10}}');
   },
 
+  // --- Margin protection (MVP 2) ---
+
+  ceil_tol_ignores_float_noise_and_never_gives_negative_zero() {
+    expect(MARGIN_TOLERANCE).toBe(1e-6);
+    expect(ceilTol(7)).toBe(7);
+    expect(ceilTol(7.000001)).toBe(7);
+    expect(ceilTol(7.0000011)).toBe(8);
+    expect(ceilTol(7.999999)).toBe(8);
+    expect(ceilTol(0)).toBe(0);
+    expect(Object.is(ceilTol(0.0000005), 0)).toBe(true);
+    expect(1000 * (1 - 70 / 100) > 300).toBe(true);
+    expect(ceilTol(1000 * (1 - 70 / 100))).toBe(300);
+  },
+
+  the_floor_is_the_cost_plus_the_minimum_margin_else_the_maximum_discount() {
+    const cost = (c, m) => marginFloorUnit({ unitPrice: 100_000, costMinor: c, minMarginPercent: m, maxDiscountPercent: 50 });
+    expect(cost(50_000, 0)).toEqual({ floorUnit: 50_000, basis: "cost" });
+    expect(cost(50_000, 20).floorUnit).toBe(62_500);
+    expect(cost(50_000, 95).floorUnit).toBe(1_000_000);
+    expect(cost(50_000, 100).floorUnit).toBe(1_000_000);
+    expect(cost(50_000, Number.NaN).floorUnit).toBe(50_000);
+    expect(marginFloorUnit({ unitPrice: 10_000, costMinor: 15_000, minMarginPercent: 0, maxDiscountPercent: 50 }).floorUnit).toBe(15_000);
+    const noCost = (price, p) => marginFloorUnit({ unitPrice: price, costMinor: null, minMarginPercent: 20, maxDiscountPercent: p });
+    expect(noCost(999, 50)).toEqual({ floorUnit: 500, basis: "max_percent" });
+    expect(noCost(999, 0).floorUnit).toBe(999);
+    expect(noCost(999, 100).floorUnit).toBe(0);
+    expect(noCost(1000, 70).floorUnit).toBe(300);
+    expect(noCost(1000, Number.NaN).floorUnit).toBe(500);
+    expect(marginFloorUnit({ unitPrice: 1000, costMinor: 0, minMarginPercent: 0, maxDiscountPercent: 40 }).basis).toBe("max_percent");
+    expect(marginFloorUnit({ unitPrice: 100, costMinor: 1e12, minMarginPercent: 95, maxDiscountPercent: 50 }).floorUnit).toBe(1_000_000_000_000);
+  },
+
+  a_cost_is_known_only_in_the_shop_currency_and_converts_with_the_rate() {
+    close(costMinorUnits(12.34, "CZK", undefined, "CZK", "CZK"), 1234, 1e-9);
+    close(costMinorUnits(12.34, "CZK", 0.04, "CZK", "CZK"), 1234, 1e-6);
+    expect(costMinorUnits(undefined, "CZK", 1, "CZK", "CZK")).toBeNull();
+    expect(costMinorUnits(0, "CZK", 1, "CZK", "CZK")).toBeNull();
+    expect(costMinorUnits(-5, "CZK", 1, "CZK", "CZK")).toBeNull();
+    expect(costMinorUnits(10, "EUR", 1, "CZK", "CZK")).toBeNull();
+    expect(costMinorUnits(10, undefined, 1, "CZK", "CZK")).toBeNull();
+    expect(costMinorUnits(10, "CZK", 1, "CZK", undefined)).toBeNull();
+    close(costMinorUnits(100, "CZK", 0.04, "EUR", "CZK"), 400, 1e-9);
+    expect(costMinorUnits(100, "CZK", undefined, "EUR", "CZK")).toBeNull();
+    expect(costMinorUnits(100, "CZK", 0, "EUR", "CZK")).toBeNull();
+    expect(costMinorUnits(100, "CZK", -1, "EUR", "CZK")).toBeNull();
+    expect(costMinorUnits(100, "CZK", Number.POSITIVE_INFINITY, "EUR", "CZK")).toBeNull();
+    close(costMinorUnits(100, "CZK", 6.5, "JPY", "CZK"), 650, 1e-9);
+    close(costMinorUnits(1.2345, "KWD", undefined, "KWD", "KWD"), 1234.5, 1e-6);
+    expect(costMinorUnits(1e300, "CZK", 1e300, "EUR", "CZK")).toBe(1e12);
+  },
+
+  the_margin_payload_is_read_tolerantly_and_off_unless_exactly_on() {
+    for (const off of [
+      { enabled: false, max: 50 },
+      { enabled: "true", max: 50 },
+      { enabled: true },
+      { enabled: true, max: "50" },
+      { global: { maxDiscountPercent: 10 }, perCollection: [] },
+      [{ enabled: true, max: 50 }],
+      null,
+    ]) {
+      expect(readMarginPayload(off)).toEqual({ enabled: false });
+    }
+    const on = readMarginPayload({
+      enabled: true,
+      max: 140,
+      min: -5,
+      cur: "czk",
+      col: { 1: [120, null], 2: [null, -1], 3: [5], 4: ["x", 5], 5: [null, null], 6: 7 },
+    });
+    expect(on).toEqual({ enabled: true, max: 100, min: 0, col: { 1: [95, null], 2: [null, 0], 5: [null, null] } });
+    expect(readMarginPayload({ enabled: true, max: 30, min: "x", cur: "EUR" })).toEqual({ enabled: true, max: 30, cur: "EUR" });
+  },
+
+  a_product_takes_the_strictest_of_its_collections_settings() {
+    const payload = readMarginPayload({ enabled: true, min: 10, max: 50, col: { 1: [30, null], 2: [null, 10], 3: [null, null] } });
+    const settings = (refs) => {
+      const s = resolveMargin(payload, refs);
+      return [s.minMarginPercent, s.maxDiscountPercent, s.source === "collection"];
+    };
+    expect(settings([])).toEqual([10, 50, false]);
+    expect(settings(["1"])).toEqual([30, 50, true]);
+    expect(settings(["1", "2"])).toEqual([30, 10, true]);
+    expect(settings(["2", "1"])).toEqual([30, 10, true]);
+    expect(settings(["3"])).toEqual([10, 50, true]);
+    expect(settings(["99"])).toEqual([10, 50, false]);
+    const bare = readMarginPayload(JSON.parse('{"enabled": true, "max": 40, "col": {"__proto__": [90, 0], "7": [null, 5]}}'));
+    const proto = resolveMargin(bare, ["__proto__"]);
+    expect([proto.minMarginPercent, proto.maxDiscountPercent, proto.source === "collection"]).toEqual([0, 40, false]);
+    const seven = resolveMargin(bare, ["7"]);
+    expect([seven.minMarginPercent, seven.maxDiscountPercent, seven.source === "collection"]).toEqual([0, 5, true]);
+  },
+
+  margin_off_plans_exactly_like_mvp1() {
+    const rules = [pct("a", 60), order("o", { kind: "percentage", percent: 30 })];
+    const bare = [line("l1", 2, 100_000, ["a"]), line("l2", 1, 30_000, [])];
+    const withCosts = bare.map((l) => ({ ...l, unitCost: 900, unitCostCurrency: "CZK", marginRefs: ["1"] }));
+    const mvp1 = planCart(cart(bare), cfg(rules)).lines;
+    for (const margin of [{ enabled: false }, { global: { maxDiscountPercent: 10 }, perCollection: [] }]) {
+      const plan = planCart(cart(withCosts, [], { shopToCartRate: 1 }), mcfg(rules, margin));
+      expect(plan.lines).toEqual(mvp1);
+      expect([plan.order.amount, plan.order.base, plan.order.excludedLineIds.length]).toEqual([33_000, 110_000, 0]);
+      expect(plan.order.value).toEqual({ percent: 30 });
+    }
+  },
+
+  a_product_line_is_cut_to_its_headroom_and_emitted_as_that_exact_amount() {
+    const f = { id: "f", enabled: true, name: "f", method: "automatic", value: { kind: "fixed", amount: { CZK: 30000 } }, target: { kind: "products" } };
+    const c = mcfg([pct("a", 30), f], { enabled: true, min: 20, max: 50, cur: "CZK" });
+    const lines = [costLine("l1", 1, 100_000, 700, ["a"]), line("l2", 2, 20_000, ["a"]), line("l3", 3, 50_000, ["f"]), costLine("l4", 1, 100_000, 1000, ["a"])];
+    const plan = planCart(cart(lines), c);
+    expect(productOf(plan, "l1")).toEqual(["a", { fixedTotal: 12_500 }, 12_500]);
+    expect(Boolean(plan.lines[0].marginCapped)).toBe(true);
+    expect(productOf(plan, "l2")).toEqual(["a", { percent: 30 }, 12_000]);
+    expect(Boolean(plan.lines[1].marginCapped)).toBe(false);
+    expect(productOf(plan, "l3")).toEqual(["f", { fixedTotal: 75_000 }, 75_000]);
+    expect(productOf(plan, "l4")).toBeNull();
+    expect(Boolean(plan.lines[3].marginCapped)).toBe(true);
+    expect(JSON.stringify(autoLines(plan, lines.length).lines)).toBe(
+      [
+        '{"operations":[{"productDiscountsAdd":{"candidates":[',
+        '{"message":"a","targets":[{"cartLine":{"id":"l1"}}],"value":{"fixedAmount":{"amount":"125.00","appliesToEachItem":true}}},',
+        '{"message":"a","targets":[{"cartLine":{"id":"l2"}}],"value":{"percentage":{"value":30}}},',
+        '{"message":"f","targets":[{"cartLine":{"id":"l3"}}],"value":{"fixedAmount":{"amount":"250.00","appliesToEachItem":true}}}',
+        '],"selectionStrategy":"ALL"}}]}',
+      ].join(""),
+    );
+    const stack = planCart(cart([line("l1", 1, 1005, ["x", "y"])]), mcfg([pct("x", 10, { combinesWith: { ruleIds: ["y"] } }), pct("y", 10)], { enabled: true, max: 20 }));
+    expect(stack.lines[0].product.amount).toBe(201);
+    expect(JSON.stringify(autoLines(stack, 1).lines)).toContain('"value":{"fixedAmount":{"amount":"2.01","appliesToEachItem":true}}');
+  },
+
+  a_cost_in_another_cart_currency_converts_with_the_rate_else_the_ceiling_applies() {
+    const c = mcfg([pct("a", 60)], { enabled: true, min: 10, max: 30, cur: "CZK" });
+    const run = (rate) => planCart(cart([costLine("l1", 1, 4000, 500, ["a"])], [], { currency: "EUR", shopToCartRate: rate }), c).lines[0].product?.amount ?? null;
+    expect(run(0.04)).toBe(1777);
+    expect(run(undefined)).toBe(1200);
+    expect(run(0)).toBe(1200);
+  },
+
+  a_pro_stack_is_cut_in_rank_order_and_its_owner_recomputed() {
+    const rules = [pct("a", 20, { combinesWith: { ruleIds: ["b"] } }), code("b", 10, W)];
+    const lines = [line("l1", 1, 100_000, ["a", "b"])];
+    const wide = planCart(cart(lines, ["WELCOME15"]), mcfg(rules, { enabled: true, max: 25 }));
+    const stack = wide.lines[0].product;
+    expect(stack.components.map((c2) => [c2.ruleId, c2.amount])).toEqual([["a", 20_000], ["b", 5_000]]);
+    expect([stack.ownerRuleId, stack.value, stack.message]).toEqual(["b", { fixedTotal: 25_000 }, "a + b"]);
+    const tight = planCart(cart(lines, ["WELCOME15"]), mcfg(rules, { enabled: true, max: 15 }));
+    const cut = tight.lines[0].product;
+    expect(cut.components.map((c2) => [c2.ruleId, c2.amount])).toEqual([["a", 15_000]]);
+    expect([cut.ownerRuleId, cut.message]).toEqual(["a", "a"]);
+    expect(emitForNode(tight, { kind: "automatic" }, null).productCandidates[0].amount).toBe(15_000);
+    expect(emitForNode(tight, { kind: "code", ruleId: "b" }, "WELCOME15").productCandidates).toEqual([]);
+  },
+
+  the_order_discount_is_safe_on_both_allocation_bases_with_a_reserve() {
+    const percent = (p) => ({ kind: "percentage", percent: p });
+    const plan = planCart(cart([line("l1", 1, 100_000, ["a"]), line("l2", 1, 50_000, [])]), mcfg([pct("a", 50), order("o", percent(20))], { enabled: true, max: 60 }));
+    expect(productOf(plan, "l1")[2]).toBe(50_000);
+    expect([plan.order.amount, plan.order.value, plan.order.base]).toEqual([14_998, { fixedTotal: 14_998 }, 100_000]);
+    expect(plan.order.excludedLineIds).toEqual([]);
+    const one = planCart(cart([line("l1", 1, 100_000, [])]), mcfg([order("o", percent(30))], { enabled: true, max: 20 }));
+    expect(one.order.value).toEqual({ fixedTotal: 19_999 });
+    const same = planCart(
+      cart([costLine("a", 1, 100_000, 49.99, ["p"]), costLine("b", 1, 10_000, 94.99, [])]),
+      mcfg([pct("p", 90), order("o", percent(50))], { enabled: true, max: 100, cur: "CZK" }),
+    );
+    expect([same.order.amount, same.order.value, same.order.base]).toEqual([5000, { percent: 50 }, 10_000]);
+    expect(same.order.excludedLineIds).toEqual(["b"]);
+  },
+
+  lines_at_their_floor_are_left_out_of_the_order_discount() {
+    const percent = { kind: "percentage", percent: 10 };
+    const margin = { enabled: true, max: 50, cur: "CZK" };
+    const plan = planCart(cart([line("l1", 1, 100_000, []), costLine("l2", 1, 100_000, 1000, []), line("l3", 1, 50_000, [])]), mcfg([order("o", percent)], margin));
+    expect([plan.order.amount, plan.order.value, plan.order.base]).toEqual([15_000, { percent: 10 }, 150_000]);
+    expect(plan.order.excludedLineIds).toEqual(["l2"]);
+    expect(emitForNode(plan, { kind: "automatic" }, null).orderCandidates[0].excludedLineIds).toEqual(["l2"]);
+    const fixedOrder = mcfg([order("o", { kind: "fixed", amount: { CZK: 10000 } })], margin);
+    const kept = planCart(cart([line("l1", 1, 100_000, []), costLine("l2", 1, 100_000, 1000, [])]), fixedOrder).order;
+    expect([kept.value, kept.excludedLineIds]).toEqual([{ fixedTotal: 10_000 }, ["l2"]]);
+    const larger = planCart(cart([line("l1", 1, 100_000, []), line("l2", 1, 20_000, [])]), fixedOrder).order;
+    expect([larger.amount, larger.base, larger.excludedLineIds.length]).toEqual([10_000, 120_000, 0]);
+    const ship = { id: "s", enabled: true, name: "s", method: "automatic", value: { kind: "freeShipping" }, target: { kind: "shipping" } };
+    const floored = planCart(cart([costLine("l1", 1, 100_000, 1000, [])]), mcfg([order("o", percent), ship], margin));
+    expect(floored.order).toBeNull();
+    expect(floored.shipping.ruleId).toBe("s");
+  },
+
+  exclusive_mode_protects_the_order_only_scenario_too() {
+    const off = { engine: { combination: { productWithOrder: false } } };
+    const o = order("o", { kind: "percentage", percent: 30 });
+    const lines = [line("l1", 1, 100_000, ["a"]), costLine("l2", 1, 100_000, 1000, [])];
+    const plan = planCart(cart(lines), mcfg([pct("a", 5), o], { enabled: true, max: 10, cur: "CZK" }, off));
+    expect([plan.order.amount, plan.order.value, plan.order.excludedLineIds]).toEqual([9_999, { fixedTotal: 9_999 }, ["l2"]]);
+    expect(plan.lines.every((l) => l.product === null)).toBe(true);
+    const products = planCart(cart(lines), mcfg([pct("a", 50), o], { enabled: true, max: 60, cur: "CZK" }, off));
+    expect(products.order).toBeNull();
+    expect(productOf(products, "l1")[2]).toBe(50_000);
+  },
+
+  campaign_overrides_apply_first_then_margin_protection() {
+    const c = mcfg([pct("a", 10)], { enabled: true, max: 40 }, {
+      campaignId: "bf",
+      campaignVarsVersion: "v1",
+      campaigns: [{ id: "bf", overrides: [{ ruleId: "a", patch: { value: { kind: "percentage", percent: 70 } } }] }],
+    });
+    const plan = planCart(cart([line("l1", 1, 100_000, ["a"])], [], { campaign: { id: "bf", active: true, varsVersion: "v1" } }), c);
+    expect(plan.campaignId).toBe("bf");
+    expect(productOf(plan, "l1")).toEqual(["a", { fixedTotal: 40_000 }, 40_000]);
+  },
+
+  a_capped_line_is_never_relaxed_over_the_output_budget() {
+    const fix = { id: "fix", enabled: true, name: "9,99 Kč z kusu", method: "automatic", value: { kind: "fixed", amount: { CZK: 999 } }, target: { kind: "products" }, combinesWith: { ruleIds: ["ten"] } };
+    const lines = Array.from({ length: 200 }, (_, i) => line(`L${i + 1}`, 1, 5000 + (i + 1) * 101, ["fix", "ten"]));
+    const plan = planCart(cart(lines), mcfg([fix, pct("ten", 10)], { enabled: true, max: 20 }));
+    const capped = new Set(plan.lines.filter((l) => l.marginCapped).map((l) => l.lineId));
+    expect(capped.size > 20 && capped.size < 200).toBe(true);
+    const out = autoLines(plan, lines.length);
+    expect(out.bytes).toBeLessThanOrEqual(19_000);
+    const candidates = out.lines.operations[0].productDiscountsAdd.candidates;
+    let percents = 0;
+    for (const c2 of candidates) {
+      if (c2.targets.some((t) => capped.has(t.cartLine.id))) expect("fixedAmount" in c2.value).toBe(true);
+      if ("percentage" in c2.value) percents += 1;
+    }
+    expect(percents).toBeGreaterThan(0);
+  },
+
+  // src/json.rs: the variant metafield, the product's marginRefs and the rate (adapter + normalizeCart).
+  the_variant_cost_the_margin_refs_and_the_rate_read_like_the_ts_adapter() {
+    const read = (variantJson, productJson = { ruleIds: [] }, rate = "1.0") => {
+      const input = {
+        discount: { discountClasses: ["PRODUCT"], vars: { jsonValue: { role: "automatic" } } },
+        shop: { config: null, localTime: { date: "2026-10-01", campaignActive: false } },
+        presentmentCurrencyRate: rate,
+        cart: {
+          cost: { subtotalAmount: { currencyCode: "CZK" } },
+          lines: [
+            {
+              id: "l1",
+              quantity: 1,
+              cost: { amountPerQuantity: { amount: "1.0" } },
+              gift: null,
+              merchandise: {
+                __typename: "ProductVariant",
+                id: "gid://shopify/ProductVariant/42",
+                wonVariant: { jsonValue: variantJson },
+                product: { wonProduct: { jsonValue: productJson } },
+              },
+            },
+          ],
+        },
+      };
+      const normalized = normalizeCart(adaptInput(input).cart);
+      const l = normalized.lines[0];
+      return { cost: [l.unitCost, l.unitCostCurrency], marginRefs: l.marginRefs, rate: normalized.shopToCartRate };
+    };
+    expect(read({ cost: 12.5, cur: "CZK" }).cost).toEqual([12.5, "CZK"]);
+    expect(read({ cost: "5", cur: 7 }).cost).toEqual([null, null]);
+    expect(read({ cost: 3, cur: "czk" }).cost).toEqual([3, "czk"]);
+    expect(read({ cost: -3, cur: "czk" }).cost).toEqual([-3, null]);
+    expect(read([1]).cost).toEqual([null, null]);
+    expect(read(null).cost).toEqual([null, null]);
+    expect(read(null, { ruleIds: ["a"], marginRefs: ["1", 2, "3"] }).marginRefs).toEqual(["1", "3"]);
+    expect(read(null, { marginRefs: ["7"] }).marginRefs).toEqual(["7"]);
+    expect(read(null, { marginRefs: "1" }).marginRefs).toEqual([]);
+    expect(read(null, { ruleIds: ["a"] }).marginRefs).toEqual([]);
+    expect(read(null, undefined, "0.04").rate).toBe(0.04);
+    expect(read(null, undefined, " 25.1 ").rate).toBe(25.1);
+    expect(read(null, undefined, 7).rate).toBe(7);
+    expect(decimalNumber("0.3")).toBe(0.3);
+    expect(decimalNumber("0.0405000")).toBe(0.0405);
+    expect(decimalNumber("000123.4500")).toBe(123.45);
+    expect(decimalNumber("123456789012345")).toBe(123_456_789_012_345);
+    expect(decimalNumber("0.0000000000000000000001")).toBe(1e-22);
+    for (const junk of ["1e3", "-1", "", "0x10", "1.", ".5", true, null]) {
+      expect(read(null, undefined, junk).rate).toBeNull();
+      expect(decimalNumber(junk)).toBeUndefined();
+    }
+    expect(decimalNumber("1234567890123456")).toBeUndefined();
+    expect(decimalNumber("0.00000000000000000000001")).toBeUndefined();
+  },
+
   // src/json.rs: the product metafield read (adapter + normalizeCart).
   product_metafield_reads_like_the_ts_adapter_and_normalize_cart() {
     const V = "gid://shopify/ProductVariant/42";
@@ -388,8 +683,9 @@ function rustTests(file) {
 
 describe("TS twins of the Rust unit tests", () => {
   test("every Rust engine test has a twin here, and every twin a Rust test", () => {
-    const rust = [...rustTests("src/engine/tests.rs"), "product_metafield_reads_like_the_ts_adapter_and_normalize_cart"];
-    expect(rustTests("src/json.rs")).toContain("product_metafield_reads_like_the_ts_adapter_and_normalize_cart");
+    const fromJson = ["product_metafield_reads_like_the_ts_adapter_and_normalize_cart", "the_variant_cost_the_margin_refs_and_the_rate_read_like_the_ts_adapter"];
+    const rust = [...rustTests("src/engine/tests.rs"), ...fromJson];
+    for (const name of fromJson) expect(rustTests("src/json.rs")).toContain(name);
     expect(Object.keys(TWINS).sort()).toEqual([...rust].sort());
   });
   for (const [name, twin] of Object.entries(TWINS)) test(name, twin);

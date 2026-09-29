@@ -20,7 +20,12 @@
 //   - per line: `ruleIds` ∪ `variantRuleIds[variant]` + `outlet` from the product
 //     metafield `$app:won_discounts`/`product`, the gift tier from the `_won_gift` line
 //     attribute (a gift is a property of the cart line, not of the product: the
-//     same product bought normally is an ordinary line).
+//     same product bought normally is an ordinary line);
+//   - margin protection (MVP 2): the variant's cost price `{cost, cur}` from the
+//     variant metafield `$app:won_discounts`/`variant` (cost in MAJOR units of the
+//     shop currency), the product's `marginRefs` from the product metafield, and
+//     `presentmentCurrencyRate` (shop currency → cart currency, a Decimal). They
+//     are passed on as read; the engine decides what is usable (margin.ts).
 //
 // Never throws: the run wrappers turn any error into `{ operations: [] }`.
 // Used by tests/parity.test.js and apps/won-discounts/tests/contracts/function.contract.test.ts.
@@ -124,13 +129,37 @@ function readLocale(isoCode) {
 const NO_REFS = Object.freeze([]);
 
 /**
+ * A `Decimal` scalar (Shopify sends a decimal string, e.g. "0.0405"; the local
+ * runner may pass a number) → a number, or undefined. A string must be plain
+ * decimal digits after trim, with at most 15 significant digits and at most 22
+ * decimals (leading zeros and trailing decimal zeros not counted); it is then
+ * `Number(text)`. "1e3", "0x10", "", "1.", junk and longer text are undefined:
+ * the Rust function reads exactly this set without float-parsing tables
+ * (src/json.rs DecimalNumber, one exact division), so both read the same number.
+ * @param {unknown} v
+ * @returns {number | undefined}
+ */
+export function decimalNumber(v) {
+  if (typeof v === "number") return v;
+  if (typeof v !== "string") return undefined;
+  const text = v.trim();
+  const m = /^(\d+)(?:\.(\d+))?$/.exec(text);
+  if (!m) return undefined;
+  const decimals = (m[2] ?? "").replace(/0+$/, "");
+  const significant = (m[1] + decimals).replace(/^0+/, "");
+  return significant.length <= 15 && decimals.length <= 22 ? Number(text) : undefined;
+}
+
+/**
  * One cart line → CartLineInput. This is the hot path of a big cart and the JS
  * runtime charges ~3 000 Wasm instructions per function call, so it reads with
  * optional chaining and no helper calls; the engine re-validates every field
  * anyway (normalizeCart keeps only strings, only this variant's refs, …).
  *   - `ruleIds` / `variantRuleIds`: passed through as the sync wrote them;
  *   - `outlet`: `true` (every variant) or a list of variant GIDs;
- *   - gift: the `_won_gift` line attribute (a property of the line, not the product).
+ *   - gift: the `_won_gift` line attribute (a property of the line, not the product);
+ *   - margin (MVP 2): `marginRefs` from the product metafield, `cost` / `cur` from the
+ *     variant metafield — as read (normalizeCart keeps a number / a string / strings).
  * @param {any} line
  * @param {string} currency
  * @returns {CartLineInput | null}
@@ -159,6 +188,14 @@ function readLine(line, currency) {
     if (typeof byVariant === "object" && byVariant !== null) out.variantRuleIds = byVariant;
     const outlet = won.outlet;
     if (outlet === true || (Array.isArray(outlet) && variantId !== "" && outlet.includes(variantId))) out.outlet = true;
+    if (won.marginRefs !== undefined) out.marginRefs = won.marginRefs;
+  }
+  const cost = isVariant ? merchandise.wonVariant?.jsonValue : null;
+  if (typeof cost === "object" && cost !== null) {
+    if (cost.cost !== undefined) out.unitCost = cost.cost;
+    // `cur` matters only for a cost the engine could use (a number > 0); the Rust
+    // function skips reading it otherwise (instruction budget), and so does this.
+    if (cost.cur !== undefined && typeof cost.cost === "number" && cost.cost > 0) out.unitCostCurrency = cost.cur;
   }
   const gift = line.gift?.value;
   if (typeof gift === "string" && gift !== "") out.giftTierId = gift;
@@ -214,6 +251,9 @@ export function adaptInput(input) {
   if (countryCode !== null) planInput.countryCode = countryCode;
   const locale = readLocale(rec(localization.language).isoCode);
   if (locale) planInput.locale = locale;
+  // Margin protection converts cost prices from the shop currency into the cart's with it.
+  const rate = decimalNumber(root.presentmentCurrencyRate);
+  if (rate !== undefined) planInput.shopToCartRate = rate;
 
   return {
     cart: planInput,

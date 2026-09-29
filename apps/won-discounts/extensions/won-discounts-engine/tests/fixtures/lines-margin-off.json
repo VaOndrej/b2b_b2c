@@ -1,0 +1,156 @@
+{
+  "scenario": "Margin protection switched off (the default): its settings, the cost prices, the collection refs and the rate change nothing — the 30 % applies although the cost equals the price.",
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [],
+      "discount": {
+        "discountClasses": [
+          "PRODUCT",
+          "ORDER",
+          "SHIPPING"
+        ],
+        "vars": {
+          "jsonValue": {
+            "role": "automatic",
+            "campaignId": null,
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "varsVersion": null
+          }
+        }
+      },
+      "shop": {
+        "config": {
+          "jsonValue": {
+            "schemaVersion": 1,
+            "campaignId": null,
+            "campaignVarsVersion": null,
+            "engine": {
+              "combination": {
+                "outletWithAnything": false,
+                "productWithProduct": "best",
+                "productWithOrder": true,
+                "productWithShipping": true,
+                "orderWithShipping": true
+              }
+            },
+            "marketCountries": {},
+            "modules": {
+              "codes": {
+                "rules": [
+                  {
+                    "id": "summer",
+                    "enabled": true,
+                    "name": "Letní sleva",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 30
+                    },
+                    "target": {
+                      "kind": "products"
+                    }
+                  }
+                ]
+              },
+              "tiers": {
+                "sets": []
+              },
+              "rewards": {
+                "gifts": [],
+                "countOtherDiscounts": false
+              },
+              "margin": {
+                "enabled": false
+              }
+            },
+            "campaigns": []
+          }
+        },
+        "localTime": {
+          "date": "2026-10-01",
+          "campaignActive": false
+        }
+      },
+      "localization": {
+        "country": {
+          "isoCode": "CZ"
+        },
+        "language": {
+          "isoCode": "CS"
+        }
+      },
+      "presentmentCurrencyRate": "0.04",
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "currencyCode": "CZK"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1000.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1001",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 1000,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [
+                      "summer"
+                    ],
+                    "marginRefs": [
+                      "1"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "productDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Letní sleva",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/1"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 30
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "ALL"
+          }
+        }
+      ]
+    }
+  }
+}

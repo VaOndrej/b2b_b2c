@@ -1,0 +1,203 @@
+{
+  "scenario": "Order 20 % after a 50 % product discount, 60 % ceiling: line 1 is 500 Kč after its product discount, floor 400 Kč. Shopify does not say whether it spreads an order discount over the lines before or after product discounts, so the order discount is lowered to what is safe on both (149,98 Kč, 1 haléř per line kept for rounding), an exact amount.",
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [],
+      "discount": {
+        "discountClasses": [
+          "PRODUCT",
+          "ORDER",
+          "SHIPPING"
+        ],
+        "vars": {
+          "jsonValue": {
+            "role": "automatic",
+            "campaignId": null,
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "varsVersion": null
+          }
+        }
+      },
+      "shop": {
+        "config": {
+          "jsonValue": {
+            "schemaVersion": 1,
+            "campaignId": null,
+            "campaignVarsVersion": null,
+            "engine": {
+              "combination": {
+                "outletWithAnything": false,
+                "productWithProduct": "best",
+                "productWithOrder": true,
+                "productWithShipping": true,
+                "orderWithShipping": true
+              }
+            },
+            "marketCountries": {},
+            "modules": {
+              "codes": {
+                "rules": [
+                  {
+                    "id": "half",
+                    "enabled": true,
+                    "name": "Polovina",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 50
+                    },
+                    "target": {
+                      "kind": "products"
+                    }
+                  },
+                  {
+                    "id": "obj",
+                    "enabled": true,
+                    "name": "Objednávka 20 %",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 20
+                    },
+                    "target": {
+                      "kind": "order"
+                    }
+                  }
+                ]
+              },
+              "tiers": {
+                "sets": []
+              },
+              "rewards": {
+                "gifts": [],
+                "countOtherDiscounts": false
+              },
+              "margin": {
+                "enabled": true,
+                "max": 60,
+                "cur": "CZK"
+              }
+            },
+            "campaigns": []
+          }
+        },
+        "localTime": {
+          "date": "2026-10-01",
+          "campaignActive": false
+        }
+      },
+      "localization": {
+        "country": {
+          "isoCode": "CZ"
+        },
+        "language": {
+          "isoCode": "CS"
+        }
+      },
+      "presentmentCurrencyRate": "1.0",
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "currencyCode": "CZK"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1000.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1001",
+              "wonVariant": null,
+              "product": {
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [
+                      "half"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "500.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1002",
+              "wonVariant": null,
+              "product": {
+                "wonProduct": null
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "productDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Polovina",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/1"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 50
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "ALL"
+          }
+        },
+        {
+          "orderDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Objednávka 20 %",
+                "targets": [
+                  {
+                    "orderSubtotal": {
+                      "excludedCartLineIds": []
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "149.98"
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "FIRST"
+          }
+        }
+      ]
+    }
+  }
+}

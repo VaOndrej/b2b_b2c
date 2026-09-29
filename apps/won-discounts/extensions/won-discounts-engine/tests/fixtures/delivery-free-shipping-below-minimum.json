@@ -87,6 +87,7 @@
           "isoCode": "CS"
         }
       },
+      "presentmentCurrencyRate": "1.0",
       "cart": {
         "cost": {
           "subtotalAmount": {
@@ -111,6 +112,7 @@
             "merchandise": {
               "__typename": "ProductVariant",
               "id": "gid://shopify/ProductVariant/1001",
+              "wonVariant": null,
               "product": {
                 "wonProduct": null
               }

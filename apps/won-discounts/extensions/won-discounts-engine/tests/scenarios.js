@@ -25,6 +25,8 @@ const out = (/** @type {unknown[]} */ ...operations) => ({ operations });
 const percent = (/** @type {number} */ value) => ({ percentage: { value } });
 const perItem = (/** @type {string} */ amount) => ({ fixedAmount: { amount, appliesToEachItem: true } });
 const lineTotal = (/** @type {string} */ amount) => ({ fixedAmount: { amount, appliesToEachItem: false } });
+/** An order (or delivery) fixed amount. */
+const amountOff = (/** @type {string} */ amount) => ({ fixedAmount: { amount } });
 
 /** @param {string} message @param {number[]} lines @param {unknown} value */
 const pc = (message, lines, value) => ({ message, targets: lines.map((n) => ({ cartLine: { id: lineId(n) } })), value });
@@ -48,6 +50,14 @@ const delivery = (message, value, groups = [DEFAULT_GROUP]) => ({
 const AUTO = /** @type {const} */ ({ kind: "automatic" });
 const codeNode = (/** @type {string} */ ruleId) => ({ kind: /** @type {const} */ ("code"), ruleId });
 const won = (/** @type {string[]} */ ...ruleIds) => ({ ruleIds });
+/** The variant metafield `$app:won_discounts`/`variant` (MVP 2): cost in MAJOR units of `cur`. */
+const costOf = (/** @type {number} */ cost, cur = "CZK") => ({ cost, cur });
+/** modules.margin of the merchant config with protection ON. */
+const marginOn = (/** @type {Record<string, number>} */ global, /** @type {Record<string, unknown>[]} */ perCollection = []) => ({
+  enabled: true,
+  global,
+  perCollection,
+});
 
 // --- Shared configs ------------------------------------------------------------------------
 
@@ -538,6 +548,307 @@ function allScenarios() {
     expected: out(products(pc("1.250 BHD", [1], perItem("1.250")), pc("Deset", [2], percent(10)))),
   },
 
+  // --- margin protection (MVP 2, spec §3 bod 7; @won/core margin.ts) --------------------------
+  //
+  // Floor of one item: cost known → ceil(cost / (1 − m/100)), else price × (1 − p/100).
+  // A product allocation above the line's headroom (subtotal − floor × quantity) is cut,
+  // in rank order, and emitted as that exact amount; the order discount leaves out
+  // lines at their floor or is lowered to what is safe on both allocation bases,
+  // keeping 1 minor unit per line for rounding. Off by default.
+  {
+    name: "lines-margin-product-cap",
+    description:
+      "Margin protection: cost 700 Kč + minimum margin 20 % → floor 875 Kč. 30 % would take the 1 000 Kč item to 700 Kč, so line 1 gets exactly 125 Kč (an exact amount, never a percent). Line 2 has no cost price: the 50 % ceiling leaves its 30 % alone.",
+    target: "lines",
+    rules: [pct("summer", 30, { name: "Letní sleva" })],
+    margin: marginOn({ minMarginPercent: 20, maxDiscountPercent: 50 }),
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0", won: won("summer"), variantMeta: costOf(700) },
+      { n: 2, price: "200.0", qty: 2, won: won("summer") },
+    ],
+    expected: out(products(pc("Letní sleva", [1], perItem("125.00")), pc("Letní sleva", [2], percent(30)))),
+  },
+  {
+    name: "lines-margin-no-cost-max-percent",
+    description:
+      "No usable cost price → the maximum discount % (20 %) is the ceiling: no variant metafield, a cost in another currency than the shop's, a cost that is not a number, a lower-case currency, a zero cost. A fixed amount per item is capped on the whole line (3 × 500 Kč: 300 Kč per item → 100 Kč per item). A usable cost (5 Kč) leaves the 30 % alone.",
+    target: "lines",
+    rules: [pct("summer", 30, { name: "Letní sleva" }), fixed("flat", { CZK: 30000 }, { name: "300 Kč z kusu" })],
+    margin: marginOn({ maxDiscountPercent: 20 }),
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0", won: won("summer") },
+      { n: 2, price: "500.0", qty: 3, won: won("flat") },
+      { n: 3, price: "100.0", won: won("summer"), variantMeta: costOf(10, "EUR") },
+      { n: 4, price: "100.0", won: won("summer"), variantMeta: { cost: "5", cur: "CZK" } },
+      { n: 5, price: "100.0", won: won("summer"), variantMeta: costOf(5, "czk") },
+      { n: 6, price: "100.0", won: won("summer"), variantMeta: costOf(0) },
+      { n: 7, price: "100.0", won: won("summer"), variantMeta: costOf(5) },
+    ],
+    expected: out(
+      products(
+        pc("Letní sleva", [1], perItem("200.00")),
+        pc("300 Kč z kusu", [2], perItem("100.00")),
+        pc("Letní sleva", [3, 4, 5, 6], perItem("20.00")),
+        pc("Letní sleva", [7], percent(30)),
+      ),
+    ),
+  },
+  {
+    name: "lines-margin-stack-cut-auto-node",
+    description:
+      "Pro stack A 20 % + code B 10 % on a 1 000 Kč item without a cost price, 15 % ceiling: the 150 Kč headroom is taken in rank order — A keeps 150 Kč, B nothing — so the owner moves from the code rule to A and the automatic node emits it.",
+    target: "lines",
+    rules: [pct("a", 20, { name: "Sleva A", combinesWith: { ruleIds: ["b"] } }), withCodes(["KOD"], pct("b", 10, { name: "Kód B" }))],
+    margin: marginOn({ maxDiscountPercent: 15 }),
+    role: AUTO,
+    entered: ["KOD"],
+    lines: [{ n: 1, price: "1000.0", won: won("a", "b") }],
+    expected: out(products(pc("Sleva A", [1], perItem("150.00")))),
+  },
+  {
+    name: "lines-margin-stack-cut-code-node",
+    description:
+      "The same Pro stack with a 25 % ceiling: A keeps 200 Kč, B gets the remaining 50 Kč. The stack still contains the code, so the code node emits it, as one exact 250 Kč.",
+    target: "lines",
+    rules: [pct("a", 20, { name: "Sleva A", combinesWith: { ruleIds: ["b"] } }), withCodes(["KOD"], pct("b", 10, { name: "Kód B" }))],
+    margin: marginOn({ maxDiscountPercent: 25 }),
+    role: codeNode("b"),
+    triggering: "KOD",
+    entered: ["KOD"],
+    lines: [{ n: 1, price: "1000.0", won: won("a", "b") }],
+    expected: out(products(pc("Sleva A + Kód B", [1], perItem("250.00")))),
+  },
+  {
+    name: "lines-margin-capped-exact-not-percent",
+    description:
+      "A capped value is emitted as its exact amount even when it equals a percent of the line: Pro stack A 10 % + B 10 % on 10,05 Kč (1,01 + 1,01), 20 % ceiling → headroom 2,01 = round(10,05 × 20 %). As 20 %, Shopify would round it itself; the exact 2,01 never crosses the floor.",
+    target: "lines",
+    rules: [pct("a", 10, { name: "A", combinesWith: { ruleIds: ["b"] } }), pct("b", 10, { name: "B" })],
+    margin: marginOn({ maxDiscountPercent: 20 }),
+    role: AUTO,
+    lines: [{ n: 1, price: "10.05", won: won("a", "b") }],
+    expected: out(products(pc("A + B", [1], perItem("2.01")))),
+  },
+  {
+    name: "lines-margin-collections-strictest",
+    description:
+      "Collections with their own margin setting (Pro): collection 1 (minimum margin 30 %), collection 2 (maximum discount 10 %), global minimum 10 % and maximum 50 %; the strictest value of each field applies, an empty field is the global value. Line 1 (no cost, both collections): 10 % ceiling → 100 Kč. Line 2 (cost 700 Kč, collection 1): 30 % margin → floor 1 000 Kč, no product discount. Line 3 (cost 700 Kč, a collection without a setting): the global 10 % → floor 777,78 Kč → 222,22 Kč.",
+    target: "lines",
+    rules: [pct("summer", 30, { name: "Letní sleva" })],
+    margin: marginOn({ minMarginPercent: 10, maxDiscountPercent: 50 }, [
+      { collectionId: "gid://shopify/Collection/1", minMarginPercent: 30 },
+      { collectionId: "gid://shopify/Collection/2", maxDiscountPercent: 10 },
+    ]),
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0", won: { ruleIds: ["summer"], marginRefs: ["1", "2"] } },
+      { n: 2, price: "1000.0", won: { ruleIds: ["summer"], marginRefs: ["1"] }, variantMeta: costOf(700) },
+      { n: 3, price: "1000.0", won: { ruleIds: ["summer"], marginRefs: ["99"] }, variantMeta: costOf(700) },
+    ],
+    expected: out(products(pc("Letní sleva", [1], perItem("100.00")), pc("Letní sleva", [3], perItem("222.22")))),
+  },
+  {
+    name: "lines-margin-foreign-currency-rate",
+    description:
+      "Cart in EUR, shop in CZK: the cost (500 Kč) is converted with presentmentCurrencyRate (0.04 → 20 €), + 10 % minimum margin → floor 22,23 €, so 60 % of 40 € is cut to 17,77 €. Line 2 has no cost price: the 30 % ceiling leaves 12 € of its 60 %.",
+    target: "lines",
+    rules: [pct("sixty", 60, { name: "Sleva 60 %" })],
+    margin: marginOn({ minMarginPercent: 10, maxDiscountPercent: 30 }),
+    role: AUTO,
+    currency: "EUR",
+    rate: "0.04",
+    lines: [
+      { n: 1, price: "40.0", won: won("sixty"), variantMeta: costOf(500) },
+      { n: 2, price: "40.0", won: won("sixty") },
+    ],
+    expected: out(products(pc("Sleva 60 %", [1], perItem("17.77")), pc("Sleva 60 %", [2], perItem("12.00")))),
+  },
+  {
+    name: "lines-margin-rate-invalid",
+    description:
+      "Cart in EUR, but presentmentCurrencyRate is not a usable rate (0): the cost price cannot be converted, so it is unknown and the 30 % ceiling applies (12 € of 60 %).",
+    target: "lines",
+    rules: [pct("sixty", 60, { name: "Sleva 60 %" })],
+    margin: marginOn({ minMarginPercent: 10, maxDiscountPercent: 30 }),
+    role: AUTO,
+    currency: "EUR",
+    rate: "0.0",
+    lines: [{ n: 1, price: "40.0", won: won("sixty"), variantMeta: costOf(500) }],
+    expected: out(products(pc("Sleva 60 %", [1], perItem("12.00")))),
+  },
+  {
+    name: "lines-margin-currency-jpy",
+    description: "Cart in JPY (exponent 0), shop in CZK: cost 100 Kč × rate 6.5 = a 650 ¥ floor, so 50 % of 1 000 ¥ is cut to 350 ¥.",
+    target: "lines",
+    rules: [pct("half", 50, { name: "Polovina" })],
+    margin: marginOn({ maxDiscountPercent: 90 }),
+    role: AUTO,
+    currency: "JPY",
+    rate: "6.5",
+    lines: [{ n: 1, price: "1000", won: won("half"), variantMeta: costOf(100) }],
+    expected: out(products(pc("Polovina", [1], perItem("350")))),
+  },
+  {
+    name: "lines-margin-off",
+    description:
+      "Margin protection switched off (the default): its settings, the cost prices, the collection refs and the rate change nothing — the 30 % applies although the cost equals the price.",
+    target: "lines",
+    rules: [pct("summer", 30, { name: "Letní sleva" })],
+    margin: {
+      enabled: false,
+      global: { minMarginPercent: 90, maxDiscountPercent: 1 },
+      perCollection: [{ collectionId: "gid://shopify/Collection/1", maxDiscountPercent: 0 }],
+    },
+    role: AUTO,
+    rate: "0.04",
+    lines: [{ n: 1, price: "1000.0", won: { ruleIds: ["summer"], marginRefs: ["1"] }, variantMeta: costOf(1000) }],
+    expected: out(products(pc("Letní sleva", [1], percent(30)))),
+  },
+  {
+    name: "lines-margin-campaign",
+    description: "A live campaign overrides the rule first (10 % → 70 %), then margin protection caps it: 40 % ceiling → 400 Kč of the 700 Kč.",
+    target: "lines",
+    rules: [pct("summer", 10, { name: "Letní sleva" })],
+    configExtra: {
+      campaigns: [
+        {
+          id: "bf",
+          name: "Black Friday",
+          window: { start: "2026-09-30T00:00:00", end: "2026-10-05T23:59:59" },
+          overrides: [{ ruleId: "summer", patch: { value: { kind: "percentage", percent: 70 } } }],
+          killed: false,
+        },
+      ],
+    },
+    margin: marginOn({ maxDiscountPercent: 40 }),
+    role: AUTO,
+    campaignActive: true,
+    lines: [{ n: 1, price: "1000.0", won: won("summer") }],
+    expected: out(products(pc("Letní sleva", [1], perItem("400.00")))),
+  },
+  {
+    name: "lines-margin-order-left-out",
+    description:
+      "Order 10 % with margin protection: line 2's cost equals its price (at its floor), so the order discount leaves it out (excludedCartLineIds) and stays 10 % of the other lines — 150 Kč, emitted as that exact amount (with margin protection on, every order discount is: a percent of a base the checkout computes could exceed what the lines can give).",
+    target: "lines",
+    rules: [orderPct("obj", 10, { name: "Objednávka 10 %" })],
+    margin: marginOn({ maxDiscountPercent: 50 }),
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0" },
+      { n: 2, price: "1000.0", variantMeta: costOf(1000) },
+      { n: 3, price: "500.0" },
+    ],
+    expected: out(order("Objednávka 10 %", [2], amountOff("150.00"))),
+  },
+  {
+    name: "lines-margin-order-lowered",
+    description: "Order 30 % on one 1 000 Kč line without a cost price, 20 % ceiling: lowered to 199,99 Kč (1 haléř kept for rounding), a fixed amount.",
+    target: "lines",
+    rules: [orderPct("obj", 30, { name: "Objednávka 30 %" })],
+    margin: marginOn({ maxDiscountPercent: 20 }),
+    role: AUTO,
+    lines: [{ n: 1, price: "1000.0" }],
+    expected: out(order("Objednávka 30 %", [], amountOff("199.99"))),
+  },
+  {
+    name: "lines-margin-order-both-bases",
+    description:
+      "Order 20 % after a 50 % product discount, 60 % ceiling: line 1 is 500 Kč after its product discount, floor 400 Kč. Shopify does not say whether it spreads an order discount over the lines before or after product discounts, so the order discount is lowered to what is safe on both (149,98 Kč, 1 haléř per line kept for rounding), an exact amount.",
+    target: "lines",
+    rules: [pct("half", 50, { name: "Polovina" }), orderPct("obj", 20, { name: "Objednávka 20 %" })],
+    margin: marginOn({ maxDiscountPercent: 60 }),
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0", won: won("half") },
+      { n: 2, price: "500.0" },
+    ],
+    expected: out(products(pc("Polovina", [1], percent(50))), order("Objednávka 20 %", [], amountOff("149.98"))),
+  },
+  {
+    name: "lines-margin-order-two-orderings",
+    description:
+      "The order stage searches the lines in two orderings (headroom per price before, and after, the product discount) and keeps the better one. Line 1: 1 000 Kč with 90 % off (100 Kč left), cost 49,99 Kč → 50 Kč it can give; line 2: 100 Kč, cost 94,99 Kč → 5 Kč. Per price before the discount both have 5 %, so they enter together and line 2 limits the order to 10 Kč; per price after it, line 1 (50 %) alone carries the whole 50 % of 100 Kč. So the order discount is 50 Kč on line 1 (an exact amount), line 2 left out.",
+    target: "lines",
+    rules: [pct("ninety", 90, { name: "Sleva 90 %" }), orderPct("obj", 50, { name: "Objednávka 50 %" })],
+    margin: marginOn({ maxDiscountPercent: 100 }),
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0", won: won("ninety"), variantMeta: costOf(49.99) },
+      { n: 2, price: "100.0", variantMeta: costOf(94.99) },
+    ],
+    expected: out(products(pc("Sleva 90 %", [1], percent(90))), order("Objednávka 50 %", [2], amountOff("50.00"))),
+  },
+  {
+    name: "lines-margin-order-stack-cut",
+    description:
+      "Pro order stack A 20 % + code B 5 %, 10 % ceiling: lowered to 99,99 Kč, taken in rank order — A alone — so A owns it and the automatic node emits it (B's code gets nothing).",
+    target: "lines",
+    rules: [
+      orderPct("a", 20, { name: "Objednávka A", combinesWith: { ruleIds: ["b"] } }),
+      withCodes(["KOD"], orderPct("b", 5, { name: "Kód B" })),
+    ],
+    margin: marginOn({ maxDiscountPercent: 10 }),
+    role: AUTO,
+    entered: ["KOD"],
+    lines: [{ n: 1, price: "1000.0" }],
+    expected: out(order("Objednávka A", [], amountOff("99.99"))),
+  },
+  {
+    name: "lines-margin-order-floored",
+    description: "Code order 10 % on a cart whose only line is at its floor (cost = price): no order discount at all, so the code node emits nothing.",
+    target: "lines",
+    rules: [withCodes(["LETO"], orderPct("leto", 10, { name: "Léto" }))],
+    margin: marginOn({ maxDiscountPercent: 50 }),
+    role: codeNode("leto"),
+    triggering: "LETO",
+    entered: ["LETO"],
+    lines: [{ n: 1, price: "1000.0", variantMeta: costOf(1000) }],
+    expected: NONE,
+  },
+  {
+    name: "lines-margin-exclusive",
+    description:
+      "Product and order discounts exclusive (productWithOrder off), 10 % ceiling: the order-only scenario is protected too — line 2 is at its floor and left out, line 1 can give 99,99 Kč — and that still beats the 50 Kč product scenario, so only the order discount is emitted.",
+    target: "lines",
+    rules: [pct("a", 5, { name: "Sleva 5 %" }), orderPct("obj", 30, { name: "Objednávka 30 %" })],
+    configExtra: { engine: { combination: { productWithOrder: false } } },
+    margin: marginOn({ maxDiscountPercent: 10 }),
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0", won: won("a") },
+      { n: 2, price: "1000.0", variantMeta: costOf(1000) },
+    ],
+    expected: out(order("Objednávka 30 %", [2], amountOff("99.99"))),
+  },
+  {
+    name: "lines-margin-product-capped-to-zero",
+    description: "The only product discount is capped to 0 (the cost equals the price): the lines target emits nothing.",
+    target: "lines",
+    rules: [pct("summer", 30, { name: "Letní sleva" }), freeShip("ship", { name: "Doprava zdarma" })],
+    configExtra: { engine: { combination: { productWithShipping: false } } },
+    margin: marginOn({ maxDiscountPercent: 50 }),
+    role: AUTO,
+    lines: [{ n: 1, price: "1000.0", won: won("summer"), variantMeta: costOf(1000) }],
+    expected: NONE,
+  },
+  {
+    name: "delivery-margin-product-capped-to-zero",
+    description:
+      "The delivery target of the same cart: product discounts and shipping are exclusive (productWithShipping off), but the product discount is capped to 0, so free shipping applies. The delivery target plans the same cart as the lines target (cost prices, rate, collection refs); without the cost price the 30 % would apply and block the shipping discount.",
+    target: "delivery",
+    rules: [pct("summer", 30, { name: "Letní sleva" }), freeShip("ship", { name: "Doprava zdarma" })],
+    configExtra: { engine: { combination: { productWithShipping: false } } },
+    margin: marginOn({ maxDiscountPercent: 50 }),
+    role: AUTO,
+    lines: [{ n: 1, price: "1000.0", won: won("summer"), variantMeta: costOf(1000) }],
+    expected: out(delivery("Doprava zdarma", percent(100))),
+  },
+
+  marginTightTies(),
+
   // --- output size (Shopify: 20 kB for ≤ 200 lines) ----------------------------------------
   proStackPercentOutput(),
   proStackDegradedOutput(),
@@ -548,6 +859,8 @@ function allScenarios() {
   // --- instruction budget ------------------------------------------------------------------
   budget("lines"),
   budget("delivery"),
+  marginBudget("lines"),
+  marginBudget("delivery"),
   ];
 }
 
@@ -702,6 +1015,169 @@ function budget(target) {
       target === "lines"
         ? out(products(...budgetExpectedProducts()), order("Sleva o1", outlet, percent(5)))
         : out(delivery("Doprava s1", percent(100))),
+  };
+}
+
+/**
+ * Margin protection over the output budget: 200 lines at 1,4 % whose every
+ * amount is a rounding tie in decimal (2,50 Kč + 5 Kč × i: x,5 haléřů), so the
+ * exact output is over the budget and the ties go back to their percent — but
+ * not on the lines sitting exactly at their floor (every 4th: cost = price −
+ * discount). Shopify could round such a tie up and take the line 1 haléř under
+ * its floor, so those keep their exact amounts; the rest share one 1,4 %.
+ * @returns {Scenario}
+ */
+function marginTightTies() {
+  const name = "Jedna celá čtyři";
+  const lines = [];
+  const exactRows = [];
+  const relaxedRows = [];
+  for (let i = 1; i <= 200; i += 1) {
+    const s = 250 + 500 * (i - 1);
+    if (!tie(s, 1.4)) throw new Error(`marginTightTies: ${s} must be a tie at 1,4 %`);
+    const discount = Math.round((s * 1.4) / 100);
+    const tight = i % 4 === 1;
+    const cost = (s - discount) / 100; // Kč: the floor is exactly the price after the discount
+    if (tight && ceilTol(cost * 100) !== s - discount) throw new Error(`marginTightTies: line ${i} must sit at its floor`);
+    lines.push({ n: i, price: kc(s), won: won("a"), ...(tight ? { variantMeta: costOf(cost) } : {}) });
+    const target = { cartLine: { id: lineId(i) } };
+    const exact = { key: `e${discount}`, message: name, value: perItem(kc(discount)), target, amount: discount };
+    exactRows.push(exact);
+    relaxedRows.push(tight ? exact : { key: "p1.4", message: name, value: percent(1.4), target, amount: discount });
+  }
+  if (bytes(productsOf(groupRows(exactRows))) <= OUTPUT_BUDGET) throw new Error("marginTightTies: the exact output must be over the budget");
+  const expected = productsOf(groupRows(relaxedRows));
+  if (bytes(expected) > OUTPUT_BUDGET) throw new Error("marginTightTies: the relaxed output must fit the budget");
+  return {
+    name: "lines-margin-tight-ties-exact",
+    description:
+      "Margin protection over the output budget: 200 rounding ties at 1,4 %; the ties go back to their percent, except on the lines exactly at their floor (every 4th), which keep their exact amounts — a tie Shopify rounded up would take them 1 haléř under the floor.",
+    target: "lines",
+    rules: [pct("a", 1.4, { name })],
+    margin: marginOn({ maxDiscountPercent: 50 }),
+    role: AUTO,
+    lines,
+    expected,
+  };
+}
+
+// --- The 200-line cart with margin protection (instruction budget, MVP 2) -------------------
+//
+// The budget cart's 37 rules and refs with margin protection on (minimum margin
+// 20 %), distinct prices (every line its own ratio in the order stage: the
+// O(lines²) worst case of the order protection) and a cost price on every line:
+// 10 Kč on most, 80 % of (price − 3 Kč) on every 10th ("tight"). The expected
+// output by a simple model of the margin rules:
+//   - a tight line's floor is price − 3 Kč, so its headroom is 3 Kč per item,
+//     less than any winner here (≥ 3 % of ≥ 101 Kč): its stack is cut to that,
+//     top rule first — the top rule alone, 3 Kč per item, owned by it;
+//   - every other line keeps its winner (its floor is 12,50 Kč);
+//   - the 5 % order discount leaves out the tight lines (at their floor, nothing
+//     left to give) and stays 5 % of the other lines, which the model checks
+//     can carry it on both allocation bases; with margin protection on it is
+//     emitted as its exact amount.
+
+const MARGIN_BUDGET_MIN = 20;
+const marginBudgetPrice = (/** @type {number} */ i) => 100 + i; // Kč, every line different
+const marginBudgetTight = (/** @type {number} */ i) => i % 10 === 5;
+/** Cost price, Kč: 80 % of (price − 3 Kč) on a tight line (floor = price − 3 Kč at 20 % margin), else 10 Kč. */
+const marginBudgetCost = (/** @type {number} */ i) => (marginBudgetTight(i) ? ((marginBudgetPrice(i) - 3) * 8) / 10 : 10);
+/** ceilTol (margin.ts): ceil with a 1e-6 tolerance for float noise. */
+const ceilTol = (/** @type {number} */ x) => Math.ceil(x - 1e-6);
+
+function marginBudgetExpected() {
+  /** @type {Map<string, { message: string, targets: { cartLine: { id: string } }[], value: unknown }>} */
+  const groups = new Map();
+  /** @type {{ message: string, targets: { cartLine: { id: string } }[], value: unknown }[]} */
+  const candidates = [];
+  const add = (/** @type {string} */ key, /** @type {string} */ message, /** @type {unknown} */ value, /** @type {number} */ i) => {
+    const target = { cartLine: { id: lineId(i) } };
+    const existing = groups.get(key);
+    if (existing) {
+      existing.targets.push(target);
+      return;
+    }
+    const candidate = { message, targets: [target], value };
+    groups.set(key, candidate);
+    candidates.push(candidate);
+  };
+  /** @type {number[]} */
+  const excluded = [];
+  /** @type {{ a: number, s: number, h: number }[]} */
+  const open = [];
+  for (let i = 1; i <= BUDGET_LINES; i += 1) {
+    if (budgetOutlet(i)) {
+      excluded.push(i);
+      continue;
+    }
+    const refs = new Set(budgetRefs(i));
+    const q = budgetQty(i);
+    const unit = marginBudgetPrice(i) * 100;
+    const s = unit * q;
+    const amount = (/** @type {number} */ p) => Math.round((s * p) / 100);
+    /** @type {{ id: string, percent: number, amount: number, code: boolean }[]} */
+    const singles = [];
+    P_PERCENT.forEach((p, k) => {
+      if (refs.has(`p${k + 1}`)) singles.push({ id: `p${k + 1}`, percent: p, amount: amount(p), code: false });
+    });
+    for (const c of CODE_RULES) if (refs.has(c.id)) singles.push({ id: c.id, percent: c.percent, amount: amount(c.percent), code: true });
+    singles.sort((a, b) => b.amount - a.amount || (a.id < b.id ? -1 : 1));
+    const best = singles[0];
+    const stacked = refs.has("p7") && refs.has("p8") && amount(15) + amount(17) > best.amount;
+    const total = stacked ? amount(15) + amount(17) : best.amount;
+    const floorUnit = ceilTol((marginBudgetCost(i) * 100) / (1 - MARGIN_BUDGET_MIN / 100));
+    const headroom = s - floorUnit * q;
+    if (marginBudgetTight(i)) {
+      if (headroom !== 300 * q || total <= headroom) throw new Error(`marginBudget: line ${i} must be cut to 3 Kč per item`);
+      excluded.push(i); // at its floor: nothing left for the order discount
+      const top = stacked ? { id: "p8", code: false } : best; // the stack's top rule (17 % > 15 %)
+      if (!top.code) add(`e300 ${top.id}`, `Sleva ${top.id}`, perItem("3.00"), i);
+      continue;
+    }
+    if (total > headroom) throw new Error(`marginBudget: line ${i} must keep its winner`);
+    const a = s - total;
+    open.push({ a, s, h: a - floorUnit * q - 1 });
+    if (stacked) add("pro", "Sleva p8 + Sleva p7", percent(32), i);
+    else if (!best.code) add(best.id, `Sleva ${best.id}`, percent(best.percent), i);
+  }
+  const base = open.reduce((sum, l) => sum + l.a, 0);
+  const baseBefore = open.reduce((sum, l) => sum + l.s, 0);
+  const wanted = Math.round((base * 5) / 100);
+  for (const l of open) {
+    if (Math.floor((l.h * base) / l.a) < wanted || Math.floor((l.h * baseBefore) / l.s) < wanted) {
+      throw new Error("marginBudget: every open line must carry the 5 % order discount on both bases");
+    }
+  }
+  return { candidates, excluded, orderValue: amountOff(kc(wanted)) };
+}
+
+/**
+ * @param {"lines" | "delivery"} target
+ * @returns {Scenario}
+ */
+function marginBudget(target) {
+  const lines = [];
+  for (let i = 1; i <= BUDGET_LINES; i += 1) {
+    lines.push({
+      n: i,
+      price: `${marginBudgetPrice(i)}.0`,
+      qty: budgetQty(i),
+      won: budgetOutlet(i) ? { ruleIds: budgetRefs(i), outlet: true } : { ruleIds: budgetRefs(i) },
+      variantMeta: costOf(marginBudgetCost(i)),
+    });
+  }
+  const { candidates, excluded, orderValue } = marginBudgetExpected();
+  return {
+    name: `${target}-margin-200-lines-budget`,
+    description:
+      "Instruction budget with margin protection on: the 200-line budget cart (37 rules, codes, a Pro stack, outlet lines) with a cost price on every line, distinct prices (the order stage's worst case) and the order discount — the automatic node must stay under the Shopify instruction limit with ≥ 30 % headroom.",
+    target,
+    rules: budgetRules(),
+    margin: marginOn({ minMarginPercent: MARGIN_BUDGET_MIN, maxDiscountPercent: 40 }),
+    role: AUTO,
+    entered: CODE_RULES.map((c) => c.code),
+    lines,
+    expected: target === "lines" ? out(products(...candidates), order("Sleva o1", excluded, orderValue)) : out(delivery("Doprava s1", percent(100))),
   };
 }
 

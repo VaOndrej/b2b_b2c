@@ -1,5 +1,5 @@
-// Tolerant readers for the three `jsonValue` metafields and the line price
-// (the `custom_scalar_overrides` in src/main.rs). JSON written by the sync or a
+// Tolerant readers for the four `jsonValue` metafields, the line price and the
+// presentment currency rate (the `custom_scalar_overrides` in src/main.rs). JSON written by the sync or a
 // merchant is DATA, not a contract the platform checks: every reader here
 // accepts any JSON and reads what it does not understand as "nothing", exactly
 // like the TS adapter and engine (`rec()`, `arr()`, `typeof … === "string"`).
@@ -156,19 +156,21 @@ enum Outlet {
     Variants(Value),
 }
 
-/// The product metafield `{ ruleIds, variantRuleIds?, outlet? }`. The variant
-/// lookups stay lazy (a product may list hundreds of variants): only the cart
-/// line's own variant is ever read, and only while the run's input is live.
+/// The product metafield `{ ruleIds, variantRuleIds?, outlet?, marginRefs? }`.
+/// The variant lookups stay lazy (a product may list hundreds of variants): only
+/// the cart line's own variant is ever read, and only while the run's input is
+/// live; `marginRefs` is read only while margin protection is on.
 #[derive(Clone)]
 pub struct WonProduct {
     rule_ids: Option<Vec<String>>,
     variant_rule_ids: Option<Value>,
     outlet: Outlet,
+    margin_refs: Option<Value>,
 }
 
 impl Deserialize for WonProduct {
     fn deserialize(value: &Value) -> Result<Self, Error> {
-        let mut out = Self { rule_ids: None, variant_rule_ids: None, outlet: Outlet::None };
+        let mut out = Self { rule_ids: None, variant_rule_ids: None, outlet: Outlet::None, margin_refs: None };
         // `typeof won === "object"` also admits arrays, whose `.ruleIds` etc. are undefined.
         if !value.is_obj() {
             return Ok(out);
@@ -189,6 +191,10 @@ impl Deserialize for WonProduct {
         } else if outlet.is_array() {
             out.outlet = Outlet::Variants(outlet);
         }
+        let margin_refs = prop(value, "marginRefs");
+        if margin_refs.is_array() {
+            out.margin_refs = Some(margin_refs);
+        }
         Ok(out)
     }
 }
@@ -197,6 +203,12 @@ impl WonProduct {
     /// Product-wide refs (`strings(won.ruleIds)`).
     pub fn rule_ids(&self) -> &[String] {
         self.rule_ids.as_deref().unwrap_or(&[])
+    }
+
+    /// `strings(won.marginRefs)` (normalizeCart): the numeric ids of the product's
+    /// collections with a margin setting (margin protection, MVP 2).
+    pub fn margin_refs(&self) -> Vec<String> {
+        self.margin_refs.as_ref().and_then(strings).unwrap_or_default()
     }
 
     /// Whether the variant's id is needed at all (variant refs or an outlet list):
@@ -299,6 +311,84 @@ pub fn variant_key(variant_id: &str) -> &str {
     }
 }
 
+// --- Variant cost (`wonVariant`, margin protection MVP 2) -------------------------------------
+
+/// The variant metafield `$app:won_discounts`/`variant` = `{cost, cur}`, as the
+/// adapter passes it on and normalizeCart keeps it: `cost` when a number (MAJOR
+/// units of the shop currency), `cur` when a string. Whether the cost is usable
+/// is margin.rs's call (> 0, `cur` = the shop currency); `cur` is read only for
+/// a cost margin.rs could use (a number > 0), since nothing else looks at it.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct WonVariant {
+    pub cost: Option<f64>,
+    pub cur: Option<String>,
+}
+
+impl Deserialize for WonVariant {
+    fn deserialize(value: &Value) -> Result<Self, Error> {
+        if !value.is_obj() {
+            return Ok(Self::default());
+        }
+        let cost = number(&prop(value, "cost"));
+        let cur = if cost.is_some_and(|c| c > 0.0) { string(&prop(value, "cur")) } else { None };
+        Ok(Self { cost, cur })
+    }
+}
+
+// --- Presentment currency rate (`presentmentCurrencyRate`, a Decimal) --------------------------
+
+/// `decimalNumber` (tests/reference-adapter.js): a number as it is; a string
+/// only as plain decimal digits after JS `trim` (`^\d+(\.\d+)?$`) with at most
+/// 15 significant digits and at most 22 decimals (zeros that change nothing not
+/// counted), read as `Number(text)`; anything else none. Never fails (the
+/// generated `Decimal` would abort the run on junk).
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub struct DecimalNumber(pub Option<f64>);
+
+/// 10^0 … 10^22: every one exactly representable in an f64.
+const POW10: [f64; 23] = [
+    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22,
+];
+
+/// A plain decimal text → `Number(text)`, without float-parsing tables (the Wasm
+/// size limit): its digits w (< 10^15 < 2^53) and 10^k (k ≤ 22) are exact f64s,
+/// so w / 10^k is ONE correctly rounded division — the nearest f64 to the
+/// decimal, exactly what `Number(text)` gives (Clinger's fast path). Longer or
+/// malformed text → none.
+fn decimal_number(text: &str) -> Option<f64> {
+    let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    let (whole, fraction) = match text.split_once('.') {
+        Some((whole, fraction)) if digits(fraction) => (whole, fraction.trim_end_matches('0')),
+        Some(_) => return None,
+        None => (text, ""),
+    };
+    if !digits(whole) || fraction.len() > 22 {
+        return None;
+    }
+    let mut w: u64 = 0;
+    let mut significant = 0;
+    for b in whole.bytes().chain(fraction.bytes()) {
+        if w == 0 && b == b'0' {
+            continue; // a leading zero
+        }
+        significant += 1;
+        if significant > 15 {
+            return None;
+        }
+        w = w * 10 + u64::from(b - b'0');
+    }
+    Some(w as f64 / POW10[fraction.len()])
+}
+
+impl Deserialize for DecimalNumber {
+    fn deserialize(value: &Value) -> Result<Self, Error> {
+        if let Some(text) = value.as_string() {
+            return Ok(Self(decimal_number(js::trim(&text))));
+        }
+        Ok(Self(number(value)))
+    }
+}
+
 // --- Line price (`amountPerQuantity.amount`, a Decimal) -------------------------------------
 
 /// The line's unit price as text, for money.rs `to_minor_units` (parsed from its
@@ -387,6 +477,41 @@ mod tests {
         )
         .unwrap();
         assert_eq!(got, vec![false, true, false, true, true]);
+    }
+
+    #[test]
+    fn the_variant_cost_the_margin_refs_and_the_rate_read_like_the_ts_adapter() {
+        // Each expectation is the TS reference (adaptInput + normalizeCart) on the same value.
+        let cost = |json: &str| run_function_with_input(|v: WonVariant| Ok((v.cost, v.cur)), json).unwrap();
+        assert_eq!(cost(r#"{"cost": 12.5, "cur": "CZK"}"#), (Some(12.5), Some("CZK".to_string())));
+        assert_eq!(cost(r#"{"cost": "5", "cur": 7}"#), (None, None));
+        // Read as is: the engine decides (a lower-case currency → unknown); a cost it
+        // cannot use (≤ 0) skips `cur`, which nothing else reads.
+        assert_eq!(cost(r#"{"cost": 3, "cur": "czk"}"#), (Some(3.0), Some("czk".to_string())));
+        assert_eq!(cost(r#"{"cost": -3, "cur": "czk"}"#), (Some(-3.0), None));
+        assert_eq!(cost("[1]"), (None, None));
+        assert_eq!(cost("null"), (None, None));
+        let margin_refs = |json: &str| run_function_with_input(|w: WonProduct| Ok(w.margin_refs()), json).unwrap();
+        assert_eq!(margin_refs(r#"{"ruleIds": ["a"], "marginRefs": ["1", 2, "3"]}"#), refs(&["1", "3"]));
+        assert_eq!(margin_refs(r#"{"marginRefs": ["7"]}"#), refs(&["7"]));
+        assert_eq!(margin_refs(r#"{"marginRefs": "1"}"#), refs(&[]));
+        assert_eq!(margin_refs(r#"{"ruleIds": ["a"]}"#), refs(&[]));
+        let rate = |json: &str| run_function_with_input(|d: DecimalNumber| Ok(d.0), json).unwrap();
+        assert_eq!(rate(r#""0.04""#), Some(0.04));
+        assert_eq!(rate(r#"" 25.1 ""#), Some(25.1));
+        assert_eq!(rate("7"), Some(7.0));
+        // Number(text) exactly: the nearest f64, zeros that change nothing ignored.
+        assert_eq!(rate(r#""0.3""#), Some(0.3));
+        assert_eq!(rate(r#""0.0405000""#), Some(0.0405));
+        assert_eq!(rate(r#""000123.4500""#), Some(123.45));
+        assert_eq!(rate(r#""123456789012345""#), Some(123_456_789_012_345.0));
+        assert_eq!(rate(r#""0.0000000000000000000001""#), Some(1e-22));
+        for junk in [r#""1e3""#, r#""-1""#, r#""""#, r#""0x10""#, r#""1.""#, r#"".5""#, "true", "null"] {
+            assert_eq!(rate(junk), None, "{junk}");
+        }
+        // Beyond 15 significant digits or 22 decimals: not read (the cost then counts as unknown).
+        assert_eq!(rate(r#""1234567890123456""#), None);
+        assert_eq!(rate(r#""0.00000000000000000000001""#), None);
     }
 
     #[test]

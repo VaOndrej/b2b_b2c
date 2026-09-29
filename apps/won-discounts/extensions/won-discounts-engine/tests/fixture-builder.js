@@ -26,6 +26,8 @@ export const NOW = `${TODAY}T12:00:00`;
 export const SHOP_TIMEZONE = "Europe/Prague";
 export const ALL_CLASSES = ["PRODUCT", "ORDER", "SHIPPING"];
 export const DEFAULT_GROUP = "gid://shopify/CartDeliveryGroup/1";
+/** The shop currency: the variants' cost prices are in it (margin protection, MVP 2). */
+export const SHOP_CURRENCY = "CZK";
 
 /**
  * @typedef {Record<string, unknown>} RawRule
@@ -39,6 +41,8 @@ export const DEFAULT_GROUP = "gid://shopify/CartDeliveryGroup/1";
  * @property {string} [gift]              `_won_gift` attribute value
  * @property {boolean} [custom]           a CustomProduct line (no product, no metafield)
  * @property {number} [variant]           variant number (default 1000 + n)
+ * @property {unknown} [variantMeta]      variant metafield `$app:won_discounts`/`variant` jsonValue
+ *                                        (MVP 2 margin: `{cost, cur}`, cost in MAJOR units of the shop currency)
  *
  * @typedef {object} Scenario
  * @property {string} name
@@ -46,6 +50,9 @@ export const DEFAULT_GROUP = "gid://shopify/CartDeliveryGroup/1";
  * @property {"lines" | "delivery"} target
  * @property {RawRule[]} rules
  * @property {Record<string, unknown>} [configExtra]   engine, campaigns … (merchant config)
+ * @property {Record<string, unknown>} [margin]   modules.margin of the merchant config (MVP 2)
+ * @property {string} [shopCurrency]      the shop currency (margin `cur`), default SHOP_CURRENCY
+ * @property {unknown} [rate]             `presentmentCurrencyRate` (shop → cart), default "1.0"
  * @property {NodeRole} role
  * @property {(vars: Record<string, unknown>) => Record<string, unknown> | null} [varsPatch]
  * @property {"null" | Record<string, unknown>} [shopConfig]   override the built config
@@ -103,7 +110,8 @@ export const variantId = (/** @type {number} */ n) => `gid://shopify/ProductVari
  * @param {Scenario} s
  */
 export function merchantConfig(s) {
-  const { config, issues } = sanitizeConfig({ ...(s.configExtra ?? {}), modules: { codes: { rules: s.rules } } });
+  const modules = { codes: { rules: s.rules }, ...(s.margin ? { margin: s.margin } : {}) };
+  const { config, issues } = sanitizeConfig({ ...(s.configExtra ?? {}), modules });
   if (issues.length > 0) {
     throw new Error(`${s.name}: sanitizer issues ${JSON.stringify(issues.map((i) => `${i.path} ${i.code}`))}`);
   }
@@ -119,6 +127,7 @@ function cartLine(l) {
     : {
         __typename: "ProductVariant",
         id: variantId(l.variant ?? 1000 + l.n),
+        wonVariant: l.variantMeta === undefined ? null : { jsonValue: l.variantMeta },
         product: { wonProduct: l.won ? { jsonValue: l.won } : null },
       };
   return {
@@ -139,7 +148,11 @@ export function buildInput(s) {
   const shopConfig =
     s.shopConfig === "null"
       ? null
-      : { jsonValue: s.shopConfig ?? buildShopFunctionConfig(config, { now: NOW, shopTimezone: SHOP_TIMEZONE }).payload };
+      : {
+          jsonValue:
+            s.shopConfig ??
+            buildShopFunctionConfig(config, { now: NOW, shopTimezone: SHOP_TIMEZONE, shopCurrency: s.shopCurrency ?? SHOP_CURRENCY }).payload,
+        };
   const baseVars = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (buildNodeVars(s.role, config, NOW)));
   const vars = s.varsPatch ? s.varsPatch({ ...baseVars }) : baseVars;
   /** @type {Record<string, unknown>} */
@@ -158,6 +171,7 @@ export function buildInput(s) {
       localTime: { date: s.date ?? TODAY, campaignActive: s.campaignActive ?? false },
     },
     localization: { country: { isoCode: s.country ?? "CZ" }, language: { isoCode: s.language ?? "CS" } },
+    presentmentCurrencyRate: s.rate ?? "1.0",
     cart,
   };
 }

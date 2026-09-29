@@ -8,6 +8,11 @@
 //   country         localization.country.isoCode (Pro market targeting)
 //   per line        ruleIds ∪ variantRuleIds[variant] + outlet from the product
 //                   metafield; the gift from the `_won_gift` line attribute
+//   margin (MVP 2)  only while the shared config has margin protection on: the
+//                   variant's `{cost, cur}` (variant metafield), the product's
+//                   `marginRefs` and `presentmentCurrencyRate` — as read, the
+//                   engine (margin.rs) decides what is usable. Off, they are
+//                   never read (the plan ignores them anyway).
 //
 // The two targets have their own generated input types, so the reading is one
 // macro expanded for each (identical code, one definition).
@@ -61,6 +66,7 @@ macro_rules! adapt_input {
         let config = input.shop().config().and_then(|m| m.json_value().0.as_ref());
         match (role, config) {
             (Some(role), Some(config)) => {
+                let margin_on = config.margin.is_some();
                 let cart = input.cart();
                 let currency = $crate::engine::js::upper(cart.cost().subtotal_amount().currency_code());
                 let exponent = $crate::engine::money::currency_exponent(&currency);
@@ -74,6 +80,7 @@ macro_rules! adapt_input {
                     let mut outlet = false;
                     let mut rule_ids: &[String] = &[];
                     let mut variant_rule_ids = Vec::new();
+                    let (mut unit_cost, mut unit_cost_currency, mut margin_refs) = (None, None, Vec::new());
                     if let Merchandise::ProductVariant(variant) = line.merchandise() {
                         if let Some(won) = variant.product().won_product().map(|m| m.json_value()) {
                             rule_ids = won.rule_ids();
@@ -81,6 +88,15 @@ macro_rules! adapt_input {
                             let variant_id = if won.needs_variant_id() { variant.id().as_str() } else { "" };
                             variant_rule_ids = won.variant_refs(variant_id);
                             outlet = won.is_outlet(variant_id, &mut outlet_lists);
+                            if margin_on {
+                                margin_refs = won.margin_refs();
+                            }
+                        }
+                        if margin_on {
+                            if let Some(cost) = variant.won_variant().map(|m| m.json_value()) {
+                                unit_cost = cost.cost;
+                                unit_cost_currency = cost.cur.as_deref();
+                            }
                         }
                     }
                     lines.push($crate::engine::cart::LineInput {
@@ -97,6 +113,9 @@ macro_rules! adapt_input {
                         gift: line.gift().and_then(|g| g.value()).is_some_and(|v| !v.is_empty()),
                         rule_ids,
                         variant_rule_ids,
+                        unit_cost,
+                        unit_cost_currency,
+                        margin_refs,
                     });
                 }
                 let local_time = input.shop().local_time();
@@ -119,6 +138,7 @@ macro_rules! adapt_input {
                         },
                         today: Some(local_time.date().as_str()).filter(|d| !d.is_empty()),
                         locale_en: $crate::input::locale_en(localization.language().iso_code()),
+                        shop_to_cart_rate: if margin_on { input.presentment_currency_rate().0 } else { None },
                     },
                     config,
                     role,

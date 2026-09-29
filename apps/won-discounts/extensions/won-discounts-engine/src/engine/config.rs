@@ -12,6 +12,7 @@
 use shopify_function::wasm_api::Value;
 
 use super::js;
+use super::margin::{read_margin_payload, MarginPayload};
 use crate::json::{entries, is_true, non_empty, number, prop, string, string_list};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -222,6 +223,8 @@ pub struct Config {
     pub rules: Vec<RawRule>,
     /// Record entries of `config.campaigns`, in order.
     pub campaigns: Vec<RawCampaign>,
+    /// `modules.margin` when margin protection is ON (margin.rs `read_margin_payload`); none = off.
+    pub margin: Option<MarginPayload>,
 }
 
 // --- Reading from the input -------------------------------------------------------------------
@@ -421,6 +424,7 @@ impl Config {
             market_countries,
             rules: (0..rule_count).filter_map(|i| read_rule(&rules.get_at_index(i))).collect(),
             campaigns,
+            margin: read_margin_payload(&prop(&modules, "margin")),
         })
     }
 }

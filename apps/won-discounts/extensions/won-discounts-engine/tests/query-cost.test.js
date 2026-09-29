@@ -57,8 +57,8 @@ export function inputQueryCost(source) {
 }
 
 const QUERIES = [
-  { file: "src/cart_lines_discounts_generate_run.graphql", expected: 22 },
-  { file: "src/cart_delivery_options_discounts_generate_run.graphql", expected: 23 },
+  { file: "src/cart_lines_discounts_generate_run.graphql", expected: 26 },
+  { file: "src/cart_delivery_options_discounts_generate_run.graphql", expected: 27 },
 ];
 
 describe("input query limits", () => {

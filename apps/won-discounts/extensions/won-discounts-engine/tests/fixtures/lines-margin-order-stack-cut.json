@@ -1,0 +1,169 @@
+{
+  "scenario": "Pro order stack A 20 % + code B 5 %, 10 % ceiling: lowered to 99,99 Kč, taken in rank order — A alone — so A owns it and the automatic node emits it (B's code gets nothing).",
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [
+        {
+          "code": "KOD"
+        }
+      ],
+      "discount": {
+        "discountClasses": [
+          "PRODUCT",
+          "ORDER",
+          "SHIPPING"
+        ],
+        "vars": {
+          "jsonValue": {
+            "role": "automatic",
+            "campaignId": null,
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "varsVersion": null
+          }
+        }
+      },
+      "shop": {
+        "config": {
+          "jsonValue": {
+            "schemaVersion": 1,
+            "campaignId": null,
+            "campaignVarsVersion": null,
+            "engine": {
+              "combination": {
+                "outletWithAnything": false,
+                "productWithProduct": "best",
+                "productWithOrder": true,
+                "productWithShipping": true,
+                "orderWithShipping": true
+              }
+            },
+            "marketCountries": {},
+            "modules": {
+              "codes": {
+                "rules": [
+                  {
+                    "id": "a",
+                    "enabled": true,
+                    "name": "Objednávka A",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 20
+                    },
+                    "target": {
+                      "kind": "order"
+                    },
+                    "combinesWith": {
+                      "ruleIds": [
+                        "b"
+                      ]
+                    }
+                  },
+                  {
+                    "id": "b",
+                    "enabled": true,
+                    "name": "Kód B",
+                    "method": "code",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 5
+                    },
+                    "target": {
+                      "kind": "order"
+                    },
+                    "codeHashes": [
+                      "c5b30741"
+                    ]
+                  }
+                ]
+              },
+              "tiers": {
+                "sets": []
+              },
+              "rewards": {
+                "gifts": [],
+                "countOtherDiscounts": false
+              },
+              "margin": {
+                "enabled": true,
+                "max": 10,
+                "cur": "CZK"
+              }
+            },
+            "campaigns": []
+          }
+        },
+        "localTime": {
+          "date": "2026-10-01",
+          "campaignActive": false
+        }
+      },
+      "localization": {
+        "country": {
+          "isoCode": "CZ"
+        },
+        "language": {
+          "isoCode": "CS"
+        }
+      },
+      "presentmentCurrencyRate": "1.0",
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "currencyCode": "CZK"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1000.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1001",
+              "wonVariant": null,
+              "product": {
+                "wonProduct": null
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "orderDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Objednávka A",
+                "targets": [
+                  {
+                    "orderSubtotal": {
+                      "excludedCartLineIds": []
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "99.99"
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "FIRST"
+          }
+        }
+      ]
+    }
+  }
+}

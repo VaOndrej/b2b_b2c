@@ -1,0 +1,187 @@
+{
+  "scenario": "Order 10 % with margin protection: line 2's cost equals its price (at its floor), so the order discount leaves it out (excludedCartLineIds) and stays 10 % of the other lines — 150 Kč, emitted as that exact amount (with margin protection on, every order discount is: a percent of a base the checkout computes could exceed what the lines can give).",
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [],
+      "discount": {
+        "discountClasses": [
+          "PRODUCT",
+          "ORDER",
+          "SHIPPING"
+        ],
+        "vars": {
+          "jsonValue": {
+            "role": "automatic",
+            "campaignId": null,
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "varsVersion": null
+          }
+        }
+      },
+      "shop": {
+        "config": {
+          "jsonValue": {
+            "schemaVersion": 1,
+            "campaignId": null,
+            "campaignVarsVersion": null,
+            "engine": {
+              "combination": {
+                "outletWithAnything": false,
+                "productWithProduct": "best",
+                "productWithOrder": true,
+                "productWithShipping": true,
+                "orderWithShipping": true
+              }
+            },
+            "marketCountries": {},
+            "modules": {
+              "codes": {
+                "rules": [
+                  {
+                    "id": "obj",
+                    "enabled": true,
+                    "name": "Objednávka 10 %",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 10
+                    },
+                    "target": {
+                      "kind": "order"
+                    }
+                  }
+                ]
+              },
+              "tiers": {
+                "sets": []
+              },
+              "rewards": {
+                "gifts": [],
+                "countOtherDiscounts": false
+              },
+              "margin": {
+                "enabled": true,
+                "max": 50,
+                "cur": "CZK"
+              }
+            },
+            "campaigns": []
+          }
+        },
+        "localTime": {
+          "date": "2026-10-01",
+          "campaignActive": false
+        }
+      },
+      "localization": {
+        "country": {
+          "isoCode": "CZ"
+        },
+        "language": {
+          "isoCode": "CS"
+        }
+      },
+      "presentmentCurrencyRate": "1.0",
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "currencyCode": "CZK"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1000.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1001",
+              "wonVariant": null,
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1000.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1002",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 1000,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/3",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "500.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1003",
+              "wonVariant": null,
+              "product": {
+                "wonProduct": null
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "orderDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Objednávka 10 %",
+                "targets": [
+                  {
+                    "orderSubtotal": {
+                      "excludedCartLineIds": [
+                        "gid://shopify/CartLine/2"
+                      ]
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "150.00"
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "FIRST"
+          }
+        }
+      ]
+    }
+  }
+}

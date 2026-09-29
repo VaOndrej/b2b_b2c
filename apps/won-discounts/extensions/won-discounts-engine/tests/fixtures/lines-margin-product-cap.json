@@ -1,0 +1,196 @@
+{
+  "scenario": "Margin protection: cost 700 Kč + minimum margin 20 % → floor 875 Kč. 30 % would take the 1 000 Kč item to 700 Kč, so line 1 gets exactly 125 Kč (an exact amount, never a percent). Line 2 has no cost price: the 50 % ceiling leaves its 30 % alone.",
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [],
+      "discount": {
+        "discountClasses": [
+          "PRODUCT",
+          "ORDER",
+          "SHIPPING"
+        ],
+        "vars": {
+          "jsonValue": {
+            "role": "automatic",
+            "campaignId": null,
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "varsVersion": null
+          }
+        }
+      },
+      "shop": {
+        "config": {
+          "jsonValue": {
+            "schemaVersion": 1,
+            "campaignId": null,
+            "campaignVarsVersion": null,
+            "engine": {
+              "combination": {
+                "outletWithAnything": false,
+                "productWithProduct": "best",
+                "productWithOrder": true,
+                "productWithShipping": true,
+                "orderWithShipping": true
+              }
+            },
+            "marketCountries": {},
+            "modules": {
+              "codes": {
+                "rules": [
+                  {
+                    "id": "summer",
+                    "enabled": true,
+                    "name": "Letní sleva",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 30
+                    },
+                    "target": {
+                      "kind": "products"
+                    }
+                  }
+                ]
+              },
+              "tiers": {
+                "sets": []
+              },
+              "rewards": {
+                "gifts": [],
+                "countOtherDiscounts": false
+              },
+              "margin": {
+                "enabled": true,
+                "min": 20,
+                "max": 50,
+                "cur": "CZK"
+              }
+            },
+            "campaigns": []
+          }
+        },
+        "localTime": {
+          "date": "2026-10-01",
+          "campaignActive": false
+        }
+      },
+      "localization": {
+        "country": {
+          "isoCode": "CZ"
+        },
+        "language": {
+          "isoCode": "CS"
+        }
+      },
+      "presentmentCurrencyRate": "1.0",
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "currencyCode": "CZK"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1000.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1001",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 700,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [
+                      "summer"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 2,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "200.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1002",
+              "wonVariant": null,
+              "product": {
+                "wonProduct": {
+                  "jsonValue": {
+                    "ruleIds": [
+                      "summer"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "productDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Letní sleva",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/1"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "125.00",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Letní sleva",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/2"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 30
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "ALL"
+          }
+        }
+      ]
+    }
+  }
+}

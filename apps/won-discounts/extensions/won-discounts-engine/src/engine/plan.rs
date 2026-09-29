@@ -2,10 +2,13 @@
 // depends on. Same stages, same order, same ties:
 //   resolveRules → matchCodes → prepareLines → gateRules (minimum: the whole
 //   cart, or the rule's own lines when its scope is "entitled") → planProducts →
-//   (margin hook: identity) → planOrderStage → planShipping.
+//   margin protection (MVP 2, only while `modules.margin` is on: computeFloors +
+//   applyMarginProtection) → planOrderStage (margin on: protectOrder) →
+//   planShipping.
 // Left out on purpose (explain/admin only, never emitted): rule outcomes and
-// their states beyond "eligible or not", `betterRuleIds`, `combinedInto`,
-// `missing`, totals and gifts/warnings/progress.
+// their states beyond "eligible or not" (margin_floor included), `betterRuleIds`,
+// `combinedInto`, `missing`, the margin caps' reasons, totals and
+// gifts/warnings/progress.
 //
 // Money is integer minor units (i64). Where the TS engine computes with
 // fractions (percentages), this computes the same float expression in the same
@@ -21,6 +24,7 @@ use super::describe::{describe_short, DescribedValue};
 use super::fnv::FnvMap;
 use super::hash::code_hash;
 use super::js;
+use super::margin::{margin_floor_unit, resolve_margin, CostContext, MarginPayload};
 
 // --- Plan shape -------------------------------------------------------------------------------
 
@@ -137,15 +141,26 @@ pub struct PlanLine<'a> {
     pub unit_price: i64,
     pub subtotal: i64,
     pub product: Option<PlanStack<'a>>,
+    /// Margin protection lowered this line's product discount (`marginCapped`):
+    /// the output emits it as its exact amount and never relaxes it.
+    pub margin_capped: bool,
+    /// Margin on, the line has a product discount AND no minor unit is left above
+    /// its floor or it is in the order discount's base (`marginTight`,
+    /// markTightLines): the output never relaxes a rounding tie on it to a percent.
+    pub margin_tight: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlanOrder<'a> {
     pub stack: PlanStack<'a>,
-    /// Subtotal of the discountable lines after product discounts.
+    /// Subtotal after product discounts of the lines the order discount is taken
+    /// from (margin-excluded lines left out).
     pub base: i64,
-    /// Outlet and gift lines, in cart order (the candidate's excludedCartLineIds).
+    /// Outlet, gift and margin-excluded lines, in cart order (the candidate's excludedCartLineIds).
     pub excluded_line_ids: Vec<&'a str>,
+    /// Margin protection is on (`marginProtected`): every node emits this order
+    /// discount as its exact amount, never a percent (function-output.ts rule 4).
+    pub margin_protected: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -324,6 +339,14 @@ struct WorkLine<'a> {
     /// The rules that target this line (`lineRuleIds`), as rule indices, deduplicated.
     rule_set: Vec<usize>,
     product: Option<PlanStack<'a>>,
+    /// Margin on: the floor of one item of a discountable line (computeFloors); none otherwise.
+    floor: Option<i64>,
+    /// Margin protection lowered the product discount (`marginCapped`).
+    margin_capped: bool,
+    /// Margin on: left out of the order discount by protectOrder (`marginExcludedLineIds`).
+    order_left: bool,
+    /// `marginTight` (markTightLines).
+    margin_tight: bool,
 }
 
 /// `lineRuleIds` (targeting.ts): unscoped refs for rules the campaign does not
@@ -605,9 +628,394 @@ fn plan_products<'a>(work: &mut [WorkLine<'a>], ctx: &StackContext<'_, 'a>) {
     }
 }
 
+// --- Stage: margin protection, product discounts (MVP 2) ------------------------------------------
+
+/// `floorUnit × quantity` (JS numbers; exact while below 2^53, as every real cart
+/// is). A floor is at most 10^12 < 2^40, so below 2^23 items the i64 product
+/// cannot overflow and needs no 128-bit overflow check (the instruction budget).
+fn floor_total(floor_unit: i64, quantity: i64) -> i64 {
+    if (0..1 << 23).contains(&quantity) {
+        floor_unit * quantity
+    } else {
+        floor_unit.saturating_mul(quantity)
+    }
+}
+
+/// `computeFloors`: the floor of every discountable line — its settings (the
+/// strictest of its collections), its cost in the cart currency, its lowest item price.
+fn compute_floors(work: &mut [WorkLine], margin: &MarginPayload, cart: &NormalizedCart) {
+    // The cart's currency facts, once (costMinorUnits reads them per line).
+    let costs = CostContext::new(cart.shop_to_cart_rate, &cart.currency, margin.cur.as_deref());
+    for (w, line) in work.iter_mut().zip(&cart.lines) {
+        if w.excluded.is_some() {
+            continue;
+        }
+        let settings = resolve_margin(margin, &line.margin_refs);
+        let cost = costs.cost_minor_units(line.unit_cost, line.unit_cost_currency);
+        let (floor, _) = margin_floor_unit(line.unit_price, cost, settings.min_margin_percent, settings.max_discount_percent);
+        w.floor = Some(floor);
+    }
+}
+
+/// `cutInRankOrder`: components (rank order) cut down to `total`, in rank order;
+/// each keeps what fits in what is left, a component left with nothing is dropped.
+fn cut_in_rank_order(components: &[Component], total: i64) -> Vec<Component> {
+    let mut kept = Vec::with_capacity(components.len());
+    let mut remaining = total;
+    for c in components {
+        let amount = c.amount.min(remaining);
+        if amount > 0 {
+            kept.push(Component { rule: c.rule, amount });
+            remaining -= amount;
+        }
+    }
+    kept
+}
+
+/// `restack`: a stack rebuilt from what margin protection left of it (non-empty):
+/// owner (ownerOf) and message recomputed.
+fn restack<'a>(rules: &[Rule<'a>], kept: Vec<Component>, value: EmittedValue) -> PlanStack<'a> {
+    let owner = owner_of(rules, &kept);
+    let amount = kept.iter().map(|c| c.amount).fold(0i64, i64::saturating_add);
+    let message = if kept.len() == 1 {
+        rules[kept[0].rule].label.clone()
+    } else {
+        Cow::Owned(kept.iter().map(|c| rules[c.rule].label.as_ref()).collect::<Vec<_>>().join(" + "))
+    };
+    PlanStack { components: kept, amount, owner, value, message }
+}
+
+/// `applyMarginProtection`: each line's product allocation (the winner stack
+/// planProducts picked) at most its headroom = max(0, subtotal − floorUnit ×
+/// quantity). A larger one is cut in rank order and emitted as that exact total;
+/// no headroom → no product discount on the line.
+fn apply_margin_protection<'a>(work: &mut [WorkLine<'a>], ctx: &StackContext<'_, 'a>) {
+    for (w, line) in work.iter_mut().zip(&ctx.cart.lines) {
+        let (Some(stack), Some(floor)) = (w.product.as_ref(), w.floor) else { continue };
+        let headroom = line.subtotal.saturating_sub(floor_total(floor, line.quantity)).max(0);
+        if stack.amount <= headroom {
+            continue;
+        }
+        let kept = cut_in_rank_order(&stack.components, headroom);
+        w.product = if kept.is_empty() { None } else { Some(restack(ctx.rules, kept, EmittedValue::FixedTotal(headroom))) };
+        w.margin_capped = true;
+    }
+}
+
 // --- Stage: order discount ---------------------------------------------------------------------
 
-fn plan_order_stage<'a>(work: &mut [WorkLine<'a>], engine: &EngineFlags, ctx: &StackContext<'_, 'a>) -> Option<PlanOrder<'a>> {
+/// A line that can carry an order discount under margin protection (`OrderLine`).
+struct OrderLine {
+    /// Cart position (`order_left` below). Lines are collected in cart order,
+    /// so a line's position in `lines` orders ties the same way.
+    index: usize,
+    /// a: the line after its product discount (> 0), and as a float.
+    after: i64,
+    after_f: f64,
+    /// s: the line before it (its subtotal), and as a float.
+    before: i64,
+    before_f: f64,
+    /// h = max(0, a − floorUnit × q − 1): what it can give, 1 minor unit kept for rounding.
+    headroom: f64,
+}
+
+/// Relative slack of the exact minimum below: far above the float error of the
+/// expressions it compares (a few 2⁻⁵³), far below any real difference of rates.
+const NEAR: f64 = 1e-9;
+
+/// The lines of a prefix that can hold the minimum of one base's limit.
+///
+/// A line's limit on the after-product base is floor(fl(fl(h × S) / a)); for a
+/// fixed S that is S × h/a up to a relative error of 2⁻⁵² (two roundings), and
+/// floor is monotone. So a line whose rate h/a is more than (1 + NEAR) × the
+/// prefix's smallest rate computes a value strictly above the smallest line's
+/// value and can never be the minimum: min over the prefix = min over the lines
+/// within (1 + NEAR) of the smallest rate — the same number the TS engine gets
+/// by evaluating every line (the same float expressions), in O(lines) instead
+/// of O(lines²) overall. The same holds for h/s on the before-product base. The
+/// smallest rate only falls as a prefix grows, so a line out once stays out.
+#[derive(Default)]
+struct NearMin {
+    smallest: f64,
+    /// Positions in `lines`.
+    members: Vec<usize>,
+}
+
+impl NearMin {
+    fn add(&mut self, at: usize, rates: &[f64]) {
+        let rate = rates[at];
+        if self.members.is_empty() || rate < self.smallest {
+            let bound = rate * (1.0 + NEAR);
+            // Every member is at or above the old smallest rate.
+            if self.smallest > bound {
+                self.members.clear();
+            } else {
+                self.members.retain(|&m| rates[m] <= bound);
+            }
+            self.smallest = rate;
+            self.members.push(at);
+        } else if rate <= self.smallest * (1.0 + NEAR) {
+            self.members.push(at);
+        }
+    }
+}
+
+/// The best candidate set of one ordering.
+#[derive(Clone, Copy)]
+struct BestSet {
+    /// How many lines of the ordering (a prefix).
+    size: usize,
+    /// D = min(wanted, limit), a whole number (a float, as TS compares it).
+    amount: f64,
+    /// S of the set.
+    base: i64,
+    wanted: i64,
+}
+
+/// The rates of the lines on both bases (h/a, h/s), by position in `lines`.
+struct Rates {
+    per_after: Vec<f64>,
+    per_before: Vec<f64>,
+}
+
+/// One ordering's search (`bestPrefixSet`): the lines in `order` (positions in
+/// `lines`, `keys` descending, ties in cart order), each prefix that ends where
+/// the key changes, D = min(wanted(S), D_max); the largest D wins, a tie the larger set.
+fn best_prefix(lines: &[OrderLine], rates: &Rates, order: &[usize], keys: &[f64], wanted_at: &dyn Fn(i64) -> i64) -> BestSet {
+    let mut best = BestSet { size: 0, amount: 0.0, base: 0, wanted: 0 };
+    let (mut base, mut base_before) = (0i64, 0i64);
+    let (mut near_after, mut near_before) = (NearMin::default(), NearMin::default());
+    for (j, &at) in order.iter().enumerate() {
+        let l = &lines[at];
+        base = base.saturating_add(l.after);
+        base_before = base_before.saturating_add(l.before);
+        near_after.add(at, &rates.per_after);
+        near_before.add(at, &rates.per_before);
+        if order.get(j + 1).is_some_and(|&next| keys[next] == keys[at]) {
+            continue;
+        }
+        // D_max = min over the set of min(floor(h × S / a), floor(h × S0 / s)), each
+        // expression exactly the TS one (only the lines that can be the minimum).
+        let (s, s0) = (base as f64, base_before as f64);
+        let mut limit = f64::INFINITY;
+        for &m in &near_after.members {
+            let by_after = ((lines[m].headroom * s) / lines[m].after_f).floor();
+            if by_after < limit {
+                limit = by_after;
+            }
+        }
+        for &m in &near_before.members {
+            let by_before = ((lines[m].headroom * s0) / lines[m].before_f).floor();
+            if by_before < limit {
+                limit = by_before;
+            }
+        }
+        // D = min(wanted, limit) ≤ limit: a prefix whose limit is below the best D
+        // cannot win (nor tie), so its wanted amount is not needed.
+        if limit < best.amount {
+            continue;
+        }
+        let wanted = wanted_at(base);
+        let amount = if (wanted as f64) < limit { wanted as f64 } else { limit };
+        if amount >= best.amount {
+            best = BestSet { size: j + 1, amount, base, wanted };
+        }
+    }
+    best
+}
+
+/// The winner of both orderings' searches, found without them when it is P = the
+/// lines that can give something (h > 0) and P carries its whole wanted amount:
+/// - a line with h = 0 has key 0 in both orderings, so it sorts last and every
+///   set that contains it has D_max = 0; P is a prefix of both orderings, and
+///   the one that ends where the key changes to 0 (or the full set);
+/// - wanted(S) never falls as S grows (a percent rounds a larger S × p, a fixed
+///   amount is min(fixed, S)), so no prefix inside P has a larger D than
+///   wanted(P), and P is the larger set on a tie; a set beyond P has D = 0.
+/// So when D(P) = wanted(P) > 0, P wins both orderings (the h/s one on the tie):
+/// exactly what the two searches return, in O(lines) and without sorting.
+/// D(P) uses the TS expressions over every line of P. None → search.
+fn all_that_can_give(lines: &[OrderLine], giving: &[usize], wanted_at: &dyn Fn(i64) -> i64) -> Option<(BestSet, Vec<usize>)> {
+    if giving.is_empty() {
+        return None;
+    }
+    let set = giving.to_vec();
+    let base = set.iter().map(|&at| lines[at].after).fold(0i64, i64::saturating_add);
+    let base_before = set.iter().map(|&at| lines[at].before).fold(0i64, i64::saturating_add);
+    let wanted = wanted_at(base);
+    if wanted <= 0 {
+        return None;
+    }
+    let (s, s0) = (base as f64, base_before as f64);
+    let fits = set.iter().all(|&at| {
+        let l = &lines[at];
+        ((l.headroom * s) / l.after_f).floor() >= wanted as f64 && ((l.headroom * s0) / l.before_f).floor() >= wanted as f64
+    });
+    fits.then(|| (BestSet { size: set.len(), amount: wanted as f64, base, wanted }, set))
+}
+
+/// Whether sorting by h/a (descending, ties in cart order) gives exactly `by_before`
+/// (the h/s ordering) with the same groups of equal keys: then both orderings
+/// have the same prefixes, evaluated at the same places.
+fn same_ordering(by_before: &[usize], rates: &Rates) -> bool {
+    by_before.windows(2).all(|pair| {
+        let (x, y) = (pair[0], pair[1]);
+        let (after_x, after_y) = (rates.per_after[x], rates.per_after[y]);
+        if rates.per_before[x] == rates.per_before[y] {
+            after_x == after_y
+        } else {
+            after_x > after_y
+        }
+    })
+}
+
+/// The positions in `among` (ascending = cart order) by `keys` descending, ties
+/// in cart order — the TS stable sort's order. A key is h/a or h/s: a finite
+/// float ≥ +0, whose bits order like its value, so (!bits, position) sorts
+/// ascending into exactly that order (a total order: an unstable sort of
+/// integer pairs gives the same result).
+fn ordered(keys: &[f64], among: &[usize]) -> Vec<usize> {
+    let mut pairs: Vec<(u64, u32)> = among.iter().map(|&at| (!keys[at].to_bits(), at as u32)).collect();
+    pairs.sort_unstable();
+    pairs.into_iter().map(|(_, at)| at as usize).collect()
+}
+
+/// `protectOrder` (plan-margin.ts): the order discount made safe for BOTH
+/// proportional allocations Shopify might use (after product discounts, a_i, and
+/// before them, s_i), each line keeping 1 minor unit for rounding. For a set I
+/// of lines, with S_I = Σ a_i and S0_I = Σ s_i:
+///   D_max(I) = min over i ∈ I of min(floor(h_i × S_I / a_i), floor(h_i × S0_I / s_i)),
+///   wanted(I) = min(Σ orderAmount(rule, S_I) over the stack's components, S_I),
+///   D(I) = min(wanted(I), D_max(I)).
+/// Candidate sets (`searchOrderSets`): the lines with a_i > 0 by k = h_i / s_i and
+/// by k = h_i / a_i, each descending (ties: cart order), each prefix that ends
+/// where k changes. The largest D wins, a tie the larger set, a tie again the
+/// h/s ordering's; lines outside it are margin-excluded (`order_left`). Every
+/// float expression is the TS one, in its order (D_max via `NearMin`).
+/// `after_products`: a_i is the line after its product discount (else its
+/// subtotal: the exclusive order-only scenario).
+fn protect_order<'a>(
+    order: Option<PlanOrder<'a>>,
+    work: &mut [WorkLine<'a>],
+    after_products: bool,
+    ctx: &StackContext<'_, 'a>,
+) -> Option<PlanOrder<'a>> {
+    let order = order?;
+    let rules = ctx.rules;
+    let mut lines: Vec<OrderLine> = Vec::with_capacity(work.len());
+    let mut rates = Rates { per_after: Vec::with_capacity(work.len()), per_before: Vec::with_capacity(work.len()) };
+    for (index, (w, line)) in work.iter().zip(&ctx.cart.lines).enumerate() {
+        let (None, Some(floor)) = (w.excluded, w.floor) else { continue };
+        let after = if after_products { line.subtotal - w.product.as_ref().map_or(0, |p| p.amount) } else { line.subtotal };
+        if after <= 0 {
+            continue;
+        }
+        let headroom = after.saturating_sub(floor_total(floor, line.quantity)).saturating_sub(1).max(0) as f64;
+        let (before, after_f) = (line.subtotal, after as f64);
+        let before_f = before as f64;
+        lines.push(OrderLine { index, after, after_f, before, before_f, headroom });
+        rates.per_after.push(headroom / after_f);
+        rates.per_before.push(headroom / before_f);
+    }
+
+    let components = &order.stack.components;
+    let wanted_at = |base: i64| -> i64 {
+        let sum = components.iter().map(|c| order_amount(&rules[c.rule], base)).fold(0i64, i64::saturating_add);
+        sum.min(base)
+    };
+    // Both orderings (`searchOrderSets`): k = h/s and k = h/a; the better D wins,
+    // a tie the larger set, a tie again the h/s one. The positions (in `lines`)
+    // of the winning set's lines come back in `set`.
+    // Lines with h = 0 sort last in both orderings and zero every set that holds
+    // them (D_max = 0): such a set never beats a positive D, and a best D of 0
+    // means no order discount whatever the set. So only P = the lines with h > 0
+    // are searched — the same prefixes, sums and D as the TS search.
+    let giving: Vec<usize> = (0..lines.len()).filter(|&at| lines[at].headroom > 0.0).collect();
+    let (best, set) = match all_that_can_give(&lines, &giving, &wanted_at) {
+        Some(best) => best,
+        None => {
+            let by_before = ordered(&rates.per_before, &giving);
+            let best_before = best_prefix(&lines, &rates, &by_before, &rates.per_before, &wanted_at);
+            let (best, mut order) = if same_ordering(&by_before, &rates) {
+                // The h/a ordering is this very sequence with the same key groups
+                // (always so without product discounts): its search returns the
+                // same set, and a tie goes to the h/s one.
+                (best_before, by_before)
+            } else {
+                let by_after = ordered(&rates.per_after, &giving);
+                let best_after = best_prefix(&lines, &rates, &by_after, &rates.per_after, &wanted_at);
+                let after_wins = best_after.amount > best_before.amount
+                    || (best_after.amount == best_before.amount && best_after.size > best_before.size);
+                if after_wins {
+                    (best_after, by_after)
+                } else {
+                    (best_before, by_before)
+                }
+            };
+            order.truncate(best.size);
+            (best, order)
+        }
+    };
+
+    if best.amount <= 0.0 {
+        return None;
+    }
+    if best.size == lines.len() && best.amount == best.wanted as f64 {
+        return Some(order); // nothing to protect
+    }
+    let amount = best.amount as i64;
+    let mut in_set = vec![false; lines.len()];
+    for &at in &set {
+        in_set[at] = true;
+    }
+    for (l, _) in lines.iter().zip(&in_set).filter(|(_, &kept)| !kept) {
+        work[l.index].order_left = true;
+    }
+    // The components at the winning base, in their rank order, capped at it; then cut to D.
+    let mut remaining = best.base;
+    let at_base: Vec<Component> = components
+        .iter()
+        .map(|c| {
+            let amount = order_amount(&rules[c.rule], best.base).min(remaining).max(0);
+            remaining -= amount;
+            Component { rule: c.rule, amount }
+        })
+        .collect();
+    let kept = cut_in_rank_order(&at_base, amount);
+    let value = if amount == best.wanted && kept.len() == 1 {
+        let rule = &rules[kept[0].rule];
+        if rule.value_kind == ValueKind::Percentage {
+            EmittedValue::Percent(rule.percent)
+        } else {
+            EmittedValue::FixedTotal(kept[0].amount)
+        }
+    } else {
+        EmittedValue::FixedTotal(amount)
+    };
+    let excluded_line_ids =
+        work.iter().zip(&ctx.cart.lines).filter(|(w, _)| w.excluded.is_some() || w.order_left).map(|(_, line)| line.id).collect();
+    Some(PlanOrder { stack: restack(rules, kept, value), base: best.base, excluded_line_ids, margin_protected: false })
+}
+
+/// `markTightLines` (plan-margin.ts), margin on, after the order stage: a line
+/// with a product discount is tight when no minor unit is left above its floor
+/// (subtotal − product − floorUnit × q < 1) or it is in the order discount's base
+/// (discountable and not left out): a tie relaxed on any base line moves that base.
+fn mark_tight_lines(work: &mut [WorkLine], cart: &NormalizedCart, has_order: bool) {
+    for (w, line) in work.iter_mut().zip(&cart.lines) {
+        let (Some(product), Some(floor)) = (w.product.as_ref(), w.floor) else { continue };
+        let room = line.subtotal.saturating_sub(product.amount).saturating_sub(floor_total(floor, line.quantity));
+        let in_order_base = has_order && w.excluded.is_none() && !w.order_left;
+        w.margin_tight = room < 1 || in_order_base;
+    }
+}
+
+fn plan_order_stage<'a>(
+    work: &mut [WorkLine<'a>],
+    engine: &EngineFlags,
+    ctx: &StackContext<'_, 'a>,
+    margin_on: bool,
+) -> Option<PlanOrder<'a>> {
     let rules = ctx.rules;
     let order_rules: Vec<usize> =
         (0..rules.len()).filter(|&i| rules[i].cls == DiscountClass::Order && rules[i].state.is_none()).collect();
@@ -637,21 +1045,31 @@ fn plan_order_stage<'a>(work: &mut [WorkLine<'a>], engine: &EngineFlags, ctx: &S
                 }
             },
         )?;
-        Some(PlanOrder { stack, base, excluded_line_ids: excluded_line_ids.clone() })
+        Some(PlanOrder { stack, base, excluded_line_ids: excluded_line_ids.clone(), margin_protected: false })
     };
     let product_total = work.iter().map(|w| w.product.as_ref().map_or(0, |p| p.amount)).fold(0i64, i64::saturating_add);
     let discountable_subtotal =
         work.iter().zip(&ctx.cart.lines).filter(|(w, _)| w.excluded.is_none()).map(|(_, l)| l.subtotal).fold(0i64, i64::saturating_add);
     // [spec] The order discount is taken from the subtotal AFTER product discounts.
     if engine.product_with_order {
-        return plan_at(discountable_subtotal - product_total);
+        let order = plan_at(discountable_subtotal - product_total);
+        if !margin_on {
+            return order;
+        }
+        return protect_order(order, work, true, ctx);
     }
-    // Exclusive (Free switch off): the better scenario for the customer wins, a tie keeps products.
-    let order_only = plan_at(discountable_subtotal);
+    // Exclusive (Free switch off): the better scenario for the customer wins, a tie
+    // keeps products. Margin on: the order-only scenario is protected too, on the
+    // lines' full subtotals.
+    let mut order_only = plan_at(discountable_subtotal);
+    if margin_on {
+        order_only = protect_order(order_only, work, false, ctx);
+    }
     let order_wins = order_only.as_ref().is_some_and(|o| o.stack.amount > product_total);
     if order_wins {
         for w in work.iter_mut() {
             w.product = None;
+            w.margin_capped = false;
         }
         return order_only;
     }
@@ -739,6 +1157,8 @@ fn failed_plan<'a>(cart: &NormalizedCart<'a>, reason: PlanFailure) -> CartPlan<'
                 unit_price: l.unit_price,
                 subtotal: l.subtotal,
                 product: None,
+                margin_capped: false,
+                margin_tight: false,
             })
             .collect(),
         order: None,
@@ -771,7 +1191,7 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
                 rule_scopes[i].add(line, discountable);
             }
         }
-        work.push(WorkLine { excluded, rule_set, product: None });
+        work.push(WorkLine { excluded, rule_set, product: None, floor: None, margin_capped: false, order_left: false, margin_tight: false });
     }
     let partners = partners_of(&rules, &by_id);
     drop(by_id);
@@ -784,8 +1204,18 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
     let any_partners = partners.iter().any(|p| !p.is_empty());
     let ctx = StackContext { rules: &rules, partners: &partners, any_partners, cart: &cart };
     plan_products(&mut work, &ctx);
-    // MVP 2 hook (A1.7 margin protection): identity for now.
-    let order = plan_order_stage(&mut work, &engine, &ctx);
+    // Margin protection (MVP 2, A1.7): off by default, then the plan is MVP 1's.
+    if let Some(margin) = config.margin.as_ref() {
+        compute_floors(&mut work, margin, &cart);
+        apply_margin_protection(&mut work, &ctx);
+    }
+    let mut order = plan_order_stage(&mut work, &engine, &ctx, config.margin.is_some());
+    if config.margin.is_some() {
+        if let Some(order) = order.as_mut() {
+            order.margin_protected = true;
+        }
+        mark_tight_lines(&mut work, &cart, order.is_some());
+    }
     let shipping = plan_shipping(&work, order.as_ref(), &engine, &ctx);
 
     let lines = work
@@ -798,6 +1228,8 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
             unit_price: line.unit_price,
             subtotal: line.subtotal,
             product: w.product,
+            margin_capped: w.margin_capped,
+            margin_tight: w.margin_tight,
         })
         .collect();
     CartPlan { currency: cart.currency.clone(), reason: None, rules, entered_by_rule, campaign_id, lines, order, shipping }

@@ -21,7 +21,13 @@
 //      and "large" carts (quantities up to 5 000, prices up to 99 999 999.99,
 //      amounts at the money cap); codes padded with NBSP / BOM / tab, astral and
 //      case-mapping codes; lower-case and padded countries; priorities up to
-//      1 000; CZK / EUR / JPY / KWD / HUF / BHD / USD; entitled minimums.
+//      1 000; CZK / EUR / JPY / KWD / HUF / BHD / USD; entitled minimums;
+//      margin protection (MVP 2): on / off / legacy / junk payloads, collection
+//      overrides, cost prices in the shop currency and others, junk costs,
+//      presentmentCurrencyRate values (decimal strings, numbers, junk) in carts
+//      of exponent 0 / 2 / 3, big over-budget carts with capped and tight lines;
+//   5. memory: the Wasm uses a bump allocator (src/alloc.rs), so every run's
+//      linear memory is checked against a bound far below Shopify's 10 000 kB.
 //
 // PARITY_CASES (per seed, default 400) and PARITY_SEEDS (comma-separated) override
 // the random run.
@@ -60,6 +66,12 @@ const SEEDS = (process.env.PARITY_SEEDS ?? "20260928,1,2,3,5,8").split(",").map(
 const MIN_HITS = 20;
 /** Shopify's compiled binary size limit (shopify.dev/docs/api/functions/2026-04, "Fixed limits": 256 kB, 1 kB = 1000 B). */
 const WASM_LIMIT_BYTES = 256_000;
+/**
+ * Linear memory a run may use (function-runner `memory_usage`, KB). Shopify's
+ * limit is 10 000 kB; the bump allocator (src/alloc.rs) never reuses memory, so
+ * every run is checked against this much lower bound.
+ */
+const MEMORY_BOUND_KB = 4_000;
 
 /** The TS reference output for a function input. */
 export function referenceOutput(exportName, input) {
@@ -293,8 +305,43 @@ function generator(seed) {
         : [],
     };
     if (junk(0.2)) delete c.engine;
+    if (chance(0.6)) c.modules.margin = marginPayload();
     return { config: c, ids, codeRules: rules.filter((r) => r && r.method === "code") };
   }
+
+  // --- Margin protection (MVP 2) ---
+  const MARGIN_COLLECTIONS = ["11", "22", "33", "44"];
+  /** modules.margin as the shared config carries it (margin.ts FunctionMarginPayload), junk included. */
+  function marginPayload() {
+    if (junk(0.3)) {
+      return pick([
+        { enabled: "true", max: 20 },
+        { enabled: true },
+        { enabled: true, max: "20" },
+        { global: { maxDiscountPercent: 10 }, perCollection: [] },
+        [{ enabled: true, max: 20 }],
+        { enabled: true, max: pick([140, -5]), min: pick([120, -3, "x", null]), cur: pick(["czk", "CZKK", 5, "EUR"]), col: pick([7, [1], { 11: [150, -1], 22: [5], 33: ["x", 2], 44: [null, null] }]) },
+      ]);
+    }
+    if (chance(0.25)) return { enabled: false };
+    // A 0 % ceiling (no discount at all without a cost price) makes floored orders common.
+    const out = { enabled: true, max: pick([0, 0, 10, 20, 32, 35, 50, 70, 100]) };
+    if (chance(0.7)) out.min = pick([0, 5, 10, 20, 40, 60, 95]);
+    if (chance(0.9)) out.cur = "CZK";
+    if (chance(0.4)) {
+      out.col = {};
+      for (const id of some(MARGIN_COLLECTIONS, 0.5)) out.col[id] = [chance(0.6) ? pick([0, 20, 50, 80]) : null, chance(0.6) ? pick([0, 5, 15, 40]) : null];
+    }
+    return out;
+  }
+  /** The variant metafield `{cost, cur}` (MAJOR units of the shop currency), junk included. */
+  function variantCost() {
+    if (chance(0.2)) return null;
+    if (junk(0.25)) return { jsonValue: pick([{ cost: "5", cur: "CZK" }, { cost: -1, cur: "CZK" }, { cost: 0, cur: "CZK" }, [5], "x", { cur: "CZK" }, { cost: 5, cur: 5 }]) };
+    return { jsonValue: { cost: pick([0.01, 1, 5, 12.34, 20, 45.5, 80, 99.99, 150, 700, 999.99, 9999]), cur: pick(["CZK", "CZK", "CZK", "CZK", "EUR", "czk"]) } };
+  }
+  /** presentmentCurrencyRate (shop → cart), as Shopify sends it (a decimal string), junk included. */
+  const rate = () => pick(["1.0", "1.0", "0.04", "0.0405", "25.3", "6.5", "0.0133", "0.0", "abc", " 0.04 ", 7, "1e3", "0.12345678901234567"]);
 
   /**
    * The product metafields: one value per product, shared by every line of that
@@ -316,6 +363,7 @@ function generator(seed) {
         won.variantRuleIds = chance(0.7) ? { [String(v)]: refs() } : { [vid(v)]: refs() };
       }
       if (chance(0.15)) won.outlet = chance(0.4) ? true : some([1, 2, 3, 4], 0.5).map((k2) => vid(p * 100 + k2));
+      if (chance(0.4)) won.marginRefs = junk(0.3) ? pick(["11", [11, "22"], null]) : some([...MARGIN_COLLECTIONS, "99"], 0.4);
       return { p, won: { jsonValue: won } };
     });
   }
@@ -335,7 +383,7 @@ function generator(seed) {
       },
       gift: chance(0.07) ? { value: pick(["tier-1", "", null]) } : null,
       merchandise: chance(0.93)
-        ? { __typename: "ProductVariant", id: vid(variant), product: { wonProduct: product.won } }
+        ? { __typename: "ProductVariant", id: vid(variant), wonVariant: variantCost(), product: { wonProduct: product.won } }
         : { __typename: "CustomProduct" },
     };
   }
@@ -377,6 +425,8 @@ function generator(seed) {
     ];
     const cents = ties ? ["05", "15", "25", "35", "45", "55", "65", "75", "85", "95"] : ["00", "10", "20", "40", "50", "90"];
     const count = 150 + int(111);
+    // Margin protection on half the big carts: capped lines (never relaxed) and tight lines (ties stay exact).
+    const margin = chance(0.5) ? { enabled: true, max: pick([15, 20, 30, 100]), cur: "CZK" } : null;
     const lines = Array.from({ length: count }, (_, i) => ({
       id: `gid://shopify/CartLine/${i + 1}`,
       quantity: pick([1, 1, 1, 2]),
@@ -390,6 +440,7 @@ function generator(seed) {
       merchandise: {
         __typename: "ProductVariant",
         id: vid(10000 + i),
+        wonVariant: margin && chance(0.6) ? { jsonValue: { cost: pick([1, 5, 9.5, 20, 45, 300]), cur: "CZK" } } : null,
         product: {
           wonProduct: {
             jsonValue: { ruleIds: mode === "rules" ? [`m${(i % ruleCount) + 1}`] : ties ? [pick(["big1", "big2"])] : ["big1", "big2"] },
@@ -408,10 +459,20 @@ function generator(seed) {
           vars: { jsonValue: { role: "automatic", campaignId: null, campaignStart: "1970-01-01T00:00:00", campaignEnd: "1970-01-01T00:00:00", varsVersion: null } },
         },
         shop: {
-          config: { jsonValue: { schemaVersion: 1, campaignId: null, campaignVarsVersion: null, marketCountries: {}, modules: { codes: { rules } }, campaigns: [] } },
+          config: {
+            jsonValue: {
+              schemaVersion: 1,
+              campaignId: null,
+              campaignVarsVersion: null,
+              marketCountries: {},
+              modules: { codes: { rules }, ...(margin ? { margin } : {}) },
+              campaigns: [],
+            },
+          },
           localTime: { date: "2026-10-01", campaignActive: false },
         },
         localization: { country: { isoCode: "CZ" }, language: { isoCode: pick(["CS", "EN"]) } },
+        presentmentCurrencyRate: pick(["1.0", "0.04", "0.0405"]),
         cart: { cost: { subtotalAmount: { currencyCode: pick(["CZK", "CZK", "EUR", "USD"]) } }, lines },
       },
       ids,
@@ -562,6 +623,7 @@ function generator(seed) {
         country: { isoCode: pick(["CZ", "CZ", "SK", "US", "DE", "cz", " sk ", "XX", "", "CZE"]) },
         language: { isoCode: pick(["CS", "CS", "EN", "SK", "DE"]) },
       },
+      presentmentCurrencyRate: rate(),
       cart,
     };
     return { exportName, input, tie: built.tie === true };
@@ -645,6 +707,29 @@ function branchesOf(exportName, input, output, tie) {
   }
   if (plan.lines.some((l) => l.product && /[^\x20-\x7e]/.test(l.product.ownerRuleId))) hits.add("non-ASCII winner id");
   if (exportName === LINES && input.cart.lines.length >= 30 && ops.length > 0) hits.add("30+ line cart emits");
+  // --- Margin protection (MVP 2) ---
+  const marginRaw = input.shop?.config?.jsonValue?.modules?.margin;
+  const marginOn = marginRaw && typeof marginRaw === "object" && marginRaw.enabled === true && Number.isFinite(marginRaw.max);
+  const cappedLines = plan.lines.filter((l) => l.marginCapped);
+  if (cappedLines.some((l) => l.product)) hits.add("margin: product line capped");
+  if (cappedLines.some((l) => !l.product)) hits.add("margin: product line capped to 0");
+  if (cappedLines.some((l) => l.product && l.product.components.length > 1)) hits.add("margin: capped Pro stack");
+  if (plan.rules.some((r) => r.state === "margin_floor" && r.discountClass === "product")) hits.add("margin: product rule floored (margin_floor)");
+  if (plan.order?.marginCapped) hits.add("margin: order lowered");
+  if ((plan.order?.marginExcludedLineIds.length ?? 0) > 0) hits.add("margin: order leaves lines out");
+  if (plan.rules.some((r) => r.state === "margin_floor" && r.discountClass === "order")) hits.add("margin: order floored to nothing");
+  if (plan.order?.marginProtected && ops.some((op) => op.orderDiscountsAdd)) hits.add("margin: order emitted as its exact amount");
+  if (marginOn && plan.order && input.shop.config.jsonValue.engine?.combination?.productWithOrder === false) hits.add("margin: exclusive order-only protected");
+  if (cappedLines.some((l) => l.marginCapped.basis === "cost")) hits.add("margin: cost floor");
+  if (cappedLines.some((l) => l.marginCapped.basis === "max_percent")) hits.add("margin: maximum-discount floor");
+  if (cappedLines.some((l) => l.marginCapped.source === "collection")) hits.add("margin: collection setting applied");
+  if (cappedLines.some((l) => l.marginCapped.basis === "cost") && adapted.cart.currency !== "CZK") hits.add("margin: cost converted into another cart currency");
+  const usableRate = typeof adapted.cart.shopToCartRate === "number" && adapted.cart.shopToCartRate > 0;
+  if (marginOn && cappedLines.length > 0 && adapted.cart.currency !== "CZK" && !usableRate) hits.add("margin: no usable rate (cost unknown)");
+  if (["JPY", "KWD", "BHD"].includes(adapted.cart.currency) && cappedLines.some((l) => l.marginCapped.basis === "cost")) hits.add("margin: cost floor at exponent 0 / 3");
+  if (plan.lines.some((l) => l.marginTight)) hits.add("margin: tight line");
+  if (mapped.degraded && plan.lines.some((l) => l.marginCapped || l.marginTight)) hits.add("margin: capped or tight line in an over-budget output");
+  if (!marginOn && adapted.cart.lines.some((l) => typeof l.unitCost === "number")) hits.add("margin: off, cost prices present");
   return hits;
 }
 
@@ -717,15 +802,18 @@ describe("Wasm (function-runner)", () => {
     expect(statSync(wasmPath).size).toBeLessThan(WASM_LIMIT_BYTES);
   });
 
-  test("every fixture: the runner's output text = the expected output text", async () => {
+  test("every fixture: the runner's output text = the expected output text, memory within the bound", async () => {
     const failures = [];
+    let maxMemory = 0;
     for (const file of fixtureFiles) {
       const { payload } = readFixture(file);
       const result = await runWasm(runnerPath, wasmPath, payload.export, payload.input);
       const got = rawOutputText(result.stdout);
       if (got !== sortedJson(payload.output)) failures.push(`${file}\n${got.slice(0, 400)}\n≠\n${sortedJson(payload.output).slice(0, 400)}`);
+      maxMemory = Math.max(maxMemory, result.memory_usage ?? Number.POSITIVE_INFINITY);
     }
     expect(failures).toEqual([]);
+    expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
   }, 300_000);
 
   test(`random carts and configs, seeds ${SEEDS.join(", ")} × ${CASES}: Wasm = TS reference, every branch hit`, async () => {
@@ -734,6 +822,7 @@ describe("Wasm (function-runner)", () => {
     const hits = new Map();
     let nonEmpty = 0;
     let maxBytes = 0;
+    let maxMemory = 0;
     const overBudget = [];
     for (const seed of SEEDS) {
       const next = generator(seed);
@@ -752,6 +841,7 @@ describe("Wasm (function-runner)", () => {
           if (!result.success || !isDeepStrictEqual(result.output, expected)) {
             failures.push({ seed, index: i + j, exportName: c.exportName, got: result.output, logs: result.logs, expected, input: c.input });
           }
+          maxMemory = Math.max(maxMemory, result.memory_usage ?? Number.POSITIVE_INFINITY);
         });
       }
     }
@@ -764,7 +854,9 @@ describe("Wasm (function-runner)", () => {
       );
     }
     const table = [...hits].sort((a, b) => a[1] - b[1]).map(([b, n]) => `${n}\t${b}`).join("\n");
-    console.info(`random parity: ${CASES * SEEDS.length} cases, ${nonEmpty} with operations, 0 differ, largest output ${maxBytes} B\n${table}`);
+    console.info(
+      `random parity: ${CASES * SEEDS.length} cases, ${nonEmpty} with operations, 0 differ, largest output ${maxBytes} B, largest memory ${maxMemory} KB\n${table}`,
+    );
     const BRANCHES = [
       "product candidates",
       "order candidates",
@@ -798,9 +890,28 @@ describe("Wasm (function-runner)", () => {
       "lower-case, padded or invalid country",
       "padded / astral / case-mapped code matched",
       "a priority above 3 owns a stack",
+      "margin: product line capped",
+      "margin: product line capped to 0",
+      "margin: capped Pro stack",
+      "margin: product rule floored (margin_floor)",
+      "margin: order lowered",
+      "margin: order leaves lines out",
+      "margin: order floored to nothing",
+      "margin: order emitted as its exact amount",
+      "margin: exclusive order-only protected",
+      "margin: cost floor",
+      "margin: maximum-discount floor",
+      "margin: collection setting applied",
+      "margin: cost converted into another cart currency",
+      "margin: no usable rate (cost unknown)",
+      "margin: cost floor at exponent 0 / 3",
+      "margin: tight line",
+      "margin: capped or tight line in an over-budget output",
+      "margin: off, cost prices present",
     ];
     const thin = BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS);
     expect(thin, `branches hit fewer than ${MIN_HITS} times:\n${table}`).toEqual([]);
     expect(overBudget).toEqual([]);
+    expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
   }, 900_000);
 });

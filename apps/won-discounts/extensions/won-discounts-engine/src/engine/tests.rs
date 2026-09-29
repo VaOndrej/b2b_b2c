@@ -10,9 +10,10 @@ use shopify_function::run_function_with_input;
 use super::cart::{CampaignInput, CartInput, LineInput};
 use super::config::Config;
 use super::emit::{emit_for_node, NodeEmission, NodeRole};
+use super::margin::{ceil_tol, cost_minor_units, margin_floor_unit, resolve_margin, MarginBasis, MARGIN_TOLERANCE};
 use super::plan::{plan_cart, CartPlan, EmittedValue, Excluded, PlanFailure, RuleState, ShippingValue};
 use crate::json::ShopConfig;
-use crate::output::{cart_lines_result, delivery_result, tie_possible, JsonText};
+use crate::output::{cart_lines_result, delivery_result, tie_possible, CartOperation, JsonText, ProductValue};
 
 fn config(json: &str) -> Config {
     run_function_with_input(|c: ShopConfig| Ok(c), json).unwrap().0.expect("a valid config")
@@ -42,10 +43,29 @@ struct Line {
     refs: Vec<String>,
     outlet: bool,
     gift: bool,
+    /// Margin protection: cost of one item in MAJOR units of `cur` (variant metafield).
+    cost: Option<f64>,
+    cur: Option<&'static str>,
+    margin_refs: Vec<String>,
 }
 
 fn line(id: &'static str, qty: i64, price: i64, refs: &[&str]) -> Line {
-    Line { id, qty, price, refs: refs.iter().map(|r| r.to_string()).collect(), outlet: false, gift: false }
+    Line {
+        id,
+        qty,
+        price,
+        refs: refs.iter().map(|r| r.to_string()).collect(),
+        outlet: false,
+        gift: false,
+        cost: None,
+        cur: None,
+        margin_refs: Vec::new(),
+    }
+}
+
+/// A line with a cost price in CZK (the shop currency of the margin tests).
+fn cost_line(id: &'static str, qty: i64, price: i64, cost: f64, refs: &[&str]) -> Line {
+    Line { cost: Some(cost), cur: Some("CZK"), ..line(id, qty, price, refs) }
 }
 
 fn cart<'a>(lines: &'a [Line], codes: &[&'a str]) -> CartInput<'a> {
@@ -62,12 +82,16 @@ fn cart<'a>(lines: &'a [Line], codes: &[&'a str]) -> CartInput<'a> {
                 gift: l.gift,
                 rule_ids: &l.refs,
                 variant_rule_ids: Vec::new(),
+                unit_cost: l.cost,
+                unit_cost_currency: l.cur,
+                margin_refs: l.margin_refs.clone(),
             })
             .collect(),
         entered_codes: codes.to_vec(),
         campaign: CampaignInput::default(),
         today: Some("2026-10-01"),
         locale_en: false,
+        shop_to_cart_rate: None,
     }
 }
 
@@ -539,4 +563,369 @@ fn over_the_budget_ties_go_back_to_a_percent_before_any_drop() {
     assert_eq!(json.matches(r#""message":"#).count(), 1, "{json}");
     assert_eq!(json.matches(r#""cartLine":"#).count(), 200);
     assert!(json.contains(r#""value":{"percentage":{"value":10}}"#));
+}
+
+// --- Margin protection (MVP 2, @won/core margin.ts + plan.ts) --------------------------------
+
+/// A config with these rules and `modules.margin` = `margin` (the compact payload, JSON).
+fn margin_rules(rules: &str, margin: &str, extra: &str) -> Config {
+    let extra = if extra.is_empty() { String::new() } else { format!(", {extra}") };
+    config(&format!(r#"{{"modules": {{"codes": {{"rules": [{rules}]}}, "margin": {margin}}}{extra}}}"#))
+}
+
+fn order_rule(id: &str, value: &str, more: &str) -> String {
+    format!(r#"{{"id": "{id}", "enabled": true, "name": "{id}", "method": "automatic", "value": {value}, "target": {{"kind": "order"}}{more}}}"#)
+}
+
+fn close(actual: Option<f64>, expected: f64, eps: f64) {
+    let a = actual.expect("a cost");
+    assert!((a - expected).abs() <= eps, "{a} ≈ {expected}");
+}
+
+#[test]
+fn ceil_tol_ignores_float_noise_and_never_gives_negative_zero() {
+    assert_eq!(MARGIN_TOLERANCE, 1e-6);
+    assert_eq!(ceil_tol(7.0), 7.0);
+    assert_eq!(ceil_tol(7.000001), 7.0);
+    assert_eq!(ceil_tol(7.0000011), 8.0);
+    assert_eq!(ceil_tol(7.999999), 8.0);
+    assert_eq!(ceil_tol(0.0), 0.0);
+    // ceil(0.0000005 − 1e-6) is −0 in IEEE: ceilTol gives +0.
+    assert!(ceil_tol(0.0000005) == 0.0 && ceil_tol(0.0000005).is_sign_positive());
+    // 1 000 × (1 − 0.7) = 300.00000000000006 in floats → 300, not 301.
+    assert!(1000.0 * (1.0 - 70.0 / 100.0) > 300.0);
+    assert_eq!(ceil_tol(1000.0 * (1.0 - 70.0 / 100.0)), 300.0);
+}
+
+#[test]
+fn the_floor_is_the_cost_plus_the_minimum_margin_else_the_maximum_discount() {
+    let cost = |c: f64, m: f64| margin_floor_unit(100_000, Some(c), m, 50.0);
+    assert_eq!(cost(50_000.0, 0.0), (50_000, MarginBasis::Cost));
+    assert_eq!(cost(50_000.0, 20.0).0, 62_500);
+    // m = 95: 50 000 / 0.050000000000000044 = 999 999.99999999… → 1 000 000; out of range is clamped to 95.
+    assert_eq!(cost(50_000.0, 95.0).0, 1_000_000);
+    assert_eq!(cost(50_000.0, 100.0).0, 1_000_000);
+    assert_eq!(cost(50_000.0, f64::NAN).0, 50_000);
+    // A cost above the price: the floor is above the price, never negative.
+    assert_eq!(margin_floor_unit(10_000, Some(15_000.0), 0.0, 50.0).0, 15_000);
+    let no_cost = |price: i64, p: f64| margin_floor_unit(price, None, 20.0, p);
+    assert_eq!(no_cost(999, 50.0), (500, MarginBasis::MaxPercent));
+    assert_eq!(no_cost(999, 0.0).0, 999);
+    assert_eq!(no_cost(999, 100.0).0, 0);
+    assert_eq!(no_cost(1000, 70.0).0, 300);
+    assert_eq!(no_cost(1000, f64::NAN).0, 500);
+    assert_eq!(margin_floor_unit(1000, Some(0.0), 0.0, 40.0).1, MarginBasis::MaxPercent);
+    assert_eq!(margin_floor_unit(100, Some(1e12), 95.0, 50.0).0, 1_000_000_000_000);
+}
+
+#[test]
+fn a_cost_is_known_only_in_the_shop_currency_and_converts_with_the_rate() {
+    close(cost_minor_units(Some(12.34), Some("CZK"), None, "CZK", Some("CZK")), 1234.0, 1e-9);
+    // The shop currency: the rate is ignored (1).
+    close(cost_minor_units(Some(12.34), Some("CZK"), Some(0.04), "CZK", Some("CZK")), 1234.0, 1e-6);
+    assert_eq!(cost_minor_units(None, Some("CZK"), Some(1.0), "CZK", Some("CZK")), None);
+    assert_eq!(cost_minor_units(Some(0.0), Some("CZK"), Some(1.0), "CZK", Some("CZK")), None);
+    assert_eq!(cost_minor_units(Some(-5.0), Some("CZK"), Some(1.0), "CZK", Some("CZK")), None);
+    assert_eq!(cost_minor_units(Some(10.0), Some("EUR"), Some(1.0), "CZK", Some("CZK")), None);
+    assert_eq!(cost_minor_units(Some(10.0), None, Some(1.0), "CZK", Some("CZK")), None);
+    assert_eq!(cost_minor_units(Some(10.0), Some("CZK"), Some(1.0), "CZK", None), None);
+    // Another cart currency needs a finite rate > 0 (shop → cart).
+    close(cost_minor_units(Some(100.0), Some("CZK"), Some(0.04), "EUR", Some("CZK")), 400.0, 1e-9);
+    assert_eq!(cost_minor_units(Some(100.0), Some("CZK"), None, "EUR", Some("CZK")), None);
+    assert_eq!(cost_minor_units(Some(100.0), Some("CZK"), Some(0.0), "EUR", Some("CZK")), None);
+    assert_eq!(cost_minor_units(Some(100.0), Some("CZK"), Some(-1.0), "EUR", Some("CZK")), None);
+    assert_eq!(cost_minor_units(Some(100.0), Some("CZK"), Some(f64::INFINITY), "EUR", Some("CZK")), None);
+    // Minor units of the CART currency: JPY 0, KWD 3.
+    close(cost_minor_units(Some(100.0), Some("CZK"), Some(6.5), "JPY", Some("CZK")), 650.0, 1e-9);
+    close(cost_minor_units(Some(1.2345), Some("KWD"), None, "KWD", Some("KWD")), 1234.5, 1e-6);
+    // Capped at the money cap, never Infinity.
+    assert_eq!(cost_minor_units(Some(1e300), Some("CZK"), Some(1e300), "EUR", Some("CZK")), Some(1e12));
+}
+
+#[test]
+fn the_margin_payload_is_read_tolerantly_and_off_unless_exactly_on() {
+    let read = |json: &str| run_function_with_input(|c: ShopConfig| Ok(c), &format!(r#"{{"modules": {{"codes": {{"rules": []}}, "margin": {json}}}}}"#)).unwrap().0.unwrap().margin;
+    for off in [
+        r#"{"enabled": false, "max": 50}"#,
+        r#"{"enabled": "true", "max": 50}"#,
+        r#"{"enabled": true}"#,
+        r#"{"enabled": true, "max": "50"}"#,
+        r#"{"global": {"maxDiscountPercent": 10}, "perCollection": []}"#,
+        r#"[{"enabled": true, "max": 50}]"#,
+        "null",
+    ] {
+        assert_eq!(read(off), None, "{off}");
+    }
+    let on = read(
+        r#"{"enabled": true, "max": 140, "min": -5, "cur": "czk",
+            "col": {"1": [120, null], "2": [null, -1], "3": [5], "4": ["x", 5], "5": [null, null], "6": 7}}"#,
+    )
+    .unwrap();
+    assert_eq!((on.min, on.max, on.cur.as_deref()), (Some(0.0), 100.0, None));
+    let col: Vec<_> = on.col.iter().map(|(k, m, p)| (k.as_str(), (*m, *p))).collect();
+    assert_eq!(col, vec![("1", (Some(95.0), None)), ("2", (None, Some(0.0))), ("5", (None, None))]);
+    let eur = read(r#"{"enabled": true, "max": 30, "min": "x", "cur": "EUR"}"#).unwrap();
+    assert_eq!((eur.min, eur.max, eur.cur.as_deref(), eur.col.len()), (None, 30.0, Some("EUR"), 0));
+}
+
+#[test]
+fn a_product_takes_the_strictest_of_its_collections_settings() {
+    let read = |json: &str| {
+        run_function_with_input(|c: ShopConfig| Ok(c), &format!(r#"{{"modules": {{"codes": {{"rules": []}}, "margin": {json}}}}}"#))
+            .unwrap()
+            .0
+            .unwrap()
+            .margin
+            .unwrap()
+    };
+    let payload = read(r#"{"enabled": true, "min": 10, "max": 50, "col": {"1": [30, null], "2": [null, 10], "3": [null, null]}}"#);
+    let settings = |refs: &[&str]| {
+        let refs: Vec<String> = refs.iter().map(|r| r.to_string()).collect();
+        let s = resolve_margin(&payload, &refs);
+        (s.min_margin_percent, s.max_discount_percent, s.collection)
+    };
+    assert_eq!(settings(&[]), (10.0, 50.0, false));
+    assert_eq!(settings(&["1"]), (30.0, 50.0, true));
+    assert_eq!(settings(&["1", "2"]), (30.0, 10.0, true));
+    assert_eq!(settings(&["2", "1"]), (30.0, 10.0, true));
+    assert_eq!(settings(&["3"]), (10.0, 50.0, true));
+    assert_eq!(settings(&["99"]), (10.0, 50.0, false));
+    // No `min`: 0 (never below the cost). A "__proto__" key never matches (JS object semantics).
+    let bare = read(r#"{"enabled": true, "max": 40, "col": {"__proto__": [90, 0], "7": [null, 5]}}"#);
+    let s = resolve_margin(&bare, &["__proto__".to_string()]);
+    assert_eq!((s.min_margin_percent, s.max_discount_percent, s.collection), (0.0, 40.0, false));
+    let s = resolve_margin(&bare, &["7".to_string()]);
+    assert_eq!((s.min_margin_percent, s.max_discount_percent, s.collection), (0.0, 5.0, true));
+}
+
+#[test]
+fn margin_off_plans_exactly_like_mvp1() {
+    let rules_json = [pct("a", 60.0, ""), order_rule("o", r#"{"kind": "percentage", "percent": 30}"#, "")].join(",");
+    let mut with_costs = vec![line("l1", 2, 100_000, &["a"]), line("l2", 1, 30_000, &[])];
+    for l in &mut with_costs {
+        l.cost = Some(900.0);
+        l.cur = Some("CZK");
+        l.margin_refs = vec!["1".into()];
+    }
+    let bare = [line("l1", 2, 100_000, &["a"]), line("l2", 1, 30_000, &[])];
+    let plain = rules(&rules_json, "");
+    let mvp1 = plan_cart(cart(&bare, &[]), Some(&plain)).lines.clone();
+    for margin in [r#"{"enabled": false}"#, r#"{"global": {"maxDiscountPercent": 10}, "perCollection": []}"#] {
+        let c = margin_rules(&rules_json, margin, "");
+        let mut input = cart(&with_costs, &[]);
+        input.shop_to_cart_rate = Some(1.0);
+        let plan = plan_cart(input, Some(&c));
+        assert_eq!(plan.lines, mvp1, "{margin}");
+        let order = plan.order.as_ref().unwrap();
+        assert_eq!((order.stack.amount, order.base, order.excluded_line_ids.len()), (33_000, 110_000, 0));
+        assert_eq!(order.stack.value, EmittedValue::Percent(30.0));
+    }
+}
+
+#[test]
+fn a_product_line_is_cut_to_its_headroom_and_emitted_as_that_exact_amount() {
+    let fixed = r#"{"id": "f", "enabled": true, "name": "f", "method": "automatic",
+        "value": {"kind": "fixed", "amount": {"CZK": 30000}}, "target": {"kind": "products"}}"#;
+    let c = margin_rules(&[pct("a", 30.0, ""), fixed.to_string()].join(","), r#"{"enabled": true, "min": 20, "max": 50, "cur": "CZK"}"#, "");
+    let lines = [
+        cost_line("l1", 1, 100_000, 700.0, &["a"]),
+        line("l2", 2, 20_000, &["a"]),
+        line("l3", 3, 50_000, &["f"]),
+        cost_line("l4", 1, 100_000, 1000.0, &["a"]),
+    ];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    // Floor 700 / 0.8 = 875 Kč → headroom 125 Kč of the 300 Kč.
+    assert_eq!(product_of(&plan, "l1"), Some(("a", &EmittedValue::FixedTotal(12_500), 12_500)));
+    assert!(plan.lines[0].margin_capped);
+    // No cost: the 50 % ceiling leaves the 30 % alone.
+    assert_eq!(product_of(&plan, "l2"), Some(("a", &EmittedValue::Percent(30.0), 12_000)));
+    assert!(!plan.lines[1].margin_capped);
+    // A fixed amount per item is capped on the whole line: 1 500 − 3 × 250 = 750 Kč.
+    assert_eq!(product_of(&plan, "l3"), Some(("f", &EmittedValue::FixedTotal(75_000), 75_000)));
+    // At the floor already: no product discount at all.
+    assert_eq!(product_of(&plan, "l4"), None);
+    assert!(plan.lines[3].margin_capped);
+    assert_eq!(
+        lines_json(&plan, lines.len()),
+        concat!(
+            r#"{"operations":[{"productDiscountsAdd":{"candidates":["#,
+            r#"{"message":"a","targets":[{"cartLine":{"id":"l1"}}],"value":{"fixedAmount":{"amount":"125.00","appliesToEachItem":true}}},"#,
+            r#"{"message":"a","targets":[{"cartLine":{"id":"l2"}}],"value":{"percentage":{"value":30}}},"#,
+            r#"{"message":"f","targets":[{"cartLine":{"id":"l3"}}],"value":{"fixedAmount":{"amount":"250.00","appliesToEachItem":true}}}"#,
+            r#"],"selectionStrategy":"ALL"}}]}"#,
+        )
+    );
+    // A capped stack whose total equals its summed percent stays an exact amount: 10,05 Kč, 10 % + 10 %, 20 % ceiling.
+    let c = margin_rules(&[pct("x", 10.0, r#", "combinesWith": {"ruleIds": ["y"]}"#), pct("y", 10.0, "")].join(","), r#"{"enabled": true, "max": 20}"#, "");
+    let lines = [line("l1", 1, 1005, &["x", "y"])];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    assert_eq!(plan.lines[0].product.as_ref().unwrap().amount, 201);
+    assert!(lines_json(&plan, 1).contains(r#""value":{"fixedAmount":{"amount":"2.01","appliesToEachItem":true}}"#));
+}
+
+#[test]
+fn a_cost_in_another_cart_currency_converts_with_the_rate_else_the_ceiling_applies() {
+    let c = margin_rules(&pct("a", 60.0, ""), r#"{"enabled": true, "min": 10, "max": 30, "cur": "CZK"}"#, "");
+    let lines = [cost_line("l1", 1, 4000, 500.0, &["a"])];
+    let run = |rate: Option<f64>| {
+        let mut input = cart(&lines, &[]);
+        input.currency = "EUR".into();
+        input.shop_to_cart_rate = rate;
+        plan_cart(input, Some(&c)).lines[0].product.as_ref().map(|p| p.amount)
+    };
+    // 500 CZK × 0.04 = 20 € → floor 20 / 0.9 = 22,23 € → 17,77 €.
+    assert_eq!(run(Some(0.04)), Some(1777));
+    // No usable rate: the cost is unknown, the 30 % ceiling applies (floor 28 €).
+    assert_eq!(run(None), Some(1200));
+    assert_eq!(run(Some(0.0)), Some(1200));
+}
+
+#[test]
+fn a_pro_stack_is_cut_in_rank_order_and_its_owner_recomputed() {
+    let rules_json = [pct("a", 20.0, r#", "combinesWith": {"ruleIds": ["b"]}"#), code("b", 10.0, WELCOME15, "")].join(",");
+    let lines = [line("l1", 1, 100_000, &["a", "b"])];
+    let c = margin_rules(&rules_json, r#"{"enabled": true, "max": 25}"#, "");
+    let wide = plan_cart(cart(&lines, &["WELCOME15"]), Some(&c));
+    let stack = wide.lines[0].product.as_ref().unwrap();
+    let parts: Vec<(&str, i64)> = stack.components.iter().map(|c| (wide.rules[c.rule].id, c.amount)).collect();
+    assert_eq!(parts, vec![("a", 20_000), ("b", 5_000)]);
+    assert_eq!((wide.rules[stack.owner].id, &stack.value, stack.message.as_ref()), ("b", &EmittedValue::FixedTotal(25_000), "a + b"));
+    let c = margin_rules(&rules_json, r#"{"enabled": true, "max": 15}"#, "");
+    let tight = plan_cart(cart(&lines, &["WELCOME15"]), Some(&c));
+    let stack = tight.lines[0].product.as_ref().unwrap();
+    let parts: Vec<(&str, i64)> = stack.components.iter().map(|c| (tight.rules[c.rule].id, c.amount)).collect();
+    assert_eq!(parts, vec![("a", 15_000)]);
+    assert_eq!((tight.rules[stack.owner].id, stack.message.as_ref()), ("a", "a"));
+    assert_eq!(emit_for_node(&tight, &NodeRole::Automatic, None).product[0].amount, 15_000);
+    assert!(emit_for_node(&tight, &NodeRole::Code("b".into()), Some("WELCOME15")).product.is_empty());
+}
+
+#[test]
+fn the_order_discount_is_safe_on_both_allocation_bases_with_a_reserve() {
+    let percent = |p: f64| format!(r#"{{"kind": "percentage", "percent": {p}}}"#);
+    // After the 50 % product discount line 1 is 500 Kč, floor 400 Kč: 199,98 on the after-product
+    // base, but only 149,98 on the before-product base (line 1 is 1 000 of 1 500).
+    let c = margin_rules(&[pct("a", 50.0, ""), order_rule("o", &percent(20.0), "")].join(","), r#"{"enabled": true, "max": 60}"#, "");
+    let lines = [line("l1", 1, 100_000, &["a"]), line("l2", 1, 50_000, &[])];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    assert_eq!(product_of(&plan, "l1").unwrap().2, 50_000);
+    let order = plan.order.as_ref().unwrap();
+    assert_eq!((order.stack.amount, &order.stack.value, order.base), (14_998, &EmittedValue::FixedTotal(14_998), 100_000));
+    assert!(order.excluded_line_ids.is_empty());
+    // One line, 30 % wanted, 20 % ceiling: 199,99 (1 haléř kept for rounding).
+    let c = margin_rules(&order_rule("o", &percent(30.0), ""), r#"{"enabled": true, "max": 20}"#, "");
+    let one = [line("l1", 1, 100_000, &[])];
+    let order = plan_cart(cart(&one, &[]), Some(&c)).order.unwrap();
+    assert_eq!(order.stack.value, EmittedValue::FixedTotal(19_999));
+    // Two orderings: A (1 000 Kč, 90 % off → 100 Kč, floor 49,99) and B (100 Kč, floor 94,99) share
+    // k = h/s = 0,05, so by h/s {A, B} is the only candidate (B's share limits D to 10 Kč); by h/a
+    // (A 0,5, B 0,05) {A} alone carries the whole 50 % of 100 Kč, which is more: B is left out.
+    let c = margin_rules(&[pct("p", 90.0, ""), order_rule("o", &percent(50.0), "")].join(","), r#"{"enabled": true, "max": 100, "cur": "CZK"}"#, "");
+    let same_k = [cost_line("a", 1, 100_000, 49.99, &["p"]), cost_line("b", 1, 10_000, 94.99, &[])];
+    let plan = plan_cart(cart(&same_k, &[]), Some(&c));
+    let order = plan.order.as_ref().unwrap();
+    assert_eq!((order.stack.amount, &order.stack.value, order.base), (5000, &EmittedValue::Percent(50.0), 10_000));
+    assert_eq!(order.excluded_line_ids, vec!["b"]);
+}
+
+#[test]
+fn lines_at_their_floor_are_left_out_of_the_order_discount() {
+    let percent = r#"{"kind": "percentage", "percent": 10}"#;
+    let margin = r#"{"enabled": true, "max": 50, "cur": "CZK"}"#;
+    let c = margin_rules(&order_rule("o", percent, ""), margin, "");
+    let lines = [line("l1", 1, 100_000, &[]), cost_line("l2", 1, 100_000, 1000.0, &[]), line("l3", 1, 50_000, &[])];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let order = plan.order.as_ref().unwrap();
+    // Still 10 %, now of lines 1 and 3 only.
+    assert_eq!((order.stack.amount, &order.stack.value, order.base), (15_000, &EmittedValue::Percent(10.0), 150_000));
+    assert_eq!(order.excluded_line_ids, vec!["l2"]);
+    assert_eq!(emit_for_node(&plan, &NodeRole::Automatic, None).order[0].excluded_line_ids, &["l2"]);
+    // A fixed amount the other lines carry whole is unchanged; equal D → the larger set (nothing left out for nothing).
+    let c = margin_rules(&order_rule("o", r#"{"kind": "fixed", "amount": {"CZK": 10000}}"#, ""), margin, "");
+    let floored = [line("l1", 1, 100_000, &[]), cost_line("l2", 1, 100_000, 1000.0, &[])];
+    let order = plan_cart(cart(&floored, &[]), Some(&c)).order.unwrap();
+    assert_eq!((order.stack.value, order.excluded_line_ids), (EmittedValue::FixedTotal(10_000), vec!["l2"]));
+    let both = [line("l1", 1, 100_000, &[]), line("l2", 1, 20_000, &[])];
+    let order = plan_cart(cart(&both, &[]), Some(&c)).order.unwrap();
+    assert_eq!((order.stack.amount, order.base, order.excluded_line_ids.len()), (10_000, 120_000, 0));
+    // Every line at its floor: no order discount; shipping is outside margin protection.
+    let ship = r#"{"id": "s", "enabled": true, "name": "s", "method": "automatic", "value": {"kind": "freeShipping"}, "target": {"kind": "shipping"}}"#;
+    let c = margin_rules(&[order_rule("o", percent, ""), ship.to_string()].join(","), margin, "");
+    let at_floor = [cost_line("l1", 1, 100_000, 1000.0, &[])];
+    let plan = plan_cart(cart(&at_floor, &[]), Some(&c));
+    assert!(plan.order.is_none());
+    assert_eq!(plan.rules[plan.shipping.as_ref().unwrap().rule].id, "s");
+}
+
+#[test]
+fn exclusive_mode_protects_the_order_only_scenario_too() {
+    let off = r#""engine": {"combination": {"productWithOrder": false}}"#;
+    let order = order_rule("o", r#"{"kind": "percentage", "percent": 30}"#, "");
+    let lines = [line("l1", 1, 100_000, &["a"]), cost_line("l2", 1, 100_000, 1000.0, &[])];
+    // Order only: line 2 left out, line 1 gives 99,99 Kč > the 50 Kč product scenario.
+    let c = margin_rules(&[pct("a", 5.0, ""), order.clone()].join(","), r#"{"enabled": true, "max": 10, "cur": "CZK"}"#, off);
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let o = plan.order.as_ref().unwrap();
+    assert_eq!((o.stack.amount, &o.stack.value, o.excluded_line_ids.clone()), (9_999, &EmittedValue::FixedTotal(9_999), vec!["l2"]));
+    assert!(plan.lines.iter().all(|l| l.product.is_none()));
+    // More headroom on the product side: the products win, no order discount.
+    let c = margin_rules(&[pct("a", 50.0, ""), order].join(","), r#"{"enabled": true, "max": 60, "cur": "CZK"}"#, off);
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    assert!(plan.order.is_none());
+    assert_eq!(product_of(&plan, "l1").unwrap().2, 50_000);
+}
+
+#[test]
+fn campaign_overrides_apply_first_then_margin_protection() {
+    let campaign = r#""campaignId": "bf", "campaignVarsVersion": "v1",
+        "campaigns": [{"id": "bf", "overrides": [{"ruleId": "a", "patch": {"value": {"kind": "percentage", "percent": 70}}}]}]"#;
+    let c = margin_rules(&pct("a", 10.0, ""), r#"{"enabled": true, "max": 40}"#, campaign);
+    let lines = [line("l1", 1, 100_000, &["a"])];
+    let mut input = cart(&lines, &[]);
+    input.campaign = CampaignInput { id: Some("bf"), active: true, vars_version: Some("v1") };
+    let plan = plan_cart(input, Some(&c));
+    assert_eq!(plan.campaign_id, Some("bf"));
+    assert_eq!(product_of(&plan, "l1"), Some(("a", &EmittedValue::FixedTotal(40_000), 40_000)));
+}
+
+#[test]
+fn a_capped_line_is_never_relaxed_over_the_output_budget() {
+    // 200 stacks of different amounts (fixed per item + 10 %), over the budget, with a 20 % ceiling
+    // that caps the cheaper lines: the uncapped stacks degrade to their top rule, the capped ones
+    // keep their exact amount (or are dropped).
+    let c = margin_rules(
+        &[
+            r#"{"id": "fix", "enabled": true, "name": "9,99 Kč z kusu", "method": "automatic", "value": {"kind": "fixed", "amount": {"CZK": 999}},
+                "target": {"kind": "products"}, "combinesWith": {"ruleIds": ["ten"]}}"#
+                .to_string(),
+            pct("ten", 10.0, ""),
+        ]
+        .join(","),
+        r#"{"enabled": true, "max": 20}"#,
+        "",
+    );
+    let ids: Vec<String> = (1..=200).map(|i| format!("L{i}")).collect();
+    let lines: Vec<Line> = ids
+        .iter()
+        .enumerate()
+        .map(|(i, id)| Line { id: Box::leak(id.clone().into_boxed_str()), ..line("", 1, 5000 + (i as i64 + 1) * 101, &["fix", "ten"]) })
+        .collect();
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let capped: Vec<&str> = plan.lines.iter().filter(|l| l.margin_capped).map(|l| l.line_id).collect();
+    assert!(capped.len() > 20 && capped.len() < 200, "{} capped lines", capped.len());
+    let emission = emit_for_node(&plan, &NodeRole::Automatic, None);
+    let result = cart_lines_result(&emission, &plan, true, true, lines.len());
+    let mut json = JsonText::counter();
+    result.write(&mut json).unwrap();
+    assert!(json.bytes <= 19_000, "{} B", json.bytes);
+    let CartOperation::ProductDiscountsAdd(candidates) = &result.operations[0] else { panic!("product candidates") };
+    let mut percents = 0;
+    for c in candidates {
+        let on_capped = c.targets.iter().any(|t| capped.contains(&t.as_str()));
+        if on_capped {
+            assert!(matches!(c.value, ProductValue::FixedAmount { .. }), "{c:?}");
+        }
+        percents += usize::from(matches!(c.value, ProductValue::Percentage(_)));
+    }
+    assert!(percents > 0, "the uncapped stacks degraded to their top rule (10 %)");
 }

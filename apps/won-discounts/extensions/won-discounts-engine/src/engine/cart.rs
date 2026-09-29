@@ -21,6 +21,14 @@ pub struct LineInput<'a> {
     pub rule_ids: &'a [String],
     /// This variant's refs (product metafield `variantRuleIds`), usually none.
     pub variant_rule_ids: Vec<String>,
+    /// Margin protection (MVP 2): cost of one item in MAJOR units of the shop
+    /// currency, as read from the variant metafield (`cost`); margin.rs decides
+    /// whether it is usable. Read only while margin protection is on.
+    pub unit_cost: Option<f64>,
+    /// The currency of `unit_cost` (the variant metafield's `cur`).
+    pub unit_cost_currency: Option<&'a str>,
+    /// Numeric ids of the product's collections with a margin setting (product metafield `marginRefs`).
+    pub margin_refs: Vec<String>,
 }
 
 /// The node's campaign variables (C4/C7): `id` + `varsVersion` from its
@@ -44,6 +52,8 @@ pub struct CartInput<'a> {
     pub today: Option<&'a str>,
     /// `locale === "en"` (anything else plans Czech messages).
     pub locale_en: bool,
+    /// Shop currency → cart currency (`presentmentCurrencyRate`), for margin protection.
+    pub shop_to_cart_rate: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -56,6 +66,9 @@ pub struct NormalizedLine<'a> {
     pub gift: bool,
     rule_ids: &'a [String],
     variant_rule_ids: Vec<String>,
+    pub unit_cost: Option<f64>,
+    pub unit_cost_currency: Option<&'a str>,
+    pub margin_refs: Vec<String>,
 }
 
 impl NormalizedLine<'_> {
@@ -76,6 +89,7 @@ pub struct NormalizedCart<'a> {
     pub campaign: CampaignInput<'a>,
     pub today: Option<&'a str>,
     pub locale_en: bool,
+    pub shop_to_cart_rate: Option<f64>,
 }
 
 fn is_country(s: &str) -> bool {
@@ -100,6 +114,9 @@ pub fn normalize_cart(input: CartInput<'_>) -> NormalizedCart<'_> {
                 gift: line.gift,
                 rule_ids: line.rule_ids,
                 variant_rule_ids: line.variant_rule_ids,
+                unit_cost: line.unit_cost,
+                unit_cost_currency: line.unit_cost_currency,
+                margin_refs: line.margin_refs,
             }
         })
         .collect();
@@ -121,6 +138,7 @@ pub fn normalize_cart(input: CartInput<'_>) -> NormalizedCart<'_> {
         campaign: input.campaign,
         today: input.today.filter(|d| js::is_local_date(d)),
         locale_en: input.locale_en,
+        shop_to_cart_rate: input.shop_to_cart_rate,
     }
 }
 

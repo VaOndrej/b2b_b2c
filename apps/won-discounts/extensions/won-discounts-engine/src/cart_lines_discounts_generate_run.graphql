@@ -1,4 +1,4 @@
-# MVP 1 engine input (spec §3 "Emise per uzel", "Transport configu"). Every Won
+# Engine input (MVP 1; margin protection MVP 2; spec §3 "Emise per uzel", "Transport configu"). Every Won
 # node reads the SAME cart and shared config, plans the whole cart and emits
 # only its own part (src/input.rs; reference: tests/reference-adapter.js).
 #
@@ -7,8 +7,15 @@
 #   shop.config     the app-owned SHOP metafield `$app:won_discounts`/
 #                   `function_config`, shared by every node (C7); over 10 000 B
 #                   it arrives as null → no discount, no error
-#   wonProduct      per product `{ruleIds, variantRuleIds?, outlet?}` (precomputed
-#                   targeting)
+#   wonProduct      per product `{ruleIds, variantRuleIds?, outlet?, marginRefs?}`
+#                   (precomputed targeting; `marginRefs` = numeric ids of its
+#                   collections with a margin setting, MVP 2)
+#   wonVariant      per variant `$app:won_discounts`/`variant` = `{cost, cur}`: the
+#                   cost price in MAJOR units of the shop currency (margin
+#                   protection, MVP 2; read only while margin protection is on)
+#   presentmentCurrencyRate
+#                   shop currency → cart currency (a Decimal): converts cost
+#                   prices when the cart is in another currency (margin, MVP 2)
 #   country         Pro market targeting (market → countries map in the shared
 #                   config; the deprecated `localization.market` is not used)
 #
@@ -23,7 +30,7 @@
 # (`shopify app function run`) binds no variables; fixtures carry the resolved
 # `campaignActive` leaf. @won/core buildNodeVars always writes both keys.
 #
-# Cost (shopify.dev input query cost table): 22 of 30.
+# Cost (shopify.dev input query cost table): 26 of 30.
 query Input(
   $campaignStart: DateTimeWithoutTimezone!
   $campaignEnd: DateTimeWithoutTimezone!
@@ -58,6 +65,7 @@ query Input(
       isoCode
     }
   }
+  presentmentCurrencyRate
   cart {
     cost {
       subtotalAmount {
@@ -79,6 +87,9 @@ query Input(
         __typename
         ... on ProductVariant {
           id
+          wonVariant: metafield(namespace: "$app:won_discounts", key: "variant") {
+            jsonValue
+          }
           product {
             wonProduct: metafield(namespace: "$app:won_discounts", key: "product") {
               jsonValue

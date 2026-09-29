@@ -23,5 +23,12 @@ pub fn cart_delivery_options_discounts_generate_run(
     };
     let plan = plan_cart(adapted.cart, Some(adapted.config));
     let emission = emit_for_node(&plan, &adapted.role, adapted.triggering_code);
-    Ok(delivery_result(&emission, true, &group_ids, &plan.currency))
+    let result = delivery_result(&emission, true, &group_ids, &plan.currency);
+    // Never dropped: the run's memory is thrown away after it (src/main.rs run_export).
+    std::mem::forget(emission);
+    std::mem::forget(plan);
+    std::mem::forget(adapted.role);
+    std::mem::forget(group_ids);
+    std::mem::forget(input);
+    Ok(result)
 }

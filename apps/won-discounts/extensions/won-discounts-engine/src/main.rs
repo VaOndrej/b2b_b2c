@@ -1,4 +1,4 @@
-// won-discounts-engine: the Won Discounts discount function (MVP 1), in Rust.
+// won-discounts-engine: the Won Discounts discount function (MVP 1, margin protection MVP 2), in Rust.
 //
 // The production hot path. The reference is the TypeScript engine in
 // @won/core (packages/core/src/discounts): cart.ts → plan.ts → emit.ts, plus
@@ -18,6 +18,8 @@ use shopify_function::prelude::*;
 use shopify_function::wasm_api::{Context, Deserialize, Serialize};
 use std::process;
 
+#[cfg(target_arch = "wasm32")]
+mod alloc;
 pub mod cart_delivery_options_discounts_generate_run;
 pub mod cart_lines_discounts_generate_run;
 pub mod engine;
@@ -37,6 +39,8 @@ pub mod schema {
             "Input.shop.config.jsonValue" => super::json::ShopConfig,
             "Input.cart.lines.cost.amountPerQuantity.amount" => super::json::DecimalText,
             "Input.cart.lines.merchandise.product.wonProduct.jsonValue" => super::json::WonProduct,
+            "Input.cart.lines.merchandise.wonVariant.jsonValue" => super::json::WonVariant,
+            "Input.presentmentCurrencyRate" => super::json::DecimalNumber,
         }
     )]
     pub mod cart_lines_discounts_generate_run {}
@@ -48,6 +52,8 @@ pub mod schema {
             "Input.shop.config.jsonValue" => super::json::ShopConfig,
             "Input.cart.lines.cost.amountPerQuantity.amount" => super::json::DecimalText,
             "Input.cart.lines.merchandise.product.wonProduct.jsonValue" => super::json::WonProduct,
+            "Input.cart.lines.merchandise.wonVariant.jsonValue" => super::json::WonVariant,
+            "Input.presentmentCurrencyRate" => super::json::DecimalNumber,
         }
     )]
     pub mod cart_delivery_options_discounts_generate_run {}
@@ -58,7 +64,9 @@ pub mod schema {
 /// the fixtures and the deployed function identity), and a Rust function name
 /// cannot contain a dash. The run functions never fail; a failure to read the
 /// root or to write the output (not reachable with well-formed output) is
-/// dropped rather than panicking.
+/// dropped rather than panicking. What a run built is never dropped: the run's
+/// memory is thrown away after it, and walking it to free it only costs
+/// instructions (src/alloc.rs).
 fn run_export<I: Deserialize, O: Serialize>(run: fn(I) -> shopify_function::Result<O>) {
     shopify_function::wasm_api::init_panic_handler();
     let mut context = Context::new();
@@ -66,6 +74,7 @@ fn run_export<I: Deserialize, O: Serialize>(run: fn(I) -> shopify_function::Resu
     let Ok(input) = I::deserialize(&root) else { return };
     if let Ok(result) = run(input) {
         let _ = result.serialize(&mut context);
+        std::mem::forget(result);
     }
 }
 
