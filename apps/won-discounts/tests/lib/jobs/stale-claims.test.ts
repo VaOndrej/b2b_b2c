@@ -12,13 +12,14 @@ import { after, before, beforeEach, test } from "node:test";
 import { createDefaultConfig, type WonDiscountsConfig } from "@won/core/discounts/config";
 
 import { loadConfig } from "../../../app/lib/config.server.ts";
-import { isConfigLocked, withConfigLock } from "../../../app/lib/integration/lock.server.ts";
+import { configLockIdle, isConfigLocked, tryWithConfigLock, withConfigLock } from "../../../app/lib/integration/lock.server.ts";
 import {
   runStaleClaimSweepOnce,
   staleClaimJobStarted,
   startStaleClaimJob,
   stopStaleClaimJob,
   STALE_SWEEP_FIRST_DELAY_MS,
+  STALE_SWEEP_INTERVAL_MS,
 } from "../../../app/lib/jobs/stale-claims.server.ts";
 import { CLAIM_STALE_MS } from "../../../app/lib/native/move.server.ts";
 import { planMove } from "../../../app/lib/native/map.server.ts";
@@ -89,6 +90,52 @@ async function deadCreateFirst(env: ReturnType<typeof setup>, title: string) {
   await db.prisma.nativeDiscountBackup.update({ where: { id: row.id }, data: { updatedAt: new Date(Date.now() - CLAIM_STALE_MS - 60_000) } });
   return { nativeId, ruleId: rule.id, rowId: row.id };
 }
+
+// --- tryWithConfigLock (lock.server.ts): the non-blocking primitive the sweep is built on ------
+
+test("tryWithConfigLock: the shop's lock is free → it runs, same as withConfigLock", async () => {
+  const shop = "stale-job-lock-free.myshopify.com";
+  const attempt = tryWithConfigLock(shop, async () => "ran");
+  assert.equal(attempt.skipped, false);
+  assert.ok(!attempt.skipped);
+  assert.equal(await attempt.result, "ran");
+});
+
+test("tryWithConfigLock: the shop's lock is held → skipped, without waiting for it", async () => {
+  const shop = "stale-job-lock-held.myshopify.com";
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const holder = withConfigLock(shop, () => held);
+  try {
+    let secondRan = false;
+    const attempt = tryWithConfigLock(shop, async () => {
+      secondRan = true;
+    });
+    assert.equal(attempt.skipped, true, "skipped synchronously — never queued behind the holder");
+    assert.equal(secondRan, false);
+  } finally {
+    release();
+    await holder;
+  }
+});
+
+test("tryWithConfigLock: the lock is released even when `run` throws (so the next attempt is free again)", async () => {
+  const shop = "stale-job-lock-throws.myshopify.com";
+  const attempt = tryWithConfigLock(shop, async () => {
+    throw new Error("boom");
+  });
+  assert.equal(attempt.skipped, false);
+  assert.ok(!attempt.skipped);
+  await assert.rejects(attempt.result, /boom/);
+  await configLockIdle(shop);
+  assert.equal(isConfigLocked(shop), false, "released, not left held after the failure");
+  const again = tryWithConfigLock(shop, async () => "free again");
+  assert.equal(again.skipped, false);
+});
+
+// --- The sweep job itself -----------------------------------------------------------------------
 
 test("stale claim + live double (native + Won rule both live) → the sweep rolls the rule back", async () => {
   const env = setup();
@@ -190,6 +237,50 @@ test("a failure sweeping one shop is logged and never thrown; other shops still 
   assert.ok(!bRules.includes(ruleB), "b's rule was rolled back despite a's failure");
 });
 
+test("lock taken in the gap between the client resolve and the lock attempt (TOCTOU) → skipped, not queued; the next shop is still processed", async () => {
+  const a = setup();
+  const b = setup();
+  await deadCreateFirst(a, "A - lock grabbed while resolving the client (job)");
+  const { ruleId: ruleB } = await deadCreateFirst(b, "B jede (job)");
+
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let holder: Promise<void> | null = null;
+
+  const result = await runStaleClaimSweepOnce({
+    db: db.prisma,
+    clientFor: async (shop) => {
+      if (shop === a.shop) {
+        // Simulate another writer (a save, a move) acquiring the shop's real
+        // config lock in the window this await opens up — AFTER the sweep
+        // resolved a's client but BEFORE it gets to try the lock.
+        holder = withConfigLock(a.shop, () => held);
+        return a.shopify;
+      }
+      if (shop === b.shop) return b.shopify;
+      return null;
+    },
+    buildSaveAndSync: (opts) => (opts.shop === a.shop ? a.sync.saveAndSync : b.sync.saveAndSync),
+  });
+
+  try {
+    // a is skipped — tryWithConfigLock sees the lock the "clientFor" call just
+    // grabbed and does not queue behind it — while b, unaffected, is swept.
+    assert.equal(result.shopsSkippedLocked, 1);
+    assert.equal(result.shopsSwept, 1);
+    assert.equal(result.rowsResolved, 1);
+    const [rowA] = await rows(a.shop);
+    assert.equal(rowA.status, "moving", "a untouched: its lock was held when tried");
+    const bRules = (await loadConfig(db.prisma, b.shop)).config.modules.codes.rules.map((r) => r.id);
+    assert.ok(!bRules.includes(ruleB), "b was swept and rolled back despite a's lock race");
+  } finally {
+    release();
+    if (holder) await holder;
+  }
+});
+
 // --- startStaleClaimJob: idempotent per process ------------------------------------------------
 
 test("startStaleClaimJob: a second call is a no-op; stopStaleClaimJob clears the guard", () => {
@@ -232,10 +323,78 @@ test("startStaleClaimJob: disabled under NODE_ENV=test unless forced", () => {
   }
 });
 
-test("startStaleClaimJob: schedules the first run STALE_SWEEP_FIRST_DELAY_MS after start by default", () => {
+test("startStaleClaimJob: default timing — first run at STALE_SWEEP_FIRST_DELAY_MS, then every STALE_SWEEP_INTERVAL_MS, both timers unref'd", (t) => {
   stopStaleClaimJob();
-  assert.ok(STALE_SWEEP_FIRST_DELAY_MS > 0);
-  startStaleClaimJob({ force: true, deps: { db: db.prisma, clientFor: async () => null }, intervalMs: 10 ** 9 });
-  assert.equal(staleClaimJobStarted(), true);
-  stopStaleClaimJob();
+  t.mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
+
+  // Wrap the (already mocked) global timer functions so we can see the job's
+  // own handles call .unref() — not just that calling it is harmless.
+  const realSetTimeout = globalThis.setTimeout;
+  const realSetInterval = globalThis.setInterval;
+  const unrefed = new Set<object>();
+  // @ts-expect-error test instrumentation over the mocked global
+  globalThis.setTimeout = (...args: Parameters<typeof setTimeout>) => {
+    const handle = realSetTimeout(...args);
+    const originalUnref = handle.unref.bind(handle);
+    handle.unref = () => {
+      unrefed.add(handle);
+      return originalUnref();
+    };
+    return handle;
+  };
+  // @ts-expect-error test instrumentation over the mocked global
+  globalThis.setInterval = (...args: Parameters<typeof setInterval>) => {
+    const handle = realSetInterval(...args);
+    const originalUnref = handle.unref.bind(handle);
+    handle.unref = () => {
+      unrefed.add(handle);
+      return originalUnref();
+    };
+    return handle;
+  };
+
+  try {
+    // A minimal fake db: runStaleClaimSweepOnce always queries it first, even
+    // with nothing stale, so this counts a run without needing real rows / a
+    // real clientFor to be reached.
+    let runs = 0;
+    const countingDb = {
+      nativeDiscountBackup: {
+        findMany: async () => {
+          runs += 1;
+          return [];
+        },
+      },
+    } as unknown as typeof db.prisma;
+    startStaleClaimJob({
+      force: true,
+      deps: { db: countingDb, clientFor: async () => null },
+    });
+    assert.equal(runs, 0, "nothing runs synchronously on start");
+
+    // Just under the delay: still nothing.
+    t.mock.timers.tick(STALE_SWEEP_FIRST_DELAY_MS - 1);
+    assert.equal(runs, 0, "not yet at STALE_SWEEP_FIRST_DELAY_MS");
+
+    // The remaining millisecond fires the first run, which also schedules the interval.
+    t.mock.timers.tick(1);
+    assert.equal(runs, 1, "fires exactly at STALE_SWEEP_FIRST_DELAY_MS, once");
+
+    // No interval tick yet: a second, unrelated firing must not happen early.
+    t.mock.timers.tick(STALE_SWEEP_INTERVAL_MS - 1);
+    assert.equal(runs, 1, "not yet at STALE_SWEEP_INTERVAL_MS since the first run");
+
+    t.mock.timers.tick(1);
+    assert.equal(runs, 2, "the interval fires exactly at STALE_SWEEP_INTERVAL_MS");
+
+    t.mock.timers.tick(STALE_SWEEP_INTERVAL_MS);
+    assert.equal(runs, 3, "…and keeps firing every STALE_SWEEP_INTERVAL_MS after that");
+
+    assert.equal(unrefed.size, 2, "both the first-run timeout and the interval called .unref()");
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+    globalThis.setInterval = realSetInterval;
+    stopStaleClaimJob();
+    t.mock.timers.reset();
+  }
 });

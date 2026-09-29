@@ -14,10 +14,12 @@
 // process's own claim always wins, see sweepStaleClaims). MVP 5's scheduler
 // takes over running this on a cadence; this job is the interim owner.
 
+import type { ShopifyApp } from "@won/app-kit/shopify.server";
+
 import type { PrismaClient } from "../../generated/prisma/client";
 import type { Locale } from "../../i18n";
-import type { AdminClient } from "../admin-client.server";
-import { isConfigLocked, withConfigLock } from "../integration/lock.server";
+import { adminClientFromApp, type AdminClient } from "../admin-client.server";
+import { tryWithConfigLock } from "../integration/lock.server";
 import { createSaveAndSync } from "../integration/native.server";
 import { CLAIM_STALE_MS, resolveStaleClaims } from "../native/move.server";
 import { BACKUP_STATUS } from "../native/types";
@@ -67,12 +69,17 @@ const EMPTY: StaleClaimSweepResult = { shopsSwept: 0, shopsSkippedLocked: 0, sho
 
 /**
  * One pass: find every shop with a `moving` / `undoing` claim older than
- * CLAIM_STALE_MS (bounded, distinct shops), and for each — skipping a shop
- * whose config lock is currently held by another writer, non-blocking, never
- * queuing behind it — settle its stale claims under that same lock. Never
- * throws: a failure sweeping one shop, or reading the stale list itself, is
- * logged (no PII: shop domain and error text only, OBS-1) and the pass moves
- * on.
+ * CLAIM_STALE_MS (bounded, distinct shops), and for each — the admin client
+ * is resolved FIRST (an async DB/session lookup), then the shop's config lock
+ * is tried non-blocking (tryWithConfigLock: skip, never queue behind another
+ * writer, if it is held) — settle its stale claims under that same lock.
+ * Resolving the client before the lock attempt (rather than checking the lock,
+ * then awaiting the client, then locking) keeps the only await between "is it
+ * free" and "acquire it" out of the picture: tryWithConfigLock's check and
+ * acquisition are one synchronous step, so nothing else in this process can
+ * take the lock in that gap. Never throws: a failure sweeping one shop, or
+ * reading the stale list itself, is logged (no PII: shop domain and error
+ * text only, OBS-1) and the pass moves on to the next shop.
  */
 export async function runStaleClaimSweepOnce(deps: StaleClaimSweepDeps): Promise<StaleClaimSweepResult> {
   const logger = deps.logger ?? quiet;
@@ -99,12 +106,9 @@ export async function runStaleClaimSweepOnce(deps: StaleClaimSweepDeps): Promise
 
   const result = { ...EMPTY };
   for (const { shop } of stale) {
-    if (isConfigLocked(shop)) {
-      // Another writer (a save, a move, a targeting resync) holds or waits for
-      // this shop's lock right now: skip, never queue behind it. Retried next pass.
-      result.shopsSkippedLocked += 1;
-      continue;
-    }
+    // Resolve the admin client BEFORE trying the lock (it awaits a DB/session
+    // lookup): a shop with no session is skipped without ever touching the
+    // lock, and the lock attempt right after is a single synchronous step.
     let client: AdminClient | null;
     try {
       client = await deps.clientFor(shop);
@@ -116,17 +120,24 @@ export async function runStaleClaimSweepOnce(deps: StaleClaimSweepDeps): Promise
       result.shopsSkippedNoSession += 1;
       continue;
     }
+    const attempt = tryWithConfigLock(shop, () =>
+      resolveStaleClaims({
+        client,
+        db: deps.db,
+        shop,
+        locale,
+        now: deps.now,
+        saveAndSync: buildSaveAndSync({ client, db: deps.db, shop }),
+      }),
+    );
+    if (attempt.skipped) {
+      // Another writer (a save, a move, a targeting resync) holds or waits for
+      // this shop's lock right now: skip, never queue behind it. Retried next pass.
+      result.shopsSkippedLocked += 1;
+      continue;
+    }
     try {
-      const resolved = await withConfigLock(shop, () =>
-        resolveStaleClaims({
-          client,
-          db: deps.db,
-          shop,
-          locale,
-          now: deps.now,
-          saveAndSync: buildSaveAndSync({ client, db: deps.db, shop }),
-        }),
-      );
+      const resolved = await attempt.result;
       result.shopsSwept += 1;
       result.rowsResolved += resolved;
     } catch (error) {
@@ -145,6 +156,13 @@ interface JobHandle {
 
 let job: JobHandle | null = null;
 
+// The exact admin object unauthenticated.admin(shop) resolves — a type-only
+// import (erased at compile time, so importing this module still never loads
+// the Shopify app at runtime): if that shape ever changes, adminClientFromApp
+// (typed for AppAdminGraphql, admin-client.server.ts) fails to typecheck
+// instead of silently accepting whatever `as unknown as` would have let through.
+type UnauthenticatedAdmin = Awaited<ReturnType<ShopifyApp["unauthenticated"]["admin"]>>["admin"];
+
 /** The app's default deps: its own db, and unauthenticated.admin(shop) loaded lazily (importing this module never loads the Shopify app). */
 function appDeps(db: PrismaClient, logger: SyncLogger): StaleClaimSweepDeps {
   return {
@@ -153,9 +171,8 @@ function appDeps(db: PrismaClient, logger: SyncLogger): StaleClaimSweepDeps {
     clientFor: async (shop) => {
       try {
         const { unauthenticated } = await import("../../shopify.server");
-        const { adminClientFromApp } = await import("../admin-client.server");
-        const { admin } = await unauthenticated.admin(shop);
-        return adminClientFromApp(admin as unknown as Parameters<typeof adminClientFromApp>[0]);
+        const { admin }: { admin: UnauthenticatedAdmin } = await unauthenticated.admin(shop);
+        return adminClientFromApp(admin);
       } catch {
         // No offline session (never installed under this API key) or the shop
         // uninstalled meanwhile: nothing to sweep for it right now.

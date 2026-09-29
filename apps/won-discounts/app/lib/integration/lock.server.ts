@@ -24,6 +24,22 @@ export function withConfigLock<T>(shop: string, run: () => Promise<T>): Promise<
 }
 
 /**
+ * Non-blocking variant for a background sweep that must never queue behind a
+ * writer (unlike withConfigLock, which always chains onto whatever is
+ * currently queued): `{ skipped: true }` when the shop's lock is held or
+ * waited on right now, so the caller moves on to its next shop instead of
+ * stalling behind this one. The check and the acquisition happen in the same
+ * synchronous step — no `await` between them — so nothing else in this
+ * single-threaded process can acquire the lock in between; it is atomic in
+ * that sense, not a check-then-later-act race like `isConfigLocked` followed
+ * by a separate `withConfigLock` call across an `await`.
+ */
+export function tryWithConfigLock<T>(shop: string, run: () => Promise<T>): { skipped: true } | { skipped: false; result: Promise<T> } {
+  if (queues.has(shop)) return { skipped: true };
+  return { skipped: false, result: withConfigLock(shop, run) };
+}
+
+/**
  * True while some config writer (a save, a move, a resync) holds or waits for
  * the shop's lock. Přehled's GET trigger uses it to stay non-blocking: it never
  * queues a resync behind (or next to) another writer.
