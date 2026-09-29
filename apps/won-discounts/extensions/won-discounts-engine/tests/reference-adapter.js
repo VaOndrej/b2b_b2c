@@ -131,23 +131,32 @@ const NO_REFS = Object.freeze([]);
 /**
  * A `Decimal` scalar (Shopify sends a decimal string, e.g. "0.0405"; the local
  * runner may pass a number) → a number, or undefined. A string must be plain
- * decimal digits after trim, with at most 15 significant digits and at most 22
- * decimals (leading zeros and trailing decimal zeros not counted); it is then
- * `Number(text)`. "1e3", "0x10", "", "1.", junk and longer text are undefined:
- * the Rust function reads exactly this set without float-parsing tables
- * (src/json.rs DecimalNumber, one exact division), so both read the same number.
+ * decimal digits after trim; it is cut to its first 15 significant digits (the
+ * rest dropped toward zero: an error below 1e-14 relative, far below ceilTol's
+ * tolerance) and read as `Number` of that. The Rust function reads exactly this
+ * without float-parsing tables (src/json.rs DecimalNumber: one exact division or
+ * multiplication). "1e3", "0x10", "", "1.", junk — and, after the cut, more than
+ * 22 decimals or 22 dropped integer digits (not a currency rate) — are undefined.
  * @param {unknown} v
  * @returns {number | undefined}
  */
 export function decimalNumber(v) {
   if (typeof v === "number") return v;
   if (typeof v !== "string") return undefined;
-  const text = v.trim();
-  const m = /^(\d+)(?:\.(\d+))?$/.exec(text);
+  const m = /^(\d+)(?:\.(\d+))?$/.exec(v.trim());
   if (!m) return undefined;
-  const decimals = (m[2] ?? "").replace(/0+$/, "");
-  const significant = (m[1] + decimals).replace(/^0+/, "");
-  return significant.length <= 15 && decimals.length <= 22 ? Number(text) : undefined;
+  const whole = m[1];
+  const digits = whole + (m[2] ?? "");
+  const first = digits.search(/[1-9]/);
+  if (first === -1) return 0;
+  const end = Math.min(digits.length, first + 15);
+  if (end <= whole.length) {
+    const dropped = whole.length - end;
+    return dropped <= 22 ? Number(digits.slice(0, end) + "0".repeat(dropped)) : undefined;
+  }
+  const decimals = digits.slice(whole.length, end).replace(/0+$/, "");
+  if (decimals.length > 22) return undefined;
+  return Number(decimals ? `${whole}.${decimals}` : whole);
 }
 
 /**

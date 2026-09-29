@@ -52,7 +52,8 @@ export const SHOP_CURRENCY = "CZK";
  * @property {Record<string, unknown>} [configExtra]   engine, campaigns … (merchant config)
  * @property {Record<string, unknown>} [margin]   modules.margin of the merchant config (MVP 2)
  * @property {string} [shopCurrency]      the shop currency (margin `cur`), default SHOP_CURRENCY
- * @property {unknown} [rate]             `presentmentCurrencyRate` (shop → cart), default "1.0"
+ * @property {unknown} [rate]             `presentmentCurrencyRate` (shop → cart), default "1.0";
+ *                                        `rate: undefined` leaves the field out
  * @property {NodeRole} role
  * @property {(vars: Record<string, unknown>) => Record<string, unknown> | null} [varsPatch]
  * @property {"null" | Record<string, unknown>} [shopConfig]   override the built config
@@ -171,7 +172,8 @@ export function buildInput(s) {
       localTime: { date: s.date ?? TODAY, campaignActive: s.campaignActive ?? false },
     },
     localization: { country: { isoCode: s.country ?? "CZ" }, language: { isoCode: s.language ?? "CS" } },
-    presentmentCurrencyRate: s.rate ?? "1.0",
+    // `rate: undefined` given explicitly: the field is left out of the input.
+    ...(!("rate" in s) ? { presentmentCurrencyRate: "1.0" } : s.rate === undefined ? {} : { presentmentCurrencyRate: s.rate }),
     cart,
   };
 }

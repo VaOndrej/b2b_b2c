@@ -11,6 +11,7 @@ use super::cart::{CampaignInput, CartInput, LineInput};
 use super::config::Config;
 use super::emit::{emit_for_node, NodeEmission, NodeRole};
 use super::margin::{ceil_tol, cost_minor_units, margin_floor_unit, resolve_margin, MarginBasis, MARGIN_TOLERANCE};
+use super::order_search::{search_order_sets, OrderSet, OrderSetLine};
 use super::plan::{plan_cart, CartPlan, EmittedValue, Excluded, PlanFailure, RuleState, ShippingValue};
 use crate::json::ShopConfig;
 use crate::output::{cart_lines_result, delivery_result, tie_possible, CartOperation, JsonText, ProductValue};
@@ -921,11 +922,63 @@ fn a_capped_line_is_never_relaxed_over_the_output_budget() {
     let CartOperation::ProductDiscountsAdd(candidates) = &result.operations[0] else { panic!("product candidates") };
     let mut percents = 0;
     for c in candidates {
-        let on_capped = c.targets.iter().any(|t| capped.contains(&t.as_str()));
+        let on_capped = c.targets.iter().any(|t| capped.contains(t));
         if on_capped {
             assert!(matches!(c.value, ProductValue::FixedAmount { .. }), "{c:?}");
         }
         percents += usize::from(matches!(c.value, ProductValue::Percentage(_)));
     }
     assert!(percents > 0, "the uncapped stacks degraded to their top rule (10 %)");
+}
+
+/// A search line (minor units): (after, before, headroom).
+fn set_line(after: i64, before: i64, headroom: i64) -> OrderSetLine {
+    OrderSetLine { after, before, headroom }
+}
+
+fn order_set(members: &[usize], amount: i64, base: i64, wanted: i64) -> OrderSet {
+    OrderSet { members: members.to_vec(), amount, base, wanted }
+}
+
+#[test]
+fn order_search_groups_equal_keys_searches_both_orderings_and_the_better_d_wins() {
+    // A a=10 000 s=100 000 h=5 000; B a=s=10 000 h=500: equal h/s, so by h/s they enter together.
+    let lines = [set_line(10_000, 100_000, 5_000), set_line(10_000, 10_000, 500)];
+    let fifty_percent = |base: i64| (js_round_half(base, 50.0)).min(base);
+    let search = search_order_sets(&lines, &fifty_percent);
+    assert_eq!(search.by_before, order_set(&[0, 1], 1_000, 20_000, 10_000));
+    assert_eq!(search.by_after, order_set(&[0], 5_000, 10_000, 5_000));
+    assert!(search.after_wins && !search.after_skipped);
+    assert_eq!(search.best(), &search.by_after);
+}
+
+#[test]
+fn order_search_ties_go_to_the_larger_set_then_to_the_h_s_set() {
+    // h/s allows 30 on line 0 alone, h/a 30 on lines 0, 2 and 3: the larger set.
+    let lines = [set_line(98, 140, 47), set_line(30, 30, 3), set_line(65, 130, 11), set_line(40, 100, 10)];
+    let up_to_30 = |base: i64| base.min(30);
+    let larger = search_order_sets(&lines, &up_to_30);
+    assert_eq!((larger.by_before.members.clone(), larger.by_before.amount), (vec![0], 30));
+    assert_eq!((larger.by_after.members.clone(), larger.by_after.amount), (vec![0, 2, 3], 30));
+    assert!(larger.after_wins);
+    // Same D, same size, different sets (a synthetic wanted: only a base of 10 wants 5):
+    // h/s picks Y alone, h/a picks X alone → the h/s set.
+    let only_ten = |base: i64| if base == 10 { 5 } else { 0 };
+    let tie = search_order_sets(&[set_line(10, 20, 9), set_line(10, 10, 5)], &only_ten);
+    assert_eq!(tie.by_before, order_set(&[1], 5, 10, 5));
+    assert_eq!(tie.by_after, order_set(&[0], 5, 10, 5));
+    assert!(!tie.after_wins);
+    assert_eq!(tie.best(), &tie.by_before);
+    // No product discounts (a = s): the h/a ordering is the h/s one — not searched again, the same set.
+    let plain = [set_line(1000, 1000, 400), set_line(500, 500, 30), set_line(800, 800, 30)];
+    let ten_percent = |base: i64| js_round_half(base, 10.0).min(base);
+    let same = search_order_sets(&plain, &ten_percent);
+    assert!(same.after_skipped && !same.after_wins);
+    assert_eq!(same.by_after, same.by_before);
+    assert_eq!(same.by_before, order_set(&[0], 100, 1000, 100));
+}
+
+/// `Math.round((base × p) / 100)` of an order percent.
+fn js_round_half(base: i64, percent: f64) -> i64 {
+    super::js::round((base as f64 * percent) / 100.0) as i64
 }

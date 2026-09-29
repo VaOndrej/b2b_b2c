@@ -42,7 +42,10 @@ import { buildFunction, getFunctionInfo } from "@shopify/shopify-function-test-h
 import { codeHash } from "@won/core/discounts/code-hash";
 import { beforeAll, describe, expect, test } from "vitest";
 
+import { normalizeCart } from "@won/core/discounts/cart";
 import { roundingTiePossible } from "@won/core/discounts/function-output";
+import { costMinorUnits, marginFloorUnit, readMarginPayload, resolveMargin } from "@won/core/discounts/margin";
+import { searchOrderSets } from "@won/core/discounts/plan-margin";
 
 import {
   adaptInput,
@@ -149,7 +152,8 @@ const CODES = [
 const longName = (id) => `${id} ${"Velmi dlouhý název slevy ".repeat(9)}`.slice(0, 200);
 const vid = (n) => `gid://shopify/ProductVariant/${n}`;
 
-function generator(seed) {
+/** @param {number} seed @param {boolean} [onlySearch] only margin order-search carts (searchCase) */
+function generator(seed, onlySearch = false) {
   const rnd = prng(seed);
   const int = (n) => Math.floor(rnd() * n);
   const chance = (p) => rnd() < p;
@@ -340,8 +344,12 @@ function generator(seed) {
     if (junk(0.25)) return { jsonValue: pick([{ cost: "5", cur: "CZK" }, { cost: -1, cur: "CZK" }, { cost: 0, cur: "CZK" }, [5], "x", { cur: "CZK" }, { cost: 5, cur: 5 }]) };
     return { jsonValue: { cost: pick([0.01, 1, 5, 12.34, 20, 45.5, 80, 99.99, 150, 700, 999.99, 9999]), cur: pick(["CZK", "CZK", "CZK", "CZK", "EUR", "czk"]) } };
   }
-  /** presentmentCurrencyRate (shop → cart), as Shopify sends it (a decimal string), junk included. */
-  const rate = () => pick(["1.0", "1.0", "0.04", "0.0405", "25.3", "6.5", "0.0133", "0.0", "abc", " 0.04 ", 7, "1e3", "0.12345678901234567"]);
+  /** presentmentCurrencyRate (shop → cart), as Shopify sends it (a decimal string), junk, long and missing included. */
+  const longRate = () => `${pick(["0", "0", "1", "25", "0.0"])}.${Array.from({ length: 14 + int(12) }, () => int(10)).join("")}${int(9) + 1}`;
+  const rate = () =>
+    chance(0.15)
+      ? longRate()
+      : pick(["1.0", "1.0", "0.04", "0.0405", "25.3", "6.5", "0.0133", "0.0", "abc", " 0.04 ", 7, "1e3", "0.12345678901234567", null, undefined]);
 
   /**
    * The product metafields: one value per product, shared by every line of that
@@ -562,7 +570,72 @@ function generator(seed) {
     };
   }
 
+  /**
+   * The margin order stage's search: 2–8 lines, some with a large product
+   * discount (50–90 %) and a cost price well under what is left after it, some
+   * without and with a cost price at 80–99 % of the price; an order discount (a
+   * percent, or a fixed amount: equal D for sets of different sizes). Headrooms
+   * per price before and after the product discount then order the lines
+   * differently, so both orderings, their tie-breaks and the shortcut all occur
+   * (tests/parity.test.js branch counts).
+   */
+  function searchCase() {
+    const currency = pick(["CZK", "CZK", "EUR"]);
+    const deep = [50, 70, 80, 90];
+    const rules = [
+      ...deep.map((percent) => ({ id: `d${percent}`, enabled: true, name: `D${percent}`, method: "automatic", value: { kind: "percentage", percent }, target: { kind: "products" } })),
+      { id: "s2", enabled: true, name: "S2", method: "automatic", value: { kind: "percentage", percent: pick([5, 20, 40]) }, target: { kind: "products" }, combinesWith: { ruleIds: ["d50"] } },
+      chance(0.15)
+        ? { id: "o", enabled: true, name: "O", method: "automatic", value: { kind: "percentage", percent: pick([10, 20, 35, 50]) }, target: { kind: "order" } }
+        : { id: "o", enabled: true, name: "O", method: "automatic", value: { kind: "fixed", amount: { [currency]: pick([2000, 5000, 20000, 50000]) } }, target: { kind: "order" } },
+    ];
+    const margin = { enabled: true, max: pick([100, 100, 60]), min: 0, cur: "CZK" };
+    const lines = Array.from({ length: 2 + int(7) }, (_, i) => {
+      const price = pick([100, 250, 1000, 1500, 2000]) + int(50);
+      // Each discounted line its own percent (its own ratio of price after to price before).
+      const percent = chance(0.5) ? pick(deep) : 0;
+      const refs = percent === 0 ? (chance(0.15) ? ["s2"] : []) : percent === 50 && chance(0.3) ? ["d50", "s2"] : [`d${percent}`];
+      const cost = percent > 0 ? price * (1 - percent / 100) * pick([0.2, 0.4, 0.6, 0.9]) : price * pick([0.8, 0.9, 0.95, 0.99, 1, 1.05]);
+      return {
+        id: `gid://shopify/CartLine/${i + 1}`,
+        quantity: pick([1, 1, 1, 2]),
+        cost: { amountPerQuantity: { amount: `${price}.00` } },
+        gift: null,
+        merchandise: {
+          __typename: "ProductVariant",
+          id: vid(900 + i),
+          wonVariant: chance(0.9) ? { jsonValue: { cost: Math.round(cost * 100) / 100, cur: "CZK" } } : null,
+          product: { wonProduct: { jsonValue: { ruleIds: refs } } },
+        },
+      };
+    });
+    return {
+      exportName: LINES,
+      tie: false,
+      input: {
+        triggeringDiscountCode: null,
+        enteredDiscountCodes: [],
+        discount: {
+          discountClasses: ["PRODUCT", "ORDER", "SHIPPING"],
+          vars: { jsonValue: { role: "automatic", campaignId: null, campaignStart: "1970-01-01T00:00:00", campaignEnd: "1970-01-01T00:00:00", varsVersion: null } },
+        },
+        shop: {
+          config: { jsonValue: { schemaVersion: 1, campaignId: null, campaignVarsVersion: null, marketCountries: {}, modules: { codes: { rules }, margin }, campaigns: [] } },
+          localTime: { date: "2026-10-01", campaignActive: false },
+        },
+        localization: { country: { isoCode: "CZ" }, language: { isoCode: "CS" } },
+        ...(currency === "EUR" && chance(0.3) ? {} : { presentmentCurrencyRate: currency === "CZK" ? "1.0" : pick(["0.04", "0.0405", "0.0", "abc", null]) }),
+        cart: { cost: { subtotalAmount: { currencyCode: currency } }, lines },
+      },
+    };
+  }
+
   return function nextCase() {
+    if (onlySearch || chance(0.2)) {
+      hostile = false;
+      large = false;
+      return searchCase();
+    }
     if (chance(0.03)) {
       hostile = false;
       large = false;
@@ -628,6 +701,61 @@ function generator(seed) {
     };
     return { exportName, input, tie: built.tie === true };
   };
+}
+
+/** `amountIn` (plan.ts) of a fixed rule amount in the cart currency. */
+const amountIn = (money, currency) => {
+  const v = money && typeof money === "object" ? money[currency] : undefined;
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(Math.min(v, 1e12)) : null;
+};
+
+/**
+ * The margin order search's branches (the Rust function's shortcut, its skipped
+ * h/a search, the orderings' tie-breaks): its input rebuilt from the TS plan and
+ * the exported margin arithmetic, then `searchOrderSets` (plan-margin.ts).
+ */
+function orderSearchBranches(adapted, plan, hits) {
+  const config = adapted.config && typeof adapted.config === "object" ? adapted.config : {};
+  const payload = readMarginPayload(config.modules?.margin);
+  if (!payload.enabled || !plan.order?.marginProtected) return;
+  const cart = normalizeCart(adapted.cart);
+  const exclusive = config.engine?.combination?.productWithOrder === false;
+  const lines = [];
+  plan.lines.forEach((pl, i) => {
+    if (pl.excluded !== null) return;
+    const nl = cart.lines[i];
+    const settings = resolveMargin(payload, nl.marginRefs);
+    const costMinor = costMinorUnits(nl.unitCost ?? undefined, nl.unitCostCurrency ?? undefined, cart.shopToCartRate ?? undefined, cart.currency, payload.cur);
+    const { floorUnit } = marginFloorUnit({ unitPrice: nl.unitPrice, costMinor, ...settings });
+    const after = exclusive ? pl.subtotal : pl.subtotal - (pl.product?.amount ?? 0);
+    if (after > 0) lines.push({ after, before: pl.subtotal, headroom: Math.max(0, after - floorUnit * pl.quantity - 1) });
+  });
+  // The picked order stack: what is left of it, and the rules margin protection floored.
+  const ids = new Set([...plan.order.components.map((c) => c.ruleId), ...plan.rules.filter((r) => r.discountClass === "order" && r.state === "margin_floor").map((r) => r.ruleId)]);
+  const values = plan.rules.filter((r) => ids.has(r.ruleId)).map((r) => r.describable.value);
+  const wantedAt = (base) => {
+    let sum = 0;
+    for (const v of values) sum += v.kind === "percentage" ? Math.round((base * v.percent) / 100) : Math.min(amountIn(v.amount, plan.currency) ?? 0, base);
+    return Math.min(sum, base);
+  };
+  const giving = lines.filter((l) => l.headroom > 0);
+  const S = giving.reduce((sum, l) => sum + l.after, 0);
+  const S0 = giving.reduce((sum, l) => sum + l.before, 0);
+  const w = wantedAt(S);
+  const shortcut = giving.length > 0 && w > 0 && giving.every((l) => Math.floor((l.headroom * S) / l.after) >= w && Math.floor((l.headroom * S0) / l.before) >= w);
+  hits.add(shortcut ? "margin order search: shortcut (every line that can give carries its share)" : "margin order search: full search");
+  if (shortcut || giving.length === 0) return;
+  const keyS = giving.map((l) => l.headroom / l.before);
+  const keyA = giving.map((l) => l.headroom / l.after);
+  const byS = giving.map((_, i) => i).sort((x, y) => (keyS[x] !== keyS[y] ? keyS[y] - keyS[x] : x - y));
+  const same = byS.every((y, k) => k === 0 || (keyS[byS[k - 1]] === keyS[y] ? keyA[byS[k - 1]] === keyA[y] : keyA[byS[k - 1]] > keyA[y]));
+  hits.add(same ? "margin order search: h/a ordering skipped (the h/s one)" : "margin order search: both orderings searched");
+  if (same) return;
+  const { byBefore, byAfter, best } = searchOrderSets(giving, wantedAt);
+  if (best === byAfter) hits.add("margin order search: the h/a ordering wins");
+  if (byAfter.amount === byBefore.amount) {
+    hits.add(byAfter.members.length !== byBefore.members.length ? "margin order search: tie → the larger set" : "margin order search: tie → the h/s set");
+  }
 }
 
 /** The engine branches one case hit (from the TS plan, emission and output). */
@@ -730,6 +858,7 @@ function branchesOf(exportName, input, output, tie) {
   if (plan.lines.some((l) => l.marginTight)) hits.add("margin: tight line");
   if (mapped.degraded && plan.lines.some((l) => l.marginCapped || l.marginTight)) hits.add("margin: capped or tight line in an over-budget output");
   if (!marginOn && adapted.cart.lines.some((l) => typeof l.unitCost === "number")) hits.add("margin: off, cost prices present");
+  orderSearchBranches(adapted, plan, hits);
   return hits;
 }
 
@@ -913,5 +1042,45 @@ describe("Wasm (function-runner)", () => {
     expect(thin, `branches hit fewer than ${MIN_HITS} times:\n${table}`).toEqual([]);
     expect(overBudget).toEqual([]);
     expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
+  }, 900_000);
+
+  // The margin order stage's search on its own (src/engine/order_search.rs + the
+  // shortcut in plan.rs): carts built to make the two orderings differ, so every
+  // way the search can end — the shortcut, the h/a search skipped, the h/a
+  // ordering winning, a tie going to the larger set, a tie going to h/s — is
+  // compared between the Wasm and the TS reference, each ≥ MIN_HITS times.
+  const SEARCH_CASES = Number(process.env.PARITY_SEARCH_CASES ?? 2000);
+  test(`margin order search, seed 20260930 × ${SEARCH_CASES}: Wasm = TS reference, every search branch hit`, async () => {
+    const next = generator(20260930, true);
+    const cases = Array.from({ length: SEARCH_CASES }, next);
+    const failures = [];
+    /** @type {Map<string, number>} */
+    const hits = new Map();
+    for (let i = 0; i < cases.length; i += 8) {
+      const batch = cases.slice(i, i + 8);
+      const results = await Promise.all(batch.map((c) => runWasm(runnerPath, wasmPath, c.exportName, c.input)));
+      results.forEach((result, j) => {
+        const c = batch[j];
+        const expected = referenceOutput(c.exportName, c.input);
+        for (const branch of branchesOf(c.exportName, c.input, expected, c.tie)) hits.set(branch, (hits.get(branch) ?? 0) + 1);
+        if (!result.success || !isDeepStrictEqual(result.output, expected)) failures.push({ index: i + j, got: result.output, expected, input: c.input });
+      });
+    }
+    if (failures.length > 0) {
+      const first = failures[0];
+      throw new Error(`${failures.length}/${SEARCH_CASES} search cases differ; first #${first.index}\ngot      ${JSON.stringify(first.got)}\nexpected ${JSON.stringify(first.expected)}\ninput    ${JSON.stringify(first.input)}`);
+    }
+    const SEARCH_BRANCHES = [
+      "margin order search: shortcut (every line that can give carries its share)",
+      "margin order search: full search",
+      "margin order search: h/a ordering skipped (the h/s one)",
+      "margin order search: both orderings searched",
+      "margin order search: the h/a ordering wins",
+      "margin order search: tie → the larger set",
+      "margin order search: tie → the h/s set",
+    ];
+    const table = SEARCH_BRANCHES.map((b) => `${hits.get(b) ?? 0}\t${b}`).join("\n");
+    console.info(`margin order search: ${SEARCH_CASES} cases, 0 differ\n${table}`);
+    expect(SEARCH_BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS), table).toEqual([]);
   }, 900_000);
 });

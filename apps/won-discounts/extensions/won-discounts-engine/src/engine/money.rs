@@ -65,7 +65,11 @@ pub fn to_minor_units_with(text: &str, digits: usize) -> Option<i64> {
 
 /// `fromMinorUnits` (money.ts): 123450 minor units → "1234.50".
 pub fn from_minor_units(minor: i64, currency: &str) -> String {
-    let digits = currency_exponent(currency);
+    from_minor_units_with(minor, currency_exponent(currency))
+}
+
+/// `from_minor_units` with the currency's exponent already known (once per output, not per amount).
+pub fn from_minor_units_with(minor: i64, digits: usize) -> String {
     // Digits of max(0, minor), written by hand (no fmt machinery on the hot path).
     let mut buf = [0u8; 24];
     let mut n = minor.max(0) as u64;
@@ -96,7 +100,11 @@ pub fn from_minor_units(minor: i64, currency: &str) -> String {
 
 /// `fromMinorUnits(minor, currency).length`, without building the text.
 pub fn minor_units_len(minor: i64, currency: &str) -> usize {
-    let digits = currency_exponent(currency);
+    minor_units_len_with(minor, currency_exponent(currency))
+}
+
+/// `minor_units_len` with the currency's exponent already known.
+pub fn minor_units_len_with(minor: i64, digits: usize) -> usize {
     let mut n = minor.max(0) as u64;
     let mut len = 1;
     while n >= 10 {

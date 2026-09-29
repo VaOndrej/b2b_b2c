@@ -11,7 +11,7 @@ use shopify_function::wasm_api::{write::Error, Context, Serialize};
 use crate::engine::emit::{NodeEmission, ProductCandidate};
 use crate::engine::js;
 use crate::engine::fnv::FnvMap;
-use crate::engine::money::{from_minor_units, minor_units_len};
+use crate::engine::money::{currency_exponent, from_minor_units_with, minor_units_len_with};
 use crate::engine::plan::{CartPlan, EmittedValue, PlanLine, PlanStack, ShippingValue, ValueKind};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -28,47 +28,49 @@ pub enum TotalValue {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ProductCandidateOut {
-    pub message: String,
+pub struct ProductCandidateOut<'p> {
+    pub message: &'p str,
     /// Cart line ids.
-    pub targets: Vec<String>,
+    pub targets: Vec<&'p str>,
     pub value: ProductValue,
     /// What the candidate saves in total, minor units (not written; orders the last-resort drop).
     pub saves: i64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct OrderCandidateOut {
-    pub message: String,
-    pub excluded_cart_line_ids: Vec<String>,
+pub struct OrderCandidateOut<'p> {
+    pub message: &'p str,
+    pub excluded_cart_line_ids: &'p [&'p str],
     pub value: TotalValue,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct DeliveryCandidateOut {
-    pub message: String,
+pub struct DeliveryCandidateOut<'p> {
+    pub message: &'p str,
     /// Delivery group ids.
-    pub targets: Vec<String>,
+    pub targets: &'p [String],
     pub value: TotalValue,
 }
 
+/// The output borrows its text from the plan and the function input (it is
+/// written while they live, src/cart_*_run.rs): nothing is copied.
 #[derive(Debug, Clone, PartialEq)]
-pub enum CartOperation {
+pub enum CartOperation<'p> {
     /// `selectionStrategy: ALL`: every candidate targets other lines (≤ 1 product allocation per line).
-    ProductDiscountsAdd(Vec<ProductCandidateOut>),
+    ProductDiscountsAdd(Vec<ProductCandidateOut<'p>>),
     /// `selectionStrategy: FIRST`.
-    OrderDiscountsAdd(Vec<OrderCandidateOut>),
+    OrderDiscountsAdd(Vec<OrderCandidateOut<'p>>),
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct CartLinesResult {
-    pub operations: Vec<CartOperation>,
+pub struct CartLinesResult<'p> {
+    pub operations: Vec<CartOperation<'p>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct DeliveryResult {
+pub struct DeliveryResult<'p> {
     /// One `deliveryDiscountsAdd` (`selectionStrategy: ALL`) when there are candidates.
-    pub candidates: Vec<DeliveryCandidateOut>,
+    pub candidates: Vec<DeliveryCandidateOut<'p>>,
 }
 
 // --- Emission → output (@won/core function-output.ts) ------------------------------------------
@@ -131,14 +133,14 @@ enum DraftValue {
 }
 
 impl DraftValue {
-    fn to_output(self, currency: &str) -> ProductValue {
+    fn to_output(self, digits: usize) -> ProductValue {
         match self {
             DraftValue::Percent(p) => ProductValue::Percentage(p),
             DraftValue::PerItem(minor) => {
-                ProductValue::FixedAmount { amount: from_minor_units(minor, currency), applies_to_each_item: true }
+                ProductValue::FixedAmount { amount: from_minor_units_with(minor, digits), applies_to_each_item: true }
             }
             DraftValue::Total(minor) => {
-                ProductValue::FixedAmount { amount: from_minor_units(minor, currency), applies_to_each_item: false }
+                ProductValue::FixedAmount { amount: from_minor_units_with(minor, digits), applies_to_each_item: false }
             }
         }
     }
@@ -285,10 +287,12 @@ fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> 
     // line, so a lookup by address finds it without hashing the text (a name can
     // be 200 characters); the text is hashed once per new address. Groups are
     // then keyed by (value, message number).
-    let mut message_by_address: FnvMap<(usize, usize), u32> = FnvMap::default();
-    let mut message_by_text: FnvMap<&'p str, u32> = FnvMap::default();
+    let n = emission.product.len();
+    let mut message_by_address: FnvMap<(usize, usize), u32> = FnvMap::with_capacity_and_hasher(n, Default::default());
+    let mut message_by_text: FnvMap<&'p str, u32> = FnvMap::with_capacity_and_hasher(n, Default::default());
     let mut message_lens: Vec<usize> = Vec::new();
-    let mut groups: FnvMap<((u8, u64), u32), usize> = FnvMap::default();
+    // Sized once: on a margin-capped cart nearly every candidate is its own group.
+    let mut groups: FnvMap<((u8, u64), u32), usize> = FnvMap::with_capacity_and_hasher(n, Default::default());
     // Consecutive lines usually carry the same message: the last one skips the address lookup.
     let mut last: ((usize, usize), u32) = ((0, 0), 0);
     let mut any_stack = false;
@@ -340,18 +344,23 @@ fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> 
     Pass { drafts: out, any_stack, any_tie }
 }
 
-fn total_value(value: &EmittedValue, currency: &str) -> Option<TotalValue> {
+fn total_value(value: &EmittedValue, digits: usize) -> Option<TotalValue> {
     match value {
         EmittedValue::Percent(p) => Some(TotalValue::Percentage(*p)),
-        EmittedValue::FixedTotal(amount) => Some(TotalValue::FixedAmount(from_minor_units(*amount, currency))),
+        EmittedValue::FixedTotal(amount) => Some(TotalValue::FixedAmount(from_minor_units_with(*amount, digits))),
         EmittedValue::FixedPerItem(_) => None,
     }
 }
 
 // --- Output size, computed from the parts (no text is built) ---------------------------------
 
-/// UTF-8 bytes of `JSON.stringify(s)`.
+/// UTF-8 bytes of `JSON.stringify(s)`. Most strings (line ids, names) need no
+/// escape at all: that is checked 8 bytes at a time, and only a string with an
+/// escape is counted byte by byte (the output budget measures every target id).
 fn quoted_len(s: &str) -> usize {
+    if !needs_escape(s.as_bytes()) {
+        return s.len() + 2;
+    }
     2 + s
         .bytes()
         .map(|b| match b {
@@ -360,6 +369,24 @@ fn quoted_len(s: &str) -> usize {
             _ => 1,
         })
         .sum::<usize>()
+}
+
+/// Some byte is a control character (< 0x20), `"` or `\\` — what JSON.stringify
+/// escapes in a string (a Rust string has no lone surrogate). Word at a time:
+/// `(w − 0x01…01 × n) & !w & 0x80…80` is non-zero exactly when some byte of w
+/// is below n (n ≤ 0x80), and a byte equal to c is a zero byte of w ^ c×0x01…01.
+fn needs_escape(bytes: &[u8]) -> bool {
+    const ONES: u64 = 0x0101_0101_0101_0101;
+    const HIGHS: u64 = 0x8080_8080_8080_8080;
+    let below = |w: u64, n: u64| w.wrapping_sub(ONES * n) & !w & HIGHS;
+    let mut words = bytes.chunks_exact(8);
+    for word in &mut words {
+        let w = u64::from_le_bytes([word[0], word[1], word[2], word[3], word[4], word[5], word[6], word[7]]);
+        if below(w, 0x20) | below(w ^ (ONES * u64::from(b'"')), 1) | below(w ^ (ONES * u64::from(b'\\')), 1) != 0 {
+            return true;
+        }
+    }
+    words.remainder().iter().any(|&b| b < 0x20 || b == b'"' || b == b'\\')
 }
 
 /// Length of `JSON.stringify(n)`.
@@ -383,15 +410,15 @@ fn percentage_len(p: f64) -> usize {
     r#"{"percentage":{"value":"#.len() + number_len(p) + r#"}}"#.len()
 }
 
-fn draft_len(d: &Draft, currency: &str) -> usize {
+fn draft_len(d: &Draft, digits: usize) -> usize {
     let targets: usize = d.targets.iter().map(|id| r#"{"cartLine":{"id":"#.len() + quoted_len(id) + r#"}}"#.len()).sum();
     let value = match d.value {
         DraftValue::Percent(p) => percentage_len(p),
         DraftValue::PerItem(m) => {
-            r#"{"fixedAmount":{"amount":"#.len() + 2 + minor_units_len(m, currency) + r#","appliesToEachItem":true}}"#.len()
+            r#"{"fixedAmount":{"amount":"#.len() + 2 + minor_units_len_with(m, digits) + r#","appliesToEachItem":true}}"#.len()
         }
         DraftValue::Total(m) => {
-            r#"{"fixedAmount":{"amount":"#.len() + 2 + minor_units_len(m, currency) + r#","appliesToEachItem":false}}"#.len()
+            r#"{"fixedAmount":{"amount":"#.len() + 2 + minor_units_len_with(m, digits) + r#","appliesToEachItem":false}}"#.len()
         }
     };
     r#"{"message":"#.len()
@@ -404,7 +431,7 @@ fn draft_len(d: &Draft, currency: &str) -> usize {
         + 1
 }
 
-fn order_candidate_len(c: &OrderCandidateOut) -> usize {
+fn order_candidate_len(c: &OrderCandidateOut<'_>) -> usize {
     let ids: usize = c.excluded_cart_line_ids.iter().map(|id| quoted_len(id)).sum();
     let value = match &c.value {
         TotalValue::Percentage(p) => percentage_len(*p),
@@ -420,32 +447,34 @@ fn order_candidate_len(c: &OrderCandidateOut) -> usize {
         + 1
 }
 
-/// Bytes of the whole output's compact JSON, from each product candidate's size
-/// (`product_lens`) and the order candidates.
-fn result_len(product_lens: &[usize], order: &[OrderCandidateOut]) -> usize {
-    let list = |lens: &mut dyn Iterator<Item = usize>, count: usize| lens.sum::<usize>() + count.saturating_sub(1);
-    let mut ops = Vec::with_capacity(2);
-    if !product_lens.is_empty() {
-        ops.push(
-            r#"{"productDiscountsAdd":{"candidates":["#.len()
-                + list(&mut product_lens.iter().copied(), product_lens.len())
-                + r#"],"selectionStrategy":"ALL"}}"#.len(),
-        );
+/// Bytes of the order operation (`{"orderDiscountsAdd":…}`), none when there is no order candidate.
+fn order_op_len(order: &[OrderCandidateOut<'_>]) -> Option<usize> {
+    if order.is_empty() {
+        return None;
     }
-    if !order.is_empty() {
-        ops.push(
-            r#"{"orderDiscountsAdd":{"candidates":["#.len()
-                + list(&mut order.iter().map(order_candidate_len), order.len())
-                + r#"],"selectionStrategy":"FIRST"}}"#.len(),
-        );
+    let candidates: usize = order.iter().map(order_candidate_len).sum::<usize>() + order.len() - 1;
+    Some(r#"{"orderDiscountsAdd":{"candidates":["#.len() + candidates + r#"],"selectionStrategy":"FIRST"}}"#.len())
+}
+
+/// Bytes of the whole output's compact JSON, from the product candidates' summed
+/// size and count, and the order operation's size (`order_op_len`).
+fn output_len(products_len: usize, products: usize, order_op: Option<usize>) -> usize {
+    let (mut ops_len, mut ops) = (0usize, 0usize);
+    if products > 0 {
+        ops_len += r#"{"productDiscountsAdd":{"candidates":["#.len() + products_len + products - 1 + r#"],"selectionStrategy":"ALL"}}"#.len();
+        ops += 1;
     }
-    r#"{"operations":["#.len() + list(&mut ops.iter().copied(), ops.len()) + "]}".len()
+    if let Some(order_op) = order_op {
+        ops_len += order_op;
+        ops += 1;
+    }
+    r#"{"operations":["#.len() + ops_len + ops.saturating_sub(1) + "]}".len()
 }
 
 /// The UTF-8 bytes of an output's compact JSON, by writing it (tests check the
 /// arithmetic above against this).
 #[cfg(test)]
-pub fn json_bytes(result: &CartLinesResult) -> usize {
+pub fn json_bytes(result: &CartLinesResult<'_>) -> usize {
     let mut json = JsonText::counter();
     let _ = result.write(&mut json);
     json.bytes
@@ -453,17 +482,17 @@ pub fn json_bytes(result: &CartLinesResult) -> usize {
 
 /// `cart.lines.discounts.generate.run` output: only the classes the node has,
 /// within the output budget for a cart of `line_count` lines.
-pub fn cart_lines_result(
-    emission: &NodeEmission,
-    plan: &CartPlan,
+pub fn cart_lines_result<'p>(
+    emission: &NodeEmission<'p>,
+    plan: &'p CartPlan,
     product: bool,
     order: bool,
     line_count: usize,
-) -> CartLinesResult {
-    let currency = plan.currency.as_str();
+) -> CartLinesResult<'p> {
+    let digits = currency_exponent(&plan.currency);
     let base = plan.order.as_ref().map_or(0, |o| o.base);
     let exact_order = plan.order.as_ref().is_some_and(|o| o.margin_protected);
-    let order_candidates: Vec<OrderCandidateOut> = if order {
+    let order_candidates: Vec<OrderCandidateOut<'p>> = if order {
         emission
             .order
             .iter()
@@ -471,15 +500,11 @@ pub fn cart_lines_result(
                 let value = match c.value {
                     // Margin on, or a rounding tie: the exact amount (Shopify rounds a percent itself).
                     EmittedValue::Percent(p) if exact_order || tie_possible(base, p) => {
-                        TotalValue::FixedAmount(from_minor_units(c.amount, currency))
+                        TotalValue::FixedAmount(from_minor_units_with(c.amount, digits))
                     }
-                    ref value => total_value(value, currency)?,
+                    ref value => total_value(value, digits)?,
                 };
-                Some(OrderCandidateOut {
-                    message: c.message.to_string(),
-                    excluded_cart_line_ids: c.excluded_line_ids.iter().map(|id| id.to_string()).collect(),
-                    value,
-                })
+                Some(OrderCandidateOut { message: c.message, excluded_cart_line_ids: c.excluded_line_ids, value })
             })
             .collect()
     } else {
@@ -487,10 +512,13 @@ pub fn cart_lines_result(
     };
     let exact = Relax { stacks: false, ties: false };
     let mut pass = if product { drafts(emission, plan, exact) } else { Pass { drafts: Vec::new(), any_stack: false, any_tie: false } };
-    let lens_of = |drafts: &[Draft]| -> Vec<usize> { drafts.iter().map(|d| draft_len(d, currency)).collect() };
+    let lens_of = |drafts: &[Draft]| -> Vec<usize> { drafts.iter().map(|d| draft_len(d, digits)).collect() };
     let mut lens = lens_of(&pass.drafts);
     let budget = output_budget(line_count);
-    let exact_len = result_len(&lens, &order_candidates);
+    // The order operation never changes below: its size is measured once.
+    let order_op = order_op_len(&order_candidates);
+    let result_len = |lens: &[usize]| output_len(lens.iter().sum(), lens.len(), order_op);
+    let exact_len = result_len(&lens);
     if exact_len > budget {
         // The steps of the header, each only when it changes something.
         let mut relax = exact;
@@ -502,7 +530,7 @@ pub fn cart_lines_result(
             relax = step;
             pass = drafts(emission, plan, step);
             lens = lens_of(&pass.drafts);
-            if result_len(&lens, &order_candidates) <= budget {
+            if result_len(&lens) <= budget {
                 break;
             }
             // Stacks degraded and still over: relax the ties the degraded pass made too.
@@ -510,25 +538,47 @@ pub fn cart_lines_result(
                 relax = Relax { stacks: true, ties: true };
                 pass = drafts(emission, plan, relax);
                 lens = lens_of(&pass.drafts);
-                if result_len(&lens, &order_candidates) <= budget {
+                if result_len(&lens) <= budget {
                     break;
                 }
             }
         }
-        let products = &mut pass.drafts;
-        let mut dropped = 0usize;
-        while !products.is_empty() && result_len(&lens, &order_candidates) > budget {
-            // Last resort: drop the candidate that saves the least (ties: the later one).
-            let mut drop = 0;
-            for (k, d) in products.iter().enumerate().skip(1) {
-                if d.saves <= products[drop].saves {
-                    drop = k;
+        // Last resort: drop the candidate that saves the least (ties: the later
+        // one) until the output fits. The size is kept as a running sum, never
+        // re-measured per drop (that was quadratic on a big margin cart, whose
+        // order candidate lists every capped line); the candidates are removed
+        // once at the end.
+        let dropped = {
+            let products = &pass.drafts;
+            let (mut total, mut count) = (lens.iter().sum::<usize>(), lens.len());
+            let mut gone = vec![false; products.len()];
+            let mut dropped = 0usize;
+            if output_len(total, count, order_op) > budget {
+                // A min-heap on (saves, later first): the pops are exactly the drops.
+                let mut next: std::collections::BinaryHeap<std::cmp::Reverse<(i64, std::cmp::Reverse<usize>)>> =
+                    products.iter().enumerate().map(|(k, d)| std::cmp::Reverse((d.saves, std::cmp::Reverse(k)))).collect();
+                while count > 0 && output_len(total, count, order_op) > budget {
+                    let Some(std::cmp::Reverse((_, std::cmp::Reverse(drop)))) = next.pop() else { break };
+                    gone[drop] = true;
+                    total -= lens[drop];
+                    count -= 1;
+                    dropped += 1;
                 }
             }
-            products.remove(drop);
-            lens.remove(drop);
-            dropped += 1;
-        }
+            if dropped > 0 {
+                let mut k = 0;
+                pass.drafts.retain(|_| {
+                    k += 1;
+                    !gone[k - 1]
+                });
+                let mut k = 0;
+                lens.retain(|_| {
+                    k += 1;
+                    !gone[k - 1]
+                });
+            }
+            dropped
+        };
         log!(
             "won-discounts: exact output {exact_len} B > budget {budget} B: ties as percent {}, Pro stacks as their top rule {}, {dropped} product candidate(s) dropped",
             relax.ties,
@@ -537,16 +587,16 @@ pub fn cart_lines_result(
     }
     let products = pass.drafts;
     #[cfg(test)]
-    let expected_len = result_len(&lens, &order_candidates);
+    let expected_len = result_len(&lens);
     let mut operations = Vec::with_capacity(2);
     if !products.is_empty() {
         operations.push(CartOperation::ProductDiscountsAdd(
             products
                 .into_iter()
                 .map(|d| ProductCandidateOut {
-                    message: d.message.to_string(),
-                    targets: d.targets.iter().map(|id| id.to_string()).collect(),
-                    value: d.value.to_output(currency),
+                    message: d.message,
+                    targets: d.targets,
+                    value: d.value.to_output(digits),
                     saves: d.saves,
                 })
                 .collect(),
@@ -566,7 +616,12 @@ pub fn cart_lines_result(
 /// a percent on every delivery group, a fixed amount on the first group only
 /// (Shopify's docs do not say one fixed candidate on several groups is taken
 /// once; the plan counts it once).
-pub fn delivery_result(emission: &NodeEmission, shipping: bool, group_ids: &[String], currency: &str) -> DeliveryResult {
+pub fn delivery_result<'p>(
+    emission: &NodeEmission<'p>,
+    shipping: bool,
+    group_ids: &'p [String],
+    currency: &str,
+) -> DeliveryResult<'p> {
     if !shipping || group_ids.is_empty() {
         return DeliveryResult::default();
     }
@@ -575,14 +630,14 @@ pub fn delivery_result(emission: &NodeEmission, shipping: bool, group_ids: &[Str
         .iter()
         .map(|c| match c.value {
             ShippingValue::Percent(p) => DeliveryCandidateOut {
-                message: c.message.to_string(),
-                targets: group_ids.to_vec(),
+                message: c.message,
+                targets: group_ids,
                 value: TotalValue::Percentage(p),
             },
             ShippingValue::FixedTotal(amount) => DeliveryCandidateOut {
-                message: c.message.to_string(),
-                targets: group_ids[..1].to_vec(),
-                value: TotalValue::FixedAmount(from_minor_units(amount, currency)),
+                message: c.message,
+                targets: &group_ids[..1],
+                value: TotalValue::FixedAmount(from_minor_units_with(amount, currency_exponent(currency))),
             },
         })
         .collect();
@@ -627,14 +682,14 @@ impl Sink for Context {
     }
 }
 
-fn write_ids<S: Sink>(s: &mut S, ids: &[String], wrapper: &str) -> Result<(), Error> {
+fn write_ids<S: Sink, T: AsRef<str>>(s: &mut S, ids: &[T], wrapper: &str) -> Result<(), Error> {
     s.array(ids.len(), |s| {
         for id in ids {
             s.object(1, |s| {
                 s.key(wrapper)?;
                 s.object(1, |s| {
                     s.key("id")?;
-                    s.string(id)
+                    s.string(id.as_ref())
                 })
             })?;
         }
@@ -665,7 +720,7 @@ fn write_total_value<S: Sink>(s: &mut S, value: &TotalValue) -> Result<(), Error
     }
 }
 
-fn write_product_candidate<S: Sink>(s: &mut S, c: &ProductCandidateOut) -> Result<(), Error> {
+fn write_product_candidate<S: Sink>(s: &mut S, c: &ProductCandidateOut<'_>) -> Result<(), Error> {
     s.object(3, |s| {
         s.key("message")?;
         s.string(&c.message)?;
@@ -687,7 +742,7 @@ fn write_product_candidate<S: Sink>(s: &mut S, c: &ProductCandidateOut) -> Resul
     })
 }
 
-fn write_order_candidate<S: Sink>(s: &mut S, c: &OrderCandidateOut) -> Result<(), Error> {
+fn write_order_candidate<S: Sink>(s: &mut S, c: &OrderCandidateOut<'_>) -> Result<(), Error> {
     s.object(3, |s| {
         s.key("message")?;
         s.string(&c.message)?;
@@ -698,7 +753,7 @@ fn write_order_candidate<S: Sink>(s: &mut S, c: &OrderCandidateOut) -> Result<()
                 s.object(1, |s| {
                     s.key("excludedCartLineIds")?;
                     s.array(c.excluded_cart_line_ids.len(), |s| {
-                        for id in &c.excluded_cart_line_ids {
+                        for id in c.excluded_cart_line_ids {
                             s.string(id)?;
                         }
                         Ok(())
@@ -734,7 +789,7 @@ fn write_operation<S: Sink, T>(
     })
 }
 
-impl CartLinesResult {
+impl CartLinesResult<'_> {
     pub fn write<S: Sink>(&self, s: &mut S) -> Result<(), Error> {
         s.object(1, |s| {
             s.key("operations")?;
@@ -755,7 +810,7 @@ impl CartLinesResult {
     }
 }
 
-impl DeliveryResult {
+impl DeliveryResult<'_> {
     pub fn write<S: Sink>(&self, s: &mut S) -> Result<(), Error> {
         s.object(1, |s| {
             s.key("operations")?;
@@ -764,7 +819,7 @@ impl DeliveryResult {
                 if ops == 0 {
                     return Ok(());
                 }
-                write_operation(s, "deliveryDiscountsAdd", &self.candidates, "ALL", |s, c: &DeliveryCandidateOut| {
+                write_operation(s, "deliveryDiscountsAdd", &self.candidates, "ALL", |s, c: &DeliveryCandidateOut<'_>| {
                     s.object(3, |s| {
                         s.key("message")?;
                         s.string(&c.message)?;
@@ -779,13 +834,13 @@ impl DeliveryResult {
     }
 }
 
-impl Serialize for CartLinesResult {
+impl Serialize for CartLinesResult<'_> {
     fn serialize(&self, context: &mut Context) -> Result<(), Error> {
         self.write(context)
     }
 }
 
-impl Serialize for DeliveryResult {
+impl Serialize for DeliveryResult<'_> {
     fn serialize(&self, context: &mut Context) -> Result<(), Error> {
         self.write(context)
     }
@@ -917,5 +972,52 @@ impl Sink for JsonText {
         self.before_value();
         self.push(if value { "true" } else { "false" });
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The byte-by-byte count `quoted_len` falls back to.
+    fn naive(s: &str) -> usize {
+        2 + s
+            .bytes()
+            .map(|b| match b {
+                b'"' | b'\\' | 0x08 | 0x0c | b'\n' | b'\r' | b'\t' => 2,
+                0..=0x1f => 6,
+                _ => 1,
+            })
+            .sum::<usize>()
+    }
+
+    #[test]
+    fn quoted_len_is_json_stringify_length_word_at_a_time() {
+        let mut cases: Vec<String> = vec![
+            String::new(),
+            "gid://shopify/CartLine/123".into(),
+            "Velmi dlouhý název slevy ".repeat(9),
+            "😀｡ř\u{7f}\u{80}\u{ff}".into(),
+            "\u{2028}\u{2029}".into(),
+        ];
+        // Every character JSON escapes, at every position of a 17-byte string (both
+        // word halves and the tail), next to multi-byte UTF-8.
+        for special in ['"', '\\', '\n', '\r', '\t', '\u{8}', '\u{c}', '\u{0}', '\u{1}', '\u{1f}'] {
+            for at in 0..17 {
+                let mut s: String = "é".repeat(8).chars().take(at).collect();
+                while s.len() < at {
+                    s.push('a');
+                }
+                s.push(special);
+                s.push_str("xyz ~ !\u{20}");
+                cases.push(s);
+            }
+        }
+        for s in &cases {
+            assert_eq!(quoted_len(s), naive(s), "{s:?}");
+            let mut json = JsonText::counter();
+            json.string(s).unwrap();
+            assert_eq!(quoted_len(s), json.bytes, "{s:?}");
+        }
     }
 }

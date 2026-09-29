@@ -211,13 +211,34 @@ pub enum MarginBasis {
 
 /// `marginFloorUnit`: the lowest price of one item, minor units, in [0, money cap].
 pub fn margin_floor_unit(unit_price: i64, cost_minor: Option<f64>, min_margin_percent: f64, max_discount_percent: f64) -> (i64, MarginBasis) {
-    if let Some(cost) = cost_minor.filter(|c| c.is_finite() && *c > 0.0) {
+    FloorRule::new(min_margin_percent, max_discount_percent).floor_unit(unit_price, cost_minor)
+}
+
+/// `marginFloorUnit` for one pair of settings: the factors `1 − m/100` and
+/// `1 − p/100` (the same float expressions) worked out once, for every line they apply to.
+#[derive(Debug, Clone, Copy)]
+pub struct FloorRule {
+    /// 1 − m/100, m clamped to 0–95 (not a number: 0).
+    cost_divisor: f64,
+    /// 1 − p/100, p clamped to 0–100 (not a number: 50).
+    price_factor: f64,
+}
+
+impl FloorRule {
+    pub fn new(min_margin_percent: f64, max_discount_percent: f64) -> Self {
         let m = if min_margin_percent.is_finite() { clamp(min_margin_percent, MAX_MIN_MARGIN_PERCENT) } else { 0.0 };
-        let floor = ceil_tol(cost / (1.0 - m / 100.0));
-        return (floor.max(0.0).min(MAX_MONEY_MINOR) as i64, MarginBasis::Cost);
+        let p = if max_discount_percent.is_finite() { clamp(max_discount_percent, 100.0) } else { DEFAULT_MAX_DISCOUNT_PERCENT };
+        Self { cost_divisor: 1.0 - m / 100.0, price_factor: 1.0 - p / 100.0 }
     }
-    let p = if max_discount_percent.is_finite() { clamp(max_discount_percent, 100.0) } else { DEFAULT_MAX_DISCOUNT_PERCENT };
-    let price = (unit_price as f64).max(0.0);
-    let floor = ceil_tol(price * (1.0 - p / 100.0));
-    (floor.max(0.0).min(MAX_MONEY_MINOR) as i64, MarginBasis::MaxPercent)
+
+    /// The floor of one item: ceilTol(cost / (1 − m/100)) with a cost, else ceilTol(price × (1 − p/100)).
+    pub fn floor_unit(&self, unit_price: i64, cost_minor: Option<f64>) -> (i64, MarginBasis) {
+        if let Some(cost) = cost_minor.filter(|c| c.is_finite() && *c > 0.0) {
+            let floor = ceil_tol(cost / self.cost_divisor);
+            return (floor.max(0.0).min(MAX_MONEY_MINOR) as i64, MarginBasis::Cost);
+        }
+        let price = (unit_price as f64).max(0.0);
+        let floor = ceil_tol(price * self.price_factor);
+        (floor.max(0.0).min(MAX_MONEY_MINOR) as i64, MarginBasis::MaxPercent)
+    }
 }

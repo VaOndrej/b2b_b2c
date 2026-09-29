@@ -13,6 +13,7 @@ pub mod hash;
 pub mod js;
 pub mod margin;
 pub mod money;
+pub mod order_search;
 pub mod plan;
 
 #[cfg(test)]

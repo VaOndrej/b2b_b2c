@@ -679,6 +679,32 @@ function allScenarios() {
     expected: out(products(pc("Sleva 60 %", [1], perItem("12.00")))),
   },
   {
+    name: "lines-margin-rate-long",
+    description:
+      "Cart in EUR, presentmentCurrencyRate with more than 15 significant digits (0.0400000000000000012345): it is cut to its first 15 (0.04, an error far below a haléř) — the cost still converts (floor 22,23 €, 60 % cut to 17,77 €) instead of counting as unknown.",
+    target: "lines",
+    rules: [pct("sixty", 60, { name: "Sleva 60 %" })],
+    margin: marginOn({ minMarginPercent: 10, maxDiscountPercent: 30 }),
+    role: AUTO,
+    currency: "EUR",
+    rate: "0.0400000000000000012345",
+    lines: [{ n: 1, price: "40.0", won: won("sixty"), variantMeta: costOf(500) }],
+    expected: out(products(pc("Sleva 60 %", [1], perItem("17.77")))),
+  },
+  {
+    name: "lines-margin-rate-missing",
+    description:
+      "Cart in EUR without presentmentCurrencyRate in the input: the cost cannot be converted, so it is unknown and the 30 % ceiling applies (12 € of 60 %). (A null rate is refused by the input schema, Decimal!; the reader reads it as no rate too — src/json.rs.)",
+    target: "lines",
+    rules: [pct("sixty", 60, { name: "Sleva 60 %" })],
+    margin: marginOn({ minMarginPercent: 10, maxDiscountPercent: 30 }),
+    role: AUTO,
+    currency: "EUR",
+    rate: undefined,
+    lines: [{ n: 1, price: "40.0", won: won("sixty"), variantMeta: costOf(500) }],
+    expected: out(products(pc("Sleva 60 %", [1], perItem("12.00")))),
+  },
+  {
     name: "lines-margin-currency-jpy",
     description: "Cart in JPY (exponent 0), shop in CZK: cost 100 Kč × rate 6.5 = a 650 ¥ floor, so 50 % of 1 000 ¥ is cut to 350 ¥.",
     target: "lines",
@@ -861,6 +887,9 @@ function allScenarios() {
   budget("delivery"),
   marginBudget("lines"),
   marginBudget("delivery"),
+  marginSlowBudget(),
+  marginCappedBudget(200),
+  marginCappedBudget(500),
   ];
 }
 
@@ -1064,8 +1093,7 @@ function marginTightTies() {
 // --- The 200-line cart with margin protection (instruction budget, MVP 2) -------------------
 //
 // The budget cart's 37 rules and refs with margin protection on (minimum margin
-// 20 %), distinct prices (every line its own ratio in the order stage: the
-// O(lines²) worst case of the order protection) and a cost price on every line:
+// 20 %), distinct prices and a cost price on every line:
 // 10 Kč on most, 80 % of (price − 3 Kč) on every 10th ("tight"). The expected
 // output by a simple model of the margin rules:
 //   - a tight line's floor is price − 3 Kč, so its headroom is 3 Kč per item,
@@ -1170,7 +1198,7 @@ function marginBudget(target) {
   return {
     name: `${target}-margin-200-lines-budget`,
     description:
-      "Instruction budget with margin protection on: the 200-line budget cart (37 rules, codes, a Pro stack, outlet lines) with a cost price on every line, distinct prices (the order stage's worst case) and the order discount — the automatic node must stay under the Shopify instruction limit with ≥ 30 % headroom.",
+      "Instruction budget with margin protection on: the 200-line budget cart (37 rules, codes, a Pro stack, outlet lines) with a cost price on every line and the order discount. Every line that can give something carries its share of the order discount, so the order stage takes its shortcut (no search); lines-margin-slow-200-lines-budget and lines-margin-capped-*-lines-budget are the harder shapes. The automatic node must stay under the Shopify instruction limit with ≥ 30 % headroom.",
     target,
     rules: budgetRules(),
     margin: marginOn({ minMarginPercent: MARGIN_BUDGET_MIN, maxDiscountPercent: 40 }),
@@ -1178,6 +1206,173 @@ function marginBudget(target) {
     entered: CODE_RULES.map((c) => c.code),
     lines,
     expected: target === "lines" ? out(products(...candidates), order("Sleva o1", excluded, orderValue)) : out(delivery("Doprava s1", percent(100))),
+  };
+}
+
+/**
+ * The margin budget cart where the order stage must SEARCH (both orderings): 10
+ * open lines are "weak" — their cost puts the floor 3 Kč × q under what is left
+ * after the product discount, so each can give only a haléř or two of the order
+ * discount, far less than its share. Model: the weak lines have the smallest
+ * keys in both orderings (h/s and h/a), every set with one of them is limited
+ * to a few haléřů, and the other open lines carry the whole 5 %: that set wins
+ * both orderings, and the weak lines are left out next to the tight ones.
+ * @returns {Scenario}
+ */
+function marginSlowBudget() {
+  const weak = (/** @type {number} */ i) => i % 20 === 7;
+  const base = marginBudget("lines");
+  const { candidates } = marginBudgetExpected();
+  /** @type {number[]} */
+  const excluded = [];
+  /** @type {{ a: number, s: number, h: number }[]} */
+  const open = [];
+  const weakLines = [];
+  base.lines.forEach((line, k) => {
+    const i = k + 1;
+    if (budgetOutlet(i) || marginBudgetTight(i)) {
+      excluded.push(i);
+      return;
+    }
+    const q = budgetQty(i);
+    const s = marginBudgetPrice(i) * 100 * q;
+    const refs = new Set(budgetRefs(i));
+    const amount = (/** @type {number} */ p) => Math.round((s * p) / 100);
+    const singles = P_PERCENT.map((p, n) => (refs.has(`p${n + 1}`) ? amount(p) : 0));
+    for (const c of CODE_RULES) if (refs.has(c.id)) singles.push(amount(c.percent));
+    const best = Math.max(...singles);
+    const total = refs.has("p7") && refs.has("p8") && amount(15) + amount(17) > best ? amount(15) + amount(17) : best;
+    const a = s - total;
+    if (weak(i)) {
+      // Floor per item so that floor × q = a − 3 − ((a − 3) mod q): h = 2 … q + 1.
+      const floorUnit = Math.floor((a - 3) / q);
+      line.variantMeta = costOf((floorUnit * 8) / 1000);
+      const f = ceilTol(((floorUnit * 8) / 1000) * 100 / (1 - MARGIN_BUDGET_MIN / 100));
+      const h = a - f * q - 1;
+      if (h < 1 || h > 4) throw new Error(`marginSlowBudget: weak line ${i} must have 1–4 haléřů to give, has ${h}`);
+      weakLines.push({ a, s, h });
+      excluded.push(i);
+      return;
+    }
+    const f = ceilTol((marginBudgetCost(i) * 100) / (1 - MARGIN_BUDGET_MIN / 100));
+    open.push({ a, s, h: a - f * q - 1 });
+  });
+  excluded.sort((x, y) => x - y);
+  const S = open.reduce((sum, l) => sum + l.a, 0);
+  const S0 = open.reduce((sum, l) => sum + l.s, 0);
+  const wanted = Math.round((S * 5) / 100);
+  for (const l of open) {
+    if (Math.floor((l.h * S) / l.a) < wanted || Math.floor((l.h * S0) / l.s) < wanted) throw new Error("marginSlowBudget: the open lines must carry the order");
+  }
+  const smallestOpen = Math.min(...open.map((l) => Math.min(l.h / l.s, l.h / l.a)));
+  const allA = S + weakLines.reduce((sum, l) => sum + l.a, 0);
+  for (const w of weakLines) {
+    if (Math.max(w.h / w.s, w.h / w.a) >= smallestOpen) throw new Error("marginSlowBudget: a weak line must sort after every open line");
+    if (Math.floor((w.h * allA) / w.a) >= wanted) throw new Error("marginSlowBudget: a set with a weak line must allow less");
+  }
+  return {
+    ...base,
+    name: "lines-margin-slow-200-lines-budget",
+    description:
+      "Instruction budget, margin protection with the order stage's full search: the margin budget cart with 10 weak lines (their floor 3 Kč × q under what is left after the product discount) that cannot carry their share of the 5 % order discount. Both orderings are sorted and searched; the weak lines are left out of the order discount (with the lines at their floor) and the rest carries it whole.",
+    expected: out(products(...candidates), order("Sleva o1", excluded, amountOff(kc(wanted)))),
+  };
+}
+
+/**
+ * Instruction and output budget with most lines capped: the budget cart's 37
+ * rules on `count` lines (one item each, distinct prices), 3 of 4 lines with a
+ * cost price just under their price (1–2,49 Kč of headroom, less than any
+ * winner here: every such line is cut to an exact amount of its own), the rest
+ * with a 10 Kč cost; an order discount of 5 %. The exact output (a candidate per
+ * capped line and the order candidate listing every capped line) is over the
+ * budget, so — by the output rules — the Pro stacks of the open lines go to
+ * their top rule, then the candidates that save the least are dropped.
+ * @param {number} count
+ * @returns {Scenario}
+ */
+function marginCappedBudget(count) {
+  const price = (/** @type {number} */ i) => 100 + i; // Kč
+  const capped = (/** @type {number} */ i) => i % 4 !== 0;
+  const headroomKc = (/** @type {number} */ i) => 1 + (i % 150) / 100;
+  const cost = (/** @type {number} */ i) => (capped(i) ? Math.round((price(i) - headroomKc(i)) * 80) / 100 : 10);
+  const lines = [];
+  /** @type {{ key: string | null, message: string, value: unknown, target: unknown, amount: number }[]} */
+  const exactRows = [];
+  const degradedRows = [];
+  /** @type {number[]} */
+  const excluded = [];
+  const open = [];
+  for (let i = 1; i <= count; i += 1) {
+    lines.push({ n: i, price: `${price(i)}.0`, won: budgetOutlet(i) ? { ruleIds: budgetRefs(i), outlet: true } : { ruleIds: budgetRefs(i) }, variantMeta: costOf(cost(i)) });
+    if (budgetOutlet(i)) {
+      excluded.push(i);
+      continue;
+    }
+    const s = price(i) * 100;
+    const refs = new Set(budgetRefs(i));
+    const amount = (/** @type {number} */ p) => Math.round((s * p) / 100);
+    /** @type {{ id: string, percent: number, amount: number, code: boolean }[]} */
+    const singles = [];
+    P_PERCENT.forEach((p, k) => {
+      if (refs.has(`p${k + 1}`)) singles.push({ id: `p${k + 1}`, percent: p, amount: amount(p), code: false });
+    });
+    for (const c of CODE_RULES) if (refs.has(c.id)) singles.push({ id: c.id, percent: c.percent, amount: amount(c.percent), code: true });
+    singles.sort((a, b) => b.amount - a.amount || (a.id < b.id ? -1 : 1));
+    const best = singles[0];
+    const stacked = refs.has("p7") && refs.has("p8") && amount(15) + amount(17) > best.amount;
+    const total = stacked ? amount(15) + amount(17) : best.amount;
+    const floorUnit = ceilTol((cost(i) * 100) / (1 - MARGIN_BUDGET_MIN / 100));
+    const headroom = s - floorUnit;
+    const target = { cartLine: { id: lineId(i) } };
+    if (capped(i)) {
+      if (headroom <= 0 || total <= headroom) throw new Error(`marginCappedBudget: line ${i} must be cut`);
+      excluded.push(i); // at its floor: nothing left for the order discount
+      const top = stacked ? { id: "p8", code: false } : best; // the stack's top rule keeps the headroom
+      if (top.code) continue; // a code rule's node emits it
+      const row = { key: `e${headroom}`, message: `Sleva ${top.id}`, value: perItem(kc(headroom)), target, amount: headroom };
+      exactRows.push(row);
+      degradedRows.push(row); // a capped value is never relaxed
+      continue;
+    }
+    if (total > headroom) throw new Error(`marginCappedBudget: line ${i} must keep its winner`);
+    open.push({ a: s - total, s, h: s - total - floorUnit - 1 });
+    if (stacked) {
+      exactRows.push({ key: "p32", message: "Sleva p8 + Sleva p7", value: percent(32), target, amount: total });
+      degradedRows.push({ key: "p17", message: "Sleva p8", value: percent(17), target, amount: amount(17) });
+    } else if (!best.code) {
+      const row = { key: `p${best.percent}`, message: `Sleva ${best.id}`, value: percent(best.percent), target, amount: best.amount };
+      exactRows.push(row);
+      degradedRows.push(row);
+    }
+  }
+  const S = open.reduce((sum, l) => sum + l.a, 0);
+  const S0 = open.reduce((sum, l) => sum + l.s, 0);
+  const wanted = Math.round((S * 5) / 100);
+  for (const l of open) {
+    if (Math.floor((l.h * S) / l.a) < wanted || Math.floor((l.h * S0) / l.s) < wanted) throw new Error("marginCappedBudget: the open lines must carry the order");
+  }
+  const orderOp = order("Sleva o1", excluded, amountOff(kc(wanted)));
+  const budget = Math.floor((OUTPUT_BUDGET * Math.max(200, count)) / 200);
+  const size = (/** @type {{ message: string, targets: unknown[], value: unknown }[]} */ list) =>
+    bytes(out(products(...list.map(({ message, targets, value }) => ({ message, targets, value }))), orderOp));
+  if (size(groupRows(exactRows)) <= budget) throw new Error("marginCappedBudget: the exact output must be over the budget");
+  let kept = groupRows(degradedRows);
+  while (size(kept) > budget) {
+    let drop = 0;
+    for (let k = 1; k < kept.length; k += 1) if (kept[k].amount <= kept[drop].amount) drop = k;
+    kept = kept.filter((_, k) => k !== drop);
+  }
+  return {
+    name: `lines-margin-capped-${count}-lines-budget`,
+    description: `Instruction and output budget, ${count} lines with margin protection: 3 of 4 lines cut to their floor (each an exact amount of its own), a 5 % order discount that leaves them out. The exact output is over the budget: the open lines' Pro stacks go to their top rule, then the candidates that save the least are dropped.${count > 200 ? " Above 200 lines Shopify's limits (and the budgets) scale with the line count." : ""}`,
+    target: "lines",
+    rules: budgetRules(),
+    margin: marginOn({ minMarginPercent: MARGIN_BUDGET_MIN, maxDiscountPercent: 40 }),
+    role: AUTO,
+    entered: CODE_RULES.map((c) => c.code),
+    lines,
+    expected: out(products(...kept.map(({ message, targets, value }) => ({ message, targets, value }))), orderOp),
   };
 }
 

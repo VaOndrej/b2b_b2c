@@ -338,10 +338,11 @@ impl Deserialize for WonVariant {
 // --- Presentment currency rate (`presentmentCurrencyRate`, a Decimal) --------------------------
 
 /// `decimalNumber` (tests/reference-adapter.js): a number as it is; a string
-/// only as plain decimal digits after JS `trim` (`^\d+(\.\d+)?$`) with at most
-/// 15 significant digits and at most 22 decimals (zeros that change nothing not
-/// counted), read as `Number(text)`; anything else none. Never fails (the
-/// generated `Decimal` would abort the run on junk).
+/// only as plain decimal digits after JS `trim` (`^\d+(\.\d+)?$`), truncated to
+/// its first 15 significant digits (the rest dropped toward zero: an error below
+/// 10⁻¹⁴ relative, far below ceilTol's tolerance), read as `Number(text)` of
+/// that; anything else none. Never fails (the generated `Decimal` would abort
+/// the run on junk).
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct DecimalNumber(pub Option<f64>);
 
@@ -350,34 +351,42 @@ const POW10: [f64; 23] = [
     1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22,
 ];
 
-/// A plain decimal text → `Number(text)`, without float-parsing tables (the Wasm
-/// size limit): its digits w (< 10^15 < 2^53) and 10^k (k ≤ 22) are exact f64s,
-/// so w / 10^k is ONE correctly rounded division — the nearest f64 to the
-/// decimal, exactly what `Number(text)` gives (Clinger's fast path). Longer or
-/// malformed text → none.
+/// A plain decimal text → `Number(text truncated to 15 significant digits)`,
+/// without float-parsing tables (the Wasm size limit): the kept digits w
+/// (< 10^15 < 2^53) and 10^k (k ≤ 22) are exact f64s, so w / 10^k (or w × 10^k
+/// when integer digits were dropped) is ONE correctly rounded operation — the
+/// nearest f64 to that decimal, exactly what `Number` gives (Clinger's fast
+/// path). More than 22 decimals, or 22 integer digits, after the cut → none (a
+/// rate below 10⁻⁷ or above 10³⁶ is not a currency rate).
 fn decimal_number(text: &str) -> Option<f64> {
+    const SIGNIFICANT: usize = 15;
     let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
     let (whole, fraction) = match text.split_once('.') {
-        Some((whole, fraction)) if digits(fraction) => (whole, fraction.trim_end_matches('0')),
+        Some((whole, fraction)) if digits(fraction) => (whole.as_bytes(), fraction.as_bytes()),
         Some(_) => return None,
-        None => (text, ""),
+        None => (text.as_bytes(), &[][..]),
     };
-    if !digits(whole) || fraction.len() > 22 {
+    if !digits(std::str::from_utf8(whole).unwrap_or("")) {
         return None;
     }
+    let total = whole.len() + fraction.len();
+    let digit = |i: usize| if i < whole.len() { whole[i] } else { fraction[i - whole.len()] };
+    let Some(first) = (0..total).find(|&i| digit(i) != b'0') else { return Some(0.0) };
+    let end = total.min(first + SIGNIFICANT);
     let mut w: u64 = 0;
-    let mut significant = 0;
-    for b in whole.bytes().chain(fraction.bytes()) {
-        if w == 0 && b == b'0' {
-            continue; // a leading zero
-        }
-        significant += 1;
-        if significant > 15 {
-            return None;
-        }
-        w = w * 10 + u64::from(b - b'0');
+    for i in first..end {
+        w = w * 10 + u64::from(digit(i) - b'0');
     }
-    Some(w as f64 / POW10[fraction.len()])
+    if end <= whole.len() {
+        let dropped = whole.len() - end;
+        return (dropped <= 22).then(|| w as f64 * POW10[dropped]);
+    }
+    let mut decimals = end - whole.len();
+    while decimals > 0 && digit(whole.len() + decimals - 1) == b'0' {
+        decimals -= 1;
+        w /= 10;
+    }
+    (decimals <= 22).then(|| w as f64 / POW10[decimals])
 }
 
 impl Deserialize for DecimalNumber {
@@ -506,12 +515,19 @@ mod tests {
         assert_eq!(rate(r#""000123.4500""#), Some(123.45));
         assert_eq!(rate(r#""123456789012345""#), Some(123_456_789_012_345.0));
         assert_eq!(rate(r#""0.0000000000000000000001""#), Some(1e-22));
+        assert_eq!(rate(r#""0.000""#), Some(0.0));
         for junk in [r#""1e3""#, r#""-1""#, r#""""#, r#""0x10""#, r#""1.""#, r#"".5""#, "true", "null"] {
             assert_eq!(rate(junk), None, "{junk}");
         }
-        // Beyond 15 significant digits or 22 decimals: not read (the cost then counts as unknown).
-        assert_eq!(rate(r#""1234567890123456""#), None);
+        // More than 15 significant digits: the first 15, the rest dropped (toward zero).
+        assert_eq!(rate(r#""0.0400000000000000012345""#), Some(0.04));
+        assert_eq!(rate(r#""0.12345678901234567""#), Some(0.123456789012345));
+        assert_eq!(rate(r#""25.123456789012345678""#), Some(25.1234567890123));
+        assert_eq!(rate(r#""1234567890123456""#), Some(1_234_567_890_123_450.0));
+        assert_eq!(rate(r#""12345678901234567890123""#), Some(12_345_678_901_234_500_000_000.0));
+        // Beyond 22 decimals or 22 dropped integer digits after the cut: not a rate.
         assert_eq!(rate(r#""0.00000000000000000000001""#), None);
+        assert_eq!(rate(&format!(r#""1{}""#, "0".repeat(40))), None);
     }
 
     #[test]

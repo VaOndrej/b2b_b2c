@@ -15,7 +15,7 @@
 // invalid shared config plans nothing (no operations, checkout never blocked).
 
 use shopify_function::prelude::*;
-use shopify_function::wasm_api::{Context, Deserialize, Serialize};
+use shopify_function::wasm_api::{Context, Deserialize};
 use std::process;
 
 #[cfg(target_arch = "wasm32")]
@@ -62,30 +62,28 @@ pub mod schema {
 /// What `#[shopify_function]` generates, by hand: the extension keeps the export
 /// names of its JS version (`cart-lines-discounts-generate-run`, …: the toml,
 /// the fixtures and the deployed function identity), and a Rust function name
-/// cannot contain a dash. The run functions never fail; a failure to read the
-/// root or to write the output (not reachable with well-formed output) is
-/// dropped rather than panicking. What a run built is never dropped: the run's
-/// memory is thrown away after it, and walking it to free it only costs
-/// instructions (src/alloc.rs).
-fn run_export<I: Deserialize, O: Serialize>(run: fn(I) -> shopify_function::Result<O>) {
+/// cannot contain a dash. The run functions write their output themselves, while
+/// the input lives (the output borrows its text from it). They never fail on
+/// input data; a failure to read the root or to write the output (not reachable
+/// with well-formed output) is dropped rather than panicking. What a run built is
+/// never dropped: the run's memory is thrown away after it, and walking it to
+/// free it only costs instructions (src/alloc.rs).
+fn run_export<I: Deserialize>(run: fn(I, &mut Context) -> Result<(), shopify_function::wasm_api::write::Error>) {
     shopify_function::wasm_api::init_panic_handler();
     let mut context = Context::new();
     let Ok(root) = context.input_get() else { return };
     let Ok(input) = I::deserialize(&root) else { return };
-    if let Ok(result) = run(input) {
-        let _ = result.serialize(&mut context);
-        std::mem::forget(result);
-    }
+    let _ = run(input, &mut context);
 }
 
 #[export_name = "cart-lines-discounts-generate-run"]
 pub extern "C" fn cart_lines_discounts_generate_run_export() {
-    run_export(cart_lines_discounts_generate_run::cart_lines_discounts_generate_run);
+    run_export(cart_lines_discounts_generate_run::cart_lines_discounts_generate_run::<Context>);
 }
 
 #[export_name = "cart-delivery-options-discounts-generate-run"]
 pub extern "C" fn cart_delivery_options_discounts_generate_run_export() {
-    run_export(cart_delivery_options_discounts_generate_run::cart_delivery_options_discounts_generate_run);
+    run_export(cart_delivery_options_discounts_generate_run::cart_delivery_options_discounts_generate_run::<Context>);
 }
 
 fn main() {

@@ -1,5 +1,5 @@
 {
-  "scenario": "Instruction budget with margin protection on: the 200-line budget cart (37 rules, codes, a Pro stack, outlet lines) with a cost price on every line and the order discount. Every line that can give something carries its share of the order discount, so the order stage takes its shortcut (no search); lines-margin-slow-200-lines-budget and lines-margin-capped-*-lines-budget are the harder shapes. The automatic node must stay under the Shopify instruction limit with ≥ 30 % headroom.",
+  "scenario": "Instruction budget, margin protection with the order stage's full search: the margin budget cart with 10 weak lines (their floor 3 Kč × q under what is left after the product discount) that cannot carry their share of the 5 % order discount. Both orderings are sorted and searched; the weak lines are left out of the order discount (with the lines at their floor) and the rest carries it whole.",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -888,7 +888,7 @@
               "id": "gid://shopify/ProductVariant/1007",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 71.032,
                   "cur": "CZK"
                 }
               },
@@ -1525,7 +1525,7 @@
               "id": "gid://shopify/ProductVariant/1027",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 92.432,
                   "cur": "CZK"
                 }
               },
@@ -2163,7 +2163,7 @@
               "id": "gid://shopify/ProductVariant/1047",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 97.6,
                   "cur": "CZK"
                 }
               },
@@ -2801,7 +2801,7 @@
               "id": "gid://shopify/ProductVariant/1067",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 121.56,
                   "cur": "CZK"
                 }
               },
@@ -3438,7 +3438,7 @@
               "id": "gid://shopify/ProductVariant/1087",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 124.144,
                   "cur": "CZK"
                 }
               },
@@ -4076,7 +4076,7 @@
               "id": "gid://shopify/ProductVariant/1107",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 150.688,
                   "cur": "CZK"
                 }
               },
@@ -4714,7 +4714,7 @@
               "id": "gid://shopify/ProductVariant/1127",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 150.712,
                   "cur": "CZK"
                 }
               },
@@ -5350,7 +5350,7 @@
               "id": "gid://shopify/ProductVariant/1147",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 173.864,
                   "cur": "CZK"
                 }
               },
@@ -5988,7 +5988,7 @@
               "id": "gid://shopify/ProductVariant/1167",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 177.28,
                   "cur": "CZK"
                 }
               },
@@ -6625,7 +6625,7 @@
               "id": "gid://shopify/ProductVariant/1187",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 208.92,
                   "cur": "CZK"
                 }
               },
@@ -8012,27 +8012,37 @@
                     "orderSubtotal": {
                       "excludedCartLineIds": [
                         "gid://shopify/CartLine/5",
+                        "gid://shopify/CartLine/7",
                         "gid://shopify/CartLine/15",
                         "gid://shopify/CartLine/25",
+                        "gid://shopify/CartLine/27",
                         "gid://shopify/CartLine/35",
                         "gid://shopify/CartLine/45",
+                        "gid://shopify/CartLine/47",
                         "gid://shopify/CartLine/50",
                         "gid://shopify/CartLine/55",
                         "gid://shopify/CartLine/65",
+                        "gid://shopify/CartLine/67",
                         "gid://shopify/CartLine/75",
                         "gid://shopify/CartLine/85",
+                        "gid://shopify/CartLine/87",
                         "gid://shopify/CartLine/95",
                         "gid://shopify/CartLine/100",
                         "gid://shopify/CartLine/105",
+                        "gid://shopify/CartLine/107",
                         "gid://shopify/CartLine/115",
                         "gid://shopify/CartLine/125",
+                        "gid://shopify/CartLine/127",
                         "gid://shopify/CartLine/135",
                         "gid://shopify/CartLine/145",
+                        "gid://shopify/CartLine/147",
                         "gid://shopify/CartLine/150",
                         "gid://shopify/CartLine/155",
                         "gid://shopify/CartLine/165",
+                        "gid://shopify/CartLine/167",
                         "gid://shopify/CartLine/175",
                         "gid://shopify/CartLine/185",
+                        "gid://shopify/CartLine/187",
                         "gid://shopify/CartLine/195",
                         "gid://shopify/CartLine/200"
                       ]
@@ -8041,7 +8051,7 @@
                 ],
                 "value": {
                   "fixedAmount": {
-                    "amount": "2990.48"
+                    "amount": "2817.24"
                   }
                 }
               }

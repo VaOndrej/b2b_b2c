@@ -42,6 +42,7 @@ by hand, and the TS reference reproduces all of them.
 | Seeded random carts and configs vs the TS reference | `tests/parity.test.js` |
 | Every Rust unit test has a TS twin | `tests/engine-unit.twins.test.js` |
 | Every Wasm run's linear memory ≤ 4 000 KB (bump allocator) | `tests/parity.test.js` |
+| The margin order search, 2 000 carts built for it, every way it ends ≥ 20 times | `tests/parity.test.js` |
 
 Details:
 - **Wasm output text.** The output text function-runner prints (sorted keys, and numbers in the form the Wasm wrote them, e.g. `10` not `10.0`) must equal the expected output rendered the same way.
@@ -109,31 +110,37 @@ Worst-case fixtures:
 
 ## Instruction budget
 
-Shopify's limit is 11 M instructions for carts up to 200 lines; every fixture
-must stay ≤ 7.7 M (30 % headroom, `apps/won-discounts/tests/contracts/function.contract.test.ts`).
-Measured with the built Wasm (function-runner), MVP 2:
+Shopify's limit is 11 M instructions for carts up to 200 lines and scales with
+the line count above that; every fixture must stay ≤ 70 % of it (7.7 M up to
+200 lines, 19.25 M at 500; `apps/won-discounts/tests/contracts/function.contract.test.ts`
+gates each `*-lines-budget` fixture). Measured with the built Wasm
+(function-runner), MVP 2:
 
-| Fixture | Instructions |
+| Fixture (shape) | Instructions |
 |---|---|
-| `lines-200-lines-budget` (MVP 1 worst case, margin off) | 6.43 M |
-| `delivery-200-lines-budget` | 5.97 M |
-| `lines-margin-200-lines-budget` (the same 37 rules and refs, margin on, a cost price on every line, an order discount, distinct prices) | 7.61 M |
-| `delivery-margin-200-lines-budget` | 7.12 M |
+| `lines-200-lines-budget` (MVP 1 worst case: 37 rules, 3–6 refs a line, codes, a Pro stack; margin off) | 6.19 M |
+| `delivery-200-lines-budget` | 5.92 M |
+| `lines-margin-200-lines-budget` (the same, margin on, a cost price on every line, a 5 % order discount; every line that can give carries its share: the order stage's shortcut) | 7.33 M |
+| `delivery-margin-200-lines-budget` | 7.04 M |
+| `lines-margin-slow-200-lines-budget` (the same with 10 lines that cannot carry their share: the full two-ordering search) | 7.67 M |
+| `lines-margin-capped-200-lines-budget` (3 of 4 lines cut to their floor, the order discount leaving them out, an output over the budget: stacks relaxed, candidates dropped) | 7.64 M |
+| `lines-margin-capped-500-lines-budget` (the same on 500 lines; budget 19.25 M) | 17.70 M |
 
 Most of a run is reading the input (Shopify's provider): about 1.8 M for the
 first access to a 60 kB input, then ~16 k per line; a variant cost metafield
-adds ~3 k per line. What keeps the margin cart under the budget:
+adds ~3 k per line. Writing the output costs ~1 k per target line. What keeps
+the margin carts under the budget:
 
-- `src/alloc.rs`: a bump allocator, and nothing a run built is ever dropped
-  (~0.8 M on a 200-line cart);
-- the order stage's exact shortcuts (Layout, Invariants): when every line that
-  can give something carries its share, no ordering is sorted or searched.
+- `src/alloc.rs`: a bump allocator, and nothing a run built is ever dropped;
+- the output mapping keeps the output's size as a running sum and drops the
+  least-saving candidates through a heap (re-measuring the order candidate,
+  which lists every capped line, on every drop was quadratic: 16.4 M on a
+  200-line capped cart), measures JSON strings 8 bytes at a time, and borrows
+  every text from the plan and the input instead of copying it;
+- the order stage's exact shortcuts (Invariants below).
 
-Not every margin cart takes the shortcut: when some line with room to spare
-cannot carry its share of the order discount (a product discount just under a
-line's floor next to an order discount), both orderings are sorted and
-searched, ~0.3 M more on 200 lines (measured 7.9–8.0 M on the margin budget
-cart with such lines: under Shopify's 11 M, over the 7.7 M target).
+The budget carts' rule ids are short (`p1`, `c2`); the app's real ids are 22
+characters (`r_` + 20 hex digits), which costs more per ref to hash and compare.
 
 ## Layout
 
@@ -145,7 +152,7 @@ cart with such lines: under Shopify's 11 M, over the 7.7 M target).
 | `src/json.rs` | tolerant readers for the `jsonValue` metafields (product, variant cost), the line price and `presentmentCurrencyRate` (`custom_scalar_overrides`), the per-run outlet-list cache |
 | `src/alloc.rs` | the Wasm build's bump allocator (instruction budget; native tests keep the system allocator) |
 | `src/output.rs` | emission → function output (`@won/core` `function-output.ts`): exact values, rounding ties, grouping, the output budget, delivery groups; written through the Wasm API |
-| `src/engine/` | `config.rs` (shared config), `cart.rs` (normalizeCart), `plan.rs` (planCart, the margin stages of `plan-margin.ts` included), `margin.rs` (`margin.ts`: the payload reader, floors, cost conversion), `emit.rs` (emitForNode), `hash.rs` (code hash), `money.rs`, `describe.rs`, `fnv.rs`, `js.rs` (the JS semantics the engine relies on: Math.round, trim, string order) |
+| `src/engine/` | `config.rs` (shared config), `cart.rs` (normalizeCart), `plan.rs` (planCart, the margin stages of `plan-margin.ts` included), `order_search.rs` (`searchOrderSets`, pure), `margin.rs` (`margin.ts`: the payload reader, floors, cost conversion), `emit.rs` (emitForNode), `hash.rs` (code hash), `money.rs`, `describe.rs`, `fnv.rs` (the lookup maps' word-at-a-time hash), `js.rs` (the JS semantics the engine relies on: Math.round, trim, string order) |
 
 Invariants:
 
@@ -154,7 +161,7 @@ Invariants:
 - Ties go to amount desc, then priority desc, then id asc (JS string order, by UTF-16 unit).
 - A minimum counts the whole cart (every non-gift line, pre-discount, outlet included), or only a product rule's own lines when the payload says `minimum.scope: "entitled"` (a migrated native's semantics; absent = the cart).
 - Parsing never fails. Junk in a metafield reads as "nothing". A missing or invalid shared config emits no operations.
-- Margin protection (MVP 2) evaluates every float expression of `margin.ts` / `plan-margin.ts` in the same order (`ceilTol` = ceil(x − 1e-6), the cost `(unitCost × rate) × scale`, the order stage's floor((h × S) / a) and floor((h × S0) / s)). The order stage gets the same result as the TS search with less work, provably: the minimum over a set comes only from lines whose rate is within 10⁻⁹ of the set's smallest (`NearMin`); lines that can give nothing (h = 0) are left out of the search, since every set holding them has D = 0; when every line that can give something carries its whole share, that set wins both orderings without sorting (`all_that_can_give`); and the h/a ordering is skipped when it is the h/s ordering's very sequence (no product discounts). The random parity checks all of it against the TS search.
+- Margin protection (MVP 2) evaluates every float expression of `margin.ts` / `plan-margin.ts` in the same order (`ceilTol` = ceil(x − 1e-6), the cost `(unitCost × rate) × scale`, the order stage's floor((h × S) / a) and floor((h × S0) / s)). The order stage's search is the pure function `search_order_sets` (`src/engine/order_search.rs`, `searchOrderSets`, unit-tested with the TS instances) and gets the same result as the TS search with less work, provably: the minimum over a set comes only from lines whose rate is within 10⁻⁹ of the set's smallest (`NearMin`), and the h/a ordering is not searched again when it is the h/s ordering's very sequence (no product discounts). `protect_order` (`plan.rs`) leaves the lines that can give nothing (h = 0) out of the search, since every set holding them has D = 0, and when every line that can give something carries its whole share, that set wins both orderings without sorting (`all_that_can_give`; this one needs an order amount that never falls as the base grows, which every order discount is). A dedicated parity run (2 000 carts built for it) compares every way the search ends — the shortcut, the skipped h/a search, the h/a ordering winning, a tie going to the larger set or to h/s — against the TS search.
 - A run never frees what it built: the bump allocator (`src/alloc.rs`) and `mem::forget` at the end of a run (its memory is thrown away with it).
 
 ## Accepted edge differences (junk data only)
@@ -174,7 +181,7 @@ not covered by the random parity test.
 - **Schema-invalid input.** Input such as a missing `quantity` or no `__typename` makes a generated accessor abort the run: no discount, checkout not blocked. Shopify builds the input from the query, so it cannot happen.
 - **Duplicate cart line ids (margin).** A line is margin-tight when it is in the order discount's base; the TS engine decides that by line id, the Rust function by line. They differ only when two cart lines share an id, which Shopify never sends.
 
-Not a difference, but a limit both sides share: `presentmentCurrencyRate` is read only as plain decimal digits with at most 15 significant digits and 22 decimals (`decimalNumber` in the reference adapter, `DecimalNumber` in `src/json.rs`, which reads it without float-parsing tables for the Wasm size limit). A longer rate reads as no rate: cost prices in another cart currency are then unknown and the maximum-discount ceiling applies (safe). What Shopify actually sends is to be confirmed live (Task 5b, F-M1).
+Not a difference, but a rule both sides share: `presentmentCurrencyRate` is read as plain decimal digits cut to their first 15 significant digits (`decimalNumber` in the reference adapter, `DecimalNumber` in `src/json.rs`, which reads it without float-parsing tables for the Wasm size limit: one exact division or multiplication). The cut changes a rate by less than 10⁻¹⁴ of itself, far below a haléř on any cost (`lines-margin-rate-long`). Only a rate that after the cut has more than 22 decimals or drops more than 22 integer digits (below 10⁻⁷, above 10³⁶: not a currency rate) reads as no rate; so do junk, a missing rate (`lines-margin-rate-missing`) and a null one — cost prices in another cart currency are then unknown and the maximum-discount ceiling applies (safe). What Shopify actually sends is to be confirmed live (Task 5b, F-M1).
 
 ## Build, dev and test
 

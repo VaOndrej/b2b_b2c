@@ -78,7 +78,7 @@ fn run(export: &str, input: &str) -> String {
         "cart-lines-discounts-generate-run" => run_function_with_input(
             |input: schema::cart_lines_discounts_generate_run::Input| {
                 let mut json = JsonText::default();
-                cart_lines_discounts_generate_run(input)?.write(&mut json)?;
+                cart_lines_discounts_generate_run(input, &mut json)?;
                 Ok(json.out)
             },
             input,
@@ -86,7 +86,7 @@ fn run(export: &str, input: &str) -> String {
         "cart-delivery-options-discounts-generate-run" => run_function_with_input(
             |input: schema::cart_delivery_options_discounts_generate_run::Input| {
                 let mut json = JsonText::default();
-                cart_delivery_options_discounts_generate_run(input)?.write(&mut json)?;
+                cart_delivery_options_discounts_generate_run(input, &mut json)?;
                 Ok(json.out)
             },
             input,

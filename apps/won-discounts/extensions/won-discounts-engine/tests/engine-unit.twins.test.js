@@ -15,6 +15,7 @@ import { emitForNode } from "@won/core/discounts/emit";
 import { mapToFunctionOutput, roundingTiePossible } from "@won/core/discounts/function-output";
 import { ceilTol, costMinorUnits, MARGIN_TOLERANCE, marginFloorUnit, readMarginPayload, resolveMargin } from "@won/core/discounts/margin";
 import { planCart } from "@won/core/discounts/plan";
+import { searchOrderSets } from "@won/core/discounts/plan-margin";
 import { describe, expect, test } from "vitest";
 
 import { adaptInput, decimalNumber } from "./reference-adapter.js";
@@ -579,6 +580,51 @@ const TWINS = {
     expect(percents).toBeGreaterThan(0);
   },
 
+  order_search_groups_equal_keys_searches_both_orderings_and_the_better_d_wins() {
+    const lines = [
+      { after: 10_000, before: 100_000, headroom: 5_000 },
+      { after: 10_000, before: 10_000, headroom: 500 },
+    ];
+    const fiftyPercent = (base) => Math.min(Math.round((base * 50) / 100), base);
+    const { byBefore, byAfter, best } = searchOrderSets(lines, fiftyPercent);
+    expect(byBefore).toEqual({ members: [0, 1], amount: 1_000, base: 20_000, wanted: 10_000 });
+    expect(byAfter).toEqual({ members: [0], amount: 5_000, base: 10_000, wanted: 5_000 });
+    expect(best).toBe(byAfter);
+  },
+
+  order_search_ties_go_to_the_larger_set_then_to_the_h_s_set() {
+    const lines = [
+      { after: 98, before: 140, headroom: 47 },
+      { after: 30, before: 30, headroom: 3 },
+      { after: 65, before: 130, headroom: 11 },
+      { after: 40, before: 100, headroom: 10 },
+    ];
+    const larger = searchOrderSets(lines, (base) => Math.min(30, base));
+    expect([larger.byBefore.members, larger.byBefore.amount]).toEqual([[0], 30]);
+    expect([larger.byAfter.members, larger.byAfter.amount]).toEqual([[0, 2, 3], 30]);
+    expect(larger.best).toBe(larger.byAfter);
+    const tie = searchOrderSets(
+      [
+        { after: 10, before: 20, headroom: 9 },
+        { after: 10, before: 10, headroom: 5 },
+      ],
+      (base) => (base === 10 ? 5 : 0),
+    );
+    expect(tie.byBefore).toEqual({ members: [1], amount: 5, base: 10, wanted: 5 });
+    expect(tie.byAfter).toEqual({ members: [0], amount: 5, base: 10, wanted: 5 });
+    expect(tie.best).toBe(tie.byBefore);
+    // No product discounts (a = s): both orderings give the same set, the h/s one is kept.
+    const plain = [
+      { after: 1000, before: 1000, headroom: 400 },
+      { after: 500, before: 500, headroom: 30 },
+      { after: 800, before: 800, headroom: 30 },
+    ];
+    const same = searchOrderSets(plain, (base) => Math.min(Math.round((base * 10) / 100), base));
+    expect(same.byAfter).toEqual(same.byBefore);
+    expect(same.best).toBe(same.byBefore);
+    expect(same.byBefore).toEqual({ members: [0], amount: 100, base: 1000, wanted: 100 });
+  },
+
   // src/json.rs: the variant metafield, the product's marginRefs and the rate (adapter + normalizeCart).
   the_variant_cost_the_margin_refs_and_the_rate_read_like_the_ts_adapter() {
     const read = (variantJson, productJson = { ruleIds: [] }, rate = "1.0") => {
@@ -630,8 +676,14 @@ const TWINS = {
       expect(read(null, undefined, junk).rate).toBeNull();
       expect(decimalNumber(junk)).toBeUndefined();
     }
-    expect(decimalNumber("1234567890123456")).toBeUndefined();
+    expect(decimalNumber("0.000")).toBe(0);
+    expect(decimalNumber("0.0400000000000000012345")).toBe(0.04);
+    expect(decimalNumber("0.12345678901234567")).toBe(0.123456789012345);
+    expect(decimalNumber("25.123456789012345678")).toBe(25.1234567890123);
+    expect(decimalNumber("1234567890123456")).toBe(1_234_567_890_123_450);
+    expect(decimalNumber("12345678901234567890123")).toBe(12_345_678_901_234_500_000_000);
     expect(decimalNumber("0.00000000000000000000001")).toBeUndefined();
+    expect(decimalNumber(`1${"0".repeat(40)}`)).toBeUndefined();
   },
 
   // src/json.rs: the product metafield read (adapter + normalizeCart).

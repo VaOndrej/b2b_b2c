@@ -1,5 +1,5 @@
 {
-  "scenario": "Instruction budget with margin protection on: the 200-line budget cart (37 rules, codes, a Pro stack, outlet lines) with a cost price on every line and the order discount. Every line that can give something carries its share of the order discount, so the order stage takes its shortcut (no search); lines-margin-slow-200-lines-budget and lines-margin-capped-*-lines-budget are the harder shapes. The automatic node must stay under the Shopify instruction limit with ≥ 30 % headroom.",
+  "scenario": "Instruction and output budget, 200 lines with margin protection: 3 of 4 lines cut to their floor (each an exact amount of its own), a 5 % order discount that leaves them out. The exact output is over the budget: the open lines' Pro stacks go to their top rule, then the candidates that save the least are dropped.",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -686,7 +686,7 @@
         "lines": [
           {
             "id": "gid://shopify/CartLine/1",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "101.0"
@@ -698,7 +698,7 @@
               "id": "gid://shopify/ProductVariant/1001",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 79.99,
                   "cur": "CZK"
                 }
               },
@@ -718,7 +718,7 @@
           },
           {
             "id": "gid://shopify/CartLine/2",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "102.0"
@@ -730,7 +730,7 @@
               "id": "gid://shopify/ProductVariant/1002",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 80.78,
                   "cur": "CZK"
                 }
               },
@@ -762,7 +762,7 @@
               "id": "gid://shopify/ProductVariant/1003",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 81.58,
                   "cur": "CZK"
                 }
               },
@@ -781,7 +781,7 @@
           },
           {
             "id": "gid://shopify/CartLine/4",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "104.0"
@@ -812,7 +812,7 @@
           },
           {
             "id": "gid://shopify/CartLine/5",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "105.0"
@@ -824,7 +824,7 @@
               "id": "gid://shopify/ProductVariant/1005",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 81.6,
+                  "cost": 83.16,
                   "cur": "CZK"
                 }
               },
@@ -856,7 +856,7 @@
               "id": "gid://shopify/ProductVariant/1006",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 83.95,
                   "cur": "CZK"
                 }
               },
@@ -876,7 +876,7 @@
           },
           {
             "id": "gid://shopify/CartLine/7",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "107.0"
@@ -888,7 +888,7 @@
               "id": "gid://shopify/ProductVariant/1007",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 84.74,
                   "cur": "CZK"
                 }
               },
@@ -908,7 +908,7 @@
           },
           {
             "id": "gid://shopify/CartLine/8",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "108.0"
@@ -951,7 +951,7 @@
               "id": "gid://shopify/ProductVariant/1009",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 86.33,
                   "cur": "CZK"
                 }
               },
@@ -972,7 +972,7 @@
           },
           {
             "id": "gid://shopify/CartLine/10",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "110.0"
@@ -984,7 +984,7 @@
               "id": "gid://shopify/ProductVariant/1010",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 87.12,
                   "cur": "CZK"
                 }
               },
@@ -1005,7 +1005,7 @@
           },
           {
             "id": "gid://shopify/CartLine/11",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "111.0"
@@ -1017,7 +1017,7 @@
               "id": "gid://shopify/ProductVariant/1011",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 87.91,
                   "cur": "CZK"
                 }
               },
@@ -1067,7 +1067,7 @@
           },
           {
             "id": "gid://shopify/CartLine/13",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "113.0"
@@ -1079,7 +1079,7 @@
               "id": "gid://shopify/ProductVariant/1013",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 89.5,
                   "cur": "CZK"
                 }
               },
@@ -1099,7 +1099,7 @@
           },
           {
             "id": "gid://shopify/CartLine/14",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "114.0"
@@ -1111,7 +1111,7 @@
               "id": "gid://shopify/ProductVariant/1014",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 90.29,
                   "cur": "CZK"
                 }
               },
@@ -1144,7 +1144,7 @@
               "id": "gid://shopify/ProductVariant/1015",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 89.6,
+                  "cost": 91.08,
                   "cur": "CZK"
                 }
               },
@@ -1163,7 +1163,7 @@
           },
           {
             "id": "gid://shopify/CartLine/16",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "116.0"
@@ -1194,7 +1194,7 @@
           },
           {
             "id": "gid://shopify/CartLine/17",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "117.0"
@@ -1206,7 +1206,7 @@
               "id": "gid://shopify/ProductVariant/1017",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 92.66,
                   "cur": "CZK"
                 }
               },
@@ -1238,7 +1238,7 @@
               "id": "gid://shopify/ProductVariant/1018",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 93.46,
                   "cur": "CZK"
                 }
               },
@@ -1259,7 +1259,7 @@
           },
           {
             "id": "gid://shopify/CartLine/19",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "119.0"
@@ -1271,7 +1271,7 @@
               "id": "gid://shopify/ProductVariant/1019",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 94.25,
                   "cur": "CZK"
                 }
               },
@@ -1290,7 +1290,7 @@
           },
           {
             "id": "gid://shopify/CartLine/20",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "120.0"
@@ -1334,7 +1334,7 @@
               "id": "gid://shopify/ProductVariant/1021",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 95.83,
                   "cur": "CZK"
                 }
               },
@@ -1355,7 +1355,7 @@
           },
           {
             "id": "gid://shopify/CartLine/22",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "122.0"
@@ -1367,7 +1367,7 @@
               "id": "gid://shopify/ProductVariant/1022",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 96.62,
                   "cur": "CZK"
                 }
               },
@@ -1387,7 +1387,7 @@
           },
           {
             "id": "gid://shopify/CartLine/23",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "123.0"
@@ -1399,7 +1399,7 @@
               "id": "gid://shopify/ProductVariant/1023",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 97.42,
                   "cur": "CZK"
                 }
               },
@@ -1449,7 +1449,7 @@
           },
           {
             "id": "gid://shopify/CartLine/25",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "125.0"
@@ -1461,7 +1461,7 @@
               "id": "gid://shopify/ProductVariant/1025",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 97.6,
+                  "cost": 99,
                   "cur": "CZK"
                 }
               },
@@ -1481,7 +1481,7 @@
           },
           {
             "id": "gid://shopify/CartLine/26",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "126.0"
@@ -1493,7 +1493,7 @@
               "id": "gid://shopify/ProductVariant/1026",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 99.79,
                   "cur": "CZK"
                 }
               },
@@ -1525,7 +1525,7 @@
               "id": "gid://shopify/ProductVariant/1027",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 100.58,
                   "cur": "CZK"
                 }
               },
@@ -1545,7 +1545,7 @@
           },
           {
             "id": "gid://shopify/CartLine/28",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "128.0"
@@ -1577,7 +1577,7 @@
           },
           {
             "id": "gid://shopify/CartLine/29",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "129.0"
@@ -1589,7 +1589,7 @@
               "id": "gid://shopify/ProductVariant/1029",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 102.17,
                   "cur": "CZK"
                 }
               },
@@ -1621,7 +1621,7 @@
               "id": "gid://shopify/ProductVariant/1030",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 102.96,
                   "cur": "CZK"
                 }
               },
@@ -1642,7 +1642,7 @@
           },
           {
             "id": "gid://shopify/CartLine/31",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "131.0"
@@ -1654,7 +1654,7 @@
               "id": "gid://shopify/ProductVariant/1031",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 103.75,
                   "cur": "CZK"
                 }
               },
@@ -1673,7 +1673,7 @@
           },
           {
             "id": "gid://shopify/CartLine/32",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "132.0"
@@ -1716,7 +1716,7 @@
               "id": "gid://shopify/ProductVariant/1033",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 105.34,
                   "cur": "CZK"
                 }
               },
@@ -1736,7 +1736,7 @@
           },
           {
             "id": "gid://shopify/CartLine/34",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "134.0"
@@ -1748,7 +1748,7 @@
               "id": "gid://shopify/ProductVariant/1034",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 106.13,
                   "cur": "CZK"
                 }
               },
@@ -1768,7 +1768,7 @@
           },
           {
             "id": "gid://shopify/CartLine/35",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "135.0"
@@ -1780,7 +1780,7 @@
               "id": "gid://shopify/ProductVariant/1035",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 105.6,
+                  "cost": 106.92,
                   "cur": "CZK"
                 }
               },
@@ -1832,7 +1832,7 @@
           },
           {
             "id": "gid://shopify/CartLine/37",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "137.0"
@@ -1844,7 +1844,7 @@
               "id": "gid://shopify/ProductVariant/1037",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 108.5,
                   "cur": "CZK"
                 }
               },
@@ -1864,7 +1864,7 @@
           },
           {
             "id": "gid://shopify/CartLine/38",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "138.0"
@@ -1876,7 +1876,7 @@
               "id": "gid://shopify/ProductVariant/1038",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 109.3,
                   "cur": "CZK"
                 }
               },
@@ -1908,7 +1908,7 @@
               "id": "gid://shopify/ProductVariant/1039",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 110.09,
                   "cur": "CZK"
                 }
               },
@@ -1927,7 +1927,7 @@
           },
           {
             "id": "gid://shopify/CartLine/40",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "140.0"
@@ -1959,7 +1959,7 @@
           },
           {
             "id": "gid://shopify/CartLine/41",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "141.0"
@@ -1971,7 +1971,7 @@
               "id": "gid://shopify/ProductVariant/1041",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 111.67,
                   "cur": "CZK"
                 }
               },
@@ -2003,7 +2003,7 @@
               "id": "gid://shopify/ProductVariant/1042",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 112.46,
                   "cur": "CZK"
                 }
               },
@@ -2024,7 +2024,7 @@
           },
           {
             "id": "gid://shopify/CartLine/43",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "143.0"
@@ -2036,7 +2036,7 @@
               "id": "gid://shopify/ProductVariant/1043",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 113.26,
                   "cur": "CZK"
                 }
               },
@@ -2055,7 +2055,7 @@
           },
           {
             "id": "gid://shopify/CartLine/44",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "144.0"
@@ -2098,7 +2098,7 @@
               "id": "gid://shopify/ProductVariant/1045",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 113.6,
+                  "cost": 114.84,
                   "cur": "CZK"
                 }
               },
@@ -2119,7 +2119,7 @@
           },
           {
             "id": "gid://shopify/CartLine/46",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "146.0"
@@ -2131,7 +2131,7 @@
               "id": "gid://shopify/ProductVariant/1046",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 115.63,
                   "cur": "CZK"
                 }
               },
@@ -2151,7 +2151,7 @@
           },
           {
             "id": "gid://shopify/CartLine/47",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "147.0"
@@ -2163,7 +2163,7 @@
               "id": "gid://shopify/ProductVariant/1047",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 116.42,
                   "cur": "CZK"
                 }
               },
@@ -2213,7 +2213,7 @@
           },
           {
             "id": "gid://shopify/CartLine/49",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "149.0"
@@ -2225,7 +2225,7 @@
               "id": "gid://shopify/ProductVariant/1049",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 118.01,
                   "cur": "CZK"
                 }
               },
@@ -2246,7 +2246,7 @@
           },
           {
             "id": "gid://shopify/CartLine/50",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "150.0"
@@ -2258,7 +2258,7 @@
               "id": "gid://shopify/ProductVariant/1050",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 118.8,
                   "cur": "CZK"
                 }
               },
@@ -2292,7 +2292,7 @@
               "id": "gid://shopify/ProductVariant/1051",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 119.59,
                   "cur": "CZK"
                 }
               },
@@ -2311,7 +2311,7 @@
           },
           {
             "id": "gid://shopify/CartLine/52",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "152.0"
@@ -2342,7 +2342,7 @@
           },
           {
             "id": "gid://shopify/CartLine/53",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "153.0"
@@ -2354,7 +2354,7 @@
               "id": "gid://shopify/ProductVariant/1053",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 121.18,
                   "cur": "CZK"
                 }
               },
@@ -2386,7 +2386,7 @@
               "id": "gid://shopify/ProductVariant/1054",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 121.97,
                   "cur": "CZK"
                 }
               },
@@ -2407,7 +2407,7 @@
           },
           {
             "id": "gid://shopify/CartLine/55",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "155.0"
@@ -2419,7 +2419,7 @@
               "id": "gid://shopify/ProductVariant/1055",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 121.6,
+                  "cost": 122.76,
                   "cur": "CZK"
                 }
               },
@@ -2438,7 +2438,7 @@
           },
           {
             "id": "gid://shopify/CartLine/56",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "156.0"
@@ -2482,7 +2482,7 @@
               "id": "gid://shopify/ProductVariant/1057",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 124.34,
                   "cur": "CZK"
                 }
               },
@@ -2502,7 +2502,7 @@
           },
           {
             "id": "gid://shopify/CartLine/58",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "158.0"
@@ -2514,7 +2514,7 @@
               "id": "gid://shopify/ProductVariant/1058",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 125.14,
                   "cur": "CZK"
                 }
               },
@@ -2534,7 +2534,7 @@
           },
           {
             "id": "gid://shopify/CartLine/59",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "159.0"
@@ -2546,7 +2546,7 @@
               "id": "gid://shopify/ProductVariant/1059",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 125.93,
                   "cur": "CZK"
                 }
               },
@@ -2597,7 +2597,7 @@
           },
           {
             "id": "gid://shopify/CartLine/61",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "161.0"
@@ -2609,7 +2609,7 @@
               "id": "gid://shopify/ProductVariant/1061",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 127.51,
                   "cur": "CZK"
                 }
               },
@@ -2629,7 +2629,7 @@
           },
           {
             "id": "gid://shopify/CartLine/62",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "162.0"
@@ -2641,7 +2641,7 @@
               "id": "gid://shopify/ProductVariant/1062",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 128.3,
                   "cur": "CZK"
                 }
               },
@@ -2673,7 +2673,7 @@
               "id": "gid://shopify/ProductVariant/1063",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 129.1,
                   "cur": "CZK"
                 }
               },
@@ -2694,7 +2694,7 @@
           },
           {
             "id": "gid://shopify/CartLine/64",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "164.0"
@@ -2725,7 +2725,7 @@
           },
           {
             "id": "gid://shopify/CartLine/65",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "165.0"
@@ -2737,7 +2737,7 @@
               "id": "gid://shopify/ProductVariant/1065",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 129.6,
+                  "cost": 130.68,
                   "cur": "CZK"
                 }
               },
@@ -2769,7 +2769,7 @@
               "id": "gid://shopify/ProductVariant/1066",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 131.47,
                   "cur": "CZK"
                 }
               },
@@ -2789,7 +2789,7 @@
           },
           {
             "id": "gid://shopify/CartLine/67",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "167.0"
@@ -2801,7 +2801,7 @@
               "id": "gid://shopify/ProductVariant/1067",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 132.26,
                   "cur": "CZK"
                 }
               },
@@ -2820,7 +2820,7 @@
           },
           {
             "id": "gid://shopify/CartLine/68",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "168.0"
@@ -2863,7 +2863,7 @@
               "id": "gid://shopify/ProductVariant/1069",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 133.85,
                   "cur": "CZK"
                 }
               },
@@ -2883,7 +2883,7 @@
           },
           {
             "id": "gid://shopify/CartLine/70",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "170.0"
@@ -2895,7 +2895,7 @@
               "id": "gid://shopify/ProductVariant/1070",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 134.64,
                   "cur": "CZK"
                 }
               },
@@ -2917,7 +2917,7 @@
           },
           {
             "id": "gid://shopify/CartLine/71",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "171.0"
@@ -2929,7 +2929,7 @@
               "id": "gid://shopify/ProductVariant/1071",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 135.43,
                   "cur": "CZK"
                 }
               },
@@ -2980,7 +2980,7 @@
           },
           {
             "id": "gid://shopify/CartLine/73",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "173.0"
@@ -2992,7 +2992,7 @@
               "id": "gid://shopify/ProductVariant/1073",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 137.02,
                   "cur": "CZK"
                 }
               },
@@ -3012,7 +3012,7 @@
           },
           {
             "id": "gid://shopify/CartLine/74",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "174.0"
@@ -3024,7 +3024,7 @@
               "id": "gid://shopify/ProductVariant/1074",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 137.81,
                   "cur": "CZK"
                 }
               },
@@ -3056,7 +3056,7 @@
               "id": "gid://shopify/ProductVariant/1075",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 137.6,
+                  "cost": 138.6,
                   "cur": "CZK"
                 }
               },
@@ -3075,7 +3075,7 @@
           },
           {
             "id": "gid://shopify/CartLine/76",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "176.0"
@@ -3106,7 +3106,7 @@
           },
           {
             "id": "gid://shopify/CartLine/77",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "177.0"
@@ -3118,7 +3118,7 @@
               "id": "gid://shopify/ProductVariant/1077",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 140.18,
                   "cur": "CZK"
                 }
               },
@@ -3151,7 +3151,7 @@
               "id": "gid://shopify/ProductVariant/1078",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 140.98,
                   "cur": "CZK"
                 }
               },
@@ -3171,7 +3171,7 @@
           },
           {
             "id": "gid://shopify/CartLine/79",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "179.0"
@@ -3183,7 +3183,7 @@
               "id": "gid://shopify/ProductVariant/1079",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 141.77,
                   "cur": "CZK"
                 }
               },
@@ -3202,7 +3202,7 @@
           },
           {
             "id": "gid://shopify/CartLine/80",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "180.0"
@@ -3246,7 +3246,7 @@
               "id": "gid://shopify/ProductVariant/1081",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 143.35,
                   "cur": "CZK"
                 }
               },
@@ -3267,7 +3267,7 @@
           },
           {
             "id": "gid://shopify/CartLine/82",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "182.0"
@@ -3279,7 +3279,7 @@
               "id": "gid://shopify/ProductVariant/1082",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 144.14,
                   "cur": "CZK"
                 }
               },
@@ -3299,7 +3299,7 @@
           },
           {
             "id": "gid://shopify/CartLine/83",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "183.0"
@@ -3311,7 +3311,7 @@
               "id": "gid://shopify/ProductVariant/1083",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 144.94,
                   "cur": "CZK"
                 }
               },
@@ -3362,7 +3362,7 @@
           },
           {
             "id": "gid://shopify/CartLine/85",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "185.0"
@@ -3374,7 +3374,7 @@
               "id": "gid://shopify/ProductVariant/1085",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 145.6,
+                  "cost": 146.52,
                   "cur": "CZK"
                 }
               },
@@ -3394,7 +3394,7 @@
           },
           {
             "id": "gid://shopify/CartLine/86",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "186.0"
@@ -3406,7 +3406,7 @@
               "id": "gid://shopify/ProductVariant/1086",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 147.31,
                   "cur": "CZK"
                 }
               },
@@ -3438,7 +3438,7 @@
               "id": "gid://shopify/ProductVariant/1087",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 148.1,
                   "cur": "CZK"
                 }
               },
@@ -3457,7 +3457,7 @@
           },
           {
             "id": "gid://shopify/CartLine/88",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "188.0"
@@ -3488,7 +3488,7 @@
           },
           {
             "id": "gid://shopify/CartLine/89",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "189.0"
@@ -3500,7 +3500,7 @@
               "id": "gid://shopify/ProductVariant/1089",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 149.69,
                   "cur": "CZK"
                 }
               },
@@ -3532,7 +3532,7 @@
               "id": "gid://shopify/ProductVariant/1090",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 150.48,
                   "cur": "CZK"
                 }
               },
@@ -3554,7 +3554,7 @@
           },
           {
             "id": "gid://shopify/CartLine/91",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "191.0"
@@ -3566,7 +3566,7 @@
               "id": "gid://shopify/ProductVariant/1091",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 151.27,
                   "cur": "CZK"
                 }
               },
@@ -3586,7 +3586,7 @@
           },
           {
             "id": "gid://shopify/CartLine/92",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "192.0"
@@ -3629,7 +3629,7 @@
               "id": "gid://shopify/ProductVariant/1093",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 152.86,
                   "cur": "CZK"
                 }
               },
@@ -3649,7 +3649,7 @@
           },
           {
             "id": "gid://shopify/CartLine/94",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "194.0"
@@ -3661,7 +3661,7 @@
               "id": "gid://shopify/ProductVariant/1094",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 153.65,
                   "cur": "CZK"
                 }
               },
@@ -3681,7 +3681,7 @@
           },
           {
             "id": "gid://shopify/CartLine/95",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "195.0"
@@ -3693,7 +3693,7 @@
               "id": "gid://shopify/ProductVariant/1095",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 153.6,
+                  "cost": 154.44,
                   "cur": "CZK"
                 }
               },
@@ -3743,7 +3743,7 @@
           },
           {
             "id": "gid://shopify/CartLine/97",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "197.0"
@@ -3755,7 +3755,7 @@
               "id": "gid://shopify/ProductVariant/1097",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 156.02,
                   "cur": "CZK"
                 }
               },
@@ -3775,7 +3775,7 @@
           },
           {
             "id": "gid://shopify/CartLine/98",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "198.0"
@@ -3787,7 +3787,7 @@
               "id": "gid://shopify/ProductVariant/1098",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 156.82,
                   "cur": "CZK"
                 }
               },
@@ -3820,7 +3820,7 @@
               "id": "gid://shopify/ProductVariant/1099",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 157.61,
                   "cur": "CZK"
                 }
               },
@@ -3840,7 +3840,7 @@
           },
           {
             "id": "gid://shopify/CartLine/100",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "200.0"
@@ -3873,7 +3873,7 @@
           },
           {
             "id": "gid://shopify/CartLine/101",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "201.0"
@@ -3885,7 +3885,7 @@
               "id": "gid://shopify/ProductVariant/1101",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 159.19,
                   "cur": "CZK"
                 }
               },
@@ -3917,7 +3917,7 @@
               "id": "gid://shopify/ProductVariant/1102",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 159.98,
                   "cur": "CZK"
                 }
               },
@@ -3937,7 +3937,7 @@
           },
           {
             "id": "gid://shopify/CartLine/103",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "203.0"
@@ -3949,7 +3949,7 @@
               "id": "gid://shopify/ProductVariant/1103",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 160.78,
                   "cur": "CZK"
                 }
               },
@@ -3968,7 +3968,7 @@
           },
           {
             "id": "gid://shopify/CartLine/104",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "204.0"
@@ -4011,7 +4011,7 @@
               "id": "gid://shopify/ProductVariant/1105",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 161.6,
+                  "cost": 162.36,
                   "cur": "CZK"
                 }
               },
@@ -4032,7 +4032,7 @@
           },
           {
             "id": "gid://shopify/CartLine/106",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "206.0"
@@ -4044,7 +4044,7 @@
               "id": "gid://shopify/ProductVariant/1106",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 163.15,
                   "cur": "CZK"
                 }
               },
@@ -4064,7 +4064,7 @@
           },
           {
             "id": "gid://shopify/CartLine/107",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "207.0"
@@ -4076,7 +4076,7 @@
               "id": "gid://shopify/ProductVariant/1107",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 163.94,
                   "cur": "CZK"
                 }
               },
@@ -4127,7 +4127,7 @@
           },
           {
             "id": "gid://shopify/CartLine/109",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "209.0"
@@ -4139,7 +4139,7 @@
               "id": "gid://shopify/ProductVariant/1109",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 165.53,
                   "cur": "CZK"
                 }
               },
@@ -4159,7 +4159,7 @@
           },
           {
             "id": "gid://shopify/CartLine/110",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "210.0"
@@ -4171,7 +4171,7 @@
               "id": "gid://shopify/ProductVariant/1110",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 166.32,
                   "cur": "CZK"
                 }
               },
@@ -4204,7 +4204,7 @@
               "id": "gid://shopify/ProductVariant/1111",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 167.11,
                   "cur": "CZK"
                 }
               },
@@ -4223,7 +4223,7 @@
           },
           {
             "id": "gid://shopify/CartLine/112",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "212.0"
@@ -4255,7 +4255,7 @@
           },
           {
             "id": "gid://shopify/CartLine/113",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "213.0"
@@ -4267,7 +4267,7 @@
               "id": "gid://shopify/ProductVariant/1113",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 168.7,
                   "cur": "CZK"
                 }
               },
@@ -4299,7 +4299,7 @@
               "id": "gid://shopify/ProductVariant/1114",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 169.49,
                   "cur": "CZK"
                 }
               },
@@ -4319,7 +4319,7 @@
           },
           {
             "id": "gid://shopify/CartLine/115",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "215.0"
@@ -4331,7 +4331,7 @@
               "id": "gid://shopify/ProductVariant/1115",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 169.6,
+                  "cost": 170.28,
                   "cur": "CZK"
                 }
               },
@@ -4350,7 +4350,7 @@
           },
           {
             "id": "gid://shopify/CartLine/116",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "216.0"
@@ -4393,7 +4393,7 @@
               "id": "gid://shopify/ProductVariant/1117",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 171.86,
                   "cur": "CZK"
                 }
               },
@@ -4414,7 +4414,7 @@
           },
           {
             "id": "gid://shopify/CartLine/118",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "218.0"
@@ -4426,7 +4426,7 @@
               "id": "gid://shopify/ProductVariant/1118",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 172.66,
                   "cur": "CZK"
                 }
               },
@@ -4446,7 +4446,7 @@
           },
           {
             "id": "gid://shopify/CartLine/119",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "219.0"
@@ -4458,7 +4458,7 @@
               "id": "gid://shopify/ProductVariant/1119",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 173.45,
                   "cur": "CZK"
                 }
               },
@@ -4510,7 +4510,7 @@
           },
           {
             "id": "gid://shopify/CartLine/121",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "221.0"
@@ -4522,7 +4522,7 @@
               "id": "gid://shopify/ProductVariant/1121",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 175.03,
                   "cur": "CZK"
                 }
               },
@@ -4542,7 +4542,7 @@
           },
           {
             "id": "gid://shopify/CartLine/122",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "222.0"
@@ -4554,7 +4554,7 @@
               "id": "gid://shopify/ProductVariant/1122",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 175.82,
                   "cur": "CZK"
                 }
               },
@@ -4586,7 +4586,7 @@
               "id": "gid://shopify/ProductVariant/1123",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 176.62,
                   "cur": "CZK"
                 }
               },
@@ -4605,7 +4605,7 @@
           },
           {
             "id": "gid://shopify/CartLine/124",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "224.0"
@@ -4636,7 +4636,7 @@
           },
           {
             "id": "gid://shopify/CartLine/125",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "225.0"
@@ -4648,7 +4648,7 @@
               "id": "gid://shopify/ProductVariant/1125",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 177.6,
+                  "cost": 178.2,
                   "cur": "CZK"
                 }
               },
@@ -4680,7 +4680,7 @@
               "id": "gid://shopify/ProductVariant/1126",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 178.99,
                   "cur": "CZK"
                 }
               },
@@ -4702,7 +4702,7 @@
           },
           {
             "id": "gid://shopify/CartLine/127",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "227.0"
@@ -4714,7 +4714,7 @@
               "id": "gid://shopify/ProductVariant/1127",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 179.78,
                   "cur": "CZK"
                 }
               },
@@ -4733,7 +4733,7 @@
           },
           {
             "id": "gid://shopify/CartLine/128",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "228.0"
@@ -4776,7 +4776,7 @@
               "id": "gid://shopify/ProductVariant/1129",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 181.37,
                   "cur": "CZK"
                 }
               },
@@ -4796,7 +4796,7 @@
           },
           {
             "id": "gid://shopify/CartLine/130",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "230.0"
@@ -4808,7 +4808,7 @@
               "id": "gid://shopify/ProductVariant/1130",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 182.16,
                   "cur": "CZK"
                 }
               },
@@ -4829,7 +4829,7 @@
           },
           {
             "id": "gid://shopify/CartLine/131",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "231.0"
@@ -4841,7 +4841,7 @@
               "id": "gid://shopify/ProductVariant/1131",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 182.95,
                   "cur": "CZK"
                 }
               },
@@ -4891,7 +4891,7 @@
           },
           {
             "id": "gid://shopify/CartLine/133",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "233.0"
@@ -4903,7 +4903,7 @@
               "id": "gid://shopify/ProductVariant/1133",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 184.54,
                   "cur": "CZK"
                 }
               },
@@ -4924,7 +4924,7 @@
           },
           {
             "id": "gid://shopify/CartLine/134",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "234.0"
@@ -4936,7 +4936,7 @@
               "id": "gid://shopify/ProductVariant/1134",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 185.33,
                   "cur": "CZK"
                 }
               },
@@ -4968,7 +4968,7 @@
               "id": "gid://shopify/ProductVariant/1135",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 185.6,
+                  "cost": 186.12,
                   "cur": "CZK"
                 }
               },
@@ -4988,7 +4988,7 @@
           },
           {
             "id": "gid://shopify/CartLine/136",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "236.0"
@@ -5019,7 +5019,7 @@
           },
           {
             "id": "gid://shopify/CartLine/137",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "237.0"
@@ -5031,7 +5031,7 @@
               "id": "gid://shopify/ProductVariant/1137",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 187.7,
                   "cur": "CZK"
                 }
               },
@@ -5063,7 +5063,7 @@
               "id": "gid://shopify/ProductVariant/1138",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 188.5,
                   "cur": "CZK"
                 }
               },
@@ -5083,7 +5083,7 @@
           },
           {
             "id": "gid://shopify/CartLine/139",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "239.0"
@@ -5095,7 +5095,7 @@
               "id": "gid://shopify/ProductVariant/1139",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 189.29,
                   "cur": "CZK"
                 }
               },
@@ -5114,7 +5114,7 @@
           },
           {
             "id": "gid://shopify/CartLine/140",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "240.0"
@@ -5159,7 +5159,7 @@
               "id": "gid://shopify/ProductVariant/1141",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 190.87,
                   "cur": "CZK"
                 }
               },
@@ -5179,7 +5179,7 @@
           },
           {
             "id": "gid://shopify/CartLine/142",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "242.0"
@@ -5191,7 +5191,7 @@
               "id": "gid://shopify/ProductVariant/1142",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 191.66,
                   "cur": "CZK"
                 }
               },
@@ -5211,7 +5211,7 @@
           },
           {
             "id": "gid://shopify/CartLine/143",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "243.0"
@@ -5223,7 +5223,7 @@
               "id": "gid://shopify/ProductVariant/1143",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 192.46,
                   "cur": "CZK"
                 }
               },
@@ -5274,7 +5274,7 @@
           },
           {
             "id": "gid://shopify/CartLine/145",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "245.0"
@@ -5286,7 +5286,7 @@
               "id": "gid://shopify/ProductVariant/1145",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 193.6,
+                  "cost": 194.04,
                   "cur": "CZK"
                 }
               },
@@ -5306,7 +5306,7 @@
           },
           {
             "id": "gid://shopify/CartLine/146",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "246.0"
@@ -5318,7 +5318,7 @@
               "id": "gid://shopify/ProductVariant/1146",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 194.83,
                   "cur": "CZK"
                 }
               },
@@ -5350,7 +5350,7 @@
               "id": "gid://shopify/ProductVariant/1147",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 195.62,
                   "cur": "CZK"
                 }
               },
@@ -5370,7 +5370,7 @@
           },
           {
             "id": "gid://shopify/CartLine/148",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "248.0"
@@ -5401,7 +5401,7 @@
           },
           {
             "id": "gid://shopify/CartLine/149",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "249.0"
@@ -5413,7 +5413,7 @@
               "id": "gid://shopify/ProductVariant/1149",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 197.21,
                   "cur": "CZK"
                 }
               },
@@ -5445,7 +5445,7 @@
               "id": "gid://shopify/ProductVariant/1150",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 199.2,
                   "cur": "CZK"
                 }
               },
@@ -5467,7 +5467,7 @@
           },
           {
             "id": "gid://shopify/CartLine/151",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "251.0"
@@ -5479,7 +5479,7 @@
               "id": "gid://shopify/ProductVariant/1151",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 199.99,
                   "cur": "CZK"
                 }
               },
@@ -5498,7 +5498,7 @@
           },
           {
             "id": "gid://shopify/CartLine/152",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "252.0"
@@ -5541,7 +5541,7 @@
               "id": "gid://shopify/ProductVariant/1153",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 201.58,
                   "cur": "CZK"
                 }
               },
@@ -5562,7 +5562,7 @@
           },
           {
             "id": "gid://shopify/CartLine/154",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "254.0"
@@ -5574,7 +5574,7 @@
               "id": "gid://shopify/ProductVariant/1154",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 202.37,
                   "cur": "CZK"
                 }
               },
@@ -5595,7 +5595,7 @@
           },
           {
             "id": "gid://shopify/CartLine/155",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "255.0"
@@ -5607,7 +5607,7 @@
               "id": "gid://shopify/ProductVariant/1155",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 201.6,
+                  "cost": 203.16,
                   "cur": "CZK"
                 }
               },
@@ -5657,7 +5657,7 @@
           },
           {
             "id": "gid://shopify/CartLine/157",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "257.0"
@@ -5669,7 +5669,7 @@
               "id": "gid://shopify/ProductVariant/1157",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 204.74,
                   "cur": "CZK"
                 }
               },
@@ -5689,7 +5689,7 @@
           },
           {
             "id": "gid://shopify/CartLine/158",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "258.0"
@@ -5701,7 +5701,7 @@
               "id": "gid://shopify/ProductVariant/1158",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 205.54,
                   "cur": "CZK"
                 }
               },
@@ -5733,7 +5733,7 @@
               "id": "gid://shopify/ProductVariant/1159",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 206.33,
                   "cur": "CZK"
                 }
               },
@@ -5752,7 +5752,7 @@
           },
           {
             "id": "gid://shopify/CartLine/160",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "260.0"
@@ -5784,7 +5784,7 @@
           },
           {
             "id": "gid://shopify/CartLine/161",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "261.0"
@@ -5796,7 +5796,7 @@
               "id": "gid://shopify/ProductVariant/1161",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 207.91,
                   "cur": "CZK"
                 }
               },
@@ -5829,7 +5829,7 @@
               "id": "gid://shopify/ProductVariant/1162",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 208.7,
                   "cur": "CZK"
                 }
               },
@@ -5850,7 +5850,7 @@
           },
           {
             "id": "gid://shopify/CartLine/163",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "263.0"
@@ -5862,7 +5862,7 @@
               "id": "gid://shopify/ProductVariant/1163",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 209.5,
                   "cur": "CZK"
                 }
               },
@@ -5881,7 +5881,7 @@
           },
           {
             "id": "gid://shopify/CartLine/164",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "264.0"
@@ -5924,7 +5924,7 @@
               "id": "gid://shopify/ProductVariant/1165",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 209.6,
+                  "cost": 211.08,
                   "cur": "CZK"
                 }
               },
@@ -5944,7 +5944,7 @@
           },
           {
             "id": "gid://shopify/CartLine/166",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "266.0"
@@ -5956,7 +5956,7 @@
               "id": "gid://shopify/ProductVariant/1166",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 211.87,
                   "cur": "CZK"
                 }
               },
@@ -5976,7 +5976,7 @@
           },
           {
             "id": "gid://shopify/CartLine/167",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "267.0"
@@ -5988,7 +5988,7 @@
               "id": "gid://shopify/ProductVariant/1167",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 212.66,
                   "cur": "CZK"
                 }
               },
@@ -6039,7 +6039,7 @@
           },
           {
             "id": "gid://shopify/CartLine/169",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "269.0"
@@ -6051,7 +6051,7 @@
               "id": "gid://shopify/ProductVariant/1169",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 214.25,
                   "cur": "CZK"
                 }
               },
@@ -6071,7 +6071,7 @@
           },
           {
             "id": "gid://shopify/CartLine/170",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "270.0"
@@ -6083,7 +6083,7 @@
               "id": "gid://shopify/ProductVariant/1170",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 215.04,
                   "cur": "CZK"
                 }
               },
@@ -6116,7 +6116,7 @@
               "id": "gid://shopify/ProductVariant/1171",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 215.83,
                   "cur": "CZK"
                 }
               },
@@ -6136,7 +6136,7 @@
           },
           {
             "id": "gid://shopify/CartLine/172",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "272.0"
@@ -6167,7 +6167,7 @@
           },
           {
             "id": "gid://shopify/CartLine/173",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "273.0"
@@ -6179,7 +6179,7 @@
               "id": "gid://shopify/ProductVariant/1173",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 217.42,
                   "cur": "CZK"
                 }
               },
@@ -6211,7 +6211,7 @@
               "id": "gid://shopify/ProductVariant/1174",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 218.21,
                   "cur": "CZK"
                 }
               },
@@ -6231,7 +6231,7 @@
           },
           {
             "id": "gid://shopify/CartLine/175",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "275.0"
@@ -6243,7 +6243,7 @@
               "id": "gid://shopify/ProductVariant/1175",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 217.6,
+                  "cost": 219,
                   "cur": "CZK"
                 }
               },
@@ -6263,7 +6263,7 @@
           },
           {
             "id": "gid://shopify/CartLine/176",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "276.0"
@@ -6306,7 +6306,7 @@
               "id": "gid://shopify/ProductVariant/1177",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 220.58,
                   "cur": "CZK"
                 }
               },
@@ -6326,7 +6326,7 @@
           },
           {
             "id": "gid://shopify/CartLine/178",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "278.0"
@@ -6338,7 +6338,7 @@
               "id": "gid://shopify/ProductVariant/1178",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 221.38,
                   "cur": "CZK"
                 }
               },
@@ -6358,7 +6358,7 @@
           },
           {
             "id": "gid://shopify/CartLine/179",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "279.0"
@@ -6370,7 +6370,7 @@
               "id": "gid://shopify/ProductVariant/1179",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 222.17,
                   "cur": "CZK"
                 }
               },
@@ -6422,7 +6422,7 @@
           },
           {
             "id": "gid://shopify/CartLine/181",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "281.0"
@@ -6434,7 +6434,7 @@
               "id": "gid://shopify/ProductVariant/1181",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 223.75,
                   "cur": "CZK"
                 }
               },
@@ -6454,7 +6454,7 @@
           },
           {
             "id": "gid://shopify/CartLine/182",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "282.0"
@@ -6466,7 +6466,7 @@
               "id": "gid://shopify/ProductVariant/1182",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 224.54,
                   "cur": "CZK"
                 }
               },
@@ -6499,7 +6499,7 @@
               "id": "gid://shopify/ProductVariant/1183",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 225.34,
                   "cur": "CZK"
                 }
               },
@@ -6518,7 +6518,7 @@
           },
           {
             "id": "gid://shopify/CartLine/184",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "284.0"
@@ -6549,7 +6549,7 @@
           },
           {
             "id": "gid://shopify/CartLine/185",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "285.0"
@@ -6561,7 +6561,7 @@
               "id": "gid://shopify/ProductVariant/1185",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 225.6,
+                  "cost": 226.92,
                   "cur": "CZK"
                 }
               },
@@ -6593,7 +6593,7 @@
               "id": "gid://shopify/ProductVariant/1186",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 227.71,
                   "cur": "CZK"
                 }
               },
@@ -6613,7 +6613,7 @@
           },
           {
             "id": "gid://shopify/CartLine/187",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "287.0"
@@ -6625,7 +6625,7 @@
               "id": "gid://shopify/ProductVariant/1187",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 228.5,
                   "cur": "CZK"
                 }
               },
@@ -6644,7 +6644,7 @@
           },
           {
             "id": "gid://shopify/CartLine/188",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "288.0"
@@ -6687,7 +6687,7 @@
               "id": "gid://shopify/ProductVariant/1189",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 230.09,
                   "cur": "CZK"
                 }
               },
@@ -6709,7 +6709,7 @@
           },
           {
             "id": "gid://shopify/CartLine/190",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "290.0"
@@ -6721,7 +6721,7 @@
               "id": "gid://shopify/ProductVariant/1190",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 230.88,
                   "cur": "CZK"
                 }
               },
@@ -6742,7 +6742,7 @@
           },
           {
             "id": "gid://shopify/CartLine/191",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "291.0"
@@ -6754,7 +6754,7 @@
               "id": "gid://shopify/ProductVariant/1191",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 231.67,
                   "cur": "CZK"
                 }
               },
@@ -6804,7 +6804,7 @@
           },
           {
             "id": "gid://shopify/CartLine/193",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "293.0"
@@ -6816,7 +6816,7 @@
               "id": "gid://shopify/ProductVariant/1193",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 233.26,
                   "cur": "CZK"
                 }
               },
@@ -6836,7 +6836,7 @@
           },
           {
             "id": "gid://shopify/CartLine/194",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "294.0"
@@ -6848,7 +6848,7 @@
               "id": "gid://shopify/ProductVariant/1194",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 234.05,
                   "cur": "CZK"
                 }
               },
@@ -6880,7 +6880,7 @@
               "id": "gid://shopify/ProductVariant/1195",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 233.6,
+                  "cost": 234.84,
                   "cur": "CZK"
                 }
               },
@@ -6899,7 +6899,7 @@
           },
           {
             "id": "gid://shopify/CartLine/196",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "296.0"
@@ -6931,7 +6931,7 @@
           },
           {
             "id": "gid://shopify/CartLine/197",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "297.0"
@@ -6943,7 +6943,7 @@
               "id": "gid://shopify/ProductVariant/1197",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 236.42,
                   "cur": "CZK"
                 }
               },
@@ -6975,7 +6975,7 @@
               "id": "gid://shopify/ProductVariant/1198",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 237.22,
                   "cur": "CZK"
                 }
               },
@@ -6996,7 +6996,7 @@
           },
           {
             "id": "gid://shopify/CartLine/199",
-            "quantity": 2,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "299.0"
@@ -7008,7 +7008,7 @@
               "id": "gid://shopify/ProductVariant/1199",
               "wonVariant": {
                 "jsonValue": {
-                  "cost": 10,
+                  "cost": 238.01,
                   "cur": "CZK"
                 }
               },
@@ -7027,7 +7027,7 @@
           },
           {
             "id": "gid://shopify/CartLine/200",
-            "quantity": 3,
+            "quantity": 1,
             "cost": {
               "amountPerQuantity": {
                 "amount": "300.0"
@@ -7076,303 +7076,14 @@
                   },
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/7"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/9"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/13"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/17"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/21"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/23"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/29"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/31"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/33"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/37"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/39"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/41"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/47"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/49"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/53"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/57"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/61"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/63"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/69"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/71"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/73"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/77"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/79"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/81"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/87"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/89"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/93"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/97"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/101"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/103"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/109"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/111"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/113"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/117"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/119"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/121"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/127"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/129"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/133"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/137"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/141"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/143"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/149"
-                    }
-                  },
-                  {
-                    "cartLine": {
                       "id": "gid://shopify/CartLine/151"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/153"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/157"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/159"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/161"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/167"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/169"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/173"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/177"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/181"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/183"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/189"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/191"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/193"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/197"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/199"
                     }
                   }
                 ],
                 "value": {
-                  "percentage": {
-                    "value": 17
+                  "fixedAmount": {
+                    "amount": "1.01",
+                    "appliesToEachItem": true
                   }
                 }
               },
@@ -7381,17 +7092,7 @@
                 "targets": [
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/2"
-                    }
-                  },
-                  {
-                    "cartLine": {
                       "id": "gid://shopify/CartLine/4"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/6"
                     }
                   },
                   {
@@ -7401,32 +7102,7 @@
                   },
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/14"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/18"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/22"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/26"
-                    }
-                  },
-                  {
-                    "cartLine": {
                       "id": "gid://shopify/CartLine/28"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/34"
                     }
                   },
                   {
@@ -7436,22 +7112,7 @@
                   },
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/38"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/42"
-                    }
-                  },
-                  {
-                    "cartLine": {
                       "id": "gid://shopify/CartLine/44"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/46"
                     }
                   },
                   {
@@ -7461,32 +7122,7 @@
                   },
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/54"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/58"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/62"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/66"
-                    }
-                  },
-                  {
-                    "cartLine": {
                       "id": "gid://shopify/CartLine/68"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/74"
                     }
                   },
                   {
@@ -7496,22 +7132,7 @@
                   },
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/78"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/82"
-                    }
-                  },
-                  {
-                    "cartLine": {
                       "id": "gid://shopify/CartLine/84"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/86"
                     }
                   },
                   {
@@ -7521,32 +7142,7 @@
                   },
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/94"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/98"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/102"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/106"
-                    }
-                  },
-                  {
-                    "cartLine": {
                       "id": "gid://shopify/CartLine/108"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/114"
                     }
                   },
                   {
@@ -7556,22 +7152,7 @@
                   },
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/118"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/122"
-                    }
-                  },
-                  {
-                    "cartLine": {
                       "id": "gid://shopify/CartLine/124"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/126"
                     }
                   },
                   {
@@ -7581,32 +7162,7 @@
                   },
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/134"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/138"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/142"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/146"
-                    }
-                  },
-                  {
-                    "cartLine": {
                       "id": "gid://shopify/CartLine/148"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/154"
                     }
                   },
                   {
@@ -7616,22 +7172,7 @@
                   },
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/158"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/162"
-                    }
-                  },
-                  {
-                    "cartLine": {
                       "id": "gid://shopify/CartLine/164"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/166"
                     }
                   },
                   {
@@ -7641,42 +7182,12 @@
                   },
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/174"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/178"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/182"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/186"
-                    }
-                  },
-                  {
-                    "cartLine": {
                       "id": "gid://shopify/CartLine/188"
                     }
                   },
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/194"
-                    }
-                  },
-                  {
-                    "cartLine": {
                       "id": "gid://shopify/CartLine/196"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/198"
                     }
                   }
                 ],
@@ -7687,187 +7198,22 @@
                 }
               },
               {
-                "message": "Sleva p4",
-                "targets": [
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/3"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/11"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/19"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/27"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/43"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/51"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/59"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/67"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/83"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/99"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/107"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/123"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/131"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/139"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/163"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/171"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/179"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/187"
-                    }
-                  }
-                ],
-                "value": {
-                  "percentage": {
-                    "value": 9
-                  }
-                }
-              },
-              {
                 "message": "Sleva p8",
                 "targets": [
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/5"
+                      "id": "gid://shopify/CartLine/7"
                     }
                   },
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/15"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/25"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/45"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/55"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/65"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/85"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/95"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/105"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/125"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/135"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/145"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/165"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/175"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/185"
+                      "id": "gid://shopify/CartLine/157"
                     }
                   }
                 ],
                 "value": {
                   "fixedAmount": {
-                    "amount": "3.00",
+                    "amount": "1.07",
                     "appliesToEachItem": true
                   }
                 }
@@ -7968,32 +7314,1272 @@
                 }
               },
               {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/9"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/159"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.08",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/15"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/165"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.15",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/17"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/167"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.17",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/23"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/173"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.22",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/25"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/175"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.25",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/31"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/181"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.31",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/33"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/183"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.32",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/39"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/189"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.38",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/41"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/191"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.41",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/47"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/197"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.47",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/49"
+                    }
+                  },
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/199"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.48",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/55"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.55",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/57"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.57",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/58"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.57",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p4",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/59"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.58",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/61"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.61",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/62"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.62",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/63"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.62",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/65"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.65",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/66"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.66",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p4",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/67"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.67",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/69"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.68",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/71"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.71",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/73"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.72",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/74"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.73",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
                 "message": "Sleva p4",
                 "targets": [
                   {
                     "cartLine": {
                       "id": "gid://shopify/CartLine/75"
                     }
-                  },
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.75",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
                   {
                     "cartLine": {
-                      "id": "gid://shopify/CartLine/115"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/155"
-                    }
-                  },
-                  {
-                    "cartLine": {
-                      "id": "gid://shopify/CartLine/195"
+                      "id": "gid://shopify/CartLine/77"
                     }
                   }
                 ],
                 "value": {
                   "fixedAmount": {
-                    "amount": "3.00",
+                    "amount": "1.77",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/78"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.77",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/79"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.78",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/81"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.81",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/82"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.82",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p4",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/83"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.82",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/85"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.85",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/86"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.86",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/87"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.87",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/89"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.88",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/93"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.92",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/94"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.93",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/95"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.95",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/97"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.97",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/98"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.97",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p4",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/99"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1.98",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/101"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.01",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/102"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.02",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/103"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.02",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/105"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.05",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/106"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.06",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p4",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/107"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.07",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/109"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.08",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/111"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.11",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/113"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.12",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/114"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.13",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p4",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/115"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.15",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/117"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.17",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/118"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.17",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/119"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.18",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/121"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.21",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/122"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.22",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p4",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/123"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.22",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/125"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.25",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/126"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.26",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/127"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.27",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/129"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.28",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p4",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/131"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.31",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/133"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.32",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/134"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.33",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/135"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.35",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/137"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.37",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/138"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.37",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p4",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/139"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.38",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/141"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.41",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/142"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.42",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/143"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.42",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/145"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.45",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p7",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/146"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.46",
+                    "appliesToEachItem": true
+                  }
+                }
+              },
+              {
+                "message": "Sleva p8",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/149"
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "2.48",
                     "appliesToEachItem": true
                   }
                 }
@@ -8011,29 +8597,157 @@
                   {
                     "orderSubtotal": {
                       "excludedCartLineIds": [
+                        "gid://shopify/CartLine/1",
+                        "gid://shopify/CartLine/2",
+                        "gid://shopify/CartLine/3",
                         "gid://shopify/CartLine/5",
+                        "gid://shopify/CartLine/6",
+                        "gid://shopify/CartLine/7",
+                        "gid://shopify/CartLine/9",
+                        "gid://shopify/CartLine/10",
+                        "gid://shopify/CartLine/11",
+                        "gid://shopify/CartLine/13",
+                        "gid://shopify/CartLine/14",
                         "gid://shopify/CartLine/15",
+                        "gid://shopify/CartLine/17",
+                        "gid://shopify/CartLine/18",
+                        "gid://shopify/CartLine/19",
+                        "gid://shopify/CartLine/21",
+                        "gid://shopify/CartLine/22",
+                        "gid://shopify/CartLine/23",
                         "gid://shopify/CartLine/25",
+                        "gid://shopify/CartLine/26",
+                        "gid://shopify/CartLine/27",
+                        "gid://shopify/CartLine/29",
+                        "gid://shopify/CartLine/30",
+                        "gid://shopify/CartLine/31",
+                        "gid://shopify/CartLine/33",
+                        "gid://shopify/CartLine/34",
                         "gid://shopify/CartLine/35",
+                        "gid://shopify/CartLine/37",
+                        "gid://shopify/CartLine/38",
+                        "gid://shopify/CartLine/39",
+                        "gid://shopify/CartLine/41",
+                        "gid://shopify/CartLine/42",
+                        "gid://shopify/CartLine/43",
                         "gid://shopify/CartLine/45",
+                        "gid://shopify/CartLine/46",
+                        "gid://shopify/CartLine/47",
+                        "gid://shopify/CartLine/49",
                         "gid://shopify/CartLine/50",
+                        "gid://shopify/CartLine/51",
+                        "gid://shopify/CartLine/53",
+                        "gid://shopify/CartLine/54",
                         "gid://shopify/CartLine/55",
+                        "gid://shopify/CartLine/57",
+                        "gid://shopify/CartLine/58",
+                        "gid://shopify/CartLine/59",
+                        "gid://shopify/CartLine/61",
+                        "gid://shopify/CartLine/62",
+                        "gid://shopify/CartLine/63",
                         "gid://shopify/CartLine/65",
+                        "gid://shopify/CartLine/66",
+                        "gid://shopify/CartLine/67",
+                        "gid://shopify/CartLine/69",
+                        "gid://shopify/CartLine/70",
+                        "gid://shopify/CartLine/71",
+                        "gid://shopify/CartLine/73",
+                        "gid://shopify/CartLine/74",
                         "gid://shopify/CartLine/75",
+                        "gid://shopify/CartLine/77",
+                        "gid://shopify/CartLine/78",
+                        "gid://shopify/CartLine/79",
+                        "gid://shopify/CartLine/81",
+                        "gid://shopify/CartLine/82",
+                        "gid://shopify/CartLine/83",
                         "gid://shopify/CartLine/85",
+                        "gid://shopify/CartLine/86",
+                        "gid://shopify/CartLine/87",
+                        "gid://shopify/CartLine/89",
+                        "gid://shopify/CartLine/90",
+                        "gid://shopify/CartLine/91",
+                        "gid://shopify/CartLine/93",
+                        "gid://shopify/CartLine/94",
                         "gid://shopify/CartLine/95",
+                        "gid://shopify/CartLine/97",
+                        "gid://shopify/CartLine/98",
+                        "gid://shopify/CartLine/99",
                         "gid://shopify/CartLine/100",
+                        "gid://shopify/CartLine/101",
+                        "gid://shopify/CartLine/102",
+                        "gid://shopify/CartLine/103",
                         "gid://shopify/CartLine/105",
+                        "gid://shopify/CartLine/106",
+                        "gid://shopify/CartLine/107",
+                        "gid://shopify/CartLine/109",
+                        "gid://shopify/CartLine/110",
+                        "gid://shopify/CartLine/111",
+                        "gid://shopify/CartLine/113",
+                        "gid://shopify/CartLine/114",
                         "gid://shopify/CartLine/115",
+                        "gid://shopify/CartLine/117",
+                        "gid://shopify/CartLine/118",
+                        "gid://shopify/CartLine/119",
+                        "gid://shopify/CartLine/121",
+                        "gid://shopify/CartLine/122",
+                        "gid://shopify/CartLine/123",
                         "gid://shopify/CartLine/125",
+                        "gid://shopify/CartLine/126",
+                        "gid://shopify/CartLine/127",
+                        "gid://shopify/CartLine/129",
+                        "gid://shopify/CartLine/130",
+                        "gid://shopify/CartLine/131",
+                        "gid://shopify/CartLine/133",
+                        "gid://shopify/CartLine/134",
                         "gid://shopify/CartLine/135",
+                        "gid://shopify/CartLine/137",
+                        "gid://shopify/CartLine/138",
+                        "gid://shopify/CartLine/139",
+                        "gid://shopify/CartLine/141",
+                        "gid://shopify/CartLine/142",
+                        "gid://shopify/CartLine/143",
                         "gid://shopify/CartLine/145",
+                        "gid://shopify/CartLine/146",
+                        "gid://shopify/CartLine/147",
+                        "gid://shopify/CartLine/149",
                         "gid://shopify/CartLine/150",
+                        "gid://shopify/CartLine/151",
+                        "gid://shopify/CartLine/153",
+                        "gid://shopify/CartLine/154",
                         "gid://shopify/CartLine/155",
+                        "gid://shopify/CartLine/157",
+                        "gid://shopify/CartLine/158",
+                        "gid://shopify/CartLine/159",
+                        "gid://shopify/CartLine/161",
+                        "gid://shopify/CartLine/162",
+                        "gid://shopify/CartLine/163",
                         "gid://shopify/CartLine/165",
+                        "gid://shopify/CartLine/166",
+                        "gid://shopify/CartLine/167",
+                        "gid://shopify/CartLine/169",
+                        "gid://shopify/CartLine/170",
+                        "gid://shopify/CartLine/171",
+                        "gid://shopify/CartLine/173",
+                        "gid://shopify/CartLine/174",
                         "gid://shopify/CartLine/175",
+                        "gid://shopify/CartLine/177",
+                        "gid://shopify/CartLine/178",
+                        "gid://shopify/CartLine/179",
+                        "gid://shopify/CartLine/181",
+                        "gid://shopify/CartLine/182",
+                        "gid://shopify/CartLine/183",
                         "gid://shopify/CartLine/185",
+                        "gid://shopify/CartLine/186",
+                        "gid://shopify/CartLine/187",
+                        "gid://shopify/CartLine/189",
+                        "gid://shopify/CartLine/190",
+                        "gid://shopify/CartLine/191",
+                        "gid://shopify/CartLine/193",
+                        "gid://shopify/CartLine/194",
                         "gid://shopify/CartLine/195",
+                        "gid://shopify/CartLine/197",
+                        "gid://shopify/CartLine/198",
+                        "gid://shopify/CartLine/199",
                         "gid://shopify/CartLine/200"
                       ]
                     }
@@ -8041,7 +8755,7 @@
                 ],
                 "value": {
                   "fixedAmount": {
-                    "amount": "2990.48"
+                    "amount": "414.41"
                   }
                 }
               }

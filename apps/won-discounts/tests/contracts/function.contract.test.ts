@@ -53,8 +53,22 @@ const WASM_LIMIT_BYTES = 256_000;
 /** Shopify's limit for carts up to 200 lines; we keep ≥ 30 % headroom. */
 const INSTRUCTION_LIMIT = 11_000_000;
 const INSTRUCTION_BUDGET = (INSTRUCTION_LIMIT / 10) * 7;
-/** The 200-line fixtures that measure the budget (their own tests below). */
-const BUDGET_PREFIX = /-200-lines-budget\.json$/;
+/**
+ * Above 200 lines Shopify's limit scales with the line count (like its output
+ * limit), so does the budget: 500 lines → 27.5 M limit, 19.25 M budget.
+ */
+function instructionLimit(lines: number) {
+  return Math.floor((INSTRUCTION_LIMIT * Math.max(200, lines)) / 200);
+}
+function instructionBudget(lines: number) {
+  return Math.floor((INSTRUCTION_BUDGET * Math.max(200, lines)) / 200);
+}
+/**
+ * The fixtures that measure the budget (their own tests below): the 200-line
+ * MVP 1 carts, the margin carts (fast path, full order search, most lines
+ * capped with an over-budget output) and the 500-line capped cart.
+ */
+const BUDGET_PREFIX = /-\d+-lines-budget\.json$/;
 
 type Fixture = {
   scenario?: string;
@@ -295,19 +309,25 @@ describe("shopify app function run", { concurrency: 6 }, () => {
       instructions.set(file, result.instructions as number);
       t.diagnostic(`${file}: ${result.instructions} instructions`);
       if (!BUDGET_PREFIX.test(file)) {
+        const lines = fixture.payload.input.cart?.lines?.length ?? 0;
         assert.ok(
-          (result.instructions as number) <= INSTRUCTION_BUDGET,
-          `${file}: ${result.instructions} instructions > ${INSTRUCTION_BUDGET} (70 % of Shopify's ${INSTRUCTION_LIMIT})`,
+          (result.instructions as number) <= instructionBudget(lines),
+          `${file}: ${result.instructions} instructions > ${instructionBudget(lines)} (70 % of Shopify's ${instructionLimit(lines)})`,
         );
       }
     });
   }
 
-  // The 200-line carts (37 rules, codes, a Pro stack, outlet lines): the JS
-  // function needed ~96 M instructions here (task-2-report.md); the Rust port
-  // must stay ≤ 70 % of Shopify's limit like every other fixture.
+  // The budget carts (37 rules, codes, a Pro stack, outlet lines; with margin
+  // protection: the order stage's shortcut, its full search, most lines capped
+  // with an over-budget output, 500 lines): the JS function needed ~96 M
+  // instructions on the MVP 1 cart (task-2-report.md of MVP 1); the Rust port
+  // must stay ≤ 70 % of Shopify's (line-scaled) limit like every other fixture.
   for (const file of fixtureFiles.filter((f) => BUDGET_PREFIX.test(f))) {
-    test(`${file}: ≤ ${INSTRUCTION_BUDGET} instructions (Shopify limit ${INSTRUCTION_LIMIT} − 30 %)`, {
+    const lines = readFixture(file).payload.input.cart?.lines?.length ?? 0;
+    const budget = instructionBudget(lines);
+    const limit = instructionLimit(lines);
+    test(`${file}: ≤ ${budget} instructions (Shopify limit ${limit} − 30 %)`, {
       timeout: 120_000,
     }, async (t) => {
       let count = instructions.get(file);
@@ -315,8 +335,8 @@ describe("shopify app function run", { concurrency: 6 }, () => {
         const fixture = readFixture(file);
         count = (await runInput(workDir, `budget-${file}`, fixture.payload.input, fixture.payload.export)).instructions;
       }
-      t.diagnostic(`${file}: ${count} instructions, limit ${INSTRUCTION_LIMIT}, budget ${INSTRUCTION_BUDGET}`);
-      assert.ok(typeof count === "number" && count <= INSTRUCTION_BUDGET, `${file}: ${count} > ${INSTRUCTION_BUDGET}`);
+      t.diagnostic(`${file}: ${count} instructions, limit ${limit}, budget ${budget}`);
+      assert.ok(typeof count === "number" && count <= budget, `${file}: ${count} > ${budget}`);
     });
   }
 });
