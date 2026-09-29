@@ -96,10 +96,14 @@ už kolem 22 řádků). Produkční funkce je proto Rust port hot path (`planCar
 mapování výstupu); TS engine v `@won/core/discounts` zůstává jediným zdrojem pravdy pro admin,
 Vyzkoušet košík a storefront. DATA-4 hlídá: fixtures generované z TS enginu (shoda textu
 výstupu), randomizovaná shoda (≥ 2 400 košíků, per-větev počty zásahů), TS dvojčata Rust
-unit testů a mapování výstupu `function-output.ts` sdílené testy i adminem. Rozpočty: 200
-řádků ≤ 7,7 M instrukcí (dnes ~7,1 M), výstup ≤ 20 kB (nad rozpočtem postupné uvolnění:
-remízy → procenta, Pro stack → hlavní pravidlo, až pak zahození nejmenších kandidátů; admin
-to ukáže), Wasm < 256 kB. **CI funkci netestuje** (`.github` mimo rozsah) — gate běží lokálně
+unit testů a mapování výstupu `function-output.ts` sdílené testy i adminem. Rozpočty
+(MVP 2): nejtěžší košíky ≤ 75 % limitu Shopify (200 řádků ≤ 8,25 M z 11 M, víc řádků škálovaně),
+**měřeno s reálnými id** (pravidla `r_` + 20 hex, řádky `gid://shopify/CartLine/n`) — dnes
+200 řádků s marží, objednávkou a přetečeným výstupem 8,07 M, 500 řádků 18,64 M; běžné fixtures
+≤ 70 %; výstup ≤ 20 kB (nad rozpočtem postupné uvolnění: remízy → procenta, Pro stack → hlavní
+pravidlo, až pak zahození nejmenších kandidátů; ořezané marží hodnoty se na procenta nikdy
+neuvolňují; admin to ukáže), Wasm < 256 kB (dnes 237 kB), dotaz funkce ≤ 3000 znaků **včetně
+komentářů**. **CI funkci netestuje** (`.github` mimo rozsah) — gate běží lokálně
 přes `npm run test:unit -w won-discounts`.
 
 **Co kde žije (DATA-1):**
