@@ -1,4 +1,5 @@
-import type { PlanLine } from "@won/core/discounts/plan";
+import { roundingTiePossible } from "@won/core/discounts/function-output";
+import type { PlanConfig, PlanLine } from "@won/core/discounts/plan";
 
 import {
   SHAPES_CAP_AMOUNT_CZK,
@@ -49,45 +50,165 @@ import { expectedFor, readLiveInputsFor, type Expected, type LiveInputs } from "
 //   WON_E2E_PROFILE=shapes npm run test:e2e:local:all -w won-discounts
 //
 // Expectations are `planCart` on the live function inputs (support/won-plan.ts),
-// never hard-coded; the output value each line must carry (100 %, ΣP %) is
+// never hard-coded; the output value each line must carry (100 %, ΣP %, or the
+// exact amount when a percent lands on half a haléř — a rounding tie) is
 // derived from that plan and the live rules the same way output.rs derives it.
 // Prices are only ever read from /cart.js and the checkout's own tables. Every
 // discount here is automatic, so the theme-dev session split of codes
 // (checkout.mvp1.spec.ts header) plays no part.
+//
+// Plan mode, WON_E2E_PLAN=pro|free (default pro). The sync gates the stored
+// config for the shop's plan before it builds the function payload (BILL-1,
+// packages/core/src/discounts/plan-gate.ts gateConfigForPlan): the dev store is
+// Free unless the SYNCING process runs with NODE_ENV=development WON_DEV_PLAN=pro
+// (app/lib/plan.server.ts). That is the seed AND the running `shopify app dev`,
+// whose product webhooks resync the targeting with its own plan. So:
+//   pro   seed with the override → the live payload keeps combinesWith → (b) above;
+//   free  seed without it → the gate removed combinesWith from the live payload,
+//         B and C compete (engine.combination.productWithProduct "best") and
+//         simple-a gets ONLY the better single rule (10 %), never the 15 % stack;
+//         (a) is not a Pro feature and still gives 100 %.
+//   node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --profile shapes --live
+//   WON_E2E_PROFILE=shapes WON_E2E_PLAN=free npm run test:e2e:local:all -w won-discounts
+// Either way checkout = planCart on the LIVE (gated) payload.
 
 const CHECKOUT_COUNTRY = "CZ"; // market cesko (CZK); the capped fixed amount exists in CZK only
 const CHECKOUT_EMAIL = "won-e2e+shapes@example.com";
+
+type PlanMode = "pro" | "free";
+function planMode(raw: string | undefined): PlanMode {
+  const value = String(raw ?? "").trim().toLowerCase() || "pro";
+  if (value !== "pro" && value !== "free") throw new Error(`WON_E2E_PLAN=${raw}: expected "pro" or "free"`);
+  return value;
+}
+/** The plan the live payload was synced for (see the header). */
+const E2E_PLAN = planMode(process.env.WON_E2E_PLAN);
+
+type LiveRule = PlanConfig["modules"]["codes"]["rules"][number];
+
+/** A live rule's whole percent (NaN for any other value). */
+function percentOf(rules: readonly LiveRule[], ruleId: string): number {
+  const value = rules.find((r) => r.id === ruleId)?.value;
+  return value?.kind === "percentage" ? value.percent : Number.NaN;
+}
+
+/**
+ * What simple-a's two percentage rules give on each plan, from the LIVE rules:
+ * the Pro stack (ΣP, what Free must NOT apply) and the better single rule
+ * (what Free applies: higher percent, then id asc as planCart ranks ties).
+ */
+function simpleARules(rules: readonly LiveRule[]) {
+  const ids = [SHAPES_PRO_B_RULE_ID, SHAPES_PRO_C_RULE_ID];
+  const percents = ids.map((id) => percentOf(rules, id));
+  const best = [...ids].sort((x, y) => percentOf(rules, y) - percentOf(rules, x) || x.localeCompare(y))[0]!;
+  return { ids, percents, summed: percents.reduce((a, b) => a + b, 0), best, bestPercent: percentOf(rules, best), other: ids.find((id) => id !== best)! };
+}
+
+/** Evidence / screenshot name per plan mode: "cart-shapes" (Pro, unchanged) or "cart-free-shapes". */
+const named = (name: string) => (E2E_PLAN === "free" ? name.replace(/shapes/u, "free-shapes") : name);
+
+/**
+ * Free only: what the gate took out of the live payload and what simple-a would
+ * get if the Pro stack were applied (the counterfactual the observed values are
+ * compared against), for the evidence.
+ */
+function freeGateEvidence(rules: readonly LiveRule[], stackedLine: LineShape, planTotal: number) {
+  if (E2E_PLAN !== "free") return null;
+  const simpleA = simpleARules(rules);
+  const proStackAmount = Math.round((stackedLine.planLine.subtotal * simpleA.summed) / 100);
+  const freeAmount = stackedLine.planLine.product?.amount ?? 0;
+  return {
+    liveCombinesWith: Object.fromEntries(simpleA.ids.map((id) => [id, rules.find((r) => r.id === id)?.combinesWith ?? null])),
+    appliedRule: simpleA.best,
+    appliedPercent: simpleA.bestPercent,
+    appliedAmount: freeAmount,
+    outrankedRule: simpleA.other,
+    proStackNotApplied: {
+      rules: simpleA.ids,
+      summedPercent: simpleA.summed,
+      amount: proStackAmount,
+      cartTotalIfApplied: planTotal - (proStackAmount - freeAmount),
+    },
+  };
+}
 
 interface LineShape {
   handle: string;
   productTitle: string;
   item: CartItem;
   planLine: PlanLine;
-  /** The whole percent the function must send for this line (output.rs mapping of the plan), or null. */
-  emittedPercent: number | null;
+  /** The value the function must send for this line (output.rs mapping of the plan), or null. */
+  emitted: Emitted | null;
+}
+
+/** A product candidate value as output.rs writes it; amounts in minor units. */
+type Emitted = { kind: "percentage"; percent: number } | { kind: "fixed_amount"; amount: number; perItem: boolean };
+
+const percentage = (percent: number): Emitted => ({ kind: "percentage", percent });
+
+/** output.rs exact_amount: the whole line → 100 %, divisible by the quantity → per item, else once on the line. */
+function exactAmount(total: number, line: PlanLine): Emitted {
+  if (total === line.subtotal) return percentage(100);
+  if (line.quantity > 0 && total % line.quantity === 0) return { kind: "fixed_amount", amount: total / line.quantity, perItem: true };
+  return { kind: "fixed_amount", amount: total, perItem: false };
 }
 
 /**
- * The percent output.rs sends for a planned product stack, for the two shapes
- * under test (null for any other shape): a single percentage as is; a fixed
- * amount per item equal to the unit price → 100 %; a stack whose total is the
- * line → 100 %; a stack of whole-percent rules whose Math.round(S × ΣP / 100)
- * equals its total → ΣP %.
+ * output.rs percent_on_line: a percent as is, unless its amount on the line is
+ * a rounding tie (half a haléř: Shopify rounds S × P / 100 itself and may round
+ * it the other way than the plan) → its exact amount. CZK prices are the store
+ * price converted at the market's live rate, so whether a line hits a tie moves
+ * from day to day (checkout.mvp1.spec.ts hit one on 2026-09-29).
  */
-function emittedPercent(line: PlanLine, inputs: LiveInputs): number | null {
+function percentOnLine(percent: number, amount: number, line: PlanLine): Emitted {
+  return roundingTiePossible(line.subtotal, percent) ? exactAmount(amount, line) : percentage(percent);
+}
+
+/**
+ * What output.rs (exact_value) sends for a planned product stack. The output
+ * budget steps never apply to this two-line cart, so this is the exact form:
+ *   a single percent → percentOnLine; a fixed amount per item equal to the unit
+ *   price → 100 %, else per item; a stack whose total is the line → 100 %; a
+ *   stack of whole-percent rules whose Math.round(S × ΣP / 100) equals its total
+ *   → percentOnLine(ΣP); any other total → exactAmount.
+ */
+function emittedValue(line: PlanLine, inputs: LiveInputs): Emitted | null {
   const stack = line.product;
   if (!stack) return null;
   const value = stack.value;
-  if (value.percent !== undefined) return value.percent;
-  if (value.fixedPerItem !== undefined) return value.fixedPerItem === line.unitPrice ? 100 : null;
-  if (value.fixedTotal === line.subtotal) return 100;
+  if (value.percent !== undefined) return percentOnLine(value.percent, stack.amount, line);
+  if (value.fixedPerItem !== undefined) {
+    return value.fixedPerItem === line.unitPrice ? percentage(100) : { kind: "fixed_amount", amount: value.fixedPerItem, perItem: true };
+  }
+  const total = value.fixedTotal;
+  if (total === line.subtotal) return percentage(100);
   let sum = 0;
   for (const component of stack.components) {
     const rule = inputs.config.modules.codes.rules.find((r) => r.id === component.ruleId);
-    if (rule?.value.kind !== "percentage" || !Number.isInteger(rule.value.percent)) return null;
+    if (rule?.value.kind !== "percentage" || !Number.isInteger(rule.value.percent)) return exactAmount(total, line);
     sum += rule.value.percent;
   }
-  return Math.round((line.subtotal * sum) / 100) === value.fixedTotal ? sum : null;
+  return Math.round((line.subtotal * sum) / 100) === total ? percentOnLine(sum, total, line) : exactAmount(total, line);
+}
+
+/** "15 %" · "32,85 Kč per item" — for step and assertion labels. */
+function describeEmitted(emitted: Emitted | null): string {
+  if (!emitted) return "nothing";
+  if (emitted.kind === "percentage") return `${emitted.percent} %`;
+  return `the exact amount ${emitted.amount} (${emitted.perItem ? "per item" : "once on the line"}, rounding tie)`;
+}
+
+/** The /cart.js allocation carries exactly the value the function sent. */
+function expectSentAs(allocation: CartItem["line_level_discount_allocations"][number], emitted: Emitted | null, what: string): void {
+  expect(emitted, `${what}: output mapping`).not.toBeNull();
+  const application = allocation.discount_application;
+  if (emitted!.kind === "percentage") {
+    expect(application.value_type, `${what}: sent as a percentage`).toBe("percentage");
+    expect(Number(application.value), `${what}: sent as ${emitted!.percent} %`).toBe(emitted!.percent);
+  } else {
+    expect(application.value_type, `${what}: sent as ${describeEmitted(emitted)}`).toBe("fixed_amount");
+    expect(Math.round(Number(application.value) * 100), `${what}: the exact amount (CZK, 2 decimals)`).toBe(emitted!.amount);
+  }
 }
 
 /** Each cart line with its plan line (planInputFromCart ids lines by cart index) and its handle. */
@@ -97,7 +218,7 @@ function lineShapes(cart: Cart, expected: Expected, inputs: LiveInputs): LineSha
     const planLine = expected.plan.lines.find((l) => l.lineId === `gid://shopify/CartLine/${index}`);
     expect(planLine, `plan line for cart line ${index}`).toBeDefined();
     const handle = handleByProduct.get(`gid://shopify/Product/${item.product_id}`) ?? `product ${item.product_id}`;
-    return { handle, productTitle: item.product_title ?? "", item, planLine: planLine!, emittedPercent: emittedPercent(planLine!, inputs) };
+    return { handle, productTitle: item.product_title ?? "", item, planLine: planLine!, emitted: emittedValue(planLine!, inputs) };
   });
 }
 
@@ -125,22 +246,35 @@ function totalSavings(rows: readonly SummaryRow[]): number | null {
   return row ? minorUnits(row.label) : null;
 }
 
-test.describe(`Won Discounts output shapes in cart and checkout (MVP 1 gate)${THEME_LABEL ? ` — ${THEME_LABEL}` : ""}`, () => {
+test.describe(`Won Discounts output shapes in cart and checkout (MVP 1 gate)${E2E_PLAN === "free" ? " [Free plan]" : ""}${THEME_LABEL ? ` — ${THEME_LABEL}` : ""}`, () => {
   test.skip(E2E_PROFILE !== "shapes", `WON_E2E_PROFILE=${E2E_PROFILE}: this spec needs the shapes seed (seed-mvp1.mjs --profile shapes --live) and WON_E2E_PROFILE=shapes`);
 
   test.afterEach(async ({ page, baseURL }) => {
     if (page.url().startsWith(new URL(baseURL!).origin)) await clearCartQuietly(page);
   });
 
-  test("cart: a capped fixed per-item amount arrives as 100 %, a Pro stack as one summed percent, both = planCart", async ({ page }, testInfo) => {
+  const cartTitle =
+    E2E_PLAN === "free"
+      ? "cart (Free): a capped fixed per-item amount arrives as 100 %, the Pro stack is NOT summed (best single rule only), both = planCart"
+      : "cart: a capped fixed per-item amount arrives as 100 %, a Pro stack as one summed percent, both = planCart";
+  test(cartTitle, async ({ page }, testInfo) => {
     test.setTimeout(180_000);
     const inputs = await readLiveInputsFor(SHAPES_HANDLES);
     const rules = inputs.config.modules.codes.rules;
     expect(rules.map((r) => r.id), "the live shop config carries exactly the shapes seed").toEqual(expect.arrayContaining(SHAPES_RULE_IDS));
     const cap = rules.find((r) => r.id === SHAPES_CAP_RULE_ID)!;
     expect(cap.value, "rule A: fixed amount per item, CZK").toEqual({ kind: "fixed", amount: { CZK: SHAPES_CAP_AMOUNT_CZK } });
-    expect(rules.find((r) => r.id === SHAPES_PRO_B_RULE_ID)?.combinesWith?.ruleIds, "rule B combines with C (Pro)").toContain(SHAPES_PRO_C_RULE_ID);
-    expect(rules.find((r) => r.id === SHAPES_PRO_C_RULE_ID)?.combinesWith?.ruleIds, "rule C combines with B (Pro)").toContain(SHAPES_PRO_B_RULE_ID);
+    if (E2E_PLAN === "pro") {
+      expect(rules.find((r) => r.id === SHAPES_PRO_B_RULE_ID)?.combinesWith?.ruleIds, "rule B combines with C (Pro)").toContain(SHAPES_PRO_C_RULE_ID);
+      expect(rules.find((r) => r.id === SHAPES_PRO_C_RULE_ID)?.combinesWith?.ruleIds, "rule C combines with B (Pro)").toContain(SHAPES_PRO_B_RULE_ID);
+    } else {
+      // BILL-1: the stored config still has combinesWith (the seed writes it), the gated live payload must not.
+      for (const id of [SHAPES_PRO_B_RULE_ID, SHAPES_PRO_C_RULE_ID]) {
+        const rule = rules.find((r) => r.id === id);
+        expect(rule?.enabled, `Free: rule ${id} stays on (the gate never switches off a rule for combinesWith)`).toBe(true);
+        expect(rule?.combinesWith, `Free: the plan gate removed ${id}'s combinesWith from the live payload`).toBeUndefined();
+      }
+    }
 
     const response = await page.goto(`/products/${SHAPES_PRODUCT_A_HANDLE}`, { waitUntil: "load" });
     expect(response?.status()).toBeLessThan(400);
@@ -161,44 +295,75 @@ test.describe(`Won Discounts output shapes in cart and checkout (MVP 1 gate)${TH
       expect(planLine.product?.components.map((c) => c.ruleId), "planCart: rule A alone on the line").toEqual([SHAPES_CAP_RULE_ID]);
       expect(planLine.product?.value, "planCart: capped at the unit price").toEqual({ fixedPerItem: item.original_price });
       expect(planLine.product?.amount, "planCart: the whole line").toBe(planLine.subtotal);
-      expect(capped.emittedPercent, "output mapping: 100 %").toBe(100);
+      expect(capped.emitted, "output mapping: 100 %").toEqual(percentage(100));
       expect(item.line_level_discount_allocations).toHaveLength(1);
       const allocation = item.line_level_discount_allocations[0]!;
       expect(allocation.discount_application.title).toBe(SHAPES_CAP_RULE_NAME);
-      expect(allocation.discount_application.value_type, "sent as a percentage").toBe("percentage");
-      expect(Number(allocation.discount_application.value), "sent as 100 %").toBe(100);
+      expectSentAs(allocation, capped.emitted, "the capped line");
       expect(allocation.amount, "line discount = planCart").toBe(planLine.product?.amount);
       expect(item.final_line_price, "the line costs 0").toBe(0);
     });
 
-    await test.step("(b) won-e2e-simple-a: Pro stack B + C → one summed percent = planCart", async () => {
-      const { item, planLine } = stacked;
-      const stack = planLine.product;
-      expect(stack?.components.map((c) => c.ruleId), "planCart: B and C stack").toEqual([SHAPES_PRO_B_RULE_ID, SHAPES_PRO_C_RULE_ID]);
-      expect(stack?.value.fixedTotal, "planCart: a stack is a fixed total").toBe(stack?.amount);
-      const percents = stack!.components.map((c) => {
-        const value = rules.find((r) => r.id === c.ruleId)!.value;
-        return value.kind === "percentage" ? value.percent : Number.NaN;
+    const simpleA = simpleARules(rules);
+    if (E2E_PLAN === "free") {
+      await test.step(`(b) won-e2e-simple-a on Free: no Pro stack → only the better single rule (${simpleA.bestPercent} %, not ${simpleA.summed} %) = planCart`, async () => {
+        const { item, planLine } = stacked;
+        const single = planLine.product;
+        const proStackAmount = Math.round((planLine.subtotal * simpleA.summed) / 100);
+        expect(single?.components.map((c) => c.ruleId), "planCart on the gated payload: the better rule alone, no stack").toEqual([simpleA.best]);
+        expect(single?.value, "planCart: a single percentage, not a stack total").toEqual({ percent: simpleA.bestPercent });
+        expect(single?.message, "planCart: the single rule's own message").toBe(rules.find((r) => r.id === simpleA.best)?.name);
+        const other = expected.plan.rules.find((r) => r.ruleId === simpleA.other);
+        expect(other?.state, `planCart: ${simpleA.other} competed and lost (outranked), it is not combined`).toBe("outranked");
+        expect(other?.amount, `planCart: ${simpleA.other} contributes nothing`).toBe(0);
+        expect(stacked.emitted, `output mapping: the single rule's ${simpleA.bestPercent} % (its exact amount on a rounding tie)`).toEqual(
+          percentOnLine(simpleA.bestPercent, single!.amount, planLine),
+        );
+        expect(single?.amount, `Free gives less than the Pro stack (${simpleA.percents.join(" + ")} % = ${proStackAmount})`).toBeLessThan(proStackAmount);
+        expect(item.line_level_discount_allocations, "one discount on the line").toHaveLength(1);
+        const allocation = item.line_level_discount_allocations[0]!;
+        expect(allocation.discount_application.title, "title = the single rule, not the stack message").toBe(single?.message);
+        expectSentAs(allocation, stacked.emitted, "simple-a (Free)");
+        if (allocation.discount_application.value_type === "percentage") {
+          expect(Number(allocation.discount_application.value), `NOT the summed Pro stack (${simpleA.summed} %)`).not.toBe(simpleA.summed);
+        }
+        expect(allocation.amount, "line discount = planCart").toBe(single?.amount);
+        expect(allocation.amount, "line discount is not the Pro stack amount").not.toBe(proStackAmount);
+        expect(item.final_line_price).toBe(planLine.subtotal - single!.amount);
       });
-      const summed = percents.reduce((a, b) => a + b, 0);
-      expect(stacked.emittedPercent, `output mapping: ΣP = ${percents.join(" + ")} %`).toBe(summed);
-      expect(Math.round((planLine.subtotal * summed) / 100), "Math.round(S × ΣP / 100) = the stack total").toBe(stack?.amount);
-      expect(item.line_level_discount_allocations).toHaveLength(1);
-      const allocation = item.line_level_discount_allocations[0]!;
-      expect(allocation.discount_application.title, "title = the stack message").toBe(stack?.message);
-      expect(allocation.discount_application.value_type, "sent as a percentage").toBe("percentage");
-      expect(Number(allocation.discount_application.value), `sent as ${summed} %`).toBe(summed);
-      expect(allocation.amount, "line discount = planCart").toBe(stack?.amount);
-      expect(item.final_line_price).toBe(planLine.subtotal - stack!.amount);
-    });
+    } else {
+      await test.step(`(b) won-e2e-simple-a: Pro stack B + C → one summed percent = planCart (sent as ${describeEmitted(stacked.emitted)})`, async () => {
+        const { item, planLine } = stacked;
+        const stack = planLine.product;
+        expect(stack?.components.map((c) => c.ruleId), "planCart: B and C stack").toEqual([SHAPES_PRO_B_RULE_ID, SHAPES_PRO_C_RULE_ID]);
+        expect(stack?.value.fixedTotal, "planCart: a stack is a fixed total").toBe(stack?.amount);
+        const percents = stack!.components.map((c) => {
+          const value = rules.find((r) => r.id === c.ruleId)!.value;
+          return value.kind === "percentage" ? value.percent : Number.NaN;
+        });
+        const summed = percents.reduce((a, b) => a + b, 0);
+        expect(Math.round((planLine.subtotal * summed) / 100), "Math.round(S × ΣP / 100) = the stack total").toBe(stack?.amount);
+        expect(stacked.emitted, `output mapping: ΣP = ${percents.join(" + ")} % (its exact amount on a rounding tie)`).toEqual(
+          percentOnLine(summed, stack!.amount, planLine),
+        );
+        expect(item.line_level_discount_allocations).toHaveLength(1);
+        const allocation = item.line_level_discount_allocations[0]!;
+        expect(allocation.discount_application.title, "title = the stack message").toBe(stack?.message);
+        expectSentAs(allocation, stacked.emitted, "simple-a (Pro stack)");
+        expect(allocation.amount, "line discount = planCart").toBe(stack?.amount);
+        expect(item.final_line_price).toBe(planLine.subtotal - stack!.amount);
+      });
+    }
 
     expect(cart.cart_level_discount_applications).toEqual([]);
     expect(cart.items_subtotal_price, "subtotal after line discounts = planCart").toBe(expected.subtotalAfterLines);
     expect(cart.total_price, "cart total = planCart").toBe(expected.total);
 
-    await saveEvidence(testInfo, "cart-shapes", {
+    await saveEvidence(testInfo, named("cart-shapes"), {
       at: new Date().toISOString(),
       theme: THEME_LABEL || null,
+      planMode: E2E_PLAN,
+      ...(E2E_PLAN === "free" ? { freeGate: freeGateEvidence(rules, stacked, expected.total) } : {}),
       currency: cart.currency,
       lines: shapes.map((s) => ({
         handle: s.handle,
@@ -218,7 +383,7 @@ test.describe(`Won Discounts output shapes in cart and checkout (MVP 1 gate)${TH
           value: s.planLine.product?.value ?? null,
           amount: s.planLine.product?.amount ?? 0,
           message: s.planLine.product?.message ?? null,
-          emittedPercent: s.emittedPercent,
+          emitted: s.emitted,
         },
       })),
       items_subtotal_price: cart.items_subtotal_price,
@@ -265,7 +430,7 @@ test.describe(`Won Discounts output shapes in cart and checkout (MVP 1 gate)${TH
             discount: -planAmount,
             originalPrice: shape.item.original_price * shape.item.quantity,
             finalPrice: shape.planLine.subtotal - planAmount,
-            emittedPercent: shape.emittedPercent,
+            emitted: shape.emitted,
           },
         };
       });
@@ -315,18 +480,30 @@ test.describe(`Won Discounts output shapes in cart and checkout (MVP 1 gate)${TH
       expect(shipping, "shipping amount").not.toBeNull();
       expect(observed.total, "thank-you total = cart total (= planCart) + shipping + tax").toBe(expected.total + (shipping ?? 0) + tax);
       expect(observed.charged, "the card was charged the thank-you total").toBe(observed.total);
+      if (E2E_PLAN === "free") {
+        const simpleA = simpleARules(inputs.config.modules.codes.rules);
+        const stackedLine = observedLines.find((l) => l.handle === SHAPES_PRODUCT_A_HANDLE)!;
+        const proStackAmount = Math.round((byHandle(shapes, SHAPES_PRODUCT_A_HANDLE).planLine.subtotal * simpleA.summed) / 100);
+        expect(stackedLine.message, "Free: simple-a's discount is the single better rule").toBe(inputs.config.modules.codes.rules.find((r) => r.id === simpleA.best)?.name);
+        expect(stackedLine.observed.discount, `Free: thank-you simple-a is NOT the Pro stack (${simpleA.summed} % = −${proStackAmount})`).not.toBe(-proStackAmount);
+        expect(-(stackedLine.observed.discount ?? 0), "Free: thank-you simple-a discount is below the Pro stack").toBeLessThan(proStackAmount);
+      }
       return { rows, lines, observedLines, observed };
     });
 
-    await saveScreenshot(page, testInfo, "thankyou-shapes-1440");
+    await saveScreenshot(page, testInfo, named("thankyou-shapes-1440"));
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(1_000);
     await expandMobileSummary(page);
-    await saveScreenshot(page, testInfo, "thankyou-shapes-390");
+    await saveScreenshot(page, testInfo, named("thankyou-shapes-390"));
 
-    await saveEvidence(testInfo, "checkout-shapes", {
+    await saveEvidence(testInfo, named("checkout-shapes"), {
       at: new Date().toISOString(),
       theme: THEME_LABEL || null,
+      planMode: E2E_PLAN,
+      ...(E2E_PLAN === "free"
+        ? { freeGate: freeGateEvidence(inputs.config.modules.codes.rules, byHandle(shapes, SHAPES_PRODUCT_A_HANDLE), expected.total) }
+        : {}),
       checkoutPath: new URL(page.url()).pathname.replace(/\/cn\/[^/]+/u, "/cn/<token>"),
       cart: {
         currency: cart.currency,
@@ -348,7 +525,7 @@ test.describe(`Won Discounts output shapes in cart and checkout (MVP 1 gate)${TH
       },
       plan: {
         totals: expected.plan.totals,
-        lines: shapes.map((s) => ({ handle: s.handle, product: s.planLine.product, emittedPercent: s.emittedPercent })),
+        lines: shapes.map((s) => ({ handle: s.handle, product: s.planLine.product, emitted: s.emitted })),
         rules: expected.plan.rules.map((r) => ({ ruleId: r.ruleId, state: r.state, amount: r.amount, combinedInto: r.combinedInto ?? null })),
       },
       thankYou: { lines: thankYou.observedLines, ...thankYou.observed, expectedTotal: expected.total + (thankYou.observed.shipping ?? 0) + thankYou.observed.tax },

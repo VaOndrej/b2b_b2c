@@ -1,3 +1,5 @@
+import { roundingTiePossible } from "@won/core/discounts/function-output";
+
 import {
   E2E_AUTO_PERCENT,
   E2E_AUTO_RULE_ID,
@@ -105,8 +107,20 @@ test.describe(`Won Discounts in cart and checkout (MVP 1)${THEME_LABEL ? ` — $
       ]);
       expect(cart.cart_level_discount_applications).toHaveLength(1);
       const order = cart.cart_level_discount_applications[0]!;
-      expect(order.value_type).toBe("percentage");
-      expect(Number(order.value)).toBe(E2E_CODE_PERCENT);
+      // The value the function sends follows output.rs: 15 % as a percentage, unless
+      // 15 % of the base lands on half a haléř (a rounding tie) — then its exact
+      // amount, because Shopify may round the tie the other way than the plan. The
+      // base moves: the CZK price is the store price converted at the market's
+      // live rate (won-e2e-simple-a was 218,00 Kč on 2026-09-28, 219,00 Kč on
+      // 2026-09-29, where 15 % of 197,10 Kč = 29,565 Kč is a tie).
+      const orderBase = expected.plan.order?.base ?? expected.subtotalAfterLines;
+      if (roundingTiePossible(orderBase, E2E_CODE_PERCENT)) {
+        expect(order.value_type, `rounding tie (${orderBase} × ${E2E_CODE_PERCENT} % = ${(orderBase * E2E_CODE_PERCENT) / 100}): sent as its exact amount`).toBe("fixed_amount");
+        expect(Math.round(Number(order.value) * 100), "the exact amount = planCart (CZK, 2 decimals)").toBe(expected.orderDiscount);
+      } else {
+        expect(order.value_type).toBe("percentage");
+        expect(Number(order.value)).toBe(E2E_CODE_PERCENT);
+      }
       expect(cart.items_subtotal_price, "subtotal after the line discount = planCart").toBe(expected.subtotalAfterLines);
       expect(order.total_allocated_amount, "order discount = planCart (15 % of the discounted subtotal)").toBe(expected.orderDiscount);
       expect(order.total_allocated_amount).toBe(Math.round((expected.subtotalAfterLines * E2E_CODE_PERCENT) / 100));

@@ -1,0 +1,42 @@
+{
+  "name": "seed-mvp1-cleanup",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "at": "2026-09-29T08:21:43.500Z",
+  "command": "node apps/won-discounts/scripts/e2e/seed-mvp1.mjs --cleanup --live",
+  "restoredRules": [],
+  "save": {
+    "ok": true,
+    "functionConfigBytes": 427
+  },
+  "syncRun": {
+    "runId": "cmumequoa0001sn4zyavri90v",
+    "ok": true,
+    "steps": [
+      {
+        "step": "plan",
+        "ok": true,
+        "detail": "plan free: nothing to gate"
+      },
+      {
+        "step": "products.scope",
+        "ok": true,
+        "detail": "0 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date"
+      },
+      {
+        "step": "products.clear",
+        "ok": true,
+        "detail": "2 product(s) no longer targeted, cleared"
+      },
+      {
+        "step": "shop_config.write",
+        "ok": true,
+        "detail": "427 B written"
+      },
+      {
+        "step": "shop_config.verify",
+        "ok": true,
+        "detail": "read back and verified (427 B)"
+      }
+    ]
+  }
+}
