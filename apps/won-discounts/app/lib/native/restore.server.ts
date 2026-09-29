@@ -2,15 +2,19 @@
 // immediate rollback when a move fails after the delete, REL-3).
 //
 // The restored discount has the same title, value, targets, minimum, dates,
-// combinations, limits and EVERY redeem code (first code in the create, the rest
-// via discountRedeemCodeBulkAdd, 250 per call). What Shopify cannot take back:
-// the usage count and the "once per customer" history (both start at zero).
+// combinations and EVERY redeem code (first code in the create, the rest via
+// discountRedeemCodeBulkAdd, 250 per call). It is a NEW discount (new id) and
+// Shopify cannot take back its usage count or the "once per customer" history
+// (both start at zero), so the usage limit is set to what is LEFT of it
+// (limit − uses so far, F1): a restore never hands out uses again.
 //
-// Idempotent (REL-2): before creating, a code discount is looked up by its
-// first code, so a retried restore whose first attempt landed reuses that
-// discount instead of failing on "code taken". An automatic restore whose
-// response was lost is found among the newest automatic discounts by exact
-// title + type, created after the restore started.
+// Idempotent (REL-2, F8): BEFORE creating, a code discount is looked up by its
+// first code and an automatic one among the newest automatic discounts (same
+// type, title, value and start, created after the backup was taken), so a
+// retried restore whose first attempt landed reuses that discount. The caller
+// records a restore marker (`restoring`) in the backup before the create. A
+// look-up that cannot be read never leads to a create: the answer is
+// `unknown` and a later attempt checks again.
 
 import { REDEEM_CODES_PER_CALL } from "./documents.ts";
 import { normalizeNode } from "./normalize.ts";
@@ -30,6 +34,11 @@ export interface SnapshotEnvelope {
    * Set once the discount is (back) in Shopify under this id: after an undo,
    * after a failed move put it back, or when the delete never happened.
    */
+  /**
+   * Set just before a restore creates the discount (F8): a resumed move or undo
+   * that finds it looks for the created copy first.
+   */
+  restoring?: { at: string };
   restoredAs?: {
     nativeId: string;
     at: string;
@@ -82,15 +91,35 @@ const CREATE: Record<MovableKind, { doc: "codeBasicCreate" | "automaticBasicCrea
   },
 };
 
+export interface CreateOptions {
+  /**
+   * Uses of the discount so far (before the move, plus through Won for an undo).
+   * The restored discount's counter starts at zero, so its limit is what is
+   * left. Default: the backup's own usage count.
+   */
+  usedSoFar?: number;
+  /** When the limit is spent, the discount comes back ended at this instant. */
+  now?: Date;
+}
+
+/** The usage limit a restore gives the new discount, and whether it comes back ended (nothing left). */
+export function restoredLimit(native: NativeDiscount, usedSoFar: number = native.usageCount): { usageLimit: number | null; ended: boolean } {
+  if (native.method !== "code" || native.usageLimit === null) return { usageLimit: null, ended: false };
+  const left = native.usageLimit - Math.max(0, usedSoFar);
+  // Shopify needs a positive limit: with nothing left the discount comes back ended.
+  return left > 0 ? { usageLimit: left, ended: false } : { usageLimit: 1, ended: true };
+}
+
 /**
  * The create mutation input for `native` (validated shapes: see the report).
  * `raw` supplies the exact percentage (the normalized one is rounded for Won).
  */
-export function buildCreateInput(native: NativeDiscount, raw: any): Record<string, unknown> {
+export function buildCreateInput(native: NativeDiscount, raw: any, options: CreateOptions = {}): Record<string, unknown> {
+  const limit = restoredLimit(native, options.usedSoFar);
   const input: Record<string, unknown> = {
     title: native.title,
     startsAt: native.startsAt,
-    endsAt: native.endsAt,
+    endsAt: limit.ended ? (options.now ?? new Date()).toISOString() : native.endsAt,
     context: { all: "ALL" },
     combinesWith: { ...native.combinesWith },
   };
@@ -132,7 +161,7 @@ export function buildCreateInput(native: NativeDiscount, raw: any): Record<strin
   if (native.method === "code") {
     input.code = native.codes[0];
     input.appliesOncePerCustomer = native.oncePerCustomer;
-    if (native.usageLimit !== null) input.usageLimit = native.usageLimit;
+    if (limit.usageLimit !== null) input.usageLimit = limit.usageLimit;
   }
   return input;
 }
@@ -145,13 +174,26 @@ export type RestoreResult =
       /** Snapshot codes not on the discount yet (failed or, with `codesPending`, still importing). */
       codesMissing: number;
       codesPending: boolean;
+      /** The limit the restored discount got (what was left), null without a limit. */
+      usageLimit: number | null;
+      /** Nothing was left of the limit: the discount came back ended. */
+      ended: boolean;
     }
-  | { ok: false; message: string; codeTaken?: boolean };
+  /**
+   * `unknown`: the create may have landed (no answer and the look-up could not
+   * be read, or the look-up before the create failed): nothing may be created
+   * or put back on top until a later attempt looks again.
+   */
+  | { ok: false; message: string; codeTaken?: boolean; unknown?: boolean };
 
 export interface RestoreOptions extends RequestOptions {
   now?: () => Date;
   /** Polls of a bulk code creation before giving up waiting (codes may still land). */
   bulkPolls?: number;
+  /** See CreateOptions.usedSoFar. */
+  usedSoFar?: number;
+  /** Records the restore marker in the backup (F8); runs right before the create. */
+  onBeforeCreate?: () => Promise<void>;
 }
 
 async function lookupCode(
@@ -169,23 +211,66 @@ async function lookupCode(
   };
 }
 
-async function findRecentAutomatic(
+/** Same discount value (the raw snapshot value vs a listed node's value). */
+function sameValue(a: any, b: any): boolean {
+  if (!a && !b) return true;
+  if (a?.__typename !== b?.__typename) return false;
+  if (a.__typename === "DiscountPercentage") return Math.abs(Number(a.percentage) - Number(b.percentage)) < 1e-9;
+  if (a.__typename === "DiscountAmount") {
+    return Number(a.amount?.amount) === Number(b.amount?.amount) && Boolean(a.appliesOnEachItem) === Boolean(b.appliesOnEachItem);
+  }
+  return true;
+}
+
+/**
+ * An automatic discount an earlier restore created (F8): same type, title,
+ * start and value, created after the backup was taken. `ok: false` when the
+ * list cannot be read (never treated as "none").
+ */
+async function findMatchingAutomatic(
   client: AdminClient,
   native: NativeDiscount,
+  raw: any,
   since: Date,
   options: RequestOptions,
-): Promise<string | null> {
+): Promise<{ ok: true; id: string | null } | { ok: false; message: string }> {
   const result = await runGql(client, "recentAutomatic", undefined, options);
-  if (!result.ok) return null;
+  if (!result.ok) return { ok: false, message: result.message };
+  if (result.partialErrors?.length) return { ok: false, message: result.partialErrors.join("; ") };
   const nodes: any[] = Array.isArray(result.data?.discountNodes?.nodes) ? result.data.discountNodes.nodes : [];
   const typename = CREATE[native.kind].typename;
+  const wantedValue = raw?.discount?.customerGets?.value;
   const match = nodes.find(
     (n) =>
       n?.discount?.__typename === typename &&
       n.discount.title === native.title &&
+      Date.parse(n.discount.startsAt) === Date.parse(native.startsAt) &&
+      (native.kind !== "automatic_basic" || sameValue(n.discount.customerGets?.value, wantedValue)) &&
       Date.parse(n.discount.createdAt) >= since.getTime() - 60_000,
   );
-  return typeof match?.id === "string" ? match.id : null;
+  return { ok: true, id: typeof match?.id === "string" ? match.id : null };
+}
+
+/**
+ * A copy of the backed-up discount that an earlier restore created, if any
+ * (F8: a resumed move must not add the Won rule on top of it). `ok: false`
+ * when Shopify could not be read.
+ */
+export async function findRestoredCopy(
+  client: AdminClient,
+  envelope: SnapshotEnvelope,
+  options: RequestOptions = {},
+): Promise<{ ok: true; id: string | null } | { ok: false; message: string }> {
+  const native = nativeFromSnapshot(envelope);
+  if (!native) return { ok: false, message: "the backup cannot be read" };
+  if (native.method === "code") {
+    if (native.codes.length === 0) return { ok: true, id: null };
+    const found = await lookupCode(client, native.codes[0], options);
+    if (!found.ok) return found;
+    const spec = CREATE[native.kind];
+    return { ok: true, id: found.found && found.found.typename === spec.typename && found.found.title === native.title ? found.found.id : null };
+  }
+  return findMatchingAutomatic(client, native, envelope.node, new Date(envelope.takenAt), options);
 }
 
 async function addRemainingCodes(
@@ -233,23 +318,40 @@ export async function restoreNative(
   const native = nativeFromSnapshot(envelope);
   if (!native) return { ok: false, message: "the backup cannot be read" };
   const spec = CREATE[native.kind];
-  const startedAt = options.now?.() ?? new Date();
+  const backupTakenAt = new Date(envelope.takenAt);
+  const limit = restoredLimit(native, options.usedSoFar);
+  const done = async (nativeId: string, reused: boolean): Promise<RestoreResult> => {
+    const codes = await completeCodes(client, nativeId, native, reused, options);
+    return { ok: true, nativeId, reused, codesMissing: codes.missing, codesPending: codes.pending, usageLimit: limit.usageLimit, ended: limit.ended };
+  };
 
+  // Look BEFORE creating (F8): a copy an earlier attempt created is reused.
   if (native.method === "code") {
     if (native.codes.length === 0) return { ok: false, message: "the backup has no code" };
     const existing = await lookupCode(client, native.codes[0], options);
-    if (!existing.ok) return { ok: false, message: existing.message };
+    if (!existing.ok) return { ok: false, message: existing.message, unknown: envelope.restoring !== undefined };
     if (existing.found) {
       if (existing.found.typename === spec.typename && existing.found.title === native.title) {
         // An earlier attempt created it; it may have died before every code was added.
-        const codes = await completeCodes(client, existing.found.id, native, true, options);
-        return { ok: true, nativeId: existing.found.id, reused: true, codesMissing: codes.missing, codesPending: codes.pending };
+        return done(existing.found.id, true);
       }
       return { ok: false, message: `the code ${native.codes[0]} belongs to another discount`, codeTaken: true };
     }
+  } else {
+    const existing = await findMatchingAutomatic(client, native, envelope.node, backupTakenAt, options);
+    // An automatic discount has no unique key: without the look-up a create
+    // could duplicate one an earlier attempt made (its marker says so).
+    if (!existing.ok) return { ok: false, message: existing.message, unknown: envelope.restoring !== undefined };
+    if (existing.id) return done(existing.id, true);
   }
 
-  const created = await runGql(client, spec.doc, { input: buildCreateInput(native, envelope.node) }, options);
+  await options.onBeforeCreate?.();
+  const created = await runGql(
+    client,
+    spec.doc,
+    { input: buildCreateInput(native, envelope.node, { usedSoFar: options.usedSoFar, now: options.now?.() }) },
+    options,
+  );
   let nativeId: string | null = null;
   if (created.ok) {
     const payload = created.data?.[spec.field];
@@ -260,17 +362,18 @@ export async function restoreNative(
   if (!nativeId && !(created.ok === false && created.kind === "throttled")) {
     // Transport failure, a GraphQL error or an answer without an id: the create
     // may still have landed. Look before reporting a failure (never duplicate).
-    if (native.method === "code") {
-      const found = await lookupCode(client, native.codes[0], options);
-      if (found.ok && found.found?.typename === spec.typename && found.found.title === native.title) nativeId = found.found.id;
-    } else {
-      nativeId = await findRecentAutomatic(client, native, startedAt, options);
+    const found = await findRestoredCopy(client, envelope, options);
+    const message = created.ok ? "Shopify returned no discount id" : created.message;
+    if (!found.ok) return { ok: false, message, unknown: true };
+    if (found.id) nativeId = found.id;
+    else if (native.method === "automatic") {
+      // Not listed (yet): a late create would still land. Unknown, not "failed".
+      return { ok: false, message, unknown: true };
     }
   }
   if (!nativeId) return { ok: false, message: created.ok ? "Shopify returned no discount id" : created.message };
 
-  const codes = await completeCodes(client, nativeId, native, false, options);
-  return { ok: true, nativeId, reused: false, codesMissing: codes.missing, codesPending: codes.pending };
+  return done(nativeId, false);
 }
 
 /** Redeem codes Shopify reports on a discount, or null when it cannot be read. */

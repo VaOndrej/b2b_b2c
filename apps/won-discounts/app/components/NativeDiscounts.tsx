@@ -5,16 +5,18 @@
 // route action (app/lib/integration: moveNative / undoMove through saveAndSync);
 // the page language rides along, so the result sentences match the page.
 // Every backup with an undo stays listed whatever the detection does (a slow
-// Shopify must never hide "Vrátit zpět").
+// Shopify must never hide "Vrátit zpět"). "Vrátit zpět" asks first and says
+// what the undo changes (F11); moved discounts carry how they now stack with
+// the discounts that stayed in Shopify (F4) and the uninstall warning.
 
 import { useState } from "react";
 import { useFetcher } from "react-router";
 
 import { useT } from "../i18n/context";
 import type { Translator } from "../i18n";
-import { MoveDialog } from "./MoveDialog";
+import { MoveDialog, UndoDialog, type UndoableBackup } from "./MoveDialog";
 import { formatDateTime } from "./model/signals";
-import type { MovedDiscountView, NativeBlockedReason, NativeDiscountView, NativeView, UiResult } from "./model/types";
+import type { NativeBlockedReason, NativeDiscountView, NativeView, UiResult } from "./model/types";
 import { boolAttr } from "./shell/attrs";
 import { Notice } from "./shell/Notice";
 import { RowNote, WonRow } from "./shell/WonSection";
@@ -40,6 +42,7 @@ function describeNative(d: NativeDiscountView, tr: Translator): string {
 }
 
 const DIALOG_ID = "won-move-dialog";
+const UNDO_DIALOG_ID = "won-undo-dialog";
 
 export function NativeDiscountsPanel({
   native,
@@ -68,9 +71,11 @@ function NativeList({
   const tr = useT();
   const fetcher = useFetcher<UiResult>();
   const [pending, setPending] = useState<NativeDiscountView[]>([]);
+  const [pendingUndo, setPendingUndo] = useState<UndoableBackup | null>(null);
   const discounts = native.state === "ok" ? native.discounts : [];
   const conflicts = native.state === "ok" ? (native.conflicts ?? []) : [];
-  const backups = native.moved ?? [];
+  // The integration layer adds undo costs / stacking notes (app/lib/integration MovedBackupView).
+  const backups: UndoableBackup[] = native.moved ?? [];
   const moved = backups.filter((m) => m.state !== "attention");
   const attention = backups.filter((m) => m.state === "attention");
   const movable = discounts.filter((d) => d.movable);
@@ -96,12 +101,18 @@ function NativeList({
     </s-button>
   );
 
-  const undoRow = (m: MovedDiscountView) => (
+  const undoRow = (m: UndoableBackup) => (
     <WonRow
       key={m.backupId}
       tone={m.state === "attention" ? "attention" : undefined}
       action={
-        <s-button variant={m.state === "attention" ? "secondary" : "tertiary"} disabled={boolAttr(busy)} onClick={() => submit("undo", [m.backupId])}>
+        <s-button
+          variant={m.state === "attention" ? "secondary" : "tertiary"}
+          commandFor={UNDO_DIALOG_ID}
+          command="--show"
+          disabled={boolAttr(busy)}
+          onClick={() => setPendingUndo(m)}
+        >
           {tr.t("overview.native.undo")}
         </s-button>
       }
@@ -112,6 +123,11 @@ function NativeList({
       ) : (
         <RowNote>{tr.t("overview.native.movedAt", { date: formatDateTime(m.movedAt, tr.locale) })}</RowNote>
       )}
+      {(m.stacking ?? []).map((note, i) => (
+        <RowNote key={`${i}-${note}`} tone="attention">
+          {note}
+        </RowNote>
+      ))}
     </WonRow>
   );
 
@@ -159,10 +175,12 @@ function NativeList({
       {moved.length > 0 ? (
         <div>
           <s-text type="strong">{tr.t("overview.native.movedTitle")}</s-text>
+          <s-paragraph>{tr.t("overview.native.uninstall")}</s-paragraph>
           {moved.map(undoRow)}
         </div>
       ) : null}
       <MoveDialog id={DIALOG_ID} discounts={pending} onConfirm={() => submit("move", pending.map((d) => d.id))} />
+      <UndoDialog id={UNDO_DIALOG_ID} backup={pendingUndo} onConfirm={() => pendingUndo && submit("undo", [pendingUndo.backupId])} />
     </s-stack>
   );
 }

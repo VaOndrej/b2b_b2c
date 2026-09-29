@@ -61,6 +61,19 @@ export interface NativeCombinesWith {
   shippingDiscounts: boolean;
 }
 
+/** Shopify's discount classes (product, order, shipping), as Won's combination categories. */
+export type DiscountClass = "product" | "order" | "shipping";
+
+/**
+ * How a discount that stays in Shopify combines (F4): after a move the Won
+ * discount combines with every class, so whether they add up is decided only
+ * by this discount's own `combinesWith`.
+ */
+export interface NativeStacking {
+  classes: DiscountClass[];
+  combinesWith: NativeCombinesWith;
+}
+
 /**
  * A Basic or Free shipping discount, normalized from the Admin API. Detection
  * reads the first page of every list (`complete: false` when a list goes on);
@@ -101,6 +114,12 @@ export interface NativeDiscount {
   maximumShippingPrice: { amount: string; currencyCode: string } | null;
   /** False when a list (products, variants, collections, codes) has more entries than were read. */
   complete: boolean;
+  /**
+   * Fields Shopify returned in a shape this reader does not know (e.g. an
+   * unknown or missing shipping destination). Such a discount never moves:
+   * the conservative reading keeps it in Shopify (F13).
+   */
+  unreadable?: string[];
   shop: ShopContext;
 }
 
@@ -111,6 +130,7 @@ export type NotMovableReason =
   | { code: "specific_buyers" }
   | { code: "subscription_only" }
   | { code: "fixed_once_per_order" }
+  | { code: "fixed_each_item_on_order" }
   | { code: "shipping_countries" }
   | { code: "shipping_price_cap" }
   | { code: "too_many_items"; count: number; limit: number }
@@ -130,6 +150,8 @@ export interface NotMovableEntry {
   reasonCode: NotMovableReason["code"];
   /** Human sentence in the requested locale (§4c: never an enum key). */
   reason: string;
+  /** How it combines, when Shopify said so (F4: the move dialog warns about new stacking). */
+  stacking?: NativeStacking;
 }
 
 export interface ExpiredEntry {
@@ -182,9 +204,30 @@ export interface MovePlan {
  *   human sentence. It may have saved the config or synced part of it —
  *   the caller then rolls back by calling it again with the rule removed.
  */
-export type SaveAndSync = (input: { shop: string; config: WonDiscountsConfig }) => Promise<SaveAndSyncResult>;
+export type SaveAndSync = (input: {
+  shop: string;
+  config: WonDiscountsConfig;
+  /**
+   * F12: the stored config version (LoadedConfig.version) `config` was built
+   * on. The save refuses when another writer changed the config meanwhile and
+   * answers `{ ok: false, conflict: true }`: nothing saved, nothing synced;
+   * the caller reads the config again and retries.
+   */
+  baseVersion?: string | null;
+}) => Promise<SaveAndSyncResult>;
 
-export type SaveAndSyncResult = { ok: true } | { ok: false; message: string };
+export type SaveAndSyncResult = { ok: true } | { ok: false; message: string; conflict?: boolean };
+
+/**
+ * Extra facts about a backup with an undo, carried next to a MovedDiscountView
+ * (components/model/types.ts) on Přehled:
+ *   undoCosts  what an undo will change, shown BEFORE the merchant confirms it (F11, §14c);
+ *   stacking   how the moved discount now stacks with discounts that stayed in Shopify (F4).
+ */
+export interface MovedBackupExtras {
+  undoCosts?: string[];
+  stacking?: string[];
+}
 
 /**
  * NativeDiscountBackup.status values (a plain string column, no schema change):

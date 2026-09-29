@@ -1,0 +1,406 @@
+{
+  "experiment": "f0-native-facts",
+  "mode": "live",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "apiVersion": "2026-04",
+  "startedAt": "2026-09-29T05:43:37.825Z",
+  "steps": [],
+  "observations": [],
+  "graphql": [
+    {
+      "at": "2026-09-29T05:43:48.723Z",
+      "label": "fact1-min-scope",
+      "variables": {
+        "title": "WON-PROTO-F0 fact1 min-scope",
+        "startsAt": "2026-09-29T05:42:44.098Z",
+        "minimumRequirement": {
+          "subtotal": {
+            "greaterThanOrEqualToSubtotal": "15.00"
+          }
+        },
+        "customerGets": {
+          "value": {
+            "percentage": 0.1
+          },
+          "items": {
+            "products": {
+              "productVariantsToAdd": [
+                "gid://shopify/ProductVariant/48468678902001"
+              ]
+            }
+          }
+        },
+        "combinesWith": {
+          "orderDiscounts": true,
+          "productDiscounts": true,
+          "shippingDiscounts": true
+        }
+      },
+      "response": {
+        "automaticDiscountNode": {
+          "id": "gid://shopify/DiscountAutomaticNode/2204410577137",
+          "automaticDiscount": {
+            "title": "WON-PROTO-F0 fact1 min-scope",
+            "discountClasses": [
+              "PRODUCT"
+            ],
+            "minimumRequirement": {
+              "greaterThanOrEqualToSubtotal": {
+                "amount": "15.0",
+                "currencyCode": "USD"
+              }
+            }
+          }
+        },
+        "userErrors": []
+      }
+    },
+    {
+      "at": "2026-09-29T05:44:03.955Z",
+      "label": "fact2a-A",
+      "variables": {
+        "title": "WON-PROTO-F0 fact2a A 10pct-product",
+        "startsAt": "2026-09-29T05:43:00.303Z",
+        "customerGets": {
+          "value": {
+            "percentage": 0.1
+          },
+          "items": {
+            "products": {
+              "productVariantsToAdd": [
+                "gid://shopify/ProductVariant/48468678902001"
+              ]
+            }
+          }
+        },
+        "combinesWith": {
+          "orderDiscounts": false,
+          "productDiscounts": true,
+          "shippingDiscounts": true
+        }
+      },
+      "response": {
+        "automaticDiscountNode": {
+          "id": "gid://shopify/DiscountAutomaticNode/2204410609905",
+          "automaticDiscount": {
+            "title": "WON-PROTO-F0 fact2a A 10pct-product",
+            "discountClasses": [
+              "PRODUCT"
+            ],
+            "minimumRequirement": null
+          }
+        },
+        "userErrors": []
+      }
+    },
+    {
+      "at": "2026-09-29T05:44:07.476Z",
+      "label": "fact2a-B",
+      "variables": {
+        "title": "WON-PROTO-F0 fact2a B 5pct-order",
+        "startsAt": "2026-09-29T05:43:03.955Z",
+        "customerGets": {
+          "value": {
+            "percentage": 0.05
+          },
+          "items": {
+            "all": true
+          }
+        },
+        "combinesWith": {
+          "orderDiscounts": true,
+          "productDiscounts": true,
+          "shippingDiscounts": true
+        }
+      },
+      "response": {
+        "automaticDiscountNode": {
+          "id": "gid://shopify/DiscountAutomaticNode/2204410642673",
+          "automaticDiscount": {
+            "title": "WON-PROTO-F0 fact2a B 5pct-order",
+            "discountClasses": [
+              "ORDER"
+            ],
+            "minimumRequirement": null
+          }
+        },
+        "userErrors": []
+      }
+    },
+    {
+      "at": "2026-09-29T05:44:32.071Z",
+      "label": "fact2b-A",
+      "variables": {
+        "title": "WON-PROTO-F0 fact2b A 10pct-product",
+        "startsAt": "2026-09-29T05:43:28.293Z",
+        "customerGets": {
+          "value": {
+            "percentage": 0.1
+          },
+          "items": {
+            "products": {
+              "productVariantsToAdd": [
+                "gid://shopify/ProductVariant/48468678902001"
+              ]
+            }
+          }
+        },
+        "combinesWith": {
+          "orderDiscounts": true,
+          "productDiscounts": true,
+          "shippingDiscounts": true
+        }
+      },
+      "response": {
+        "automaticDiscountNode": {
+          "id": "gid://shopify/DiscountAutomaticNode/2204410708209",
+          "automaticDiscount": {
+            "title": "WON-PROTO-F0 fact2b A 10pct-product",
+            "discountClasses": [
+              "PRODUCT"
+            ],
+            "minimumRequirement": null
+          }
+        },
+        "userErrors": []
+      }
+    },
+    {
+      "at": "2026-09-29T05:44:35.666Z",
+      "label": "fact2b-B",
+      "variables": {
+        "title": "WON-PROTO-F0 fact2b B 5pct-order",
+        "startsAt": "2026-09-29T05:43:32.071Z",
+        "customerGets": {
+          "value": {
+            "percentage": 0.05
+          },
+          "items": {
+            "all": true
+          }
+        },
+        "combinesWith": {
+          "orderDiscounts": true,
+          "productDiscounts": false,
+          "shippingDiscounts": true
+        }
+      },
+      "response": {
+        "automaticDiscountNode": {
+          "id": "gid://shopify/DiscountAutomaticNode/2204410740977",
+          "automaticDiscount": {
+            "title": "WON-PROTO-F0 fact2b B 5pct-order",
+            "discountClasses": [
+              "ORDER"
+            ],
+            "minimumRequirement": null
+          }
+        },
+        "userErrors": []
+      }
+    }
+  ],
+  "functionLogs": [],
+  "cleanup": {
+    "actions": [
+      {
+        "at": "2026-09-29T05:44:00.303Z",
+        "label": "fact1-min-scope",
+        "id": "gid://shopify/DiscountAutomaticNode/2204410577137",
+        "result": {
+          "deletedAutomaticDiscountId": "gid://shopify/DiscountAutomaticNode/2204410577137",
+          "userErrors": []
+        }
+      },
+      {
+        "at": "2026-09-29T05:44:24.569Z",
+        "label": "fact2a-A",
+        "id": "gid://shopify/DiscountAutomaticNode/2204410609905",
+        "result": {
+          "deletedAutomaticDiscountId": "gid://shopify/DiscountAutomaticNode/2204410609905",
+          "userErrors": []
+        }
+      },
+      {
+        "at": "2026-09-29T05:44:28.293Z",
+        "label": "fact2a-B",
+        "id": "gid://shopify/DiscountAutomaticNode/2204410642673",
+        "result": {
+          "deletedAutomaticDiscountId": "gid://shopify/DiscountAutomaticNode/2204410642673",
+          "userErrors": []
+        }
+      },
+      {
+        "at": "2026-09-29T05:44:47.173Z",
+        "label": "fact2b-A",
+        "id": "gid://shopify/DiscountAutomaticNode/2204410708209",
+        "result": {
+          "deletedAutomaticDiscountId": "gid://shopify/DiscountAutomaticNode/2204410708209",
+          "userErrors": []
+        }
+      },
+      {
+        "at": "2026-09-29T05:44:51.857Z",
+        "label": "fact2b-B",
+        "id": "gid://shopify/DiscountAutomaticNode/2204410740977",
+        "result": {
+          "deletedAutomaticDiscountId": "gid://shopify/DiscountAutomaticNode/2204410740977",
+          "userErrors": []
+        }
+      }
+    ]
+  },
+  "plan": "Fact 1: minimum-scope (whole cart vs entitled items). Fact 2: combining (mutual combinesWith agreement), two directions.",
+  "storefrontVariant": {
+    "id": 48468678902001,
+    "price": 21800
+  },
+  "variants": {
+    "a": {
+      "id": 48468678902001,
+      "price": 21800
+    },
+    "b": {
+      "id": 48468678934769,
+      "price": 26200
+    }
+  },
+  "fact1": {
+    "minAmount": "15.00",
+    "priceA": 21800,
+    "priceB": 26200,
+    "cartAB": {
+      "item_count": 2,
+      "original_total_price": 48000,
+      "total_price": 48000,
+      "total_discount": 0,
+      "totalDiscountPercent": 0,
+      "discount_codes": [],
+      "cart_level_discount_applications": [],
+      "items": [
+        {
+          "variant_id": 48468678934769,
+          "quantity": 1,
+          "original_line_price": 26200,
+          "final_line_price": 26200,
+          "total_discount": 0,
+          "line_level_discount_allocations": []
+        },
+        {
+          "variant_id": 48468678902001,
+          "quantity": 1,
+          "original_line_price": 21800,
+          "final_line_price": 21800,
+          "total_discount": 0,
+          "line_level_discount_allocations": []
+        }
+      ]
+    },
+    "lineAAllocations": [],
+    "verdict": "NOT APPLIED: minimum was evaluated against entitled items only (A alone), so the discount did not fire even though the whole cart exceeds it"
+  },
+  "fact2a": {
+    "cart": {
+      "item_count": 2,
+      "original_total_price": 48000,
+      "total_price": 45600,
+      "total_discount": 2400,
+      "totalDiscountPercent": 5,
+      "discount_codes": [],
+      "cart_level_discount_applications": [
+        {
+          "amount": 2400,
+          "type": "",
+          "title": "WON-PROTO-F0 fact2a B 5pct-order",
+          "value": "5.0",
+          "value_type": "percentage"
+        }
+      ],
+      "items": [
+        {
+          "variant_id": 48468678934769,
+          "quantity": 1,
+          "original_line_price": 26200,
+          "final_line_price": 26200,
+          "total_discount": 1310,
+          "line_level_discount_allocations": []
+        },
+        {
+          "variant_id": 48468678902001,
+          "quantity": 1,
+          "original_line_price": 21800,
+          "final_line_price": 21800,
+          "total_discount": 1090,
+          "line_level_discount_allocations": []
+        }
+      ]
+    }
+  },
+  "fact2b": {
+    "cart": {
+      "item_count": 2,
+      "original_total_price": 48000,
+      "total_price": 45600,
+      "total_discount": 2400,
+      "totalDiscountPercent": 5,
+      "discount_codes": [],
+      "cart_level_discount_applications": [
+        {
+          "amount": 2400,
+          "type": "",
+          "title": "WON-PROTO-F0 fact2b B 5pct-order",
+          "value": "5.0",
+          "value_type": "percentage"
+        }
+      ],
+      "items": [
+        {
+          "variant_id": 48468678934769,
+          "quantity": 1,
+          "original_line_price": 26200,
+          "final_line_price": 26200,
+          "total_discount": 1310,
+          "line_level_discount_allocations": []
+        },
+        {
+          "variant_id": 48468678902001,
+          "quantity": 1,
+          "original_line_price": 21800,
+          "final_line_price": 21800,
+          "total_discount": 1090,
+          "line_level_discount_allocations": []
+        }
+      ]
+    }
+  },
+  "fact2": {
+    "a_disallows_order_b_allows_product": {
+      "lineAAllocations": [],
+      "orderAllocations": [
+        {
+          "amount": 2400,
+          "type": "",
+          "title": "WON-PROTO-F0 fact2a B 5pct-order",
+          "value": "5.0",
+          "value_type": "percentage"
+        }
+      ],
+      "stacked": false
+    },
+    "a_allows_order_b_disallows_product": {
+      "lineAAllocations": [],
+      "orderAllocations": [
+        {
+          "amount": 2400,
+          "type": "",
+          "title": "WON-PROTO-F0 fact2b B 5pct-order",
+          "value": "5.0",
+          "value_type": "percentage"
+        }
+      ],
+      "stacked": false
+    }
+  },
+  "finishedAt": "2026-09-29T05:44:53.900Z",
+  "savedAt": "2026-09-29T05:44:53.900Z"
+}

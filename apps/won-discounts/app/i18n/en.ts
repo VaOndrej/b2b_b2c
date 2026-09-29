@@ -263,6 +263,8 @@ export const en: Record<keyof typeof cs, string> = {
   "overview.native.conflictsTitle": "Clashes with Won",
   "overview.native.attentionTitle": "Unfinished moves",
   "overview.native.attention": "A move or undo did not finish. Click Undo.",
+  "overview.native.uninstall":
+    "Moved discounts run through Won. If you uninstall the app, they stop working. Before uninstalling, put them back with Undo.",
   "overview.modules.title": "More modules",
   "overview.modules.summary": "In a later version: {modules}",
 
@@ -400,7 +402,8 @@ export const en: Record<keyof typeof cs, string> = {
   "onboarding.goals.picked": "Picked: {goals}",
   "onboarding.goals.body": "We put the modules you pick first in the menu and on Overview. All of them stay visible.",
   "onboarding.native.title": "2. Discounts in Shopify",
-  "onboarding.native.body": "The engine counts moved discounts with the rest. Moving can be undone.",
+  "onboarding.native.body":
+    "The engine counts moved discounts with the rest. Moving can be undone. If you uninstall the app, moved discounts stop working: put them back before uninstalling.",
   "onboarding.native.moveAll": "Move to Won ({n})",
   "onboarding.embed.title": "3. Turn on in your store",
   "onboarding.embed.body": "One click in the theme editor. The cart then shows discounts and codes up front.",
@@ -420,12 +423,25 @@ export const en: Record<keyof typeof cs, string> = {
   "move.headingMany": "Move {discounts} to Won?",
   "move.what": "What happens",
   "move.step.backup": "We back up the original discount.",
-  "move.step.create": "We create the same discount in Won.",
-  "move.step.delete": "We delete the original Shopify discount.",
+  "move.step.delete": "We delete the Shopify discount, its ID included. That frees its code.",
+  "move.step.create": "Right away we create the same rule in Won and sync it to Shopify.",
+  "move.window": "Between the delete and the sync the discount briefly does not apply. Usually seconds, minutes for large collections.",
   "move.lose.title": "What you lose",
   "move.warnings.title": "Keep in mind",
   "move.lose.none": "Nothing.",
-  "move.undo": "Undo it on Overview with Undo. We restore the original discount from the backup.",
+  "move.undo":
+    "Undo it on Overview with Undo. We restore the discount from the backup as a new one: a new ID, the count from zero, the limit set to the uses left.",
+  "move.uninstall":
+    "Moved discounts run through Won. If you uninstall the app, they stop working. Before uninstalling, put them back with Undo.",
+  "move.conflict": "Someone else saved the settings meanwhile.",
+  "undo.headingOne": "Put “{title}” back into Shopify?",
+  "undo.what": "What happens",
+  "undo.step.remove": "We remove the Won rule and check that Shopify no longer runs it.",
+  "undo.step.restore": "We create the discount in Shopify again from the backup.",
+  "undo.changes.title": "What changes",
+  "undo.changes.generic":
+    "The discount gets a new ID and its usage count starts from zero. The usage limit is set to the uses left. Changes to the Won rule since the move are lost.",
+  "undo.confirm": "Undo",
   "move.confirm": "Move",
 
   // --- Upcoming modules ---------------------------------------------------------------------

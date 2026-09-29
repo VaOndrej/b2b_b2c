@@ -9,6 +9,7 @@ import { loadConfig, saveConfig } from "../../app/lib/config.server.ts";
 import { blockingSteps, changedRuleIds, clearDetectionCache, createSaveAndSync } from "../../app/lib/integration/native.server.ts";
 import { onboardingAction, overviewAction, overviewPage } from "../../app/lib/integration/pages.server.ts";
 import { clearSignalCache } from "../../app/lib/ui-actions.server.ts";
+import { MoveDialogBody, UndoDialogBody, type UndoableBackup } from "../../app/components/MoveDialog.tsx";
 import { Notice } from "../../app/components/shell/Notice.tsx";
 import { OverviewScreen } from "../../app/components/screens/OverviewScreen.tsx";
 import { createTestDatabase, type TestDatabase } from "../lib/test-db.ts";
@@ -67,6 +68,15 @@ test("Přesunout: backup → native deleted → Won rule saved AND live in Shopi
   const html = text(await renderPage(createElement(OverviewScreen, props)));
   assert.match(html, /Přesunuté do Won/);
   assert.match(html, /Vrátit zpět/);
+  // F11 / audit P2-7: moved discounts live in Won, uninstalling ends them — said next to them.
+  assert.match(html, /Když aplikaci odinstaluješ, přestanou platit/);
+  // F11: what the undo changes is known BEFORE its confirmation (the dialog body).
+  const listed = props.signals.native.moved[0] as UndoableBackup;
+  assert.ok(listed.undoCosts?.some((c) => /s novým ID/.test(c)), JSON.stringify(listed));
+  assert.ok(listed.undoCosts?.some((c) => /zbývá/.test(c)), "a limited discount: the remaining uses are kept");
+  const undoHtml = text(await renderPage(createElement(UndoDialogBody, { backup: listed })));
+  assert.match(undoHtml, /Co se změní/);
+  assert.match(undoHtml, /s novým ID/);
   assert.match(text(await renderPage(createElement(Notice, { result }))), /1 sleva přesunuta do Won/);
 });
 
@@ -102,7 +112,9 @@ test("a move whose Won node does not reach Shopify is rolled back and the discou
   assert.ok(!result.ok && result.reason === "native_failed");
   assert.match(result.messages[0], /Přesun se nepovedl/);
   assert.match(result.messages[0], /Sleva „LETO15“ se do Shopify nepropsala/);
-  assert.match(result.messages[0], /Slevu jsme hned vrátili do Shopify, funguje jako dřív/);
+  // F1: a restore is a new discount, never "as before".
+  assert.match(result.messages[0], /Slevu jsme hned vrátili do Shopify\. Je to nová sleva s novým ID\. Počítadlo použití začíná od nuly\./);
+  assert.doesNotMatch(result.messages[0], /funguje jako dřív/);
   assert.equal(store.native.holderOf("LETO15")?.discount.__typename, "DiscountCodeBasic", "the native discount is back");
   assert.deepEqual((await loadConfig(db.prisma, shop)).config.modules.codes.rules, [], "no Won rule left behind");
 
@@ -111,7 +123,7 @@ test("a move whose Won node does not reach Shopify is rolled back and the discou
   assert.match(html, /Slevu jsme hned vrátili do Shopify/);
 });
 
-test("otherCodes: a code whose hash collides with another native discount's code is refused, and the discount stays", async () => {
+test("otherCodes: a code whose hash collides with another native discount's code is refused BEFORE the delete (F1), and the discount stays", async () => {
   const seen = new Map<string, string>();
   let pair: [string, string] | null = null;
   for (let i = 0; !pair; i++) {
@@ -128,7 +140,9 @@ test("otherCodes: a code whose hash collides with another native discount's code
   const result = await overviewAction(ctx, formOf([["intent", "move"], ["nativeId", moving]]));
   assert.ok(!result.ok && result.reason === "native_failed", JSON.stringify(result));
   assert.match(result.messages[0], new RegExp(`Kódy .*${pair[0]}.*nejde použít zároveň`));
-  assert.ok(store.native.holderOf(pair[0]), "the discount is in Shopify (restored)");
+  assert.match(result.messages[0], /Nic se nezměnilo/);
+  assert.ok(store.native.nodes.has(moving), "never deleted: the same discount, same id");
+  assert.equal(store.ops.filter((op) => op === "WonNativeCodeDelete").length, 0);
   assert.deepEqual((await loadConfig(db.prisma, shop)).config.modules.codes.rules, []);
 });
 
@@ -184,4 +198,42 @@ test("the adapter: ok only when the changed rules are live; an unrelated old fai
   assert.equal(store.sync.mutations().length, 0);
   const saved = await adapter({ shop, config: { modules: { codes: { rules: rules.slice(0, 1) } } } as never });
   assert.deepEqual(saved, { ok: true });
+});
+
+test("F11: the move dialog tells the true order (delete first, a short window), the uninstall risk and the undo's cost", async () => {
+  const html = text(
+    await renderPage(
+      createElement(MoveDialogBody, {
+        discounts: [{ id: "gid://shopify/DiscountCodeNode/1", title: "LETO15", method: "code", movable: true, losses: [], warnings: [] }],
+      }),
+    ),
+  );
+  const backup = html.indexOf("Uložíme zálohu");
+  const remove = html.indexOf("Slevu v Shopify smažeme");
+  const create = html.indexOf("Hned vytvoříme stejné pravidlo");
+  assert.ok(backup >= 0 && backup < remove && remove < create, html);
+  assert.match(html, /sleva chvíli neplatí/);
+  assert.match(html, /Nic\./, "no losses → 'Nic.' (reachable now)");
+  assert.match(html, /Když aplikaci odinstaluješ, přestanou platit/);
+  assert.match(html, /nové ID, počítadlo od nuly, limit na zbývající použití/);
+  assert.doesNotMatch(html, /zůstane v Shopify/);
+});
+
+test("F1: Přesunout vše stops after the first limit refusal: the rest is skipped, unchanged, and said", async () => {
+  const store = new FakeStore();
+  const a = store.native.add(basicNode({ title: "A10", codes: ["A10"], percentage: 0.1 }));
+  const big = store.native.add(basicNode({ title: "Tisíc", codes: Array.from({ length: 900 }, (_, i) => `T${String(i).padStart(4, "0")}`) }));
+  const c = store.native.add(basicNode({ title: "C30", codes: ["C30"], percentage: 0.3 }));
+  const ctx = testCtx(db.prisma, shop, store);
+
+  const result = await overviewAction(ctx, formOf([["intent", "move"], ["nativeId", a], ["nativeId", big], ["nativeId", c]]));
+  assert.ok(result.ok && result.count === 1, JSON.stringify(result));
+  assert.equal(result.failures?.length, 2);
+  assert.match(result.failures![0], /^Tisíc: Won pravidla by se s touhle slevou nevešla do limitu Shopify/);
+  assert.match(result.failures![0], /Nic se nezměnilo/);
+  assert.match(result.failures![1], /^C30: Nepřesunuli jsme ji: předchozí sleva narazila na limit Won/);
+  assert.ok(store.native.nodes.has(big) && store.native.nodes.has(c), "neither was deleted");
+  assert.equal(store.native.nodes.has(a), false);
+  const deletes = store.calls.filter((call) => call.op === "WonNativeCodeDelete").map((call) => call.variables.id);
+  assert.deepEqual(deletes, [a]);
 });

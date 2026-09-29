@@ -39,6 +39,10 @@ function at(root: any, path: string[]): any {
   return path.reduce((node, key) => (node && typeof node === "object" ? node[key] : undefined), root);
 }
 
+function partialText(errors: string[]): string {
+  return `Shopify returned the discount only in part: ${errors.join("; ")}`.slice(0, 500);
+}
+
 /** Longest a single list may be paged (250 per page): bounds a runaway cursor. */
 const MAX_PAGES_PER_LIST = Math.ceil(MAX_BACKUP_CODES / 250) + 1;
 
@@ -50,6 +54,9 @@ export async function readNativeDiscount(
 ): Promise<ReadResult> {
   const first = await runGql(client, "one", { id, items: FULL_READ_ITEMS, codes: FULL_READ_CODES }, options);
   if (!first.ok) return { ok: false, notFound: false, message: first.message };
+  // A field Shopify could not resolve comes back null: never read it as "no
+  // limit / no end / no minimum" (F13). Anything partial refuses the move.
+  if (first.partialErrors?.length) return { ok: false, notFound: false, message: partialText(first.partialErrors) };
   const raw = first.data?.discountNode;
   if (!raw) return { ok: false, notFound: true };
 
@@ -71,6 +78,7 @@ export async function readNativeDiscount(
       if (connection.nodes.length >= list.cap) break;
       const result = await runGql(client, list.doc, { id, after: cursor }, options);
       if (!result.ok) return { ok: false, notFound: false, message: result.message };
+      if (result.partialErrors?.length) return { ok: false, notFound: false, message: partialText(result.partialErrors) };
       const next = at(result.data?.discountNode?.discount, list.path);
       if (!next) return { ok: false, notFound: false, message: `could not page ${list.cursor}` };
       connection.nodes.push(...(Array.isArray(next.nodes) ? next.nodes : []));

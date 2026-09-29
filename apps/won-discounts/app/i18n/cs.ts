@@ -267,6 +267,8 @@ export const cs = {
   "overview.native.conflictsTitle": "Střetává se s Won",
   "overview.native.attentionTitle": "Nedokončené přesuny",
   "overview.native.attention": "Přesun nebo vrácení se nedokončilo. Klikni na Vrátit zpět.",
+  "overview.native.uninstall":
+    "Přesunuté slevy běží přes Won. Když aplikaci odinstaluješ, přestanou platit. Před odinstalací je vrať tlačítkem Vrátit zpět.",
   "overview.modules.title": "Další moduly",
   "overview.modules.summary": "V další verzi: {modules}",
 
@@ -404,7 +406,8 @@ export const cs = {
   "onboarding.goals.picked": "Vybráno: {goals}",
   "onboarding.goals.body": "Vybrané moduly dáme v menu a v Přehledu na první místo. Vidět zůstanou všechny.",
   "onboarding.native.title": "2. Slevy v Shopify",
-  "onboarding.native.body": "Přesunuté slevy počítá engine spolu s ostatními. Přesun jde vrátit.",
+  "onboarding.native.body":
+    "Přesunuté slevy počítá engine spolu s ostatními. Přesun jde vrátit. Když aplikaci odinstaluješ, přesunuté slevy přestanou platit, před odinstalací je vrať.",
   "onboarding.native.moveAll": "Přesunout do Won ({n})",
   "onboarding.embed.title": "3. Zapnout na webu",
   "onboarding.embed.body": "Jedno kliknutí v editoru tématu. Košík pak ukáže slevy a kódy předem.",
@@ -424,12 +427,25 @@ export const cs = {
   "move.headingMany": "Přesunout {discounts} do Won?",
   "move.what": "Co se stane",
   "move.step.backup": "Uložíme zálohu původní slevy.",
-  "move.step.create": "Stejnou slevu vytvoříme ve Won.",
-  "move.step.delete": "Původní slevu v Shopify smažeme.",
+  "move.step.delete": "Slevu v Shopify smažeme i s jejím ID. Tím se uvolní její kód.",
+  "move.step.create": "Hned vytvoříme stejné pravidlo ve Won a propíšeme ho do Shopify.",
+  "move.window": "Mezi smazáním a propsáním sleva chvíli neplatí. Obvykle pár sekund, u velkých kolekcí i minuty.",
   "move.lose.title": "Co se ztratí",
   "move.warnings.title": "Na co myslet",
   "move.lose.none": "Nic.",
-  "move.undo": "Přesun vrátíš v Přehledu tlačítkem Vrátit zpět. Obnovíme původní slevu ze zálohy.",
+  "move.undo":
+    "Přesun vrátíš v Přehledu tlačítkem Vrátit zpět. Slevu obnovíme ze zálohy jako novou: nové ID, počítadlo od nuly, limit na zbývající použití.",
+  "move.uninstall":
+    "Přesunuté slevy běží přes Won. Když aplikaci odinstaluješ, přestanou platit. Před odinstalací je vrať tlačítkem Vrátit zpět.",
+  "move.conflict": "Nastavení mezitím uložil někdo jiný.",
+  "undo.headingOne": "Vrátit „{title}“ do Shopify?",
+  "undo.what": "Co se stane",
+  "undo.step.remove": "Odebereme Won pravidlo a ověříme, že ho Shopify už nepoužívá.",
+  "undo.step.restore": "Slevu vytvoříme v Shopify znovu ze zálohy.",
+  "undo.changes.title": "Co se změní",
+  "undo.changes.generic":
+    "Sleva dostane nové ID a počítadlo použití začne od nuly. Limit použití nastavíme na zbývající počet. Úpravy Won pravidla od přesunu se ztratí.",
+  "undo.confirm": "Vrátit zpět",
   "move.confirm": "Přesunout",
 
   // --- Připravované moduly -------------------------------------------------------------------

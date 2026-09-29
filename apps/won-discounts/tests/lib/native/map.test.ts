@@ -52,12 +52,14 @@ test("code discount, % on products: every field maps, codes upper-case, origin l
       productIds: ["gid://shopify/Product/1", "gid://shopify/Product/2"],
       variantIds: ["gid://shopify/ProductVariant/7"],
     },
-    minimum: { quantity: 2 },
+    // F5 (verified live): a product discount's minimum counts only the entitled items.
+    minimum: { quantity: 2, scope: "entitled" },
     // Shop-local dates: the engine reads the day from the string (Prague midnight stays that day).
     schedule: { startsAt: "2026-10-01T00:00:00+02:00", endsAt: "2026-11-01T00:00:00+01:00" },
     origin: { nativeId: "gid://shopify/DiscountCodeNode/123" },
   });
-  assert.deepEqual(losses, ["Historie použití zůstane v Shopify. Won počítá od nuly."]);
+  // Nothing used, nothing lost (F11: "Nic." is reachable; the history never "stays in Shopify").
+  assert.deepEqual(losses, []);
   // Native combining equals the A1 defaults for a product discount → nothing to say about it;
   // Won does not tell subscriptions apart (review Minor 3) → that is said.
   assert.deepEqual(warnings, ["Prodáváš-li předplatné: v Shopify na něj sleva neplatila. Won předplatné nerozlišuje, bude platit i na něj."]);
@@ -80,7 +82,7 @@ test("fixed amount in the shop currency only; other market currencies are a warn
   const { rule, warnings } = planMove(n, config, { now: NOW });
   assert.deepEqual(rule.value, { kind: "fixed", amount: { CZK: 15050 } });
   assert.deepEqual(rule.target, { kind: "order" });
-  assert.deepEqual(rule.minimum, { subtotal: { CZK: 100000 } });
+  assert.deepEqual(rule.minimum, { subtotal: { CZK: 100000 }, scope: "cart" }, "an order discount is entitled to the whole cart");
   assert.equal(rule.method, "automatic");
   assert.equal(rule.codes, undefined);
   assert.equal(rule.limits, undefined);
@@ -115,10 +117,13 @@ test("limits: what is LEFT of the usage limit moves; once-per-customer history i
   const { rule, losses, warnings } = planMove(n, createDefaultConfig(), { now: NOW });
   assert.deepEqual(rule.limits, { usageLimit: 60, oncePerCustomer: true });
   assert.deepEqual(losses, [
-    "Historie použití zůstane v Shopify (zatím 40×). Won počítá od nuly.",
+    "Počítadlo použití (zatím 40×) se smazáním slevy v Shopify ztratí. Won počítá od nuly. Objednávky kód dál ukazují.",
     "Limit „1× na zákazníka“ začne znovu. Kdo kód už použil, může ho použít ještě jednou.",
   ]);
-  assert.ok(warnings.includes("Shopify eviduje 40 z 100 použití. Ve Won nastavíme limit na zbývajících 60."));
+  assert.ok(
+    warnings.includes("Shopify eviduje přibližně 40 z 100 použití (počítá se zpožděním). Ve Won nastavíme limit na zbývajících 60."),
+    warnings.join("\n"),
+  );
 });
 
 test("more codes than a Won rule holds: the first CONFIG_LIMITS.codesPerRule move, the rest is a stated loss", () => {

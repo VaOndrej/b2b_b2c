@@ -5,11 +5,13 @@
 // the discount in Shopify rather than widening it).
 
 import type {
+  DiscountClass,
   MovableKind,
   NativeCombinesWith,
   NativeDiscount,
   NativeKind,
   NativeMinimum,
+  NativeStacking,
   NativeStatus,
   NativeTarget,
   NativeValue,
@@ -90,6 +92,8 @@ export type NormalizedNode =
       app: { appKey: string | null; functionId: string | null; title: string | null } | null;
       /** Redeem codes of a code BXGY / app discount (first page): a Won rule cannot share them. */
       codes: string[];
+      /** How it combines, when Shopify said so (F4). */
+      stacking?: NativeStacking;
     };
 
 function valueOf(customerGets: any): NativeValue | null {
@@ -151,6 +155,33 @@ function combinesWithOf(v: any): NativeCombinesWith {
   };
 }
 
+const CLASS_BY_ENUM: Readonly<Record<string, DiscountClass>> = { PRODUCT: "product", ORDER: "order", SHIPPING: "shipping" };
+
+/** Shopify's `discountClasses` → Won categories (unknown values dropped). */
+function classesOf(v: unknown): DiscountClass[] {
+  if (!Array.isArray(v)) return [];
+  return [...new Set(v.map((c) => CLASS_BY_ENUM[String(c)]).filter((c): c is DiscountClass => c !== undefined))];
+}
+
+/** The class a movable native discount belongs to (from what it discounts). */
+export function classOfTarget(target: NativeTarget): DiscountClass {
+  if (target.kind === "order") return "order";
+  if (target.kind === "shipping") return "shipping";
+  return "product";
+}
+
+/**
+ * A BXGY / app discount's combining facts (F4), or undefined when Shopify did
+ * not say. BXGY discounts are product discounts even without `discountClasses`.
+ */
+function stackingOf(d: any, kind: NativeKind): NativeStacking | undefined {
+  if (!d?.combinesWith || typeof d.combinesWith !== "object") return undefined;
+  const classes = classesOf(d.discountClasses);
+  if (classes.length === 0 && (kind === "code_bxgy" || kind === "automatic_bxgy")) classes.push("product");
+  if (classes.length === 0) return undefined;
+  return { classes, combinesWith: combinesWithOf(d.combinesWith) };
+}
+
 function buyersOf(context: any): NativeDiscount["buyers"] {
   switch (context?.__typename) {
     case "DiscountBuyerSelectionAll":
@@ -179,6 +210,7 @@ export function normalizeNode(node: any, shop: ShopContext): NormalizedNode | nu
 
   if (!isMovableKind(kind)) {
     const appType = d.appDiscountType;
+    const stacking = stackingOf(d, kind);
     return {
       movableType: false,
       id,
@@ -186,6 +218,7 @@ export function normalizeNode(node: any, shop: ShopContext): NormalizedNode | nu
       kind,
       status,
       codes: pageOf(d.codes, (n) => n?.code).ids,
+      ...(stacking ? { stacking } : {}),
       app: appType
         ? {
             appKey: typeof appType.appKey === "string" ? appType.appKey : null,
@@ -220,6 +253,12 @@ export function normalizeNode(node: any, shop: ShopContext): NormalizedNode | nu
   }
 
   const destination = d.destinationSelection;
+  const unreadable: string[] = [];
+  // Conservative (F13): only "all countries" reads as all countries; a missing
+  // or unknown destination keeps the discount in Shopify.
+  if (isShipping && destination?.__typename !== "DiscountCountryAll" && destination?.__typename !== "DiscountCountries") {
+    unreadable.push("destinationSelection");
+  }
   const shippingCountries =
     isShipping && destination?.__typename === "DiscountCountries"
       ? {
@@ -258,6 +297,7 @@ export function normalizeNode(node: any, shop: ShopContext): NormalizedNode | nu
         ? { amount: maxShipping.amount, currencyCode: str(maxShipping.currencyCode) }
         : null,
     complete: Object.values(cursors).every((c) => c === null),
+    ...(unreadable.length > 0 ? { unreadable } : {}),
     shop,
   };
   return { movableType: true, native, cursors };

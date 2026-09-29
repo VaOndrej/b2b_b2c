@@ -104,7 +104,11 @@ test("REL-3: sync fails after the delete (Won node already holds the code) → n
   assert.equal(result.code, "sync_failed");
   assert.equal(result.state, "restored");
   assert.equal(result.nativeRestored, true);
-  assert.equal(result.error, "Přesun se nepovedl (config read-back failed). Slevu jsme hned vrátili do Shopify, funguje jako dřív.");
+  // F1: a new discount, with what is LEFT of its limit (50 − 5), never "works as before".
+  assert.equal(
+    result.error,
+    "Přesun se nepovedl (config read-back failed). Slevu jsme hned vrátili do Shopify. Je to nová sleva s novým ID. Počítadlo použití začíná od nuly, limit jsme nastavili na zbývajících 45.",
+  );
   const restoredId = result.restoredNativeId!;
   const restored = shopify.nodes.get(restoredId);
   assert.equal(restored.discount.__typename, "DiscountCodeBasic");
@@ -112,7 +116,7 @@ test("REL-3: sync fails after the delete (Won node already holds the code) → n
   assert.deepEqual(shopify.codesOf(restoredId).sort(), ["VIP20", "vip21"]);
   assert.equal(restored.discount.customerGets.value.percentage, 0.2);
   assert.equal(restored.discount.minimumRequirement.greaterThanOrEqualToSubtotal.amount, "500.00");
-  assert.equal(restored.discount.usageLimit, 50);
+  assert.equal(restored.discount.usageLimit, 45);
   // The config is rolled back first (the Won node released the code), then one create.
   assert.equal(shopify.callsTo("WonNativeCodeBasicCreate").length, 1);
   assert.equal(sync.calls.length, 2); // the failed save + the rollback
@@ -256,9 +260,10 @@ test("undo: Won rule and node removed, native back with every code, same values 
   assert.ok(undo.ok, JSON.stringify(undo));
   assert.equal(undo.alreadyRestored, false);
   assert.deepEqual(undo.notRestored, [
-    "Počet použití se nevrátí. Shopify počítá od nuly.",
+    "Sleva má v Shopify nové ID.",
+    "Počítadlo použití v Shopify začíná od nuly.",
     "Limit „1× na zákazníka“ začne znovu.",
-    "Limit 500 použití platí znovu celý.",
+    "Limit jsme nastavili na zbývajících 488 z 500 (použití před přesunem i přes Won jsou odečtená).",
   ]);
   const back = shopify.nodes.get(undo.nativeId!);
   assert.equal(back.discount.title, "Podzim");
@@ -272,7 +277,7 @@ test("undo: Won rule and node removed, native back with every code, same values 
   assert.deepEqual(back.discount.customerGets.items.collections.nodes, [{ id: "gid://shopify/Collection/5" }]);
   assert.equal(back.discount.startsAt, original.discount.startsAt);
   assert.equal(back.discount.endsAt, original.discount.endsAt);
-  assert.equal(back.discount.usageLimit, 500);
+  assert.equal(back.discount.usageLimit, 488, "500 − 12 used before the move − 0 through Won (F1)");
   assert.equal(back.discount.appliesOncePerCustomer, true);
   assert.deepEqual(back.discount.combinesWith, original.discount.combinesWith);
 

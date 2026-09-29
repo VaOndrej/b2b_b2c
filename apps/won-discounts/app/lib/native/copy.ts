@@ -85,6 +85,14 @@ export function notMovableReasonText(reason: NotMovableReason, locale: NativeLoc
         },
         locale,
       );
+    case "fixed_each_item_on_order":
+      return pick(
+        {
+          cs: "Pevná částka se odečítá z každého kusu v celé objednávce. Won ji na celou objednávku umí jen jednou.",
+          en: "The fixed amount comes off each item of the whole order. On a whole order Won takes it off only once.",
+        },
+        locale,
+      );
     case "shipping_countries":
       return pick(
         {
@@ -181,18 +189,19 @@ export type LossItem =
 export function lossText(item: LossItem, locale: NativeLocale): string {
   switch (item.code) {
     case "usage_history":
+      // The count lives on the Shopify discount, which the move deletes (orders keep their code).
       return item.used > 0
         ? pick(
             {
-              cs: `Historie použití zůstane v Shopify (zatím ${item.used}×). Won počítá od nuly.`,
-              en: `The usage history stays in Shopify (${item.used} so far). Won counts from zero.`,
+              cs: `Počítadlo použití (zatím ${item.used}×) se smazáním slevy v Shopify ztratí. Won počítá od nuly. Objednávky kód dál ukazují.`,
+              en: `The usage count (${item.used} so far) goes with the deleted Shopify discount. Won counts from zero. Orders still show the code.`,
             },
             locale,
           )
         : pick(
             {
-              cs: "Historie použití zůstane v Shopify. Won počítá od nuly.",
-              en: "The usage history stays in Shopify. Won counts from zero.",
+              cs: "Počítadlo použití se smazáním slevy v Shopify ztratí. Won počítá od nuly.",
+              en: "The usage count goes with the deleted Shopify discount. Won counts from zero.",
             },
             locale,
           );
@@ -232,7 +241,11 @@ export type WarningItem =
   | { code: "combination_differs"; category: CombinationCategory; native: boolean; won: boolean }
   | { code: "starts_by_day"; at: string; timeZone: string }
   | { code: "ends_by_day"; at: string; timeZone: string }
-  | { code: "subscriptions_included" };
+  | { code: "subscriptions_included" }
+  /** F4: remaining Shopify discounts that did not stack with this one and will now. */
+  | { code: "stacks_with_native"; titles: string[] }
+  /** F4: remaining Shopify discounts that do not combine with this one's class: Shopify applies one of them. */
+  | { code: "blocked_by_native"; titles: string[] };
 
 const CATEGORY_WITH: Record<CombinationCategory, Copy> = {
   product: { cs: "s produktovými slevami", en: "with product discounts" },
@@ -261,11 +274,31 @@ export function warningText(item: WarningItem, locale: NativeLocale): string {
     case "usage_limit_remaining":
       return pick(
         {
-          cs: `Shopify eviduje ${item.used} z ${item.limit} použití. Ve Won nastavíme limit na zbývajících ${item.remaining}.`,
-          en: `Shopify counts ${item.used} of ${item.limit} uses. In Won the limit is set to the remaining ${item.remaining}.`,
+          cs: `Shopify eviduje přibližně ${item.used} z ${item.limit} použití (počítá se zpožděním). Ve Won nastavíme limit na zbývajících ${item.remaining}.`,
+          en: `Shopify counts about ${item.used} of ${item.limit} uses (an approximate, delayed count). In Won the limit is set to the remaining ${item.remaining}.`,
         },
         locale,
       );
+    case "stacks_with_native": {
+      const titles = list(item.titles.map((t) => quote(t, locale)), locale);
+      return pick(
+        {
+          cs: `V Shopify se nesčítala s ${titles}. Po přesunu se sečtou: Won sleva se kombinuje se vším, rozhoduje už jen nastavení té druhé slevy.`,
+          en: `In Shopify it did not add up with ${titles}. After the move they add up: the Won discount combines with everything, only the other discount's setting decides.`,
+        },
+        locale,
+      );
+    }
+    case "blocked_by_native": {
+      const titles = list(item.titles.map((t) => quote(t, locale)), locale);
+      return pick(
+        {
+          cs: `${titles} se s touhle slevou nekombinuje. Když půjdou uplatnit obě, Shopify použije jen jednu z nich, stejně jako dřív. Won nastavení kombinování na tom nic nezmění.`,
+          en: `${titles} does not combine with this discount. When both could apply, Shopify uses only one of them, as before. Won's combination settings do not change that.`,
+        },
+        locale,
+      );
+    }
     case "combination_differs": {
       const category = pick(CATEGORY_WITH[item.category], locale);
       return locale === "en"
@@ -318,8 +351,8 @@ export function moveDialogCopy(title: string, plan: Pick<MovePlan, "losses" | "w
     heading: pick({ cs: `Přesunout ${quote(title, "cs")} do Won?`, en: `Move ${quote(title, "en")} into Won?` }, locale),
     intro: pick(
       {
-        cs: "Won vytvoří stejné pravidlo a slevu v Shopify smaže. Zálohu si nechá, přesun jde vrátit jedním kliknutím.",
-        en: "Won creates the same rule and deletes the discount in Shopify. It keeps a backup, so one click undoes the move.",
+        cs: "Won slevu zazálohuje, v Shopify ji smaže a hned vytvoří stejné pravidlo. Mezi tím je sleva chvíli neaktivní. Přesun jde vrátit ze zálohy.",
+        en: "Won backs the discount up, deletes it in Shopify and right away creates the same rule. In between, the discount is briefly inactive. Undo restores it from the backup.",
       },
       locale,
     ),
@@ -424,7 +457,10 @@ export type MoveState =
   | "restored_partly" // put back, some codes still missing or importing
   | "in_backup" //       not in Shopify now; undo puts it back from the backup
   | "rule_stuck" //      the Won rule could not be removed, so it was NOT put back (no double discount)
+  | "rule_unverified" // could not check that Shopify stopped running the Won rule, so it was NOT put back
+  | "restore_unknown" // the restore may or may not have landed (answer lost, look-up failed)
   | "unknown" //         the delete may or may not have happened
+  | "still_there" //     no answer to the delete, but the re-checks still see the discount (backup kept)
   | "in_progress"; //    another move or undo of it is running
 
 export type MoveErrorItem =
@@ -438,7 +474,19 @@ export type MoveErrorItem =
   | { code: "delete_failed"; detail: string }
   | { code: "outcome_unknown"; detail: string }
   | { code: "in_progress" }
-  | { code: "sync_failed"; detail: string };
+  | { code: "sync_failed"; detail: string }
+  | { code: "config_unreadable" }
+  | { code: "code_hash_collision"; codes: string[][] }
+  | { code: "config_budget"; bytes: number; budget: number }
+  | { code: "config_too_large" }
+  | { code: "internal_error"; detail: string }
+  /** F8: an earlier attempt already put the discount back into Shopify. */
+  | { code: "restored_earlier" }
+  /** "Přesunout vše" stopped after a limit refusal: this one was not tried. */
+  | { code: "skipped_after_limit" };
+
+/** Refusals that the next discounts of "Přesunout vše" would hit too (the circuit breaker stops there). */
+export const LIMIT_REFUSALS: ReadonlySet<MoveErrorItem["code"]> = new Set(["code_rule_limit", "config_budget", "config_too_large"]);
 
 /** Why it failed, and what to do about it (the state sentence goes between them). */
 function moveErrorParts(item: MoveErrorItem, locale: NativeLocale): { what: string; next?: string } {
@@ -511,21 +559,108 @@ function moveErrorParts(item: MoveErrorItem, locale: NativeLocale): { what: stri
       };
     case "sync_failed":
       return { what: pick({ cs: `Přesun se nepovedl (${item.detail}).`, en: `The move failed (${item.detail}).` }, locale) };
+    case "config_unreadable":
+      return {
+        what: pick(
+          {
+            cs: "Uložené nastavení Won se nedá přečíst, přesun by ho přepsal.",
+            en: "The saved Won settings cannot be read; a move would overwrite them.",
+          },
+          locale,
+        ),
+        next: pick({ cs: "Otevři nastavení a ulož ho znovu, pak slevu přesuň.", en: "Open the settings, save them again, then move the discount." }, locale),
+      };
+    case "code_hash_collision":
+      return {
+        what: pick(
+          {
+            cs: `Kódy ${list(item.codes.map((group) => group.join(" a ")), "cs")} nejde použít zároveň, pokladna je nerozliší.`,
+            en: `The codes ${list(item.codes.map((group) => group.join(" and ")), "en")} cannot be used together, checkout cannot tell them apart.`,
+          },
+          locale,
+        ),
+        next: pick(
+          { cs: "Změň jeden z nich, třeba přidej znak, a zkus to znovu.", en: "Change one of them, e.g. add a character, and try again." },
+          locale,
+        ),
+      };
+    case "config_budget":
+      return {
+        what: pick(
+          {
+            cs: `Won pravidla by se s touhle slevou nevešla do limitu Shopify (${item.bytes} z ${item.budget} B).`,
+            en: `With this discount the Won rules would not fit Shopify's limit (${item.bytes} of ${item.budget} B).`,
+          },
+          locale,
+        ),
+        next: pick({ cs: "Uber kódy nebo pravidla ve Won, pak ji přesuň.", en: "Remove codes or rules in Won, then move it." }, locale),
+      };
+    case "config_too_large":
+      return {
+        what: pick({ cs: "Nastavení Won by s touhle slevou bylo příliš velké.", en: "With this discount the Won settings would be too large." }, locale),
+        next: pick({ cs: "Uber pravidla ve Won, pak ji přesuň.", en: "Remove rules in Won, then move it." }, locale),
+      };
+    case "internal_error":
+      return { what: pick({ cs: `Přesun se přerušil (${item.detail}).`, en: `The move was interrupted (${item.detail}).` }, locale) };
+    case "restored_earlier":
+      return {
+        what: pick(
+          { cs: "Předchozí pokus o přesun už slevu vrátil do Shopify.", en: "An earlier attempt to move it already put the discount back into Shopify." },
+          locale,
+        ),
+        next: pick({ cs: "Obnov seznam slev a přesuň ji znovu.", en: "Refresh the list and move it again." }, locale),
+      };
+    case "skipped_after_limit":
+      return {
+        what: pick(
+          {
+            cs: "Nepřesunuli jsme ji: předchozí sleva narazila na limit Won a tahle by na něj narazila taky.",
+            en: "Not moved: the previous discount hit Won's limit and this one would hit it too.",
+          },
+          locale,
+        ),
+      };
   }
 }
 
-function stateText(state: MoveState, locale: NativeLocale, codes: { missing?: number; pending?: boolean }): string | null {
+/** What a restore changed (F1: it is a new discount, never "as before"). */
+export interface RestoreFacts {
+  /** The usage limit the restored discount got (what was left), or null without a limit. */
+  remaining?: number | null;
+  oncePerCustomer?: boolean;
+}
+
+function restoreChanges(facts: RestoreFacts, locale: NativeLocale): string {
+  const cs = ["Je to nová sleva s novým ID.", "Počítadlo použití začíná od nuly"];
+  const en = ["It is a new discount with a new ID.", "The usage count starts from zero"];
+  if (typeof facts.remaining === "number") {
+    cs[1] += `, limit jsme nastavili na zbývajících ${facts.remaining}`;
+    en[1] += `, the limit is set to the remaining ${facts.remaining}`;
+  }
+  cs[1] += ".";
+  en[1] += ".";
+  if (facts.oncePerCustomer) {
+    cs.push("Limit „1× na zákazníka“ začíná znovu.");
+    en.push("“Once per customer” starts over.");
+  }
+  return pick({ cs: cs.join(" "), en: en.join(" ") }, locale);
+}
+
+export interface MoveStateDetails extends RestoreFacts {
+  missing?: number;
+  pending?: boolean;
+}
+
+function stateText(state: MoveState, locale: NativeLocale, codes: MoveStateDetails): string | null {
   switch (state) {
     case "unchanged":
       return pick({ cs: "Nic se nezměnilo.", en: "Nothing changed." }, locale);
     case "restored":
-      return pick(
-        { cs: "Slevu jsme hned vrátili do Shopify, funguje jako dřív.", en: "The discount is back in Shopify and works as before." },
-        locale,
-      );
+      return `${pick({ cs: "Slevu jsme hned vrátili do Shopify.", en: "The discount is back in Shopify." }, locale)} ${restoreChanges(codes, locale)}`;
     case "restored_partly": {
       const n = codes.missing ?? 0;
-      return codes.pending
+      const changes = restoreChanges(codes, locale);
+      return `${codes.pending
         ? pick(
             {
               cs: `Slevu jsme vrátili do Shopify, ${n} kódů ale Shopify ještě nahrává. Klikni za chvíli na „Vrátit zpět“, zkontrolujeme je.`,
@@ -539,7 +674,7 @@ function stateText(state: MoveState, locale: NativeLocale, codes: { missing?: nu
               en: `The discount is back in Shopify, but ${n} codes could not be put back. Click “Undo” and we add them from the backup.`,
             },
             locale,
-          );
+          )} ${changes}`;
     }
     case "in_backup":
       return pick(
@@ -557,11 +692,35 @@ function stateText(state: MoveState, locale: NativeLocale, codes: { missing?: nu
         },
         locale,
       );
+    case "rule_unverified":
+      return pick(
+        {
+          cs: "Nepodařilo se ověřit, že Shopify Won pravidlo už nepoužívá, proto jsme slevu do Shopify nevrátili (mohla by platit dvakrát). Je v záloze, klikni na „Vrátit zpět“.",
+          en: "We could not check that Shopify stopped running the Won rule, so the discount was not put back into Shopify (it could apply twice). It is in the backup, click “Undo”.",
+        },
+        locale,
+      );
+    case "restore_unknown":
+      return pick(
+        {
+          cs: "Nevíme, jestli se sleva do Shopify vrátila (Shopify neodpověděl). Je v záloze: klikni na „Vrátit zpět“, nejdřív zkontrolujeme Shopify, ať nevznikne dvakrát.",
+          en: "We do not know whether the discount is back in Shopify (no answer). It is in the backup: click “Undo”, we check Shopify first so it is never created twice.",
+        },
+        locale,
+      );
     case "unknown":
       return pick(
         {
           cs: "Nevíme, jestli Shopify slevu smazal. Záloha je uložená: klikni znovu na „Přesunout“, nebo ji vrať přes „Vrátit zpět“.",
           en: "We do not know whether Shopify deleted the discount. The backup is saved: click “Move” again, or put it back with “Undo”.",
+        },
+        locale,
+      );
+    case "still_there":
+      return pick(
+        {
+          cs: "Sleva v Shopify i po několika kontrolách pořád je. Zálohu necháváme v Přehledu: kdyby sleva přesto zmizela, vrátíš ji tlačítkem „Vrátit zpět“. Přesunout ji můžeš znovu.",
+          en: "After several checks the discount is still in Shopify. The backup stays on Overview: should the discount disappear after all, “Undo” puts it back. You can move it again.",
         },
         locale,
       );
@@ -575,10 +734,21 @@ export function moveErrorText(
   item: MoveErrorItem,
   locale: NativeLocale,
   state: MoveState = "unchanged",
-  codes: { missing?: number; pending?: boolean } = {},
+  codes: MoveStateDetails = {},
 ): string {
   const { what, next } = moveErrorParts(item, locale);
   return [what, stateText(state, locale, codes), next].filter(Boolean).join(" ");
+}
+
+/** A move or undo whose process died (stale claim, resolved by the Přehled sweep, F7). */
+export function staleClaimText(locale: NativeLocale): string {
+  return pick(
+    {
+      cs: "Přesun nebo vrácení se přerušilo (aplikace se mezitím restartovala). Záloha je uložená: klikni na „Vrátit zpět“, nebo slevu přesuň znovu.",
+      en: "A move or undo was interrupted (the app restarted meanwhile). The backup is saved: click “Undo”, or move the discount again.",
+    },
+    locale,
+  );
 }
 
 export type UndoErrorItem =
@@ -589,7 +759,16 @@ export type UndoErrorItem =
   | { code: "check_failed"; detail: string }
   | { code: "remove_rule_failed"; detail: string }
   | { code: "restore_failed_rule_back"; detail: string }
-  | { code: "restore_failed_nowhere"; detail: string };
+  | { code: "restore_failed_nowhere"; detail: string }
+  /** F9: the rule could not be removed, and putting it back was not confirmed either. */
+  | { code: "remove_rule_failed_unverified"; detail: string }
+  /** The native is in Shopify, and the Won rule could not be removed: both may apply. */
+  | { code: "remove_rule_failed_both"; detail: string }
+  /** F2: Shopify still runs the Won rule (a resync did not clear it): nothing restored. */
+  | { code: "rule_still_live"; detail: string }
+  /** F8: the restore may have landed (no answer, look-up failed): nothing more created. */
+  | { code: "restore_unknown"; detail: string }
+  | { code: "internal_error"; detail: string };
 
 export function undoErrorText(item: UndoErrorItem, locale: NativeLocale): string {
   switch (item.code) {
@@ -639,24 +818,106 @@ export function undoErrorText(item: UndoErrorItem, locale: NativeLocale): string
         },
         locale,
       );
+    case "remove_rule_failed_unverified":
+      return pick(
+        {
+          cs: `Won pravidlo se nepodařilo odebrat (${item.detail}) a nepodařilo se ani ověřit, že dál platí. Sleva je v záloze, klikni znovu na „Vrátit zpět“.`,
+          en: `Could not remove the Won rule (${item.detail}), nor confirm that it still runs. The discount is in the backup, click “Undo” again.`,
+        },
+        locale,
+      );
+    case "remove_rule_failed_both":
+      return pick(
+        {
+          cs: `Sleva v Shopify je, ale Won pravidlo se nepodařilo odebrat (${item.detail}). Může platit dvakrát: klikni hned znovu na „Vrátit zpět“.`,
+          en: `The discount is in Shopify, but the Won rule could not be removed (${item.detail}). It may apply twice: click “Undo” again now.`,
+        },
+        locale,
+      );
+    case "rule_still_live":
+      return pick(
+        {
+          cs: `Shopify pořád používá Won pravidlo (${item.detail}), proto jsme slevu nevrátili (platila by dvakrát). Je v záloze, zkus „Vrátit zpět“ za chvíli.`,
+          en: `Shopify still runs the Won rule (${item.detail}), so the discount was not put back (it would apply twice). It is in the backup, try “Undo” in a moment.`,
+        },
+        locale,
+      );
+    case "restore_unknown":
+      return pick(
+        {
+          cs: `Nevíme, jestli se sleva do Shopify vrátila (${item.detail}). Won pravidlo jsme nevraceli, ať neplatí dvakrát. Klikni za chvíli znovu na „Vrátit zpět“, nejdřív Shopify zkontrolujeme.`,
+          en: `We do not know whether the discount is back in Shopify (${item.detail}). The Won rule was not put back, so it never applies twice. Click “Undo” again in a moment, we check Shopify first.`,
+        },
+        locale,
+      );
+    case "internal_error":
+      return pick(
+        {
+          cs: `Vrácení se přerušilo (${item.detail}). Sleva je v záloze, klikni znovu na „Vrátit zpět“.`,
+          en: `The undo was interrupted (${item.detail}). The discount is in the backup, click “Undo” again.`,
+        },
+        locale,
+      );
   }
 }
 
 export type NotRestoredItem =
   | { code: "usage_count" }
   | { code: "once_per_customer" }
-  | { code: "usage_limit_full"; limit: number }
+  /** F1: the restored limit is what was left; `wonUses` null when the uses through Won could not be read. */
+  | { code: "usage_limit_remaining"; limit: number; remaining: number; wonUses: number | null }
+  /** Every use was spent through Won: the discount came back already ended. */
+  | { code: "usage_limit_spent"; limit: number }
+  | { code: "new_id" }
   | { code: "codes_failed"; count: number }
   | { code: "codes_pending"; count: number };
+
+/**
+ * What an undo will change, shown BEFORE the merchant confirms it (F11, §14c).
+ * `native` is the discount as backed up.
+ */
+export function undoCostTexts(
+  native: { method: "code" | "automatic"; usageLimit: number | null; oncePerCustomer: boolean },
+  locale: NativeLocale,
+): string[] {
+  const out = [
+    pick({ cs: "Sleva vznikne v Shopify znovu ze zálohy, s novým ID.", en: "The discount is created again in Shopify from the backup, with a new ID." }, locale),
+    pick({ cs: "Počítadlo použití v Shopify začne od nuly.", en: "The usage count in Shopify starts from zero." }, locale),
+  ];
+  if (native.method === "code" && native.usageLimit !== null) {
+    out.push(
+      pick(
+        {
+          cs: "Limit použití nastavíme na to, co z něj zbývá (odečteme použití před přesunem i přes Won).",
+          en: "The usage limit is set to what is left of it (uses before the move and through Won are subtracted).",
+        },
+        locale,
+      ),
+    );
+  }
+  if (native.oncePerCustomer) out.push(notRestoredText({ code: "once_per_customer" }, locale));
+  out.push(
+    pick(
+      {
+        cs: "Úpravy Won pravidla od přesunu se ztratí: sleva se vrátí tak, jak byla v záloze.",
+        en: "Changes made to the Won rule since the move are lost: the discount comes back as it was backed up.",
+      },
+      locale,
+    ),
+  );
+  return out;
+}
 
 /** What an undo cannot bring back (shown after the undo). */
 export function notRestoredText(item: NotRestoredItem, locale: NativeLocale): string {
   switch (item.code) {
     case "usage_count":
       return pick(
-        { cs: "Počet použití se nevrátí. Shopify počítá od nuly.", en: "The usage count does not come back. Shopify counts from zero." },
+        { cs: "Počítadlo použití v Shopify začíná od nuly.", en: "The usage count in Shopify starts from zero." },
         locale,
       );
+    case "new_id":
+      return pick({ cs: "Sleva má v Shopify nové ID.", en: "The discount has a new ID in Shopify." }, locale);
     case "once_per_customer":
       return pick(
         {
@@ -665,11 +926,27 @@ export function notRestoredText(item: NotRestoredItem, locale: NativeLocale): st
         },
         locale,
       );
-    case "usage_limit_full":
+    case "usage_limit_remaining":
+      return item.wonUses === null
+        ? pick(
+            {
+              cs: `Limit jsme nastavili na zbývajících ${item.remaining} z ${item.limit}. Použití přes Won se nepodařilo přečíst, odečetli jsme jen ta před přesunem.`,
+              en: `The limit is set to the remaining ${item.remaining} of ${item.limit}. The uses through Won could not be read, only those before the move are subtracted.`,
+            },
+            locale,
+          )
+        : pick(
+            {
+              cs: `Limit jsme nastavili na zbývajících ${item.remaining} z ${item.limit} (použití před přesunem i přes Won jsou odečtená).`,
+              en: `The limit is set to the remaining ${item.remaining} of ${item.limit} (uses before the move and through Won are subtracted).`,
+            },
+            locale,
+          );
+    case "usage_limit_spent":
       return pick(
         {
-          cs: `Limit ${item.limit} použití platí znovu celý.`,
-          en: `The limit of ${item.limit} uses applies in full again.`,
+          cs: `Limit ${item.limit} použití se přes Won vyčerpal. Slevu jsme vrátili jako ukončenou.`,
+          en: `The limit of ${item.limit} uses was spent through Won. The discount is back as ended.`,
         },
         locale,
       );

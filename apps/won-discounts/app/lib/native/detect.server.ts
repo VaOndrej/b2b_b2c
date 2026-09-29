@@ -15,7 +15,7 @@ import { classifyNative } from "./classify.ts";
 import { findConflicts, type OtherCodeHolder } from "./conflicts.ts";
 import { notMovableReasonText } from "./copy.ts";
 import { DETECT_CODES, DETECT_ITEMS, DETECT_PAGE_SIZE } from "./documents.ts";
-import { normalizeNode } from "./normalize.ts";
+import { classOfTarget, normalizeNode } from "./normalize.ts";
 import { type RequestOptions, runGql } from "./request.server.ts";
 import type {
   AdminClient,
@@ -117,6 +117,7 @@ export async function detectNativeDiscounts(client: AdminClient, options: Detect
           status: node.status,
           reasonCode: reason.code,
           reason: notMovableReasonText(reason, locale),
+          ...(node.stacking ? { stacking: node.stacking } : {}),
         });
         if (node.codes.length > 0) otherCodeHolders.push({ id: node.id, title: node.title, codes: node.codes });
         continue;
@@ -136,6 +137,7 @@ export async function detectNativeDiscounts(client: AdminClient, options: Detect
           status: native.status,
           reasonCode: reason.code,
           reason: notMovableReasonText(reason, locale),
+          ...(native.target ? { stacking: { classes: [classOfTarget(native.target)], combinesWith: native.combinesWith } } : {}),
         });
       } else {
         detection.movable.push(native);

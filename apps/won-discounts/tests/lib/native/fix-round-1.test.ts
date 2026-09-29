@@ -11,7 +11,7 @@ import { classifyNative } from "../../../app/lib/native/classify.ts";
 import * as copy from "../../../app/lib/native/copy.ts";
 import { detectNativeDiscounts } from "../../../app/lib/native/detect.server.ts";
 import { planMove } from "../../../app/lib/native/map.server.ts";
-import { moveNative, undoMove } from "../../../app/lib/native/move.server.ts";
+import { DELETE_RECHECK_DELAYS_MS, moveNative, undoMove } from "../../../app/lib/native/move.server.ts";
 import { normalizeNode } from "../../../app/lib/native/normalize.ts";
 import { runGql } from "../../../app/lib/native/request.server.ts";
 import { makeSnapshot, parseSnapshot } from "../../../app/lib/native/restore.server.ts";
@@ -56,7 +56,8 @@ function native(raw: { id: string; discount: unknown }): NativeDiscount {
 /** The delete call fails in transport and every existence check afterwards fails too. */
 function deleteOutcomeUnknown(shopify: FakeShopify, landed: boolean) {
   shopify.inject("WonNativeCodeDelete", landed ? { throwsAfterApply: "socket hang up" } : { throws: "socket hang up" });
-  shopify.inject("WonNativeDiscountExists", ...Array.from({ length: 4 }, () => ({ throws: "ETIMEDOUT" })));
+  // Every re-check after the unanswered delete (DELETE_RECHECK_DELAYS_MS, 4 attempts per read) fails too.
+  shopify.inject("WonNativeDiscountExists", ...Array.from({ length: 4 * DELETE_RECHECK_DELAYS_MS.length }, () => ({ throws: "ETIMEDOUT" })));
 }
 
 // --- Critical 1: unknown delete outcome ----------------------------------------------
@@ -194,7 +195,10 @@ test("Important 2: the config is rolled back BEFORE the restore (no 'code taken'
   assert.equal((result as { state?: string }).state, "restored");
   const lookupsBeforeCreate = shopify.calls.findIndex((c) => c.name === "WonNativeCodeBasicCreate");
   const takenAnswers = shopify.calls.slice(0, lookupsBeforeCreate).filter((c) => c.name === "WonNativeCodeLookup");
-  assert.equal(takenAnswers.length, 1, "one lookup, and it already found the code free");
+  // Two reads of the code before the create, both finding it free: the F2 live check
+  // (no Won node may hold it) and the restore's own look-up. No resync round trip.
+  assert.equal(takenAnswers.length, 2, "the live check and the restore's look-up, no 'code taken' retry");
+  assert.equal(shopify.callsTo("WonNativeCodeBasicCreate").length, 1);
 });
 
 test("Important 2: codes lost in the immediate restore are surfaced and kept for undo", async () => {

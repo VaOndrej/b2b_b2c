@@ -7,14 +7,21 @@
 //             currencies are a warning to fill in); free shipping → freeShipping
 //   target    all items → order; products (+ variants) / collections as is;
 //             free shipping → shipping
-//   minimum   subtotal (shop currency) / quantity
+//   minimum   subtotal (shop currency) / quantity, measured like Shopify does
+//             (F5, verified live, f0-report.md): a product / collection
+//             discount's minimum counts only the ENTITLED items (scope
+//             "entitled"); for an order or shipping discount that is the cart
 //   schedule  startsAt / endsAt in the shop's zone (./time.ts)
 //   codes     every redeem code, up to CONFIG_LIMITS.codesPerRule (rest = loss)
 //   limits    usageLimit → what is LEFT of it (Won counts from zero; keeping the
 //             full limit would hand out uses Shopify already counted);
 //             appliesOncePerCustomer as is (its history resets = loss)
 //   combining Won's own settings (A1) apply; every category where the native
-//             setting differs becomes a warning
+//             setting differs becomes a warning. Against the Shopify discounts
+//             that STAY (`remaining`, F4): Shopify stacks two discounts only
+//             when both allow the other's class, and a Won node allows every
+//             class, so after the move only the other discount's flag decides:
+//             "now adds up" and "Shopify applies one of them" are warnings
 //   subs      Won does not tell subscriptions apart: a one-time-only native gets
 //             a warning, a subscription cycle limit is a stated loss
 //   origin    { nativeId } links the rule to its backup
@@ -38,7 +45,8 @@ import {
   warningText,
 } from "./copy.ts";
 import { isShopMidnight, toShopLocalIso } from "./time.ts";
-import type { MovePlan, NativeDiscount, NativeLocale, NotMovableReason } from "./types.ts";
+import { classOfTarget } from "./normalize.ts";
+import type { MovePlan, NativeDiscount, NativeLocale, NativeStacking, NotMovableReason } from "./types.ts";
 
 type MoneyByCurrency = DiscountRuleValueFixed["amount"];
 
@@ -51,10 +59,18 @@ export class NotMovableError extends Error {
   }
 }
 
+/** A Shopify discount that stays in Shopify, with how it combines (F4). */
+export interface RemainingNative {
+  title: string;
+  stacking: NativeStacking;
+}
+
 export interface PlanMoveOptions {
   locale?: NativeLocale;
   /** "Now" for the starts-later check. Default: the current time. */
   now?: Date;
+  /** Shopify discounts that stay in Shopify: the plan warns how stacking with them changes (F4). */
+  remaining?: readonly RemainingNative[];
 }
 
 export { decimalToMinor } from "./amounts.ts";
@@ -88,9 +104,7 @@ export function ruleIdFor(nativeId: string, config: WonDiscountsConfig): string 
 }
 
 function categoryOf(target: NonNullable<NativeDiscount["target"]>): CombinationCategory {
-  if (target.kind === "order") return "order";
-  if (target.kind === "shipping") return "shipping";
-  return "product";
+  return classOfTarget(target);
 }
 
 /** Does a Won rule of category `a` add up with one of category `b`? (A1, engine.combination) */
@@ -103,11 +117,37 @@ export function wonCombines(a: CombinationCategory, b: CombinationCategory, engi
   return c.orderWithShipping; // order+shipping
 }
 
-const NATIVE_FLAG: Record<CombinationCategory, keyof NativeDiscount["combinesWith"]> = {
+export const NATIVE_FLAG: Record<CombinationCategory, keyof NativeDiscount["combinesWith"]> = {
   product: "productDiscounts",
   order: "orderDiscounts",
   shipping: "shippingDiscounts",
 };
+
+/**
+ * F4, measured live (f0-report.md): Shopify stacks two discounts only when BOTH
+ * allow the other's class; if one says no, it applies one of them. A Won node
+ * allows every class, so after the move only the remaining discount's flag for
+ * the moved discount's class decides.
+ *   now adds up   it allows the moved class, the native did not allow its class
+ *   one of them   it does not allow the moved class (as before: Won cannot change it)
+ */
+export function stackingWarnings(native: NativeDiscount, remaining: readonly RemainingNative[]): WarningItem[] {
+  if (!native.target) return [];
+  const own = categoryOf(native.target);
+  const stacks = new Set<string>();
+  const blocks = new Set<string>();
+  for (const other of remaining) {
+    const allowsMoved = other.stacking.combinesWith[NATIVE_FLAG[own]];
+    for (const cls of other.stacking.classes) {
+      if (!allowsMoved) blocks.add(other.title);
+      else if (!native.combinesWith[NATIVE_FLAG[cls]]) stacks.add(other.title);
+    }
+  }
+  const out: WarningItem[] = [];
+  if (stacks.size > 0) out.push({ code: "stacks_with_native", titles: [...stacks] });
+  if (blocks.size > 0) out.push({ code: "blocked_by_native", titles: [...blocks] });
+  return out;
+}
 
 function dedupeCodes(codes: string[]): string[] {
   const seen = new Set<string>();
@@ -164,13 +204,16 @@ export function planMove(native: NativeDiscount, config: WonDiscountsConfig, opt
     origin: { nativeId: native.id },
   };
 
-  // Minimum
+  // Minimum: Shopify measures a product / collection discount's minimum on the
+  // items it discounts, never the whole cart (F5); order and shipping discounts
+  // are entitled to the cart.
   let usesMoney = native.value.kind === "fixed";
+  const scope = native.target.kind === "products" || native.target.kind === "collections" ? "entitled" : "cart";
   if (native.minimum?.kind === "subtotal") {
-    rule.minimum = { subtotal: money(native.minimum.amount, native.minimum.currencyCode || shopCurrency, locale) };
+    rule.minimum = { subtotal: money(native.minimum.amount, native.minimum.currencyCode || shopCurrency, locale), scope };
     usesMoney = true;
   } else if (native.minimum?.kind === "quantity") {
-    rule.minimum = { quantity: native.minimum.quantity };
+    rule.minimum = { quantity: native.minimum.quantity, scope };
   }
 
   // Schedule, in the shop's zone so the engine's day reading is the shop's day.
@@ -209,7 +252,8 @@ export function planMove(native: NativeDiscount, config: WonDiscountsConfig, opt
     }
     if (limits.usageLimit !== undefined || limits.oncePerCustomer !== undefined) rule.limits = limits;
   }
-  losses.unshift({ code: "usage_history", used: native.usageCount });
+  // Only a count that exists is lost (with none, the dialog can say "Nic.").
+  if (native.usageCount > 0) losses.unshift({ code: "usage_history", used: native.usageCount });
 
   // Subscriptions: Won does not tell them apart. Say both ways it differs (never widen quietly).
   if (!native.appliesOnSubscription) warnings.push({ code: "subscriptions_included" });
@@ -238,6 +282,8 @@ export function planMove(native: NativeDiscount, config: WonDiscountsConfig, opt
     const won = wonCombines(own, other, config.engine);
     if (nativeCombines !== won) warnings.push({ code: "combination_differs", category: other, native: nativeCombines, won });
   }
+
+  warnings.push(...stackingWarnings(native, options.remaining ?? []));
 
   return {
     rule,

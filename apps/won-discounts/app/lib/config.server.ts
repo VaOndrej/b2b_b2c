@@ -4,6 +4,9 @@
 // interpretation of a stored config. Shape validation (sanitize/migrate) lives
 // in @won/core/discounts/config; this module only owns the Prisma I/O.
 
+import { AsyncLocalStorage } from "node:async_hooks";
+import { createHash } from "node:crypto";
+
 import {
   CONFIG_LIMITS,
   createDefaultConfig,
@@ -42,6 +45,13 @@ export interface LoadedConfig {
    * refuses unless `replaceUnreadable` (I3).
    */
   unreadable: boolean;
+  /**
+   * Opaque token of the stored row (a hash of its content), null when the shop
+   * has no row. Pass it back as `SaveConfigOptions.expectedVersion` to save
+   * only when nobody else wrote the config since it was read (F12: optimistic
+   * concurrency across app instances).
+   */
+  version: string | null;
 }
 
 export type SaveConfigResult =
@@ -120,7 +130,33 @@ export type SaveConfigResult =
       ok: false;
       reason: "newer_schema";
       storedSchemaVersion: number;
+    }
+  | {
+      /**
+       * `expectedVersion` was given and the stored config is no longer that
+       * version (another writer saved it meanwhile): nothing was written. Read
+       * the config again, re-apply the change and save again.
+       */
+      ok: false;
+      reason: "base_changed";
+      config: WonDiscountsConfig;
+      issues: ConfigIssue[];
     };
+
+/** The failures validateConfigForSave can give (the save's own checks, without the database). */
+export type ConfigValidationFailure = Extract<
+  SaveConfigResult,
+  { reason: "too_many_code_rules" | "code_hash_collision" | "function_config_too_large" | "config_too_large" }
+>;
+
+export type ConfigValidationResult =
+  | { ok: true; config: WonDiscountsConfig; issues: ConfigIssue[]; data: string; functionConfigBytes: number }
+  | ConfigValidationFailure;
+
+/** The version token of a stored `data` string (see LoadedConfig.version). */
+function versionOf(data: string): string {
+  return createHash("sha256").update(data).digest("hex").slice(0, 32);
+}
 
 function parseStoredData(data: string): { ok: true; value: unknown } | { ok: false } {
   try {
@@ -148,14 +184,15 @@ function storedSchemaVersion(row: { schemaVersion: number; data: string }): numb
  */
 export async function loadConfig(db: PrismaClient, shop: string): Promise<LoadedConfig> {
   const row = await db.shopConfig.findUnique({ where: { shop } });
-  if (!row) return { config: createDefaultConfig(), readOnly: false, exists: false, unreadable: false };
+  if (!row) return { config: createDefaultConfig(), readOnly: false, exists: false, unreadable: false, version: null };
 
   const readOnly = storedSchemaVersion(row) > SCHEMA_VERSION;
+  const version = versionOf(row.data);
   const parsed = parseStoredData(row.data);
   if (!parsed.ok || !isConfigObject(parsed.value)) {
-    return { config: createDefaultConfig(), readOnly, exists: true, unreadable: true };
+    return { config: createDefaultConfig(), readOnly, exists: true, unreadable: true, version };
   }
-  return { config: readStoredConfig(parsed.value), readOnly, exists: true, unreadable: false };
+  return { config: readStoredConfig(parsed.value), readOnly, exists: true, unreadable: false, version };
 }
 
 /** A stored config is always a sanitized object with `modules`; anything else is unreadable. */
@@ -193,40 +230,44 @@ export interface SaveConfigOptions {
   shopLocalNow?: string;
   /** Overwrite a stored row that cannot be read (I3) — only after the merchant confirmed. */
   replaceUnreadable?: boolean;
+  /**
+   * Save only when the stored config is still this version (LoadedConfig.version;
+   * null = "no row yet"). Otherwise nothing is written and the result is
+   * `base_changed`. Omitted: last write wins (the behaviour before F12). When
+   * omitted, a version set by withExpectedConfigVersion() for this shop applies.
+   */
+  expectedVersion?: string | null;
+}
+
+interface ExpectedVersionScope {
+  shop: string;
+  version: string | null;
+}
+
+const expectedVersionScope = new AsyncLocalStorage<ExpectedVersionScope>();
+
+/**
+ * Run `run` with an expected config version for `shop`: every saveConfig of
+ * that shop inside it (also through callers that do not forward options, e.g.
+ * the sync layer's saveAndSync) saves only on top of that version. After a
+ * successful save the scope expects the version just written, so a second save
+ * in the same scope builds on the first. F12: two app instances never silently
+ * drop each other's write.
+ */
+export function withExpectedConfigVersion<T>(shop: string, version: string | null, run: () => Promise<T>): Promise<T> {
+  return expectedVersionScope.run({ shop, version }, run);
 }
 
 /**
- * Sanitize `input` and persist it as the shop's current config, recording a
- * ConfigVersion snapshot in the same transaction. Refuses (writes nothing) when
- *   - more code rules are active than MAX_ACTIVE_CODE_RULES (config-guards,
- *     C2 fallback: each is its own Shopify node, Shopify caps them per store),
- *   - two codes (or a code and a known native code, `options.otherCodes`) share
- *     the hash the discount function matches codes by (config-guards),
- *   - the config's function payload is over the C3 budget in ANY state the
- *     sync writes over time (each live campaign as the current one, or none) —
- *     the discount function could not read it and every Won discount would
- *     stop (§9, re-review K: measuring only "now" let a later campaign with a
- *     longer id push the payload over),
- *   - the sanitized config is over CONFIG_LIMITS.storedConfigBytes (256 KiB) —
- *     the backstop that keeps ShopConfig/ConfigVersion rows small whatever the
- *     per-field caps multiply out to (audit P2-1), or
- *   - the stored row was written by a newer schema (DATA-3) — overwriting it
- *     would silently drop fields this code does not know, or
- *   - the stored row cannot be read (I3) and `replaceUnreadable` is not set.
- * Issues (§4c — surfaced to the admin, never silently dropped) are returned
- * either way the sanitizer ran.
- *
- * Race-safe: two instances saving a shop that has no row yet both read "no
- * row"; the loser's insert hits the unique key (P2002). The whole transaction
- * is then retried and takes the guarded-update path (same for a write
- * conflict, P2034), so concurrent saves are last-write-wins, never an error.
+ * Every check saveConfig runs before it touches the database, as a pure dry
+ * run: sanitize, the code-rule limit, code-hash collisions (with
+ * `options.otherCodes`), the function-config budget in its worst case and the
+ * stored-size backstop. The native move calls it BEFORE deleting anything
+ * (F1): a move that the save would refuse is refused while the native
+ * discount is still live. Database-state refusals (unreadable row, newer
+ * schema, `base_changed`) are not covered: read them from loadConfig.
  */
-export async function saveConfig(
-  db: PrismaClient,
-  shop: string,
-  input: unknown,
-  options: SaveConfigOptions = {},
-): Promise<SaveConfigResult> {
+export function validateConfigForSave(input: unknown, options: Omit<SaveConfigOptions, "replaceUnreadable" | "expectedVersion"> = {}): ConfigValidationResult {
   const sanitized = sanitizeConfig(input);
   const issues = sanitized.issues;
   const config = options.shopMarkets ? withMarketCountries(sanitized.config, options.shopMarkets).config : sanitized.config;
@@ -272,10 +313,56 @@ export async function saveConfig(
       issues,
     };
   }
+  return { ok: true, config, issues, data, functionConfigBytes: encoded.bytes };
+}
 
-  type Outcome = { kind: "newer_schema"; version: number } | { kind: "unreadable" } | { kind: "saved"; versionId: string };
+/**
+ * Sanitize `input` and persist it as the shop's current config, recording a
+ * ConfigVersion snapshot in the same transaction. Refuses (writes nothing) when
+ *   - more code rules are active than MAX_ACTIVE_CODE_RULES (config-guards,
+ *     C2 fallback: each is its own Shopify node, Shopify caps them per store),
+ *   - two codes (or a code and a known native code, `options.otherCodes`) share
+ *     the hash the discount function matches codes by (config-guards),
+ *   - the config's function payload is over the C3 budget in ANY state the
+ *     sync writes over time (each live campaign as the current one, or none) —
+ *     the discount function could not read it and every Won discount would
+ *     stop (§9, re-review K: measuring only "now" let a later campaign with a
+ *     longer id push the payload over),
+ *   - the sanitized config is over CONFIG_LIMITS.storedConfigBytes (256 KiB) —
+ *     the backstop that keeps ShopConfig/ConfigVersion rows small whatever the
+ *     per-field caps multiply out to (audit P2-1), or
+ *   - the stored row was written by a newer schema (DATA-3) — overwriting it
+ *     would silently drop fields this code does not know, or
+ *   - the stored row cannot be read (I3) and `replaceUnreadable` is not set.
+ * Issues (§4c — surfaced to the admin, never silently dropped) are returned
+ * either way the sanitizer ran.
+ *
+ * Race-safe: two instances saving a shop that has no row yet both read "no
+ * row"; the loser's insert hits the unique key (P2002). The whole transaction
+ * is then retried and takes the guarded-update path (same for a write
+ * conflict, P2034), so concurrent saves are last-write-wins, never an error.
+ */
+export async function saveConfig(
+  db: PrismaClient,
+  shop: string,
+  input: unknown,
+  options: SaveConfigOptions = {},
+): Promise<SaveConfigResult> {
+  const validated = validateConfigForSave(input, options);
+  if (!validated.ok) return validated;
+  const { config, issues, data } = validated;
+  const scope = expectedVersionScope.getStore();
+  const scoped = options.expectedVersion === undefined && scope?.shop === shop ? scope : undefined;
+  const expected = options.expectedVersion !== undefined ? options.expectedVersion : scoped ? scoped.version : undefined;
+
+  type Outcome =
+    | { kind: "newer_schema"; version: number }
+    | { kind: "unreadable" }
+    | { kind: "base_changed" }
+    | { kind: "saved"; versionId: string };
   const write = () => db.$transaction(async (tx): Promise<Outcome> => {
     const existing = await tx.shopConfig.findUnique({ where: { shop } });
+    if (expected !== undefined && (existing ? versionOf(existing.data) : null) !== expected) return { kind: "base_changed" };
     if (existing && !options.replaceUnreadable && rowIsUnreadable(existing) && storedSchemaVersion(existing) <= SCHEMA_VERSION) {
       return { kind: "unreadable" };
     }
@@ -283,13 +370,19 @@ export async function saveConfig(
       const version = storedSchemaVersion(existing);
       if (version > SCHEMA_VERSION) return { kind: "newer_schema", version };
       // Guarded on the column too, so a newer instance's write that lands
-      // between the read above and this update is never overwritten.
+      // between the read above and this update is never overwritten. With an
+      // expected version, also on the content just compared (compare-and-set).
       const updated = await tx.shopConfig.updateMany({
-        where: { shop, schemaVersion: { lte: SCHEMA_VERSION } },
+        where: { shop, schemaVersion: { lte: SCHEMA_VERSION }, ...(expected !== undefined ? { data: existing.data } : {}) },
         data: { schemaVersion: SCHEMA_VERSION, data },
       });
-      if (updated.count === 0) return { kind: "newer_schema", version: SCHEMA_VERSION + 1 };
+      if (updated.count === 0) {
+        if (expected !== undefined) return { kind: "base_changed" };
+        return { kind: "newer_schema", version: SCHEMA_VERSION + 1 };
+      }
     } else {
+      // With an expected "no row", a concurrent create makes this insert fail
+      // with P2002; the retry then reads the row and answers base_changed.
       await tx.shopConfig.create({ data: { shop, schemaVersion: SCHEMA_VERSION, data } });
     }
     const version = await tx.configVersion.create({
@@ -310,6 +403,17 @@ export async function saveConfig(
   if (outcome.kind === "newer_schema") {
     return { ok: false, reason: "newer_schema", storedSchemaVersion: outcome.version };
   }
+  if (outcome.kind === "base_changed") {
+    return {
+      ok: false,
+      reason: "base_changed",
+      config,
+      issues: [
+        ...issues,
+        { path: "", code: "base_changed", message: "The configuration was changed by someone else meanwhile. Nothing was saved; read it again and retry." },
+      ],
+    };
+  }
   if (outcome.kind === "unreadable") {
     return {
       ok: false,
@@ -327,9 +431,10 @@ export async function saveConfig(
     };
   }
 
+  if (scoped) scoped.version = versionOf(data);
   await pruneConfigHistory(db, shop);
 
-  return { ok: true, config, issues, versionId: outcome.versionId, functionConfigBytes: encoded.bytes };
+  return { ok: true, config, issues, versionId: outcome.versionId, functionConfigBytes: validated.functionConfigBytes };
 }
 
 /** Rows created before this instant are past CONFIG_HISTORY_RETENTION_DAYS. */

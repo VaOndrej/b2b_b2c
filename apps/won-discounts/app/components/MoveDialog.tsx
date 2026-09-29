@@ -1,10 +1,14 @@
 // "Přesunout do Won" confirmation (docs/won-discounts/rozhodnuti.md, "Přesun
-// nativních slev"): before the one click, say exactly what happens and what is
-// lost (§14c) — the planMove sentences for THIS discount (app/lib/native) —
-// and how to undo it (§14b). The body is a separate component so the harness
-// and tests can render it without opening a modal.
+// nativních slev"): before the one click, say exactly what happens, in the
+// order the code does it (backup → delete → Won rule + sync, with the short
+// window without the discount), what is lost (§14c) — the planMove sentences
+// for THIS discount (app/lib/native) — that uninstalling the app ends moved
+// discounts, and how to undo it (§14b). The "Vrátit zpět" confirmation says
+// what the undo changes BEFORE the click too (F11). The bodies are separate
+// components so the harness and tests can render them without opening a modal.
 
-import type { NativeDiscountView } from "./model/types";
+import type { MovedBackupExtras } from "../lib/native/types";
+import type { MovedDiscountView, NativeDiscountView } from "./model/types";
 import { useT } from "../i18n/context";
 
 function List({ items }: { items: readonly string[] }) {
@@ -44,15 +48,57 @@ export function MoveDialogBody({ discounts }: { discounts: readonly NativeDiscou
         <s-text type="strong">{t("move.what")}</s-text>
         <s-ordered-list>
           <s-list-item>{t("move.step.backup")}</s-list-item>
-          <s-list-item>{t("move.step.create")}</s-list-item>
           <s-list-item>{t("move.step.delete")}</s-list-item>
+          <s-list-item>{t("move.step.create")}</s-list-item>
         </s-ordered-list>
+        <s-paragraph>{t("move.window")}</s-paragraph>
       </s-stack>
       {discounts.map((discount) => (
         <LossBlock key={discount.id} discount={discount} titled={discounts.length > 1} />
       ))}
+      <s-paragraph>{t("move.uninstall")}</s-paragraph>
       <s-paragraph color="subdued">{t("move.undo")}</s-paragraph>
     </s-stack>
+  );
+}
+
+/** A backup on Přehled with what its undo will change (MovedBackupExtras, app/lib/integration). */
+export type UndoableBackup = MovedDiscountView & MovedBackupExtras;
+
+/** What "Vrátit zpět" will do and change, before the click (F11, §14c). */
+export function UndoDialogBody({ backup }: { backup: UndoableBackup }) {
+  const { t } = useT();
+  const costs = backup.undoCosts ?? [];
+  return (
+    <s-stack direction="block" gap="base">
+      <s-stack direction="block" gap="small-200">
+        <s-text type="strong">{t("undo.what")}</s-text>
+        <s-ordered-list>
+          <s-list-item>{t("undo.step.remove")}</s-list-item>
+          <s-list-item>{t("undo.step.restore")}</s-list-item>
+        </s-ordered-list>
+      </s-stack>
+      <s-stack direction="block" gap="small-200">
+        <s-text type="strong">{t("undo.changes.title")}</s-text>
+        {costs.length > 0 ? <List items={costs} /> : <s-paragraph>{t("undo.changes.generic")}</s-paragraph>}
+      </s-stack>
+    </s-stack>
+  );
+}
+
+/** The "Vrátit zpět" confirmation modal; the caller owns the submission (`onConfirm`). */
+export function UndoDialog({ id, backup, onConfirm }: { id: string; backup: UndoableBackup | null; onConfirm: () => void }) {
+  const { t } = useT();
+  return (
+    <s-modal id={id} heading={backup ? t("undo.headingOne", { title: backup.title }) : t("undo.confirm")}>
+      {backup ? <UndoDialogBody backup={backup} /> : null}
+      <s-button slot="primary-action" variant="primary" commandFor={id} command="--hide" onClick={onConfirm}>
+        {t("undo.confirm")}
+      </s-button>
+      <s-button slot="secondary-actions" commandFor={id} command="--hide">
+        {t("common.cancel")}
+      </s-button>
+    </s-modal>
   );
 }
 

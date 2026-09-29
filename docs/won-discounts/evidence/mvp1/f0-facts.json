@@ -1,0 +1,78 @@
+{
+  "generatedAt": "2026-09-29T00:00:00Z",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "apiVersion": "2026-04",
+  "facts": [
+    {
+      "id": "F0-1-minimum-scope",
+      "question": "Native 'amount off products' 10% on won-e2e-simple-a only, minimumRequirement subtotal that the WHOLE cart (A+B) exceeds but A alone does not. Cart = A+B: does the discount apply?",
+      "method": "live",
+      "script": "apps/won-discounts/scripts/prototypes/f0-native-facts.mjs (fact1 block)",
+      "setup": {
+        "discount": "gid://shopify/DiscountAutomaticNode/2204410577137 (WON-PROTO-F0 fact1 min-scope, deleted after run)",
+        "discountClasses": ["PRODUCT"],
+        "minimumRequirement": { "greaterThanOrEqualToSubtotal": { "amount": "15.0", "currencyCode": "USD" } },
+        "target": "won-e2e-simple-a variant only",
+        "cartCurrency": "CZK (storefront session resolved to the cesko market; converted line prices: A=218.00, B=262.00, cart total=480.00)",
+        "note": "The 15.00 USD minimum converts to roughly 327 CZK at the live exchange rate used by Shopify for this session: A alone (218.00 CZK) is below it, the whole cart (480.00 CZK) is above it — the required asymmetry for an unambiguous test."
+      },
+      "result": {
+        "lineA_discount_allocations": [],
+        "cart_total_discount": 0,
+        "cart_original_total_price_cents": 48000
+      },
+      "answer": "NOT APPLIED. The minimum was evaluated against simple-a's own line subtotal (entitled items only), not the whole cart. Even though the whole cart (480 CZK) exceeds the converted minimum (~327 CZK), the discount never fired because simple-a alone (218 CZK) does not.",
+      "confidence": "high (live, single run; matches the audit's prior static-analysis finding F5 in audit-mvp1-native.md:11)",
+      "docsNote": "shopify-dev MCP search for 'minimum purchase requirement applies to' / 'minimumRequirement subtotal entitled' returned only schema-reference chunks (DiscountMinimumSubtotal, DiscountPurchaseAmount) with no explicit statement of scope — the live test was the deciding evidence, not a docs quote."
+    },
+    {
+      "id": "F0-2-combining",
+      "question": "Native A (automatic PRODUCT 10% on simple-a) + native B (automatic ORDER 5%, discountClasses=[ORDER] because customerGets.items.all=true) — do they stack when combinesWith disagrees, in both directions?",
+      "method": "live",
+      "script": "apps/won-discounts/scripts/prototypes/f0-native-facts.mjs (fact2a/fact2b blocks)",
+      "runs": [
+        {
+          "label": "2a: A.combinesWith.orderDiscounts=false, B.combinesWith.productDiscounts=true",
+          "result": { "lineA_allocations": [], "order_level_allocations": [{ "title": "WON-PROTO-F0 fact2a B 5pct-order", "amount": 2400 }] },
+          "stacked": false
+        },
+        {
+          "label": "2b: A.combinesWith.orderDiscounts=true, B.combinesWith.productDiscounts=false (flipped)",
+          "result": { "lineA_allocations": [], "order_level_allocations": [{ "title": "WON-PROTO-F0 fact2b B 5pct-order", "amount": 2400 }] },
+          "stacked": false
+        }
+      ],
+      "answer": "Do NOT stack in either direction. Both discounts must allow the other's class (mutual agreement) — one side saying no is enough to block combining, regardless of which side it is. When they don't combine, Shopify does not apply both partially: it picked the ORDER discount (B) and dropped the PRODUCT discount (A) entirely in both runs.",
+      "confidence": "high (live, both directions tested)",
+      "docsNote": "shopify.dev DiscountCombinesWith reference (admin-graphql/2026-07/objects/DiscountCombinesWith) documents the mutual tag-matching rule for same-class (product-vs-product) combining but does not explicitly spell out the general product-vs-order mutual-agreement rule in the fetched chunks; the live test confirms it end to end."
+    },
+    {
+      "id": "F0-3-usageLimit-semantics",
+      "question": "Code discount with 2 redeem codes and usageLimit=1: is the limit per discount (shared across codes) or per code?",
+      "method": "docs",
+      "answer": "Per discount, shared across all its redeem codes. DiscountCodeBasicInput.usageLimit is documented as 'The maximum number of times the discount can be redeemed' (singular 'the discount', not 'the code'). A DiscountRedeemCode is just one of possibly many codes attached to the same DiscountCodeNode; the node carries one usageLimit that all its codes draw down together.",
+      "docsQuote": "\"usage​Limit Int The maximum number of times the discount can be redeemed. For unlimited usage, specify null.\" — DiscountCodeBasicInput, https://shopify.dev/docs/api/admin-graphql/unstable/input-objects/DiscountCodeBasicInput (same wording on 2026-10 pinned version)",
+      "confidence": "high (explicit docs wording); live Bogus-checkout order was skipped per the brief's own instruction to skip when docs are explicit",
+      "liveOrderSkipped": true
+    },
+    {
+      "id": "F0-4-metafield-10000-byte-limit",
+      "question": "Is the 10,000-byte function input limit measured in bytes or characters, and what happens when a metafield exceeds it (with multibyte/Czech text)?",
+      "method": "docs",
+      "answer": "Bytes (UTF-8), not characters. A metafield value over 10,000 bytes is still written and still returned by the GraphQL Admin API, but a Shopify Function's input query receives null for that field instead of erroring. This makes multibyte text (e.g. Czech diacritics, 2 bytes/char in UTF-8) reach the 10,000-byte ceiling at roughly half the character count of ASCII.",
+      "docsQuote": "\"Caution: Shopify Functions input queries don't return metafield values larger than 10,000 bytes. The value is still stored, and the GraphQL Admin API still returns it, but a function receives null for it.\" — https://shopify.dev/docs/apps/build/metafields/metafield-limits",
+      "confidence": "high (explicit docs wording)",
+      "liveTestSkipped": true,
+      "liveTestSkippedReason": "The brief's own fallback: 'if this is too risky or complex, stop at the docs quote and say so.' A live multibyte-vs-ASCII probe would require writing the shop-level $app:won_discounts/function_config metafield that the REAL 'Won Discounts' automatic node reads in production (confirmed live on 2026-09-29: gid://shopify/Shop/78971076849 already carries a real, non-null function_config — schemaVersion 1, 0 campaigns/rules). Overwriting and restoring that value byte-for-byte to test a already-decisive docs fact was judged not worth the risk to a shared production config on the dev store; no backup file was created and the shop metafield was left untouched (verified via verify-clean.mjs both before and after this session's other live tests)."
+    }
+  ],
+  "cleanup": {
+    "verifyCleanRuns": 2,
+    "lastRun": "2026-09-29, after all live experiments",
+    "protoNodesRemaining": 0,
+    "foreignProtoNodesRemaining": 0,
+    "productMetafieldsRemaining": 0,
+    "shopFunctionConfigTouched": false,
+    "note": "verify-clean.mjs reports clean:false only because the shop's REAL $app:won_discounts/function_config (the production Won Discounts config, 0 rules) is present — that is expected production state, not a leftover, and was never written to by this session."
+  }
+}

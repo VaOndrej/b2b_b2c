@@ -9,6 +9,8 @@
 // `recurringCycleLimit` is Int on some discount types and Int! on others, so
 // each type reads it under its own alias (one response key, one type).
 
+import { GQL as SYNC_GQL } from "../sync/graphql.ts";
+
 /** Nodes per `discountNodes` page during detection. */
 export const DETECT_PAGE_SIZE = 10;
 /** Products / variants / collections read per node during detection (the move reads all). */
@@ -122,17 +124,23 @@ fragment WonNativeDiscountFields on Discount {
     context { ...WonNativeContext }
   }
   ... on DiscountCodeBxgy {
-    title status
+    title status discountClasses
+    combinesWith { orderDiscounts productDiscounts shippingDiscounts }
     codes(first: $codes) { ...WonNativeCodes }
   }
-  ... on DiscountAutomaticBxgy { title status }
+  ... on DiscountAutomaticBxgy {
+    title status discountClasses
+    combinesWith { orderDiscounts productDiscounts shippingDiscounts }
+  }
   ... on DiscountCodeApp {
-    title status
+    title status discountClasses
+    combinesWith { orderDiscounts productDiscounts shippingDiscounts }
     codes(first: $codes) { ...WonNativeCodes }
     appDiscountType { appKey functionId title app { title } }
   }
   ... on DiscountAutomaticApp {
-    title status
+    title status discountClasses
+    combinesWith { orderDiscounts productDiscounts shippingDiscounts }
     appDiscountType { appKey functionId title app { title } }
   }
 }
@@ -337,21 +345,37 @@ fragment WonNativeCodesPage on DiscountRedeemCodeConnection {
       __typename
       ... on DiscountCodeBasic { title createdAt }
       ... on DiscountCodeFreeShipping { title createdAt }
-      ... on DiscountCodeApp { title }
+      ... on DiscountCodeApp { title asyncUsageCount }
     }
   }
 }
 `,
 
-  /** Newest automatic discounts: finds an automatic restore whose response was lost. */
+  /**
+   * The shop's Won function config as Shopify holds it: the sync layer's own
+   * read-back document (app/lib/sync/graphql.ts, validated there). F2: before
+   * a native comes back, Shopify must no longer run its Won rule.
+   */
+  shopFunctionConfig: SYNC_GQL.shopConfigReadBack,
+
+  /** Newest automatic discounts (F8: matched by type, title, start and value before any create). */
   recentAutomatic: `query WonNativeRecentAutomatic {
   discountNodes(first: 10, query: "method:automatic", sortKey: CREATED_AT, reverse: true) {
     nodes {
       id
       discount {
         __typename
-        ... on DiscountAutomaticBasic { title createdAt }
-        ... on DiscountAutomaticFreeShipping { title createdAt }
+        ... on DiscountAutomaticBasic {
+          title createdAt startsAt
+          customerGets {
+            value {
+              __typename
+              ... on DiscountPercentage { percentage }
+              ... on DiscountAmount { amount { amount currencyCode } appliesOnEachItem }
+            }
+          }
+        }
+        ... on DiscountAutomaticFreeShipping { title createdAt startsAt }
       }
     }
   }

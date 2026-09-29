@@ -9,6 +9,10 @@
 //   { throwsAfterApply: "…" }      transport failure AFTER the write landed
 //   { graphqlErrorAfterApply: "…" } GraphQL error answer although the write landed
 //   { userErrors: [{ message }] }  mutation answered with userErrors
+//   { dataWithErrors: "…" }        data AND per-item GraphQL errors (partial answer)
+// It also models the shop's Won function config metafield (`shopFunctionConfig`,
+// written by fake-sync.ts, read with the sync layer's read-back document) and
+// calls `onCall` before answering (tests make a write "land late" there).
 
 import type { AdminGraphQLResult, GraphQLErrorLike } from "../../../app/lib/admin-client.server.ts";
 import type { AdminClient } from "../../../app/lib/native/types.ts";
@@ -21,7 +25,8 @@ export type Injection =
   | { throws: string }
   | { throwsAfterApply: string }
   | { graphqlErrorAfterApply: string }
-  | { userErrors: { message: string; code?: string; field?: string[] }[] };
+  | { userErrors: { message: string; code?: string; field?: string[] }[] }
+  | { dataWithErrors: string };
 
 export interface RecordedCall {
   name: string;
@@ -72,6 +77,10 @@ export class FakeShopify implements AdminClient {
   bulkNeverDone = false;
   /** Clock for createdAt / status of created discounts. */
   now: () => Date = () => new Date("2026-09-28T12:00:00Z");
+  /** The shop's `$app:won_discounts.function_config` value (null = no metafield). */
+  shopFunctionConfig: string | null = null;
+  /** Called with every operation before it is answered (after injections are picked). */
+  onCall: ((name: string, variables: Record<string, unknown>) => void) | null = null;
 
   inject(name: string, ...items: Injection[]): void {
     this.injections.set(name, [...(this.injections.get(name) ?? []), ...items]);
@@ -110,7 +119,9 @@ export class FakeShopify implements AdminClient {
     const name = /^(?:query|mutation)\s+(\w+)/.exec(query.trim())?.[1] ?? "anonymous";
     this.calls.push({ name, variables: variables ? clone(variables) : undefined });
     const injected = this.injections.get(name)?.shift();
+    this.onCall?.(name, variables ?? {});
     if (injected) {
+      if ("dataWithErrors" in injected) return { data: this.handle(name, variables ?? {}), errors: [{ message: injected.dataWithErrors }] };
       if ("throttled" in injected) return { errors: [{ message: "Throttled", extensions: { code: "THROTTLED" } }] };
       if ("graphqlError" in injected) return { errors: [{ message: injected.graphqlError }] };
       if ("throws" in injected) throw new Error(injected.throws);
@@ -162,6 +173,13 @@ export class FakeShopify implements AdminClient {
     switch (name) {
       case "WonNativeShop":
         return { shop: clone(this.shop) };
+      case "WonSyncShopConfigReadBack":
+        return {
+          shop: {
+            id: "gid://shopify/Shop/1",
+            metafield: this.shopFunctionConfig === null ? null : { id: "gid://shopify/Metafield/1", value: this.shopFunctionConfig },
+          },
+        };
       case "WonNativeDiscounts": {
         const all = [...this.nodes.values()];
         const from = v.after ? Number(v.after) : 0;
@@ -238,7 +256,15 @@ export class FakeShopify implements AdminClient {
         const node = this.holderOf(String(v.code));
         return {
           codeDiscountNodeByCode: node
-            ? { id: node.id, codeDiscount: { __typename: node.discount.__typename, title: node.discount.title, createdAt: node.discount.createdAt ?? null } }
+            ? {
+                id: node.id,
+                codeDiscount: {
+                  __typename: node.discount.__typename,
+                  title: node.discount.title,
+                  createdAt: node.discount.createdAt ?? null,
+                  ...(node.discount.__typename === "DiscountCodeApp" ? { asyncUsageCount: node.discount.asyncUsageCount ?? 0 } : {}),
+                },
+              }
             : null,
         };
       }
@@ -251,7 +277,13 @@ export class FakeShopify implements AdminClient {
           discountNodes: {
             nodes: automatic.map((n) => ({
               id: n.id,
-              discount: { __typename: n.discount.__typename, title: n.discount.title, createdAt: n.discount.createdAt },
+              discount: {
+                __typename: n.discount.__typename,
+                title: n.discount.title,
+                createdAt: n.discount.createdAt,
+                startsAt: n.discount.startsAt,
+                ...(n.discount.customerGets ? { customerGets: { value: clone(n.discount.customerGets.value) } } : {}),
+              },
             })),
           },
         };
@@ -404,7 +436,12 @@ export function basicNode(f: BasicFixture = {}, currency = "CZK"): { id: string;
     customerGets: {
       value:
         f.amount !== undefined
-          ? { __typename: "DiscountAmount", amount: { amount: f.amount, currencyCode: currency }, appliesOnEachItem: f.appliesOnEachItem ?? true }
+          ? {
+              __typename: "DiscountAmount",
+              amount: { amount: f.amount, currencyCode: currency },
+              // Shopify: an amount off the whole order applies once; off products, on each item.
+              appliesOnEachItem: f.appliesOnEachItem ?? !("all" in items),
+            }
           : { __typename: "DiscountPercentage", percentage: f.percentage ?? 0.1 },
       items:
         "all" in items

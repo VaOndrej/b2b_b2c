@@ -26,6 +26,8 @@ function itemCount(native: NativeDiscount): number {
 /** Null when the discount can move; otherwise why not (./copy.ts has the sentence). */
 export function classifyNative(native: NativeDiscount): NotMovableReason | null {
   if (!native.value || !native.target) return { code: "unsupported_value" };
+  // A field Shopify returned in an unknown shape is never guessed (F13).
+  if (native.unreadable && native.unreadable.length > 0) return { code: "unsupported_value" };
   if (native.value.kind === "percentage" && !Number.isFinite(native.value.percent)) return { code: "unsupported_value" };
   const shopCurrency = native.shop.currencyCode;
   if (native.value.kind === "fixed" && decimalToMinor(native.value.amount, native.value.currencyCode || shopCurrency) === null) {
@@ -43,6 +45,11 @@ export function classifyNative(native: NativeDiscount): NotMovableReason | null 
     !native.value.appliesOnEachItem
   ) {
     return { code: "fixed_once_per_order" };
+  }
+  // The reverse (F13): an amount off EACH item of the whole order. A Won order
+  // rule takes a fixed amount once per order, which would narrow it silently.
+  if (native.value.kind === "fixed" && native.target.kind === "order" && native.value.appliesOnEachItem) {
+    return { code: "fixed_each_item_on_order" };
   }
   if (native.shippingCountries) return { code: "shipping_countries" };
   if (native.maximumShippingPrice) return { code: "shipping_price_cap" };
