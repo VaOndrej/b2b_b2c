@@ -59,6 +59,9 @@ export interface PricedLine {
   unitCost?: number;
   /** Its currency (the metafield's `cur`). */
   unitCostCurrency?: string;
+  /** An outlet line (A1.1) / a Won gift line (A1.2): outside every discount, margin included (harness, MVP 5). */
+  outlet?: boolean;
+  giftTierId?: string;
 }
 
 /** A product's refs as its `$app:won_discounts/product` metafield holds them. */
@@ -257,6 +260,8 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
       ...(entry?.marginRefs && entry.marginRefs.length > 0 ? { marginRefs: entry.marginRefs } : {}),
       ...(line.unitCost !== undefined ? { unitCost: line.unitCost } : {}),
       ...(line.unitCostCurrency !== undefined ? { unitCostCurrency: line.unitCostCurrency } : {}),
+      ...(line.outlet ? { outlet: true } : {}),
+      ...(line.giftTierId ? { giftTierId: line.giftTierId } : {}),
     };
   });
 
@@ -311,12 +316,14 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
       ? {
           margin: {
             rateEstimated: input.rateEstimated === true,
-            // Lines whose cost is unknown in the cart currency (none in the mirror, or not convertible):
-            // the "no purchase cost" percent ceiling is their floor (types.ts CartPlanView.margin).
-            linesWithoutCost: lines.filter(
-              (line) =>
-                costMinorUnits(line.unitCost, line.unitCostCurrency, input.shopToCartRate ?? undefined, input.currency, input.shopCurrency ?? undefined) === null,
-            ).length,
+            // Lines margin protection applies to (not outlet, not gift) whose cost is unknown in the cart
+            // currency (none in the mirror, or not convertible): the "no purchase cost" percent ceiling is
+            // their floor (types.ts CartPlanView.margin).
+            linesWithoutCost: plan.lines.filter((planLine) => {
+              if (planLine.excluded !== null) return false;
+              const line = lines.find((l) => l.id === planLine.lineId);
+              return !line || costMinorUnits(line.unitCost, line.unitCostCurrency, input.shopToCartRate ?? undefined, input.currency, input.shopCurrency ?? undefined) === null;
+            }).length,
           },
         }
       : {}),

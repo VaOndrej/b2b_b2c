@@ -243,13 +243,13 @@ export async function costMirrorView(
     const latest = await ctx.db.variantCost.findFirst({
       where: { shop: ctx.shop, writeError: { not: null } },
       orderBy: [{ writeFailedAt: "desc" }, { variantId: "asc" }],
-      select: { variantId: true, title: true, writeError: true, writeFailedAt: true },
+      select: { variantId: true, title: true, variantTitle: true, writeError: true, writeFailedAt: true },
     });
-    const detail = `${refused} variant(s) without their cost at checkout, Shopify refused the write (e.g. ${latest?.title ?? latest?.variantId ?? ""}: ${latest?.writeError ?? ""})`;
+    const title = latest ? (latest.variantTitle ? `${latest.title ?? latest.variantId} (${latest.variantTitle})` : (latest.title ?? latest.variantId)) : "";
     return {
       state: "failed",
       at: local(latest?.writeFailedAt ?? now, opts.timezone),
-      problems: [{ key: "sync.problem.other", params: { detail: shortDetail(detail) } }],
+      problems: [{ key: "margin.mirror.refused", params: { n: refused, title, detail: shortDetail(latest?.writeError ?? "") } }],
     };
   }
   if (state.scannedAt && state.cursor === null && now.getTime() - state.scannedAt.getTime() < COSTS_MAX_AGE_MS) {

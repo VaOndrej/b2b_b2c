@@ -399,3 +399,53 @@ test("uninstall keeps only cost-free markers; a DELAYED uninstall after a reinst
   assert.equal(cleared.cleared, 2);
   assert.equal(fake.variantCostMetafield("gid://shopify/ProductVariant/201"), undefined, "the live metafield written after the reinstall is gone");
 });
+
+test("a refused write on a variant that still carries an OLDER cost deletes that stale value (the ceiling applies), and is due for a retry after the back-off", async () => {
+  const { costsDue, jobFor, ensureCostsFresh, costIdle } = await import("../../../app/lib/sync/cost-lane.server.ts");
+  const { saveConfig } = await import("../../../app/lib/config.server.ts");
+  const fake = new FakeShopify();
+  catalogue(fake, 2);
+  await runCostPass(ctxFor(fake)); // 201 carries {"cost":2.5}
+  const variant = "gid://shopify/ProductVariant/201";
+  fake.setCost(variant, "4.00");
+  fake.refusedOwners.add(variant);
+  const result = await runCostPass(ctxFor(fake));
+  assert.equal(result.outcome, "done");
+  assert.equal(fake.variantCostMetafield(variant), undefined, "the stale 2.5 is gone: checkout falls back to the ceiling");
+  const row = (await rows()).find((r) => r.variantId === variant)!;
+  assert.deepEqual([row.metafieldValue, row.mayCarry], [null, false]);
+  assert.match(row.writeError ?? "", /Value is invalid/);
+
+  // Fresh pass, but the refused variant is due for a retry once its back-off has passed.
+  assert.equal(await costsDue(db.prisma, shop, true, new Date(NOW.getTime() + 30 * 60_000)), null, "within the back-off");
+  const later = new Date(NOW.getTime() + 61 * 60_000);
+  assert.equal(await costsDue(db.prisma, shop, true, later), "retry");
+  assert.deepEqual(await jobFor(db.prisma, shop, "retry", later), { kind: "items", inventoryItemIds: ["gid://shopify/InventoryItem/201"] });
+
+  // The retry (Přehled / reconcile) writes it once Shopify accepts it.
+  await saveConfig(db.prisma, shop, { modules: { margin: { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: [] } } });
+  fake.refusedOwners.clear();
+  const started = await ensureCostsFresh(shop, { client: fake, db: db.prisma, plan: async () => "free", now: () => later, sleep: async () => {} }, true);
+  assert.equal(started, "started_retry");
+  await costIdle(shop);
+  assert.deepEqual(fake.variantCostMetafield(variant), { cost: 4, cur: "CZK" });
+  assert.equal((await rows()).find((r) => r.variantId === variant)!.writeError, null);
+  assert.equal(await costsDue(db.prisma, shop, true, later), null);
+});
+
+test("no-op passes and mirrors never move updatedAt (the impact cache keys on it)", async () => {
+  const fake = new FakeShopify();
+  catalogue(fake, 3);
+  await runCostPass(ctxFor(fake));
+  const before = await db.prisma.variantCost.aggregate({ where: { shop }, _max: { updatedAt: true }, _count: { _all: true } });
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  await runCostPass({ ...ctxFor(fake), restart: true });
+  await mirrorProducts(ctxFor(fake), ["gid://shopify/Product/1", "gid://shopify/Product/2"]);
+  await mirrorInventoryItems(ctxFor(fake), ["gid://shopify/InventoryItem/201"]);
+  const after = await db.prisma.variantCost.aggregate({ where: { shop }, _max: { updatedAt: true }, _count: { _all: true } });
+  assert.deepEqual(after, before);
+  const token = (await loadCostState(db.prisma, shop)).scannedAt;
+  assert.ok(token);
+  const scanIds = new Set((await rows()).map((r) => r.scanId));
+  assert.equal(scanIds.size, 1, "every row carries the newest pass's token (set without touching updatedAt)");
+});

@@ -22,7 +22,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import type { AdminClient } from "../admin-client.server";
 import { loadConfig } from "../config.server";
 import { planOf } from "../plan.server";
-import { costJobKind, costsDue, startCostJob } from "../sync/cost-lane.server";
+import { costJobKind, costRetryRunning, costsDue, startDueJob, type CostDue } from "../sync/cost-lane.server";
 import { errorText } from "../sync/transport";
 import type { SyncLogger } from "../sync/types";
 
@@ -45,7 +45,7 @@ export interface CostReconcileDeps {
 
 export interface CostReconcileResult {
   checked: number;
-  started: { shop: string; kind: "full" | "clear" }[];
+  started: { shop: string; kind: CostDue }[];
   skippedNoSession: number;
 }
 
@@ -71,13 +71,13 @@ export async function runCostReconcileOnce(deps: CostReconcileDeps): Promise<Cos
       if (loaded.unreadable || loaded.readOnly) continue;
       const enabled = loaded.exists && gateConfigForPlan(loaded.config, await plan(shop)).config.modules.margin.enabled === true;
       const due = await costsDue(deps.db, shop, enabled, now);
-      if (!due) continue;
+      if (!due || costRetryRunning(shop)) continue;
       const client = await deps.clientFor(shop);
       if (!client) {
         result.skippedNoSession += 1;
         continue;
       }
-      void startCostJob(shop, { client, db: deps.db, plan, now: deps.now, logger }, { kind: due });
+      await startDueJob(shop, { client, db: deps.db, plan, now: deps.now, logger }, due, now);
       result.started.push({ shop, kind: due });
     } catch (error) {
       logger.error(`cost reconcile ${shop}: ${errorText(error)}`);

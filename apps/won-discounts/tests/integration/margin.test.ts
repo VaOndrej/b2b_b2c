@@ -569,6 +569,98 @@ test("a variant whose cost Shopify refuses is surfaced in the mirror status (the
   assert.deepEqual(store.sync.variantCostMetafield("gid://shopify/ProductVariant/101"), { cost: 6, cur: "CZK" });
   const data = await loadMarginScreen(ctx);
   assert.equal(data.mirror.state, "failed");
-  const detail = data.mirror.state === "failed" ? String(data.mirror.problems[0]?.params?.detail ?? "") : "";
-  assert.match(detail, /1 variant\(s\).*Čepice.*Value is invalid/);
+  const problem = data.mirror.state === "failed" ? data.mirror.problems[0] : undefined;
+  assert.equal(problem?.key, "margin.mirror.refused", "its own sentence, not an English detail in a generic one");
+  assert.equal(problem?.params?.n, 1);
+  assert.equal(problem?.params?.title, "Čepice");
+  assert.match(String(problem?.params?.detail), /Value is invalid/);
+  const { t } = await import("../../app/i18n/index.ts");
+  assert.match(t("cs", problem!.key, problem!.params), /^Shopify odmítl zapsat nákupní cenu u variant: 1 \(např\. Čepice\)/);
+});
+
+test("a cs save that the sanitizer adjusts reports the adjustments in Czech (rounded + clamped percent)", async () => {
+  const store = storeWithCatalogue();
+  const ctx = ctxFor(store);
+  const result = await saveMarginSettings(ctx, settings({ minMarginPercent: 12.35, maxDiscountPercent: 120 }), { configVersion: null });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.deepEqual(result.ok ? result.fixes : null, [
+    "Procento 120 je mimo rozsah 0 až 100, uložilo se 100.",
+    "Procenta marže mají jedno desetinné místo. 12.35 se zaokrouhlilo na 12.4, na přísnější stranu.",
+  ]);
+  await settle();
+  const en = await saveMarginSettings({ ...ctx, locale: "en" }, settings({ minMarginPercent: 20.05 }), { configVersion: (await loadConfig(db.prisma, shop)).version });
+  assert.deepEqual(en.ok ? en.fixes : null, ["Margin percents have one decimal. 20.05 was rounded to 20.1, the stricter way."]);
+  await settle();
+});
+
+test("a no-op products/update or a no-op full pass does not invalidate the impact cache", async () => {
+  const store = storeWithCatalogue();
+  const ctx = ctxFor(store, "pro");
+  await saveConfig(db.prisma, shop, {
+    modules: {
+      codes: {
+        rules: [{ id: "half", name: "Půlka", method: "automatic", value: { kind: "percentage", percent: 50 }, target: { kind: "products", productIds: ["gid://shopify/Product/1"], variantIds: [] } }],
+      },
+    },
+  });
+  await saveMarginSettings(ctx, settings(), { configVersion: (await loadConfig(db.prisma, shop)).version });
+  await settle();
+  await loadMarginScreen(ctx);
+  const reads = marginCatalogueReads();
+  const { startCostJob } = await import("../../app/lib/sync/cost-lane.server.ts");
+  const lane = { client: store, db: db.prisma, plan: async () => "pro" as const };
+  const mirrored = await startCostJob(shop, lane, { kind: "items", productIds: ["gid://shopify/Product/1", "gid://shopify/Product/2"] });
+  assert.equal(mirrored.done, "items");
+  const pass = await startCostJob(shop, lane, { kind: "full", restart: true });
+  assert.equal(pass.done === "full" && pass.result.outcome, "done");
+  await loadMarginScreen(ctx);
+  assert.equal(marginCatalogueReads(), reads, "nothing meaningful changed: the cached impact is reused");
+});
+
+
+test("linesWithoutCost counts the lines margin protection applies to whose cost is unknown — not outlet or gift lines, capped or not", async () => {
+  const { planTryCart } = await import("../../app/lib/integration/try-cart-plan.ts");
+  const { sanitizeConfig } = await import("@won/core/discounts/config");
+  const { config } = sanitizeConfig({
+    modules: {
+      codes: {
+        rules: [{ id: "half", name: "Půlka", method: "automatic", value: { kind: "percentage", percent: 50 }, target: { kind: "products", productIds: ["gid://shopify/Product/1", "gid://shopify/Product/2"], variantIds: [] } }],
+      },
+      margin: { enabled: true, global: { minMarginPercent: 0, maxDiscountPercent: 30 }, perCollection: [] },
+    },
+  });
+  const line = (n: number, extra: Record<string, unknown> = {}) => ({
+    variantId: `gid://shopify/ProductVariant/${n}01`,
+    productId: `gid://shopify/Product/${n}`,
+    title: `P${n}`,
+    quantity: 1,
+    unitPrice: 1000,
+    collectionIds: [],
+    ...extra,
+  });
+  const refs = new Map([
+    ["gid://shopify/Product/1", { ruleIds: ["half"], variantRuleIds: {} }],
+    ["gid://shopify/Product/2", { ruleIds: ["half"], variantRuleIds: {} }],
+  ]);
+  const plan = planTryCart(config, {
+    lines: [
+      line(1, { unitCost: 6, unitCostCurrency: "CZK" }), // cost known: not counted
+      line(2), // no cost, discount capped by the 30 % ceiling: counted
+      line(3), // no cost, no discount at all (not targeted): counted — the ceiling would still be its floor
+      line(4, { outlet: true }), // outlet: margin never applies — not counted
+      line(5, { giftTierId: "g1" }), // gift: not counted
+    ],
+    productRefs: refs,
+    currency: "CZK",
+    shopCurrency: "CZK",
+    shopToCartRate: 1,
+    countryCode: null,
+    codes: [],
+    date: "2026-09-29",
+    time: "12:00:00",
+    shopTimezone: "Europe/Prague",
+    locale: "cs",
+  });
+  assert.deepEqual(plan.margin, { rateEstimated: false, linesWithoutCost: 2 });
+  assert.deepEqual(plan.lines.map((l) => l.marginCapped ?? false), [true, true, false, false, false]);
 });

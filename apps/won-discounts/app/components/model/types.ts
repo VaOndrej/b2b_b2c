@@ -340,7 +340,11 @@ export type UiResult =
   | {
       ok: true;
       message: "saved" | "deleted" | "synced" | "moved" | "undone";
-      /** Sanitizer notes about this save (core ConfigIssue messages). */
+      /**
+       * What the sanitizer adjusted in this save, already worded in the admin
+       * language on the server (app/lib/integration/issue-copy.ts: one i18n key
+       * per core ConfigIssue code) — never the core's English messages.
+       */
       fixes?: string[];
       /** What the save did in Shopify (absent = nothing was sent, e.g. onboarding steps). */
       sync?: SyncOutcomeView;
@@ -411,10 +415,10 @@ export interface CartPlanView {
   /**
    * Margin protection in this simulation (absent = off). `rateEstimated`: the cart is not in
    * the shop currency, so purchase costs were converted with a rate estimated from market
-   * prices — checkout uses Shopify's current rate. `linesWithoutCost`: lines whose purchase
-   * cost is unknown in the cart currency (no cost in Shopify yet, or it could not be
-   * converted) — the "no purchase cost" percent ceiling is their floor, whether or not it
-   * lowered their discount in this cart.
+   * prices — checkout uses Shopify's current rate. `linesWithoutCost`: lines margin
+   * protection applies to (not outlet, not gift lines) whose purchase cost is unknown in the
+   * cart currency (no cost in Shopify yet, or it could not be converted) — the "no purchase
+   * cost" percent ceiling is their floor, whether or not it lowered their discount in this cart.
    */
   margin?: { rateEstimated: boolean; linesWithoutCost: number };
 }

@@ -225,7 +225,7 @@ export async function saveMarginSettings(
       const res = await writeAndSync(ctx, next, { replaceUnreadable, expectedVersion: loaded.version });
       if (!res.save.ok && res.save.reason === "base_changed") continue;
       if (!res.save.ok) return uiFailureFromSave(res.save);
-      const result = savedResult({ ...res, save: res.save }, "saved", "modules.margin");
+      const result = savedResult({ ...res, save: res.save }, "saved", "modules.margin", ctx.locale);
       const enabled = res.save.config.modules.margin.enabled === true;
       let costs = false;
       if (enabled && !wasEnabled) {

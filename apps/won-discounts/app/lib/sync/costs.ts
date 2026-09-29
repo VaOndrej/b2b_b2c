@@ -46,7 +46,7 @@
 
 import { randomUUID } from "node:crypto";
 
-import type { PrismaClient } from "../../generated/prisma/client";
+import { Prisma, type PrismaClient } from "../../generated/prisma/client";
 import { VARIANT_COST_KEY, WON_NAMESPACE } from "./graphql";
 import { errorText, userErrorText, type Transport, type UserErrorLike } from "./transport";
 import { chunks, METAFIELDS_DELETE_BATCH, METAFIELDS_SET_BATCH, NODES_BATCH, sameJson } from "./util";
@@ -296,6 +296,26 @@ async function sendBatch(
   return done;
 }
 
+/** Existing rows are read in chunks of this many ids (SQLite's bound-parameter limit). */
+const ROW_READ_CHUNK = 500;
+
+type RowState = {
+  productId: string;
+  inventoryItemId: string;
+  title: string | null;
+  variantTitle: string | null;
+  price: string;
+  cost: string | null;
+  currency: string | null;
+  metafieldValue: string | null;
+  mayCarry: boolean;
+  writeError: string | null;
+  writeFailedAt: Date | null;
+  scanId: string | null;
+};
+
+const ROW_FIELDS = ["productId", "inventoryItemId", "title", "variantTitle", "price", "cost", "currency", "metafieldValue", "mayCarry"] as const;
+
 /**
  * Record the snapshots and bring each variant's metafield to its desired value
  * (only where it differs). `metafieldValue` is only ever a CONFIRMED value
@@ -303,11 +323,38 @@ async function sendBatch(
  * out the row is marked `mayCarry` (write-ahead: a switch-off clear never
  * misses a metafield the sync may have written), and the answer settles it.
  * A write Shopify refuses is recorded on the variant (`writeError`) and not
- * re-sent for COST_WRITE_RETRY_MS; the job goes on.
+ * re-sent for COST_WRITE_RETRY_MS; the job goes on — and when the variant
+ * still carries an OLDER, different value, that value is deleted (the
+ * stricter "no purchase cost" ceiling then applies, never a stale cost).
+ * A row is only written when something in it changes: a no-op pass or
+ * products/update never moves `updatedAt` (the impact cache keys on it); the
+ * pass token (`scanId`) is set with a plain UPDATE that leaves it alone.
  */
 export async function applySnapshots(ctx: CostCtx, snapshots: readonly VariantSnapshot[], opts: { scanId?: string } = {}): Promise<ApplyResult> {
   const { db, shop } = ctx;
   const now = (ctx.now ?? (() => new Date()))();
+  const existing = new Map<string, RowState>();
+  for (const ids of chunks(snapshots.map((s) => s.variantId), ROW_READ_CHUNK)) {
+    const rows = await db.variantCost.findMany({
+      where: { shop, variantId: { in: ids } },
+      select: {
+        variantId: true,
+        productId: true,
+        inventoryItemId: true,
+        title: true,
+        variantTitle: true,
+        price: true,
+        cost: true,
+        currency: true,
+        metafieldValue: true,
+        mayCarry: true,
+        writeError: true,
+        writeFailedAt: true,
+        scanId: true,
+      },
+    });
+    for (const { variantId, ...row } of rows) existing.set(variantId, row);
+  }
   const sets: { s: VariantSnapshot; value: string }[] = [];
   const deletes: VariantSnapshot[] = [];
   const settled: { s: VariantSnapshot; value: string | null }[] = [];
@@ -317,35 +364,46 @@ export async function applySnapshots(ctx: CostCtx, snapshots: readonly VariantSn
     else if (desired === null && s.current !== null) deletes.push(s);
     else settled.push({ s, value: s.current });
   }
-  const pendingIds = [...sets.map((w) => w.s.variantId), ...deletes.map((s) => s.variantId)];
+  // Back-off: a variant Shopify refused within COST_WRITE_RETRY_MS is not re-sent (unless the merchant asks).
+  const cutoff = now.getTime() - COST_WRITE_RETRY_MS;
   const backedOff = new Set<string>();
-  if (!ctx.retryRefused && pendingIds.length > 0) {
-    const recent = await db.variantCost.findMany({
-      where: { shop, variantId: { in: pendingIds }, writeFailedAt: { gt: new Date(now.getTime() - COST_WRITE_RETRY_MS) } },
-      select: { variantId: true },
-    });
-    for (const row of recent) backedOff.add(row.variantId);
+  if (!ctx.retryRefused) {
+    for (const id of [...sets.map((w) => w.s.variantId), ...deletes.map((s) => s.variantId)]) {
+      const failedAt = existing.get(id)?.writeFailedAt;
+      if (failedAt && failedAt.getTime() > cutoff) backedOff.add(id);
+    }
   }
-  const upsert = (s: VariantSnapshot, data: { metafieldValue: string | null; mayCarry: boolean; clearError?: boolean }) =>
-    db.variantCost.upsert({
-      where: { shop_variantId: { shop, variantId: s.variantId } },
-      create: { shop, variantId: s.variantId, ...rowData(s), metafieldValue: data.metafieldValue, mayCarry: data.mayCarry, scanId: opts.scanId ?? null },
-      update: {
-        ...rowData(s),
-        metafieldValue: data.metafieldValue,
-        mayCarry: data.mayCarry,
-        ...(data.clearError ? { writeError: null, writeFailedAt: null } : {}),
-        ...(opts.scanId ? { scanId: opts.scanId } : {}),
-      },
-    });
   const toSend = (id: string) => !backedOff.has(id);
-  await db.$transaction([
-    // Nothing to write: Shopify holds what it should (a confirmed value, or none).
-    ...settled.map(({ s, value }) => upsert(s, { metafieldValue: value, mayCarry: value !== null, clearError: true })),
-    // About to write or delete: confirmed = what Shopify has now; may carry (write-ahead).
-    ...sets.map(({ s }) => upsert(s, { metafieldValue: s.current, mayCarry: toSend(s.variantId) || s.current !== null })),
-    ...deletes.map((s) => upsert(s, { metafieldValue: s.current, mayCarry: true })),
-  ]);
+
+  // Rows first, only where something changes (a no-op leaves updatedAt alone).
+  const writes: ReturnType<typeof db.variantCost.upsert>[] = [];
+  const record = (s: VariantSnapshot, data: { metafieldValue: string | null; mayCarry: boolean; clearError?: boolean }) => {
+    const next = { ...rowData(s), metafieldValue: data.metafieldValue, mayCarry: data.mayCarry };
+    const row = existing.get(s.variantId);
+    const changed =
+      !row || ROW_FIELDS.some((field) => row[field] !== next[field]) || (data.clearError === true && (row.writeError !== null || row.writeFailedAt !== null));
+    if (!changed) return;
+    writes.push(
+      db.variantCost.upsert({
+        where: { shop_variantId: { shop, variantId: s.variantId } },
+        create: { shop, variantId: s.variantId, ...next, scanId: opts.scanId ?? null },
+        update: { ...next, ...(data.clearError ? { writeError: null, writeFailedAt: null } : {}), ...(opts.scanId ? { scanId: opts.scanId } : {}) },
+      }),
+    );
+  };
+  // Nothing to write: Shopify holds what it should (a confirmed value, or none).
+  for (const { s, value } of settled) record(s, { metafieldValue: value, mayCarry: value !== null, clearError: true });
+  // About to write or delete: confirmed = what Shopify has now; may carry (write-ahead).
+  for (const { s } of sets) record(s, { metafieldValue: s.current, mayCarry: toSend(s.variantId) || s.current !== null });
+  for (const s of deletes) record(s, { metafieldValue: s.current, mayCarry: true });
+  if (writes.length > 0) await db.$transaction(writes);
+  if (opts.scanId) {
+    // The pass saw these variants: its token, without touching updatedAt (not a change of the mirror's content).
+    const unmarked = snapshots.filter((s) => existing.has(s.variantId) && existing.get(s.variantId)!.scanId !== opts.scanId).map((s) => s.variantId);
+    for (const ids of chunks(unmarked, ROW_READ_CHUNK)) {
+      await db.$executeRaw`UPDATE "VariantCost" SET "scanId" = ${opts.scanId} WHERE "shop" = ${shop} AND "variantId" IN (${Prisma.join(ids)})`;
+    }
+  }
 
   const out: ApplyResult = { written: 0, cleared: 0, refused: 0, backedOff: backedOff.size, errors: [] };
   const refuse = async (variantId: string, error: string, stillCarries: boolean) => {
@@ -357,6 +415,8 @@ export async function applySnapshots(ctx: CostCtx, snapshots: readonly VariantSn
   };
   const currentOf = new Map(snapshots.map((s) => [s.variantId, s.current]));
   const valueOf = new Map(sets.map((w) => [w.s.variantId, w.value]));
+  /** Refused sets on variants that still carry an older value: that value goes (the ceiling applies). */
+  const staleAfterRefusal: string[] = [];
   for (const batch of chunks(sets.filter((w) => toSend(w.s.variantId)), METAFIELDS_SET_BATCH)) {
     out.written += await sendBatch(
       ctx,
@@ -374,7 +434,26 @@ export async function applySnapshots(ctx: CostCtx, snapshots: readonly VariantSn
         );
       },
       // Refused = nothing applied (all-or-nothing): it carries only what it carried.
-      (variantId, error) => refuse(variantId, error, currentOf.get(variantId) != null),
+      async (variantId, error) => {
+        const carries = currentOf.get(variantId) != null;
+        await refuse(variantId, error, carries);
+        if (carries) staleAfterRefusal.push(variantId);
+      },
+    );
+  }
+  for (const batch of chunks(staleAfterRefusal, METAFIELDS_DELETE_BATCH)) {
+    await sendBatch(
+      ctx,
+      "metafieldsDelete",
+      batch.map((variantId) => ({ variantId, input: deleteInput(variantId) })),
+      out,
+      async (ids) => {
+        // Gone from Shopify; the refusal stays recorded (retried after the back-off).
+        await db.variantCost.updateMany({ where: { shop, variantId: { in: ids } }, data: { metafieldValue: null, mayCarry: false } });
+      },
+      async (variantId, error) => {
+        out.errors.push(`costs.delete: the stale cost of ${variantId} could not be removed after a refused write: ${error}`);
+      },
     );
   }
   for (const batch of chunks(deletes.filter((s) => toSend(s.variantId)), METAFIELDS_DELETE_BATCH)) {

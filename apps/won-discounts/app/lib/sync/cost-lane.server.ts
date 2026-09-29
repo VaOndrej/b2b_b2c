@@ -27,6 +27,7 @@ import { loadConfig } from "../config.server";
 import { planOf } from "../plan.server";
 import {
   clearCostMirror,
+  COST_WRITE_RETRY_MS,
   COSTS_MAX_AGE_MS,
   loadCostState,
   mirrorInventoryItems,
@@ -190,14 +191,22 @@ export async function costIdle(shop: string): Promise<void> {
 /** A failed full pass is retried by the Přehled / reconcile at most this often. */
 export const COST_RETRY_MIN_INTERVAL_MS = 15 * 60_000;
 
+/** Refused variants retried per job; more than this → one full pass instead. */
+export const COST_RETRY_ITEMS = 250;
+
+export type CostDue = "full" | "clear" | "retry";
+
 /**
  * What the shop's cost mirror needs now, or null: a full pass while
  * protection is on and the last complete pass is older than COSTS_MAX_AGE_MS
  * (or none finished, or one was cut short — its cursor is resumed); a failed
- * pass is retried after COST_RETRY_MIN_INTERVAL_MS. A clear while protection
- * is off and some variant still carries a metafield the sync wrote.
+ * pass is retried after COST_RETRY_MIN_INTERVAL_MS; a "retry" of the
+ * variants whose cost Shopify refused once their back-off
+ * (COST_WRITE_RETRY_MS) has passed — the pass itself counted as fresh. A clear
+ * while protection is off and some variant still carries a metafield the sync
+ * wrote.
  */
-export async function costsDue(db: PrismaClient, shop: string, enabled: boolean, now: Date): Promise<"full" | "clear" | null> {
+export async function costsDue(db: PrismaClient, shop: string, enabled: boolean, now: Date): Promise<CostDue | null> {
   if (!enabled) {
     const carrying = await db.variantCost.count({ where: { shop, mayCarry: true } });
     return carrying > 0 ? "clear" : null;
@@ -208,8 +217,27 @@ export async function costsDue(db: PrismaClient, shop: string, enabled: boolean,
   }
   if (state.cursor !== null) return "full";
   if (!state.scannedAt || now.getTime() - state.scannedAt.getTime() >= COSTS_MAX_AGE_MS) return "full";
-  return null;
+  const refused = await db.variantCost.count({
+    where: { shop, writeError: { not: null }, writeFailedAt: { lte: new Date(now.getTime() - COST_WRITE_RETRY_MS) } },
+  });
+  return refused > 0 ? "retry" : null;
 }
+
+/** The job for a due state ("retry" = the refused variants by their inventory items, or one full pass when many). */
+export async function jobFor(db: PrismaClient, shop: string, due: CostDue, now: Date): Promise<CostJob> {
+  if (due !== "retry") return { kind: due };
+  const refused = await db.variantCost.findMany({
+    where: { shop, writeError: { not: null }, writeFailedAt: { lte: new Date(now.getTime() - COST_WRITE_RETRY_MS) } },
+    select: { inventoryItemId: true },
+    orderBy: { variantId: "asc" },
+    take: COST_RETRY_ITEMS + 1,
+  });
+  if (refused.length > COST_RETRY_ITEMS) return { kind: "full" };
+  return { kind: "items", inventoryItemIds: refused.map((row) => row.inventoryItemId) };
+}
+
+/** Shops whose refused-variant retry is queued or running here (never two at once). */
+const retrying = new Set<string>();
 
 /**
  * Start the job the mirror needs (background, never awaited here) unless one
@@ -220,11 +248,29 @@ export async function ensureCostsFresh(
   shop: string,
   deps: CostLaneDeps,
   enabled: boolean,
-): Promise<"running" | "started_full" | "started_clear" | "up_to_date"> {
-  if (costJobKind(shop) !== null) return "running";
-  const due = await costsDue(deps.db, shop, enabled, (deps.now ?? (() => new Date()))());
+): Promise<"running" | "started_full" | "started_clear" | "started_retry" | "up_to_date"> {
+  if (costJobKind(shop) !== null || retrying.has(shop)) return "running";
+  const now = (deps.now ?? (() => new Date()))();
+  const due = await costsDue(deps.db, shop, enabled, now);
   if (due === null) return "up_to_date";
-  if (costJobKind(shop) !== null) return "running";
-  void startCostJob(shop, deps, { kind: due });
-  return due === "full" ? "started_full" : "started_clear";
+  if (costJobKind(shop) !== null || retrying.has(shop)) return "running";
+  const kind = await startDueJob(shop, deps, due, now);
+  return kind === "items" ? "started_retry" : kind === "full" ? "started_full" : "started_clear";
+}
+
+/** Start the job for `due` in the background (a retry is marked so it never runs twice at once). */
+export async function startDueJob(shop: string, deps: CostLaneDeps, due: CostDue, now: Date): Promise<CostJob["kind"]> {
+  const job = await jobFor(deps.db, shop, due, now);
+  if (job.kind === "items") {
+    retrying.add(shop);
+    void startCostJob(shop, deps, job).finally(() => retrying.delete(shop));
+  } else {
+    void startCostJob(shop, deps, job);
+  }
+  return job.kind;
+}
+
+/** Is a refused-variant retry of `shop` queued or running here? */
+export function costRetryRunning(shop: string): boolean {
+  return retrying.has(shop);
 }

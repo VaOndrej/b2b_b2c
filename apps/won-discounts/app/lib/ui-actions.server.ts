@@ -428,7 +428,7 @@ export async function saveRule(
       });
       if (!res.save.ok && res.save.reason === "base_changed") continue;
       if (!res.save.ok) return { result: uiFailureFromSave(res.save), ruleId: null };
-      return { result: savedResult({ ...res, save: res.save }, "saved", `modules.codes.rules[${index}]`), ruleId: id };
+      return { result: savedResult({ ...res, save: res.save }, "saved", `modules.codes.rules[${index}]`, ctx.locale), ruleId: id };
     }
     return { result: { ok: false, reason: "base_changed" }, ruleId: null };
   });
@@ -455,7 +455,7 @@ export async function deleteRule(ctx: ShopCtx, ruleId: string, opts: { ruleVersi
         expectedVersion: loaded.version,
       });
       if (!res.save.ok && res.save.reason === "base_changed") continue;
-      return res.save.ok ? savedResult({ ...res, save: res.save }, "deleted", null) : uiFailureFromSave(res.save);
+      return res.save.ok ? savedResult({ ...res, save: res.save }, "deleted", null, ctx.locale) : uiFailureFromSave(res.save);
     }
     return { ok: false, reason: "base_changed" };
   });

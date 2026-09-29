@@ -8,10 +8,12 @@
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
 
 import type { UiResult } from "../../components/model/types";
+import type { Locale } from "../../i18n";
 import { saveAndSync, type SaveAndSyncResult } from "../sync/save-and-sync.server";
 import type { ShopCtx } from "./context.server";
 import { CONFIG_LOCK_WAIT_MS, ConfigLockBusy, withConfigLock } from "./lock.server";
 import { cachedNativeCodes, forgetDetection } from "./native.server";
+import { issueText } from "./issue-copy";
 import { ruleNames, syncOutcome } from "./sync-copy";
 import { ACTION_SYNC_DEADLINE_MS } from "./sync-status.server";
 
@@ -54,9 +56,21 @@ export async function writeAndSync(ctx: ShopCtx, next: WonDiscountsConfig, opts:
   return opts.warnings && opts.warnings.length > 0 ? { ...result, warnings: [...opts.warnings, ...result.warnings] } : result;
 }
 
-/** The success result of a save: sanitizer notes for `prefix` + what reached Shopify (or that it still runs). */
-export function savedResult(res: SaveAndSyncResult & { save: { ok: true } }, message: "saved" | "deleted", prefix: string | null): UiResult {
-  const fixes = prefix === null ? [] : res.save.issues.filter((i) => i.path === prefix || i.path.startsWith(`${prefix}.`)).map((i) => i.message);
+/**
+ * The success result of a save: what the sanitizer adjusted under `prefix`,
+ * worded in the admin language (`locale`; integration/issue-copy.ts — never
+ * the core's English messages), + what reached Shopify (or that it still runs).
+ */
+export function savedResult(
+  res: SaveAndSyncResult & { save: { ok: true } },
+  message: "saved" | "deleted",
+  prefix: string | null,
+  locale: Locale,
+): UiResult {
+  const fixes =
+    prefix === null
+      ? []
+      : res.save.issues.filter((i) => i.path === prefix || i.path.startsWith(`${prefix}.`)).map((i) => issueText(i, locale));
   const syncing = res.running ? { syncing: {} } : res.sync?.background ? { syncing: { products: res.sync.background.products } } : {};
   return {
     ok: true,
