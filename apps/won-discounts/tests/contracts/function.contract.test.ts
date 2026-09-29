@@ -50,18 +50,29 @@ const DELIVERY_TARGET = "cart.delivery-options.discounts.generate.run";
 
 /** Shopify's compiled binary size limit (same page, "Fixed limits": 256 kB, 1 kB = 1000 B). */
 const WASM_LIMIT_BYTES = 256_000;
-/** Shopify's limit for carts up to 200 lines; we keep ≥ 30 % headroom. */
+/** Shopify's limit for carts up to 200 lines. */
 const INSTRUCTION_LIMIT = 11_000_000;
+/** Every ordinary fixture keeps ≥ 30 % headroom. */
 const INSTRUCTION_BUDGET = (INSTRUCTION_LIMIT / 10) * 7;
 /**
- * Above 200 lines Shopify's limit scales with the line count (like its output
- * limit), so does the budget: 500 lines → 27.5 M limit, 19.25 M budget.
+ * The budget carts (worst cases, measured with the ids the checkout sends:
+ * app rule ids, Shopify's cart line ids) keep ≥ 25 % headroom: 8.25 M up to
+ * 200 lines (ruling of MVP 2 Task 2, fix round 2; README "Instruction budget").
  */
+const WORST_CASE_BUDGET = (INSTRUCTION_LIMIT / 100) * 75;
+/**
+ * Above 200 lines Shopify's limit scales with the line count (like its output
+ * limit), and so do the budgets: 500 lines → 27.5 M limit, 20.625 M worst case.
+ */
+const scaled = (amount: number, lines: number) => Math.floor((amount * Math.max(200, lines)) / 200);
 function instructionLimit(lines: number) {
-  return Math.floor((INSTRUCTION_LIMIT * Math.max(200, lines)) / 200);
+  return scaled(INSTRUCTION_LIMIT, lines);
 }
 function instructionBudget(lines: number) {
-  return Math.floor((INSTRUCTION_BUDGET * Math.max(200, lines)) / 200);
+  return scaled(INSTRUCTION_BUDGET, lines);
+}
+function worstCaseBudget(lines: number) {
+  return scaled(WORST_CASE_BUDGET, lines);
 }
 /**
  * The fixtures that measure the budget (their own tests below): the 200-line
@@ -320,14 +331,14 @@ describe("shopify app function run", { concurrency: 6 }, () => {
 
   // The budget carts (37 rules, codes, a Pro stack, outlet lines; with margin
   // protection: the order stage's shortcut, its full search, most lines capped
-  // with an over-budget output, 500 lines): the JS function needed ~96 M
-  // instructions on the MVP 1 cart (task-2-report.md of MVP 1); the Rust port
-  // must stay ≤ 70 % of Shopify's (line-scaled) limit like every other fixture.
+  // with an over-budget output, 500 lines), with the ids the checkout sends:
+  // the JS function needed ~96 M instructions on the MVP 1 cart (task-2-report.md
+  // of MVP 1); the Rust port must stay ≤ 75 % of Shopify's (line-scaled) limit.
   for (const file of fixtureFiles.filter((f) => BUDGET_PREFIX.test(f))) {
     const lines = readFixture(file).payload.input.cart?.lines?.length ?? 0;
-    const budget = instructionBudget(lines);
+    const budget = worstCaseBudget(lines);
     const limit = instructionLimit(lines);
-    test(`${file}: ≤ ${budget} instructions (Shopify limit ${limit} − 30 %)`, {
+    test(`${file}: ≤ ${budget} instructions (Shopify limit ${limit} − 25 %)`, {
       timeout: 120_000,
     }, async (t) => {
       let count = instructions.get(file);

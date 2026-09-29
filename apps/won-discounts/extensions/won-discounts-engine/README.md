@@ -42,7 +42,7 @@ by hand, and the TS reference reproduces all of them.
 | Seeded random carts and configs vs the TS reference | `tests/parity.test.js` |
 | Every Rust unit test has a TS twin | `tests/engine-unit.twins.test.js` |
 | Every Wasm run's linear memory ≤ 4 000 KB (bump allocator) | `tests/parity.test.js` |
-| The margin order search, 2 000 carts built for it, every way it ends ≥ 20 times | `tests/parity.test.js` |
+| The margin order search, 2 000 carts built for it, every reachable way it ends ≥ 20 times | `tests/parity.test.js` |
 
 Details:
 - **Wasm output text.** The output text function-runner prints (sorted keys, and numbers in the form the Wasm wrote them, e.g. `10` not `10.0`) must equal the expected output rendered the same way.
@@ -152,25 +152,40 @@ Worst-case fixtures:
 ## Instruction budget
 
 Shopify's limit is 11 M instructions for carts up to 200 lines and scales with
-the line count above that; every fixture must stay ≤ 70 % of it (7.7 M up to
-200 lines, 19.25 M at 500; `apps/won-discounts/tests/contracts/function.contract.test.ts`
-gates each `*-lines-budget` fixture). Measured with the built Wasm
-(function-runner), MVP 2:
+the line count above that. `apps/won-discounts/tests/contracts/function.contract.test.ts`
+gates every fixture:
 
-| Fixture (shape) | Instructions |
-|---|---|
-| `lines-200-lines-budget` (MVP 1 worst case: 37 rules, 3–6 refs a line, codes, a Pro stack; margin off) | 6.19 M |
-| `delivery-200-lines-budget` | 5.92 M |
-| `lines-margin-200-lines-budget` (the same, margin on, a cost price on every line, a 5 % order discount; every line that can give carries its share: the order stage's shortcut) | 7.33 M |
-| `delivery-margin-200-lines-budget` | 7.04 M |
-| `lines-margin-slow-200-lines-budget` (the same with 10 lines that cannot carry their share: the full two-ordering search) | 7.67 M |
-| `lines-margin-capped-200-lines-budget` (3 of 4 lines cut to their floor, the order discount leaving them out, an output over the budget: stacks relaxed, candidates dropped) | 7.64 M |
-| `lines-margin-capped-500-lines-budget` (the same on 500 lines; budget 19.25 M) | 17.70 M |
+- ordinary fixtures: ≤ 70 % of the (line-scaled) limit;
+- the budget carts (`*-lines-budget`, the worst cases): ≤ **75 %** — 8.25 M up
+  to 200 lines, 20.625 M at 500 — measured with the ids the checkout really
+  sends: rule ids in the app's format (`r_` + 20 hex digits, rule-form.ts
+  `newRuleId`) in the config and the product metafields, cart line ids as Shopify
+  numbers them (`gid://shopify/CartLine/0`, `/1`, … — every line of the dev
+  store's logged function runs), 14-digit variant ids (fixture-builder.js
+  `withRealisticIds`).
+
+Measured with the built Wasm (function-runner), MVP 2:
+
+| Budget cart (shape) | Instructions | Gate |
+|---|---|---|
+| `lines-200-lines-budget` (MVP 1 worst case: 37 rules, 3–6 refs a line, codes, a Pro stack; margin off) | 6.59 M | 8.25 M |
+| `delivery-200-lines-budget` | 6.32 M | 8.25 M |
+| `lines-margin-200-lines-budget` (the same, margin on, a cost price on every line, a 5 % order discount; every line that can give carries its share: the order stage's shortcut) | 7.73 M | 8.25 M |
+| `delivery-margin-200-lines-budget` | 7.44 M | 8.25 M |
+| `lines-margin-slow-200-lines-budget` (the same with 10 lines that cannot carry their share: the full two-ordering search) | 8.07 M | 8.25 M |
+| `lines-margin-capped-200-lines-budget` (3 of 4 lines cut to their floor, the order discount leaving them out, an output over the budget: stacks relaxed, candidates dropped) | 8.04 M | 8.25 M |
+| `lines-margin-capped-500-lines-budget` (the same on 500 lines) | 18.64 M | 20.625 M |
+
+Upper bound: rule ids at the sanitizer's maximum of 64 characters make every ref
+longer to read, hash and compare. The same carts then cost 7.34 M (MVP 1), 8.48 M
+(margin, shortcut), 8.81 M (full search), 8.78 M (capped) and 20.49 M (500
+lines): under Shopify's limit (≤ 80 %), over the 75 % gate. The app's own ids
+are 22 characters.
 
 Most of a run is reading the input (Shopify's provider): about 1.8 M for the
-first access to a 60 kB input, then ~16 k per line; a variant cost metafield
-adds ~3 k per line. Writing the output costs ~1 k per target line. What keeps
-the margin carts under the budget:
+first access to a 60 kB input, then ~16 k per line, more with longer rule ids;
+a variant cost metafield adds ~3 k per line. Writing the output costs ~1 k per
+target line. What keeps the margin carts in budget:
 
 - `src/alloc.rs`: a bump allocator, and nothing a run built is ever dropped;
 - the output mapping keeps the output's size as a running sum and drops the
@@ -179,9 +194,6 @@ the margin carts under the budget:
   200-line capped cart), measures JSON strings 8 bytes at a time, and borrows
   every text from the plan and the input instead of copying it;
 - the order stage's exact shortcuts (Invariants below).
-
-The budget carts' rule ids are short (`p1`, `c2`); the app's real ids are 22
-characters (`r_` + 20 hex digits), which costs more per ref to hash and compare.
 
 ## Layout
 
@@ -202,7 +214,7 @@ Invariants:
 - Ties go to amount desc, then priority desc, then id asc (JS string order, by UTF-16 unit).
 - A minimum counts the whole cart (every non-gift line, pre-discount, outlet included), or only a product rule's own lines when the payload says `minimum.scope: "entitled"` (a migrated native's semantics; absent = the cart).
 - Parsing never fails. Junk in a metafield reads as "nothing". A missing or invalid shared config emits no operations.
-- Margin protection (MVP 2) evaluates every float expression of `margin.ts` / `plan-margin.ts` in the same order (`ceilTol` = ceil(x − 1e-6), the cost `(unitCost × rate) × scale`, the order stage's floor((h × S) / a) and floor((h × S0) / s)). The order stage's search is the pure function `search_order_sets` (`src/engine/order_search.rs`, `searchOrderSets`, unit-tested with the TS instances) and gets the same result as the TS search with less work, provably: the minimum over a set comes only from lines whose rate is within 10⁻⁹ of the set's smallest (`NearMin`), and the h/a ordering is not searched again when it is the h/s ordering's very sequence (no product discounts). `protect_order` (`plan.rs`) leaves the lines that can give nothing (h = 0) out of the search, since every set holding them has D = 0, and when every line that can give something carries its whole share, that set wins both orderings without sorting (`all_that_can_give`; this one needs an order amount that never falls as the base grows, which every order discount is). A dedicated parity run (2 000 carts built for it) compares every way the search ends — the shortcut, the skipped h/a search, the h/a ordering winning, a tie going to the larger set or to h/s — against the TS search.
+- Margin protection (MVP 2) evaluates every float expression of `margin.ts` / `plan-margin.ts` in the same order (`ceilTol` = ceil(x − 1e-6), the cost `(unitCost × rate) × scale`, the order stage's floor((h × S) / a) and floor((h × S0) / s)). The order stage's search is the pure function `search_order_sets` (`src/engine/order_search.rs`, `searchOrderSets`, unit-tested with the TS instances) and gets the same result as the TS search with less work, provably: the minimum over a set comes only from lines whose rate is within 10⁻⁹ of the set's smallest (`NearMin`), and the h/a ordering is not searched again when it is the h/s ordering's very sequence (no product discounts). `protect_order` (`plan.rs`) leaves the lines that can give nothing (h = 0) out of the search, since every set holding them has D = 0, and when every line that can give something carries its whole share, that set wins both orderings without sorting (`all_that_can_give`; this one needs an order amount that never falls as the base grows, which every order discount is). A dedicated parity run (2 000 carts built for it) compares every reachable way the search ends — the shortcut, the skipped h/a search, the h/a ordering winning, a tie between different sets going to the larger one — against the TS search. The last tie-break (equal D, equal size, different sets → the h/s set) does not occur with an order discount's wanted amount, which never falls as the base grows (0 in that run, 0 in T1's 2 million random cases); the unit-test pair `order_search_ties_go_to_the_larger_set_then_to_the_h_s_set` pins it with a synthetic wanted amount.
 - A run never frees what it built: the bump allocator (`src/alloc.rs`) and `mem::forget` at the end of a run (its memory is thrown away with it).
 
 ## Accepted edge differences (junk data only)

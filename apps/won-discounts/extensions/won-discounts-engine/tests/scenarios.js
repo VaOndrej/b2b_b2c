@@ -1034,7 +1034,8 @@ function budget(target) {
   return {
     name: `${target}-200-lines-budget`,
     description:
-      "Instruction budget: 200 lines × 3–6 refs, 37 rules, entered codes, a Pro stack, outlet lines — the automatic node must stay under the Shopify instruction limit with ≥ 30 % headroom.",
+      "Instruction budget: 200 lines × 3–6 refs, 37 rules, entered codes, a Pro stack, outlet lines, with the ids the checkout sends (app rule ids, Shopify's cart line ids) — the automatic node must stay within the budget (README \"Instruction budget\").",
+    realisticIds: true,
     target,
     rules: budgetRules(),
     role: AUTO,
@@ -1197,8 +1198,9 @@ function marginBudget(target) {
   const { candidates, excluded, orderValue } = marginBudgetExpected();
   return {
     name: `${target}-margin-200-lines-budget`,
+    realisticIds: true,
     description:
-      "Instruction budget with margin protection on: the 200-line budget cart (37 rules, codes, a Pro stack, outlet lines) with a cost price on every line and the order discount. Every line that can give something carries its share of the order discount, so the order stage takes its shortcut (no search); lines-margin-slow-200-lines-budget and lines-margin-capped-*-lines-budget are the harder shapes. The automatic node must stay under the Shopify instruction limit with ≥ 30 % headroom.",
+      "Instruction budget with margin protection on: the 200-line budget cart (37 rules, codes, a Pro stack, outlet lines) with a cost price on every line and the order discount. Every line that can give something carries its share of the order discount, so the order stage takes its shortcut (no search); lines-margin-slow-200-lines-budget and lines-margin-capped-*-lines-budget are the harder shapes. With the ids the checkout sends, the automatic node must stay within the budget (≥ 25 % under Shopify's limit, README \"Instruction budget\").",
     target,
     rules: budgetRules(),
     margin: marginOn({ minMarginPercent: MARGIN_BUDGET_MIN, maxDiscountPercent: 40 }),
@@ -1365,7 +1367,8 @@ function marginCappedBudget(count) {
   }
   return {
     name: `lines-margin-capped-${count}-lines-budget`,
-    description: `Instruction and output budget, ${count} lines with margin protection: 3 of 4 lines cut to their floor (each an exact amount of its own), a 5 % order discount that leaves them out. The exact output is over the budget: the open lines' Pro stacks go to their top rule, then the candidates that save the least are dropped.${count > 200 ? " Above 200 lines Shopify's limits (and the budgets) scale with the line count." : ""}`,
+    realisticIds: true,
+    description: `Instruction and output budget, ${count} lines with margin protection and the ids the checkout sends: 3 of 4 lines cut to their floor (each an exact amount of its own), a 5 % order discount that leaves them out. The exact output is over the budget: the open lines' Pro stacks go to their top rule, then the candidates that save the least are dropped.${count > 200 ? " Above 200 lines Shopify's limits (and the budgets) scale with the line count." : ""}`,
     target: "lines",
     rules: budgetRules(),
     margin: marginOn({ minMarginPercent: MARGIN_BUDGET_MIN, maxDiscountPercent: 40 }),

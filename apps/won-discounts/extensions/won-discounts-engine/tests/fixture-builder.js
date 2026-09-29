@@ -41,6 +41,8 @@ export const SHOP_CURRENCY = "CZK";
  * @property {string} [gift]              `_won_gift` attribute value
  * @property {boolean} [custom]           a CustomProduct line (no product, no metafield)
  * @property {number} [variant]           variant number (default 1000 + n)
+ * @property {string} [gid]              cart line id (default lineId(n))
+ * @property {string} [variantGid]       variant id (default variantId(variant ?? 1000 + n))
  * @property {unknown} [variantMeta]      variant metafield `$app:won_discounts`/`variant` jsonValue
  *                                        (MVP 2 margin: `{cost, cur}`, cost in MAJOR units of the shop currency)
  *
@@ -50,6 +52,7 @@ export const SHOP_CURRENCY = "CZK";
  * @property {"lines" | "delivery"} target
  * @property {RawRule[]} rules
  * @property {Record<string, unknown>} [configExtra]   engine, campaigns … (merchant config)
+ * @property {boolean} [realisticIds]   ids as the checkout sends them (budget carts, `withRealisticIds`)
  * @property {Record<string, unknown>} [margin]   modules.margin of the merchant config (MVP 2)
  * @property {string} [shopCurrency]      the shop currency (margin `cur`), default SHOP_CURRENCY
  * @property {unknown} [rate]             `presentmentCurrencyRate` (shop → cart), default "1.0";
@@ -105,6 +108,78 @@ export const lineId = (/** @type {number} */ n) => `gid://shopify/CartLine/${n}`
 export const variantId = (/** @type {number} */ n) => `gid://shopify/ProductVariant/${n}`;
 
 /**
+ * A rule id in the app's format (rule-form.ts `newRuleId`: `r_` + 20 lower-case
+ * hex digits), derived from a scenario's logical id so the fixtures are stable.
+ * @param {string} logical
+ */
+export function appRuleId(logical) {
+  let a = 0x811c9dc5;
+  let b = 0x9747b28c;
+  for (let k = 0; k < logical.length; k += 1) {
+    const c = logical.charCodeAt(k);
+    a = Math.imul(a ^ c, 0x01000193) >>> 0;
+    b = Math.imul(b ^ c, 0x5bd1e995) >>> 0;
+    b = (b ^ (b >>> 15)) >>> 0;
+  }
+  // murmur3's finalizer: every hex digit depends on every character (like random ids).
+  const mix = (/** @type {number} */ x) => {
+    let h = x >>> 0;
+    h = Math.imul(h ^ (h >>> 16), 0x85ebca6b) >>> 0;
+    h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
+    return (h ^ (h >>> 16)) >>> 0;
+  };
+  const hex = (/** @type {number} */ x) => x.toString(16).padStart(8, "0");
+  return `r_${hex(mix(a))}${hex(mix(b ^ a))}${hex(mix(a + b)).slice(0, 4)}`;
+}
+
+/**
+ * A scenario with the ids the checkout really sends (the budget carts, which
+ * measure instructions): rule ids in the app's format everywhere they appear
+ * (config, combinesWith, the product metafields' refs); cart line and delivery
+ * group ids as Shopify numbers them in a function input — `gid://shopify/CartLine/0`,
+ * `/1`, … (every line of the 640 dev-store runs logged in apps/won-discounts/
+ * .shopify/logs, 2026-09-29) — and 14-digit variant ids. The hand-written
+ * expected output gets the same id mapping and nothing else.
+ * @param {Scenario} s
+ * @returns {Scenario}
+ */
+export function withRealisticIds(s) {
+  if (!s.realisticIds) return s;
+  const ids = new Map();
+  const rid = (/** @type {unknown} */ id) => {
+    if (typeof id !== "string") return id;
+    if (!ids.has(id)) ids.set(id, appRuleId(id));
+    return ids.get(id);
+  };
+  const rules = s.rules.map((r) => ({
+    ...r,
+    id: rid(r.id),
+    ...(r.combinesWith ? { combinesWith: { ...r.combinesWith, ruleIds: /** @type {string[]} */ (r.combinesWith.ruleIds).map(rid) } } : {}),
+  }));
+  if (new Set(ids.values()).size !== ids.size) throw new Error(`${s.name}: app rule ids collide`);
+  const lines = s.lines.map((l) => ({
+    ...l,
+    gid: `gid://shopify/CartLine/${l.n - 1}`,
+    variantGid: `gid://shopify/ProductVariant/${48468678900000 + (l.variant ?? l.n)}`,
+    ...(l.won ? { won: { ...l.won, ...(Array.isArray(l.won.ruleIds) ? { ruleIds: l.won.ruleIds.map(rid) } : {}) } } : {}),
+  }));
+  const remap = (/** @type {unknown} */ v) =>
+    JSON.parse(
+      JSON.stringify(v)
+        .replace(/gid:\/\/shopify\/CartLine\/(\d+)/g, (_, n) => `gid://shopify/CartLine/${Number(n) - 1}`)
+        .replace(/gid:\/\/shopify\/CartDeliveryGroup\/(\d+)/g, (_, n) => `gid://shopify/CartDeliveryGroup/${Number(n) - 1}`),
+    );
+  return {
+    ...s,
+    rules,
+    lines,
+    deliveryGroups: (s.deliveryGroups ?? [DEFAULT_GROUP]).map((g) => remap(g)),
+    expected: remap(s.expected),
+    realisticIds: false,
+  };
+}
+
+/**
  * The merchant config as the app stores it, then the shared function payload
  * the sync writes to the shop metafield (throws on sanitizer issues so a
  * scenario can never silently test a different config than it reads).
@@ -127,12 +202,12 @@ function cartLine(l) {
     ? { __typename: "CustomProduct" }
     : {
         __typename: "ProductVariant",
-        id: variantId(l.variant ?? 1000 + l.n),
+        id: l.variantGid ?? variantId(l.variant ?? 1000 + l.n),
         wonVariant: l.variantMeta === undefined ? null : { jsonValue: l.variantMeta },
         product: { wonProduct: l.won ? { jsonValue: l.won } : null },
       };
   return {
-    id: lineId(l.n),
+    id: l.gid ?? lineId(l.n),
     quantity: l.qty ?? 1,
     cost: { amountPerQuantity: { amount: l.price } },
     gift: l.gift === undefined ? null : { value: l.gift },
@@ -142,9 +217,10 @@ function cartLine(l) {
 
 /**
  * The function input for a scenario, field for field what the input query selects.
- * @param {Scenario} s
+ * @param {Scenario} scenario
  */
-export function buildInput(s) {
+export function buildInput(scenario) {
+  const s = withRealisticIds(scenario);
   const config = merchantConfig(s);
   const shopConfig =
     s.shopConfig === "null"
@@ -187,7 +263,7 @@ export function buildFixture(s) {
   const t = TARGETS[s.target];
   return {
     scenario: s.description,
-    payload: { export: t.export, target: t.target, input: buildInput(s), output: s.expected },
+    payload: { export: t.export, target: t.target, input: buildInput(s), output: withRealisticIds(s).expected },
   };
 }
 
