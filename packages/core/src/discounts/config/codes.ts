@@ -68,6 +68,7 @@ function sanitizeDiscountRuleValue(
     path,
     "invalid_value",
     `Invalid discount value${isRecord(v) ? ` ${preview(v.kind, 40)}` : ""}; expected one of ${DISCOUNT_VALUE_KINDS.join(", ")}. Defaulted to 0% off.`,
+    { ...(isRecord(v) ? { value: preview(v.kind, 40) } : {}), allowed: DISCOUNT_VALUE_KINDS.join(", "), percent: 0 },
   );
   return { kind: "percentage", percent: 0 };
 }
@@ -85,6 +86,7 @@ function sanitizeDiscountTarget(
     path,
     "invalid_target",
     `Invalid discount target${isRecord(v) ? ` ${preview(v.kind, 40)}` : ""}; expected one of ${DISCOUNT_TARGET_KINDS.join(", ")}. Defaulted to order.`,
+    { ...(isRecord(v) ? { value: preview(v.kind, 40) } : {}), allowed: DISCOUNT_TARGET_KINDS.join(", "), fallback: "order" },
   );
   return { kind: "order" };
 }
@@ -105,6 +107,7 @@ function reconcileValueAndTarget(
     `${path}.target`,
     "value_target_mismatch",
     `Free shipping always applies to shipping; the target "${target.kind}" was changed to shipping.`,
+    { from: target.kind, to: "shipping" },
   );
   return { kind: "shipping" };
 }
@@ -117,7 +120,7 @@ function reconcileValueAndTarget(
 function sanitizePriority(v: unknown, issues: ConfigIssue[], path: string): number | undefined {
   if (v === undefined || v === null) return undefined;
   if (typeof v !== "number" || !Number.isFinite(v)) {
-    pushIssue(issues, path, "invalid_priority", `Priority must be a number, got ${preview(v, 40)}; it was removed.`);
+    pushIssue(issues, path, "invalid_priority", `Priority must be a number, got ${preview(v, 40)}; it was removed.`, { value: preview(v, 40) });
     return undefined;
   }
   const n = Math.floor(v);
@@ -128,6 +131,7 @@ function sanitizePriority(v: unknown, issues: ConfigIssue[], path: string): numb
       path,
       "clamped_priority",
       `Priority ${n} is out of range 0-${CONFIG_LIMITS.rulePriority}; clamped to ${clamped}.`,
+      { value: n, min: 0, max: CONFIG_LIMITS.rulePriority, to: clamped },
     );
   }
   return clamped;
@@ -168,6 +172,7 @@ function sanitizeCodes(v: unknown[], issues: ConfigIssue[], path: string): strin
       path,
       "code_too_long",
       `${tooLong} code(s) longer than ${CONFIG_LIMITS.codeLength} characters were dropped.`,
+      { count: tooLong, max: CONFIG_LIMITS.codeLength },
     );
   }
   if (duplicates > 0) {
@@ -176,6 +181,7 @@ function sanitizeCodes(v: unknown[], issues: ConfigIssue[], path: string): strin
       path,
       "duplicate_code",
       `${duplicates} duplicate code(s) were merged (codes are not case-sensitive).`,
+      { reason: "merged", count: duplicates },
     );
   }
   if (overLimit > 0) {
@@ -184,6 +190,7 @@ function sanitizeCodes(v: unknown[], issues: ConfigIssue[], path: string): strin
       path,
       "too_many_codes",
       `A rule can have at most ${CONFIG_LIMITS.codesPerRule} codes; ${overLimit} more were dropped.`,
+      { max: CONFIG_LIMITS.codesPerRule, count: overLimit },
     );
   }
   return out;
@@ -201,25 +208,26 @@ function sanitizeSchedule(
   path: string,
 ): { ok: true; schedule?: DiscountRule["schedule"] } | { ok: false } {
   if (v === undefined || v === null) return { ok: true };
-  const fail = (why: string) => {
+  const fail = (why: string, params: NonNullable<ConfigIssue["params"]>) => {
     pushIssue(
       issues,
       path,
       "invalid_schedule",
       `${why} Use ISO 8601 date-times with a time zone (e.g. 2026-11-27T00:00:00+01:00) and a start before the end; the schedule was removed and the rule disabled.`,
+      params,
     );
     return { ok: false as const };
   };
-  if (!isRecord(v)) return fail("The schedule is not an object.");
+  if (!isRecord(v)) return fail("The schedule is not an object.", { reason: "not_object" });
   const schedule: NonNullable<DiscountRule["schedule"]> = {};
   for (const key of ["startsAt", "endsAt"] as const) {
     const value = v[key];
     if (value === undefined || value === null) continue;
-    if (!isIsoDateTime(value)) return fail(`${key} ${preview(value, 40)} is not a valid date-time.`);
+    if (!isIsoDateTime(value)) return fail(`${key} ${preview(value, 40)} is not a valid date-time.`, { reason: "invalid_date", field: key, value: preview(value, 40) });
     schedule[key] = value;
   }
   if (schedule.startsAt && schedule.endsAt && Date.parse(schedule.startsAt) >= Date.parse(schedule.endsAt)) {
-    return fail("The schedule ends before (or when) it starts.");
+    return fail("The schedule ends before (or when) it starts.", { reason: "ends_before_start" });
   }
   // An empty schedule means "always"; it is simply omitted.
   return schedule.startsAt || schedule.endsAt ? { ok: true, schedule } : { ok: true };
@@ -229,7 +237,7 @@ export function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], path: st
   if (!isRecord(v)) return null;
   const entity = sanitizeEntityId(v.id, "rule", issues, path);
   if (!entity) {
-    pushIssue(issues, path, "missing_id", "Discount rule without an id was dropped.");
+    pushIssue(issues, path, "missing_id", "Discount rule without an id was dropped.", { kind: "rule" });
     return null;
   }
   const { id } = entity;
@@ -303,6 +311,7 @@ export function sanitizeDiscountRule(v: unknown, issues: ConfigIssue[], path: st
         `${path}.origin.nativeId`,
         "invalid_origin",
         `Native discount link ${preview(v.origin.nativeId, 60)} is not a Shopify discount node id (gid://shopify/DiscountCodeNode/…); the link was removed.`,
+        { value: preview(v.origin.nativeId, 60) },
       );
     }
   }
@@ -338,6 +347,7 @@ export function pruneCombinesWith(
       path,
       "orphan_combines_with",
       `Combines-with points to rule(s) that do not exist (${listPreview(orphans.map((o) => preview(o, 40)))}); they were removed.`,
+      { ids: listPreview(orphans.map((o) => preview(o, 40))), count: orphans.length },
     );
   }
   return out;
@@ -370,6 +380,7 @@ export function sanitizeRules(v: unknown, issues: ConfigIssue[]): { rules: Disco
         path,
         "duplicate_rule_id",
         `Another rule already uses the id "${rule.id}"; this duplicate was dropped.`,
+        { id: rule.id },
       );
       return;
     }
@@ -384,6 +395,7 @@ export function sanitizeRules(v: unknown, issues: ConfigIssue[]): { rules: Disco
           `${path}.codes`,
           "duplicate_code",
           `Code(s) ${listPreview(taken)} already belong to an earlier rule and were removed from this one.`,
+          { reason: "taken", codes: listPreview(taken), count: taken.length },
         );
       }
       for (const code of rule.codes) usedCodes.add(code);
@@ -397,6 +409,7 @@ export function sanitizeRules(v: unknown, issues: ConfigIssue[]): { rules: Disco
       "modules.codes.rules",
       "too_many_rules",
       `Only the first ${CONFIG_LIMITS.rules} discount rules are kept; ${overLimit} more were dropped.`,
+      { max: CONFIG_LIMITS.rules, count: overLimit },
     );
   }
   out.forEach((rule, i) => {

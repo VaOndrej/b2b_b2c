@@ -106,6 +106,7 @@ function sanitizeOverridePatch(
         `${path}.${safeKey}`,
         "override_field_not_allowed",
         `A campaign cannot change "${safeKey}" of ${OVERRIDE_TARGET_LABELS[target.kind]}; the field was ignored.`,
+        { field: safeKey, target: target.kind },
       );
       continue;
     }
@@ -166,6 +167,7 @@ function sanitizeOverrides(
         itemPath,
         "orphan_override",
         `Campaign override points to ${preview(ruleId, 60)}, which does not exist; the override was removed.`,
+        { id: preview(ruleId, 60) },
       );
       return;
     }
@@ -175,6 +177,7 @@ function sanitizeOverrides(
         itemPath,
         "ambiguous_override",
         `${preview(ruleId, 60)} matches more than one rule, tier set or gift tier; the override was removed.`,
+        { id: preview(ruleId, 60) },
       );
       return;
     }
@@ -193,6 +196,7 @@ function sanitizeOverrides(
       path,
       "too_many_overrides",
       `A campaign can have at most ${CONFIG_LIMITS.overridesPerCampaign} overrides; ${overLimit} more were dropped.`,
+      { max: CONFIG_LIMITS.overridesPerCampaign, count: overLimit },
     );
   }
   return out;
@@ -207,7 +211,7 @@ function sanitizeCampaign(
   if (!isRecord(v)) return null;
   const entity = sanitizeEntityId(v.id, "campaign", issues, path);
   if (!entity) {
-    pushIssue(issues, path, "missing_id", "Campaign without an id was dropped.");
+    pushIssue(issues, path, "missing_id", "Campaign without an id was dropped.", { kind: "campaign" });
     return null;
   }
   const { id } = entity;
@@ -224,6 +228,7 @@ function sanitizeCampaign(
       `${path}.window`,
       "invalid_campaign_window",
       `Campaign "${name || id}" needs a start before its end, both as YYYY-MM-DDTHH:MM:SS in shop time; the campaign was disabled.`,
+      { campaign: name || id },
     );
   }
   return {
@@ -260,6 +265,7 @@ function disableOverlappingCampaigns(entries: Array<{ campaign: Campaign; path: 
       path,
       "overlapping_campaign",
       `Campaign "${campaign.name || campaign.id}" overlaps "${clash.name || clash.id}"; campaigns must not overlap, so the later one was disabled.`,
+      { campaign: campaign.name || campaign.id, other: clash.name || clash.id },
     );
   }
 }
@@ -283,6 +289,7 @@ export function sanitizeCampaigns(v: unknown, issues: ConfigIssue[], ctx: Overri
         path,
         "duplicate_campaign_id",
         `Another campaign already uses the id "${campaign.id}"; this duplicate was dropped.`,
+        { id: campaign.id },
       );
       return;
     }
@@ -295,6 +302,7 @@ export function sanitizeCampaigns(v: unknown, issues: ConfigIssue[], ctx: Overri
       "campaigns",
       "too_many_campaigns",
       `Only the first ${CONFIG_LIMITS.campaigns} campaigns are kept; ${overLimit} more were dropped.`,
+      { max: CONFIG_LIMITS.campaigns, count: overLimit },
     );
   }
   disableOverlappingCampaigns(entries, issues);

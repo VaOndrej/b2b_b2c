@@ -205,8 +205,16 @@ export interface WonDiscountsConfig {
 
 export interface ConfigIssue {
   path: string;
+  /** Stable machine key (the admin words the issue by it; never shown). */
   code: string;
+  /** English, for logs and tests (never shown to a merchant as is). */
   message: string;
+  /**
+   * The values the message names, structured (limits, counts, the value
+   * given and the value kept, ids, codes…), so a UI can word the issue in its
+   * own language without reading `message`. Absent when the message names none.
+   */
+  params?: Record<string, string | number>;
 }
 
 /** Deeply read-only view of `T` (the type of the shared, frozen DEFAULT_CONFIG). */

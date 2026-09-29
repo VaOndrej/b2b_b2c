@@ -33,6 +33,7 @@ function sanitizeLocaleTexts(v: unknown, issues: ConfigIssue[], path: string): R
         `${path}.${key}`,
         "locale_text_too_long",
         `Text is longer than ${CONFIG_LIMITS.localeStringLength} characters; it was shortened.`,
+        { max: CONFIG_LIMITS.localeStringLength },
       );
     }
     out.set(key, val.slice(0, CONFIG_LIMITS.localeStringLength));
@@ -43,6 +44,7 @@ function sanitizeLocaleTexts(v: unknown, issues: ConfigIssue[], path: string): R
       path,
       "too_many_locale_keys",
       `Only the first ${CONFIG_LIMITS.localeKeysPerLanguage} texts per language are kept; ${overLimit} more were dropped.`,
+      { max: CONFIG_LIMITS.localeKeysPerLanguage, count: overLimit },
     );
   }
   return Object.fromEntries(out);
@@ -75,6 +77,7 @@ function sanitizeGoals(v: unknown, issues: ConfigIssue[]): OnboardingGoal[] {
       "onboarding.goals",
       "unknown_onboarding_goal",
       `${unknown.length} unknown onboarding goal(s) (${listPreview(unknown.map((g) => preview(g, 30)))}) were dropped; known goals: ${ONBOARDING_GOALS.join(", ")}.`,
+      { count: unknown.length, values: listPreview(unknown.map((g) => preview(g, 30))), allowed: ONBOARDING_GOALS.join(", ") },
     );
   }
   return out;

@@ -13,7 +13,7 @@ import { saveAndSync, type SaveAndSyncResult } from "../sync/save-and-sync.serve
 import type { ShopCtx } from "./context.server";
 import { CONFIG_LOCK_WAIT_MS, ConfigLockBusy, withConfigLock } from "./lock.server";
 import { cachedNativeCodes, forgetDetection } from "./native.server";
-import { issueText } from "./issue-copy";
+import { wordIssues } from "./issue-copy";
 import { ruleNames, syncOutcome } from "./sync-copy";
 import { ACTION_SYNC_DEADLINE_MS } from "./sync-status.server";
 
@@ -58,8 +58,9 @@ export async function writeAndSync(ctx: ShopCtx, next: WonDiscountsConfig, opts:
 
 /**
  * The success result of a save: what the sanitizer adjusted under `prefix`,
- * worded in the admin language (`locale`; integration/issue-copy.ts — never
- * the core's English messages), + what reached Shopify (or that it still runs).
+ * worded in the admin language (`locale`; integration/issue-copy.ts: from the
+ * issue codes + params, never the core's English messages — an issue without
+ * its own sentence is logged), + what reached Shopify (or that it still runs).
  */
 export function savedResult(
   res: SaveAndSyncResult & { save: { ok: true } },
@@ -70,7 +71,10 @@ export function savedResult(
   const fixes =
     prefix === null
       ? []
-      : res.save.issues.filter((i) => i.path === prefix || i.path.startsWith(`${prefix}.`)).map((i) => issueText(i, locale));
+      : wordIssues(
+          res.save.issues.filter((i) => i.path === prefix || i.path.startsWith(`${prefix}.`)),
+          locale,
+        );
   const syncing = res.running ? { syncing: {} } : res.sync?.background ? { syncing: { products: res.sync.background.products } } : {};
   return {
     ok: true,

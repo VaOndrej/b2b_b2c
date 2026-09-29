@@ -40,7 +40,7 @@ export function sanitizeTierSet(v: unknown, issues: ConfigIssue[], path: string)
   if (!isRecord(v)) return null;
   const entity = sanitizeEntityId(v.id, "tier", issues, path);
   if (!entity) {
-    pushIssue(issues, path, "missing_id", "Tier set without an id was dropped.");
+    pushIssue(issues, path, "missing_id", "Tier set without an id was dropped.", { kind: "tier_set" });
     return null;
   }
   const { id } = entity;
@@ -55,6 +55,7 @@ export function sanitizeTierSet(v: unknown, issues: ConfigIssue[], path: string)
       `${path}.breaks`,
       "too_many_tier_breaks",
       `A tier set can have at most ${CONFIG_LIMITS.breaksPerTierSet} quantity breaks; ${breaks.length - CONFIG_LIMITS.breaksPerTierSet} more were dropped.`,
+      { max: CONFIG_LIMITS.breaksPerTierSet, count: breaks.length - CONFIG_LIMITS.breaksPerTierSet },
     );
     breaks = breaks.slice(0, CONFIG_LIMITS.breaksPerTierSet);
   }
@@ -87,6 +88,7 @@ export function sanitizeTierSets(v: unknown, issues: ConfigIssue[]): { sets: Tie
       "modules.tiers.sets",
       "too_many_tier_sets",
       `Only the first ${CONFIG_LIMITS.tierSets} tier sets are kept; ${overLimit} more were dropped.`,
+      { max: CONFIG_LIMITS.tierSets, count: overLimit },
     );
   }
   return { sets: out, aliases };

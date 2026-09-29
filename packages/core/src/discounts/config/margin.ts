@@ -36,12 +36,22 @@ function marginPercent<F extends number | undefined>(
 ): number | F {
   if (v === undefined) return opts.fallback;
   if (typeof v !== "number" || !Number.isFinite(v)) {
-    pushIssue(issues, path, "invalid_percent", `Expected a number between 0 and ${opts.max}, got ${preview(v)}; ${opts.fallbackText}.`);
+    pushIssue(issues, path, "invalid_percent", `Expected a number between 0 and ${opts.max}, got ${preview(v)}; ${opts.fallbackText}.`, {
+      min: 0,
+      max: opts.max,
+      value: preview(v),
+      ...(opts.fallback === undefined ? { fallback: "global" } : { fallback: opts.fallback }),
+    });
     return opts.fallback;
   }
   if (v < 0 || v > opts.max) {
     const clamped = Math.min(opts.max, Math.max(0, v));
-    pushIssue(issues, path, "clamped_percent", `Percent ${v} is out of range 0-${opts.max}; clamped to ${clamped}.`);
+    pushIssue(issues, path, "clamped_percent", `Percent ${v} is out of range 0-${opts.max}; clamped to ${clamped}.`, {
+      value: v,
+      min: 0,
+      max: opts.max,
+      to: clamped,
+    });
     return clamped;
   }
   const rounded = roundToTenth(v, opts.direction);
@@ -51,6 +61,7 @@ function marginPercent<F extends number | undefined>(
       path,
       "rounded_percent",
       `Margin percents keep one decimal; ${v} was rounded to ${rounded} (the stricter side, never a larger discount).`,
+      { value: v, to: rounded, decimals: 1 },
     );
   }
   return rounded;
@@ -104,6 +115,7 @@ export function sanitizeMargin(v: unknown, issues: ConfigIssue[]): MarginModule 
       "modules.margin.perCollection",
       "too_many_margin_overrides",
       `At most ${CONFIG_LIMITS.marginOverrides} collections can have their own margin setting (the discount function reads them from a size-limited config); the first ${CONFIG_LIMITS.marginOverrides} are kept, ${perCollection.length - CONFIG_LIMITS.marginOverrides} more were dropped.`,
+      { max: CONFIG_LIMITS.marginOverrides, count: perCollection.length - CONFIG_LIMITS.marginOverrides },
     );
     perCollection = perCollection.slice(0, CONFIG_LIMITS.marginOverrides);
   }

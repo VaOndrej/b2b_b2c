@@ -16,6 +16,7 @@ function sanitizeMarket(v: unknown, issues: ConfigIssue[], index: number): Marke
       `markets[${index}].currency`,
       "invalid_currency",
       `Invalid market currency ${preview(v.currency)}; market dropped.`,
+      { market: handle, value: preview(v.currency) },
     );
     return null;
   }
@@ -44,6 +45,7 @@ function sanitizeCountries(v: unknown[], issues: ConfigIssue[], path: string): s
       path,
       "invalid_country",
       `${invalid.length} value(s) are not two-letter country codes (${invalid.slice(0, 5).map((x) => preview(x, 20)).join(", ")}); they were dropped.`,
+      { count: invalid.length, values: invalid.slice(0, 5).map((x) => preview(x, 20)).join(", ") },
     );
   }
   return out;
@@ -67,6 +69,7 @@ export function sanitizeMarkets(v: unknown, issues: ConfigIssue[]): MarketSettin
       "markets",
       "too_many_markets",
       `Only the first ${CONFIG_LIMITS.markets} markets are kept; ${overLimit} more were dropped.`,
+      { max: CONFIG_LIMITS.markets, count: overLimit },
     );
   }
   return out;

@@ -46,6 +46,7 @@ export function sanitizeRewards(v: unknown, issues: ConfigIssue[]): { rewards: R
       "modules.rewards.gifts",
       "too_many_gift_tiers",
       `Only the first ${CONFIG_LIMITS.giftTiers} gift tiers are kept; ${gifts.length - CONFIG_LIMITS.giftTiers} more were dropped.`,
+      { max: CONFIG_LIMITS.giftTiers, count: gifts.length - CONFIG_LIMITS.giftTiers },
     );
     gifts = gifts.slice(0, CONFIG_LIMITS.giftTiers);
   }

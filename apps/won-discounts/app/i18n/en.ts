@@ -177,7 +177,7 @@ export const en: Record<keyof typeof cs, string> = {
   "fix.too_many_tier_sets": "The first {max} volume discounts were saved; {count} more were dropped.",
   "fix.unknown_onboarding_goal": "Unknown onboarding goals were dropped.",
   "fix.value_target_mismatch": "Free shipping always applies to shipping; the target was adjusted.",
-  "fix.unknown": "The settings were adjusted when saving ({detail}).",
+  "fix.unknown": "The settings were adjusted when saving.",
   "result.deleted": "Discount deleted",
   "result.invalid": "Check the highlighted fields. Nothing was saved.",
   "result.newerSchema": "A newer version of the app saved these settings. Your changes weren't saved.",

@@ -70,6 +70,7 @@ function capIssues(issues: ConfigIssue[]): ConfigIssue[] {
     path: "",
     code: "issues_truncated",
     message: `${issues.length - CONFIG_LIMITS.maxIssues} more problem(s) were found but are not listed here.`,
+    params: { count: issues.length - CONFIG_LIMITS.maxIssues },
   });
   return kept;
 }

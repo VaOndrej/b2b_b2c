@@ -15,8 +15,9 @@ export function listPreview(values: string[], max = 5): string {
   return values.length > max ? `${shown} and ${values.length - max} more` : shown;
 }
 
-export function pushIssue(issues: ConfigIssue[], path: string, code: string, message: string): void {
-  issues.push({ path, code, message });
+/** Record an issue; `params` = the values `message` names, structured (see ConfigIssue.params). */
+export function pushIssue(issues: ConfigIssue[], path: string, code: string, message: string, params?: ConfigIssue["params"]): void {
+  issues.push(params ? { path, code, message, params } : { path, code, message });
 }
 
 /** Only reports an issue when a value was actually supplied and was wrong — a field
@@ -34,6 +35,7 @@ export function sanitizeBoolWithIssue(
       path,
       "invalid_boolean",
       `Expected a boolean, got ${preview(v)}; using default ${fallback}.`,
+      { value: preview(v), fallback: String(fallback) },
     );
   }
   return fallback;
@@ -57,6 +59,7 @@ export function sanitizeEnum<T extends string>(
     path,
     "invalid_enum",
     `Expected one of ${allowed.join(", ")}; got ${preview(v)}. Using default "${fallback}".`,
+    { allowed: allowed.join(", "), value: preview(v), fallback },
   );
   return fallback;
 }
@@ -80,6 +83,7 @@ export function sanitizePercent(
       path,
       "invalid_percent",
       `Expected a number between 0 and 100, got ${preview(v)}. Using default ${fallback}.`,
+      { min: 0, max: 100, value: preview(v), fallback },
     );
     return fallback;
   }
@@ -91,6 +95,7 @@ export function sanitizePercent(
       path,
       "clamped_percent",
       `Percent ${n} is out of range 0-100; clamped to ${clamped}.`,
+      { value: n, min: 0, max: 100, to: clamped },
     );
     return clamped;
   }
@@ -175,6 +180,7 @@ export function sanitizeStringArray(v: unknown, issues: ConfigIssue[], path: str
       path,
       "reference_too_long",
       `${tooLong} value(s) longer than ${CONFIG_LIMITS.referenceLength} characters were dropped.`,
+      { count: tooLong, max: CONFIG_LIMITS.referenceLength },
     );
   }
   if (overLimit > 0) {
@@ -183,6 +189,7 @@ export function sanitizeStringArray(v: unknown, issues: ConfigIssue[], path: str
       path,
       "too_many_items",
       `A list can have at most ${CONFIG_LIMITS.listItems} items; ${overLimit} more were dropped.`,
+      { max: CONFIG_LIMITS.listItems, count: overLimit },
     );
   }
   return out;
@@ -197,6 +204,7 @@ export function sanitizeReference(v: unknown, issues: ConfigIssue[], path: strin
     path,
     "reference_too_long",
     `Value longer than ${CONFIG_LIMITS.referenceLength} characters was dropped.`,
+    { count: 1, max: CONFIG_LIMITS.referenceLength },
   );
   return undefined;
 }
@@ -214,6 +222,7 @@ export function sanitizeMoney(v: unknown, issues: ConfigIssue[], path: string): 
       path,
       "clamped_money",
       `An amount can be at most ${CONFIG_LIMITS.moneyMinorUnits} minor units; ${listPreview(over)} was lowered to that.`,
+      { max: CONFIG_LIMITS.moneyMinorUnits, currencies: listPreview(over), count: over.length },
     );
   }
   const keys = Object.keys(money);
@@ -223,6 +232,7 @@ export function sanitizeMoney(v: unknown, issues: ConfigIssue[], path: string): 
     path,
     "too_many_currencies",
     `An amount can have at most ${CONFIG_LIMITS.currenciesPerAmount} currencies; ${keys.length - CONFIG_LIMITS.currenciesPerAmount} more were dropped.`,
+    { max: CONFIG_LIMITS.currenciesPerAmount, count: keys.length - CONFIG_LIMITS.currenciesPerAmount },
   );
   return Object.fromEntries(keys.slice(0, CONFIG_LIMITS.currenciesPerAmount).map((k) => [k, money[k]]));
 }
@@ -275,6 +285,7 @@ export function sanitizeEntityId(
     `${path}.id`,
     "invalid_id",
     `Id ${preview(v, 40)} is not 1-${CONFIG_LIMITS.idLength} characters of letters, digits, "-" or "_"; it was replaced by "${id}".`,
+    { value: preview(v, 40), min: 1, max: CONFIG_LIMITS.idLength, id },
   );
   return { id, original: v };
 }

@@ -181,7 +181,7 @@ export const cs = {
   "fix.too_many_tier_sets": "Uložilo se prvních {max} množstevních slev, ostatní se vyřadily (počet: {count}).",
   "fix.unknown_onboarding_goal": "Neznámé cíle z úvodního nastavení se vyřadily.",
   "fix.value_target_mismatch": "Doprava zdarma se vždy uplatní na dopravu, cílení se upravilo.",
-  "fix.unknown": "Nastavení se při ukládání upravilo ({detail}).",
+  "fix.unknown": "Nastavení se při ukládání upravilo.",
   "result.deleted": "Sleva smazána",
   "result.invalid": "Zkontroluj zvýrazněná pole. Nic se neuložilo.",
   "result.newerSchema": "Nastavení uložila novější verze aplikace. Změny se neuložily.",
