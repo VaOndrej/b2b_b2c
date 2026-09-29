@@ -3,10 +3,15 @@ import test from "node:test";
 
 import { WON_E2E_PRODUCTS } from "../src/e2e-products.js";
 import {
+  isAccessError,
   matchVariant,
   parseArgs,
   planCostChanges,
+  sameCost,
+  summarizeCostRun,
   toProductSetInput,
+  tryReadCost,
+  tryWriteCost,
 } from "../scripts/seed-e2e-products.mjs";
 
 test("catalog costs match the MVP 2 margin brief exactly", () => {
@@ -112,4 +117,100 @@ test("toProductSetInput is unchanged for options-based products (no cost leaks i
   for (const variant of input.variants) {
     assert.equal("cost" in variant, false, "cost is written separately via productVariantsBulkUpdate");
   }
+});
+
+test("sameCost treats a matching amount in a different currency as a change", () => {
+  assert.equal(sameCost("6.00", "USD", "6.00"), true, "same amount, same currency: unchanged");
+  assert.equal(sameCost("6.00", "EUR", "6.00"), false, "same amount, foreign currency: still a change");
+  assert.equal(sameCost("6.00", null, "6.00"), true, "no currency reported: fall back to amount only");
+  assert.equal(sameCost(null, "USD", "6.00"), false, "no current cost at all: a change");
+});
+
+test("planCostChanges never marks a variant unchanged when its currency differs from the shop's", () => {
+  const catalogProduct = { options: [], variants: [{ price: "10.00", cost: "6.00" }] };
+  const foreignCurrency = planCostChanges(
+    {
+      variants: {
+        nodes: [
+          {
+            id: "gid://v",
+            selectedOptions: [],
+            inventoryItem: { unitCost: { amount: "6.00", currencyCode: "EUR" } },
+          },
+        ],
+      },
+    },
+    catalogProduct,
+  );
+  assert.equal(foreignCurrency[0].unchanged, false);
+});
+
+test("isAccessError classifies scope/permission errors and only those", () => {
+  const accessDenied = new Error(
+    'GraphQL errors: [{"message":"Access denied for inventoryItem field. Required access: `read_inventory` access scope or higher.","extensions":{"code":"ACCESS_DENIED"}}]',
+  );
+  assert.equal(isAccessError(accessDenied), true);
+  assert.equal(isAccessError(new Error("Forbidden by app scope")), true);
+  assert.equal(isAccessError(new Error("Unauthorized")), true);
+  assert.equal(isAccessError(new Error("not approved to access this data")), true);
+
+  assert.equal(isAccessError(new Error("HTTP 500 from Admin API.")), false);
+  assert.equal(isAccessError(new Error("ECONNRESET")), false);
+  assert.equal(
+    isAccessError(new Error('productVariantsBulkUpdate: [{"field":["cost"],"message":"can\'t be blank"}]')),
+    false,
+  );
+});
+
+test("tryReadCost skips on an access error, rethrows anything else", async () => {
+  const accessDenied = () => {
+    throw new Error("Access denied: requires read_inventory access scope");
+  };
+  const skipped = await tryReadCost(accessDenied, "won-e2e-simple-a");
+  assert.equal(skipped.skipped, true);
+  assert.match(skipped.message, /reading inventoryItem\.unitCost failed/);
+
+  const transportFailure = () => {
+    throw new Error("fetch failed");
+  };
+  await assert.rejects(() => tryReadCost(transportFailure, "won-e2e-simple-a"), /fetch failed/);
+
+  const ok = async () => ({ productByIdentifier: { id: "gid://p", variants: { nodes: [] } } });
+  const result = await tryReadCost(ok, "won-e2e-simple-a");
+  assert.equal(result.skipped, false);
+  assert.equal(result.product.id, "gid://p");
+});
+
+test("tryWriteCost skips on an access error, rethrows a transport error, throws a real userError", async () => {
+  const toUpdate = [{ variantId: "gid://v", newCost: "6.00" }];
+
+  const accessDenied = () => {
+    throw new Error("Forbidden: missing write_products access scope");
+  };
+  const skipped = await tryWriteCost(accessDenied, "gid://product", toUpdate);
+  assert.equal(skipped.skipped, true);
+  assert.match(skipped.message, /writing inventoryItem\.cost failed/);
+
+  const transportFailure = () => {
+    throw new Error("socket hang up");
+  };
+  await assert.rejects(() => tryWriteCost(transportFailure, "gid://product", toUpdate), /socket hang up/);
+
+  const withUserError = async () => ({
+    productVariantsBulkUpdate: { userErrors: [{ field: ["cost"], message: "can't be blank" }] },
+  });
+  await assert.rejects(
+    () => tryWriteCost(withUserError, "gid://product", toUpdate),
+    /productVariantsBulkUpdate/,
+  );
+
+  const ok = async () => ({ productVariantsBulkUpdate: { userErrors: [] } });
+  const success = await tryWriteCost(ok, "gid://product", toUpdate);
+  assert.equal(success.skipped, false);
+});
+
+test("summarizeCostRun reports variants and calls, matching the real dev-store run (1 + 4 = 5 across 2 calls)", () => {
+  assert.deepEqual(summarizeCostRun([]), { variants: 0, calls: 0 });
+  assert.deepEqual(summarizeCostRun([1, 4]), { variants: 5, calls: 2 });
+  assert.deepEqual(summarizeCostRun([1, 4, 0]), { variants: 5, calls: 2 });
 });

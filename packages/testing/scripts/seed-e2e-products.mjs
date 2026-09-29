@@ -7,21 +7,35 @@
 //
 // Two executors:
 //
-//   Token (default, unchanged): reads the Admin token from the environment
-//   only (never printed, never written to disk).
+//   Token (default): reads the Admin token from the environment only (never
+//   printed, never written to disk). Scopes, exactly:
+//     - product-set/create: write_products
+//     - publish to the Online Store: additionally read_publications/
+//       write_publications
+//     - reading inventoryItem.unitCost: verified (2026-09-29) to work with
+//       read_products alone on this store/token — no read_inventory needed
+//       in practice, even though the Admin schema documents that field as
+//       requiring read_inventory too
+//     - writing inventoryItem.cost (productVariantsBulkUpdate): write_products
+//   Whatever a given token actually has, the cost read/write step is
+//   scope-tolerant (see below) — it never aborts the whole run.
 //
 //     SHOPIFY_ADMIN_API_TOKEN=<shpat_…> \
 //     SHOPIFY_E2E_SHOP_DOMAIN=<shop>.myshopify.com \
 //     node packages/testing/scripts/seed-e2e-products.mjs
 //
-//   The token needs write_products (+ publish to the Online Store).
-//
 //   --via-app <appDir>: acts as the named app via `shopify app execute`
-//   (no admin token needed). Steps this app's scopes cannot perform (e.g.
-//   publishing, which needs read_publications/write_publications) are
-//   skipped with a clear message instead of failing the run.
+//   (no admin token needed).
 //
 //     node packages/testing/scripts/seed-e2e-products.mjs --via-app apps/won-discounts
+//
+// Scope tolerance (both executors): publishing and the cost read/write are
+// each attempted independently. If a step fails with what looks like an
+// access/permission error (missing scope), that one step is skipped for
+// that product with a one-line message instead of aborting the run; any
+// other error (network, GraphQL validation, a real userError) still fails
+// the run. Via-app mode additionally always skips publish up front — this
+// app's scopes never include read_publications/write_publications.
 //
 // --dry-run prints the plan (product-set/publish steps, and per variant:
 // current cost → new cost, or "unchanged") and sends nothing.
@@ -43,6 +57,11 @@ const API_VERSION = "2026-04";
 // read/write inventoryItem.unitCost via `shopify app execute` with this
 // app's scopes. Override with --version if needed.
 const VIA_APP_DEFAULT_VERSION = "2026-07";
+
+// The dev store's shop currency (verified 2026-09-29). Catalog `cost` values
+// are plain amounts in this currency; a variant whose unitCost is reported
+// in a different currency is never "unchanged" even if the amount matches.
+const SHOP_CURRENCY = "USD";
 
 const shop = String(
   process.env.SHOPIFY_E2E_SHOP_DOMAIN ||
@@ -81,17 +100,30 @@ const PUBLISH = `
   }
 `;
 
-// Validated with the Shopify dev MCP (api "admin", version 2026-07).
-const PRODUCT_READ = `
-  query WonE2EProductRead($handle: String!) {
+// Validated with the Shopify dev MCP (api "admin", version 2026-07). No
+// inventoryItem field here on purpose: existence checks must never fail
+// because of a cost-scope issue.
+const PRODUCT_EXISTS = `
+  query WonE2EProductExists($handle: String!) {
     productByIdentifier(identifier: { handle: $handle }) {
       id
       handle
       status
+    }
+  }
+`;
+
+// Validated with the Shopify dev MCP (api "admin", version 2026-07). Kept
+// separate from PRODUCT_EXISTS so an access/scope error reading
+// inventoryItem.unitCost only ever skips the cost step, never the
+// product-set/publish steps.
+const PRODUCT_COST = `
+  query WonE2EProductCost($handle: String!) {
+    productByIdentifier(identifier: { handle: $handle }) {
+      id
       variants(first: 20) {
         nodes {
           id
-          price
           selectedOptions { name value }
           inventoryItem {
             id
@@ -186,16 +218,19 @@ export function matchVariant(existingNodes, catalogVariant, hasOptions) {
   );
 }
 
-function sameCost(currentAmount, newCost) {
+/** A different currency is always a change, never "unchanged", regardless of the amount. */
+export function sameCost(currentAmount, currentCurrency, newCost) {
   if (currentAmount === null || currentAmount === undefined) return false;
+  if (currentCurrency && currentCurrency !== SHOP_CURRENCY) return false;
   return Number(currentAmount).toFixed(2) === Number(newCost).toFixed(2);
 }
 
 /**
  * The cost plan for one catalog product against its current Admin state
- * (or `null` when the product does not exist yet). Only catalog variants
- * that declare a `cost` are included — a variant without one is never
- * planned, so it can never be mutated or cleared.
+ * (or `null` when the product does not exist yet, or the cost read was
+ * skipped for scope reasons). Only catalog variants that declare a `cost`
+ * are included — a variant without one is never planned, so it can never be
+ * mutated or cleared.
  */
 export function planCostChanges(existingProduct, catalogProduct) {
   const hasOptions = catalogProduct.options.length > 0;
@@ -228,14 +263,14 @@ export function planCostChanges(existingProduct, catalogProduct) {
       currentCost: currentAmount,
       currentCurrency,
       newCost: catalogVariant.cost,
-      unchanged: sameCost(currentAmount, catalogVariant.cost),
+      unchanged: sameCost(currentAmount, currentCurrency, catalogVariant.cost),
       notFound: false,
     });
   }
   return plan;
 }
 
-function printCostPlan(handle, plan) {
+function printCostPlan(plan) {
   for (const entry of plan) {
     if (entry.notFound) {
       console.log(
@@ -255,11 +290,39 @@ function printCostPlan(handle, plan) {
   }
 }
 
+/**
+ * Classifies an error thrown by an executor as an access/permission problem
+ * (missing scope) vs. anything else (network, GraphQL validation, a real
+ * userError) that must still fail the run. Matches the wording Shopify's
+ * Admin API and the `shopify app execute` CLI use for scope/access denials
+ * (e.g. GraphQL extensions.code "ACCESS_DENIED", "requires ... access
+ * scope", "not approved to access").
+ */
+export function isAccessError(error) {
+  const message = String(error?.message ?? error ?? "");
+  return /access[_ ]denied|access scope|not approved|unauthorized|forbidden/i.test(
+    message,
+  );
+}
+
+/**
+ * Aggregates one run's successful cost writes into the numbers the summary
+ * line reports: total variants written, and how many
+ * `productVariantsBulkUpdate` calls that took (one call per product that had
+ * at least one variant to update). Kept separate from `main()` so the
+ * arithmetic is unit-testable without a store.
+ */
+export function summarizeCostRun(perCallVariantCounts) {
+  const calls = perCallVariantCounts.filter((count) => count > 0).length;
+  const variants = perCallVariantCounts.reduce((sum, count) => sum + count, 0);
+  return { variants, calls };
+}
+
 // ---------------------------------------------------------------------------
 // Executors
 // ---------------------------------------------------------------------------
 
-/** Token-based executor (unchanged behaviour): POSTs to the Admin GraphQL endpoint with SHOPIFY_ADMIN_API_TOKEN. */
+/** Token-based executor (unchanged transport behaviour): POSTs to the Admin GraphQL endpoint with SHOPIFY_ADMIN_API_TOKEN. */
 function createTokenExecutor() {
   const token = String(process.env.SHOPIFY_ADMIN_API_TOKEN || "").trim();
   if (!token) {
@@ -288,7 +351,7 @@ function createTokenExecutor() {
   };
 }
 
-/** `shopify app execute` executor: acts as the named app, no admin token. */
+/** `shopify app execute` executor: acts as the named app, no admin token. Cleans up its temp files after every call, success or failure. */
 function createViaAppExecutor({ appDir, repoRoot, version }) {
   const outDir = path.join(os.tmpdir(), "won-e2e-seed-via-app");
   let counter = 0;
@@ -298,45 +361,99 @@ function createViaAppExecutor({ appDir, repoRoot, version }) {
     const stamp = `${Date.now()}-${counter}-${Math.random().toString(36).slice(2, 8)}`;
     const queryFile = path.join(outDir, `q-${stamp}.graphql`);
     const outputFile = path.join(outDir, `o-${stamp}.json`);
-    await fsp.writeFile(queryFile, query);
-    const args = [
-      "shopify",
-      "app",
-      "execute",
-      "--path",
-      appDir,
-      "--store",
-      shop,
-      "--version",
-      version,
-      "--query-file",
-      queryFile,
-      "--output-file",
-      outputFile,
-      "--no-color",
-    ];
-    if (variables !== undefined) {
-      const variableFile = path.join(outDir, `v-${stamp}.json`);
-      await fsp.writeFile(variableFile, JSON.stringify(variables));
-      args.push("--variable-file", variableFile);
+    const variableFile =
+      variables !== undefined ? path.join(outDir, `v-${stamp}.json`) : null;
+    const cleanup = [queryFile, outputFile, ...(variableFile ? [variableFile] : [])];
+    try {
+      await fsp.writeFile(queryFile, query);
+      const args = [
+        "shopify",
+        "app",
+        "execute",
+        "--path",
+        appDir,
+        "--store",
+        shop,
+        "--version",
+        version,
+        "--query-file",
+        queryFile,
+        "--output-file",
+        outputFile,
+        "--no-color",
+      ];
+      if (variableFile) {
+        await fsp.writeFile(variableFile, JSON.stringify(variables));
+        args.push("--variable-file", variableFile);
+      }
+      await execFileP("npx", args, { cwd: repoRoot, maxBuffer: 32 * 1024 * 1024 });
+      const raw = JSON.parse(await fsp.readFile(outputFile, "utf8"));
+      if (raw.errors) {
+        throw new Error(`GraphQL errors: ${JSON.stringify(raw.errors)}`);
+      }
+      return raw.data ?? raw;
+    } finally {
+      await Promise.all(
+        cleanup.map((file) => fsp.rm(file, { force: true }).catch(() => {})),
+      );
     }
-    await execFileP("npx", args, { cwd: repoRoot, maxBuffer: 32 * 1024 * 1024 });
-    const raw = JSON.parse(await fsp.readFile(outputFile, "utf8"));
-    if (raw.errors) {
-      throw new Error(`GraphQL errors: ${JSON.stringify(raw.errors)}`);
-    }
-    return raw.data ?? raw;
   };
+}
+
+// ---------------------------------------------------------------------------
+// Scope-tolerant cost step (both executors)
+// ---------------------------------------------------------------------------
+
+async function readProductExists(execute, handle) {
+  const data = await execute(PRODUCT_EXISTS, { handle });
+  return data.productByIdentifier ?? null;
+}
+
+/** Reads cost data for one product. Never throws on an access/scope error — returns `{ skipped: true, message }` instead; any other error still throws. */
+export async function tryReadCost(execute, handle) {
+  try {
+    const data = await execute(PRODUCT_COST, { handle });
+    return { skipped: false, product: data.productByIdentifier ?? null };
+  } catch (error) {
+    if (isAccessError(error)) {
+      return {
+        skipped: true,
+        message: `reading inventoryItem.unitCost failed (${String(error.message ?? error).slice(0, 200)})`,
+      };
+    }
+    throw error;
+  }
+}
+
+/** Writes a batch of variant costs for one product. Never throws on an access/scope error — returns `{ skipped: true, message }` instead; any other error (transport or a real userError) still throws. */
+export async function tryWriteCost(execute, productId, toUpdate) {
+  try {
+    const result = await execute(COST_UPDATE, {
+      productId,
+      variants: toUpdate.map((entry) => ({
+        id: entry.variantId,
+        inventoryItem: { cost: entry.newCost },
+      })),
+    });
+    const costErrors = result.productVariantsBulkUpdate.userErrors;
+    if (costErrors.length > 0) {
+      throw new Error(`productVariantsBulkUpdate: ${JSON.stringify(costErrors)}`);
+    }
+    return { skipped: false };
+  } catch (error) {
+    if (isAccessError(error)) {
+      return {
+        skipped: true,
+        message: `writing inventoryItem.cost failed (${String(error.message ?? error).slice(0, 200)})`,
+      };
+    }
+    throw error;
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
-
-async function readProduct(execute, handle) {
-  const data = await execute(PRODUCT_READ, { handle });
-  return data.productByIdentifier ?? null;
-}
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -372,13 +489,14 @@ async function main() {
     onlineStoreId = onlineStore.id;
   }
 
-  let totalCostMutations = 0;
+  const costCallCounts = []; // one entry per successful productVariantsBulkUpdate call, value = variants in that call
+  let costSkips = 0;
 
   for (const product of WON_E2E_PRODUCT_LIST) {
     console.log(`\n=== ${product.handle} ===`);
-    const existing = await readProduct(execute, product.handle);
 
     if (dryRun) {
+      const existing = await readProductExists(execute, product.handle);
       console.log(
         existing
           ? "  productSet: would upsert (already exists)"
@@ -389,8 +507,12 @@ async function main() {
           ? "  publish: skipped in via-app mode (missing scope)"
           : "  publish: would publish to Online Store",
       );
-      const plan = planCostChanges(existing, product);
-      printCostPlan(product.handle, plan);
+      const costRead = await tryReadCost(execute, product.handle);
+      if (costRead.skipped) {
+        console.log(`    cost step skipped: ${costRead.message}`);
+      } else {
+        printCostPlan(planCostChanges(costRead.product, product));
+      }
       continue;
     }
 
@@ -425,34 +547,39 @@ async function main() {
       `✓ ${product.handle}  (${created.variants.nodes.length} variant(s))`,
     );
 
-    // Re-read for authoritative variant ids + current costs, then plan/apply.
-    const refreshed = await readProduct(execute, product.handle);
-    const plan = planCostChanges(refreshed, product);
-    const toUpdate = plan.filter((entry) => entry.variantId && !entry.unchanged);
-    if (toUpdate.length > 0) {
-      const result = await execute(COST_UPDATE, {
-        productId: refreshed.id,
-        variants: toUpdate.map((entry) => ({
-          id: entry.variantId,
-          inventoryItem: { cost: entry.newCost },
-        })),
-      });
-      const costErrors = result.productVariantsBulkUpdate.userErrors;
-      if (costErrors.length > 0) {
-        throw new Error(
-          `productVariantsBulkUpdate ${product.handle}: ${JSON.stringify(costErrors)}`,
-        );
-      }
-      totalCostMutations += toUpdate.length;
+    const costRead = await tryReadCost(execute, product.handle);
+    if (costRead.skipped) {
+      console.log(`    cost step skipped: ${costRead.message}`);
+      costSkips += 1;
+      continue;
     }
-    // Read back once more so the printed costs reflect what's actually stored.
-    const final = toUpdate.length > 0 ? await readProduct(execute, product.handle) : refreshed;
-    printCostPlan(product.handle, planCostChanges(final, product));
+
+    const plan = planCostChanges(costRead.product, product);
+    const toUpdate = plan.filter((entry) => entry.variantId && !entry.unchanged);
+    let finalProduct = costRead.product;
+    if (toUpdate.length > 0) {
+      const writeResult = await tryWriteCost(execute, costRead.product.id, toUpdate);
+      if (writeResult.skipped) {
+        console.log(`    cost step skipped: ${writeResult.message}`);
+        costSkips += 1;
+        continue;
+      }
+      costCallCounts.push(toUpdate.length);
+      // Read back once more so the printed costs reflect what's actually stored.
+      const reread = await tryReadCost(execute, product.handle);
+      if (!reread.skipped) finalProduct = reread.product;
+    }
+    printCostPlan(planCostChanges(finalProduct, product));
   }
 
+  const { variants, calls } = summarizeCostRun(costCallCounts);
   console.log(
     `\nSeeded ${WON_E2E_PRODUCT_LIST.length} shared E2E products on ${shop}.` +
-      (dryRun ? "" : ` Cost mutations applied: ${totalCostMutations}.`),
+      (dryRun
+        ? ""
+        : ` Cost step: ${variants} variant(s) updated via ${calls} productVariantsBulkUpdate call(s)${
+            costSkips > 0 ? `, ${costSkips} product(s) skipped (missing scope)` : ""
+          }.`),
   );
 }
 
