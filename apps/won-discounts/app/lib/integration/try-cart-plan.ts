@@ -31,6 +31,7 @@
 
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
 import { formatMoney } from "@won/core/discounts/describe";
+import { costMinorUnits } from "@won/core/discounts/margin";
 import { explainPlan } from "@won/core/discounts/explain";
 import { checkoutPreview, roundingTiePossible, type CheckoutPreview } from "@won/core/discounts/function-output";
 import { buildNodeVars, buildShopFunctionConfig, campaignInputFromVars } from "@won/core/discounts/function-payload";
@@ -310,7 +311,12 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
       ? {
           margin: {
             rateEstimated: input.rateEstimated === true,
-            linesWithoutCost: plan.lines.filter((line) => line.marginCapped?.basis === "max_percent").length,
+            // Lines whose cost is unknown in the cart currency (none in the mirror, or not convertible):
+            // the "no purchase cost" percent ceiling is their floor (types.ts CartPlanView.margin).
+            linesWithoutCost: lines.filter(
+              (line) =>
+                costMinorUnits(line.unitCost, line.unitCostCurrency, input.shopToCartRate ?? undefined, input.currency, input.shopCurrency ?? undefined) === null,
+            ).length,
           },
         }
       : {}),

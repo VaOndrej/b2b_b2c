@@ -113,6 +113,7 @@ export async function overviewData(ctx: ShopCtx, opts: PageOptions) {
     scopes: opts.scopes,
     graphql: graphql(ctx),
     timezone,
+    shopCurrency: reads.shopContext.currencyCode,
     sync: true,
     syncDeadlineMs: opts.syncDeadlineMs,
     nativeDeadlineMs: opts.nativeDeadlineMs,

@@ -107,10 +107,15 @@ export async function recordProductsSynced(db: PrismaClient, shop: string, start
  *     product, and a product that carries a ref still gets cleared — safe in
  *     both orders, also when a delayed webhook arrives after a reinstall;
  *   - the targeting freshness is forgotten (productsSyncedAt = null);
- *   - the cost mirror (MVP 2) is deleted: its variant metafields went with
- *     the app, and its rows hold the shop's purchase costs, which Won does not
- *     keep for an uninstalled shop (a reinstall runs a new full pass once
- *     protection is on). Its pass bookkeeping goes with it.
+ *   - the cost mirror (MVP 2) keeps only cost-free markers: every variant
+ *     that may carry the sync's metafield keeps its row with `mayCarry` and
+ *     nothing else of value (cost, currency, confirmed value, errors cleared —
+ *     Won does not keep purchase costs for an uninstalled shop); the other
+ *     rows go. Safe in both orders like the index above: after a normal
+ *     uninstall Shopify has removed the metafields (a later clear deletes
+ *     nothing); a DELAYED delivery after a quick reinstall keeps the markers
+ *     of metafields written since, so a later switch-off still clears them.
+ *     The pass bookkeeping is reset (the next full pass re-reads Shopify).
  * ShopConfig, history and native-discount backups stay until shop/redact (A7).
  * Idempotent.
  */
@@ -118,7 +123,12 @@ export async function forgetShopifyState(db: PrismaClient, shop: string): Promis
   await db.$transaction([
     db.wonNode.deleteMany({ where: { shop } }),
     db.productTargetIndex.updateMany({ where: { shop }, data: { payloadHash: null } }),
-    db.variantCost.deleteMany({ where: { shop } }),
+    db.variantCost.updateMany({ where: { shop, metafieldValue: { not: null } }, data: { mayCarry: true } }),
+    db.variantCost.deleteMany({ where: { shop, mayCarry: false } }),
+    db.variantCost.updateMany({
+      where: { shop },
+      data: { cost: null, currency: null, metafieldValue: null, writeError: null, writeFailedAt: null, scanId: null },
+    }),
     db.shopSyncState.updateMany({
       where: { shop },
       data: { productsSyncedAt: null, costsScannedAt: null, costsCursor: null, costsPending: null },

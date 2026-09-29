@@ -11,9 +11,10 @@
 // at most an hour late), at most COST_RECONCILE_SHOPS jobs started per run
 // (each runs in its shop's cost lane, in the background). Single instance
 // assumption as the rest of the sync; MVP 5's scheduler takes it over.
-// Started lazily with the app's cost refresher (integration/costs.server.ts
-// appCostRefresher — the first webhook or admin load after a boot); a boot-time
-// start from app/entry.server.tsx would make it independent of traffic.
+// Started once per process on server boot (app/entry.server.tsx, next to the
+// stale-claim sweep); the margin screen, the Přehled card and the app's cost
+// refresher also ensure it (idempotent) — so it runs whether or not anybody
+// opens the admin.
 
 import { gateConfigForPlan, type ShopPlan } from "@won/core/discounts/plan-gate";
 

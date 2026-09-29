@@ -41,10 +41,13 @@ import type {
 } from "../../components/model/types";
 import { configVersionToken, loadConfig, type LoadedConfig } from "../config.server";
 import { costJobKind, ensureCostsFresh, startCostJob, type CostLaneDeps } from "../sync/cost-lane.server";
-import { canonicalJson } from "../sync/util";
+import { canonicalJson, hashText } from "../sync/util";
 import { lockedWrite, SAVE_ATTEMPTS, savedResult, writeAndSync } from "./config-write.server";
 import type { ShopCtx } from "./context.server";
-import { costCoverage, costMirrorView, hasCost } from "./costs.server";
+import { ensureCostReconcileJob } from "../jobs/cost-reconcile.server";
+import { parseCostValue } from "../sync/costs";
+import { runtimeKey } from "../sync/runs";
+import { costCoverage, costMirrorView, offlineClient } from "./costs.server";
 import { uiFailureFromSave } from "./results";
 import { ctxPlan } from "./sync-status.server";
 
@@ -336,12 +339,18 @@ function parseRefs(value: string | null): ProductRefs {
   }
 }
 
-/** The mirror + the product refs the sync wrote → the core's variants (shop currency, minor units). */
+/**
+ * The mirror + the product refs the sync wrote → the core's variants (shop
+ * currency, minor units). The cost is the CONFIRMED metafield value — what
+ * checkout reads — never a cost the mirror has not got into Shopify yet.
+ * Reads the whole catalogue: only ever called through impactOf (cached).
+ */
 async function marginVariants(ctx: Pick<ShopCtx, "db" | "shop">, currency: string): Promise<MarginVariant[]> {
+  catalogueReads += 1;
   const [rows, index] = await Promise.all([
     ctx.db.variantCost.findMany({
       where: { shop: ctx.shop },
-      select: { productId: true, variantId: true, title: true, variantTitle: true, price: true, cost: true, currency: true },
+      select: { productId: true, variantId: true, title: true, variantTitle: true, price: true, metafieldValue: true },
       orderBy: { variantId: "asc" },
     }),
     ctx.db.productTargetIndex.findMany({ where: { shop: ctx.shop, value: { not: null } }, select: { productId: true, value: true } }),
@@ -350,25 +359,67 @@ async function marginVariants(ctx: Pick<ShopCtx, "db" | "shop">, currency: strin
   return rows.map((row) => {
     const r = refs.get(row.productId);
     const title = row.variantTitle ? `${row.title ?? row.productId} (${row.variantTitle})` : (row.title ?? row.productId);
+    const confirmed = parseCostValue(row.metafieldValue);
     return {
       productId: row.productId,
       variantId: row.variantId,
       title,
       price: minorOf(row.price, currency) ?? 0,
-      cost: hasCost(row, currency) ? minorOf(row.cost, currency) : null,
+      cost: confirmed && confirmed.cur === currency ? minorOf(String(confirmed.cost), currency) : null,
       ruleRefs: r ? [...r.ruleIds, ...(r.variantRuleIds[variantKey(row.variantId)] ?? [])] : [],
       marginRefs: r?.marginRefs ?? [],
     };
   });
 }
 
-/** Přehled zásahů (Pro): where protection lowers the active discounts (config + mirror). */
-export async function marginImpactView(ctx: Pick<ShopCtx, "db" | "shop">, config: WonDiscountsConfig, currency: string): Promise<MarginImpactView> {
-  const variants = await marginVariants(ctx, currency);
+// --- The impact, computed once per (config, mirror) ------------------------------------------------
+// Přehled zásahů and the rule editor's count both need marginImpact over the
+// whole catalogue. It is computed once per state — the gated config, the shop
+// currency and the mirror + product-ref tables as their row count and last
+// update say (a pass, a webhook mirror or a product sync changes them) — and
+// kept in memory per shop; every other load reads the cached result.
+
+interface ImpactEntry {
+  key: string;
+  view: MarginImpactView;
+  /** Rule id → variants where protection lowers it (product and order rules). */
+  counts: Map<string, number>;
+}
+
+const impactCache = new Map<string, ImpactEntry>();
+let catalogueReads = 0;
+
+/** Test hook: how many times the whole catalogue was read for the impact (process-wide). */
+export function marginCatalogueReads(): number {
+  return catalogueReads;
+}
+
+/** Test hook. */
+export function clearMarginImpactCache(): void {
+  impactCache.clear();
+}
+
+async function impactKey(ctx: Pick<ShopCtx, "db" | "shop">, config: WonDiscountsConfig, currency: string): Promise<string> {
+  const [costs, index] = await Promise.all([
+    ctx.db.variantCost.aggregate({ where: { shop: ctx.shop }, _count: { _all: true }, _max: { updatedAt: true } }),
+    ctx.db.productTargetIndex.aggregate({ where: { shop: ctx.shop }, _count: { _all: true }, _max: { updatedAt: true } }),
+  ]);
+  return hashText(
+    canonicalJson({
+      config: runtimeKey(config),
+      currency,
+      costs: [costs._count._all, costs._max.updatedAt?.toISOString() ?? null],
+      index: [index._count._all, index._max.updatedAt?.toISOString() ?? null],
+    }),
+  );
+}
+
+function impactViewOf(config: WonDiscountsConfig, variants: readonly MarginVariant[], currency: string): ImpactEntry["view"] & { counts: Map<string, number> } {
   const impact = marginImpact(config, variants, currency);
   const names = new Map(config.modules.codes.rules.map((rule) => [rule.id, rule.name || rule.id]));
   const payload = buildMarginPayload({ ...config.modules.margin, enabled: true }, currency);
-  const sourceOf = new Map(variants.map((v) => [v.variantId, resolveMargin(payload, v.marginRefs)?.source ?? "global"]));
+  const marginRefsOf = new Map(variants.map((v) => [v.variantId, v.marginRefs]));
+  const sourceOf = (variantId: string) => resolveMargin(payload, marginRefsOf.get(variantId) ?? [])?.source ?? "global";
   const rows = impact.rules
     .filter((rule) => rule.discountClass === "product")
     .flatMap((rule) =>
@@ -381,7 +432,7 @@ export async function marginImpactView(ctx: Pick<ShopCtx, "db" | "shop">, config
         wanted: c.wanted,
         allowed: c.allowed,
         basis: c.basis,
-        source: sourceOf.get(c.variantId) ?? ("global" as const),
+        source: sourceOf(c.variantId),
       })),
     )
     .sort((a, b) => b.wanted - b.allowed - (a.wanted - a.allowed) || (a.variantId < b.variantId ? -1 : a.variantId > b.variantId ? 1 : 0))
@@ -389,16 +440,41 @@ export async function marginImpactView(ctx: Pick<ShopCtx, "db" | "shop">, config
   const orderRules = impact.rules
     .filter((rule) => rule.discountClass === "order" && rule.variants > 0)
     .map((rule) => ({ ruleId: rule.ruleId, ruleName: names.get(rule.ruleId) ?? rule.ruleId, variantsBelow: rule.variants }));
-  return { rows, orderRules, withoutCost: impact.withoutCost };
+  return { rows, orderRules, withoutCost: impact.withoutCost, counts: new Map(impact.rules.map((rule) => [rule.ruleId, rule.variants])) };
+}
+
+/** The impact for the gated config: from the cache when the state is unchanged, else computed once and cached. */
+async function impactOf(ctx: Pick<ShopCtx, "db" | "shop">, config: WonDiscountsConfig, currency: string): Promise<ImpactEntry> {
+  const key = await impactKey(ctx, config, currency);
+  const hit = impactCache.get(ctx.shop);
+  if (hit && hit.key === key) return hit;
+  const { counts, ...view } = impactViewOf(config, await marginVariants(ctx, currency), currency);
+  const entry: ImpactEntry = { key, view, counts };
+  impactCache.delete(ctx.shop);
+  impactCache.set(ctx.shop, entry);
+  if (impactCache.size > 1_000) impactCache.delete(impactCache.keys().next().value as string);
+  return entry;
+}
+
+/** Přehled zásahů (Pro): where protection lowers the active discounts (config + mirror; cached per state). */
+export async function marginImpactView(ctx: Pick<ShopCtx, "db" | "shop">, config: WonDiscountsConfig, currency: string): Promise<MarginImpactView> {
+  return (await impactOf(ctx, config, currency)).view;
+}
+
+/** The currency the margin screen and the Přehled card both count in: the one the caller read, else the shop's. */
+async function marginCurrency(ctx: ShopCtx, known?: string | null): Promise<string> {
+  return known && /^[A-Z]{3}$/.test(known) ? known : shopCurrencyOf(ctx);
 }
 
 /**
  * The module page. Loading it also starts what the mirror needs (a due full
- * pass, a clear after switching off — in the background, never twice).
+ * pass, a clear after switching off — in the background, never twice) and
+ * makes sure the daily reconcile runs in this process.
  */
 export async function loadMarginScreen(ctx: ShopCtx): Promise<MarginScreenData> {
+  ensureCostReconcileJob(ctx.db, { clientFor: offlineClient });
   const loaded = await loadConfig(ctx.db, ctx.shop);
-  const [margin, shopCurrency, timezone] = await Promise.all([gatedMargin(ctx, loaded), shopCurrencyOf(ctx), shopTimezoneOf(ctx)]);
+  const [margin, shopCurrency, timezone] = await Promise.all([gatedMargin(ctx, loaded), marginCurrency(ctx), shopTimezoneOf(ctx)]);
   const { stored, plan, gate, gated, enabled, syncable } = margin;
   const titles = await collectionTitles(ctx, stored.config.modules.margin.perCollection.map((o) => o.collectionId));
   if (syncable) await ensureCostsFresh(ctx.shop, laneDeps(ctx), enabled).catch(() => undefined);
@@ -425,31 +501,37 @@ export async function loadMarginScreen(ctx: ShopCtx): Promise<MarginScreenData> 
 /**
  * On how many variants protection lowers this rule (the editor's note), or
  * null while protection is off. 0 for a rule it never lowers (or an unknown id).
+ * Read from the cached impact (never the whole catalogue per editor load when
+ * nothing changed).
+ * Ruling (MVP 2 review): the count is given on Free too — it is safety
+ * information about the merchant's own rule, not the Pro overview; the
+ * overview itself (rows, which variants and why) stays Pro (BILL-1).
  */
 export async function ruleMarginImpact(ctx: ShopCtx, ruleId: string): Promise<number | null> {
   const { gated, enabled } = await gatedMargin(ctx);
   if (!enabled) return null;
-  const currency = await shopCurrencyOf(ctx);
+  const currency = await marginCurrency(ctx);
   if (!currency) return 0;
-  const variants = await marginVariants(ctx, currency);
-  const impact = marginImpact(gated, variants, currency);
-  return impact.rules.find((rule) => rule.ruleId === ruleId)?.variants ?? 0;
+  return (await impactOf(ctx, gated, currency)).counts.get(ruleId) ?? 0;
 }
 
 /**
  * Přehled card (AdminSignals.margin): the settings in force (gated), products
- * without a cost, the mirror. `trigger` (Přehled) starts what the mirror needs.
+ * without a cost (the same currency and query as the margin screen), the
+ * mirror. `trigger` (Přehled) starts what the mirror needs and makes sure the
+ * daily reconcile runs in this process. `shopCurrency` = what the page read.
  */
 export async function loadMarginOverview(
   ctx: ShopCtx,
   loaded: Pick<LoadedConfig, "config" | "exists" | "unreadable" | "readOnly">,
-  opts: { timezone: string | null; trigger: boolean },
+  opts: { timezone: string | null; trigger: boolean; shopCurrency?: string | null },
 ): Promise<MarginOverviewView> {
+  ensureCostReconcileJob(ctx.db, { clientFor: offlineClient });
   const { gated, enabled, syncable } = await gatedMargin(ctx, loaded);
   if (opts.trigger && syncable) await ensureCostsFresh(ctx.shop, laneDeps(ctx), enabled).catch(() => undefined);
   const [mirror, coverage] = await Promise.all([
     costMirrorView({ db: ctx.db, shop: ctx.shop, now: ctx.now }, { enabled, timezone: opts.timezone }),
-    enabled ? costCoverage(ctx.db, ctx.shop) : Promise.resolve(null),
+    enabled ? marginCurrency(ctx, opts.shopCurrency).then((currency) => costCoverage(ctx.db, ctx.shop, currency || null)) : Promise.resolve(null),
   ]);
   const margin = gated.modules.margin;
   return {

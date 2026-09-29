@@ -34,6 +34,12 @@ import { shortDetail } from "./sync-copy";
 
 /** One mirror per shop at most this long after the first relevant webhook. */
 export const COST_WEBHOOK_DEBOUNCE_MS = 5_000;
+/**
+ * Ids queued per shop before the queue collapses into ONE full pass (a bulk
+ * import fires a webhook per product: past this, reading everything once is
+ * cheaper than one lookup per id, and the queue stays bounded).
+ */
+export const COST_QUEUE_MAX = 250;
 /** Products without a cost shown as a sample on the margin screen. */
 export const COVERAGE_SAMPLE = 20;
 
@@ -111,8 +117,8 @@ export interface CostRefresher {
   /** Queue work and start the shop's debounce window (later calls fold into it). */
   note(shop: string, work: CostWork): void;
   scheduled(shop: string): boolean;
-  /** What is queued for the shop (tests, support). */
-  pending(shop: string): { inventoryItemIds: string[]; productIds: string[] };
+  /** What is queued for the shop (tests, support); `full` = collapsed into one full pass. */
+  pending(shop: string): { inventoryItemIds: string[]; productIds: string[]; full: boolean };
   /** Flush the shop's queue now. */
   runNow(shop: string): Promise<CostRefreshOutcome>;
   /** Test hook: drop every timer and queue. */
@@ -123,7 +129,7 @@ const quiet: SyncLogger = { info() {}, warn() {}, error() {} };
 
 export function createCostRefresher(deps: CostRefresherDeps): CostRefresher {
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
-  const queued = new Map<string, { items: Set<string>; products: Set<string> }>();
+  const queued = new Map<string, { items: Set<string>; products: Set<string>; full: boolean }>();
   const logger = deps.logger ?? quiet;
   const runNow = async (shop: string): Promise<CostRefreshOutcome> => {
     const timer = timers.get(shop);
@@ -131,24 +137,30 @@ export function createCostRefresher(deps: CostRefresherDeps): CostRefresher {
     timers.delete(shop);
     const work = queued.get(shop);
     queued.delete(shop);
-    if (!work || work.items.size + work.products.size === 0) return { done: "nothing" };
+    if (!work || (!work.full && work.items.size + work.products.size === 0)) return { done: "nothing" };
     const client = await deps.clientFor(shop);
     if (!client) {
       logger.warn(`costs ${shop}: no Admin API session, the queued mirror was dropped`);
       return { done: "no_session" };
     }
-    const outcome = await startCostJob(shop, { client, db: deps.db, now: deps.now, logger }, {
-      kind: "items",
-      inventoryItemIds: [...work.items],
-      productIds: [...work.products],
-    });
+    const lane = { client, db: deps.db, now: deps.now, logger };
+    const outcome = work.full
+      ? await startCostJob(shop, lane, { kind: "full" })
+      : await startCostJob(shop, lane, { kind: "items", inventoryItemIds: [...work.items], productIds: [...work.products] });
     return { done: "job", outcome };
   };
   return {
     note(shop, work) {
-      const entry = queued.get(shop) ?? { items: new Set<string>(), products: new Set<string>() };
-      for (const id of work.inventoryItemIds ?? []) entry.items.add(id);
-      for (const id of work.productIds ?? []) entry.products.add(id);
+      const entry = queued.get(shop) ?? { items: new Set<string>(), products: new Set<string>(), full: false };
+      if (!entry.full) {
+        for (const id of work.inventoryItemIds ?? []) entry.items.add(id);
+        for (const id of work.productIds ?? []) entry.products.add(id);
+        if (entry.items.size + entry.products.size > COST_QUEUE_MAX) {
+          entry.full = true;
+          entry.items.clear();
+          entry.products.clear();
+        }
+      }
       queued.set(shop, entry);
       if (queued.size > 10_000) queued.delete(queued.keys().next().value as string);
       if (timers.has(shop)) return;
@@ -160,7 +172,10 @@ export function createCostRefresher(deps: CostRefresherDeps): CostRefresher {
       timers.set(shop, timer);
     },
     scheduled: (shop) => timers.has(shop),
-    pending: (shop) => ({ inventoryItemIds: [...(queued.get(shop)?.items ?? [])], productIds: [...(queued.get(shop)?.products ?? [])] }),
+    pending: (shop) => {
+      const entry = queued.get(shop);
+      return { inventoryItemIds: [...(entry?.items ?? [])], productIds: [...(entry?.products ?? [])], full: entry?.full ?? false };
+    },
     runNow,
     cancelAll() {
       for (const timer of timers.values()) clearTimeout(timer);
@@ -222,44 +237,63 @@ export async function costMirrorView(
       problems: [{ key: "sync.problem.other", params: { detail: shortDetail(state.pending.error ?? "") } }],
     };
   }
+  // Variants whose cost Shopify refused (the pass completed; they are retried after a back-off).
+  const refused = await ctx.db.variantCost.count({ where: { shop: ctx.shop, writeError: { not: null } } });
+  if (refused > 0) {
+    const latest = await ctx.db.variantCost.findFirst({
+      where: { shop: ctx.shop, writeError: { not: null } },
+      orderBy: [{ writeFailedAt: "desc" }, { variantId: "asc" }],
+      select: { variantId: true, title: true, writeError: true, writeFailedAt: true },
+    });
+    const detail = `${refused} variant(s) without their cost at checkout, Shopify refused the write (e.g. ${latest?.title ?? latest?.variantId ?? ""}: ${latest?.writeError ?? ""})`;
+    return {
+      state: "failed",
+      at: local(latest?.writeFailedAt ?? now, opts.timezone),
+      problems: [{ key: "sync.problem.other", params: { detail: shortDetail(detail) } }],
+    };
+  }
   if (state.scannedAt && state.cursor === null && now.getTime() - state.scannedAt.getTime() < COSTS_MAX_AGE_MS) {
     return { state: "fresh", at: local(state.scannedAt, opts.timezone) };
   }
   return { state: "stale", at: state.scannedAt ? local(state.scannedAt, opts.timezone) : null };
 }
 
-/** A cost the engine can use: a number > 0 (in the shop currency when it is known). */
-export function hasCost(row: { cost: string | null; currency: string | null }, shopCurrency?: string | null): boolean {
-  if (row.cost === null) return false;
-  const amount = Number(row.cost);
-  if (!Number.isFinite(amount) || amount <= 0) return false;
-  return !shopCurrency || !row.currency || row.currency.toUpperCase() === shopCurrency.toUpperCase();
-}
-
 /**
  * How many variants / products have a cost (A2: the admin says how many do
- * not), from the mirror. Null when the mirror never ran (no rows, no pass).
+ * not), from the mirror — bounded queries only (counts, one grouped page of
+ * COVERAGE_SAMPLE products), never the whole catalogue per page load. A row
+ * has a cost when its `cost` is set (the mirror stores only usable costs) in
+ * the shop currency. Null until the first full pass finished.
  */
 export async function costCoverage(db: PrismaClient, shop: string, shopCurrency?: string | null): Promise<CostCoverageView | null> {
-  const rows = await db.variantCost.findMany({ where: { shop }, select: { productId: true, title: true, cost: true, currency: true } });
-  if (rows.length === 0) {
-    const state = await loadCostState(db, shop);
-    if (!state.scannedAt) return null;
-  }
-  const products = new Map<string, { title: string; without: number }>();
-  let withCost = 0;
-  for (const row of rows) {
-    if (hasCost(row, shopCurrency)) {
-      withCost += 1;
-      continue;
-    }
-    const entry = products.get(row.productId) ?? { title: row.title ?? row.productId, without: 0 };
-    entry.without += 1;
-    products.set(row.productId, entry);
-  }
-  const sample = [...products]
-    .sort(([a, x], [b, y]) => y.without - x.without || x.title.localeCompare(y.title) || (a < b ? -1 : a > b ? 1 : 0))
-    .slice(0, COVERAGE_SAMPLE)
-    .map(([productId, { title, without }]) => ({ productId, title, variantsWithoutCost: without }));
-  return { variants: rows.length, variantsWithCost: withCost, productsWithoutCost: products.size, sample };
+  const state = await loadCostState(db, shop);
+  if (!state.scannedAt) return null;
+  const currency = shopCurrency ? shopCurrency.toUpperCase() : null;
+  const withCost = { shop, cost: { not: null }, ...(currency ? { currency } : {}) };
+  const withoutCost = { shop, OR: [{ cost: null }, ...(currency ? [{ currency: { not: currency } }] : [])] };
+  const [variants, variantsWithCost, distinct, grouped] = await Promise.all([
+    db.variantCost.count({ where: { shop } }),
+    db.variantCost.count({ where: withCost }),
+    currency
+      ? db.$queryRaw<{ n: number | bigint }[]>`SELECT COUNT(DISTINCT "productId") AS n FROM "VariantCost" WHERE "shop" = ${shop} AND ("cost" IS NULL OR "currency" IS NULL OR "currency" <> ${currency})`
+      : db.$queryRaw<{ n: number | bigint }[]>`SELECT COUNT(DISTINCT "productId") AS n FROM "VariantCost" WHERE "shop" = ${shop} AND "cost" IS NULL`,
+    db.variantCost.groupBy({
+      by: ["productId"],
+      where: withoutCost,
+      _count: { _all: true },
+      orderBy: [{ _count: { productId: "desc" } }, { productId: "asc" }],
+      take: COVERAGE_SAMPLE,
+    }),
+  ]);
+  const ids = grouped.map((g) => g.productId);
+  const titled = ids.length
+    ? await db.variantCost.findMany({ where: { shop, productId: { in: ids } }, distinct: ["productId"], select: { productId: true, title: true } })
+    : [];
+  const titles = new Map(titled.map((row) => [row.productId, row.title ?? row.productId]));
+  return {
+    variants,
+    variantsWithCost,
+    productsWithoutCost: Number(distinct[0]?.n ?? 0),
+    sample: grouped.map((g) => ({ productId: g.productId, title: titles.get(g.productId) ?? g.productId, variantsWithoutCost: g._count._all })),
+  };
 }

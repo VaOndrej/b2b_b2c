@@ -53,7 +53,7 @@ test("costsDue: never scanned / older than 24 h / cut short → full; fresh → 
   assert.equal(await costsDue(db.prisma, shop, true, new Date(NOW.getTime() + 20 * 60_000)), "full", "retried after the interval");
   assert.equal(await costsDue(db.prisma, shop, false, NOW), null, "off, nothing carried");
   await db.prisma.variantCost.create({
-    data: { shop, variantId: "gid://shopify/ProductVariant/1", productId: "gid://shopify/Product/1", inventoryItemId: "gid://shopify/InventoryItem/1", price: "1", metafieldValue: '{"cost":1,"cur":"CZK"}' },
+    data: { shop, variantId: "gid://shopify/ProductVariant/1", productId: "gid://shopify/Product/1", inventoryItemId: "gid://shopify/InventoryItem/1", price: "1", metafieldValue: '{"cost":1,"cur":"CZK"}', mayCarry: true },
   });
   assert.equal(await costsDue(db.prisma, shop, false, NOW), "clear", "off while variants still carry the metafield");
 });
@@ -72,7 +72,7 @@ test("reconcile: a full pass for an on-shop that is due, a clear for an off-shop
   await saveMargin(gone, true);
   await db.prisma.shopSyncState.create({ data: { shop: fresh, costsScannedAt: new Date() } });
   await db.prisma.variantCost.create({
-    data: { shop: off, variantId: product.variantIds[0]!, productId: product.id, inventoryItemId: "gid://shopify/InventoryItem/101", price: "1", metafieldValue: '{"cost":2,"cur":"CZK"}' },
+    data: { shop: off, variantId: product.variantIds[0]!, productId: product.id, inventoryItemId: "gid://shopify/InventoryItem/101", price: "1", metafieldValue: '{"cost":2,"cur":"CZK"}', mayCarry: true },
   });
   const result = await runCostReconcileOnce({
     db: db.prisma,
@@ -133,4 +133,33 @@ test("webhook refresher: queued items and products flush as ONE mirror job with 
   assert.deepEqual(await orphan.runNow(shop), { done: "no_session" });
   orphan.cancelAll();
   refresher.cancelAll();
+});
+
+test("ensureCostReconcileJob is idempotent: two calls start ONE periodic job; its first run reconciles once", async () => {
+  const { ensureCostReconcileJob, stopCostReconcileJob, costReconcileJobStarted } = await import("../../../app/lib/jobs/cost-reconcile.server.ts");
+  stopCostReconcileJob();
+  const due = `${shop}-boot`;
+  await saveMargin(due, true);
+  const fake = new FakeShopify();
+  const sessions: string[] = [];
+  const deps = {
+    db: db.prisma,
+    plan: async () => "free" as const,
+    clientFor: async (s: string) => {
+      sessions.push(s);
+      return fake;
+    },
+  };
+  try {
+    ensureCostReconcileJob(db.prisma, { clientFor: deps.clientFor, deps, force: true, firstDelayMs: 5, intervalMs: 60_000 });
+    ensureCostReconcileJob(db.prisma, { clientFor: deps.clientFor, deps, force: true, firstDelayMs: 5, intervalMs: 60_000 });
+    assert.equal(costReconcileJobStarted(), true);
+    for (let i = 0; i < 100 && sessions.length === 0; i += 1) await new Promise((resolve) => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.deepEqual(sessions, [due], "one run, one due shop");
+    await costIdle(due);
+  } finally {
+    stopCostReconcileJob();
+  }
+  assert.equal(costReconcileJobStarted(), false);
 });

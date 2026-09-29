@@ -99,6 +99,8 @@ export class FakeShopify implements AdminClient {
   countLimit = 10_000;
   /** metafieldsSet refuses more than this many inputs (Shopify: 25). */
   metafieldsSetLimit = 25;
+  /** Owners whose metafield writes Shopify refuses (userErrors; metafieldsSet is all-or-nothing). */
+  refusedOwners = new Set<string>();
   /** The store's clock (node status, deactivate). */
   clock: () => Date = () => new Date("2026-09-28T12:00:00Z");
   calls: RecordedCall[] = [];
@@ -534,8 +536,11 @@ export class FakeShopify implements AdminClient {
         }
         const userErrors = [];
         for (const [index, input] of inputs.entries()) {
-          if (!this.metafieldsOf((input as unknown as { ownerId: string }).ownerId)) {
+          const ownerId = (input as unknown as { ownerId: string }).ownerId;
+          if (!this.metafieldsOf(ownerId)) {
             userErrors.push({ field: ["metafields", String(index), "ownerId"], message: "Owner does not exist", code: "INVALID" });
+          } else if (this.refusedOwners.has(ownerId)) {
+            userErrors.push({ field: ["metafields", String(index), "value"], message: "Value is invalid", code: "INVALID_VALUE" });
           }
         }
         if (userErrors.length) return { metafieldsSet: { metafields: [], userErrors } };

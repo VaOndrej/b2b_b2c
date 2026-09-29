@@ -411,8 +411,10 @@ export interface CartPlanView {
   /**
    * Margin protection in this simulation (absent = off). `rateEstimated`: the cart is not in
    * the shop currency, so purchase costs were converted with a rate estimated from market
-   * prices — checkout uses Shopify's current rate. `linesWithoutCost`: lines capped by the
-   * "no purchase cost" percent ceiling.
+   * prices — checkout uses Shopify's current rate. `linesWithoutCost`: lines whose purchase
+   * cost is unknown in the cart currency (no cost in Shopify yet, or it could not be
+   * converted) — the "no purchase cost" percent ceiling is their floor, whether or not it
+   * lowered their discount in this cart.
    */
   margin?: { rateEstimated: boolean; linesWithoutCost: number };
 }

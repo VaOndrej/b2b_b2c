@@ -24,6 +24,9 @@ CREATE TABLE "VariantCost" (
     "cost" TEXT,
     "currency" TEXT,
     "metafieldValue" TEXT,
+    "mayCarry" BOOLEAN NOT NULL DEFAULT false,
+    "writeError" TEXT,
+    "writeFailedAt" DATETIME,
     "scanId" TEXT,
     "updatedAt" DATETIME NOT NULL
 );

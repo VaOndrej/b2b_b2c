@@ -44,10 +44,10 @@
 import { gateConfigForPlan, type ShopPlan } from "@won/core/discounts/plan-gate";
 
 import type { PrismaClient } from "../../generated/prisma/client";
-import { planOf } from "../plan.server";
 import { adminClientFromApp, type AdminClient, type AppAdminGraphql } from "../admin-client.server";
 import { loadConfig } from "../config.server";
 import { targetScopes } from "../sync/products";
+import { appliedPlanOf } from "../sync/runs";
 import { refreshTargeting, resyncIfPending, type ResyncIfPendingResult, type ResyncResult } from "../sync/save-and-sync.server";
 import { markTargetingStale } from "../sync/sync-state.server";
 import type { Sync } from "../sync/sync.server";
@@ -87,8 +87,13 @@ export interface TargetingWebhookDeps {
   /** Schedule the shop's debounced refresh. */
   schedule: (shop: string) => void;
   now?: () => Date;
-  /** The shop's plan (BILL-1; default: the app's resolver). */
-  plan?: (shop: string) => Promise<ShopPlan>;
+  /**
+   * The plan the LIVE product refs were written for (BILL-1): read from the
+   * app DB only — the sync's own record (sync/runs.ts appliedPlanOf). The type
+   * gets nothing but the database, so this path can never call Shopify (or a
+   * billing API) before the webhook's 2xx. Null (nothing applied yet) = Free.
+   */
+  appliedPlan?: (db: PrismaClient, shop: string) => Promise<ShopPlan | null>;
 }
 
 export type TargetingWebhookOutcome =
@@ -118,8 +123,9 @@ export async function handleTargetingWebhook(
 
   const loaded = await loadConfig(db, shop);
   if (!loaded.exists || loaded.unreadable || loaded.readOnly) return { handled: "ignored", reason: "no syncable config" };
-  // The sync reads what the shop's plan runs (BILL-1): a Free shop's margin collections are not read.
-  const plan = await (deps.plan ?? planOf)(shop);
+  // The refs checkout reads were written for the APPLIED plan (BILL-1: a Free shop's margin collections
+  // are not read); DB only — nothing before the 2xx waits on Shopify.
+  const plan = (await (deps.appliedPlan ?? appliedPlanOf)(db, shop)) ?? "free";
   const scopes = targetScopes(gateConfigForPlan(loaded.config, plan).config);
   const productTopic = topic === "products/update" || topic === "products/create";
   const relevant = productTopic

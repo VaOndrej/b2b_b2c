@@ -26,7 +26,11 @@ let db: TestDatabase;
 let costs: Action;
 let targeting: Action;
 let uninstalled: Action;
-let costRefresher: { scheduled(shop: string): boolean; pending(shop: string): { inventoryItemIds: string[]; productIds: string[] }; cancelAll(): void };
+let costRefresher: {
+  scheduled(shop: string): boolean;
+  pending(shop: string): { inventoryItemIds: string[]; productIds: string[]; full: boolean };
+  cancelAll(): void;
+};
 let targetingRefresher: { scheduled(shop: string): boolean; cancelAll(): void };
 
 before(async () => {
@@ -183,16 +187,45 @@ test("products/delete drops the product's VariantCost rows (its variant metafiel
   assert.deepEqual((await db.prisma.variantCost.findMany({ where: { shop: SHOP } })).map((r) => r.variantId), ["gid://shopify/ProductVariant/1301"]);
 });
 
-test("app/uninstalled deletes the shop's VariantCost rows and its cost-pass bookkeeping (Shopify removed the metafields)", async () => {
+test("app/uninstalled: no purchase cost is kept — only cost-free 'may carry' markers (safe in both orders) — and the pass bookkeeping resets", async () => {
   await seedMargin(true);
   await seedRow(1401, 14, "5.00");
+  await seedRow(1402, 14, null);
+  await db.prisma.variantCost.updateMany({ where: { shop: SHOP, variantId: "gid://shopify/ProductVariant/1401" }, data: { mayCarry: true } });
   await db.prisma.shopSyncState.create({ data: { shop: SHOP, costsScannedAt: new Date(), costsCursor: "abc", costsPending: '{"token":"t","since":"x","done":1,"total":2}' } });
   const res = await uninstalled({ request: signed("/webhooks/app/uninstalled", "app/uninstalled", { id: 1 }, "wh-u-1"), params: {}, context: {} });
   assert.equal(res.status, 200);
-  assert.equal(await db.prisma.variantCost.count({ where: { shop: SHOP } }), 0);
+  const left = await db.prisma.variantCost.findMany({ where: { shop: SHOP } });
+  assert.deepEqual(
+    left.map((r) => [r.variantId, r.mayCarry, r.cost, r.currency, r.metafieldValue]),
+    [["gid://shopify/ProductVariant/1401", true, null, null, null]],
+  );
   const state = await db.prisma.shopSyncState.findUnique({ where: { shop: SHOP } });
   assert.deepEqual([state?.costsScannedAt, state?.costsCursor, state?.costsPending], [null, null, null]);
   assert.equal(await db.prisma.shopConfig.count({ where: { shop: SHOP } }), 1, "the config stays until shop/redact");
+});
+
+test("a bulk import (more than 250 queued ids) collapses the shop's queue into ONE full pass", async () => {
+  await seedMargin(true);
+  for (let i = 1; i <= 251; i += 1) {
+    await callTargeting(signed("/webhooks/targeting", "products/update", { id: 5000 + i, admin_graphql_api_id: `gid://shopify/Product/${5000 + i}` }, `wh-bulk-${i}`));
+  }
+  assert.deepEqual(costRefresher.pending(SHOP), { inventoryItemIds: [], productIds: [], full: true });
+  await callCosts(signed("/webhooks/costs", "inventory_items/update", item(777), "wh-bulk-item"));
+  assert.deepEqual(costRefresher.pending(SHOP), { inventoryItemIds: [], productIds: [], full: true }, "stays one full pass");
+});
+
+test("the targeting webhook gates by the APPLIED plan from the DB (never a remote call before the 2xx): a Free shop's margin collection does not matter", async () => {
+  const { saveConfig } = await import("../app/lib/config.server.ts");
+  await saveConfig(db.prisma, SHOP, {
+    modules: { margin: { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: [{ collectionId: COLLECTION, minMarginPercent: 30 }] } },
+  });
+  await db.prisma.shopSyncState.create({ data: { shop: SHOP, appliedPlan: "free" } });
+  await callTargeting(signed("/webhooks/targeting", "collections/update", { id: 77, admin_graphql_api_id: COLLECTION }, "wh-plan-1"));
+  assert.equal((await db.prisma.shopSyncState.findUnique({ where: { shop: SHOP } }))?.targetingStaleAt, null, "Free: folded into the global setting");
+  await db.prisma.shopSyncState.update({ where: { shop: SHOP }, data: { appliedPlan: "pro" } });
+  await callTargeting(signed("/webhooks/targeting", "collections/update", { id: 77, admin_graphql_api_id: COLLECTION }, "wh-plan-2"));
+  assert.ok((await db.prisma.shopSyncState.findUnique({ where: { shop: SHOP } }))?.targetingStaleAt, "Pro live: the margin collection's membership matters");
 });
 
 test("shop/redact (deleteShopData) erases the VariantCost rows too", async () => {

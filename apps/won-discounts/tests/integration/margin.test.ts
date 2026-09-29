@@ -7,7 +7,9 @@ import { loadConfig, saveConfig } from "../../app/lib/config.server.ts";
 import type { ShopCtx } from "../../app/lib/integration/context.server.ts";
 import { withConfigLock } from "../../app/lib/integration/lock.server.ts";
 import {
+  loadMarginOverview,
   loadMarginScreen,
+  marginCatalogueReads,
   readMarginForm,
   refreshCostsAction,
   ruleMarginImpact,
@@ -479,4 +481,94 @@ test("the rate estimate: 1 in the shop currency; else the median market/base rat
   );
   assert.deepEqual(estimateShopToCartRate([{ amount: "1.00", basePrice: "20.00" }, { amount: "3.00", basePrice: "20.00" }], cur), { rate: 0.1, estimated: true });
   assert.deepEqual(estimateShopToCartRate([{ amount: "1.00", basePrice: "0" }], cur), { rate: null, estimated: false });
+});
+
+// --- Fix round 1: bounded work per admin request -------------------------------------------------
+
+/** The DB with every variantCost.findMany recorded (to prove a load never reads the whole catalogue). */
+function spyFindMany(prisma: PrismaClient): { db: PrismaClient; calls: unknown[] } {
+  const calls: unknown[] = [];
+  const delegate = new Proxy(prisma.variantCost, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver) as unknown;
+      if (prop === "findMany") {
+        return (args: unknown) => {
+          calls.push(args);
+          return (value as (a: unknown) => unknown).call(target, args);
+        };
+      }
+      return typeof value === "function" ? (value as (...a: unknown[]) => unknown).bind(target) : value;
+    },
+  });
+  const db = new Proxy(prisma, {
+    get(target, prop, receiver) {
+      if (prop === "variantCost") return delegate;
+      const value = Reflect.get(target, prop, receiver) as unknown;
+      return typeof value === "function" ? (value as (...a: unknown[]) => unknown).bind(target) : value;
+    },
+  });
+  return { db, calls };
+}
+
+/** A findMany that cannot return the whole catalogue: a page (`take`) or a list of ids. */
+function bounded(args: unknown): boolean {
+  const a = (args ?? {}) as { take?: number; where?: { variantId?: { in?: unknown[] }; productId?: { in?: unknown[] } } };
+  return (typeof a.take === "number" && a.take <= 100) || Array.isArray(a.where?.variantId?.in) || Array.isArray(a.where?.productId?.in);
+}
+
+test("the impact is computed once per state: a second screen load and the editor's count reuse it; a changed cost recomputes it", async () => {
+  const store = storeWithCatalogue();
+  const ctx = ctxFor(store, "pro");
+  await saveConfig(db.prisma, shop, {
+    modules: {
+      codes: {
+        rules: [{ id: "half", name: "Půlka", method: "automatic", value: { kind: "percentage", percent: 50 }, target: { kind: "products", productIds: ["gid://shopify/Product/1", "gid://shopify/Product/2"], variantIds: [] } }],
+      },
+    },
+  });
+  await saveMarginSettings(ctx, settings(), { configVersion: (await loadConfig(db.prisma, shop)).version });
+  await settle();
+  const before = marginCatalogueReads();
+  const first = await loadMarginScreen(ctx);
+  assert.equal(marginCatalogueReads(), before + 1, "computed once");
+  const spy = spyFindMany(db.prisma);
+  const second = await loadMarginScreen({ ...ctx, db: spy.db });
+  assert.deepEqual(second.impact, first.impact);
+  assert.equal(await ruleMarginImpact({ ...ctx, db: spy.db }, "half"), 3);
+  await loadMarginOverview({ ...ctx, db: spy.db }, await loadConfig(db.prisma, shop), { timezone: null, trigger: true, shopCurrency: "CZK" });
+  assert.equal(marginCatalogueReads(), before + 1, "the second load, the editor and Přehled did not re-read the catalogue");
+  assert.ok(spy.calls.every(bounded), `every VariantCost read on those loads is bounded: ${JSON.stringify(spy.calls)}`);
+
+  // A cost change (webhook mirror) changes the state: the next load recomputes once.
+  store.sync.setCost("gid://shopify/ProductVariant/201", "15.00");
+  const { startCostJob } = await import("../../app/lib/sync/cost-lane.server.ts");
+  await startCostJob(shop, { client: store, db: db.prisma, plan: async () => "pro" }, { kind: "items", inventoryItemIds: ["gid://shopify/InventoryItem/201"] });
+  const third = await loadMarginScreen(ctx);
+  assert.equal(marginCatalogueReads(), before + 2);
+  assert.notDeepEqual(third.impact, first.impact);
+});
+
+test("coverage: the margin screen and the Přehled card count in the same currency with the same bounded queries", async () => {
+  const store = storeWithCatalogue();
+  const ctx = ctxFor(store);
+  await saveMarginSettings(ctx, settings(), { configVersion: null });
+  await settle();
+  const screen = await loadMarginScreen(ctx);
+  const card = await loadMarginOverview(ctx, await loadConfig(db.prisma, shop), { timezone: null, trigger: false });
+  assert.equal(card.productsWithoutCost, screen.coverage!.productsWithoutCost);
+  const viaPage = await loadMarginOverview(ctx, await loadConfig(db.prisma, shop), { timezone: null, trigger: false, shopCurrency: "CZK" });
+  assert.equal(viaPage.productsWithoutCost, screen.coverage!.productsWithoutCost);
+});
+
+test("a variant whose cost Shopify refuses is surfaced in the mirror status (the pass completed; the rest is written)", async () => {
+  const store = storeWithCatalogue();
+  store.sync.refusedOwners.add("gid://shopify/ProductVariant/301");
+  const ctx = ctxFor(store);
+  await saveMarginSettings(ctx, settings(), { configVersion: null });
+  await settle();
+  assert.deepEqual(store.sync.variantCostMetafield("gid://shopify/ProductVariant/101"), { cost: 6, cur: "CZK" });
+  const data = await loadMarginScreen(ctx);
+  assert.equal(data.mirror.state, "failed");
+  const detail = data.mirror.state === "failed" ? String(data.mirror.problems[0]?.params?.detail ?? "") : "";
+  assert.match(detail, /1 variant\(s\).*Čepice.*Value is invalid/);
 });

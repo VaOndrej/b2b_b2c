@@ -271,6 +271,8 @@ export async function loadStoreSignals(
     timezone: string | null;
     /** Run the Přehled sync trigger (onboarding does not). */
     sync: boolean;
+    /** The shop currency the page read (the margin card counts products without a cost in it). */
+    shopCurrency?: string | null;
     fresh?: boolean;
     syncDeadlineMs?: number;
     nativeDeadlineMs?: number;
@@ -283,7 +285,9 @@ export async function loadStoreSignals(
     loadNativeView(ctx, loaded.config, { timezone: opts.timezone, deadlineMs: opts.nativeDeadlineMs }),
     // Ochrana marže card (MVP 2, Přehled only): also starts a due cost pass / clear in the background.
     // A failure leaves the card out (absent = not known), never the page (REL-1).
-    opts.sync ? loadMarginOverview(ctx, loaded, { timezone: opts.timezone, trigger: true }).catch(() => undefined) : Promise.resolve(undefined),
+    opts.sync
+      ? loadMarginOverview(ctx, loaded, { timezone: opts.timezone, trigger: true, shopCurrency: opts.shopCurrency }).catch(() => undefined)
+      : Promise.resolve(undefined),
   ]);
   return { ...base, sync, native, ...(margin ? { margin } : {}) };
 }

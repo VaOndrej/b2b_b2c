@@ -185,11 +185,12 @@ model ProductTargetIndex {
 
 /// Cost mirror (margin protection, MVP 2, app/lib/sync/costs.ts): one row per
 /// variant of the shop, as the last pass / webhook read it from Shopify, and
-/// the `$app:won_discounts/variant` metafield value the sync last wrote for it
-/// ({"cost": n, "cur": "USD"}; null = the variant carries no such metafield).
-/// Source of the admin's counts ("N produktů nemá nákupní cenu"), the impact
-/// overview and Vyzkoušet košík. Only kept while margin protection is on;
-/// deleted on uninstall and shop/redact.
+/// the `$app:won_discounts/variant` metafield value Shopify CONFIRMED it holds
+/// ({"cost": n, "cur": "USD"}; null = none, or not confirmed). Source of the
+/// admin's counts ("N produktů nemá nákupní cenu"), the impact overview and
+/// Vyzkoušet košík (those two read only confirmed values). Only kept while
+/// margin protection is on; on uninstall only the cost-free `mayCarry`
+/// markers stay (a later switch-off still clears them), shop/redact erases all.
 model VariantCost {
   id              String   @id @default(cuid())
   shop            String
@@ -201,10 +202,20 @@ model VariantCost {
   variantTitle    String?
   /// Variant price, decimal string in the shop currency.
   price           String
-  /// inventoryItem.unitCost (decimal string + currency); null = no cost in Shopify.
+  /// inventoryItem.unitCost (decimal string + currency) when it is usable (a
+  /// number > 0 with an ISO currency); null = no usable cost in Shopify.
   cost            String?
   currency        String?
+  /// Confirmed value only: what Shopify was read to hold, or what a write Shopify accepted set.
   metafieldValue  String?
+  /// Write-ahead marker: the variant MAY carry the sync's metafield (set before
+  /// a write goes out, cleared when Shopify is read without it or a delete is
+  /// confirmed). The switch-off clear deletes every such variant's metafield.
+  mayCarry        Boolean  @default(false)
+  /// The last write Shopify refused for this variant (userErrors) and when;
+  /// retried after a back-off, shown in the mirror status. Null = none.
+  writeError      String?
+  writeFailedAt   DateTime?
   /// The full pass that last saw this variant (rows no pass saw are re-checked, then dropped).
   scanId          String?
   updatedAt       DateTime @updatedAt

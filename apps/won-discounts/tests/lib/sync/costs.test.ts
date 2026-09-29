@@ -231,22 +231,65 @@ test("API-3: throttled reads and a 5xx on a write are retried with backoff; the 
   assert.deepEqual(fake.variantCostMetafield("gid://shopify/ProductVariant/402"), { cost: 4.5, cur: "CZK" });
 });
 
-test("a refused write fails the pass (recorded for the admin), freshness is not claimed, the next pass starts over", async () => {
+test("one refused variant: its batch is split per variant, the other 24 are written, the refusal is recorded, the pass completes", async () => {
   const fake = new FakeShopify();
-  catalogue(fake, 4);
-  fake.fail("WonSyncMetafieldsSet", { userErrors: [{ field: ["metafields", "0", "value"], message: "Value is invalid" }] }, 1);
+  catalogue(fake, 30); // 30 variants with a cost: batches of 25 + 5
+  const refused = "gid://shopify/ProductVariant/402";
+  fake.refusedOwners.add(refused);
   const result = await runCostPass(ctxFor(fake));
-  assert.equal(result.outcome, "failed");
+  assert.equal(result.outcome, "done", JSON.stringify(result.errors));
+  assert.equal(result.refused, 1);
+  assert.equal(result.written, 29);
+  const sizes = setCalls(fake).map((mfs) => mfs.length);
+  assert.deepEqual(sizes.slice(0, 1), [25], "the first batch went out whole");
+  assert.equal(sizes.filter((n) => n === 1).length, 25, "then one call per variant of the refused batch");
+  assert.equal(fake.variantCostMetafield(refused), undefined);
+  assert.deepEqual(fake.variantCostMetafield("gid://shopify/ProductVariant/401"), { cost: 4.5, cur: "CZK" });
+  const row = (await rows()).find((r) => r.variantId === refused)!;
+  assert.match(row.writeError ?? "", /Value is invalid/);
+  assert.equal(row.writeFailedAt?.toISOString(), NOW.toISOString());
+  assert.equal(row.metafieldValue, null, "only confirmed values");
+  assert.equal(row.mayCarry, false, "refused = nothing applied");
   const state = await loadCostState(db.prisma, shop);
-  assert.equal(state.scannedAt, null);
-  assert.equal(state.cursor, null);
-  assert.ok(state.pending?.failedAt);
-  assert.match(state.pending?.error ?? "", /Value is invalid/);
+  assert.equal(state.scannedAt?.toISOString(), NOW.toISOString(), "the pass counts as complete");
+  assert.equal(state.pending, null);
+
+  // Within the back-off it is not re-sent; after it (or when the merchant asks) it is, and a success clears the record.
   fake.calls = [];
-  const again = await runCostPass(ctxFor(fake));
-  assert.equal(again.outcome, "done");
-  assert.equal(again.resumed, false);
-  assert.equal((await loadCostState(db.prisma, shop)).pending, null, "a good pass clears the failure");
+  await runCostPass(ctxFor(fake, { now: () => new Date(NOW.getTime() + 10 * 60_000) }));
+  assert.equal(setCalls(fake).length, 0, "backed off");
+  fake.refusedOwners.clear();
+  await runCostPass({ ...ctxFor(fake, { now: () => new Date(NOW.getTime() + 20 * 60_000) }), restart: true });
+  assert.deepEqual(setCalls(fake).flat().map((mf) => mf.ownerId), [refused], "Obnovit retries it");
+  const fixed = (await rows()).find((r) => r.variantId === refused)!;
+  assert.equal(fixed.writeError, null);
+  assert.equal(fixed.metafieldValue, '{"cost":4.5,"cur":"CZK"}');
+});
+
+test("a write whose answer is lost (5xx after every retry): the value is NOT claimed, the variant stays marked for a clear", async () => {
+  const fake = new FakeShopify();
+  catalogue(fake, 2);
+  fake.fail("WonSyncMetafieldsSet", { transportAfterApply: 503 }, 4);
+  const result = await runCostPass(ctxFor(fake));
+  assert.equal(result.outcome, "failed", "a call failed as a whole");
+  const row = (await rows()).find((r) => r.variantId === "gid://shopify/ProductVariant/201")!;
+  assert.equal(row.metafieldValue, null, "never a value Shopify did not confirm");
+  assert.equal(row.mayCarry, true, "it may have landed");
+  assert.deepEqual(fake.variantCostMetafield("gid://shopify/ProductVariant/201"), { cost: 2.5, cur: "CZK" }, "(it did land)");
+  const cleared = await clearCostMirror(ctxFor(fake));
+  assert.equal(cleared.outcome, "done");
+  assert.equal(fake.variantCostMetafield("gid://shopify/ProductVariant/201"), undefined, "the clear found it through the marker");
+});
+
+test("a read that shows the metafield confirms it; a usable cost only (0 is no cost)", async () => {
+  const fake = new FakeShopify();
+  const product = fake.addProduct(1, 2);
+  fake.setCost(product.variantIds[0]!, "0.00");
+  fake.setCost(product.variantIds[1]!, "3.00");
+  await runCostPass(ctxFor(fake));
+  const [zero, three] = await rows();
+  assert.deepEqual([zero!.cost, zero!.currency, zero!.metafieldValue, zero!.mayCarry], [null, null, null, false]);
+  assert.deepEqual([three!.cost, three!.currency, three!.metafieldValue, three!.mayCarry], ["3.00", "CZK", '{"cost":3,"cur":"CZK"}', true]);
 });
 
 test("a read that keeps failing ends the pass as failed (never throws)", async () => {
@@ -330,8 +373,29 @@ test("a failed clear keeps the rows that still carry a value (the next clear ret
   fake.fail("WonSyncMetafieldsDelete", { userErrors: [{ message: "Internal error" }] }, 1);
   const cleared = await clearCostMirror(ctxFor(fake));
   assert.equal(cleared.outcome, "failed");
-  assert.equal((await db.prisma.variantCost.count({ where: { shop, metafieldValue: { not: null } } })), 2);
+  assert.equal((await db.prisma.variantCost.count({ where: { shop, mayCarry: true } })), 2);
   const again = await clearCostMirror(ctxFor(fake));
   assert.equal(again.outcome, "done");
   assert.equal((await rows()).length, 0);
+});
+
+test("uninstall keeps only cost-free markers; a DELAYED uninstall after a reinstall still lets a switch-off clear what was written since", async () => {
+  const { forgetShopifyState } = await import("../../../app/lib/sync/sync-state.server.ts");
+  const fake = new FakeShopify();
+  catalogue(fake, 2);
+  await runCostPass(ctxFor(fake)); // after a (re)install: 2 variants carry the metafield, 2 do not
+  await forgetShopifyState(db.prisma, shop); // the old uninstall's delivery arrives late
+  const markers = await rows();
+  assert.deepEqual(
+    markers.map((r) => [r.variantId, r.mayCarry, r.cost, r.currency, r.metafieldValue]),
+    [
+      ["gid://shopify/ProductVariant/201", true, null, null, null],
+      ["gid://shopify/ProductVariant/202", true, null, null, null],
+    ],
+    "no purchase cost kept; only the variants that may carry it",
+  );
+  assert.equal((await loadCostState(db.prisma, shop)).scannedAt, null, "the next pass re-reads Shopify");
+  const cleared = await clearCostMirror(ctxFor(fake));
+  assert.equal(cleared.cleared, 2);
+  assert.equal(fake.variantCostMetafield("gid://shopify/ProductVariant/201"), undefined, "the live metafield written after the reinstall is gone");
 });

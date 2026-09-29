@@ -116,7 +116,7 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
       if (job.kind !== "clear" && !enabled) return { done: "skipped", reason: "margin_off" };
       const transport = new Transport(deps.client, deps.retry, deps.sleep, logger);
       const isCancelled = () => lane?.cancelled === true;
-      const ctx = { transport, db: deps.db, shop, isCancelled };
+      const ctx = { transport, db: deps.db, shop, isCancelled, now: deps.now };
       if (job.kind === "full") {
         const result = await runCostPass({
           ...ctx,
@@ -125,7 +125,9 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
           onProgress: (pending) => progress.set(shop, pending),
         });
         if (result.outcome === "failed") logger.warn(`costs ${shop}: full pass failed: ${result.errors.join("; ")}`);
-        else if (result.outcome === "done") logger.info(`costs ${shop}: full pass done (${result.read} read, ${result.written} written, ${result.cleared} cleared)`);
+        else if (result.outcome === "done") {
+          logger.info(`costs ${shop}: full pass done (${result.read} read, ${result.written} written, ${result.cleared} cleared, ${result.refused} refused)`);
+        }
         return { done: "full", result };
       }
       if (job.kind === "clear") {
@@ -138,10 +140,13 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
       const result: MirrorResult = {
         written: items.written + products.written,
         cleared: items.cleared + products.cleared,
+        refused: items.refused + products.refused,
+        backedOff: items.backedOff + products.backedOff,
         removed: items.removed + products.removed,
         errors: [...items.errors, ...products.errors],
       };
       if (result.errors.length > 0) logger.warn(`costs ${shop}: mirror failed: ${result.errors.join("; ")}`);
+      if (result.refused > 0) logger.warn(`costs ${shop}: Shopify refused ${result.refused} variant cost write(s)`);
       return { done: "items", result };
     } catch (error) {
       if (error instanceof Response) {
@@ -194,7 +199,7 @@ export const COST_RETRY_MIN_INTERVAL_MS = 15 * 60_000;
  */
 export async function costsDue(db: PrismaClient, shop: string, enabled: boolean, now: Date): Promise<"full" | "clear" | null> {
   if (!enabled) {
-    const carrying = await db.variantCost.count({ where: { shop, metafieldValue: { not: null } } });
+    const carrying = await db.variantCost.count({ where: { shop, mayCarry: true } });
     return carrying > 0 ? "clear" : null;
   }
   const state = await loadCostState(db, shop);
