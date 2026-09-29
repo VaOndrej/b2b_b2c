@@ -7,9 +7,9 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
-- **Fáze:** MVP 1 ✅ uzavřené a pushnuté (`801d2e9`). **Další krok: MVP 2 (Ochrana marže)** —
-  napsat plán `docs/plans/2026-09-29-won-discounts-mvp2.md` (skill writing-plans), SDD ledger
-  `.superpowers/sdd/<plán>/progress.md`, pak smyčka MVP (TS engine + Rust + shoda, sync, UI, živé E2E).
+- **Fáze:** MVP 2 (Ochrana marže) **běží** — plán `docs/plans/2026-09-29-won-discounts-mvp2.md`,
+  ledger `.superpowers/sdd/2026-09-29-won-discounts-mvp2/progress.md` (po kompakci číst ledger +
+  `git log`, hotové úkoly neopakovat). MVP 1 ✅ (`801d2e9`).
   Nákupní ceny e2e produktů: **vyřešeno bez tokenu** (2026-09-29, `shopify app execute` jménem
   appky, stávající scopy): čtení `variant.inventoryItem.unitCost` funguje s `read_products`
   (bez `read_inventory`), zápis přes `productVariantsBulkUpdate(variants: [{ inventoryItem: { cost } }])`
@@ -77,6 +77,13 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   Companion (Pro) budou pravidla ve Won Discounts, Companion vlastní slevovou funkci nemá.
   Roadmap karta Companion upravena.
 - E2E porty témat: Horizon `9885`, Dawn `9886` (Toasts má 9883/9884).
+- **MVP 2 (2026-09-29), volby rozpisu [spec]:** marže = jako Shopify u produktu
+  `(cena po slevách − nákupní cena) / cena po slevách` (spec měl přirážku `cost × (1 + m)`;
+  merchant vidí u produktu v Shopify právě tuhle marži); z ceny, kterou platí zákazník (u cen s DPH
+  včetně DPH — admin to říká). Ochrana je ve výchozím stavu **vypnutá** (chování MVP 1 se nemění).
+  Nákupní cena = zrcadlo `unitCost` do variant metafieldu, převod kurzem `presentmentCurrencyRate`.
+  Přehled zásahů (Pro) z configu a zrcadla; zásahy z objednávek až s analytikou MVP 7 (`read_orders`).
+  Objednávková sleva konzervativně pro oba možné základy rozpočtu na řádky (Shopify ho nezveřejňuje).
 - Brainstorming skill vynechán: produkt je odsouhlasený (`rozhodnuti.md`), zadání chce plnou
   autonomii bez otázek.
 

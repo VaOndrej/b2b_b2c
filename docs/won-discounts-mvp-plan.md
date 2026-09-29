@@ -235,11 +235,16 @@ interface CartPlan {
    varování `code_loses_gift`; **funkce ale v pokladně vždy počítá před slevami**, takže
    dárek, který byl v košíku, zůstane zdarma (rozhodnutí „Dárky vs. další slevy“).
 6. **Doprava zdarma** (práh per měna, nebo kód typu doprava) se sčítá s produktem i objednávkou.
-7. **Ochrana marže** (vždy poslední): pro každý řádek `floor = max(unitCost × (1 +
-   minMargin), …)`; bez `unitCost` `floor = price × (1 − maxDiscountPercent)` (A2). Produktová
-   alokace se ořízne na `price − floor`. Objednávková sleva se omezí konzervativně:
-   `D ≤ min_i(headroom_i / share_i)` (Shopify rozpočítá objednávkovou slevu poměrně), takže
-   žádný řádek nepodleze minimum. Oříznutí → `marginCapped` + vysvětlení.
+7. **Ochrana marže** (vždy poslední, jen když ji merchant zapne — výchozí vypnutá): marže se
+   počítá jako u produktu v Shopify, `(cena po slevách − nákupní cena) / cena po slevách`
+   [spec, MVP 2], takže minimální cena kusu je `unitCost / (1 − minMargin)` (nákupní cena
+   převedená kurzem `presentmentCurrencyRate` do měny košíku, min. marže 0–95 %); bez
+   `unitCost` `floor = price × (1 − maxDiscountPercent)` (A2). Produktová alokace se ořízne na
+   `price − floor`. Objednávková sleva se omezí konzervativně: `D ≤ min_i(headroom_i / share_i)`
+   pro oba možné základy rozpočtu (cena řádku po i před produktovými slevami, Shopify ho
+   nezveřejňuje) s rezervou 1 minor unit na řádek; řádky bez rezervy objednávková sleva vynechá
+   (`excludedCartLineIds`), když tím zákazník dostane víc. Žádný řádek nepodleze minimum.
+   Oříznutí → `marginCapped` + vysvětlení. Detail: `docs/plans/2026-09-29-won-discounts-mvp2.md`.
 8. **Kampaň** (Pro): když `now.campaignActive = id`, přepisy kampaně se aplikují na config
    **před** krokem 1; marže platí dál.
 
@@ -325,6 +330,12 @@ interface CartPlan {
 ### 4.5 Ochrana marže (Free: globální minimum; Pro: per kolekce + přehled zásahů)
 - Minimum z nákupní ceny; bez nákupní ceny „max. sleva X %“ a admin ukáže počet produktů bez
   ceny (A2). Snižuje, nikdy neblokuje. Platí i v kampaních.
+- Nákupní cena: sync ji zrcadlí z `inventoryItem.unitCost` do app-owned variant metafieldu
+  (jen varianty s cenou), čerstvost drží webhook `inventory_items/update` (stačí `read_products`)
+  + `products/create|update` + denní srovnání. Nový scope není potřeba.
+- Přehled zásahů (Pro) [spec, MVP 2]: z configu a zrcadla — kde marže aktivní slevy sníží a
+  o kolik. Počty skutečných zásahů z objednávek (`MarginIntervention`) přijdou s analytikou
+  v MVP 7 (vyžadují `read_orders`).
 
 ### 4.6 Kampaně (Pro)
 - Pojmenované okno (čas obchodu) + přepisy pravidel napříč moduly Slevy a kódy / Množstevní /
