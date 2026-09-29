@@ -310,7 +310,7 @@ export function OverviewScreen({
 
         <div style={{ fontSize: 12, color: WON_FAINT, padding: "0 4px" }}>
           <s-paragraph color="subdued">
-            {t("overview.configLine", { version: schemaVersion, rules: tr.tp("count.rule", ruleCount) })}
+            {t("overview.configLine", { version: String(schemaVersion), rules: tr.tp("count.rule", ruleCount) })}
           </s-paragraph>
         </div>
       </s-stack>

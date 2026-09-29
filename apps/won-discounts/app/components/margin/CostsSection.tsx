@@ -24,7 +24,7 @@ export function coverageSummary(coverage: CostCoverageView | null, mirror: CostM
 
 /** The collapsed list names its first products (§9d: collapsed still tells the truth). */
 function sampleSummary(sample: CostCoverageView["sample"], missing: number, tr: Translator): string {
-  const names = sample.slice(0, 3).map((p) => p.title);
+  const names = sample.slice(0, 3).map((p) => p.title || tr.t("common.untitledProduct"));
   const rest = Math.max(0, missing - names.length);
   return rest > 0 ? `${names.join(", ")} ${tr.t("margin.costs.more", { n: rest })}` : tr.list(names);
 }
@@ -76,7 +76,7 @@ export function CostsSection({
                         ) : undefined
                       }
                     >
-                      <s-text type="strong">{product.title}</s-text>
+                      <s-text type="strong">{product.title || t("common.untitledProduct")}</s-text>
                       <RowNote>{tr.tp("margin.costs.sampleVariants", product.variantsWithoutCost)}</RowNote>
                     </WonRow>
                   );

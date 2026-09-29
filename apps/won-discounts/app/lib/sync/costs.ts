@@ -157,14 +157,17 @@ export async function loadCostState(db: PrismaClient, shop: string): Promise<Cos
 export const COST_NO_SESSION = "no_offline_session";
 
 /**
- * Record a job that failed before it could run (no session): the pass under
- * way (if any) is marked failed with `error`, else a failed pending state is
- * created — the admin shows it, costsDue retries it.
+ * Record a job that could not start (no session): the pending state of an
+ * unfinished pass (if any) is marked failed with `error` — its token, its
+ * progress and its resume CURSOR stay (audit fix round 2: a no-session failure
+ * is resumed like a pass cut short) — else a failed pending state is created.
+ * The admin shows it, costsDue retries it. The caller makes sure no pass of
+ * the shop is running here (cost-lane.server.ts recordNoSession).
  */
 export async function recordCostsFailed(db: PrismaClient, shop: string, now: Date, error: string): Promise<void> {
   const state = await loadCostState(db, shop);
   const base: CostPending = state.pending ?? { token: randomUUID(), since: now.toISOString(), done: 0, total: null };
-  await saveCostState(db, shop, { costsCursor: null, costsPending: { ...base, failedAt: now.toISOString(), error: error.slice(0, ERROR_MAX) } });
+  await saveCostState(db, shop, { costsPending: { ...base, failedAt: now.toISOString(), error: error.slice(0, ERROR_MAX) } });
 }
 
 async function saveCostState(db: PrismaClient, shop: string, data: { costsScannedAt?: Date | null; costsCursor?: string | null; costsPending?: CostPending | null }): Promise<void> {
@@ -653,7 +656,8 @@ export async function runCostPass(opts: CostPassOptions): Promise<CostPassResult
     !opts.restart &&
     state.cursor !== null &&
     previous !== null &&
-    previous.failedAt === undefined &&
+    // A pass that failed for want of a session never ran: its cursor is resumed like one cut short.
+    (previous.failedAt === undefined || previous.error === COST_NO_SESSION) &&
     now.getTime() - Date.parse(previous.since) < COST_RESUME_MAX_AGE_MS;
   const out: CostPassResult = { outcome: "done", read: 0, written: 0, cleared: 0, removed: 0, refused: 0, errors: [], resumed: resumable };
   const pending: CostPending = resumable

@@ -5,8 +5,10 @@
 // picker (model/app-bridge.ts); outside Shopify admin (the dev harness) the
 // picker is unavailable and the section says so.
 //
-// A Pro collection the last sync could not read (over the 10 000-product
-// limit) says so at its row: its values then apply to the whole store (P1-1).
+// A Pro collection the last sync could not read says so at its row, its values
+// then apply to the whole store (P1-1): over 10 000 products on its own (Shopify
+// counts exactly only up to 10 000), or — with an exact count — the 10 000 per
+// sync were used up by the margin collections read before it.
 //
 // On Free the rows stay visible and removable (§14a: off ≠ erased — removing a
 // Pro setting the plan folds into a stricter global value is always allowed),
@@ -155,7 +157,7 @@ export function CollectionsSection({
                         <RowNote tone="attention">
                           {tooLargeOf.get(c.collectionId)!.count === null
                             ? t("margin.collections.tooLargeUncounted")
-                            : t("margin.collections.tooLarge", { count: new Intl.NumberFormat(tr.locale === "cs" ? "cs-CZ" : "en-US").format(tooLargeOf.get(c.collectionId)!.count!) })}
+                            : t("margin.collections.tooLarge", { count: tooLargeOf.get(c.collectionId)!.count! })}
                         </RowNote>
                       ) : null}
                     </div>

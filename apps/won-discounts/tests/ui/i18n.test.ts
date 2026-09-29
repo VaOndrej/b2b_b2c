@@ -73,3 +73,13 @@ test("t() interpolates and keeps an unknown placeholder visible", () => {
   assert.equal(joinList("cs", ["A", "B", "C"]), "A, B a C");
   assert.equal(joinList("en", ["A", "B"]), "A and B");
 });
+
+test("numeric params follow the admin's number format (audit fix round 2): cs groups thousands with a no-break space, en with a comma; strings stay as they are", () => {
+  assert.equal(t("cs", "margin.mirror.running", { done: 340, total: 1240 }), "Právě načítáme nákupní ceny: 340 z 1\u00a0240.");
+  assert.equal(t("en", "margin.mirror.running", { done: 340, total: 1240 }), "Reading cost prices right now: 340 of 1,240.");
+  assert.equal(tp("cs", "margin.costs.missing", 12500), "12\u00a0500 produktů nemá nákupní cenu");
+  assert.equal(t("cs", "margin.costs.coverage", { with: 1226, total: 1240 }), "Varianty s nákupní cenou: 1\u00a0226 z 1\u00a0240.");
+  // An id, a code or a version is passed as a string: never grouped.
+  assert.equal(t("cs", "overview.configLine", { version: "2026", rules: "6 pravidel" }), "Konfigurace: verze 2026 · 6 pravidel");
+  assert.equal(t("cs", "editor.error.codeTaken", { code: "12345" }), "Kód 12345 už má jiná sleva.");
+});

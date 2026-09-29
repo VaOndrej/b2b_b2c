@@ -26,17 +26,34 @@ export function resolveLocale(raw: string | null | undefined): Locale {
   return base ? "en" : DEFAULT_LOCALE;
 }
 
-/** `{name}` → params.name. An unknown placeholder stays visible, never silently empty. */
-function interpolate(template: string, params?: MessageParams): string {
+const NUMBER_FORMATS: Readonly<Record<Locale, Intl.NumberFormat>> = {
+  cs: new Intl.NumberFormat("cs-CZ", { maximumFractionDigits: 6 }),
+  en: new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 }),
+};
+
+/**
+ * A NUMERIC param in the admin's number format (MVP 2 audit fix round 2):
+ * cs "1 240" (a no-break space groups thousands) and "12,5"; en "1,240".
+ * Ids, codes, years and versions are passed as STRINGS, so they are never
+ * grouped; a string param is inserted as it is.
+ */
+export function formatNumberParam(locale: Locale, value: number): string {
+  return Number.isFinite(value) ? (NUMBER_FORMATS[locale] ?? NUMBER_FORMATS[DEFAULT_LOCALE]).format(value) : String(value);
+}
+
+/** `{name}` → params.name (numbers in the admin's format). An unknown placeholder stays visible, never silently empty. */
+function interpolate(locale: Locale, template: string, params?: MessageParams): string {
   if (!params) return template;
-  return template.replace(/\{(\w+)\}/g, (whole, name: string) =>
-    Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : whole,
-  );
+  return template.replace(/\{(\w+)\}/g, (whole, name: string) => {
+    if (!Object.prototype.hasOwnProperty.call(params, name)) return whole;
+    const value = params[name];
+    return typeof value === "number" ? formatNumberParam(locale, value) : String(value);
+  });
 }
 
 export function t(locale: Locale, key: MessageKey, params?: MessageParams): string {
   const catalogue = CATALOGUES[locale] ?? CATALOGUES[DEFAULT_LOCALE];
-  return interpolate(catalogue[key] ?? CATALOGUES[DEFAULT_LOCALE][key] ?? key, params);
+  return interpolate(CATALOGUES[locale] ? locale : DEFAULT_LOCALE, catalogue[key] ?? CATALOGUES[DEFAULT_LOCALE][key] ?? key, params);
 }
 
 /** Plural category: Czech 1 / 2–4 / other; English 1 / other (`.few` repeats `.other`). */

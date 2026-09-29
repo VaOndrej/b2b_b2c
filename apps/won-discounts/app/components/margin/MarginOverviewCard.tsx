@@ -89,9 +89,13 @@ export function MarginOverviewCard({ margin, sync }: { margin: MarginOverviewVie
             <s-text type="strong">{t("margin.collections.title")}</s-text>
             {(margin.tooLarge ?? []).slice(0, 3).map((c) => (
               <RowNote key={c.collectionId}>
-                {c.count === null
-                  ? t("sync.problem.marginTooLargeUncounted", { collection: c.title })
-                  : t("sync.problem.marginTooLarge", { collection: c.title, count: new Intl.NumberFormat(tr.locale === "cs" ? "cs-CZ" : "en-US").format(c.count) })}
+                {c.title
+                  ? c.count === null
+                    ? t("sync.problem.marginTooLargeUncounted", { collection: c.title })
+                    : t("sync.problem.marginTooLarge", { collection: c.title, count: c.count })
+                  : c.count === null
+                    ? t("sync.problem.marginTooLargeUncountedUntitled")
+                    : t("sync.problem.marginTooLargeUntitled", { count: c.count })}
               </RowNote>
             ))}
           </WonRow>

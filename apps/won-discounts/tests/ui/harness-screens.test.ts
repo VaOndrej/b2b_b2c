@@ -90,16 +90,16 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   // Audit P2-1: before the first complete read, unread products have only the ceiling — said, and the impact is still being computed.
   {
     path: "margin?plan=pro&state=running",
-    expect: [/Právě načítáme nákupní ceny: 340 z 1240/, /Dokud nenačteme nákupní ceny \(340 z 1240\), platí u nenačtených produktů jen strop 40\u00a0%/, /Počítáme, kde ochrana zasáhne/],
+    expect: [/Právě načítáme nákupní ceny: 340 z 1\u00a0240/, /Dokud nenačteme nákupní ceny \(340 z 1\u00a0240\), platí u nenačtených produktů jen strop 40\u00a0%/, /Počítáme, kde ochrana zasáhne/],
   },
-  { path: "margin?state=running", expect: [/Dokud nenačteme nákupní ceny \(340 z 1240\), platí u nenačtených produktů jen strop 40\u00a0%/] },
+  { path: "margin?state=running", expect: [/Dokud nenačteme nákupní ceny \(340 z 1\u00a0240\), platí u nenačtených produktů jen strop 40\u00a0%/] },
   {
     path: "margin?state=failed-first",
     expect: [/Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen strop 40\u00a0%/, /Nákupní ceny se nepodařilo načíst ze Shopify/, /Technický detail: costs\.read: Throttled/],
   },
   { path: "margin?state=reauth", expect: [/Otevři appku, ať můžeme pokračovat na pozadí/] },
   // P1-1: a Pro collection over the 10 000-product limit says so at its row.
-  { path: "margin?plan=pro&state=too-large", expect: [/Kolekce má víc produktů, než Won při jedné synchronizaci načte \(produktů: 10\u00a0400, limit je 10 000\)\. Proto platí přísnější hodnota pro celý obchod\./] },
+  { path: "margin?plan=pro&state=too-large", expect: [/Kolekce má víc než 10 000 produktů, tolik Won při jedné synchronizaci nenačte\. Proto platí přísnější hodnota pro celý obchod\./] },
   // P2-2: counted per rule; the rows are only the largest losses.
   { path: "margin?plan=pro&state=many", expect: [/Sníží se u 20 variant/, /Ukazujeme 10 z 20 s největším rozdílem/, /U 20 variant by sleva šla pod hranici/] },
   { path: "margin?plan=pro&state=impact-updating", expect: [/Ochrana sníží 5 slev · přepočítává se/, /Čísla se na pozadí přepočítávají/] },
@@ -115,9 +115,9 @@ const SCREENS: { path: string; expect: RegExp[] }[] = [
   { path: "margin?result=fixes&locale=en", expect: [/Margin percents have one decimal\. 12\.55% was rounded to 12\.6%/] },
   { path: "overview?state=margin", expect: [/Hlídá jen slevy ve Won\. Slevy mimo Won \(níž\) nevidí\./, /id="native"/, /Ochrana marže/, /8 produktů nemá nákupní cenu\. Sleva na ně je nejvýš 40\u00a0%/, /Naposledy načteno 26\. 9\. 2026 06:10/, /Obnovit nákupní ceny/, /Upravit ochranu/] },
   { path: "overview?state=margin-off", expect: [/Ochrana marže je vypnutá/, /Nastavit ochranu marže/, /Sleva ve Won nikdy nesrazí cenu pod hranici/] },
-  { path: "overview?state=margin-running", expect: [/Dokud nenačteme nákupní ceny \(340 z 1240\), platí u nenačtených produktů jen strop 40\u00a0%/, /Právě načítáme nákupní ceny: 340 z 1240/] },
+  { path: "overview?state=margin-running", expect: [/Dokud nenačteme nákupní ceny \(340 z 1\u00a0240\), platí u nenačtených produktů jen strop 40\u00a0%/, /Právě načítáme nákupní ceny: 340 z 1\u00a0240/] },
   { path: "overview?state=margin-reauth", expect: [/Otevři appku, ať můžeme pokračovat na pozadí/] },
-  { path: "overview?state=margin-too-large", expect: [/Nastavení marže kolekce „Podzimní kolekce“ \(produktů: 10\u00a0400\)/, /Proto platí přísnější hodnota pro celý obchod/] },
+  { path: "overview?state=margin-too-large", expect: [/Kolekce „Podzimní kolekce“ s vlastním nastavením marže má víc než 10 000 produktů/, /Proto platí přísnější hodnota pro celý obchod/] },
   { path: "rule-editor?rule=dev-f2-collection&margin=1&plan=pro", expect: [/Na 4 variantách se sleva sníží na hranici marže/, /\/app\/margin\?rule=dev-f2-collection#impact/] },
   // Free: no number (přehled zásahů is Pro), the link goes to its Pro preview.
   { path: "rule-editor?rule=dev-f2-collection&margin=1", expect: [/Ochrana marže tuhle slevu u některých produktů sníží\./, /Přehled zásahů v Pro/, /href="\/app\/margin#impact"/] },

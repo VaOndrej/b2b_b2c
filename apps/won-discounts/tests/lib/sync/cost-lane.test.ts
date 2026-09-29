@@ -160,3 +160,69 @@ test("a refused higher cost through the lane: the older cost stays while it is t
   assert.equal(outcome.done, "items");
   assert.deepEqual(fake.variantCostMetafield(variant), { cost: 8, cur: "CZK" }, "the older cost (floor 8.00) beats the ceiling (5.00): kept");
 });
+
+test("the refused-write decision uses the settings checkout RUNS: a collection too large to read is folded in (stored p 90 keeps, folded p 20 deletes)", async () => {
+  const setup = async (s: string, tooLarge: boolean) => {
+    const saved = await saveConfig(db.prisma, s, {
+      modules: { margin: { enabled: true, global: { maxDiscountPercent: 90 }, perCollection: [{ collectionId: "gid://shopify/Collection/5", maxDiscountPercent: 20 }] } },
+    });
+    assert.equal(saved.ok, true);
+    if (tooLarge) {
+      await db.prisma.syncRun.create({
+        data: {
+          shop: s,
+          ok: false,
+          steps: JSON.stringify([
+            { step: "margin.too_large", ok: false, detail: "x", params: { collectionId: "gid://shopify/Collection/5", collection: "Velká", count: null } },
+            { step: "products.scope", ok: true, detail: "x" },
+          ]),
+        },
+      });
+    }
+  };
+  const run = async (s: string) => {
+    const fake = new FakeShopify();
+    const product = fake.addProduct(1, 1); // price 10.00, not in collection 5
+    const variant = product.variantIds[0]!;
+    fake.setCost(variant, "2.00");
+    const lane = { client: fake, db: db.prisma, plan: async () => "pro" as const, logger: quiet, sleep: async () => {} };
+    await startCostJob(s, lane, { kind: "full" });
+    fake.setCost(variant, "3.00");
+    fake.refusedOwners.add(variant);
+    await startCostJob(s, lane, { kind: "items", inventoryItemIds: ["gid://shopify/InventoryItem/101"] });
+    return fake.variantCostMetafield(variant);
+  };
+  // As stored: the 90 % ceiling's floor is 1.00 < the older cost's 2.00 → the older cost stays.
+  await setup(`${shop}-stored`, false);
+  assert.deepEqual(await run(`${shop}-stored`), { cost: 2, cur: "CZK" });
+  // Collection 5 too large to read: checkout runs the folded 20 % ceiling (floor 8.00 > 2.00) → the older cost goes.
+  await setup(`${shop}-folded`, true);
+  assert.equal(await run(`${shop}-folded`), undefined);
+});
+
+test("no offline session is recorded without clobbering: the resume cursor stays (the next pass resumes), and a pass running here is left alone (audit fix round 2)", async () => {
+  const { recordNoSession } = await import("../../../app/lib/sync/cost-lane.server.ts");
+  const fake = new FakeShopify();
+  fake.pageSize = 2;
+  catalogue(fake, 5);
+  await saveMargin(true);
+  // A pass cut short (a restart): its cursor and progress are stored.
+  const cut = { token: "t-cut", since: new Date().toISOString(), done: 2, total: 5 };
+  await db.prisma.shopSyncState.create({ data: { shop, costsCursor: "2", costsPending: JSON.stringify(cut) } });
+  assert.equal(await recordNoSession(db.prisma, shop, new Date()), true);
+  const recorded = await loadCostState(db.prisma, shop);
+  assert.equal(recorded.cursor, "2", "the cursor stays");
+  assert.equal(recorded.pending?.token, "t-cut");
+  assert.equal(recorded.pending?.error, "no_offline_session");
+  const outcome = await startCostJob(shop, deps(fake), { kind: "full" });
+  assert.equal(outcome.done === "full" && outcome.result.resumed, true, "the next pass (a load with a session) resumes where the cut one stopped");
+
+  // A pass running here: nothing is recorded over it.
+  const running = startCostJob(shop, deps(fake), { kind: "full", restart: true });
+  assert.equal(costJobKind(shop), "full");
+  assert.equal(await recordNoSession(db.prisma, shop, new Date()), false, "a pass is queued or running here: not recorded");
+  await running;
+  const after = await loadCostState(db.prisma, shop);
+  assert.equal(after.pending, null, "the finished pass recorded its own outcome");
+  assert.ok(after.scannedAt);
+});

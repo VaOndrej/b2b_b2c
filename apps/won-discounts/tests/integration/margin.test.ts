@@ -16,6 +16,7 @@ import {
   ruleMarginImpact,
   saveMarginSettings,
 } from "../../app/lib/integration/margin.server.ts";
+import { setMarginImpactMinInterval } from "../../app/lib/integration/margin-impact.server.ts";
 import { overviewData, tryCartAction } from "../../app/lib/integration/pages.server.ts";
 import { clearMarketCountryCache, estimateShopToCartRate } from "../../app/lib/integration/try-cart.server.ts";
 import { costIdle } from "../../app/lib/sync/cost-lane.server.ts";
@@ -45,6 +46,8 @@ let seq = 0;
 let shop: string;
 before(() => {
   db = createTestDatabase("int-margin");
+  // The 30 s minimum interval between two impact computations of a shop has its own test (below); here every change recomputes at once.
+  setMarginImpactMinInterval(0);
 });
 after(async () => {
   await db.drop();
@@ -865,4 +868,157 @@ test("a Pro collection too large to read (P1-1): the margin screen and the Přeh
   const overview = await overviewData(ctx, { scopes: "write_discounts,read_products,read_themes", syncDeadlineMs: 2_000, nativeDeadlineMs: 50 });
   assert.deepEqual(overview.options.signals.margin?.tooLarge, [{ collectionId: COLLECTION, title: "Zimní", count: null }]);
   await settle();
+});
+
+test("an untitled product is never named by its GID (audit fix round 2): coverage sample and Try Cart say 'Produkt bez názvu'", async () => {
+  const store = storeWithCatalogue();
+  store.sync.products.get("gid://shopify/Product/2")!.title = undefined; // Mikina (no cost) loses its title
+  store.titles.set("gid://shopify/ProductVariant/101", { product: "", variant: "Default Title" });
+  const ctx = ctxFor(store);
+  await saveConfig(db.prisma, shop, {
+    modules: {
+      codes: {
+        rules: [{ id: "half", name: "Půlka", method: "automatic", value: { kind: "percentage", percent: 50 }, target: { kind: "products", productIds: ["gid://shopify/Product/1"], variantIds: [] } }],
+      },
+    },
+  });
+  await saveMarginSettings(ctx, settings(), { configVersion: (await loadConfig(db.prisma, shop)).version });
+  await settle();
+  const data = await loadMarginScreen(ctx);
+  assert.deepEqual(data.coverage?.sample.map((p) => p.title), [""], "untitled = '' (the screen words it)");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { createElement } = await import("react");
+  const { CostsSection } = await import("../../app/components/margin/CostsSection.tsx");
+  const { LocaleProvider } = await import("../../app/i18n/context.tsx");
+  const html = renderToStaticMarkup(
+    createElement(LocaleProvider as never, { locale: "cs" } as never, createElement(CostsSection, { coverage: data.coverage, mirror: { state: "running", done: 1, total: 4, since: "2026-09-29T10:00:00" }, maxDiscountPercent: 30 })),
+  );
+  assert.match(html, /Produkt bez názvu/);
+  assert.doesNotMatch(html.replace(/href="[^"]*"/g, ""), /gid:\/\//);
+  const run = await tryCartAction(
+    ctx,
+    formOf([
+      ["intent", "run"],
+      ["locale", "cs"],
+      ["currency", "CZK"],
+      ["date", "2026-09-29"],
+      ["variantId", "gid://shopify/ProductVariant/101"],
+      ["productId", "gid://shopify/Product/1"],
+      ["quantity", "1"],
+    ]),
+    { scopes: "write_discounts,read_products,read_themes" },
+  );
+  assert.equal(run.result, null, JSON.stringify(run.result));
+  assert.equal(run.plan!.lines[0]!.title, "Produkt bez názvu");
+  assert.ok(run.plan!.explain.every((e) => !/gid:\/\//.test(e.text)));
+});
+
+test("Try Cart runs what checkout runs: a margin collection too large to read is folded into the whole store's values (audit fix round 2)", async () => {
+  const store = storeWithCatalogue();
+  const ctx = ctxFor(store, "pro");
+  await saveConfig(db.prisma, shop, {
+    modules: {
+      codes: {
+        rules: [{ id: "half", name: "Půlka", method: "automatic", value: { kind: "percentage", percent: 50 }, target: { kind: "products", productIds: ["gid://shopify/Product/2"], variantIds: [] } }],
+      },
+    },
+  });
+  // Mikina (no cost, price 20.00) is not in collection 5; the store-wide ceiling is 50 %, collection 5 allows 10 %.
+  await saveMarginSettings(ctx, settings({ maxDiscountPercent: 50, collections: [{ collectionId: COLLECTION, title: "", minMarginPercent: null, maxDiscountPercent: 10 }] }), {
+    configVersion: (await loadConfig(db.prisma, shop)).version,
+  });
+  await settle();
+  const cart = formOf([
+    ["intent", "run"],
+    ["locale", "cs"],
+    ["currency", "CZK"],
+    ["date", "2026-09-29"],
+    ["variantId", "gid://shopify/ProductVariant/201"],
+    ["productId", "gid://shopify/Product/2"],
+    ["quantity", "1"],
+  ]);
+  const scopes = { scopes: "write_discounts,read_products,read_themes" };
+  assert.equal((await tryCartAction(ctx, cart, scopes)).plan!.lines[0]!.discount, 1000, "as stored: 50 % of 20.00");
+  await db.prisma.syncRun.create({
+    data: {
+      shop,
+      startedAt: new Date(Date.now() + 60_000),
+      ok: false,
+      steps: JSON.stringify([
+        { step: "margin.too_large", ok: false, detail: "x", params: { collectionId: COLLECTION, collection: "Zimní", count: null } },
+        { step: "products.scope", ok: true, detail: "x" },
+      ]),
+    },
+  });
+  assert.equal((await tryCartAction(ctx, cart, scopes)).plan!.lines[0]!.discount, 200, "folded: at most 10 % for the whole store");
+});
+
+test("Pro preview with protection OFF and a folded collection: the loader and the background count for the SAME config — 'ready' stays 'ready' (audit fix round 2)", async () => {
+  const store = storeWithCatalogue();
+  const ctx = ctxFor(store, "pro");
+  await saveConfig(db.prisma, shop, {
+    modules: {
+      codes: {
+        rules: [{ id: "half", name: "Půlka", method: "automatic", value: { kind: "percentage", percent: 50 }, target: { kind: "products", productIds: ["gid://shopify/Product/1"], variantIds: [] } }],
+      },
+      margin: { enabled: false, global: { maxDiscountPercent: 50 }, perCollection: [{ collectionId: COLLECTION, maxDiscountPercent: 10 }] },
+    },
+  });
+  await db.prisma.syncRun.create({
+    data: {
+      shop,
+      ok: false,
+      steps: JSON.stringify([
+        { step: "margin.too_large", ok: false, detail: "x", params: { collectionId: COLLECTION, collection: "Zimní", count: null } },
+        { step: "products.scope", ok: true, detail: "x" },
+      ]),
+    },
+  });
+  const { refreshMarginImpact } = await import("../../app/lib/integration/margin-impact.server.ts");
+  await refreshMarginImpact(shop, { db: db.prisma, client: store, plan: async () => "pro" });
+  await settle();
+  const reads = marginCatalogueReads();
+  for (let i = 0; i < 3; i += 1) {
+    assert.equal((await loadMarginScreen(ctx)).impact?.status, "ready", `load ${i + 1}`);
+    await settle();
+  }
+  assert.equal(marginCatalogueReads(), reads, "no load recomputed: both sides key the same config");
+});
+
+test("background recompute (audit fix round 2): Pro shops only, and at most once per minimum interval per shop", async () => {
+  const { refreshMarginImpact, setMarginImpactMinInterval: setInterval } = await import("../../app/lib/integration/margin-impact.server.ts");
+  const { startCostJob } = await import("../../app/lib/sync/cost-lane.server.ts");
+  // Free, protection on: a webhook batch recomputes nothing (the editor note computes on demand).
+  const free = storeWithCatalogue();
+  const freeCtx = ctxFor(free, "free");
+  await saveMarginSettings(freeCtx, settings(), { configVersion: null });
+  await settle();
+  const before = marginCatalogueReads();
+  free.sync.setCost("gid://shopify/ProductVariant/201", "11.00");
+  await startCostJob(shop, { client: free, db: db.prisma, plan: async () => "free" }, { kind: "items", inventoryItemIds: ["gid://shopify/InventoryItem/201"] });
+  await settle();
+  assert.equal(marginCatalogueReads(), before, "Free: nothing computed in the background");
+
+  // Pro: a burst of changes within the interval → one computation after it.
+  shop = `${shop}-pro`;
+  const pro = storeWithCatalogue();
+  const proCtx = ctxFor(pro, "pro");
+  await saveMarginSettings(proCtx, settings(), { configVersion: null });
+  await settle();
+  setInterval(300);
+  try {
+    const first = marginCatalogueReads();
+    const started = Date.now();
+    for (const cost of ["7.00", "8.00", "9.00"]) {
+      pro.sync.setCost("gid://shopify/ProductVariant/101", cost);
+      await startCostJob(shop, { client: pro, db: db.prisma, plan: async () => "pro" }, { kind: "items", inventoryItemIds: ["gid://shopify/InventoryItem/101"] });
+    }
+    void refreshMarginImpact(shop, { db: db.prisma, client: pro, plan: async () => "pro" });
+    await settle();
+    assert.equal(marginCatalogueReads(), first + 1, "coalesced into one computation");
+    assert.ok(Date.now() - started >= 250, "not before the interval since the last one");
+    assert.equal((await loadMarginScreen(proCtx)).impact?.status, "ready", "and it is the newest state's");
+  } finally {
+    setInterval(0);
+  }
 });

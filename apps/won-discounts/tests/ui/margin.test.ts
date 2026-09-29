@@ -72,11 +72,11 @@ test("form field names are the contract with readMarginForm (margin.server.ts)",
 });
 
 test("state line: Pro states the collections; Free states the folded global values it really runs (§17c)", () => {
-  assert.equal(marginSummary(SETTINGS, "pro", cs), "Min. marže 20 % · bez nákupní ceny sleva nejvýš 40 % · 2 kolekce s vlastním nastavením");
+  assert.equal(marginSummary(SETTINGS, "pro", cs), "Min. marže 20\u00a0% · bez nákupní ceny sleva nejvýš 40\u00a0% · 2 kolekce s vlastním nastavením");
   // Free: core gateConfigForPlan folds the collections, strictest wins (m 30, p 10), no collection claim.
   assert.deepEqual(marginInForce(SETTINGS, "free").global, { maxDiscountPercent: 10, minMarginPercent: 30 });
   assert.deepEqual(marginInForce(SETTINGS, "free").perCollection, []);
-  assert.equal(marginSummary(SETTINGS, "free", cs), "Min. marže 30 % · bez nákupní ceny sleva nejvýš 10 %");
+  assert.equal(marginSummary(SETTINGS, "free", cs), "Min. marže 30\u00a0% · bez nákupní ceny sleva nejvýš 10\u00a0%");
   assert.equal(marginSummary({ ...SETTINGS, enabled: false }, "pro", cs), "Ochrana marže je vypnutá");
   assert.equal(marginSummary({ ...SETTINGS, minMarginPercent: null, collections: [] }, "pro", en), "Never below the cost price · without a cost price at most 40% off");
 });
@@ -138,7 +138,7 @@ test("cost mirror: one sentence per state, the refresh button only where it can 
   const texts = states.map((s) => mirrorText(s, cs));
   assert.deepEqual(texts, [
     "Nákupní ceny načítáme, jen když je ochrana zapnutá.",
-    "Právě načítáme nákupní ceny: 340 z 1240.",
+    "Právě načítáme nákupní ceny: 340 z 1\u00a0240.",
     "Právě načítáme nákupní ceny (zatím 250).",
     "Aktuální, naposledy načteno 28. 9. 2026 06:10.",
     "Naposledy načteno 26. 9. 2026 06:10. Načti je znovu, ať pokladna zná aktuální ceny.",
@@ -193,13 +193,13 @@ test("before the first complete read of the costs, the screen and the card say o
   const running: CostMirrorView = { state: "running", done: 340, total: 1240, since: "2026-09-28T13:55:00" };
   const failed: CostMirrorView = { state: "failed", at: "2026-09-28T06:10:00", problems: [] };
   const on = { enabled: true, costsKnown: false, maxDiscountPercent: 40 };
-  assert.equal(ceilingOnlyText({ ...on, mirror: running }, cs), "Dokud nenačteme nákupní ceny (340 z 1240), platí u nenačtených produktů jen strop 40\u00a0%.");
+  assert.equal(ceilingOnlyText({ ...on, mirror: running }, cs), "Dokud nenačteme nákupní ceny (340 z 1\u00a0240), platí u nenačtených produktů jen strop 40\u00a0%.");
   assert.equal(ceilingOnlyText({ ...on, mirror: failed }, cs), "Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen strop 40\u00a0%.");
   assert.equal(ceilingOnlyText({ ...on, mirror: { state: "stale", at: null } }, cs), "Dokud nenačteme nákupní ceny, platí u nenačtených produktů jen strop 40\u00a0%.");
   assert.equal(ceilingOnlyText({ ...on, mirror: running, costsKnown: true }, cs), null, "after a complete read its costs stay in force");
   assert.equal(ceilingOnlyText({ ...on, mirror: running, enabled: false }, cs), null);
   assert.equal(ceilingOnlyText({ ...on, mirror: { state: "fresh", at: "2026-09-28T06:10:00" } }, cs), null);
-  assert.match(ceilingOnlyText({ ...on, mirror: running }, en) ?? "", /^Until the cost prices are read \(340 of 1240\), only the 40% ceiling applies/);
+  assert.match(ceilingOnlyText({ ...on, mirror: running }, en) ?? "", /^Until the cost prices are read \(340 of 1,240\), only the 40% ceiling applies/);
   // The max-discount field says the ceiling is also the fallback.
   assert.match(cs.t("margin.max.details"), /nákupní cenu jsme ještě nenačetli/);
 
@@ -209,7 +209,7 @@ test("before the first complete read of the costs, the screen and the card say o
   const card = (margin: MarginOverviewView) => renderToStaticMarkup(createElement(Provider, { locale: "cs" }, createElement(MarginOverviewCard, { margin, sync })));
   const first = card({ enabled: true, minMarginPercent: 20, maxDiscountPercent: 40, productsWithoutCost: null, mirror: running });
   assert.doesNotMatch(first, /Běží/);
-  assert.match(first, /Dokud nenačteme nákupní ceny \(340 z 1240\)/);
+  assert.match(first, /Dokud nenačteme nákupní ceny \(340 z 1\u00a0240\)/);
   const read = card({ enabled: true, minMarginPercent: 20, maxDiscountPercent: 40, productsWithoutCost: 3, mirror: { state: "fresh", at: "2026-09-28T06:10:00" } });
   assert.match(read, /Běží/);
   assert.doesNotMatch(read, /Dokud nenačteme/);
@@ -246,4 +246,12 @@ test("percents keep one decimal: a second decimal is refused before the save, ne
     { field: "collectionMax[0]", key: "margin.error.decimals" },
   ]);
   assert.equal(cs.t("margin.error.decimals"), "Zadej nejvýš jedno desetinné místo, třeba 12,5.");
+});
+
+test("a collection over the limit is worded by WHY (audit fix round 2): over 10 000 on its own, or — exact count — the budget used by margin collections read first", () => {
+  assert.equal(cs.t("margin.collections.tooLargeUncounted"), "Kolekce má víc než 10 000 produktů, tolik Won při jedné synchronizaci nenačte. Proto platí přísnější hodnota pro celý obchod.");
+  const exact = cs.t("margin.collections.tooLarge", { count: 4600 });
+  assert.match(exact, /^Kolekce \(produktů: 4\u00a0600\) se už nevešla do limitu 10 000 produktů na jednu synchronizaci, ten spotřebovaly kolekce s nastavením marže, které Won čte dřív\./);
+  assert.doesNotMatch(exact, /víc produktů, než Won/);
+  assert.match(en.t("margin.collections.tooLarge", { count: 4600 }), /\(4,600 products\) no longer fit/);
 });

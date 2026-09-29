@@ -26,7 +26,7 @@
 // within 5 min of expiry and stores the new pair. Only a refresh that fails
 // (the refresh token expired or was revoked) or a missing session leaves a
 // shop without a client: clientFor → null (skippedNoSession), recorded on the
-// shop's cost state (costs.ts recordCostsFailed, COST_NO_SESSION) so the admin
+// shop's cost state (cost-lane.server.ts recordNoSession) so the admin
 // says "open the app" — opening the embedded app exchanges a new token, and
 // that load retries the pass at once.
 // Started once per process on server boot (app/entry.server.tsx, next to the
@@ -40,8 +40,8 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import type { AdminClient } from "../admin-client.server";
 import { loadConfig } from "../config.server";
 import { planOf } from "../plan.server";
-import { costJobKind, costRetryRunning, costsDue, startDueJob, type CostDue } from "../sync/cost-lane.server";
-import { COST_NO_SESSION, parseCostPending, recordCostsFailed } from "../sync/costs";
+import { costJobKind, costRetryRunning, costsDue, recordNoSession, startDueJob, type CostDue } from "../sync/cost-lane.server";
+import { parseCostPending } from "../sync/costs";
 import { errorText } from "../sync/transport";
 import type { SyncLogger } from "../sync/types";
 
@@ -99,7 +99,7 @@ export async function runCostReconcileOnce(deps: CostReconcileDeps): Promise<Cos
       if (!client) {
         result.skippedNoSession += 1;
         // OQ4: said on the margin screen and Přehled ("open the app"), not a silent skip.
-        if (enabled) await recordCostsFailed(deps.db, shop, now, COST_NO_SESSION);
+        if (enabled) await recordNoSession(deps.db, shop, now);
         continue;
       }
       // null: a Přehled / margin screen load claimed the shop meanwhile (it starts the job).

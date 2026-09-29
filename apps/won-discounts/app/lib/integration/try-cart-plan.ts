@@ -348,7 +348,7 @@ export function planTryCart(config: WonDiscountsConfig, input: TryCartPlanInput)
       const discount = applied.get(line.lineId) ?? 0;
       return {
         lineId: line.lineId,
-        title: titles.get(line.lineId) ?? line.productId,
+        title: titles.get(line.lineId) || t(input.locale, "common.untitledProduct"),
         quantity: line.quantity,
         subtotal: line.subtotal,
         discount,

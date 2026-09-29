@@ -48,13 +48,21 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
     return { key: "sync.problem.rule", params: { rule, detail } };
   }
   if (step.step.startsWith("products.too_large:")) {
-    const ruleId = step.step.slice("products.too_large:".length);
-    return { key: "sync.problem.collectionTooLarge", params: { rule: ruleLabel(ruleId, names), detail } };
+    // Titles from the size read (products.ts collectionLimits), never GIDs; the rest "kolekce bez názvu".
+    const rule = ruleLabel(step.step.slice("products.too_large:".length), names);
+    const collections = typeof step.params?.collections === "string" ? step.params.collections : "";
+    const untitled = typeof step.params?.untitled === "number" ? step.params.untitled : 0;
+    if (!collections) return { key: "sync.problem.collectionTooLargeUntitled", params: { rule } };
+    return { key: untitled > 0 ? "sync.problem.collectionTooLargeSomeUntitled" : "sync.problem.collectionTooLarge", params: { rule, collections } };
   }
   if (step.step === "margin.too_large") {
     // The collection's title and size (products.ts collectionLimits): the stricter value applies to the whole store.
+    // An exact count is ≤ 10 000 (Shopify counts exactly only up to it): the margin collections read first used the budget.
     const collection = typeof step.params?.collection === "string" ? step.params.collection : "";
     const count = typeof step.params?.count === "number" ? step.params.count : null;
+    if (!collection) {
+      return count === null ? { key: "sync.problem.marginTooLargeUncountedUntitled" } : { key: "sync.problem.marginTooLargeUntitled", params: { count } };
+    }
     return count === null
       ? { key: "sync.problem.marginTooLargeUncounted", params: { collection } }
       : { key: "sync.problem.marginTooLarge", params: { collection, count } };
@@ -72,9 +80,12 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
     case "shop_config.phase1.rollback":
       return { key: "sync.problem.campaignHeld", params: { detail } };
     case "shop_config.write":
-      return /campaign switch/i.test(step.detail)
-        ? { key: "sync.problem.campaignHeld", params: { detail } }
-        : { key: "sync.problem.config", params: { detail } };
+      if (/campaign switch/i.test(step.detail)) return { key: "sync.problem.campaignHeld", params: { detail } };
+      // Held behind the products (sync.server.ts HOLD_DETAIL): why, in the admin's words.
+      if (step.params?.held === "margin_refs") return { key: "sync.problem.configHeldMargin" };
+      if (step.params?.held === "rule_refs") return { key: "sync.problem.configHeldRules" };
+      if (step.params?.held === "products_unread") return { key: "sync.problem.configHeldProducts" };
+      return { key: "sync.problem.config", params: { detail } };
     case "shop_config.verify":
       return { key: "sync.problem.config", params: { detail } };
     case "shop_config.rollback":
@@ -85,7 +96,10 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
     case "products.set":
     case "products.clear":
     case "products.add":
+    case "products.prune":
     case "products.index":
+      // Products Shopify refused one by one (products.ts sendProductWrites): counted, never listed by id.
+      if (typeof step.params?.refused === "number" && step.params.refused > 0) return { key: "sync.problem.productsRefused", params: { n: step.params.refused } };
       return { key: "sync.problem.products", params: { detail } };
     case "nodes":
       return { key: "sync.problem.nodes", params: { detail } };

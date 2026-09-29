@@ -206,7 +206,7 @@ export interface CostCoverageView {
   variants: number;
   variantsWithCost: number;
   productsWithoutCost: number;
-  /** Up to 20 products without a cost, most variants first. */
+  /** Up to 20 products without a cost, most variants first. `title` "" = untitled (the screen says so; never a GID). */
   sample: { productId: string; title: string; variantsWithoutCost: number }[];
 }
 

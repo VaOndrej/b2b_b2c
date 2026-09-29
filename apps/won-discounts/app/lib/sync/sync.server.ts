@@ -82,12 +82,23 @@ import { gateConfigForPlan, type ShopPlan, type StrippedCapability } from "@won/
 import { SHOP_CONFIG_KEY, WON_NAMESPACE } from "./graphql";
 import { desiredNodes, SYNC_RUNS_KEPT, type DesiredNode } from "./nodes";
 import { NodeSync } from "./node-sync";
-import { applyProductAdditions, applyProductChanges, collectionLimits, planProducts, syncProducts, type ProductSyncArgs } from "./products";
+import {
+  applyProductAdditions,
+  applyProductChanges,
+  applyProductPrunes,
+  collectionLimits,
+  planProducts,
+  SyncCancelled,
+  syncProducts,
+  type FinalWrite,
+  type HoldReason,
+  type ProductSyncArgs,
+} from "./products";
 import { clearSyncProgress } from "./progress";
 import { recordAppliedPlan, recordProductsSynced, recordShopTimezone } from "./sync-state.server";
 import { errorText, setMetafields, Transport } from "./transport";
 import type { ConfigView, PendingWork, SyncDeps, SyncResult, SyncStep } from "./types";
-import { parseSteps, shopConfigApplied } from "./runs";
+import { appliedRun, parseSteps, shopConfigApplied } from "./runs";
 import { sameJson } from "./util";
 
 /** Shop-local `YYYY-MM-DDTHH:MM:SS` (DateTimeWithoutTimezone, what the engine and C4 use). */
@@ -293,14 +304,16 @@ async function runSync(deps: SyncDeps, shop: string, config: ConfigView, options
     record({ step: "sync", ok: false, detail: `stopped: ${errorText(error)}` });
   }
   let background: SyncResult["background"];
-  if (after && after.additions.length > 0 && options.productWrites === "background" && !rethrow) {
+  if (after && after.additions.length + after.prunes.length > 0 && options.productWrites === "background" && !rethrow) {
     pending.add("products_in_progress");
-    background = { products: after.additions.length };
+    background = { products: after.additions.length + after.prunes.length };
   } else if (after && !rethrow) {
     // Inline: the AFTER lane now (the shop config is already in place).
     try {
       const added = await applyProductAdditions(after.args, after.additions);
       for (const step of added.steps) record(step);
+      const pruned = await applyProductPrunes(after.args, after.prunes);
+      for (const step of pruned.steps) record(step);
     } catch (error) {
       if (error instanceof Response) rethrow = error;
       record({ step: "products.add", ok: false, detail: `products that get new rules: ${errorText(error)}` });
@@ -347,6 +360,9 @@ async function runBackgroundLane(
     const added = await applyProductAdditions(after.args, after.additions, { isCancelled: () => lane.cancelled });
     if (added.cancelled) return null;
     steps.push(...added.steps);
+    const pruned = await applyProductPrunes(after.args, after.prunes, { isCancelled: () => lane.cancelled });
+    if (pruned.cancelled) return null;
+    steps.push(...pruned.steps);
   } catch (error) {
     steps.push({ step: "products.add", ok: false, detail: `products that get new rules: ${errorText(error)}` });
   } finally {
@@ -359,9 +375,19 @@ async function runBackgroundLane(
   return result;
 }
 
+/** Does the shop config live in Shopify already fold these margin collections (its applying run reported them too large)? */
+async function liveConfigFolds(deps: SyncDeps, shop: string, collectionIds: readonly string[]): Promise<boolean> {
+  const run = await appliedRun(deps.db, shop);
+  if (!run) return false;
+  const folded = new Set(run.steps.filter((step) => step.step === "margin.too_large").map((step) => String(step.params?.collectionId ?? "")));
+  return collectionIds.every((id) => folded.has(id));
+}
+
 /**
  * Products only (no shop config): the targeting refresh. Null = superseded by
  * a newer sync before it finished (nothing recorded; the newer one redoes it).
+ * A margin collection that grew past the 10 000-product limit since the live
+ * config was written escalates it to a full sync (the fold is in the payload).
  */
 async function runProductRefresh(
   deps: SyncDeps,
@@ -376,28 +402,42 @@ async function runProductRefresh(
   const transport = new Transport(deps.client, deps.retry, deps.sleep, deps.logger);
   let rethrow: unknown = null;
   let complete = false;
+  let escalate = false;
   try {
     if (lane.cancelled) return null;
     const plan = await deps.plan(shop);
     const gated = gateConfigForPlan(config, plan).config;
-    const result = await syncProducts({
-      transport,
-      db: deps.db,
-      shop,
-      config: gated,
-      productRuleIndex: deps.productRuleIndex,
-      isCancelled: () => lane.cancelled,
-    });
-    if (result.cancelled) return null;
-    steps.push(...result.steps);
-    if (result.staleRisk) pending.add("stale_product_refs");
-    complete = !result.staleRisk && result.steps.every((step) => step.ok);
+    // Audit fix round 2: a margin collection that grew past the limit must be folded into the LIVE payload,
+    // which a products-only refresh does not write — a full sync does it, unless the live config folds it already.
+    const limits = await collectionLimits({ transport, config: gated, isCancelled: () => lane.cancelled });
+    if (limits.marginTooLarge.length > 0 && !(await liveConfigFolds(deps, shop, limits.marginTooLarge.map((m) => m.collectionId)))) {
+      escalate = true;
+    } else {
+      const result = await syncProducts({
+        transport,
+        db: deps.db,
+        shop,
+        config: gated,
+        productRuleIndex: deps.productRuleIndex,
+        isCancelled: () => lane.cancelled,
+        limits,
+      });
+      if (result.cancelled) return null;
+      steps.push(...result.steps);
+      if (result.staleRisk) pending.add("stale_product_refs");
+      complete = !result.staleRisk && result.steps.every((step) => step.ok);
+    }
   } catch (error) {
+    if (error instanceof SyncCancelled) return null;
     if (error instanceof Response) rethrow = error;
     steps.push({ step: "products", ok: false, detail: `product targeting: ${errorText(error)}` });
   } finally {
     if (lanes.get(shop) === lane) lanes.delete(shop);
     clearSyncProgress(shop);
+  }
+  if (escalate && !rethrow) {
+    // The whole sync, in this queue slot (it folds the payload and writes the refs in the right order).
+    return runSync(deps, shop, config, { configVersionId, productWrites: "inline" }, generations.get(shop) ?? 0);
   }
   if (steps.length === 0) steps.push({ step: "products", ok: true, detail: "no targeted products and none to clean" });
   if (steps.some((step) => !step.ok)) pending.add("failed_steps");
@@ -421,6 +461,8 @@ interface StepsArgs {
 interface AfterLane {
   args: ProductSyncArgs;
   additions: Parameters<typeof applyProductAdditions>[1];
+  /** Products that carried a marginRef bridge across the flip: their final value (products.ts bridgeMarginRefs). */
+  prunes: FinalWrite[];
   /** The product plan finished and the BEFORE lane had no failure (the targeting is fresh once the lane is done). */
   productsComplete: boolean;
 }
@@ -527,8 +569,11 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
     // No shop config in Shopify: the first sync after an install (or a reinstall) — check the index.
     verifyIndex: shopState.functionConfig === null,
     limits,
+    // The config flips after the BEFORE lane: marginRef changes carry a bridge across it (audit fix round 2).
+    bridge: storedJson !== null && !sameJson(storedJson, payload.json),
   };
   let staleRisk = false;
+  let holdReason: HoldReason = "products_unread";
   let after: AfterLane | null = null;
   try {
     const plan = await planProducts(productArgs);
@@ -538,9 +583,11 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
       const changes = await applyProductChanges(productArgs, plan);
       for (const step of changes.steps) record(step);
       staleRisk = changes.staleRisk;
+      holdReason = changes.holdReason ?? holdReason;
       after = {
         args: productArgs,
         additions: plan.additions,
+        prunes: plan.prunes,
         productsComplete: !changes.staleRisk && changes.steps.every((step) => step.ok),
       };
     }
@@ -562,12 +609,7 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
   }
   if (staleRisk) {
     pending.add("stale_product_refs");
-    record({
-      step: "shop_config.write",
-      ok: false,
-      detail:
-        "held: some products could not be cleared of rules they no longer belong to, so the new config is not applied yet (the previous one stays); the next sync retries",
-    });
+    record({ step: "shop_config.write", ok: false, detail: HOLD_DETAIL[holdReason], params: { held: holdReason } });
     return null;
   }
   const written = await writeShopConfig(deps, transport, shopState.id, storedJson, payload, "shop_config", record);
@@ -576,6 +618,15 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
   // 5. The AFTER lane (runSync runs it inline or queues it) — only behind a config that is in place.
   return written.ok ? after : null;
 }
+
+/** The held shop config, one line for support per reason (the admin words it from `params.held`: sync-copy.ts). */
+const HOLD_DETAIL: Record<HoldReason, string> = {
+  rule_refs:
+    "held: some products could not be cleared of rules they no longer belong to, so the new config is not applied yet (the previous one stays); the next sync retries",
+  margin_refs:
+    "held: the margin collections of some products could not be written, so the new config is not applied yet (the previous one stays); the next sync retries",
+  products_unread: "held: the targeted products could not be read, so the new config is not applied yet (the previous one stays); the next sync retries",
+};
 
 /** `campaignVarsVersion` of a shop config JSON (null = no campaign, or unreadable). */
 function campaignVersionOf(json: string): string | null {

@@ -49,13 +49,15 @@ test("margin sync problems have their own sentences with the collection title an
       step: "margin.too_large",
       ok: false,
       detail: "the margin setting of gid://shopify/Collection/5 …",
-      params: { collectionId: "gid://shopify/Collection/5", collection: "Nízká marže", count: 10_400 },
+      params: { collectionId: "gid://shopify/Collection/5", collection: "Nízká marže", count: 4_600 },
     },
     names,
   );
-  assert.deepEqual(exact, { key: "sync.problem.marginTooLarge", params: { collection: "Nízká marže", count: 10_400 } });
+  // An EXACT count is at most 10 000 (Shopify counts exactly only up to it): the budget went to the margin collections read first.
+  assert.deepEqual(exact, { key: "sync.problem.marginTooLarge", params: { collection: "Nízká marže", count: 4_600 } });
   const cs = t("cs", exact.key, exact.params);
-  assert.match(cs, /„Nízká marže“/);
+  assert.match(cs, /„Nízká marže“ s vlastním nastavením marže \(produktů: 4\u00a0600\) se už nevešla do limitu 10 000 produktů/);
+  assert.match(cs, /spotřebovaly kolekce s nastavením marže, které Won čte dřív/);
   assert.match(cs, /platí přísnější hodnota pro celý obchod/);
   assert.doesNotMatch(cs, /gid:\/\/|the margin setting/);
   const uncounted = stepProblem(
@@ -63,10 +65,35 @@ test("margin sync problems have their own sentences with the collection title an
     names,
   );
   assert.equal(uncounted.key, "sync.problem.marginTooLargeUncounted");
-  assert.match(t("en", uncounted.key, uncounted.params), /“Nízká marže”.*stricter value applies to the whole store/);
+  assert.match(t("cs", uncounted.key, uncounted.params), /„Nízká marže“ s vlastním nastavením marže má víc než 10 000 produktů/);
+  assert.match(t("en", uncounted.key, uncounted.params), /“Nízká marže”.*more than 10,000 products.*stricter value applies to the whole store/);
+  const untitled = stepProblem({ step: "margin.too_large", ok: false, detail: "x", params: { collectionId: "gid://shopify/Collection/5", collection: "", count: null } }, names);
+  assert.equal(untitled.key, "sync.problem.marginTooLargeUncountedUntitled");
+  assert.match(t("cs", untitled.key, untitled.params), /^Kolekce bez názvu s vlastním nastavením marže/);
   const currency = stepProblem({ step: "shop.currency", ok: false, detail: "Shopify did not say the shop currency" }, names);
   assert.equal(currency.key, "sync.problem.currency");
   assert.match(t("cs", currency.key, currency.params), /měn/);
+});
+
+test("audit fix round 2: a rule collection over the limit is named by title in Czech (fallback 'kolekce bez názvu'); a held config says why; refused products are counted, never listed by GID", () => {
+  const tooLarge = (params: Record<string, string | number | null>) =>
+    say({ step: "products.too_large:vip", ok: false, detail: '"VIP10" does not apply at checkout to gid://shopify/Collection/9 …', params } as never);
+  assert.equal(
+    tooLarge({ collections: "Zimní, Letní", untitled: 0 }),
+    "Sleva „VIP10“ se v pokladně neuplatní na kolekce Zimní, Letní: vybrané kolekce mají dohromady víc než 10 000 produktů, tolik Won při jedné synchronizaci nenačte. Ostatní slevy se propsaly.",
+  );
+  assert.match(tooLarge({ collections: "Zimní", untitled: 1 }), /na kolekce Zimní a další kolekce bez názvu:/);
+  assert.match(tooLarge({ collections: "", untitled: 2 }), /na část svých kolekcí \(kolekce bez názvu\):/);
+  for (const text of [tooLarge({ collections: "Zimní", untitled: 0 }), tooLarge({ collections: "", untitled: 1 })]) {
+    assert.doesNotMatch(text, /gid:\/\/|does not apply|untitled collection/);
+  }
+  const held = (reason: string) => say({ step: "shop_config.write", ok: false, detail: "held: …", params: { held: reason } } as never);
+  assert.match(held("margin_refs"), /nepodařilo zapsat jejich kolekce s nastavením marže\. Platí předchozí nastavení/);
+  assert.match(held("rule_refs"), /nepodařilo odebrat slevy, které k nim už nepatří/);
+  assert.match(held("products_unread"), /nepodařilo načíst ze Shopify/);
+  assert.doesNotMatch(held("margin_refs"), /cleared|held/);
+  const refused = say({ step: "products.set", ok: false, detail: "Shopify refused 2 product(s): gid://shopify/Product/1: bad", params: { refused: 2 } } as never);
+  assert.equal(refused, "Shopify odmítl zapsat cílení slev u produktů: 2. Ostatní produkty se propsaly, další synchronizace to zkusí znovu.");
 });
 
 test("only failed steps become problems (deduplicated); warnings are the sync's `warning` steps and the save's notes", () => {

@@ -32,6 +32,8 @@ import { gateConfigForPlan } from "@won/core/discounts/plan-gate";
 
 import { AdminTransportError } from "../admin-client.server";
 import type { ShopPlan } from "@won/core/discounts/plan-gate";
+import { t } from "../../i18n";
+import { foldedForCheckout } from "../sync/margin-fold";
 import { targetScopes } from "../sync/products";
 import { appliedPlanOf, storedConfigNotApplied } from "../sync/runs";
 import { canReadMarkets, loadSyncStatus } from "../sync/save-and-sync.server";
@@ -271,7 +273,7 @@ async function productCollections(ctx: ShopCtx, productId: string, after: string
 async function readVariants(
   ctx: ShopCtx,
   ids: readonly string[],
-  opts: { currency: string; country: string | null; shopCurrency: string | null; withCollections: boolean },
+  opts: { locale: "cs" | "en"; currency: string; country: string | null; shopCurrency: string | null; withCollections: boolean },
 ): Promise<Map<string, ReadVariant>> {
   const out = new Map<string, ReadVariant>();
   const extraPages = new Map<string, string>();
@@ -298,7 +300,8 @@ async function readVariants(
       out.set(node.id, {
         variantId: node.id,
         productId: node.product.id,
-        title: node.product.title ?? node.product.id,
+        // Never a raw GID in the merchant's text (audit fix round 2): an untitled product is said as such.
+        title: node.product.title?.trim() || t(opts.locale, "common.untitledProduct"),
         variantTitle: node.title && node.title !== "Default Title" ? node.title : null,
         amount,
         basePrice: typeof node.price === "string" ? node.price : null,
@@ -405,7 +408,8 @@ export async function runTryCartPlan(
     const time = shopLocalDateTime(nowOf(ctx), opts.timezone).slice(11);
     const plan0 = await ctxPlan(ctx);
     const gate = gateConfigForPlan(opts.config, plan0, { now: `${input.date}T${time}` });
-    const gated = gate.config;
+    // What checkout runs: a margin collection too large to read is folded into the whole store's values (P1-1).
+    const gated = await foldedForCheckout(ctx.db, ctx.shop, gate.config);
     const { warnings, targetingStale } = await tryCartSyncWarnings(ctx, { plan: plan0, stripped: gate.stripped.length });
     // While collection membership is being refreshed, the products' collections are read LIVE too:
     // a fresh joiner (no ref yet) or a leaver (still a ref) is then said per line.
@@ -413,6 +417,7 @@ export async function runTryCartPlan(
     const markets = await readMarketCountries(ctx);
     const { country, handle } = countryFor(opts.config, markets, input.currency, input.market ?? null);
     const variants = await readVariants(ctx, [...new Set(input.lines.map((l) => l.variantId))], {
+      locale: input.locale,
       currency: input.currency,
       country,
       shopCurrency: opts.shopCurrency,

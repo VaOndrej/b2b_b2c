@@ -35,8 +35,8 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { adminClientFromApp, type AdminClient, type AppAdminGraphql } from "../admin-client.server";
 import { loadConfig } from "../config.server";
 import { ensureCostReconcileJob } from "../jobs/cost-reconcile.server";
-import { costJobKind, costPassProgress, startCostJob, type CostJobOutcome } from "../sync/cost-lane.server";
-import { COST_NO_SESSION, COSTS_MAX_AGE_MS, loadCostState, recordCostsFailed } from "../sync/costs";
+import { costJobKind, costPassProgress, recordNoSession, startCostJob, type CostJobOutcome } from "../sync/cost-lane.server";
+import { COST_NO_SESSION, COSTS_MAX_AGE_MS, loadCostState } from "../sync/costs";
 import { shopLocalDateTime } from "../sync/sync.server";
 import { errorText } from "../sync/transport";
 import type { SyncLogger } from "../sync/types";
@@ -155,7 +155,7 @@ export function createCostRefresher(deps: CostRefresherDeps): CostRefresher {
     if (!client) {
       logger.warn(`costs ${shop}: no Admin API session, the queued mirror was dropped`);
       // OQ4: recorded for the admin ("open the app"); the next load with a session runs a full pass.
-      await recordCostsFailed(deps.db, shop, (deps.now ?? (() => new Date()))(), COST_NO_SESSION).catch(() => undefined);
+      await recordNoSession(deps.db, shop, (deps.now ?? (() => new Date()))()).catch(() => false);
       return { done: "no_session" };
     }
     const lane = { client, db: deps.db, now: deps.now, logger };
@@ -321,11 +321,12 @@ export async function costCoverage(db: PrismaClient, shop: string, shopCurrency?
   const titled = ids.length
     ? await db.variantCost.findMany({ where: { shop, productId: { in: ids } }, distinct: ["productId"], select: { productId: true, title: true } })
     : [];
-  const titles = new Map(titled.map((row) => [row.productId, row.title ?? row.productId]));
+  // Never a raw GID as a title (audit fix round 2): "" = untitled, the screen says "Produkt bez názvu".
+  const titles = new Map(titled.map((row) => [row.productId, row.title?.trim() ?? ""]));
   return {
     variants,
     variantsWithCost,
     productsWithoutCost: Number(distinct[0]?.n ?? 0),
-    sample: grouped.map((g) => ({ productId: g.productId, title: titles.get(g.productId) ?? g.productId, variantsWithoutCost: g._count._all })),
+    sample: grouped.map((g) => ({ productId: g.productId, title: titles.get(g.productId) ?? "", variantsWithoutCost: g._count._all })),
   };
 }

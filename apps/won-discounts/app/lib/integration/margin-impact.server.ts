@@ -11,11 +11,14 @@
 // update of both tables (a pass, a webhook mirror or a product sync changes
 // them). Who computes:
 //   - after a cost job (a full pass, a webhook batch: cost-lane.server.ts
-//     onCostJobSettled) and after a config save (config-write.server.ts), per
-//     shop, coalesced — one computation at a time, the latest request runs
-//     once after it;
+//     onCostJobSettled) and after a config save (config-write.server.ts), for
+//     PRO shops only, per shop, coalesced — one computation at a time, the
+//     latest request runs once after it, and two computations of a shop start
+//     at least MARGIN_IMPACT_MIN_INTERVAL_MS (30 s) apart;
 //   - a loader that finds the stored result out of date (a product sync, a
-//     restart) schedules it the same way.
+//     restart, a Free shop's editor note) schedules it the same way.
+// Both sides compute for the same config (impactConfigOf: gated, too-large
+// collections folded), so a loader's key never flip-flops.
 // Loaders (the margin screen, the editor) only READ: two bounded aggregates
 // for the state key, then the stored result — "ready", or "updating" (a
 // recompute runs, the previous numbers are shown with "počítá se"), or
@@ -35,10 +38,9 @@ import type { AdminClient } from "../admin-client.server";
 import { loadConfig } from "../config.server";
 import { planOf } from "../plan.server";
 import { onCostJobSettled } from "../sync/cost-lane.server";
-import type { MarginTooLargeView } from "../../components/model/types";
 import { parseCostValue } from "../sync/costs";
-import { foldMarginCollections } from "../sync/products";
-import { parseSteps, runtimeKey } from "../sync/runs";
+import { foldedForCheckout } from "../sync/margin-fold";
+import { runtimeKey } from "../sync/runs";
 import { canonicalJson, hashText } from "../sync/util";
 import { impactRulesOf, type ImpactRead, type StoredImpactRules } from "./margin-impact-view";
 
@@ -165,19 +167,38 @@ async function marginVariants(db: PrismaClient, shop: string, currency: string):
   });
 }
 
-async function computeOnce(args: ImpactArgs): Promise<void> {
+/** Computes (true) unless the stored result is already this state's. */
+async function computeOnce(args: ImpactArgs): Promise<boolean> {
   const key = await impactKey(args.db, args.shop, args.config, args.currency);
-  if (stored.get(args.shop)?.key === key) return;
+  if (stored.get(args.shop)?.key === key) return false;
   const { rules, withoutCost } = impactRulesOf(args.config, await marginVariants(args.db, args.shop, args.currency), args.currency);
   stored.delete(args.shop);
   stored.set(args.shop, { key, rules, withoutCost });
   if (stored.size > 1_000) stored.delete(stored.keys().next().value as string);
+  return true;
 }
+
+/** Computations of one shop start at least this far apart (a burst of webhook batches → one recompute; audit fix round 2). */
+export const MARGIN_IMPACT_MIN_INTERVAL_MS = 30_000;
+let minIntervalMs = MARGIN_IMPACT_MIN_INTERVAL_MS;
+const lastComputedAt = new Map<string, number>();
+
+/** Test hook: the minimum interval between two computations of a shop (default MARGIN_IMPACT_MIN_INTERVAL_MS). */
+export function setMarginImpactMinInterval(ms: number): void {
+  minIntervalMs = ms;
+}
+
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    (timer as { unref?: () => void }).unref?.();
+  });
 
 /**
  * Compute the shop's impact in the background (never awaited by a request).
- * Coalesced per shop: while one runs, the latest request waits and runs once
- * after it; a state already computed is skipped.
+ * Coalesced per shop: while one runs or waits, the latest request replaces
+ * the queued one and runs once after it; two computations of a shop start at
+ * least `minIntervalMs` apart; a state already computed is skipped.
  */
 export function scheduleMarginImpact(args: ImpactArgs): Promise<void> {
   const running = jobs.get(args.shop);
@@ -190,8 +211,17 @@ export function scheduleMarginImpact(args: ImpactArgs): Promise<void> {
     let current: ImpactArgs | null = args;
     try {
       while (current) {
+        const delay = (lastComputedAt.get(args.shop) ?? Number.NEGATIVE_INFINITY) + minIntervalMs - Date.now();
+        if (delay > 0) await wait(delay);
+        if (job.next) {
+          current = job.next; // the newest request that came in while waiting
+          job.next = null;
+        }
         try {
-          await computeOnce(current);
+          if (await computeOnce(current)) {
+            lastComputedAt.set(args.shop, Date.now());
+            if (lastComputedAt.size > 1_000) lastComputedAt.delete(lastComputedAt.keys().next().value as string);
+          }
         } catch (error) {
           console.error(`[won-margin] impact of ${args.shop}: ${error instanceof Error ? error.message : String(error)}`);
         }
@@ -206,7 +236,6 @@ export function scheduleMarginImpact(args: ImpactArgs): Promise<void> {
   return job.done;
 }
 
-
 /**
  * What a loader shows (bounded: the state key's two aggregates): the stored
  * result when it is the current state's; otherwise a background recompute is
@@ -218,36 +247,6 @@ export async function readMarginImpact(args: ImpactArgs): Promise<ImpactRead> {
   if (hit && hit.key === key) return { impact: hit, status: "ready" };
   void scheduleMarginImpact(args);
   return { impact: hit, status: hit ? "updating" : "computing" };
-}
-
-// --- What checkout runs: a margin collection too large to read is folded (P1-1) --------------------
-
-/**
- * The margin collections the last product pass could not read (P1-1: too
- * large for the 10 000-product limit; the sync folded their values into the
- * whole store's). From the newest recorded run that planned the products (a
- * background additions lane or a failed shop read plans nothing).
- */
-export async function marginTooLarge(db: PrismaClient, shop: string): Promise<MarginTooLargeView[]> {
-  const runs = await db.syncRun.findMany({ where: { shop }, orderBy: [{ startedAt: "desc" }, { id: "desc" }], take: 20, select: { steps: true } });
-  for (const run of runs) {
-    const steps = parseSteps(run.steps);
-    if (!steps.some((step) => step.step === "products.scope" || step.step === "products" || step.step === "margin.too_large")) continue;
-    return steps
-      .filter((step) => step.step === "margin.too_large" && typeof step.params?.collectionId === "string")
-      .map((step) => ({
-        collectionId: String(step.params!.collectionId),
-        title: typeof step.params?.collection === "string" ? step.params.collection : "",
-        count: typeof step.params?.count === "number" ? step.params.count : null,
-      }));
-  }
-  return [];
-}
-
-/** The gated config as the last sync shipped it: collections too large to read folded in (products.ts foldMarginCollections). */
-export function withTooLargeFolded(config: WonDiscountsConfig, tooLarge: readonly Pick<MarginTooLargeView, "collectionId">[]): WonDiscountsConfig {
-  if (tooLarge.length === 0) return config;
-  return foldMarginCollections(config, new Set(tooLarge.map((c) => c.collectionId))) as WonDiscountsConfig;
 }
 
 // --- Triggers from outside a request -----------------------------------------------------------------
@@ -268,9 +267,20 @@ async function backgroundCurrency(db: PrismaClient, shop: string, client: AdminC
 }
 
 /**
+ * The config the impact is computed for, on BOTH sides (a loader's state key
+ * and the background computation — audit fix round 2: never a key that
+ * flip-flops between "ready" and "updating"): the gated config as checkout
+ * runs it, collections too large to read folded in (sync/margin-fold.ts).
+ */
+export function impactConfigOf(db: PrismaClient, shop: string, gated: WonDiscountsConfig): Promise<WonDiscountsConfig> {
+  return foldedForCheckout(db, shop, gated);
+}
+
+/**
  * Recompute a shop's impact in the background after something changed (a
- * cost job, a config save): the stored config gated for the plan — only for a
- * shop that can see it (protection on, or Pro's preview). Never throws.
+ * cost job, a config save) — only for a PRO shop (the overview and the
+ * editor's count are Pro; Free's editor note, without a number, computes on
+ * demand when the editor is opened), on or off (Pro's preview). Never throws.
  */
 export function refreshMarginImpact(shop: string, deps: { db: PrismaClient; client?: AdminClient | null; plan?: (shop: string) => Promise<ShopPlan> }): Promise<void> {
   const run = prepareAndSchedule(shop, deps);
@@ -289,9 +299,8 @@ async function prepareAndSchedule(shop: string, deps: { db: PrismaClient; client
     const loaded = await loadConfig(deps.db, shop);
     if (!loaded.exists || loaded.unreadable || loaded.readOnly) return;
     const plan = await (deps.plan ?? planOf)(shop);
-    const gated = gateConfigForPlan(loaded.config, plan).config;
-    if (plan !== "pro" && gated.modules.margin.enabled !== true) return;
-    const config = plan === "pro" ? withTooLargeFolded(gated, await marginTooLarge(deps.db, shop)) : gated;
+    if (plan !== "pro") return;
+    const config = await impactConfigOf(deps.db, shop, gateConfigForPlan(loaded.config, plan).config);
     const currency = await backgroundCurrency(deps.db, shop, deps.client ?? null);
     if (!currency) return;
     await scheduleMarginImpact({ db: deps.db, shop, config, currency });

@@ -685,7 +685,7 @@ export function devMarginScreen(opts: { plan: "free" | "pro"; state: string | nu
       // What checkout runs: the collection's values folded into the whole store's (the server counts the impact the same way).
       return {
         ...base,
-        tooLarge: pro ? [{ collectionId: DEV_C7, title: "Podzimní kolekce", count: 10_400 }] : [],
+        tooLarge: pro ? [{ collectionId: DEV_C7, title: "Podzimní kolekce", count: null }] : [],
         impact: pro ? devMarginImpact(foldMarginCollections(DEV_MARGIN_FIXTURE, new Set([DEV_C7])) as WonDiscountsConfig, { focusRuleId: opts.focusRuleId }) : null,
       };
     case "many":
@@ -766,7 +766,7 @@ export function devMarginOverview(state: "fresh" | "stale" | "off" | "running" |
       maxDiscountPercent: 40,
       productsWithoutCost: DEV_COVERAGE.productsWithoutCost,
       mirror: DEV_MIRROR_FRESH,
-      tooLarge: [{ collectionId: DEV_C7, title: "Podzimní kolekce", count: 10_400 }],
+      tooLarge: [{ collectionId: DEV_C7, title: "Podzimní kolekce", count: null }],
     };
   }
   return {

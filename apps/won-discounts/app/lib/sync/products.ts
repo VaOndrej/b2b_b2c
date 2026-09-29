@@ -90,7 +90,7 @@ import { parseRuleRef, productMetafieldValue, variantKey } from "@won/core/disco
 import type { PrismaClient } from "../../generated/prisma/client";
 import { PRODUCT_KEY, WON_NAMESPACE } from "./graphql";
 import { setSyncProgress } from "./progress";
-import { errorText, setMetafields, userErrorText, type Transport, type UserErrorLike } from "./transport";
+import { errorText, userErrorText, type Transport, type UserErrorLike } from "./transport";
 import type { ConfigView, SyncProductEntry, SyncProductInput, SyncStep } from "./types";
 import { canonicalJson, chunks, hashText, METAFIELDS_DELETE_BATCH, METAFIELDS_SET_BATCH, NODES_BATCH, sameJson } from "./util";
 
@@ -211,6 +211,14 @@ export interface ProductSyncArgs {
   /** The collection size check already made for this sync (step 0 builds the payload from it); absent = made here. */
   limits?: CollectionLimits;
   /**
+   * The shop config flips after the BEFORE lane (a full sync whose payload
+   * differs from the live one): a product whose marginRefs change carries the
+   * BRIDGE (bridgeMarginRefs) across the flip and is pruned to its new refs
+   * in the AFTER lane. Absent/false (a products-only refresh, an unchanged
+   * payload): the new refs are written directly.
+   */
+  bridge?: boolean;
+  /**
    * Checked before every Shopify read and write: true stops the pass with
    * SyncCancelled (a products-only refresh superseded by a newer sync). The
    * save's own BEFORE lane never passes it.
@@ -233,6 +241,13 @@ interface IndexedWrite extends Write {
   current: string | null;
 }
 
+/** A product's value AFTER the flip (null = no metafield: a clear), when the BEFORE lane wrote a bridge. */
+export interface FinalWrite {
+  productId: string;
+  value: string | null;
+  hash: string | null;
+}
+
 export interface ProductPlan {
   steps: SyncStep[];
   /** The plan could not finish: some product may carry refs the new config no longer gives it. */
@@ -245,14 +260,21 @@ export interface ProductPlan {
   clears: string[];
   /** After the flip: products without Won refs that only gain rule refs (not read yet). */
   additions: Write[];
+  /** After the flip: products that carried a marginRef bridge across it, pruned to their final value. */
+  prunes: FinalWrite[];
   /** The numeric ids the margin collections of this pass ship under (onlyAddsRefs: a dropped ref to anything else holds nothing). */
   liveMarginRefs: string[];
 }
+
+/** Why a BEFORE lane holds the new shop config (the admin words each: sync-copy.ts). */
+export type HoldReason = "rule_refs" | "margin_refs" | "products_unread";
 
 export interface ProductSyncResult {
   steps: SyncStep[];
   /** Some product may still carry refs the new config no longer gives it (see header). */
   staleRisk: boolean;
+  /** Why (set with staleRisk): a rule ref that should go / a clear failed; a marginRef change failed; the plan could not read. */
+  holdReason?: HoldReason;
 }
 
 // --- Reading the targets ---------------------------------------------------------------------
@@ -378,14 +400,19 @@ export async function collectionLimits(args: Pick<ProductSyncArgs, "transport" |
     if (campaign.killed) continue;
     for (const override of campaign.overrides) strip(override.ruleId, names.get(override.ruleId) ?? override.ruleId, (override.patch as { target?: unknown }).target);
   }
-  const quoted = (ids: Iterable<string>) => [...ids].map((id) => `"${titleOf(id) ?? "(untitled collection)"}"`).join(", ");
-  const steps: SyncStep[] = [...affected].map(([ruleId, { name, collections }]) => ({
-    step: `products.too_large:${ruleId}`,
-    ok: false,
-    detail:
-      `"${name || ruleId}" does not apply at checkout to ${quoted(collections)}: the targeted collections have more than ` +
-      `${MAX_COLLECTION_PRODUCTS} products together, more than Won reads per sync — every other rule is synced as usual`,
-  }));
+  // The admin words it from `params` (sync-copy.ts): the titles it knows, and how many have none.
+  const steps: SyncStep[] = [...affected].map(([ruleId, { name, collections }]) => {
+    const titles = [...collections].map(titleOf).filter((t): t is string => !!t && t.trim() !== "");
+    const untitled = collections.size - titles.length;
+    return {
+      step: `products.too_large:${ruleId}`,
+      ok: false,
+      detail:
+        `"${name || ruleId}" does not apply at checkout to ${[...collections].join(", ")}: the targeted collections have more than ` +
+        `${MAX_COLLECTION_PRODUCTS} products together, more than Won reads per sync — every other rule is synced as usual`,
+      params: { collections: titles.join(", "), untitled },
+    };
+  });
   // A margin collection that does not fit: no new refs for its products; the payload folds it (fail closed).
   const droppedMargin = marginIds.filter((id) => tooLarge.has(id));
   const marginTooLarge: MarginTooLarge[] = droppedMargin.map((collectionId) => {
@@ -519,16 +546,26 @@ function refsOf(value: string | null | undefined): Refs | null {
  * is never "only adds".
  */
 export function onlyAddsRefs(next: string, current: string | null | undefined, liveMarginRefs?: ReadonlySet<string>): boolean {
+  return holdsNothing(next, current, liveMarginRefs) === null;
+}
+
+/**
+ * What a FAILED write of `next` over `current` would leave wrong (null =
+ * nothing, onlyAddsRefs): "rule_refs" = a rule ref the product should lose
+ * (or an unreadable value); "margin_refs" = its marginRefs change (see
+ * onlyAddsRefs).
+ */
+function holdsNothing(next: string, current: string | null | undefined, liveMarginRefs?: ReadonlySet<string>): "rule_refs" | "margin_refs" | null {
   const have = refsOf(current);
   const want = refsOf(next);
-  if (!have || !want) return false;
-  for (const ref of have.ruleIds) if (!want.ruleIds.has(ref)) return false;
+  if (!have || !want) return "rule_refs";
+  for (const ref of have.ruleIds) if (!want.ruleIds.has(ref)) return "rule_refs";
   for (const [variant, refs] of have.variants) {
-    for (const ref of refs) if (!want.ruleIds.has(ref) && !want.variants.get(variant)?.has(ref)) return false;
+    for (const ref of refs) if (!want.ruleIds.has(ref) && !want.variants.get(variant)?.has(ref)) return "rule_refs";
   }
-  for (const ref of want.marginRefs) if (!have.marginRefs.has(ref)) return false;
-  for (const ref of have.marginRefs) if (!want.marginRefs.has(ref) && (!liveMarginRefs || liveMarginRefs.has(ref))) return false;
-  return true;
+  for (const ref of want.marginRefs) if (!have.marginRefs.has(ref)) return "margin_refs";
+  for (const ref of have.marginRefs) if (!want.marginRefs.has(ref) && (!liveMarginRefs || liveMarginRefs.has(ref))) return "margin_refs";
+  return null;
 }
 
 /** The marginRefs a product metafield value carries (junk → none). */
@@ -584,7 +621,7 @@ function safeParse(value: string): unknown {
 // --- Plan -------------------------------------------------------------------------------------
 
 function failedPlan(steps: SyncStep[], staleRisk: boolean): ProductPlan {
-  return { steps, staleRisk, complete: false, sets: [], clears: [], additions: [], liveMarginRefs: [] };
+  return { steps, staleRisk, complete: false, sets: [], clears: [], additions: [], prunes: [], liveMarginRefs: [] };
 }
 
 export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> {
@@ -616,15 +653,17 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
         ? `${error.message}; the collections grew past what Won reads per sync while being read (nothing was written; the next sync leaves the largest out)`
         : `could not read the targeted products: ${errorText(error)}`;
     steps.push({ step: "products", ok: false, detail });
-    // Nothing written: products that left a target may still carry old refs.
-    return failedPlan(steps, indexed.size > 0);
+    // Nothing written: products that left a target may still carry old refs — and with a margin collection
+    // in force, its members carry no ref yet (a fresh shop, or new members): the new config must not rely
+    // on them either (audit fix round 2).
+    return failedPlan(steps, indexed.size > 0 || marginCollectionIds(config.modules.margin).length > 0);
   }
   const { targeted, productCollections, allVariants, missing } = found;
 
   const candidates = [...new Set([...targeted, ...indexed.keys()])].sort();
   if (candidates.length === 0) {
     steps.push({ step: "products", ok: true, detail: "no targeted products and none to clean" });
-    return { steps, staleRisk: false, complete: true, sets: [], clears: [], additions: [], liveMarginRefs };
+    return { steps, staleRisk: false, complete: true, sets: [], clears: [], additions: [], prunes: [], liveMarginRefs };
   }
   const inputs: SyncProductInput[] = candidates.map((productId) => ({
     productId,
@@ -712,88 +751,190 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
     // Every one of them may lose a ref, or lack a stricter collection the new config relies on: nothing may flip.
     return failedPlan(steps, toClear.length > 0 || wantedIndexed.length > 0 || marginNewcomers.length > 0);
   }
+  // Membership this pass knows: the collections it read (a ref to one of them the product is not in = it left).
+  const readKeys = new Set([...scopes.collectionIds].map(variantKey));
+  const knownLeft = (productId: string): Set<string> => {
+    const member = new Set([...(productCollections.get(productId) ?? [])].map(variantKey));
+    return new Set([...readKeys].filter((key) => !member.has(key)));
+  };
+  const prunes: FinalWrite[] = [];
+  /** The BEFORE-lane write of a product across the flip: the bridge when its marginRefs change (see bridgeMarginRefs). */
+  const bridged = (write: Write, current: string | null): IndexedWrite | null => {
+    if (!args.bridge) return { ...write, current };
+    const refs = bridgeMarginRefs(marginRefsOf(current), marginRefsOf(write.value), knownLeft(write.productId));
+    if (sameSet(refs, marginRefsOf(write.value))) return { ...write, current };
+    prunes.push({ productId: write.productId, value: write.value, hash: write.hash });
+    const value = withMarginRefs(write.value, refs);
+    if (sameJson(current, value)) return null; // it already carries the bridge: only the prune after the flip
+    return { productId: write.productId, value, hash: hashText(canonicalJson(JSON.parse(value))), current };
+  };
   for (const write of marginNewcomers) {
     const node = values.get(write.productId);
     if (!node) continue; // deleted meanwhile: nothing to write, nothing indexed
     if (sameJson(node.metafield?.value, write.value)) recorded.push(write);
-    else sets.push({ ...write, current: node.metafield?.value ?? null });
+    else {
+      const w = bridged(write, node.metafield?.value ?? null);
+      if (w) sets.push(w);
+    }
   }
   for (const productId of wantedIndexed) {
     const node = values.get(productId);
     const want = wanted.get(productId)!;
     if (!node) gone.push(productId);
     else if (sameJson(node.metafield?.value, want.value)) recorded.push({ productId, hash: want.hash, value: want.value });
-    else sets.push({ productId, ...want, current: node.metafield?.value ?? null });
+    else {
+      const w = bridged({ productId, ...want }, node.metafield?.value ?? null);
+      if (w) sets.push(w);
+    }
   }
   for (const productId of toClear) {
     const node = values.get(productId);
     if (!node || !node.metafield) {
       clearing.delete(productId);
       gone.push(productId); // deleted, or already absent in Shopify: just untrack
+      continue;
     }
+    if (!args.bridge) continue;
+    // A clear across the flip keeps the marginRefs of collections it may still be in (they go after the flip).
+    const kept = bridgeMarginRefs(marginRefsOf(node.metafield.value), [], knownLeft(productId));
+    if (kept.length === 0) continue;
+    clearing.delete(productId);
+    prunes.push({ productId, value: null, hash: null });
+    const value = JSON.stringify(productMetafieldValue({ ruleIds: [], variantRuleIds: {}, marginRefs: kept }));
+    if (!sameJson(node.metafield.value, value)) sets.push({ productId, value, hash: hashText(canonicalJson(JSON.parse(value))), current: node.metafield.value });
   }
   if (gone.length) await db.productTargetIndex.deleteMany({ where: { shop, productId: { in: gone } } });
   for (const { productId, hash, value } of recorded) await upsertRow(db, shop, productId, hash, value);
-  return { steps, staleRisk: false, complete: true, sets, clears: [...clearing], additions, liveMarginRefs };
+  return { steps, staleRisk: false, complete: true, sets, clears: [...clearing], additions, prunes, liveMarginRefs };
+}
+
+// --- The marginRef bridge across the flip (audit fix round 2) --------------------------------------
+
+/**
+ * The marginRefs a product carries across the shop-config flip: its NEW refs
+ * plus every ref it carries now, except refs of collections this pass read
+ * and found it is no longer in (`knownLeft`). The engine takes the strictest
+ * over a product's refs (resolveMargin), so with the membership unchanged:
+ *   - under the OLD config (still running during the BEFORE lane, and kept
+ *     when the new config is held) the bridge holds every ref the product
+ *     carried → it resolves at least as strict as the status quo;
+ *   - under the NEW config every ref of the bridge names a collection the
+ *     product is in (or one without a setting, ignored) and it holds the new
+ *     decisive refs → it resolves exactly to the new result.
+ * So no floor is ever looser than the looser of the old and the new one. The
+ * AFTER lane prunes it to the new refs (unchanged under the new config).
+ */
+export function bridgeMarginRefs(current: readonly string[], next: readonly string[], knownLeft: ReadonlySet<string>): string[] {
+  return [...new Set([...next, ...current.filter((ref) => !knownLeft.has(ref))])].sort();
+}
+
+const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && new Set([...a, ...b]).size === a.length;
+
+/** A product metafield value with its marginRefs replaced (none → the key goes). */
+function withMarginRefs(value: string, marginRefs: readonly string[]): string {
+  const parsed = JSON.parse(value) as { ruleIds?: string[]; variantRuleIds?: Record<string, string[]> };
+  return JSON.stringify(
+    productMetafieldValue({ ruleIds: parsed.ruleIds ?? [], variantRuleIds: parsed.variantRuleIds ?? {}, ...(marginRefs.length > 0 ? { marginRefs: [...marginRefs] } : {}) }),
+  );
 }
 
 // --- Writes -----------------------------------------------------------------------------------
 
-async function writeBatch(args: ProductSyncArgs, batch: readonly Write[]): Promise<string | null> {
+interface WriteOutcome<W extends Write> {
+  written: W[];
+  /** Shopify refused these products' writes (userErrors), one by one: the rest of their batch went through. */
+  refused: { write: W; error: string }[];
+  /** Calls that failed as a whole (transport / GraphQL after the retries). */
+  failed: { writes: W[]; error: string }[];
+}
+
+/**
+ * metafieldsSet of product values, ≤ 25 per call, write-ahead (row hash null
+ * first). metafieldsSet is all-or-nothing: a batch Shopify REFUSES is split
+ * and sent per product (audit fix round 2), so one bad product never keeps
+ * the other 24 — or the flip — back; each refused product is reported.
+ */
+async function sendProductWrites<W extends Write>(args: ProductSyncArgs, batch: readonly W[], out: WriteOutcome<W> = { written: [], refused: [], failed: [] }): Promise<WriteOutcome<W>> {
   const { transport, db, shop } = args;
   for (const { productId } of batch) await upsertRow(db, shop, productId, null);
-  const error = await setMetafields(
-    transport,
-    batch.map(({ productId, value }) => ({ ownerId: productId, namespace: WON_NAMESPACE, key: PRODUCT_KEY, type: "json", value })),
-  );
-  if (error) return error;
-  await db.$transaction(
-    batch.map(({ productId, hash, value }) =>
-      db.productTargetIndex.update({ where: { shop_productId: { shop, productId } }, data: { payloadHash: hash, value } }),
-    ),
-  );
-  return null;
+  let refused: string | null;
+  try {
+    const data: { metafieldsSet: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsSet", {
+      metafields: batch.map(({ productId, value }) => ({ ownerId: productId, namespace: WON_NAMESPACE, key: PRODUCT_KEY, type: "json", value })),
+    });
+    refused = userErrorText(data.metafieldsSet.userErrors);
+  } catch (error) {
+    if (error instanceof Response || error instanceof SyncCancelled) throw error;
+    out.failed.push({ writes: [...batch], error: errorText(error) });
+    return out;
+  }
+  if (refused === null) {
+    await db.$transaction(
+      batch.map(({ productId, hash, value }) =>
+        db.productTargetIndex.update({ where: { shop_productId: { shop, productId } }, data: { payloadHash: hash, value } }),
+      ),
+    );
+    out.written.push(...batch);
+    return out;
+  }
+  if (batch.length === 1) {
+    out.refused.push({ write: batch[0]!, error: refused });
+    return out;
+  }
+  for (const write of batch) await sendProductWrites(args, [write], out);
+  return out;
+}
+
+/** One line for support: which products Shopify refused, and why (the merchant sentence has no ids: sync-copy.ts). */
+function refusedDetail(refused: readonly { write: Write; error: string }[]): string {
+  const shown = refused.slice(0, 5).map((r) => `${r.write.productId}: ${r.error}`);
+  return `Shopify refused ${refused.length} product(s): ${shown.join("; ")}${refused.length > 5 ? "; …" : ""}`;
 }
 
 /**
  * The BEFORE lane: changes to products that carry Won refs, products that gain
- * a marginRef, and clears. A failed write that would have removed a rule ref
- * or added a marginRef (onlyAddsRefs false), or a failed clear, is `staleRisk`.
+ * a marginRef, bridges across the flip, and clears. A failed write that would
+ * have removed a rule ref or changed marginRefs (onlyAddsRefs false), or a
+ * failed clear, is `staleRisk` — with its `holdReason`.
  */
 export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPlan): Promise<ProductSyncResult> {
   const { transport, db, shop } = args;
   const steps: SyncStep[] = [];
   let staleRisk = false;
+  let holdReason: HoldReason | undefined;
+  const hold = (reason: HoldReason) => {
+    staleRisk = true;
+    if (holdReason !== "rule_refs") holdReason = reason; // a rule ref that should go is the more serious one
+  };
 
-  let setOk = 0;
-  const setErrors: string[] = [];
-  let reductionFailed = 0;
   const live = new Set(plan.liveMarginRefs);
+  const outcome: WriteOutcome<IndexedWrite> = { written: [], refused: [], failed: [] };
   for (const batch of chunks(plan.sets, METAFIELDS_SET_BATCH)) {
     checkCancelled(args);
-    const error = await writeBatch(args, batch);
-    if (error) {
-      setErrors.push(error);
-      const reductions = batch.filter((w) => !onlyAddsRefs(w.value, w.current, live)).length;
-      if (reductions > 0) {
-        reductionFailed += reductions;
-        staleRisk = true;
-      }
-      continue;
+    await sendProductWrites(args, batch, outcome);
+  }
+  let heldProducts = 0;
+  for (const write of [...outcome.refused.map((r) => r.write), ...outcome.failed.flatMap((f) => f.writes)]) {
+    const reason = holdsNothing(write.value, write.current, live);
+    if (reason) {
+      heldProducts += 1;
+      hold(reason);
     }
-    setOk += batch.length;
   }
   if (plan.sets.length > 0) {
+    const failedCount = outcome.refused.length + outcome.failed.reduce((n, f) => n + f.writes.length, 0);
+    const errors = [...(outcome.refused.length > 0 ? [refusedDetail(outcome.refused)] : []), ...outcome.failed.map((f) => f.error)];
     steps.push({
       step: "products.set",
-      ok: setErrors.length === 0,
+      ok: failedCount === 0,
       detail:
-        setErrors.length === 0
-          ? `${setOk} product(s) updated`
-          : `${setOk}/${plan.sets.length} product(s) updated; ${setErrors.join("; ")}` +
-            (reductionFailed > 0
-              ? ` (${reductionFailed} of them do not carry what the new config relies on — a rule they should lose, or a stricter margin collection: the new config is held)`
+        failedCount === 0
+          ? `${outcome.written.length} product(s) updated`
+          : `${outcome.written.length}/${plan.sets.length} product(s) updated; ${errors.join("; ")}` +
+            (heldProducts > 0
+              ? ` (${heldProducts} of them do not carry what the new config relies on — a rule they should lose, or their margin collections: the new config is held)`
               : " (they lack the new rules until the next sync)"),
+      ...(outcome.refused.length > 0 ? { params: { refused: outcome.refused.length } } : {}),
     });
   }
 
@@ -826,9 +967,9 @@ export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPl
           ? `${clearOk} product(s) no longer targeted, cleared`
           : `${clearOk}/${plan.clears.length} cleared; ${clearErrors.join("; ")} (they still carry old rules: the new config is held)`,
     });
-    if (clearErrors.length > 0) staleRisk = true;
+    if (clearErrors.length > 0) hold("rule_refs");
   }
-  return { steps, staleRisk };
+  return { steps, staleRisk, ...(holdReason ? { holdReason } : {}) };
 }
 
 export interface AdditionsOptions {
@@ -871,22 +1012,93 @@ export async function applyProductAdditions(args: ProductSyncArgs, additions: re
     steps.push({ step: "products.add", ok: false, detail: `could not read the products that get new rules: ${errorText(error)} (they lack them until the next sync)` });
     return { steps, cancelled: false };
   }
-  let setOk = 0;
-  const errors: string[] = [];
+  const outcome: WriteOutcome<Write> = { written: [], refused: [], failed: [] };
   setSyncProgress(shop, { phase: "writing", done: 0, total: toSet.length });
   for (const batch of chunks(toSet, METAFIELDS_SET_BATCH)) {
     if (cancelled()) return { steps, cancelled: true };
-    const error = await writeBatch(args, batch);
-    if (error) errors.push(error);
-    else setOk += batch.length;
-    setSyncProgress(shop, { phase: "writing", done: setOk, total: toSet.length });
+    await sendProductWrites(args, batch, outcome);
+    setSyncProgress(shop, { phase: "writing", done: outcome.written.length, total: toSet.length });
   }
+  const errors = [...(outcome.refused.length > 0 ? [refusedDetail(outcome.refused)] : []), ...outcome.failed.map((f) => f.error)];
   steps.push({
     step: "products.add",
     ok: errors.length === 0,
     detail:
-      (errors.length === 0 ? `${setOk} product(s) got their new rules` : `${setOk}/${toSet.length} product(s) got their new rules; ${errors.join("; ")} (the rest lack them until the next sync)`) +
+      (errors.length === 0
+        ? `${outcome.written.length} product(s) got their new rules`
+        : `${outcome.written.length}/${toSet.length} product(s) got their new rules; ${errors.join("; ")} (the rest lack them until the next sync)`) +
       (skipped > 0 ? `; ${skipped} deleted product(s) skipped` : ""),
+    ...(outcome.refused.length > 0 ? { params: { refused: outcome.refused.length } } : {}),
+  });
+  return { steps, cancelled: false };
+}
+
+/**
+ * AFTER the flip: products that carried a marginRef bridge across it get their
+ * final value (set, or cleared). Read first (deleted products untracked,
+ * identical values recorded). Never loosens a floor under the new config (the
+ * bridge resolves exactly like the final refs there) and never holds anything.
+ */
+export async function applyProductPrunes(args: ProductSyncArgs, prunes: readonly FinalWrite[], options: AdditionsOptions = {}): Promise<AdditionsResult> {
+  const { transport, db, shop } = args;
+  const steps: SyncStep[] = [];
+  if (prunes.length === 0) return { steps, cancelled: false };
+  const cancelled = () => options.isCancelled?.() === true || args.isCancelled?.() === true;
+  const toSet: Write[] = [];
+  const toDelete: string[] = [];
+  const untrack: string[] = [];
+  try {
+    for (const batch of chunks(prunes, NODES_BATCH)) {
+      if (cancelled()) return { steps, cancelled: true };
+      const values = await readProductValues(transport, batch.map((w) => w.productId), cancelled);
+      for (const write of batch) {
+        const node = values.get(write.productId);
+        const current = node?.metafield?.value ?? null;
+        if (!node || (write.value === null && current === null)) untrack.push(write.productId);
+        else if (write.value === null) toDelete.push(write.productId);
+        else if (sameJson(current, write.value)) await upsertRow(db, shop, write.productId, write.hash, write.value);
+        else toSet.push({ productId: write.productId, value: write.value, hash: write.hash! });
+      }
+    }
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    if (error instanceof SyncCancelled) return { steps, cancelled: true };
+    steps.push({ step: "products.prune", ok: false, detail: `could not read the products to finish after the flip: ${errorText(error)} (the next sync finishes them)` });
+    return { steps, cancelled: false };
+  }
+  if (untrack.length > 0) await db.productTargetIndex.deleteMany({ where: { shop, productId: { in: untrack } } });
+  const outcome: WriteOutcome<Write> = { written: [], refused: [], failed: [] };
+  for (const batch of chunks(toSet, METAFIELDS_SET_BATCH)) {
+    if (cancelled()) return { steps, cancelled: true };
+    await sendProductWrites(args, batch, outcome);
+  }
+  const errors = [...(outcome.refused.length > 0 ? [refusedDetail(outcome.refused)] : []), ...outcome.failed.map((f) => f.error)];
+  let cleared = 0;
+  for (const batch of chunks(toDelete, METAFIELDS_DELETE_BATCH)) {
+    if (cancelled()) return { steps, cancelled: true };
+    try {
+      const data: { metafieldsDelete: { userErrors: UserErrorLike[] } } = await transport.call("metafieldsDelete", {
+        metafields: batch.map((ownerId) => ({ ownerId, namespace: WON_NAMESPACE, key: PRODUCT_KEY })),
+      });
+      const error = userErrorText(data.metafieldsDelete.userErrors);
+      if (error) {
+        errors.push(error);
+        continue;
+      }
+      cleared += batch.length;
+      await db.productTargetIndex.deleteMany({ where: { shop, productId: { in: batch } } });
+    } catch (error) {
+      if (error instanceof Response || error instanceof SyncCancelled) throw error;
+      errors.push(errorText(error));
+    }
+  }
+  steps.push({
+    step: "products.prune",
+    ok: errors.length === 0,
+    detail:
+      `${outcome.written.length + cleared}/${toSet.length + toDelete.length} product(s) finished after the flip (margin collections they no longer need)` +
+      (errors.length > 0 ? `; ${errors.join("; ")} (they keep a stricter-or-equal set until the next sync)` : ""),
+    ...(outcome.refused.length > 0 ? { params: { refused: outcome.refused.length } } : {}),
   });
   return { steps, cancelled: false };
 }
@@ -899,10 +1111,16 @@ export async function applyProductAdditions(args: ProductSyncArgs, additions: re
 export async function syncProducts(args: ProductSyncArgs, options: AdditionsOptions = {}): Promise<ProductSyncResult & { cancelled: boolean }> {
   try {
     const plan = await planProducts(args);
-    if (!plan.complete) return { steps: plan.steps, staleRisk: plan.staleRisk, cancelled: false };
+    if (!plan.complete) return { steps: plan.steps, staleRisk: plan.staleRisk, ...(plan.staleRisk ? { holdReason: "products_unread" as const } : {}), cancelled: false };
     const changes = await applyProductChanges(args, plan);
     const additions = await applyProductAdditions(args, plan.additions, options);
-    return { steps: [...plan.steps, ...changes.steps, ...additions.steps], staleRisk: changes.staleRisk, cancelled: additions.cancelled };
+    const prunes = additions.cancelled ? { steps: [], cancelled: true } : await applyProductPrunes(args, plan.prunes, options);
+    return {
+      steps: [...plan.steps, ...changes.steps, ...additions.steps, ...prunes.steps],
+      staleRisk: changes.staleRisk,
+      ...(changes.holdReason ? { holdReason: changes.holdReason } : {}),
+      cancelled: prunes.cancelled,
+    };
   } catch (error) {
     if (error instanceof SyncCancelled) return { steps: [], staleRisk: false, cancelled: true };
     throw error;

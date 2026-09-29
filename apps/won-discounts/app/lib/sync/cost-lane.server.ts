@@ -39,6 +39,7 @@ import {
   loadCostState,
   mirrorInventoryItems,
   mirrorProducts,
+  recordCostsFailed,
   runCostPass,
   type ClearResult,
   type CostFloors,
@@ -46,6 +47,7 @@ import {
   type CostPending,
   type MirrorResult,
 } from "./costs";
+import { foldedForCheckout } from "./margin-fold";
 import { errorText, Transport } from "./transport";
 import type { RetryOptions, SyncLogger } from "./types";
 import { chunks } from "./util";
@@ -127,19 +129,24 @@ function chain<T>(shop: string, work: () => Promise<T>): Promise<T> {
   return run;
 }
 
-/** Margin protection in the stored config, as the shop's plan runs it. Null = nothing syncable. */
-async function gatedMargin(deps: CostLaneDeps, shop: string): Promise<MarginModule | null> {
+/**
+ * Margin protection in the stored config as checkout runs it: gated for the
+ * shop's plan, and a collection too large to read folded into the whole
+ * store's values like the sync ships it (sync/margin-fold.ts, audit fix round
+ * 2). Null = nothing syncable.
+ */
+async function runningMargin(deps: CostLaneDeps, shop: string): Promise<MarginModule | null> {
   const loaded = await loadConfig(deps.db, shop);
   if (loaded.unreadable || loaded.readOnly) return null;
   if (!loaded.exists) return { ...loaded.config.modules.margin, enabled: false };
   const plan = await (deps.plan ?? planOf)(shop);
-  return gateConfigForPlan(loaded.config, plan).config.modules.margin;
+  return (await foldedForCheckout(deps.db, shop, gateConfigForPlan(loaded.config, plan).config)).modules.margin;
 }
 
 /** Product ids read per query (SQLite's bound-parameter limit). */
 const REFS_CHUNK = 500;
 
-/** The floors a refused write is judged by (costs.ts olderCostsThatStay): the gated settings + the refs the sync wrote. */
+/** The floors a refused write is judged by (costs.ts olderCostsThatStay): the settings checkout runs + the refs the sync wrote. */
 function costFloors(deps: CostLaneDeps, shop: string, margin: MarginModule): CostFloors {
   return {
     payload: buildMarginPayload({ ...margin, enabled: true }),
@@ -174,7 +181,7 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
   return chain(shop, async (): Promise<CostJobOutcome> => {
     try {
       if (lane?.cancelled) return { done: "skipped", reason: "superseded" };
-      const margin = await gatedMargin(deps, shop);
+      const margin = await runningMargin(deps, shop);
       if (margin === null) return { done: "skipped", reason: "no_config" };
       const enabled = margin.enabled === true;
       if (job.kind === "clear" && enabled) return { done: "skipped", reason: "margin_on" };
@@ -391,6 +398,19 @@ async function launchClaimed(shop: string, deps: CostLaneDeps, due: CostDue, now
     retrying.delete(shop);
     throw error;
   }
+}
+
+/**
+ * OQ4: the shop has no usable offline session, so a background job could not
+ * start — recorded for the admin ("open the app"; costs.ts recordCostsFailed,
+ * which keeps an unfinished pass's cursor). Never over a job of the shop that
+ * is queued or running here (it records its own outcome). Returns whether it
+ * recorded.
+ */
+export async function recordNoSession(db: PrismaClient, shop: string, now: Date): Promise<boolean> {
+  if (costJobKind(shop) !== null || retrying.has(shop)) return false;
+  await recordCostsFailed(db, shop, now, COST_NO_SESSION);
+  return true;
 }
 
 /** Is a refused-variant retry of `shop` queued or running here (or a due job being decided)? */

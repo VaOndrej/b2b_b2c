@@ -46,9 +46,11 @@ import { lockedWrite, SAVE_ATTEMPTS, savedResult, writeAndSync } from "./config-
 import type { ShopCtx } from "./context.server";
 import { ensureCostReconcileJob } from "../jobs/cost-reconcile.server";
 import { costCoverage, costMirrorView, offlineClient } from "./costs.server";
-import { impactView, marginTooLarge, readMarginImpact, withTooLargeFolded } from "./margin-impact.server";
+import { marginTooLargeOf } from "../sync/margin-fold";
+import { impactConfigOf, impactView, readMarginImpact } from "./margin-impact.server";
 
-export { clearMarginImpactCache, marginCatalogueReads, marginImpactIdle, marginTooLarge } from "./margin-impact.server";
+export { clearMarginImpactCache, marginCatalogueReads, marginImpactIdle } from "./margin-impact.server";
+export { marginTooLargeOf as marginTooLarge } from "../sync/margin-fold";
 import { uiFailureFromSave } from "./results";
 import { ctxPlan } from "./sync-status.server";
 
@@ -329,14 +331,15 @@ export async function loadMarginScreen(ctx: ShopCtx, opts: { focusRuleId?: strin
   const [mirror, coverage, tooLarge] = await Promise.all([
     costMirrorView({ db: ctx.db, shop: ctx.shop, now: ctx.now }, { enabled, timezone }),
     costCoverage(ctx.db, ctx.shop, shopCurrency || null),
-    plan === "pro" && enabled ? marginTooLarge(ctx.db, ctx.shop) : Promise.resolve([]),
+    plan === "pro" && enabled ? marginTooLargeOf(ctx.db, ctx.shop) : Promise.resolve([]),
   ]);
   const gateNotes = explainGate(
     gate.stripped.filter((s) => s.capability === "margin_per_collection"),
     ctx.locale,
   ).map((e) => ({ text: e.text, ...(e.ruleId !== undefined ? { ruleId: e.ruleId } : {}) }));
-  // The impact is what checkout runs: a collection too large to read is folded into the whole store's values (P1-1).
-  const running = withTooLargeFolded(gated, tooLarge);
+  // The impact is what checkout runs: a collection too large to read is folded into the whole store's values (P1-1);
+  // the same config the background computes for (impactConfigOf), whether protection is on or off.
+  const running = await impactConfigOf(ctx.db, ctx.shop, gated);
   const impact =
     plan === "pro" && shopCurrency
       ? impactView(await readMarginImpact({ db: ctx.db, shop: ctx.shop, config: running, currency: shopCurrency }), running, opts.focusRuleId)
@@ -368,8 +371,7 @@ export async function ruleMarginImpact(ctx: ShopCtx, ruleId: string): Promise<Ma
   if (!enabled) return null;
   const currency = await marginCurrency(ctx);
   if (!currency) return null;
-  const tooLarge = plan === "pro" ? await marginTooLarge(ctx.db, ctx.shop) : [];
-  const read = await readMarginImpact({ db: ctx.db, shop: ctx.shop, config: withTooLargeFolded(gated, tooLarge), currency });
+  const read = await readMarginImpact({ db: ctx.db, shop: ctx.shop, config: await impactConfigOf(ctx.db, ctx.shop, gated), currency });
   if (!read.impact) return { state: "computing" };
   const rule = read.impact.rules.find((r) => r.ruleId === ruleId);
   if (!rule || rule.variants === 0) return null;
@@ -394,7 +396,7 @@ export async function loadMarginOverview(
   const [mirror, coverage, tooLarge] = await Promise.all([
     costMirrorView({ db: ctx.db, shop: ctx.shop, now: ctx.now }, { enabled, timezone: opts.timezone }),
     enabled ? marginCurrency(ctx, opts.shopCurrency).then((currency) => costCoverage(ctx.db, ctx.shop, currency || null)) : Promise.resolve(null),
-    enabled && plan === "pro" ? marginTooLarge(ctx.db, ctx.shop) : Promise.resolve([]),
+    enabled && plan === "pro" ? marginTooLargeOf(ctx.db, ctx.shop) : Promise.resolve([]),
   ]);
   const margin = gated.modules.margin;
   return {
