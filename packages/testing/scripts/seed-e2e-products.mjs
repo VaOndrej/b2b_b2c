@@ -560,14 +560,20 @@ async function main() {
     if (toUpdate.length > 0) {
       const writeResult = await tryWriteCost(execute, costRead.product.id, toUpdate);
       if (writeResult.skipped) {
-        console.log(`    cost step skipped: ${writeResult.message}`);
+        console.log(`    cost step skipped: ${writeResult.message} — planned, not written:`);
+        printCostPlan(plan);
         costSkips += 1;
         continue;
       }
       costCallCounts.push(toUpdate.length);
       // Read back once more so the printed costs reflect what's actually stored.
       const reread = await tryReadCost(execute, product.handle);
-      if (!reread.skipped) finalProduct = reread.product;
+      if (reread.skipped) {
+        console.log(`    written; read-back skipped (${reread.message}) — costs below are the plan, not a read-back:`);
+        printCostPlan(plan);
+        continue;
+      }
+      finalProduct = reread.product;
     }
     printCostPlan(planCostChanges(finalProduct, product));
   }
