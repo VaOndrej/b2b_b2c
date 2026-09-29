@@ -5,6 +5,7 @@
 
 use super::hash::normalize_code;
 use super::js;
+use super::margin::MarginRef;
 
 /// One cart line as the adapter hands it over (CartLineInput).
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -20,15 +21,16 @@ pub struct LineInput<'a> {
     /// Product-wide refs (product metafield `ruleIds`).
     pub rule_ids: &'a [String],
     /// This variant's refs (product metafield `variantRuleIds`), usually none.
-    pub variant_rule_ids: Vec<String>,
+    pub variant_rule_ids: &'a [String],
     /// Margin protection (MVP 2): cost of one item in MAJOR units of the shop
     /// currency, as read from the variant metafield (`cost`); margin.rs decides
     /// whether it is usable. Read only while margin protection is on.
     pub unit_cost: Option<f64>,
     /// The currency of `unit_cost` (the variant metafield's `cur`).
     pub unit_cost_currency: Option<&'a str>,
-    /// Numeric ids of the product's collections with a margin setting (product metafield `marginRefs`).
-    pub margin_refs: Vec<String>,
+    /// Numeric ids of the product's decisive margin collections (product metafield
+    /// `marginRefs`); read only while the payload has collection settings.
+    pub margin_refs: &'a [MarginRef],
 }
 
 /// The node's campaign variables (C4/C7): `id` + `varsVersion` from its
@@ -65,10 +67,10 @@ pub struct NormalizedLine<'a> {
     pub outlet: bool,
     pub gift: bool,
     rule_ids: &'a [String],
-    variant_rule_ids: Vec<String>,
+    variant_rule_ids: &'a [String],
     pub unit_cost: Option<f64>,
     pub unit_cost_currency: Option<&'a str>,
-    pub margin_refs: Vec<String>,
+    pub margin_refs: &'a [MarginRef],
 }
 
 impl NormalizedLine<'_> {
@@ -149,6 +151,7 @@ mod tests {
     #[test]
     fn normalizes_like_cart_ts() {
         let refs = vec!["a".to_string()];
+        let variant = vec!["b".to_string()];
         let cart = normalize_cart(CartInput {
             currency: "czk".into(),
             country_code: Some(" cz "),
@@ -157,7 +160,7 @@ mod tests {
                 quantity: -2,
                 unit_price: 500,
                 rule_ids: &refs,
-                variant_rule_ids: vec!["b".into()],
+                variant_rule_ids: &variant,
                 ..Default::default()
             }],
             entered_codes: vec!["welcome15", " WELCOME15 ", "   ", "b"],

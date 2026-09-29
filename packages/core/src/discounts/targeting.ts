@@ -16,10 +16,21 @@
 // closed for those rules on that product only — and says so in
 // `entry.oversized` for the sync to surface.
 //
-// Margin protection (MVP 2): `marginRefs` = the numeric ids of the product's
-// collections that have a margin setting (only while protection is on; the
-// payload's margin `col` is keyed by the same ids). They are NEVER dropped over
-// the budget: without them the product would fall back to the global setting,
+// Margin protection (MVP 2): `marginRefs` = the numeric ids (the payload's
+// margin `col` keys) of the product's DECISIVE margin collections, at most 2
+// (only while protection is on; drift audit P1, ruling 1): among the product's
+// collections with a margin setting, the one with the highest minimum margin
+// and the one with the lowest maximum discount, each compared by the value it
+// EFFECTIVELY has — a field a collection leaves empty is the global value
+// (resolveMargin), which can be the strictest. Ties: a collection strictest on
+// both (then 1 ref), else the smaller numeric id. `resolveMargin` over them is
+// exactly `resolveMargin` over all of the product's collections (max m, min p
+// over a subset that holds a maximiser and a minimiser; tests/discounts/
+// margin-refs.test.ts), and every checkout run reads ≤ 2 refs per line instead
+// of one per collection (the function's instruction limit). They depend on the
+// VALUES, not only on membership: a value change can move them, so the sync
+// writes them like any other targeting change. They are NEVER dropped over the
+// budget: without them the product would fall back to the global setting,
 // possibly a larger discount than its collection allows. Dropping rule refs
 // only ever means less discount (fail closed).
 //
@@ -31,7 +42,7 @@
 
 import { variantKey } from "./cart.ts";
 import type { ReadonlyDeep, WonDiscountsConfig } from "./config.ts";
-import { marginCollectionIds } from "./margin.ts";
+import { buildMarginPayload, type FunctionMarginPayload, marginCollectionIds } from "./margin.ts";
 
 export { variantKey };
 
@@ -64,8 +75,9 @@ export interface ProductMetafieldValue {
   /** Keyed by the variant's numeric id (variantKey). */
   variantRuleIds: Record<string, string[]>;
   /**
-   * Numeric ids (variantKey of the GID) of the product's collections that have
-   * a margin setting, sorted; absent when none (or margin protection is off).
+   * Numeric ids (variantKey of the GID) of the product's DECISIVE margin
+   * collections (≤ 2, see `decisiveMarginRefs`), sorted; absent when none (or
+   * margin protection is off).
    */
   marginRefs?: string[];
 }
@@ -178,6 +190,34 @@ function scopeOf(target: unknown, ref: string): Scope | null {
   return null;
 }
 
+/** Numeric id order for the `col` keys (canonical digit strings): shorter first, then by digits. */
+const byNumericId = (a: string, b: string) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0);
+
+/**
+ * The product's decisive margin collections (see the header), ≤ 2, sorted:
+ * `keys` = the `col` keys of its margin collections. A key the payload does not
+ * list is ignored (so does resolveMargin). Exact: `resolveMargin(payload,
+ * decisive)` equals `resolveMargin(payload, keys)`, because the strictest
+ * minimum over a set holding the maximiser is the maximum, and likewise the
+ * maximum discount — and the set is empty only when no key has a setting.
+ */
+export function decisiveMarginRefs(payload: ReadonlyDeep<FunctionMarginPayload>, keys: readonly string[]): string[] {
+  if (!payload.enabled || !payload.col) return [];
+  const col = payload.col;
+  const listed = [...new Set(keys)].filter((key) => Object.prototype.hasOwnProperty.call(col, key)).sort(byNumericId);
+  if (listed.length === 0) return [];
+  const globalMin = payload.min ?? 0;
+  const minOf = (key: string) => col[key][0] ?? globalMin;
+  const maxOf = (key: string) => col[key][1] ?? payload.max;
+  const strictestMin = Math.max(...listed.map(minOf));
+  const strictestMax = Math.min(...listed.map(maxOf));
+  const both = listed.find((key) => minOf(key) === strictestMin && maxOf(key) === strictestMax);
+  if (both !== undefined) return [both];
+  const byMin = listed.find((key) => minOf(key) === strictestMin)!;
+  const byMax = listed.find((key) => maxOf(key) === strictestMax)!;
+  return [byMin, byMax].sort();
+}
+
 /**
  * productId → { ruleIds, variantRuleIds, marginRefs? } for every product given
  * (empty entries included, so the sync can clear a stale metafield).
@@ -210,6 +250,7 @@ export function productRuleIndex(
     }
   }
   const marginCollections = new Set(marginCollectionIds(config.modules.margin));
+  const marginPayload = buildMarginPayload(config.modules.margin);
 
   const index = new Map<string, ProductRuleEntry>();
   for (const product of products) {
@@ -231,7 +272,7 @@ export function productRuleIndex(
     const marginRefs =
       marginCollections.size === 0
         ? []
-        : [...new Set(product.collectionIds.filter((id) => marginCollections.has(id)).map(variantKey))].sort();
+        : decisiveMarginRefs(marginPayload, product.collectionIds.filter((id) => marginCollections.has(id)).map(variantKey));
     index.set(product.productId, fitProduct(whole, perVariant, new Set(product.variantIds).size, marginRefs));
   }
   return index;

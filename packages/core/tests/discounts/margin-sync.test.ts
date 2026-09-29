@@ -30,7 +30,7 @@ const MARGIN_ON = {
 
 // --- targeting: marginRefs ------------------------------------------------------------------------
 
-test("marginRefs: numeric ids of the product's collections that have a margin setting (only while protection is on)", () => {
+test("marginRefs: numeric ids of the product's decisive margin collections — strictest minimum, strictest maximum (only while protection is on)", () => {
   const products = [
     { productId: P(1), variantIds: [V(11)], collectionIds: [C(300), C(100), C(200), C(400)] },
     { productId: P(2), variantIds: [V(21)], collectionIds: [C(200)] },
@@ -51,35 +51,41 @@ test("the engine reads marginRefs per line exactly as the metafield carries them
   assert.equal(plan.lines[0].product?.amount, 100_00); // collection 300: at most 10 % without a cost
 });
 
+/** 100 margin collections whose strictest minimum is the 38th and strictest maximum the 72nd (decisive refs). */
+const MARGIN_100 = Array.from({ length: CONFIG_LIMITS.marginOverrides }, (_, i) => ({
+  collectionId: C(900_000_000_000 + i),
+  minMarginPercent: i === 37 ? 40 : 25,
+  maxDiscountPercent: i === 71 ? 10 : 30,
+}));
+const MARGIN_100_DECISIVE = ["900000000037", "900000000071"];
+
 test("over the product budget: rule refs are dropped first — marginRefs never (fail closed: less discount)", () => {
   const variants = Array.from({ length: 400 }, (_, i) => V(44_000_000_000_000 + i));
-  const collections = Array.from({ length: CONFIG_LIMITS.marginOverrides }, (_, i) => C(900_000_000_000 + i));
   const config = configOf(
     [
       pct("a", 10, { target: { kind: "products", productIds: [], variantIds: variants.slice(0, 250) } }),
       pct("b", 10, { target: { kind: "products", productIds: [], variantIds: variants.slice(150, 400) } }),
     ],
-    { modules: { margin: { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: collections.map((collectionId) => ({ collectionId, minMarginPercent: 25 })) } } },
+    { modules: { margin: { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: MARGIN_100 } } },
   );
-  const entry = productRuleIndex(config, [{ productId: P(9), variantIds: variants, collectionIds: collections }]).get(P(9))!;
+  const entry = productRuleIndex(config, [{ productId: P(9), variantIds: variants, collectionIds: MARGIN_100.map((o) => o.collectionId) }]).get(P(9))!;
   const value = productMetafieldValue(entry);
   assert.ok(bytesOf(value) <= PRODUCT_METAFIELD_BUDGET_BYTES, String(bytesOf(value)));
-  assert.equal(value.marginRefs?.length, 100, "every margin collection survives");
+  assert.deepEqual(value.marginRefs, MARGIN_100_DECISIVE, "the decisive margin collections survive");
   assert.ok((entry.oversized?.droppedRefs.length ?? 0) > 0);
 });
 
 test("over the product budget with only product-wide refs left: those are dropped too (longest first), marginRefs stay", () => {
-  const collections = Array.from({ length: CONFIG_LIMITS.marginOverrides }, (_, i) => C(900_000_000_000 + i));
-  const ids = Array.from({ length: 150 }, (_, i) => `rule-${String(i).padStart(3, "0")}-${"x".repeat(i % 2 === 0 ? 50 : 40)}`);
+  const ids = Array.from({ length: 170 }, (_, i) => `rule-${String(i).padStart(3, "0")}-${"x".repeat(i % 2 === 0 ? 50 : 40)}`);
   const config = configOf(
     ids.map((id) => pct(id, 10, { target: { kind: "collections", ids: [C(1)] } })),
-    { modules: { margin: { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: collections.map((collectionId) => ({ collectionId, minMarginPercent: 25 })) } } },
+    { modules: { margin: { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: MARGIN_100 } } },
   );
-  const entry = productRuleIndex(config, [{ productId: P(9), variantIds: [V(1)], collectionIds: [C(1), ...collections] }]).get(P(9))!;
+  const entry = productRuleIndex(config, [{ productId: P(9), variantIds: [V(1)], collectionIds: [C(1), ...MARGIN_100.map((o) => o.collectionId)] }]).get(P(9))!;
   const value = productMetafieldValue(entry);
   assert.ok(entry.oversized!.bytes > PRODUCT_METAFIELD_BUDGET_BYTES);
   assert.ok(bytesOf(value) <= PRODUCT_METAFIELD_BUDGET_BYTES, String(bytesOf(value)));
-  assert.equal(value.marginRefs?.length, 100);
+  assert.deepEqual(value.marginRefs, MARGIN_100_DECISIVE);
   const dropped = entry.oversized!.droppedRefs;
   assert.ok(dropped.length > 0);
   // The longer (50-char tail) refs go first.

@@ -83,7 +83,7 @@ only its own part (src/input.rs; reference: tests/reference-adapter.js).
                   it arrives as null → no discount, no error
   wonProduct      per product `{ruleIds, variantRuleIds?, outlet?, marginRefs?}`
                   (precomputed targeting; `marginRefs` = numeric ids of its
-                  collections with a margin setting, MVP 2)
+                  decisive collections with a margin setting, ≤ 2, MVP 2)
   wonVariant      per variant `$app:won_discounts`/`variant` = `{cost, cur}`: the
                   cost price in MAJOR units of the shop currency (margin
                   protection, MVP 2; read only while margin protection is on)
@@ -156,37 +156,75 @@ the line count above that. `apps/won-discounts/tests/contracts/function.contract
 gates every fixture:
 
 - ordinary fixtures: ≤ 70 % of the (line-scaled) limit;
-- the budget carts (`*-lines-budget`, the worst cases): ≤ **75 %** — 8.25 M up
-  to 200 lines, 20.625 M at 500 — measured with the ids the checkout really
-  sends: rule ids in the app's format (`r_` + 20 hex digits, rule-form.ts
-  `newRuleId`) in the config and the product metafields, cart line ids as Shopify
-  numbers them (`gid://shopify/CartLine/0`, `/1`, … — every line of the dev
-  store's logged function runs), 14-digit variant ids (fixture-builder.js
-  `withRealisticIds`).
+- the budget carts (`*-lines-budget`, the worst cases): ≤ **85 %** — 9.35 M up
+  to 200 lines, 23.375 M at 500;
+- the budget cart with rule ids at the sanitizer's 64-character maximum
+  (`*-long-ids-*-lines-budget`): ≤ **90 %** (9.9 M);
+- every budget cart is an input Shopify can send: ≤ 128 kB of JSON (scaled with
+  the lines) and a shared config ≤ 9 000 B (C7).
 
-Measured with the built Wasm (function-runner), MVP 2:
+The typical carts meet the old 75 % goal with room to spare (MVP 1 cart 50 %,
+margin carts 56–62 %). The 85 % gate protects the realistic worst case, which
+the 75 % gate did not cover (MVP 2 drift audit P1/P2): a Pro cart with a cost
+price, a Pro stack and collection margin settings on every line, whose input
+is near 128 kB. Such carts went over Shopify's limit (101–143 %, no Won discount
+at all); they now stay under 85 %.
 
-| Budget cart (shape) | Instructions | Gate |
-|---|---|---|
-| `lines-200-lines-budget` (MVP 1 worst case: 37 rules, 3–6 refs a line, codes, a Pro stack; margin off) | 6.59 M | 8.25 M |
-| `delivery-200-lines-budget` | 6.32 M | 8.25 M |
-| `lines-margin-200-lines-budget` (the same, margin on, a cost price on every line, a 5 % order discount; every line that can give carries its share: the order stage's shortcut) | 7.73 M | 8.25 M |
-| `delivery-margin-200-lines-budget` | 7.44 M | 8.25 M |
-| `lines-margin-slow-200-lines-budget` (the same with 10 lines that cannot carry their share: the full two-ordering search) | 8.07 M | 8.25 M |
-| `lines-margin-capped-200-lines-budget` (3 of 4 lines cut to their floor, the order discount leaving them out, an output over the budget: stacks relaxed, candidates dropped) | 8.04 M | 8.25 M |
-| `lines-margin-capped-500-lines-budget` (the same on 500 lines) | 18.64 M | 20.625 M |
+Every budget cart carries the ids the checkout really sends: rule ids in the
+app's format (`r_` + 20 hex digits, rule-form.ts `newRuleId`) in the config and
+the product metafields, cart line ids as Shopify numbers them
+(`gid://shopify/CartLine/0`, `/1`, … — every line of the dev store's logged
+function runs), 14-digit variant ids (fixture-builder.js `withRealisticIds`).
 
-Upper bound: rule ids at the sanitizer's maximum of 64 characters make every ref
-longer to read, hash and compare. The same carts then cost 7.34 M (MVP 1), 8.48 M
-(margin, shortcut), 8.81 M (full search), 8.78 M (capped) and 20.49 M (500
-lines): under Shopify's limit (≤ 80 %), over the 75 % gate. The app's own ids
-are 22 characters.
+Measured with the CLI's build (`shopify app function run`, the contract test);
+"before" is the build of commit e58c511:
 
-Most of a run is reading the input (Shopify's provider): about 1.8 M for the
-first access to a 60 kB input, then ~16 k per line, more with longer rule ids;
-a variant cost metafield adds ~3 k per line. Writing the output costs ~1 k per
-target line. What keeps the margin carts in budget:
+| Budget cart (shape) | Before | Now | Gate |
+|---|---|---|---|
+| `lines-200-lines-budget` (MVP 1 worst case: 37 rules, 3–6 refs a line, codes, a Pro stack; margin off) | 6.59 M | 5.46 M (49.7 %) | 9.35 M |
+| `delivery-200-lines-budget` | 6.32 M | 5.19 M | 9.35 M |
+| `lines-margin-200-lines-budget` (the same, margin on, a cost price on every line, a 5 % order discount; the order stage's shortcut) | 7.73 M | 6.49 M | 9.35 M |
+| `delivery-margin-200-lines-budget` | 7.44 M | 6.20 M | 9.35 M |
+| `lines-margin-slow-200-lines-budget` (10 lines that cannot carry their share: the full two-ordering search) | 8.07 M | 6.83 M | 9.35 M |
+| `lines-margin-capped-200-lines-budget` (3 of 4 lines cut to their floor, an output over the budget: stacks relaxed, candidates dropped) | 8.04 M | 6.79 M | 9.35 M |
+| `lines-margin-capped-500-lines-budget` (the same on 500 lines) | 18.64 M | 15.73 M | 23.375 M |
+| `lines-margin-pro-200-lines-budget` (Pro worst case: 37 rules, 4 refs a line, the Pro stack VIP + S_x, a cost price, 2 marginRefs of 100 collections with a margin setting and 2 variant-level refs of other variants on every line, a 10 % order discount, an output over the budget; input 122.6 kB, config 8 997 B) | 11.36 M (103 %) | 9.13 M (83.0 %) | 9.35 M |
+| `lines-margin-pro-500-lines-budget` (the same on 500 lines, input 293 kB) | 26.57 M (96.6 %) | 21.27 M (77.3 %) | 23.375 M |
+| `lines-margin-pro-long-ids-200-lines-budget` (the Pro worst case with 64-character rule ids, as far as the limits allow: 29 collections fit the config, 3–4 refs a line and no variant-level refs fit the input, 125.8 kB) | 10.31 M (93.8 %) | 7.68 M (69.8 %) | 9.9 M |
 
+64-character ids on the full Pro shape would take the input to 175 kB and the
+config to 10.9 kB (Shopify would refuse the input and read no config): 9.25 M
+(84.1 %) even so. The drift audit's P1 inputs (up to 20 marginRefs a product,
+written before the sync kept only the decisive ones): 75–82 % (were 99–143 %).
+The drift audit's heavy generator (random search and hill climbing over rules,
+refs a line, names, collections, costs, caps, stacks and 200–500 lines, every
+input within Shopify's limits), run again on this build: no run over the limit
+(it found up to 143 %), but still up to 92.7 % with the refs the sync writes now
+(≤ 2 marginRefs) and 93.9 % with up to 30 refs written before. Those shapes put
+8–12 rule refs and a Pro stack of several rules on every line, cap most lines
+and fill the input to its limit; the input provider's walk and the reads the
+plan needs are ~61 % of the limit on them.
+
+Most of a run is Shopify's input provider walking the input: every JSON value
+costs it the same whatever the function reads (~2.5 M for a 100 kB cart), and
+every property the function reads is a call into it (~600 instructions). What
+keeps the carts in budget:
+
+- `src/input.rs` reads the input by its JSON value, not through the generated
+  accessors: every key is interned once per run (`json.rs` `Key`), a line's
+  merchandise is read without `__typename`, and an object's keys are looked up
+  only until all it has were found (`Fields`, `WonProduct::read`);
+- decisive marginRefs (≤ 2 a product, core targeting.ts) and no `marginRefs`
+  read at all without collection settings; collection settings looked up by the
+  numeric id (`MarginRef`), and each distinct refs list resolved once per run;
+- `src/engine/table.rs`: the run's lookup tables (rule ids, code hashes, refs
+  lists, collection settings, output grouping, outlet lists) are open-addressing
+  tables with a cheap hash and word-at-a-time key equality — std's HashMap and
+  `memcmp` (a byte loop in Wasm) cost ~300 instructions a lookup; rule ids are
+  ranked once per run in JS string order (`Rule::id_rank`), so "id asc" compares
+  two numbers, and `js::cmp_str` compares a word at a time;
+- the Pro stack search works on bit sets of a line's candidates (which of them
+  stack with which, from the rules' partner lists), without allocating;
 - `src/alloc.rs`: a bump allocator, and nothing a run built is ever dropped;
 - the output mapping keeps the output's size as a running sum and drops the
   least-saving candidates through a heap (re-measuring the order candidate,
@@ -199,13 +237,13 @@ target line. What keeps the margin carts in budget:
 
 | Path | What |
 |---|---|
-| `src/main.rs` | `#[typegen]` + `#[query]` modules, the two Wasm exports (dash-named, as in the JS version) |
+| `src/main.rs` | `#[typegen]` + `#[query]` modules (the input queries checked against the schema at compile time), the two Wasm exports (dash-named, as in the JS version) |
 | `src/cart_lines_discounts_generate_run.rs`, `src/cart_delivery_options_discounts_generate_run.rs` | the two targets |
-| `src/input.rs` | function input → engine cart, config and node role (the reference adapter's `adaptInput`); the margin inputs are read only while protection is on |
-| `src/json.rs` | tolerant readers for the `jsonValue` metafields (product, variant cost), the line price and `presentmentCurrencyRate` (`custom_scalar_overrides`), the per-run outlet-list cache |
+| `src/input.rs` | function input → engine cart, config and node role (the reference adapter's `adaptInput`), read from the input's JSON value; the margin inputs are read only while protection is on, `marginRefs` only with collection settings |
+| `src/json.rs` | the interned object keys (`Key`), tolerant readers for the `jsonValue` metafields (product, variant cost), the line price and `presentmentCurrencyRate`, the per-run outlet-list cache |
 | `src/alloc.rs` | the Wasm build's bump allocator (instruction budget; native tests keep the system allocator) |
 | `src/output.rs` | emission → function output (`@won/core` `function-output.ts`): exact values, rounding ties, grouping, the output budget, delivery groups; written through the Wasm API |
-| `src/engine/` | `config.rs` (shared config), `cart.rs` (normalizeCart), `plan.rs` (planCart, the margin stages of `plan-margin.ts` included), `order_search.rs` (`searchOrderSets`, pure), `margin.rs` (`margin.ts`: the payload reader, floors, cost conversion), `emit.rs` (emitForNode), `hash.rs` (code hash), `money.rs`, `describe.rs`, `fnv.rs` (the lookup maps' word-at-a-time hash), `js.rs` (the JS semantics the engine relies on: Math.round, trim, string order) |
+| `src/engine/` | `config.rs` (shared config), `cart.rs` (normalizeCart), `plan.rs` (planCart, the margin stages of `plan-margin.ts` included), `order_search.rs` (`searchOrderSets`, pure), `margin.rs` (`margin.ts`: the payload reader, floors, cost conversion), `emit.rs` (emitForNode), `hash.rs` (code hash), `money.rs`, `describe.rs`, `table.rs` (the run's lookup tables), `js.rs` (the JS semantics the engine relies on: Math.round, trim, string order) |
 
 Invariants:
 
@@ -231,10 +269,11 @@ not covered by the random parity test.
 - **Unicode case mapping.** Discount codes are upper-cased with Rust's Unicode tables, while the admin hashes them with Node's ICU tables. A code containing a character whose upper-case form differs between those Unicode versions (only recently added characters) hashes differently. It then never matches, which fails closed: that code's rule does not apply.
 - **Outlet lists.** Lines are taken to share one outlet list when the list's length and first element agree. That is always true for what the sync writes, because a product lists its own variant GIDs and a variant belongs to one product. A hand-made metafield where two products list the same first GID but differ further on would be read as one list.
 - **Duplicate JSON keys.** Metafield JSON is stored parsed, so duplicate keys cannot reach the function.
-- **Schema-invalid input.** Input such as a missing `quantity` or no `__typename` makes a generated accessor abort the run: no discount, checkout not blocked. Shopify builds the input from the query, so it cannot happen.
+- **Schema-invalid input.** Shopify builds the input from the query, so it always has the query's shape; the function reads it by that shape (`src/input.rs`, not through the generated accessors): a line's `merchandise` counts as a ProductVariant by its fields (`product`, `wonVariant`, `id`, which only `... on ProductVariant` selects), not by reading `__typename`; a line without an `id` string is skipped and a `quantity` that is not a positive number reads as 0, as in the reference adapter. Input that is not the query's shape (a CustomProduct with product fields, a missing key the schema requires) can differ; it cannot reach the function.
+- **Numbers with 16 or more significant digits, or an exponent outside ±22** (drift audit P3-1). Shopify's input provider and the local runner read JSON numbers with serde_json's fast parser, which can land 1 ulp away from `JSON.parse` for such numbers (`23.794300000050022` reads as `23.794300000050026`; `6.0343000001e-34` likewise). On a cost at a `ceilTol` boundary (x ≈ N + 1e-6 minor units) that moves the floor by 1 minor unit either way. A number beyond the f64 range (`1e400`) makes the runner reject the whole input (no discount, checkout not blocked), where TS reads Infinity. What the app writes never has such numbers: the cost mirror writes Shopify's decimal cost as a number with at most 15 significant digits (`apps/won-discounts/tests/lib/sync/costs-digits.test.ts`), the rule editor and the migration round percents to 2 decimals, and margin percents keep 1 decimal (config/margin.ts); 15 digits and exponents within ±22 are read exactly by both (Clinger's fast path). How production Shopify reads numbers was not observable; the live runs had costs 5 and 6.
 - **Duplicate cart line ids (margin).** A line is margin-tight when it is in the order discount's base; the TS engine decides that by line id, the Rust function by line. They differ only when two cart lines share an id, which Shopify never sends.
 
-Not a difference, but a rule both sides share: `presentmentCurrencyRate` is read as plain decimal digits cut to their first 15 significant digits (`decimalNumber` in the reference adapter, `DecimalNumber` in `src/json.rs`, which reads it without float-parsing tables for the Wasm size limit: one exact division or multiplication). The cut changes a rate by less than 10⁻¹⁴ of itself, far below a haléř on any cost (`lines-margin-rate-long`). Only a rate that after the cut has more than 22 decimals or drops more than 22 integer digits (below 10⁻⁷, above 10³⁶: not a currency rate) reads as no rate; so do junk, a missing rate (`lines-margin-rate-missing`) and a null one — cost prices in another cart currency are then unknown and the maximum-discount ceiling applies (safe). What Shopify actually sends is to be confirmed live (Task 5b, F-M1).
+Not a difference, but a rule both sides share: `presentmentCurrencyRate` is read as plain decimal digits cut to their first 15 significant digits (`decimalNumber` in the reference adapter, `DecimalNumber` in `src/json.rs`, which reads it without float-parsing tables for the Wasm size limit: one exact division or multiplication). The cut changes a rate by less than 10⁻¹⁴ of itself, far below a haléř on any cost (`lines-margin-rate-long`). Only a rate that after the cut has more than 22 decimals or drops more than 22 integer digits (below 10⁻⁷, above 10³⁶: not a currency rate) reads as no rate; so do junk, a missing rate (`lines-margin-rate-missing`) and a null one — cost prices in another cart currency are then unknown and the maximum-discount ceiling applies — never a wrong conversion, but that ceiling is only stricter than no protection, not necessarily than the cost floor (a product whose cost is 70 % of its price keeps a 50 % ceiling). What Shopify actually sends is to be confirmed live (Task 5b, F-M1).
 
 ## Build, dev and test
 

@@ -53,6 +53,8 @@ export const SHOP_CURRENCY = "CZK";
  * @property {RawRule[]} rules
  * @property {Record<string, unknown>} [configExtra]   engine, campaigns … (merchant config)
  * @property {boolean} [realisticIds]   ids as the checkout sends them (budget carts, `withRealisticIds`)
+ * @property {number} [ruleIdLength]    with `realisticIds`: rule ids of this length (the sanitizer's
+ *                                        maximum is 64) instead of the app's 22 characters
  * @property {Record<string, unknown>} [margin]   modules.margin of the merchant config (MVP 2)
  * @property {string} [shopCurrency]      the shop currency (margin `cur`), default SHOP_CURRENCY
  * @property {unknown} [rate]             `presentmentCurrencyRate` (shop → cart), default "1.0";
@@ -146,9 +148,16 @@ export function appRuleId(logical) {
 export function withRealisticIds(s) {
   if (!s.realisticIds) return s;
   const ids = new Map();
+  const long = s.ruleIdLength ?? 22;
+  /** The app id, lengthened to `ruleIdLength` with more digits of the same kind (`[A-Za-z0-9_-]`). */
+  const lengthen = (/** @type {string} */ id) => {
+    let out = id;
+    for (let k = 1; out.length < long; k += 1) out += appRuleId(`${id}#${k}`).slice(2);
+    return out.slice(0, long);
+  };
   const rid = (/** @type {unknown} */ id) => {
     if (typeof id !== "string") return id;
-    if (!ids.has(id)) ids.set(id, appRuleId(id));
+    if (!ids.has(id)) ids.set(id, lengthen(appRuleId(id)));
     return ids.get(id);
   };
   const rules = s.rules.map((r) => ({
@@ -161,7 +170,17 @@ export function withRealisticIds(s) {
     ...l,
     gid: `gid://shopify/CartLine/${l.n - 1}`,
     variantGid: `gid://shopify/ProductVariant/${48468678900000 + (l.variant ?? l.n)}`,
-    ...(l.won ? { won: { ...l.won, ...(Array.isArray(l.won.ruleIds) ? { ruleIds: l.won.ruleIds.map(rid) } : {}) } } : {}),
+    ...(l.won
+      ? {
+          won: {
+            ...l.won,
+            ...(Array.isArray(l.won.ruleIds) ? { ruleIds: l.won.ruleIds.map(rid) } : {}),
+            ...(l.won.variantRuleIds && typeof l.won.variantRuleIds === "object"
+              ? { variantRuleIds: Object.fromEntries(Object.entries(l.won.variantRuleIds).map(([k, refs]) => [k, Array.isArray(refs) ? refs.map(rid) : refs])) }
+              : {}),
+          },
+        }
+      : {}),
   }));
   const remap = (/** @type {unknown} */ v) =>
     JSON.parse(

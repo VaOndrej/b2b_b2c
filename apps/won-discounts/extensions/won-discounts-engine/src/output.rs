@@ -10,7 +10,7 @@ use shopify_function::wasm_api::{write::Error, Context, Serialize};
 
 use crate::engine::emit::{NodeEmission, ProductCandidate};
 use crate::engine::js;
-use crate::engine::fnv::FnvMap;
+use crate::engine::table::{Table, Text};
 use crate::engine::money::{currency_exponent, from_minor_units_with, minor_units_len_with};
 use crate::engine::plan::{CartPlan, EmittedValue, PlanLine, PlanStack, ShippingValue, ValueKind};
 
@@ -282,17 +282,17 @@ struct Pass<'p> {
 
 /// The node's product candidates, grouped by (value, message), under `relax`.
 fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> Pass<'p> {
-    let mut out: Vec<Draft<'p>> = Vec::new();
+    let mut out: Vec<Draft<'p>> = Vec::with_capacity(emission.product.len());
     // Messages are interned: most are one rule's label, the same `&str` for every
     // line, so a lookup by address finds it without hashing the text (a name can
     // be 200 characters); the text is hashed once per new address. Groups are
     // then keyed by (value, message number).
     let n = emission.product.len();
-    let mut message_by_address: FnvMap<(usize, usize), u32> = FnvMap::with_capacity_and_hasher(n, Default::default());
-    let mut message_by_text: FnvMap<&'p str, u32> = FnvMap::with_capacity_and_hasher(n, Default::default());
+    let mut message_by_address: Table<(usize, usize), u32> = Table::with_capacity(n);
+    let mut message_by_text: Table<Text<'p>, u32> = Table::with_capacity(n);
     let mut message_lens: Vec<usize> = Vec::new();
     // Sized once: on a margin-capped cart nearly every candidate is its own group.
-    let mut groups: FnvMap<((u8, u64), u32), usize> = FnvMap::with_capacity_and_hasher(n, Default::default());
+    let mut groups: Table<((u8, u64), u32), usize> = Table::with_capacity(n);
     // Consecutive lines usually carry the same message: the last one skips the address lookup.
     let mut last: ((usize, usize), u32) = ((0, 0), 0);
     let mut any_stack = false;
@@ -316,7 +316,7 @@ fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> 
                 Some(&number) => number,
                 None => {
                     let next = message_lens.len() as u32;
-                    let number = *message_by_text.entry(message).or_insert(next);
+                    let number = *message_by_text.get_or_insert_with(Text(message), || next);
                     if number == next {
                         message_lens.push(quoted_len(message));
                     }
@@ -327,16 +327,13 @@ fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> 
         };
         last = (address, number);
         if let Some(key) = group_key(value) {
-            match groups.entry((key, number)) {
-                std::collections::hash_map::Entry::Occupied(group) => {
-                    let draft = &mut out[*group.get()];
-                    draft.targets.push(c.line_id);
-                    draft.saves = draft.saves.saturating_add(saves);
-                    continue;
-                }
-                std::collections::hash_map::Entry::Vacant(group) => {
-                    group.insert(out.len());
-                }
+            let next = out.len();
+            let group = *groups.get_or_insert_with((key, number), || next);
+            if group != next {
+                let draft = &mut out[group];
+                draft.targets.push(c.line_id);
+                draft.saves = draft.saves.saturating_add(saves);
+                continue;
             }
         }
         out.push(Draft { message, message_len: message_lens[number as usize], targets: vec![c.line_id], value, saves });
@@ -650,7 +647,7 @@ pub fn delivery_result<'p>(
 pub trait Sink: Sized {
     fn object(&mut self, len: usize, f: impl FnOnce(&mut Self) -> Result<(), Error>) -> Result<(), Error>;
     fn array(&mut self, len: usize, f: impl FnOnce(&mut Self) -> Result<(), Error>) -> Result<(), Error>;
-    fn key(&mut self, key: &str) -> Result<(), Error>;
+    fn key(&mut self, key: &'static str) -> Result<(), Error>;
     fn string(&mut self, value: &str) -> Result<(), Error>;
     fn number(&mut self, value: f64) -> Result<(), Error>;
     fn boolean(&mut self, value: bool) -> Result<(), Error>;
@@ -663,7 +660,7 @@ impl Sink for Context {
     fn array(&mut self, len: usize, f: impl FnOnce(&mut Self) -> Result<(), Error>) -> Result<(), Error> {
         self.write_array(f, len)
     }
-    fn key(&mut self, key: &str) -> Result<(), Error> {
+    fn key(&mut self, key: &'static str) -> Result<(), Error> {
         self.write_utf8_str(key)
     }
     fn string(&mut self, value: &str) -> Result<(), Error> {
@@ -682,7 +679,7 @@ impl Sink for Context {
     }
 }
 
-fn write_ids<S: Sink, T: AsRef<str>>(s: &mut S, ids: &[T], wrapper: &str) -> Result<(), Error> {
+fn write_ids<S: Sink, T: AsRef<str>>(s: &mut S, ids: &[T], wrapper: &'static str) -> Result<(), Error> {
     s.array(ids.len(), |s| {
         for id in ids {
             s.object(1, |s| {
@@ -768,7 +765,7 @@ fn write_order_candidate<S: Sink>(s: &mut S, c: &OrderCandidateOut<'_>) -> Resul
 
 fn write_operation<S: Sink, T>(
     s: &mut S,
-    name: &str,
+    name: &'static str,
     candidates: &[T],
     strategy: &str,
     write: impl Fn(&mut S, &T) -> Result<(), Error>,
@@ -939,7 +936,7 @@ impl Sink for JsonText {
     fn array(&mut self, _len: usize, f: impl FnOnce(&mut Self) -> Result<(), Error>) -> Result<(), Error> {
         self.container(false, f)
     }
-    fn key(&mut self, key: &str) -> Result<(), Error> {
+    fn key(&mut self, key: &'static str) -> Result<(), Error> {
         if let Some((true, count)) = self.stack.last_mut() {
             let first = *count == 0;
             *count += 1;

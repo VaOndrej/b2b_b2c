@@ -10,7 +10,7 @@ use shopify_function::run_function_with_input;
 use super::cart::{CampaignInput, CartInput, LineInput};
 use super::config::Config;
 use super::emit::{emit_for_node, NodeEmission, NodeRole};
-use super::margin::{ceil_tol, cost_minor_units, margin_floor_unit, resolve_margin, MarginBasis, MARGIN_TOLERANCE};
+use super::margin::{ceil_tol, cost_minor_units, margin_floor_unit, resolve_margin, MarginBasis, MarginRef, MARGIN_TOLERANCE};
 use super::order_search::{search_order_sets, OrderSet, OrderSetLine};
 use super::plan::{plan_cart, CartPlan, EmittedValue, Excluded, PlanFailure, RuleState, ShippingValue};
 use crate::json::ShopConfig;
@@ -47,7 +47,7 @@ struct Line {
     /// Margin protection: cost of one item in MAJOR units of `cur` (variant metafield).
     cost: Option<f64>,
     cur: Option<&'static str>,
-    margin_refs: Vec<String>,
+    margin_refs: Vec<MarginRef>,
 }
 
 fn line(id: &'static str, qty: i64, price: i64, refs: &[&str]) -> Line {
@@ -82,10 +82,10 @@ fn cart<'a>(lines: &'a [Line], codes: &[&'a str]) -> CartInput<'a> {
                 outlet: l.outlet,
                 gift: l.gift,
                 rule_ids: &l.refs,
-                variant_rule_ids: Vec::new(),
+                variant_rule_ids: &[],
                 unit_cost: l.cost,
                 unit_cost_currency: l.cur,
-                margin_refs: l.margin_refs.clone(),
+                margin_refs: &l.margin_refs,
             })
             .collect(),
         entered_codes: codes.to_vec(),
@@ -663,7 +663,8 @@ fn the_margin_payload_is_read_tolerantly_and_off_unless_exactly_on() {
     )
     .unwrap();
     assert_eq!((on.min, on.max, on.cur.as_deref()), (Some(0.0), 100.0, None));
-    let col: Vec<_> = on.col.iter().map(|(k, m, p)| (k.as_str(), (*m, *p))).collect();
+    let col: Vec<_> = on.col.entries().into_iter().map(|(k, m, p)| (k, (m, p))).collect();
+    let col: Vec<_> = col.iter().map(|(k, v)| (k.as_str(), *v)).collect();
     assert_eq!(col, vec![("1", (Some(95.0), None)), ("2", (None, Some(0.0))), ("5", (None, None))]);
     let eur = read(r#"{"enabled": true, "max": 30, "min": "x", "cur": "EUR"}"#).unwrap();
     assert_eq!((eur.min, eur.max, eur.cur.as_deref(), eur.col.len()), (None, 30.0, Some("EUR"), 0));
@@ -681,7 +682,7 @@ fn a_product_takes_the_strictest_of_its_collections_settings() {
     };
     let payload = read(r#"{"enabled": true, "min": 10, "max": 50, "col": {"1": [30, null], "2": [null, 10], "3": [null, null]}}"#);
     let settings = |refs: &[&str]| {
-        let refs: Vec<String> = refs.iter().map(|r| r.to_string()).collect();
+        let refs: Vec<MarginRef> = refs.iter().map(|r| MarginRef::from(*r)).collect();
         let s = resolve_margin(&payload, &refs);
         (s.min_margin_percent, s.max_discount_percent, s.collection)
     };
@@ -693,10 +694,25 @@ fn a_product_takes_the_strictest_of_its_collections_settings() {
     assert_eq!(settings(&["99"]), (10.0, 50.0, false));
     // No `min`: 0 (never below the cost). A "__proto__" key never matches (JS object semantics).
     let bare = read(r#"{"enabled": true, "max": 40, "col": {"__proto__": [90, 0], "7": [null, 5]}}"#);
-    let s = resolve_margin(&bare, &["__proto__".to_string()]);
+    let s = resolve_margin(&bare, &[MarginRef::from("__proto__")]);
     assert_eq!((s.min_margin_percent, s.max_discount_percent, s.collection), (0.0, 40.0, false));
-    let s = resolve_margin(&bare, &["7".to_string()]);
+    let s = resolve_margin(&bare, &[MarginRef::from("7")]);
     assert_eq!((s.min_margin_percent, s.max_discount_percent, s.collection), (0.0, 5.0, true));
+    // A key matches a ref only by its exact text: numeric ids are read as numbers,
+    // so "007", "+7", " 7", "7.0" and 20-digit ids (past u64) must stay texts.
+    let texts = read(
+        r#"{"enabled": true, "max": 50, "col": {"007": [1, null], "7": [2, null], "0": [3, null], "7.0": [4, null],
+            "18446744073709551616": [5, null], "18446744073709551615": [6, null], "abc": [7, null], "": [8, null]}}"#,
+    );
+    let min_of = |r: &str| {
+        let s = resolve_margin(&texts, &[MarginRef::from(r)]);
+        s.collection.then_some(s.min_margin_percent)
+    };
+    let got: Vec<_> = ["007", "7", "0", "7.0", "18446744073709551616", "18446744073709551615", "abc", "", "00", "+7", " 7", "1844674407370955161"]
+        .iter()
+        .map(|r| min_of(r))
+        .collect();
+    assert_eq!(got, vec![Some(1.0), Some(2.0), Some(3.0), Some(4.0), Some(5.0), Some(6.0), Some(7.0), Some(8.0), None, None, None, None]);
 }
 
 #[test]

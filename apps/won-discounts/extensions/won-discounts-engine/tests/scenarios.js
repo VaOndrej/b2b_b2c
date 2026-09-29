@@ -890,6 +890,9 @@ function allScenarios() {
   marginSlowBudget(),
   marginCappedBudget(200),
   marginCappedBudget(500),
+  marginProBudget({ lines: 200, siblings: 2 }),
+  marginProBudget({ lines: 500, siblings: 2 }),
+  marginProBudget({ lines: 200, siblings: 0, ruleIdLength: 64, refsPerLine: (i) => (i % 3 === 0 ? 4 : 3), collections: 29 }),
   ];
 }
 
@@ -1374,6 +1377,145 @@ function marginCappedBudget(count) {
     margin: marginOn({ minMarginPercent: MARGIN_BUDGET_MIN, maxDiscountPercent: 40 }),
     role: AUTO,
     entered: CODE_RULES.map((c) => c.code),
+    lines,
+    expected: out(products(...kept.map(({ message, targets, value }) => ({ message, targets, value }))), orderOp),
+  };
+}
+
+// --- The Pro worst case with margin protection (instruction budget, MVP 2 drift audit P1/P2) ---
+//
+// Everything a Pro cart can put on every line at once, within the shop config's
+// 9 000 B (37 rules and 100 collections leave room for one rule's combinesWith)
+// and the 128 kB function input (scaled above 200 lines):
+//   - 37 rules: "VIP" 2,5 % stacks (Pro combinesWith) with S1–S8; S1–S33
+//     (whole percents); an entered code rule no line has; a 10 % order discount;
+//     free shipping;
+//   - every line: 4 rule refs (VIP, one of S1–S8, two of S9–S33), a cost price,
+//     2 marginRefs of the 100 collections with a margin setting (the decisive
+//     ones, core targeting.ts), and 2 variant-level refs of other variants of
+//     its product (they fill the input towards 128 kB: the function reads its
+//     own variant's key, and the input provider walks every value);
+//   - ids as the checkout sends them (`realisticIds`).
+// The expected output by a simple model of the rules:
+//   - a line's winner is its Pro stack S_x + VIP (6–13 % + 2,5 %, more than any
+//     single rule): exact, it is not a whole percent, so it is its amount per
+//     item — one candidate per line, over the output budget. By the output rules
+//     every Pro stack then goes to its top rule, S_x's own percent, and those
+//     group: the output fits;
+//   - no line is capped (the strictest collection minimum, 33,3 %, puts the floor
+//     at 45 % of the price; the stack leaves at least 84,5 %), and every line can
+//     carry its share of the 10 % order discount on both allocation bases, so the
+//     order discount is its full amount, emitted exactly (margin protection on).
+
+const PRO_SPOKES = 8;
+const PRO_RULES = 33;
+const PRO_MARGIN_MIN = 20;
+/** Percent of S1–S33: 6–13 % for the VIP partners S1–S8, else 3–6 %. */
+const proPercent = (/** @type {number} */ k) => (k <= PRO_SPOKES ? 6 + (k % 8) : 3 + (k % 4));
+/** The 13-digit numeric id of collection k (Shopify's are 13 digits today). */
+const proCollection = (/** @type {number} */ k) => String(4829301938475 + k * 104729);
+/** A collection's margin setting: [minimum margin, maximum discount], undefined = the global value. */
+const proSetting = (/** @type {number} */ k) => /** @type {[number | undefined, number | undefined]} */ ([[10.5, 30.5], [25, undefined], [undefined, 45.5], [33.3, 60]][k % 4]);
+
+function proRules() {
+  const spokes = Array.from({ length: PRO_SPOKES }, (_, k) => `s${k + 1}`);
+  const rules = [pct("vip", 2.5, { name: "VIP", combinesWith: { ruleIds: spokes } })];
+  for (let k = 1; k <= PRO_RULES; k += 1) rules.push(pct(`s${k}`, proPercent(k), { name: `S${k}` }));
+  rules.push(withCodes(["PROCODE"], pct("c1", 1, { name: "Kód" })));
+  rules.push(orderPct("o10", 10, { name: "Objednávka" }));
+  rules.push(freeShip("ship", { name: "Doprava" }));
+  if (rules.length !== 37) throw new Error("marginProBudget: 37 rules");
+  return rules;
+}
+
+/**
+ * @param {{ lines: number, siblings: number, ruleIdLength?: number, refsPerLine?: (i: number) => number, collections?: number }} shape
+ * @returns {Scenario}
+ */
+function marginProBudget({ lines: count, siblings, ruleIdLength = 22, refsPerLine = () => 4, collections = 100 }) {
+  const rest = PRO_RULES - PRO_SPOKES;
+  const lines = [];
+  /** @type {{ key: string | null, message: string, value: unknown, target: unknown, amount: number }[]} */
+  const exactRows = [];
+  const degradedRows = [];
+  /** @type {{ a: number, s: number, h: number }[]} */
+  const open = [];
+  for (let i = 1; i <= count; i += 1) {
+    const x = 1 + (i % PRO_SPOKES);
+    const y = PRO_SPOKES + 1 + (i % rest);
+    let z = PRO_SPOKES + 1 + ((i * 7 + 1) % rest);
+    if (z === y) z = PRO_SPOKES + 1 + ((y - PRO_SPOKES) % rest);
+    const refs = ["vip", `s${x}`, `s${y}`, `s${z}`].slice(0, refsPerLine(i));
+    const price = 100 + 2 * i; // Kč, even: every percent here is a whole number of haléřů
+    const q = 1 + (i % 3);
+    const cost = Math.round(price * 30) / 100; // 30 % of the price, Kč
+    const k1 = (i * 3) % collections;
+    const k2 = (i * 3 + Math.floor(collections / 2)) % collections;
+    /** @type {Record<string, unknown>} */
+    const won = { ruleIds: refs, marginRefs: [proCollection(k1), proCollection(k2)].sort() };
+    if (siblings > 0) {
+      won.variantRuleIds = Object.fromEntries(
+        Array.from({ length: siblings }, (_, j) => [String(48468678900000 + 100000 + i * 10 + j), [`s${PRO_SPOKES + 1 + ((i + j) % rest)}`]]),
+      );
+    }
+    lines.push({ n: i, price: `${price}.0`, qty: q, won, variantMeta: costOf(cost) });
+
+    const s = price * 100 * q;
+    const amount = (/** @type {number} */ p) => Math.round((s * p) / 100);
+    // The best single rule and the Pro stack S_x + VIP.
+    const single = Math.max(...refs.slice(1).map((r) => amount(proPercent(Number(r.slice(1))))));
+    const total = amount(proPercent(x)) + amount(2.5);
+    if (total <= single) throw new Error(`marginProBudget: line ${i} must take its Pro stack`);
+    // The strictest minimum margin of its two collections (an empty one is the global 20 %).
+    const minMargin = Math.max(...[k1, k2].map((k) => proSetting(k)[0] ?? PRO_MARGIN_MIN));
+    const floorUnit = ceilTol((cost * 100) / (1 - minMargin / 100));
+    const headroom = s - floorUnit * q;
+    if (total > headroom) throw new Error(`marginProBudget: line ${i} must keep its stack`);
+    const a = s - total;
+    open.push({ a, s, h: a - floorUnit * q - 1 });
+    const target = { cartLine: { id: lineId(i) } };
+    if (total % q !== 0) throw new Error(`marginProBudget: line ${i} stack must split per item`);
+    exactRows.push({ key: `e${total / q}`, message: `S${x} + VIP`, value: perItem(kc(total / q)), target, amount: total });
+    degradedRows.push({ key: `p${proPercent(x)}`, message: `S${x}`, value: percent(proPercent(x)), target, amount: amount(proPercent(x)) });
+  }
+  const S = open.reduce((sum, l) => sum + l.a, 0);
+  const S0 = open.reduce((sum, l) => sum + l.s, 0);
+  const wanted = Math.round((S * 10) / 100);
+  for (const l of open) {
+    if (Math.floor((l.h * S) / l.a) < wanted || Math.floor((l.h * S0) / l.s) < wanted) throw new Error("marginProBudget: every line must carry the order");
+  }
+  const orderOp = order("Objednávka", [], amountOff(kc(wanted)));
+  const budget = Math.floor((OUTPUT_BUDGET * Math.max(200, count)) / 200);
+  const size = (/** @type {{ message: string, targets: unknown[], value: unknown }[]} */ list) =>
+    bytes(out(products(...list.map(({ message, targets, value }) => ({ message, targets, value }))), orderOp));
+  if (size(groupRows(exactRows)) <= budget) throw new Error("marginProBudget: the exact output must be over the budget");
+  const kept = groupRows(degradedRows);
+  if (size(kept) > budget) throw new Error("marginProBudget: the stacks at their top rule must fit the budget");
+  const perCollection = Array.from({ length: collections }, (_, k) => {
+    const [m, p] = proSetting(k);
+    return {
+      collectionId: `gid://shopify/Collection/${proCollection(k)}`,
+      ...(m === undefined ? {} : { minMarginPercent: m }),
+      ...(p === undefined ? {} : { maxDiscountPercent: p }),
+    };
+  });
+  const long = ruleIdLength !== 22;
+  return {
+    name: long ? `lines-margin-pro-long-ids-${count}-lines-budget` : `lines-margin-pro-${count}-lines-budget`,
+    realisticIds: true,
+    ...(long ? { ruleIdLength } : {}),
+    description:
+      `Instruction budget, the Pro worst case with margin protection (drift audit P1/P2): ${count} lines, each with ${long ? "3–4" : 4} rule refs, the Pro stack VIP + S_x, a cost price and 2 marginRefs of ${collections} collections with a margin setting` +
+      (siblings > 0 ? `, and ${siblings} variant-level refs of other variants of its product (the input near Shopify's ${128 * Math.max(1, count / 200)} kB)` : "") +
+      `; 37 rules, a 10 % order discount. The exact output is over the budget: every stack goes to its top rule. ` +
+      (long
+        ? `Rule ids at the sanitizer's maximum of ${ruleIdLength} characters: the same shape as far as Shopify's limits allow it (the config keeps ${collections} collections within its 9 000 B; with 4 refs on every 3rd line and 3 on the others, and no refs of other variants, the input stays within 128 kB): within 90 % of Shopify's limit.`
+        : `With the ids the checkout sends: within 85 % of Shopify's (line-scaled) limit.`),
+    target: "lines",
+    rules: proRules(),
+    margin: marginOn({ minMarginPercent: PRO_MARGIN_MIN, maxDiscountPercent: 40 }, perCollection),
+    role: AUTO,
+    entered: ["PROCODE"],
     lines,
     expected: out(products(...kept.map(({ message, targets, value }) => ({ message, targets, value }))), orderOp),
   };

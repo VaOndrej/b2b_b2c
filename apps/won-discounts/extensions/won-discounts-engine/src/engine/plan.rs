@@ -21,10 +21,10 @@ use std::borrow::Cow;
 use super::cart::{normalize_cart, CartInput, NormalizedCart, NormalizedLine};
 use super::config::{Config, EngineFlags, FieldsRef, RawCampaign, RawRule, TargetKind, ValueSpec};
 use super::describe::{describe_short, DescribedValue};
-use super::fnv::FnvMap;
+use super::table::{bytes_eq, Table, Text};
 use super::hash::code_hash;
 use super::js;
-use super::margin::{resolve_margin, CostContext, FloorRule, MarginPayload};
+use super::margin::{resolve_margin, CostContext, FloorRule, MarginPayload, MarginRef};
 use super::order_search::{search_order_sets, OrderSetLine};
 
 // --- Plan shape -------------------------------------------------------------------------------
@@ -113,6 +113,9 @@ pub struct Rule<'a> {
     pub combines: &'a [String],
     /// None = eligible.
     pub state: Option<RuleState>,
+    /// The position of `id` among the plan's rule ids in JS string order (ids
+    /// are unique): "id asc" compares these instead of the texts.
+    pub id_rank: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -192,7 +195,7 @@ impl CartPlan<'_> {
     }
 }
 
-type IdMap<'a> = FnvMap<&'a str, usize>;
+type IdMap<'a> = Table<Text<'a>, usize>;
 
 // --- Stage: rules as they are right now ------------------------------------------------------
 
@@ -245,6 +248,7 @@ fn read_rule<'a>(raw: &'a RawRule, fields: FieldsRef<'a>, cart: &NormalizedCart)
         segment_targeted: fields.targeting.segment_targeted,
         combines: fields.combines,
         state: None,
+        id_rank: 0,
     })
 }
 
@@ -273,7 +277,7 @@ fn resolve_rules<'a>(config: &'a Config, cart: &NormalizedCart) -> Resolved<'a> 
     let mut rules: Vec<Rule<'a>> = Vec::with_capacity(config.rules.len());
     let mut retargeted = Vec::with_capacity(config.rules.len());
     for raw in &config.rules {
-        if rules.iter().any(|r| r.id == raw.id) {
+        if rules.iter().any(|r| bytes_eq(r.id.as_bytes(), raw.id.as_bytes())) {
             continue;
         }
         let mut fields = raw.fields.view();
@@ -299,17 +303,17 @@ fn match_codes(rules: &[Rule], cart: &NormalizedCart) -> Vec<Vec<String>> {
     if cart.entered_codes.is_empty() {
         return entered_by_rule;
     }
-    let mut owner_by_hash: FnvMap<&str, usize> = FnvMap::default();
+    let mut owner_by_hash: Table<Text, usize> = Table::default();
     for (i, rule) in rules.iter().enumerate() {
         if !rule.method_code {
             continue;
         }
         for hash in rule.code_hashes {
-            owner_by_hash.entry(hash.as_str()).or_insert(i);
+            owner_by_hash.get_or_insert_with(Text(hash.as_str()), || i);
         }
     }
     for code in &cart.entered_codes {
-        if let Some(&owner) = owner_by_hash.get(code_hash(code).as_str()) {
+        if let Some(&owner) = owner_by_hash.get(&Text(code_hash(code).as_str())) {
             entered_by_rule[owner].push(code.clone());
         }
     }
@@ -358,29 +362,54 @@ fn line_rule_ids<'r>(
     retargeted: &[bool],
     by_id: &IdMap,
     id_has_at: &[bool],
+    seen: &mut Seen,
 ) -> Vec<usize> {
-    let mut out: Vec<usize> = Vec::new();
+    let mut out: Vec<usize> = Vec::with_capacity(refs.size_hint().0);
+    seen.next_line();
     for r in refs {
         // The common ref is a rule id without '@': one lookup, no search for the
         // '@' (a ref equal to such an id has none either).
-        let whole = by_id.get(r).copied().filter(|&i| !id_has_at[i]);
+        let whole = by_id.get(&Text(r)).copied().filter(|&i| !id_has_at[i]);
         let hit = match whole {
             Some(i) => Some(i).filter(|&i| !retargeted[i]),
             None => match r.find('@') {
-            None => by_id.get(r).copied().filter(|&i| !retargeted[i]),
+            None => by_id.get(&Text(r)).copied().filter(|&i| !retargeted[i]),
             Some(at) => by_id
-                .get(&r[..at])
+                .get(&Text(&r[..at]))
                 .copied()
                 .filter(|&i| retargeted[i] && campaign_id == Some(&r[at + 1..])),
             },
         };
         if let Some(i) = hit {
-            if !out.contains(&i) {
+            if seen.first(i) {
                 out.push(i);
             }
         }
     }
     out
+}
+
+/// The rules one line already listed (a stamp per rule, the line's number).
+struct Seen {
+    stamps: Vec<u32>,
+    line: u32,
+}
+
+impl Seen {
+    fn new(rules: usize) -> Self {
+        Self { stamps: vec![0; rules], line: 0 }
+    }
+
+    fn next_line(&mut self) {
+        self.line += 1;
+    }
+
+    /// True the first time rule `i` is seen on this line.
+    fn first(&mut self, i: usize) -> bool {
+        let fresh = self.stamps[i] != self.line;
+        self.stamps[i] = self.line;
+        fresh
+    }
 }
 
 // --- Stage: eligibility ---------------------------------------------------------------------------
@@ -453,7 +482,16 @@ fn by_rank(rules: &[Rule], a: &Component, b: &Component) -> std::cmp::Ordering {
     b.amount
         .cmp(&a.amount)
         .then_with(|| rules[b.rule].priority.cmp(&rules[a.rule].priority))
-        .then_with(|| js::cmp_str(rules[a.rule].id, rules[b.rule].id))
+        .then_with(|| rules[a.rule].id_rank.cmp(&rules[b.rule].id_rank))
+}
+
+/// Every rule's `id_rank`: its id's position in JS string order.
+fn rank_ids(rules: &mut [Rule]) {
+    let mut order: Vec<usize> = (0..rules.len()).collect();
+    order.sort_by(|&a, &b| js::cmp_str(rules[a].id, rules[b].id));
+    for (rank, i) in order.into_iter().enumerate() {
+        rules[i].id_rank = rank as u32;
+    }
 }
 
 /// Owner of a stack: among its CODE components when there is one (the code shows
@@ -464,30 +502,90 @@ fn owner_of(rules: &[Rule], components: &[Component]) -> usize {
     let mut owner = pool.next().map_or(components[0].rule, |c| c.rule);
     for c in pool {
         let (r, o) = (&rules[c.rule], &rules[owner]);
-        if r.priority > o.priority || (r.priority == o.priority && js::cmp_str(r.id, o.id).is_lt()) {
+        if r.priority > o.priority || (r.priority == o.priority && r.id_rank < o.id_rank) {
             owner = c.rule;
         }
     }
     owner
 }
 
-/// Symmetric Pro combinesWith relation: A stacks with B if either lists the other.
-fn partners_of(rules: &[Rule], by_id: &IdMap) -> Vec<Vec<usize>> {
-    let mut partners = vec![Vec::new(); rules.len()];
+/// Symmetric Pro combinesWith relation: A stacks with B if either lists the
+/// other. Kept as lists and as a bit matrix (a pair is tested in O(1) when a
+/// line's candidates are searched for a stack).
+struct Partners {
+    lists: Vec<Vec<usize>>,
+    /// Row `a` (`words` u64s): bit `b` set when a and b stack.
+    bits: Vec<u64>,
+    words: usize,
+}
+
+impl Partners {
+    fn has_any(&self, a: usize) -> bool {
+        !self.lists[a].is_empty()
+    }
+
+    fn stack(&self, a: usize, b: usize) -> bool {
+        (self.bits[a * self.words + b / 64] >> (b % 64)) & 1 == 1
+    }
+
+    /// `adjacent[i]`: the candidates (bit j = `positive[j]`) that candidate i stacks with.
+    fn adjacency(&self, positive: &[Component], adjacent: &mut [u64]) {
+        if self.words == 1 {
+            // Up to 64 rules: a rule's partners are one word; map them to positions.
+            let mut position = [0u8; 64];
+            let mut here: u64 = 0;
+            for (j, c) in positive.iter().enumerate() {
+                position[c.rule] = j as u8;
+                here |= 1 << c.rule;
+            }
+            for (i, c) in positive.iter().enumerate() {
+                let mut rules = self.bits[c.rule] & here;
+                let mut mask = 0u64;
+                while rules != 0 {
+                    mask |= 1 << position[rules.trailing_zeros() as usize];
+                    rules &= rules - 1;
+                }
+                adjacent[i] = mask;
+            }
+            return;
+        }
+        for (i, a) in positive.iter().enumerate() {
+            let mut mask = 0u64;
+            for (j, b) in positive.iter().enumerate() {
+                if self.stack(a.rule, b.rule) {
+                    mask |= 1 << j;
+                }
+            }
+            adjacent[i] = mask;
+        }
+    }
+}
+
+fn partners_of(rules: &[Rule], by_id: &IdMap) -> Partners {
+    let words = rules.len().div_ceil(64);
+    let mut out = Partners { lists: vec![Vec::new(); rules.len()], bits: Vec::new(), words };
     let mut link = |a: usize, b: usize| {
-        if a != b && !partners[a].contains(&b) {
-            partners[a].push(b);
+        if a != b && !out.lists[a].contains(&b) {
+            out.lists[a].push(b);
         }
     };
     for (i, rule) in rules.iter().enumerate() {
         for other in rule.combines {
-            if let Some(&j) = by_id.get(other.as_str()) {
+            if let Some(&j) = by_id.get(&Text(other.as_str())) {
                 link(i, j);
                 link(j, i);
             }
         }
     }
-    partners
+    if out.lists.iter().any(|l| !l.is_empty()) {
+        out.bits = vec![0; rules.len() * words];
+        for (a, list) in out.lists.iter().enumerate() {
+            for &b in list {
+                out.bits[a * words + b / 64] |= 1 << (b % 64);
+            }
+        }
+    }
+    out
 }
 
 struct Picked {
@@ -509,20 +607,33 @@ fn sort_by_rank(rules: &[Rule], list: &mut [Component]) {
     }
     for i in 1..list.len() {
         let mut j = i;
-        while j > 0 && by_rank(rules, &list[j - 1], &list[j]).is_gt() {
+        while j > 0 && ranks_after(rules, &list[j - 1], &list[j]) {
             list.swap(j - 1, j);
             j -= 1;
         }
     }
 }
 
-fn pick(rules: &[Rule], positive: &mut [Component], cap: i64, partners: &[Vec<usize>], any_partners: bool) -> Picked {
+/// `by_rank(a, b).is_gt()`: `a` ranks after `b` (the amounts decide, nearly always).
+#[inline]
+fn ranks_after(rules: &[Rule], a: &Component, b: &Component) -> bool {
+    if a.amount != b.amount {
+        return a.amount < b.amount;
+    }
+    let (ra, rb) = (&rules[a.rule], &rules[b.rule]);
+    if ra.priority != rb.priority {
+        return ra.priority < rb.priority;
+    }
+    ra.id_rank > rb.id_rank
+}
+
+fn pick(rules: &[Rule], positive: &mut [Component], cap: i64, partners: &Partners, any_partners: bool) -> Picked {
     if positive.len() > 1 {
         sort_by_rank(rules, positive);
     }
     // No candidate here has a Pro partner: the search below would keep the single
     // best candidate too.
-    let stackable = any_partners && positive.len() > 1 && positive.iter().any(|c| !partners[c.rule].is_empty());
+    let stackable = any_partners && positive.len() > 1 && positive.iter().any(|c| partners.has_any(c.rule));
     if !stackable {
         // The single best candidate (no Pro stacking possible), capped at `cap`.
         let best = positive[0];
@@ -530,21 +641,40 @@ fn pick(rules: &[Rule], positive: &mut [Component], cap: i64, partners: &[Vec<us
         let components = if amount > 0 { vec![Component { rule: best.rule, amount }] } else { Vec::new() };
         return Picked { components, total: amount.max(0) };
     }
+    let chosen = if positive.len() <= 64 { stack_search_small(positive, cap, partners) } else { stack_search(positive, cap, partners) };
+    let mut components = Vec::with_capacity(chosen.len());
+    let mut remaining = cap;
+    for c in chosen {
+        let amount = c.amount.min(remaining);
+        if amount <= 0 {
+            continue;
+        }
+        components.push(Component { rule: c.rule, amount });
+        remaining -= amount;
+    }
+    Picked { components, total: cap - remaining }
+}
+
+/// The Pro stack search (see `pick`): from every seed in rank order that has a
+/// partner and is not already in a stack, the seed plus every other candidate
+/// that stacks with all the set's members; the set saving the most wins (a tie
+/// keeps the earlier seed's), else the single best candidate. The chosen
+/// components in rank order.
+fn stack_search(positive: &[Component], cap: i64, partners: &Partners) -> Vec<Component> {
     let mut chosen: Vec<Component> = vec![positive[0]];
     let mut best_total = cap.min(positive[0].amount);
     let mut covered = vec![false; positive.len()];
     for (si, seed) in positive.iter().enumerate() {
-        let mine = &partners[seed.rule];
-        if mine.is_empty() || covered[si] {
+        if !partners.has_any(seed.rule) || covered[si] {
             continue;
         }
         // Indices into `positive`, which is in rank order: ascending index = rank order.
         let mut set = vec![si];
         for (ci, c) in positive.iter().enumerate() {
-            if ci == si || !mine.contains(&c.rule) {
+            if ci == si || !partners.stack(seed.rule, c.rule) {
                 continue;
             }
-            if set.iter().all(|&s| s == si || partners[positive[s].rule].contains(&c.rule)) {
+            if set.iter().all(|&s| s == si || partners.stack(positive[s].rule, c.rule)) {
                 set.push(ci);
             }
         }
@@ -561,17 +691,54 @@ fn pick(rules: &[Rule], positive: &mut [Component], cap: i64, partners: &[Vec<us
             chosen = set.iter().map(|&i| positive[i]).collect();
         }
     }
-    let mut components = Vec::with_capacity(chosen.len());
-    let mut remaining = cap;
-    for c in chosen {
-        let amount = c.amount.min(remaining);
-        if amount <= 0 {
+    chosen
+}
+
+/// `stack_search` for up to 64 candidates, with bit sets (bit i = the i-th
+/// candidate in rank order): the candidates each one stacks with are found once
+/// (`adjacency`), then the same sets are built and compared in the same order.
+fn stack_search_small(positive: &[Component], cap: i64, partners: &Partners) -> Vec<Component> {
+    let n = positive.len();
+    let mut adjacent = [0u64; 64];
+    partners.adjacency(positive, &mut adjacent[..n]);
+    let mut chosen: u64 = 1;
+    let mut best_total = cap.min(positive[0].amount);
+    let mut covered: u64 = 0;
+    for si in 0..n {
+        // No partner here (none at all, or none among these candidates): its set would be itself.
+        if adjacent[si] == 0 || covered >> si & 1 == 1 {
             continue;
         }
-        components.push(Component { rule: c.rule, amount });
-        remaining -= amount;
+        let mut others: u64 = 0;
+        let mut rest = adjacent[si];
+        while rest != 0 {
+            let ci = rest.trailing_zeros() as usize;
+            rest &= rest - 1;
+            // Every member added so far (besides the seed) must stack with it too.
+            if others & !adjacent[ci] == 0 {
+                others |= 1 << ci;
+            }
+        }
+        let set = others | 1 << si;
+        covered |= set;
+        let mut total: i64 = 0;
+        let mut bits = set;
+        while bits != 0 {
+            total = total.saturating_add(positive[bits.trailing_zeros() as usize].amount);
+            bits &= bits - 1;
+        }
+        let total = cap.min(total);
+        if total > best_total {
+            best_total = total;
+            chosen = set;
+        }
     }
-    Picked { components, total: cap - remaining }
+    let mut out = Vec::with_capacity(chosen.count_ones() as usize);
+    while chosen != 0 {
+        out.push(positive[chosen.trailing_zeros() as usize]);
+        chosen &= chosen - 1;
+    }
+    out
 }
 
 fn build_stack<'a>(
@@ -586,8 +753,16 @@ fn build_stack<'a>(
     let (value, message) = if picked.components.len() == 1 {
         (natural_value(&picked.components[0]), rules[picked.components[0].rule].label.clone())
     } else {
-        let labels: Vec<&str> = picked.components.iter().map(|c| rules[c.rule].label.as_ref()).collect();
-        (EmittedValue::FixedTotal(picked.total), Cow::Owned(labels.join(" + ")))
+        // `labels.join(" + ")`, written once into a string of the exact size.
+        let len = picked.components.iter().map(|c| rules[c.rule].label.len() + 3).sum::<usize>() - 3;
+        let mut message = String::with_capacity(len);
+        for (k, c) in picked.components.iter().enumerate() {
+            if k > 0 {
+                message.push_str(" + ");
+            }
+            message.push_str(&rules[c.rule].label);
+        }
+        (EmittedValue::FixedTotal(picked.total), Cow::Owned(message))
     };
     Some(PlanStack { components: picked.components, amount: picked.total, owner, value, message })
 }
@@ -610,7 +785,7 @@ fn order_amount(rule: &Rule, base: i64) -> i64 {
 
 struct StackContext<'c, 'a> {
     rules: &'c [Rule<'a>],
-    partners: &'c [Vec<usize>],
+    partners: &'c Partners,
     any_partners: bool,
     cart: &'c NormalizedCart<'a>,
 }
@@ -676,6 +851,9 @@ fn compute_floors(work: &mut [WorkLine], margin: &MarginPayload, cart: &Normaliz
     // Without collection settings every line has the global ones: one FloorRule.
     let global = resolve_margin(margin, &[]);
     let global = FloorRule::new(global.min_margin_percent, global.max_discount_percent);
+    // Lines of one product (and products with the same decisive collections)
+    // share their refs: each distinct list is resolved once per run.
+    let mut by_refs: Table<&[MarginRef], FloorRule> = Table::default();
     for (w, line) in work.iter_mut().zip(&cart.lines) {
         if w.excluded.is_some() {
             continue;
@@ -683,8 +861,10 @@ fn compute_floors(work: &mut [WorkLine], margin: &MarginPayload, cart: &Normaliz
         let rule = if margin.col.is_empty() || line.margin_refs.is_empty() {
             global
         } else {
-            let settings = resolve_margin(margin, &line.margin_refs);
-            FloorRule::new(settings.min_margin_percent, settings.max_discount_percent)
+            *by_refs.get_or_insert_with(line.margin_refs, || {
+                let settings = resolve_margin(margin, line.margin_refs);
+                FloorRule::new(settings.min_margin_percent, settings.max_discount_percent)
+            })
         };
         let cost = costs.cost_minor_units(line.unit_cost, line.unit_cost_currency);
         w.floor = Some(rule.floor_unit(line.unit_price, cost).0);
@@ -1000,7 +1180,7 @@ fn plan_shipping<'a>(
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| b.key.1.partial_cmp(&a.key.1).unwrap_or(std::cmp::Ordering::Equal))
             .then_with(|| rb.priority.cmp(&ra.priority))
-            .then_with(|| js::cmp_str(ra.id, rb.id))
+            .then_with(|| ra.id_rank.cmp(&rb.id_rank))
     });
     let winner = candidates.into_iter().next()?;
     let blocked = (!engine.product_with_shipping && work.iter().any(|w| w.product.is_some()))
@@ -1048,10 +1228,15 @@ fn failed_plan<'a>(cart: &NormalizedCart<'a>, reason: PlanFailure) -> CartPlan<'
 fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> {
     let engine = config.engine;
     let Resolved { campaign_id, mut rules, retargeted } = resolve_rules(config, &cart);
+    rank_ids(&mut rules);
     let entered_by_rule = match_codes(&rules, &cart);
 
-    let by_id: IdMap = rules.iter().enumerate().map(|(i, r)| (r.id, i)).collect();
+    let mut by_id: IdMap = Table::with_capacity(rules.len());
+    for (i, r) in rules.iter().enumerate() {
+        by_id.insert(Text(r.id), i);
+    }
     let id_has_at: Vec<bool> = rules.iter().map(|r| r.id.contains('@')).collect();
+    let mut seen = Seen::new(rules.len());
     let mut work: Vec<WorkLine> = Vec::with_capacity(cart.lines.len());
     let mut cart_scope = Scope::default();
     let mut rule_scopes = vec![Scope::default(); rules.len()];
@@ -1063,7 +1248,7 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
         } else {
             None
         };
-        let rule_set = line_rule_ids(line.refs(), campaign_id, &retargeted, &by_id, &id_has_at);
+        let rule_set = line_rule_ids(line.refs(), campaign_id, &retargeted, &by_id, &id_has_at, &mut seen);
         if excluded != Some(Excluded::Gift) {
             let discountable = excluded.is_none();
             cart_scope.add(line, discountable);
@@ -1081,7 +1266,7 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
         rule.state = gate(rule, &cart, &config.market_countries, &cart_scope, &target_scope, !entered_by_rule[i].is_empty());
     }
 
-    let any_partners = partners.iter().any(|p| !p.is_empty());
+    let any_partners = !partners.bits.is_empty();
     let ctx = StackContext { rules: &rules, partners: &partners, any_partners, cart: &cart };
     plan_products(&mut work, &ctx);
     // Margin protection (MVP 2, A1.7): off by default, then the plan is MVP 1's.

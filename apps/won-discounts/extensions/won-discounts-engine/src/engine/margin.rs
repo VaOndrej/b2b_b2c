@@ -11,12 +11,20 @@
 //                   (finite, > 0).
 // Collections (Pro): the strictest across the product's `marginRefs` that the
 // payload's `col` lists (max m, min p); an empty field is the global value.
+// A `col` key and a ref match when their texts are equal (`hasOwn(col, ref)`).
+// Every key and ref the sync writes is a collection's numeric id, so both are
+// read into a u64 when their text is a canonical decimal number (MarginRef),
+// and `col` is a hash map by that number (drift audit P1: a 200-line cart with
+// many refs per line paid ~1 900 instructions per ref for a binary search over
+// String keys). Any other text keeps its text and compares by it: distinct
+// texts never meet (a canonical number has exactly one text: "7", never "007").
 
 use shopify_function::wasm_api::Value;
 
 use super::config::MAX_MONEY_MINOR;
+use super::table::Table;
 use super::money::currency_exponent;
-use crate::json::{entries, number, prop, string};
+use crate::json::{entries, number, prop, string, Key};
 
 /// ceilTol's tolerance, minor units (margin.ts MARGIN_TOLERANCE).
 pub const MARGIN_TOLERANCE: f64 = 1e-6;
@@ -54,16 +62,131 @@ pub struct MarginPayload {
     pub max: f64,
     /// The shop currency (upper-case ISO): the currency cost prices must be in.
     pub cur: Option<String>,
-    /// Per collection (numeric id): (id, minimum margin, maximum discount), sorted
-    /// by id, one entry per id; a none is the global value.
-    pub col: Vec<(String, Option<f64>, Option<f64>)>,
+    /// Per collection (its `col` key, normally the numeric id): (minimum margin,
+    /// maximum discount), one entry per key; a none is the global value.
+    pub col: CollectionSettings,
 }
 
 impl MarginPayload {
-    /// The setting of one collection (`hasOwn(col, id) ? col[id] : none`).
-    pub fn collection(&self, id: &str) -> Option<(Option<f64>, Option<f64>)> {
-        let i = self.col.binary_search_by(|e| e.0.as_str().cmp(id)).ok()?;
-        Some((self.col[i].1, self.col[i].2))
+    /// The setting of one collection (`hasOwn(col, ref) ? col[ref] : none`).
+    pub fn collection(&self, key: &MarginRef) -> Option<Setting> {
+        self.col.get(key)
+    }
+}
+
+/// One collection's (minimum margin, maximum discount); a none is the global value.
+pub type Setting = (Option<f64>, Option<f64>);
+
+/// A `col` key or a `marginRefs` entry: a canonical decimal number (1–19
+/// digits, no leading zero — the numeric id of a collection, as the sync writes
+/// every one) as that number, any other text as it is. Two refs are the same
+/// exactly when their texts are (a canonical number has one text).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum MarginRef {
+    Id(u64),
+    Text(String),
+}
+
+impl MarginRef {
+    /// The number of a canonical decimal text: 1–19 ASCII digits (below 10^19 <
+    /// 2^64, no overflow), without a leading zero unless it is "0" itself.
+    fn id_of(text: &str) -> Option<u64> {
+        let bytes = text.as_bytes();
+        if bytes.is_empty() || bytes.len() > 19 || (bytes[0] == b'0' && bytes.len() > 1) {
+            return None;
+        }
+        let mut n: u64 = 0;
+        for &b in bytes {
+            if !b.is_ascii_digit() {
+                return None;
+            }
+            n = n * 10 + u64::from(b - b'0');
+        }
+        Some(n)
+    }
+}
+
+impl From<String> for MarginRef {
+    fn from(text: String) -> Self {
+        match Self::id_of(&text) {
+            Some(n) => Self::Id(n),
+            None => Self::Text(text),
+        }
+    }
+}
+
+impl From<&str> for MarginRef {
+    fn from(text: &str) -> Self {
+        match Self::id_of(text) {
+            Some(n) => Self::Id(n),
+            None => Self::Text(text.to_string()),
+        }
+    }
+}
+
+/// The payload's `col`: numeric keys in a hash table, any other key (hand-made
+/// junk only) in a small sorted list. Only ever looked up, never iterated in
+/// the engine, so the hash order cannot change a result.
+#[derive(Clone, Default)]
+pub struct CollectionSettings {
+    ids: Table<u64, Setting>,
+    texts: Vec<(String, Setting)>,
+}
+
+impl PartialEq for CollectionSettings {
+    fn eq(&self, other: &Self) -> bool {
+        self.entries() == other.entries()
+    }
+}
+
+impl std::fmt::Debug for CollectionSettings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.entries()).finish()
+    }
+}
+
+impl CollectionSettings {
+    pub fn is_empty(&self) -> bool {
+        self.ids.is_empty() && self.texts.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.ids.len() + self.texts.len()
+    }
+
+    pub fn get(&self, key: &MarginRef) -> Option<Setting> {
+        match key {
+            MarginRef::Id(n) => self.ids.get(n).copied(),
+            MarginRef::Text(t) => self.texts.binary_search_by(|e| e.0.as_str().cmp(t)).ok().map(|i| self.texts[i].1),
+        }
+    }
+
+    /// `col[key] = value` (some), or the key removed (none).
+    fn set(&mut self, key: String, value: Option<Setting>) {
+        match (MarginRef::from(key), value) {
+            (MarginRef::Id(n), Some(v)) => {
+                self.ids.insert(n, v);
+            }
+            (MarginRef::Id(n), None) => {
+                self.ids.remove(&n);
+            }
+            (MarginRef::Text(t), v) => match (self.texts.binary_search_by(|e| e.0.as_str().cmp(&t)), v) {
+                (Ok(i), Some(v)) => self.texts[i].1 = v,
+                (Ok(i), None) => {
+                    self.texts.remove(i);
+                }
+                (Err(i), Some(v)) => self.texts.insert(i, (t, v)),
+                (Err(_), None) => {}
+            },
+        }
+    }
+
+    /// Every entry as (key text, m, p), sorted by the key text.
+    pub fn entries(&self) -> Vec<(String, Option<f64>, Option<f64>)> {
+        let mut out: Vec<_> = self.ids.iter().map(|(n, v)| (n.to_string(), v.0, v.1)).collect();
+        out.extend(self.texts.iter().map(|(t, v)| (t.clone(), v.0, v.1)));
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        out
     }
 }
 
@@ -84,17 +207,17 @@ fn tuple_part(value: &Value, max: f64) -> Option<Option<f64>> {
 /// included). `max` 0–100, `min` 0–95 (not a number → none), `cur` only as an
 /// upper-case ISO code, a `col` entry only as exactly `[number|null, number|null]`.
 pub fn read_margin_payload(raw: &Value) -> Option<MarginPayload> {
-    if !raw.is_obj() || prop(raw, "enabled").as_bool() != Some(true) {
+    if !raw.is_obj() || prop(raw, Key::Enabled).as_bool() != Some(true) {
         return None;
     }
-    let max = clamp(number(&prop(raw, "max"))?, 100.0);
+    let max = clamp(number(&prop(raw, Key::Max))?, 100.0);
     let mut out = MarginPayload {
-        min: number(&prop(raw, "min")).map(|m| clamp(m, MAX_MIN_MARGIN_PERCENT)),
+        min: number(&prop(raw, Key::Min)).map(|m| clamp(m, MAX_MIN_MARGIN_PERCENT)),
         max,
-        cur: string(&prop(raw, "cur")).filter(|c| is_currency(c)),
-        col: Vec::new(),
+        cur: string(&prop(raw, Key::Cur)).filter(|c| is_currency(c)),
+        col: CollectionSettings::default(),
     };
-    let col = prop(raw, "col");
+    let col = prop(raw, Key::Col);
     if col.is_obj() {
         for (key, v) in entries(&col) {
             // `col["__proto__"] = …` sets the object's prototype in JS: it is never an own key.
@@ -103,16 +226,9 @@ pub fn read_margin_payload(raw: &Value) -> Option<MarginPayload> {
             } else {
                 tuple_part(&v.get_at_index(0), MAX_MIN_MARGIN_PERCENT).zip(tuple_part(&v.get_at_index(1), 100.0))
             };
-            // Sorted by id; JSON.parse keeps the last of duplicate keys, so a later
-            // entry replaces (or, when invalid, removes) an earlier one.
-            match (out.col.binary_search_by(|e| e.0.as_str().cmp(&key)), valid) {
-                (Ok(i), Some((m, p))) => out.col[i] = (key, m, p),
-                (Ok(i), None) => {
-                    out.col.remove(i);
-                }
-                (Err(i), Some((m, p))) => out.col.insert(i, (key, m, p)),
-                (Err(_), None) => {}
-            }
+            // JSON.parse keeps the last of duplicate keys, so a later entry
+            // replaces (or, when invalid, removes) an earlier one.
+            out.col.set(key, valid);
         }
     }
     Some(out)
@@ -129,7 +245,7 @@ pub struct MarginSettings {
 
 /// `resolveMargin`: the global values, or the strictest across the product's
 /// collections that have a setting (max m, min p), an empty field being the global value.
-pub fn resolve_margin(payload: &MarginPayload, margin_refs: &[String]) -> MarginSettings {
+pub fn resolve_margin(payload: &MarginPayload, margin_refs: &[MarginRef]) -> MarginSettings {
     let global_min = payload.min.unwrap_or(0.0);
     let global_max = payload.max;
     let mut out = MarginSettings { min_margin_percent: global_min, max_discount_percent: global_max, collection: false };

@@ -43,8 +43,15 @@ fn is_js_space(c: char) -> bool {
     )
 }
 
-/// `String.prototype.trim`.
+/// `String.prototype.trim`. A text that starts and ends with a visible ASCII
+/// character (every price and rate Shopify sends) is returned as it is without
+/// decoding a character.
 pub fn trim(s: &str) -> &str {
+    let b = s.as_bytes();
+    let visible = |c: u8| c > b' ' && c < 0x80;
+    if b.first().is_some_and(|&c| visible(c)) && b.last().is_some_and(|&c| visible(c)) {
+        return s;
+    }
     s.trim_matches(is_js_space)
 }
 
@@ -57,13 +64,35 @@ pub fn upper(s: &str) -> String {
     }
 }
 
-/// JS string comparison (`a < b`): by UTF-16 code units.
+/// JS string comparison (`a < b`): by UTF-16 code units. The first byte where
+/// the texts differ decides when it is ASCII on both sides: the bytes before it
+/// are the same whole characters (an ASCII byte starts a character), so the
+/// UTF-16 units before it are equal too, and these two ASCII bytes are the next
+/// units. Otherwise (a multi-byte character there) it compares UTF-16 units.
+/// The texts are compared 8 bytes at a time (a byte loop, compiler-builtins'
+/// `memcmp`, costs ~8 Wasm instructions a byte; rule ids are 22 characters).
 pub fn cmp_str(a: &str, b: &str) -> Ordering {
-    if a.is_ascii() && b.is_ascii() {
-        a.cmp(b)
-    } else {
-        a.encode_utf16().cmp(b.encode_utf16())
+    let (x, y) = (a.as_bytes(), b.as_bytes());
+    let n = x.len().min(y.len());
+    let mut i = 0;
+    while i + 8 <= n {
+        let (wx, wy) = (u64::from_le_bytes(x[i..i + 8].try_into().unwrap_or([0; 8])), u64::from_le_bytes(y[i..i + 8].try_into().unwrap_or([0; 8])));
+        if wx != wy {
+            i += ((wx ^ wy).trailing_zeros() / 8) as usize;
+            break;
+        }
+        i += 8;
     }
+    while i < n && x[i] == y[i] {
+        i += 1;
+    }
+    if i == n {
+        return x.len().cmp(&y.len());
+    }
+    if x[i] < 0x80 && y[i] < 0x80 {
+        return x[i].cmp(&y[i]);
+    }
+    a.encode_utf16().cmp(b.encode_utf16())
 }
 
 /// `/^\d{4}-\d{2}-\d{2}$/.test(s)` (`\d` is ASCII only; `$` is the end of input).
@@ -131,6 +160,18 @@ mod tests {
         assert_eq!(cmp_str("B", "a"), Ordering::Less);
         // U+FF61 sorts after a surrogate pair's lead unit in UTF-16 order.
         assert_eq!(cmp_str("\u{FF61}", "\u{1F600}"), Ordering::Greater);
+        // Every pair of these (prefixes, a difference in or after the first word,
+        // ASCII next to multi-byte and astral characters) orders as UTF-16 does.
+        let texts = [
+            "", "a", "ab", "abcdefgh", "abcdefghi", "abcdefgi", "r_0123456789abcdef0123", "r_0123456789abcdef0124", "r_0123456789abcdeg",
+            "abcdefgh\u{FF61}", "abcdefgh\u{1F600}", "abcdefgh\u{E9}", "abcdefgh\u{E8}x", "\u{E9}", "z", "Z", "ř_x", "r_x", "abcdefghabcdefgh",
+            "abcdefghabcdefgZ", "abcdefghabcdefg\u{7F}", "abcdefghabcdefg\u{80}",
+        ];
+        for a in texts {
+            for b in texts {
+                assert_eq!(cmp_str(a, b), a.encode_utf16().cmp(b.encode_utf16()), "{a:?} {b:?}");
+            }
+        }
     }
 
     #[test]

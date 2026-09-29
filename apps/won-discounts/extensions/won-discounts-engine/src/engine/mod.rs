@@ -8,13 +8,13 @@ pub mod cart;
 pub mod config;
 pub mod describe;
 pub mod emit;
-pub mod fnv;
 pub mod hash;
 pub mod js;
 pub mod margin;
 pub mod money;
 pub mod order_search;
 pub mod plan;
+pub mod table;
 
 #[cfg(test)]
 mod tests;

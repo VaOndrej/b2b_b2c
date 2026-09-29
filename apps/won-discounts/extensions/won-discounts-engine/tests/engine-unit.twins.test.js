@@ -442,6 +442,17 @@ const TWINS = {
     expect([proto.minMarginPercent, proto.maxDiscountPercent, proto.source === "collection"]).toEqual([0, 40, false]);
     const seven = resolveMargin(bare, ["7"]);
     expect([seven.minMarginPercent, seven.maxDiscountPercent, seven.source === "collection"]).toEqual([0, 5, true]);
+    const texts = readMarginPayload(
+      JSON.parse(
+        '{"enabled": true, "max": 50, "col": {"007": [1, null], "7": [2, null], "0": [3, null], "7.0": [4, null], "18446744073709551616": [5, null], "18446744073709551615": [6, null], "abc": [7, null], "": [8, null]}}',
+      ),
+    );
+    const minOf = (ref) => {
+      const s = resolveMargin(texts, [ref]);
+      return s.source === "collection" ? s.minMarginPercent : null;
+    };
+    const refs = ["007", "7", "0", "7.0", "18446744073709551616", "18446744073709551615", "abc", "", "00", "+7", " 7", "1844674407370955161"];
+    expect(refs.map(minOf)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, null, null, null, null]);
   },
 
   margin_off_plans_exactly_like_mvp1() {

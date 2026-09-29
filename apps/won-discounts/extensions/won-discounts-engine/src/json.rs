@@ -1,24 +1,184 @@
 // Tolerant readers for the four `jsonValue` metafields, the line price and the
-// presentment currency rate (the `custom_scalar_overrides` in src/main.rs). JSON written by the sync or a
-// merchant is DATA, not a contract the platform checks: every reader here
-// accepts any JSON and reads what it does not understand as "nothing", exactly
-// like the TS adapter and engine (`rec()`, `arr()`, `typeof … === "string"`).
-// No reader ever returns an error: a failed `Deserialize` inside a generated
-// accessor would abort the run instead of emitting no discount.
+// presentment currency rate (src/input.rs reads the input with them; they are
+// also the `custom_scalar_overrides` of the typed input in src/main.rs). JSON
+// written by the sync or a merchant is DATA, not a contract the platform checks:
+// every reader here accepts any JSON and reads what it does not understand as
+// "nothing", exactly like the TS adapter and engine (`rec()`, `arr()`,
+// `typeof … === "string"`). No reader ever returns an error.
 
-use shopify_function::wasm_api::{read::Error, Deserialize, Value};
+use std::cell::Cell;
+
+use shopify_function::wasm_api::{read::Error, Deserialize, InternedStringId, Value};
 
 use crate::engine::config::Config;
-use crate::engine::fnv::FnvMap;
+use crate::engine::table::Table;
 use crate::engine::js;
+use crate::engine::margin::MarginRef;
+
+// --- Object keys, interned once per run ----------------------------------------------------
+//
+// A property read by its text makes the Wasm API copy the text into the input
+// provider's memory on every call; an interned key is copied once per run and
+// then read by its id (MVP 2 drift audit P1: ~20 property reads per cart line).
+// `CachedInternedStringId` would hash the text (SipHash) on every read, so the
+// ids live in a table indexed by `Key`, filled on first use. The provider keeps
+// its interned strings for the whole run (and, natively, for the thread), and
+// so does this table (thread-local: native tests run on several threads).
+
+macro_rules! keys {
+    ($($name:ident = $text:literal,)*) => {
+        /// Every object key the function reads by name.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        pub enum Key { $($name),* }
+        const KEY_TEXTS: &[&str] = &[$($text),*];
+        const KEY_COUNT: usize = KEY_TEXTS.len();
+    };
+}
+
+keys! {
+    // The input query (both targets).
+    TriggeringDiscountCode = "triggeringDiscountCode",
+    EnteredDiscountCodes = "enteredDiscountCodes",
+    Code = "code",
+    Discount = "discount",
+    DiscountClasses = "discountClasses",
+    Vars = "vars",
+    JsonValue = "jsonValue",
+    Shop = "shop",
+    Config = "config",
+    LocalTime = "localTime",
+    Date = "date",
+    CampaignActive = "campaignActive",
+    Localization = "localization",
+    Country = "country",
+    IsoCode = "isoCode",
+    Language = "language",
+    PresentmentCurrencyRate = "presentmentCurrencyRate",
+    Cart = "cart",
+    Cost = "cost",
+    SubtotalAmount = "subtotalAmount",
+    CurrencyCode = "currencyCode",
+    Lines = "lines",
+    Id = "id",
+    Quantity = "quantity",
+    AmountPerQuantity = "amountPerQuantity",
+    Amount = "amount",
+    Gift = "gift",
+    Value = "value",
+    Merchandise = "merchandise",
+    Product = "product",
+    WonProduct = "wonProduct",
+    WonVariant = "wonVariant",
+    DeliveryGroups = "deliveryGroups",
+    // Node variables.
+    Role = "role",
+    RuleId = "ruleId",
+    CampaignId = "campaignId",
+    VarsVersion = "varsVersion",
+    // Product and variant metafields.
+    RuleIds = "ruleIds",
+    VariantRuleIds = "variantRuleIds",
+    Outlet = "outlet",
+    MarginRefs = "marginRefs",
+    Cur = "cur",
+    // The shared config.
+    Modules = "modules",
+    Codes = "codes",
+    Rules = "rules",
+    MarketCountries = "marketCountries",
+    Campaigns = "campaigns",
+    CampaignVarsVersion = "campaignVarsVersion",
+    Engine = "engine",
+    Combination = "combination",
+    OutletWithAnything = "outletWithAnything",
+    ProductWithOrder = "productWithOrder",
+    ProductWithShipping = "productWithShipping",
+    OrderWithShipping = "orderWithShipping",
+    Margin = "margin",
+    Method = "method",
+    Schedule = "schedule",
+    StartsOn = "startsOn",
+    EndsOn = "endsOn",
+    CodeHashes = "codeHashes",
+    Priority = "priority",
+    Enabled = "enabled",
+    Name = "name",
+    Kind = "kind",
+    Percent = "percent",
+    Target = "target",
+    Minimum = "minimum",
+    Subtotal = "subtotal",
+    Scope = "scope",
+    Targeting = "targeting",
+    Markets = "markets",
+    Segments = "segments",
+    CombinesWith = "combinesWith",
+    Overrides = "overrides",
+    Patch = "patch",
+    Killed = "killed",
+    Max = "max",
+    Min = "min",
+    Col = "col",
+}
+
+thread_local! {
+    static INTERNED: [Cell<Option<InternedStringId>>; KEY_COUNT] = const { [const { Cell::new(None) }; KEY_COUNT] };
+}
+
+impl Key {
+    pub fn text(self) -> &'static str {
+        KEY_TEXTS[self as usize]
+    }
+
+    /// The key's interned id (interned on first use).
+    #[inline]
+    fn id(self, value: &Value) -> InternedStringId {
+        INTERNED.with(|ids| {
+            let slot = &ids[self as usize];
+            slot.get().unwrap_or_else(|| {
+                let id = value.intern_utf8_str(self.text());
+                slot.set(Some(id));
+                id
+            })
+        })
+    }
+}
 
 // --- Low-level reads (JS `typeof` checks) ------------------------------------------------
 
-/// `obj[key]` for a record; anything else reads as `undefined` (an error value).
-/// (Plain keys on purpose: `CachedInternedStringId::load` hashes the key with
-/// SipHash on every call, which measured slower than copying a short key.)
-pub fn prop(value: &Value, key: &str) -> Value {
-    value.get_obj_prop(key)
+/// `obj[key]` for a record; anything else reads as `undefined` (an error value),
+/// exactly as a read by the key's text would.
+#[inline]
+pub fn prop(value: &Value, key: Key) -> Value {
+    value.get_interned_obj_prop(key.id(value))
+}
+
+/// An object read key by key, counting the keys that held something: once every
+/// key the object has was found, any other name is known to be absent and reads
+/// as nothing without a call into the input provider. (A key holding null reads
+/// like an absent one, so it never ends the search early.) `get` is `obj[key]`
+/// with `None` for a key known to be absent — read it like null.
+pub struct Fields {
+    value: Value,
+    left: usize,
+}
+
+impl Fields {
+    /// For an object (anything else has no fields).
+    pub fn new(value: &Value) -> Self {
+        Self { value: *value, left: if value.is_obj() { value.obj_len().unwrap_or(usize::MAX) } else { 0 } }
+    }
+
+    pub fn get(&mut self, key: Key) -> Option<Value> {
+        if self.left == 0 {
+            return None;
+        }
+        let v = prop(&self.value, key);
+        if !v.is_null() {
+            self.left -= 1;
+        }
+        Some(v)
+    }
 }
 
 /// `typeof v === "string" ? v : null`.
@@ -120,15 +280,21 @@ pub struct NodeVars {
 
 impl Deserialize for NodeVars {
     fn deserialize(value: &Value) -> Result<Self, Error> {
+        Ok(Self::read(value))
+    }
+}
+
+impl NodeVars {
+    pub fn read(value: &Value) -> Self {
         if !value.is_obj() {
-            return Ok(Self::default());
+            return Self::default();
         }
-        Ok(Self {
-            role: string(&prop(value, "role")),
-            rule_id: non_empty(&prop(value, "ruleId")),
-            campaign_id: non_empty(&prop(value, "campaignId")),
-            vars_version: non_empty(&prop(value, "varsVersion")),
-        })
+        Self {
+            role: string(&prop(value, Key::Role)),
+            rule_id: non_empty(&prop(value, Key::RuleId)),
+            campaign_id: non_empty(&prop(value, Key::CampaignId)),
+            vars_version: non_empty(&prop(value, Key::VarsVersion)),
+        }
     }
 }
 
@@ -159,7 +325,8 @@ enum Outlet {
 /// The product metafield `{ ruleIds, variantRuleIds?, outlet?, marginRefs? }`.
 /// The variant lookups stay lazy (a product may list hundreds of variants): only
 /// the cart line's own variant is ever read, and only while the run's input is
-/// live; `marginRefs` is read only while margin protection is on.
+/// live; `marginRefs` is looked up only while margin protection has collection
+/// settings (src/input.rs).
 #[derive(Clone)]
 pub struct WonProduct {
     rule_ids: Option<Vec<String>>,
@@ -170,45 +337,76 @@ pub struct WonProduct {
 
 impl Deserialize for WonProduct {
     fn deserialize(value: &Value) -> Result<Self, Error> {
+        Ok(Self::read(value, true))
+    }
+}
+
+impl WonProduct {
+    /// The metafield value (`marginRefs` looked up only when `with_margin_refs`).
+    /// Keys are looked up by name, each costing a read of the input; once as many
+    /// keys held something as the object has, the rest are known to be absent
+    /// (a key that holds null reads like an absent one, so it never ends the
+    /// search early). The common values — `{ruleIds}`, with margin protection
+    /// `{ruleIds, marginRefs}`, and either with `variantRuleIds` — are read with
+    /// no lookup of a key they do not have.
+    pub fn read(value: &Value, with_margin_refs: bool) -> Self {
         let mut out = Self { rule_ids: None, variant_rule_ids: None, outlet: Outlet::None, margin_refs: None };
         // `typeof won === "object"` also admits arrays, whose `.ruleIds` etc. are undefined.
         if !value.is_obj() {
-            return Ok(out);
+            return out;
         }
-        let rule_ids = prop(value, "ruleIds");
+        let keys = value.obj_len().unwrap_or(usize::MAX);
+        let mut found = 0;
+        let rule_ids = prop(value, Key::RuleIds);
+        found += usize::from(!rule_ids.is_null());
         out.rule_ids = strings(&rule_ids);
-        // The common value is `{ruleIds}` alone: then there is nothing else to look up.
-        if value.obj_len() == Some(1) && !rule_ids.is_null() {
-            return Ok(out);
+        if with_margin_refs && found < keys {
+            let refs = prop(value, Key::MarginRefs);
+            found += usize::from(!refs.is_null());
+            out.margin_refs = Some(refs);
         }
-        let by_variant = prop(value, "variantRuleIds");
+        if found >= keys {
+            return out;
+        }
+        let by_variant = prop(value, Key::VariantRuleIds);
+        found += usize::from(!by_variant.is_null());
         if by_variant.is_obj() || by_variant.is_array() {
             out.variant_rule_ids = Some(by_variant);
         }
-        let outlet = prop(value, "outlet");
+        if found >= keys {
+            return out;
+        }
+        let outlet = prop(value, Key::Outlet);
         if is_true(&outlet) {
             out.outlet = Outlet::All;
         } else if outlet.is_array() {
             out.outlet = Outlet::Variants(outlet);
         }
-        let margin_refs = prop(value, "marginRefs");
-        if margin_refs.is_array() {
-            out.margin_refs = Some(margin_refs);
-        }
-        Ok(out)
+        out
     }
-}
 
-impl WonProduct {
     /// Product-wide refs (`strings(won.ruleIds)`).
     pub fn rule_ids(&self) -> &[String] {
         self.rule_ids.as_deref().unwrap_or(&[])
     }
 
+    /// The product-wide refs, moved out.
+    pub fn take_rule_ids(&mut self) -> Vec<String> {
+        self.rule_ids.take().unwrap_or_default()
+    }
+
     /// `strings(won.marginRefs)` (normalizeCart): the numeric ids of the product's
-    /// collections with a margin setting (margin protection, MVP 2).
-    pub fn margin_refs(&self) -> Vec<String> {
-        self.margin_refs.as_ref().and_then(strings).unwrap_or_default()
+    /// decisive margin collections (margin protection, MVP 2), each read into a
+    /// number (MarginRef) — its text is not kept.
+    pub fn margin_refs(&self) -> Vec<MarginRef> {
+        let Some((refs, len)) = self.margin_refs.and_then(|refs| Some((refs, refs.array_len()?))) else { return Vec::new() };
+        let mut out = Vec::with_capacity(len);
+        for i in 0..len {
+            if let Some(text) = refs.get_at_index(i).as_string() {
+                out.push(MarginRef::from(text));
+            }
+        }
+        out
     }
 
     /// Whether the variant's id is needed at all (variant refs or an outlet list):
@@ -291,7 +489,7 @@ impl WonProduct {
 /// The variant outlet lists seen so far in this run, by (length, first element):
 /// none after the first line of a product, the sorted list from its second line on.
 #[derive(Default)]
-pub struct OutletLists(FnvMap<(usize, String), Option<Vec<String>>>);
+pub struct OutletLists(Table<(usize, String), Option<Vec<String>>>);
 
 /// A value read by key is "own" when it is not undefined: for a record the
 /// provider returns null for a missing key and an error for a non-record, so
@@ -305,7 +503,8 @@ fn has_own_fast(map: &Value, key: &str, found: &Value) -> bool {
 
 /// `variantKey` (cart.ts): the tail of a GID (`gid://shopify/ProductVariant/42` → "42").
 pub fn variant_key(variant_id: &str) -> &str {
-    match variant_id.rfind('/') {
+    // A byte search ('/' is ASCII, so it never splits a character).
+    match variant_id.as_bytes().iter().rposition(|&b| b == b'/') {
         Some(slash) => &variant_id[slash + 1..],
         None => variant_id,
     }
@@ -326,12 +525,18 @@ pub struct WonVariant {
 
 impl Deserialize for WonVariant {
     fn deserialize(value: &Value) -> Result<Self, Error> {
+        Ok(Self::read(value))
+    }
+}
+
+impl WonVariant {
+    pub fn read(value: &Value) -> Self {
         if !value.is_obj() {
-            return Ok(Self::default());
+            return Self::default();
         }
-        let cost = number(&prop(value, "cost"));
-        let cur = if cost.is_some_and(|c| c > 0.0) { string(&prop(value, "cur")) } else { None };
-        Ok(Self { cost, cur })
+        let cost = number(&prop(value, Key::Cost));
+        let cur = if cost.is_some_and(|c| c > 0.0) { string(&prop(value, Key::Cur)) } else { None };
+        Self { cost, cur }
     }
 }
 
@@ -391,10 +596,16 @@ fn decimal_number(text: &str) -> Option<f64> {
 
 impl Deserialize for DecimalNumber {
     fn deserialize(value: &Value) -> Result<Self, Error> {
+        Ok(Self::read(value))
+    }
+}
+
+impl DecimalNumber {
+    pub fn read(value: &Value) -> Self {
         if let Some(text) = value.as_string() {
-            return Ok(Self(decimal_number(js::trim(&text))));
+            return Self(decimal_number(js::trim(&text)));
         }
-        Ok(Self(number(value)))
+        Self(number(value))
     }
 }
 
@@ -415,10 +626,16 @@ impl DecimalText {
 
 impl Deserialize for DecimalText {
     fn deserialize(value: &Value) -> Result<Self, Error> {
+        Ok(Self::read(value))
+    }
+}
+
+impl DecimalText {
+    pub fn read(value: &Value) -> Self {
         if let Some(text) = value.as_string() {
-            return Ok(Self(Some(text)));
+            return Self(Some(text));
         }
-        Ok(Self(value.as_number().filter(|n| n.is_finite()).map(js::number_to_string)))
+        Self(value.as_number().filter(|n| n.is_finite()).map(js::number_to_string))
     }
 }
 
@@ -500,7 +717,15 @@ mod tests {
         assert_eq!(cost(r#"{"cost": -3, "cur": "czk"}"#), (Some(-3.0), None));
         assert_eq!(cost("[1]"), (None, None));
         assert_eq!(cost("null"), (None, None));
-        let margin_refs = |json: &str| run_function_with_input(|w: WonProduct| Ok(w.margin_refs()), json).unwrap();
+        let margin_refs = |json: &str| {
+            let read = run_function_with_input(|w: WonProduct| Ok(w.margin_refs()), json).unwrap();
+            read.into_iter()
+                .map(|r| match r {
+                    MarginRef::Id(n) => n.to_string(),
+                    MarginRef::Text(t) => t,
+                })
+                .collect::<Vec<_>>()
+        };
         assert_eq!(margin_refs(r#"{"ruleIds": ["a"], "marginRefs": ["1", 2, "3"]}"#), refs(&["1", "3"]));
         assert_eq!(margin_refs(r#"{"marginRefs": ["7"]}"#), refs(&["7"]));
         assert_eq!(margin_refs(r#"{"marginRefs": "1"}"#), refs(&[]));

@@ -9,11 +9,11 @@ use std::fs;
 use std::path::Path;
 
 use shopify_function::run_function_with_input;
+use shopify_function::wasm_api::Value;
 
 use crate::cart_delivery_options_discounts_generate_run::cart_delivery_options_discounts_generate_run;
 use crate::cart_lines_discounts_generate_run::cart_lines_discounts_generate_run;
 use crate::output::JsonText;
-use crate::schema;
 
 /// The JSON value that follows `"key": ` (the fixture's first such key), as text.
 fn value_after<'t>(text: &'t str, key: &str) -> &'t str {
@@ -76,7 +76,7 @@ fn minify(json: &str) -> String {
 fn run(export: &str, input: &str) -> String {
     match export {
         "cart-lines-discounts-generate-run" => run_function_with_input(
-            |input: schema::cart_lines_discounts_generate_run::Input| {
+            |input: Value| {
                 let mut json = JsonText::default();
                 cart_lines_discounts_generate_run(input, &mut json)?;
                 Ok(json.out)
@@ -84,7 +84,7 @@ fn run(export: &str, input: &str) -> String {
             input,
         ),
         "cart-delivery-options-discounts-generate-run" => run_function_with_input(
-            |input: schema::cart_delivery_options_discounts_generate_run::Input| {
+            |input: Value| {
                 let mut json = JsonText::default();
                 cart_delivery_options_discounts_generate_run(input, &mut json)?;
                 Ok(json.out)

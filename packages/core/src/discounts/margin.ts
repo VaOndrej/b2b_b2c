@@ -37,9 +37,11 @@ export type MarginCollectionTuple = [number | null, number | null];
  * `modules.margin` in the shared function config. Off: `{enabled: false}`, the
  * settings never ship. On: `min` (absent = 0), `max`, `cur` = the shop currency
  * (absent when the builder did not know it: every cost is then unknown and the
- * `max` ceiling applies — safe, never a wrong conversion), `col` keyed by the
- * collection's numeric id (the tail of its GID; product metafields carry the
- * same ids as `marginRefs`).
+ * `max` ceiling applies — never a wrong conversion, but the ceiling is only
+ * stricter than NO protection, not necessarily than the cost floor: a product
+ * whose cost is 70 % of its price keeps a 50 % ceiling, below its cost), `col`
+ * keyed by the collection's numeric id (the tail of its GID; product metafields
+ * carry the same ids as `marginRefs`).
  */
 export type FunctionMarginPayload =
   | { enabled: false }

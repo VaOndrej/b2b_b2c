@@ -13,7 +13,7 @@ use shopify_function::wasm_api::Value;
 
 use super::js;
 use super::margin::{read_margin_payload, MarginPayload};
-use crate::json::{entries, is_true, non_empty, number, prop, string, string_list};
+use crate::json::{entries, is_true, non_empty, number, prop, string, string_list, Fields, Key};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TargetKind {
@@ -240,13 +240,13 @@ fn read_value(value: &Value) -> ValueSpec {
     if !value.is_obj() {
         return ValueSpec::Invalid;
     }
-    match string(&prop(value, "kind")).as_deref() {
+    match string(&prop(value, Key::Kind)).as_deref() {
         Some("percentage") => {
-            let percent = number(&prop(value, "percent")).map_or(0.0, |p| p.clamp(0.0, 100.0));
+            let percent = number(&prop(value, Key::Percent)).map_or(0.0, |p| p.clamp(0.0, 100.0));
             // Math.max(0, -0) is +0.
             ValueSpec::Percentage(if percent == 0.0 { 0.0 } else { percent })
         }
-        Some("fixed") => ValueSpec::Fixed(read_money(&prop(value, "amount"))),
+        Some("fixed") => ValueSpec::Fixed(read_money(&prop(value, Key::Amount))),
         Some("freeShipping") => ValueSpec::FreeShipping,
         _ => ValueSpec::Invalid,
     }
@@ -256,7 +256,7 @@ fn read_target(value: &Value) -> Option<TargetKind> {
     if !value.is_obj() {
         return None;
     }
-    match string(&prop(value, "kind")).as_deref() {
+    match string(&prop(value, Key::Kind)).as_deref() {
         Some("order") => Some(TargetKind::Order),
         Some("products") => Some(TargetKind::Products),
         Some("collections") => Some(TargetKind::Collections),
@@ -270,9 +270,9 @@ fn read_minimum(value: &Value) -> Minimum {
         return Minimum::default();
     }
     Minimum {
-        subtotal: read_money(&prop(value, "subtotal")),
-        quantity: number(&prop(value, "quantity")).filter(|q| *q > 0.0).map_or(0, js::floor_to_i64),
-        entitled: string(&prop(value, "scope")).as_deref() == Some("entitled"),
+        subtotal: read_money(&prop(value, Key::Subtotal)),
+        quantity: number(&prop(value, Key::Quantity)).filter(|q| *q > 0.0).map_or(0, js::floor_to_i64),
+        entitled: string(&prop(value, Key::Scope)).as_deref() == Some("entitled"),
     }
 }
 
@@ -281,8 +281,8 @@ fn read_targeting(value: &Value) -> Targeting {
         return Targeting::default();
     }
     Targeting {
-        markets: string_list(&prop(value, "markets")),
-        segment_targeted: string_list(&prop(value, "segments")).is_some(),
+        markets: string_list(&prop(value, Key::Markets)),
+        segment_targeted: string_list(&prop(value, Key::Segments)).is_some(),
     }
 }
 
@@ -290,20 +290,9 @@ fn read_combines(value: &Value) -> Vec<String> {
     if !value.is_obj() {
         return Vec::new();
     }
-    string_list(&prop(value, "ruleIds")).unwrap_or_default()
+    string_list(&prop(value, Key::RuleIds)).unwrap_or_default()
 }
 
-fn read_fields(raw: &Value) -> RuleFields {
-    RuleFields {
-        enabled: is_true(&prop(raw, "enabled")),
-        name: string(&prop(raw, "name")).unwrap_or_default(),
-        value: read_value(&prop(raw, "value")),
-        target: read_target(&prop(raw, "target")),
-        minimum: read_minimum(&prop(raw, "minimum")),
-        targeting: read_targeting(&prop(raw, "targeting")),
-        combines: read_combines(&prop(raw, "combinesWith")),
-    }
-}
 
 fn read_patch(patch: &Value) -> RulePatch {
     let mut out = RulePatch::default();
@@ -326,22 +315,35 @@ fn read_local_date(value: &Value) -> Option<String> {
     string(value).filter(|s| js::is_local_date(s))
 }
 
+/// `readRule` (plan.ts): the keys a stored rule usually has first, the optional
+/// ones after them — once every key of the rule was found, the rest are known to
+/// be absent without reading them (json.rs `Fields`).
 fn read_rule(raw: &Value) -> Option<RawRule> {
     if !raw.is_obj() {
         return None;
     }
-    let id = non_empty(&prop(raw, "id"))?;
-    let method_code = string(&prop(raw, "method")).as_deref() == Some("code");
-    let schedule = prop(raw, "schedule");
-    let scheduled = !schedule.is_null();
+    let mut f = Fields::new(raw);
+    let id = f.get(Key::Id).and_then(|v| non_empty(&v))?;
+    let method_code = f.get(Key::Method).and_then(|v| string(&v)).as_deref() == Some("code");
+    let enabled = f.get(Key::Enabled).is_some_and(|v| is_true(&v));
+    let name = f.get(Key::Name).and_then(|v| string(&v)).unwrap_or_default();
+    let value = f.get(Key::Value).map_or(ValueSpec::Invalid, |v| read_value(&v));
+    let target = f.get(Key::Target).and_then(|v| read_target(&v));
+    let combines = f.get(Key::CombinesWith).map_or_else(Vec::new, |v| read_combines(&v));
+    let code_hashes = if method_code { f.get(Key::CodeHashes).and_then(|v| string_list(&v)).unwrap_or_default() } else { Vec::new() };
+    let priority = f.get(Key::Priority).and_then(|v| number(&v)).map_or(0, js::floor_to_i64);
+    let minimum = f.get(Key::Minimum).map_or_else(Minimum::default, |v| read_minimum(&v));
+    let targeting = f.get(Key::Targeting).map_or_else(Targeting::default, |v| read_targeting(&v));
+    let schedule = f.get(Key::Schedule);
+    let scheduled = schedule.is_some_and(|s| !s.is_null());
     let (mut schedule_invalid, mut starts_on, mut ends_on) = (false, None, None);
-    if scheduled {
+    if let Some(schedule) = schedule.filter(|_| scheduled) {
         if schedule.is_obj() {
             let keys = entries(&schedule);
             schedule_invalid = keys.is_empty()
                 || keys.iter().any(|(k, v)| (k != "startsOn" && k != "endsOn") || read_local_date(v).is_none());
-            starts_on = read_local_date(&prop(&schedule, "startsOn"));
-            ends_on = read_local_date(&prop(&schedule, "endsOn"));
+            starts_on = read_local_date(&prop(&schedule, Key::StartsOn));
+            ends_on = read_local_date(&prop(&schedule, Key::EndsOn));
         } else {
             schedule_invalid = true;
         }
@@ -349,13 +351,13 @@ fn read_rule(raw: &Value) -> Option<RawRule> {
     Some(RawRule {
         id,
         method_code,
-        code_hashes: if method_code { string_list(&prop(raw, "codeHashes")).unwrap_or_default() } else { Vec::new() },
-        priority: number(&prop(raw, "priority")).map_or(0, js::floor_to_i64),
+        code_hashes,
+        priority,
         scheduled,
         schedule_invalid,
         starts_on,
         ends_on,
-        fields: read_fields(raw),
+        fields: RuleFields { enabled, name, value, target, minimum, targeting, combines },
     })
 }
 
@@ -363,30 +365,30 @@ fn read_campaign(value: &Value) -> Option<RawCampaign> {
     if !value.is_obj() {
         return None;
     }
-    let overrides_value = prop(value, "overrides");
+    let overrides_value = prop(value, Key::Overrides);
     let mut overrides = Vec::new();
     for i in 0..overrides_value.array_len().unwrap_or(0) {
         let entry = overrides_value.get_at_index(i);
         if !entry.is_obj() {
             continue;
         }
-        let (Some(rule_id), patch) = (string(&prop(&entry, "ruleId")), prop(&entry, "patch")) else { continue };
+        let (Some(rule_id), patch) = (string(&prop(&entry, Key::RuleId)), prop(&entry, Key::Patch)) else { continue };
         if patch.is_obj() {
             overrides.push((rule_id, read_patch(&patch)));
         }
     }
-    Some(RawCampaign { id: string(&prop(value, "id")), killed: is_true(&prop(value, "killed")), overrides })
+    Some(RawCampaign { id: string(&prop(value, Key::Id)), killed: is_true(&prop(value, Key::Killed)), overrides })
 }
 
 fn read_engine(config: &Value) -> EngineFlags {
     let defaults = EngineFlags::default();
-    let combination = prop(&prop(config, "engine"), "combination");
-    let flag = |key: &str, default: bool| prop(&combination, key).as_bool().unwrap_or(default);
+    let combination = prop(&prop(config, Key::Engine), Key::Combination);
+    let flag = |key: Key, default: bool| prop(&combination, key).as_bool().unwrap_or(default);
     EngineFlags {
-        outlet_with_anything: flag("outletWithAnything", defaults.outlet_with_anything),
-        product_with_order: flag("productWithOrder", defaults.product_with_order),
-        product_with_shipping: flag("productWithShipping", defaults.product_with_shipping),
-        order_with_shipping: flag("orderWithShipping", defaults.order_with_shipping),
+        outlet_with_anything: flag(Key::OutletWithAnything, defaults.outlet_with_anything),
+        product_with_order: flag(Key::ProductWithOrder, defaults.product_with_order),
+        product_with_shipping: flag(Key::ProductWithShipping, defaults.product_with_shipping),
+        order_with_shipping: flag(Key::OrderWithShipping, defaults.order_with_shipping),
     }
 }
 
@@ -398,33 +400,33 @@ impl Config {
         if !value.is_obj() {
             return None;
         }
-        let modules = prop(value, "modules");
-        let codes = prop(&modules, "codes");
-        let rules = prop(&codes, "rules");
+        let modules = prop(value, Key::Modules);
+        let codes = prop(&modules, Key::Codes);
+        let rules = prop(&codes, Key::Rules);
         if !modules.is_obj() || !codes.is_obj() {
             return None;
         }
         let rule_count = rules.array_len()?;
 
         let mut market_countries = Vec::new();
-        for (handle, countries) in entries(&prop(value, "marketCountries")) {
+        for (handle, countries) in entries(&prop(value, Key::MarketCountries)) {
             if let Some(list) = string_list(&countries) {
                 market_countries.retain(|(h, _): &(String, Vec<String>)| *h != handle);
                 market_countries.push((handle, list.iter().map(|c| js::upper(c)).collect()));
             }
         }
-        let campaigns_value = prop(value, "campaigns");
+        let campaigns_value = prop(value, Key::Campaigns);
         let campaigns =
             (0..campaigns_value.array_len().unwrap_or(0)).filter_map(|i| read_campaign(&campaigns_value.get_at_index(i))).collect();
 
         Some(Config {
-            campaign_id: string(&prop(value, "campaignId")),
-            campaign_vars_version: string(&prop(value, "campaignVarsVersion")),
+            campaign_id: string(&prop(value, Key::CampaignId)),
+            campaign_vars_version: string(&prop(value, Key::CampaignVarsVersion)),
             engine: read_engine(value),
             market_countries,
             rules: (0..rule_count).filter_map(|i| read_rule(&rules.get_at_index(i))).collect(),
             campaigns,
-            margin: read_margin_payload(&prop(&modules, "margin")),
+            margin: read_margin_payload(&prop(&modules, Key::Margin)),
         })
     }
 }

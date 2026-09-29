@@ -9,26 +9,31 @@
 //   per line        ruleIds ∪ variantRuleIds[variant] + outlet from the product
 //                   metafield; the gift from the `_won_gift` line attribute
 //   margin (MVP 2)  only while the shared config has margin protection on: the
-//                   variant's `{cost, cur}` (variant metafield), the product's
-//                   `marginRefs` and `presentmentCurrencyRate` — as read, the
-//                   engine (margin.rs) decides what is usable. Off, they are
-//                   never read (the plan ignores them anyway).
+//                   variant's `{cost, cur}` (variant metafield) and
+//                   `presentmentCurrencyRate`; the product's `marginRefs` only
+//                   when the payload also has collection settings (`col`) — as
+//                   read, the engine (margin.rs) decides what is usable. Off (or
+//                   without `col`), they are never read: the plan cannot use them.
 //
-// The two targets have their own generated input types, so the reading is one
-// macro expanded for each (identical code, one definition).
+// The input is read straight from its JSON value (the input query's shape,
+// src/*.graphql), not through the typed accessors `#[query]` generates: every
+// property read is a call into Shopify's input provider, and the generated
+// accessors look each key up by its text (copied into the provider on every
+// call) and read `__typename` as a string. Here every key is interned once per
+// run (json.rs `Key`), and a line's merchandise is read by its fields: with the
+// query's `... on ProductVariant`, only a ProductVariant has `product`,
+// `wonVariant` and `id` (README "Accepted edge differences", schema-invalid
+// input). What a run reads is owned by `RunInput`; the cart borrows from it.
 
-use crate::engine::cart::CartInput;
+use shopify_function::wasm_api::Value;
+
+use crate::engine::cart::{CampaignInput, CartInput, LineInput};
 use crate::engine::config::Config;
 use crate::engine::emit::NodeRole;
-use crate::json::NodeVars;
-
-/// What the run needs besides the cart.
-pub struct Adapted<'a> {
-    pub cart: CartInput<'a>,
-    pub config: &'a Config,
-    pub role: NodeRole,
-    pub triggering_code: Option<&'a str>,
-}
+use crate::engine::js;
+use crate::engine::margin::MarginRef;
+use crate::engine::money::{currency_exponent, to_minor_units_with};
+use crate::json::{is_true, non_empty, number, prop, string, DecimalNumber, DecimalText, Key, NodeVars, OutletLists, WonProduct, WonVariant};
 
 /// The node's role from its `function_vars`. A code node MUST have a rule id; an
 /// automatic node never has a triggering code (C1), so an automatic role with
@@ -52,100 +57,213 @@ pub fn locale_en(iso_code: &str) -> bool {
     !matches!(crate::engine::js::upper(&lang).as_str(), "CS" | "SK")
 }
 
-/// `adaptInput` for one target's generated input. Evaluates to `None` when the
-/// node emits nothing whatever the cart holds (unknown role, or no valid shared
-/// config: planCart's `config_missing`), before any cart line is read.
-#[macro_export]
-macro_rules! adapt_input {
-    ($input:expr, $target:ident) => {{
-        use $crate::schema::$target::input::cart::lines::Merchandise;
-        let input = $input;
-        let triggering_code = input.triggering_discount_code().map(String::as_str).filter(|c| !c.is_empty());
-        let vars = input.discount().vars().map(|m| m.json_value());
-        let role = $crate::input::read_role(vars, triggering_code);
-        let config = input.shop().config().and_then(|m| m.json_value().0.as_ref());
-        match (role, config) {
-            (Some(role), Some(config)) => {
-                let margin_on = config.margin.is_some();
-                let cart = input.cart();
-                let currency = $crate::engine::js::upper(cart.cost().subtotal_amount().currency_code());
-                let exponent = $crate::engine::money::currency_exponent(&currency);
-                let mut lines = Vec::with_capacity(cart.lines().len());
-                let mut outlet_lists = $crate::json::OutletLists::default();
-                for line in cart.lines() {
-                    let id = line.id().as_str();
-                    if id.is_empty() {
-                        continue;
-                    }
-                    let mut outlet = false;
-                    let mut rule_ids: &[String] = &[];
-                    let mut variant_rule_ids = Vec::new();
-                    let (mut unit_cost, mut unit_cost_currency, mut margin_refs) = (None, None, Vec::new());
-                    if let Merchandise::ProductVariant(variant) = line.merchandise() {
-                        if let Some(won) = variant.product().won_product().map(|m| m.json_value()) {
-                            rule_ids = won.rule_ids();
-                            // The variant id is read only when the metafield needs it.
-                            let variant_id = if won.needs_variant_id() { variant.id().as_str() } else { "" };
-                            variant_rule_ids = won.variant_refs(variant_id);
-                            outlet = won.is_outlet(variant_id, &mut outlet_lists);
-                            if margin_on {
-                                margin_refs = won.margin_refs();
-                            }
-                        }
-                        if margin_on {
-                            if let Some(cost) = variant.won_variant().map(|m| m.json_value()) {
-                                unit_cost = cost.cost;
-                                unit_cost_currency = cost.cur.as_deref();
-                            }
-                        }
-                    }
-                    lines.push($crate::engine::cart::LineInput {
-                        id,
-                        quantity: i64::from(*line.quantity()),
-                        unit_price: line
-                            .cost()
-                            .amount_per_quantity()
-                            .amount()
-                            .text()
-                            .and_then(|text| $crate::engine::money::to_minor_units_with(text, exponent))
-                            .unwrap_or(0),
-                        outlet,
-                        gift: line.gift().and_then(|g| g.value()).is_some_and(|v| !v.is_empty()),
-                        rule_ids,
-                        variant_rule_ids,
-                        unit_cost,
-                        unit_cost_currency,
-                        margin_refs,
-                    });
-                }
-                let local_time = input.shop().local_time();
-                let localization = input.localization();
-                Some($crate::input::Adapted {
-                    cart: $crate::engine::cart::CartInput {
-                        currency,
-                        country_code: Some(localization.country().iso_code().as_str()).filter(|c| !c.is_empty()),
-                        lines,
-                        entered_codes: input
-                            .entered_discount_codes()
-                            .iter()
-                            .map(|e| e.code().as_str())
-                            .filter(|c| !c.is_empty())
-                            .collect(),
-                        campaign: $crate::engine::cart::CampaignInput {
-                            id: vars.and_then(|v| v.campaign_id.as_deref()),
-                            active: *local_time.campaign_active(),
-                            vars_version: vars.and_then(|v| v.vars_version.as_deref()),
-                        },
-                        today: Some(local_time.date().as_str()).filter(|d| !d.is_empty()),
-                        locale_en: $crate::input::locale_en(localization.language().iso_code()),
-                        shop_to_cart_rate: if margin_on { input.presentment_currency_rate().0 } else { None },
-                    },
-                    config,
-                    role,
-                    triggering_code,
-                })
+/// `obj[key]` when `value` is an object; anything else (null, a missing
+/// metafield) reads as nothing without a call into the input provider.
+fn field(value: &Value, key: Key) -> Option<Value> {
+    value.is_obj().then(|| prop(value, key))
+}
+
+/// The node's discount classes (`discount.discountClasses`, strings).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Classes {
+    pub product: bool,
+    pub order: bool,
+    pub shipping: bool,
+}
+
+/// `discount` of the input and the node's classes: read first, a node without
+/// the target's classes reads nothing else.
+pub fn node(root: &Value) -> (Value, Classes) {
+    let discount = prop(root, Key::Discount);
+    let mut classes = Classes::default();
+    if let Some(list) = field(&discount, Key::DiscountClasses) {
+        for i in 0..list.array_len().unwrap_or(0) {
+            match list.get_at_index(i).as_string().as_deref() {
+                Some("PRODUCT") => classes.product = true,
+                Some("ORDER") => classes.order = true,
+                Some("SHIPPING") => classes.shipping = true,
+                _ => {}
             }
-            _ => None,
         }
-    }};
+    }
+    (discount, classes)
+}
+
+/// `cart.deliveryGroups[].id`, the non-empty ones (delivery target).
+pub fn delivery_group_ids(root: &Value) -> Vec<String> {
+    let Some(groups) = field(root, Key::Cart).and_then(|cart| field(&cart, Key::DeliveryGroups)) else { return Vec::new() };
+    let len = groups.array_len().unwrap_or(0);
+    let mut out = Vec::with_capacity(len);
+    for i in 0..len {
+        if let Some(id) = field(&groups.get_at_index(i), Key::Id).and_then(|id| non_empty(&id)) {
+            out.push(id);
+        }
+    }
+    out
+}
+
+/// One cart line as read (`readLine`), owned; `LineInput` borrows it.
+struct ReadLine {
+    id: String,
+    quantity: i64,
+    unit_price: i64,
+    outlet: bool,
+    gift: bool,
+    rule_ids: Vec<String>,
+    variant_rule_ids: Vec<String>,
+    unit_cost: Option<f64>,
+    unit_cost_currency: Option<String>,
+    margin_refs: Vec<MarginRef>,
+}
+
+/// Everything a run reads from its input (`adaptInput`), owned: the plan borrows from it.
+pub struct RunInput {
+    pub role: NodeRole,
+    pub triggering_code: Option<String>,
+    pub config: Config,
+    campaign_id: Option<String>,
+    vars_version: Option<String>,
+    campaign_active: bool,
+    today: Option<String>,
+    currency: String,
+    country_code: Option<String>,
+    locale_en: bool,
+    entered_codes: Vec<String>,
+    shop_to_cart_rate: Option<f64>,
+    lines: Vec<ReadLine>,
+    /// `cart.lines.length`: Shopify's output limit counts every line.
+    pub line_count: usize,
+}
+
+impl RunInput {
+    /// `adaptInput`. `None` when the node emits nothing whatever the cart holds
+    /// (unknown role, or no valid shared config: planCart's `config_missing`),
+    /// before any cart line is read. `discount` is `node(root).0`.
+    pub fn read(root: &Value, discount: &Value) -> Option<Self> {
+        let triggering_code = non_empty(&prop(root, Key::TriggeringDiscountCode));
+        let vars = field(discount, Key::Vars).and_then(|vars| field(&vars, Key::JsonValue)).map(|json| NodeVars::read(&json));
+        let role = read_role(vars.as_ref(), triggering_code.as_deref())?;
+        let shop = prop(root, Key::Shop);
+        let config = field(&shop, Key::Config).and_then(|metafield| field(&metafield, Key::JsonValue)).and_then(|json| Config::read(&json))?;
+        let vars = vars.unwrap_or_default();
+
+        let margin_on = config.margin.is_some();
+        // A ref matters only when some collection has a setting (resolveMargin).
+        let margin_refs_on = config.margin.as_ref().is_some_and(|m| !m.col.is_empty());
+        let cart = prop(root, Key::Cart);
+        let currency = field(&cart, Key::Cost)
+            .and_then(|cost| field(&cost, Key::SubtotalAmount))
+            .and_then(|subtotal| field(&subtotal, Key::CurrencyCode))
+            .and_then(|code| string(&code))
+            .map_or_else(String::new, |code| js::upper(&code));
+        let exponent = currency_exponent(&currency);
+        let lines_value = field(&cart, Key::Lines);
+        let line_count = lines_value.and_then(|l| l.array_len()).unwrap_or(0);
+        let mut lines = Vec::with_capacity(line_count);
+        let mut outlet_lists = OutletLists::default();
+        for line in lines_value.iter().flat_map(|l| (0..line_count).map(|i| l.get_at_index(i))) {
+            // (A line, its merchandise, product and cost are objects in any input
+            // built from the query; `prop` of anything else is an undefined value.)
+            let Some(id) = non_empty(&prop(&line, Key::Id)) else { continue };
+            let mut read = ReadLine {
+                id,
+                quantity: 0,
+                unit_price: 0,
+                outlet: false,
+                gift: false,
+                rule_ids: Vec::new(),
+                variant_rule_ids: Vec::new(),
+                unit_cost: None,
+                unit_cost_currency: None,
+                margin_refs: Vec::new(),
+            };
+            let merchandise = prop(&line, Key::Merchandise);
+            let won = field(&prop(&prop(&merchandise, Key::Product), Key::WonProduct), Key::JsonValue);
+            if let Some(won) = won {
+                let mut won = WonProduct::read(&won, margin_refs_on);
+                // The variant id is read only when the metafield needs it.
+                let variant_id = if won.needs_variant_id() { string(&prop(&merchandise, Key::Id)).unwrap_or_default() } else { String::new() };
+                read.variant_rule_ids = won.variant_refs(&variant_id);
+                read.outlet = won.is_outlet(&variant_id, &mut outlet_lists);
+                if margin_refs_on {
+                    read.margin_refs = won.margin_refs();
+                }
+                read.rule_ids = won.take_rule_ids();
+            }
+            if margin_on {
+                if let Some(cost) = field(&prop(&merchandise, Key::WonVariant), Key::JsonValue) {
+                    let cost = WonVariant::read(&cost);
+                    read.unit_cost = cost.cost;
+                    read.unit_cost_currency = cost.cur;
+                }
+            }
+            // `nonNegativeInt` (normalizeCart): a positive number, floored; else 0.
+            read.quantity = number(&prop(&line, Key::Quantity)).filter(|q| *q > 0.0).map_or(0, js::floor_to_i64);
+            let amount = prop(&prop(&prop(&line, Key::Cost), Key::AmountPerQuantity), Key::Amount);
+            read.unit_price = DecimalText::read(&amount).text().and_then(|text| to_minor_units_with(text, exponent)).unwrap_or(0);
+            read.gift = field(&prop(&line, Key::Gift), Key::Value).and_then(|value| non_empty(&value)).is_some();
+            lines.push(read);
+        }
+
+        let mut entered_codes = Vec::new();
+        if let Some(entered) = field(root, Key::EnteredDiscountCodes) {
+            for i in 0..entered.array_len().unwrap_or(0) {
+                if let Some(code) = field(&entered.get_at_index(i), Key::Code).and_then(|code| non_empty(&code)) {
+                    entered_codes.push(code);
+                }
+            }
+        }
+        let local_time = field(&shop, Key::LocalTime);
+        let localization = prop(root, Key::Localization);
+        let iso_code = |key: Key| field(&localization, key).and_then(|v| field(&v, Key::IsoCode)).and_then(|code| string(&code));
+        Some(Self {
+            role,
+            triggering_code,
+            config,
+            campaign_id: vars.campaign_id,
+            vars_version: vars.vars_version,
+            campaign_active: local_time.and_then(|t| field(&t, Key::CampaignActive)).is_some_and(|v| is_true(&v)),
+            today: local_time.and_then(|t| field(&t, Key::Date)).and_then(|d| non_empty(&d)),
+            currency,
+            country_code: iso_code(Key::Country).filter(|c| !c.is_empty()),
+            locale_en: iso_code(Key::Language).is_some_and(|c| locale_en(&c)),
+            entered_codes,
+            shop_to_cart_rate: if margin_on { DecimalNumber::read(&prop(root, Key::PresentmentCurrencyRate)).0 } else { None },
+            lines,
+            line_count,
+        })
+    }
+
+    /// The cart the engine plans (CartPlanInput), borrowing what was read.
+    pub fn cart(&self) -> CartInput<'_> {
+        CartInput {
+            currency: self.currency.clone(),
+            country_code: self.country_code.as_deref(),
+            lines: self
+                .lines
+                .iter()
+                .map(|l| LineInput {
+                    id: &l.id,
+                    quantity: l.quantity,
+                    unit_price: l.unit_price,
+                    outlet: l.outlet,
+                    gift: l.gift,
+                    rule_ids: &l.rule_ids,
+                    variant_rule_ids: &l.variant_rule_ids,
+                    unit_cost: l.unit_cost,
+                    unit_cost_currency: l.unit_cost_currency.as_deref(),
+                    margin_refs: &l.margin_refs,
+                })
+                .collect(),
+            entered_codes: self.entered_codes.iter().map(String::as_str).collect(),
+            campaign: CampaignInput {
+                id: self.campaign_id.as_deref(),
+                active: self.campaign_active,
+                vars_version: self.vars_version.as_deref(),
+            },
+            today: self.today.as_deref(),
+            locale_en: self.locale_en,
+            shop_to_cart_rate: self.shop_to_cart_rate,
+        }
+    }
 }
