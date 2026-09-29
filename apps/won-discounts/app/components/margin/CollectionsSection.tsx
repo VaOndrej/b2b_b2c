@@ -153,7 +153,22 @@ export function CollectionsSection({
                       minError={errorFor(`collectionMin[${i}]`)}
                       maxError={errorFor(`collectionMax[${i}]`)}
                     />
-                    <FieldMessage text={decimalErrorFor(`collectionMin[${i}]`) ?? decimalErrorFor(`collectionMax[${i}]`)} />
+                    <FieldMessage
+                      text={
+                        (
+                          [
+                            [`collectionMin[${i}]`, t("margin.collections.min")],
+                            [`collectionMax[${i}]`, t("margin.collections.max")],
+                          ] as const
+                        )
+                          .map(([field, label]) => {
+                            const message = decimalErrorFor(field);
+                            return message ? `${label}: ${message}` : null;
+                          })
+                          .filter((m): m is string => m !== null)
+                          .join(" ") || undefined
+                      }
+                    />
                   </WonRow>
                 ))}
               </div>
