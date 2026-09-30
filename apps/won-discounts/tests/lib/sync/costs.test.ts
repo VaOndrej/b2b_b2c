@@ -354,12 +354,12 @@ test("switched off: every metafield the sync wrote is deleted (≤ 250 per call)
   const cleared = await clearCostMirror(ctxFor(fake));
   assert.equal(cleared.outcome, "done");
   assert.equal(cleared.cleared, 4);
-  assert.deepEqual(deleteCalls(fake).flat().map((mf) => mf.ownerId).sort(), [
-    "gid://shopify/ProductVariant/201",
-    "gid://shopify/ProductVariant/202",
-    "gid://shopify/ProductVariant/401",
-    "gid://shopify/ProductVariant/402",
-  ]);
+  const ids = ["gid://shopify/ProductVariant/201", "gid://shopify/ProductVariant/202", "gid://shopify/ProductVariant/401", "gid://shopify/ProductVariant/402"];
+  // MVP 3: with the cost goes the variant's pdp maximum (K4) — both keys of every variant, in the same call.
+  assert.deepEqual(
+    deleteCalls(fake).flat().map((mf) => `${mf.key}:${mf.ownerId}`).sort(),
+    [...ids.map((id) => `pdp:${id}`), ...ids.map((id) => `variant:${id}`)].sort(),
+  );
   assert.equal(fake.variantCostMetafield("gid://shopify/ProductVariant/201"), undefined);
   assert.equal((await rows()).length, 0);
   const state = await loadCostState(db.prisma, shop);

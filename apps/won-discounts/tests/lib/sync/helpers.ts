@@ -4,6 +4,7 @@
 // how it retries and what it records.
 
 import { sanitizeConfig, type WonDiscountsConfig } from "@won/core/discounts/config";
+import { buildStorefrontConfig } from "@won/core/discounts/storefront-config";
 
 import type { PrismaClient } from "../../../app/generated/prisma/client.ts";
 import type { ConfigView as SyncConfigView, SyncDeps, SyncNodeRole, SyncProductEntry } from "../../../app/lib/sync/types.ts";
@@ -68,7 +69,7 @@ export function configWith(rules: unknown[], extra: Record<string, unknown> = {}
   return config;
 }
 
-type Builders = Pick<SyncDeps, "buildShopFunctionConfig" | "buildNodeVars" | "productRuleIndex" | "verifyShopFunctionConfig">;
+type Builders = Pick<SyncDeps, "buildShopFunctionConfig" | "buildNodeVars" | "productRuleIndex" | "verifyShopFunctionConfig" | "buildStorefrontConfig">;
 
 export function fakeBuilders(log: BuilderLog, overrides: Partial<Builders> = {}) {
   const builders: Builders = {
@@ -134,6 +135,8 @@ export function fakeBuilders(log: BuilderLog, overrides: Partial<Builders> = {})
       if (!Array.isArray((parsed as { rules?: unknown } | null)?.rules)) return { ok: false, bytes, reason: "invalid_shape" };
       return { ok: true, bytes };
     },
+    // The real one (pure): these suites pin where and when the sync writes it, not its content.
+    buildStorefrontConfig: (config, options) => buildStorefrontConfig(config, options),
     ...overrides,
   };
   return builders;

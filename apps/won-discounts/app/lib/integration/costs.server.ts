@@ -29,6 +29,9 @@
 //   nothing, so the loop ends there (tests/lib/sync/costs.test.ts "OQ3"). The
 //   bounded double work: one read of each written product's variants, or —
 //   past COST_QUEUE_MAX echoes — one extra full pass that writes nothing.
+//   MVP 3: the same mirror keeps each variant's `pdp` maximum (contract K4,
+//   sync/costs.ts) — products/update re-reads the price, inventory_items/update
+//   the cost, so both recompute it with no new topic or handler change.
 //   Admin: costMirrorView / costCoverage for the margin screen and Přehled.
 
 import type { PrismaClient } from "../../generated/prisma/client";

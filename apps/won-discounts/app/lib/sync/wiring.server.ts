@@ -3,6 +3,7 @@
 // (BILL-1, app/lib/plan.server.ts) + console logging + the default retry policy.
 
 import { buildNodeVars, buildShopFunctionConfig, verifyShopFunctionConfig } from "@won/core/discounts/function-payload";
+import { buildStorefrontConfig } from "@won/core/discounts/storefront-config";
 import { productRuleIndex } from "@won/core/discounts/targeting";
 
 import type { PrismaClient } from "../../generated/prisma/client";
@@ -26,6 +27,7 @@ export function productionSyncDeps(client: AdminClient, db: PrismaClient, logger
     buildNodeVars: (role, config, now) => buildNodeVars(role, config, now),
     productRuleIndex: (config, products) => productRuleIndex(config, products),
     verifyShopFunctionConfig: (json) => verifyShopFunctionConfig(json),
+    buildStorefrontConfig: (config, options) => buildStorefrontConfig(config, { configVersion: options.configVersion }),
     now: () => new Date(),
     logger,
   };

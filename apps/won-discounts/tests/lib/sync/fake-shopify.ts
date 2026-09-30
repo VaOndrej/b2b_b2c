@@ -78,6 +78,10 @@ const mfKey = (namespace: string, key: string) => `${namespace}/${key}`;
 
 export class FakeShopify implements AdminClient {
   shopId = "gid://shopify/Shop/1";
+  /** The app's installation on the shop (app-data metafields, MVP 3 storefront config). */
+  appInstallationId = "gid://shopify/AppInstallation/1";
+  /** App-data metafields (owner AppInstallation, plain namespace). */
+  appMetafields = new Map<string, FakeMetafield>();
   ianaTimezone = "Europe/Prague";
   currencyCode = "CZK";
   /** Variants by GID (created with their product; cost mirror). */
@@ -184,6 +188,18 @@ export class FakeShopify implements AdminClient {
     if (product) product.variantIds = product.variantIds.filter((id) => id !== variantId);
   }
 
+  /** The parsed `$app:won_discounts/pdp` value of a variant (undefined = none). */
+  variantPdpMetafield(variantId: string): unknown {
+    const value = this.variants.get(variantId)?.metafields.get(mfKey("$app:won_discounts", "pdp"))?.value;
+    return value === undefined ? undefined : JSON.parse(value);
+  }
+
+  /** The parsed app-data storefront config (`won_discounts/storefront_config`), undefined = none. */
+  storefrontConfig(): unknown {
+    const value = this.appMetafields.get(mfKey("won_discounts", "storefront_config"))?.value;
+    return value === undefined ? undefined : JSON.parse(value);
+  }
+
   /** The parsed `$app:won_discounts/variant` value of a variant (undefined = none). */
   variantCostMetafield(variantId: string): unknown {
     const value = this.variants.get(variantId)?.metafields.get(mfKey("$app:won_discounts", "variant"))?.value;
@@ -193,6 +209,7 @@ export class FakeShopify implements AdminClient {
   private variantView(variant: FakeVariant, opts: { product?: boolean; inventoryItem?: boolean } = {}) {
     const product = this.products.get(variant.productId);
     const mf = variant.metafields.get(mfKey("$app:won_discounts", "variant"));
+    const pdp = variant.metafields.get(mfKey("$app:won_discounts", "pdp"));
     return {
       __typename: "ProductVariant",
       id: variant.id,
@@ -201,6 +218,7 @@ export class FakeShopify implements AdminClient {
       ...(opts.product === false ? {} : { product: { id: variant.productId, title: product?.title ?? null } }),
       ...(opts.inventoryItem === false ? {} : { inventoryItem: { id: variant.inventoryItemId, unitCost: variant.unitCost ? { ...variant.unitCost } : null } }),
       cost: mf ? { value: mf.value } : null,
+      pdp: pdp ? { value: pdp.value } : null,
     };
   }
 
@@ -284,6 +302,7 @@ export class FakeShopify implements AdminClient {
       WonSyncRedeemBulkAdd: "discountRedeemCodeBulkAdd",
       WonSyncRedeemBulkDelete: "discountCodeRedeemCodeBulkDelete",
       WonSyncMetafieldsSet: "metafieldsSet",
+      WonSyncStorefrontConfigSet: "metafieldsSet",
       WonSyncMetafieldsDelete: "metafieldsDelete",
     };
     const field = root[op];
@@ -305,6 +324,7 @@ export class FakeShopify implements AdminClient {
 
   private metafieldsOf(ownerId: string): Map<string, FakeMetafield> | null {
     if (ownerId === this.shopId) return this.shopMetafields;
+    if (ownerId === this.appInstallationId) return this.appMetafields;
     const node = this.nodes.get(ownerId);
     if (node) return node.metafields;
     const product = this.products.get(ownerId);
@@ -535,6 +555,13 @@ export class FakeShopify implements AdminClient {
         }));
         return { discountNodes: this.page(all, v.after) };
       }
+      case "WonSyncStorefrontConfig": {
+        const mf = this.appMetafields.get(mfKey("won_discounts", "storefront_config"));
+        return { currentAppInstallation: { id: this.appInstallationId, metafield: mf ? { id: mf.id, value: mf.value } : null } };
+      }
+      case "WonSyncCostShop":
+        return { shop: { currencyCode: this.currencyCode } };
+      case "WonSyncStorefrontConfigSet":
       case "WonSyncMetafieldsSet": {
         const inputs = v.metafields as FakeMetafield[] & { ownerId: string }[];
         if (inputs.length > this.metafieldsSetLimit) {

@@ -8,10 +8,18 @@
 // it, and the discount function reads the same keys:
 //   shop     function_config  the shared config (C7), one atomic write for all nodes
 //   node     function_vars    per-node input-query variables (role, campaign window)
-//   product  product          productMetafieldValue(entry) = {"ruleIds", "variantRuleIds", "marginRefs"?}
+//   product  product          productMetafieldValue(entry) = {"ruleIds", "variantRuleIds", "marginRefs"?, "tierRef"?}
 //   variant  variant          the cost mirror (margin protection, MVP 2, costs.ts):
 //                              {"cost": <inventoryItem.unitCost.amount>, "cur": "<its currency>"},
 //                              only on variants with a cost > 0
+//   variant  pdp              MVP 3 (contract K4, costs.ts): {"max": <the largest discount %
+//                              margin protection allows at the variant's price>}, only on
+//                              variants with a known cost while protection is on; the
+//                              storefront reads it, the function never does
+// And one APP-DATA metafield (MVP 3, contract K5, storefront.ts): owner = the app's
+// AppInstallation, PLAIN namespace `won_discounts` (app-data metafields do not use
+// `$app`: the owner isolates them), key `storefront_config`, type json — the
+// theme block reads `app.metafields.won_discounts.storefront_config.value`.
 // Which products carry `product` is sync bookkeeping in Prisma
 // ProductTargetIndex (DATA-1), not in Shopify; which variants carry `variant`,
 // Prisma VariantCost.
@@ -25,6 +33,11 @@ export const SHOP_CONFIG_KEY = "function_config";
 export const NODE_VARS_KEY = "function_vars";
 export const PRODUCT_KEY = "product";
 export const VARIANT_COST_KEY = "variant";
+/** Variant metafield `$app:won_discounts/pdp` (MVP 3, K4). */
+export const VARIANT_PDP_KEY = "pdp";
+/** App-data metafield (AppInstallation, plain namespace — K5). */
+export const STOREFRONT_NAMESPACE = "won_discounts";
+export const STOREFRONT_CONFIG_KEY = "storefront_config";
 
 /**
  * Variants per page of the cost mirror's full pass. Shopify accepted
@@ -54,6 +67,34 @@ export const GQL = {
     metafield(namespace: "$app:won_discounts", key: "function_config") {
       id
       value
+    }
+  }
+}`,
+
+  // --- Storefront config (MVP 3, K5, storefront.ts): the app installation and its app-data metafield ------
+  storefrontConfig: `query WonSyncStorefrontConfig {
+  currentAppInstallation {
+    id
+    metafield(namespace: "won_discounts", key: "storefront_config") {
+      id
+      value
+    }
+  }
+}`,
+
+  // metafieldsSet under its own operation name: the storefront write is told apart from the shop /
+  // product / variant writes (logs, tests).
+  storefrontConfigSet: `mutation WonSyncStorefrontConfigSet($metafields: [MetafieldsSetInput!]!) {
+  metafieldsSet(metafields: $metafields) {
+    metafields {
+      id
+      key
+      ownerType
+    }
+    userErrors {
+      field
+      message
+      code
     }
   }
 }`,
@@ -511,6 +552,13 @@ export const GQL = {
   // --- Cost mirror (margin protection, MVP 2, costs.ts) ------------------------------------
   // inventoryItem.unitCost reads with read_products alone (live, MVP 2 build
   // log; the MCP validator lists read_inventory as an alternative scope).
+  // The shop currency the variant prices are in (MVP 3, pdp: the price → max. discount % in the shop currency).
+  costShop: `query WonSyncCostShop {
+  shop {
+    currencyCode
+  }
+}`,
+
   costVariantsCount: `query WonSyncCostVariantsCount {
   productVariantsCount {
     count
@@ -542,6 +590,9 @@ export const GQL = {
       cost: metafield(namespace: "$app:won_discounts", key: "variant") {
         value
       }
+      pdp: metafield(namespace: "$app:won_discounts", key: "pdp") {
+        value
+      }
     }
   }
 }`,
@@ -565,6 +616,9 @@ export const GQL = {
         }
       }
       cost: metafield(namespace: "$app:won_discounts", key: "variant") {
+        value
+      }
+      pdp: metafield(namespace: "$app:won_discounts", key: "pdp") {
         value
       }
     }
@@ -595,6 +649,9 @@ export const GQL = {
           cost: metafield(namespace: "$app:won_discounts", key: "variant") {
             value
           }
+          pdp: metafield(namespace: "$app:won_discounts", key: "pdp") {
+            value
+          }
         }
       }
     }
@@ -622,6 +679,9 @@ export const GQL = {
           }
         }
         cost: metafield(namespace: "$app:won_discounts", key: "variant") {
+          value
+        }
+        pdp: metafield(namespace: "$app:won_discounts", key: "pdp") {
           value
         }
       }

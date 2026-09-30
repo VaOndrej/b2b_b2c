@@ -19,6 +19,10 @@
 // necessarily stricter than its cost floor (audit P2-1; the admin says so while
 // the first pass runs). A refused write keeps an older cost only while it is
 // the stricter floor (costs.ts olderCostsThatStay, from `floors` built here).
+// The variant `pdp` maximum (MVP 3, K4) rides with the cost: full / items jobs
+// get a pdp context built here from the SAME margin checkout runs (gated for
+// the plan, folded — runningMargin), the product refs the sync wrote and the
+// shop currency (read once per job; a failed read fails the job like any read).
 // Single instance assumption as the rest of the sync (MVP 7 note): two
 // instances would each run their own jobs — harmless, every write is an
 // idempotent diff against what Shopify has.
@@ -44,6 +48,7 @@ import {
   type ClearResult,
   type CostFloors,
   type CostPassResult,
+  type PdpContext,
   type CostPending,
   type MirrorResult,
 } from "./costs";
@@ -169,6 +174,24 @@ function costFloors(deps: CostLaneDeps, shop: string, margin: MarginModule): Cos
   };
 }
 
+/**
+ * The pdp context of a job (costs.ts): the margin checkout runs, the product
+ * refs from `floors`, the shop currency read once (memoized; a failed read
+ * rejects every caller — the job fails and is retried like any failed read).
+ */
+function pdpContext(transport: Transport, margin: MarginModule, floors: CostFloors): PdpContext {
+  let currency: Promise<string | null> | null = null;
+  return {
+    margin,
+    marginRefs: floors.marginRefs,
+    shopCurrency: () =>
+      (currency ??= transport.call<{ shop: { currencyCode?: string | null } | null }>("costShop").then((data) => {
+        const code = typeof data.shop?.currencyCode === "string" ? data.shop.currencyCode.trim().toUpperCase() : "";
+        return /^[A-Z]{3}$/.test(code) ? code : null;
+      })),
+  };
+}
+
 /** Queue a cost job for `shop` (see the header). Never rejects: failures come back as `error`. */
 export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Promise<CostJobOutcome> {
   let lane: Lane | null = null;
@@ -189,13 +212,16 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
       if (job.kind !== "clear" && !enabled) return { done: "skipped", reason: "margin_off" };
       const transport = new Transport(deps.client, deps.retry, deps.sleep, logger);
       const isCancelled = () => lane?.cancelled === true;
+      const floors = costFloors(deps, shop, margin);
       const ctx = {
         transport,
         db: deps.db,
         shop,
         isCancelled,
         now: deps.now,
-        floors: costFloors(deps, shop, margin),
+        floors,
+        // The pdp maximum only while protection is on (full / items); a clear deletes it with the cost.
+        ...(enabled ? { pdp: pdpContext(transport, margin, floors) } : {}),
         ...(job.kind === "items" && job.retryRefused ? { retryRefused: true } : {}),
       };
       if (job.kind === "full") {
@@ -207,7 +233,9 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
         });
         if (result.outcome === "failed") logger.warn(`costs ${shop}: full pass failed: ${result.errors.join("; ")}`);
         else if (result.outcome === "done") {
-          logger.info(`costs ${shop}: full pass done (${result.read} read, ${result.written} written, ${result.cleared} cleared, ${result.refused} refused)`);
+          logger.info(
+            `costs ${shop}: full pass done (${result.read} read, ${result.written} written, ${result.cleared} cleared, ${result.pdp} pdp, ${result.refused} refused)`,
+          );
         }
         if (result.outcome !== "cancelled") settled(shop, deps);
         return { done: "full", result };
@@ -222,6 +250,7 @@ export function startCostJob(shop: string, deps: CostLaneDeps, job: CostJob): Pr
       const result: MirrorResult = {
         written: items.written + products.written,
         cleared: items.cleared + products.cleared,
+        pdp: items.pdp + products.pdp,
         refused: items.refused + products.refused,
         backedOff: items.backedOff + products.backedOff,
         removed: items.removed + products.removed,

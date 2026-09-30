@@ -41,7 +41,8 @@ import { adminClientFromApp, type AdminClient, type AppAdminGraphql } from "../a
 import { loadConfig, saveConfig, type SaveConfigResult } from "../config.server";
 import { withinDeadline } from "../integration/deadline";
 import { loadShopMarkets, targetsMarkets, withMarketCountries, type ShopMarket } from "./markets";
-import { appliedPlanMismatch, storedConfigNotApplied } from "./runs";
+import { appliedPlanMismatch, appliedRun, storedConfigNotApplied } from "./runs";
+import { storefrontApplied } from "./storefront";
 import { loadShopSyncFacts, recordMarketsChecked } from "./sync-state.server";
 import { shopLocalDateTime, type Sync } from "./sync.server";
 import { errorText, Transport } from "./transport";
@@ -284,7 +285,7 @@ export async function loadSyncStatus(db: PrismaClient, shop: string): Promise<Sy
 }
 
 /** Why resyncIfPending resynced. */
-export type ResyncReason = "never_synced" | "retry" | "not_applied" | "plan" | "timezone" | "markets";
+export type ResyncReason = "never_synced" | "retry" | "not_applied" | "plan" | "storefront" | "timezone" | "markets";
 
 export type ResyncIfPendingResult =
   | { resynced: false; reason: "up_to_date" | "too_soon" | "nothing_saved" }
@@ -308,6 +309,8 @@ export interface ResyncIfPendingArgs extends Common {
  *     between the save and its SyncRun, audit P2-2);
  *   - the live config was built for another plan than the shop has now
  *     (BILL-1, F2 re-review I-2: Pro may still run for a Free shop);
+ *   - the run that applied the live config did not leave the storefront
+ *     config in place (MVP 3: a config applied before it existed);
  *   - the shop's time zone changed since the last sync (rule days move);
  *   - Shopify's market countries changed (market-targeted configs).
  */
@@ -329,6 +332,10 @@ export async function resyncIfPending(args: ResyncIfPendingArgs): Promise<Resync
   // I-2: the live config was built for another plan (written before the sync gated for plans, or a downgrade / upgrade since).
   const sync = (args.createSync ?? createProductionSync)(args.client, args.db);
   if (await appliedPlanMismatch(args.db, args.shop, await sync.plan(args.shop))) return resync("plan");
+  // MVP 3: the live config was applied by a run that did not leave the storefront config in place (a run from
+  // before the storefront config existed — a failed write is a failed run, retried above).
+  const applied = await appliedRun(args.db, args.shop);
+  if (applied && !storefrontApplied(applied.steps)) return resync("storefront");
   const facts = await loadShopSyncFacts(args.db, args.shop);
   if (args.timezone && facts.timezone && args.timezone !== facts.timezone) return resync("timezone");
   if (args.checkMarkets && canReadMarkets(args.grantedScopes)) {
