@@ -7,42 +7,22 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
-- **Fáze (2026-09-30):** MVP 2 (Ochrana marže) — **všechno hotové a commitnuté (HEAD `b59770f`+docs),
-  NEPUSHNUTÉ**. Zbývá: (1) počkat na re-review kol 5+5b enginu (agent běží; ledger
-  `.superpowers/sdd/2026-09-29-won-discounts-mvp2/progress.md`, report `audit-fix-engine-r4-report.md`
-  „Round 5/5b“) a opravit případné nálezy; (2) statická brána na finálním HEAD (test:packages,
-  guard:test:core, test:unit/typecheck/lint/build -w won-discounts, validate:shopify, `_template` =
-  workspace `won-app-template`, Toasts typecheck); (3) `git push origin main`; (4) 3řádkové shrnutí MVP 2
-  Ondřejovi. **Běží round 6 enginu** (dlouhé zadané kódy přetáhnou limit instrukcí až na 169 % →
-  kód ≤ 64 znaků, přeskočení delších bez normalizace, O(E) dedupe; brief `audit-fix-engine-r6-brief.md`,
-  checklist pro pokračování na konci ledgeru). Živé E2E MVP 2 je hotové (✓ Horizon ✓ Dawn Free i Pro, evidence `docs/won-discounts/evidence/mvp2/e2e-final-*`).
-- **Další krok: MVP 3** — plán `docs/plans/2026-09-30-won-discounts-mvp3.md` (vč. dluhu: Free přepínače
-  kombinování v adminu). SDD workspace založit skriptem `sdd-workspace` pro tenhle plán.
-- **Trh Slovensko (EUR):** Ondřej 2026-09-30 přidal katalog a trh, ale na `/sk` storefront neukazuje ceny v EUR
-  → prověřeno 2026-09-30: `/sk` je jen **slovenský jazyk v trhu Česko** (country CZ, CZK); trh Slovensko se
-  zapne přes výběr země / `?country=SK` → ceny **EUR €8,95** fungují (Admin `contextualPricing` SK = 8.95 EUR).
-  Ale produkty jsou v SK pořád **nedostupné** (`available: false`, `/cart/add.js` 422) → katalog trhu SK
-  nejspíš neobsahuje produkty / Online Store publikaci (API appky to nevidí: `publishedInContext` chce
-  `read_publications`). **Příčina ověřena přes `shopify store execute` (Ondřejův CLI login, jen čtení):** trh
-  Slovensko je ACTIVE, EUR, katalog aktivní (autoPublish), simple-a `publishedInContext SK = true`, ale
-  **SK není v žádné dopravní zóně** (Obecný profil: Domestic US + International 27 zemí vč. CZ/DE, bez SK)
-  → produkty v SK nedostupné. Oprava: přidat Slovensko do zóny International (Nastavení → Doprava a
-  doručení → Obecný profil), nebo `deliveryProfileUpdate` přes CLI s „go“ od Ondřeje. `/sk` je jen jazyk,
-  trh SK se volí zemí (`?country=SK`); oba trhy sdílí doménu bez podsložky.
-  **2026-09-30 po přidání SK do zóny International:** produkty v SK dostupné (`/cart/add.js` 200, košík EUR).
-  ALE cena simple-a v SK je teď **€0,95** (storefront i Admin `contextualPricing` SK = 0.95 EUR; ráno 8.95 EUR).
-  Ceník Slovensko (EUR, adjustment 0 %, rounding zapnutý) vrací v `prices` pro won-e2e fixní 10.0/12.0/…/9.0 —
-  nesedí s 0,95 → prověřit s Ondřejem nastavení cen trhu SK (ceník / zaokrouhlení / fixní ceny) před SK E2E.
-  Nástroj: `shopify store execute` s Ondřejovým CLI loginem (`shopify store auth --scopes read_markets,
-  read_publications,read_products,read_shipping,read_locations`), jen čtení.
-  Nutné pro MVP 4 (prahy CZ i SK) a pro SK scénář E2E marže (dnes přeskočený s důvodem).
-- `shopify app dev` běží s `WON_DEV_PLAN=pro` → před MVP 3 E2E restart bez něj (dev store je Free).
-  Offline session appky na dev storu už existuje (webhooky fungují).
+- **Fáze:** MVP 2 (Ochrana marže) ✅ **uzavřené a pushnuté** (checkpoint níž). **Další krok: MVP 3
+  (Množstevní slevy + PDP blok + základ storefrontu)** — plán `docs/plans/2026-09-30-won-discounts-mvp3.md`
+  (vč. dluhu: Free přepínače kombinování v adminu). SDD workspace založit skriptem `sdd-workspace`.
+  **Pozor na rozpočet funkce:** nejdražší zkonstruované košíky mají jen ~1,7 % rezervy — úrovně (MVP 3)
+  přidají práci per řádek → v T2 znovu spustit adversariální hledání (generátory ve scratchpadu
+  `rereview-engine-r*`, README funkce „Instruction budget“); úspora ~4 %: země trhu v payloadu jako jeden
+  řetězec (změna formátu payloadu).
+- **Trh Slovensko (EUR):** doprava přidaná (Ondřej 2026-09-30), produkty v SK dostupné, košík v EUR. **Cena
+  simple-a v SK je €0,95** (ráno 8,95) → čeká na kontrolu ceníku trhu SK Ondřejem; SK scénář E2E marže je do
+  té doby přeskočený s důvodem. Ověřovací nástroj: `shopify store execute` (Ondřejův CLI login, jen čtení).
+- `shopify app dev` běží s `WON_DEV_PLAN=pro` → před MVP 3 E2E restart bez něj (dev store je Free). Offline
+  session appky na dev storu existuje (webhooky fungují).
 - **Ondřej 2026-09-29: funkce zůstává v Rustu** (JS nestačí na limit instrukcí; TS engine = reference).
-- **Poslední push:** `152aad5` (před MVP 2).
+- **Poslední push:** viz checkpoint MVP 2.
 - **Pro Ondřeje (mimo rozsah, neřeším):** v gitu je sledovaný `apps/won-toasts/prisma/prisma/dev.sqlite`
-  (lokální DB Won Toasts, může obsahovat sessions/tokeny) → doporučuju `git rm --cached` + gitignore;
-  CI job s Rustem pro `npm run test:unit -w won-discounts` (paritu a rozpočty funkce CI netestuje).
+  → doporučuju `git rm --cached` + gitignore; CI job s Rustem pro `npm run test:unit -w won-discounts`.
 
 ## Ověřená fakta API (schema.graphql Discount Function, API 2026-04)
 
@@ -175,9 +155,11 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 - **Audity**: hlavní (0 P0 / 1 P1 / 3 P2 / 5 P3), drift Rust↔TS (0 / 1 / 1 / 1, 43 812 vstupů) →
   **všechny nálezy opraveny** v 5 kolech appky a 4+1 kolech enginu, každé s re-review.
 
-**Brána (HEAD `05aa9ef`+)**: core 681 + testing 34 ✓ · guard 301 ✓ · `test:unit -w won-discounts`
-node 851 + cargo 72 + vitest 389 ✓ · typecheck ✓ · lint ✓ · build ✓ · validate 0 nálezů ✓ ·
-`_template` 18 + typecheck ✓ · Toasts typecheck ✓. Živé E2E ✓ Horizon ✓ Dawn (Free i Pro).
+**Brána (HEAD `bbc8bf2`)**: core 690 + testing 34 ✓ · guard 301 ✓ · `test:unit -w won-discounts`
+node 867 + cargo 80 + vitest 411 ✓ · typecheck ✓ · lint ✓ · build ✓ · validate 0 nálezů ✓ ·
+`_template` 18 + typecheck ✓ · Toasts typecheck ✓. Živé E2E ✓ Horizon ✓ Dawn (Free i Pro). Funkce:
+realistické košíky ≤ 85,7 % limitu instrukcí, každý zkonstruovaný tvar ≤ 98,3 % (7 kol adversariálního
+hledání; mezery: kód ≤ 64 znaků, ≤ 25 zadaných kódů, ≤ 16 znaků mezer okolo, Pro stack ≤ 6).
 
 **Vědomé kompromisy**
 - Ochrana marže hlídá jen slevy z Won (slevy mimo Won ji obejdou; Přehled je ukazuje s „Přesunout“).
