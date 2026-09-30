@@ -13,7 +13,9 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   „Round 5/5b“) a opravit případné nálezy; (2) statická brána na finálním HEAD (test:packages,
   guard:test:core, test:unit/typecheck/lint/build -w won-discounts, validate:shopify, `_template` =
   workspace `won-app-template`, Toasts typecheck); (3) `git push origin main`; (4) 3řádkové shrnutí MVP 2
-  Ondřejovi. Živé E2E MVP 2 je hotové (✓ Horizon ✓ Dawn Free i Pro, evidence `docs/won-discounts/evidence/mvp2/e2e-final-*`).
+  Ondřejovi. **Běží round 6 enginu** (dlouhé zadané kódy přetáhnou limit instrukcí až na 169 % →
+  kód ≤ 64 znaků, přeskočení delších bez normalizace, O(E) dedupe; brief `audit-fix-engine-r6-brief.md`,
+  checklist pro pokračování na konci ledgeru). Živé E2E MVP 2 je hotové (✓ Horizon ✓ Dawn Free i Pro, evidence `docs/won-discounts/evidence/mvp2/e2e-final-*`).
 - **Další krok: MVP 3** — plán `docs/plans/2026-09-30-won-discounts-mvp3.md` (vč. dluhu: Free přepínače
   kombinování v adminu). SDD workspace založit skriptem `sdd-workspace` pro tenhle plán.
 - **Trh Slovensko (EUR):** Ondřej 2026-09-30 přidal katalog a trh, ale na `/sk` storefront neukazuje ceny v EUR
