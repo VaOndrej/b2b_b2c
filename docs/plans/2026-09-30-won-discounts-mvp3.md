@@ -124,6 +124,10 @@ T1), náhodná shoda s úrovněmi (všechny režimy, měny, marže), TS dvojčat
 - Věrný náhled bloku: tokeny aktivního tématu ze `settings_data` (read_themes), stejné CSS jako
   storefront, vzhledy přepínatelné v náhledu; „Zobrazit na mém webu“ → produkt se sadou.
 - Vzhled: minimální obrazovka nebo sekce s výběrem ze 4 vzhledů (Pro vlastní vzhled = MVP 7).
+- **Dluh MVP 1:** Free přepínače kombinování po kategoriích (rozhodnutí A1: výprodej s ničím,
+  produkt vs. objednávka, produkt/objednávka vs. doprava) v Nastavení — engine je umí
+  (`engine.combination`), admin je zatím nemá; jedno tlačítko uložení, poctivé vysvětlení, co přepnutí
+  udělá, a náhled ve Vyzkoušet košík.
 - Přehled (karta Množstevní slevy), Vyzkoušet košík (úrovně ve vysvětlení), editor pravidla (když
   pravidlo soutěží s úrovní), harness + screenshoty 390/1440, i18n cs/en.
 

@@ -7,21 +7,25 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
-- **Fáze:** MVP 2 (Ochrana marže) **běží** — plán `docs/plans/2026-09-29-won-discounts-mvp2.md`,
-  ledger `.superpowers/sdd/2026-09-29-won-discounts-mvp2/progress.md` (po kompakci číst ledger +
-  `git log`, hotové úkoly neopakovat). MVP 1 ✅ (`801d2e9`).
-  Nákupní ceny e2e produktů: **vyřešeno bez tokenu** (2026-09-29, `shopify app execute` jménem
-  appky, stávající scopy): čtení `variant.inventoryItem.unitCost` funguje s `read_products`
-  (bez `read_inventory`), zápis přes `productVariantsBulkUpdate(variants: [{ inventoryItem: { cost } }])`
-  s `write_products` (bez `write_inventory`; `inventoryItemUpdate` by write_inventory chtěl).
-  Důkaz: won-e2e-simple-a (varianta 48468678902001, cena 10.00 USD) má teď nákupní cenu 6.0 USD.
-  Admin token (shpat) ani client secret nejsou potřeba; seed MVP 2 nastaví ceny idempotentně sám.
+- **Fáze (2026-09-30):** MVP 2 (Ochrana marže) — **všechno hotové a commitnuté (HEAD `b59770f`+docs),
+  NEPUSHNUTÉ**. Zbývá: (1) počkat na re-review kol 5+5b enginu (agent běží; ledger
+  `.superpowers/sdd/2026-09-29-won-discounts-mvp2/progress.md`, report `audit-fix-engine-r4-report.md`
+  „Round 5/5b“) a opravit případné nálezy; (2) statická brána na finálním HEAD (test:packages,
+  guard:test:core, test:unit/typecheck/lint/build -w won-discounts, validate:shopify, `_template` =
+  workspace `won-app-template`, Toasts typecheck); (3) `git push origin main`; (4) 3řádkové shrnutí MVP 2
+  Ondřejovi. Živé E2E MVP 2 je hotové (✓ Horizon ✓ Dawn Free i Pro, evidence `docs/won-discounts/evidence/mvp2/e2e-final-*`).
+- **Další krok: MVP 3** — plán `docs/plans/2026-09-30-won-discounts-mvp3.md` (vč. dluhu: Free přepínače
+  kombinování v adminu). SDD workspace založit skriptem `sdd-workspace` pro tenhle plán.
+- **Trh Slovensko (EUR):** Ondřej 2026-09-30 přidal katalog a trh, ale na `/sk` storefront neukazuje ceny v EUR
+  → prověřuju (Admin API appky nemá `read_markets` — je jen volitelný scope; storefront přes Playwright).
+  Nutné pro MVP 4 (prahy CZ i SK) a pro SK scénář E2E marže (dnes přeskočený s důvodem).
+- `shopify app dev` běží s `WON_DEV_PLAN=pro` → před MVP 3 E2E restart bez něj (dev store je Free).
+  Offline session appky na dev storu už existuje (webhooky fungují).
 - **Ondřej 2026-09-29: funkce zůstává v Rustu** (JS nestačí na limit instrukcí; TS engine = reference).
-- **Blokováno:** nic. Pozn.: `shopify app dev` běží s dev přepínačem `WON_DEV_PLAN=pro` z finální
-  brány — před MVP 2 restartovat bez něj (dev store je Free).
-- **Poslední push:** viz checkpoint MVP 1.
+- **Poslední push:** `152aad5` (před MVP 2).
 - **Pro Ondřeje (mimo rozsah, neřeším):** v gitu je sledovaný `apps/won-toasts/prisma/prisma/dev.sqlite`
-  (lokální DB Won Toasts, může obsahovat sessions/tokeny) → doporučuju `git rm --cached` + gitignore.
+  (lokální DB Won Toasts, může obsahovat sessions/tokeny) → doporučuju `git rm --cached` + gitignore;
+  CI job s Rustem pro `npm run test:unit -w won-discounts` (paritu a rozpočty funkce CI netestuje).
 
 ## Ověřená fakta API (schema.graphql Discount Function, API 2026-04)
 
@@ -49,6 +53,19 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 | P5 | Porty | `24678` (výchozí Vite HMR) už poslouchá jiný `node` proces → při `app dev` hlídat kolizi HMR. `9885/9886` volné pro E2E témata. | `lsof -iTCP -sTCP:LISTEN` |
 
 ## Poučení (platí pro další appky)
+
+- **Limit dotazu funkce 3000 znaků počítá i komentáře** (`shopify app dev`: „Query can be at most 3000
+  characters“). Dokumentaci vstupu drž v README, v `.graphql` jen krátká hlavička; test měří celý soubor.
+- **Rozpočet instrukcí funkce měř na skutečné hranici vstupu**: Shopify počítá velikost vstupu v bajtech
+  MessagePack (ne JSON, ~85 %), 128 kB škálované počtem řádků; testovací košíky s reálnými formáty id
+  (`r_` + 20 hex, `gid://shopify/CartLine/n`). Nezávislý adversariální fuzz našel 3 kvadratické cesty
+  (měření výstupu, hledání stacků, hledání množiny řádků) → každé hledání per řádek musí mít pevnou mez.
+- **Webhook `inventory_items/update` jde s `read_products`** (changelog 2025-03-31); nákupní cenu zapíše
+  `productVariantsBulkUpdate` s `write_products` (bez `write_inventory`).
+- **Offline session na dev storu vznikne až otevřením appky v adminu** — do té doby webhookové a
+  background cesty tiše končí „no Admin API session“; E2E je pak nepokryje. U další appky otevřít hned.
+- **Nestabilní test = chyba brány**: časovače v testech nahradit injektovanými hodinami (vzor
+  `setMarginImpactClock`).
 
 - **JS discount funkce nestačí na velké košíky.** Engine v JS (Javy): 200 řádků ≈ 96 M instrukcí
   při limitu 11 M, samotné čtení vstupu 12,3 M, limit padá kolem 22 řádků (2026-09-28, MVP 1 T2).
@@ -87,6 +104,14 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 - Brainstorming skill vynechán: produkt je odsouhlasený (`rozhodnuti.md`), zadání chce plnou
   autonomii bez otázek.
 
+- **MVP 2 rozhodnutí controlleru (2026-09-29/30)**: se zapnutou marží jde objednávková sleva vždy
+  jako přesná částka (bezpečné pro oba základy rozpočtu); procenta marže na 1 desetinné místo na
+  přísnější stranu (rozpočet configu zaručený); nejvýš 2 rozhodující refy kolekcí na produkt + most
+  starý ∪ nový při přepnutí; nejistota členství → cílený dotaz `Product.inCollection`, jinak config
+  drží; Pro stacky jen mezi 6 nejlepšími slevami; bez limitu pravidel na produkt; > 4 refy → nejpřísnější
+  nastavení; nejvýš 25 zadaných kódů (počítáno jak zadané, fail closed); trhy a kódy v lineárním čase;
+  rozpočet funkce: realistické ≤ 90 %, žádný tvar ≥ 100 %; poznámka v editoru ve Free bez čísla.
+
 ## Verdikty rizik C1–C6
 
 | # | Riziko | Verdikt | Důkaz |
@@ -100,6 +125,58 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 | C6 | kód při přesunu | rozhodnuto: záloha → smazání → vytvoření ve Won | `rozhodnuti.md` |
 
 ## Checkpointy MVP
+
+### MVP 2 — Ochrana marže ✅ (badge zůstává `Alpha`)
+
+**Hotové a ověřené**
+- **Engine** (`@won/core/discounts`, TS reference): marže = jako Shopify u produktu (z ceny, kterou
+  platí zákazník, u cen s DPH včetně DPH); min. marže 0–95 % z nákupní ceny převedené kurzem
+  `presentmentCurrencyRate`, bez nákupní ceny strop % (A2, zároveň záchranný strop do načtení cen);
+  ořez produktové slevy na hranici, objednávková sleva konzervativně pro oba základy rozpočtu na řádky
+  s vynecháním řádků na hranici (hledání ze dvou pořadí, omezené a fail closed), se zapnutou marží vždy
+  přesná částka; Pro nastavení po kolekcích (nejvýš 2 rozhodující refy na produkt, > 4 refy →
+  nejpřísnější nastavení); Pro stacky hledané jen mezi 6 nejlepšími slevami (`MAX_STACK_CANDIDATES`).
+- **Funkce v Rustu**: port 1:1, parita (fixtures, 2 400 + 2 000 + 1 500 náhodných košíků, 0 rozdílů),
+  replay 874 skutečných běhů z dev storu beze změny výstupu; rozpočty měřené na skutečné hranici vstupu
+  (128 kB MessagePack) s reálnými id: nejtěžší realistický košík 88,9 % limitu (brána 90 %), žádný
+  zkonstruovatelný tvar přes 100 % (max 99,1 % s 250 zadanými kódy, trhy 95,7 %); Wasm 221 kB; dotaz
+  26/27 bodů, ≤ 3000 znaků; nejvýš 25 zadaných kódů se vyhodnotí (další `over_limit` s vysvětlením).
+- **Sync**: zrcadlo `unitCost` do variant metafieldu (jen změněné, s kurzorem, jistič odmítnutí,
+  15 platných číslic nahoru), webhook `inventory_items/update` (stačí `read_products`), denní srovnání
+  od startu appky, `marginRefs` s mostem (staré ∪ nové rozhodující refy, nikdy volnější než živý ani
+  nový config), fold kolekcí nad limitem 10 000 produktů (fail closed), config drží při nejistotě.
+- **Admin**: modul Ochrana marže (Free + Pro amber), přehled zásahů po pravidlech (Pro, z configu a
+  zrcadla), karta na Přehledu, poznámka v editoru (Free bez čísla), Vyzkoušet košík s nákupní cenou a
+  odhadem kurzu, české hlášky z kódů a parametrů (ne z anglického textu), čísla podle jazyka.
+- **Podpůrná dokumentace MVP 0–2** (`apps/won-discounts/docs/`, 13 concepts, 6 tasks, 6 support,
+  generovaná reference + drift test) — dluh MVP 1 splacen.
+- **Živé E2E (dev store, Bogus)**: fáze Free ✓ Horizon ✓ Dawn (košík, pokladna = `planCart` + doprava,
+  snížená objednávková sleva přes 2 řádky, MVP 1 a shapes s vypnutou marží), fáze Pro ✓ ✓ (kolekce
+  10 %, kontrolní řádek odliší Pro od Free, úklid bez zálohy), embed ✓ ✓; kurz USD→CZK z logu funkce
+  (7–8 platných číslic, mění se denně). Fakta F-M1–F-M4 (kurz, variant metafield ve funkci, webhook
+  s `read_products`, `inCollection` na smazanou kolekci = false). → `docs/won-discounts/evidence/mvp2/`.
+- **Audity**: hlavní (0 P0 / 1 P1 / 3 P2 / 5 P3), drift Rust↔TS (0 / 1 / 1 / 1, 43 812 vstupů) →
+  **všechny nálezy opraveny** v 5 kolech appky a 4+1 kolech enginu, každé s re-review.
+
+**Brána (HEAD `05aa9ef`+)**: core 681 + testing 34 ✓ · guard 301 ✓ · `test:unit -w won-discounts`
+node 851 + cargo 72 + vitest 389 ✓ · typecheck ✓ · lint ✓ · build ✓ · validate 0 nálezů ✓ ·
+`_template` 18 + typecheck ✓ · Toasts typecheck ✓. Živé E2E ✓ Horizon ✓ Dawn (Free i Pro).
+
+**Vědomé kompromisy**
+- Ochrana marže hlídá jen slevy z Won (slevy mimo Won ji obejdou; Přehled je ukazuje s „Přesunout“).
+- Rozpočet objednávkové slevy na řádky Shopify nezveřejňuje → engine konzervativní pro oba základy
+  (bez `read_orders` nejde ověřit per řádek, jen celkem).
+- Pro stacky nejvýš 6 slev na řádek/objednávku [spec]; počet pravidel na produkt neomezen (vstup ≤ 128 kB
+  drží všechny tvary pod 100 %); vyhodnotí se nejvýš prvních 25 zadaných kódů [spec]. Nejtěžší
+  zkonstruované košíky mají jen ~1–3 % rezervy — každá nová featura čtoucí data per řádek musí rozpočet
+  přeměřit (README funkce, „Instruction budget“).
+- Přehled zásahů z configu a zrcadla, zásahy z objednávek až s analytikou MVP 7 (`read_orders`).
+- Zámky, fronty a cache dopadu jsou per proces (jedna instance, MVP 7).
+
+**Neověřeno**
+- Pokladna v EUR (trh Slovensko na dev storu nic neprodává — čeká na Ondřeje).
+- Vložení adminu do Shopify adminu (resource picker kolekcí, save bar) — ověří Ondřej.
+- Postgres (migrace je SQLite; port v MVP 7).
 
 ### MVP 1 — Engine + Slevy a kódy + přesun nativních slev ✅ (badge → `Alpha`)
 
@@ -188,6 +265,14 @@ typecheck ✓.
 řádek, klíče kampaně povinné, Cloudflare 429 na storefrontu → tempo ≥ 1,5 s).
 
 ## Parkované otázky a dluh
+
+Z MVP 2 (žádné neblokuje):
+- **Free přepínače kombinování po kategoriích v adminu chybí** (rozhodnutí: „Free: merchant přepíná výchozí
+  pravidla po kategoriích“; engine je umí, admin ne) → zařadit do MVP 3 (admin).
+- Kampaně: fáze 1 přepnutí kampaně posílá nová pravidla, i když finální zápis zůstane zadržený (marže už
+  opravena) → řešit v MVP 6.
+- Dokumentace: `index.generated.md`, `dist/corpus.jsonl` a corpus test jako u Toasts → MVP 7.
+- Zrcadlo nákupních cen: srovnání max. 5 obchodů za hodinu → scheduler MVP 5; Postgres port migrace → MVP 7.
 
 Drobnosti z task review MVP 0, které po opravách auditu zůstaly (žádná neblokuje):
 - `packages/core/src/discounts/config.ts` je velký soubor (sanitizery všech modulů) → rozdělit

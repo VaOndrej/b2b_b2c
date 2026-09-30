@@ -249,6 +249,10 @@ interface CartPlan {
    nezveřejňuje) s rezervou 1 minor unit na řádek; řádky bez rezervy objednávková sleva vynechá
    (`excludedCartLineIds`), když tím zákazník dostane víc. Žádný řádek nepodleze minimum.
    Oříznutí → `marginCapped` + vysvětlení. Detail: `docs/plans/2026-09-29-won-discounts-mvp2.md`.
+   **Meze kvůli limitu instrukcí funkce [spec, MVP 2]:** Pro stack se hledá jen mezi 6 nejlépe
+   seřazenými kandidáty řádku / objednávky (`MAX_STACK_CANDIDATES`), vyhodnotí se nejvýš prvních 25
+   zadaných kódů (`MAX_ENTERED_CODES`, další mají stav `over_limit`), produkt s víc než 4 refy kolekcí
+   marže dostane nejpřísnější nastavení, hledání řádků pro objednávkovou slevu je omezené a fail closed.
 8. **Kampaň** (Pro): když `now.campaignActive = id`, přepisy kampaně se aplikují na config
    **před** krokem 1; marže platí dál.
 
