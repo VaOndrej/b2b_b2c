@@ -27,6 +27,12 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   → produkty v SK nedostupné. Oprava: přidat Slovensko do zóny International (Nastavení → Doprava a
   doručení → Obecný profil), nebo `deliveryProfileUpdate` přes CLI s „go“ od Ondřeje. `/sk` je jen jazyk,
   trh SK se volí zemí (`?country=SK`); oba trhy sdílí doménu bez podsložky.
+  **2026-09-30 po přidání SK do zóny International:** produkty v SK dostupné (`/cart/add.js` 200, košík EUR).
+  ALE cena simple-a v SK je teď **€0,95** (storefront i Admin `contextualPricing` SK = 0.95 EUR; ráno 8.95 EUR).
+  Ceník Slovensko (EUR, adjustment 0 %, rounding zapnutý) vrací v `prices` pro won-e2e fixní 10.0/12.0/…/9.0 —
+  nesedí s 0,95 → prověřit s Ondřejem nastavení cen trhu SK (ceník / zaokrouhlení / fixní ceny) před SK E2E.
+  Nástroj: `shopify store execute` s Ondřejovým CLI loginem (`shopify store auth --scopes read_markets,
+  read_publications,read_products,read_shipping,read_locations`), jen čtení.
   Nutné pro MVP 4 (prahy CZ i SK) a pro SK scénář E2E marže (dnes přeskočený s důvodem).
 - `shopify app dev` běží s `WON_DEV_PLAN=pro` → před MVP 3 E2E restart bez něj (dev store je Free).
   Offline session appky na dev storu už existuje (webhooky fungují).
