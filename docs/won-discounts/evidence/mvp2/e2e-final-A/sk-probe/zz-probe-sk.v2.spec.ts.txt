@@ -1,0 +1,107 @@
+import { storefrontJson, variantIdOf, type Cart } from "./support/cart.ts";
+import { E2E_PROFILE, STORE_ORIGIN, test, unlockRealStorefront } from "./support/fixtures.ts";
+
+// TEMPORARY exploration (final gate phase A, 2026-09-30): how can the theme-dev
+// session be switched to the slovensko market (EUR)? POST /localization through
+// the theme-dev proxy answered 401. Runs only with WON_E2E_PROFILE=sk-probe.
+// No checkout, no order: cart reads/writes only. Deleted after the probe.
+
+type Probe = Record<string, unknown>;
+
+async function report(page: import("@playwright/test").Page, label: string, withCart: boolean): Promise<Probe> {
+  const shopify = await page.evaluate(() => {
+    const s = (window as unknown as { Shopify?: { country?: string; currency?: { active?: string }; locale?: string } }).Shopify;
+    return { country: s?.country ?? null, currency: s?.currency?.active ?? null, locale: s?.locale ?? null };
+  });
+  const cookies = (await page.context().cookies())
+    .filter((c) => ["localization", "cart_currency"].includes(c.name))
+    .map((c) => `${c.domain} ${c.name}=${c.value}`);
+  let cart: Probe | null = null;
+  if (withCart) {
+    const adds: Record<string, string> = {};
+    const rawPost = async (url: string, body: unknown) =>
+      page.evaluate(
+        async ({ u, b }) => {
+          const r = await fetch(u, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(b) });
+          return { status: r.status, text: (await r.text()).slice(0, 160) };
+        },
+        { u: url, b: body },
+      );
+    await storefrontJson(page, "POST", "/cart/clear.js", {});
+    for (const [handle, option] of [["won-e2e-simple-a"], ["won-e2e-simple-b"], ["won-e2e-two-variants", "Small"], ["won-e2e-spare"], ["won-e2e-multiaxis", "S / Red"]] as [string, string?][]) {
+      try {
+        const variant = await variantIdOf(page, handle, option);
+        await page.waitForTimeout(1_600);
+        const r = await rawPost("/cart/add.js", { items: [{ id: variant, quantity: 1 }] });
+        adds[handle] = r.status === 200 ? "ok" : `${r.status} ${r.text}`;
+      } catch (error) {
+        adds[handle] = `error ${(error as Error).message.slice(0, 160)}`;
+      }
+    }
+    const c = await storefrontJson<Cart>(page, "GET", "/cart.js");
+    cart = { currency: c.currency, items: c.items.map((i) => [i.handle ?? i.product_id, i.original_price]), adds };
+  }
+  const out = { label, url: page.url(), shopify, cookies, cart };
+  console.log(`[sk-probe] ${JSON.stringify(out)}`);
+  return out;
+}
+
+test.describe("SK probe", () => {
+  test.skip(E2E_PROFILE !== "sk-probe", "exploration only");
+
+  test("which switch reaches the theme-dev cart", async ({ page, baseURL }) => {
+    test.setTimeout(600_000);
+    const origin = new URL(baseURL!).origin;
+    await page.goto(`/products/won-e2e-simple-a`, { waitUntil: "load" });
+    await report(page, "P0 baseline", true);
+
+    // P2: ?country=SK on a page render.
+    await page.goto(`/products/won-e2e-simple-a?country=SK`, { waitUntil: "load" });
+    await report(page, "P2 ?country=SK", true);
+    await page.goto(`/products/won-e2e-simple-a`, { waitUntil: "load" });
+    await report(page, "P2b next page without the parameter", true);
+
+    // P3: the real storefront switches the SAME cart (its token copied), then the theme-dev cart is read.
+    await page.goto(`/products/won-e2e-simple-a`, { waitUntil: "load" });
+    await report(page, "P3 before", true);
+    const cartCookie = (await page.context().cookies(origin)).find((c) => c.name === "cart");
+    console.log(`[sk-probe] theme-dev cart cookie present: ${Boolean(cartCookie)} (length ${cartCookie?.value.length ?? 0})`);
+    await unlockRealStorefront(page);
+    if (cartCookie) {
+      await page.context().addCookies([{ name: "cart", value: cartCookie.value, domain: new URL(STORE_ORIGIN).hostname, path: "/" }]);
+    }
+    await page.goto(`${STORE_ORIGIN}/products/won-e2e-simple-a`, { waitUntil: "load" });
+    const status = await page.evaluate(async () => {
+      const body = new URLSearchParams({ form_type: "localization", utf8: "✓", _method: "PUT", country_code: "SK", return_to: "/" });
+      const r = await fetch("/localization", { method: "POST", body, credentials: "same-origin", redirect: "manual" });
+      return r.status;
+    });
+    console.log(`[sk-probe] store POST /localization status ${status}`);
+    await page.reload({ waitUntil: "load" });
+    const storeCart = await page.evaluate(async () => {
+      const r = await fetch("/cart.js", { headers: { Accept: "application/json" } });
+      const c = (await r.json()) as { currency: string; item_count: number; items: { original_price: number }[] };
+      return { currency: c.currency, items: c.item_count, price: c.items[0]?.original_price ?? null };
+    });
+    const storeShopify = await page.evaluate(() => {
+      const s = (window as unknown as { Shopify?: { country?: string; currency?: { active?: string } } }).Shopify;
+      return { country: s?.country ?? null, currency: s?.currency?.active ?? null };
+    });
+    console.log(`[sk-probe] P3 real store after the form: ${JSON.stringify({ storeShopify, storeCart })}`);
+    await page.goto(`${origin}/products/won-e2e-simple-a`, { waitUntil: "load" });
+    const themeCart = await storefrontJson<Cart>(page, "GET", "/cart.js");
+    console.log(`[sk-probe] P3 theme-dev cart after the store switch (no rewrite): ${JSON.stringify({ currency: themeCart.currency, items: themeCart.items.length, price: themeCart.items[0]?.original_price ?? null })}`);
+    await report(page, "P3 theme-dev after the store switch (rewrite)", true);
+
+    // P4: the real storefront (after its localization form) adds each product itself.
+    await page.goto(`${STORE_ORIGIN}/products/won-e2e-simple-a`, { waitUntil: "load" });
+    await report(page, "P4 real store after the form", true);
+    await page.goto(`${STORE_ORIGIN}/products/won-e2e-simple-a?country=SK`, { waitUntil: "load" });
+    await report(page, "P4b real store ?country=SK", true);
+
+    // Leave the carts empty.
+    await storefrontJson(page, "POST", "/cart/clear.js", {});
+    await page.goto(`${origin}/products/won-e2e-simple-a`, { waitUntil: "load" });
+    await storefrontJson(page, "POST", "/cart/clear.js", {});
+  });
+});

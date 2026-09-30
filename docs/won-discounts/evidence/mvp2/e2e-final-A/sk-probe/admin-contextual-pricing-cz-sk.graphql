@@ -1,0 +1,14 @@
+query WonE2eMarketContext {
+  products(first: 10, query: "handle:won-e2e*") {
+    nodes {
+      handle
+      variants(first: 1) {
+        nodes {
+          title
+          czPrice: contextualPricing(context: { country: CZ }) { price { amount currencyCode } }
+          skPrice: contextualPricing(context: { country: SK }) { price { amount currencyCode } }
+        }
+      }
+    }
+  }
+}

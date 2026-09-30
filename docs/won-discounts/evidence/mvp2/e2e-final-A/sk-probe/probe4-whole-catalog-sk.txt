@@ -1,0 +1,7 @@
+  ✓  10 tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP (1.3s)
+  ✓  11 tests/e2e/storefront.embed.spec.ts:139:3 › Won Discounts app embed (MVP 0) — Horizon › causes no horizontal overflow at 390px (1.1s)
+[sk-probe] real storefront country SK
+[sk-probe] {"label":"real storefront, SK: /products.json?limit=30","availableProducts":0,"of":23,"summary":["won-e2e-spare: 0/1 available","won-e2e-multiaxis: 0/4 available","won-e2e-two-variants: 0/2 available","won-e2e-simple-b: 0/1 available","won-e2e-simple-a: 0/1 available","mg-e2e-collection-member: 0/1 available","mg-e2e-variant-hidden: 0/3 available","mg-e2e-max: 0/1 available","mg-e2e-moq-step: 0/1 available","mg-e2e-hidden: 0/1 available","the-collection-snowboard-liquid: 0/2 available","the-collection-snowboard-oxygen: 0/2 available","the-collection-snowboard-hydrogen: 0/2 available","the-3p-fulfilled-snowboard: 0/2 available","the-multi-managed-snowboard: 0/2 available","the-multi-location-snowboard: 0/2 available","the-videographer-snowboard: 0/3 available","the-complete-snowboard: 0/5 available","selling-plans-ski-wax: 0/3 available","the-out-of-stock-snowboard: 0/1 available","the-compare-at-price-snowboard: 0/2 available","gift-card: 0/4 available","the-inventory-not-tracked-snowboard: 0/1 available"]}
+  ✓  12 tests/e2e/zz-probe-sk.spec.ts:28:3 › SK probe › won-e2e availability in cesko vs slovensko (theme dev and the real storefront) (1.8s)
+  3 passed (5.0s)
+   ✓ Horizon

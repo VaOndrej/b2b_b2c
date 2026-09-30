@@ -1,0 +1,292 @@
+
+> test:e2e:local:all
+> node ./scripts/make-e2e-overlay.mjs --check && node ./scripts/require-e2e-contract.mjs --local-matrix
+
+✓ e2e/settings_data.horizon.json up to date
+✓ e2e/settings_data.dawn.json up to date
+  embed block: shopify://apps/won-discounts/blocks/won_discounts_embed/01a0e790-ee4d-733c-ac8e-14c7baa03fff (key 15051148019970041838, disabled: false)
+
+── Horizon ─────────────────────────────────────────────
+   canonical:    /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c_themes/Horizon
+   workspace:    /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/e2e-themes/won-discounts/horizon
+   overlay:      e2e/settings_data.horizon.json
+   remote theme: Horizon
+   origin:       http://127.0.0.1:9885
+   theme dev is serving (HTTP 200).
+   configured app proxy responds.
+
+> test:e2e
+> node ./scripts/require-e2e-contract.mjs
+
+(node:47917) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 11 tests using 1 worker
+
+(node:47918) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✓   1 tests/e2e/checkout.margin.spec.ts:694:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › cart: simple-a to its cost floor, simple-b to 30 %, spare to 30 %, Small none, WONE2EM20 applicable as an exact amount = planCart with the logged rate (25.0s)
+[checkout.margin] Horizon: WONE2EM20 re-entered in checkout
+  ✓   2 tests/e2e/checkout.margin.spec.ts:749:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › checkout (Bogus): margin never blocks; the thank-you page charges planCart with the checkout's logged rate, no line below its floor (51.8s)
+[checkout.margin] Horizon: WONE2EM60 re-entered in checkout
+  ✓   3 tests/e2e/checkout.margin.spec.ts:819:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › order discount lowered by margin (WONE2EM60): Small + multiaxis, the exact D_max over both lines; cart and Bogus checkout = planCart, no line below its floor (47.3s)
+[checkout.margin] Horizon: after ?country=SK: country SK, currency EUR
+  ✘   4 tests/e2e/checkout.margin.spec.ts:897:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › slovensko (EUR): the main cart with WONE2EM20 — F-M1 for EUR, cart and Bogus checkout to Bratislava = planCart, no line below its floor (14.7s)
+(node:50255) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[checkout.margin] Horizon: after ?country=SK: country SK, currency EUR
+  ✘   5 tests/e2e/checkout.margin.spec.ts:897:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › slovensko (EUR): the main cart with WONE2EM20 — F-M1 for EUR, cart and Bogus checkout to Bratislava = planCart, no line below its floor (retry #1) (14.7s)
+  -   6 tests/e2e/checkout.mvp1.spec.ts:67:3 › Won Discounts in cart and checkout (MVP 1) — Horizon › cart: the automatic 10 % and the code WONE2E15 apply exactly as planCart plans
+  -   7 tests/e2e/checkout.mvp1.spec.ts:154:3 › Won Discounts in cart and checkout (MVP 1) — Horizon › checkout (Bogus): the thank-you page shows the discounts and the total planCart predicts
+  -   8 tests/e2e/checkout.mvp1.spec.ts:253:3 › Won Discounts in cart and checkout (MVP 1) — Horizon › one buyer session on the real storefront: the code applied in the cart is carried into checkout
+  -   9 tests/e2e/checkout.shapes.spec.ts:260:3 › Won Discounts output shapes in cart and checkout (MVP 1 gate) — Horizon › cart: a capped fixed per-item amount arrives as 100 %, a Pro stack as one summed percent, both = planCart
+  -  10 tests/e2e/checkout.shapes.spec.ts:395:3 › Won Discounts output shapes in cart and checkout (MVP 1 gate) — Horizon › checkout (Bogus): the thank-you page charges what planCart predicts for both shapes
+(node:50883) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  11 tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP (430ms)
+(node:50892) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✓  12 tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP (retry #1) (7.9s)
+  ✓  13 tests/e2e/storefront.embed.spec.ts:139:3 › Won Discounts app embed (MVP 0) — Horizon › causes no horizontal overflow at 390px (1.2s)
+
+
+  1) tests/e2e/checkout.margin.spec.ts:897:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › slovensko (EUR): the main cart with WONE2EM20 — F-M1 for EUR, cart and Bogus checkout to Bratislava = planCart, no line below its floor › every product of the cart is for sale in the slovensko market 
+
+    Error: won-e2e-simple-a is for sale in the slovensko market (store setup: the won-e2e products must be available in the SK market; /cart/add.js answers 422 "vyprodán" otherwise)
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32mtrue[39m
+    Received: [31mfalse[39m
+
+      914 |             variant?.available ?? false,
+      915 |             `${handle}${option ? ` (${option})` : ""} is for sale in the slovensko market (store setup: the won-e2e products must be available in the SK market; /cart/add.js answers 422 "vyprodán" otherwise)`,
+    > 916 |           ).toBe(true);
+          |             ^
+      917 |         }
+      918 |       });
+      919 |
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:916:13
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:909:7
+
+    [31mTest timeout of 45000ms exceeded.[39m
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-ab499-art-no-line-below-its-floor/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-ab499-art-no-line-below-its-floor/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/checkout.margin-Won-Discou-ab499-art-no-line-below-its-floor/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: won-e2e-simple-a is for sale in the slovensko market (store setup: the won-e2e products must be available in the SK market; /cart/add.js answers 422 "vyprodán" otherwise)
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32mtrue[39m
+    Received: [31mfalse[39m
+
+      914 |             variant?.available ?? false,
+      915 |             `${handle}${option ? ` (${option})` : ""} is for sale in the slovensko market (store setup: the won-e2e products must be available in the SK market; /cart/add.js answers 422 "vyprodán" otherwise)`,
+    > 916 |           ).toBe(true);
+          |             ^
+      917 |         }
+      918 |       });
+      919 |
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:916:13
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:909:7
+
+    [31mTest timeout of 45000ms exceeded.[39m
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-ab499-art-no-line-below-its-floor-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-ab499-art-no-line-below-its-floor-retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/checkout.margin-Won-Discou-ab499-art-no-line-below-its-floor-retry1/error-context.md
+
+  2) tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP 
+
+    Error: GET /products/won-e2e-simple-a
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeLessThan[2m([22m[32mexpected[39m[2m)[22m
+
+    Expected: < [32m400[39m
+    Received:   [31m503[39m
+
+      64 | async function openReadyPdp(page: Page) {
+      65 |   const response = await page.goto(PDP_PATH, { waitUntil: "load" });
+    > 66 |   expect(response?.status(), `GET ${PDP_PATH}`).toBeLessThan(400);
+         |                                                 ^
+      67 |
+      68 |   const embed = page.locator("[data-won-discounts-embed]");
+      69 |   await expect(
+        at openReadyPdp (/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.embed.spec.ts:66:49)
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/storefront.embed.spec.ts:117:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/e2e/checkout.margin.spec.ts:897:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Horizon › slovensko (EUR): the main cart with WONE2EM20 — F-M1 for EUR, cart and Bogus checkout to Bratislava = planCart, no line below its floor 
+  1 flaky
+    tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP 
+  5 skipped
+  4 passed (4.3m)
+npm error Lifecycle script `test:e2e` failed with error:
+npm error code 1
+npm error path /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts
+npm error workspace won-discounts
+npm error location /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts
+npm error command failed
+npm error command sh -c node ./scripts/require-e2e-contract.mjs
+
+── Dawn ─────────────────────────────────────────────
+   canonical:    /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c_themes/Dawn
+   workspace:    /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/tmp/e2e-themes/won-discounts/dawn
+   overlay:      e2e/settings_data.dawn.json
+   remote theme: Dawn
+   origin:       http://127.0.0.1:9886
+   theme dev is serving (HTTP 200).
+   configured app proxy responds.
+
+> test:e2e
+> node ./scripts/require-e2e-contract.mjs
+
+(node:51150) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 11 tests using 1 worker
+
+(node:51151) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✓   1 tests/e2e/checkout.margin.spec.ts:694:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Dawn › cart: simple-a to its cost floor, simple-b to 30 %, spare to 30 %, Small none, WONE2EM20 applicable as an exact amount = planCart with the logged rate (33.7s)
+[checkout.margin] Dawn: WONE2EM20 re-entered in checkout
+  ✓   2 tests/e2e/checkout.margin.spec.ts:749:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Dawn › checkout (Bogus): margin never blocks; the thank-you page charges planCart with the checkout's logged rate, no line below its floor (51.9s)
+[checkout.margin] Dawn: WONE2EM60 re-entered in checkout
+  ✓   3 tests/e2e/checkout.margin.spec.ts:819:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Dawn › order discount lowered by margin (WONE2EM60): Small + multiaxis, the exact D_max over both lines; cart and Bogus checkout = planCart, no line below its floor (44.3s)
+[checkout.margin] Dawn: after ?country=SK: country SK, currency EUR
+  ✘   4 tests/e2e/checkout.margin.spec.ts:897:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Dawn › slovensko (EUR): the main cart with WONE2EM20 — F-M1 for EUR, cart and Bogus checkout to Bratislava = planCart, no line below its floor (13.5s)
+(node:53404) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[checkout.margin] Dawn: after ?country=SK: country SK, currency EUR
+  ✘   5 tests/e2e/checkout.margin.spec.ts:897:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Dawn › slovensko (EUR): the main cart with WONE2EM20 — F-M1 for EUR, cart and Bogus checkout to Bratislava = planCart, no line below its floor (retry #1) (12.8s)
+  -   6 tests/e2e/checkout.mvp1.spec.ts:67:3 › Won Discounts in cart and checkout (MVP 1) — Dawn › cart: the automatic 10 % and the code WONE2E15 apply exactly as planCart plans
+  -   7 tests/e2e/checkout.mvp1.spec.ts:154:3 › Won Discounts in cart and checkout (MVP 1) — Dawn › checkout (Bogus): the thank-you page shows the discounts and the total planCart predicts
+  -   8 tests/e2e/checkout.mvp1.spec.ts:253:3 › Won Discounts in cart and checkout (MVP 1) — Dawn › one buyer session on the real storefront: the code applied in the cart is carried into checkout
+  -   9 tests/e2e/checkout.shapes.spec.ts:260:3 › Won Discounts output shapes in cart and checkout (MVP 1 gate) — Dawn › cart: a capped fixed per-item amount arrives as 100 %, a Pro stack as one summed percent, both = planCart
+  -  10 tests/e2e/checkout.shapes.spec.ts:395:3 › Won Discounts output shapes in cart and checkout (MVP 1 gate) — Dawn › checkout (Bogus): the thank-you page charges what planCart predicts for both shapes
+(node:54002) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✓  11 tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Dawn › renders the ready marker and boots window.WonDiscounts on the PDP (1.3s)
+  ✓  12 tests/e2e/storefront.embed.spec.ts:139:3 › Won Discounts app embed (MVP 0) — Dawn › causes no horizontal overflow at 390px (920ms)
+
+
+  1) tests/e2e/checkout.margin.spec.ts:897:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Dawn › slovensko (EUR): the main cart with WONE2EM20 — F-M1 for EUR, cart and Bogus checkout to Bratislava = planCart, no line below its floor › every product of the cart is for sale in the slovensko market 
+
+    Error: won-e2e-simple-a is for sale in the slovensko market (store setup: the won-e2e products must be available in the SK market; /cart/add.js answers 422 "vyprodán" otherwise)
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32mtrue[39m
+    Received: [31mfalse[39m
+
+      914 |             variant?.available ?? false,
+      915 |             `${handle}${option ? ` (${option})` : ""} is for sale in the slovensko market (store setup: the won-e2e products must be available in the SK market; /cart/add.js answers 422 "vyprodán" otherwise)`,
+    > 916 |           ).toBe(true);
+          |             ^
+      917 |         }
+      918 |       });
+      919 |
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:916:13
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:909:7
+
+    [31mTest timeout of 45000ms exceeded.[39m
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-6307e-art-no-line-below-its-floor/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-6307e-art-no-line-below-its-floor/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/checkout.margin-Won-Discou-6307e-art-no-line-below-its-floor/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: won-e2e-simple-a is for sale in the slovensko market (store setup: the won-e2e products must be available in the SK market; /cart/add.js answers 422 "vyprodán" otherwise)
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32mtrue[39m
+    Received: [31mfalse[39m
+
+      914 |             variant?.available ?? false,
+      915 |             `${handle}${option ? ` (${option})` : ""} is for sale in the slovensko market (store setup: the won-e2e products must be available in the SK market; /cart/add.js answers 422 "vyprodán" otherwise)`,
+    > 916 |           ).toBe(true);
+          |             ^
+      917 |         }
+      918 |       });
+      919 |
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:916:13
+        at /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/tests/e2e/checkout.margin.spec.ts:909:7
+
+    [31mTest timeout of 45000ms exceeded.[39m
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-6307e-art-no-line-below-its-floor-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/checkout.margin-Won-Discou-6307e-art-no-line-below-its-floor-retry1/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/checkout.margin-Won-Discou-6307e-art-no-line-below-its-floor-retry1/error-context.md
+
+  1 failed
+    tests/e2e/checkout.margin.spec.ts:897:3 › Won Discounts margin protection in cart and checkout (MVP 2) — Dawn › slovensko (EUR): the main cart with WONE2EM20 — F-M1 for EUR, cart and Bogus checkout to Bratislava = planCart, no line below its floor 
+  5 skipped
+  5 passed (4.2m)
+npm error Lifecycle script `test:e2e` failed with error:
+npm error code 1
+npm error path /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts
+npm error workspace won-discounts
+npm error location /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts
+npm error command failed
+npm error command sh -c node ./scripts/require-e2e-contract.mjs
+
+── summary ────────────────────────────────────────────────
+   ✗ Horizon
+   ✗ Dawn
+npm error Lifecycle script `test:e2e:local:all` failed with error:
+npm error code 1
+npm error path /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts
+npm error workspace won-discounts
+npm error location /Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts
+npm error command failed
+npm error command sh -c node ./scripts/make-e2e-overlay.mjs --check && node ./scripts/require-e2e-contract.mjs --local-matrix
+exit 1
+2026-09-30T09:06:30Z

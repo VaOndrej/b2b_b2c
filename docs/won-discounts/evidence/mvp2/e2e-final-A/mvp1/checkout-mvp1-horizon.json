@@ -1,0 +1,98 @@
+{
+  "at": "2026-09-30T09:57:43.948Z",
+  "theme": "Horizon",
+  "checkoutPath": "/checkouts/cn/<token>/cs-cz/thank-you",
+  "codeCarriedIntoCheckout": false,
+  "cart": {
+    "currency": "CZK",
+    "original_total_price": 21900,
+    "items_subtotal_price": 19710,
+    "total_price": 16753,
+    "discount_codes": [
+      {
+        "code": "WONE2E15",
+        "applicable": true
+      }
+    ]
+  },
+  "expected": {
+    "lineDiscount": 2190,
+    "orderDiscount": 2957,
+    "subtotalAfterLines": 19710,
+    "total": 16753,
+    "planTotals": {
+      "subtotal": 21900,
+      "productDiscount": 2190,
+      "orderDiscount": 2957,
+      "total": 16753
+    },
+    "rules": [
+      {
+        "ruleId": "e2e-mvp1-auto-10",
+        "state": "applied",
+        "amount": 2190
+      },
+      {
+        "ruleId": "e2e-mvp1-code-15",
+        "state": "applied",
+        "amount": 2957
+      }
+    ]
+  },
+  "thankYou": {
+    "lineDiscount": -2190,
+    "lineOriginal": 21900,
+    "lineFinal": 19710,
+    "subtotal": 19710,
+    "orderDiscount": -2957,
+    "shipping": 65500,
+    "tax": 0,
+    "total": 82253,
+    "charged": 82253
+  },
+  "thankYouLines": [
+    {
+      "title": "Won E2E — Simple A",
+      "allocations": [
+        {
+          "title": "E2E AUTO 10 %",
+          "amount": -2190
+        }
+      ],
+      "originalPrice": 21900,
+      "finalPrice": 19710
+    }
+  ],
+  "thankYouSummaryRows": [
+    {
+      "label": "Mezisoučet",
+      "value": "197,10 Kč",
+      "amount": 19710
+    },
+    {
+      "label": "Sleva na objednávku",
+      "value": "",
+      "amount": null
+    },
+    {
+      "label": "WONE2E15",
+      "value": "− 29,57 Kč",
+      "amount": -2957
+    },
+    {
+      "label": "Expedice",
+      "value": "655,00 Kč",
+      "amount": 65500
+    },
+    {
+      "label": "Celkem",
+      "value": "822,53 Kč",
+      "amount": 82253
+    },
+    {
+      "label": "CELKOVÁ ÚSPORA51,47 Kč",
+      "value": "",
+      "amount": null
+    }
+  ]
+}

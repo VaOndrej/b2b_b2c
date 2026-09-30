@@ -1,0 +1,17 @@
+# snapshot 2026-09-30T08:58:42Z
+d9cceee Won Discounts: podpůrná dokumentace MVP 0–2 (concepts, tasks, support, generovaná reference + drift test)
+ M apps/won-discounts/tests/e2e/checkout.margin.spec.ts
+ M apps/won-discounts/tests/e2e/support/cart.ts
+ M docs/product-roadmap.html
+ M packages/core/src/discounts/plan-margin.ts
+ M packages/core/src/discounts/plan.ts
+?? docs/won-companion/
+?? docs/won-discounts/evidence/mvp2/e2e-final-A/
+?? docs/won-discounts/paralelizace.md
+
+ .../tests/e2e/checkout.margin.spec.ts              |  26 +++--
+ apps/won-discounts/tests/e2e/support/cart.ts       |  30 +++---
+ docs/product-roadmap.html                          |   2 +-
+ packages/core/src/discounts/plan-margin.ts         | 111 ++++++++++++++++++---
+ packages/core/src/discounts/plan.ts                |   6 +-
+ 5 files changed, 136 insertions(+), 39 deletions(-)

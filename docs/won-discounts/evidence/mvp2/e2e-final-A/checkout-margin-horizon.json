@@ -1,0 +1,556 @@
+{
+  "at": "2026-09-30T08:59:13.874Z",
+  "theme": "Horizon",
+  "profile": "margin",
+  "collection": null,
+  "livePayloadMargin": {
+    "enabled": true,
+    "min": 25,
+    "max": 30,
+    "cur": "USD"
+  },
+  "checkoutPath": "/checkouts/cn/<token>/cs-cz/thank-you",
+  "codeCarriedIntoCheckout": false,
+  "checkoutRunsLogged": true,
+  "presentmentCurrencyRate": {
+    "checkout": {
+      "raw": "21.85092",
+      "jsonType": "string",
+      "value": 21.85092,
+      "significantDigits": 7,
+      "decimals": 5
+    },
+    "cartBeforeCheckout": {
+      "raw": "21.85092",
+      "jsonType": "string",
+      "value": 21.85092,
+      "significantDigits": 7,
+      "decimals": 5
+    }
+  },
+  "fM1": {
+    "rate": {
+      "raw": "21.85092",
+      "jsonType": "string",
+      "value": 21.85092,
+      "significantDigits": 7,
+      "decimals": 5
+    },
+    "currency": "CZK",
+    "priceRatio": {
+      "handle": "won-e2e-two-variants",
+      "usd": 15,
+      "cartPrice": 32800,
+      "ratio": 21.866666666666667
+    },
+    "rateToPriceRatio": 0.9992798780487804,
+    "wonVariantByLine": [
+      {
+        "variant": "gid://shopify/ProductVariant/48468678902001",
+        "label": "won-e2e-simple-a · Default Title",
+        "wonVariant": {
+          "jsonValue": {
+            "cost": 6,
+            "cur": "USD"
+          }
+        }
+      },
+      {
+        "variant": "gid://shopify/ProductVariant/48468678934769",
+        "label": "won-e2e-simple-b · Default Title",
+        "wonVariant": null
+      },
+      {
+        "variant": "gid://shopify/ProductVariant/48468678967537",
+        "label": "won-e2e-two-variants · Small",
+        "wonVariant": {
+          "jsonValue": {
+            "cost": 5,
+            "cur": "USD"
+          }
+        }
+      },
+      {
+        "variant": "gid://shopify/ProductVariant/48468679164145",
+        "label": "won-e2e-spare · Default Title",
+        "wonVariant": null
+      }
+    ],
+    "oracleParityRuns": 8
+  },
+  "cart": {
+    "currency": "CZK",
+    "original_total_price": 100900,
+    "items_subtotal_price": 82621,
+    "total_price": 76061,
+    "discount_codes": [
+      {
+        "code": "WONE2EM20",
+        "applicable": true
+      }
+    ],
+    "cart_level": [
+      {
+        "type": "discount_code",
+        "key": "7035fb83-d5c6-4ea9-bbeb-a0439e37581f",
+        "title": "WONE2EM20",
+        "description": null,
+        "value": "65.6",
+        "created_at": "2026-09-30T08:58:40.057Z",
+        "value_type": "fixed_amount",
+        "allocation_method": "across",
+        "target_selection": "all",
+        "target_type": "line_item",
+        "total_allocated_amount": 6560
+      }
+    ]
+  },
+  "lines": [
+    {
+      "handle": "won-e2e-spare",
+      "variantId": "gid://shopify/ProductVariant/48468679164145",
+      "quantity": 1,
+      "unitPrice": 19900,
+      "cost": null,
+      "floorUnit": 13930,
+      "basis": "max_percent",
+      "settings": {
+        "minMarginPercent": 25,
+        "maxDiscountPercent": 30,
+        "source": "global"
+      },
+      "plan": {
+        "product": {
+          "components": [
+            {
+              "ruleId": "e2e-margin-auto-50",
+              "method": "automatic",
+              "module": "codes",
+              "amount": 5970
+            }
+          ],
+          "amount": 5970,
+          "ownerRuleId": "e2e-margin-auto-50",
+          "ownerMethod": "automatic",
+          "value": {
+            "fixedTotal": 5970
+          },
+          "message": "E2E marže auto 50 %"
+        },
+        "marginCapped": {
+          "before": 9950,
+          "after": 5970,
+          "floorUnit": 13930,
+          "basis": "max_percent",
+          "maxDiscountPercent": 30,
+          "source": "global"
+        },
+        "marginTight": true
+      },
+      "emitted": {
+        "fixedAmount": {
+          "amount": "59.70",
+          "appliesToEachItem": true
+        }
+      },
+      "cart": {
+        "allocations": [
+          {
+            "title": "E2E marže auto 50 %",
+            "value_type": "fixed_amount",
+            "value": "59.7",
+            "amount": 5970
+          }
+        ],
+        "final_line_price": 13930
+      }
+    },
+    {
+      "handle": "won-e2e-two-variants",
+      "variantId": "gid://shopify/ProductVariant/48468678967537",
+      "quantity": 1,
+      "unitPrice": 32800,
+      "cost": 5,
+      "floorUnit": 14568,
+      "basis": "cost",
+      "settings": {
+        "minMarginPercent": 25,
+        "maxDiscountPercent": 30,
+        "source": "global"
+      },
+      "plan": {
+        "product": null,
+        "marginCapped": null,
+        "marginTight": false
+      },
+      "emitted": null,
+      "cart": {
+        "allocations": [],
+        "final_line_price": 32800
+      }
+    },
+    {
+      "handle": "won-e2e-simple-b",
+      "variantId": "gid://shopify/ProductVariant/48468678934769",
+      "quantity": 1,
+      "unitPrice": 26300,
+      "cost": null,
+      "floorUnit": 18410,
+      "basis": "max_percent",
+      "settings": {
+        "minMarginPercent": 25,
+        "maxDiscountPercent": 30,
+        "source": "global"
+      },
+      "plan": {
+        "product": {
+          "components": [
+            {
+              "ruleId": "e2e-margin-auto-50",
+              "method": "automatic",
+              "module": "codes",
+              "amount": 7890
+            }
+          ],
+          "amount": 7890,
+          "ownerRuleId": "e2e-margin-auto-50",
+          "ownerMethod": "automatic",
+          "value": {
+            "fixedTotal": 7890
+          },
+          "message": "E2E marže auto 50 %"
+        },
+        "marginCapped": {
+          "before": 13150,
+          "after": 7890,
+          "floorUnit": 18410,
+          "basis": "max_percent",
+          "maxDiscountPercent": 30,
+          "source": "global"
+        },
+        "marginTight": true
+      },
+      "emitted": {
+        "fixedAmount": {
+          "amount": "78.90",
+          "appliesToEachItem": true
+        }
+      },
+      "cart": {
+        "allocations": [
+          {
+            "title": "E2E marže auto 50 %",
+            "value_type": "fixed_amount",
+            "value": "78.9",
+            "amount": 7890
+          }
+        ],
+        "final_line_price": 18410
+      }
+    },
+    {
+      "handle": "won-e2e-simple-a",
+      "variantId": "gid://shopify/ProductVariant/48468678902001",
+      "quantity": 1,
+      "unitPrice": 21900,
+      "cost": 6,
+      "floorUnit": 17481,
+      "basis": "cost",
+      "settings": {
+        "minMarginPercent": 25,
+        "maxDiscountPercent": 30,
+        "source": "global"
+      },
+      "plan": {
+        "product": {
+          "components": [
+            {
+              "ruleId": "e2e-margin-auto-50",
+              "method": "automatic",
+              "module": "codes",
+              "amount": 4419
+            }
+          ],
+          "amount": 4419,
+          "ownerRuleId": "e2e-margin-auto-50",
+          "ownerMethod": "automatic",
+          "value": {
+            "fixedTotal": 4419
+          },
+          "message": "E2E marže auto 50 %"
+        },
+        "marginCapped": {
+          "before": 10950,
+          "after": 4419,
+          "floorUnit": 17481,
+          "basis": "cost",
+          "minMarginPercent": 25,
+          "source": "global"
+        },
+        "marginTight": true
+      },
+      "emitted": {
+        "fixedAmount": {
+          "amount": "44.19",
+          "appliesToEachItem": true
+        }
+      },
+      "cart": {
+        "allocations": [
+          {
+            "title": "E2E marže auto 50 %",
+            "value_type": "fixed_amount",
+            "value": "44.19",
+            "amount": 4419
+          }
+        ],
+        "final_line_price": 17481
+      }
+    }
+  ],
+  "plan": {
+    "totals": {
+      "subtotal": 100900,
+      "productDiscount": 18279,
+      "orderDiscount": 6560,
+      "total": 76061
+    },
+    "order": {
+      "components": [
+        {
+          "ruleId": "e2e-margin-code-20",
+          "method": "code",
+          "module": "codes",
+          "amount": 6560
+        }
+      ],
+      "amount": 6560,
+      "ownerRuleId": "e2e-margin-code-20",
+      "ownerMethod": "code",
+      "value": {
+        "percent": 20
+      },
+      "message": "E2E marže kód 20 %",
+      "base": 32800,
+      "excludedLineIds": [
+        "gid://shopify/CartLine/0",
+        "gid://shopify/CartLine/2",
+        "gid://shopify/CartLine/3"
+      ],
+      "marginExcludedLineIds": [
+        "gid://shopify/CartLine/0",
+        "gid://shopify/CartLine/2",
+        "gid://shopify/CartLine/3"
+      ],
+      "marginCapped": {
+        "before": 16524,
+        "after": 6560
+      },
+      "marginProtected": true
+    },
+    "rules": [
+      {
+        "ruleId": "e2e-margin-auto-50",
+        "state": "applied",
+        "amount": 18279
+      },
+      {
+        "ruleId": "e2e-margin-code-20",
+        "state": "applied",
+        "amount": 6560
+      },
+      {
+        "ruleId": "e2e-margin-code-60",
+        "state": "code_not_entered",
+        "amount": 0
+      }
+    ]
+  },
+  "thankYou": {
+    "perLine": [
+      {
+        "handle": "won-e2e-spare",
+        "allocations": [
+          {
+            "title": "E2E MARŽE AUTO 50 %",
+            "amount": -5970
+          }
+        ],
+        "originalPrice": 19900,
+        "finalPrice": 13930
+      },
+      {
+        "handle": "won-e2e-two-variants",
+        "allocations": [],
+        "originalPrice": null,
+        "finalPrice": 32800
+      },
+      {
+        "handle": "won-e2e-simple-b",
+        "allocations": [
+          {
+            "title": "E2E MARŽE AUTO 50 %",
+            "amount": -7890
+          }
+        ],
+        "originalPrice": 26300,
+        "finalPrice": 18410
+      },
+      {
+        "handle": "won-e2e-simple-a",
+        "allocations": [
+          {
+            "title": "E2E MARŽE AUTO 50 %",
+            "amount": -4419
+          }
+        ],
+        "originalPrice": 21900,
+        "finalPrice": 17481
+      }
+    ],
+    "subtotal": 82621,
+    "orderDiscount": -6560,
+    "shipping": 65600,
+    "tax": 0,
+    "includedTaxRows": [],
+    "total": 141661,
+    "charged": 141661,
+    "expectedTotal": 141661
+  },
+  "thankYouSummaryRows": [
+    {
+      "label": "Mezisoučet • 4 položek",
+      "value": "826,21 Kč",
+      "amount": 82621
+    },
+    {
+      "label": "Sleva na objednávku",
+      "value": "",
+      "amount": null
+    },
+    {
+      "label": "WONE2EM20",
+      "value": "− 65,60 Kč",
+      "amount": -6560
+    },
+    {
+      "label": "Expedice",
+      "value": "656,00 Kč",
+      "amount": 65600
+    },
+    {
+      "label": "Celkem",
+      "value": "1 416,61 Kč",
+      "amount": 141661
+    },
+    {
+      "label": "CELKOVÁ ÚSPORA248,39 Kč",
+      "value": "",
+      "amount": null
+    }
+  ],
+  "loggedOrder": {
+    "file": "/Users/ondrej/Development/WonCommerce/Apps/b2b_b2c/apps/won-discounts/.shopify/logs/20260930_085856_095Z_extensions_won-discounts-engine_cf998c.json",
+    "candidate": {
+      "message": "E2E marže kód 20 %",
+      "targets": [
+        {
+          "orderSubtotal": {
+            "excludedCartLineIds": [
+              "gid://shopify/CartLine/0",
+              "gid://shopify/CartLine/1",
+              "gid://shopify/CartLine/3"
+            ]
+          }
+        }
+      ],
+      "value": {
+        "fixedAmount": {
+          "amount": "65.60"
+        }
+      }
+    },
+    "amount": 6560,
+    "excludedVariants": [
+      "gid://shopify/ProductVariant/48468678902001",
+      "gid://shopify/ProductVariant/48468678934769",
+      "gid://shopify/ProductVariant/48468679164145"
+    ]
+  },
+  "invariant": {
+    "rows": [
+      {
+        "handle": "won-e2e-spare",
+        "basis": "max_percent",
+        "settings": {
+          "minMarginPercent": 25,
+          "maxDiscountPercent": 30,
+          "source": "global"
+        },
+        "cost": null,
+        "afterProduct": 13930,
+        "orderShare": 0,
+        "shareRule": "excluded",
+        "final": 13930,
+        "floor": 13930,
+        "margin": 0,
+        "holds": true
+      },
+      {
+        "handle": "won-e2e-two-variants",
+        "basis": "cost",
+        "settings": {
+          "minMarginPercent": 25,
+          "maxDiscountPercent": 30,
+          "source": "global"
+        },
+        "cost": 5,
+        "afterProduct": 32800,
+        "orderShare": 6560,
+        "shareRule": "whole (only base line)",
+        "final": 26240,
+        "floor": 14568,
+        "margin": 11672,
+        "holds": true
+      },
+      {
+        "handle": "won-e2e-simple-b",
+        "basis": "max_percent",
+        "settings": {
+          "minMarginPercent": 25,
+          "maxDiscountPercent": 30,
+          "source": "global"
+        },
+        "cost": null,
+        "afterProduct": 18410,
+        "orderShare": 0,
+        "shareRule": "excluded",
+        "final": 18410,
+        "floor": 18410,
+        "margin": 0,
+        "holds": true
+      },
+      {
+        "handle": "won-e2e-simple-a",
+        "basis": "cost",
+        "settings": {
+          "minMarginPercent": 25,
+          "maxDiscountPercent": 30,
+          "source": "global"
+        },
+        "cost": 6,
+        "afterProduct": 17481,
+        "orderShare": 0,
+        "shareRule": "excluded",
+        "final": 17481,
+        "floor": 17481,
+        "margin": 0,
+        "holds": true
+      }
+    ],
+    "totals": {
+      "afterAllDiscounts": 76061,
+      "floors": 64389
+    }
+  }
+}

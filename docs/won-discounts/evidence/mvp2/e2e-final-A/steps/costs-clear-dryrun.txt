@@ -1,0 +1,11 @@
+# stored config of b2b-b2c-store-development.myshopify.com: margin protection off (plan free)
+
+# clear (dry-run): 51 mirror row(s) in the app DB, 6 may carry a metafield → metafieldsDelete for these, then every mirror row of the shop goes
+  would delete gid://shopify/ProductVariant/48468678902001  Won E2E — Simple A - Default Title  = {"cost":6,"cur":"USD"}
+  would delete gid://shopify/ProductVariant/48468678967537  Won E2E — Two Variants - Small  = {"cost":5,"cur":"USD"}
+  would delete gid://shopify/ProductVariant/48468679033073  Won E2E — Multi Axis - S / Red  = {"cost":8,"cur":"USD"}
+  would delete gid://shopify/ProductVariant/48468679065841  Won E2E — Multi Axis - S / Blue  = {"cost":8,"cur":"USD"}
+  would delete gid://shopify/ProductVariant/48468679098609  Won E2E — Multi Axis - M / Red  = {"cost":8,"cur":"USD"}
+  would delete gid://shopify/ProductVariant/48468679131377  Won E2E — Multi Axis - M / Blue  = {"cost":8,"cur":"USD"}
+
+(dry-run: nothing written; pass --live)

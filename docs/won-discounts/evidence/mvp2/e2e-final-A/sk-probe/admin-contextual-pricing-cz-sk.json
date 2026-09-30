@@ -1,0 +1,116 @@
+{
+  "products": {
+    "nodes": [
+      {
+        "handle": "won-e2e-simple-a",
+        "variants": {
+          "nodes": [
+            {
+              "title": "Default Title",
+              "czPrice": {
+                "price": {
+                  "amount": "219.0",
+                  "currencyCode": "CZK"
+                }
+              },
+              "skPrice": {
+                "price": {
+                  "amount": "8.95",
+                  "currencyCode": "EUR"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "handle": "won-e2e-simple-b",
+        "variants": {
+          "nodes": [
+            {
+              "title": "Default Title",
+              "czPrice": {
+                "price": {
+                  "amount": "263.0",
+                  "currencyCode": "CZK"
+                }
+              },
+              "skPrice": {
+                "price": {
+                  "amount": "10.95",
+                  "currencyCode": "EUR"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "handle": "won-e2e-two-variants",
+        "variants": {
+          "nodes": [
+            {
+              "title": "Small",
+              "czPrice": {
+                "price": {
+                  "amount": "328.0",
+                  "currencyCode": "CZK"
+                }
+              },
+              "skPrice": {
+                "price": {
+                  "amount": "13.95",
+                  "currencyCode": "EUR"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "handle": "won-e2e-multiaxis",
+        "variants": {
+          "nodes": [
+            {
+              "title": "S / Red",
+              "czPrice": {
+                "price": {
+                  "amount": "438.0",
+                  "currencyCode": "CZK"
+                }
+              },
+              "skPrice": {
+                "price": {
+                  "amount": "17.95",
+                  "currencyCode": "EUR"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "handle": "won-e2e-spare",
+        "variants": {
+          "nodes": [
+            {
+              "title": "Default Title",
+              "czPrice": {
+                "price": {
+                  "amount": "199.0",
+                  "currencyCode": "CZK"
+                }
+              },
+              "skPrice": {
+                "price": {
+                  "amount": "8.95",
+                  "currencyCode": "EUR"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

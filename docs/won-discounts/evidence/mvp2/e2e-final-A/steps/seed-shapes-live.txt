@@ -1,0 +1,26 @@
+# stored config of b2b-b2c-store-development.myshopify.com: 2 rule(s) (the E2E seed is in it)
+  - e2e-mvp1-auto-10 "E2E auto 10 %" automatic enabled
+  - e2e-mvp1-code-15 "E2E kód" code enabled
+  margin protection off
+
+# seed (profile shapes): won-e2e-simple-a = gid://shopify/Product/9692429058289, won-e2e-simple-b = gid://shopify/Product/9692429091057; capped fixed per item + Pro stack, no code
+  + e2e-shapes-cap-fixed "E2E fix 1000 Kč/ks" automatic
+  + e2e-shapes-pro-10 "E2E Pro 10 %" automatic
+  + e2e-shapes-pro-5 "E2E Pro 5 %" automatic
+  margin protection off
+
+# backup kept: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/won-e2e-final-A/seed-mvp1-backup.json (2026-09-30T09:55:29.884Z)
+[won-sync] sync b2b-b2c-store-development.myshopify.com: ok (8 steps) 
+
+# save: ok (version cmuny9qu80000snpvmfrw0t2p, 969 B)
+# sync: ok (run cmunyamcr0003snpvajl7g6o7)
+✔ shop.read — gid://shopify/Shop/78971076849, shop time 2026-09-30T06:16:03 (America/New_York), currency USD
+✔ plan — plan free: 2 Pro setting(s) not applied (rule_combinations:e2e-shapes-pro-10, rule_combinations:e2e-shapes-pro-5)
+✔ node.delete:code:e2e-mvp1-code-15 — deleted "E2E kód" (its rule was deleted)
+✔ products.scope — 2 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date
+✔ products.set — 1 product(s) updated
+✔ shop_config.write — 872 B written
+✔ shop_config.verify — read back and verified (872 B)
+✔ products.add — 1 product(s) got their new rules
+
+Evidence: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/won-e2e-final-A/seed-mvp1-shapes-2026-09-30T10-16-56-437Z.json

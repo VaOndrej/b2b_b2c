@@ -1,0 +1,95 @@
+{
+  "name": "seed-mvp1-cleanup",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "at": "2026-09-30T10:28:06.767Z",
+  "restored": [],
+  "margin": "margin protection off",
+  "result": {
+    "save": {
+      "ok": true,
+      "versionId": "cmunyole90000sna6ddlfpr5a",
+      "functionConfigBytes": 389,
+      "issues": []
+    },
+    "sync": {
+      "ok": true,
+      "steps": [
+        {
+          "step": "shop.read",
+          "ok": true,
+          "detail": "gid://shopify/Shop/78971076849, shop time 2026-09-30T06:27:36 (America/New_York), currency USD"
+        },
+        {
+          "step": "plan",
+          "ok": true,
+          "detail": "plan free: nothing to gate"
+        },
+        {
+          "step": "products.scope",
+          "ok": true,
+          "detail": "0 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date"
+        },
+        {
+          "step": "products.clear",
+          "ok": true,
+          "detail": "2 product(s) no longer targeted, cleared"
+        },
+        {
+          "step": "shop_config.write",
+          "ok": true,
+          "detail": "389 B written"
+        },
+        {
+          "step": "shop_config.verify",
+          "ok": true,
+          "detail": "read back and verified (389 B)"
+        }
+      ],
+      "errors": [],
+      "pending": [],
+      "runId": "cmunyp8mk0001sna69tfqdqdg"
+    },
+    "warnings": []
+  },
+  "syncRun": {
+    "runId": "cmunyp8mk0001sna69tfqdqdg",
+    "ok": true,
+    "startedAt": "2026-09-30T10:27:36.658Z",
+    "finishedAt": "2026-09-30T10:28:06.764Z",
+    "errorCount": 0,
+    "steps": [
+      {
+        "step": "shop.read",
+        "ok": true,
+        "detail": "gid://shopify/Shop/78971076849, shop time 2026-09-30T06:27:36 (America/New_York), currency USD"
+      },
+      {
+        "step": "plan",
+        "ok": true,
+        "detail": "plan free: nothing to gate"
+      },
+      {
+        "step": "products.scope",
+        "ok": true,
+        "detail": "0 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date"
+      },
+      {
+        "step": "products.clear",
+        "ok": true,
+        "detail": "2 product(s) no longer targeted, cleared"
+      },
+      {
+        "step": "shop_config.write",
+        "ok": true,
+        "detail": "389 B written"
+      },
+      {
+        "step": "shop_config.verify",
+        "ok": true,
+        "detail": "read back and verified (389 B)"
+      }
+    ],
+    "pending": [],
+    "configVersionId": "cmunyole90000sna6ddlfpr5a"
+  }
+}

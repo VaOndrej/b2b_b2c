@@ -31,7 +31,7 @@ import {
   MARGIN_SMALL_HANDLE,
   MARGIN_SPARE_HANDLE,
 } from "../../scripts/e2e/margin-fixture.mjs";
-import { clearCartQuietly, freshCartOfVariants, setStorefrontCountry, type Cart, type CartItem } from "./support/cart.ts";
+import { clearCartQuietly, freshCartOfVariants, setStorefrontCountry, storefrontJson, type Cart, type CartItem } from "./support/cart.ts";
 import {
   applyCodeInCheckout,
   checkoutLines,
@@ -94,10 +94,12 @@ import {
 //       telling how (no read_orders): the invariant per line is asserted for a
 //       proportional split rounded up (what the engine sizes D for), the totals
 //       exactly.
-//   4   the main cart in market slovensko (EUR, audit OQ6): the storefront's
-//       localization form switches the buyer country to SK; the Bogus checkout
-//       ships to Bratislava. F-M1 for EUR (rate, direction, digits) + thank-you =
-//       planCart + invariant.
+//   4   the main cart in market slovensko (EUR, audit OQ6): `?country=SK` on a
+//       page render switches the buyer country to SK (support/cart.ts
+//       setStorefrontCountry: the localization form answers 401 through theme
+//       dev); every product of the cart must be for sale in that market; the
+//       Bogus checkout ships to Bratislava. F-M1 for EUR (rate, direction,
+//       digits) + thank-you = planCart + invariant.
 // Margin protection never blocks: every checkout must complete.
 //
 // The rate converts the costs (shop USD → cart currency); Shopify only hands it
@@ -902,8 +904,18 @@ test.describe(`Won Discounts margin protection in cart and checkout (MVP 2)${PRO
     const response = await page.goto(`/products/${MARGIN_PRODUCT_A_HANDLE}`, { waitUntil: "load" });
     expect(response?.status()).toBeLessThan(400);
     try {
-      const localization = await test.step("switch the storefront to Slovakia (localization form)", () => setStorefrontCountry(page, "SK"));
-      console.log(`[checkout.margin] ${THEME_LABEL || "theme"}: after the localization form: country ${localization.country}, currency ${localization.currency}`);
+      const localization = await test.step("switch the storefront to Slovakia (?country=SK)", () => setStorefrontCountry(page, "SK"));
+      console.log(`[checkout.margin] ${THEME_LABEL || "theme"}: after ?country=SK: country ${localization.country}, currency ${localization.currency}`);
+      await test.step("every product of the cart is for sale in the slovensko market", async () => {
+        for (const { handle, option } of MARGIN_CART) {
+          const product = await storefrontJson<{ available: boolean; variants: { title: string; available: boolean; options?: string[] }[] }>(page, "GET", `/products/${handle}.js`);
+          const variant = option ? product.variants.find((v) => (v.options ?? []).includes(option) || v.title === option) : product.variants[0];
+          expect(
+            variant?.available ?? false,
+            `${handle}${option ? ` (${option})` : ""} is for sale in the slovensko market (store setup: the won-e2e products must be available in the SK market; /cart/add.js answers 422 "vyprodán" otherwise)`,
+          ).toBe(true);
+        }
+      });
 
       const cartAt = Date.now();
       const cart = await freshCartOfVariants(page, MARGIN_CART, [MARGIN_CODE]);

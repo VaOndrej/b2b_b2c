@@ -1,0 +1,19 @@
+  ✘  10 tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP (13.8s)
+  ✘  11 tests/e2e/storefront.embed.spec.ts:111:3 › Won Discounts app embed (MVP 0) — Horizon › renders the ready marker and boots window.WonDiscounts on the PDP (retry #1) (13.6s)
+  ✘  12 tests/e2e/storefront.embed.spec.ts:139:3 › Won Discounts app embed (MVP 0) — Horizon › causes no horizontal overflow at 390px (13.8s)
+  ✘  13 tests/e2e/storefront.embed.spec.ts:139:3 › Won Discounts app embed (MVP 0) — Horizon › causes no horizontal overflow at 390px (retry #1) (13.3s)
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveAttribute[2m([22m[32mexpected[39m[2m)[22m failed
+    Received: [31m"loading"[39m
+    test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP/test-failed-1.png
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveAttribute[2m([22m[32mexpected[39m[2m)[22m failed
+    Received: [31m"loading"[39m
+    test-results/storefront.embed-Won-Disco-c3763-dow-WonDiscounts-on-the-PDP-retry1/test-failed-1.png
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveAttribute[2m([22m[32mexpected[39m[2m)[22m failed
+    Received: [31m"loading"[39m
+    test-results/storefront.embed-Won-Disco-f9133-orizontal-overflow-at-390px/test-failed-1.png
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveAttribute[2m([22m[32mexpected[39m[2m)[22m failed
+    Received: [31m"loading"[39m
+    test-results/storefront.embed-Won-Disco-f9133-orizontal-overflow-at-390px-retry1/test-failed-1.png
+  2 failed
+npm error Lifecycle script `test:e2e` failed with error:
+npm error command failed

@@ -132,24 +132,28 @@ export async function freshCartOfVariants(
 
 /**
  * Switch the storefront's buyer country (and with it the market and the cart's
- * currency) the way a theme's country selector does: the `localization` form,
- * POST /localization with `_method=PUT` and `country_code` (shopify.dev
- * "Detect and set a visitor's optimal localization"). Sent as a same-origin
- * form POST with `redirect: "manual"`, so the page never follows the redirect
- * to another origin (on the theme-dev origin `shopify theme dev` proxies every
- * non-GET request to the store and hands its cookies to the browser), then the
- * page is reloaded on its own origin. Returns what the page then reports
+ * currency): the current page again with `?country=<code>`. The storefront
+ * answers with the `localization` and `cart_currency` cookies of that market,
+ * and the cart follows (/cart.js in the market's currency).
+ *
+ * Not the theme's `localization` form: observed 2026-09-30 (Shopify CLI 4.8,
+ * final gate phase A), POST /localization through `shopify theme dev` answers
+ * 401 and changes nothing. The proxy sends every non-cart path to the store
+ * with its own storefront Bearer token, and the store refuses the form with it.
+ * Setting the `localization` cookie in the browser does not help either: the
+ * next response sets it back. `?country=SK` on a page render switched the
+ * theme-dev session to SK / EUR, and it stays there for later pages.
+ *
+ * Returns the page's HTTP status and what it then reports
  * (window.Shopify.country / currency.active); the caller checks the cart's
  * currency, which is what the function sees.
  */
 export async function setStorefrontCountry(page: Page, countryCode: string): Promise<{ status: number; country: string | null; currency: string | null }> {
   await pace(page);
-  const status = await page.evaluate(async (country) => {
-    const body = new URLSearchParams({ form_type: "localization", utf8: "\u2713", _method: "PUT", country_code: country, return_to: "/" });
-    const response = await fetch("/localization", { method: "POST", body, credentials: "same-origin", redirect: "manual" });
-    return response.status; // 0 = an opaque redirect (the expected 302)
-  }, countryCode);
-  await page.reload({ waitUntil: "load" });
+  const url = new URL(page.url());
+  url.searchParams.set("country", countryCode);
+  const response = await page.goto(url.href, { waitUntil: "load" });
+  const status = response?.status() ?? 0;
   const reported = await page.evaluate(() => {
     const shopify = (window as unknown as { Shopify?: { country?: string; currency?: { active?: string } } }).Shopify;
     return { country: shopify?.country ?? null, currency: shopify?.currency?.active ?? null };

@@ -1,0 +1,105 @@
+{
+  "at": "2026-09-30T10:17:39.971Z",
+  "theme": "Horizon",
+  "planMode": "free",
+  "freeGate": {
+    "liveCombinesWith": {
+      "e2e-shapes-pro-10": null,
+      "e2e-shapes-pro-5": null
+    },
+    "appliedRule": "e2e-shapes-pro-10",
+    "appliedPercent": 10,
+    "appliedAmount": 2190,
+    "outrankedRule": "e2e-shapes-pro-5",
+    "proStackNotApplied": {
+      "rules": [
+        "e2e-shapes-pro-10",
+        "e2e-shapes-pro-5"
+      ],
+      "summedPercent": 15,
+      "amount": 3285,
+      "cartTotalIfApplied": 18615
+    }
+  },
+  "currency": "CZK",
+  "lines": [
+    {
+      "handle": "won-e2e-simple-b",
+      "quantity": 2,
+      "unitPrice": 26200,
+      "cart": {
+        "allocations": [
+          {
+            "title": "E2E fix 1000 Kč/ks",
+            "value_type": "percentage",
+            "value": "100.0",
+            "amount": 52400
+          }
+        ],
+        "final_line_price": 0
+      },
+      "plan": {
+        "components": [
+          {
+            "ruleId": "e2e-shapes-cap-fixed",
+            "method": "automatic",
+            "module": "codes",
+            "amount": 52400
+          }
+        ],
+        "value": {
+          "fixedPerItem": 26200
+        },
+        "amount": 52400,
+        "message": "E2E fix 1000 Kč/ks",
+        "emitted": {
+          "kind": "percentage",
+          "percent": 100
+        }
+      }
+    },
+    {
+      "handle": "won-e2e-simple-a",
+      "quantity": 1,
+      "unitPrice": 21900,
+      "cart": {
+        "allocations": [
+          {
+            "title": "E2E Pro 10 %",
+            "value_type": "percentage",
+            "value": "10.0",
+            "amount": 2190
+          }
+        ],
+        "final_line_price": 19710
+      },
+      "plan": {
+        "components": [
+          {
+            "ruleId": "e2e-shapes-pro-10",
+            "method": "automatic",
+            "module": "codes",
+            "amount": 2190
+          }
+        ],
+        "value": {
+          "percent": 10
+        },
+        "amount": 2190,
+        "message": "E2E Pro 10 %",
+        "emitted": {
+          "kind": "percentage",
+          "percent": 10
+        }
+      }
+    }
+  ],
+  "items_subtotal_price": 19710,
+  "total_price": 19710,
+  "planTotals": {
+    "subtotal": 74300,
+    "productDiscount": 54590,
+    "orderDiscount": 0,
+    "total": 19710
+  }
+}

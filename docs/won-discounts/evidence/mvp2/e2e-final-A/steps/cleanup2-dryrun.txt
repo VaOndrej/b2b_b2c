@@ -1,0 +1,52 @@
+# stored config of b2b-b2c-store-development.myshopify.com: 3 rule(s) (the E2E seed is in it)
+  - e2e-shapes-cap-fixed "E2E fix 1000 Kč/ks" automatic enabled
+  - e2e-shapes-pro-10 "E2E Pro 10 %" automatic enabled
+  - e2e-shapes-pro-5 "E2E Pro 5 %" automatic enabled
+  margin protection off
+
+# cleanup: restore the backup of 2026-09-30T09:55:29.884Z (0 rule(s))
+  after the cleanup: 0 rule(s), margin protection off
+
+# sync plan (dry-run, apps/won-discounts/scripts/sync/live-sync.ts --config /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/won-e2e-final-A/seed-mvp1-cleanup-config.json)
+# Won Discounts sync — DRY-RUN (reads b2b-b2c-store-development.myshopify.com, writes nothing; pass --live to execute)
+dry-run: seeded 1 tracked node(s) and 2 indexed product(s) from the app database (read-only)
+
+--- would send WonSyncMetafieldsDelete ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/Product/9692429058289",
+      "namespace": "$app:won_discounts",
+      "key": "product"
+    },
+    {
+      "ownerId": "gid://shopify/Product/9692429091057",
+      "namespace": "$app:won_discounts",
+      "key": "product"
+    }
+  ]
+}
+
+--- would send WonSyncMetafieldsSet ---
+{
+  "metafields": [
+    {
+      "ownerId": "gid://shopify/Shop/78971076849",
+      "namespace": "$app:won_discounts",
+      "key": "function_config",
+      "type": "json",
+      "value": "<389 B> {\"schemaVersion\":1,\"campaignId\":null,\"campaignVarsVersion\":null,\"engine\":{\"combination\":{\"outletWithAnything\":false,\"pro…"
+    }
+  ]
+}
+[won-sync] sync b2b-b2c-store-development.myshopify.com: ok (6 steps) 
+
+# result: ok (dry-run: 2 mutation(s) planned)
+✔ shop.read — gid://shopify/Shop/78971076849, shop time 2026-09-30T06:27:03 (America/New_York), currency USD
+✔ plan — plan free: nothing to gate
+✔ products.scope — 0 targeted product(s) (0 collection(s), 0 variant target(s)); 0 up to date
+✔ products.clear — 2 product(s) no longer targeted, cleared
+✔ shop_config.write — 389 B written
+✔ shop_config.verify — read back and verified (389 B)
+
+(dry-run: nothing written; pass --live)

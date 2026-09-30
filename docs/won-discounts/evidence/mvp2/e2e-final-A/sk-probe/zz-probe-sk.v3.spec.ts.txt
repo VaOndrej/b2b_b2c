@@ -1,0 +1,41 @@
+import { storefrontJson } from "./support/cart.ts";
+import { E2E_PROFILE, STORE_ORIGIN, test, unlockRealStorefront } from "./support/fixtures.ts";
+
+// TEMPORARY exploration (final gate phase A, 2026-09-30): are the won-e2e
+// products for sale in the slovensko market? Probe 2 showed `?country=SK`
+// switches the theme-dev session to SK / EUR, but every /cart/add.js then
+// answered 422 "… je již vyprodán". Read-only here (GET only, no cart write).
+// Runs only with WON_E2E_PROFILE=sk-probe. Deleted after the probe.
+
+const HANDLES = ["won-e2e-simple-a", "won-e2e-simple-b", "won-e2e-two-variants", "won-e2e-spare", "won-e2e-multiaxis"];
+
+async function availability(page: import("@playwright/test").Page, label: string) {
+  const shopify = await page.evaluate(() => {
+    const s = (window as unknown as { Shopify?: { country?: string; currency?: { active?: string } } }).Shopify;
+    return { country: s?.country ?? null, currency: s?.currency?.active ?? null };
+  });
+  const products: Record<string, unknown> = {};
+  for (const handle of HANDLES) {
+    const p = await storefrontJson<{ available: boolean; price: number; variants: { title: string; available: boolean; price: number }[] }>(page, "GET", `/products/${handle}.js`);
+    products[handle] = { available: p.available, price: p.price, variants: p.variants.map((v) => `${v.title}: ${v.available ? "available" : "NOT available"} ${v.price}`) };
+  }
+  console.log(`[sk-probe] ${JSON.stringify({ label, origin: new URL(page.url()).origin, shopify, products })}`);
+}
+
+test.describe("SK probe", () => {
+  test.skip(E2E_PROFILE !== "sk-probe", "exploration only");
+
+  test("won-e2e availability in cesko vs slovensko (theme dev and the real storefront)", async ({ page }) => {
+    test.setTimeout(600_000);
+    await page.goto(`/products/won-e2e-simple-a?country=CZ`, { waitUntil: "load" });
+    await availability(page, "theme dev ?country=CZ");
+    await page.goto(`/products/won-e2e-simple-a?country=SK`, { waitUntil: "load" });
+    await availability(page, "theme dev ?country=SK");
+
+    await unlockRealStorefront(page);
+    await page.goto(`${STORE_ORIGIN}/products/won-e2e-simple-a?country=SK`, { waitUntil: "load" });
+    await availability(page, "real storefront ?country=SK");
+    await page.goto(`${STORE_ORIGIN}/products/won-e2e-simple-a?country=CZ`, { waitUntil: "load" });
+    await availability(page, "real storefront ?country=CZ");
+  });
+});

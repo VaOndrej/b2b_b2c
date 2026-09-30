@@ -1,0 +1,105 @@
+{
+  "products": {
+    "nodes": [
+      {
+        "handle": "won-e2e-simple-a",
+        "totalInventory": 0,
+        "tracksInventory": false,
+        "variants": {
+          "nodes": [
+            {
+              "title": "Default Title",
+              "availableForSale": true,
+              "inventoryQuantity": -32,
+              "inventoryPolicy": "DENY"
+            }
+          ]
+        }
+      },
+      {
+        "handle": "won-e2e-simple-b",
+        "totalInventory": 0,
+        "tracksInventory": false,
+        "variants": {
+          "nodes": [
+            {
+              "title": "Default Title",
+              "availableForSale": true,
+              "inventoryQuantity": -28,
+              "inventoryPolicy": "DENY"
+            }
+          ]
+        }
+      },
+      {
+        "handle": "won-e2e-two-variants",
+        "totalInventory": 0,
+        "tracksInventory": false,
+        "variants": {
+          "nodes": [
+            {
+              "title": "Small",
+              "availableForSale": true,
+              "inventoryQuantity": -14,
+              "inventoryPolicy": "DENY"
+            },
+            {
+              "title": "Large",
+              "availableForSale": true,
+              "inventoryQuantity": 0,
+              "inventoryPolicy": "DENY"
+            }
+          ]
+        }
+      },
+      {
+        "handle": "won-e2e-multiaxis",
+        "totalInventory": 0,
+        "tracksInventory": false,
+        "variants": {
+          "nodes": [
+            {
+              "title": "S / Red",
+              "availableForSale": true,
+              "inventoryQuantity": -2,
+              "inventoryPolicy": "DENY"
+            },
+            {
+              "title": "S / Blue",
+              "availableForSale": true,
+              "inventoryQuantity": 0,
+              "inventoryPolicy": "DENY"
+            },
+            {
+              "title": "M / Red",
+              "availableForSale": true,
+              "inventoryQuantity": 0,
+              "inventoryPolicy": "DENY"
+            },
+            {
+              "title": "M / Blue",
+              "availableForSale": true,
+              "inventoryQuantity": 0,
+              "inventoryPolicy": "DENY"
+            }
+          ]
+        }
+      },
+      {
+        "handle": "won-e2e-spare",
+        "totalInventory": 0,
+        "tracksInventory": false,
+        "variants": {
+          "nodes": [
+            {
+              "title": "Default Title",
+              "availableForSale": true,
+              "inventoryQuantity": -2,
+              "inventoryPolicy": "DENY"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

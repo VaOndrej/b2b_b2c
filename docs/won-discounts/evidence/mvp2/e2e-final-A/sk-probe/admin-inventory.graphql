@@ -1,0 +1,12 @@
+query WonE2eInventory {
+  products(first: 10, query: "handle:won-e2e*") {
+    nodes {
+      handle
+      totalInventory
+      tracksInventory
+      variants(first: 10) {
+        nodes { title availableForSale inventoryQuantity inventoryPolicy }
+      }
+    }
+  }
+}
