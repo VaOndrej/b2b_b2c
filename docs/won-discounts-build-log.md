@@ -17,7 +17,12 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 - **Další krok: MVP 3** — plán `docs/plans/2026-09-30-won-discounts-mvp3.md` (vč. dluhu: Free přepínače
   kombinování v adminu). SDD workspace založit skriptem `sdd-workspace` pro tenhle plán.
 - **Trh Slovensko (EUR):** Ondřej 2026-09-30 přidal katalog a trh, ale na `/sk` storefront neukazuje ceny v EUR
-  → prověřuju (Admin API appky nemá `read_markets` — je jen volitelný scope; storefront přes Playwright).
+  → prověřeno 2026-09-30: `/sk` je jen **slovenský jazyk v trhu Česko** (country CZ, CZK); trh Slovensko se
+  zapne přes výběr země / `?country=SK` → ceny **EUR €8,95** fungují (Admin `contextualPricing` SK = 8.95 EUR).
+  Ale produkty jsou v SK pořád **nedostupné** (`available: false`, `/cart/add.js` 422) → katalog trhu SK
+  nejspíš neobsahuje produkty / Online Store publikaci (API appky to nevidí: `publishedInContext` chce
+  `read_publications`). Čeká na Ondřeje: Nastavení → Trhy → Slovensko → katalog/produkty (všechny nebo
+  `won-e2e-*`) + Online Store; doprava do SK (zóna); volitelně vlastní podsložka trhu (např. `/sk-sk`).
   Nutné pro MVP 4 (prahy CZ i SK) a pro SK scénář E2E marže (dnes přeskočený s důvodem).
 - `shopify app dev` běží s `WON_DEV_PLAN=pro` → před MVP 3 E2E restart bez něj (dev store je Free).
   Offline session appky na dev storu už existuje (webhooky fungují).
