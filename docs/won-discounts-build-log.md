@@ -15,10 +15,16 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
   `rereview-engine-r*`, README funkce „Instruction budget“); úspora ~4 %: země trhu v payloadu jako jeden
   řetězec (změna formátu payloadu).
 - **Trh Slovensko (EUR):** doprava přidaná (Ondřej 2026-09-30), produkty v SK dostupné, košík v EUR. **Cena
-  simple-a v SK je €0,95** (ráno 8,95) → čeká na kontrolu ceníku trhu SK Ondřejem; SK scénář E2E marže je do
-  té doby přeskočený s důvodem. Ověřovací nástroj: `shopify store execute` (Ondřejův CLI login, jen čtení).
+  simple-a v SK je €0,95** (ráno 8,95) a **v CZ 10 Kč** (ráno 219 Kč): oba ceníky (česko CZK, Slovensko EUR)
+  mají u `won-e2e-*` pevné ceny 10/12/15/18/20/22 (čísla z USD) → mění ceny E2E produktů (simple-a v CZ pod
+  nákupní cenou 131 Kč). Doporučení Ondřejovi: pevné ceny `won-e2e-*` z obou ceníků smazat (automatický
+  převod), kromě `won-e2e-spare` = 199 CZK v česku (fakt ze zadání). Před MVP 3 E2E ověřit. SK scénář E2E
+  marže je do té doby přeskočený s důvodem. Ověřovací nástroj: `shopify store execute` (Ondřejův CLI login, jen čtení).
 - `shopify app dev` běží s `WON_DEV_PLAN=pro` → před MVP 3 E2E restart bez něj (dev store je Free). Offline
   session appky na dev storu existuje (webhooky fungují).
+- **Ondřej 2026-09-30 — způsob práce pro MVP 3+:** implementovat víc věcí paralelně, pak auditovat a opravit
+  v dávkách (ne sériová kola po malých kouscích); orchestrátor prompt platí beze změny. Adversariální hledání
+  limitů funkce jednou s předem daným stop-pravidlem. Zelenou na MVP 3 dá Ondřej po compactu.
 - **Ondřej 2026-09-29: funkce zůstává v Rustu** (JS nestačí na limit instrukcí; TS engine = reference).
 - **Poslední push:** viz checkpoint MVP 2.
 - **Pro Ondřeje (mimo rozsah, neřeším):** v gitu je sledovaný `apps/won-toasts/prisma/prisma/dev.sqlite`
