@@ -110,7 +110,8 @@ pub struct NormalizedCart<'a> {
     pub shop_to_cart_rate: Option<f64>,
 }
 
-fn is_country(s: &str) -> bool {
+/// `/^[A-Z]{2}$/` (normalizeCart's COUNTRY_RE).
+pub fn is_country(s: &str) -> bool {
     s.len() == 2 && s.bytes().all(|b| b.is_ascii_uppercase())
 }
 

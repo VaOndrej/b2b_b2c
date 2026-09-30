@@ -219,6 +219,11 @@ fn strings_of(value: &Value, len: usize) -> Vec<String> {
     out
 }
 
+/// `Array.isArray(v) && v.some(x => typeof x === "string")`: read up to the first string.
+pub fn has_string(value: &Value) -> bool {
+    (0..value.array_len().unwrap_or(0)).any(|i| value.get_at_index(i).as_string().is_some())
+}
+
 /// `stringList` (plan.ts): the strings of an array, or null when there are none.
 pub fn string_list(value: &Value) -> Option<Vec<String>> {
     strings(value).filter(|list| !list.is_empty())

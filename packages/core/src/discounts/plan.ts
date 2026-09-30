@@ -63,7 +63,7 @@
 // lines tied for the minimum and a safe bound beyond (plan-margin.ts
 // orderSetLimit), which is what lets the Rust function do O(lines × 16).
 
-import { type CartPlanInput, type NormalizedCart, type NormalizedLine, normalizeCart, type PlanLocale } from "./cart.ts";
+import { type CartPlanInput, ENTERED_CODE_PADDING, type NormalizedCart, type NormalizedLine, normalizeCart, type PlanLocale } from "./cart.ts";
 import { codeHash } from "./code-hash.ts";
 import type { DiscountMethod, DiscountRuleValue, DiscountTargetKind, MinimumScope, ReadonlyDeep } from "./config.ts";
 import { DEFAULT_CONFIG } from "./config/defaults.ts";
@@ -113,11 +113,13 @@ export type RuleState =
 /**
  * `over_limit`: first entered after the first MAX_ENTERED_CODES entries (cart.ts),
  * so never matched to a rule (its rule, if any, does not see it). A code among
- * them that is longer than every Won code is `unknown` (matchCodes).
+ * them that cannot be a Won code (longer than every Won code, or entered with
+ * more white space around it than ENTERED_CODE_PADDING allows) is `unknown`
+ * (matchCodes).
  */
 export type CodeState = RuleState | "same_rule" | "unknown" | "over_limit";
 
-export { MAX_ENTERED_CODES } from "./cart.ts";
+export { ENTERED_CODE_PADDING, MAX_ENTERED_CODES } from "./cart.ts";
 
 export type PlanFailure = "config_missing" | "invalid_input" | "internal_error";
 
@@ -569,11 +571,15 @@ function resolveRules(config: Rec, cart: NormalizedCart) {
 /**
  * Entered codes → code rules by hash; the first entered code of a rule is the
  * one that counts. Only the first MAX_ENTERED_CODES entries are matched (cart.ts
- * `consideredEntries`), and of those only a code whose trimmed length is at
- * most the longest Won code's (`readMaxCodeLength`): upper-casing never
- * shortens a text (UTF-16 units), so a longer one cannot be a Won code, and
- * the Rust function never upper-cases it (audit round 6). It still counts as
- * an entry.
+ * `consideredEntries`), and of those only an entry that can be a Won code
+ * (audit rounds 6 and 7; UTF-16 units, the longest Won code = `readMaxCodeLength`):
+ * - at most the longest Won code + ENTERED_CODE_PADDING long as entered, white
+ *   space included (the Rust function neither trims nor upper-cases a longer one);
+ * - its normalized form (trimmed, upper-cased) at most the longest Won code
+ *   long: every Won code is, so a longer one cannot be one (ß → SS and ΐ → three
+ *   characters count as long as they become; the Rust function stops hashing
+ *   there).
+ * Any other entry still counts as an entry.
  */
 function matchCodes(rules: Rule[], cart: NormalizedCart, maxCodeLength: number) {
   const ownerByHash = new Map<string, Rule>();
@@ -583,8 +589,8 @@ function matchCodes(rules: Rule[], cart: NormalizedCart, maxCodeLength: number) 
   }
   const ownerOfCode = new Map<string, Rule>();
   const enteredByRule = new Map<string, string[]>();
-  for (const { code, length } of cart.consideredEntries) {
-    if (code === "" || length > maxCodeLength) continue;
+  for (const { code, rawLength } of cart.consideredEntries) {
+    if (code === "" || rawLength > maxCodeLength + ENTERED_CODE_PADDING || code.length > maxCodeLength) continue;
     const rule = ownerByHash.get(codeHash(code));
     if (!rule) continue;
     ownerOfCode.set(code, rule);

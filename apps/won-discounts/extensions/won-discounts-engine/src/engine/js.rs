@@ -45,55 +45,64 @@ fn is_js_space(c: char) -> bool {
     )
 }
 
-/// Whether the 3 UTF-8 bytes `w` (big-endian in a u32) are a JS white space
-/// character: U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000, U+FEFF.
-#[inline]
-fn space3(w: u32) -> bool {
-    matches!(w, 0xE1_9A_80 | 0xE2_80_80..=0xE2_80_8A | 0xE2_80_A8 | 0xE2_80_A9 | 0xE2_80_AF | 0xE2_81_9F | 0xE3_80_80 | 0xEF_BB_BF)
-}
-
 /// `String.prototype.trim`. A text that starts and ends with a visible ASCII
 /// character (every price and rate Shopify sends) is returned as it is; any
-/// other is trimmed by its UTF-8 bytes, a white space character matched by its
-/// bytes (audit round 6: decoding each character cost ~50 instructions, and an
-/// entered code can be a long run of spaces). A lead byte always starts a
-/// character, so a match on a lead byte and its continuation bytes is that
-/// whole character.
+/// other is trimmed by its UTF-8 bytes (`trim_counted`).
+#[inline]
 pub fn trim(s: &str) -> &str {
     let b = s.as_bytes();
     let visible = |c: u8| c > b' ' && c < 0x80;
     if b.first().is_some_and(|&c| visible(c)) && b.last().is_some_and(|&c| visible(c)) {
         return s;
     }
-    let ascii_space = |c: u8| c == b' ' || c.wrapping_sub(0x09) < 5;
-    let three = |i: usize| (u32::from(b[i]) << 16) | (u32::from(b[i + 1]) << 8) | u32::from(b[i + 2]);
-    let (mut start, mut end) = (0, b.len());
-    while start < end {
-        let c = b[start];
-        if ascii_space(c) {
-            start += 1;
-        } else if c == 0xC2 && start + 1 < end && b[start + 1] == 0xA0 {
-            start += 2;
-        } else if c >= 0xE1 && start + 2 < end && space3(three(start)) {
-            start += 3;
-        } else {
-            break;
+    trim_counted(s, usize::MAX).map_or(s, |(trimmed, _)| trimmed)
+}
+
+/// `String.prototype.trim`, counting what it removes: the trimmed text and how
+/// many white space characters it removed (each one UTF-16 unit: every JS white
+/// space character is in the BMP), or none as soon as more than `limit` would be
+/// removed (audit round 7: an entered code can carry any amount of padding, and
+/// trimming it all cost ~20–35 instructions a byte). A white space character is
+/// matched by its UTF-8 bytes at either end (decoding each character cost ~50
+/// instructions): U+0009–U+000D, U+0020, U+00A0, U+1680, U+2000–U+200A,
+/// U+2028, U+2029, U+202F, U+205F, U+3000, U+FEFF. A match at the start is a
+/// lead byte and its continuation bytes, and at the end a lead byte that is 1–3
+/// bytes before it, so it is always one whole character.
+pub fn trim_counted(s: &str, limit: usize) -> Option<(&str, usize)> {
+    let b = s.as_bytes();
+    let visible = |c: u8| c > b' ' && c < 0x80;
+    if b.first().is_some_and(|&c| visible(c)) && b.last().is_some_and(|&c| visible(c)) {
+        return Some((s, 0));
+    }
+    let mut rest = b;
+    let mut removed = 0usize;
+    loop {
+        rest = match rest {
+            [c, tail @ ..] if *c == b' ' || c.wrapping_sub(0x09) < 5 => tail,
+            [0xC2, 0xA0, tail @ ..] => tail,
+            [0xE2, 0x80, 0x80..=0x8A | 0xA8 | 0xA9 | 0xAF, tail @ ..] | [0xE2, 0x81, 0x9F, tail @ ..] | [0xE3, 0x80, 0x80, tail @ ..] | [0xEF, 0xBB, 0xBF, tail @ ..] | [0xE1, 0x9A, 0x80, tail @ ..] => tail,
+            _ => break,
+        };
+        removed += 1;
+        if removed > limit {
+            return None;
         }
     }
-    while end > start {
-        let c = b[end - 1];
-        if ascii_space(c) {
-            end -= 1;
-        } else if c == 0xA0 && end - start >= 2 && b[end - 2] == 0xC2 {
-            end -= 2;
-        } else if c >= 0x80 && end - start >= 3 && space3(three(end - 3)) {
-            end -= 3;
-        } else {
-            break;
+    let start = b.len() - rest.len();
+    loop {
+        rest = match rest {
+            [head @ .., c] if *c == b' ' || c.wrapping_sub(0x09) < 5 => head,
+            [head @ .., 0xC2, 0xA0] => head,
+            [head @ .., 0xE2, 0x80, 0x80..=0x8A | 0xA8 | 0xA9 | 0xAF] | [head @ .., 0xE2, 0x81, 0x9F] | [head @ .., 0xE3, 0x80, 0x80] | [head @ .., 0xEF, 0xBB, 0xBF] | [head @ .., 0xE1, 0x9A, 0x80] => head,
+            _ => break,
+        };
+        removed += 1;
+        if removed > limit {
+            return None;
         }
     }
     // Both ends are character boundaries (only whole characters were skipped).
-    s.get(start..end).unwrap_or(s)
+    Some((s.get(start..start + rest.len()).unwrap_or(s), removed))
 }
 
 /// The upper-case form of a non-ASCII character (`char::to_uppercase`).
@@ -134,6 +143,15 @@ pub fn upper_entry(cp: u32) -> u16 {
         Some(&page) if page != 0 => PAGES.get(usize::from(page) - 1).map_or(0, |p| p[(cp & 63) as usize]),
         _ => 0,
     }
+}
+
+/// The upper-case form of a 2-byte character (U+0080–U+07FF) as one table read
+/// (audit round 7: the two-level `upper_entry` cost ~30 instructions more a
+/// character): the UTF-16 unit of its upper-case character, itself when it has
+/// none, or 0xD800 + i = `upper_many`.
+#[inline]
+pub fn upper_unit_2byte(cp: u32) -> u16 {
+    super::upper_table::UPPER2.get(cp as usize).copied().unwrap_or(0)
 }
 
 /// The characters (UTF-16 units, 0-padded) of an entry 0xD800 + i.
@@ -266,8 +284,19 @@ mod tests {
             let Some(c) = char::from_u32(n) else { continue };
             for text in [format!("{c}"), format!("{c}{c}"), format!("{c}x{c}"), format!(" {c}\u{3000}"), format!("\u{A0}{c}\u{2029}"), format!("x{c}"), format!("{c}\u{FEFF}x")] {
                 assert_eq!(trim(&text), text.trim_matches(is_js_space), "U+{n:04X} {text:?}");
+                // trim_counted: the same text, and the characters it removed, up to its limit.
+                let removed = text.chars().count() - text.trim_matches(is_js_space).chars().count();
+                for limit in [0, removed.saturating_sub(1), removed, removed + 1] {
+                    let want = (removed <= limit).then(|| (text.trim_matches(is_js_space), removed));
+                    assert_eq!(trim_counted(&text, limit), want, "U+{n:04X} {text:?} {limit}");
+                }
             }
         }
+        let padded = format!("{}x{}", "\u{2000}\u{3000} \u{FEFF}".repeat(40), "\t\u{200A}\u{A0}".repeat(40));
+        assert_eq!(trim_counted(&padded, 280), Some(("x", 280)));
+        assert_eq!(trim_counted(&padded, 279), None);
+        assert_eq!(trim_counted("   ", 3), Some(("", 3)));
+        assert_eq!(trim_counted("   ", 2), None);
         assert_eq!(upper("welcome15"), "WELCOME15");
         assert_eq!(upper("straße"), "STRASSE");
         // Character by character with ASCII directly: the same text as str::to_uppercase
@@ -303,6 +332,10 @@ mod tests {
             // every Won code can never become one (hash.rs `normalized_hash_within`).
             assert_eq!(upper(&up), up, "U+{n:04X}");
             assert!(up.encode_utf16().count() >= c.len_utf16(), "U+{n:04X}");
+            if n < 0x800 {
+                let entry = upper_entry(n);
+                assert_eq!(upper_unit_2byte(n), if entry == 0 { n as u16 } else { entry }, "U+{n:04X}: UPPER2");
+            }
         }
     }
 
@@ -368,6 +401,15 @@ mod tests {
                 out.push_str(&format!("        {},\n", hex(row)));
             }
             out.push_str("    ],\n");
+        }
+        out.push_str("];\n\n");
+        out.push_str("/// The code points below U+0800 (2 UTF-8 bytes from U+0080; below it unused):\n");
+        out.push_str("/// the UTF-16 unit of the upper-case character, the code point itself when it\n");
+        out.push_str("/// has none, or the `PAGES` marker 0xD800 + i (`js::upper_unit_2byte`).\n");
+        let upper2: Vec<u16> = (0u32..0x800).map(|n| if n < 0x80 { 0 } else if entry[n as usize] == 0 { n as u16 } else { entry[n as usize] }).collect();
+        out.push_str("pub static UPPER2: [u16; 2048] = [\n");
+        for row in upper2.chunks(16) {
+            out.push_str(&format!("    {},\n", hex(row)));
         }
         out.push_str("];\n\n");
         out.push_str("/// Upper-case forms of more than one character (all in the BMP), 0-padded.\n");

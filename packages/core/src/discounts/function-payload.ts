@@ -41,7 +41,8 @@
 //     metafields, targeting.ts);
 //   - codes as 8-hex FNV-1a hashes (code-hash.ts; `findCodeHashCollisions`
 //     guards the admin save), with the longest code's length (`maxCodeLength`:
-//     the function never upper-cases an entered code longer than it);
+//     the function never upper-cases an entered code longer than it, nor trims
+//     one longer than it + ENTERED_CODE_PADDING as entered);
 //   - schedules as SHOP-LOCAL dates (`startsOn`/`endsOn`), converted with the
 //     shop's IANA time zone, because the function can only compare
 //     `shop.localTime.date`;
@@ -128,9 +129,12 @@ export interface FunctionConfigPayload {
     /**
      * `maxCodeLength`: the longest Won code (UTF-16 units, trimmed and
      * upper-cased), shipped whenever a code rule ships code hashes (audit round
-     * 6). The function upper-cases and hashes only entered codes no longer than
-     * it: a longer one cannot be a Won code. Absent (a payload written before)
-     * it reads as CONFIG_LIMITS.codeLength (plan.ts `readMaxCodeLength`).
+     * 6). The function matches only an entered code at most this + 16 long as
+     * entered whose upper-case form is at most this long (plan.ts
+     * `matchCodes`, audit round 7): any other cannot be a Won code. Absent (a
+     * payload written before) it reads as CONFIG_LIMITS.codeLength (plan.ts
+     * `readMaxCodeLength`). It costs the payload `,"maxCodeLength":N` — 18 B,
+     * 19 B once the longest code has 10 characters or more.
      */
     codes: { rules: FunctionRule[]; maxCodeLength?: number };
     tiers: { sets: TierSet[] };

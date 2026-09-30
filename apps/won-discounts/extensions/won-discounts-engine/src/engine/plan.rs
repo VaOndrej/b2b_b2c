@@ -325,15 +325,16 @@ fn resolve_rules<'a>(config: &'a Config, cart: &NormalizedCart) -> Resolved<'a> 
 
 /// Entered codes → code rules by hash (the first rule listing a hash owns it);
 /// plan.ts `matchCodes`. Of the first MAX_ENTERED_CODES entries as entered
-/// (every entry counts: an empty one, one longer than every Won code), a code
-/// whose trimmed text is longer (UTF-16 units) than the longest Won code
-/// (`max_code_length`) is left out without being upper-cased: upper-casing
-/// never shortens a text, so it cannot be a Won code. The rest are hashed as
-/// they would be upper-cased (`normalized_hash_within`); an entry whose hash a
-/// rule has is that rule's, kept as its hash and trimmed text in entry order.
-/// Nothing is upper-cased here: what the function needs of a rule's codes is
-/// whether it has one and whether the triggering code is one of them
-/// (`CartPlan::rule_has_code`), and a repeat changes neither.
+/// (every entry counts: an empty one, one that cannot be a Won code), only an
+/// entry that can be a Won code is matched (`normalized_hash_within`): at most
+/// the longest Won code (`max_code_length`) + CODE_PADDING UTF-16 units as
+/// entered, and its upper-case form at most `max_code_length` long (audit
+/// rounds 6 and 7). Any other is left without being upper-cased or trimmed
+/// past the bound. The rest are hashed as they would be upper-cased; an entry
+/// whose hash a rule has is that rule's, kept as its hash and trimmed text in
+/// entry order. Nothing is upper-cased here: what the function needs of a
+/// rule's codes is whether it has one and whether the triggering code is one
+/// of them (`CartPlan::rule_has_code`), and a repeat changes neither.
 fn match_codes<'a>(rules: &[Rule], cart: &NormalizedCart<'a>, max_code_length: usize) -> Vec<Vec<(u32, &'a str)>> {
     let mut entered_by_rule = vec![Vec::new(); rules.len()];
     if cart.entered_codes.is_empty() {

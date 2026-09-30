@@ -45,7 +45,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { normalizeCart } from "@won/core/discounts/cart";
 import { roundingTiePossible } from "@won/core/discounts/function-output";
 import { costMinorUnits, MAX_MARGIN_REFS, marginFloorUnit, readMarginPayload, resolveProductMargin } from "@won/core/discounts/margin";
-import { readMaxCodeLength } from "@won/core/discounts/plan";
+import { ENTERED_CODE_PADDING, readMaxCodeLength } from "@won/core/discounts/plan";
 import { orderSetLimit, searchOrderSets } from "@won/core/discounts/plan-margin";
 
 import {
@@ -794,7 +794,8 @@ function generator(seed, onlySearch = false) {
       while (out.length < len) out += alphabet[int(alphabet.length)];
       return out.slice(0, len).replace(/[\ud800-\udbff]$/, "X");
     };
-    const pad = () => pick(["", "", " ", "\u00a0", "\u3000", "\t", "\ufeff", "  \u2003"]);
+    // Padding around a code, up to and past ENTERED_CODE_PADDING (16) with the code's own length (audit round 7).
+    const pad = () => (chance(0.15) ? pick([" ", "\u2000", "\u3000", "\n", "\u200a"]).repeat(4 + int(16)) : pick(["", "", " ", "\u00a0", "\u3000", "\t", "\ufeff", "  \u2003"]));
     const caseOf = (code) => pick([code, code.toLowerCase(), code.toUpperCase()]);
     const wonCodes = [];
     const rules = Array.from({ length: 1 + int(4) }, (_, k) => {
@@ -1543,10 +1544,12 @@ describe("Wasm (function-runner)", () => {
     for (const [k, v] of Object.entries(seen)) expect(v, k).toBeGreaterThanOrEqual(MIN_HITS);
   }, 900_000);
 
-  // Entered codes of any length (audit round 6): an entered code whose trimmed
-  // length is over the payload's longest Won code is never upper-cased or
-  // matched, and still counts toward the 25 (cart.ts, plan.ts matchCodes;
-  // hash.rs normalized_hash_within). Wasm = the TS reference, each way ≥ 20 times.
+  // Entered codes of any length (audit rounds 6 and 7): an entered code longer
+  // than the payload's longest Won code + ENTERED_CODE_PADDING as entered, or
+  // whose normalized form is longer than the longest Won code, is never matched
+  // (nor trimmed or upper-cased past that bound by the function), and still
+  // counts toward the 25 (cart.ts, plan.ts matchCodes; hash.rs
+  // normalized_hash_within). Wasm = the TS reference, each way ≥ 20 times.
   const LONG_CASES = Number(process.env.PARITY_LONG_CASES ?? 600);
   test(`entered codes of any length, seed 20261006 × ${LONG_CASES}: Wasm = TS reference, every way hit`, async () => {
     const next = generator(20261006, "long");
@@ -1556,6 +1559,8 @@ describe("Wasm (function-runner)", () => {
       "a code over the longest Won code left out": 0,
       "a Won code entered longer (one character more) left out": 0,
       "a padded Won code longer than the longest as entered, matched": 0,
+      "a Won code padded past the longest + 16 as entered, left out": 0,
+      "a code whose upper-case form alone is over the longest, left out": 0,
       "a code longer than 64 characters among the first 25": 0,
       "maxCodeLength missing or junk (64)": 0,
       "maxCodeLength below a Won code (hand-made): a Won code left out": 0,
@@ -1578,10 +1583,12 @@ describe("Wasm (function-runner)", () => {
         const entries = c.input.enteredDiscountCodes.map((e) => (typeof e.code === "string" ? e.code : null));
         const first = entries.slice(0, 25);
         const trimmed = (code) => (code === null ? "" : code.trim());
-        const leftOut = (code) => trimmed(code) !== "" && trimmed(code).length > max;
+        const leftOut = (code) => trimmed(code) !== "" && (code.length > max + ENTERED_CODE_PADDING || trimmed(code).toUpperCase().length > max);
         if (first.some(leftOut)) hit("a code over the longest Won code left out");
         if (first.some((code) => leftOut(code) && trimmed(code).length === max + 1 && wonHashes.has(codeHash(code.slice(0, -1))))) hit("a Won code entered longer (one character more) left out");
         if (first.some((code) => code !== null && !leftOut(code) && code.length > max && wonHashes.has(codeHash(code)))) hit("a padded Won code longer than the longest as entered, matched");
+        if (first.some((code) => code !== null && code.length > max + ENTERED_CODE_PADDING && trimmed(code).toUpperCase().length <= max && wonHashes.has(codeHash(code)))) hit("a Won code padded past the longest + 16 as entered, left out");
+        if (first.some((code) => code !== null && trimmed(code) !== "" && trimmed(code).length <= max && trimmed(code).toUpperCase().length > max)) hit("a code whose upper-case form alone is over the longest, left out");
         if (first.some((code) => trimmed(code).length > 64)) hit("a code longer than 64 characters among the first 25");
         if (!Number.isInteger(codesModule.maxCodeLength) || codesModule.maxCodeLength < 0 || codesModule.maxCodeLength > 64) hit("maxCodeLength missing or junk (64)");
         if (first.some((code) => leftOut(code) && wonHashes.has(codeHash(code)))) hit("maxCodeLength below a Won code (hand-made): a Won code left out");

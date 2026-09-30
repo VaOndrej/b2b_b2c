@@ -14,7 +14,7 @@ use shopify_function::wasm_api::Value;
 use super::hash::MAX_CODE_LENGTH;
 use super::js;
 use super::margin::{read_margin_payload, MarginPayload};
-use crate::json::{entries, is_true, non_empty, number, prop, string, string_list, Fields, Key};
+use crate::json::{entries, has_string, is_true, non_empty, number, prop, string, string_list, Fields, Key};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TargetKind {
@@ -299,13 +299,63 @@ fn read_minimum(value: &Value, cur: Option<&str>) -> Minimum {
     }
 }
 
-fn read_targeting(value: &Value) -> Targeting {
+/// How a rule's market handles are read. `All`: every handle (`stringList`).
+/// `Here(handles)`: the function run, which knows the cart's markets (audit
+/// round 7) — the handles of the markets that hold the cart's country — and
+/// reads a rule's handles only until one of them. `markets` is then the list
+/// `inMarket` decides the same on: `[that handle]`, `[]` when none of its
+/// handles is one of them (but it lists a string), none when it lists no string.
+#[derive(Debug, Clone, Copy)]
+enum HandleRead<'h> {
+    All,
+    Here(&'h [String]),
+}
+
+fn read_markets(list: &Value, read: HandleRead) -> Option<Vec<String>> {
+    let HandleRead::Here(here) = read else { return string_list(list) };
+    let mut listed = false;
+    for i in 0..list.array_len()? {
+        if let Some(handle) = list.get_at_index(i).as_string() {
+            if here.contains(&handle) {
+                return Some(vec![handle]);
+            }
+            listed = true;
+            if here.is_empty() {
+                break;
+            }
+        }
+    }
+    listed.then(Vec::new)
+}
+
+/// A market's countries (`stringList`), read for the function run: whether it
+/// lists a string, and whether one of them upper-cased is the cart's country
+/// (`country`, upper-case ISO 3166-1 alpha-2; none: the cart has no valid
+/// country, which no market holds) — read until that one.
+fn market_holds(countries: &Value, country: Option<&str>) -> (bool, bool) {
+    let mut listed = false;
+    for i in 0..countries.array_len().unwrap_or(0) {
+        if let Some(c) = countries.get_at_index(i).as_string() {
+            listed = true;
+            let Some(country) = country else { break };
+            // `c.toUpperCase() === country`; an ASCII country compared as it is.
+            let holds = if c.is_ascii() { c.len() == country.len() && c.bytes().zip(country.bytes()).all(|(a, b)| a.to_ascii_uppercase() == b) } else { js::upper(&c) == country };
+            if holds {
+                return (true, true);
+            }
+        }
+    }
+    (listed, false)
+}
+
+fn read_targeting(value: &Value, read: HandleRead) -> Targeting {
     if !value.is_obj() {
         return Targeting::default();
     }
     Targeting {
-        markets: string_list(&prop(value, Key::Markets)),
-        segment_targeted: string_list(&prop(value, Key::Segments)).is_some(),
+        markets: read_markets(&prop(value, Key::Markets), read),
+        // `stringList(segments) !== null`: read up to its first string.
+        segment_targeted: has_string(&prop(value, Key::Segments)),
     }
 }
 
@@ -317,7 +367,7 @@ fn read_combines(value: &Value) -> Vec<String> {
 }
 
 
-fn read_patch(patch: &Value, cur: Option<&str>) -> RulePatch {
+fn read_patch(patch: &Value, cur: Option<&str>, markets: HandleRead) -> RulePatch {
     let mut out = RulePatch::default();
     for (key, value) in entries(patch) {
         match key.as_str() {
@@ -326,7 +376,7 @@ fn read_patch(patch: &Value, cur: Option<&str>) -> RulePatch {
             "value" => out.value = Some(read_value(&value, cur)),
             "target" => out.target = Some(read_target(&value)),
             "minimum" => out.minimum = Some(read_minimum(&value, cur)),
-            "targeting" => out.targeting = Some(read_targeting(&value)),
+            "targeting" => out.targeting = Some(read_targeting(&value, markets)),
             "combinesWith" => out.combines = Some(read_combines(&value)),
             _ => {}
         }
@@ -341,7 +391,7 @@ fn read_local_date(value: &Value) -> Option<String> {
 /// `readRule` (plan.ts): the keys a stored rule usually has first, the optional
 /// ones after them — once every key of the rule was found, the rest are known to
 /// be absent without reading them (json.rs `Fields`).
-fn read_rule(raw: &Value, cur: Option<&str>) -> Option<RawRule> {
+fn read_rule(raw: &Value, cur: Option<&str>, markets: HandleRead) -> Option<RawRule> {
     if !raw.is_obj() {
         return None;
     }
@@ -356,7 +406,7 @@ fn read_rule(raw: &Value, cur: Option<&str>) -> Option<RawRule> {
     let code_hashes = if method_code { f.get(Key::CodeHashes).and_then(|v| string_list(&v)).unwrap_or_default() } else { Vec::new() };
     let priority = f.get(Key::Priority).and_then(|v| number(&v)).map_or(0, js::floor_to_i64);
     let minimum = f.get(Key::Minimum).map_or_else(Minimum::default, |v| read_minimum(&v, cur));
-    let targeting = f.get(Key::Targeting).map_or_else(Targeting::default, |v| read_targeting(&v));
+    let targeting = f.get(Key::Targeting).map_or_else(Targeting::default, |v| read_targeting(&v, markets));
     let schedule = f.get(Key::Schedule);
     let scheduled = schedule.is_some_and(|s| !s.is_null());
     let (mut schedule_invalid, mut starts_on, mut ends_on) = (false, None, None);
@@ -384,7 +434,7 @@ fn read_rule(raw: &Value, cur: Option<&str>) -> Option<RawRule> {
     })
 }
 
-fn read_campaign(value: &Value, cur: Option<&str>) -> Option<RawCampaign> {
+fn read_campaign(value: &Value, cur: Option<&str>, markets: HandleRead) -> Option<RawCampaign> {
     if !value.is_obj() {
         return None;
     }
@@ -397,7 +447,7 @@ fn read_campaign(value: &Value, cur: Option<&str>) -> Option<RawCampaign> {
         }
         let (Some(rule_id), patch) = (string(&prop(&entry, Key::RuleId)), prop(&entry, Key::Patch)) else { continue };
         if patch.is_obj() {
-            overrides.push((rule_id, read_patch(&patch, cur)));
+            overrides.push((rule_id, read_patch(&patch, cur, markets)));
         }
     }
     Some(RawCampaign { id: string(&prop(value, Key::Id)), killed: is_true(&prop(value, Key::Killed)), overrides })
@@ -420,12 +470,24 @@ impl Config {
     /// accepts (a record with `modules.codes.rules` an array); everything inside
     /// is read tolerantly, junk rules are skipped one by one.
     pub fn read(value: &Value) -> Option<Config> {
-        Self::read_in(value, None)
+        Self::read_with(value, None, None)
     }
 
-    /// `read` for a cart in currency `cur` (the function run): money is read in
-    /// that currency only (`read_money`), the one plan.rs looks up.
-    pub fn read_in(value: &Value, cur: Option<&str>) -> Option<Config> {
+    /// `read` for a cart in currency `cur` whose country is `country` (the
+    /// function run; upper-case ISO 3166-1 alpha-2 as normalizeCart makes it,
+    /// none when the cart has no valid one): money is read in that currency only
+    /// (`read_money`), the one plan.rs looks up, and markets only as far as the
+    /// cart's country decides them (audit round 7: every country and handle read
+    /// as a string cost ~780 instructions): `market_countries` lists only the
+    /// markets that hold the country (as `[country]`; a market that does not is
+    /// `[]`), and a rule's `markets` is read until one of those (`read_markets`).
+    /// Every decision `markets_here` / `in_market` make is the same as on the
+    /// whole lists.
+    pub fn read_in(value: &Value, cur: Option<&str>, country: Option<&str>) -> Option<Config> {
+        Self::read_with(value, cur, Some(country))
+    }
+
+    fn read_with(value: &Value, cur: Option<&str>, country: Option<Option<&str>>) -> Option<Config> {
         if !value.is_obj() {
             return None;
         }
@@ -437,23 +499,32 @@ impl Config {
         }
         let rule_count = rules.array_len()?;
 
-        let mut market_countries = Vec::new();
+        let mut market_countries: Vec<(String, Vec<String>)> = Vec::new();
         for (handle, countries) in entries(&prop(value, Key::MarketCountries)) {
-            if let Some(list) = string_list(&countries) {
-                market_countries.retain(|(h, _): &(String, Vec<String>)| *h != handle);
-                market_countries.push((handle, list.iter().map(|c| js::upper(c)).collect()));
+            let list = match country {
+                None => string_list(&countries).map(|list| list.iter().map(|c| js::upper(c)).collect()),
+                Some(country) => match market_holds(&countries, country) {
+                    (false, _) => None,
+                    (true, holds) => Some(if holds { country.map(str::to_string).into_iter().collect() } else { Vec::new() }),
+                },
+            };
+            if let Some(list) = list {
+                market_countries.retain(|(h, _)| *h != handle);
+                market_countries.push((handle, list));
             }
         }
+        let here: Vec<String> = market_countries.iter().filter(|(_, list)| !list.is_empty()).map(|(h, _)| h.clone()).collect();
+        let markets = if country.is_some() { HandleRead::Here(&here) } else { HandleRead::All };
         let campaigns_value = prop(value, Key::Campaigns);
         let campaigns =
-            (0..campaigns_value.array_len().unwrap_or(0)).filter_map(|i| read_campaign(&campaigns_value.get_at_index(i), cur)).collect();
+            (0..campaigns_value.array_len().unwrap_or(0)).filter_map(|i| read_campaign(&campaigns_value.get_at_index(i), cur, markets)).collect();
 
         Some(Config {
             campaign_id: string(&prop(value, Key::CampaignId)),
             campaign_vars_version: string(&prop(value, Key::CampaignVarsVersion)),
             engine: read_engine(value),
             market_countries,
-            rules: (0..rule_count).filter_map(|i| read_rule(&rules.get_at_index(i), cur)).collect(),
+            rules: (0..rule_count).filter_map(|i| read_rule(&rules.get_at_index(i), cur, markets)).collect(),
             campaigns,
             margin: read_margin_payload(&prop(&modules, Key::Margin)),
             max_code_length: read_max_code_length(&prop(&codes, Key::MaxCodeLength)),
@@ -469,6 +540,56 @@ mod tests {
 
     fn read(json: &str) -> Option<Config> {
         run_function_with_input(|c: ShopConfig| Ok(c), json).unwrap().0
+    }
+
+    fn read_for(json: &str, country: Option<&str>) -> Option<Config> {
+        run_function_with_input(|v: Value| Ok(Config::read_in(&v, None, country)), json).unwrap()
+    }
+
+    /// Read for the cart's country (audit round 7), markets decide exactly as on
+    /// the whole lists: the markets that hold the country, and for every rule and
+    /// campaign patch whether one of its handles is one of them — for lower-case,
+    /// non-ASCII (ſ → S, ı → I), junk and empty lists, duplicate-looking handles,
+    /// no country, and handles listed anywhere.
+    #[test]
+    fn markets_read_for_the_carts_country_decide_as_the_whole_lists() {
+        let rule = |id: &str, markets: &str| format!(r#"{{"id": "{id}", "enabled": true, "value": {{"kind": "percentage", "percent": 5}}, "target": {{"kind": "products"}}, "targeting": {{"markets": {markets}}}}}"#);
+        let rules = [
+            rule("a", r#"["other", "eu"]"#),
+            rule("b", r#"["other"]"#),
+            rule("c", "[1, 2]"),
+            rule("d", "[]"),
+            rule("e", r#"["none", "us", 7, "cz2"]"#),
+            rule("f", r#""eu""#),
+            rule("g", r#"["missing", "ı", "eu", "other"]"#),
+            r#"{"id": "h", "enabled": true, "value": {"kind": "percentage", "percent": 5}, "target": {"kind": "products"}}"#.to_string(),
+        ]
+        .join(",");
+        let json = format!(
+            r#"{{"marketCountries": {{"eu": ["sk", "cz", 3], "cz2": ["ſk", "Cz"], "none": [], "junk": 5, "other": ["DE", "de"], "us": [null, "us"], "ı": ["ıt", "IT"]}},
+               "modules": {{"codes": {{"rules": [{rules}]}}}},
+               "campaigns": [{{"id": "k", "overrides": [{{"ruleId": "b", "patch": {{"targeting": {{"markets": ["eu", "us"]}}}}}}, {{"ruleId": "a", "patch": {{"targeting": {{"markets": [3]}}}}}}]}}]}}"#
+        );
+        let whole = read(&json).unwrap();
+        assert_eq!(whole.market_countries.len(), 5);
+        let decide = |config: &Config, country: Option<&str>| {
+            let here: Vec<&str> = config.market_countries.iter().filter(|(_, list)| country.is_some_and(|c| list.iter().any(|x| x == c))).map(|(h, _)| h.as_str()).collect();
+            let decides = |t: &Targeting| t.markets.as_ref().map(|m| m.iter().any(|h| here.contains(&h.as_str())));
+            let rules: Vec<_> = config.rules.iter().map(|r| decides(&r.fields.targeting)).collect();
+            let patches: Vec<_> = config.campaigns.iter().flat_map(|c| c.overrides.iter().map(|(_, p)| p.targeting.as_ref().map(decides))).collect();
+            let mut here: Vec<String> = here.iter().map(|h| h.to_string()).collect();
+            here.sort();
+            (here, rules, patches)
+        };
+        for country in [Some("CZ"), Some("SK"), Some("US"), Some("DE"), Some("IT"), Some("FR"), None] {
+            let cut = read_for(&json, country).unwrap();
+            assert_eq!(decide(&cut, country), decide(&whole, country), "{country:?}");
+            // Only the markets that hold the country keep it; a rule keeps at most one handle.
+            assert!(cut.market_countries.iter().all(|(_, list)| list.len() <= 1));
+            assert!(cut.rules.iter().all(|r| r.fields.targeting.markets.as_ref().is_none_or(|m| m.len() <= 1)));
+        }
+        assert_eq!(decide(&whole, Some("SK")).0, vec!["cz2", "eu"]);
+        assert_eq!(decide(&whole, Some("IT")).0, vec!["ı"]);
     }
 
     #[test]

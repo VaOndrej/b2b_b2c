@@ -15,7 +15,7 @@ import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import { emitForNode } from "@won/core/discounts/emit";
 import { mapToFunctionOutput, roundingTiePossible } from "@won/core/discounts/function-output";
 import { ceilTol, costMinorUnits, MARGIN_TOLERANCE, MAX_MARGIN_REFS, marginFloorUnit, readMarginPayload, resolveMargin, strictestMargin } from "@won/core/discounts/margin";
-import { MAX_ENTERED_CODES, planCart } from "@won/core/discounts/plan";
+import { ENTERED_CODE_PADDING, MAX_ENTERED_CODES, planCart } from "@won/core/discounts/plan";
 import { ORDER_SEARCH_EXACT_LINES, ORDER_SEARCH_NEAR, orderSetLimit, searchOrderSets } from "@won/core/discounts/plan-margin";
 import { describe, expect, test } from "vitest";
 
@@ -325,6 +325,31 @@ const TWINS = {
       const many = [...Array.from({ length: 25 }, () => filler), "STRASSE"];
       expect(codes(planCart(cart(lines, many), c), "s")).toEqual([]);
       expect(codes(planCart(cart(lines, many.slice(1)), c), "s")).toEqual(["STRASSE"]);
+    }
+  },
+
+  an_entered_code_padded_or_upper_cased_past_the_bound_is_never_matched_but_counts() {
+    expect(ENTERED_CODE_PADDING).toBe(16);
+    const rulesList = [code("w", 10, [codeHash("WELCOME15")]), code("s", 15, [codeHash("STRASSE")]), code("f", 12, [codeHash("FFIFFIFFI")]), code("g", 20, [codeHash("FFIFFIFFIFFI")])];
+    const c = { modules: { codes: { rules: rulesList, maxCodeLength: 9 } } };
+    const lines = [line("l1", 1, 10000, ["w", "s", "f", "g"])];
+    const codesOf = (entered) => {
+      const plan = planCart(cart(lines, entered), c);
+      return ["w", "s", "f", "g"].map((id) => plan.rules.find((r) => r.ruleId === id).enteredCodes);
+    };
+    expect(codesOf([`${" ".repeat(8)}welcome15${"\u3000".repeat(8)}`])).toEqual([["WELCOME15"], [], [], []]);
+    expect(codesOf([`${" ".repeat(8)}welcome15${"\u3000".repeat(9)}`])).toEqual([[], [], [], []]);
+    expect(codesOf([`\t${"\ufeff".repeat(15)}WELCOME15`, `welcome15${"\n".repeat(17)}`])[0]).toEqual(["WELCOME15"]);
+    expect(codesOf([`straße${"\u2000".repeat(19)}`])[1]).toEqual(["STRASSE"]);
+    expect(codesOf([`straße${"\u2000".repeat(20)}`])[1]).toEqual([]);
+    expect(codesOf(["ﬃﬃﬃ", "ﬃﬃﬃﬃ"])).toEqual([[], [], ["FFIFFIFFI"], []]);
+    const plan = planCart(cart(lines, ["ﬃﬃﬃﬃ"]), c);
+    expect(gated(plan, "g")).toBe("code_not_entered");
+    expect(emitForNode(plan, { kind: "code", ruleId: "g" }, "ﬃﬃﬃﬃ").productCandidates).toEqual([]);
+    for (const filler of [`W${" ".repeat(30)}`, "ßßßßß", "\u3000".repeat(26)]) {
+      const many = [...Array.from({ length: 25 }, () => filler), "STRASSE"];
+      expect(codesOf(many)[1]).toEqual([]);
+      expect(codesOf(many.slice(1))[1]).toEqual(["STRASSE"]);
     }
   },
 

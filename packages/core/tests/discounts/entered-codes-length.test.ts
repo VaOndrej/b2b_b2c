@@ -1,15 +1,17 @@
-// Entered codes against the longest Won code (MVP 2 audit round 6). A Won code
-// has at most 64 characters (CONFIG_LIMITS.codeLength, UTF-16 units, trimmed and
-// upper-cased); the shop payload carries the longest one (`maxCodeLength`), and
-// an entered code longer than it once trimmed is never matched — upper-casing
-// never shortens a text, so it cannot be a Won code — while it still counts as
-// one of the first 25 entries. The Rust function then never upper-cases it
-// (hash.rs `normalized_hash_within`), which bounds its work per code.
+// Entered codes against the longest Won code (MVP 2 audit rounds 6 and 7). A Won
+// code has at most 64 characters (CONFIG_LIMITS.codeLength, UTF-16 units, trimmed
+// and upper-cased); the shop payload carries the longest one (`maxCodeLength`).
+// An entered code is never matched, while it still counts as one of the first 25
+// entries, when it is longer than that + ENTERED_CODE_PADDING as entered (white
+// space included), or when its normalized form (trimmed, upper-cased) is longer
+// than it — it cannot be a Won code. The Rust function then neither trims nor
+// upper-cases more of it than that bound (hash.rs `normalized_hash_within`),
+// which bounds its work per code.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { MAX_ENTERED_CODES, normalizeCart, normalizeCode } from "../../src/discounts/cart.ts";
+import { ENTERED_CODE_PADDING, MAX_ENTERED_CODES, normalizeCart, normalizeCode } from "../../src/discounts/cart.ts";
 import { codeHash } from "../../src/discounts/code-hash.ts";
 import { CONFIG_LIMITS } from "../../src/discounts/config.ts";
 import { emitForNode } from "../../src/discounts/emit.ts";
@@ -66,13 +68,13 @@ test("an entered code longer than the longest Won code is never matched, and cou
   assert.equal(outcome(plan, "l").state, "code_not_entered");
   assert.equal(plan.codes.find((c) => c.code === "WELCOME150")?.state, "unknown");
   assert.deepEqual(emitForNode(plan, { kind: "code", ruleId: "l" }, "welcome150").productCandidates, []);
-  // The entries: every one counts, whatever it holds, and keeps its trimmed length.
+  // The entries: every one counts, whatever it holds, and keeps its length as entered.
   const cart = normalizeCart(cartOf(lines, { enteredCodes: [" welcome15 ", "", 7 as unknown as string, "ß"] }));
   assert.deepEqual(cart.consideredEntries, [
-    { code: "WELCOME15", length: 9 },
-    { code: "", length: 0 },
-    { code: "", length: 0 },
-    { code: "SS", length: 1 },
+    { code: "WELCOME15", rawLength: 11 },
+    { code: "", rawLength: 0 },
+    { code: "", rawLength: 0 },
+    { code: "SS", rawLength: 1 },
   ]);
   assert.equal(cart.consideredCodes, 2);
   // 25 codes that are too long, or empty, or not strings, then STRASSE: past the cap.
@@ -80,6 +82,39 @@ test("an entered code longer than the longest Won code is never matched, and cou
     const entered = [...Array.from({ length: MAX_ENTERED_CODES }, () => filler), "STRASSE"] as string[];
     assert.equal(outcome(planCart(cartOf(lines, { enteredCodes: entered }), payload), "s").state, "code_not_entered", String(filler));
     assert.deepEqual(outcome(planCart(cartOf(lines, { enteredCodes: entered.slice(1) }), payload), "s").enteredCodes, ["STRASSE"], String(filler));
+  }
+});
+
+test("an entered code longer than the longest Won code + 16 as entered, or whose upper-case form is longer than it, is never matched, and counts", () => {
+  assert.equal(ENTERED_CODE_PADDING, 16);
+  // WELCOME15 (9) and STRASSE (7) are the shop's codes, FFIFFIFFI (9, "ﬃﬃﬃ" entered)
+  // too; a hand-made payload also lists FFIFFIFFIFFI (12, "ﬃﬃﬃﬃ" entered).
+  const payload = payloadOf([pct("w", 10, code(["WELCOME15"])), pct("s", 15, code(["STRASSE"])), pct("f", 12, code(["ﬃﬃﬃ"]))]);
+  assert.equal(payload.modules.codes.maxCodeLength, 9);
+  payload.modules.codes.rules.push({ ...payload.modules.codes.rules[0], id: "g", codeHashes: [codeHash("FFIFFIFFIFFI")], value: { kind: "percentage", percent: 20 } });
+  const lines = [line("L1", 100_00, 1, ["w", "s", "f", "g"])];
+  const codesOf = (entered: string[]) => {
+    const plan = planCart(cartOf(lines, { enteredCodes: entered }), payload);
+    return ["w", "s", "f", "g"].map((id) => outcome(plan, id).enteredCodes);
+  };
+  // 9 + 16 = 25 as entered matches; 26 does not.
+  assert.deepEqual(codesOf([`${" ".repeat(8)}welcome15${"\u3000".repeat(8)}`]), [["WELCOME15"], [], [], []]);
+  assert.deepEqual(codesOf([`${" ".repeat(8)}welcome15${"\u3000".repeat(9)}`]), [[], [], [], []]);
+  assert.deepEqual(codesOf([`\t${"\ufeff".repeat(15)}WELCOME15`, `welcome15${"\n".repeat(17)}`]), [["WELCOME15"], [], [], []]);
+  // The bound is the longest Won code's: a shorter one may carry more white space (straße: 6 + 19 = 25).
+  assert.deepEqual(codesOf([`straße${"\u2000".repeat(19)}`]), [[], ["STRASSE"], [], []]);
+  assert.deepEqual(codesOf([`straße${"\u2000".repeat(20)}`]), [[], [], [], []]);
+  // Upper-cased length: ﬃﬃﬃ becomes 9 characters (matched), ﬃﬃﬃﬃ 12 (never, even with its hash listed).
+  assert.deepEqual(codesOf(["ﬃﬃﬃ", "ﬃﬃﬃﬃ"]), [[], [], ["FFIFFIFFI"], []]);
+  const plan = planCart(cartOf(lines, { enteredCodes: ["ﬃﬃﬃﬃ", `welcome15${" ".repeat(17)}`] }), payload);
+  assert.equal(outcome(plan, "g").state, "code_not_entered");
+  assert.deepEqual(plan.codes.map((c) => [c.code, c.state]), [["FFIFFIFFIFFI", "unknown"], ["WELCOME15", "unknown"]]);
+  assert.deepEqual(emitForNode(plan, { kind: "code", ruleId: "g" }, "ﬃﬃﬃﬃ").productCandidates, []);
+  // Such entries count: 25 of them, then STRASSE is past the cap.
+  for (const filler of [`W${" ".repeat(30)}`, "ßßßßß", "\u3000".repeat(26)]) {
+    const entered = [...Array.from({ length: MAX_ENTERED_CODES }, () => filler), "STRASSE"];
+    assert.deepEqual(codesOf(entered)[1], [], filler);
+    assert.deepEqual(codesOf(entered.slice(1))[1], ["STRASSE"], filler);
   }
 });
 
@@ -129,7 +164,8 @@ test("for the shop's own codes nothing changes: 3 000 random carts match exactly
       assert.deepEqual(outcome(plan, r.id).enteredCodes, want.get(r.id) ?? [], `case ${i} rule ${r.id}`);
       matched += (want.get(r.id) ?? []).length;
     }
-    skipped += entered.slice(0, MAX_ENTERED_CODES).filter((raw) => raw.trim().length > readMaxCodeLength(payload as unknown as Record<string, unknown>)).length;
+    const max = readMaxCodeLength(payload as unknown as Record<string, unknown>);
+    skipped += entered.slice(0, MAX_ENTERED_CODES).filter((raw) => raw.length > max + ENTERED_CODE_PADDING || normalizeCode(raw).length > max).length;
   }
   assert.ok(skipped > 3000 && matched > 3000, `skipped ${skipped}, matched ${matched}`);
 });

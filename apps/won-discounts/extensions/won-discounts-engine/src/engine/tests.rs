@@ -477,6 +477,45 @@ fn an_entered_code_longer_than_every_won_code_is_never_matched_but_counts() {
 }
 
 #[test]
+fn an_entered_code_padded_or_upper_cased_past_the_bound_is_never_matched_but_counts() {
+    assert_eq!(super::hash::CODE_PADDING, 16);
+    let hash = |code: &str| format!(r#""{}""#, super::hash::code_hash(code));
+    // WELCOME15 (9), STRASSE (7) and FFIFFIFFI (9, "ﬃﬃﬃ" entered); a hand-made
+    // payload also lists FFIFFIFFIFFI (12, "ﬃﬃﬃﬃ" entered).
+    let rules_json = [code("w", 10.0, &hash("WELCOME15"), ""), code("s", 15.0, &hash("STRASSE"), ""), code("f", 12.0, &hash("FFIFFIFFI"), ""), code("g", 20.0, &hash("FFIFFIFFIFFI"), "")].join(",");
+    let c = config(&format!(r#"{{"modules": {{"codes": {{"rules": [{rules_json}], "maxCodeLength": 9}}}}}}"#));
+    let lines = [line("l1", 1, 10000, &["w", "s", "f", "g"])];
+    let codes_of = |entered: &[&str]| {
+        let plan = plan_cart(cart(&lines, entered), Some(&c));
+        ["w", "s", "f", "g"].map(|id| plan.entered_codes(plan.rule_index(id).unwrap()))
+    };
+    let none: Vec<String> = Vec::new();
+    // 9 + 16 = 25 as entered matches; 26 does not.
+    let at = format!("{}welcome15{}", " ".repeat(8), "\u{3000}".repeat(8));
+    let over = format!("{}welcome15{}", " ".repeat(8), "\u{3000}".repeat(9));
+    assert_eq!(codes_of(&[&at]), [vec!["WELCOME15".to_string()], none.clone(), none.clone(), none.clone()]);
+    assert_eq!(codes_of(&[&over]), [none.clone(), none.clone(), none.clone(), none.clone()]);
+    let (lead, trail) = (format!("\t{}WELCOME15", "\u{FEFF}".repeat(15)), format!("welcome15{}", "\n".repeat(17)));
+    assert_eq!(codes_of(&[&lead, &trail])[0], vec!["WELCOME15"]);
+    // The bound is the longest Won code's: a shorter one may carry more white space (straße: 6 + 19 = 25).
+    assert_eq!(codes_of(&[&format!("straße{}", "\u{2000}".repeat(19))])[1], vec!["STRASSE"]);
+    assert_eq!(codes_of(&[&format!("straße{}", "\u{2000}".repeat(20))])[1], none);
+    // Upper-cased length: ﬃﬃﬃ becomes 9 characters (matched), ﬃﬃﬃﬃ 12 (never, even with its hash listed).
+    assert_eq!(codes_of(&["ﬃﬃﬃ", "ﬃﬃﬃﬃ"]), [none.clone(), none.clone(), vec!["FFIFFIFFI".to_string()], none.clone()]);
+    let plan = plan_cart(cart(&lines, &["ﬃﬃﬃﬃ"]), Some(&c));
+    assert_eq!(state(&plan, "g"), Some(RuleState::CodeNotEntered));
+    assert!(emit_for_node(&plan, &NodeRole::Code("g".into()), Some("ﬃﬃﬃﬃ")).product.is_empty());
+    // Such entries count: 25 of them, then STRASSE is past the cap.
+    let (padded, expanding, blank) = (format!("W{}", " ".repeat(30)), "ßßßßß".to_string(), "\u{3000}".repeat(26));
+    for filler in [padded.as_str(), expanding.as_str(), blank.as_str()] {
+        let mut many = vec![filler; 25];
+        many.push("STRASSE");
+        assert_eq!(codes_of(&many)[1], none, "{filler:?}");
+        assert_eq!(codes_of(&many[1..])[1], vec!["STRASSE"], "{filler:?}");
+    }
+}
+
+#[test]
 fn a_pro_stack_sums_capped_and_is_owned_by_its_code_rule() {
     let c = rules(
         &[

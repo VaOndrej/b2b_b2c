@@ -27,7 +27,7 @@
 
 use shopify_function::wasm_api::Value;
 
-use crate::engine::cart::{CampaignInput, CartInput, LineInput};
+use crate::engine::cart::{is_country, CampaignInput, CartInput, LineInput};
 use crate::engine::config::Config;
 use crate::engine::emit::NodeRole;
 use crate::engine::hash::{parse_hash, MAX_ENTERED_CODES};
@@ -221,9 +221,14 @@ impl RunInput {
             .and_then(|subtotal| sole(&subtotal, Key::CurrencyCode))
             .and_then(|code| string(&code))
             .map_or_else(String::new, |code| js::upper(&code));
+        let localization = prop(root, Key::Localization);
+        let iso_code = |key: Key| field(&localization, key).and_then(|v| sole(&v, Key::IsoCode)).and_then(|code| string(&code));
+        let country_code = iso_code(Key::Country).filter(|c| !c.is_empty());
+        // The cart's country as normalizeCart makes it: the config's markets are read only as far as it decides them.
+        let country = country_code.as_deref().map(|c| js::upper(js::trim(c))).filter(|c| is_country(c));
         let config = field(&shop, Key::Config)
             .and_then(|metafield| sole(&metafield, Key::JsonValue))
-            .and_then(|json| Config::read_in(&json, Some(&currency)))?;
+            .and_then(|json| Config::read_in(&json, Some(&currency), country.as_deref()))?;
         let vars = vars.unwrap_or_default();
 
         let margin_on = config.margin.is_some();
@@ -298,8 +303,6 @@ impl RunInput {
             }
         }
         let local_time = field(&shop, Key::LocalTime);
-        let localization = prop(root, Key::Localization);
-        let iso_code = |key: Key| field(&localization, key).and_then(|v| sole(&v, Key::IsoCode)).and_then(|code| string(&code));
         Some(Self {
             role,
             triggering_code,
@@ -309,7 +312,7 @@ impl RunInput {
             campaign_active: local_time.and_then(|t| field(&t, Key::CampaignActive)).is_some_and(|v| is_true(&v)),
             today: local_time.and_then(|t| field(&t, Key::Date)).and_then(|d| non_empty(&d)),
             currency,
-            country_code: iso_code(Key::Country).filter(|c| !c.is_empty()),
+            country_code,
             locale_en: iso_code(Key::Language).is_some_and(|c| locale_en(&c)),
             entered_codes,
             shop_to_cart_rate: if margin_on { DecimalNumber::read(&prop(root, Key::PresentmentCurrencyRate)).0 } else { None },

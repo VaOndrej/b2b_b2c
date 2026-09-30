@@ -147,8 +147,8 @@ export interface NormalizedCart {
   consideredCodes: number;
   /**
    * The first MAX_ENTERED_CODES entries as entered (every entry counts, whatever
-   * it holds), each normalized ("" for one that is not a string) with its
-   * trimmed length before upper-casing (UTF-16 units): plan.ts `matchCodes`
+   * it holds), each normalized ("" for one that is not a string) with its length
+   * as entered (UTF-16 units, white space included): plan.ts `matchCodes`
    * matches those that can be a Won code.
    */
   consideredEntries: ConsideredEntry[];
@@ -163,8 +163,8 @@ export interface NormalizedCart {
 export interface ConsideredEntry {
   /** normalizeCode of the entry; "" when it is not a string. */
   code: string;
-  /** The entry's length after trimming, before upper-casing (UTF-16 units); 0 when not a string. */
-  length: number;
+  /** The entry's length as entered, white space included (UTF-16 units); 0 when not a string. */
+  rawLength: number;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -174,8 +174,9 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  * first 25 entries as entered. A cart can hold 250 (Shopify's Storefront API),
  * and reading every one took the checkout function over Shopify's instruction
  * limit on a heavy cart. The cap counts ENTRIES, whatever they hold — a repeat,
- * an empty code, one longer than every Won code (audit round 6: such a code is
- * never matched, plan.ts `matchCodes`, and still counts) — so nothing can
+ * an empty code, one longer than every Won code (audit round 6) or padded past
+ * ENTERED_CODE_PADDING (audit round 7): such a code is never matched, plan.ts
+ * `matchCodes`, and still counts — so nothing can
  * make the reader read more. Each of the first 25 is trimmed and upper-cased
  * (`normalizeCode`) and matched to a rule once. A later code is never matched
  * (plan.ts `over_limit`): a code discount whose code comes after them does not
@@ -186,6 +187,20 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  * discount function's README, Invariants).
  */
 export const MAX_ENTERED_CODES = 25;
+
+/**
+ * How much longer than the longest Won code an entered code may be AS ENTERED
+ * (UTF-16 units, the white space around it included) and still be matched
+ * (MVP 2 audit round 7; plan.ts `matchCodes`, the Rust function's hash.rs
+ * `CODE_PADDING`). A longer entry is never matched, nor trimmed or upper-cased
+ * by the function, and still counts toward MAX_ENTERED_CODES: whatever an entry
+ * holds, the work on it is bounded by the longest Won code. A customer enters a
+ * code as it is written (a pasted one may carry a space or a line break), so a
+ * Won code with up to 16 characters of white space around it always matches;
+ * one entered with more than the bound allows is not taken (fail closed: its
+ * discount does not apply).
+ */
+export const ENTERED_CODE_PADDING = 16;
 const LOCAL_DATETIME_PREFIX_RE = /^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}/;
 const COUNTRY_RE = /^[A-Z]{2}$/;
 
@@ -274,9 +289,8 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
   // exactly the first 25 entries, src/input.rs).
   for (const raw of Array.isArray(input.enteredCodes) ? (input.enteredCodes as readonly unknown[]) : []) {
     entered += 1;
-    const trimmed = typeof raw === "string" ? raw.trim() : "";
-    const code = trimmed.toUpperCase(); // normalizeCode
-    if (entered <= MAX_ENTERED_CODES) consideredEntries.push({ code, length: trimmed.length });
+    const code = typeof raw === "string" ? raw.trim().toUpperCase() : ""; // normalizeCode
+    if (entered <= MAX_ENTERED_CODES) consideredEntries.push({ code, rawLength: typeof raw === "string" ? raw.length : 0 });
     if (code && !seenCodes.has(code)) {
       seenCodes.add(code);
       enteredCodes.push(code);

@@ -37,7 +37,7 @@ import { FUNCTION_CONFIG_BUDGET_BYTES } from "@won/core/discounts/function-confi
 import { FUNCTION_METAFIELD_LIMIT_BYTES } from "@won/core/discounts/function-payload";
 import { marginFloorUnit } from "@won/core/discounts/margin";
 import { fromMinorUnits } from "@won/core/discounts/money";
-import { MAX_ENTERED_CODES, MAX_STACK_CANDIDATES, SEGMENT_TARGETING_SUPPORTED } from "@won/core/discounts/plan";
+import { ENTERED_CODE_PADDING, MAX_ENTERED_CODES, MAX_STACK_CANDIDATES, SEGMENT_TARGETING_SUPPORTED } from "@won/core/discounts/plan";
 import {
   gateConfigForPlan,
   PRO_CAPABILITIES,
@@ -287,6 +287,7 @@ function limitsDoc(): string {
 | Products, variants or collections picked in one discount | ${num(CONFIG_LIMITS.listItems)} each |
 | Discounts stacked on one line or on the order (Pro) | ${num(MAX_STACK_CANDIDATES)} |
 | Codes a customer enters that are counted (the first ones entered; later codes are not counted) | ${num(MAX_ENTERED_CODES)} |
+| Spaces a customer types around a code that still count (a code entered with more does not apply) | ${num(ENTERED_CODE_PADDING)} characters |
 
 **Why the code-discount limit:** every active code discount is its own Shopify
 discount, and Shopify runs at most ${num(SHOPIFY_MAX_ACTIVE_DISCOUNT_FUNCTIONS)} discount
