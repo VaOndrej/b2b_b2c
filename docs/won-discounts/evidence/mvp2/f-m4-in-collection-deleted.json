@@ -1,0 +1,14 @@
+{
+  "fact": "Product.inCollection with a deleted collection id (491958272241, deleted in MVP 2 phase B cleanup) and a never-existing id (999999999999) returns false, no error",
+  "date": "2026-09-30",
+  "api": "Admin GraphQL 2026-04 via shopify app execute (app won-discounts, read_products)",
+  "query": "query { deleted: product(id: \"gid://shopify/Product/9692429058289\") { inCollection(id: \"gid://shopify/Collection/491958272241\") } never: product(id: \"gid://shopify/Product/9692429058289\") { inCollection(id: \"gid://shopify/Collection/999999999999\") } }",
+  "response": {
+    "deleted": {
+      "inCollection": false
+    },
+    "never": {
+      "inCollection": false
+    }
+  }
+}
