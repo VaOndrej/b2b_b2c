@@ -123,6 +123,36 @@ test("sanitizer: margin percents keep one decimal, rounded to the STRICTER side 
   assert.deepEqual(noisy.issues, []);
 });
 
+test("sanitizer: a 0 % margin percent is stored as 0, never -0 (the stricter-side rounding of 0 up is ceil of a tiny negative)", () => {
+  const zero = { minMarginPercent: 0, maxDiscountPercent: 0 };
+  for (const input of [zero, { minMarginPercent: -0, maxDiscountPercent: -0 }, { minMarginPercent: 1e-12, maxDiscountPercent: 1e-12 }]) {
+    const { config } = sanitizeConfig({
+      modules: {
+        margin: {
+          enabled: true,
+          global: input,
+          perCollection: [{ collectionId: "gid://shopify/Collection/1", ...input }],
+        },
+      },
+    });
+    const margin = config.modules.margin;
+    const values = [
+      margin.global.minMarginPercent,
+      margin.global.maxDiscountPercent,
+      margin.perCollection[0].minMarginPercent,
+      margin.perCollection[0].maxDiscountPercent,
+    ];
+    for (const value of values) assert.ok(Object.is(value, 0), `${JSON.stringify(input)} → ${Object.is(value, -0) ? "-0" : value}`);
+    // What an admin shows: "0", not "-0".
+    assert.equal(new Intl.NumberFormat("cs").format(margin.global.minMarginPercent!), "0");
+    // The payload and its decisive refs carry the same +0 (a tie at 0 stays a tie).
+    const payload = buildMarginPayload(margin);
+    assert.ok(payload.enabled && Object.is(payload.min, 0) && Object.is(payload.col?.["1"]?.[0], 0) && Object.is(payload.col?.["1"]?.[1], 0));
+    assert.ok(Object.is(resolveMargin(payload, ["1"]).minMarginPercent, 0));
+    assert.ok(Object.is(resolveMargin(payload, ["1"]).maxDiscountPercent, 0));
+  }
+});
+
 // --- ceilTol / marginFloorUnit ------------------------------------------------------------------
 
 test("ceilTol: ceil with a 1e-6 tolerance, so float noise never adds a minor unit", () => {

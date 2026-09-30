@@ -19,7 +19,10 @@ type Stricter = "up" | "down";
 
 function roundToTenth(n: number, direction: Stricter): number {
   const tenths = direction === "up" ? Math.ceil(n * 10 - ROUNDING_EPSILON) : Math.floor(n * 10 + ROUNDING_EPSILON);
-  return tenths / 10;
+  // Never -0: rounding 0 (or a tiny positive) up is the ceil of a tiny negative,
+  // which is -0 — equal to 0 for every comparison, but printed "-0" by
+  // Intl.NumberFormat and kept apart by Object.is.
+  return tenths === 0 ? 0 : tenths / 10;
 }
 
 /**

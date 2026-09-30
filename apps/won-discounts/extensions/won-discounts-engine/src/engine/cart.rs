@@ -6,6 +6,8 @@
 use super::hash::normalize_code;
 use super::js;
 use super::margin::MarginRef;
+use super::money::mul_sat;
+use super::table::bytes_eq;
 
 /// One cart line as the adapter hands it over (CartLineInput).
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -66,8 +68,10 @@ pub struct NormalizedLine<'a> {
     pub subtotal: i64,
     pub outlet: bool,
     pub gift: bool,
-    rule_ids: &'a [String],
-    variant_rule_ids: &'a [String],
+    /// Product-wide refs (`ruleIds`).
+    pub rule_ids: &'a [String],
+    /// This variant's refs.
+    pub variant_rule_ids: &'a [String],
     pub unit_cost: Option<f64>,
     pub unit_cost_currency: Option<&'a str>,
     pub margin_refs: &'a [MarginRef],
@@ -77,6 +81,12 @@ impl NormalizedLine<'_> {
     /// Product-wide refs + this variant's refs (normalizeCart `ruleIds`).
     pub fn refs(&self) -> impl Iterator<Item = &str> {
         self.rule_ids.iter().chain(self.variant_rule_ids.iter()).map(String::as_str)
+    }
+
+    /// The same product-wide refs and variant refs as `other`, text by text.
+    pub fn same_refs(&self, other: &NormalizedLine) -> bool {
+        let same = |a: &[String], b: &[String]| a.len() == b.len() && a.iter().zip(b).all(|(x, y)| bytes_eq(x.as_bytes(), y.as_bytes()));
+        same(self.rule_ids, other.rule_ids) && same(self.variant_rule_ids, other.variant_rule_ids)
     }
 }
 
@@ -111,7 +121,7 @@ pub fn normalize_cart(input: CartInput<'_>) -> NormalizedCart<'_> {
                 id: line.id,
                 quantity,
                 unit_price,
-                subtotal: quantity.saturating_mul(unit_price),
+                subtotal: mul_sat(quantity, unit_price),
                 outlet: line.outlet,
                 gift: line.gift,
                 rule_ids: line.rule_ids,

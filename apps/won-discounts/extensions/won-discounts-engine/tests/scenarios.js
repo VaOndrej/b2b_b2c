@@ -6,6 +6,7 @@
 // writes the files; tests/fixtures.drift.test.js keeps them in sync.
 
 import {
+  buildInput,
   DEFAULT_GROUP,
   fixed,
   freeShip,
@@ -15,6 +16,7 @@ import {
   variantId,
   withCodes,
 } from "./fixture-builder.js";
+import { inputLimit, messagePackBytes } from "./input-size.js";
 
 /** @typedef {import("./fixture-builder.js").Scenario} Scenario */
 
@@ -890,9 +892,10 @@ function allScenarios() {
   marginSlowBudget(),
   marginCappedBudget(200),
   marginCappedBudget(500),
-  marginProBudget({ lines: 200, siblings: 2 }),
-  marginProBudget({ lines: 500, siblings: 2 }),
-  marginProBudget({ lines: 200, siblings: 0, ruleIdLength: 64, refsPerLine: (i) => (i % 3 === 0 ? 4 : 3), collections: 29 }),
+  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings })),
+  filledToInputLimit((siblings) => marginProBudget({ lines: 500, siblings })),
+  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge" })),
+  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, ruleIdLength: 64, collections: 29, name: "long-ids" })),
   ];
 }
 
@@ -1203,7 +1206,7 @@ function marginBudget(target) {
     name: `${target}-margin-200-lines-budget`,
     realisticIds: true,
     description:
-      "Instruction budget with margin protection on: the 200-line budget cart (37 rules, codes, a Pro stack, outlet lines) with a cost price on every line and the order discount. Every line that can give something carries its share of the order discount, so the order stage takes its shortcut (no search); lines-margin-slow-200-lines-budget and lines-margin-capped-*-lines-budget are the harder shapes. With the ids the checkout sends, the automatic node must stay within the budget (≥ 25 % under Shopify's limit, README \"Instruction budget\").",
+      "Instruction budget with margin protection on: the 200-line budget cart (37 rules, codes, a Pro stack, outlet lines) with a cost price on every line and the order discount. Every line that can give something carries its share of the order discount, so the order stage takes its shortcut (no search); lines-margin-slow-200-lines-budget and lines-margin-capped-*-lines-budget are the harder shapes. With the ids the checkout sends, the automatic node must stay within the budget (README \"Instruction budget\").",
     target,
     rules: budgetRules(),
     margin: marginOn({ minMarginPercent: MARGIN_BUDGET_MIN, maxDiscountPercent: 40 }),
@@ -1386,16 +1389,22 @@ function marginCappedBudget(count) {
 //
 // Everything a Pro cart can put on every line at once, within the shop config's
 // 9 000 B (37 rules and 100 collections leave room for one rule's combinesWith)
-// and the 128 kB function input (scaled above 200 lines):
+// and the function input Shopify accepts — 128 kB of MessagePack up to 200
+// lines, scaled above (tests/input-size.js) — filled to that limit:
 //   - 37 rules: "VIP" 2,5 % stacks (Pro combinesWith) with S1–S8; S1–S33
 //     (whole percents); an entered code rule no line has; a 10 % order discount;
 //     free shipping;
 //   - every line: 4 rule refs (VIP, one of S1–S8, two of S9–S33), a cost price,
 //     2 marginRefs of the 100 collections with a margin setting (the decisive
-//     ones, core targeting.ts), and 2 variant-level refs of other variants of
-//     its product (they fill the input towards 128 kB: the function reads its
-//     own variant's key, and the input provider walks every value);
-//   - ids as the checkout sends them (`realisticIds`).
+//     ones, core targeting.ts) — 4 in the bridge cart, as many as the sync's
+//     transition bridge writes (the old and the new decisive ones) — and
+//     variant-level refs of other variants of its product, as many as fill the
+//     input to Shopify's limit (the function reads its own variant's key, and
+//     the input provider walks every value: the filler costs what real data of
+//     that size costs);
+//   - ids as the checkout sends them (`realisticIds`); in the long-ids cart
+//     rule ids at the sanitizer's maximum of 64 characters (the config then
+//     keeps 29 of the 100 collections within its 9 000 B).
 // The expected output by a simple model of the rules:
 //   - a line's winner is its Pro stack S_x + VIP (6–13 % + 2,5 %, more than any
 //     single rule): exact, it is not a whole percent, so it is its amount per
@@ -1429,10 +1438,34 @@ function proRules() {
 }
 
 /**
- * @param {{ lines: number, siblings: number, ruleIdLength?: number, refsPerLine?: (i: number) => number, collections?: number }} shape
+ * The scenario `make(siblings)` with as many variant-level refs of other variants
+ * (`siblings(i)` on line i) as keep its function input within Shopify's limit
+ * (MessagePack, tests/input-size.js): the same number on every line, one more
+ * on the first lines as far as it still fits.
+ * @param {(siblings: (i: number) => number) => Scenario} make
  * @returns {Scenario}
  */
-function marginProBudget({ lines: count, siblings, ruleIdLength = 22, refsPerLine = () => 4, collections = 100 }) {
+function filledToInputLimit(make) {
+  const size = (/** @type {Scenario} */ s) => messagePackBytes(buildInput(s));
+  const limit = inputLimit(make(() => 0).lines.length);
+  let each = 0;
+  while (size(make(() => each + 1)) <= limit) each += 1;
+  let [fits, over] = [0, make(() => 0).lines.length + 1];
+  while (over - fits > 1) {
+    const mid = Math.floor((fits + over) / 2);
+    if (size(make((i) => each + (i <= mid ? 1 : 0))) <= limit) fits = mid;
+    else over = mid;
+  }
+  const scenario = make((i) => each + (i <= fits ? 1 : 0));
+  if (size(scenario) > limit) throw new Error(`${scenario.name}: input over Shopify's limit`);
+  return scenario;
+}
+
+/**
+ * @param {{ lines: number, siblings: (i: number) => number, ruleIdLength?: number, collections?: number, marginRefs?: number, name?: string }} shape
+ * @returns {Scenario}
+ */
+function marginProBudget({ lines: count, siblings, ruleIdLength = 22, collections = 100, marginRefs = 2, name }) {
   const rest = PRO_RULES - PRO_SPOKES;
   const lines = [];
   /** @type {{ key: string | null, message: string, value: unknown, target: unknown, amount: number }[]} */
@@ -1445,17 +1478,17 @@ function marginProBudget({ lines: count, siblings, ruleIdLength = 22, refsPerLin
     const y = PRO_SPOKES + 1 + (i % rest);
     let z = PRO_SPOKES + 1 + ((i * 7 + 1) % rest);
     if (z === y) z = PRO_SPOKES + 1 + ((y - PRO_SPOKES) % rest);
-    const refs = ["vip", `s${x}`, `s${y}`, `s${z}`].slice(0, refsPerLine(i));
+    const refs = ["vip", `s${x}`, `s${y}`, `s${z}`];
     const price = 100 + 2 * i; // Kč, even: every percent here is a whole number of haléřů
     const q = 1 + (i % 3);
     const cost = Math.round(price * 30) / 100; // 30 % of the price, Kč
-    const k1 = (i * 3) % collections;
-    const k2 = (i * 3 + Math.floor(collections / 2)) % collections;
+    // Its collections with a margin setting, spread over all of them.
+    const ks = Array.from({ length: marginRefs }, (_, j) => (i * 3 + Math.floor((j * collections) / marginRefs)) % collections);
     /** @type {Record<string, unknown>} */
-    const won = { ruleIds: refs, marginRefs: [proCollection(k1), proCollection(k2)].sort() };
-    if (siblings > 0) {
+    const won = { ruleIds: refs, marginRefs: ks.map(proCollection).sort() };
+    if (siblings(i) > 0) {
       won.variantRuleIds = Object.fromEntries(
-        Array.from({ length: siblings }, (_, j) => [String(48468678900000 + 100000 + i * 10 + j), [`s${PRO_SPOKES + 1 + ((i + j) % rest)}`]]),
+        Array.from({ length: siblings(i) }, (_, j) => [String(48468678900000 + 100000 + i * 100 + j), [`s${PRO_SPOKES + 1 + ((i + j) % rest)}`]]),
       );
     }
     lines.push({ n: i, price: `${price}.0`, qty: q, won, variantMeta: costOf(cost) });
@@ -1466,8 +1499,8 @@ function marginProBudget({ lines: count, siblings, ruleIdLength = 22, refsPerLin
     const single = Math.max(...refs.slice(1).map((r) => amount(proPercent(Number(r.slice(1))))));
     const total = amount(proPercent(x)) + amount(2.5);
     if (total <= single) throw new Error(`marginProBudget: line ${i} must take its Pro stack`);
-    // The strictest minimum margin of its two collections (an empty one is the global 20 %).
-    const minMargin = Math.max(...[k1, k2].map((k) => proSetting(k)[0] ?? PRO_MARGIN_MIN));
+    // The strictest minimum margin of its collections (an empty one is the global 20 %).
+    const minMargin = Math.max(...ks.map((k) => proSetting(k)[0] ?? PRO_MARGIN_MIN));
     const floorUnit = ceilTol((cost * 100) / (1 - minMargin / 100));
     const headroom = s - floorUnit * q;
     if (total > headroom) throw new Error(`marginProBudget: line ${i} must keep its stack`);
@@ -1500,17 +1533,19 @@ function marginProBudget({ lines: count, siblings, ruleIdLength = 22, refsPerLin
     };
   });
   const long = ruleIdLength !== 22;
+  const filler = Array.from({ length: count }, (_, k) => siblings(k + 1));
+  const [fewest, most] = [Math.min(...filler), Math.max(...filler)];
   return {
-    name: long ? `lines-margin-pro-long-ids-${count}-lines-budget` : `lines-margin-pro-${count}-lines-budget`,
+    name: name ? `lines-margin-pro-${name}-${count}-lines-budget` : `lines-margin-pro-${count}-lines-budget`,
     realisticIds: true,
     ...(long ? { ruleIdLength } : {}),
     description:
-      `Instruction budget, the Pro worst case with margin protection (drift audit P1/P2): ${count} lines, each with ${long ? "3–4" : 4} rule refs, the Pro stack VIP + S_x, a cost price and 2 marginRefs of ${collections} collections with a margin setting` +
-      (siblings > 0 ? `, and ${siblings} variant-level refs of other variants of its product (the input near Shopify's ${128 * Math.max(1, count / 200)} kB)` : "") +
+      `Instruction budget, the Pro worst case with margin protection (drift audit P1/P2): ${count} lines, each with 4 rule refs, the Pro stack VIP + S_x, a cost price, ${marginRefs} marginRefs of ${collections} collections with a margin setting` +
+      (marginRefs > 2 ? ` (as many as the sync's transition bridge writes: the old and the new decisive ones)` : "") +
+      ` and ${fewest === most ? fewest : `${fewest}–${most}`} variant-level refs of other variants of its product: the input filled to Shopify's limit of ${128 * Math.max(1, count / 200)} kB of MessagePack` +
       `; 37 rules, a 10 % order discount. The exact output is over the budget: every stack goes to its top rule. ` +
-      (long
-        ? `Rule ids at the sanitizer's maximum of ${ruleIdLength} characters: the same shape as far as Shopify's limits allow it (the config keeps ${collections} collections within its 9 000 B; with 4 refs on every 3rd line and 3 on the others, and no refs of other variants, the input stays within 128 kB): within 90 % of Shopify's limit.`
-        : `With the ids the checkout sends: within 85 % of Shopify's (line-scaled) limit.`),
+      (long ? `Rule ids at the sanitizer's maximum of ${ruleIdLength} characters (the config keeps ${collections} collections within its 9 000 B). ` : "") +
+      `With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.`,
     target: "lines",
     rules: proRules(),
     margin: marginOn({ minMarginPercent: PRO_MARGIN_MIN, maxDiscountPercent: 40 }, perCollection),

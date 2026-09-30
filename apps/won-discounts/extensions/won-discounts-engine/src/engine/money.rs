@@ -7,6 +7,34 @@ use super::js;
 /// `Number.MAX_SAFE_INTEGER`: toMinorUnits refuses anything above it.
 const MAX_SAFE_INTEGER: u64 = (1 << 53) - 1;
 
+/// `a.saturating_mul(b)`, without its overflow check when the product provably
+/// fits: Wasm has no multiply-with-overflow, so `saturating_mul` (and
+/// `checked_mul`) of 64-bit numbers calls the 128-bit multiply `__multi3`, a few
+/// hundred instructions. Two non-negative numbers with at least 65 leading zero
+/// bits between them are below 2^(128 − 65) = 2^63 as a product: the plain
+/// multiplication is exact there (a line's quantity × price, a fixed amount ×
+/// quantity), and anything else takes `saturating_mul`. Same result for every
+/// input (`mul_sat_is_saturating_mul`).
+#[inline]
+pub fn mul_sat(a: i64, b: i64) -> i64 {
+    if a >= 0 && b >= 0 && a.leading_zeros() + b.leading_zeros() >= 65 {
+        a * b
+    } else {
+        a.saturating_mul(b)
+    }
+}
+
+/// `value × 10 + digit`, none on overflow (`checked_mul`/`checked_add`), with no
+/// 128-bit multiply while `value` is at most (u64::MAX − 9) / 10 (see `mul_sat`).
+#[inline]
+fn push_digit(value: u64, digit: u64) -> Option<u64> {
+    if value <= (u64::MAX - 9) / 10 {
+        Some(value * 10 + digit)
+    } else {
+        value.checked_mul(10)?.checked_add(digit)
+    }
+}
+
 /// `currencyExponent` (money.ts): minor-unit digits (CZK/EUR 2, JPY 0, KWD 3).
 pub fn currency_exponent(currency: &str) -> usize {
     // The cart currency arrives upper-case; only other text is upper-cased (JS toUpperCase).
@@ -45,7 +73,7 @@ pub fn to_minor_units_with(text: &str, digits: usize) -> Option<i64> {
     let fraction = fraction.unwrap_or("").as_bytes();
     let mut value: u64 = 0;
     let mut push = |d: u8| -> Option<()> {
-        value = value.checked_mul(10)?.checked_add(u64::from(d - b'0'))?;
+        value = push_digit(value, u64::from(d - b'0'))?;
         Some(())
     };
     for d in whole.bytes() {
@@ -180,6 +208,39 @@ pub fn format_percent(percent: f64, cs: bool) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mul_sat_is_saturating_mul() {
+        // The fast path's edges (products just below and at 2^63, 65 leading zeros
+        // in total), signs, zero, and the extremes, each against saturating_mul.
+        let edges: Vec<i64> = [
+            0, 1, 2, 3, 7, 10, 99, 1 << 31, (1 << 31) - 1, (1 << 31) + 1, 1 << 32, (1 << 32) - 1, 3_037_000_499, 3_037_000_500,
+            1 << 53, (1 << 53) - 1, 1_000_000_000_000, 1 << 62, (1 << 62) - 1, i64::MAX, i64::MAX - 1,
+        ]
+        .into_iter()
+        .flat_map(|v: i64| [v, -v, v.saturating_add(1), v.saturating_sub(1)])
+        .chain([i64::MIN, i64::MIN + 1])
+        .collect();
+        for &a in &edges {
+            for &b in &edges {
+                assert_eq!(mul_sat(a, b), a.saturating_mul(b), "{a} × {b}");
+            }
+        }
+        // Every split of 63 and 64 significant bits between the two factors.
+        for bits_a in 0..=64u32 {
+            for bits_b in 0..=64u32 {
+                let top = |bits: u32| if bits == 0 { 0 } else { (u64::MAX >> (64 - bits)) as i64 };
+                let (a, b) = (top(bits_a.min(63)), top(bits_b.min(63)));
+                assert_eq!(mul_sat(a, b), a.saturating_mul(b), "{a} × {b}");
+            }
+        }
+        // Digits: value × 10 + d exactly while it fits, none past u64::MAX (checked).
+        for value in [0u64, 7, (u64::MAX - 9) / 10 - 1, (u64::MAX - 9) / 10, (u64::MAX - 9) / 10 + 1, u64::MAX / 10, u64::MAX / 10 + 1, u64::MAX] {
+            for digit in 0..=9u64 {
+                assert_eq!(push_digit(value, digit), value.checked_mul(10).and_then(|v| v.checked_add(digit)), "{value} {digit}");
+            }
+        }
+    }
 
     #[test]
     fn parses_decimal_strings_like_to_minor_units() {

@@ -63,6 +63,20 @@ fn field(value: &Value, key: Key) -> Option<Value> {
     value.is_obj().then(|| prop(value, key))
 }
 
+/// `obj[key]` of an object whose one field in the input query is `key` (a
+/// metafield's `jsonValue`, `product { wonProduct }`, `cost { amountPerQuantity
+/// { amount } }`, the gift attribute's `value`, an `isoCode`, a `code`, an
+/// `id`), read by position: the provider finds a key by comparing it with the
+/// object's keys (~580 instructions for `wonProduct`), by position it only
+/// indexes (~270). Five such reads a cart line. An object of another size (not
+/// the query's shape) is read by name. Not an object → none, like `field`.
+fn sole(value: &Value, key: Key) -> Option<Value> {
+    match value.obj_len()? {
+        1 => Some(value.get_at_index(0)),
+        _ => Some(prop(value, key)),
+    }
+}
+
 /// The node's discount classes (`discount.discountClasses`, strings).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Classes {
@@ -95,7 +109,7 @@ pub fn delivery_group_ids(root: &Value) -> Vec<String> {
     let len = groups.array_len().unwrap_or(0);
     let mut out = Vec::with_capacity(len);
     for i in 0..len {
-        if let Some(id) = field(&groups.get_at_index(i), Key::Id).and_then(|id| non_empty(&id)) {
+        if let Some(id) = sole(&groups.get_at_index(i), Key::Id).and_then(|id| non_empty(&id)) {
             out.push(id);
         }
     }
@@ -141,10 +155,10 @@ impl RunInput {
     /// before any cart line is read. `discount` is `node(root).0`.
     pub fn read(root: &Value, discount: &Value) -> Option<Self> {
         let triggering_code = non_empty(&prop(root, Key::TriggeringDiscountCode));
-        let vars = field(discount, Key::Vars).and_then(|vars| field(&vars, Key::JsonValue)).map(|json| NodeVars::read(&json));
+        let vars = field(discount, Key::Vars).and_then(|vars| sole(&vars, Key::JsonValue)).map(|json| NodeVars::read(&json));
         let role = read_role(vars.as_ref(), triggering_code.as_deref())?;
         let shop = prop(root, Key::Shop);
-        let config = field(&shop, Key::Config).and_then(|metafield| field(&metafield, Key::JsonValue)).and_then(|json| Config::read(&json))?;
+        let config = field(&shop, Key::Config).and_then(|metafield| sole(&metafield, Key::JsonValue)).and_then(|json| Config::read(&json))?;
         let vars = vars.unwrap_or_default();
 
         let margin_on = config.margin.is_some();
@@ -152,8 +166,8 @@ impl RunInput {
         let margin_refs_on = config.margin.as_ref().is_some_and(|m| !m.col.is_empty());
         let cart = prop(root, Key::Cart);
         let currency = field(&cart, Key::Cost)
-            .and_then(|cost| field(&cost, Key::SubtotalAmount))
-            .and_then(|subtotal| field(&subtotal, Key::CurrencyCode))
+            .and_then(|cost| sole(&cost, Key::SubtotalAmount))
+            .and_then(|subtotal| sole(&subtotal, Key::CurrencyCode))
             .and_then(|code| string(&code))
             .map_or_else(String::new, |code| js::upper(&code));
         let exponent = currency_exponent(&currency);
@@ -178,7 +192,7 @@ impl RunInput {
                 margin_refs: Vec::new(),
             };
             let merchandise = prop(&line, Key::Merchandise);
-            let won = field(&prop(&prop(&merchandise, Key::Product), Key::WonProduct), Key::JsonValue);
+            let won = sole(&prop(&merchandise, Key::Product), Key::WonProduct).and_then(|metafield| sole(&metafield, Key::JsonValue));
             if let Some(won) = won {
                 let mut won = WonProduct::read(&won, margin_refs_on);
                 // The variant id is read only when the metafield needs it.
@@ -191,7 +205,7 @@ impl RunInput {
                 read.rule_ids = won.take_rule_ids();
             }
             if margin_on {
-                if let Some(cost) = field(&prop(&merchandise, Key::WonVariant), Key::JsonValue) {
+                if let Some(cost) = sole(&prop(&merchandise, Key::WonVariant), Key::JsonValue) {
                     let cost = WonVariant::read(&cost);
                     read.unit_cost = cost.cost;
                     read.unit_cost_currency = cost.cur;
@@ -199,23 +213,24 @@ impl RunInput {
             }
             // `nonNegativeInt` (normalizeCart): a positive number, floored; else 0.
             read.quantity = number(&prop(&line, Key::Quantity)).filter(|q| *q > 0.0).map_or(0, js::floor_to_i64);
-            let amount = prop(&prop(&prop(&line, Key::Cost), Key::AmountPerQuantity), Key::Amount);
-            read.unit_price = DecimalText::read(&amount).text().and_then(|text| to_minor_units_with(text, exponent)).unwrap_or(0);
-            read.gift = field(&prop(&line, Key::Gift), Key::Value).and_then(|value| non_empty(&value)).is_some();
+            let amount = sole(&prop(&line, Key::Cost), Key::AmountPerQuantity).and_then(|per| sole(&per, Key::Amount));
+            read.unit_price =
+                amount.and_then(|amount| DecimalText::read(&amount).text().and_then(|text| to_minor_units_with(text, exponent))).unwrap_or(0);
+            read.gift = sole(&prop(&line, Key::Gift), Key::Value).and_then(|value| non_empty(&value)).is_some();
             lines.push(read);
         }
 
         let mut entered_codes = Vec::new();
         if let Some(entered) = field(root, Key::EnteredDiscountCodes) {
             for i in 0..entered.array_len().unwrap_or(0) {
-                if let Some(code) = field(&entered.get_at_index(i), Key::Code).and_then(|code| non_empty(&code)) {
+                if let Some(code) = sole(&entered.get_at_index(i), Key::Code).and_then(|code| non_empty(&code)) {
                     entered_codes.push(code);
                 }
             }
         }
         let local_time = field(&shop, Key::LocalTime);
         let localization = prop(root, Key::Localization);
-        let iso_code = |key: Key| field(&localization, key).and_then(|v| field(&v, Key::IsoCode)).and_then(|code| string(&code));
+        let iso_code = |key: Key| field(&localization, key).and_then(|v| sole(&v, Key::IsoCode)).and_then(|code| string(&code));
         Some(Self {
             role,
             triggering_code,

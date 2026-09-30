@@ -1,5 +1,5 @@
 {
-  "scenario": "Instruction budget with margin protection on: the 200-line budget cart (37 rules, codes, a Pro stack, outlet lines) with a cost price on every line and the order discount. Every line that can give something carries its share of the order discount, so the order stage takes its shortcut (no search); lines-margin-slow-200-lines-budget and lines-margin-capped-*-lines-budget are the harder shapes. With the ids the checkout sends, the automatic node must stay within the budget (≥ 25 % under Shopify's limit, README \"Instruction budget\").",
+  "scenario": "Instruction budget with margin protection on: the 200-line budget cart (37 rules, codes, a Pro stack, outlet lines) with a cost price on every line and the order discount. Every line that can give something carries its share of the order discount, so the order stage takes its shortcut (no search); lines-margin-slow-200-lines-budget and lines-margin-capped-*-lines-budget are the harder shapes. With the ids the checkout sends, the automatic node must stay within the budget (README \"Instruction budget\").",
   "payload": {
     "export": "cart-delivery-options-discounts-generate-run",
     "target": "cart.delivery-options.discounts.generate.run",

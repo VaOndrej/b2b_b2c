@@ -203,14 +203,18 @@ pub fn number(value: &Value) -> Option<f64> {
 
 /// `Array.isArray(v) ? v.filter(x => typeof x === "string") : null`.
 pub fn strings(value: &Value) -> Option<Vec<String>> {
-    let len = value.array_len()?;
+    Some(strings_of(value, value.array_len()?))
+}
+
+/// `strings` of an array of `len` elements.
+fn strings_of(value: &Value, len: usize) -> Vec<String> {
     let mut out = Vec::with_capacity(len);
     for i in 0..len {
         if let Some(s) = value.get_at_index(i).as_string() {
             out.push(s);
         }
     }
-    Some(out)
+    out
 }
 
 /// `stringList` (plan.ts): the strings of an array, or null when there are none.
@@ -251,9 +255,9 @@ fn array_index(key: &str) -> Option<usize> {
     key.parse::<u32>().ok().filter(|i| *i < u32::MAX).map(|i| i as usize)
 }
 
-/// `obj[key]` for a record or an array (an array's own numeric keys).
-fn own_value(value: &Value, key: &str) -> Value {
-    if value.is_array() {
+/// `obj[key]` for a record (`record`) or an array (an array's own numeric keys).
+fn own_value(value: &Value, record: bool, key: &str) -> Value {
+    if !record {
         return match array_index(key) {
             Some(i) if value.array_len().is_some_and(|len| i < len) => value.get_at_index(i),
             // `length` (a number) and anything else: not a list of strings.
@@ -330,9 +334,11 @@ enum Outlet {
 #[derive(Clone)]
 pub struct WonProduct {
     rule_ids: Option<Vec<String>>,
-    variant_rule_ids: Option<Value>,
+    /// `variantRuleIds` when a record (true) or an array (false).
+    variant_rule_ids: Option<(Value, bool)>,
     outlet: Outlet,
-    margin_refs: Option<Value>,
+    /// `marginRefs` when an array, with its length.
+    margin_refs: Option<(Value, usize)>,
 }
 
 impl Deserialize for WonProduct {
@@ -352,26 +358,42 @@ impl WonProduct {
     pub fn read(value: &Value, with_margin_refs: bool) -> Self {
         let mut out = Self { rule_ids: None, variant_rule_ids: None, outlet: Outlet::None, margin_refs: None };
         // `typeof won === "object"` also admits arrays, whose `.ruleIds` etc. are undefined.
-        if !value.is_obj() {
-            return out;
-        }
-        let keys = value.obj_len().unwrap_or(usize::MAX);
+        let Some(keys) = value.obj_len() else { return out };
+        // An array or a record is a key that held something; anything else is
+        // checked for null (each check decodes the value: the common shapes decode
+        // each value once).
+        let held = |v: &Value| usize::from(!v.is_null());
         let mut found = 0;
         let rule_ids = prop(value, Key::RuleIds);
-        found += usize::from(!rule_ids.is_null());
-        out.rule_ids = strings(&rule_ids);
+        match rule_ids.array_len() {
+            Some(len) => {
+                found += 1;
+                out.rule_ids = Some(strings_of(&rule_ids, len));
+            }
+            None => found += held(&rule_ids),
+        }
         if with_margin_refs && found < keys {
             let refs = prop(value, Key::MarginRefs);
-            found += usize::from(!refs.is_null());
-            out.margin_refs = Some(refs);
+            match refs.array_len() {
+                Some(len) => {
+                    found += 1;
+                    out.margin_refs = Some((refs, len));
+                }
+                None => found += held(&refs),
+            }
         }
         if found >= keys {
             return out;
         }
         let by_variant = prop(value, Key::VariantRuleIds);
-        found += usize::from(!by_variant.is_null());
-        if by_variant.is_obj() || by_variant.is_array() {
-            out.variant_rule_ids = Some(by_variant);
+        if by_variant.is_obj() {
+            found += 1;
+            out.variant_rule_ids = Some((by_variant, true));
+        } else if by_variant.is_array() {
+            found += 1;
+            out.variant_rule_ids = Some((by_variant, false));
+        } else {
+            found += held(&by_variant);
         }
         if found >= keys {
             return out;
@@ -399,7 +421,7 @@ impl WonProduct {
     /// decisive margin collections (margin protection, MVP 2), each read into a
     /// number (MarginRef) — its text is not kept.
     pub fn margin_refs(&self) -> Vec<MarginRef> {
-        let Some((refs, len)) = self.margin_refs.and_then(|refs| Some((refs, refs.array_len()?))) else { return Vec::new() };
+        let Some((refs, len)) = self.margin_refs else { return Vec::new() };
         let mut out = Vec::with_capacity(len);
         for i in 0..len {
             if let Some(text) = refs.get_at_index(i).as_string() {
@@ -418,19 +440,23 @@ impl WonProduct {
     /// `refsOfVariant` (cart.ts): this variant's refs, by its numeric id, else by
     /// its full GID; a sibling variant's refs never apply.
     pub fn variant_refs(&self, variant_id: &str) -> Vec<String> {
-        let Some(map) = self.variant_rule_ids.as_ref() else { return Vec::new() };
+        let Some((map, record)) = self.variant_rule_ids else { return Vec::new() };
         if variant_id.is_empty() {
             return Vec::new();
         }
         let key = variant_key(variant_id);
-        let by_key = own_value(map, key);
-        if !by_key.is_null() && has_own_fast(map, key, &by_key) {
-            return strings(&by_key).unwrap_or_default();
+        let by_key = own_value(&map, record, key);
+        // An array is an own value (neither null nor undefined): the common entry.
+        if let Some(len) = by_key.array_len() {
+            return strings_of(&by_key, len);
+        }
+        if !by_key.is_null() && has_own_fast(&map, key, &by_key) {
+            return Vec::new();
         }
         // The key is absent or explicitly null. Either way null reads as [], so
         // only a present full-GID entry needs the (rare) own-key check.
-        let by_gid = own_value(map, variant_id);
-        if by_gid.is_null() || !has_own_fast(map, variant_id, &by_gid) || has_own(map, key) {
+        let by_gid = own_value(&map, record, variant_id);
+        if by_gid.is_null() || !has_own_fast(&map, variant_id, &by_gid) || has_own(&map, key) {
             return Vec::new();
         }
         strings(&by_gid).unwrap_or_default()
@@ -530,10 +556,8 @@ impl Deserialize for WonVariant {
 }
 
 impl WonVariant {
+    /// (Anything but a record reads `cost` as undefined: not a number, no cost.)
     pub fn read(value: &Value) -> Self {
-        if !value.is_obj() {
-            return Self::default();
-        }
         let cost = number(&prop(value, Key::Cost));
         let cur = if cost.is_some_and(|c| c > 0.0) { string(&prop(value, Key::Cur)) } else { None };
         Self { cost, cur }
