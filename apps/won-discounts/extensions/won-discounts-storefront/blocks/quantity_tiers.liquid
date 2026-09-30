@@ -214,6 +214,9 @@
     if in_cart > 0
       assign t_live_now = t_live_cart
     endif
+    # Placeholders are filled here, never inside {{ }}: Shopify's tokenizer ends an
+    # output tag at its first '}' (a '{qty}' literal there breaks the bundle).
+    assign live_text = t_live_now | replace: '{qty}', qty | replace: '{total}', total_money | replace: '{price}', unit_money | replace: '{cart}', in_cart
   -%}
   <div
     class="won-tiers won-tiers--{{ preset }}"
@@ -265,22 +268,25 @@
             assign save_text = t_save_off | replace: '{amount}', d_money
           endif
           assign row_unit_money = row_unit | money | strip_html
+          assign qty_text = t_row_qty | replace: '{min}', b.min
+          assign unit_text = t_unit | replace: '{price}', row_unit_money
         -%}
         <li class="won-tiers__row" data-won-discounts-tier-row data-min="{{ b.min }}" data-active="{% if b.min == act_min %}true{% else %}false{% endif %}"{% if d <= 0 %} hidden{% endif %}>
-          <span class="won-tiers__qty">{{ t_row_qty | replace: '{min}', b.min | escape }}</span><span class="won-tiers__save">{{ save_text | escape }}</span><span class="won-tiers__unit">{{ t_unit | replace: '{price}', row_unit_money | escape }}</span>
+          <span class="won-tiers__qty">{{ qty_text | escape }}</span><span class="won-tiers__save">{{ save_text | escape }}</span><span class="won-tiers__unit">{{ unit_text | escape }}</span>
         </li>
       {%- endfor -%}
     </ol>
     <p class="won-tiers__live" data-won-discounts-live-price data-unit-cents="{{ unit }}" aria-live="polite">
-      {{- t_live_now | replace: '{qty}', qty | replace: '{total}', total_money | replace: '{price}', unit_money | replace: '{cart}', in_cart | escape -}}
+      {{- live_text | escape -}}
     </p>
     {%- if next_min > 0 -%}
       {%- liquid
         assign next_need = next_min | minus: count
         assign next_money = next_unit | money | strip_html
+        assign next_text = t_next | replace: '{count}', next_need | replace: '{price}', next_money
       -%}
       <p class="won-tiers__next" data-won-discounts-tier-next>
-        {{- t_next | replace: '{count}', next_need | replace: '{price}', next_money | escape -}}
+        {{- next_text | escape -}}
       </p>
     {%- else -%}
       <p class="won-tiers__next" data-won-discounts-tier-next hidden></p>

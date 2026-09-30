@@ -154,6 +154,59 @@ test("MVP 3: the extension ships the embed and the quantity_tiers app block; eve
   }
 });
 
+/**
+ * Every Liquid file of the extension, tokenized the way Shopify's (Ruby) Liquid does:
+ * a tag `{% … %}` ends at the FIRST `%}`, an output `{{ … }}` at the FIRST `}` (the
+ * tokenizer's VariableIncompleteEnd is /\}\}?/; the variable must then end in `}}`).
+ * Theme Check and liquidjs accept `{{ x | replace: '{min}', y }}`, but `shopify app
+ * dev` refuses to bundle it ("Variable '{{ … '{min}' was not properly terminated",
+ * MVP 3 fix round 2), so this guards what only the real bundler would catch.
+ */
+async function extensionLiquidFiles(): Promise<Array<{ file: string; source: string }>> {
+  const out: Array<{ file: string; source: string }> = [];
+  for (const dir of ["blocks", "snippets"]) {
+    let names: string[] = [];
+    try {
+      names = await readdir(path.join(extensionRoot, dir));
+    } catch {
+      continue;
+    }
+    for (const name of names.filter((n) => n.endsWith(".liquid"))) {
+      out.push({ file: `${dir}/${name}`, source: await readExtension(`${dir}/${name}`) });
+    }
+  }
+  return out;
+}
+
+test("Shopify's Liquid tokenizer: no {{ … }} output contains `}` before its closing `}}`", async () => {
+  const files = await extensionLiquidFiles();
+  assert.ok(files.length >= 2);
+  for (const { file, source } of files) {
+    const tokens = source.match(/\{%[\s\S]*?%\}|\{\{[\s\S]*?\}\}?/g) ?? [];
+    for (const token of tokens) {
+      if (!token.startsWith("{{")) continue;
+      const line = source.slice(0, source.indexOf(token)).split("\n").length;
+      assert.ok(token.endsWith("}}"), `${file}:${line}: output tag cut at a '}' inside it: ${token.slice(0, 80)}`);
+    }
+  }
+});
+
+test("Shopify's Liquid tokenizer: no {% … %} tag contains `%}` inside a string", async () => {
+  for (const { file, source } of await extensionLiquidFiles()) {
+    const tags = source.match(/\{%[\s\S]*?%\}/g) ?? [];
+    for (const tag of tags) {
+      // `#` lines are comments inside {% liquid %} / {% # %}: apostrophes there are prose.
+      const code = tag
+        .split("\n")
+        .filter((l) => !l.trim().startsWith("#") && !/^\{%-?\s*#/.test(l.trim()))
+        .join("\n")
+        .replace(/'[^']*'|"[^"]*"/g, "");
+      const line = source.slice(0, source.indexOf(tag)).split("\n").length;
+      assert.doesNotMatch(code, /['"]/, `${file}:${line}: a tag ends inside a string (a '%}' in a literal?): ${tag.slice(0, 80)}`);
+    }
+  }
+});
+
 test("MVP 3: the embed and the tiers block read the same K5 config path", async () => {
   const [embed, tiers] = await Promise.all([
     readExtension("blocks/won_discounts_embed.liquid"),
