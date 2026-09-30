@@ -11,7 +11,7 @@ use super::cart::{CampaignInput, CartInput, LineInput};
 use super::config::Config;
 use super::emit::{emit_for_node, NodeEmission, NodeRole};
 use super::margin::{ceil_tol, cost_minor_units, margin_floor_unit, resolve_margin, MarginBasis, MarginRef, MARGIN_TOLERANCE};
-use super::order_search::{search_order_sets, OrderSet, OrderSetLine};
+use super::order_search::{order_set_limit, search_order_sets, OrderSet, OrderSetLine, EXACT_LINES, NEAR_FACTOR, SAFE_BELOW};
 use super::plan::{plan_cart, CartPlan, EmittedValue, Excluded, PlanFailure, RuleState, ShippingValue};
 use crate::json::ShopConfig;
 use crate::output::{cart_lines_result, delivery_result, tie_possible, CartOperation, JsonText, ProductValue};
@@ -1047,4 +1047,237 @@ fn order_search_ties_go_to_the_larger_set_then_to_the_h_s_set() {
 /// `Math.round((base × p) / 100)` of an order percent.
 fn js_round_half(base: i64, percent: f64) -> i64 {
     super::js::round((base as f64 * percent) / 100.0) as i64
+}
+
+#[test]
+fn the_order_search_takes_a_bound_never_above_the_exact_minimum_over_16_lines_tied_for_it() {
+    assert_eq!(EXACT_LINES, 16);
+    assert_eq!(NEAR_FACTOR, 1.0 + 2f64.powi(-48));
+    assert_eq!(SAFE_BELOW, 1.0 - 2f64.powi(-44));
+    let thirty = |base: i64| js_round_half(base, 30.0).min(base);
+    // k = 1..n: a = s = 100 k, h = 10 k — every rate exactly 0,1, so one key group.
+    let tied = |n: i64| (1..=n).map(|k| set_line(100 * k, 100 * k, 10 * k)).collect::<Vec<_>>();
+    let all = |n: usize| (0..n).collect::<Vec<_>>();
+    // 16 distinct lines tie: exact, floor(10 k × 13 600 / 100 k) = 1 360 on every line.
+    assert_eq!(search_order_sets(&tied(16), &thirty).best(), &order_set(&all(16), 1_360, 13_600, 4_080));
+    // 17: the bound floor((15 300 × 0,1) × (1 − 2⁻⁴⁴)) = 1 529, one below the exact 1 530.
+    assert_eq!(search_order_sets(&tied(17), &thirty).best(), &order_set(&all(17), 1_529, 15_300, 4_590));
+    assert_eq!(order_set_limit(&tied(17)), 1_529.0);
+    assert_eq!(order_set_limit(&tied(16)), 1_360.0);
+    // 17 lines, two of them equal (the same h and price, so the same value): 16 distinct, exact.
+    let mut equal = tied(16);
+    equal.push(set_line(100, 100, 10));
+    assert_eq!(search_order_sets(&equal, &thirty).best().amount, 1_370);
+    // A line whose rate is not within 2⁻⁴⁸ of the minimum does not count: 16 tied + one at 0,2.
+    let mut apart = tied(16);
+    apart.push(set_line(1_000, 1_000, 200));
+    assert_eq!(order_set_limit(&apart), 1_460.0);
+    // Through the plan: 17 lines of 100 k Kč whose cost floor 900 k Kč − 1 haléř leaves
+    // h = 1 000 k haléřů (h/s = 0,1), a 30 % order discount: 1 529,99 Kč instead of the exact
+    // 1 530 Kč, and no line below its floor on either base.
+    let c = margin_rules(&order_rule("o", r#"{"kind": "percentage", "percent": 30}"#, ""), r#"{"enabled": true, "min": 0, "max": 100, "cur": "CZK"}"#, "");
+    let ids: Vec<&'static str> = (1..=17).map(|k| &*Box::leak(format!("l{k}").into_boxed_str())).collect();
+    let lines: Vec<Line> = (1..=17).map(|k| cost_line(ids[k - 1], 1, 10_000 * k as i64, 90.0 * k as f64 - 0.01, &[])).collect();
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let order = plan.order.as_ref().unwrap();
+    assert_eq!((order.stack.amount, &order.stack.value, order.base), (152_999, &EmittedValue::FixedTotal(152_999), 1_530_000));
+    assert!(order.excluded_line_ids.is_empty());
+    for k in 1..=17i64 {
+        let (s, floor) = (10_000 * k, 9_000 * k - 1);
+        assert!(s - (152_999 * s + 1_530_000 - 1) / 1_530_000 >= floor, "line {k}");
+    }
+    let sixteen = plan_cart(cart(&lines[..16], &[]), Some(&c));
+    assert_eq!(sixteen.order.as_ref().unwrap().stack.amount, 136_000);
+}
+
+/// mulberry32 (the TS twins draw the same numbers): `below(n)` = next % n.
+struct Mulberry(u32);
+
+impl Mulberry {
+    fn below(&mut self, n: u32) -> u32 {
+        self.0 = self.0.wrapping_add(0x6D2B_79F5);
+        let mut t = self.0;
+        t = (t ^ (t >> 15)).wrapping_mul(t | 1);
+        t ^= t.wrapping_add((t ^ (t >> 7)).wrapping_mul(t | 61));
+        (t ^ (t >> 14)) % n
+    }
+}
+
+/// The search's lines of `the_order_search_on_clustered_rates_…` (the TS twin draws the same), in
+/// three styles — mostly tied, mostly near 0,2, mixed — of: lines of 1–4 rate classes (a = k·x0,
+/// h = k·h0: equal rates, distinct lines), lines near 0,2 (h ≈ 2⁴⁰, a = 5h + 1 or 2: rates within
+/// a few ulps), ordinary lines and repeats of an earlier line.
+fn clustered_lines(r: &mut Mulberry) -> (Vec<OrderSetLine>, f64) {
+    let style = r.below(3);
+    let n = if style == 2 { 1 + r.below(40) } else { 12 + r.below(40) };
+    let classes: Vec<(i64, i64, bool)> = (0..1 + r.below(if style == 0 { 2 } else { 4 }))
+        .map(|_| {
+            let h0 = 1 + r.below(50) as i64;
+            (h0, h0 + 1 + r.below(500) as i64, r.below(2) == 1)
+        })
+        .collect();
+    let percent = [5.0, 20.0, 30.0, 50.0, 90.0][r.below(5) as usize];
+    let mut lines: Vec<OrderSetLine> = Vec::new();
+    for _ in 0..n {
+        let roll = r.below(10);
+        // 0 class, 1 near 0,2, 2 ordinary, 3 a repeat
+        let kind = match style {
+            0 => [0, 0, 0, 0, 0, 0, 0, 2, 3, 1][roll as usize],
+            1 => [1, 1, 1, 1, 1, 1, 1, 0, 2, 3][roll as usize],
+            _ => [0, 0, 0, 1, 1, 2, 2, 2, 3, 3][roll as usize],
+        };
+        if kind == 3 && !lines.is_empty() {
+            let again = lines[r.below(lines.len() as u32) as usize];
+            lines.push(again);
+        } else if kind == 0 {
+            let (h0, x0, twice) = classes[r.below(classes.len() as u32) as usize];
+            let k = 1 + r.below(30) as i64;
+            lines.push(set_line(k * x0, if twice { 2 * k * x0 } else { k * x0 }, k * h0));
+        } else if kind == 1 {
+            let h = (1i64 << 40) + r.below(1 << 31) as i64;
+            let a = 5 * h + 1 + r.below(2) as i64;
+            lines.push(set_line(a, a, h));
+        } else {
+            let a = 1 + r.below(100_000) as i64;
+            let h = r.below(a as u32) as i64;
+            lines.push(set_line(a, a + r.below(a as u32) as i64, h));
+        }
+    }
+    (lines, percent)
+}
+
+/// plan-margin.ts `limitOnBase`, as written there (every line of the set; Math.min).
+fn declared_limit(set: &[&OrderSetLine], total: i64, price: fn(&OrderSetLine) -> i64) -> (f64, bool) {
+    let rate = |l: &OrderSetLine| l.headroom as f64 / price(l) as f64;
+    let smallest = set.iter().map(|l| rate(l)).fold(f64::INFINITY, f64::min);
+    let near = smallest * NEAR_FACTOR;
+    let mut pairs: Vec<(i64, i64)> = set.iter().filter(|l| rate(l) <= near).map(|l| (l.headroom, price(l))).collect();
+    pairs.sort_unstable();
+    pairs.dedup();
+    if pairs.len() > EXACT_LINES {
+        return (((total as f64 * smallest) * SAFE_BELOW).floor(), true);
+    }
+    let limit = set.iter().map(|l| ((l.headroom as f64 * total as f64) / price(l) as f64).floor()).fold(f64::INFINITY, f64::min);
+    (limit, false)
+}
+
+/// plan-margin.ts `bestPrefixSet`, as written there (O(lines²)): the set and whether a bound was taken.
+fn declared_best_prefix(lines: &[OrderSetLine], keys: &[f64], wanted_at: &dyn Fn(i64) -> i64) -> (OrderSet, bool) {
+    let mut order: Vec<usize> = (0..lines.len()).collect();
+    order.sort_by(|&x, &y| keys[y].partial_cmp(&keys[x]).unwrap().then(x.cmp(&y)));
+    let (mut best, mut bounded) = (order_set(&[], 0, 0, 0), false);
+    let (mut base, mut base_before) = (0i64, 0i64);
+    for j in 0..order.len() {
+        base += lines[order[j]].after;
+        base_before += lines[order[j]].before;
+        if j + 1 < order.len() && keys[order[j + 1]] == keys[order[j]] {
+            continue;
+        }
+        let set: Vec<&OrderSetLine> = order[..=j].iter().map(|&i| &lines[i]).collect();
+        let (by_after, a) = declared_limit(&set, base, |l| l.after);
+        let (by_before, b) = declared_limit(&set, base_before, |l| l.before);
+        bounded |= a || b;
+        let wanted = wanted_at(base);
+        let amount = (wanted as f64).min(by_after.min(by_before));
+        if amount >= best.amount as f64 {
+            best = OrderSet { members: order[..=j].to_vec(), amount: amount as i64, base, wanted };
+        }
+    }
+    best.members.sort_unstable();
+    (best, bounded)
+}
+
+#[test]
+fn the_order_search_on_clustered_rates_is_its_declared_definition_and_the_ts_digest() {
+    // 5 000 carts' lines where many rates tie or nearly tie: search_order_sets (NearMin keeping at
+    // most 17 lines a base) gives exactly the definition plan-margin.ts writes out, and the digest
+    // of its answers is the one the TS search gives (twin).
+    let mut r = Mulberry(20_260_930);
+    let (mut digest, mut after_wins, mut bounded, mut lowered) = (2_166_136_261u32, 0, 0, 0);
+    let mix = |digest: &mut u32, v: i64| *digest = (*digest ^ (v.rem_euclid(1 << 32) as u32)).wrapping_mul(16_777_619);
+    for case in 0..5_000 {
+        let (lines, percent) = clustered_lines(&mut r);
+        let wanted_at = |base: i64| js_round_half(base, percent).min(base);
+        let search = search_order_sets(&lines, &wanted_at);
+        let per_before: Vec<f64> = lines.iter().map(|l| l.headroom as f64 / l.before as f64).collect();
+        let per_after: Vec<f64> = lines.iter().map(|l| l.headroom as f64 / l.after as f64).collect();
+        let (by_before, b) = declared_best_prefix(&lines, &per_before, &wanted_at);
+        let (by_after, a) = declared_best_prefix(&lines, &per_after, &wanted_at);
+        assert_eq!(search.by_before, by_before, "case {case}");
+        assert_eq!(search.by_after, by_after, "case {case}");
+        let best = search.best();
+        for v in [best.amount, best.base, best.wanted, best.members.len() as i64] {
+            mix(&mut digest, v);
+        }
+        for &m in &best.members {
+            mix(&mut digest, m as i64);
+        }
+        after_wins += usize::from(search.after_wins);
+        bounded += usize::from(a || b);
+        // The set's exact D_max (every line evaluated), which the answer never exceeds.
+        let exact = best
+            .members
+            .iter()
+            .map(|&m| {
+                let l = &lines[m];
+                let bs = best.members.iter().map(|&i| lines[i].before).sum::<i64>() as f64;
+                (((l.headroom as f64 * best.base as f64) / l.after as f64).floor()).min(((l.headroom as f64 * bs) / l.before as f64).floor())
+            })
+            .fold(f64::INFINITY, f64::min);
+        assert!(best.members.is_empty() || best.amount as f64 <= exact, "case {case}");
+        lowered += usize::from(!best.members.is_empty() && (best.amount as f64) < exact && best.amount < best.wanted);
+    }
+    // 822 carts took a bound somewhere, 203 of them ended below the exact D of their set.
+    assert_eq!((digest, after_wins, bounded, lowered), (1_276_480_379, 7, 822, 203));
+}
+
+#[test]
+fn the_order_limit_bound_is_never_above_any_lines_value() {
+    // (h, x, X) from four regimes — small, proportional (X × h/x a whole number), up to 2⁴⁶ with
+    // totals up to 2⁵², and near 0,2 — and 1–4 lines a set: floor((X × m) × SAFE_BELOW) ≤ every
+    // line's floor((h × X) / x), m the smallest rate. Counted: equal to the exact minimum, below it.
+    let mut r = Mulberry(4_096);
+    let big = |r: &mut Mulberry| ((r.below(1 << 23) as i64) << 23) + r.below(1 << 23) as i64 + 1;
+    let (mut equal, mut below) = (0, 0);
+    for _ in 0..200_000 {
+        let regime = r.below(4);
+        let (h0, x0) = (1 + r.below(50) as i64, 51 + r.below(500) as i64);
+        let n = 1 + r.below(4);
+        let set: Vec<(i64, i64)> = (0..n)
+            .map(|_| match regime {
+                0 => {
+                    let x = 1 + r.below(2_000) as i64;
+                    (r.below(x as u32 + 1) as i64, x)
+                }
+                1 => {
+                    let k = 1 + r.below(1_000) as i64;
+                    (k * h0, k * x0)
+                }
+                2 => {
+                    let x = big(&mut r);
+                    (x / (1 + r.below(9) as i64), x)
+                }
+                _ => {
+                    let h = (1i64 << 40) + r.below(1 << 31) as i64;
+                    (h, 5 * h + 1 + r.below(3) as i64)
+                }
+            })
+            .collect();
+        let total = match regime {
+            1 => x0 * (1 + r.below(1 << 20) as i64),
+            2 => big(&mut r) << 6,
+            _ => set.iter().map(|&(_, x)| x).max().unwrap() + r.below(1 << 30) as i64,
+        } as f64;
+        let m = set.iter().map(|&(h, x)| h as f64 / x as f64).fold(f64::INFINITY, f64::min);
+        let bound = ((total * m) * SAFE_BELOW).floor();
+        let exact = set.iter().map(|&(h, x)| ((h as f64 * total) / x as f64).floor()).fold(f64::INFINITY, f64::min);
+        assert!(bound <= exact, "{set:?} {total}: {bound} > {exact}");
+        if bound == exact {
+            equal += 1;
+        } else {
+            below += 1;
+        }
+    }
+    // Below mostly where X × m is a whole number (a line alone, proportional lines): then 1 below.
+    assert_eq!((equal, below), (96_065, 103_935));
 }

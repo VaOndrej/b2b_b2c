@@ -837,6 +837,17 @@ function allScenarios() {
     expected: NONE,
   },
   {
+    name: "lines-margin-order-tied-bound",
+    description:
+      "17 lines of k × 100 Kč (k = 1–17) whose cost 90k Kč − 1 haléř, with a 0 % minimum margin, leaves each exactly 10 % (h = 10k Kč), so all 17 rates tie; order 30 %. The order search evaluates a set's limit line by line only while at most 16 distinct lines tie for the minimum rate; with more it takes a bound never above the exact value (fail closed): floor((15 300 Kč × 0,1) × (1 − 2⁻⁴⁴)) = 1 529,99 Kč, one haléř below the exact 1 530 Kč. 16 such lines get the exact 1 360 Kč (unit test the_order_search_takes_a_bound_…).",
+    target: "lines",
+    rules: [orderPct("obj", 30, { name: "Objednávka 30 %" })],
+    margin: marginOn({ minMarginPercent: 0, maxDiscountPercent: 100 }),
+    role: AUTO,
+    lines: Array.from({ length: 17 }, (_, i) => ({ n: i + 1, price: `${100 * (i + 1)}.0`, variantMeta: costOf(Math.round((90 * (i + 1) - 0.01) * 100) / 100) })),
+    expected: out(order("Objednávka 30 %", [], amountOff("1529.99"))),
+  },
+  {
     name: "lines-margin-exclusive",
     description:
       "Product and order discounts exclusive (productWithOrder off), 10 % ceiling: the order-only scenario is protected too — line 2 is at its floor and left out, line 1 can give 99,99 Kč — and that still beats the 50 Kč product scenario, so only the order discount is emitted.",
@@ -897,6 +908,8 @@ function allScenarios() {
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge" })),
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, ruleIdLength: 64, collections: 29, name: "long-ids" })),
   filledToInputLimit((siblings) => proMeshBudget({ lines: 200, siblings })),
+  filledToInputLimit((siblings) => nearMinBudget({ lines: 200, siblings })),
+  filledToInputLimit((siblings) => nearMinBudget({ lines: 500, siblings })),
   ];
 }
 
@@ -1672,6 +1685,99 @@ function proMeshBudget({ lines: count, siblings }) {
     role: AUTO,
     lines,
     expected: out(products(...kept.map(({ message, targets, value }) => ({ message, targets, value }))), orderOp),
+  };
+}
+
+// --- The margin order search's near-minimum worst case (instruction budget, audit round 4) --
+//
+// Every line's rate h/s (what it can give per price) a hair below the next
+// one's: margin protection with a 20 % ceiling and no cost prices, so
+// h = s − ceil(0,8 s) − 1 and h/s = 0,2 − 1/s; prices P0 + 0,05 k Kč (P0 =
+// 25 000 Kč, 40 000 Kč at 500 lines) put every rate within 10⁻¹¹ of the others,
+// all distinct. The order discount (30 %) is more than any line can give, so
+// the order stage searches every prefix. Before the bound on its exact work
+// (plan-margin.ts ORDER_SEARCH_EXACT_LINES) each candidate set evaluated every
+// line within 10⁻⁹ of its minimum, here all of them: 95,5 % of Shopify's limit
+// at 200 lines, 133 % at 500. Each line lists a DIFFERENT 10 of 14 code rules
+// nobody entered (read, resolved, gated out), and the input is filled to
+// Shopify's limit with variant-level refs of other variants.
+// The expected output by the model: no product discount; every candidate set
+// is exact (no two rates within 2⁻⁴⁸ of each other, checked); by h/s
+// descending the sets are the prefixes, and the order discount is the best
+// prefix's D = min(30 % of S, min over its lines of floor((h × S) / s)) — the
+// whole cart, checked — an exact amount with no line left out.
+
+const NEAR_CODES = 14;
+const NEAR_REFS = 10;
+const NEAR_MAX_PERCENT = 20;
+
+/**
+ * @param {{ lines: number, siblings: (i: number) => number }} shape
+ * @returns {Scenario}
+ */
+function nearMinBudget({ lines: count, siblings }) {
+  const codes = Array.from({ length: NEAR_CODES }, (_, k) => withCodes([`BLIZKO${k + 1}`], pct(`k${k + 1}`, 5 + (k % 7), { name: `Kódová sleva ${k + 1}` })));
+  const rules = [orderPct("o30", 30, { name: "Objednávka 30 %" }), ...codes];
+  const p0 = count > 200 ? 4_000_000 : 2_500_000; // haléře
+  let seed = 20261002;
+  const next = () => {
+    seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+    return (seed >>> 8) / 16777216;
+  };
+  const lines = [];
+  /** @type {{ s: number, h: number }[]} */
+  const open = [];
+  const subsets = new Set();
+  for (let i = 1; i <= count; i += 1) {
+    /** @type {number[]} */
+    let mine = [];
+    while (mine.length === 0 || subsets.has([...mine].sort((a, b) => a - b).join(","))) {
+      const pool = codes.map((_, k) => k);
+      mine = [];
+      for (let j = 0; j < NEAR_REFS; j += 1) mine.push(pool.splice(Math.floor(next() * pool.length), 1)[0]);
+    }
+    subsets.add([...mine].sort((a, b) => a - b).join(","));
+    const s = p0 + 5 * i;
+    /** @type {Record<string, unknown>} */
+    const won = { ruleIds: mine.map((k) => codes[k].id) };
+    if (siblings(i) > 0) {
+      won.variantRuleIds = Object.fromEntries(Array.from({ length: siblings(i) }, (_, j) => [String(48468678900000 + 200000 + i * 100 + j), [codes[(i + j) % NEAR_CODES].id]]));
+    }
+    lines.push({ n: i, price: kc(s), won });
+    open.push({ s, h: s - ceilTol(s * (1 - NEAR_MAX_PERCENT / 100)) - 1 });
+  }
+  if (subsets.size !== count) throw new Error("nearMinBudget: every line a different subset");
+  // The search's candidate sets: prefixes by h/s descending (ties: cart order); a = s (no product discount).
+  const byRate = open.map((l, i) => ({ ...l, i, r: l.h / l.s })).sort((x, y) => (x.r !== y.r ? y.r - x.r : x.i - y.i));
+  for (let k = 1; k < byRate.length; k += 1) {
+    if (!(byRate[k - 1].r > byRate[k].r * (1 + 2 ** -48))) throw new Error("nearMinBudget: rates must be distinct, none within 2⁻⁴⁸ of another");
+  }
+  let S = 0;
+  const prefixes = byRate.map((l, k) => {
+    S += l.s;
+    const total = S;
+    const least = Math.min(...byRate.slice(0, k + 1).map((m) => Math.floor((m.h * total) / m.s)));
+    const wanted = Math.min(Math.round((total * 30) / 100), total);
+    return { D: Math.min(wanted, least), wanted };
+  });
+  const whole = prefixes[prefixes.length - 1];
+  if (!(whole.D < whole.wanted)) throw new Error("nearMinBudget: the order discount must be lowered");
+  if (prefixes.some((p) => p.D > whole.D)) throw new Error("nearMinBudget: the whole cart must be the best set");
+  const filler = Array.from({ length: count }, (_, k) => siblings(k + 1));
+  const [fewest, most] = [Math.min(...filler), Math.max(...filler)];
+  return {
+    name: `lines-margin-near-min-${count}-lines-budget`,
+    realisticIds: true,
+    description:
+      `Instruction budget, the margin order search's worst case (audit round 4): ${count} lines whose rates (what a line can give per price, 20 % ceiling, no cost prices) all lie within 10⁻¹¹ of each other, a 30 % order discount no line can carry, so the order stage searches every prefix. ` +
+      `Each line lists a different ${NEAR_REFS} of ${NEAR_CODES} code rules nobody entered and ${fewest === most ? fewest : `${fewest}–${most}`} variant-level refs of other variants: the input filled to Shopify's limit of ${128 * Math.max(1, count / 200)} kB of MessagePack. ` +
+      `The order discount is lowered to what the whole cart can carry (${kc(whole.D)} Kč), an exact amount. Before the bound on the search's exact work (16 lines tied for a minimum): ${count > 200 ? "133" : "95,5"} % of Shopify's limit. With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.`,
+    target: "lines",
+    rules,
+    margin: marginOn({ maxDiscountPercent: NEAR_MAX_PERCENT }),
+    role: AUTO,
+    lines,
+    expected: out(order("Objednávka 30 %", [], amountOff(kc(whole.D)))),
   };
 }
 

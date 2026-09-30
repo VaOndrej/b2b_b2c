@@ -45,7 +45,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { normalizeCart } from "@won/core/discounts/cart";
 import { roundingTiePossible } from "@won/core/discounts/function-output";
 import { costMinorUnits, marginFloorUnit, readMarginPayload, resolveMargin } from "@won/core/discounts/margin";
-import { searchOrderSets } from "@won/core/discounts/plan-margin";
+import { orderSetLimit, searchOrderSets } from "@won/core/discounts/plan-margin";
 
 import {
   adaptInput,
@@ -154,7 +154,7 @@ const vid = (n) => `gid://shopify/ProductVariant/${n}`;
 
 /**
  * @param {number} seed
- * @param {boolean | "mesh"} [onlySearch] true: only margin order-search carts (searchCase); "mesh": only Pro mesh carts (meshCase)
+ * @param {boolean | "mesh" | "tied"} [onlySearch] true: only margin order-search carts (searchCase); "mesh": only Pro mesh carts (meshCase); "tied": only order-search carts with many tied lines (tiedCase)
  */
 function generator(seed, onlySearch = false) {
   const rnd = prng(seed);
@@ -634,6 +634,80 @@ function generator(seed, onlySearch = false) {
   }
 
   /**
+   * The margin order search's bound (plan-margin.ts ORDER_SEARCH_EXACT_LINES,
+   * audit round 4): 17–60 lines, most of them of 1–2 classes whose lines are
+   * k × one price with a cost floor of k × (price − headroom) − 1 haléř, so a
+   * class's rates h/s tie exactly (with a 10 or 20 % product discount too, which
+   * keeps them proportional); k from ranges of 8, 16, 17 or 40 values, so a
+   * class has fewer, exactly 16, or more distinct lines; a few ordinary lines;
+   * an order discount of 5–90 % or a fixed amount.
+   */
+  function tiedCase() {
+    const classes = Array.from({ length: 1 + int(2) }, () => {
+      const unit = 100 * (10 + int(90));
+      return { unit, headroom: Math.floor(unit * pick([0.05, 0.1, 0.2, 0.3])), rule: pick([null, null, "p10", "p20"]), ks: pick([8, 16, 17, 40]) };
+    });
+    const product = (id, percent) => ({ id, enabled: true, name: `P${percent}`, method: "automatic", value: { kind: "percentage", percent }, target: { kind: "products" } });
+    const rules = [
+      product("p10", 10),
+      product("p20", 20),
+      chance(0.8)
+        ? { id: "o", enabled: true, name: "O", method: "automatic", value: { kind: "percentage", percent: pick([5, 10, 20, 30, 50, 90]) }, target: { kind: "order" } }
+        : { id: "o", enabled: true, name: "O", method: "automatic", value: { kind: "fixed", amount: { CZK: pick([5_000, 50_000, 500_000, 5_000_000]) } }, target: { kind: "order" } },
+    ];
+    const kc = (minor) => `${Math.floor(minor / 100)}.${String(minor % 100).padStart(2, "0")}`;
+    const lines = Array.from({ length: 17 + int(44) }, (_, i) => {
+      let price;
+      let cost;
+      let refs;
+      let quantity = 1;
+      if (chance(0.1)) {
+        price = 100 * (1 + int(5_000));
+        cost = chance(0.5) ? Math.round(price * pick([0.5, 0.8])) / 100 : null;
+        refs = chance(0.5) ? ["p10"] : [];
+        quantity = pick([1, 2]);
+      } else {
+        const c = pick(classes);
+        const k = 1 + int(c.ks);
+        price = k * c.unit;
+        cost = (k * (c.unit - c.headroom) - 1) / 100;
+        refs = c.rule ? [c.rule] : [];
+      }
+      return {
+        id: `gid://shopify/CartLine/${i + 1}`,
+        quantity,
+        cost: { amountPerQuantity: { amount: kc(price) } },
+        gift: null,
+        merchandise: {
+          __typename: "ProductVariant",
+          id: vid(2000 + i),
+          wonVariant: cost === null ? null : { jsonValue: { cost, cur: "CZK" } },
+          product: { wonProduct: { jsonValue: { ruleIds: refs } } },
+        },
+      };
+    });
+    return {
+      exportName: LINES,
+      tie: false,
+      input: {
+        triggeringDiscountCode: null,
+        enteredDiscountCodes: [],
+        discount: {
+          discountClasses: ["PRODUCT", "ORDER", "SHIPPING"],
+          vars: { jsonValue: { role: "automatic", campaignId: null, campaignStart: "1970-01-01T00:00:00", campaignEnd: "1970-01-01T00:00:00", varsVersion: null } },
+        },
+        shop: {
+          config: { jsonValue: { schemaVersion: 1, campaignId: null, campaignVarsVersion: null, marketCountries: {}, modules: { codes: { rules }, margin: { enabled: true, max: 100, min: 0, cur: "CZK" } }, campaigns: [] } },
+          localTime: { date: "2026-10-01", campaignActive: false },
+        },
+        localization: { country: { isoCode: "CZ" }, language: { isoCode: "CS" } },
+        presentmentCurrencyRate: "1.0",
+        cart: { cost: { subtotalAmount: { currencyCode: "CZK" } }, lines },
+      },
+    };
+  }
+
+  /**
    * The Pro stack cap (plan.ts MAX_STACK_CANDIDATES, audit round 3): 7–16
    * product rules combining at a random density (up to a full mesh), percents
    * with repeats (ties go to priority, then id) and fixed amounts, a few code
@@ -722,6 +796,11 @@ function generator(seed, onlySearch = false) {
       hostile = false;
       large = false;
       return meshCase();
+    }
+    if (onlySearch === "tied") {
+      hostile = false;
+      large = false;
+      return tiedCase();
     }
     if (onlySearch || chance(0.2)) {
       hostile = false;
@@ -834,9 +913,13 @@ function orderSearchBranches(adapted, plan, hits) {
   const S = giving.reduce((sum, l) => sum + l.after, 0);
   const S0 = giving.reduce((sum, l) => sum + l.before, 0);
   const w = wantedAt(S);
-  const shortcut = giving.length > 0 && w > 0 && giving.every((l) => Math.floor((l.headroom * S) / l.after) >= w && Math.floor((l.headroom * S0) / l.before) >= w);
+  // The set of every line that can give carries the whole wanted amount (its D_max, bound included).
+  const whole = orderSetLimit(giving, S, S0);
+  const shortcut = giving.length > 0 && w > 0 && whole.limit >= w;
   hits.add(shortcut ? "margin order search: shortcut (every line that can give carries its share)" : "margin order search: full search");
+  if (shortcut && whole.bounded) hits.add("margin order search: shortcut over 16+ tied lines (their bound)");
   if (shortcut || giving.length === 0) return;
+  if (searchOrderSets(giving, wantedAt).bounded) hits.add("margin order search: a bound (16+ distinct lines tied for a minimum)");
   const keyS = giving.map((l) => l.headroom / l.before);
   const keyA = giving.map((l) => l.headroom / l.after);
   const byS = giving.map((_, i) => i).sort((x, y) => (keyS[x] !== keyS[y] ? keyS[y] - keyS[x] : x - y));
@@ -1253,5 +1336,45 @@ describe("Wasm (function-runner)", () => {
     const table = [...SEARCH_BRANCHES, "margin order search: tie → the h/s set"].map((b) => `${hits.get(b) ?? 0}\t${b}`).join("\n");
     console.info(`margin order search: ${SEARCH_CASES} cases, 0 differ\n${table}`);
     expect(SEARCH_BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS), table).toEqual([]);
+  }, 900_000);
+
+  // The order search's bound (plan-margin.ts orderSetLimit, order_search.rs
+  // `NearMin`): carts of 17–60 lines whose rates tie exactly in classes, so a
+  // candidate set has fewer than, exactly or more than 16 distinct lines tied
+  // for its minimum — the exact limit, the bound, the shortcut checked against
+  // the bound — compared between the Wasm and the TS reference.
+  const TIED_CASES = Number(process.env.PARITY_TIED_CASES ?? 1000);
+  test(`margin order search over tied lines, seed 20261002 × ${TIED_CASES}: Wasm = TS reference, the bound hit`, async () => {
+    const next = generator(20261002, "tied");
+    const cases = Array.from({ length: TIED_CASES }, next);
+    const failures = [];
+    /** @type {Map<string, number>} */
+    const hits = new Map();
+    let maxMemory = 0;
+    for (let i = 0; i < cases.length; i += 8) {
+      const batch = cases.slice(i, i + 8);
+      const results = await Promise.all(batch.map((c) => runWasm(runnerPath, wasmPath, c.exportName, c.input)));
+      results.forEach((result, j) => {
+        const c = batch[j];
+        const expected = referenceOutput(c.exportName, c.input);
+        for (const branch of branchesOf(c.exportName, c.input, expected, c.tie)) hits.set(branch, (hits.get(branch) ?? 0) + 1);
+        if (!result.success || !isDeepStrictEqual(result.output, expected)) failures.push({ index: i + j, got: result.output, expected, input: c.input });
+        maxMemory = Math.max(maxMemory, result.memory_usage ?? Number.POSITIVE_INFINITY);
+      });
+    }
+    if (failures.length > 0) {
+      const first = failures[0];
+      throw new Error(`${failures.length}/${TIED_CASES} tied cases differ; first #${first.index}\ngot      ${JSON.stringify(first.got)}\nexpected ${JSON.stringify(first.expected)}\ninput    ${JSON.stringify(first.input)}`);
+    }
+    const TIED_BRANCHES = [
+      "margin order search: shortcut (every line that can give carries its share)",
+      "margin order search: full search",
+      "margin order search: a bound (16+ distinct lines tied for a minimum)",
+      "margin order search: shortcut over 16+ tied lines (their bound)",
+    ];
+    const table = TIED_BRANCHES.map((b) => `${hits.get(b) ?? 0}\t${b}`).join("\n");
+    console.info(`margin order search over tied lines: ${TIED_CASES} cases, 0 differ, largest memory ${maxMemory} KB\n${table}`);
+    expect(TIED_BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS), table).toEqual([]);
+    expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
   }, 900_000);
 });

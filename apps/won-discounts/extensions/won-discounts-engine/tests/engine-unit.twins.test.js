@@ -15,7 +15,7 @@ import { emitForNode } from "@won/core/discounts/emit";
 import { mapToFunctionOutput, roundingTiePossible } from "@won/core/discounts/function-output";
 import { ceilTol, costMinorUnits, MARGIN_TOLERANCE, marginFloorUnit, readMarginPayload, resolveMargin } from "@won/core/discounts/margin";
 import { planCart } from "@won/core/discounts/plan";
-import { searchOrderSets } from "@won/core/discounts/plan-margin";
+import { ORDER_SEARCH_EXACT_LINES, ORDER_SEARCH_NEAR, orderSetLimit, searchOrderSets } from "@won/core/discounts/plan-margin";
 import { describe, expect, test } from "vitest";
 
 import { adaptInput, decimalNumber } from "./reference-adapter.js";
@@ -55,6 +55,50 @@ const order = (id, value, more = {}) => ({ id, enabled: true, name: id, method: 
 const mcfg = (rules, margin, extra = {}) => ({ modules: { codes: { rules }, margin }, ...extra });
 /** A line with a cost price in CZK (cost_line in tests.rs). */
 const costLine = (id, quantity, unitPrice, cost, ruleIds) => line(id, quantity, unitPrice, ruleIds, { unitCost: cost, unitCostCurrency: "CZK" });
+/** mulberry32, `below(n)` = next % n (`Mulberry` in tests.rs draws the same numbers). */
+const mulberry = (seed) => {
+  let a = seed >>> 0;
+  return {
+    below(n) {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) % n;
+    },
+  };
+};
+/** `clustered_lines` in tests.rs: tied rate classes, lines near 0,2, ordinary lines and repeats. */
+const clusteredLines = (r) => {
+  const style = r.below(3);
+  const n = style === 2 ? 1 + r.below(40) : 12 + r.below(40);
+  const classes = Array.from({ length: 1 + r.below(style === 0 ? 2 : 4) }, () => {
+    const h0 = 1 + r.below(50);
+    return [h0, h0 + 1 + r.below(500), r.below(2) === 1];
+  });
+  const percent = [5, 20, 30, 50, 90][r.below(5)];
+  const lines = [];
+  for (let i = 0; i < n; i++) {
+    const roll = r.below(10);
+    const kind = style === 0 ? [0, 0, 0, 0, 0, 0, 0, 2, 3, 1][roll] : style === 1 ? [1, 1, 1, 1, 1, 1, 1, 0, 2, 3][roll] : [0, 0, 0, 1, 1, 2, 2, 2, 3, 3][roll];
+    if (kind === 3 && lines.length > 0) {
+      lines.push(lines[r.below(lines.length)]);
+    } else if (kind === 0) {
+      const [h0, x0, twice] = classes[r.below(classes.length)];
+      const k = 1 + r.below(30);
+      lines.push({ after: k * x0, before: twice ? 2 * k * x0 : k * x0, headroom: k * h0 });
+    } else if (kind === 1) {
+      const h = 2 ** 40 + r.below(2 ** 31);
+      const a = 5 * h + 1 + r.below(2);
+      lines.push({ after: a, before: a, headroom: h });
+    } else {
+      const a = 1 + r.below(100_000);
+      const h = r.below(a);
+      lines.push({ after: a, before: a + r.below(a), headroom: h });
+    }
+  }
+  return { lines, percent };
+};
 const close = (actual, expected, eps) => {
   expect(actual).not.toBeNull();
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(eps);
@@ -653,6 +697,97 @@ const TWINS = {
     expect(same.byAfter).toEqual(same.byBefore);
     expect(same.best).toBe(same.byBefore);
     expect(same.byBefore).toEqual({ members: [0], amount: 100, base: 1000, wanted: 100 });
+  },
+
+  the_order_search_takes_a_bound_never_above_the_exact_minimum_over_16_lines_tied_for_it() {
+    expect(ORDER_SEARCH_EXACT_LINES).toBe(16);
+    expect(1 + ORDER_SEARCH_NEAR).toBe(1 + 2 ** -48);
+    const thirty = (base) => Math.min(Math.round((base * 30) / 100), base);
+    const tied = (n) => Array.from({ length: n }, (_, i) => ({ after: 100 * (i + 1), before: 100 * (i + 1), headroom: 10 * (i + 1) }));
+    const all = (n) => Array.from({ length: n }, (_, i) => i);
+    const sumsOf = (lines) => [lines.reduce((t, l) => t + l.after, 0), lines.reduce((t, l) => t + l.before, 0)];
+    expect(searchOrderSets(tied(16), thirty).best).toEqual({ members: all(16), amount: 1_360, base: 13_600, wanted: 4_080 });
+    expect(searchOrderSets(tied(17), thirty).best).toEqual({ members: all(17), amount: 1_529, base: 15_300, wanted: 4_590 });
+    expect(orderSetLimit(tied(17), ...sumsOf(tied(17)))).toEqual({ limit: 1_529, bounded: true });
+    expect(orderSetLimit(tied(16), ...sumsOf(tied(16)))).toEqual({ limit: 1_360, bounded: false });
+    const equal = [...tied(16), { after: 100, before: 100, headroom: 10 }];
+    expect(searchOrderSets(equal, thirty).best.amount).toBe(1_370);
+    const apart = [...tied(16), { after: 1_000, before: 1_000, headroom: 200 }];
+    expect(orderSetLimit(apart, ...sumsOf(apart)).limit).toBe(1_460);
+    const config = mcfg([order("o", { kind: "percentage", percent: 30 })], { enabled: true, min: 0, max: 100, cur: "CZK" });
+    const lines = Array.from({ length: 17 }, (_, i) => costLine(`l${i + 1}`, 1, 10_000 * (i + 1), 90 * (i + 1) - 0.01, []));
+    const plan = planCart(cart(lines), config);
+    expect([plan.order.amount, plan.order.value, plan.order.base]).toEqual([152_999, { fixedTotal: 152_999 }, 1_530_000]);
+    expect(plan.order.excludedLineIds).toEqual([]);
+    for (let k = 1; k <= 17; k++) {
+      const [s, floor] = [10_000 * k, 9_000 * k - 1];
+      expect(s - Math.ceil((152_999 * s) / 1_530_000)).toBeGreaterThanOrEqual(floor);
+    }
+    expect(planCart(cart(lines.slice(0, 16)), config).order.amount).toBe(136_000);
+  },
+
+  the_order_search_on_clustered_rates_is_its_declared_definition_and_the_ts_digest() {
+    // The TS search on the same 5 000 line sets: the same digest of its answers.
+    const r = mulberry(20260930);
+    let digest = 2166136261;
+    let [afterWins, bounded, lowered] = [0, 0, 0];
+    const mix = (v) => {
+      digest = Math.imul(digest ^ (((v % 4294967296) + 4294967296) % 4294967296), 16777619) >>> 0;
+    };
+    for (let c = 0; c < 5000; c++) {
+      const { lines, percent } = clusteredLines(r);
+      const search = searchOrderSets(lines, (base) => Math.min(Math.round((base * percent) / 100), base));
+      const best = search.best;
+      for (const v of [best.amount, best.base, best.wanted, best.members.length, ...best.members]) mix(v);
+      if (best === search.byAfter) afterWins += 1;
+      if (search.bounded) bounded += 1;
+      if (best.members.length === 0) continue;
+      const set = best.members.map((i) => lines[i]);
+      const baseBefore = set.reduce((t, l) => t + l.before, 0);
+      let exact = Number.POSITIVE_INFINITY;
+      for (const l of set) exact = Math.min(exact, Math.floor((l.headroom * best.base) / l.after), Math.floor((l.headroom * baseBefore) / l.before));
+      expect(best.amount).toBeLessThanOrEqual(exact);
+      if (best.amount < exact && best.amount < best.wanted) lowered += 1;
+    }
+    expect([digest, afterWins, bounded, lowered]).toEqual([1_276_480_379, 7, 822, 203]);
+  },
+
+  the_order_limit_bound_is_never_above_any_lines_value() {
+    const r = mulberry(4096);
+    const SAFE_BELOW = 1 - 2 ** -44;
+    const big = () => r.below(2 ** 23) * 2 ** 23 + r.below(2 ** 23) + 1;
+    let [equal, below] = [0, 0];
+    for (let c = 0; c < 200_000; c++) {
+      const regime = r.below(4);
+      const [h0, x0] = [1 + r.below(50), 51 + r.below(500)];
+      const n = 1 + r.below(4);
+      const set = [];
+      for (let i = 0; i < n; i++) {
+        if (regime === 0) {
+          const x = 1 + r.below(2000);
+          set.push([r.below(x + 1), x]);
+        } else if (regime === 1) {
+          const k = 1 + r.below(1000);
+          set.push([k * h0, k * x0]);
+        } else if (regime === 2) {
+          const x = big();
+          set.push([Math.floor(x / (1 + r.below(9))), x]);
+        } else {
+          const h = 2 ** 40 + r.below(2 ** 31);
+          set.push([h, 5 * h + 1 + r.below(3)]);
+        }
+      }
+      const total = regime === 1 ? x0 * (1 + r.below(2 ** 20)) : regime === 2 ? big() * 64 : Math.max(...set.map(([, x]) => x)) + r.below(2 ** 30);
+      let m = Number.POSITIVE_INFINITY;
+      for (const [h, x] of set) m = Math.min(m, h / x);
+      const bound = Math.floor(total * m * SAFE_BELOW);
+      let exact = Number.POSITIVE_INFINITY;
+      for (const [h, x] of set) exact = Math.min(exact, Math.floor((h * total) / x));
+      expect(bound <= exact).toBe(true);
+      if (bound === exact) equal += 1;
+      else below += 1;
+    }
+    expect([equal, below]).toEqual([96_065, 103_935]);
   },
 
   // src/json.rs: the variant metafield, the product's marginRefs and the rate (adapter + normalizeCart).

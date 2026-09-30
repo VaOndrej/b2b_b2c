@@ -127,35 +127,111 @@ export interface OrderSetResult {
 const NO_SET: OrderSetResult = { members: [], amount: 0, base: 0, wanted: 0 };
 
 /**
+ * The order search's bound on exact work ([spec], MVP 2 audit round 4): on each
+ * allocation base, a candidate set's limit is evaluated line by line only while
+ * at most this many DISTINCT lines — distinct by (h_i, price on that base) —
+ * have a rate within ORDER_SEARCH_NEAR of the set's smallest rate. With more,
+ * the limit is a conservative bound that is never above the exact one
+ * (orderSetLimit), so the order discount can only come out smaller, never
+ * unsafe. Without it, many lines of (almost) equal rates made the Rust
+ * function's search quadratic: 200 lines took it to 108 % of Shopify's
+ * instruction limit, 500 lines to 145 % (no Won discount at all).
+ */
+export const ORDER_SEARCH_EXACT_LINES = 16;
+
+/**
+ * Relative slack of the near-minimum set: 2⁻⁴⁸, 32 units of roundoff
+ * (u = 2⁻⁵³). A line whose rate is more than (1 + 2⁻⁴⁸) × the smallest can
+ * never hold the set's minimum (two roundings on each side move a value by
+ * less than 7 u), and real prices make rates differ by far more.
+ */
+export const ORDER_SEARCH_NEAR = 2 ** -48;
+
+const NEAR_FACTOR = 1 + ORDER_SEARCH_NEAR;
+/** The conservative bound's downward safety, 1 − 2⁻⁴⁴ = 1 − 512 u (the proof below needs ≤ 1 − 5 u). */
+const SAFE_BELOW = 1 - 2 ** -44;
+
+/**
+ * One base's limit of a set of lines: min over i of floor((h_i × total) / x_i),
+ * with x_i = a_i and total = S (after product discounts) or x_i = s_i and
+ * total = S0 (before them). Let m be the smallest rate fl(h_i / x_i) of the set
+ * and "near" the lines whose rate is ≤ fl(m × (1 + ORDER_SEARCH_NEAR)).
+ *   - At most ORDER_SEARCH_EXACT_LINES distinct (h_i, x_i) near: that minimum,
+ *     exactly (every line evaluated; a line that is not near cannot hold it,
+ *     which is how the Rust function evaluates the near lines only).
+ *   - More: floor(fl(fl(total × m) × (1 − 2⁻⁴⁴))), which is ≤ that minimum.
+ *     Proof (IEEE binary64, round to nearest, every value normal or 0, so
+ *     fl(z) is within z × (1 ± u), u = 2⁻⁵³; all quantities ≥ 0): for every
+ *     line i, h_i / x_i ≥ fl(h_i / x_i) / (1 + u) ≥ m / (1 + u), so its value
+ *     fl(fl(h_i × total) / x_i) ≥ total × (h_i / x_i) × (1 − u)²
+ *     ≥ total × m × (1 − u)² / (1 + u); the bound's float is
+ *     ≤ total × m × (1 − 2⁻⁴⁴) × (1 + u)², and (1 − 2⁻⁴⁴)(1 + u)³ ≤ (1 − u)²
+ *     since 2⁻⁴⁴ = 512 u > 5 u. So the bound's float is ≤ every line's value,
+ *     and floor keeps the order. Hence D_max, and so D, is never above the
+ *     exact search's for that set: the floor invariant holds on both bases.
+ */
+function limitOnBase(set: readonly OrderSetLine[], total: number, priceOf: (l: OrderSetLine) => number): { limit: number; bounded: boolean } {
+  let smallest = Number.POSITIVE_INFINITY;
+  for (const l of set) smallest = Math.min(smallest, l.headroom / priceOf(l));
+  const nearBound = smallest * NEAR_FACTOR;
+  const near = set.filter((l) => l.headroom / priceOf(l) <= nearBound);
+  if (near.length > ORDER_SEARCH_EXACT_LINES && new Set(near.map((l) => `${l.headroom}/${priceOf(l)}`)).size > ORDER_SEARCH_EXACT_LINES) {
+    return { limit: Math.floor(total * smallest * SAFE_BELOW), bounded: true };
+  }
+  let limit = Number.POSITIVE_INFINITY;
+  for (const l of set) limit = Math.min(limit, Math.floor((l.headroom * total) / priceOf(l)));
+  return { limit, bounded: false };
+}
+
+/**
+ * D_max of a set of lines (the order search's limit):
+ *   min(limit on the after-product base at S = Σ a_i, limit on the before-product base at S0 = Σ s_i),
+ * each as limitOnBase: exact over its near-minimum lines, or its conservative
+ * bound when more than ORDER_SEARCH_EXACT_LINES distinct ones are near.
+ * `bounded`: a bound was taken.
+ */
+export function orderSetLimit(set: readonly OrderSetLine[], base: number, baseBefore: number): { limit: number; bounded: boolean } {
+  const byAfter = limitOnBase(set, base, (l) => l.after);
+  const byBefore = limitOnBase(set, baseBefore, (l) => l.before);
+  return { limit: Math.min(byAfter.limit, byBefore.limit), bounded: byAfter.bounded || byBefore.bounded };
+}
+
+/**
  * The best prefix set of ONE ordering: the lines sorted by `keys` descending
  * (ties: cart order); a candidate is every prefix that ends where the key
  * changes (lines with an equal key enter together), and the full set. For each:
  *   S = Σ a_i, S0 = Σ s_i,
- *   D_max = min over i of min(floor((h_i × S) / a_i), floor((h_i × S0) / s_i)),
+ *   D_max = orderSetLimit (min over i of min(floor((h_i × S) / a_i), floor((h_i × S0) / s_i)),
+ *           or a bound below it when many lines tie for the minimum),
  *   D = min(wantedAt(S), D_max);
  * the largest D wins, a tie goes to the larger set.
  */
-function bestPrefixSet(lines: readonly OrderSetLine[], keys: readonly number[], wantedAt: (base: number) => number): OrderSetResult {
+function bestPrefixSet(
+  lines: readonly OrderSetLine[],
+  keys: readonly number[],
+  wantedAt: (base: number) => number,
+): OrderSetResult & { bounded: boolean } {
   const order = lines.map((_, i) => i).sort((x, y) => (keys[x] !== keys[y] ? keys[y] - keys[x] : x - y));
   let best = NO_SET;
+  let bounded = false;
   let base = 0;
   let baseBefore = 0;
   for (let j = 0; j < order.length; j++) {
     base += lines[order[j]].after;
     baseBefore += lines[order[j]].before;
     if (j + 1 < order.length && keys[order[j + 1]] === keys[order[j]]) continue;
-    let limit = Number.POSITIVE_INFINITY;
-    for (let i = 0; i <= j; i++) {
-      const l = lines[order[i]];
-      const byAfter = Math.floor((l.headroom * base) / l.after);
-      const byBefore = Math.floor((l.headroom * baseBefore) / l.before);
-      limit = Math.min(limit, byAfter, byBefore);
-    }
+    const set = order.slice(0, j + 1);
+    const { limit, bounded: bound } = orderSetLimit(
+      set.map((i) => lines[i]),
+      base,
+      baseBefore,
+    );
+    bounded ||= bound;
     const wanted = wantedAt(base);
     const amount = Math.min(wanted, limit);
-    if (amount >= best.amount) best = { members: order.slice(0, j + 1), amount, base, wanted };
+    if (amount >= best.amount) best = { members: set, amount, base, wanted };
   }
-  return { ...best, members: [...best.members].sort((x, y) => x - y) };
+  return { ...best, members: [...best.members].sort((x, y) => x - y), bounded };
 }
 
 /**
@@ -164,16 +240,17 @@ function bestPrefixSet(lines: readonly OrderSetLine[], keys: readonly number[], 
  * after the product discount) — each searched as bestPrefixSet does. The better
  * D of the two wins; a tie goes to the larger set; a tie again to the h/s one.
  * `lines` in cart order (the members index into it); every a_i > 0.
+ * `bounded`: some candidate set's limit was the conservative bound (orderSetLimit).
  */
 export function searchOrderSets(
   lines: readonly OrderSetLine[],
   wantedAt: (base: number) => number,
-): { byBefore: OrderSetResult; byAfter: OrderSetResult; best: OrderSetResult } {
-  const byBefore = bestPrefixSet(lines, lines.map((l) => l.headroom / l.before), wantedAt);
-  const byAfter = bestPrefixSet(lines, lines.map((l) => l.headroom / l.after), wantedAt);
+): { byBefore: OrderSetResult; byAfter: OrderSetResult; best: OrderSetResult; bounded: boolean } {
+  const { bounded: boundedBefore, ...byBefore } = bestPrefixSet(lines, lines.map((l) => l.headroom / l.before), wantedAt);
+  const { bounded: boundedAfter, ...byAfter } = bestPrefixSet(lines, lines.map((l) => l.headroom / l.after), wantedAt);
   const afterWins =
     byAfter.amount > byBefore.amount || (byAfter.amount === byBefore.amount && byAfter.members.length > byBefore.members.length);
-  return { byBefore, byAfter, best: afterWins ? byAfter : byBefore };
+  return { byBefore, byAfter, best: afterWins ? byAfter : byBefore, bounded: boundedBefore || boundedAfter };
 }
 
 /**
@@ -183,7 +260,9 @@ export function searchOrderSets(
  * line keeping 1 minor unit for rounding. For a set I of lines:
  *   S_I = Σ a_i, S0_I = Σ s_i,
  *   D_max(I) = min over i ∈ I of min(floor(h_i × S_I / a_i), floor(h_i × S0_I / s_i))
- *   (each float expression evaluated exactly in that order),
+ *   (each float expression evaluated exactly in that order; when more than
+ *   ORDER_SEARCH_EXACT_LINES distinct lines tie for a base's minimum rate, a
+ *   bound that is never above it: orderSetLimit),
  *   wanted(I) = the picked stack's components recomputed at base S_I
  *   (Σ orderAmount(rule, S_I), capped at S_I), D(I) = min(wanted(I), D_max(I)).
  * Candidate sets: searchOrderSets over the lines with a_i > 0 (both orderings,

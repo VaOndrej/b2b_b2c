@@ -1,0 +1,518 @@
+{
+  "scenario": "17 lines of k × 100 Kč (k = 1–17) whose cost 90k Kč − 1 haléř, with a 0 % minimum margin, leaves each exactly 10 % (h = 10k Kč), so all 17 rates tie; order 30 %. The order search evaluates a set's limit line by line only while at most 16 distinct lines tie for the minimum rate; with more it takes a bound never above the exact value (fail closed): floor((15 300 Kč × 0,1) × (1 − 2⁻⁴⁴)) = 1 529,99 Kč, one haléř below the exact 1 530 Kč. 16 such lines get the exact 1 360 Kč (unit test the_order_search_takes_a_bound_…).",
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "triggeringDiscountCode": null,
+      "enteredDiscountCodes": [],
+      "discount": {
+        "discountClasses": [
+          "PRODUCT",
+          "ORDER",
+          "SHIPPING"
+        ],
+        "vars": {
+          "jsonValue": {
+            "role": "automatic",
+            "campaignId": null,
+            "campaignStart": "1970-01-01T00:00:00",
+            "campaignEnd": "1970-01-01T00:00:00",
+            "varsVersion": null
+          }
+        }
+      },
+      "shop": {
+        "config": {
+          "jsonValue": {
+            "schemaVersion": 1,
+            "campaignId": null,
+            "campaignVarsVersion": null,
+            "engine": {
+              "combination": {
+                "outletWithAnything": false,
+                "productWithProduct": "best",
+                "productWithOrder": true,
+                "productWithShipping": true,
+                "orderWithShipping": true
+              }
+            },
+            "marketCountries": {},
+            "modules": {
+              "codes": {
+                "rules": [
+                  {
+                    "id": "obj",
+                    "enabled": true,
+                    "name": "Objednávka 30 %",
+                    "method": "automatic",
+                    "value": {
+                      "kind": "percentage",
+                      "percent": 30
+                    },
+                    "target": {
+                      "kind": "order"
+                    }
+                  }
+                ]
+              },
+              "tiers": {
+                "sets": []
+              },
+              "rewards": {
+                "gifts": [],
+                "countOtherDiscounts": false
+              },
+              "margin": {
+                "enabled": true,
+                "min": 0,
+                "max": 100,
+                "cur": "CZK"
+              }
+            },
+            "campaigns": []
+          }
+        },
+        "localTime": {
+          "date": "2026-10-01",
+          "campaignActive": false
+        }
+      },
+      "localization": {
+        "country": {
+          "isoCode": "CZ"
+        },
+        "language": {
+          "isoCode": "CS"
+        }
+      },
+      "presentmentCurrencyRate": "1.0",
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "currencyCode": "CZK"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/1",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "100.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1001",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 89.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/2",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "200.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1002",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 179.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/3",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "300.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1003",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 269.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/4",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "400.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1004",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 359.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/5",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "500.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1005",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 449.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/6",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "600.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1006",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 539.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/7",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "700.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1007",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 629.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/8",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "800.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1008",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 719.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/9",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "900.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1009",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 809.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/10",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1000.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1010",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 899.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/11",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1100.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1011",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 989.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/12",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1200.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1012",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 1079.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/13",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1300.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1013",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 1169.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/14",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1400.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1014",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 1259.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/15",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1500.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1015",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 1349.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/16",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1600.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1016",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 1439.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          },
+          {
+            "id": "gid://shopify/CartLine/17",
+            "quantity": 1,
+            "cost": {
+              "amountPerQuantity": {
+                "amount": "1700.0"
+              }
+            },
+            "gift": null,
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/1017",
+              "wonVariant": {
+                "jsonValue": {
+                  "cost": 1529.99,
+                  "cur": "CZK"
+                }
+              },
+              "product": {
+                "wonProduct": null
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "orderDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Objednávka 30 %",
+                "targets": [
+                  {
+                    "orderSubtotal": {
+                      "excludedCartLineIds": []
+                    }
+                  }
+                ],
+                "value": {
+                  "fixedAmount": {
+                    "amount": "1529.99"
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "FIRST"
+          }
+        }
+      ]
+    }
+  }
+}

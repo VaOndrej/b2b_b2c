@@ -27,7 +27,7 @@ use super::hash::code_hash;
 use super::js;
 use super::margin::{resolve_margin, CostContext, FloorRule, MarginPayload, MarginRef};
 use super::money::mul_sat;
-use super::order_search::{search_order_sets, OrderSetLine};
+use super::order_search::{order_set_limit, search_order_sets, OrderSetLine, EXACT_LINES, SAFE_BELOW};
 
 // --- Plan shape -------------------------------------------------------------------------------
 
@@ -1078,24 +1078,37 @@ struct OrderLine {
 ///   a larger D than wanted(P), and P is the larger set on a tie; a set beyond P
 ///   has D = 0.
 /// So when D(P) = wanted(P) > 0, P wins both orderings (the h/s one on the tie):
-/// exactly what the search returns, in O(lines) and without sorting. D(P) uses
-/// the TS expressions over every line of P. Returns (D, S, wanted); none → search.
+/// exactly what the search returns, in O(lines) and without sorting. D_max(P) is
+/// the search's own (`order_set_limit`: exact, or its bound when more than 16
+/// distinct lines tie for a base's minimum). Returns (D, S, wanted); none → search.
 fn all_that_can_give(giving: &[OrderSetLine], wanted_at: &dyn Fn(i64) -> i64) -> Option<(i64, i64, i64)> {
     if giving.is_empty() {
         return None;
     }
     let base = giving.iter().map(|l| l.after).fold(0i64, i64::saturating_add);
-    let base_before = giving.iter().map(|l| l.before).fold(0i64, i64::saturating_add);
     let wanted = wanted_at(base);
     if wanted <= 0 {
         return None;
     }
+    // D_max(P) is either the minimum of every line's own value or, when more than
+    // 16 distinct lines tie for a base's minimum rate m, the bound
+    // floor((X × m) × SAFE_BELOW), never above that minimum. So: every line's own
+    // value first (stopping at the first that cannot carry its share); if both
+    // bases' bounds reach `wanted` too, D_max(P) does whichever it is; only
+    // otherwise does `order_set_limit` decide which it is.
+    let base_before = giving.iter().map(|l| l.before).fold(0i64, i64::saturating_add);
     let (s, s0, w) = (base as f64, base_before as f64, wanted as f64);
-    let fits = giving.iter().all(|l| {
-        let h = l.headroom as f64;
-        ((h * s) / l.after as f64).floor() >= w && ((h * s0) / l.before as f64).floor() >= w
-    });
-    fits.then_some((wanted, base, wanted))
+    let (mut least_after, mut least_before) = (f64::INFINITY, f64::INFINITY);
+    for l in giving {
+        let (h, a, b) = (l.headroom as f64, l.after as f64, l.before as f64);
+        if ((h * s) / a).floor() < w || ((h * s0) / b).floor() < w {
+            return None;
+        }
+        least_after = least_after.min(h / a);
+        least_before = least_before.min(h / b);
+    }
+    let bounds_fit = ((s * least_after) * SAFE_BELOW).floor() >= w && ((s0 * least_before) * SAFE_BELOW).floor() >= w;
+    (bounds_fit || giving.len() <= EXACT_LINES || order_set_limit(giving) >= w).then_some((wanted, base, wanted))
 }
 
 /// `protectOrder` (plan-margin.ts): the order discount made safe for BOTH
@@ -1109,7 +1122,8 @@ fn all_that_can_give(giving: &[OrderSetLine], wanted_at: &dyn Fn(i64) -> i64) ->
 /// by k = h_i / a_i, each descending (ties: cart order), each prefix that ends
 /// where k changes. The largest D wins, a tie the larger set, a tie again the
 /// h/s ordering's; lines outside it are margin-excluded (`order_left`). Every
-/// float expression is the TS one, in its order (D_max via `NearMin`).
+/// float expression is the TS one, in its order (D_max via `NearMin`: exact over
+/// at most 16 lines tied for a base's minimum, a bound never above it beyond).
 /// `after_products`: a_i is the line after its product discount (else its
 /// subtotal: the exclusive order-only scenario).
 fn protect_order<'a>(

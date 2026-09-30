@@ -6,12 +6,18 @@
 // (before them) and h_i what line i can give:
 //   D_max(I) = min over I of min(floor((h_i × S) / a_i), floor((h_i × S0) / s_i)),
 //   D(I)     = min(wanted(S), D_max(I)).
+// On each base, D_max's part is exact while at most `EXACT_LINES` (16) distinct
+// lines have a rate within 2⁻⁴⁸ of the set's smallest; with more it is the
+// conservative bound floor((total × m) × (1 − 2⁻⁴⁴)), provably never above the
+// exact minimum (plan-margin.ts `limitOnBase`: fail closed, the discount can only
+// come out smaller). That bounds a prefix's work to O(16) whatever the cart.
 // Two orderings, k = h/s and k = h/a, each descending with ties in cart order;
 // in each, every prefix that ends where k changes is a candidate, the largest D
 // wins and a tie goes to the larger set. Across the two the larger D wins, a tie
 // the larger set, a tie again the h/s one. Every float expression is the TS one,
 // in its order; two ways of doing less work give the TS answer exactly:
-//   - `NearMin`: D_max is taken only over the lines that can hold the minimum;
+//   - `NearMin`: a base's minimum is taken only over the lines that can hold it,
+//     at most 16 of them (more → the bound, as TS decides it);
 //   - the h/a ordering is not searched when it is the h/s sequence with the same
 //     key groups (always so without product discounts): same prefixes, same set.
 // Neither depends on `wanted`, which may be any function here (the unit tests
@@ -62,44 +68,130 @@ impl OrderSearch {
     }
 }
 
-/// Relative slack of `NearMin`: far above the float error of the expressions it
-/// compares (a few 2⁻⁵³), far below any real difference of rates.
-const NEAR: f64 = 1e-9;
+/// `ORDER_SEARCH_EXACT_LINES` (plan-margin.ts): on a base, a set's limit is
+/// evaluated line by line over at most this many distinct near-minimum lines.
+pub const EXACT_LINES: usize = 16;
+/// 1 + `ORDER_SEARCH_NEAR` = 1 + 2⁻⁴⁸ (exact in f64, the TS `1 + 2 ** -48`).
+pub const NEAR_FACTOR: f64 = 1.0 + 1.0 / 281_474_976_710_656.0;
+/// The bound's downward safety, 1 − 2⁻⁴⁴ (exact in f64, the TS `1 - 2 ** -44`).
+pub const SAFE_BELOW: f64 = 1.0 - 1.0 / 17_592_186_044_416.0;
+/// How many distinct near lines `NearMin` keeps: one more than it may evaluate.
+const KEEP: usize = EXACT_LINES + 1;
 
-/// The lines of a prefix that can hold the minimum of one base's limit.
+/// The near-minimum lines of one base over a growing set (plan-margin.ts
+/// `limitOnBase`): the lines whose rate is ≤ fl(m × NEAR_FACTOR), m the set's
+/// smallest rate, one per distinct (h, price on the base) — equal lines have
+/// equal values.
 ///
-/// A line's limit on the after-product base is floor(fl(fl(h × S) / a)); for a
-/// fixed S that is S × h/a up to a relative error of 2⁻⁵² (two roundings), and
-/// floor is monotone. So a line whose rate h/a is more than (1 + NEAR) × the
-/// prefix's smallest rate computes a value strictly above the smallest line's
-/// value and can never be the minimum: min over the prefix = min over the lines
-/// within (1 + NEAR) of the smallest rate — the same number the TS engine gets
-/// by evaluating every line, in O(lines) instead of O(lines²) overall. The same
-/// holds for h/s on the before-product base. The smallest rate only falls as a
-/// prefix grows, so a line out once stays out.
-#[derive(Default)]
+/// Why the minimum is among them: a line's value on a base is
+/// floor(fl(fl(h × X) / x)), within a factor (1 ± u)² of X × h/x (u = 2⁻⁵³),
+/// and its rate fl(h/x) is within (1 ± u) of h/x. A line whose rate is above
+/// fl(m × NEAR_FACTOR) ≥ m × (1 + 2⁻⁴⁸)(1 − u) so computes a value at least that
+/// of the line with rate m (2⁻⁴⁸ = 32 u covers the ~7 u of roundings), and floor
+/// keeps the order: the minimum over the near lines is the minimum over the set,
+/// which TS evaluates line by line.
+///
+/// It keeps at most KEEP = EXACT_LINES + 1 of them, the lowest-rate ones, so a
+/// line costs O(KEEP) whatever the cart. Invariant: a near line that is not kept
+/// (nor equal to a kept one) exists only while KEEP are kept, and its rate is ≥
+/// every kept one's. So at most EXACT_LINES kept means they are all of them
+/// (exact), and KEEP kept means there are more than EXACT_LINES (the bound). The
+/// smallest rate only falls as the set grows, so a line out once stays out.
 struct NearMin {
     smallest: f64,
-    /// Positions in the searched lines.
-    members: Vec<usize>,
+    /// fl(smallest × NEAR_FACTOR).
+    bound: f64,
+    kept: [u32; KEEP],
+    len: usize,
 }
 
 impl NearMin {
-    fn add(&mut self, at: usize, rates: &[f64]) {
-        let rate = rates[at];
-        if self.members.is_empty() || rate < self.smallest {
-            let bound = rate * (1.0 + NEAR);
-            // Every member is at or above the old smallest rate.
-            if self.smallest > bound {
-                self.members.clear();
-            } else {
-                self.members.retain(|&m| rates[m] <= bound);
+    fn new() -> Self {
+        NearMin { smallest: f64::INFINITY, bound: f64::INFINITY, kept: [0; KEEP], len: 0 }
+    }
+
+    /// The kept slot with the highest rate.
+    fn highest(&self, rates: &[f64]) -> usize {
+        let mut slot = 0;
+        for k in 1..self.len {
+            if rates[self.kept[k] as usize] > rates[self.kept[slot] as usize] {
+                slot = k;
             }
-            self.smallest = rate;
-            self.members.push(at);
-        } else if rate <= self.smallest * (1.0 + NEAR) {
-            self.members.push(at);
         }
+        slot
+    }
+
+    /// Line `at` joins the set (`rates`, `h`, `x`: the base's rates, headrooms and prices).
+    fn add(&mut self, at: usize, rates: &[f64], h: &[f64], x: &[f64]) {
+        let rate = rates[at];
+        if rate < self.smallest {
+            // The new minimum (no kept line equals it: an equal line has the same rate).
+            let bound = rate * NEAR_FACTOR;
+            let far = self.smallest > bound;
+            self.smallest = rate;
+            self.bound = bound;
+            if far {
+                // Every line so far has a rate ≥ the old minimum, above the new bound.
+                self.kept[0] = at as u32;
+                self.len = 1;
+                return;
+            }
+            let full = self.len == KEEP;
+            let mut n = 0;
+            for k in 0..self.len {
+                let m = self.kept[k];
+                if rates[m as usize] <= self.bound {
+                    self.kept[n] = m;
+                    n += 1;
+                }
+            }
+            if full && n == KEEP {
+                // Every kept line is still near (and lines not kept may be): more
+                // than EXACT_LINES either way. The new line replaces the highest.
+                let slot = self.highest(rates);
+                self.kept[slot] = at as u32;
+            } else {
+                // A kept line fell out, or none was left out: either way the lines
+                // not kept are out too, and the kept ones with the new one are all.
+                self.kept[n] = at as u32;
+                n += 1;
+            }
+            self.len = n;
+        } else if rate <= self.bound {
+            for k in 0..self.len {
+                let m = self.kept[k] as usize;
+                if h[m] == h[at] && x[m] == x[at] {
+                    return; // equal to a kept line: the same value
+                }
+            }
+            if self.len < KEEP {
+                self.kept[self.len] = at as u32;
+                self.len += 1;
+            } else {
+                let slot = self.highest(rates);
+                if rate < rates[self.kept[slot] as usize] {
+                    self.kept[slot] = at as u32;
+                }
+            }
+        }
+    }
+
+    /// The base's limit at `total` (S or S0): the minimum over the near lines,
+    /// or with more than EXACT_LINES of them the bound floor((total × m) × SAFE_BELOW),
+    /// never above that minimum (proof: plan-margin.ts `limitOnBase`).
+    fn limit(&self, total: f64, h: &[f64], x: &[f64]) -> f64 {
+        if self.len > EXACT_LINES {
+            return ((total * self.smallest) * SAFE_BELOW).floor();
+        }
+        let mut limit = f64::INFINITY;
+        for &m in &self.kept[..self.len] {
+            let m = m as usize;
+            let value = ((h[m] * total) / x[m]).floor();
+            if value < limit {
+                limit = value;
+            }
+        }
+        limit
     }
 }
 
@@ -123,33 +215,43 @@ impl Prepared {
     }
 }
 
+/// D_max of a whole set (`orderSetLimit`): both bases' limits (plan.rs
+/// `all_that_can_give` checks the set of every line that can give with it).
+pub fn order_set_limit(lines: &[OrderSetLine]) -> f64 {
+    let p = Prepared::new(lines);
+    let (mut near_after, mut near_before) = (NearMin::new(), NearMin::new());
+    let (mut base, mut base_before) = (0i64, 0i64);
+    for (at, line) in lines.iter().enumerate() {
+        base = base.saturating_add(line.after);
+        base_before = base_before.saturating_add(line.before);
+        near_after.add(at, &p.per_after, &p.headroom, &p.after);
+        near_before.add(at, &p.per_before, &p.headroom, &p.before);
+    }
+    let by_after = near_after.limit(base as f64, &p.headroom, &p.after);
+    let by_before = near_before.limit(base_before as f64, &p.headroom, &p.before);
+    if by_before < by_after {
+        by_before
+    } else {
+        by_after
+    }
+}
+
 /// The best prefix of one ordering (`bestPrefixSet`): (its size, D, S, wanted).
 fn best_prefix(lines: &[OrderSetLine], p: &Prepared, order: &[usize], keys: &[f64], wanted_at: &dyn Fn(i64) -> i64) -> (usize, f64, i64, i64) {
     let mut best = (0usize, 0.0f64, 0i64, 0i64);
     let (mut base, mut base_before) = (0i64, 0i64);
-    let (mut near_after, mut near_before) = (NearMin::default(), NearMin::default());
+    let (mut near_after, mut near_before) = (NearMin::new(), NearMin::new());
     for (j, &at) in order.iter().enumerate() {
         base = base.saturating_add(lines[at].after);
         base_before = base_before.saturating_add(lines[at].before);
-        near_after.add(at, &p.per_after);
-        near_before.add(at, &p.per_before);
+        near_after.add(at, &p.per_after, &p.headroom, &p.after);
+        near_before.add(at, &p.per_before, &p.headroom, &p.before);
         if order.get(j + 1).is_some_and(|&next| keys[next] == keys[at]) {
             continue;
         }
-        let (s, s0) = (base as f64, base_before as f64);
-        let mut limit = f64::INFINITY;
-        for &m in &near_after.members {
-            let by_after = ((p.headroom[m] * s) / p.after[m]).floor();
-            if by_after < limit {
-                limit = by_after;
-            }
-        }
-        for &m in &near_before.members {
-            let by_before = ((p.headroom[m] * s0) / p.before[m]).floor();
-            if by_before < limit {
-                limit = by_before;
-            }
-        }
+        let by_after = near_after.limit(base as f64, &p.headroom, &p.after);
+        let by_before = near_before.limit(base_before as f64, &p.headroom, &p.before);
+        let limit = if by_before < by_after { by_before } else { by_after };
         // D = min(wanted, limit) ≤ limit: a prefix whose limit is below the best D
         // can neither win nor tie, so its wanted amount is not needed.
         if limit < best.1 {

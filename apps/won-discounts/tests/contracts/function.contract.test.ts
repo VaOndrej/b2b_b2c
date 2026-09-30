@@ -36,7 +36,7 @@ import { acquireBuildLock } from "../lib/build-lock.ts";
 //   - the instruction budget (Shopify: 11 M instructions for carts up to 200
 //     lines, shopify.dev/docs/api/functions/2026-04 "Resource limits", scaled
 //     with the line count above that): ≥ 10 % headroom for the budget carts
-//     filled to Shopify's input limit (the Pro worst cases), ≥ 30 % for every
+//     filled to Shopify's input limit (the Pro and order-search worst cases), ≥ 30 % for every
 //     other fixture, the other budget carts included — each budget cart within
 //     the limits a real input has: input ≤ 128 kB of MessagePack (what Shopify
 //     counts, tests/input-size.js), scaled with the lines; shared config ≤ 9 000 B.
@@ -61,10 +61,13 @@ const INSTRUCTION_LIMIT = 11_000_000;
 const INSTRUCTION_BUDGET = (INSTRUCTION_LIMIT / 10) * 7;
 /**
  * The budget carts filled to Shopify's input limit (`AT_INPUT_LIMIT`: the Pro
- * worst cases, measured with the ids the checkout sends — app rule ids,
- * Shopify's cart line ids) keep ≥ 10 % headroom: 9.9 M up to 200 lines. With
- * the Pro stack cap (plan.ts MAX_STACK_CANDIDATES) every valid shape stays under
- * 90 % (MVP 2 audit round 3; README "Instruction budget").
+ * and order-search worst cases, measured with the ids the checkout sends — app
+ * rule ids, Shopify's cart line ids) keep ≥ 10 % headroom: 9.9 M up to 200
+ * lines. This gates the realistic worst cases, not every shape: with the
+ * searches bounded (the Pro stack cap, the order search's 16 exact lines) no
+ * shape the audits found reaches the limit with the data the app writes (max
+ * 93.7 %, 12 rule refs on every line), and legacy data with 16–30 marginRefs a
+ * product reaches 103–105 % (README "Instruction budget", MVP 2 audit round 4).
  */
 const WORST_CASE_BUDGET = (INSTRUCTION_LIMIT / 100) * 90;
 /** The shared config's budget (C7), bytes of its JSON. */
@@ -89,7 +92,9 @@ function worstCaseBudget(lines: number) {
  * MVP 1 carts, the margin carts (fast path, full order search, most lines
  * capped with an over-budget output), the 500-line capped cart, and the Pro
  * worst cases at Shopify's input limit (200 and 500 lines, with 4 marginRefs,
- * with 64-character rule ids, and the Pro mesh of distinct 12-of-18 subsets).
+ * with 64-character rule ids, and the Pro mesh of distinct 12-of-18 subsets),
+ * and the margin order search's worst case there (200 and 500 lines whose rates
+ * all lie within 10⁻¹¹ of each other).
  */
 const BUDGET_PREFIX = /-\d+-lines-budget\.json$/;
 /**
@@ -98,7 +103,7 @@ const BUDGET_PREFIX = /-\d+-lines-budget\.json$/;
  * 55–75 kB of input, 44–58 % of the limit — keeps the ordinary 70 % gate, so the
  * 90 % allowance never hides a regression on them.
  */
-const AT_INPUT_LIMIT = /^lines-margin-pro-/;
+const AT_INPUT_LIMIT = /^lines-margin-(pro|near-min)-/;
 /** The instruction gate of a budget cart. */
 function budgetOf(file: string, lines: number) {
   return AT_INPUT_LIMIT.test(file) ? worstCaseBudget(lines) : instructionBudget(lines);
@@ -357,7 +362,8 @@ describe("shopify app function run", { concurrency: 6 }, () => {
   // with an over-budget output, 500 lines; the Pro worst cases: a Pro stack, a
   // cost price, 2 (or 4) collections with a margin setting and variant-level
   // refs on every line, or a Pro mesh of 18 rules with a different 12 on every
-  // line, the input filled to Shopify's limit), with the ids the checkout
+  // line; the order search over 200 or 500 lines of nearly equal rates; the
+  // input filled to Shopify's limit), with the ids the checkout
   // sends: the JS function needed ~96 M instructions on the MVP 1 cart
   // (task-2-report.md of MVP 1); the Rust port must stay ≤ 90 % of Shopify's
   // (line-scaled) limit on the carts at the input limit, ≤ 70 % on the others.

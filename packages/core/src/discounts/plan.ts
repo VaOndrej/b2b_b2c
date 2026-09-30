@@ -58,8 +58,10 @@
 // Performance: O(lines × rules-per-line) + one sort per line; the Pro stacking
 // search only runs on lines that actually have combinable candidates, over at
 // most MAX_STACK_CANDIDATES of them. Margin protection of the order discount is
-// O(lines²) at worst (one pass over each candidate prefix: 200 lines ≈ 20 000
-// steps).
+// O(lines²) at worst here (one pass over each candidate prefix: 200 lines ≈
+// 20 000 steps); its limit is exact over at most ORDER_SEARCH_EXACT_LINES (16)
+// lines tied for the minimum and a safe bound beyond (plan-margin.ts
+// orderSetLimit), which is what lets the Rust function do O(lines × 16).
 
 import { type CartPlanInput, type NormalizedCart, type NormalizedLine, normalizeCart, type PlanLocale } from "./cart.ts";
 import { codeHash } from "./code-hash.ts";
