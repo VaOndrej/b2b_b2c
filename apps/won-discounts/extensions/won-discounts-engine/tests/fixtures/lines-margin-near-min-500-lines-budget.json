@@ -278,7 +278,8 @@
                       "37c26c13"
                     ]
                   }
-                ]
+                ],
+                "maxCodeLength": 8
               },
               "tiers": {
                 "sets": []

@@ -408,7 +408,7 @@ fn only_the_first_25_entered_codes_count() {
     entered.extend(more.iter().map(String::as_str));
     let lines = [line("l1", 1, 10000, &["a", "b", "c", "d", "e"])];
     let plan = plan_cart(cart(&lines, &entered), Some(&c));
-    let codes = |id: &str| plan.entered_by_rule[plan.rule_index(id).unwrap()].clone();
+    let codes = |id: &str| plan.entered_codes(plan.rule_index(id).unwrap());
     assert_eq!(codes("a"), vec!["ALPHA"]);
     assert_eq!(codes("b"), vec!["STRASSE", "BETA"]);
     assert_eq!(codes("c"), vec!["GAMMA"]);
@@ -422,7 +422,7 @@ fn only_the_first_25_entered_codes_count() {
     // One entry fewer before it: DELTA is the 25th and counts.
     let fewer: Vec<&str> = entered.iter().copied().filter(|c| *c != foreign[18].as_str()).collect();
     let plan = plan_cart(cart(&lines, &fewer), Some(&c));
-    assert_eq!(plan.entered_by_rule[plan.rule_index("e").unwrap()], vec!["DELTA"]);
+    assert_eq!(plan.entered_codes(plan.rule_index("e").unwrap()), vec!["DELTA"]);
     assert_eq!(product_of(&plan, "l1").unwrap().0, "e");
     assert_eq!(lines_of(&emit_for_node(&plan, &NodeRole::Code("e".into()), Some("delta"))), vec!["l1"]);
     // The cap counts entries: 30 repeats of one code before DELTA leave it out too.
@@ -430,6 +430,50 @@ fn only_the_first_25_entered_codes_count() {
     repeats.push("DELTA");
     let plan = plan_cart(cart(&lines, &repeats), Some(&c));
     assert!(plan.entered_by_rule[plan.rule_index("e").unwrap()].is_empty());
+}
+
+#[test]
+fn an_entered_code_longer_than_every_won_code_is_never_matched_but_counts() {
+    assert_eq!(super::hash::MAX_CODE_LENGTH, 64);
+    let hash = |code: &str| format!(r#""{}""#, super::hash::code_hash(code));
+    // The shop's codes are WELCOME15 (9 characters) and STRASSE (7); a hand-made
+    // payload also lists the hash of WELCOME150 (10), longer than its maxCodeLength.
+    let rules_json = [code("w", 10.0, &hash("WELCOME15"), ""), code("l", 20.0, &hash("WELCOME150"), ""), code("s", 15.0, &hash("STRASSE"), "")].join(",");
+    let with = |len: &str| config(&format!(r#"{{"modules": {{"codes": {{"rules": [{rules_json}]{len}}}}}}}"#));
+    let c = with(r#", "maxCodeLength": 9"#);
+    let lines = [line("l1", 1, 10000, &["w", "l", "s"])];
+    // Trimmed, WELCOME15 is 9 long however padded; "straße" is 6 entered (7 upper-cased): both count.
+    let entered = ["\u{3000} welcome15\u{A0}", "straße", "welcome150"];
+    let plan = plan_cart(cart(&lines, &entered), Some(&c));
+    let codes = |plan: &CartPlan, id: &str| plan.entered_codes(plan.rule_index(id).unwrap());
+    assert_eq!([codes(&plan, "w"), codes(&plan, "s"), codes(&plan, "l")], [vec!["WELCOME15"], vec!["STRASSE"], vec![]]);
+    assert_eq!(state(&plan, "l"), Some(RuleState::CodeNotEntered));
+    assert_eq!(product_of(&plan, "l1").unwrap().0, "s");
+    // WELCOME150's node, triggered by it, emits nothing; STRASSE's emits its line.
+    assert!(emit_for_node(&plan, &NodeRole::Code("l".into()), Some("welcome150")).product.is_empty());
+    assert_eq!(lines_of(&emit_for_node(&plan, &NodeRole::Code("s".into()), Some("STRASSE"))), vec!["l1"]);
+    // Without maxCodeLength (a payload from before), or with junk, it reads as 64: WELCOME150 counts.
+    for len in ["", r#", "maxCodeLength": "9""#, r#", "maxCodeLength": 9.5"#, r#", "maxCodeLength": -1"#, r#", "maxCodeLength": 300"#] {
+        let c = with(len);
+        let plan = plan_cart(cart(&lines, &entered), Some(&c));
+        assert_eq!(codes(&plan, "l"), vec!["WELCOME150"], "{len}");
+        assert_eq!(product_of(&plan, "l1").unwrap().0, "l", "{len}");
+    }
+    // 0: no entered code can be one.
+    let none = with(r#", "maxCodeLength": 0"#);
+    let plan = plan_cart(cart(&lines, &entered), Some(&none));
+    assert!(["w", "l", "s"].iter().all(|id| codes(&plan, id).is_empty()));
+    // A code left out, and an empty one, still count as entries: after 25 of them the 26th is past the cap.
+    let long = "X".repeat(100);
+    for filler in [long.as_str(), "", "   "] {
+        let mut many = vec![filler; 25];
+        many.push("STRASSE");
+        let plan = plan_cart(cart(&lines, &many), Some(&c));
+        assert!(codes(&plan, "s").is_empty(), "{filler:?}");
+        many.remove(0);
+        let plan = plan_cart(cart(&lines, &many), Some(&c));
+        assert_eq!(codes(&plan, "s"), vec!["STRASSE"], "{filler:?}");
+    }
 }
 
 #[test]

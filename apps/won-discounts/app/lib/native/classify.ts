@@ -37,6 +37,12 @@ export function classifyNative(native: NativeDiscount): NotMovableReason | null 
     return { code: "unsupported_value" };
   }
   if (native.method === "code" && native.codes.length === 0) return { code: "no_codes" };
+  // A Won code has at most CONFIG_LIMITS.codeLength (64) characters, trimmed and
+  // upper-cased (audit round 6); Shopify allows 255. A discount with a longer
+  // code stays in Shopify: moving it without that code would stop the code working.
+  if (native.method === "code" && native.codes.some((code) => code.trim().toUpperCase().length > CONFIG_LIMITS.codeLength)) {
+    return { code: "code_too_long", max: CONFIG_LIMITS.codeLength };
+  }
   if (native.buyers !== "all") return { code: "specific_buyers" };
   if (!native.appliesOnOneTimePurchase) return { code: "subscription_only" };
   if (

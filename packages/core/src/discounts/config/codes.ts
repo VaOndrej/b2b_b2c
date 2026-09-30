@@ -140,7 +140,8 @@ function sanitizePriority(v: unknown, issues: ConfigIssue[], path: string): numb
 
 /**
  * Discount codes are case-insensitive in Shopify, so they are stored trimmed and
- * upper-cased, once each, and never longer than Shopify accepts (audit P3-10).
+ * upper-cased, once each, and never longer than CONFIG_LIMITS.codeLength (64,
+ * audit round 6; Shopify itself accepts 255, audit P3-10).
  */
 function sanitizeCodes(v: unknown[], issues: ConfigIssue[], path: string): string[] {
   const out: string[] = [];

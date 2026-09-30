@@ -133,6 +133,14 @@ export function notMovableReasonText(reason: NotMovableReason, locale: NativeLoc
             },
             locale,
           );
+    case "code_too_long":
+      return pick(
+        {
+          cs: `Má kód delší než ${reason.max} znaků. Tak dlouhý kód Won nepodporuje.`,
+          en: `It has a code longer than ${reason.max} characters. Won does not support codes that long.`,
+        },
+        locale,
+      );
     case "no_codes":
       return pick(
         { cs: "Sleva nemá žádný kód. Není co přesouvat.", en: "The discount has no code. There is nothing to move." },

@@ -45,6 +45,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { normalizeCart } from "@won/core/discounts/cart";
 import { roundingTiePossible } from "@won/core/discounts/function-output";
 import { costMinorUnits, MAX_MARGIN_REFS, marginFloorUnit, readMarginPayload, resolveProductMargin } from "@won/core/discounts/margin";
+import { readMaxCodeLength } from "@won/core/discounts/plan";
 import { orderSetLimit, searchOrderSets } from "@won/core/discounts/plan-margin";
 
 import {
@@ -154,7 +155,7 @@ const vid = (n) => `gid://shopify/ProductVariant/${n}`;
 
 /**
  * @param {number} seed
- * @param {boolean | "mesh" | "tied" | "many"} [onlySearch] true: only margin order-search carts (searchCase); "mesh": only Pro mesh carts (meshCase); "tied": only order-search carts with many tied lines (tiedCase); "many": many markets and entered codes (manyCase)
+ * @param {boolean | "mesh" | "tied" | "many" | "long"} [onlySearch] true: only margin order-search carts (searchCase); "mesh": only Pro mesh carts (meshCase); "tied": only order-search carts with many tied lines (tiedCase); "many": many markets and entered codes (manyCase); "long": entered codes of any length against the longest Won code (longCase)
  */
 function generator(seed, onlySearch = false) {
   const rnd = prng(seed);
@@ -774,6 +775,91 @@ function generator(seed, onlySearch = false) {
   }
 
   /**
+   * Entered codes of any length against the longest Won code (audit round 6,
+   * plan.ts `matchCodes`, hash.rs `normalized_hash_within`): code rules with
+   * codes of 1–64 characters (ASCII, Czech, ß and ligatures whose upper case is
+   * longer, Greek with a 2–3-character upper case, astral, CJK); the payload's
+   * `maxCodeLength` the longest of them (as the sync ships it), missing, junk,
+   * 0, over 64 or below the longest (hand-made). Entered: those codes in any
+   * case with any padding, the same codes one character longer, foreign codes
+   * of 1–300 characters, white-space-only ones, empty entries and entries
+   * without a code string (`{}`, `{code: null}`, `{code: 7}`), repeats; a code
+   * node triggered by one of them.
+   */
+  function longCase() {
+    const alphabets = ["ABCDEFGHJK", "ÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ", "ßﬁﬃĳ", "ᾀᾳΐΰ", "\u{10428}\u{10429}", "中文字", "ǅǈ", "0123456789"];
+    const word = (len) => {
+      const alphabet = [...pick(alphabets)];
+      let out = "";
+      while (out.length < len) out += alphabet[int(alphabet.length)];
+      return out.slice(0, len).replace(/[\ud800-\udbff]$/, "X");
+    };
+    const pad = () => pick(["", "", " ", "\u00a0", "\u3000", "\t", "\ufeff", "  \u2003"]);
+    const caseOf = (code) => pick([code, code.toLowerCase(), code.toUpperCase()]);
+    const wonCodes = [];
+    const rules = Array.from({ length: 1 + int(4) }, (_, k) => {
+      const codes = Array.from({ length: 1 + int(4) }, () => word(pick([1, 5, 9, 20, 40, 63, 64])).toUpperCase().trim()).filter((c) => c && c.length <= 64);
+      wonCodes.push(...codes);
+      return {
+        id: `c${k}`,
+        enabled: true,
+        name: `C${k}`,
+        method: "code",
+        codeHashes: codes.map(codeHash),
+        value: { kind: "percentage", percent: pick([5, 10, 15, 20]) },
+        target: chance(0.8) ? { kind: "products" } : { kind: "order" },
+      };
+    });
+    rules.push({ id: "a0", enabled: true, name: "A0", method: "automatic", value: { kind: "percentage", percent: 7 }, target: { kind: "products" } });
+    const longest = Math.max(0, ...wonCodes.map((c) => c.length));
+    const lengthRoll = rnd();
+    const codesModule = { rules };
+    if (lengthRoll < 0.55) codesModule.maxCodeLength = longest;
+    else if (lengthRoll < 0.65) codesModule.maxCodeLength = Math.max(0, longest - 1 - int(5));
+    else if (lengthRoll < 0.8) codesModule.maxCodeLength = pick(["9", 9.5, -1, null, [64], 0, 64, 65, 300, 1e300]);
+    const n = pick([1, 3, 10, 24, 25, 26, 30, 60]);
+    const entered = Array.from({ length: n }, () => {
+      const roll = rnd();
+      if (roll < 0.35 && wonCodes.length > 0) return { code: `${pad()}${caseOf(pick(wonCodes))}${pad()}` };
+      if (roll < 0.45 && wonCodes.length > 0) return { code: `${pick(wonCodes)}${pick(["X", "ž", "ß"])}` };
+      if (roll < 0.7) return { code: `${pad()}${word(pick([1, 8, 64, 65, 66, 100, 192, 193, 255, 300]))}${pad()}` };
+      if (roll < 0.8) return { code: pick([" ", "\u3000", "\u00a0\u2028"]).repeat(1 + int(120)) };
+      if (roll < 0.9) return pick([{ code: "" }, {}, { code: null }, { code: 7 }]);
+      return { code: `CODE${int(9)}` };
+    });
+    const trigger = chance(0.4) && entered.length > 0 ? entered[int(entered.length)].code : null;
+    // The node of the rule that has the triggering code, when one has it (as Shopify runs it).
+    const owner = typeof trigger === "string" ? rules.find((r) => (r.codeHashes ?? []).includes(codeHash(trigger))) : undefined;
+    const role = typeof trigger === "string" && trigger !== "" ? { role: "code", ruleId: (owner ?? pick(rules)).id } : { role: "automatic" };
+    const lines = Array.from({ length: 1 + int(4) }, (_, i) => ({
+      id: `gid://shopify/CartLine/${i + 1}`,
+      quantity: 1 + int(3),
+      cost: { amountPerQuantity: { amount: `${100 + int(900)}.00` } },
+      gift: null,
+      merchandise: { __typename: "ProductVariant", id: vid(4000 + i), wonVariant: null, product: { wonProduct: { jsonValue: { ruleIds: rules.filter(() => chance(0.7)).map((r) => r.id) } } } },
+    }));
+    return {
+      exportName: LINES,
+      tie: false,
+      input: {
+        triggeringDiscountCode: role.role === "code" ? trigger : null,
+        enteredDiscountCodes: entered,
+        discount: {
+          discountClasses: ["PRODUCT", "ORDER", "SHIPPING"],
+          vars: { jsonValue: { ...role, campaignId: null, campaignStart: "1970-01-01T00:00:00", campaignEnd: "1970-01-01T00:00:00", varsVersion: null } },
+        },
+        shop: {
+          config: { jsonValue: { schemaVersion: 1, campaignId: null, campaignVarsVersion: null, marketCountries: {}, modules: { codes: codesModule }, campaigns: [] } },
+          localTime: { date: "2026-10-01", campaignActive: false },
+        },
+        localization: { country: { isoCode: "CZ" }, language: { isoCode: "CS" } },
+        presentmentCurrencyRate: "1.0",
+        cart: { cost: { subtotalAmount: { currencyCode: "CZK" } }, lines },
+      },
+    };
+  }
+
+  /**
    * The Pro stack cap (plan.ts MAX_STACK_CANDIDATES, audit round 3): 7–16
    * product rules combining at a random density (up to a full mesh), percents
    * with repeats (ties go to priority, then id) and fixed amounts, a few code
@@ -872,6 +958,11 @@ function generator(seed, onlySearch = false) {
       hostile = false;
       large = false;
       return manyCase();
+    }
+    if (onlySearch === "long") {
+      hostile = false;
+      large = false;
+      return longCase();
     }
     if (onlySearch || chance(0.2)) {
       hostile = false;
@@ -1450,6 +1541,68 @@ describe("Wasm (function-runner)", () => {
     }
     console.info(`many markets and codes: ${MANY_CASES} cases, 0 differ ${JSON.stringify(seen)}`);
     for (const [k, v] of Object.entries(seen)) expect(v, k).toBeGreaterThanOrEqual(MIN_HITS);
+  }, 900_000);
+
+  // Entered codes of any length (audit round 6): an entered code whose trimmed
+  // length is over the payload's longest Won code is never upper-cased or
+  // matched, and still counts toward the 25 (cart.ts, plan.ts matchCodes;
+  // hash.rs normalized_hash_within). Wasm = the TS reference, each way ≥ 20 times.
+  const LONG_CASES = Number(process.env.PARITY_LONG_CASES ?? 600);
+  test(`entered codes of any length, seed 20261006 × ${LONG_CASES}: Wasm = TS reference, every way hit`, async () => {
+    const next = generator(20261006, "long");
+    const cases = Array.from({ length: LONG_CASES }, next);
+    const failures = [];
+    const seen = {
+      "a code over the longest Won code left out": 0,
+      "a Won code entered longer (one character more) left out": 0,
+      "a padded Won code longer than the longest as entered, matched": 0,
+      "a code longer than 64 characters among the first 25": 0,
+      "maxCodeLength missing or junk (64)": 0,
+      "maxCodeLength below a Won code (hand-made): a Won code left out": 0,
+      "an entry without a code string or empty among the first 25": 0,
+      "a Won code past the cap behind left-out or empty entries": 0,
+      "a code node that emits": 0,
+      "a code node triggered by a left-out code, emitting nothing": 0,
+    };
+    const hit = (k) => (seen[k] += 1);
+    for (let i = 0; i < cases.length; i += 8) {
+      const batch = cases.slice(i, i + 8);
+      const results = await Promise.all(batch.map((c) => runWasm(runnerPath, wasmPath, c.exportName, c.input)));
+      results.forEach((result, j) => {
+        const c = batch[j];
+        const expected = referenceOutput(c.exportName, c.input);
+        if (!result.success || !isDeepStrictEqual(result.output, expected)) failures.push({ index: i + j, got: result.output, expected, input: c.input });
+        const codesModule = c.input.shop.config.jsonValue.modules.codes;
+        const max = readMaxCodeLength(c.input.shop.config.jsonValue);
+        const wonHashes = new Set(codesModule.rules.flatMap((r) => r.codeHashes ?? []));
+        const entries = c.input.enteredDiscountCodes.map((e) => (typeof e.code === "string" ? e.code : null));
+        const first = entries.slice(0, 25);
+        const trimmed = (code) => (code === null ? "" : code.trim());
+        const leftOut = (code) => trimmed(code) !== "" && trimmed(code).length > max;
+        if (first.some(leftOut)) hit("a code over the longest Won code left out");
+        if (first.some((code) => leftOut(code) && trimmed(code).length === max + 1 && wonHashes.has(codeHash(code.slice(0, -1))))) hit("a Won code entered longer (one character more) left out");
+        if (first.some((code) => code !== null && !leftOut(code) && code.length > max && wonHashes.has(codeHash(code)))) hit("a padded Won code longer than the longest as entered, matched");
+        if (first.some((code) => trimmed(code).length > 64)) hit("a code longer than 64 characters among the first 25");
+        if (!Number.isInteger(codesModule.maxCodeLength) || codesModule.maxCodeLength < 0 || codesModule.maxCodeLength > 64) hit("maxCodeLength missing or junk (64)");
+        if (first.some((code) => leftOut(code) && wonHashes.has(codeHash(code)))) hit("maxCodeLength below a Won code (hand-made): a Won code left out");
+        if (first.some((code) => trimmed(code) === "")) hit("an entry without a code string or empty among the first 25");
+        const beforeCap = first.filter((code) => trimmed(code) === "" || leftOut(code)).length;
+        if (beforeCap > 0 && entries.slice(25).some((code) => code !== null && !leftOut(code) && trimmed(code) !== "" && wonHashes.has(codeHash(code)))) hit("a Won code past the cap behind left-out or empty entries");
+        const trigger = c.input.triggeringDiscountCode;
+        if (typeof trigger === "string" && trigger !== "") {
+          const emits = (expected.operations ?? []).length > 0;
+          if (emits) hit("a code node that emits");
+          if (leftOut(trigger) && !emits) hit("a code node triggered by a left-out code, emitting nothing");
+        }
+      });
+    }
+    if (failures.length > 0) {
+      const first = failures[0];
+      throw new Error(`${failures.length}/${LONG_CASES} cases differ; first #${first.index}\ngot      ${JSON.stringify(first.got)}\nexpected ${JSON.stringify(first.expected)}\ninput    ${JSON.stringify(first.input).slice(0, 3000)}`);
+    }
+    const table = Object.entries(seen).map(([k, v]) => `${v}\t${k}`).join("\n");
+    console.info(`entered codes of any length: ${LONG_CASES} cases, 0 differ\n${table}`);
+    expect(Object.entries(seen).filter(([, v]) => v < MIN_HITS), table).toEqual([]);
   }, 900_000);
 
   // The order search's bound (plan-margin.ts orderSetLimit, order_search.rs

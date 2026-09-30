@@ -111,6 +111,10 @@ test("codes: trimmed, upper-cased, deduplicated; required for a code rule; a cod
   assert.deepEqual(errorsOf(code("")), ["codes:editor.error.codes"]);
   assert.deepEqual(errorsOf(code("taken")), ["codes:editor.error.codeTaken"]);
   assert.deepEqual(errorsOf(code("X".repeat(256))), ["codes:editor.error.codeLength"]);
+  // A Won code has at most 64 characters, counted as stored (audit round 6): "ß" × 40 is "SS" × 40.
+  assert.deepEqual(errorsOf(code("X".repeat(65))), ["codes:editor.error.codeLength"]);
+  assert.deepEqual(errorsOf(code("ß".repeat(40))), ["codes:editor.error.codeLength"]);
+  assert.deepEqual(readRuleForm(form(code(` ${"x".repeat(64)} `)), CTX).rule.codes, ["X".repeat(64)]);
   // An automatic rule keeps no codes and no usage limits (Shopify: code discounts only).
   const auto = readRuleForm(form([...base, [FIELD.codes, "IGNORED"], [FIELD.usageLimit, "5"], [FIELD.oncePerCustomer, "on"]]), CTX).rule;
   assert.equal(auto.codes, undefined);

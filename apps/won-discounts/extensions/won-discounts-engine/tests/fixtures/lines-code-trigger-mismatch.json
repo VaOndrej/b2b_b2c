@@ -65,7 +65,8 @@
                       "6a341c89"
                     ]
                   }
-                ]
+                ],
+                "maxCodeLength": 9
               },
               "tiers": {
                 "sets": []

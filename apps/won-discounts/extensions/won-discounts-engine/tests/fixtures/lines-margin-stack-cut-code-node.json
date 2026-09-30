@@ -80,7 +80,8 @@
                       "c5b30741"
                     ]
                   }
-                ]
+                ],
+                "maxCodeLength": 3
               },
               "tiers": {
                 "sets": []

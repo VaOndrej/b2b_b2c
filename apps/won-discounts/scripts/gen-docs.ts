@@ -283,7 +283,7 @@ function limitsDoc(): string {
 | Discounts in one shop | ${num(CONFIG_LIMITS.rules)} |
 | Active code discounts at the same time | ${num(MAX_ACTIVE_CODE_RULES)} |
 | Codes in one code discount | ${num(CONFIG_LIMITS.codesPerRule)} |
-| Length of one code | ${num(CONFIG_LIMITS.codeLength)} characters |
+| Length of one code (Shopify itself allows 255; a Shopify discount with a longer code stays in Shopify) | ${num(CONFIG_LIMITS.codeLength)} characters |
 | Products, variants or collections picked in one discount | ${num(CONFIG_LIMITS.listItems)} each |
 | Discounts stacked on one line or on the order (Pro) | ${num(MAX_STACK_CANDIDATES)} |
 | Codes a customer enters that are counted (the first ones entered; later codes are not counted) | ${num(MAX_ENTERED_CODES)} |

@@ -111,8 +111,9 @@ export type RuleState =
   | "margin_floor"; // margin protection took what it had won (alone or stacked) to 0 — unless a category switch dropped it (not_combinable)
 
 /**
- * `over_limit`: first entered after the first MAX_ENTERED_CODES codes (cart.ts),
- * so never matched to a rule (its rule, if any, does not see it).
+ * `over_limit`: first entered after the first MAX_ENTERED_CODES entries (cart.ts),
+ * so never matched to a rule (its rule, if any, does not see it). A code among
+ * them that is longer than every Won code is `unknown` (matchCodes).
  */
 export type CodeState = RuleState | "same_rule" | "unknown" | "over_limit";
 
@@ -496,6 +497,17 @@ function readEngine(config: Rec): EngineFlags {
   };
 }
 
+/**
+ * The longest Won code, UTF-16 units (`modules.codes.maxCodeLength`, audit
+ * round 6): a whole number ≥ 0, at most CONFIG_LIMITS.codeLength; anything else
+ * (a payload written before round 6) reads as that limit.
+ */
+export function readMaxCodeLength(config: Rec): number {
+  const codes = isRecord(config.modules) && isRecord(config.modules.codes) ? config.modules.codes : {};
+  const v = codes.maxCodeLength;
+  return typeof v === "number" && Number.isInteger(v) && v >= 0 ? Math.min(v, CONFIG_LIMITS.codeLength) : CONFIG_LIMITS.codeLength;
+}
+
 /** Market handle → countries, as the shared config ships them (enabled, targeted markets only). */
 function readMarketCountries(config: Rec): Map<string, ReadonlySet<string>> {
   const out = new Map<string, ReadonlySet<string>>();
@@ -556,10 +568,14 @@ function resolveRules(config: Rec, cart: NormalizedCart) {
 
 /**
  * Entered codes → code rules by hash; the first entered code of a rule is the
- * one that counts. Only the codes among the first MAX_ENTERED_CODES entered are
- * matched (cart.ts `consideredCodes`).
+ * one that counts. Only the first MAX_ENTERED_CODES entries are matched (cart.ts
+ * `consideredEntries`), and of those only a code whose trimmed length is at
+ * most the longest Won code's (`readMaxCodeLength`): upper-casing never
+ * shortens a text (UTF-16 units), so a longer one cannot be a Won code, and
+ * the Rust function never upper-cases it (audit round 6). It still counts as
+ * an entry.
  */
-function matchCodes(rules: Rule[], cart: NormalizedCart) {
+function matchCodes(rules: Rule[], cart: NormalizedCart, maxCodeLength: number) {
   const ownerByHash = new Map<string, Rule>();
   for (const rule of rules) {
     if (rule.method !== "code") continue;
@@ -567,13 +583,14 @@ function matchCodes(rules: Rule[], cart: NormalizedCart) {
   }
   const ownerOfCode = new Map<string, Rule>();
   const enteredByRule = new Map<string, string[]>();
-  for (const code of cart.enteredCodes.slice(0, cart.consideredCodes)) {
+  for (const { code, length } of cart.consideredEntries) {
+    if (code === "" || length > maxCodeLength) continue;
     const rule = ownerByHash.get(codeHash(code));
     if (!rule) continue;
     ownerOfCode.set(code, rule);
     const list = enteredByRule.get(rule.id);
-    if (list) list.push(code);
-    else enteredByRule.set(rule.id, [code]);
+    if (!list) enteredByRule.set(rule.id, [code]);
+    else if (!list.includes(code)) list.push(code);
   }
   return { ownerOfCode, enteredByRule };
 }
@@ -1003,7 +1020,7 @@ function buildPlan(cart: NormalizedCart, config: Rec): CartPlan {
   const { currency, locale } = cart;
   const engine = readEngine(config);
   const { campaign, rules, retargeted, byId: rulesById } = resolveRules(config, cart);
-  const codes = matchCodes(rules, cart);
+  const codes = matchCodes(rules, cart, readMaxCodeLength(config));
   const { work, cartScope, ruleScopes } = prepareLines(cart, engine, campaign?.id ?? null, retargeted);
   gateRules(rules, { cart, marketCountries: readMarketCountries(config), cartScope }, ruleScopes, codes.enteredByRule);
 

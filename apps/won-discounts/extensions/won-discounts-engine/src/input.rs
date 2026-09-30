@@ -78,6 +78,60 @@ fn sole(value: &Value, key: Key) -> Option<Value> {
     }
 }
 
+/// A query object with more than one field, read by position (audit round 6): a
+/// read by name makes the input provider compare the key with the object's
+/// keys, ~1.5 k instructions a cart line more for its 8 such fields (3 % of
+/// the limit on a 200-line cart). The
+/// provider's key order need not be the query's (function-runner sorts the
+/// keys), so the positions are learned from the first object of the query's
+/// size (its keys read once a run) and used for every later one of that size:
+/// Shopify builds every object of a query field with the same keys. An object
+/// of another size (not the query's shape: a CustomProduct's merchandise) is
+/// read by name, and so is every object of a shape whose first one did not have
+/// the query's keys (README "Accepted edge differences", schema-invalid input).
+struct Shape<const N: usize> {
+    keys: [Key; N],
+    at: Positions<N>,
+}
+
+enum Positions<const N: usize> {
+    Unknown,
+    Learned([usize; N]),
+    ByName,
+}
+
+impl<const N: usize> Shape<N> {
+    fn new(keys: [Key; N]) -> Self {
+        Self { keys, at: Positions::Unknown }
+    }
+
+    /// `value[self.keys[field]]`.
+    fn get(&mut self, value: &Value, field: usize) -> Value {
+        if value.obj_len() != Some(N) {
+            return prop(value, self.keys[field]);
+        }
+        if let Positions::Unknown = self.at {
+            self.at = self.learn(value);
+        }
+        match &self.at {
+            Positions::Learned(at) => value.get_at_index(at[field]),
+            _ => prop(value, self.keys[field]),
+        }
+    }
+
+    fn learn(&self, value: &Value) -> Positions<N> {
+        let mut at = [usize::MAX; N];
+        for i in 0..N {
+            let Some(name) = value.get_obj_key_at_index(i) else { return Positions::ByName };
+            match self.keys.iter().position(|key| key.text() == name) {
+                Some(field) if at[field] == usize::MAX => at[field] = i,
+                _ => return Positions::ByName,
+            }
+        }
+        Positions::Learned(at)
+    }
+}
+
 /// The node's discount classes (`discount.discountClasses`, strings).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Classes {
@@ -180,10 +234,13 @@ impl RunInput {
         let line_count = lines_value.and_then(|l| l.array_len()).unwrap_or(0);
         let mut lines = Vec::with_capacity(line_count);
         let mut outlet_lists = OutletLists::default();
+        // `cart.lines[]` and its `merchandise` (a ProductVariant), in the query's field order.
+        let mut line_shape = Shape::new([Key::Id, Key::Quantity, Key::Cost, Key::Gift, Key::Merchandise]);
+        let mut variant_shape = Shape::new([Key::Typename, Key::Id, Key::WonVariant, Key::Product]);
         for line in lines_value.iter().flat_map(|l| (0..line_count).map(|i| l.get_at_index(i))) {
             // (A line, its merchandise, product and cost are objects in any input
             // built from the query; `prop` of anything else is an undefined value.)
-            let Some(id) = non_empty(&prop(&line, Key::Id)) else { continue };
+            let Some(id) = non_empty(&line_shape.get(&line, 0)) else { continue };
             let mut read = ReadLine {
                 id,
                 quantity: 0,
@@ -197,12 +254,12 @@ impl RunInput {
                 margin_refs: Vec::new(),
                 margin_ref_count: 0,
             };
-            let merchandise = prop(&line, Key::Merchandise);
-            let won = sole(&prop(&merchandise, Key::Product), Key::WonProduct).and_then(|metafield| sole(&metafield, Key::JsonValue));
+            let merchandise = line_shape.get(&line, 4);
+            let won = sole(&variant_shape.get(&merchandise, 3), Key::WonProduct).and_then(|metafield| sole(&metafield, Key::JsonValue));
             if let Some(won) = won {
                 let mut won = WonProduct::read(&won, margin_refs_on);
                 // The variant id is read only when the metafield needs it.
-                let variant_id = if won.needs_variant_id() { string(&prop(&merchandise, Key::Id)).unwrap_or_default() } else { String::new() };
+                let variant_id = if won.needs_variant_id() { string(&variant_shape.get(&merchandise, 1)).unwrap_or_default() } else { String::new() };
                 read.variant_rule_ids = won.variant_refs(&variant_id);
                 read.outlet = won.is_outlet(&variant_id, &mut outlet_lists);
                 if margin_refs_on {
@@ -212,36 +269,32 @@ impl RunInput {
                 read.rule_ids = won.take_rule_ids();
             }
             if margin_on {
-                if let Some(cost) = sole(&prop(&merchandise, Key::WonVariant), Key::JsonValue) {
+                if let Some(cost) = sole(&variant_shape.get(&merchandise, 2), Key::JsonValue) {
                     let cost = WonVariant::read(&cost);
                     read.unit_cost = cost.cost;
                     read.unit_cost_currency = cost.cur;
                 }
             }
             // `nonNegativeInt` (normalizeCart): a positive number, floored; else 0.
-            read.quantity = number(&prop(&line, Key::Quantity)).filter(|q| *q > 0.0).map_or(0, js::floor_to_i64);
-            let amount = sole(&prop(&line, Key::Cost), Key::AmountPerQuantity).and_then(|per| sole(&per, Key::Amount));
+            read.quantity = number(&line_shape.get(&line, 1)).filter(|q| *q > 0.0).map_or(0, js::floor_to_i64);
+            let amount = sole(&line_shape.get(&line, 2), Key::AmountPerQuantity).and_then(|per| sole(&per, Key::Amount));
             read.unit_price =
                 amount.and_then(|amount| DecimalText::read(&amount).text().and_then(|text| to_minor_units_with(text, exponent))).unwrap_or(0);
-            read.gift = sole(&prop(&line, Key::Gift), Key::Value).and_then(|value| non_empty(&value)).is_some();
+            read.gift = sole(&line_shape.get(&line, 3), Key::Value).and_then(|value| non_empty(&value)).is_some();
             lines.push(read);
         }
 
         // The entered codes matter only to a code rule with a hash an entered code
         // can have (plan.rs `match_codes`); without one none is read (each costs
-        // ~3 k instructions, and a cart can hold 250).
+        // ~2 k instructions, and a cart can hold 250).
         let codes_matter = config.rules.iter().any(|r| r.method_code && r.code_hashes.iter().any(|h| parse_hash(h).is_some()));
-        // Only the first MAX_ENTERED_CODES codes count (cart.ts): the reader
-        // stops after the 25th, whatever follows (Shopify still walks the rest).
+        // Only the first MAX_ENTERED_CODES entries count (cart.ts), whatever they
+        // hold: the reader reads those and no more (Shopify still walks the rest).
+        // An entry without a code string is an empty code, which matches nothing.
         let mut entered_codes = Vec::new();
         if let Some(entered) = field(root, Key::EnteredDiscountCodes).filter(|_| codes_matter) {
-            for i in 0..entered.array_len().unwrap_or(0) {
-                if entered_codes.len() == MAX_ENTERED_CODES {
-                    break;
-                }
-                if let Some(code) = sole(&entered.get_at_index(i), Key::Code).and_then(|code| non_empty(&code)) {
-                    entered_codes.push(code);
-                }
+            for i in 0..entered.array_len().unwrap_or(0).min(MAX_ENTERED_CODES) {
+                entered_codes.push(sole(&entered.get_at_index(i), Key::Code).and_then(|code| string(&code)).unwrap_or_default());
             }
         }
         let local_time = field(&shop, Key::LocalTime);

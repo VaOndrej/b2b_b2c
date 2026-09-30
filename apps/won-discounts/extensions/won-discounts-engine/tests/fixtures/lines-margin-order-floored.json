@@ -62,7 +62,8 @@
                       "2b67d78f"
                     ]
                   }
-                ]
+                ],
+                "maxCodeLength": 4
               },
               "tiers": {
                 "sets": []

@@ -23,7 +23,7 @@ use super::cart::{normalize_cart, CartInput, NormalizedCart, NormalizedLine};
 use super::config::{Config, EngineFlags, FieldsRef, RawCampaign, RawRule, TargetKind, ValueSpec};
 use super::describe::{describe_short, DescribedValue};
 use super::table::{bytes_eq, Message, Table, Text};
-use super::hash::{considered_codes, hash_value, parse_hash};
+use super::hash::{hash_value, normalized_hash_within, parse_hash, MAX_ENTERED_CODES};
 use super::js;
 use super::margin::{resolve_margin, strictest_margin, CostContext, FloorRule, MarginPayload, MarginRef, MAX_MARGIN_REFS};
 use super::money::mul_sat;
@@ -183,8 +183,9 @@ pub struct CartPlan<'a> {
     pub reason: Option<PlanFailure>,
     /// One per readable rule, in config order (plan.ts `rules` outcomes).
     pub rules: Vec<Rule<'a>>,
-    /// Per rule: its entered codes (normalized, entry order).
-    pub entered_by_rule: Vec<Vec<String>>,
+    /// Per rule: the entries that are its codes (`match_codes`: each code's
+    /// hash and trimmed text, entry order, repeats kept).
+    pub entered_by_rule: Vec<Vec<(u32, &'a str)>>,
     /// The campaign whose overrides were applied.
     pub campaign_id: Option<&'a str>,
     pub lines: Vec<PlanLine<'a>>,
@@ -195,6 +196,28 @@ pub struct CartPlan<'a> {
 impl CartPlan<'_> {
     pub fn rule_index(&self, id: &str) -> Option<usize> {
         self.rules.iter().position(|r| r.id == id)
+    }
+
+    /// `rule.enteredCodes.includes(code)` (emit.ts) for a normalized code: one
+    /// of the rule's entries normalizes to it. Only an entry with its hash is
+    /// upper-cased to compare.
+    pub fn rule_has_code(&self, rule: usize, code: &str) -> bool {
+        let hash = hash_value(code);
+        self.entered_by_rule[rule].iter().any(|&(h, entry)| h == hash && js::upper(entry) == code)
+    }
+
+    /// The rule's entered codes as plan.ts lists them (`enteredCodes`):
+    /// normalized, each once, in entry order.
+    #[cfg(test)]
+    pub fn entered_codes(&self, rule: usize) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        for &(_, entry) in &self.entered_by_rule[rule] {
+            let code = js::upper(entry);
+            if !out.contains(&code) {
+                out.push(code);
+            }
+        }
+        out
     }
 }
 
@@ -300,8 +323,18 @@ fn resolve_rules<'a>(config: &'a Config, cart: &NormalizedCart) -> Resolved<'a> 
 
 // --- Stage: codes ------------------------------------------------------------------------------
 
-/// Entered codes → code rules by hash (the first rule listing a hash owns it).
-fn match_codes(rules: &[Rule], cart: &NormalizedCart) -> Vec<Vec<String>> {
+/// Entered codes → code rules by hash (the first rule listing a hash owns it);
+/// plan.ts `matchCodes`. Of the first MAX_ENTERED_CODES entries as entered
+/// (every entry counts: an empty one, one longer than every Won code), a code
+/// whose trimmed text is longer (UTF-16 units) than the longest Won code
+/// (`max_code_length`) is left out without being upper-cased: upper-casing
+/// never shortens a text, so it cannot be a Won code. The rest are hashed as
+/// they would be upper-cased (`normalized_hash_within`); an entry whose hash a
+/// rule has is that rule's, kept as its hash and trimmed text in entry order.
+/// Nothing is upper-cased here: what the function needs of a rule's codes is
+/// whether it has one and whether the triggering code is one of them
+/// (`CartPlan::rule_has_code`), and a repeat changes neither.
+fn match_codes<'a>(rules: &[Rule], cart: &NormalizedCart<'a>, max_code_length: usize) -> Vec<Vec<(u32, &'a str)>> {
     let mut entered_by_rule = vec![Vec::new(); rules.len()];
     if cart.entered_codes.is_empty() {
         return entered_by_rule;
@@ -322,11 +355,10 @@ fn match_codes(rules: &[Rule], cart: &NormalizedCart) -> Vec<Vec<String>> {
     if owner_by_hash.is_empty() {
         return entered_by_rule;
     }
-    // The codes considered: of the first MAX_ENTERED_CODES as entered (the reader
-    // stopped there), normalized and each once; later ones match nothing.
-    for code in considered_codes(&cart.entered_codes) {
-        if let Some(&owner) = owner_by_hash.get(&u64::from(hash_value(&code))) {
-            entered_by_rule[owner].push(code);
+    for &raw in cart.entered_codes.iter().take(MAX_ENTERED_CODES) {
+        let Some((hash, code)) = normalized_hash_within(raw, max_code_length) else { continue };
+        if let Some(&owner) = owner_by_hash.get(&u64::from(hash)) {
+            entered_by_rule[owner].push((hash, code));
         }
     }
     entered_by_rule
@@ -1416,7 +1448,7 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
     let engine = config.engine;
     let Resolved { campaign_id, mut rules, retargeted } = resolve_rules(config, &cart);
     rank_ids(&mut rules);
-    let entered_by_rule = match_codes(&rules, &cart);
+    let entered_by_rule = match_codes(&rules, &cart, config.max_code_length);
 
     let mut by_id: IdMap = Table::with_capacity(rules.len());
     for (i, r) in rules.iter().enumerate() {

@@ -502,7 +502,7 @@
                   {
                     "id": "r_0533456ec29069d6004f19cfc33fec3b450960c7e0bde81023b1177ec7a5f2",
                     "enabled": true,
-                    "name": "Kód",
+                    "name": "K",
                     "method": "code",
                     "value": {
                       "kind": "percentage",
@@ -518,7 +518,7 @@
                   {
                     "id": "r_8098a9121a99714644a5a7eecb56c6ee4fa036ca6d28c40e0f38d069e408d0",
                     "enabled": true,
-                    "name": "Objednávka",
+                    "name": "Obj",
                     "method": "automatic",
                     "value": {
                       "kind": "percentage",
@@ -531,7 +531,7 @@
                   {
                     "id": "r_787c30396b328e0e1f6bb0cbe143266803150890843f03a925a0063fffd193",
                     "enabled": true,
-                    "name": "Doprava",
+                    "name": "D",
                     "method": "automatic",
                     "value": {
                       "kind": "freeShipping"
@@ -540,7 +540,8 @@
                       "kind": "shipping"
                     }
                   }
-                ]
+                ],
+                "maxCodeLength": 7
               },
               "tiers": {
                 "sets": []
@@ -9404,7 +9405,7 @@
           "orderDiscountsAdd": {
             "candidates": [
               {
-                "message": "Objednávka",
+                "message": "Obj",
                 "targets": [
                   {
                     "orderSubtotal": {

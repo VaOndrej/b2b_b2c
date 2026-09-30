@@ -15,6 +15,7 @@ pub mod money;
 pub mod order_search;
 pub mod plan;
 pub mod table;
+mod upper_table;
 
 #[cfg(test)]
 mod tests;

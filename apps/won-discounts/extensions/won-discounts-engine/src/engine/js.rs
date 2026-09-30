@@ -21,7 +21,9 @@ pub fn floor_to_i64(x: f64) -> i64 {
     x.floor() as i64
 }
 
-/// The characters `String.prototype.trim` removes (WhiteSpace + LineTerminator).
+/// The characters `String.prototype.trim` removes (WhiteSpace + LineTerminator);
+/// `trim` reads them from their bytes, and is tested against this.
+#[cfg(test)]
 fn is_js_space(c: char) -> bool {
     matches!(
         c,
@@ -43,34 +45,131 @@ fn is_js_space(c: char) -> bool {
     )
 }
 
+/// Whether the 3 UTF-8 bytes `w` (big-endian in a u32) are a JS white space
+/// character: U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000, U+FEFF.
+#[inline]
+fn space3(w: u32) -> bool {
+    matches!(w, 0xE1_9A_80 | 0xE2_80_80..=0xE2_80_8A | 0xE2_80_A8 | 0xE2_80_A9 | 0xE2_80_AF | 0xE2_81_9F | 0xE3_80_80 | 0xEF_BB_BF)
+}
+
 /// `String.prototype.trim`. A text that starts and ends with a visible ASCII
-/// character (every price and rate Shopify sends) is returned as it is without
-/// decoding a character.
+/// character (every price and rate Shopify sends) is returned as it is; any
+/// other is trimmed by its UTF-8 bytes, a white space character matched by its
+/// bytes (audit round 6: decoding each character cost ~50 instructions, and an
+/// entered code can be a long run of spaces). A lead byte always starts a
+/// character, so a match on a lead byte and its continuation bytes is that
+/// whole character.
 pub fn trim(s: &str) -> &str {
     let b = s.as_bytes();
     let visible = |c: u8| c > b' ' && c < 0x80;
     if b.first().is_some_and(|&c| visible(c)) && b.last().is_some_and(|&c| visible(c)) {
         return s;
     }
-    s.trim_matches(is_js_space)
+    let ascii_space = |c: u8| c == b' ' || c.wrapping_sub(0x09) < 5;
+    let three = |i: usize| (u32::from(b[i]) << 16) | (u32::from(b[i + 1]) << 8) | u32::from(b[i + 2]);
+    let (mut start, mut end) = (0, b.len());
+    while start < end {
+        let c = b[start];
+        if ascii_space(c) {
+            start += 1;
+        } else if c == 0xC2 && start + 1 < end && b[start + 1] == 0xA0 {
+            start += 2;
+        } else if c >= 0xE1 && start + 2 < end && space3(three(start)) {
+            start += 3;
+        } else {
+            break;
+        }
+    }
+    while end > start {
+        let c = b[end - 1];
+        if ascii_space(c) {
+            end -= 1;
+        } else if c == 0xA0 && end - start >= 2 && b[end - 2] == 0xC2 {
+            end -= 2;
+        } else if c >= 0x80 && end - start >= 3 && space3(three(end - 3)) {
+            end -= 3;
+        } else {
+            break;
+        }
+    }
+    // Both ends are character boundaries (only whole characters were skipped).
+    s.get(start..end).unwrap_or(s)
+}
+
+/// The upper-case form of a non-ASCII character (`char::to_uppercase`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UpperChar {
+    /// It has none: the character itself.
+    Same,
+    One(char),
+    /// Two or three characters (ß → SS, ﬃ → FFI; all in the BMP, so each is
+    /// one UTF-16 unit), 0-padded.
+    Many(&'static [u16; 3]),
+}
+
+/// `char::to_uppercase` of a non-ASCII character by table lookup (audit round
+/// 6): the standard library searches its table for every character (~620
+/// instructions a character in Wasm, so 25 entered codes of 64 non-ASCII
+/// characters took ~1 M), this reads two array cells. The tables
+/// (`upper_table.rs`) are generated from this toolchain's `char::to_uppercase`
+/// and checked against it for every scalar value (tests below).
+#[inline]
+pub fn upper_char(c: char) -> UpperChar {
+    let cp = c as u32;
+    match upper_entry(cp) {
+        0 => UpperChar::Same,
+        entry @ 0xD800..=0xDFFF => upper_many(entry).map_or(UpperChar::Same, UpperChar::Many),
+        // Upper-casing never leaves the character's plane.
+        entry => char::from_u32((cp & !0xFFFF) | u32::from(entry)).map_or(UpperChar::Same, UpperChar::One),
+    }
+}
+
+/// The case table's entry of a code point: 0 = no upper-case form of its own;
+/// 0xD800 + i = `upper_many`; else the low 16 bits of its upper-case character
+/// (in the same plane).
+#[inline]
+pub fn upper_entry(cp: u32) -> u16 {
+    use super::upper_table::{PAGES, PAGE_OF};
+    match PAGE_OF.get((cp >> 6) as usize) {
+        Some(&page) if page != 0 => PAGES.get(usize::from(page) - 1).map_or(0, |p| p[(cp & 63) as usize]),
+        _ => 0,
+    }
+}
+
+/// The characters (UTF-16 units, 0-padded) of an entry 0xD800 + i.
+#[inline]
+pub fn upper_many(entry: u16) -> Option<&'static [u16; 3]> {
+    super::upper_table::MULTI.get(usize::from(entry.wrapping_sub(0xD800)))
+}
+
+/// Appends the upper-case form of `c` (`char::to_uppercase`) to `out`.
+#[inline]
+pub fn push_upper(out: &mut String, c: char) {
+    if c.is_ascii() {
+        out.push(c.to_ascii_uppercase());
+        return;
+    }
+    match upper_char(c) {
+        UpperChar::Same => out.push(c),
+        UpperChar::One(u) => out.push(u),
+        UpperChar::Many(units) => {
+            for &unit in units.iter().take_while(|&&unit| unit != 0) {
+                out.push(char::from_u32(u32::from(unit)).unwrap_or(char::REPLACEMENT_CHARACTER));
+            }
+        }
+    }
 }
 
 /// `String.prototype.toUpperCase` (locale-independent full case mapping).
 /// Character by character, as str::to_uppercase maps (upper-casing has no
-/// context rule), but an ASCII character after the first non-ASCII one is
-/// mapped directly instead of through the Unicode tables (a binary search a
-/// character: ~5 k instructions on a 40-character code with one "Ž" early).
+/// context rule): ASCII directly, anything else through `upper_char`.
 pub fn upper(s: &str) -> String {
     if s.is_ascii() {
         return s.to_ascii_uppercase();
     }
-    let mut out = String::with_capacity(s.len());
+    let mut out = String::with_capacity(s.len() + 8);
     for c in s.chars() {
-        if c.is_ascii() {
-            out.push(c.to_ascii_uppercase());
-        } else {
-            out.extend(c.to_uppercase());
-        }
+        push_upper(&mut out, c);
     }
     out
 }
@@ -161,6 +260,14 @@ mod tests {
         assert_eq!(trim("\u{FEFF} welcome15\u{A0}\n"), "welcome15");
         // NEL (U+0085) is white space for Rust, not for JS.
         assert_eq!(trim("\u{85}x"), "\u{85}x");
+        // By bytes, the same as trimming JS white space character by character, for
+        // every scalar value at either end, alone, doubled and next to white space.
+        for n in 0u32..=0x10_FFFF {
+            let Some(c) = char::from_u32(n) else { continue };
+            for text in [format!("{c}"), format!("{c}{c}"), format!("{c}x{c}"), format!(" {c}\u{3000}"), format!("\u{A0}{c}\u{2029}"), format!("x{c}"), format!("{c}\u{FEFF}x")] {
+                assert_eq!(trim(&text), text.trim_matches(is_js_space), "U+{n:04X} {text:?}");
+            }
+        }
         assert_eq!(upper("welcome15"), "WELCOME15");
         assert_eq!(upper("straße"), "STRASSE");
         // Character by character with ASCII directly: the same text as str::to_uppercase
@@ -170,6 +277,106 @@ mod tests {
             let text = format!("aZ{c}q ß{c}ﬁx");
             assert_eq!(upper(&text), text.to_uppercase(), "U+{n:04X}");
         }
+    }
+
+    /// The generated tables are this toolchain's `char::to_uppercase`, for every
+    /// scalar value (a toolchain whose Unicode tables changed fails here:
+    /// regenerate with `write_upper_table`).
+    #[test]
+    fn upper_char_is_char_to_uppercase_for_every_scalar_value() {
+        for n in 0x80u32..=0x10_FFFF {
+            let Some(c) = char::from_u32(n) else { continue };
+            let want: Vec<char> = c.to_uppercase().collect();
+            let got: Vec<char> = match upper_char(c) {
+                UpperChar::Same => vec![c],
+                UpperChar::One(u) => vec![u],
+                UpperChar::Many(units) => units.iter().take_while(|&&u| u != 0).map(|&u| char::from_u32(u32::from(u)).unwrap()).collect(),
+            };
+            assert_eq!(got, want, "U+{n:04X}");
+            if let UpperChar::One(u) = upper_char(c) {
+                assert_ne!(u, c, "U+{n:04X}: Same, not One of itself");
+            }
+            let up = upper(&c.to_string());
+            assert_eq!(up, c.to_uppercase().collect::<String>(), "U+{n:04X}");
+            // Upper-casing is idempotent and never shortens a text in UTF-16 units: a
+            // normalized code normalizes to itself, and an entered code longer than
+            // every Won code can never become one (hash.rs `normalized_hash_within`).
+            assert_eq!(upper(&up), up, "U+{n:04X}");
+            assert!(up.encode_utf16().count() >= c.len_utf16(), "U+{n:04X}");
+        }
+    }
+
+    /// Writes `upper_table.rs` from `char::to_uppercase` (run by hand after a
+    /// toolchain update: `cargo test write_upper_table -- --ignored`).
+    #[test]
+    #[ignore]
+    fn write_upper_table() {
+        const TOP: u32 = 0x1_F000;
+        let mut entry = vec![0u16; TOP as usize];
+        let mut multi: Vec<[u16; 3]> = Vec::new();
+        for n in 0x80u32..=0x10_FFFF {
+            let Some(c) = char::from_u32(n) else { continue };
+            let up: Vec<char> = c.to_uppercase().collect();
+            if up == [c] {
+                continue;
+            }
+            assert!(n < TOP, "U+{n:04X} changes above the table");
+            if let [u] = up[..] {
+                let (u, n16) = (u as u32, n);
+                assert_eq!(u >> 16, n16 >> 16, "U+{n:04X} leaves its plane");
+                let low = (u & 0xFFFF) as u16;
+                assert!(low != 0 && !(0xD800..=0xDFFF).contains(&low), "U+{n:04X}: low 16 bits {low:04X} are a marker");
+                entry[n as usize] = low;
+            } else {
+                let mut units = [0u16; 3];
+                assert!(up.len() <= 3);
+                for (slot, u) in units.iter_mut().zip(&up) {
+                    assert!((*u as u32) < 0x1_0000 && !(0xD800..=0xDFFF).contains(&(*u as u32)), "U+{n:04X}: a multi-character form outside the BMP");
+                    *slot = *u as u16;
+                }
+                entry[n as usize] = 0xD800 + u16::try_from(multi.len()).unwrap();
+                multi.push(units);
+                assert!(multi.len() <= 0x800);
+            }
+        }
+        let mut page_of = vec![0u8; (TOP >> 6) as usize];
+        let mut pages: Vec<&[u16]> = Vec::new();
+        for (p, chunk) in entry.chunks(64).enumerate() {
+            if chunk.iter().any(|&e| e != 0) {
+                pages.push(chunk);
+                page_of[p] = u8::try_from(pages.len()).unwrap();
+            }
+        }
+        let hex = |v: &[u16]| v.iter().map(|x| format!("0x{x:04X}")).collect::<Vec<_>>().join(", ");
+        let mut out = String::new();
+        out.push_str("// Generated by `cargo test write_upper_table -- --ignored` (engine/js.rs) from\n");
+        out.push_str("// this toolchain's `char::to_uppercase`; `upper_char_is_char_to_uppercase_for_every_scalar_value`\n");
+        out.push_str("// checks it against every scalar value. Do not edit by hand.\n\n");
+        out.push_str("/// Page (code point >> 6, below U+1F000, above which no character changes)\n");
+        out.push_str("/// → 1 + its index in `PAGES`; 0 = no character of the page changes.\n");
+        out.push_str(&format!("pub static PAGE_OF: [u8; {}] = [\n", page_of.len()));
+        for row in page_of.chunks(32) {
+            out.push_str(&format!("    {},\n", row.iter().map(u8::to_string).collect::<Vec<_>>().join(", ")));
+        }
+        out.push_str("];\n\n");
+        out.push_str("/// Per character of a page: 0 = unchanged; 0xD800 + i = `MULTI[i]`; else the\n");
+        out.push_str("/// low 16 bits of its upper-case character (always in the same plane).\n");
+        out.push_str(&format!("pub static PAGES: [[u16; 64]; {}] = [\n", pages.len()));
+        for page in &pages {
+            out.push_str("    [\n");
+            for row in page.chunks(16) {
+                out.push_str(&format!("        {},\n", hex(row)));
+            }
+            out.push_str("    ],\n");
+        }
+        out.push_str("];\n\n");
+        out.push_str("/// Upper-case forms of more than one character (all in the BMP), 0-padded.\n");
+        out.push_str(&format!("pub static MULTI: [[u16; 3]; {}] = [\n", multi.len()));
+        for m in &multi {
+            out.push_str(&format!("    [{}],\n", hex(m)));
+        }
+        out.push_str("];\n");
+        std::fs::write(concat!(env!("CARGO_MANIFEST_DIR"), "/src/engine/upper_table.rs"), out).unwrap();
     }
 
     #[test]

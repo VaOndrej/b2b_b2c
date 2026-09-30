@@ -11,6 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeCart } from "@won/core/discounts/cart";
 import { codeHash } from "@won/core/discounts/code-hash";
+import { CONFIG_LIMITS } from "@won/core/discounts/config";
 import { emitForNode } from "@won/core/discounts/emit";
 import { mapToFunctionOutput, roundingTiePossible } from "@won/core/discounts/function-output";
 import { ceilTol, costMinorUnits, MARGIN_TOLERANCE, MAX_MARGIN_REFS, marginFloorUnit, readMarginPayload, resolveMargin, strictestMargin } from "@won/core/discounts/margin";
@@ -297,6 +298,34 @@ const TWINS = {
     expect(lineIds(emitForNode(fewer, { kind: "code", ruleId: "e" }, "delta"))).toEqual(["l1"]);
     const repeats = planCart(cart(lines, [...Array.from({ length: 30 }, () => "ALPHA"), "DELTA"]), c);
     expect(codes(repeats, "e")).toEqual([]);
+  },
+
+  an_entered_code_longer_than_every_won_code_is_never_matched_but_counts() {
+    expect(CONFIG_LIMITS.codeLength).toBe(64);
+    const rulesList = [code("w", 10, [codeHash("WELCOME15")]), code("l", 20, [codeHash("WELCOME150")]), code("s", 15, [codeHash("STRASSE")])];
+    const withLength = (len) => ({ modules: { codes: { rules: rulesList, ...len } } });
+    const c = withLength({ maxCodeLength: 9 });
+    const lines = [line("l1", 1, 10000, ["w", "l", "s"])];
+    const entered = ["\u3000 welcome15\u00a0", "straße", "welcome150"];
+    const plan = planCart(cart(lines, entered), c);
+    const codes = (p, id) => p.rules.find((r) => r.ruleId === id).enteredCodes;
+    expect([codes(plan, "w"), codes(plan, "s"), codes(plan, "l")]).toEqual([["WELCOME15"], ["STRASSE"], []]);
+    expect(gated(plan, "l")).toBe("code_not_entered");
+    expect(productOf(plan, "l1")[0]).toBe("s");
+    expect(emitForNode(plan, { kind: "code", ruleId: "l" }, "welcome150").productCandidates).toEqual([]);
+    expect(lineIds(emitForNode(plan, { kind: "code", ruleId: "s" }, "STRASSE"))).toEqual(["l1"]);
+    for (const len of [{}, { maxCodeLength: "9" }, { maxCodeLength: 9.5 }, { maxCodeLength: -1 }, { maxCodeLength: 300 }]) {
+      const p = planCart(cart(lines, entered), withLength(len));
+      expect(codes(p, "l")).toEqual(["WELCOME150"]);
+      expect(productOf(p, "l1")[0]).toBe("l");
+    }
+    const none = planCart(cart(lines, entered), withLength({ maxCodeLength: 0 }));
+    expect(["w", "l", "s"].every((id) => codes(none, id).length === 0)).toBe(true);
+    for (const filler of ["X".repeat(100), "", "   "]) {
+      const many = [...Array.from({ length: 25 }, () => filler), "STRASSE"];
+      expect(codes(planCart(cart(lines, many), c), "s")).toEqual([]);
+      expect(codes(planCart(cart(lines, many.slice(1)), c), "s")).toEqual(["STRASSE"]);
+    }
   },
 
   a_pro_stack_sums_capped_and_is_owned_by_its_code_rule() {

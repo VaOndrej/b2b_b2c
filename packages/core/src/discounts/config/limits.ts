@@ -11,8 +11,14 @@
 export const CONFIG_LIMITS = Object.freeze({
   rules: 200,
   codesPerRule: 1000,
-  /** Shopify's own maximum discount code length. */
-  codeLength: 255,
+  /**
+   * Longest Won discount code, characters (UTF-16 units, trimmed and
+   * upper-cased): 64, although Shopify accepts 255 (audit round 6). The
+   * discount function hashes every entered code that could be a Won code;
+   * with the shared config's `maxCodeLength` it never upper-cases an entered
+   * code longer than the longest Won code, so this bounds its work per code.
+   */
+  codeLength: 64,
   tierSets: 50,
   breaksPerTierSet: 10,
   giftTiers: 10,

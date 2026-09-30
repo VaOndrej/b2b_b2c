@@ -234,12 +234,11 @@ export function adaptInput(input) {
     const line = readLine(rawLines[i], currency);
     if (line) lines.push(line);
   }
+  // One code per entry, "" for an entry without a code string: every entry
+  // counts toward the engine's cap of 25 (cart.ts MAX_ENTERED_CODES), as it does
+  // for the Rust reader (src/input.rs).
   /** @type {string[]} */
-  const enteredCodes = [];
-  for (const entry of arr(root.enteredDiscountCodes)) {
-    const code = nonEmpty(rec(entry).code);
-    if (code !== null) enteredCodes.push(code);
-  }
+  const enteredCodes = arr(root.enteredDiscountCodes).map((entry) => str(rec(entry).code));
 
   /** @type {CartPlanInput} */
   const planInput = {

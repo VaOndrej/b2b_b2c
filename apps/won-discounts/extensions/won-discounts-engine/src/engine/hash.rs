@@ -22,42 +22,96 @@ pub fn normalized(code: &str) -> Cow<'_, str> {
     }
 }
 
+const FNV_OFFSET: u32 = 0x811c_9dc5;
+const FNV_PRIME: u32 = 0x0100_0193;
+
 /// The FNV-1a hash of `codeHash` as its number: over the UTF-16 code units of
 /// an already normalized code (ASCII bytes are their own units).
 pub fn hash_value(text: &str) -> u32 {
-    let mut hash: u32 = 0x811c_9dc5;
+    let mut hash = FNV_OFFSET;
     if text.is_ascii() {
         for &b in text.as_bytes() {
             hash ^= u32::from(b);
-            hash = hash.wrapping_mul(0x0100_0193);
+            hash = hash.wrapping_mul(FNV_PRIME);
         }
         return hash;
     }
     for unit in text.encode_utf16() {
         hash ^= u32::from(unit);
-        hash = hash.wrapping_mul(0x0100_0193);
+        hash = hash.wrapping_mul(FNV_PRIME);
     }
     hash
 }
 
-/// cart.ts MAX_ENTERED_CODES: the engine considers the first 25 codes as
-/// entered ([spec], audit round 5b); a later one is never matched. The cap
-/// counts entries, so repeats cannot make the reader read more.
-pub const MAX_ENTERED_CODES: usize = 25;
-
-/// The entered codes the engine considers (normalizeCart `consideredCodes` +
-/// plan.ts `matchCodes`): of the first MAX_ENTERED_CODES as entered, each
-/// normalized (`normalizeCode`), empty ones dropped, each once, in entry order.
-pub fn considered_codes(entered: &[&str]) -> Vec<String> {
-    let mut out: Vec<String> = Vec::with_capacity(entered.len().min(MAX_ENTERED_CODES));
-    for raw in entered.iter().take(MAX_ENTERED_CODES) {
-        let code = normalized(raw);
-        if !code.is_empty() && !out.iter().any(|c| c.as_str() == code.as_ref()) {
-            out.push(code.into_owned());
+/// The number of `codeHash(raw)` — the hash of `normalizeCode(raw)` — with the
+/// trimmed code, when it can be a Won code: not empty, and trimmed at most
+/// `max` UTF-16 units long. Upper-casing never shortens a text (in UTF-16
+/// units, for every scalar value in both engines' Unicode tables), so a longer
+/// one can never become a Won code (plan.ts `matchCodes`): it is left after at
+/// most `max` + 1 of its characters, or at once when its bytes alone rule it
+/// out. The upper-case form is hashed as it is read from the case table, never
+/// built (audit round 6: upper-casing through the standard library and then
+/// hashing cost ~620 instructions a non-ASCII character; this costs ~45 an
+/// ASCII one, ~90–130 another).
+pub fn normalized_hash_within(raw: &str, max: usize) -> Option<(u32, &str)> {
+    let code = js::trim(raw);
+    // A UTF-16 unit is 1–3 UTF-8 bytes (a 4-byte character is 2 units).
+    if code.is_empty() || code.len() > 3 * max {
+        return None;
+    }
+    let mut hash = FNV_OFFSET;
+    let mut units = 0;
+    for c in code.chars() {
+        let cp = c as u32;
+        if cp < 0x80 {
+            hash = (hash ^ u32::from((cp as u8).to_ascii_uppercase())).wrapping_mul(FNV_PRIME);
+            units += 1;
+        } else {
+            units += c.len_utf16();
+            match js::upper_entry(cp) {
+                0 => hash = hash_code_point(hash, cp),
+                entry @ 0xD800..=0xDFFF => {
+                    // Two or three BMP characters, 0-padded.
+                    for unit in js::upper_many(entry).copied().unwrap_or_default() {
+                        if unit == 0 {
+                            break;
+                        }
+                        hash = (hash ^ u32::from(unit)).wrapping_mul(FNV_PRIME);
+                    }
+                }
+                // Upper-casing never leaves the character's plane.
+                entry => hash = hash_code_point(hash, (cp & !0xFFFF) | u32::from(entry)),
+            }
+        }
+        if units > max {
+            return None;
         }
     }
-    out
+    Some((hash, code))
 }
+
+/// FNV-1a over a code point's UTF-16 units.
+#[inline]
+fn hash_code_point(hash: u32, cp: u32) -> u32 {
+    if cp < 0x1_0000 {
+        return (hash ^ cp).wrapping_mul(FNV_PRIME);
+    }
+    let v = cp - 0x1_0000;
+    let hash = (hash ^ (0xD800 | (v >> 10))).wrapping_mul(FNV_PRIME);
+    (hash ^ (0xDC00 | (v & 0x3FF))).wrapping_mul(FNV_PRIME)
+}
+
+/// cart.ts MAX_ENTERED_CODES: the engine considers the first 25 entries of the
+/// entered codes ([spec], audit round 5b). Every entry counts, whatever it holds
+/// (an empty code, a code longer than every Won code): repeats or junk cannot
+/// make the reader read more.
+pub const MAX_ENTERED_CODES: usize = 25;
+
+/// CONFIG_LIMITS.codeLength (limits.ts): a Won code has at most 64 characters
+/// (UTF-16 units, after trimming and upper-casing; audit round 6). The shared
+/// config's `modules.codes.maxCodeLength` is the longest one; missing or not a
+/// whole number ≥ 0 reads as this, and a larger one is capped to it.
+pub const MAX_CODE_LENGTH: usize = 64;
 
 /// A config's code hash as the number `hash_value` gives: exactly 8 lower-case
 /// hex digits (what codeHash writes), else none — such a text equals no
@@ -120,16 +174,53 @@ mod tests {
             assert_eq!(parse_hash(junk), None, "{junk}");
         }
         assert!(matches!(normalized("C1CODE"), Cow::Borrowed(_)));
-        // Of the first 25 codes as entered: normalized, empty ones and repeats dropped.
-        let raw: Vec<String> = (0..40).map(|k| format!(" code{} ", k % 20)).collect();
-        let mut entered: Vec<&str> = vec![" ", "\u{FEFF}", "Code0"];
-        entered.extend(raw.iter().map(String::as_str));
-        let considered = considered_codes(&entered);
-        assert_eq!(considered.len(), 20, "entries 1–25: 2 empty, CODE0 twice, CODE0…CODE19, then CODE0–CODE1 again");
-        assert_eq!(considered[..3], ["CODE0", "CODE1", "CODE2"]);
         assert_eq!(MAX_ENTERED_CODES, 25);
+        assert_eq!(MAX_CODE_LENGTH, 64);
         assert_eq!(normalized(" c1code "), "C1CODE");
         assert_eq!(normalized("STRASSE"), "STRASSE");
         assert_eq!(normalized("straße"), "STRASSE");
+    }
+
+    /// `normalize_within` is `normalizeCode` for a code whose trimmed text is at
+    /// most `max` UTF-16 units long, and refuses every longer or empty one — for
+    /// every scalar value around ASCII, ß and white space, and for lengths
+    /// around every bound (1–4-byte characters, mixed).
+    /// `normalized_hash_within` is `codeHash`'s number (and the trimmed code) for
+    /// a code whose trimmed text is at most `max` UTF-16 units long, and refuses
+    /// every longer or empty one — for every scalar value around ASCII, ß and
+    /// white space, and for lengths around every bound (1–4-byte characters,
+    /// characters with a multi-character upper-case form, mixed).
+    #[test]
+    fn normalized_hash_within_is_code_hash_up_to_the_longest_code() {
+        let check = |text: &str, max: usize| {
+            let units = js::trim(text).encode_utf16().count();
+            let got = normalized_hash_within(text, max);
+            assert_eq!(got.is_some(), units > 0 && units <= max, "{text:?} {max}");
+            if let Some((hash, trimmed)) = got {
+                assert_eq!(trimmed, js::trim(text), "{text:?}");
+                assert_eq!(hash, hash_value(&normalize_code(text)), "{text:?}");
+                assert_eq!(parse_hash(&code_hash(text)), Some(hash), "{text:?}");
+            }
+        };
+        for n in 0u32..=0x10_FFFF {
+            let Some(c) = char::from_u32(n) else { continue };
+            for text in [c.to_string(), format!(" aZ{c}q ß{c}ﬁ\u{3000}")] {
+                let units = js::trim(&text).encode_utf16().count();
+                for max in [0, units.saturating_sub(1), units, 64] {
+                    check(&text, max);
+                }
+            }
+        }
+        let texts = ["", "A", "ž", "ｚ", "\u{10428}", "Až", "žｚ\u{10428}A", "ﬃ", "中文", "\u{1F600}\u{1F600}", " ", "\u{3000}", "ᾀ"];
+        for a in texts {
+            for b in texts {
+                for k in 0..30 {
+                    let text = format!("{}{}{}", b, a.repeat(k), b);
+                    for max in [0, 1, 2, 3, 5, 8, 13, 21, 40, 64, 100] {
+                        check(&text, max);
+                    }
+                }
+            }
+        }
     }
 }

@@ -77,7 +77,8 @@
                       "bdd00ad9"
                     ]
                   }
-                ]
+                ],
+                "maxCodeLength": 6
               },
               "tiers": {
                 "sets": []

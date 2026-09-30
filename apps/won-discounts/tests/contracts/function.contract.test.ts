@@ -65,10 +65,11 @@ const INSTRUCTION_BUDGET = (INSTRUCTION_LIMIT / 10) * 7;
  * rule ids, Shopify's cart line ids) keep ≥ 10 % headroom: 9.9 M up to 200
  * lines. This gates the realistic worst cases, not every shape: with the
  * searches bounded (the Pro stack cap, the order search's 16 exact lines), at
- * most 4 marginRefs read a product, markets resolved once a run and entered
- * at most the first 25 entered codes read, every family the audits found
- * stays under the limit (max 99.1 %: 250 entered codes on the costliest base;
- * README "Instruction budget", MVP 2 audit round 5b).
+ * most 4 marginRefs read a product, markets resolved once a run, at most the
+ * first 25 entered codes read and none longer than the longest Won code
+ * upper-cased, every family the audits found stays under the limit (max
+ * 98.3 %: the heavy8/heavy9 hill climbs; README "Instruction budget", MVP 2
+ * audit round 6).
  */
 const WORST_CASE_BUDGET = (INSTRUCTION_LIMIT / 100) * 90;
 /** The shared config's budget (C7), bytes of its JSON. */

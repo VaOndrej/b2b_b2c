@@ -1,5 +1,5 @@
 {
-  "scenario": "Instruction budget, the Pro worst case with margin protection (drift audit P1/P2): 200 lines, each with 4 rule refs, the Pro stack VIP + S_x, a cost price, 4 marginRefs of 100 collections with a margin setting (as many as the sync's transition bridge writes: the old and the new decisive ones) and 3–4 variant-level refs of other variants of its product: the input filled to Shopify's limit of 128 kB of MessagePack; 37 rules, a 10 % order discount. The exact output is over the budget: every stack goes to its top rule. 250 entered codes (Shopify's maximum a cart; PROCODE first, then partners' codes, repeats, non-ASCII): only the first 25 distinct count. With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.",
+  "scenario": "Instruction budget, the Pro worst case with margin protection (drift audit P1/P2): 200 lines, each with 4 rule refs, the Pro stack VIP + S_x, a cost price, 4 marginRefs of 100 collections with a margin setting (as many as the sync's transition bridge writes: the old and the new decisive ones) and 3–4 variant-level refs of other variants of its product: the input filled to Shopify's limit of 128 kB of MessagePack; 37 rules, a 10 % order discount. The exact output is over the budget: every stack goes to its top rule. 250 entered codes (Shopify's maximum a cart; PROCODE first, then partners' codes, repeats, non-ASCII): only the first 25 entries count. With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.",
   "payload": {
     "export": "cart-lines-discounts-generate-run",
     "target": "cart.lines.discounts.generate.run",
@@ -1249,7 +1249,7 @@
                   {
                     "id": "r_0533456ec29069d6004f",
                     "enabled": true,
-                    "name": "Kód",
+                    "name": "K",
                     "method": "code",
                     "value": {
                       "kind": "percentage",
@@ -1265,7 +1265,7 @@
                   {
                     "id": "r_8098a9121a99714644a5",
                     "enabled": true,
-                    "name": "Objednávka",
+                    "name": "Obj",
                     "method": "automatic",
                     "value": {
                       "kind": "percentage",
@@ -1278,7 +1278,7 @@
                   {
                     "id": "r_787c30396b328e0e1f6b",
                     "enabled": true,
-                    "name": "Doprava",
+                    "name": "D",
                     "method": "automatic",
                     "value": {
                       "kind": "freeShipping"
@@ -1287,7 +1287,8 @@
                       "kind": "shipping"
                     }
                   }
-                ]
+                ],
+                "maxCodeLength": 7
               },
               "tiers": {
                 "sets": []
@@ -13093,7 +13094,7 @@
           "orderDiscountsAdd": {
             "candidates": [
               {
-                "message": "Objednávka",
+                "message": "Obj",
                 "targets": [
                   {
                     "orderSubtotal": {

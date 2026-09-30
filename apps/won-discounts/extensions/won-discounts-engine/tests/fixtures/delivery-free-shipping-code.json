@@ -61,7 +61,8 @@
                       "542ffc7c"
                     ]
                   }
-                ]
+                ],
+                "maxCodeLength": 7
               },
               "tiers": {
                 "sets": []

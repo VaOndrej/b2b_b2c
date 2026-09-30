@@ -24,7 +24,7 @@ summary: Exact limits of Won Discounts — discounts per shop, active code disco
 | Discounts in one shop | 200 |
 | Active code discounts at the same time | 20 |
 | Codes in one code discount | 1,000 |
-| Length of one code | 255 characters |
+| Length of one code (Shopify itself allows 255; a Shopify discount with a longer code stays in Shopify) | 64 characters |
 | Products, variants or collections picked in one discount | 250 each |
 | Discounts stacked on one line or on the order (Pro) | 6 |
 | Codes a customer enters that are counted (the first ones entered; later codes are not counted) | 25 |

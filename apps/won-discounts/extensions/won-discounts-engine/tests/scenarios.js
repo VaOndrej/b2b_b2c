@@ -927,6 +927,7 @@ function allScenarios() {
   filledToInputLimit((siblings) => marginProBudget({ lines: 500, siblings })),
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge" })),
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge-codes", codes: 250 })),
+  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge-won-codes", collections: 90, wonCodes: true })),
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, ruleIdLength: 64, collections: 29, name: "long-ids" })),
   filledToInputLimit((siblings) => proMeshBudget({ lines: 200, siblings })),
   filledToInputLimit((siblings) => nearMinBudget({ lines: 200, siblings })),
@@ -1425,7 +1426,7 @@ function marginCappedBudget(count) {
 // --- The Pro worst case with margin protection (instruction budget, MVP 2 drift audit P1/P2) ---
 //
 // Everything a Pro cart can put on every line at once, within the shop config's
-// 9 000 B (37 rules and 100 collections leave room for one rule's combinesWith)
+// 9 000 B (37 rules and 100 collections, with `maxCodeLength`, fill it to 8 998 B)
 // and the function input Shopify accepts — 128 kB of MessagePack up to 200
 // lines, scaled above (tests/input-size.js) — filled to that limit:
 //   - 37 rules: "VIP" 2,5 % stacks (Pro combinesWith) with S1–S8; S1–S33
@@ -1463,13 +1464,14 @@ const proCollection = (/** @type {number} */ k) => String(4829301938475 + k * 10
 /** A collection's margin setting: [minimum margin, maximum discount], undefined = the global value. */
 const proSetting = (/** @type {number} */ k) => /** @type {[number | undefined, number | undefined]} */ ([[10.5, 30.5], [25, undefined], [undefined, 45.5], [33.3, 60]][k % 4]);
 
-function proRules() {
+function proRules(codes = ["PROCODE"]) {
   const spokes = Array.from({ length: PRO_SPOKES }, (_, k) => `s${k + 1}`);
   const rules = [pct("vip", 2.5, { name: "VIP", combinesWith: { ruleIds: spokes } })];
   for (let k = 1; k <= PRO_RULES; k += 1) rules.push(pct(`s${k}`, proPercent(k), { name: `S${k}` }));
-  rules.push(withCodes(["PROCODE"], pct("c1", 1, { name: "Kód" })));
-  rules.push(orderPct("o10", 10, { name: "Objednávka" }));
-  rules.push(freeShip("ship", { name: "Doprava" }));
+  // Short names: the config also carries `maxCodeLength` (audit round 6) within its 9 000 B.
+  rules.push(withCodes(codes, pct("c1", 1, { name: "K" })));
+  rules.push(orderPct("o10", 10, { name: "Obj" }));
+  rules.push(freeShip("ship", { name: "D" }));
   if (rules.length !== 37) throw new Error("marginProBudget: 37 rules");
   return rules;
 }
@@ -1499,14 +1501,27 @@ function filledToInputLimit(make) {
 }
 
 /**
+ * 25 Won codes of 64 characters (CONFIG_LIMITS.codeLength), every one a Czech
+ * letter with a diacritic (2 UTF-8 bytes, a case pair): the longest codes the
+ * function upper-cases and hashes (audit round 6), each told apart by its
+ * first two letters.
+ * @type {string[]}
+ */
+const CZECH = "ÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ";
+const LONG_WON_CODES = Array.from({ length: 25 }, (_, k) => `${CZECH[Math.floor(k / 15)]}${CZECH[k % 15]}${CZECH.repeat(5)}`.slice(0, 64));
+
+/**
  * `codes`: that many entered codes in all — PROCODE first, then foreign codes
  * (partners' codes, some typed again in lower case or padded, non-ASCII ones):
- * only the first 25 distinct count (plan.ts MAX_ENTERED_CODES), and none of the
+ * only the first 25 entries count (plan.ts MAX_ENTERED_CODES), and none of the
  * others is a Won code, so the expected output is the same.
- * @param {{ lines: number, siblings: (i: number) => number, ruleIdLength?: number, collections?: number, marginRefs?: number, name?: string, codes?: number }} shape
+ * `wonCodes`: the code rule's codes are LONG_WON_CODES, and all 25 are entered,
+ * typed in lower case: each is normalized, hashed and matched; the rule has no
+ * line, so the expected output is the same.
+ * @param {{ lines: number, siblings: (i: number) => number, ruleIdLength?: number, collections?: number, marginRefs?: number, name?: string, codes?: number, wonCodes?: boolean }} shape
  * @returns {Scenario}
  */
-function marginProBudget({ lines: count, siblings, ruleIdLength = 22, collections = 100, marginRefs = 2, name, codes = 1 }) {
+function marginProBudget({ lines: count, siblings, ruleIdLength = 22, collections = 100, marginRefs = 2, name, codes = 1, wonCodes = false }) {
   const rest = PRO_RULES - PRO_SPOKES;
   const lines = [];
   /** @type {{ key: string | null, message: string, value: unknown, target: unknown, amount: number }[]} */
@@ -1558,7 +1573,7 @@ function marginProBudget({ lines: count, siblings, ruleIdLength = 22, collection
   for (const l of open) {
     if (Math.floor((l.h * S) / l.a) < wanted || Math.floor((l.h * S0) / l.s) < wanted) throw new Error("marginProBudget: every line must carry the order");
   }
-  const orderOp = order("Objednávka", [], amountOff(kc(wanted)));
+  const orderOp = order("Obj", [], amountOff(kc(wanted)));
   const budget = Math.floor((OUTPUT_BUDGET * Math.max(200, count)) / 200);
   const size = (/** @type {{ message: string, targets: unknown[], value: unknown }[]} */ list) =>
     bytes(out(products(...list.map(({ message, targets, value }) => ({ message, targets, value }))), orderOp));
@@ -1586,16 +1601,16 @@ function marginProBudget({ lines: count, siblings, ruleIdLength = 22, collection
       ` and ${fewest === most ? fewest : `${fewest}–${most}`} variant-level refs of other variants of its product: the input filled to Shopify's limit of ${128 * Math.max(1, count / 200)} kB of MessagePack` +
       `; 37 rules, a 10 % order discount. The exact output is over the budget: every stack goes to its top rule. ` +
       (long ? `Rule ids at the sanitizer's maximum of ${ruleIdLength} characters (the config keeps ${collections} collections within its 9 000 B). ` : "") +
-      (codes > 1 ? `${codes} entered codes (Shopify's maximum a cart; PROCODE first, then partners' codes, repeats, non-ASCII): only the first 25 distinct count. ` : "") +
+      (codes > 1 ? `${codes} entered codes (Shopify's maximum a cart; PROCODE first, then partners' codes, repeats, non-ASCII): only the first 25 entries count. ` : "") +
+      (wonCodes ? `The code rule's 25 codes of 64 Czech letters with diacritics (the longest a Won code can be), all entered in lower case: each normalized, hashed and matched (the config keeps ${collections} collections within its 9 000 B). ` : "") +
       `With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.`,
     target: "lines",
-    rules: proRules(),
+    rules: proRules(wonCodes ? LONG_WON_CODES : undefined),
     margin: marginOn({ minMarginPercent: PRO_MARGIN_MIN, maxDiscountPercent: 40 }, perCollection),
     role: AUTO,
-    entered: [
-      "PROCODE",
-      ...Array.from({ length: codes - 1 }, (_, k) => (k % 10 === 9 ? ` partner${k - 1} ` : k % 7 === 3 ? `SLEVA-ČLEN-${k}` : `PARTNER${k}`)),
-    ],
+    entered: wonCodes
+      ? LONG_WON_CODES.map((code) => code.toLowerCase())
+      : ["PROCODE", ...Array.from({ length: codes - 1 }, (_, k) => (k % 10 === 9 ? ` partner${k - 1} ` : k % 7 === 3 ? `SLEVA-ČLEN-${k}` : `PARTNER${k}`))],
     lines,
     expected: out(products(...kept.map(({ message, targets, value }) => ({ message, targets, value }))), orderOp),
   };

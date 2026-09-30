@@ -321,7 +321,8 @@
                       "fb86d0cf"
                     ]
                   }
-                ]
+                ],
+                "maxCodeLength": 8
               },
               "tiers": {
                 "sets": []

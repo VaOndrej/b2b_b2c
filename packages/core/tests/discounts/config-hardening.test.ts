@@ -122,19 +122,21 @@ test("a code already used by an earlier rule is removed from the later rule (Sho
   assert.ok(hasIssue(issues, "duplicate_code", "modules.codes.rules[1].codes"));
 });
 
-test("codes longer than 255 characters are dropped, codes per rule are capped at 1000", () => {
+test("codes longer than 64 characters are dropped, codes per rule are capped at 1000", () => {
+  // Measured trimmed and upper-cased (UTF-16 units): "ß" × 40 is "SS" × 40, 80 long (audit round 6).
   const long = "X".repeat(CONFIG_LIMITS.codeLength + 1);
   const many = Array.from({ length: CONFIG_LIMITS.codesPerRule + 3 }, (_, i) => `CODE${i}`);
   const { config, issues } = sanitizeConfig({
-    modules: { codes: { rules: [rule("r1", { method: "code", codes: [long, "X".repeat(255), ...many] })] } },
+    modules: { codes: { rules: [rule("r1", { method: "code", codes: [long, "ß".repeat(40), ` ${"X".repeat(64)} `, "X".repeat(255), ...many] })] } },
   });
   const codes = config.modules.codes.rules[0].codes ?? [];
-  assert.equal(CONFIG_LIMITS.codeLength, 255);
+  assert.equal(CONFIG_LIMITS.codeLength, 64);
   assert.equal(CONFIG_LIMITS.codesPerRule, 1000);
   assert.equal(codes.length, 1000);
-  assert.equal(codes[0], "X".repeat(255));
-  assert.ok(!codes.includes(long));
+  assert.equal(codes[0], "X".repeat(64));
+  assert.ok(!codes.includes(long) && !codes.includes("SS".repeat(40)) && !codes.includes("X".repeat(255)));
   assert.ok(hasIssue(issues, "code_too_long", "modules.codes.rules[0].codes"));
+  assert.equal(issues.find((i) => i.code === "code_too_long")?.params?.count, 3);
   assert.ok(hasIssue(issues, "too_many_codes", "modules.codes.rules[0].codes"));
 });
 

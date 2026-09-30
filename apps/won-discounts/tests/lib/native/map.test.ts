@@ -3,7 +3,8 @@ import { test } from "node:test";
 
 import { CONFIG_LIMITS, createDefaultConfig, sanitizeConfig } from "@won/core/discounts/config";
 
-import { moveAllPrompt, moveDialogCopy } from "../../../app/lib/native/copy.ts";
+import { classifyNative } from "../../../app/lib/native/classify.ts";
+import { moveAllPrompt, moveDialogCopy, notMovableReasonText } from "../../../app/lib/native/copy.ts";
 import { decimalToMinor, NotMovableError, planMove, ruleIdFor } from "../../../app/lib/native/map.server.ts";
 import { normalizeNode } from "../../../app/lib/native/normalize.ts";
 import { isShopMidnight, toShopLocalIso } from "../../../app/lib/native/time.ts";
@@ -195,4 +196,25 @@ test("§4c: dialog copy in both languages, no enum keys anywhere", () => {
   assert.equal(moveAllPrompt(4, "cs").question, "Máš 4 slevy v Shopify. Přesunout do Won?");
   assert.equal(moveAllPrompt(5, "cs").confirm, "Přesunout 5 slev");
   assert.equal(moveAllPrompt(1, "en").question, "You have 1 discount in Shopify. Move it into Won?");
+});
+
+test("a code discount with a code longer than 64 characters stays in Shopify (audit round 6)", () => {
+  assert.equal(CONFIG_LIMITS.codeLength, 64);
+  const long = basic({ id: "gid://shopify/DiscountCodeNode/964", codes: ["LETO10", "x".repeat(65)] });
+  assert.deepEqual(classifyNative(long), { code: "code_too_long", max: 64 });
+  assert.throws(
+    () => planMove(long, createDefaultConfig(), { now: NOW }),
+    (error: unknown) => {
+      assert.ok(error instanceof NotMovableError);
+      assert.equal(error.reason.code, "code_too_long");
+      assert.equal(error.message, "Má kód delší než 64 znaků. Tak dlouhý kód Won nepodporuje.");
+      return true;
+    },
+  );
+  assert.equal(notMovableReasonText({ code: "code_too_long", max: 64 }, "en"), "It has a code longer than 64 characters. Won does not support codes that long.");
+  // Measured as Won stores it (trimmed, upper-cased): 64 characters move, "ß" × 40 is "SS" × 40.
+  assert.equal(classifyNative(basic({ codes: [` ${"x".repeat(64)} `] })), null);
+  assert.equal(classifyNative(basic({ codes: ["ß".repeat(40)] }))?.code, "code_too_long");
+  const plan = planMove(basic({ codes: ["x".repeat(64)] }), createDefaultConfig(), { now: NOW });
+  assert.deepEqual(plan.rule.codes, ["X".repeat(64)]);
 });

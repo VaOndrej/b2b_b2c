@@ -59,7 +59,7 @@ pub fn emit_for_node<'p>(plan: &'p CartPlan<'_>, role: &NodeRole, triggering_cod
         NodeRole::Code(rule_id) => {
             let trigger = triggering_code.map(normalize_code).unwrap_or_default();
             let Some(i) = plan.rule_index(rule_id) else { return out };
-            if trigger.is_empty() || !rules[i].method_code || !plan.entered_by_rule[i].contains(&trigger) {
+            if trigger.is_empty() || !rules[i].method_code || !plan.rule_has_code(i, &trigger) {
                 return out;
             }
             Some(i)

@@ -11,6 +11,7 @@
 
 use shopify_function::wasm_api::Value;
 
+use super::hash::MAX_CODE_LENGTH;
 use super::js;
 use super::margin::{read_margin_payload, MarginPayload};
 use crate::json::{entries, is_true, non_empty, number, prop, string, string_list, Fields, Key};
@@ -225,6 +226,19 @@ pub struct Config {
     pub campaigns: Vec<RawCampaign>,
     /// `modules.margin` when margin protection is ON (margin.rs `read_margin_payload`); none = off.
     pub margin: Option<MarginPayload>,
+    /// `modules.codes.maxCodeLength` (plan.ts `readMaxCodeLength`): the longest
+    /// Won code, UTF-16 units; an entered code longer than it after trimming is
+    /// never upper-cased or matched (it cannot be a Won code).
+    pub max_code_length: usize,
+}
+
+/// `readMaxCodeLength` (plan.ts): a whole number ≥ 0, at most MAX_CODE_LENGTH;
+/// anything else (a payload written before audit round 6) reads as MAX_CODE_LENGTH.
+fn read_max_code_length(value: &Value) -> usize {
+    match number(value) {
+        Some(n) if n >= 0.0 && n.fract() == 0.0 => n.min(MAX_CODE_LENGTH as f64) as usize,
+        _ => MAX_CODE_LENGTH,
+    }
 }
 
 // --- Reading from the input -------------------------------------------------------------------
@@ -442,6 +456,7 @@ impl Config {
             rules: (0..rule_count).filter_map(|i| read_rule(&rules.get_at_index(i), cur)).collect(),
             campaigns,
             margin: read_margin_payload(&prop(&modules, Key::Margin)),
+            max_code_length: read_max_code_length(&prop(&codes, Key::MaxCodeLength)),
         })
     }
 }
@@ -466,6 +481,19 @@ mod tests {
         let config = read(r#"{"modules": {"codes": {"rules": []}}}"#).unwrap();
         assert_eq!(config.engine, EngineFlags::default());
         assert!(config.rules.is_empty());
+    }
+
+    #[test]
+    fn reads_the_longest_code_length() {
+        let len = |extra: &str| read(&format!(r#"{{"modules": {{"codes": {{"rules": []{extra}}}}}}}"#)).unwrap().max_code_length;
+        assert_eq!(len(""), MAX_CODE_LENGTH);
+        assert_eq!(len(r#", "maxCodeLength": 9"#), 9);
+        assert_eq!(len(r#", "maxCodeLength": 9.0"#), 9);
+        assert_eq!(len(r#", "maxCodeLength": 0"#), 0);
+        assert_eq!(len(r#", "maxCodeLength": 64"#), 64);
+        for junk in ["9.5", "-1", r#""9""#, "null", "[9]", "1e300", "65", "255", "true"] {
+            assert_eq!(len(&format!(r#", "maxCodeLength": {junk}"#)), MAX_CODE_LENGTH, "{junk}");
+        }
     }
 
     #[test]

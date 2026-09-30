@@ -71,7 +71,11 @@ export interface CartPlanInput {
    */
   countryCode?: string;
   lines: readonly CartLineInput[];
-  /** Every entered code, Won or not (function: enteredDiscountCodes). Case-insensitive. */
+  /**
+   * Every entered code, Won or not, one per entry (function:
+   * enteredDiscountCodes; the adapter passes an entry without a code string as
+   * ""). Case-insensitive. Every entry counts toward MAX_ENTERED_CODES.
+   */
   enteredCodes: readonly string[];
   /**
    * The node's campaign variables (C4/C7): `id` + `varsVersion` from its
@@ -134,13 +138,20 @@ export interface NormalizedCart {
   /** Upper-case ISO 3166-1 alpha-2, or null. */
   countryCode: string | null;
   lines: NormalizedLine[];
-  /** Upper-cased, trimmed, unique, in entry order. */
+  /** Upper-cased, trimmed, unique, in entry order (every entry: the code outcomes). */
   enteredCodes: string[];
   /**
    * How many of `enteredCodes` the engine considers (a prefix): those first
-   * entered among the first MAX_ENTERED_CODES codes (plan.ts matchCodes).
+   * entered among the first MAX_ENTERED_CODES entries.
    */
   consideredCodes: number;
+  /**
+   * The first MAX_ENTERED_CODES entries as entered (every entry counts, whatever
+   * it holds), each normalized ("" for one that is not a string) with its
+   * trimmed length before upper-casing (UTF-16 units): plan.ts `matchCodes`
+   * matches those that can be a Won code.
+   */
+  consideredEntries: ConsideredEntry[];
   campaign: CartCampaignInput | null;
   today: string | null;
   locale: PlanLocale;
@@ -148,17 +159,31 @@ export interface NormalizedCart {
   shopToCartRate: number | null;
 }
 
+/** One of the first MAX_ENTERED_CODES entries (NormalizedCart `consideredEntries`). */
+export interface ConsideredEntry {
+  /** normalizeCode of the entry; "" when it is not a string. */
+  code: string;
+  /** The entry's length after trimming, before upper-casing (UTF-16 units); 0 when not a string. */
+  length: number;
+}
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * The entered codes the engine considers ([spec], MVP 2 audit round 5b): the
- * first 25 codes as entered, each trimmed and upper-cased, empty ones dropped,
- * each once. A cart can hold 250 (Shopify's Storefront API), and reading every
- * one took the checkout function over Shopify's instruction limit on a heavy
- * cart; the cap counts entries, not distinct codes, so repeats cannot make it
- * read more. A later code is never matched to a rule (plan.ts `over_limit`):
- * a code discount whose code comes after them does not apply (fail closed),
- * and its code node emits nothing.
+ * first 25 entries as entered. A cart can hold 250 (Shopify's Storefront API),
+ * and reading every one took the checkout function over Shopify's instruction
+ * limit on a heavy cart. The cap counts ENTRIES, whatever they hold — a repeat,
+ * an empty code, one longer than every Won code (audit round 6: such a code is
+ * never matched, plan.ts `matchCodes`, and still counts) — so nothing can
+ * make the reader read more. Each of the first 25 is trimmed and upper-cased
+ * (`normalizeCode`) and matched to a rule once. A later code is never matched
+ * (plan.ts `over_limit`): a code discount whose code comes after them does not
+ * apply (fail closed), and its code node emits nothing. The same holds for a
+ * rule with one code among the first 25 and another after them: the plan (and
+ * Try Cart) say the rule applies, but when Shopify runs its node with the later
+ * code as the triggering code, the node emits nothing (fail closed; the
+ * discount function's README, Invariants).
  */
 export const MAX_ENTERED_CODES = 25;
 const LOCAL_DATETIME_PREFIX_RE = /^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}/;
@@ -242,12 +267,16 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
 
   const enteredCodes: string[] = [];
   const seenCodes = new Set<string>(); // O(1) a code: a cart can hold 250 (Storefront API)
+  const consideredEntries: ConsideredEntry[] = [];
   let entered = 0;
   let consideredCodes = 0;
-  for (const raw of Array.isArray(input.enteredCodes) ? input.enteredCodes : []) {
-    if (typeof raw !== "string") continue;
+  // Every entry counts toward the cap, whatever it holds (the Rust function reads
+  // exactly the first 25 entries, src/input.rs).
+  for (const raw of Array.isArray(input.enteredCodes) ? (input.enteredCodes as readonly unknown[]) : []) {
     entered += 1;
-    const code = normalizeCode(raw);
+    const trimmed = typeof raw === "string" ? raw.trim() : "";
+    const code = trimmed.toUpperCase(); // normalizeCode
+    if (entered <= MAX_ENTERED_CODES) consideredEntries.push({ code, length: trimmed.length });
     if (code && !seenCodes.has(code)) {
       seenCodes.add(code);
       enteredCodes.push(code);
@@ -267,6 +296,7 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
     lines,
     enteredCodes,
     consideredCodes,
+    consideredEntries,
     campaign: readCampaign(input.campaign),
     today,
     locale: input.locale === "en" ? "en" : "cs",

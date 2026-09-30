@@ -40,7 +40,8 @@
 //   - rule targets as `{kind}` only (targeting is precomputed into product
 //     metafields, targeting.ts);
 //   - codes as 8-hex FNV-1a hashes (code-hash.ts; `findCodeHashCollisions`
-//     guards the admin save);
+//     guards the admin save), with the longest code's length (`maxCodeLength`:
+//     the function never upper-cases an entered code longer than it);
 //   - schedules as SHOP-LOCAL dates (`startsOn`/`endsOn`), converted with the
 //     shop's IANA time zone, because the function can only compare
 //     `shop.localTime.date`;
@@ -124,7 +125,14 @@ export interface FunctionConfigPayload {
   /** Market handle → upper-case countries, for enabled markets some rule or the selected campaign targets. */
   marketCountries: Record<string, string[]>;
   modules: {
-    codes: { rules: FunctionRule[] };
+    /**
+     * `maxCodeLength`: the longest Won code (UTF-16 units, trimmed and
+     * upper-cased), shipped whenever a code rule ships code hashes (audit round
+     * 6). The function upper-cases and hashes only entered codes no longer than
+     * it: a longer one cannot be a Won code. Absent (a payload written before)
+     * it reads as CONFIG_LIMITS.codeLength (plan.ts `readMaxCodeLength`).
+     */
+    codes: { rules: FunctionRule[]; maxCodeLength?: number };
     tiers: { sets: TierSet[] };
     rewards: { freeShipping?: { threshold: MoneyByCurrency }; gifts: GiftTier[]; countOtherDiscounts: boolean };
     margin: FunctionMarginPayload;
@@ -377,6 +385,17 @@ function shipRule(r: ReadonlyDeep<DiscountRule>, shopTimezone: string): Function
   return out;
 }
 
+/** The codes module: the rules, and the longest Won code when any code ships. */
+function shipCodes(rules: ConfigInput["modules"]["codes"]["rules"], shopTimezone: string): FunctionConfigPayload["modules"]["codes"] {
+  const shipped = rules.map((r) => shipRule(r, shopTimezone));
+  let longest = -1;
+  for (const r of rules) {
+    if (r.method !== "code") continue;
+    for (const code of r.codes ?? []) longest = Math.max(longest, normalizeCode(code).length);
+  }
+  return longest < 0 ? { rules: shipped } : { rules: shipped, maxCodeLength: longest };
+}
+
 /** A campaign patch as the engine reads it: a re-targeting patch keeps only `{kind}`
  * (the lines carry campaign-scoped refs instead, see targeting.ts). */
 function shipPatch(patch: ReadonlyDeep<Record<string, unknown>>): Record<string, unknown> {
@@ -427,7 +446,7 @@ function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone
     engine: copy<EngineSettings>(config.engine),
     marketCountries: shipMarketCountries(config, selected),
     modules: {
-      codes: { rules: codes.rules.map((r) => shipRule(r, shopTimezone)) },
+      codes: shipCodes(codes.rules, shopTimezone),
       tiers: { sets: copy<TierSet[]>(tiers.sets) },
       rewards: {
         ...(rewards.freeShipping ? { freeShipping: copy<{ threshold: MoneyByCurrency }>(rewards.freeShipping) } : {}),

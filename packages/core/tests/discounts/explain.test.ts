@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { codeHash } from "../../src/discounts/code-hash.ts";
 import { describeRule, formatMoney } from "../../src/discounts/describe.ts";
 import { explainPlan } from "../../src/discounts/explain.ts";
 import { planCart } from "../../src/discounts/plan.ts";
@@ -225,15 +226,21 @@ test("segment targeting: an honest 'not available yet', for codes and automatic 
 
 // --- fix round 2 -------------------------------------------------------------------------------
 
-test("the admin simulation describes a code rule with the codes actually entered (capped at 64), not a generic 'kódem'", () => {
-  const long = `VIP${"X".repeat(100)}`;
-  const plan = planCart(
-    cartOf([line("L1", 1000_00)], { enteredCodes: ["vip", long] }),
-    payloadOf([orderPct("V", 10, code(["VIP", long]))]),
-  );
+test("the admin simulation describes a code rule with the codes actually entered, not a generic 'kódem'", () => {
+  // A Won code has at most 64 characters (CONFIG_LIMITS.codeLength), so it is
+  // described whole; a longer entered code is never one (audit round 6), even
+  // when a hand-made payload lists its hash.
+  const long = `VIP${"X".repeat(61)}`;
+  const longer = `VIP${"X".repeat(100)}`;
+  const payload = payloadOf([orderPct("V", 10, code(["VIP", long, longer]))]);
+  assert.equal(payload.modules.codes.maxCodeLength, 64, "the sanitizer dropped the longer code");
+  payload.modules.codes.rules[0].codeHashes?.push(codeHash(longer));
+  const plan = planCart(cartOf([line("L1", 1000_00)], { enteredCodes: ["vip", long, longer] }), payload);
   const rule = plan.rules[0];
-  assert.equal(describeRule(rule.describable, "cs", "CZK"), `10${NBSP}% z objednávky · kódy VIP, ${long.slice(0, 64)}…`);
-  assert.equal(describeRule(rule.describable, "en", "CZK"), `10% off the order · codes VIP, ${long.slice(0, 64)}…`);
+  assert.deepEqual(rule.enteredCodes, ["VIP", long]);
+  assert.equal(describeRule(rule.describable, "cs", "CZK"), `10${NBSP}% z objednávky · kódy VIP, ${long}`);
+  assert.equal(describeRule(rule.describable, "en", "CZK"), `10% off the order · codes VIP, ${long}`);
+  assert.equal(plan.codes.find((c) => c.code === longer)?.state, "unknown");
 
   const notEntered = planCart(cartOf([line("L1", 1000_00)]), payloadOf([orderPct("V", 10, code(["VIP"]))]));
   assert.equal(describeRule(notEntered.rules[0].describable, "cs", "CZK"), `10${NBSP}% z objednávky · kódem`);

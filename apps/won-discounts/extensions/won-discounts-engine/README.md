@@ -47,6 +47,7 @@ by hand, and the TS reference reproduces all of them.
 | The margin order search's bound, 1 000 carts of 17–60 lines whose rates tie in classes, the exact limit, the bound and the shortcut checked against it each ≥ 20 times | `tests/parity.test.js` |
 | The search against its written-out definition, 5 000 line sets of tied and nearly tied rates, and a digest of its answers equal to the TS search's | `cargo test` (`the_order_search_on_clustered_rates_…`) and its twin |
 | Many markets (up to 50, duplicated handles, the country anywhere or nowhere) and entered codes (up to 250: foreign, matching in any case and padding, repeated, non-ASCII, empty; the 25-code cap binding and leaving a Won code out ≥ 20 times), 400 carts | `tests/parity.test.js` |
+| Entered codes of any length against the longest Won code (`maxCodeLength` shipped, missing, junk, 0, below a Won code; codes of 1–300 characters, a Won code one character longer, padded Won codes, white space, entries without a code string; code nodes), 600 carts, each of 10 ways ≥ 20 times | `tests/parity.test.js` |
 | The dev store's logged runs (every real checkout run) through a build: its output parsed and serialized again = the logged output so | `tests/replay-logs.mjs` (by hand, below) |
 
 Details:
@@ -60,10 +61,11 @@ Details:
   - Margin protection (MVP 2): on / off / legacy / junk payloads, collection overrides (products listing more than 4 marginRefs among them), cost prices in the shop currency and in others, junk costs, `presentmentCurrencyRate` as decimal strings, numbers and junk, carts of exponent 0 / 2 / 3, and big over-budget carts with capped and tight lines. Every margin branch (capped, capped to 0, capped stack, order lowered / leaving lines out / floored, exclusive mode, cost and maximum-% floors, collection settings, converted and unconvertible costs, tight lines, over-budget outputs, margin off with costs) is counted like the rest.
   - Every engine branch must be hit ≥ 20 times, or the test fails.
   - Env overrides: `PARITY_SEEDS=…`, `PARITY_CASES=…`.
+- **Entered codes of any length.** 1–5 code rules with codes of 1–64 characters (ASCII, Czech, ß and ligatures whose upper case is longer, Greek with a 2–3-character upper case, astral, CJK); `maxCodeLength` as the sync ships it (55 %), below the longest code (a hand-made payload), junk or out of range, or missing; 1–60 entries: the codes in any case and padding, a Won code one character longer, foreign codes of 1–300 characters, white-space-only codes, `""`, `{}`, `{code: null}`, `{code: 7}`; a code node of the rule owning the triggering code. Counted: a code over the longest left out, a padded Won code longer as entered than the longest (matched), a code over 64 among the first 25, a Won code left out by a hand-made bound, a Won code past the cap behind left-out or empty entries, a code node emitting and one emitting nothing for a left-out trigger (`PARITY_LONG_CASES=…`).
 - **Pro stack cap.** 7–16 product rules combining at a random density up to a full mesh (percents with repeats, fixed amounts, code rules, priorities), 1–40 lines each listing its own 5–14 of them, half the carts with 7–9 order rules in a mesh, 40 % with margin protection. Counted: a line with 7+ candidates that stacks, a stack of the 6 best, a partner of the whole stack left out by the cap, margin cutting a capped stack, an order stack of the 6 best (`PARITY_MESH_CASES=…`).
 - **Margin order search's bound.** 17–60 lines, most of them k × one price with a cost floor of k × (price − headroom) − 1 haléř (a 10 or 20 % product discount keeps them proportional), so a class's rates tie exactly; k from ranges of 8, 16, 17 or 40 values, so a candidate set has fewer than, exactly or more than 16 distinct lines tied for its minimum; a few ordinary lines; an order discount of 5–90 % or a fixed amount (`PARITY_TIED_CASES=…`).
 - **Unit-test twins.** Each twin runs the Rust test's scenario through the TS engine and asserts the same values. The test names are paired automatically.
-- **Replay of the logged runs.** `node tests/replay-logs.mjs <wasm> [<wasm> …]` runs every function run the dev store logged (`apps/won-discounts/.shopify/logs`, what `shopify app dev` writes) through each build and compares its output with the logged one (both parsed and serialized again: key order and values, not how a number was written — the fixtures' text check covers that); with two builds it also counts the runs where they differ from each other. Audit round 4 (the order search's bound, landed while the final live E2E gate ran; `shopify app dev` uploaded the new build at 09:52 UTC, and the dev bundle's Wasm is byte for byte the tested one): 1 024 runs with an input; the new build, the round-3 build and the round-2 build gave the same output on every one; 874 equal the log (every run since 2026-09-28 18:00 UTC, the final gate's 222 of 2026-09-30 included, 73 of them served by the new build), and the 150 that do not are the MVP 0 prototype's contract probes of 2026-09-28 11:19–14:11 UTC (a different function and config: messages `WON:WONPROTO1…`, ~570 k instructions a run). 9 more logged runs have no input (the C4 probes' `InvalidVariableValueError`). Audit round 5 (markets resolved once, entered codes matched in one pass; the dev bundle again byte for byte the tested build): 1 091 runs, the new build and the round-4b build the same on every one, 941 equal to the log, the other 150 the same MVP 0 probes.
+- **Replay of the logged runs.** `node tests/replay-logs.mjs <wasm> [<wasm> …]` runs every function run the dev store logged (`apps/won-discounts/.shopify/logs`, what `shopify app dev` writes) through each build and compares its output with the logged one (both parsed and serialized again: key order and values, not how a number was written — the fixtures' text check covers that); with two builds it also counts the runs where they differ from each other. Audit round 4 (the order search's bound, landed while the final live E2E gate ran; `shopify app dev` uploaded the new build at 09:52 UTC, and the dev bundle's Wasm is byte for byte the tested one): 1 024 runs with an input; the new build, the round-3 build and the round-2 build gave the same output on every one; 874 equal the log (every run since 2026-09-28 18:00 UTC, the final gate's 222 of 2026-09-30 included, 73 of them served by the new build), and the 150 that do not are the MVP 0 prototype's contract probes of 2026-09-28 11:19–14:11 UTC (a different function and config: messages `WON:WONPROTO1…`, ~570 k instructions a run). 9 more logged runs have no input (the C4 probes' `InvalidVariableValueError`). Audit round 5 (markets resolved once, entered codes matched in one pass; the dev bundle again byte for byte the tested build): 1 091 runs, the new build and the round-4b build the same on every one, 941 equal to the log, the other 150 the same MVP 0 probes. Audit round 6 (entered codes bounded by the longest Won code, the case table, cart lines read by position): 1 094 runs, the new build and the round-5b build the same on every one, 944 equal to the log, the other 150 the same MVP 0 probes.
 
 Rules for a change:
 
@@ -187,42 +189,47 @@ more JSON than 128 kB, and the budget carts are filled to that real limit.
 - every budget cart is an input Shopify can send: ≤ 128 kB of MessagePack
   (scaled with the lines) and a shared config ≤ 9 000 B of JSON (C7).
 
-**What holds, measured (audit round 5b).** Every search the function runs is
+**What holds, measured (audit round 6).** Every search the function runs is
 bounded per target by a constant: a Pro stack is searched among its 6
 best-ranked candidates, the margin order search evaluates a candidate set's
 limit line by line over at most 16 lines tied for its minimum, a product has
 at most 4 marginRefs read (more → the store's strictest setting), the cart's
-country is resolved to its markets once per run, and at most the first 25
-entered codes are read (all in Invariants and below). So a run's cost grows
-with what it reads, and Shopify's input limit bounds that. **Every family the
-audits' sweeps, hill climbs and hunts found stays under the limit; the
-highest is 99.1 %** (below). The margin is thin on the costliest base (~98 %:
-12 rule refs on 200 lines, exclusive mode, most lines capped, an output over
-the budget, the input filled): a new input dimension the function reads must
-cost about what the provider's walk of the same bytes costs.
+country is resolved to its markets once per run, at most the first 25 entered
+codes are read, and of those only a code no longer than the longest Won code
+(≤ 64 characters) is upper-cased and hashed (all in Invariants and below). So
+a run's cost grows with what it reads, and Shopify's input limit bounds that.
+**Every family the audits' sweeps, hill climbs and hunts found stays under
+the limit; the highest is 98.3 %** (below), with every input within the
+limits the app and Shopify set (a shared config ≤ 9 000 B, a product
+metafield ≤ 9 000 B, the input ≤ Shopify's MessagePack limit, app-format rule
+ids, ≤ 250 entered codes of any length). The margin is thin on the costliest
+base (~97 %: 12 rule refs on 200 lines, exclusive mode, most lines capped, an
+output over the budget, the input filled): a new input dimension the function
+reads must cost about what the provider's walk of the same bytes costs.
 
-- **Entered codes.** A cart can hold 250 codes (the Storefront API's maximum).
-  Only the first 25 as entered count (Invariants), so the function reads at
-  most 25; the rest cost only the provider's walk (~1 k instructions a code,
-  as any input bytes). On the 97.9 % shape: 25 codes 98.8 %, 250 codes
-  99.1 %, 250 repeats of one code 98.7 % (round 5, reading every code:
-  100.6–102.1 % from 150 codes; before round 5, deduplicating them pairwise:
-  125.8 %, and 320 % with 800 codes on a 1-line cart). Without a code rule
-  whose hash a code can have, none is read.
-- Every other family stays under the limit. The audits' hill climbs on this
-  build: rule refs and Pro stacks (the round-2/3/4 generators) max 97.0 %;
-  Pro market targeting with up to 50 markets, the cart's country last (the
-  round-4 re-review's generators): 95.7 % (101.2–103.1 % before round 5); the
-  near-minimum order search 82.1 % (145.2 % before round 4); legacy marginRefs
-  88.7 % (105.3 % before round 4b).
-- The realistic worst cases, the gated budget carts, stay ≤ 90 % (max 87.5 %).
+- **Entered codes.** A cart can hold 250 codes (the Storefront API's maximum)
+  of up to 255 characters. Only the first 25 entries count (Invariants), so
+  the function reads at most 25; the rest cost only the provider's walk
+  (~1 k instructions a code, as any input bytes). Of those 25, a code longer
+  than the longest Won code is left out before any upper-casing, and the
+  others are hashed in one pass (~45 instructions an ASCII character, ~90–130
+  another), so the work a code can cause is bounded by 64 characters. The
+  re-review of round 5b found long codes going over: 25 codes of 255 "ﬃ" took
+  the bridge cart to 169.2 % and an ordinary 200-line cart to 133.9 %, 25
+  codes of 40 Czech letters the 97.9 % base to 100.4 %, and short codes the
+  99.7 % base (JPY, 20 disjoint markets of 30 countries, 30 refs a line,
+  exclusive mode) to 100.3–101.7 %. On this build: 79.8 %, 45.3 %, 95.8 % and
+  97.2–97.9 %; the 99.7 % base itself is 96.8 %. Without a code rule whose
+  hash a code can have, none is read.
+- Every other family stays under the limit (table below).
+- The realistic worst cases, the gated budget carts, stay ≤ 90 % (max 85.7 %).
 - The rule refs a line lists are strings the function reads and resolves
   (~1 k instructions each), ~1 % of the limit per ref at the input limit. There
   is no limit on the rules targeting one product (a product decision, audit
   round 3): the input limit bounds the refs.
 
-The typical carts meet the old 75 % goal with room to spare (MVP 1 cart 47 %,
-margin carts 53–58 %). The 90 % gate protects the realistic worst case at the
+The typical carts meet the old 75 % goal with room to spare (MVP 1 cart 45 %,
+margin carts 51–56 %). The 90 % gate protects the realistic worst case at the
 real input limit: a Pro cart with a cost price, a Pro stack and collection
 margin settings on every line, whose input is Shopify's 128 kB. Such carts went
 over Shopify's limit before MVP 2's fixes (101–143 %: no Won discount at all).
@@ -238,45 +245,72 @@ its own variant's entry, but the input provider walks every value, so the
 filler costs what real data of that size costs.
 
 Measured with the CLI's build (`shopify app function run`, the contract test);
-"before" is the build of commit 90cb6fc (audit round 3) on the same inputs:
+"before" is the round-5b build (audit round 5b, Wasm sha1 44843606…) on the
+same inputs. Every cart moved 2.1–3.2 points: its lines' fields are read by
+position (audit round 6, below).
 
 | Budget cart (shape) | Input (MessagePack) | Before | Now | Gate |
 |---|---|---|---|---|
-| `lines-200-lines-budget` (MVP 1 worst case: 37 rules, 3–6 refs a line, codes, a Pro stack; margin off) | 68.6 kB | 5.14 M | 5.14 M (46.7 %) | 7.7 M (70 %) |
-| `delivery-200-lines-budget` | 68.7 kB | 4.86 M | 4.86 M (44.2 %) | 7.7 M |
-| `lines-margin-200-lines-budget` (the same, margin on, a cost price on every line, a 5 % order discount; the order stage's shortcut) | 73.8 kB | 6.09 M | 6.10 M (55.5 %) | 7.7 M |
-| `delivery-margin-200-lines-budget` | 73.9 kB | 5.80 M | 5.81 M (52.8 %) | 7.7 M |
-| `lines-margin-slow-200-lines-budget` (10 lines that cannot carry their share: the full two-ordering search) | 73.9 kB | 6.43 M | 6.43 M (58.4 %) | 7.7 M |
-| `lines-margin-capped-200-lines-budget` (3 of 4 lines cut to their floor, an output over the budget: stacks relaxed, candidates dropped) | 74.8 kB | 6.39 M | 6.39 M (58.1 %) | 7.7 M |
-| `lines-margin-capped-500-lines-budget` (the same on 500 lines) | 178.3 kB | 14.72 M | 14.73 M (53.6 %) | 19.25 M |
-| `lines-margin-pro-200-lines-budget` (Pro worst case: 37 rules, 4 refs a line, the Pro stack VIP + S_x, a cost price, 2 marginRefs of 100 collections with a margin setting and 5–6 variant-level refs of other variants on every line, a 10 % order discount, an output over the budget; config 8 997 B) | 128.0 kB | 9.33 M (84.8 %) | 9.35 M (85.0 %) | 9.9 M (90 %) |
-| `lines-margin-pro-500-lines-budget` (the same on 500 lines) | 320.0 kB | 22.09 M (80.3 %) | 22.11 M (80.4 %) | 24.75 M |
-| `lines-margin-pro-bridge-200-lines-budget` (the Pro worst case with 4 marginRefs a product, as many as the sync's transition bridge writes, and 4–5 variant-level refs) | 128.0 kB | 9.62 M (87.4 %) | 9.62 M (87.5 %) | 9.9 M |
-| `lines-margin-pro-long-ids-200-lines-budget` (the Pro worst case with 64-character rule ids: 29 collections fit the config; 4 refs on every line, 0–1 variant-level refs) | 128.0 kB | 7.76 M (70.5 %) | 7.76 M (70.6 %) | 9.9 M |
-| `lines-margin-pro-mesh-200-lines-budget` (the stack search's worst case: 18 Pro rules that all combine, every line a DIFFERENT 12 of them, a cost price, a 5 % order discount, 2–3 variant-level refs; config 8 172 B) | 128.0 kB | 9.36 M (85.1 %; 121.6 % without the stack cap) | 9.37 M (85.2 %) | 9.9 M |
-| `lines-margin-near-min-200-lines-budget` (the order search's worst case: every line's rate within 10⁻¹¹ of the others', a 20 % ceiling and no cost prices, a 30 % order discount no line can carry, every line a different 10 of 14 code rules nobody entered, 3–4 variant-level refs) | 128.0 kB | 10.33 M (93.9 %) | 7.46 M (67.8 %) | 9.9 M |
-| `lines-margin-near-min-500-lines-budget` (the same on 500 lines) | 320.0 kB | 36.22 M (131.7 %) | 18.26 M (66.4 %) | 24.75 M |
-| `lines-markets-200-lines-budget` (Pro market targeting at its limits: 50 markets of 5 countries, every rule targeting all 50, the cart's country last; 10 product rules, each line a different 4–8 of them, a 5 % order discount; "before" = the round-4b build) | 128.0 kB | 8.99 M (81.7 %) | 8.00 M (72.7 %) | 9.9 M |
-| `lines-margin-pro-bridge-codes-200-lines-budget` (the heaviest realistic cart, the bridge, with 250 entered codes — Shopify's maximum a cart: PROCODE first, then partners' codes, repeats, non-ASCII; only the first 25 count; "before" = the round-5 build, reading every code) | 128.0 kB | 10.03 M (91.2 %) | 9.78 M (88.9 %) | 9.9 M |
-| `lines-codes-200-lines-budget` (40 entered codes — foreign, a code rule's own padded in lower case, repeats, non-ASCII — with a code rule configured; the same cart without markets; "before" = the round-4b build) | 128.0 kB | 7.38 M (67.1 %) | 7.27 M (66.1 %) | 9.9 M |
+| `lines-200-lines-budget` (MVP 1 worst case: 37 rules, 3–6 refs a line, codes, a Pro stack; margin off) | 68.7 kB | 5.15 M (46.8 %) | 4.91 M (44.7 %) | 7.7 M (70 %) |
+| `delivery-200-lines-budget` | 68.7 kB | 4.87 M (44.3 %) | 4.63 M (42.1 %) | 7.7 M |
+| `lines-margin-200-lines-budget` (the same, margin on, a cost price on every line, a 5 % order discount; the order stage's shortcut) | 73.8 kB | 6.11 M (55.6 %) | 5.81 M (52.8 %) | 7.7 M |
+| `delivery-margin-200-lines-budget` | 73.9 kB | 5.82 M (52.9 %) | 5.51 M (50.1 %) | 7.7 M |
+| `lines-margin-slow-200-lines-budget` (10 lines that cannot carry their share: the full two-ordering search) | 73.9 kB | 6.44 M (58.6 %) | 6.14 M (55.8 %) | 7.7 M |
+| `lines-margin-capped-200-lines-budget` (3 of 4 lines cut to their floor, an output over the budget: stacks relaxed, candidates dropped) | 74.9 kB | 6.41 M (58.2 %) | 6.10 M (55.4 %) | 7.7 M |
+| `lines-margin-capped-500-lines-budget` (the same on 500 lines) | 178.3 kB | 14.75 M (53.6 %) | 13.97 M (50.8 %) | 19.25 M |
+| `lines-margin-pro-200-lines-budget` (Pro worst case: 37 rules, 4 refs a line, the Pro stack VIP + S_x, a cost price, 2 marginRefs of 100 collections with a margin setting and 5–6 variant-level refs of other variants on every line, a 10 % order discount, an output over the budget; config 8 998 B) | 128.0 kB | 9.35 M (85.0 %) | 9.03 M (82.1 %) | 9.9 M (90 %) |
+| `lines-margin-pro-500-lines-budget` (the same on 500 lines) | 320.0 kB | 22.12 M (80.4 %) | 21.31 M (77.5 %) | 24.75 M |
+| `lines-margin-pro-bridge-200-lines-budget` (the Pro worst case with 4 marginRefs a product, as many as the sync's transition bridge writes, and 4–5 variant-level refs) | 128.0 kB | 9.63 M (87.5 %) | 9.31 M (84.7 %) | 9.9 M |
+| `lines-margin-pro-long-ids-200-lines-budget` (the Pro worst case with 64-character rule ids: 29 collections fit the config; 4 refs on every line, 0–1 variant-level refs) | 128.0 kB | 7.77 M (70.6 %) | 7.46 M (67.8 %) | 9.9 M |
+| `lines-margin-pro-mesh-200-lines-budget` (the stack search's worst case: 18 Pro rules that all combine, every line a DIFFERENT 12 of them, a cost price, a 5 % order discount, 2–3 variant-level refs; config 8 172 B) | 128.0 kB | 9.37 M (85.2 %) | 9.05 M (82.3 %) | 9.9 M |
+| `lines-margin-near-min-200-lines-budget` (the order search's worst case: every line's rate within 10⁻¹¹ of the others', a 20 % ceiling and no cost prices, a 30 % order discount no line can carry, every line a different 10 of 14 code rules nobody entered, 3–4 variant-level refs) | 128.0 kB | 7.46 M (67.8 %) | 7.14 M (65.0 %) | 9.9 M |
+| `lines-margin-near-min-500-lines-budget` (the same on 500 lines) | 320.0 kB | 18.26 M (66.4 %) | 17.45 M (63.5 %) | 24.75 M |
+| `lines-markets-200-lines-budget` (Pro market targeting at its limits: 50 markets of 5 countries, every rule targeting all 50, the cart's country last; 10 product rules, each line a different 4–8 of them, a 5 % order discount) | 128.0 kB | 7.99 M (72.7 %) | 7.75 M (70.4 %) | 9.9 M |
+| `lines-margin-pro-bridge-codes-200-lines-budget` (the heaviest realistic cart, the bridge, with 250 entered codes — Shopify's maximum a cart: PROCODE first, then partners' codes, repeats, non-ASCII; only the first 25 entries count) | 128.0 kB | 9.78 M (88.9 %) | 9.43 M (85.7 %) | 9.9 M |
+| `lines-margin-pro-bridge-won-codes-200-lines-budget` (the bridge with the code rule's 25 codes of 64 Czech letters with diacritics — the longest a Won code can be, every character upper-cased through the Unicode tables — all 25 entered in lower case; 90 collections fit the config; audit round 6) | 128.0 kB | 10.34 M (94.0 %) | 9.40 M (85.4 %) | 9.9 M |
+| `lines-codes-200-lines-budget` (40 entered codes — foreign, a code rule's own padded in lower case, repeats, non-ASCII — with a code rule configured; the same cart without markets) | 128.0 kB | 7.27 M (66.1 %) | 6.99 M (63.5 %) | 9.9 M |
 
-Adversarial sweeps and hunts on this build (every input within Shopify's
-limits, the MessagePack one; outputs equal to the TS reference in every run;
-"before" = the round-3 build of 90cb6fc):
+Adversarial sweeps and hunts on this build (every input within the limits
+above; outputs equal to the TS reference in every run; "round 5b" = the
+round-5b build on the same inputs; the saved inputs of every earlier audit
+round were re-run):
 
-| Family | Runs | Max (before) | > 90 % | ≥ 100 % |
-|---|---|---|---|---|
-| The audit round 2 generator (hill climbing over rules, refs a line, names, collections, costs, caps, stacks, 200–500 lines), 3 seeds × 100 rounds, decisive and transition marginRefs | 600 | **93.7 %** (93.7 %) | 56 | 0 |
-| The same extended with the round-3 dimension (every line its own product listing a DIFFERENT random subset, full-mesh combinesWith, 1–15 refs a line, input filled to the limit) | 600 | 90.0 % (90.0 %) | 0 | 0 |
-| The round-2 re-review's hunt (full-mesh rules, a different 4–15 of them on every line, 200 and 500 lines) and round 2's adversarial shapes | 45 | 92.9 % (92.9 %) | 3 | 0 |
-| The drift audit's fixed lists without legacy refs | 37 | 88.2 % (88.1 %) | 0 | 0 |
-| The round-3 re-review's near-minimum order search (rates within 10⁻⁹, a 30 % order discount; inert refs, a Pro mesh, or nothing to fill; 200 and 500 lines) | 29 | 82.1 % (**145.2 %**; 108.2 % at 200 lines) | 0 | 0 |
-| Round 4's own: lines whose rates tie exactly (proportional cost floors) or sit 1–5 ulps apart, with and without product discounts, 200 and 500 lines at the input limit | 60 | 75.6 % | 0 | 0 |
-| Legacy marginRefs (16–30 a product, pre-37d51d9 or hand-made data): both generators, the audit's fixed list, shapes B and E — the same inputs on the round-4b build | 626 | 87.5 % (105.3 %) | 0 | 0 |
-| The legacy space re-climbed on the round-4b build (both generators, 3 seeds × 100 rounds) | 600 | 88.7 % | 0 | 0 |
-| The round-4 re-review's generators re-climbed on the round-5 build (same seeds): rule refs up to 30 a line and 60 rules (heavy4), + 1–4 markets (heavy5), + 1–12 overlapping markets, the country last (heavy6), + 8–50 disjoint markets (heavy7) | 2 517 | 94.0 / 97.0 / 95.7 / 95.7 % (96.7 / 98.6 / 101.2 / 103.1 % before round 5) | 782 | 0 |
-| Markets on the re-review's top shape: 50×5 … 1×240 disjoint markets, the country last | 8 | 95.4 % (103.8 % before) | 8 | 0 |
-| Entered codes on the re-review's 97.9 % shape (25–250 codes of 8–100 characters, non-ASCII; 250 repeats of 1–24 codes) | 13 | **99.1 %** (102.1 % in round 5, 125.8 % before it) | 11 | 0 |
+| Family | Runs | Round 5b | Round 6 | ≥ 90 % | ≥ 100 % |
+|---|---|---|---|---|---|
+| Round 6's own hill climbs (heavy9: the round-5b re-review's heavy8 with Won codes of at most 64 characters, `maxCodeLength` shipped, codes of 60–255 characters; its starts and its short-code / no-code / long-code spaces), 20 seeds | 2 850 | — | **98.3 %** | 1 639 | 0 |
+| The round-5b re-review's heavy8 climbs (entered codes 1–250 of 4–255 characters, markets, refs, stacks) | 2 032 | 130.9 % | 98.3 % | 1 162 | 0 |
+| Its top inputs (25 × 255 "ﬃ" on the bridge 169.2 % and on an ordinary 200-line cart 133.9 %; the 99.7 % base with 25 × 8 ASCII and 250 × 8 non-ASCII codes; 25 × 40 Czech letters on the 97.9 % base) | 8 | 169.2 % | 97.9 % | 4 | 0 |
+| Its long codes (25 codes of 1–255 characters, every kind, on the 98.6 % and 99.7 % bases) and every fixture with 25 × 255 "ﬃ" | 128 | 169.2 % | 96.4 % | 28 | 0 |
+| Long codes at the new bound (25 × 64 characters of every kind — Czech, Greek, ligatures, astral, CJK — Won codes or not, + 225 short ones) and just over it (65, 106 padded, 255), on the 98.6 % and 99.7 % bases | 42 | 151.3 % | 97.8 % | 38 | 0 |
+| Markets (50×5 … 1×240 disjoint markets, the country last) on the 99.7 % base, the heavy8 top input and the 98.6 % base | 24 | 100.1 % | 96.8 % | 10 | 0 |
+| The round-4 re-review's families: heavy4–heavy7 (rule refs up to 30 a line, 60 rules, 1–50 markets) re-climbed on the round-5 build, their markets and entered-codes variants of the top shape | 5 579 | 99.1 % | 95.9 % | 2 108 | 0 |
+| The audit round 2 generator (hill climbing over rules, refs a line, names, collections, costs, caps, stacks, 200–500 lines), decisive and transition marginRefs | 961 | 93.7 % | 90.8 % | 7 | 0 |
+| The same extended with the round-3 dimension (every line a DIFFERENT random subset, full-mesh combinesWith, 1–15 refs a line, input filled), and round 3's capped sweeps | 2 895 | 90.0 % | 87.1 % | 0 | 0 |
+| The round-2 re-review's hunt and round 2/3's adversarial shapes and refs dimension | 166 | 93.8 % | 90.9 % | 9 | 0 |
+| The round-3 re-review's near-minimum order search; round 4's own tied and ulp-close rates | 89 | 82.1 % | 79.2 % | 0 | 0 |
+| Legacy marginRefs (16–30 a product): the inputs of round 4 and the space re-climbed on round 4b | 612 | 88.7 % | 85.8 % | 0 | 0 |
+| The round-2 re-review's adversarial sets (junk in every field, huge money) | 1 569 | 62.0 % | 60.3 % | 0 | 0 |
+| The engine fix rounds' parity fuzz (random, junk, big and capped carts, 101–404 lines) and their sweeps | 19 673 | 93.8 % | 90.9 % | 35 | 0 |
+| The drift audits' node inputs (random realistic carts and configs, every node of each) | 49 536 | 78.0 % | 75.0 % | 0 | 0 |
+
+Two saved sets are outside the limits above and are left out: the round-2
+re-review's memory inputs `mem/k12`–`k24` (30 rules in a full mesh, 20 refs on
+every line, rule ids of 2–3 characters: 103–120 % on this build, 105–122 % on
+the round-5b build) — with the app's rule ids (`r_` + 20 hex digits) their
+config is 17 kB, over the 9 000 B limit (and even so the heaviest measures
+92.7 %); and 1 451 of the adversarial inputs over the input or config limit.
+
+Round 6 changed no output of these runs (84 874 inputs, both builds side by
+side) but 35, each with a Won code longer than 64 characters (UTF-16 units)
+among the first 25 entries — the heavy8 generator's codes of 100 and 255
+characters, the long-code generator's astral and padded ones — which the
+editor and the sanitizer no longer accept: that code no longer matches. Where
+the TS reference differs from the Wasm (206 adversarial inputs with money
+beyond 2⁵³, 91 drift inputs with numbers of 16+ significant digits, 3 fuzz
+inputs; Accepted edge differences), it differs the same way from the round-5b
+build, and the TS reference of HEAD gives the same outputs as this one; 26
+drift probes with numbers beyond the f64 range are refused by the runner on
+both builds.
 
 The order search's bound changed no output of these runs (the drift audit's
 four generator families at four seeds, 12 939 inputs, and the re-review's
@@ -357,12 +391,30 @@ property the function reads is a call into it (~400–650 instructions; a string
   rule's check is then one lookup per handle it lists (audit round 5: a scan of
   every market's countries per rule and handle took a 200-line cart to 104 %);
 - entered codes: none is read without a code rule whose hash a code can have,
-  and never more than the first 25 (the cap, Invariants); those are
-  normalized, deduplicated and matched by the number of their hash
-  (`match_codes`; deduplicating every code pairwise was O(codes²): 800 codes on
-  a 1-line cart took 320 %). `js::upper` maps ASCII characters directly after a
-  non-ASCII one too (the same text as str::to_uppercase, tested over every
-  scalar value up to U+30000).
+  and never more than the first 25 entries (the cap, Invariants). A code whose
+  trimmed text is longer than the longest Won code (the payload's
+  `maxCodeLength`, ≤ 64) is left out after at most 65 of its characters, never
+  upper-cased (audit round 6: 25 codes of 255 "ﬃ" took the bridge cart to
+  169 %); the rest are hashed as they would be upper-cased, one pass, without
+  building the text (`hash::normalized_hash_within`), and matched by the number
+  of their hash. Nothing is deduplicated or upper-cased for the plan: a rule
+  keeps its entries' hashes and texts, and only the code node upper-cases an
+  entry, one with the triggering code's hash (`CartPlan::rule_has_code`;
+  deduplicating every code pairwise was O(codes²): 800 codes on a 1-line cart
+  took 320 %, and comparing each of 25 codes of 255 "ﬃ" in full with the
+  earlier ones 88 % of a 1-line cart);
+- upper-casing reads a generated table (`src/engine/upper_table.rs`, checked
+  against `char::to_uppercase` for every scalar value): the standard library
+  searches its table for every non-ASCII character (~620 instructions), the
+  table costs two array reads; `js::trim` reads white space from its UTF-8
+  bytes (~26 instructions a space, ~73 an ideographic one of 3 bytes: about
+  what the provider's walk of the filler such bytes would replace costs,
+  ~28 a byte);
+- the fields of a cart line and of its merchandise are read by position, the
+  positions learned from the first line (`input.rs` `Shape`): a read by name
+  makes the provider compare the key with the object's keys, ~1.5 k
+  instructions a line for 8 fields, 3 % of the limit on 200 lines (audit
+  round 6; every budget cart moved 2.1–3.2 points).
 
 ## Layout
 
@@ -374,7 +426,7 @@ property the function reads is a call into it (~400–650 instructions; a string
 | `src/json.rs` | the interned object keys (`Key`), tolerant readers for the `jsonValue` metafields (product, variant cost), the line price and `presentmentCurrencyRate`, the per-run outlet-list cache |
 | `src/alloc.rs` | the Wasm build's bump allocator (instruction budget; native tests keep the system allocator) |
 | `src/output.rs` | emission → function output (`@won/core` `function-output.ts`): exact values, rounding ties, grouping, the output budget, delivery groups; written through the Wasm API |
-| `src/engine/` | `config.rs` (shared config), `cart.rs` (normalizeCart), `plan.rs` (planCart, the margin stages of `plan-margin.ts` included), `order_search.rs` (`searchOrderSets`, pure), `margin.rs` (`margin.ts`: the payload reader, floors, cost conversion), `emit.rs` (emitForNode), `hash.rs` (code hash), `money.rs`, `describe.rs`, `table.rs` (the run's lookup tables), `js.rs` (the JS semantics the engine relies on: Math.round, trim, string order) |
+| `src/engine/` | `config.rs` (shared config), `cart.rs` (normalizeCart), `plan.rs` (planCart, the margin stages of `plan-margin.ts` included), `order_search.rs` (`searchOrderSets`, pure), `margin.rs` (`margin.ts`: the payload reader, floors, cost conversion), `emit.rs` (emitForNode), `hash.rs` (code hash, the entered-code bound), `upper_table.rs` (the generated case table), `money.rs`, `describe.rs`, `table.rs` (the run's lookup tables), `js.rs` (the JS semantics the engine relies on: Math.round, trim, string order) |
 
 Invariants:
 
@@ -388,7 +440,9 @@ Invariants:
   - **The bound on its exact work ([spec], audit round 4, `ORDER_SEARCH_EXACT_LINES` = 16).** On each base (after and before product discounts), a candidate set's limit min over its lines of floor((h × X) / x) is evaluated line by line only while at most 16 DISTINCT lines — distinct by h and the price on that base; equal lines have equal values — have a rate h / x within 2⁻⁴⁸ (32 ulps) of the set's smallest rate m. With more, the limit is floor((X × m) × (1 − 2⁻⁴⁴)), which is never above the exact minimum (the proof is in plan-margin.ts `limitOnBase`: two roundings on each side, 512 units of roundoff of slack). So it fails closed: the order discount can come out smaller, never below a line's floor. It happens only when more than 16 different lines tie for a minimum rate exactly or within a few ulps (proportional cost floors, or prices of billions), and then it gives at most a haléř or so less (1 below the exact value where X × m is a whole number: `lines-margin-order-tied-bound`, 1 529,99 Kč instead of 1 530 Kč). Many copies of one line (variants at one price) count once and stay exact.
   - **The same answer as the TS search, with O(17) work a line.** A line whose rate is more than (1 + 2⁻⁴⁸) × m above the smallest cannot hold the minimum (its value is at least the smallest line's), so the minimum over the near lines is the minimum over the set, which TS evaluates line by line. `NearMin` keeps at most 17 near lines of a base, the lowest-rate ones, so a line joins in O(17): at most 16 kept means they are all of them (exact), 17 means there are more (the bound, which needs only m). The h/a ordering is not searched again when it is the h/s ordering's very sequence (no product discounts). `protect_order` (`plan.rs`) leaves the lines that can give nothing (h = 0) out of the search, since every set holding them has D = 0, and when the set of every line that can give something carries its whole wanted amount — its D_max by the same rule, bound included — that set wins both orderings without sorting (`all_that_can_give`; this one needs an order amount that never falls as the base grows, which every order discount is).
   - **Tests.** A dedicated parity run (2 000 carts built for the search) compares every reachable way the search ends — the shortcut, the skipped h/a search, the h/a ordering winning, a tie between different sets going to the larger one — against the TS search, and another (1 000 carts of tied lines) the exact limit, the bound and the shortcut checked against it. The last tie-break (equal D, equal size, different sets → the h/s set) does not occur with an order discount's wanted amount, which never falls as the base grows (0 in that run, 0 in T1's 2 million random cases); the unit-test pair `order_search_ties_go_to_the_larger_set_then_to_the_h_s_set` pins it with a synthetic wanted amount. The unit tests `the_order_search_takes_a_bound_…` (16 vs 17 tied lines, equal lines, the plan), `the_order_search_on_clustered_rates_…` (5 000 line sets against the definition written out, and a digest equal to the TS search's) and `the_order_limit_bound_is_never_above_any_lines_value` (200 000 sets; the TS property test runs 1 000 000) have TS twins.
-- Only the first 25 entered codes count ([spec], audit round 5b, `MAX_ENTERED_CODES` in cart.ts and `hash.rs`): of the codes as entered (a cart can hold 250), the first 25 — trimmed, upper-cased, empty ones dropped, each once — are matched to rules. The cap counts entries, not distinct codes, so repeats cannot make the reader read more. A later code is never matched: the TS plan gives it the outcome `over_limit` (explain says once: "Zadaných kódů je víc než 25, další se už nezapočítají." / "More than 25 codes were entered; the rest aren't counted."), its rule does not see it (a code discount whose code comes after them does not apply: fail closed), and its code node emits nothing, so Shopify shows it as not applicable. The function's reader stops after the 25th code; Shopify still walks the rest of the input.
+- Only the first 25 entered codes count ([spec], audit round 5b, `MAX_ENTERED_CODES` in cart.ts and `hash.rs`): of the codes as entered (a cart can hold 250), the first 25 entries — trimmed, upper-cased — are matched to rules, each code once per rule. The cap counts ENTRIES, whatever they hold: a repeat, an empty code, an entry without a code string (`{}`, `{code: null}`: the reference adapter passes it as "", the Rust reader reads it as one), a code longer than every Won code (below), so nothing can make the reader read more. A later code is never matched: the TS plan gives it the outcome `over_limit` (explain says once: "Zadaných kódů je víc než 25, další se už nezapočítají." / "More than 25 codes were entered; the rest aren't counted."), its rule does not see it (a code discount whose code comes after them does not apply: fail closed), and its code node emits nothing, so Shopify shows it as not applicable. The function's reader stops after the 25th entry; Shopify still walks the rest of the input.
+  - **Known limit (fails closed).** A rule with one code among the first 25 and another after them applies in the plan (and in Try Cart), but if Shopify runs its node with the later code as the triggering code, the node emits nothing: that code is not among the rule's entered codes.
+- A Won code has at most 64 characters (`CONFIG_LIMITS.codeLength`, trimmed and upper-cased, UTF-16 units; audit round 6; Shopify accepts 255). The rule editor refuses a longer one (`editor.error.codeLength`), the sanitizer drops it with the issue `code_too_long`, and a Shopify discount with a longer code stays in Shopify (`classifyNative`: `code_too_long`). The shared config carries the longest Won code's length (`modules.codes.maxCodeLength`, whenever a code rule ships codes; missing or junk reads as 64, more as 64). An entered code whose trimmed length is over it is never matched, in both engines (plan.ts `matchCodes`, hash.rs `normalized_hash_within`): upper-casing never shortens a text in UTF-16 units (checked for every scalar value in both engines), so it cannot be a Won code; the Rust function does not upper-case it. It still counts as an entry. For the shop's own codes the output is the same as matching every code (a property over 3 000 random carts, `entered-codes-length.test.ts`); only a foreign code longer than every Won code whose hash collides with a Won code's (a ~n/2³² event) is no longer taken for that code (fail closed). (UTF-16 units, not UTF-8 bytes: upper-casing can shorten a text in bytes — ı → I, ſ → S, ﬁ → FI — so a byte bound would not prove "cannot match".)
 - A product listing more than 4 marginRefs ([spec], audit round 4b, `MAX_MARGIN_REFS` in margin.ts and `margin.rs`) — the sync writes at most 4; legacy or hand-made metafields can list more — is not resolved ref by ref: it takes the payload's strictest setting (`strictestMargin`: the highest minimum margin and the lowest maximum discount over the global values and every collection, as Free's plan-gate.ts folds them), computed once per run, and none of its refs is read (the count is the array's length, junk entries included). That is never looser than any collection the product could be in, so it fails closed (`lines-margin-refs-over-limit`). With 4 refs or fewer nothing changes.
 - A run never frees what it built: the bump allocator (`src/alloc.rs`) and `mem::forget` at the end of a run (its memory is thrown away with it).
 
@@ -403,10 +457,10 @@ not covered by the random parity test.
 - **Number text.** Rust prints plain decimals where JS switches to exponent notation (≥ 10²¹ or < 10⁻⁶).
   - For a line price given as a JSON number, both read the same value: Shopify sends prices as strings, and such numbers end as "no price" or 0 on both sides.
   - Percentages are clamped to 0–100 and messages round them to 2 decimals. A percent below 10⁻⁶ would print differently but parse to the same number.
-- **Unicode case mapping.** Discount codes are upper-cased with Rust's Unicode tables, while the admin hashes them with Node's ICU tables. A code containing a character whose upper-case form differs between those Unicode versions (only recently added characters) hashes differently. It then never matches, which fails closed: that code's rule does not apply.
+- **Unicode case mapping.** Discount codes are upper-cased with Rust's Unicode tables (`upper_table.rs`, generated from this toolchain's `char::to_uppercase`; a toolchain with other tables fails its test until regenerated), while the admin hashes them with Node's ICU tables. A code containing a character whose upper-case form differs between those Unicode versions (only recently added characters) hashes differently. It then never matches, which fails closed: that code's rule does not apply.
 - **Outlet lists.** Lines are taken to share one outlet list when the list's length and first element agree. That is always true for what the sync writes, because a product lists its own variant GIDs and a variant belongs to one product. A hand-made metafield where two products list the same first GID but differ further on would be read as one list.
 - **Duplicate JSON keys.** Metafield JSON is stored parsed, so duplicate keys cannot reach the function.
-- **Schema-invalid input.** Shopify builds the input from the query, so it always has the query's shape; the function reads it by that shape (`src/input.rs`, not through the generated accessors): a line's `merchandise` counts as a ProductVariant by its fields (`product`, `wonVariant`, `id`, which only `... on ProductVariant` selects), not by reading `__typename`; a line without an `id` string is skipped and a `quantity` that is not a positive number reads as 0, as in the reference adapter; an object the query gives exactly one field (a metafield's `jsonValue`, `product { wonProduct }`, `cost { amountPerQuantity { amount } }`, the gift attribute's `value`, an `isoCode`, a `code`, a delivery group's `id`) is read by position when it has one key (`sole`), by name otherwise. Input that is not the query's shape (a CustomProduct with product fields, a missing key the schema requires, a one-field object whose one key is another) can differ; it cannot reach the function.
+- **Schema-invalid input.** Shopify builds the input from the query, so it always has the query's shape; the function reads it by that shape (`src/input.rs`, not through the generated accessors): a line's `merchandise` counts as a ProductVariant by its fields (`product`, `wonVariant`, `id`, which only `... on ProductVariant` selects), not by reading `__typename`; a line without an `id` string is skipped and a `quantity` that is not a positive number reads as 0, as in the reference adapter; a cart line's and its merchandise's fields are read by position, the positions learned from the first line of the query's size (5 fields, 4 for a ProductVariant; the provider's key order need not be the query's: function-runner sorts keys), so a later line of that size with other keys, or in another order, would be misread (Shopify builds every line from the same query); an object the query gives exactly one field (a metafield's `jsonValue`, `product { wonProduct }`, `cost { amountPerQuantity { amount } }`, the gift attribute's `value`, an `isoCode`, a `code`, a delivery group's `id`) is read by position when it has one key (`sole`), by name otherwise. Input that is not the query's shape (a CustomProduct with product fields, a missing key the schema requires, a one-field object whose one key is another) can differ; it cannot reach the function.
 - **Numbers with 16 or more significant digits, or an exponent outside ±22** (drift audit P3-1). Shopify's input provider and the local runner read JSON numbers with serde_json's fast parser, which can land 1 ulp away from `JSON.parse` for such numbers (`23.794300000050022` reads as `23.794300000050026`; `6.0343000001e-34` likewise). On a cost at a `ceilTol` boundary (x ≈ N + 1e-6 minor units) that moves the floor by 1 minor unit either way. A number beyond the f64 range (`1e400`) makes the runner reject the whole input (no discount, checkout not blocked), where TS reads Infinity. What the app writes never has such numbers: the cost mirror writes Shopify's decimal cost as a number with at most 15 significant digits (`apps/won-discounts/tests/lib/sync/costs-digits.test.ts`), the rule editor and the migration round percents to 2 decimals, and margin percents keep 1 decimal (config/margin.ts); 15 digits and exponents within ±22 are read exactly by both (Clinger's fast path). How production Shopify reads numbers was not observable; the live runs had costs 5 and 6.
 - **Duplicate cart line ids (margin).** A line is margin-tight when it is in the order discount's base; the TS engine decides that by line id, the Rust function by line. They differ only when two cart lines share an id, which Shopify never sends.
 

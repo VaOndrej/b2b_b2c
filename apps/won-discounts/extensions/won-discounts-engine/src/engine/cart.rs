@@ -53,7 +53,7 @@ pub struct CartInput<'a> {
     pub currency: String,
     pub country_code: Option<&'a str>,
     pub lines: Vec<LineInput<'a>>,
-    /// Every entered code, raw.
+    /// The entered codes, raw, one per entry (an entry without a code string is "").
     pub entered_codes: Vec<&'a str>,
     pub campaign: CampaignInput<'a>,
     pub today: Option<&'a str>,
@@ -100,9 +100,9 @@ pub struct NormalizedCart<'a> {
     /// Upper-case ISO 3166-1 alpha-2, or none.
     pub country_code: Option<String>,
     pub lines: Vec<NormalizedLine<'a>>,
-    /// The entered codes as given (the reader stops after the 25th): plan.rs
-    /// `match_codes` considers the first MAX_ENTERED_CODES, normalized and each
-    /// once (`hash::considered_codes`).
+    /// The entered codes as given, one per entry (the reader reads the first 25
+    /// entries; one without a code string is ""): plan.rs `match_codes` matches
+    /// those of the first MAX_ENTERED_CODES that can be a Won code.
     pub entered_codes: Vec<&'a str>,
     pub campaign: CampaignInput<'a>,
     pub today: Option<&'a str>,
@@ -183,7 +183,7 @@ mod tests {
         assert_eq!(cart.lines[0].quantity, 0);
         assert_eq!(cart.lines[0].subtotal, 0);
         assert_eq!(cart.lines[0].refs().collect::<Vec<_>>(), vec!["a", "b"]);
-        assert_eq!(super::super::hash::considered_codes(&cart.entered_codes), vec!["WELCOME15", "B"]);
+        assert_eq!(cart.entered_codes, vec!["welcome15", " WELCOME15 ", "   ", "b"]);
         assert_eq!(cart.today, None);
         let unknown = normalize_cart(CartInput { country_code: Some("CZE"), ..Default::default() });
         assert_eq!(unknown.country_code, None);

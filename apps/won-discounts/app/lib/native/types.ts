@@ -136,6 +136,7 @@ export type NotMovableReason =
   | { code: "too_many_items"; count: number; limit: number }
   | { code: "too_many_codes_to_back_up"; count: number; limit: number; atLeast: boolean }
   | { code: "no_codes" }
+  | { code: "code_too_long"; max: number }
   | { code: "incomplete_read" }
   | { code: "usage_exhausted"; used: number; limit: number }
   | { code: "expired" }
