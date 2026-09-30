@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { SEGMENT_TARGETING_SUPPORTED, unsupportedInFunction } from "@won/core/discounts/plan";
+import { MAX_STACK_CANDIDATES, SEGMENT_TARGETING_SUPPORTED, unsupportedInFunction } from "@won/core/discounts/plan";
 
 import { requestScopes } from "../model/app-bridge";
 import { describeProSettings } from "../model/describe";
@@ -115,6 +115,7 @@ export function ProSection({
             </s-stack>
             <s-stack direction="block" gap="small-200">
               <s-text type="strong">{t("editor.pro.combines")}</s-text>
+              <s-text color="subdued">{t("editor.pro.combinesCap", { n: MAX_STACK_CANDIDATES })}</s-text>
               {otherRules.length === 0 ? (
                 <s-text color="subdued">{t("editor.pro.combinesNone")}</s-text>
               ) : (

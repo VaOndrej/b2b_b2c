@@ -21,6 +21,8 @@ describe("messagePackBytes: the bytes Shopify counts against its input and outpu
 
   test("the length headers and number forms at their edges", () => {
     expect([0, 127, 128, -32, -33, 255, 256, 65535, 65536, 2 ** 32 - 1, 2 ** 32, 12.5, -0.5].map(messagePackBytes)).toEqual([1, 1, 2, 1, 2, 2, 3, 3, 5, 5, 9, 9, 9]);
+    // Negative integers take the SIGNED forms: int 8 down to −128, int 16 to −32 768, int 32 to −2^31.
+    expect([-128, -129, -256, -32768, -32769, -65536, -(2 ** 31), -(2 ** 31) - 1, -(2 ** 32)].map(messagePackBytes)).toEqual([2, 3, 3, 3, 5, 5, 5, 9, 9]);
     expect(["", "a".repeat(31), "a".repeat(32), "a".repeat(255), "a".repeat(256), "č"].map(messagePackBytes)).toEqual([1, 32, 34, 257, 259, 3]);
     expect(messagePackBytes(Array(15).fill(null))).toBe(16);
     expect(messagePackBytes(Array(16).fill(null))).toBe(19);

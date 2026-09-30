@@ -378,6 +378,56 @@ fn a_pro_stack_sums_capped_and_is_owned_by_its_code_rule() {
     assert_eq!(stack.components.iter().map(|c| c.amount).collect::<Vec<_>>(), vec![7000, 3000]);
 }
 
+/// `"combinesWith": {"ruleIds": [the ids after k]}`: with every rule, a full Pro mesh.
+fn mesh_link(ids: &[&str], k: usize) -> String {
+    let later: Vec<String> = ids[k + 1..].iter().map(|id| format!(r#""{id}""#)).collect();
+    format!(r#", "combinesWith": {{"ruleIds": [{}]}}"#, later.join(", "))
+}
+
+#[test]
+fn a_pro_stack_is_searched_among_the_six_best_ranked_candidates_only() {
+    // A full mesh of 8 rules, 10 % … 3 %: the 6 best stack; g and h never do.
+    let ids = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    let mesh: Vec<String> = ids.iter().enumerate().map(|(k, id)| pct(id, (10 - k) as f64, &mesh_link(&ids, k))).collect();
+    let c = rules(&mesh.join(","), "");
+    let lines = [line("l1", 1, 100000, &ids)];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let stack = plan.lines[0].product.as_ref().unwrap();
+    let parts: Vec<(&str, i64)> = stack.components.iter().map(|c| (plan.rules[c.rule].id, c.amount)).collect();
+    assert_eq!(parts, vec![("a", 10000), ("b", 9000), ("c", 8000), ("d", 7000), ("e", 6000), ("f", 5000)]);
+    assert_eq!((stack.amount, &stack.value, stack.message.as_ref()), (45000, &EmittedValue::FixedTotal(45000), "a + b + c + d + e + f"));
+    // Exactly 6 candidates: all of them stack.
+    let six = [line("l1", 1, 100000, &ids[..6])];
+    assert_eq!(plan_cart(cart(&six, &[]), Some(&c)).lines[0].product.as_ref().unwrap().components.len(), 6);
+    // A partner ranked 7th cannot join: a (10 %) lists only g (4 %), the rest combine with nothing.
+    let c = rules(
+        &[
+            pct("a", 10.0, r#", "combinesWith": {"ruleIds": ["g"]}"#),
+            pct("b", 9.0, ""),
+            pct("c", 8.0, ""),
+            pct("d", 7.0, ""),
+            pct("e", 6.0, ""),
+            pct("f", 5.0, ""),
+            pct("g", 4.0, ""),
+        ]
+        .join(","),
+        "",
+    );
+    let lines = [line("l1", 1, 100000, &ids[..7]), line("l2", 1, 100000, &["a", "b", "g"])];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    assert_eq!(product_of(&plan, "l1"), Some(("a", &EmittedValue::Percent(10.0), 10000)));
+    assert_eq!(product_of(&plan, "l2"), Some(("a", &EmittedValue::FixedTotal(14000), 14000)));
+    // The order stack likewise: 7 order rules in a mesh, 7 % … 1 %, stack the 6 best.
+    let orders: Vec<String> =
+        ids[..7].iter().enumerate().map(|(k, id)| order_rule(id, &format!(r#"{{"kind": "percentage", "percent": {}}}"#, 7 - k), &mesh_link(&ids[..7], k))).collect();
+    let c = rules(&orders.join(","), "");
+    let lines = [line("l1", 1, 100000, &[])];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let order = plan.order.as_ref().unwrap();
+    assert_eq!((order.stack.amount, &order.stack.value), (27000, &EmittedValue::FixedTotal(27000)));
+    assert_eq!(order.stack.components.iter().map(|c| plan.rules[c.rule].id).collect::<Vec<_>>(), vec!["a", "b", "c", "d", "e", "f"]);
+}
+
 #[test]
 fn campaign_overrides_apply_only_for_the_matching_live_variables() {
     let campaign = r#""campaignId": "bf", "campaignVarsVersion": "v1",

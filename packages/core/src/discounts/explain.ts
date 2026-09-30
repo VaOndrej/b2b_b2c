@@ -83,7 +83,7 @@ function entitledTail(rule: RuleOutcome, locale: UiLocale): string {
 }
 
 /** "1 more selected item" (products, entitled) / "1 more item in selected collections" / "1 more item". */
-function moreItems(n: number, rule: RuleOutcome, locale: UiLocale): string {
+function moreItems(n: number, rule: RuleOutcome, _locale: UiLocale): string {
   const items = enPlural(n, "item", "items");
   if (rule.missing?.scope !== "entitled") return `${n} more ${items}`;
   if (rule.describable.target.kind === "collections") return `${n} more ${items} in selected collections`;
@@ -165,6 +165,8 @@ function codeSentences(code: CodeOutcome, plan: CartPlan, locale: UiLocale): Exp
       );
     }
     case "outranked": {
+      // Also a Pro partner left out of a stack only by the stack cap (plan.ts
+      // MAX_STACK_CANDIDATES): every member of that stack gives more than it.
       const better = betterName(rule, plan, locale);
       if (cs) return warn(`Kód ${c} se neuplatní: máš výhodnější slevu${better ? ` ${better}` : ""}.`);
       return warn(`Code ${c} is not applied: you already have a better discount${better ? ` (${better})` : ""}.`);
@@ -248,6 +250,8 @@ function automaticSentences(rule: RuleOutcome, plan: CartPlan, locale: UiLocale)
       return info(cs ? `Sleva ${name} je započtená ve slevě ${ref.name}.` : `${name} is included in ${ref.name}.`);
     }
     case "outranked": {
+      // Also a Pro partner left out of a stack only by the stack cap (plan.ts
+      // MAX_STACK_CANDIDATES): every member of that stack gives more than it.
       const better = betterName(rule, plan, locale);
       if (!better) return info(cs ? `Sleva ${name} se neuplatní: máš výhodnější slevu.` : `${name} is not applied: another discount is better.`);
       return info(cs ? `Sleva ${name} se neuplatní: výhodnější je ${better}.` : `${name} is not applied: ${better} is better.`);

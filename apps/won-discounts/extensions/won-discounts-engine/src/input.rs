@@ -158,18 +158,21 @@ impl RunInput {
         let vars = field(discount, Key::Vars).and_then(|vars| sole(&vars, Key::JsonValue)).map(|json| NodeVars::read(&json));
         let role = read_role(vars.as_ref(), triggering_code.as_deref())?;
         let shop = prop(root, Key::Shop);
-        let config = field(&shop, Key::Config).and_then(|metafield| sole(&metafield, Key::JsonValue)).and_then(|json| Config::read(&json))?;
-        let vars = vars.unwrap_or_default();
-
-        let margin_on = config.margin.is_some();
-        // A ref matters only when some collection has a setting (resolveMargin).
-        let margin_refs_on = config.margin.as_ref().is_some_and(|m| !m.col.is_empty());
+        // The cart currency first: the config's money is read in it only.
         let cart = prop(root, Key::Cart);
         let currency = field(&cart, Key::Cost)
             .and_then(|cost| sole(&cost, Key::SubtotalAmount))
             .and_then(|subtotal| sole(&subtotal, Key::CurrencyCode))
             .and_then(|code| string(&code))
             .map_or_else(String::new, |code| js::upper(&code));
+        let config = field(&shop, Key::Config)
+            .and_then(|metafield| sole(&metafield, Key::JsonValue))
+            .and_then(|json| Config::read_in(&json, Some(&currency)))?;
+        let vars = vars.unwrap_or_default();
+
+        let margin_on = config.margin.is_some();
+        // A ref matters only when some collection has a setting (resolveMargin).
+        let margin_refs_on = config.margin.as_ref().is_some_and(|m| !m.col.is_empty());
         let exponent = currency_exponent(&currency);
         let lines_value = field(&cart, Key::Lines);
         let line_count = lines_value.and_then(|l| l.array_len()).unwrap_or(0);

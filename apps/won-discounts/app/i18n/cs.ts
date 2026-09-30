@@ -463,6 +463,7 @@ export const cs = {
   "editor.pro.segmentsSoon": "Připravujeme. Pokladna zatím neumí segmenty vyhodnotit, proto je nejde nastavit.",
   "editor.pro.segmentsStored": "Tahle sleva má uložené cílení na segmenty. V pokladně se zatím neuplatní, proto sleva neběží.",
   "editor.pro.combines": "Sčítá se s",
+  "editor.pro.combinesCap": "Na jedné položce se sečte nejvýš {n} nejvýhodnějších slev.",
   "editor.pro.combinesNone": "Žádná další sleva zatím není.",
   "editor.pro.marketsScope": "Cílení na trhy potřebuje oprávnění číst trhy obchodu. Při výběru trhu se tě Shopify zeptá.",
   "editor.pro.marketsScopeDeclined": "Bez oprávnění číst trhy neznáme jejich země. Sleva cílená na trh se v pokladně uplatní jen podle uložených zemí.",

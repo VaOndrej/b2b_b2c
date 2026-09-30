@@ -458,6 +458,7 @@ export const en: Record<keyof typeof cs, string> = {
   "editor.pro.segmentsSoon": "Coming later. Checkout can't evaluate customer segments yet, so they can't be set.",
   "editor.pro.segmentsStored": "This discount has segment targeting saved. It isn't applied at checkout yet, so the discount isn't running.",
   "editor.pro.combines": "Stacks with",
+  "editor.pro.combinesCap": "At most the {n} best discounts stack on one item.",
   "editor.pro.combinesNone": "There's no other discount yet.",
   "editor.pro.marketsScope": "Market targeting needs permission to read the store's markets. Shopify asks when you pick a market.",
   "editor.pro.marketsScopeDeclined": "Without permission to read markets we do not know their countries. A market-targeted discount applies at checkout only by the saved countries.",

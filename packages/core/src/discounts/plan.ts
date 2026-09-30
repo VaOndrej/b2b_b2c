@@ -15,7 +15,9 @@
 //                   minimum (the WHOLE cart, [spec] „minimum košíku“, or the
 //                   rule's own lines when its minimum scope is "entitled");
 //   planProducts    per line the better one for the customer wins, never a sum
-//                   (ties: priority desc, id asc); Pro `combinesWith` may stack;
+//                   (ties: priority desc, id asc); Pro `combinesWith` may stack,
+//                   searched among the MAX_STACK_CANDIDATES (6) best-ranked
+//                   candidates of the line only (the same for the order stack);
 //   applyMarginProtection  (MVP 2, only when `modules.margin` is on; the margin
 //                   stages live in plan-margin.ts, the arithmetic in margin.ts)
 //                   each line's product allocation capped at its headroom above
@@ -42,10 +44,22 @@
 //
 // Money is integer minor units of the cart currency. A currency without a value
 // (fixed amount, minimum) takes the rule out of play (MKT-1, principle 6).
+// Pro stack cap ([spec], MVP 2 audit round 3): a stack is searched only among
+// the MAX_STACK_CANDIDATES best-ranked candidates of its target (rank = byRank:
+// amount desc, priority desc, id asc). A candidate ranked 7th or lower is never
+// part of a stack, even when it combines with every member; it counts as
+// "outranked" (explain says a better discount won, which is true: each member
+// of the stack gives more than it). This bounds the search per target: a mesh
+// of Pro rules with a dozen distinct candidates on every line took the Rust
+// function to 102–119 % of Shopify's instruction limit (it then gives no
+// discount at all). Margin protection is unaffected: it caps what the stack
+// search picked.
+//
 // Performance: O(lines × rules-per-line) + one sort per line; the Pro stacking
-// search only runs on lines that actually have combinable candidates. Margin
-// protection of the order discount is O(lines²) at worst (one pass over each
-// candidate prefix: 200 lines ≈ 20 000 steps).
+// search only runs on lines that actually have combinable candidates, over at
+// most MAX_STACK_CANDIDATES of them. Margin protection of the order discount is
+// O(lines²) at worst (one pass over each candidate prefix: 200 lines ≈ 20 000
+// steps).
 
 import { type CartPlanInput, type NormalizedCart, type NormalizedLine, normalizeCart, type PlanLocale } from "./cart.ts";
 import { codeHash } from "./code-hash.ts";
@@ -78,7 +92,7 @@ export type PlanModule = "codes";
 export type RuleState =
   | "applied" // its node emits (part of) the plan
   | "combined" // its value is inside a Pro stack another rule's node emits
-  | "outranked" // it had something to give but a better discount won everywhere
+  | "outranked" // it had something to give but a better discount won everywhere (a Pro partner ranked below MAX_STACK_CANDIDATES included)
   | "not_combinable" // dropped by a per-category switch (engine.combination)
   | "zero_value" // eligible but worth nothing here (0 %, 0 amount, empty base)
   | "disabled"
@@ -689,25 +703,36 @@ interface Picked {
 }
 
 /**
+ * The most candidates of one target (a line, or the order) a Pro stack is
+ * searched among: its best-ranked ones ([spec], see the header). A candidate
+ * ranked below them is never part of a stack; it is "outranked".
+ */
+export const MAX_STACK_CANDIDATES = 6;
+
+/**
  * The best stack for one target (a line, or the order): the single best
  * candidate, or — when Pro combinesWith links candidates — the combinable set
  * that saves the customer the most (greedy from every linked seed; ties keep the
- * earlier-ranked seed). Amounts are then capped at `cap` in rank order.
+ * earlier-ranked seed), searched among the MAX_STACK_CANDIDATES best-ranked
+ * candidates only. Amounts are then capped at `cap` in rank order.
  */
 function pick(positive: Candidate[], cap: number, partners: Map<string, Set<string>>): Picked {
   if (positive.length > 1) positive.sort(byRank);
   let chosen: Candidate[] = [positive[0]];
   if (partners.size > 0 && positive.length > 1) {
-    let bestTotal = Math.min(cap, positive[0].amount);
+    // The stack cap: the rest can never be part of a stack (they stay in
+    // `positive`, so buildStack still counts them as outranked).
+    const pool = positive.length > MAX_STACK_CANDIDATES ? positive.slice(0, MAX_STACK_CANDIDATES) : positive;
+    let bestTotal = Math.min(cap, pool[0].amount);
     // A seed already inside an earlier greedy stack is skipped: it would mostly
     // rebuild the same stack, and without this the search is O(k³) per line when
     // many rules combine (the function runs under an instruction limit).
     const covered = new Set<Candidate>();
-    for (const seed of positive) {
+    for (const seed of pool) {
       const mine = partners.get(seed.rule.id);
       if (!mine || covered.has(seed)) continue;
       const set = [seed];
-      for (const c of positive) {
+      for (const c of pool) {
         if (c === seed || !mine.has(c.rule.id)) continue;
         if (set.every((s) => s === seed || partners.get(s.rule.id)?.has(c.rule.id))) set.push(c);
       }

@@ -10,7 +10,7 @@ use shopify_function::wasm_api::{write::Error, Context, Serialize};
 
 use crate::engine::emit::{NodeEmission, ProductCandidate};
 use crate::engine::js;
-use crate::engine::table::{Table, Text};
+use crate::engine::table::{Message, Table};
 use crate::engine::money::{currency_exponent, from_minor_units_with, minor_units_len_with};
 use crate::engine::plan::{CartPlan, EmittedValue, PlanLine, PlanStack, ShippingValue, ValueKind};
 
@@ -278,10 +278,30 @@ struct Pass<'p> {
     any_stack: bool,
     /// Some value is a rounding tie (relaxing ties would change it, or did).
     any_tie: bool,
+    /// None: every candidate is in `drafts`. Some(bytes): the pass stopped once
+    /// the output passed the budget (`Stop`), at this many bytes; `drafts` is
+    /// then only a part and the flags still cover every candidate.
+    stopped_at: Option<usize>,
 }
 
-/// The node's product candidates, grouped by (value, message), under `relax`.
-fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> Pass<'p> {
+/// Where the exact pass may stop: the output's size only grows as candidates
+/// are added (a new draft, or a target in a group), so once a part of it is
+/// over the budget, the whole is — and when a Pro stack step will follow, its
+/// drafts (the most expensive part of the mapping when every line has its own
+/// Pro stack message) are never used: the steps build their own passes.
+#[derive(Clone, Copy)]
+struct Stop {
+    budget: usize,
+    order_op: Option<usize>,
+    digits: usize,
+}
+
+/// `{"cartLine":{"id":` … `}}` around a target id, and the comma before it.
+const TARGET_BYTES: usize = r#"{"cartLine":{"id":"#.len() + r#"}}"#.len() + 1;
+
+/// The node's product candidates, grouped by (value, message), under `relax`
+/// (stopping early under `stop`, see `Pass::stopped_at`).
+fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax, stop: Option<Stop>) -> Pass<'p> {
     let mut out: Vec<Draft<'p>> = Vec::with_capacity(emission.product.len());
     // Messages are interned: most are one rule's label, the same `&str` for every
     // line, so a lookup by address finds it without hashing the text (a name can
@@ -289,7 +309,7 @@ fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> 
     // then keyed by (value, message number).
     let n = emission.product.len();
     let mut message_by_address: Table<(usize, usize), u32> = Table::with_capacity(n);
-    let mut message_by_text: Table<Text<'p>, u32> = Table::with_capacity(n);
+    let mut message_by_text: Table<Message<'p>, u32> = Table::with_capacity(n);
     let mut message_lens: Vec<usize> = Vec::new();
     // Sized once: on a margin-capped cart nearly every candidate is its own group.
     let mut groups: Table<((u8, u64), u32), usize> = Table::with_capacity(n);
@@ -297,7 +317,11 @@ fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> 
     let mut last: ((usize, usize), u32) = ((0, 0), 0);
     let mut any_stack = false;
     let mut any_tie = false;
-    for c in &emission.product {
+    // The drafts' summed size (`draft_len`), kept while `stop` may end the pass.
+    let mut size = 0usize;
+    let mut stopped_at = None;
+    let mut candidates = emission.product.iter();
+    for c in &mut candidates {
         let Some(line) = plan.lines.get(c.line) else { continue };
         let Some(stack) = line.product.as_ref() else { continue };
         // A margin-capped stack is never relaxed to its top rule (its value stays exact).
@@ -316,7 +340,7 @@ fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> 
                 Some(&number) => number,
                 None => {
                     let next = message_lens.len() as u32;
-                    let number = *message_by_text.get_or_insert_with(Text(message), || next);
+                    let number = *message_by_text.get_or_insert_with(Message(message), || next);
                     if number == next {
                         message_lens.push(quoted_len(message));
                     }
@@ -326,6 +350,7 @@ fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> 
             }
         };
         last = (address, number);
+        let mut joined = false;
         if let Some(key) = group_key(value) {
             let next = out.len();
             let group = *groups.get_or_insert_with((key, number), || next);
@@ -333,12 +358,31 @@ fn drafts<'p>(emission: &NodeEmission<'p>, plan: &'p CartPlan, relax: Relax) -> 
                 let draft = &mut out[group];
                 draft.targets.push(c.line_id);
                 draft.saves = draft.saves.saturating_add(saves);
-                continue;
+                joined = true;
             }
         }
-        out.push(Draft { message, message_len: message_lens[number as usize], targets: vec![c.line_id], value, saves });
+        if !joined {
+            out.push(Draft { message, message_len: message_lens[number as usize], targets: vec![c.line_id], value, saves });
+        }
+        if let Some(stop) = stop {
+            size += if joined { TARGET_BYTES + quoted_len(c.line_id) } else { draft_len(&out[out.len() - 1], stop.digits) };
+            let now = output_len(size, out.len(), stop.order_op);
+            if now > stop.budget {
+                stopped_at = Some(now);
+                break;
+            }
+        }
     }
-    Pass { drafts: out, any_stack, any_tie }
+    // Stopped: the flags of the rest (every value as the exact pass maps it).
+    for c in candidates {
+        let Some(line) = plan.lines.get(c.line) else { continue };
+        let Some(stack) = line.product.as_ref() else { continue };
+        any_stack |= stack.components.len() > 1 && !line.margin_capped;
+        if !any_tie {
+            exact_value(c, line, plan, relax, &mut any_tie);
+        }
+    }
+    Pass { drafts: out, any_stack, any_tie, stopped_at }
 }
 
 fn total_value(value: &EmittedValue, digits: usize) -> Option<TotalValue> {
@@ -508,14 +552,26 @@ pub fn cart_lines_result<'p>(
         Vec::new()
     };
     let exact = Relax { stacks: false, ties: false };
-    let mut pass = if product { drafts(emission, plan, exact) } else { Pass { drafts: Vec::new(), any_stack: false, any_tie: false } };
-    let lens_of = |drafts: &[Draft]| -> Vec<usize> { drafts.iter().map(|d| draft_len(d, digits)).collect() };
-    let mut lens = lens_of(&pass.drafts);
     let budget = output_budget(line_count);
     // The order operation never changes below: its size is measured once.
     let order_op = order_op_len(&order_candidates);
+    // The exact pass may stop at the budget only when a budget step will
+    // follow (a Pro stack to relax: its drafts are then never used); a cart
+    // without one needs all of them for the last resort.
+    let stacked = emission.product.iter().any(|c| {
+        plan.lines.get(c.line).is_some_and(|line| !line.margin_capped && line.product.as_ref().is_some_and(|p| p.components.len() > 1))
+    });
+    let stop = stacked.then_some(Stop { budget, order_op, digits });
+    let mut pass = if product {
+        drafts(emission, plan, exact, stop)
+    } else {
+        Pass { drafts: Vec::new(), any_stack: false, any_tie: false, stopped_at: None }
+    };
+    let lens_of = |drafts: &[Draft]| -> Vec<usize> { drafts.iter().map(|d| draft_len(d, digits)).collect() };
+    let mut lens = lens_of(&pass.drafts);
     let result_len = |lens: &[usize]| output_len(lens.iter().sum(), lens.len(), order_op);
-    let exact_len = result_len(&lens);
+    let exact_len = pass.stopped_at.unwrap_or_else(|| result_len(&lens));
+    let exact_stopped = pass.stopped_at.is_some();
     if exact_len > budget {
         // The steps of the header, each only when it changes something.
         let mut relax = exact;
@@ -525,7 +581,7 @@ pub fn cart_lines_result<'p>(
         ];
         for step in steps.into_iter().flatten() {
             relax = step;
-            pass = drafts(emission, plan, step);
+            pass = drafts(emission, plan, step, None);
             lens = lens_of(&pass.drafts);
             if result_len(&lens) <= budget {
                 break;
@@ -533,13 +589,14 @@ pub fn cart_lines_result<'p>(
             // Stacks degraded and still over: relax the ties the degraded pass made too.
             if step.stacks && pass.any_tie {
                 relax = Relax { stacks: true, ties: true };
-                pass = drafts(emission, plan, relax);
+                pass = drafts(emission, plan, relax, None);
                 lens = lens_of(&pass.drafts);
                 if result_len(&lens) <= budget {
                     break;
                 }
             }
         }
+        debug_assert!(pass.stopped_at.is_none(), "a stopped exact pass is always followed by the stacks step");
         // Last resort: drop the candidate that saves the least (ties: the later
         // one) until the output fits. The size is kept as a running sum, never
         // re-measured per drop (that was quadratic on a big margin cart, whose
@@ -577,7 +634,8 @@ pub fn cart_lines_result<'p>(
             dropped
         };
         log!(
-            "won-discounts: exact output {exact_len} B > budget {budget} B: ties as percent {}, Pro stacks as their top rule {}, {dropped} product candidate(s) dropped",
+            "won-discounts: exact output {}{exact_len} B > budget {budget} B: ties as percent {}, Pro stacks as their top rule {}, {dropped} product candidate(s) dropped",
+            if exact_stopped { "≥ " } else { "" },
             relax.ties,
             relax.stacks
         );

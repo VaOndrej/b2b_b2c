@@ -43,6 +43,7 @@ by hand, and the TS reference reproduces all of them.
 | Every Rust unit test has a TS twin | `tests/engine-unit.twins.test.js` |
 | Every Wasm run's linear memory ≤ 4 000 KB (bump allocator) | `tests/parity.test.js` |
 | The margin order search, 2 000 carts built for it, every reachable way it ends ≥ 20 times | `tests/parity.test.js` |
+| The Pro stack cap, 1 500 Pro mesh carts built for it, every way it decides ≥ 20 times | `tests/parity.test.js` |
 
 Details:
 - **Wasm output text.** The output text function-runner prints (sorted keys, and numbers in the form the Wasm wrote them, e.g. `10` not `10.0`) must equal the expected output rendered the same way.
@@ -55,6 +56,7 @@ Details:
   - Margin protection (MVP 2): on / off / legacy / junk payloads, collection overrides, cost prices in the shop currency and in others, junk costs, `presentmentCurrencyRate` as decimal strings, numbers and junk, carts of exponent 0 / 2 / 3, and big over-budget carts with capped and tight lines. Every margin branch (capped, capped to 0, capped stack, order lowered / leaving lines out / floored, exclusive mode, cost and maximum-% floors, collection settings, converted and unconvertible costs, tight lines, over-budget outputs, margin off with costs) is counted like the rest.
   - Every engine branch must be hit ≥ 20 times, or the test fails.
   - Env overrides: `PARITY_SEEDS=…`, `PARITY_CASES=…`.
+- **Pro stack cap.** 7–16 product rules combining at a random density up to a full mesh (percents with repeats, fixed amounts, code rules, priorities), 1–40 lines each listing its own 5–14 of them, half the carts with 7–9 order rules in a mesh, 40 % with margin protection. Counted: a line with 7+ candidates that stacks, a stack of the 6 best, a partner of the whole stack left out by the cap, margin cutting a capped stack, an order stack of the 6 best (`PARITY_MESH_CASES=…`).
 - **Unit-test twins.** Each twin runs the Rust test's scenario through the TS engine and asserts the same values. The test names are paired automatically.
 
 Rules for a change:
@@ -167,11 +169,28 @@ more JSON than 128 kB, and the budget carts are filled to that real limit.
 
 `apps/won-discounts/tests/contracts/function.contract.test.ts` gates every fixture:
 
-- ordinary fixtures: ≤ **70 %** of the (line-scaled) limit;
-- the budget carts (`*-lines-budget`, the realistic worst cases): ≤ **90 %** —
-  9.9 M up to 200 lines, 24.75 M at 500;
+- ordinary fixtures, and the budget carts that are not at the input limit
+  (the MVP 1 and margin-path carts, 55–75 kB of input, 44–58 %): ≤ **70 %** of
+  the (line-scaled) limit, so the larger allowance below never hides a
+  regression on them;
+- the budget carts filled to Shopify's input limit (`lines-margin-pro-*`, each
+  checked to be ≥ 99 % of it): ≤ **90 %** — 9.9 M up to 200 lines, 24.75 M at 500;
 - every budget cart is an input Shopify can send: ≤ 128 kB of MessagePack
   (scaled with the lines) and a shared config ≤ 9 000 B of JSON (C7).
+
+**The standing rule: every valid shape stays under 90 % of the limit** — any
+config the sanitizer accepts, with the product metafields the sync writes
+(≤ 2 decisive marginRefs, ≤ 4 in its transition bridge), at Shopify's input
+limit. The Pro stack cap (Invariants) is what bounds the stack search: before
+it, a mesh of Pro rules with a different dozen candidates on every line took a
+run to 102–119 % (`lines-margin-pro-mesh-200-lines-budget`: 121.6 % without
+the cap, 85.1 % with it). What the cap cannot bound is the number of rule refs
+a line lists: each is a string the function reads and resolves (~1 k
+instructions), and at the input limit that alone moves the worst shape by ~1 %
+of the limit per ref (audit round 3: 4 refs 84.6 %, 6 → 87.9 %, 8 → 90.0 %,
+10 → 91.9 %, 12 → 93.8 %). **Status (audit round 3): not yet met** — see the
+sweep below; closing it needs a limit on the rules targeting one product (a
+product decision), not engine work.
 
 The typical carts meet the old 75 % goal with room to spare (MVP 1 cart 47 %,
 margin carts 53–58 %). The 90 % gate protects the realistic worst case at the
@@ -190,33 +209,43 @@ its own variant's entry, but the input provider walks every value, so the
 filler costs what real data of that size costs.
 
 Measured with the CLI's build (`shopify app function run`, the contract test);
-"before" is the build of commit 37d51d9 on the same inputs:
+"before" is the build of commit 1e25103 (audit round 2) on the same inputs:
 
 | Budget cart (shape) | Input (MessagePack) | Before | Now | Gate |
 |---|---|---|---|---|
-| `lines-200-lines-budget` (MVP 1 worst case: 37 rules, 3–6 refs a line, codes, a Pro stack; margin off) | 68.6 kB | 5.46 M | 5.12 M (46.5 %) | 9.9 M |
-| `delivery-200-lines-budget` | 68.7 kB | 5.19 M | 4.85 M (44.1 %) | 9.9 M |
-| `lines-margin-200-lines-budget` (the same, margin on, a cost price on every line, a 5 % order discount; the order stage's shortcut) | 73.8 kB | 6.49 M | 6.08 M (55.2 %) | 9.9 M |
-| `delivery-margin-200-lines-budget` | 73.9 kB | 6.20 M | 5.79 M (52.6 %) | 9.9 M |
-| `lines-margin-slow-200-lines-budget` (10 lines that cannot carry their share: the full two-ordering search) | 73.9 kB | 6.83 M | 6.41 M (58.3 %) | 9.9 M |
-| `lines-margin-capped-200-lines-budget` (3 of 4 lines cut to their floor, an output over the budget: stacks relaxed, candidates dropped) | 74.8 kB | 6.79 M | 6.38 M (58.0 %) | 9.9 M |
-| `lines-margin-capped-500-lines-budget` (the same on 500 lines) | 178.3 kB | 15.73 M | 14.69 M (53.4 %) | 24.75 M |
-| `lines-margin-pro-200-lines-budget` (Pro worst case: 37 rules, 4 refs a line, the Pro stack VIP + S_x, a cost price, 2 marginRefs of 100 collections with a margin setting and 5–6 variant-level refs of other variants on every line, a 10 % order discount, an output over the budget; config 8 997 B) | 128.0 kB | 9.84 M (89.4 %) | 9.34 M (84.9 %) | 9.9 M |
-| `lines-margin-pro-500-lines-budget` (the same on 500 lines) | 320.0 kB | 23.36 M (85.0 %) | 22.10 M (80.4 %) | 24.75 M |
-| `lines-margin-pro-bridge-200-lines-budget` (the Pro worst case with 4 marginRefs a product, as many as the sync's transition bridge writes, and 4–5 variant-level refs) | 128.0 kB | 10.12 M (92.0 %) | 9.62 M (87.5 %) | 9.9 M |
-| `lines-margin-pro-long-ids-200-lines-budget` (the Pro worst case with 64-character rule ids: 29 collections fit the config; 4 refs on every line, 0–1 variant-level refs) | 128.0 kB | 8.23 M (74.8 %) | 7.76 M (70.6 %) | 9.9 M |
+| `lines-200-lines-budget` (MVP 1 worst case: 37 rules, 3–6 refs a line, codes, a Pro stack; margin off) | 68.6 kB | 5.12 M | 5.14 M (46.7 %) | 7.7 M (70 %) |
+| `delivery-200-lines-budget` | 68.7 kB | 4.85 M | 4.86 M (44.2 %) | 7.7 M |
+| `lines-margin-200-lines-budget` (the same, margin on, a cost price on every line, a 5 % order discount; the order stage's shortcut) | 73.8 kB | 6.08 M | 6.09 M (55.4 %) | 7.7 M |
+| `delivery-margin-200-lines-budget` | 73.9 kB | 5.79 M | 5.80 M (52.7 %) | 7.7 M |
+| `lines-margin-slow-200-lines-budget` (10 lines that cannot carry their share: the full two-ordering search) | 73.9 kB | 6.41 M | 6.43 M (58.4 %) | 7.7 M |
+| `lines-margin-capped-200-lines-budget` (3 of 4 lines cut to their floor, an output over the budget: stacks relaxed, candidates dropped) | 74.8 kB | 6.38 M | 6.39 M (58.1 %) | 7.7 M |
+| `lines-margin-capped-500-lines-budget` (the same on 500 lines) | 178.3 kB | 14.69 M | 14.72 M (53.5 %) | 19.25 M |
+| `lines-margin-pro-200-lines-budget` (Pro worst case: 37 rules, 4 refs a line, the Pro stack VIP + S_x, a cost price, 2 marginRefs of 100 collections with a margin setting and 5–6 variant-level refs of other variants on every line, a 10 % order discount, an output over the budget; config 8 997 B) | 128.0 kB | 9.34 M (84.9 %) | 9.33 M (84.8 %) | 9.9 M (90 %) |
+| `lines-margin-pro-500-lines-budget` (the same on 500 lines) | 320.0 kB | 22.10 M (80.4 %) | 22.09 M (80.3 %) | 24.75 M |
+| `lines-margin-pro-bridge-200-lines-budget` (the Pro worst case with 4 marginRefs a product, as many as the sync's transition bridge writes, and 4–5 variant-level refs) | 128.0 kB | 9.62 M (87.5 %) | 9.62 M (87.4 %) | 9.9 M |
+| `lines-margin-pro-long-ids-200-lines-budget` (the Pro worst case with 64-character rule ids: 29 collections fit the config; 4 refs on every line, 0–1 variant-level refs) | 128.0 kB | 7.76 M (70.6 %) | 7.76 M (70.5 %) | 9.9 M |
+| `lines-margin-pro-mesh-200-lines-budget` (the stack search's worst case: 18 Pro rules that all combine, every line a DIFFERENT 12 of them, a cost price, a 5 % order discount, 2–3 variant-level refs; config 8 172 B) | 128.0 kB | 13.38 M (121.6 %, no cap) | 9.36 M (85.1 %) | 9.9 M |
 
-The drift audit's heavy generator (random search and hill climbing over rules,
-refs a line, names, collections, costs, caps, stacks and 200–500 lines, every
-input within Shopify's limits, now the MessagePack one), 3 seeds × 100 rounds a
-marginRefs space, on this build: with the marginRefs the sync writes (≤ 2) and
-its transition bridge (≤ 4), no run reaches the limit — up to **96.3 %** (it
-found up to 107.2 % on the build before). Those shapes put 12 rule refs and a
-Pro stack on every line, cap half the lines and fill the input: on them the
-input provider's walk and the reads are ~70 % of the limit, the plan ~25 %.
-With 20–30 marginRefs a product, as the sync wrote them before it kept only the
-decisive ones (commit 37d51d9; the sync rewrites them), it still reaches 103.4 %:
-each ref is a string the function reads (~600–900 instructions).
+Adversarial sweeps on this build (every input within Shopify's limits, the
+MessagePack one; outputs equal to the TS reference in every run):
+
+| Sweep (marginRefs the sync writes: ≤ 2 decisive, ≤ 4 transition) | Runs | Max | > 90 % |
+|---|---|---|---|
+| The audit round 2 generator (hill climbing over rules, refs a line, names, collections, costs, caps, stacks, 200–500 lines), 3 seeds × 100 rounds a space | 600 | **93.7 %** (96.3 % on 1e25103) | 52 (109) |
+| The same extended with the round-3 dimension (every line its own product listing a DIFFERENT random subset, full-mesh combinesWith, 1–15 refs a line, input filled to the limit), 3 seeds × 100 rounds a space | 600 | 90.0 % (89.98 %) | 0 |
+| The round-2 re-review's hunt (full-mesh rules, a different 4–15 of them on every line, 200 and 500 lines; 25 of the 36 were ≥ 100 % on 1e25103) | 36 | 89.6 % (119.4 % on 1e25103) | 0 |
+
+No run with the marginRefs the sync writes reaches Shopify's limit (max
+93.7 %), but that is no longer the bar: the standing rule above is, and a
+runner or crate bump can move counts by a percent or so (headroom caveat
+below). The shapes over 90 % are not driven by the stack search (their Pro stacks are
+pairs): they put 12 rule refs on every line of a 200-line cart with pair stacks, cap
+half the lines, carry an order stack and margin collections, and fill the input.
+Their maximum by rule refs a line (the same shape, the refs cut and the input
+refilled): 4 → 84.6 %, 6 → 87.9 %, 8 → 90.0 %, 10 → 91.9 %, 12 → 93.8 %. With
+20–30 marginRefs a product, as the sync wrote them before it kept only the
+decisive ones (commit 37d51d9; the sync rewrites them), runs still reach
+103–105 %: each ref is a string the function reads (~600–900 instructions).
 
 **Headroom caveat.** These are function-runner's counts (the CLI's `shopify app
 function run`); the dev store's logged `fuelConsumed` was ~1 % below them on
@@ -247,15 +276,17 @@ property the function reads is a call into it (~400–650 instructions; a string
   lookup; a line whose refs equal the previous line's (a product's lines) is
   not looked up again;
 - rules are ranked once per run in (priority desc, id asc in JS string order)
-  order (`Rule::order`), so the ties after the amount compare one number; a
-  line's candidates are sorted by insertion, a dozen or more of them as integer
-  keys (amount, order, rule);
-- the Pro stack search builds its sets over the rules' partner bits in one pass
-  a seed; and the rank order and sets are cached per run by the line's
-  candidates (`StackOrders`: a line with the same candidates as an earlier one
-  tries that line's rank order — kept only when it is the rank order — and then
-  only sums the sets), the owner and message of a stack by its rules
-  (`StackLabels`: one shared message, which the output finds by address);
+  order (`Rule::order`), so the ties after the amount compare one number;
+  without a Pro partner among a line's candidates the best one is found by one
+  scan, with no sort;
+- the Pro stack search runs over at most 6 candidates (the stack cap): the 6
+  best-ranked are moved to the front of the line's candidates in one pass of
+  insertion, and their sets are built over the rules' partner bits in one pass
+  a seed (the per-run caches of rank orders and sets are gone: with a
+  different candidate list on every line they only cost); the owner and
+  message of a stack are built once per run and stack (`StackLabels`, keyed by
+  its ≤ 6 rules packed into one word: one shared message, which the output
+  finds by address);
 - no 64-bit multiplication with an overflow check on the hot path
   (`money::mul_sat`): Wasm has none, and `saturating_mul`/`checked_mul` call a
   128-bit multiply of a few hundred instructions;
@@ -265,7 +296,16 @@ property the function reads is a call into it (~400–650 instructions; a string
   least-saving candidates through a heap (re-measuring the order candidate,
   which lists every capped line, on every drop was quadratic: 16.4 M on a
   200-line capped cart), measures JSON strings 8 bytes at a time, and borrows
-  every text from the plan and the input instead of copying it;
+  every text from the plan and the input instead of copying it; when a Pro
+  stack step will follow, the exact pass stops as soon as its part of the
+  output is over the budget (the size only grows; the log then says
+  "exact output ≥ N B"); messages are grouped by a hash of every 8 bytes
+  (`table.rs` `Message`): stack messages share their first and last 8 bytes
+  and their length, and a hash of the ends alone put 200 of them in one probe
+  chain (1.3 M instructions);
+- the shared config's money is read in the cart currency only: one lookup a
+  fixed amount instead of every currency's key and value (`config.rs`
+  `read_money`, `Config::read_in`);
 - the order stage's exact shortcuts (Invariants below).
 
 ## Layout
@@ -285,6 +325,7 @@ Invariants:
 - Money is in integer minor units (i64). Sums saturate.
 - Percentages use the TS float expression and `Math.round` semantics.
 - Ties go to amount desc, then priority desc, then id asc (JS string order, by UTF-16 unit).
+- The Pro stack cap ([spec], MVP 2 audit round 3): a stack — a line's or the order's — is searched only among the target's **6 best-ranked candidates** (`MAX_STACK_CANDIDATES` in plan.ts and `plan.rs`; rank as above). A candidate ranked 7th or lower is never part of a stack, even when it combines with every member; it is "outranked" (explain says a better discount won, and each member of the stack does give more). Output differs from an uncapped search only on targets with more than 6 positive candidates and combinesWith links among them. Margin protection is unaffected: it cuts what the search picked.
 - A minimum counts the whole cart (every non-gift line, pre-discount, outlet included), or only a product rule's own lines when the payload says `minimum.scope: "entitled"` (a migrated native's semantics; absent = the cart).
 - Parsing never fails. Junk in a metafield reads as "nothing". A missing or invalid shared config emits no operations.
 - Margin protection (MVP 2) evaluates every float expression of `margin.ts` / `plan-margin.ts` in the same order (`ceilTol` = ceil(x − 1e-6), the cost `(unitCost × rate) × scale`, the order stage's floor((h × S) / a) and floor((h × S0) / s)). The order stage's search is the pure function `search_order_sets` (`src/engine/order_search.rs`, `searchOrderSets`, unit-tested with the TS instances) and gets the same result as the TS search with less work, provably: the minimum over a set comes only from lines whose rate is within 10⁻⁹ of the set's smallest (`NearMin`), and the h/a ordering is not searched again when it is the h/s ordering's very sequence (no product discounts). `protect_order` (`plan.rs`) leaves the lines that can give nothing (h = 0) out of the search, since every set holding them has D = 0, and when every line that can give something carries its whole share, that set wins both orderings without sorting (`all_that_can_give`; this one needs an order amount that never falls as the base grows, which every order discount is). A dedicated parity run (2 000 carts built for it) compares every reachable way the search ends — the shortcut, the skipped h/a search, the h/a ordering winning, a tie between different sets going to the larger one — against the TS search. The last tie-break (equal D, equal size, different sets → the h/s set) does not occur with an order discount's wanted amount, which never falls as the base grows (0 in that run, 0 in T1's 2 million random cases); the unit-test pair `order_search_ties_go_to_the_larger_set_then_to_the_h_s_set` pins it with a synthetic wanted amount.

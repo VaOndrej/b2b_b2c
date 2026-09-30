@@ -21,7 +21,9 @@ fn word(b: &[u8], i: usize) -> u64 {
     u64::from_le_bytes(b[i..i + 8].try_into().unwrap_or([0; 8]))
 }
 
-/// A text's hash: its length, first and last 8 bytes (a shorter text packed whole).
+/// A text's hash: its length, first and last 8 bytes (a shorter text packed
+/// whole). For the run's ids (rule ids, code hashes, GIDs), which differ at
+/// their ends; a message uses `Message`.
 #[inline]
 pub fn text_hash(b: &[u8]) -> u64 {
     let n = b.len();
@@ -31,6 +33,23 @@ pub fn text_hash(b: &[u8]) -> u64 {
     let mut last = [0u8; 8];
     last[..n].copy_from_slice(b);
     u64::from_le_bytes(last) ^ ((n as u64) << 56)
+}
+
+/// A text's hash over every 8 bytes and its length (the last word may overlap
+/// the one before; a shorter text: `text_hash`).
+#[inline]
+pub fn text_hash_full(b: &[u8]) -> u64 {
+    let n = b.len();
+    if n < 8 {
+        return text_hash(b);
+    }
+    let mut h = (n as u64) << 56;
+    let mut i = 0;
+    while i + 8 < n {
+        h = (h ^ word(b, i)).wrapping_mul(0x9E37_79B9_7F4A_7C15).rotate_left(29);
+        i += 8;
+    }
+    h ^ word(b, n - 8)
 }
 
 /// `a == b` for byte strings, a word at a time (the last word may overlap the one
@@ -72,6 +91,30 @@ impl TableKey for Text<'_> {
     #[inline]
     fn hash64(&self) -> u64 {
         text_hash(self.0.as_bytes())
+    }
+}
+
+/// A message key (output grouping), hashed over all its bytes (`text_hash_full`):
+/// a Pro stack's message is its rules' names joined by " + ", so the messages
+/// of one cart share their first and last 8 bytes and their length often
+/// (names of one pattern), and a hash of the ends alone put 200 of them in one
+/// probe chain — 1.3 M instructions in the output mapping (audit round 3).
+#[derive(Debug, Clone, Copy)]
+pub struct Message<'a>(pub &'a str);
+
+impl PartialEq for Message<'_> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        bytes_eq(self.0.as_bytes(), other.0.as_bytes())
+    }
+}
+
+impl Eq for Message<'_> {}
+
+impl TableKey for Message<'_> {
+    #[inline]
+    fn hash64(&self) -> u64 {
+        text_hash_full(self.0.as_bytes())
     }
 }
 

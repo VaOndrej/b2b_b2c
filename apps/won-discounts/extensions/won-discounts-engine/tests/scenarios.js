@@ -896,6 +896,7 @@ function allScenarios() {
   filledToInputLimit((siblings) => marginProBudget({ lines: 500, siblings })),
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge" })),
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, ruleIdLength: 64, collections: 29, name: "long-ids" })),
+  filledToInputLimit((siblings) => proMeshBudget({ lines: 200, siblings })),
   ];
 }
 
@@ -1551,6 +1552,124 @@ function marginProBudget({ lines: count, siblings, ruleIdLength = 22, collection
     margin: marginOn({ minMarginPercent: PRO_MARGIN_MIN, maxDiscountPercent: 40 }, perCollection),
     role: AUTO,
     entered: ["PROCODE"],
+    lines,
+    expected: out(products(...kept.map(({ message, targets, value }) => ({ message, targets, value }))), orderOp),
+  };
+}
+
+// --- The Pro mesh cart (instruction budget, MVP 2 audit round 3) --------------------------
+//
+// The stack search's worst case before the stack cap (plan.ts
+// MAX_STACK_CANDIDATES): 18 product rules that all combine with each other (a
+// full Pro mesh), every line its own product listing a DIFFERENT 12 of them, so
+// no line repeats another's candidates. Margin protection on (a cost price on
+// every line), a 5 % order discount, and the input filled to Shopify's limit
+// with variant-level refs of other variants. Without the cap this took the
+// function to 102–119 % of Shopify's limit.
+// The expected output by a simple model of the rules:
+//   - rule k gives 1,25 + 0,5 k % (all distinct, none whole): a line's 12
+//     candidates rank by percent, and its stack is its 6 best (the cap) — the
+//     other 6 combine with them too but are never part of it;
+//   - prices are multiples of 4 Kč, so every amount is a whole number of haléřů
+//     (no rounding tie); the stack is not a whole percent, so it is its amount
+//     per item (or once on the line) with its own message — one candidate per
+//     line, far over the output budget. By the output rules every stack then
+//     goes to its top rule's percent, and those group: the output fits;
+//   - no line is capped (cost 30 % of the price, minimum margin 20 %: the floor
+//     is 37,5 % of the price; a stack gives at most 51 %), and every line can
+//     carry its share of the 5 % order discount on both allocation bases, so the
+//     order discount is its full amount, emitted exactly (margin protection on).
+
+const MESH_RULES = 18;
+const MESH_REFS = 12;
+/** The stack cap ([spec], plan.ts MAX_STACK_CANDIDATES): a stack is searched among a line's 6 best-ranked candidates. */
+const MAX_STACK = 6;
+/** Percent of mesh rule k (0-based): 1,25–9,75 %, distinct, never whole. */
+const meshPercent = (/** @type {number} */ k) => 1.25 + 0.5 * k;
+const meshName = (/** @type {number} */ k) => `Pro kombinace ${String(k + 1).padStart(2, "0")} – členská`;
+
+/**
+ * @param {{ lines: number, siblings: (i: number) => number }} shape
+ * @returns {Scenario}
+ */
+function proMeshBudget({ lines: count, siblings }) {
+  const ids = Array.from({ length: MESH_RULES }, (_, k) => `m${k + 1}`);
+  const rules = ids.map((id, k) => pct(id, meshPercent(k), { name: meshName(k), combinesWith: { ruleIds: ids.slice(k + 1) } }));
+  rules.push(orderPct("o5", 5, { name: "Objednávka 5 %" }));
+  // A fixed LCG: every line a different 12-of-18 subset.
+  let seed = 20260930;
+  const next = () => {
+    seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+    return seed / 4294967296;
+  };
+  const lines = [];
+  const exactRows = [];
+  const degradedRows = [];
+  /** @type {{ a: number, s: number, h: number }[]} */
+  const open = [];
+  const subsets = new Set();
+  for (let i = 1; i <= count; i += 1) {
+    /** @type {number[]} */
+    let mine = [];
+    // A subset an earlier line has is drawn again.
+    while (mine.length === 0 || subsets.has([...mine].sort((a, b) => a - b).join(","))) {
+      const pool = ids.map((_, k) => k);
+      mine = [];
+      for (let j = 0; j < MESH_REFS; j += 1) mine.push(pool.splice(Math.floor(next() * pool.length), 1)[0]);
+    }
+    subsets.add([...mine].sort((a, b) => a - b).join(","));
+    const price = 100 + 4 * i; // Kč, a multiple of 4: every percent here is a whole number of haléřů
+    const q = 1 + (i % 3);
+    const cost = Math.round(price * 30) / 100; // 30 % of the price, Kč
+    /** @type {Record<string, unknown>} */
+    const won = { ruleIds: mine.map((k) => ids[k]) };
+    if (siblings(i) > 0) {
+      won.variantRuleIds = Object.fromEntries(Array.from({ length: siblings(i) }, (_, j) => [String(48468678900000 + 100000 + i * 100 + j), [ids[(i + j) % MESH_RULES]]]));
+    }
+    lines.push({ n: i, price: `${price}.0`, qty: q, won, variantMeta: costOf(cost) });
+
+    const s = price * 100 * q;
+    const amount = (/** @type {number} */ k) => (s * meshPercent(k)) / 100;
+    const best = [...mine].sort((a, b) => b - a).slice(0, MAX_STACK);
+    const total = best.reduce((sum, k) => sum + amount(k), 0);
+    if (!best.every((k) => Number.isInteger(amount(k)))) throw new Error(`proMeshBudget: line ${i} amounts must be whole haléře`);
+    const floorUnit = ceilTol((cost * 100) / (1 - PRO_MARGIN_MIN / 100));
+    if (total > s - floorUnit * q) throw new Error(`proMeshBudget: line ${i} must keep its stack`);
+    const a = s - total;
+    open.push({ a, s, h: a - floorUnit * q - 1 });
+    const target = { cartLine: { id: lineId(i) } };
+    const message = best.map(meshName).join(" + ");
+    exactRows.push(total % q === 0 ? { key: `e${total / q}`, message, value: perItem(kc(total / q)), target, amount: total } : { key: null, message, value: lineTotal(kc(total)), target, amount: total });
+    degradedRows.push({ key: `p${meshPercent(best[0])}`, message: meshName(best[0]), value: percent(meshPercent(best[0])), target, amount: amount(best[0]) });
+  }
+  if (subsets.size !== count) throw new Error("proMeshBudget: every line a different subset");
+  const S = open.reduce((sum, l) => sum + l.a, 0);
+  const S0 = open.reduce((sum, l) => sum + l.s, 0);
+  const wanted = Math.round((S * 5) / 100);
+  for (const l of open) {
+    if (Math.floor((l.h * S) / l.a) < wanted || Math.floor((l.h * S0) / l.s) < wanted) throw new Error("proMeshBudget: every line must carry the order");
+  }
+  const orderOp = order("Objednávka 5 %", [], amountOff(kc(wanted)));
+  const budget = Math.floor((OUTPUT_BUDGET * Math.max(200, count)) / 200);
+  const size = (/** @type {{ message: string, targets: unknown[], value: unknown }[]} */ list) =>
+    bytes(out(products(...list.map(({ message, targets, value }) => ({ message, targets, value }))), orderOp));
+  if (size(groupRows(exactRows)) <= budget) throw new Error("proMeshBudget: the exact output must be over the budget");
+  const kept = groupRows(degradedRows);
+  if (size(kept) > budget) throw new Error("proMeshBudget: the stacks at their top rule must fit the budget");
+  const filler = Array.from({ length: count }, (_, k) => siblings(k + 1));
+  const [fewest, most] = [Math.min(...filler), Math.max(...filler)];
+  return {
+    name: `lines-margin-pro-mesh-${count}-lines-budget`,
+    realisticIds: true,
+    description:
+      `Instruction budget, the Pro stack search's worst case (audit round 3): ${MESH_RULES} product rules that all combine with each other, every one of the ${count} lines listing a DIFFERENT ${MESH_REFS} of them; ` +
+      `the stack is searched among a line's ${MAX_STACK} best-ranked candidates only (plan.ts MAX_STACK_CANDIDATES), so each line stacks its ${MAX_STACK} best. A cost price on every line, a 5 % order discount, ` +
+      `${fewest === most ? fewest : `${fewest}–${most}`} variant-level refs of other variants a line: the input filled to Shopify's limit of ${128 * Math.max(1, count / 200)} kB of MessagePack. ` +
+      `The exact output is over the budget: every stack goes to its top rule. With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.`,
+    target: "lines",
+    rules,
+    margin: marginOn({ minMarginPercent: PRO_MARGIN_MIN, maxDiscountPercent: 60 }),
+    role: AUTO,
     lines,
     expected: out(products(...kept.map(({ message, targets, value }) => ({ message, targets, value }))), orderOp),
   };

@@ -21,12 +21,10 @@ export function messagePackBytes(value) {
   if (value === null || typeof value === "boolean") return 1;
   if (typeof value === "number") {
     if (Number.isInteger(value) && Math.abs(value) < 2 ** 63) {
-      if ((value >= 0 && value < 128) || (value < 0 && value >= -32)) return 1;
-      const magnitude = value < 0 ? -value - 1 : value;
-      if (magnitude < 2 ** 8) return 2;
-      if (magnitude < 2 ** 16) return 3;
-      if (magnitude < 2 ** 32) return 5;
-      return 9;
+      // rmp `write_uint` / `write_sint`: a negative integer takes the signed
+      // forms (int 8/16/32/64), whose ranges are half the unsigned ones.
+      if (value >= 0) return value < 128 ? 1 : value < 2 ** 8 ? 2 : value < 2 ** 16 ? 3 : value < 2 ** 32 ? 5 : 9;
+      return value >= -32 ? 1 : value >= -(2 ** 7) ? 2 : value >= -(2 ** 15) ? 3 : value >= -(2 ** 31) ? 5 : 9;
     }
     return 9;
   }

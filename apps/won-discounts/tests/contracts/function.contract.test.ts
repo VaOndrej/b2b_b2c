@@ -35,8 +35,9 @@ import { acquireBuildLock } from "../lib/build-lock.ts";
 //   - every output fits Shopify's 20 kB output limit (same page, "Resource limits");
 //   - the instruction budget (Shopify: 11 M instructions for carts up to 200
 //     lines, shopify.dev/docs/api/functions/2026-04 "Resource limits", scaled
-//     with the line count above that): ≥ 30 % headroom for every ordinary
-//     fixture, ≥ 10 % for the worst-case budget carts — each budget cart within
+//     with the line count above that): ≥ 10 % headroom for the budget carts
+//     filled to Shopify's input limit (the Pro worst cases), ≥ 30 % for every
+//     other fixture, the other budget carts included — each budget cart within
 //     the limits a real input has: input ≤ 128 kB of MessagePack (what Shopify
 //     counts, tests/input-size.js), scaled with the lines; shared config ≤ 9 000 B.
 
@@ -56,22 +57,22 @@ const DELIVERY_TARGET = "cart.delivery-options.discounts.generate.run";
 const WASM_LIMIT_BYTES = 256_000;
 /** Shopify's limit for carts up to 200 lines. */
 const INSTRUCTION_LIMIT = 11_000_000;
-/** Every ordinary fixture keeps ≥ 30 % headroom. */
+/** Every ordinary fixture keeps ≥ 30 % headroom (and so does every budget cart not at the input limit). */
 const INSTRUCTION_BUDGET = (INSTRUCTION_LIMIT / 10) * 7;
 /**
- * The budget carts (worst cases, measured with the ids the checkout sends:
- * app rule ids, Shopify's cart line ids; the Pro ones with their input filled
- * to Shopify's limit) keep ≥ 10 % headroom: 9.9 M up to 200 lines. The typical
- * carts meet the 75 % goal (MVP 2 Task 2); the gate protects the realistic worst
- * case, a Pro cart with margin protection on every line (MVP 2 audit rulings;
- * README "Instruction budget").
+ * The budget carts filled to Shopify's input limit (`AT_INPUT_LIMIT`: the Pro
+ * worst cases, measured with the ids the checkout sends — app rule ids,
+ * Shopify's cart line ids) keep ≥ 10 % headroom: 9.9 M up to 200 lines. With
+ * the Pro stack cap (plan.ts MAX_STACK_CANDIDATES) every valid shape stays under
+ * 90 % (MVP 2 audit round 3; README "Instruction budget").
  */
 const WORST_CASE_BUDGET = (INSTRUCTION_LIMIT / 100) * 90;
 /** The shared config's budget (C7), bytes of its JSON. */
 const CONFIG_BUDGET_BYTES = 9_000;
 /**
  * Above 200 lines Shopify's limit scales with the line count (like its output
- * limit), and so do the budgets: 500 lines → 27.5 M limit, 20.625 M worst case.
+ * limit), and so do the budgets: 500 lines → 27.5 M limit, 24.75 M (90 %) for
+ * a budget cart at the input limit, 19.25 M (70 %) for any other.
  */
 const scaled = (amount: number, lines: number) => Math.floor((amount * Math.max(200, lines)) / 200);
 function instructionLimit(lines: number) {
@@ -87,10 +88,21 @@ function worstCaseBudget(lines: number) {
  * The fixtures that measure the budget (their own tests below): the 200-line
  * MVP 1 carts, the margin carts (fast path, full order search, most lines
  * capped with an over-budget output), the 500-line capped cart, and the Pro
- * worst case at Shopify's input limit (200 and 500 lines, with 4 marginRefs,
- * and with 64-character rule ids).
+ * worst cases at Shopify's input limit (200 and 500 lines, with 4 marginRefs,
+ * with 64-character rule ids, and the Pro mesh of distinct 12-of-18 subsets).
  */
 const BUDGET_PREFIX = /-\d+-lines-budget\.json$/;
+/**
+ * The budget carts filled to Shopify's input limit: only these get the 90 %
+ * gate (each is checked to be ≥ 99 % of the limit). Every other budget cart —
+ * 55–75 kB of input, 44–58 % of the limit — keeps the ordinary 70 % gate, so the
+ * 90 % allowance never hides a regression on them.
+ */
+const AT_INPUT_LIMIT = /^lines-margin-pro-/;
+/** The instruction gate of a budget cart. */
+function budgetOf(file: string, lines: number) {
+  return AT_INPUT_LIMIT.test(file) ? worstCaseBudget(lines) : instructionBudget(lines);
+}
 
 type Fixture = {
   scenario?: string;
@@ -342,17 +354,19 @@ describe("shopify app function run", { concurrency: 6 }, () => {
 
   // The budget carts (37 rules, codes, a Pro stack, outlet lines; with margin
   // protection: the order stage's shortcut, its full search, most lines capped
-  // with an over-budget output, 500 lines; the Pro worst case: a Pro stack, a
+  // with an over-budget output, 500 lines; the Pro worst cases: a Pro stack, a
   // cost price, 2 (or 4) collections with a margin setting and variant-level
-  // refs on every line, the input filled to Shopify's limit), with the ids the
-  // checkout sends: the JS function needed ~96 M instructions on the MVP 1 cart
+  // refs on every line, or a Pro mesh of 18 rules with a different 12 on every
+  // line, the input filled to Shopify's limit), with the ids the checkout
+  // sends: the JS function needed ~96 M instructions on the MVP 1 cart
   // (task-2-report.md of MVP 1); the Rust port must stay ≤ 90 % of Shopify's
-  // (line-scaled) limit.
+  // (line-scaled) limit on the carts at the input limit, ≤ 70 % on the others.
   for (const file of fixtureFiles.filter((f) => BUDGET_PREFIX.test(f))) {
     const fixture = readFixture(file);
     const lines = fixture.payload.input.cart?.lines?.length ?? 0;
-    const budget = worstCaseBudget(lines);
+    const budget = budgetOf(file, lines);
     const limit = instructionLimit(lines);
+    const atLimit = AT_INPUT_LIMIT.test(file);
     test(`${file}: a real input (≤ ${inputLimit(lines)} B of MessagePack, shared config ≤ ${CONFIG_BUDGET_BYTES} B)`, (t) => {
       const input = fixture.payload.input as { shop?: { config?: { jsonValue?: unknown } | null } };
       const inputBytes = messagePackBytes(fixture.payload.input);
@@ -360,8 +374,10 @@ describe("shopify app function run", { concurrency: 6 }, () => {
       t.diagnostic(`${file}: input ${inputBytes} B of MessagePack (${Buffer.byteLength(JSON.stringify(fixture.payload.input))} B of JSON)`);
       assert.ok(inputBytes <= inputLimit(lines), `${file}: input ${inputBytes} B`);
       assert.ok(configBytes <= CONFIG_BUDGET_BYTES, `${file}: shared config ${configBytes} B`);
+      // The 90 % gate is only for carts really at the input limit.
+      if (atLimit) assert.ok(inputBytes >= inputLimit(lines) * 0.99, `${file}: ${inputBytes} B is not at the input limit (${inputLimit(lines)} B)`);
     });
-    test(`${file}: ≤ ${budget} instructions (Shopify limit ${limit} − 10 %)`, {
+    test(`${file}: ≤ ${budget} instructions (Shopify limit ${limit} − ${atLimit ? 10 : 30} %)`, {
       timeout: 120_000,
     }, async (t) => {
       let count = instructions.get(file);

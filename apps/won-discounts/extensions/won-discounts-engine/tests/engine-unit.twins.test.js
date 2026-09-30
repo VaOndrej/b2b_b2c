@@ -219,6 +219,25 @@ const TWINS = {
     expect(capped.lines[0].product.components.map((c2) => c2.amount)).toEqual([7000, 3000]);
   },
 
+  a_pro_stack_is_searched_among_the_six_best_ranked_candidates_only() {
+    const ids = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    const meshLink = (list, k) => ({ combinesWith: { ruleIds: list.slice(k + 1) } });
+    const c = cfg(ids.map((id, k) => pct(id, 10 - k, meshLink(ids, k))));
+    const plan = planCart(cart([line("l1", 1, 100000, ids)]), c);
+    const stack = plan.lines[0].product;
+    expect(stack.components.map((c2) => [c2.ruleId, c2.amount])).toEqual([["a", 10000], ["b", 9000], ["c", 8000], ["d", 7000], ["e", 6000], ["f", 5000]]);
+    expect([stack.amount, stack.value, stack.message]).toEqual([45000, { fixedTotal: 45000 }, "a + b + c + d + e + f"]);
+    expect(planCart(cart([line("l1", 1, 100000, ids.slice(0, 6))]), c).lines[0].product.components).toHaveLength(6);
+    const partner = cfg([pct("a", 10, { combinesWith: { ruleIds: ["g"] } }), pct("b", 9), pct("c", 8), pct("d", 7), pct("e", 6), pct("f", 5), pct("g", 4)]);
+    const capped = planCart(cart([line("l1", 1, 100000, ids.slice(0, 7)), line("l2", 1, 100000, ["a", "b", "g"])]), partner);
+    expect(productOf(capped, "l1")).toEqual(["a", { percent: 10 }, 10000]);
+    expect(productOf(capped, "l2")).toEqual(["a", { fixedTotal: 14000 }, 14000]);
+    const orders = cfg(ids.slice(0, 7).map((id, k) => order(id, { kind: "percentage", percent: 7 - k }, meshLink(ids.slice(0, 7), k))));
+    const withOrder = planCart(cart([line("l1", 1, 100000, [])]), orders);
+    expect([withOrder.order.amount, withOrder.order.value]).toEqual([27000, { fixedTotal: 27000 }]);
+    expect(withOrder.order.components.map((c2) => c2.ruleId)).toEqual(["a", "b", "c", "d", "e", "f"]);
+  },
+
   campaign_overrides_apply_only_for_the_matching_live_variables() {
     const c = cfg([pct("a", 10), pct("b", 20)], {
       campaignId: "bf",

@@ -152,7 +152,10 @@ const CODES = [
 const longName = (id) => `${id} ${"Velmi dlouhý název slevy ".repeat(9)}`.slice(0, 200);
 const vid = (n) => `gid://shopify/ProductVariant/${n}`;
 
-/** @param {number} seed @param {boolean} [onlySearch] only margin order-search carts (searchCase) */
+/**
+ * @param {number} seed
+ * @param {boolean | "mesh"} [onlySearch] true: only margin order-search carts (searchCase); "mesh": only Pro mesh carts (meshCase)
+ */
 function generator(seed, onlySearch = false) {
   const rnd = prng(seed);
   const int = (n) => Math.floor(rnd() * n);
@@ -630,7 +633,96 @@ function generator(seed, onlySearch = false) {
     };
   }
 
+  /**
+   * The Pro stack cap (plan.ts MAX_STACK_CANDIDATES, audit round 3): 7–16
+   * product rules combining at a random density (up to a full mesh), percents
+   * with repeats (ties go to priority, then id) and fixed amounts, a few code
+   * rules; 1–40 lines, each listing its own 5–14 of them, so most lines have
+   * more than 6 candidates and the cap decides which can stack; half the carts
+   * with 7–9 order rules in a mesh (the order stack's cap), 40 % with margin
+   * protection and cost prices (the capped stack cut again).
+   */
+  function meshCase() {
+    const currency = pick(["CZK", "CZK", "EUR"]);
+    const count = 7 + int(10);
+    const ids = Array.from({ length: count }, (_, k) => pick([`m${k}`, `m${k}`, `ř${k}`, `r_${k.toString(16).padStart(20, "a")}`]));
+    const density = pick([0.3, 0.6, 0.9, 1, 1]);
+    const entered = [];
+    const product = ids.map((id, k) => {
+      const partners = ids.slice(k + 1).filter(() => rnd() < density);
+      const code = chance(0.12);
+      if (code) entered.push(`MESH${k}`);
+      return {
+        id,
+        enabled: true,
+        name: chance(0.85) ? `Pro ${id}` : "",
+        method: code ? "code" : "automatic",
+        ...(code ? { codeHashes: [codeHash(`MESH${k}`)] } : {}),
+        value: chance(0.8) ? { kind: "percentage", percent: pick([1, 2, 2.5, 5, 5, 7.5, 10, 10, 12, 15, 20]) } : { kind: "fixed", amount: { [currency]: pick([500, 1000, 1000, 2500, 9900]) } },
+        target: { kind: "products" },
+        ...(chance(0.3) ? { priority: pick([0, 1, 2, 5]) } : {}),
+        ...(partners.length > 0 ? { combinesWith: { ruleIds: partners } } : {}),
+      };
+    });
+    const orders = chance(0.5)
+      ? Array.from({ length: 7 + int(3) }, (_, k) => ({
+          id: `o${k}`,
+          enabled: true,
+          name: `Objednávka ${k}`,
+          method: "automatic",
+          value: chance(0.7) ? { kind: "percentage", percent: pick([1, 2, 3, 3, 5]) } : { kind: "fixed", amount: { [currency]: pick([1000, 2000, 5000]) } },
+          target: { kind: "order" },
+          combinesWith: { ruleIds: Array.from({ length: 9 }, (_, j) => `o${j}`).filter((o, j) => j > k && rnd() < 0.9) },
+        }))
+      : [];
+    const margin = chance(0.4) ? { enabled: true, max: pick([20, 35, 60]), min: pick([10, 20, 30]), cur: "CZK" } : null;
+    const lines = Array.from({ length: 1 + int(40) }, (_, i) => {
+      const pool = [...ids];
+      const refs = Array.from({ length: Math.min(pool.length, 5 + int(10)) }, () => pool.splice(int(pool.length), 1)[0]);
+      const price = pick([100, 249, 1000, 1500, 4990]) + int(100);
+      return {
+        id: `gid://shopify/CartLine/${i + 1}`,
+        quantity: pick([1, 1, 2, 3]),
+        cost: { amountPerQuantity: { amount: `${price}.${pick(["00", "50", "05"])}` } },
+        gift: null,
+        merchandise: {
+          __typename: "ProductVariant",
+          id: vid(1200 + i),
+          wonVariant: margin && chance(0.8) ? { jsonValue: { cost: Math.round(price * pick([0.3, 0.5, 0.7]) * 100) / 100, cur: "CZK" } } : null,
+          product: { wonProduct: { jsonValue: { ruleIds: refs } } },
+        },
+      };
+    });
+    const codeRule = entered.length > 0 && chance(0.3) ? product.find((r) => r.method === "code") : null;
+    return {
+      exportName: LINES,
+      tie: false,
+      input: {
+        triggeringDiscountCode: codeRule ? pick(entered) : null,
+        enteredDiscountCodes: entered.filter(() => chance(0.7)).map((code) => ({ code })),
+        discount: {
+          discountClasses: ["PRODUCT", "ORDER", "SHIPPING"],
+          vars: {
+            jsonValue: { role: codeRule ? "code" : "automatic", ...(codeRule ? { ruleId: codeRule.id } : {}), campaignId: null, campaignStart: "1970-01-01T00:00:00", campaignEnd: "1970-01-01T00:00:00", varsVersion: null },
+          },
+        },
+        shop: {
+          config: { jsonValue: { schemaVersion: 1, campaignId: null, campaignVarsVersion: null, marketCountries: {}, modules: { codes: { rules: [...product, ...orders] }, ...(margin ? { margin } : {}) }, campaigns: [] } },
+          localTime: { date: "2026-10-01", campaignActive: false },
+        },
+        localization: { country: { isoCode: "CZ" }, language: { isoCode: pick(["CS", "EN"]) } },
+        presentmentCurrencyRate: currency === "CZK" ? "1.0" : "0.04",
+        cart: { cost: { subtotalAmount: { currencyCode: currency } }, lines },
+      },
+    };
+  }
+
   return function nextCase() {
+    if (onlySearch === "mesh") {
+      hostile = false;
+      large = false;
+      return meshCase();
+    }
     if (onlySearch || chance(0.2)) {
       hostile = false;
       large = false;
@@ -757,6 +849,37 @@ function orderSearchBranches(adapted, plan, hits) {
   if (byAfter.amount === byBefore.amount && byAfter.members.join() !== byBefore.members.join()) {
     hits.add(byAfter.members.length !== byBefore.members.length ? "margin order search: tie → the larger set" : "margin order search: tie → the h/s set");
   }
+}
+
+/** The stack cap's branches (MAX_STACK_CANDIDATES = 6) one case hit, from the TS plan. */
+function stackCapBranches(input) {
+  const hits = new Set();
+  const adapted = adaptInput(input);
+  const { plan } = emissionFor(adapted);
+  if (!plan || plan.reason) return hits;
+  // Pro combinesWith, symmetric (plan.ts partnersOf).
+  const partners = new Map();
+  const link = (a, b) => {
+    if (a === b) return;
+    if (!partners.has(a)) partners.set(a, new Set());
+    partners.get(a).add(b);
+  };
+  for (const r of input.shop.config.jsonValue.modules.codes.rules) for (const o of r.combinesWith?.ruleIds ?? []) (link(r.id, o), link(o, r.id));
+  const eligible = new Set(plan.rules.filter((r) => r.discountClass === "product" && ["applied", "combined", "outranked", "margin_floor"].includes(r.state)).map((r) => r.ruleId));
+  adapted.cart.lines.forEach((line, i) => {
+    const stack = plan.lines[i]?.product;
+    const candidates = line.ruleIds.filter((id) => eligible.has(id));
+    if (!stack || stack.components.length < 2 || candidates.length <= 6) return;
+    hits.add("stack cap: a line with 7+ candidates stacks");
+    if (stack.components.length === 6) hits.add("stack cap: a stack of the 6 best");
+    const members = stack.components.map((c) => c.ruleId);
+    if (candidates.some((id) => !members.includes(id) && members.every((m) => partners.get(m)?.has(id)))) {
+      hits.add("stack cap: a partner of the whole stack left out");
+    }
+    if (plan.lines[i].marginCapped) hits.add("stack cap: margin cuts a capped stack");
+  });
+  if ((plan.order?.components.length ?? 0) === 6) hits.add("stack cap: an order stack of the 6 best");
+  return hits;
 }
 
 /** The engine branches one case hit (from the TS plan, emission and output). */
@@ -1042,6 +1165,50 @@ describe("Wasm (function-runner)", () => {
     const thin = BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS);
     expect(thin, `branches hit fewer than ${MIN_HITS} times:\n${table}`).toEqual([]);
     expect(overBudget).toEqual([]);
+    expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
+  }, 900_000);
+
+  // The Pro stack cap (plan.ts MAX_STACK_CANDIDATES, src/engine/plan.rs `pick`):
+  // carts where most lines have more than 6 candidates in a Pro mesh, so the cap
+  // decides what stacks — the stack of the 6 best, a partner of the whole stack
+  // left out, the order stack, a capped stack cut by margin protection — each
+  // compared between the Wasm and the TS reference ≥ MIN_HITS times.
+  const MESH_CASES = Number(process.env.PARITY_MESH_CASES ?? 1500);
+  test(`Pro stack cap, seed 20261001 × ${MESH_CASES}: Wasm = TS reference, every stack-cap branch hit`, async () => {
+    const next = generator(20261001, "mesh");
+    const cases = Array.from({ length: MESH_CASES }, next);
+    const failures = [];
+    /** @type {Map<string, number>} */
+    const hits = new Map();
+    let maxMemory = 0;
+    for (let i = 0; i < cases.length; i += 8) {
+      const batch = cases.slice(i, i + 8);
+      const results = await Promise.all(batch.map((c) => runWasm(runnerPath, wasmPath, c.exportName, c.input)));
+      results.forEach((result, j) => {
+        const c = batch[j];
+        const expected = referenceOutput(c.exportName, c.input);
+        for (const branch of stackCapBranches(c.input)) hits.set(branch, (hits.get(branch) ?? 0) + 1);
+        if (!result.success || !isDeepStrictEqual(result.output, expected)) failures.push({ index: i + j, got: result.output, expected, input: c.input });
+        maxMemory = Math.max(maxMemory, result.memory_usage ?? Number.POSITIVE_INFINITY);
+      });
+    }
+    if (failures.length > 0) {
+      const first = failures[0];
+      throw new Error(
+        `${failures.length}/${MESH_CASES} stack-cap cases differ; first #${first.index}\ngot      ${JSON.stringify(first.got)}\nexpected ${JSON.stringify(first.expected)}\ninput    ${JSON.stringify(first.input)}`,
+      );
+    }
+    const table = [...hits].sort((a, b) => a[1] - b[1]).map(([b, n]) => `${n}\t${b}`).join("\n");
+    console.info(`stack cap parity: ${MESH_CASES} cases, 0 differ, largest memory ${maxMemory} KB\n${table}`);
+    const BRANCHES = [
+      "stack cap: a line with 7+ candidates stacks",
+      "stack cap: a stack of the 6 best",
+      "stack cap: a partner of the whole stack left out",
+      "stack cap: margin cuts a capped stack",
+      "stack cap: an order stack of the 6 best",
+    ];
+    const thin = BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS);
+    expect(thin, `branches hit fewer than ${MIN_HITS} times:\n${table}`).toEqual([]);
     expect(maxMemory).toBeLessThanOrEqual(MEMORY_BOUND_KB);
   }, 900_000);
 

@@ -229,14 +229,23 @@ pub struct Config {
 
 // --- Reading from the input -------------------------------------------------------------------
 
-fn read_money(value: &Value) -> Money {
+/// A MoneyByCurrency value. With the cart currency (`cur`, the function run),
+/// only that entry is read — the engine never looks another one up — and
+/// whether the record has any key (`Money::is_non_empty_record`): a
+/// fixed-amount rule costs one lookup instead of reading every currency's key
+/// and value (config reads were ~0.4 M instructions of a Pro cart).
+fn read_money(value: &Value, cur: Option<&str>) -> Money {
     if !value.is_obj() {
         return Money::NotRecord;
     }
-    Money::Record(entries(value).into_iter().map(|(k, v)| (k, number(&v))).collect())
+    match cur {
+        Some(_) if value.obj_len() == Some(0) => Money::Record(Vec::new()),
+        Some(cur) => Money::Record(vec![(cur.to_string(), number(&value.get_obj_prop(cur)))]),
+        None => Money::Record(entries(value).into_iter().map(|(k, v)| (k, number(&v))).collect()),
+    }
 }
 
-fn read_value(value: &Value) -> ValueSpec {
+fn read_value(value: &Value, cur: Option<&str>) -> ValueSpec {
     if !value.is_obj() {
         return ValueSpec::Invalid;
     }
@@ -246,7 +255,7 @@ fn read_value(value: &Value) -> ValueSpec {
             // Math.max(0, -0) is +0.
             ValueSpec::Percentage(if percent == 0.0 { 0.0 } else { percent })
         }
-        Some("fixed") => ValueSpec::Fixed(read_money(&prop(value, Key::Amount))),
+        Some("fixed") => ValueSpec::Fixed(read_money(&prop(value, Key::Amount), cur)),
         Some("freeShipping") => ValueSpec::FreeShipping,
         _ => ValueSpec::Invalid,
     }
@@ -265,12 +274,12 @@ fn read_target(value: &Value) -> Option<TargetKind> {
     }
 }
 
-fn read_minimum(value: &Value) -> Minimum {
+fn read_minimum(value: &Value, cur: Option<&str>) -> Minimum {
     if !value.is_obj() {
         return Minimum::default();
     }
     Minimum {
-        subtotal: read_money(&prop(value, Key::Subtotal)),
+        subtotal: read_money(&prop(value, Key::Subtotal), cur),
         quantity: number(&prop(value, Key::Quantity)).filter(|q| *q > 0.0).map_or(0, js::floor_to_i64),
         entitled: string(&prop(value, Key::Scope)).as_deref() == Some("entitled"),
     }
@@ -294,15 +303,15 @@ fn read_combines(value: &Value) -> Vec<String> {
 }
 
 
-fn read_patch(patch: &Value) -> RulePatch {
+fn read_patch(patch: &Value, cur: Option<&str>) -> RulePatch {
     let mut out = RulePatch::default();
     for (key, value) in entries(patch) {
         match key.as_str() {
             "enabled" => out.enabled = Some(is_true(&value)),
             "name" => out.name = Some(string(&value).unwrap_or_default()),
-            "value" => out.value = Some(read_value(&value)),
+            "value" => out.value = Some(read_value(&value, cur)),
             "target" => out.target = Some(read_target(&value)),
-            "minimum" => out.minimum = Some(read_minimum(&value)),
+            "minimum" => out.minimum = Some(read_minimum(&value, cur)),
             "targeting" => out.targeting = Some(read_targeting(&value)),
             "combinesWith" => out.combines = Some(read_combines(&value)),
             _ => {}
@@ -318,7 +327,7 @@ fn read_local_date(value: &Value) -> Option<String> {
 /// `readRule` (plan.ts): the keys a stored rule usually has first, the optional
 /// ones after them — once every key of the rule was found, the rest are known to
 /// be absent without reading them (json.rs `Fields`).
-fn read_rule(raw: &Value) -> Option<RawRule> {
+fn read_rule(raw: &Value, cur: Option<&str>) -> Option<RawRule> {
     if !raw.is_obj() {
         return None;
     }
@@ -327,12 +336,12 @@ fn read_rule(raw: &Value) -> Option<RawRule> {
     let method_code = f.get(Key::Method).and_then(|v| string(&v)).as_deref() == Some("code");
     let enabled = f.get(Key::Enabled).is_some_and(|v| is_true(&v));
     let name = f.get(Key::Name).and_then(|v| string(&v)).unwrap_or_default();
-    let value = f.get(Key::Value).map_or(ValueSpec::Invalid, |v| read_value(&v));
+    let value = f.get(Key::Value).map_or(ValueSpec::Invalid, |v| read_value(&v, cur));
     let target = f.get(Key::Target).and_then(|v| read_target(&v));
     let combines = f.get(Key::CombinesWith).map_or_else(Vec::new, |v| read_combines(&v));
     let code_hashes = if method_code { f.get(Key::CodeHashes).and_then(|v| string_list(&v)).unwrap_or_default() } else { Vec::new() };
     let priority = f.get(Key::Priority).and_then(|v| number(&v)).map_or(0, js::floor_to_i64);
-    let minimum = f.get(Key::Minimum).map_or_else(Minimum::default, |v| read_minimum(&v));
+    let minimum = f.get(Key::Minimum).map_or_else(Minimum::default, |v| read_minimum(&v, cur));
     let targeting = f.get(Key::Targeting).map_or_else(Targeting::default, |v| read_targeting(&v));
     let schedule = f.get(Key::Schedule);
     let scheduled = schedule.is_some_and(|s| !s.is_null());
@@ -361,7 +370,7 @@ fn read_rule(raw: &Value) -> Option<RawRule> {
     })
 }
 
-fn read_campaign(value: &Value) -> Option<RawCampaign> {
+fn read_campaign(value: &Value, cur: Option<&str>) -> Option<RawCampaign> {
     if !value.is_obj() {
         return None;
     }
@@ -374,7 +383,7 @@ fn read_campaign(value: &Value) -> Option<RawCampaign> {
         }
         let (Some(rule_id), patch) = (string(&prop(&entry, Key::RuleId)), prop(&entry, Key::Patch)) else { continue };
         if patch.is_obj() {
-            overrides.push((rule_id, read_patch(&patch)));
+            overrides.push((rule_id, read_patch(&patch, cur)));
         }
     }
     Some(RawCampaign { id: string(&prop(value, Key::Id)), killed: is_true(&prop(value, Key::Killed)), overrides })
@@ -397,6 +406,12 @@ impl Config {
     /// accepts (a record with `modules.codes.rules` an array); everything inside
     /// is read tolerantly, junk rules are skipped one by one.
     pub fn read(value: &Value) -> Option<Config> {
+        Self::read_in(value, None)
+    }
+
+    /// `read` for a cart in currency `cur` (the function run): money is read in
+    /// that currency only (`read_money`), the one plan.rs looks up.
+    pub fn read_in(value: &Value, cur: Option<&str>) -> Option<Config> {
         if !value.is_obj() {
             return None;
         }
@@ -417,14 +432,14 @@ impl Config {
         }
         let campaigns_value = prop(value, Key::Campaigns);
         let campaigns =
-            (0..campaigns_value.array_len().unwrap_or(0)).filter_map(|i| read_campaign(&campaigns_value.get_at_index(i))).collect();
+            (0..campaigns_value.array_len().unwrap_or(0)).filter_map(|i| read_campaign(&campaigns_value.get_at_index(i), cur)).collect();
 
         Some(Config {
             campaign_id: string(&prop(value, Key::CampaignId)),
             campaign_vars_version: string(&prop(value, Key::CampaignVarsVersion)),
             engine: read_engine(value),
             market_countries,
-            rules: (0..rule_count).filter_map(|i| read_rule(&rules.get_at_index(i))).collect(),
+            rules: (0..rule_count).filter_map(|i| read_rule(&rules.get_at_index(i), cur)).collect(),
             campaigns,
             margin: read_margin_payload(&prop(&modules, Key::Margin)),
         })
