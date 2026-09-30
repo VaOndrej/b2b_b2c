@@ -115,11 +115,25 @@ test("audit fix round 4: a tripped refusal breaker never says the other products
   assert.match(old({ collections: "Zimní", untitled: 2 }), /na kolekce „Zimní“ a další \(2\):/);
   assert.match(old({ collections: "", untitled: 2 }), /na část svých kolekcí \(kolekce bez názvu\):/);
 
-  assert.match(say({ step: "shop_config.phase1.build", ok: false, detail: "the no-campaign config is 9100 B" } as never), /^Přepnutí kampaně se zatím nedokončilo/);
+  // Round 5: phase1.build (over budget even folded) is its own sentence, never "the next sync finishes it" —
+  // that phrase only fits the OTHER phase-1 steps, which really are retried unchanged.
+  assert.doesNotMatch(say({ step: "shop_config.phase1.build", ok: false, detail: "the no-campaign config is 9100 B" } as never), /další synchronizace ho dokončí/);
+  assert.match(say({ step: "shop_config.phase1.write", ok: false, detail: "campaign switch held" } as never), /^Přepnutí kampaně se zatím nedokončilo/);
+});
 
+test("audit fix round 5: a products.membership READ failure has its own sentence, never configHeldMargin's 'could not write'; a phase1.build over budget tells the merchant what would help", () => {
   const unread = { step: "products.membership", ok: false, detail: "could not read whether 3 product(s) are in 1 collection(s): Throttled" };
-  assert.equal(say(unread as never), say({ step: "shop_config.write", ok: false, detail: "held", params: { held: "margin_refs" } } as never));
-  assert.equal(syncProblems([unread, { step: "shop_config.write", ok: false, detail: "held", params: { held: "margin_refs" } }] as never, names).length, 1, "one sentence");
+  const heldMargin = { step: "shop_config.write", ok: false, detail: "held", params: { held: "margin_refs" } };
+  for (const locale of ["cs", "en"] as const) {
+    assert.notEqual(say(unread as never, locale), say(heldMargin as never, locale));
+    assert.doesNotMatch(say(unread as never, locale), /nepodařilo zapsat|could not be written/);
+  }
+  assert.equal(syncProblems([unread, heldMargin] as never, names).length, 2, "two distinct problems, not deduplicated as one");
+
+  const tooLarge = { step: "shop_config.phase1.build", ok: false, detail: "the no-campaign config is 9300 B, over the 9000 B budget" };
+  assert.match(say(tooLarge as never), /méně pravidel|méně kolekcí/);
+  assert.match(say(tooLarge as never, "en"), /fewer rules|fewer collections/);
+  assert.doesNotMatch(say(tooLarge as never), /další synchronizace ho dokončí/);
 });
 
 test("only failed steps become problems (deduplicated); warnings are the sync's `warning` steps and the save's notes", () => {

@@ -715,7 +715,9 @@ function phaseOnePayload(
   if (liveMargin !== undefined) {
     const built = deps.buildShopFunctionConfig(payloadConfig, noCampaign);
     const patched = withMarginPart(built, liveMargin);
-    if (patched.fits) return patched;
+    // patched === null: the build's own JSON was not patchable (fail closed, audit fix round 5) — never ship
+    // the unpatched build (the NEW margin) in that case; fall through to the fold-all fallback below.
+    if (patched !== null && patched.fits) return patched;
   }
   const all = new Set(payloadConfig.modules.margin.perCollection.map((o) => o.collectionId));
   return deps.buildShopFunctionConfig(all.size > 0 ? foldMarginCollections(payloadConfig, all) : payloadConfig, noCampaign);
@@ -732,10 +734,17 @@ function liveMarginPart(json: string): unknown {
   }
 }
 
-/** A built shop config with its margin part replaced (as it is: the engine reads it exactly like the live one). */
-function withMarginPart(built: { json: string; bytes: number; fits: boolean }, margin: unknown): { json: string; bytes: number; fits: boolean } {
+/**
+ * A built shop config with its margin part replaced (as it is: the engine
+ * reads it exactly like the live one) — null when `built.json` does not carry
+ * a patchable `modules` object (fail closed, audit fix round 5): the caller
+ * (phaseOnePayload) must not ship `built` unpatched in that case, since it
+ * still carries the NEW margin; it falls back to folding every margin
+ * collection into the global values instead (the strictest, safe fallback).
+ */
+export function withMarginPart(built: { json: string; bytes: number; fits: boolean }, margin: unknown): { json: string; bytes: number; fits: boolean } | null {
   const payload = JSON.parse(built.json) as { modules?: Record<string, unknown> };
-  if (typeof payload.modules !== "object" || payload.modules === null) return built;
+  if (typeof payload.modules !== "object" || payload.modules === null) return null;
   payload.modules.margin = margin;
   const json = JSON.stringify(payload);
   const bytes = new TextEncoder().encode(json).length;

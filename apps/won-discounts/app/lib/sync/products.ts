@@ -860,16 +860,54 @@ interface Crossing {
 }
 
 /**
+ * The most calls to `productsInCollection` one sync makes (audit fix round 5):
+ * without a cap, an unlucky sync (many unsure newcomers × many unread live
+ * collections) could make ceil(unsure / NODES_BATCH) × unread calls, unbounded.
+ * Beyond the cap the still-unresolved products are held (fail closed, same as
+ * a read failure) and the next sync picks up where this one left off.
+ */
+const MEMBERSHIP_READ_CALL_CAP = 20;
+
+/** A collection's own values (global fallback filled in), as they'd apply if the product turned out to be a member. */
+function collectionValues(live: FunctionMarginPayload, key: string): { min: number; max: number } | null {
+  if (!live.enabled || !live.col) return null;
+  const tuple = live.col[key];
+  if (!tuple) return null;
+  const [m, p] = tuple;
+  return { min: m ?? (live.min ?? 0), max: p ?? live.max };
+}
+
+/**
+ * Whether an unread collection could possibly tighten a product's bridge past
+ * `candidate` (round 5): a collection that isn't stricter than the candidate
+ * in EITHER field can never matter, whether or not the product turns out to
+ * be a member of it — resolveMargin only ever takes the max of the minimums
+ * and the min of the maximums, so merging in a non-stricter collection can
+ * never change the resolved settings.
+ */
+function stricterThan(live: FunctionMarginPayload, key: string, candidate: { minMarginPercent: number; maxDiscountPercent: number }): boolean {
+  const values = collectionValues(live, key);
+  return values !== null && (values.min > candidate.minMarginPercent || values.max < candidate.maxDiscountPercent);
+}
+
+/**
  * The bridge of every crossing product (crossingRefs). The live config may list
  * collections this pass did not read — a live-only one past the leftover
  * budget, or one the new config folds (too large): a product's membership in
  * them is unknown, so a bridge that would be looser than what the product
- * carries now (either field, under the live config) is not trusted. Its
- * membership in those collections is read one by one (productsInCollection,
- * only for such products); when that read fails, the product keeps its current
- * value and the new config is held (`held`, reason margin_refs — retried like
- * every hold). Never a bridge looser than both the status quo and the
- * requirement (audit fix round 4). `refs` has no entry for a held product.
+ * carries now (either field, under the live config) is not trusted.
+ *
+ * Only the unread collections that could actually tighten a product's bridge
+ * are worth a read (`stricterThan`, round 5): a collection already carried
+ * (kept regardless, see bridgeMarginRefs) or that isn't stricter than the
+ * product's candidate value needs no read. What is worth reading is read one
+ * by one (productsInCollection), up to MEMBERSHIP_READ_CALL_CAP calls total
+ * for the whole sync; when a read fails, or the cap is reached first, the
+ * products still unresolved keep their current value and the new config is
+ * held (`held`, reason margin_refs — retried like every hold, so the next
+ * sync continues where this one stopped). Never a bridge looser than both the
+ * status quo and the requirement (audit fix round 4). `refs` has no entry for
+ * a held product.
  */
 async function bridgeCrossing(
   args: ProductSyncArgs,
@@ -885,50 +923,103 @@ async function bridgeCrossing(
   const members = (productId: string) => [...(productCollections.get(productId) ?? [])].map(variantKey);
   const unread = live.enabled && live.col ? Object.keys(live.col).filter((key) => !read.has(key)) : [];
   const refs = new Map<string, string[]>();
-  const unsure: Crossing[] = [];
+  const held = new Set<string>();
+  if (unread.length === 0) {
+    for (const item of crossing) {
+      const next = item.final ? marginRefsOf(item.final.value) : [];
+      refs.set(item.productId, crossingRefs({ next, live, members: members(item.productId), read, carried: marginRefsOf(item.current) }).refs);
+    }
+    return { refs, held };
+  }
+
+  interface Pending {
+    productId: string;
+    next: string[];
+    carried: string[];
+    /** Unread collections not already carried that could tighten this product's candidate value. */
+    relevant: string[];
+  }
+  const pending: Pending[] = [];
   for (const item of crossing) {
     const next = item.final ? marginRefsOf(item.final.value) : [];
-    const first = crossingRefs({ next, live, members: members(item.productId), read, carried: marginRefsOf(item.current) });
-    if (first.needsMembership) unsure.push(item);
-    else refs.set(item.productId, first.refs);
+    const carried = marginRefsOf(item.current);
+    const first = crossingRefs({ next, live, members: members(item.productId), read, carried });
+    if (!first.needsMembership) {
+      refs.set(item.productId, first.refs);
+      continue;
+    }
+    const candidate = resolveMargin(live, first.refs)!; // live.enabled: needsMembership is only ever true when it is
+    const relevant = unread.filter((key) => !carried.includes(key) && stricterThan(live, key, candidate));
+    if (relevant.length === 0) {
+      // No unread collection — carried or not — could tighten this product's bridge any further.
+      refs.set(item.productId, first.refs);
+      continue;
+    }
+    pending.push({ productId: item.productId, next, carried, relevant });
   }
-  const held = new Set<string>();
-  if (unsure.length === 0) return { refs, held };
-  const known = new Map<string, string[]>(unsure.map((item) => [item.productId, []]));
+  if (pending.length === 0) return { refs, held };
+
+  const known = new Map<string, string[]>(pending.map((p) => [p.productId, []]));
+  const remaining = new Map<string, Set<string>>(pending.map((p) => [p.productId, new Set(p.relevant)]));
+  const productsByKey = new Map<string, string[]>();
+  for (const p of pending) for (const key of p.relevant) productsByKey.set(key, [...(productsByKey.get(key) ?? []), p.productId]);
+
+  const finalize = (p: Pending): void => {
+    const allRead = new Set([...read, ...p.relevant]);
+    refs.set(p.productId, crossingRefs({ next: p.next, live, members: [...members(p.productId), ...known.get(p.productId)!], read: allRead, carried: p.carried }).refs);
+  };
+  const holdOutstanding = (): void => {
+    for (const p of pending) if (remaining.get(p.productId)!.size > 0) held.add(p.productId);
+  };
+
+  let calls = 0;
+  let capped = false;
   try {
-    for (const key of unread) {
-      for (const batch of chunks(unsure.map((item) => item.productId), NODES_BATCH)) {
+    outer: for (const key of unread) {
+      const productIds = productsByKey.get(key);
+      if (!productIds) continue;
+      for (const batch of chunks(productIds, NODES_BATCH)) {
+        if (calls >= MEMBERSHIP_READ_CALL_CAP) {
+          capped = true;
+          break outer;
+        }
         checkCancelled(args);
+        calls += 1;
         const data: { nodes: ({ id?: string; inCollection?: boolean } | null)[] } = await args.transport.call("productsInCollection", {
           ids: batch,
           collection: `gid://shopify/Collection/${key}`,
         });
-        batch.forEach((productId, i) => {
-          if (data.nodes[i]?.inCollection === true) known.get(productId)!.push(key);
-        });
+        // Matched by id, not by position (audit fix round 5): robust to the response reordering the nodes.
+        const byId = new Map(data.nodes.filter((n): n is { id?: string; inCollection?: boolean } => n !== null).map((n) => [n.id, n]));
+        for (const productId of batch) {
+          if (byId.get(productId)?.inCollection === true) known.get(productId)!.push(key);
+          remaining.get(productId)!.delete(key);
+        }
       }
     }
   } catch (error) {
     if (error instanceof Response || error instanceof SyncCancelled) throw error;
-    for (const item of unsure) held.add(item.productId);
+    holdOutstanding();
+    for (const p of pending) if (!held.has(p.productId)) finalize(p);
     steps.push({
       step: "products.membership",
       ok: false,
       detail:
-        `could not read whether ${unsure.length} product(s) are in ${unread.length} collection(s) the live config lists but this sync did not read ` +
+        `could not read whether ${held.size} product(s) are in ${unread.length} collection(s) the live config lists but this sync did not read ` +
         `(${errorText(error)}): they keep their current value and the new config is held; the next sync retries`,
     });
     return { refs, held };
   }
-  const all = new Set([...read, ...unread]);
-  for (const item of unsure) {
-    const next = item.final ? marginRefsOf(item.final.value) : [];
-    refs.set(item.productId, crossingRefs({ next, live, members: [...members(item.productId), ...known.get(item.productId)!], read: all, carried: marginRefsOf(item.current) }).refs);
-  }
+
+  if (capped) holdOutstanding();
+  for (const p of pending) if (!held.has(p.productId)) finalize(p);
   steps.push({
     step: "products.membership",
     ok: true,
-    detail: `${unsure.length} product(s) checked one by one in ${unread.length} collection(s) the live config lists but this sync did not read`,
+    detail:
+      `${pending.length - held.size} product(s) checked one by one in ${new Set(pending.flatMap((p) => p.relevant)).size} collection(s) the live config lists but this sync did not read ` +
+      `(${calls} call(s))` +
+      (capped ? `; the ${MEMBERSHIP_READ_CALL_CAP}-call budget was reached, ${held.size} product(s) held for the next sync` : ""),
   });
   return { refs, held };
 }

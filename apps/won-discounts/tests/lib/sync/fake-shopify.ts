@@ -108,6 +108,8 @@ export class FakeShopify implements AdminClient {
   /** The store's clock (node status, deactivate). */
   clock: () => Date = () => new Date("2026-09-28T12:00:00Z");
   calls: RecordedCall[] = [];
+  /** `nodes(ids:)` responses come back reversed (round 5): exercises matching by id, not by position. */
+  reorderNodes = false;
 
   private seq = 1000;
   private failures = new Map<string, Failure[]>();
@@ -588,14 +590,14 @@ export class FakeShopify implements AdminClient {
             };
           }),
         };
-      case "WonSyncProductsInCollection":
-        return {
-          nodes: (v.ids as string[]).map((id) => {
-            const product = this.products.get(id);
-            if (!product) return null;
-            return { __typename: "Product", id, inCollection: (this.collections.get(v.collection as string) ?? []).includes(id) };
-          }),
-        };
+      case "WonSyncProductsInCollection": {
+        const nodes = (v.ids as string[]).map((id) => {
+          const product = this.products.get(id);
+          if (!product) return null;
+          return { __typename: "Product", id, inCollection: (this.collections.get(v.collection as string) ?? []).includes(id) };
+        });
+        return { nodes: this.reorderNodes ? [...nodes].reverse() : nodes };
+      }
       case "WonSyncVariantProducts":
         return {
           nodes: (v.ids as string[]).map((id) => {

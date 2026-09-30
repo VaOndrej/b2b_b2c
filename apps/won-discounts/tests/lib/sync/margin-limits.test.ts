@@ -10,7 +10,7 @@ import { operationName } from "../../../app/lib/sync/graphql.ts";
 import { marginTooLargeOf } from "../../../app/lib/sync/margin-fold.ts";
 import { appliedPlanMismatch, appliedRun } from "../../../app/lib/sync/runs.ts";
 import { loadShopSyncFacts } from "../../../app/lib/sync/sync-state.server.ts";
-import { backgroundProductPass, createSync, isSettingsSyncRunning, syncIdle } from "../../../app/lib/sync/sync.server.ts";
+import { backgroundProductPass, createSync, isSettingsSyncRunning, syncIdle, withMarginPart } from "../../../app/lib/sync/sync.server.ts";
 import { createTestDatabase, type TestDatabase } from "../test-db.ts";
 import { FakeShopify } from "./fake-shopify.ts";
 import { autoRule, codeRule, configWith, makeDeps } from "./helpers.ts";
@@ -986,4 +986,144 @@ test("round 4, item 6: a run whose only live write was a campaign switch's phase
   assert.equal((await appliedRun(db.prisma, shop))?.runId, first.runId, "the fold views read the last final write");
   assert.equal((await loadShopSyncFacts(db.prisma, shop)).appliedPlan, "pro", "and so does the plan");
   assert.deepEqual(await appliedPlanMismatch(db.prisma, shop, "free"), { applied: "pro" }, "a resync follows");
+});
+
+// --- Fix round 5 --------------------------------------------------------------------------------------
+
+test("round 5, item 1: many unsure newcomers × several unread collections — membership reads are bounded (only the collections that could actually tighten a product's bridge are read, and a call cap holds whatever is left over for the next sync)", async () => {
+  const N = 25;
+  const fake = new FakeShopify();
+  const products = Array.from({ length: N }, (_, i) => fake.addProduct(i + 1));
+  const perCollection = products.flatMap((_p, i) => [
+    { collectionId: `gid://shopify/Collection/${1000 + i}`, minMarginPercent: 35, maxDiscountPercent: 30 },
+    { collectionId: `gid://shopify/Collection/${2000 + i}`, minMarginPercent: 40, maxDiscountPercent: 20 },
+  ]);
+  products.forEach((p, i) => {
+    fake.addCollection(1000 + i, [p.id]);
+    fake.addCollection(2000 + i, []);
+  });
+  const config = margin({ minMarginPercent: 40, maxDiscountPercent: 50 }, perCollection);
+  const sync = createSync(coreDeps(fake));
+  await sync.syncShop(shop, config);
+  products.forEach((p, i) => assert.deepEqual(marginRefsOf(fake, p.id), [String(1000 + i)]));
+
+  // Every product leaves its own small collection and joins its own big one, which then grows past the
+  // limit: folded under the new payload, never paged — its membership must be read one by one.
+  products.forEach((p, i) => {
+    fake.collections.set(`gid://shopify/Collection/${1000 + i}`, []);
+    fake.collections.set(`gid://shopify/Collection/${2000 + i}`, [p.id]);
+    fake.collectionCounts.set(`gid://shopify/Collection/${2000 + i}`, 12_000);
+  });
+  fake.calls = [];
+  const result = await sync.syncShop(shop, config);
+
+  const asked = fake.callsOf("WonSyncProductsInCollection");
+  assert.ok(asked.length > 0 && asked.length <= 20, `bounded, not ${N}: ${asked.length} call(s)`);
+  const membershipStep = result.steps.find((s) => s.step === "products.membership");
+  assert.ok(membershipStep?.ok, JSON.stringify(result.steps));
+
+  // At least one product could not be checked within the budget: fail closed, the whole flip waits.
+  assert.ok(result.steps.some((s) => s.step === "shop_config.write" && !s.ok && s.params?.held === "margin_refs"), JSON.stringify(result.steps));
+  assert.ok(result.pending.includes("stale_product_refs"), "retried by the next sync");
+
+  // Every product resolves to either its own big collection (read in time) or its own small one (held,
+  // unchanged) — never something looser, and never a mix-up with another product's collection.
+  let readCount = 0;
+  let heldCount = 0;
+  products.forEach((p, i) => {
+    const refs = marginRefsOf(fake, p.id) ?? [];
+    if (JSON.stringify(refs) === JSON.stringify([String(2000 + i)])) readCount += 1;
+    else if (JSON.stringify(refs) === JSON.stringify([String(1000 + i)])) heldCount += 1;
+    else assert.fail(`product ${i}: unexpected refs ${JSON.stringify(refs)}`);
+  });
+  assert.ok(heldCount > 0, "the cap was reached: some products are held");
+  assert.equal(readCount + heldCount, N);
+});
+
+test("round 5, item 3: withMarginPart fails CLOSED — a build whose JSON has no patchable `modules` is never shipped as-is (it still carries the NEW margin); the caller falls back to folding every collection", () => {
+  const built = { json: JSON.stringify({ notModules: true }), bytes: 20, fits: true };
+  assert.equal(withMarginPart(built, { enabled: true, max: 50 }), null, "signals failure instead of returning the unpatched (new-margin) build");
+
+  // The happy path still patches normally.
+  const ok = withMarginPart({ json: JSON.stringify({ modules: { margin: { enabled: true, max: 99 } } }), bytes: 30, fits: true }, { enabled: true, max: 40 });
+  assert.ok(ok !== null);
+  assert.deepEqual((JSON.parse(ok!.json) as { modules: { margin: unknown } }).modules.margin, { enabled: true, max: 40 });
+});
+
+test("round 5, item 3 (end to end): when buildShopFunctionConfig ever returns JSON without a `modules` object, phase 1 does not ship it early with the new margin — it folds every collection instead", async () => {
+  const fake = new FakeShopify();
+  const product = fake.addProduct(1);
+  fake.addCollection(5, [product.id]);
+  const bf = { id: "bf", name: "BF", window: { start: "2026-09-28T00:00:00", end: "2026-09-29T00:00:00" }, overrides: [], killed: false };
+  const config = (campaign: typeof bf) =>
+    configWith([codeRule("c")], {
+      campaigns: [campaign],
+      modules: { codes: { rules: [codeRule("c")] }, margin: { enabled: true, global: { minMarginPercent: 10, maxDiscountPercent: 50 }, perCollection: byMin([[C5, 40]]) } },
+    });
+  const deps = coreDeps(fake);
+  const sync = createSync(deps);
+  await sync.syncShop(shop, config(bf));
+  const real = deps.buildShopFunctionConfig;
+  let broken = false;
+  deps.buildShopFunctionConfig = (c, options) => {
+    const built = real(c, options);
+    // Simulate a build whose JSON is not patchable (never happens in practice, but withMarginPart must
+    // still fail closed for it): only for the no-campaign (phase 1) build, once.
+    if (options.forceNoCampaign && !broken) {
+      broken = true;
+      return { json: JSON.stringify({ notModules: true }), bytes: 20, fits: true };
+    }
+    return built;
+  };
+  const moved = { ...bf, window: { start: "2026-09-28T06:00:00", end: "2026-09-30T00:00:00" } };
+  const result = await sync.syncShop(shop, config(moved));
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+  const phase1 = fake
+    .callsOf("WonSyncMetafieldsSet")
+    .flatMap((c) => (c.variables as { metafields: { key: string; value: string }[] }).metafields)
+    .find((mf) => mf.key === "function_config")!;
+  const margin1 = readMarginPayload((JSON.parse(phase1.value) as { modules: { margin: unknown } }).modules.margin);
+  assert.equal("col" in margin1, false, "folded, not the broken build's new margin");
+  assert.deepEqual(resolveMargin(margin1, ["5"]), { minMarginPercent: 40, maxDiscountPercent: 50, source: "global" }, "strictest (40), never the unpatched new margin");
+});
+
+test("round 5, item 4: membership answers are matched by product id, not by array position — robust to the response reordering the nodes", async () => {
+  const fake = new FakeShopify();
+  const p1 = fake.addProduct(1);
+  const p2 = fake.addProduct(2);
+  fake.addCollection(1, []); // C1: the big collection, currently empty
+  fake.addCollection(3, [p1.id, p2.id]); // C3: both start here
+  const sync = createSync(coreDeps(fake));
+  const config = margin({ minMarginPercent: 40, maxDiscountPercent: 50 }, [
+    { collectionId: C1, minMarginPercent: 40, maxDiscountPercent: 20 },
+    { collectionId: C3, minMarginPercent: 35, maxDiscountPercent: 30 },
+  ]);
+  await sync.syncShop(shop, config);
+  assert.deepEqual(marginRefsOf(fake, p1.id), ["3"]);
+  assert.deepEqual(marginRefsOf(fake, p2.id), ["3"]);
+
+  fake.collections.set(C3, []); // both leave C3
+  fake.collections.set(C1, [p1.id]); // only p1 actually joins the big collection; p2 joins nothing
+  fake.collectionCounts.set(C1, 12_000); // folded: never paged, membership read one by one
+  fake.calls = [];
+  fake.reorderNodes = true; // the membership answers come back reversed (round 5: must not be trusted by position)
+  const result = await sync.syncShop(shop, config);
+
+  const asked = fake.callsOf("WonSyncProductsInCollection");
+  assert.ok(asked.some((c) => (c.variables as { ids: string[] }).ids.length >= 2), JSON.stringify(asked));
+  // C1 is folded under the new (unchanged) config too, so the bridge is only ever visible in the WRITE
+  // sequence, before the AFTER lane prunes it: only p1's SET may ever carry "1"; p2 is cleared directly.
+  const marginRefsWritten = (productId: string) =>
+    fake
+      .mutations()
+      .filter((c) => c.op === "WonSyncMetafieldsSet")
+      .flatMap((c) => (c.variables as { metafields: { ownerId: string; key: string; value?: string }[] }).metafields)
+      .filter((mf) => mf.ownerId === productId && mf.key === "product")
+      .map((mf) => (JSON.parse(mf.value!) as { marginRefs?: string[] }).marginRefs ?? []);
+  assert.ok(marginRefsWritten(p1.id).some((refs) => refs.includes("1")), JSON.stringify({ steps: result.steps, mutations: fake.mutations() }));
+  assert.ok(marginRefsWritten(p2.id).every((refs) => !refs.includes("1")), JSON.stringify({ steps: result.steps, mutations: fake.mutations() }));
+  assert.ok(
+    fake.mutations().some((c) => c.op === "WonSyncMetafieldsDelete" && (c.variables as { metafields: { ownerId: string }[] }).metafields.some((mf) => mf.ownerId === p2.id)),
+    "p2 cleared directly: never a member of C1",
+  );
 });

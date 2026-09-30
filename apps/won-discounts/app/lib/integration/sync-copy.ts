@@ -96,8 +96,11 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
       return { key: "sync.problem.currency" };
     case "shop_config.build":
       return { key: "sync.problem.tooLarge" };
-    case "sync.stopped":
     case "shop_config.phase1.build":
+      // Over the 9 000 B budget even folded to the global values (sync.server.ts phaseOnePayload): retrying
+      // alone will not fit it — own sentence, never "the next sync finishes it" (audit fix round 5).
+      return { key: "sync.problem.phase1TooLarge", params: { detail } };
+    case "sync.stopped":
     case "shop_config.phase1.write":
     case "shop_config.phase1.verify":
     case "shop_config.phase1.rollback":
@@ -118,8 +121,9 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
         : { key: "sync.problem.config", params: { detail } };
     case "products.membership":
       // The live config's membership of some products could not be read (products.ts, audit fix round 4): the
-      // config is held for their margin collections — the same sentence as the held step (deduplicated).
-      return { key: "sync.problem.configHeldMargin" };
+      // config is held for their margin collections. Own sentence (audit fix round 5): this is a READ failure,
+      // not the "could not write" story configHeldMargin tells — never reuse it here.
+      return { key: "sync.problem.membershipReadFailed" };
     case "products.prune":
       // Bridges left after the flip: never a looser floor (the same one applies), retried by the next sync.
       return { key: "sync.problem.productsPrune" };
