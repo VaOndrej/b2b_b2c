@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
 // SF-2: ALL storefront JS of the theme app extension (the app embed + the
-// quantity-tiers block, MVP 3) stays within 10 kB gzipped in total — a product
-// page with both loads both. Each file is served readable (no build step,
+// quantity-tiers block's two files, MVP 3) stays within 10 kB gzipped in total —
+// a product page with both loads all of them. Each file is served readable (no build step,
 // nova-aplikace §8), so the budget is on real bytes, measured the way Shopify's
 // "JS referenced by the schema, compressed" suggestion measures it.
 //
@@ -20,7 +20,9 @@ import { test } from "node:test";
 // .theme-check.yml).
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS = path.join(HERE, "../../extensions/won-discounts-storefront/assets");
-const STOREFRONT_JS = ["won-discounts.js", "won-discounts-tiers.js"];
+// won-discounts-tiers-core.js = the tiers block's pure logic, split off (fix round 1) so each
+// file stays under the raw threshold; the block loads it with a deferred <script>.
+const STOREFRONT_JS = ["won-discounts.js", "won-discounts-tiers.js", "won-discounts-tiers-core.js"];
 const GZIP_BUDGET_BYTES = 10 * 1024; // 10240 B ceiling (SF-2), all files together
 const RAW_THEME_CHECK_BYTES = 10_000; // AssetSizeAppBlockJavaScript default, per file
 

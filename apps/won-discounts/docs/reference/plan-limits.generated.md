@@ -40,6 +40,9 @@ margin protection, Try a cart and moving Shopify discounts work in full on Free.
 |---|---|---|
 | Show a discount only in chosen markets | Discounts & codes | The whole discount does not apply on Free (removing only its targeting would widen it to everyone). |
 | Choose per discount which other discounts it stacks with | Discounts & codes | The Pro setting is left out; the rest keeps working. |
+| Volume discount sets for chosen products or collections | Volume discounts | The Pro setting is left out; the rest keeps working. |
+| More than one volume discount set | Volume discounts | The Pro setting is left out; the rest keeps working. |
+| Volume discounts counted across the whole cart | Volume discounts | Kept within the Free limit. |
 | Margin protection settings per collection | Margin protection | Merged into the store-wide setting; the strictest value wins. |
 
 With per-discount combinations, at most **6** discounts stack on one line
@@ -54,19 +57,14 @@ listed so the plan comparison is complete; none of them can be set up today.
 |---|---|---|
 | Show a discount only to chosen customer segments | Discounts & codes | The whole discount does not apply on Free (removing only its targeting would widen it to everyone). |
 | Campaigns: start and end many discounts at once (e.g. Black Friday) | Campaigns | The Pro setting is left out; the rest keeps working. |
-| Volume discount sets for chosen products or collections | Volume discounts | The Pro setting is left out; the rest keeps working. |
-| More than one volume discount set | Volume discounts | The Pro setting is left out; the rest keeps working. |
-| Volume discounts counted across the whole cart | Volume discounts | Kept within the Free limit. |
 | A ladder of several gift thresholds | Cart rewards | Kept within the Free limit. |
 | A choice of gifts at one threshold | Cart rewards | Kept within the Free limit. |
 
 ## Planned modules
 
-- **Volume discounts**: Buy more, pay less. One global set of tiers on Free.
 - **Cart rewards**: Spend X, get Y. Free shipping and a gift above a threshold per currency.
 - **Clearance** (Pro): Sell N units at a discount, then back to full price.
 - **Campaigns** (Pro): Black Friday and other campaigns. Start and end every discount at once.
-- **Appearance**: Ready-made looks for the storefront blocks.
 
 ## What "On Free" means
 

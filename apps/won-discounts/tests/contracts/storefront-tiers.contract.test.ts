@@ -27,6 +27,7 @@ const read = (relativePath: string) => readFile(path.join(extensionRoot, relativ
 
 const BLOCK = "blocks/quantity_tiers.liquid";
 const SCRIPT = "assets/won-discounts-tiers.js";
+const CORE = "assets/won-discounts-tiers-core.js";
 const STYLES = "assets/won-discounts-tiers.css";
 const LOCALES = ["en.default.json", "cs.json", "sk.json"] as const;
 const TEXT_KEYS = ["heading", "row_qty", "save_pct", "save_off", "unit", "live", "live_cart", "next"] as const;
@@ -296,6 +297,7 @@ type TiersApi = {
   version: string;
   offered(breaks: unknown, currency: string): Array<{ min: number; pct?: number; off?: number }>;
   discount(brk: { pct?: number; off?: number }, price: number, max: number): number;
+  lineDiscount(brk: { pct?: number; off?: number }, price: number, max: number, qty: number): number;
   countOf(mode: string, qty: number, inCart: { v?: number; p?: number; s?: number }): number;
   compute(
     data: BlockData,
@@ -306,6 +308,7 @@ type TiersApi = {
     qty: number;
     count: number;
     unit: number;
+    total: number;
     empty: boolean;
     active: null | { min: number; d: number; unit: number };
     next: null | { min: number; unit: number };
@@ -316,10 +319,17 @@ type TiersApi = {
   scan(): void;
 };
 
-async function boot(document: FakeDocument) {
-  const javascript = await read(SCRIPT);
+/**
+ * Load the block's two scripts into one vm realm: the schema's script (DOM) and
+ * the pure core the block loads with `defer`. Either may run first (both are
+ * deferred, in an order the theme decides); `order` picks it.
+ */
+async function boot(
+  document: FakeDocument,
+  { order = "core-first", window = {} }: { order?: "core-first" | "main-first"; window?: Record<string, unknown> } = {},
+) {
+  const [main, core] = await Promise.all([read(SCRIPT), read(CORE)]);
   const timers: Timer[] = [];
-  const window: Record<string, unknown> = {};
   class CustomEvent {
     type: string;
     detail: unknown;
@@ -335,15 +345,26 @@ async function boot(document: FakeDocument) {
     setTimeout: (fn: () => void, delay?: number) => timers.push({ fn, delay: delay ?? 0 }),
     clearTimeout: () => timers.splice(0, timers.length),
   });
-  vm.runInContext(javascript, context);
+  for (const source of order === "core-first" ? [core, main] : [main, core]) vm.runInContext(source, context);
   const flush = () => {
     while (timers.length) timers.shift()?.fn();
+  };
+  /** Run only the timers due within `ms` (time "advances" to ms; later ones stay pending). */
+  const flushDue = (ms: number) => {
+    for (const t of timers.filter((x) => x.delay <= ms)) {
+      timers.splice(timers.indexOf(t), 1);
+      t.fn();
+    }
   };
   return {
     api: window.WonDiscountsTiers as TiersApi,
     timers,
     flush,
-    runAgain: () => vm.runInContext(javascript, context),
+    flushDue,
+    runAgain: () => {
+      vm.runInContext(main, context);
+      vm.runInContext(core, context);
+    },
     // (compared as plain JSON: objects made in the vm realm have another Object.prototype)
     events: () =>
       document.dispatched
@@ -352,12 +373,23 @@ async function boot(document: FakeDocument) {
   };
 }
 
-/** Horizon-like product section: the app block renders AFTER the product grid, outside the buy box. */
+/**
+ * Horizon-like product section: the app block renders AFTER the product grid, outside the buy box.
+ * With `show_installments` the price block renders its own /cart/add form holding the variant id
+ * BEFORE the buy form (blocks/price.liquid `product-form-installment-{block.id}`).
+ */
 function horizonPage(data: BlockData) {
   const document = new FakeDocument();
   const qty = h("input", { type: "number", name: "quantity", value: "1" });
   const id = h("input", { type: "hidden", name: "id", value: String(data.sel) });
-  const form = h("form", { action: "/cart/add", id: "BuyButtons-ProductForm-main" }, id, h("div", { class: "product-form-buttons" }, qty));
+  const form = h(
+    "form",
+    { action: "/cart/add", id: "BuyButtons-ProductForm-main" },
+    id,
+    h("div", { class: "product-form-buttons" }, qty, h("button", { type: "submit", name: "add" }, "Add")),
+  );
+  const installmentId = h("input", { type: "hidden", name: "id", value: String(data.sel) });
+  const installments = h("form", { action: "/cart/add", id: "product-form-installment-price" }, installmentId, h("shopify-payment-terms"));
   const block = tiersBlock(data);
   // A quick-add form of ANOTHER product elsewhere on the page must never be picked.
   const otherQty = h("input", { name: "quantity", value: "7" });
@@ -365,28 +397,47 @@ function horizonPage(data: BlockData) {
   const section = h(
     "div",
     { class: "shopify-section", id: "shopify-section-template--main" },
-    h("div", { class: "product-grid" }, h("div", { class: "product-details" }, form)),
+    h("div", { class: "product-grid" }, h("div", { class: "product-details" }, h("product-price", {}, installments), form)),
     h("div", { class: "shopify-app-block" }, block),
   );
   document.html.append(h("body", {}, section, h("div", { class: "shopify-section" }, otherForm)));
-  return { document, qty, id, form, block };
+  return { document, qty, id, form, block, installmentId };
 }
 
-/** Dawn-like: the quantity input sits OUTSIDE the form and is bound with form="…" (input.form). */
+/**
+ * Dawn-like (sections/main-product.liquid): the price block's installment form
+ * `product-form-installment-{section}` holds the variant id and comes FIRST; the
+ * quantity input sits OUTSIDE the buy form, bound with form="product-form-{section}"
+ * (input.form); the block renders between them.
+ */
 function dawnPage(data: BlockData) {
   const document = new FakeDocument();
+  const installmentId = h("input", { type: "hidden", name: "id", value: String(data.sel) });
+  const installments = h("form", { action: "/cart/add", id: "product-form-installment-main", class: "installment" }, installmentId);
   const id = h("input", { type: "hidden", name: "id", value: String(data.sel) });
-  const form = h("form", { action: "/cart/add", id: "product-form-main" }, id);
+  const form = h(
+    "form",
+    { action: "/cart/add", id: "product-form-main" },
+    id,
+    h("div", { class: "product-form__buttons" }, h("button", { type: "submit", name: "add" }, "Add")),
+  );
   const qty = h("input", { name: "quantity", form: "product-form-main", value: "1" });
   qty.formOverride = form;
   const block = tiersBlock(data);
   const section = h(
     "div",
     { class: "shopify-section" },
-    h("product-info", {}, h("div", {}, block), h("quantity-input", {}, qty), h("div", { class: "product-form" }, form)),
+    h(
+      "product-info",
+      {},
+      h("div", { class: "price" }, installments),
+      h("div", {}, block),
+      h("quantity-input", {}, qty),
+      h("div", { class: "product-form" }, form),
+    ),
   );
   document.html.append(h("body", {}, section));
-  return { document, qty, id, form, block };
+  return { document, qty, id, form, block, installmentId };
 }
 
 const plain = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
@@ -432,8 +483,7 @@ test("the block reads the K5 app-data config (plain namespace), K3 tierRef and K
 
 test("K6: cart quantities come from Liquid at render time (line_items_for), never from a cart request", async () => {
   const liquid = await read(BLOCK);
-  assert.match(liquid, /cart\s*\|\s*line_items_for:\s*variant\s*\|\s*sum:\s*'quantity'/);
-  assert.match(liquid, /cart\s*\|\s*line_items_for:\s*product\s*\|\s*sum:\s*'quantity'/);
+  assert.match(liquid, /for item in product_lines/, "line + product: one pass over the product's lines");
   assert.match(liquid, /for item in cart\.items/, "cart mode counts lines whose effective set is the same");
   assert.match(liquid, /cart\.currency\.iso_code/);
 });
@@ -489,7 +539,7 @@ test("block texts: every tiers.* key exists in cs/sk/en with the same placeholde
 });
 
 test("SF-1: neither the block nor its script can change the cart", async () => {
-  for (const file of [BLOCK, SCRIPT]) {
+  for (const file of [BLOCK, SCRIPT, CORE]) {
     const source = await read(file);
     // (Reading the product form via the selector form[action*="/cart/add"] is fine; posting is not.)
     assert.doesNotMatch(source, /\/cart\/(add|change|update|clear)\.js/, `${file} names a cart AJAX endpoint`);
@@ -581,15 +631,30 @@ test("offered(): percent breaks stay; an amount is resolved for the cart currenc
   assert.deepEqual(plain(api.offered(undefined, "CZK")), []);
 });
 
-test("K6 discount per item: min(pct, max) % of the price; min(off, price × max / 100); never above the price", async () => {
+test("K6 discount per item (table): min(pct, max) %, rounded DOWN; min(off, price × max / 100); never above the price", async () => {
   const { api } = await boot(new FakeDocument());
   assert.equal(api.discount({ pct: 10 }, 1000, 100), 100);
   assert.equal(api.discount({ pct: 15 }, 2000, 12.5), 250, "margin lowers 15 % to 12.5 %");
-  assert.equal(api.discount({ pct: 10 }, 1235, 100), 124, "rounded like the engine (Math.round)");
-  assert.equal(api.discount({ pct: 10 }, 1235, 10), 123, "…but never above the margin ceiling (floor)");
+  assert.equal(api.discount({ pct: 10 }, 1235, 100), 123, "per item floored: never more than checkout at any quantity");
+  assert.equal(api.discount({ pct: 10 }, 1235, 10), 123);
   assert.equal(api.discount({ off: 500 }, 1000, 30), 300, "amount capped at price × max / 100");
   assert.equal(api.discount({ off: 5000 }, 1000, 100), 1000, "an amount never exceeds the item price");
   assert.equal(api.discount({ pct: 10 }, 1000, 0), 0, "max 0 = no discount");
+});
+
+test("K6 discount per line like the engine: a percent rounds once per line (margin-capped); an amount is per item × qty", async () => {
+  const { api } = await boot(new FakeDocument());
+  assert.equal(api.lineDiscount({ pct: 10 }, 1235, 100, 1), 124, "Math.round per line");
+  assert.equal(api.lineDiscount({ pct: 15 }, 333, 100, 3), 150, "round(999 × 15 %) = 150, not 3 × 49");
+  assert.equal(api.lineDiscount({ pct: 10 }, 1235, 10, 1), 123, "capped by floor(line × max / 100)");
+  assert.equal(api.lineDiscount({ pct: 15 }, 2000, 12.5, 5), 1250);
+  assert.equal(api.lineDiscount({ off: 500 }, 1000, 30, 3), 900, "an amount: the per-item value × qty");
+  assert.equal(api.lineDiscount({ off: 5000 }, 1000, 100, 2), 2000);
+  // The per-item figure never promises more than the line gives.
+  for (const [price, pct, qty] of [[333, 15, 3], [1235, 10, 7], [999, 12.5, 11], [101, 33, 2]] as const) {
+    const line = api.lineDiscount({ pct }, price, 100, qty);
+    assert.ok(api.discount({ pct }, price, 100) * qty <= line, `${price} × ${qty} at ${pct} %`);
+  }
 });
 
 test("K6 count: chosen quantity + cart items of the same variant (line) / product / set (cart)", async () => {
@@ -854,4 +919,135 @@ test("the script waits for DOMContentLoaded when the document is still loading",
   assert.equal(events().length, 0);
   page.document.fire("DOMContentLoaded");
   assert.equal(events().length, 1);
+});
+
+// ================================================================================================
+// Fix round 1 (review of cbb6fac)
+// ================================================================================================
+
+test("review 1: Dawn's installment form (price block, first in the DOM) never wins over the buy form", async () => {
+  const page = dawnPage(globalSetData());
+  const { flush, events } = await boot(page.document);
+  page.qty.value = "5";
+  page.document.fire("change", { target: page.qty });
+  flush();
+  assert.equal(activeMin(page.block), "5", "the quantity comes from the input bound to product-form-main");
+  assert.deepEqual(events().at(-1), { variantId: 901, quantity: 5, count: 5, min: 5, unitCents: 850 });
+  // Dawn's product-info updates BOTH id inputs on a variant change; the buy form's is the one read.
+  page.id.value = "902";
+  page.document.fire("change", { target: page.id });
+  flush();
+  assert.equal(events().at(-1)?.variantId, 902);
+});
+
+test("review 1: Horizon with show_installments reads the buy form, not the price block's form", async () => {
+  const page = horizonPage(globalSetData());
+  const { flush, events } = await boot(page.document);
+  page.qty.value = "3";
+  page.document.fire("quantity-selector:update");
+  flush();
+  assert.equal(events().at(-1)?.quantity, 3);
+  // An installment form alone (no buy form holding our id) is still better than nothing.
+  const lone = new FakeDocument();
+  const block = tiersBlock(globalSetData());
+  lone.html.append(h("body", {}, h("div", { class: "shopify-section" }, h("form", { action: "/cart/add" }, h("input", { name: "id", value: "902" })), block)));
+  const second = await boot(lone);
+  assert.equal(second.events().at(-1)?.variantId, 902);
+});
+
+test("review 2/5/7: Liquid counts only mergeable lines in line mode, skips gift lines, one pass over the product's lines", async () => {
+  const liquid = await read(BLOCK);
+  assert.doesNotMatch(liquid, /line_items_for:\s*(variant|v)\b/, "no per-variant cart scan (O(variants × lines)) and no all-lines sum");
+  assert.equal(liquid.match(/line_items_for:/g)?.length, 1, "one pass: cart | line_items_for: product");
+  assert.match(liquid, /cart\s*\|\s*line_items_for:\s*product\b/);
+  assert.match(liquid, /item\.properties\s*==\s*empty/, "a line with properties is not the one an add merges into");
+  assert.match(liquid, /item\.selling_plan_allocation\s*==\s*nil/, "…nor a subscription line");
+  assert.match(liquid, /product\.selling_plan_groups\.size\s*==\s*0/, "a product with selling plans: no cart count in line mode");
+  assert.equal(liquid.match(/item\.properties\['_won_gift'\]/g)?.length, 2, "gift lines skipped in the product and the cart pass");
+});
+
+test("review 3: a cart change zeroes the cart counts (Horizon standard event, older cart:update)", async () => {
+  for (const signal of ["shopify:cart:lines-update", "cart:update"]) {
+    const page = horizonPage(globalSetData({ cart: { p: 2, s: 0 }, variants: [{ id: 901, p: 1000, m: 100, c: 2 }] }));
+    const { flush, events } = await boot(page.document);
+    assert.equal(activeMin(page.block), "3");
+    assert.match(liveOf(page.block).textContent, /Počítáme i 2/);
+    page.document.fire(signal, { promise: Promise.resolve() });
+    flush();
+    assert.equal(activeMin(page.block), null, `${signal}: count = the chosen quantity only`);
+    assert.equal(liveOf(page.block).textContent, "1 ks za 10,00 Kč (10,00 Kč/ks)", `${signal}: the cart note is gone`);
+    assert.deepEqual(events().at(-1), { variantId: 901, quantity: 1, count: 1, min: 0, unitCents: 1000 });
+  }
+});
+
+test("review 3: Dawn's pubsub cart-update zeroes the counts, also when pubsub.js loads after the block script", async () => {
+  const subscribers: Record<string, Array<() => void>> = {};
+  const window: Record<string, unknown> = {};
+  const page = dawnPage(globalSetData({ cart: { p: 4, s: 0 } }));
+  page.document.readyState = "interactive"; // deferred scripts run before DOMContentLoaded
+  const { flush } = await boot(page.document, { window });
+  assert.equal(activeMin(page.block), "5", "1 + 4 in the cart");
+  window.subscribe = (name: string, cb: () => void) => (subscribers[name] ??= []).push(cb);
+  page.document.fire("DOMContentLoaded");
+  assert.equal(subscribers["cart-update"]?.length, 1, "hooked once pubsub exists");
+  subscribers["cart-update"][0]();
+  flush();
+  assert.equal(activeMin(page.block), null);
+  page.document.fire("click");
+  flush();
+  assert.equal(subscribers["cart-update"].length, 1, "never subscribed twice");
+});
+
+test("review 3: after zeroing, a fresh Liquid render of the block brings its own cart counts back", async () => {
+  const page = horizonPage(globalSetData({ cart: { p: 2, s: 0 } }));
+  const { flush } = await boot(page.document);
+  page.document.fire("cart:update");
+  flush();
+  assert.equal(activeMin(page.block), null);
+  const script = page.block.querySelector("[data-won-discounts-tiers-data]") as FakeElement;
+  script.textContent = JSON.stringify(globalSetData({ cart: { p: 4, s: 0 } }));
+  page.document.fire("shopify:section:load");
+  flush();
+  assert.equal(activeMin(page.block), "5");
+});
+
+test("review 4: the live total rounds per line like the engine; the per-item figures never promise more", async () => {
+  const data = globalSetData({ breaks: [{ min: 3, pct: 15 }], variants: [{ id: 901, p: 333, m: 100, c: 0 }] });
+  const page = horizonPage(data);
+  const { flush } = await boot(page.document);
+  page.qty.value = "3";
+  page.document.fire("input", { target: page.qty });
+  flush();
+  // round(999 × 15 %) = 150 → 8,49 Kč for 3; per item 333 − floor(150 / 3) = 283.
+  assert.equal(liveOf(page.block).textContent, "3 ks za 8,49 Kč (2,83 Kč/ks)");
+  assert.equal(liveOf(page.block).getAttribute("data-unit-cents"), "283");
+  // The table's per-item figure: floor(333 × 15 %) = 49 → 2,84 Kč.
+  assert.equal(rowsOf(page.block)[0].querySelector(".won-tiers__unit")?.textContent, "2,84 Kč/ks");
+});
+
+test("review 6: a click never shortens the pending rescan of a promise-less product:select", async () => {
+  const page = horizonPage(globalSetData());
+  const { timers, flushDue, flush, events } = await boot(page.document);
+  const before = events().length;
+  page.document.fire("shopify:product:select", {});
+  page.document.fire("click");
+  flushDue(0); // the click's moment: nothing may rescan yet
+  assert.equal(timers.length, 1);
+  assert.equal(timers[0].delay, 300);
+  page.id.value = "902"; // the theme swaps the variant within the 300 ms
+  flush();
+  assert.equal(events().length, before + 1);
+  assert.equal(events().at(-1)?.variantId, 902);
+});
+
+test("the two block scripts work whichever loads first (both are deferred)", async () => {
+  for (const order of ["core-first", "main-first"] as const) {
+    const page = horizonPage(globalSetData());
+    const { api, events } = await boot(page.document, { order });
+    assert.equal(typeof api?.compute, "function", `${order}: the API is there`);
+    assert.equal(events().length, 1, `${order}: one initial render`);
+    assert.equal(page.block.getAttribute("data-state"), "ready");
+  }
+  const liquid = await read(BLOCK);
+  assert.match(liquid, /<script src="\{\{ 'won-discounts-tiers-core\.js' \| asset_url \}\}" defer><\/script>/);
 });
