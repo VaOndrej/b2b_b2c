@@ -14,7 +14,7 @@ import { codeHash } from "@won/core/discounts/code-hash";
 import { emitForNode } from "@won/core/discounts/emit";
 import { mapToFunctionOutput, roundingTiePossible } from "@won/core/discounts/function-output";
 import { ceilTol, costMinorUnits, MARGIN_TOLERANCE, MAX_MARGIN_REFS, marginFloorUnit, readMarginPayload, resolveMargin, strictestMargin } from "@won/core/discounts/margin";
-import { planCart } from "@won/core/discounts/plan";
+import { MAX_ENTERED_CODES, planCart } from "@won/core/discounts/plan";
 import { ORDER_SEARCH_EXACT_LINES, ORDER_SEARCH_NEAR, orderSetLimit, searchOrderSets } from "@won/core/discounts/plan-margin";
 import { describe, expect, test } from "vitest";
 
@@ -247,6 +247,56 @@ const TWINS = {
     expect(gated(planCart(cart(lines, [], { countryCode: "DE" }), c), "a")).toBe("market");
     expect(gated(planCart(cart(lines, [], { countryCode: undefined }), c), "a")).toBe("market");
     expect(gated(planCart(cart(lines), cfg([pct("a", 10, { targeting: { segments: ["vip"] } })])), "a")).toBe("unsupported");
+  },
+
+  market_targeting_with_many_markets_resolves_the_cart_country_once() {
+    const markets = Array.from({ length: 50 }, (_, m) => `"m${m}": ["A${m}", "B${m}", "C${m}", "D${m}", ${m === 49 ? '"cz"' : '"XX"'}]`);
+    markets.push('"m3": ["DE"]');
+    markets[3] = '"m3": ["CZ"]';
+    const marketCountries = JSON.parse(`{${markets.join(", ")}}`);
+    const all = Array.from({ length: 50 }, (_, m) => `m${m}`);
+    const ids = ["all", "not_last", "last", "unknown_first", "dup", "none"];
+    const lists = [all, all.slice(0, 49), all.slice(49), ["nope", "m49"], all.slice(3, 4), []];
+    const c = cfg(
+      ids.map((id, k) => pct(id, 10, { targeting: { markets: lists[k] } })),
+      { marketCountries },
+    );
+    const lines = [line("l1", 1, 10000, ids)];
+    expect(ids.map((id) => gated(planCart(cart(lines), c), id))).toEqual([null, "market", null, null, "market", null]);
+    expect(ids.map((id) => gated(planCart(cart(lines, [], { countryCode: undefined }), c), id))).toEqual(["market", "market", "market", "market", "market", null]);
+  },
+
+  only_the_first_25_entered_codes_count() {
+    expect(MAX_ENTERED_CODES).toBe(25);
+    const c = cfg([
+      code("a", 5, [codeHash("ALPHA")]),
+      code("b", 6, [codeHash("BETA"), codeHash("STRASSE")]),
+      code("c", 7, [codeHash("GAMMA"), "ABCDEF12", "123"]),
+      code("d", 8, ["811c9dc5"]),
+      code("e", 9, [codeHash("DELTA")]),
+    ]);
+    const foreign = Array.from({ length: 19 }, (_, k) => `X${k}ž`);
+    const entered = [" alpha ", "Alpha", "   ", "straße", "BETA", ...foreign, "gamma\u00a0", "delta", "ALPHA"];
+    entered.push(...Array.from({ length: 250 }, (_, k) => `Y${k}`));
+    const lines = [line("l1", 1, 10000, ["a", "b", "c", "d", "e"])];
+    const plan = planCart(cart(lines, entered), c);
+    const codes = (p, id) => p.rules.find((r) => r.ruleId === id).enteredCodes;
+    expect(codes(plan, "a")).toEqual(["ALPHA"]);
+    expect(codes(plan, "b")).toEqual(["STRASSE", "BETA"]);
+    expect(codes(plan, "c")).toEqual(["GAMMA"]);
+    expect([codes(plan, "d"), codes(plan, "e")]).toEqual([[], []]);
+    expect(gated(plan, "e")).toBe("code_not_entered");
+    expect(emitForNode(plan, { kind: "code", ruleId: "e" }, "delta").productCandidates).toEqual([]);
+    expect(lineIds(emitForNode(plan, { kind: "code", ruleId: "c" }, "GAMMA"))).toEqual(["l1"]);
+    // (TS only: every code's outcome) DELTA and every later new code are over the limit; ALPHA again is the counted one.
+    const outcome = (code) => plan.codes.find((x) => x.code === code);
+    expect([outcome("DELTA").state, outcome("DELTA").ruleId, outcome("Y0").state, outcome("X18Ž").state, outcome("ALPHA").state]).toEqual(["over_limit", null, "over_limit", "unknown", "outranked"]);
+    const fewer = planCart(cart(lines, entered.filter((x) => x !== foreign[18])), c);
+    expect(codes(fewer, "e")).toEqual(["DELTA"]);
+    expect(productOf(fewer, "l1")[0]).toBe("e");
+    expect(lineIds(emitForNode(fewer, { kind: "code", ruleId: "e" }, "delta"))).toEqual(["l1"]);
+    const repeats = planCart(cart(lines, [...Array.from({ length: 30 }, () => "ALPHA"), "DELTA"]), c);
+    expect(codes(repeats, "e")).toEqual([]);
   },
 
   a_pro_stack_sums_capped_and_is_owned_by_its_code_rule() {

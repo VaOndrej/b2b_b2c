@@ -22,7 +22,7 @@ import {
   MAX_ECHOED_CODE_LENGTH,
   type UiLocale,
 } from "./describe.ts";
-import type { CartPlan, CodeOutcome, PlanLine, RuleOutcome, ShippingValue } from "./plan.ts";
+import { type CartPlan, type CodeOutcome, MAX_ENTERED_CODES, type PlanLine, type RuleOutcome, type ShippingValue } from "./plan.ts";
 
 /**
  * One explanation line. `text` (and `code`) can contain what a shopper typed or
@@ -83,7 +83,7 @@ function entitledTail(rule: RuleOutcome, locale: UiLocale): string {
 }
 
 /** "1 more selected item" (products, entitled) / "1 more item in selected collections" / "1 more item". */
-function moreItems(n: number, rule: RuleOutcome, _locale: UiLocale): string {
+function moreItems(n: number, rule: RuleOutcome): string {
   const items = enPlural(n, "item", "items");
   if (rule.missing?.scope !== "entitled") return `${n} more ${items}`;
   if (rule.describable.target.kind === "collections") return `${n} more ${items} in selected collections`;
@@ -197,7 +197,7 @@ function codeSentences(code: CodeOutcome, plan: CartPlan, locale: UiLocale): Exp
             "warning",
             cs
               ? `Ke kódu ${c} chybí ${n} ks${tail} do minima ${m.minimumQuantity} ks.`
-              : `Code ${c} needs ${moreItems(n, rule, locale)} (minimum ${m.minimumQuantity}).`,
+              : `Code ${c} needs ${moreItems(n, rule)} (minimum ${m.minimumQuantity}).`,
             refs,
           ),
         );
@@ -232,7 +232,23 @@ function codeSentences(code: CodeOutcome, plan: CartPlan, locale: UiLocale): Exp
     case "code_not_entered":
     case "unknown":
       return warn(cs ? `Kód ${c} tu nic neušetří.` : `Code ${c} saves nothing here.`);
+    case "over_limit":
+      return []; // said once for all of them (overLimitSentence)
   }
+}
+
+/** One warning when codes beyond the first MAX_ENTERED_CODES were entered: they are not counted. */
+function overLimitSentence(plan: CartPlan, locale: UiLocale): ExplainItem[] {
+  if (!plan.codes.some((code) => code.state === "over_limit")) return [];
+  return [
+    item(
+      "warning",
+      locale === "cs"
+        ? `Zadaných kódů je víc než ${MAX_ENTERED_CODES}, další se už nezapočítají.`
+        : `More than ${MAX_ENTERED_CODES} codes were entered; the rest aren't counted.`,
+      {},
+    ),
+  ];
 }
 
 /** Hints about automatic rules that do not apply (info); silent for states a shopper cannot act on. */
@@ -266,7 +282,7 @@ function automaticSentences(rule: RuleOutcome, plan: CartPlan, locale: UiLocale)
       }
       if (m.quantity !== undefined) {
         const n = m.quantity;
-        out.push(item("info", cs ? `Do slevy ${name} chybí ${n} ks${tail}.` : `${name} needs ${moreItems(n, rule, locale)}.`, refs));
+        out.push(item("info", cs ? `Do slevy ${name} chybí ${n} ks${tail}.` : `${name} needs ${moreItems(n, rule)}.`, refs));
       }
       return out;
     }
@@ -397,6 +413,7 @@ export function explainPlan(plan: CartPlan, locale: UiLocale, opts: ExplainOptio
     }));
   }
   for (const code of plan.codes) out.push(...codeSentences(code, plan, locale));
+  out.push(...overLimitSentence(plan, locale));
   for (const rule of plan.rules) {
     if (rule.method === "code" || rule.state === "applied") continue;
     out.push(...automaticSentences(rule, plan, locale));

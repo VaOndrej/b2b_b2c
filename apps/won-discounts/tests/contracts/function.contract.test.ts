@@ -64,11 +64,11 @@ const INSTRUCTION_BUDGET = (INSTRUCTION_LIMIT / 10) * 7;
  * and order-search worst cases, measured with the ids the checkout sends — app
  * rule ids, Shopify's cart line ids) keep ≥ 10 % headroom: 9.9 M up to 200
  * lines. This gates the realistic worst cases, not every shape: with the
- * searches bounded (the Pro stack cap, the order search's 16 exact lines) and
- * at most 4 marginRefs read a product (more → the store's strictest setting),
- * no input the audits found reaches the limit (max 93.7 %, 12 rule refs on every
- * line; legacy data with 16–30 marginRefs a product at most 88.7 %; README
- * "Instruction budget", MVP 2 audit round 4b).
+ * searches bounded (the Pro stack cap, the order search's 16 exact lines), at
+ * most 4 marginRefs read a product, markets resolved once a run and entered
+ * at most the first 25 entered codes read, every family the audits found
+ * stays under the limit (max 99.1 %: 250 entered codes on the costliest base;
+ * README "Instruction budget", MVP 2 audit round 5b).
  */
 const WORST_CASE_BUDGET = (INSTRUCTION_LIMIT / 100) * 90;
 /** The shared config's budget (C7), bytes of its JSON. */
@@ -95,7 +95,8 @@ function worstCaseBudget(lines: number) {
  * worst cases at Shopify's input limit (200 and 500 lines, with 4 marginRefs,
  * with 64-character rule ids, and the Pro mesh of distinct 12-of-18 subsets),
  * and the margin order search's worst case there (200 and 500 lines whose rates
- * all lie within 10⁻¹¹ of each other).
+ * all lie within 10⁻¹¹ of each other), 50 targeted markets and 40 entered
+ * codes there, and the bridge cart with 250 entered codes.
  */
 const BUDGET_PREFIX = /-\d+-lines-budget\.json$/;
 /**
@@ -104,7 +105,7 @@ const BUDGET_PREFIX = /-\d+-lines-budget\.json$/;
  * 55–75 kB of input, 44–58 % of the limit — keeps the ordinary 70 % gate, so the
  * 90 % allowance never hides a regression on them.
  */
-const AT_INPUT_LIMIT = /^lines-margin-(pro|near-min)-/;
+const AT_INPUT_LIMIT = /^lines-(margin-(pro|near-min)|markets|codes)-/;
 /** The instruction gate of a budget cart. */
 function budgetOf(file: string, lines: number) {
   return AT_INPUT_LIMIT.test(file) ? worstCaseBudget(lines) : instructionBudget(lines);

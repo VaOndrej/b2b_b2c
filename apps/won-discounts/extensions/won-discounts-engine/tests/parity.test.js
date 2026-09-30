@@ -154,7 +154,7 @@ const vid = (n) => `gid://shopify/ProductVariant/${n}`;
 
 /**
  * @param {number} seed
- * @param {boolean | "mesh" | "tied"} [onlySearch] true: only margin order-search carts (searchCase); "mesh": only Pro mesh carts (meshCase); "tied": only order-search carts with many tied lines (tiedCase)
+ * @param {boolean | "mesh" | "tied" | "many"} [onlySearch] true: only margin order-search carts (searchCase); "mesh": only Pro mesh carts (meshCase); "tied": only order-search carts with many tied lines (tiedCase); "many": many markets and entered codes (manyCase)
  */
 function generator(seed, onlySearch = false) {
   const rnd = prng(seed);
@@ -711,6 +711,69 @@ function generator(seed, onlySearch = false) {
   }
 
   /**
+   * Many markets and many entered codes (audit round 5): 1–50 markets of 1–8
+   * countries (lower case, duplicated handles, the cart's country anywhere or
+   * nowhere), rules targeting some of them (unknown handles too); 0–250 entered
+   * codes (the Storefront API's maximum), most foreign, some the code rules'
+   * codes in any case and padding, repeated, non-ASCII and empty ones (only the
+   * first 25 entered count: the cap binds on most of these carts).
+   */
+  function manyCase() {
+    const countries = ["CZ", "SK", "DE", "AT", "PL", "HU", "FR", "IT", "ES", "PT", "NL", "BE", "US", "GB", "CH", "JP"];
+    const handles = Array.from({ length: 1 + int(50) }, (_, m) => `m${m}`);
+    const marketCountries = {};
+    for (const h of handles) marketCountries[h] = Array.from({ length: 1 + int(8) }, () => (chance(0.2) ? pick(countries).toLowerCase() : pick(countries)));
+    const codeWords = ["ALPHA", "Beta", "straße", "GAMMA", "ŽLUTÝ", "😀x"];
+    const rules = Array.from({ length: 3 + int(8) }, (_, k) => {
+      const isCode = chance(0.5);
+      const markets = chance(0.6) ? Array.from({ length: 1 + int(handles.length) }, () => (chance(0.05) ? "nope" : pick(handles))) : null;
+      return {
+        id: `r${k}`,
+        enabled: true,
+        name: `R${k}`,
+        method: isCode ? "code" : "automatic",
+        ...(isCode ? { codeHashes: [codeHash(pick(codeWords)), ...(chance(0.2) ? ["ABCDEF12"] : [])] } : {}),
+        value: { kind: "percentage", percent: pick([5, 10, 15, 20]) },
+        target: chance(0.8) ? { kind: "products" } : { kind: "order" },
+        ...(markets ? { targeting: { markets } } : {}),
+      };
+    });
+    const n = pick([0, 3, 40, 100, 250]);
+    const entered = Array.from({ length: n }, (_, k) => {
+      const roll = rnd();
+      if (roll < 0.05) return pick(["", "   ", "\ufeff"]);
+      if (roll < 0.15) return `${pick([" ", "", "\u00a0"])}${chance(0.5) ? pick(codeWords).toLowerCase() : pick(codeWords)}${pick(["", " "])}`;
+      return chance(0.3) ? `K${k}Ž${"ABCDEFGHIJ".repeat(int(4))}` : `CODE${int(60)}`;
+    });
+    const lines = Array.from({ length: 1 + int(6) }, (_, i) => ({
+      id: `gid://shopify/CartLine/${i + 1}`,
+      quantity: 1 + int(3),
+      cost: { amountPerQuantity: { amount: `${100 + int(900)}.00` } },
+      gift: null,
+      merchandise: { __typename: "ProductVariant", id: vid(3000 + i), wonVariant: null, product: { wonProduct: { jsonValue: { ruleIds: rules.filter(() => chance(0.6)).map((r) => r.id) } } } },
+    }));
+    return {
+      exportName: LINES,
+      tie: false,
+      input: {
+        triggeringDiscountCode: null,
+        enteredDiscountCodes: entered.map((code) => ({ code })),
+        discount: {
+          discountClasses: ["PRODUCT", "ORDER", "SHIPPING"],
+          vars: { jsonValue: { role: "automatic", campaignId: null, campaignStart: "1970-01-01T00:00:00", campaignEnd: "1970-01-01T00:00:00", varsVersion: null } },
+        },
+        shop: {
+          config: { jsonValue: { schemaVersion: 1, campaignId: null, campaignVarsVersion: null, marketCountries, modules: { codes: { rules } }, campaigns: [] } },
+          localTime: { date: "2026-10-01", campaignActive: false },
+        },
+        localization: chance(0.9) ? { country: { isoCode: pick(countries) }, language: { isoCode: "CS" } } : { country: null, language: { isoCode: "CS" } },
+        presentmentCurrencyRate: "1.0",
+        cart: { cost: { subtotalAmount: { currencyCode: "CZK" } }, lines },
+      },
+    };
+  }
+
+  /**
    * The Pro stack cap (plan.ts MAX_STACK_CANDIDATES, audit round 3): 7–16
    * product rules combining at a random density (up to a full mesh), percents
    * with repeats (ties go to priority, then id) and fixed amounts, a few code
@@ -804,6 +867,11 @@ function generator(seed, onlySearch = false) {
       hostile = false;
       large = false;
       return tiedCase();
+    }
+    if (onlySearch === "many") {
+      hostile = false;
+      large = false;
+      return manyCase();
     }
     if (onlySearch || chance(0.2)) {
       hostile = false;
@@ -1343,6 +1411,45 @@ describe("Wasm (function-runner)", () => {
     const table = [...SEARCH_BRANCHES, "margin order search: tie → the h/s set"].map((b) => `${hits.get(b) ?? 0}\t${b}`).join("\n");
     console.info(`margin order search: ${SEARCH_CASES} cases, 0 differ\n${table}`);
     expect(SEARCH_BRANCHES.filter((b) => (hits.get(b) ?? 0) < MIN_HITS), table).toEqual([]);
+  }, 900_000);
+
+  // Many markets and entered codes (audit round 5: plan.rs `markets_here`; round
+  // 5b: only the first 25 entered codes count, cart.ts MAX_ENTERED_CODES): the
+  // Wasm = the TS reference, the cap binding and leaving a Won code out ≥ 20 times.
+  const MANY_CASES = Number(process.env.PARITY_MANY_CASES ?? 400);
+  test(`many markets and entered codes, seed 20261005 × ${MANY_CASES}: Wasm = TS reference`, async () => {
+    const next = generator(20261005, "many");
+    const cases = Array.from({ length: MANY_CASES }, next);
+    const failures = [];
+    const seen = { manyCodes: 0, matchedAmongMany: 0, capBinds: 0, wonCodePastCap: 0, manyMarkets: 0, marketGated: 0 };
+    const wonWords = new Set(["ALPHA", "BETA", "STRASSE", "GAMMA", "ŽLUTÝ", "😀X"]);
+    for (let i = 0; i < cases.length; i += 8) {
+      const batch = cases.slice(i, i + 8);
+      const results = await Promise.all(batch.map((c) => runWasm(runnerPath, wasmPath, c.exportName, c.input)));
+      results.forEach((result, j) => {
+        const c = batch[j];
+        const expected = referenceOutput(c.exportName, c.input);
+        if (!result.success || !isDeepStrictEqual(result.output, expected)) failures.push({ index: i + j, got: result.output, expected, input: c.input });
+        const { plan } = emissionFor(adaptInput(c.input));
+        if (c.input.enteredDiscountCodes.length >= 100) {
+          seen.manyCodes += 1;
+          if (plan?.rules.some((r) => r.enteredCodes.length > 0)) seen.matchedAmongMany += 1;
+        }
+        // The entered-codes cap (cart.ts MAX_ENTERED_CODES): codes past the first 25 entered,
+        // and among them a Won code that would have matched a rule.
+        const over = plan?.codes.filter((x) => x.state === "over_limit") ?? [];
+        if (over.length > 0) seen.capBinds += 1;
+        if (over.some((x) => wonWords.has(x.code))) seen.wonCodePastCap += 1;
+        if (Object.keys(c.input.shop.config.jsonValue.marketCountries).length >= 20) seen.manyMarkets += 1;
+        if (plan?.rules.some((r) => r.state === "market")) seen.marketGated += 1;
+      });
+    }
+    if (failures.length > 0) {
+      const first = failures[0];
+      throw new Error(`${failures.length}/${MANY_CASES} cases differ; first #${first.index}\ngot      ${JSON.stringify(first.got)}\nexpected ${JSON.stringify(first.expected)}\ninput    ${JSON.stringify(first.input).slice(0, 2000)}`);
+    }
+    console.info(`many markets and codes: ${MANY_CASES} cases, 0 differ ${JSON.stringify(seen)}`);
+    for (const [k, v] of Object.entries(seen)) expect(v, k).toBeGreaterThanOrEqual(MIN_HITS);
   }, 900_000);
 
   // The order search's bound (plan-margin.ts orderSetLimit, order_search.rs

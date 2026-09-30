@@ -56,12 +56,23 @@ pub fn trim(s: &str) -> &str {
 }
 
 /// `String.prototype.toUpperCase` (locale-independent full case mapping).
+/// Character by character, as str::to_uppercase maps (upper-casing has no
+/// context rule), but an ASCII character after the first non-ASCII one is
+/// mapped directly instead of through the Unicode tables (a binary search a
+/// character: ~5 k instructions on a 40-character code with one "Ž" early).
 pub fn upper(s: &str) -> String {
     if s.is_ascii() {
-        s.to_ascii_uppercase()
-    } else {
-        s.to_uppercase()
+        return s.to_ascii_uppercase();
     }
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        if c.is_ascii() {
+            out.push(c.to_ascii_uppercase());
+        } else {
+            out.extend(c.to_uppercase());
+        }
+    }
+    out
 }
 
 /// JS string comparison (`a < b`): by UTF-16 code units. The first byte where
@@ -152,6 +163,13 @@ mod tests {
         assert_eq!(trim("\u{85}x"), "\u{85}x");
         assert_eq!(upper("welcome15"), "WELCOME15");
         assert_eq!(upper("straße"), "STRASSE");
+        // Character by character with ASCII directly: the same text as str::to_uppercase
+        // for every scalar value up to U+30000, ASCII around it (Greek sigma, ligatures, ß…).
+        for n in (0x80u32..0x3_0000).step_by(1) {
+            let Some(c) = char::from_u32(n) else { continue };
+            let text = format!("aZ{c}q ß{c}ﬁx");
+            assert_eq!(upper(&text), text.to_uppercase(), "U+{n:04X}");
+        }
     }
 
     #[test]

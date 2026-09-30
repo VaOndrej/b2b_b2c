@@ -472,7 +472,7 @@ test("a backed-off write on a variant that still carries an older cost: a later 
  * Margin protection as checkout runs it, for the refusal decision (audit P2-1b): global
  * min-margin / max-discount, one collection setting, and each product's marginRefs.
  */
-function floorsOf(opts: { min?: number; max: number; col?: Record<string, [number | null, number | null]>; refs?: Record<string, string[]> }) {
+function floorsOf(opts: { min?: number; max: number; col?: Record<string, [number | null, number | null]>; refs?: Record<string, unknown[]> }) {
   return {
     payload: { enabled: true as const, ...(opts.min !== undefined ? { min: opts.min } : {}), max: opts.max, ...(opts.col ? { col: opts.col } : {}) },
     marginRefs: async (productIds: readonly string[]) => new Map(productIds.map((id) => [id, opts.refs?.[id] ?? []])),
@@ -523,6 +523,22 @@ test("refused higher cost: the older cost goes when the percent floor is the str
   const margin = new FakeShopify();
   const kept = await refusedWithFloors(margin, "8.00", "9.00", floorsOf({ min: 20, max: 50, col: { "5": [null, 10] }, refs: { [product]: ["5"] } }));
   assert.deepEqual(margin.variantCostMetafield(kept.variant), { cost: 8, cur: "CZK" });
+});
+
+test("refused higher cost: a product listing more than 4 marginRefs is judged by the store's strictest setting, as at checkout (junk entries count)", async () => {
+  // Collection 5: at most 10 % off; 6: at most 90 %. Old cost 8 → floor 8.00.
+  const product = "gid://shopify/Product/2";
+  const col = { "5": [null, 10] as [null, number], "6": [null, 90] as [null, number] };
+  // Its one collection (6) → the 90 % ceiling's floor 1.00: the older cost is stricter and stays.
+  shop = `${shop}-one`;
+  const one = new FakeShopify();
+  const kept = await refusedWithFloors(one, "8.00", "9.00", floorsOf({ max: 50, col, refs: { [product]: ["6"] } }));
+  assert.deepEqual(one.variantCostMetafield(kept.variant), { cost: 8, cur: "CZK" });
+  // 5 entries (collection 6 and junk): the strictest of the store, 10 % → floor 9.00 beats 8.00: deleted.
+  shop = `${shop}-five`;
+  const five = new FakeShopify();
+  const gone = await refusedWithFloors(five, "8.00", "9.00", floorsOf({ max: 50, col, refs: { [product]: ["6", 7, null, "6", "6"] } }));
+  assert.equal(five.variantCostMetafield(gone.variant), undefined, "judged by the strictest setting (10 %), not collection 6 (90 %)");
 });
 
 test("a refused-variant retry that fails before touching its rows is recorded: not re-queued on every load, due again after the back-off", async () => {

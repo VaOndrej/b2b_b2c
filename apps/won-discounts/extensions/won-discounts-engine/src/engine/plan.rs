@@ -22,8 +22,8 @@ use std::cell::RefCell;
 use super::cart::{normalize_cart, CartInput, NormalizedCart, NormalizedLine};
 use super::config::{Config, EngineFlags, FieldsRef, RawCampaign, RawRule, TargetKind, ValueSpec};
 use super::describe::{describe_short, DescribedValue};
-use super::table::{bytes_eq, Table, Text};
-use super::hash::code_hash;
+use super::table::{bytes_eq, Message, Table, Text};
+use super::hash::{considered_codes, hash_value, parse_hash};
 use super::js;
 use super::margin::{resolve_margin, strictest_margin, CostContext, FloorRule, MarginPayload, MarginRef, MAX_MARGIN_REFS};
 use super::money::mul_sat;
@@ -306,18 +306,27 @@ fn match_codes(rules: &[Rule], cart: &NormalizedCart) -> Vec<Vec<String>> {
     if cart.entered_codes.is_empty() {
         return entered_by_rule;
     }
-    let mut owner_by_hash: Table<Text, usize> = Table::default();
+    // By the hash's number: a config text that is not 8 lower-case hex digits
+    // equals no codeHash and is left out; the first rule listing a hash owns it.
+    let mut owner_by_hash: Table<u64, usize> = Table::default();
     for (i, rule) in rules.iter().enumerate() {
         if !rule.method_code {
             continue;
         }
         for hash in rule.code_hashes {
-            owner_by_hash.get_or_insert_with(Text(hash.as_str()), || i);
+            if let Some(n) = parse_hash(hash) {
+                owner_by_hash.get_or_insert_with(u64::from(n), || i);
+            }
         }
     }
-    for code in &cart.entered_codes {
-        if let Some(&owner) = owner_by_hash.get(&Text(code_hash(code).as_str())) {
-            entered_by_rule[owner].push(code.clone());
+    if owner_by_hash.is_empty() {
+        return entered_by_rule;
+    }
+    // The codes considered: of the first MAX_ENTERED_CODES as entered (the reader
+    // stopped there), normalized and each once; later ones match nothing.
+    for code in considered_codes(&cart.entered_codes) {
+        if let Some(&owner) = owner_by_hash.get(&u64::from(hash_value(&code))) {
+            entered_by_rule[owner].push(code);
         }
     }
     entered_by_rule
@@ -436,18 +445,34 @@ impl Seen {
 
 // --- Stage: eligibility ---------------------------------------------------------------------------
 
-fn in_market(rule: &Rule, cart: &NormalizedCart, market_countries: &[(String, Vec<String>)]) -> bool {
-    let (Some(markets), Some(country)) = (rule.markets, cart.country_code.as_ref()) else { return false };
-    markets.iter().any(|handle| {
-        market_countries.iter().find(|(h, _)| h == handle).is_some_and(|(_, countries)| countries.contains(country))
-    })
+/// The market handles whose countries hold the cart's country, found once per
+/// run in one pass over the shared config's `marketCountries` (plan.ts
+/// `readMarketCountries` + `inMarket`: a handle's set `has(country)`). Keyed by
+/// a hash of every byte (`Message`): handles of one pattern share their ends.
+fn markets_here<'c>(cart: &NormalizedCart, market_countries: &'c [(String, Vec<String>)]) -> Table<Message<'c>, ()> {
+    let mut here = Table::default();
+    if let Some(country) = cart.country_code.as_ref() {
+        for (handle, countries) in market_countries {
+            if countries.iter().any(|c| c == country) {
+                here.insert(Message(handle.as_str()), ());
+            }
+        }
+    }
+    here
+}
+
+/// `inMarket`: some of the rule's market handles holds the cart's country
+/// (`markets_here`, one lookup a handle; with no country, none does).
+fn in_market(rule: &Rule, markets_here: &Table<Message, ()>) -> bool {
+    let Some(markets) = rule.markets else { return false };
+    !markets_here.is_empty() && markets.iter().any(|handle| markets_here.get(&Message(handle.as_str())).is_some())
 }
 
 /// Rule gate, in the order a merchant would ask "why not?". None = eligible.
 fn gate(
     rule: &Rule,
     cart: &NormalizedCart,
-    market_countries: &[(String, Vec<String>)],
+    markets_here: &Table<Message, ()>,
     cart_scope: &Scope,
     target_scope: &Scope,
     entered: bool,
@@ -472,7 +497,7 @@ fn gate(
     if rule.segment_targeted {
         return Some(RuleState::Unsupported);
     }
-    if rule.markets.is_some() && !in_market(rule, cart, market_countries) {
+    if rule.markets.is_some() && !in_market(rule, markets_here) {
         return Some(RuleState::Market);
     }
     if (rule.value_kind == ValueKind::Fixed && rule.fixed.is_none()) || rule.min_subtotal_missing {
@@ -1435,9 +1460,10 @@ fn build_plan<'a>(cart: NormalizedCart<'a>, config: &'a Config) -> CartPlan<'a> 
     let partners = partners_of(&rules, &by_id);
     drop(by_id);
 
+    let markets_here = markets_here(&cart, &config.market_countries);
     for (i, rule) in rules.iter_mut().enumerate() {
         let target_scope = if rule.cls == DiscountClass::Product { rule_scopes[i] } else { cart_scope };
-        rule.state = gate(rule, &cart, &config.market_countries, &cart_scope, &target_scope, !entered_by_rule[i].is_empty());
+        rule.state = gate(rule, &cart, &markets_here, &cart_scope, &target_scope, !entered_by_rule[i].is_empty());
     }
 
     let any_partners = !partners.bits.is_empty();

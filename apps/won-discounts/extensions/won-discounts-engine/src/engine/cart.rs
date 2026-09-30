@@ -3,7 +3,6 @@
 // borrowed from the function input (lifetime 'a): a 200-line cart is read once
 // and never copied.
 
-use super::hash::normalize_code;
 use super::js;
 use super::margin::MarginRef;
 use super::money::mul_sat;
@@ -101,8 +100,10 @@ pub struct NormalizedCart<'a> {
     /// Upper-case ISO 3166-1 alpha-2, or none.
     pub country_code: Option<String>,
     pub lines: Vec<NormalizedLine<'a>>,
-    /// Upper-cased, trimmed, unique, in entry order.
-    pub entered_codes: Vec<String>,
+    /// The entered codes as given (the reader stops after the 25th): plan.rs
+    /// `match_codes` considers the first MAX_ENTERED_CODES, normalized and each
+    /// once (`hash::considered_codes`).
+    pub entered_codes: Vec<&'a str>,
     pub campaign: CampaignInput<'a>,
     pub today: Option<&'a str>,
     pub locale_en: bool,
@@ -139,13 +140,7 @@ pub fn normalize_cart(input: CartInput<'_>) -> NormalizedCart<'_> {
         })
         .collect();
 
-    let mut entered_codes: Vec<String> = Vec::new();
-    for raw in &input.entered_codes {
-        let code = normalize_code(raw);
-        if !code.is_empty() && !entered_codes.contains(&code) {
-            entered_codes.push(code);
-        }
-    }
+    let entered_codes = input.entered_codes;
 
     let country = input.country_code.map(|c| js::upper(js::trim(c)));
     NormalizedCart {
@@ -188,7 +183,7 @@ mod tests {
         assert_eq!(cart.lines[0].quantity, 0);
         assert_eq!(cart.lines[0].subtotal, 0);
         assert_eq!(cart.lines[0].refs().collect::<Vec<_>>(), vec!["a", "b"]);
-        assert_eq!(cart.entered_codes, vec!["WELCOME15", "B"]);
+        assert_eq!(super::super::hash::considered_codes(&cart.entered_codes), vec!["WELCOME15", "B"]);
         assert_eq!(cart.today, None);
         let unknown = normalize_cart(CartInput { country_code: Some("CZE"), ..Default::default() });
         assert_eq!(unknown.country_code, None);

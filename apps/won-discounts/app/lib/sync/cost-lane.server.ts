@@ -151,13 +151,14 @@ function costFloors(deps: CostLaneDeps, shop: string, margin: MarginModule): Cos
   return {
     payload: buildMarginPayload({ ...margin, enabled: true }),
     marginRefs: async (productIds) => {
-      const out = new Map<string, string[]>();
+      const out = new Map<string, unknown[]>();
       for (const ids of chunks(productIds, REFS_CHUNK)) {
         const rows = await deps.db.productTargetIndex.findMany({ where: { shop, productId: { in: ids } }, select: { productId: true, value: true } });
         for (const row of rows) {
           try {
             const refs = (JSON.parse(row.value ?? "{}") as { marginRefs?: unknown }).marginRefs;
-            out.set(row.productId, Array.isArray(refs) ? refs.filter((x): x is string => typeof x === "string") : []);
+            // As stored, junk included: olderCostsThatStay counts the entries like the engine.
+            out.set(row.productId, Array.isArray(refs) ? refs : []);
           } catch {
             out.set(row.productId, []);
           }

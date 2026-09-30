@@ -6,7 +6,7 @@
 // background, the dev harness renders it on a fixture catalogue.
 
 import type { WonDiscountsConfig } from "@won/core/discounts/config";
-import { buildMarginPayload, marginImpact, resolveMargin, type MarginVariant } from "@won/core/discounts/margin";
+import { buildMarginPayload, marginImpact, resolveProductMargin, type MarginVariant } from "@won/core/discounts/margin";
 
 import type { MarginImpactRowView, MarginImpactRuleView, MarginImpactView } from "../../components/model/types";
 
@@ -32,8 +32,12 @@ export function impactRulesOf(config: WonDiscountsConfig, variants: readonly Mar
   const impact = marginImpact(config, variants, currency);
   const names = new Map(config.modules.codes.rules.map((rule) => [rule.id, rule.name]));
   const payload = buildMarginPayload({ ...config.modules.margin, enabled: true }, currency);
-  const marginRefsOf = new Map(variants.map((v) => [v.variantId, v.marginRefs]));
-  const sourceOf = (variantId: string) => resolveMargin(payload, marginRefsOf.get(variantId) ?? [])?.source ?? "global";
+  const variantOf = new Map(variants.map((v) => [v.variantId, v]));
+  // The settings checkout resolves (more than 4 refs → the store's strictest setting).
+  const sourceOf = (variantId: string) => {
+    const v = variantOf.get(variantId);
+    return resolveProductMargin(payload, v?.marginRefs ?? [], v?.marginRefCount)?.source ?? "global";
+  };
   return {
     rules: impact.rules.map((rule) => ({
       ruleId: rule.ruleId,

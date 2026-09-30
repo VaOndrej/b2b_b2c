@@ -323,6 +323,12 @@ export interface MarginVariant {
   ruleRefs: readonly string[];
   /** Numeric ids of its collections that have a margin setting (product metafield `marginRefs`). */
   marginRefs: readonly string[];
+  /**
+   * How many entries the metafield's `marginRefs` array has, junk included
+   * (default: `marginRefs.length`): more than MAX_MARGIN_REFS → the payload's
+   * strictest setting, as at checkout (resolveProductMargin).
+   */
+  marginRefCount?: number;
 }
 
 export interface MarginImpactCapped {
@@ -372,7 +378,7 @@ export function marginImpact(
   const payload = buildMarginPayload({ ...config.modules.margin, enabled: true }, currency);
   let withoutCost = 0;
   const measured = variants.map((v) => {
-    const settings = resolveProductMargin(payload, v.marginRefs) as MarginSettings;
+    const settings = resolveProductMargin(payload, v.marginRefs, v.marginRefCount) as MarginSettings;
     const costMinor = finite(v.cost) && v.cost > 0 ? v.cost : null;
     if (costMinor === null) withoutCost += 1;
     const price = finite(v.price) ? Math.max(0, Math.floor(v.price)) : 0;

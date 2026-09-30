@@ -136,6 +136,11 @@ export interface NormalizedCart {
   lines: NormalizedLine[];
   /** Upper-cased, trimmed, unique, in entry order. */
   enteredCodes: string[];
+  /**
+   * How many of `enteredCodes` the engine considers (a prefix): those first
+   * entered among the first MAX_ENTERED_CODES codes (plan.ts matchCodes).
+   */
+  consideredCodes: number;
   campaign: CartCampaignInput | null;
   today: string | null;
   locale: PlanLocale;
@@ -144,6 +149,18 @@ export interface NormalizedCart {
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * The entered codes the engine considers ([spec], MVP 2 audit round 5b): the
+ * first 25 codes as entered, each trimmed and upper-cased, empty ones dropped,
+ * each once. A cart can hold 250 (Shopify's Storefront API), and reading every
+ * one took the checkout function over Shopify's instruction limit on a heavy
+ * cart; the cap counts entries, not distinct codes, so repeats cannot make it
+ * read more. A later code is never matched to a rule (plan.ts `over_limit`):
+ * a code discount whose code comes after them does not apply (fail closed),
+ * and its code node emits nothing.
+ */
+export const MAX_ENTERED_CODES = 25;
 const LOCAL_DATETIME_PREFIX_RE = /^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}/;
 const COUNTRY_RE = /^[A-Z]{2}$/;
 
@@ -224,10 +241,18 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
   }
 
   const enteredCodes: string[] = [];
+  const seenCodes = new Set<string>(); // O(1) a code: a cart can hold 250 (Storefront API)
+  let entered = 0;
+  let consideredCodes = 0;
   for (const raw of Array.isArray(input.enteredCodes) ? input.enteredCodes : []) {
     if (typeof raw !== "string") continue;
+    entered += 1;
     const code = normalizeCode(raw);
-    if (code && !enteredCodes.includes(code)) enteredCodes.push(code);
+    if (code && !seenCodes.has(code)) {
+      seenCodes.add(code);
+      enteredCodes.push(code);
+      if (entered <= MAX_ENTERED_CODES) consideredCodes += 1;
+    }
   }
 
   let today: string | null = null;
@@ -241,6 +266,7 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
     countryCode: COUNTRY_RE.test(country) ? country : null,
     lines,
     enteredCodes,
+    consideredCodes,
     campaign: readCampaign(input.campaign),
     today,
     locale: input.locale === "en" ? "en" : "cs",

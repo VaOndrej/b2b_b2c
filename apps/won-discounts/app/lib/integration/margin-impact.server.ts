@@ -145,10 +145,13 @@ interface ProductRefs {
   ruleIds: string[];
   variantRuleIds: Record<string, string[]>;
   marginRefs: string[];
+  /** Entries of the metafield's `marginRefs` array, junk included (the engine counts them so: > 4 → the strictest setting). */
+  marginRefCount: number;
 }
 
-function parseRefs(value: string | null): ProductRefs {
-  const empty = { ruleIds: [], variantRuleIds: {}, marginRefs: [] };
+/** A product's refs from its stored metafield value (exported for tests). */
+export function parseRefs(value: string | null): ProductRefs {
+  const empty = { ruleIds: [], variantRuleIds: {}, marginRefs: [], marginRefCount: 0 };
   if (!value) return empty;
   try {
     const parsed = JSON.parse(value) as { ruleIds?: unknown; variantRuleIds?: unknown; marginRefs?: unknown };
@@ -157,7 +160,12 @@ function parseRefs(value: string | null): ProductRefs {
     if (parsed.variantRuleIds && typeof parsed.variantRuleIds === "object" && !Array.isArray(parsed.variantRuleIds)) {
       for (const [k, v] of Object.entries(parsed.variantRuleIds as Record<string, unknown>)) variantRuleIds[k] = strings(v);
     }
-    return { ruleIds: strings(parsed.ruleIds), variantRuleIds, marginRefs: strings(parsed.marginRefs) };
+    return {
+      ruleIds: strings(parsed.ruleIds),
+      variantRuleIds,
+      marginRefs: strings(parsed.marginRefs),
+      marginRefCount: Array.isArray(parsed.marginRefs) ? parsed.marginRefs.length : 0,
+    };
   } catch {
     return empty;
   }
@@ -191,6 +199,7 @@ async function marginVariants(db: PrismaClient, shop: string, currency: string):
       cost: confirmed && confirmed.cur === currency ? minorOf(String(confirmed.cost), currency) : null,
       ruleRefs: r ? [...r.ruleIds, ...(r.variantRuleIds[variantKey(row.variantId)] ?? [])] : [],
       marginRefs: r?.marginRefs ?? [],
+      marginRefCount: r?.marginRefCount ?? 0,
     };
   });
 }

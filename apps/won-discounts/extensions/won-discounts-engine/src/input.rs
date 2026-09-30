@@ -30,6 +30,7 @@ use shopify_function::wasm_api::Value;
 use crate::engine::cart::{CampaignInput, CartInput, LineInput};
 use crate::engine::config::Config;
 use crate::engine::emit::NodeRole;
+use crate::engine::hash::{parse_hash, MAX_ENTERED_CODES};
 use crate::engine::js;
 use crate::engine::margin::MarginRef;
 use crate::engine::money::{currency_exponent, to_minor_units_with};
@@ -226,9 +227,18 @@ impl RunInput {
             lines.push(read);
         }
 
+        // The entered codes matter only to a code rule with a hash an entered code
+        // can have (plan.rs `match_codes`); without one none is read (each costs
+        // ~3 k instructions, and a cart can hold 250).
+        let codes_matter = config.rules.iter().any(|r| r.method_code && r.code_hashes.iter().any(|h| parse_hash(h).is_some()));
+        // Only the first MAX_ENTERED_CODES codes count (cart.ts): the reader
+        // stops after the 25th, whatever follows (Shopify still walks the rest).
         let mut entered_codes = Vec::new();
-        if let Some(entered) = field(root, Key::EnteredDiscountCodes) {
+        if let Some(entered) = field(root, Key::EnteredDiscountCodes).filter(|_| codes_matter) {
             for i in 0..entered.array_len().unwrap_or(0) {
+                if entered_codes.len() == MAX_ENTERED_CODES {
+                    break;
+                }
                 if let Some(code) = sole(&entered.get_at_index(i), Key::Code).and_then(|code| non_empty(&code)) {
                     entered_codes.push(code);
                 }

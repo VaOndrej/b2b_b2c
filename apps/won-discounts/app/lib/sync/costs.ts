@@ -52,7 +52,7 @@
 
 import { randomUUID } from "node:crypto";
 
-import { costMinorUnits, marginFloorUnit, resolveMargin, type FunctionMarginPayload } from "@won/core/discounts/margin";
+import { costMinorUnits, marginFloorUnit, resolveProductMargin, type FunctionMarginPayload } from "@won/core/discounts/margin";
 import { toMinorUnits } from "@won/core/discounts/money";
 
 import { Prisma, type PrismaClient } from "../../generated/prisma/client";
@@ -285,8 +285,8 @@ export interface CostCtx {
 export interface CostFloors {
   /** The margin payload (buildMarginPayload, `cur` not needed: the variant's cost currency stands in for the shop's). */
   payload: FunctionMarginPayload;
-  /** Product GID → the `marginRefs` its product metafield carries. */
-  marginRefs: (productIds: readonly string[]) => Promise<ReadonlyMap<string, readonly string[]>>;
+  /** Product GID → the `marginRefs` array its product metafield carries, as stored (junk entries included: the engine counts them). */
+  marginRefs: (productIds: readonly string[]) => Promise<ReadonlyMap<string, readonly unknown[]>>;
 }
 
 /** A variant whose write Shopify refused is not re-sent for this long (unless the merchant asks). */
@@ -407,7 +407,8 @@ const ROW_FIELDS = ["productId", "inventoryItemId", "title", "variantTitle", "pr
  * cost stays. It stays only when, at the variant's current price, its cost
  * floor is at least as strict as the percent floor that applies without it —
  * core marginFloorUnit with the settings the engine resolves for the product
- * (resolveMargin over its marginRefs) and the variant's price in the shop
+ * (resolveProductMargin over its marginRefs: more than 4 → the store's
+ * strictest setting) and the variant's price in the shop
  * currency (Shopify keeps unit costs in the shop currency, so the new cost's
  * currency stands in for it; an older cost in another currency is ignored by
  * checkout anyway and goes). A higher cost can only be written by replacing
@@ -424,7 +425,12 @@ export async function olderCostsThatStay(ctx: Pick<CostCtx, "floors">, snapshots
     const older = parseCostValue(s.current);
     const currency = s.unitCost?.currencyCode.trim().toUpperCase() ?? "";
     if (!older || older.cur !== currency) continue;
-    const settings = resolveMargin(floors.payload, refs.get(s.productId) ?? []);
+    const raw = refs.get(s.productId) ?? [];
+    const settings = resolveProductMargin(
+      floors.payload,
+      raw.filter((r): r is string => typeof r === "string"),
+      raw.length,
+    );
     const price = toMinorUnits(s.price, currency);
     if (!settings || price === null) continue;
     const costMinor = costMinorUnits(older.cost, older.cur, 1, currency, currency);

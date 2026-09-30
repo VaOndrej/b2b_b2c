@@ -1,10 +1,13 @@
 // Replays the dev store's logged function runs (`shopify app dev` writes each
 // to apps/won-discounts/.shopify/logs/*.json: export, input, output, status)
 // through one or more Wasm builds with function-runner, and compares each
-// build's output with the logged one, as JSON text (key order and number form
-// included). It proves that a new build gives the live checkout exactly what
-// the build it replaces gave on every real run (MVP 2 audit round 4: the engine
-// changed while the live E2E gate ran). Not a test: the logs are local.
+// build's output with the logged one as JSON text: both parsed and serialized
+// again, so key order and values count, but not how a number was written (the
+// log and function-runner give parsed JSON: 10.0 and 10 read alike; the
+// fixtures' text comparison, tests/parity.test.js, checks the number form). It
+// shows that a new build gives the live checkout what the build it replaces
+// gave on every real run (MVP 2 audit round 4: the engine changed while the
+// live E2E gate ran). Not a test: the logs are local.
 //
 //   node tests/replay-logs.mjs [--logs <dir>] [--out <file.json>] <wasm> [<wasm> …]
 //

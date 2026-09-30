@@ -926,10 +926,13 @@ function allScenarios() {
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings })),
   filledToInputLimit((siblings) => marginProBudget({ lines: 500, siblings })),
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge" })),
+  filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, marginRefs: 4, name: "bridge-codes", codes: 250 })),
   filledToInputLimit((siblings) => marginProBudget({ lines: 200, siblings, ruleIdLength: 64, collections: 29, name: "long-ids" })),
   filledToInputLimit((siblings) => proMeshBudget({ lines: 200, siblings })),
   filledToInputLimit((siblings) => nearMinBudget({ lines: 200, siblings })),
   filledToInputLimit((siblings) => nearMinBudget({ lines: 500, siblings })),
+  filledToInputLimit((siblings) => marketsCodesBudget({ lines: 200, siblings, markets: true, codes: 0 })),
+  filledToInputLimit((siblings) => marketsCodesBudget({ lines: 200, siblings, markets: false, codes: 40 })),
   ];
 }
 
@@ -1496,10 +1499,14 @@ function filledToInputLimit(make) {
 }
 
 /**
- * @param {{ lines: number, siblings: (i: number) => number, ruleIdLength?: number, collections?: number, marginRefs?: number, name?: string }} shape
+ * `codes`: that many entered codes in all — PROCODE first, then foreign codes
+ * (partners' codes, some typed again in lower case or padded, non-ASCII ones):
+ * only the first 25 distinct count (plan.ts MAX_ENTERED_CODES), and none of the
+ * others is a Won code, so the expected output is the same.
+ * @param {{ lines: number, siblings: (i: number) => number, ruleIdLength?: number, collections?: number, marginRefs?: number, name?: string, codes?: number }} shape
  * @returns {Scenario}
  */
-function marginProBudget({ lines: count, siblings, ruleIdLength = 22, collections = 100, marginRefs = 2, name }) {
+function marginProBudget({ lines: count, siblings, ruleIdLength = 22, collections = 100, marginRefs = 2, name, codes = 1 }) {
   const rest = PRO_RULES - PRO_SPOKES;
   const lines = [];
   /** @type {{ key: string | null, message: string, value: unknown, target: unknown, amount: number }[]} */
@@ -1579,12 +1586,16 @@ function marginProBudget({ lines: count, siblings, ruleIdLength = 22, collection
       ` and ${fewest === most ? fewest : `${fewest}–${most}`} variant-level refs of other variants of its product: the input filled to Shopify's limit of ${128 * Math.max(1, count / 200)} kB of MessagePack` +
       `; 37 rules, a 10 % order discount. The exact output is over the budget: every stack goes to its top rule. ` +
       (long ? `Rule ids at the sanitizer's maximum of ${ruleIdLength} characters (the config keeps ${collections} collections within its 9 000 B). ` : "") +
+      (codes > 1 ? `${codes} entered codes (Shopify's maximum a cart; PROCODE first, then partners' codes, repeats, non-ASCII): only the first 25 distinct count. ` : "") +
       `With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.`,
     target: "lines",
     rules: proRules(),
     margin: marginOn({ minMarginPercent: PRO_MARGIN_MIN, maxDiscountPercent: 40 }, perCollection),
     role: AUTO,
-    entered: ["PROCODE"],
+    entered: [
+      "PROCODE",
+      ...Array.from({ length: codes - 1 }, (_, k) => (k % 10 === 9 ? ` partner${k - 1} ` : k % 7 === 3 ? `SLEVA-ČLEN-${k}` : `PARTNER${k}`)),
+    ],
     lines,
     expected: out(products(...kept.map(({ message, targets, value }) => ({ message, targets, value }))), orderOp),
   };
@@ -1717,8 +1728,8 @@ function proMeshBudget({ lines: count, siblings }) {
 // all distinct. The order discount (30 %) is more than any line can give, so
 // the order stage searches every prefix. Before the bound on its exact work
 // (plan-margin.ts ORDER_SEARCH_EXACT_LINES) each candidate set evaluated every
-// line within 10⁻⁹ of its minimum, here all of them: 95,5 % of Shopify's limit
-// at 200 lines, 133 % at 500. Each line lists a DIFFERENT 10 of 14 code rules
+// line within 10⁻⁹ of its minimum, here all of them: 93,9 % of Shopify's limit
+// at 200 lines, 131,7 % at 500 (this cart; the re-review's 95,5 % and 133 %). Each line lists a DIFFERENT 10 of 14 code rules
 // nobody entered (read, resolved, gated out), and the input is filled to
 // Shopify's limit with variant-level refs of other variants.
 // The expected output by the model: no product discount; every candidate set
@@ -1791,13 +1802,105 @@ function nearMinBudget({ lines: count, siblings }) {
     description:
       `Instruction budget, the margin order search's worst case (audit round 4): ${count} lines whose rates (what a line can give per price, 20 % ceiling, no cost prices) all lie within 10⁻¹¹ of each other, a 30 % order discount no line can carry, so the order stage searches every prefix. ` +
       `Each line lists a different ${NEAR_REFS} of ${NEAR_CODES} code rules nobody entered and ${fewest === most ? fewest : `${fewest}–${most}`} variant-level refs of other variants: the input filled to Shopify's limit of ${128 * Math.max(1, count / 200)} kB of MessagePack. ` +
-      `The order discount is lowered to what the whole cart can carry (${kc(whole.D)} Kč), an exact amount. Before the bound on the search's exact work (16 lines tied for a minimum): ${count > 200 ? "133" : "95,5"} % of Shopify's limit. With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.`,
+      `The order discount is lowered to what the whole cart can carry (${kc(whole.D)} Kč), an exact amount. Before the bound on the search's exact work (16 lines tied for a minimum): ${count > 200 ? "131,7" : "93,9"} % of Shopify's limit. With the ids the checkout sends: within 90 % of Shopify's (line-scaled) limit.`,
     target: "lines",
     rules,
     margin: marginOn({ maxDiscountPercent: NEAR_MAX_PERCENT }),
     role: AUTO,
     lines,
     expected: out(order("Objednávka 30 %", [], amountOff(kc(whole.D)))),
+  };
+}
+
+// --- Many markets and many entered codes (instruction budget, audit round 5) ---------------
+//
+// Pro market targeting at its limits: 50 markets of 5 countries each, every rule
+// targeting all 50, the cart's country (CZ) the last country of the last market
+// — before round 5 each rule scanned every market's countries (a 200-line cart
+// of this shape took 104 % of the limit). Entered codes: 40 of them (foreign
+// codes, one a code rule's in lower case and padded, repeats, non-ASCII) with a
+// code rule configured, so every code is read, normalized and hashed — before
+// round 5 deduplicating them was quadratic (100.5 %). Each line lists a
+// DIFFERENT 4–8 of 10 product rules; the input is filled to Shopify's limit with
+// variant-level refs of other variants.
+// The expected output by the model: every rule applies (the cart is in the last
+// market); a line's discount is its best rule (distinct whole percents, prices
+// in whole Kč: no rounding tie), grouped by rule; the 5 % order discount of the
+// automatic node on the rest. The code rule targets no line: its code, entered,
+// changes nothing the automatic node emits.
+
+const MC_RULES = 10;
+const mcPercent = (/** @type {number} */ k) => 3 + 2 * k; // 3–21 %
+
+/**
+ * @param {{ lines: number, siblings: (i: number) => number, markets: boolean, codes: number }} shape
+ * @returns {Scenario}
+ */
+function marketsCodesBudget({ lines: count, siblings, markets, codes }) {
+  const handles = Array.from({ length: 50 }, (_, m) => `t${String(m + 1).padStart(2, "0")}`);
+  // 250 distinct two-letter codes other than CZ, 5 a market; CZ closes the last one.
+  const letters = "ABDEFGHIJKLMNOPRSTUVWXY";
+  const pool = [];
+  for (const a of letters) for (const b of letters) if (pool.length < 249) pool.push(a + b);
+  const marketsConfig = handles.map((handle, m) => ({ handle, currency: "CZK", enabled: true, countries: m === 49 ? [...pool.slice(245, 249), "CZ"] : pool.slice(m * 5, m * 5 + 5) }));
+  const targeting = markets ? { targeting: { markets: handles } } : {};
+  const ids = Array.from({ length: MC_RULES }, (_, k) => `s${k + 1}`);
+  const rules = [
+    ...ids.map((id, k) => pct(id, mcPercent(k), { name: `Sleva ${mcPercent(k)} %`, ...targeting })),
+    orderPct("o5", 5, { name: "Objednávka 5 %", ...targeting }),
+    withCodes(["VIP-KLUB"], pct("vip", 30, { name: "VIP klub", ...targeting })),
+  ];
+  let seed = 20261005;
+  const next = () => {
+    seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+    return (seed >>> 8) / 16777216;
+  };
+  const lines = [];
+  /** @type {Map<number, number[]>} rule index → lines it wins */
+  const wins = new Map();
+  const subsets = new Set();
+  for (let i = 1; i <= count; i += 1) {
+    /** @type {number[]} */
+    let mine = [];
+    while (mine.length === 0 || subsets.has([...mine].sort((a, b) => a - b).join(","))) {
+      const take = 4 + Math.floor(next() * 5);
+      const left = ids.map((_, k) => k);
+      mine = [];
+      for (let j = 0; j < take; j += 1) mine.push(left.splice(Math.floor(next() * left.length), 1)[0]);
+    }
+    subsets.add([...mine].sort((a, b) => a - b).join(","));
+    /** @type {Record<string, unknown>} */
+    const won = { ruleIds: mine.map((k) => ids[k]) };
+    if (siblings(i) > 0) {
+      won.variantRuleIds = Object.fromEntries(Array.from({ length: siblings(i) }, (_, j) => [String(48468678900000 + 300000 + i * 100 + j), [ids[(i + j) % MC_RULES]]]));
+    }
+    lines.push({ n: i, price: `${100 + ((i * 7) % 900)}.0`, qty: 1 + (i % 3), won });
+    const best = Math.max(...mine);
+    wins.set(best, [...(wins.get(best) ?? []), i]);
+  }
+  const entered = [];
+  for (let k = 0; k < codes; k += 1) entered.push(k === 7 ? "  vip-klub " : k % 9 === 4 ? `SLEVA${k % 5}` : k % 3 === 0 ? `Kód-${k}-Žlutý` : `PARTNER${k}X`);
+  // The candidates in the order the output groups them: by the first line each rule wins.
+  const groups = [...wins].sort((a, b) => a[1][0] - b[1][0]);
+  const filler = Array.from({ length: count }, (_, k) => siblings(k + 1));
+  const [fewest, most] = [Math.min(...filler), Math.max(...filler)];
+  const name = markets ? "markets" : "codes";
+  return {
+    name: `lines-${name}-${count}-lines-budget`,
+    realisticIds: true,
+    description:
+      (markets
+        ? "Instruction budget, Pro market targeting at its limits (audit round 5): 50 markets of 5 countries, every rule targeting all 50, the cart's country the last country of the last market. "
+        : `Instruction budget, ${codes} entered codes (audit round 5): foreign ones, a code rule's own in lower case and padded, repeats and non-ASCII, with a code rule configured so every code is read and hashed. `) +
+      `${count} lines, each listing a different 4–8 of ${MC_RULES} product rules, and ${fewest === most ? fewest : `${fewest}–${most}`} variant-level refs of other variants: the input filled to Shopify's limit of 128 kB of MessagePack. ` +
+      "Every line gets its best rule, and the 5 % order discount applies. With the ids the checkout sends: within 90 % of Shopify's limit.",
+    target: "lines",
+    rules,
+    ...(markets ? { configExtra: { markets: marketsConfig } } : {}),
+    role: AUTO,
+    entered,
+    lines,
+    expected: out(products(...groups.map(([k, ns]) => pc(`Sleva ${mcPercent(k)} %`, ns, percent(mcPercent(k))))), order("Objednávka 5 %", [], percent(5))),
   };
 }
 

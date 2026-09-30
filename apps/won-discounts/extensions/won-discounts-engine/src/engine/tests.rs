@@ -349,6 +349,90 @@ fn market_targeting_matches_the_cart_country() {
 }
 
 #[test]
+fn market_targeting_with_many_markets_resolves_the_cart_country_once() {
+    // 50 markets of 5 countries; the cart's CZ is only in the last one (listed lower case).
+    // "m3" is listed twice: the later list wins, as JSON.parse keeps the last key.
+    let mut markets: Vec<String> = (0..50)
+        .map(|m| {
+            let last = if m == 49 { r#""cz""# } else { r#""XX""# };
+            format!(r#""m{m}": ["A{m}", "B{m}", "C{m}", "D{m}", {last}]"#)
+        })
+        .collect();
+    markets.push(r#""m3": ["DE"]"#.to_string());
+    markets[3] = r#""m3": ["CZ"]"#.to_string();
+    let all: Vec<String> = (0..50).map(|m| format!(r#""m{m}""#)).collect();
+    let targeting = |handles: &[String]| format!(r#", "targeting": {{"markets": [{}]}}"#, handles.join(", "));
+    let rules_json = [
+        pct("all", 10.0, &targeting(&all)),
+        pct("not_last", 10.0, &targeting(&all[..49])),
+        pct("last", 10.0, &targeting(&all[49..])),
+        pct("unknown_first", 10.0, &targeting(&[r#""nope""#.to_string(), all[49].clone()])),
+        pct("dup", 10.0, &targeting(&all[3..4])),
+        pct("none", 10.0, r#", "targeting": {"markets": []}"#),
+    ]
+    .join(",");
+    let c = rules(&rules_json, &format!(r#""marketCountries": {{{}}}"#, markets.join(", ")));
+    let lines = [line("l1", 1, 10000, &["all", "not_last", "last", "unknown_first", "dup", "none"])];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let states: Vec<Option<RuleState>> = ["all", "not_last", "last", "unknown_first", "dup", "none"].iter().map(|&id| state(&plan, id)).collect();
+    let m = Some(RuleState::Market);
+    assert_eq!(states, vec![None, m, None, None, m, None]);
+    let mut unknown = cart(&lines, &[]);
+    unknown.country_code = None;
+    let plan = plan_cart(unknown, Some(&c));
+    let states: Vec<Option<RuleState>> = ["all", "not_last", "last", "unknown_first", "dup", "none"].iter().map(|&id| state(&plan, id)).collect();
+    assert_eq!(states, vec![m, m, m, m, m, None]);
+}
+
+#[test]
+fn only_the_first_25_entered_codes_count() {
+    assert_eq!(super::hash::MAX_ENTERED_CODES, 25);
+    let hash = |code: &str| format!(r#""{}""#, super::hash::code_hash(code));
+    let rules_json = [
+        code("a", 5.0, &hash("ALPHA"), ""),
+        code("b", 6.0, &[hash("BETA"), hash("STRASSE")].join(", "), ""),
+        // Only codeHash's own texts (8 lower-case hex digits) can match: the others never do.
+        code("c", 7.0, &[hash("GAMMA"), r#""ABCDEF12""#.to_string(), r#""123""#.to_string()].join(", "), ""),
+        code("d", 8.0, r#""811c9dc5""#, ""),
+        code("e", 9.0, &hash("DELTA"), ""),
+    ]
+    .join(",");
+    let c = rules(&rules_json, "");
+    // Entries 1–24: 2× ALPHA, a blank, STRASSE, BETA, X0…X18; 25: GAMMA; 26: DELTA — past the cap,
+    // never matched; 27: ALPHA again (already counted); then 250 more.
+    let foreign: Vec<String> = (0..19).map(|k| format!("X{k}ž")).collect();
+    let mut entered: Vec<&str> = vec![" alpha ", "Alpha", "   ", "straße", "BETA"];
+    entered.extend(foreign.iter().map(String::as_str));
+    entered.extend(["gamma\u{A0}", "delta", "ALPHA"]);
+    let more: Vec<String> = (0..250).map(|k| format!("Y{k}")).collect();
+    entered.extend(more.iter().map(String::as_str));
+    let lines = [line("l1", 1, 10000, &["a", "b", "c", "d", "e"])];
+    let plan = plan_cart(cart(&lines, &entered), Some(&c));
+    let codes = |id: &str| plan.entered_by_rule[plan.rule_index(id).unwrap()].clone();
+    assert_eq!(codes("a"), vec!["ALPHA"]);
+    assert_eq!(codes("b"), vec!["STRASSE", "BETA"]);
+    assert_eq!(codes("c"), vec!["GAMMA"]);
+    // "811c9dc5" is the hash of the empty code, which is never entered (dropped when empty).
+    assert!(codes("d").is_empty() && codes("e").is_empty());
+    assert_eq!(state(&plan, "e"), Some(RuleState::CodeNotEntered));
+    // Its code node, triggered by DELTA, emits nothing (Shopify shows the code as not applicable);
+    // GAMMA's rule (7 %) wins the line among the codes that count.
+    assert!(emit_for_node(&plan, &NodeRole::Code("e".into()), Some("delta")).product.is_empty());
+    assert_eq!(lines_of(&emit_for_node(&plan, &NodeRole::Code("c".into()), Some("GAMMA"))), vec!["l1"]);
+    // One entry fewer before it: DELTA is the 25th and counts.
+    let fewer: Vec<&str> = entered.iter().copied().filter(|c| *c != foreign[18].as_str()).collect();
+    let plan = plan_cart(cart(&lines, &fewer), Some(&c));
+    assert_eq!(plan.entered_by_rule[plan.rule_index("e").unwrap()], vec!["DELTA"]);
+    assert_eq!(product_of(&plan, "l1").unwrap().0, "e");
+    assert_eq!(lines_of(&emit_for_node(&plan, &NodeRole::Code("e".into()), Some("delta"))), vec!["l1"]);
+    // The cap counts entries: 30 repeats of one code before DELTA leave it out too.
+    let mut repeats = vec!["ALPHA"; 30];
+    repeats.push("DELTA");
+    let plan = plan_cart(cart(&lines, &repeats), Some(&c));
+    assert!(plan.entered_by_rule[plan.rule_index("e").unwrap()].is_empty());
+}
+
+#[test]
 fn a_pro_stack_sums_capped_and_is_owned_by_its_code_rule() {
     let c = rules(
         &[

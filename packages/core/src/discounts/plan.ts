@@ -110,7 +110,13 @@ export type RuleState =
   | "below_minimum"
   | "margin_floor"; // margin protection took what it had won (alone or stacked) to 0 — unless a category switch dropped it (not_combinable)
 
-export type CodeState = RuleState | "same_rule" | "unknown";
+/**
+ * `over_limit`: first entered after the first MAX_ENTERED_CODES codes (cart.ts),
+ * so never matched to a rule (its rule, if any, does not see it).
+ */
+export type CodeState = RuleState | "same_rule" | "unknown" | "over_limit";
+
+export { MAX_ENTERED_CODES } from "./cart.ts";
 
 export type PlanFailure = "config_missing" | "invalid_input" | "internal_error";
 
@@ -548,7 +554,11 @@ function resolveRules(config: Rec, cart: NormalizedCart) {
 
 // --- Stage: codes ------------------------------------------------------------------------------
 
-/** Entered codes → code rules by hash; the first entered code of a rule is the one that counts. */
+/**
+ * Entered codes → code rules by hash; the first entered code of a rule is the
+ * one that counts. Only the codes among the first MAX_ENTERED_CODES entered are
+ * matched (cart.ts `consideredCodes`).
+ */
 function matchCodes(rules: Rule[], cart: NormalizedCart) {
   const ownerByHash = new Map<string, Rule>();
   for (const rule of rules) {
@@ -557,7 +567,7 @@ function matchCodes(rules: Rule[], cart: NormalizedCart) {
   }
   const ownerOfCode = new Map<string, Rule>();
   const enteredByRule = new Map<string, string[]>();
-  for (const code of cart.enteredCodes) {
+  for (const code of cart.enteredCodes.slice(0, cart.consideredCodes)) {
     const rule = ownerByHash.get(codeHash(code));
     if (!rule) continue;
     ownerOfCode.set(code, rule);
@@ -977,7 +987,8 @@ function buildOutcomes(
   });
   const outcomeById = new Map(outcomes.map((o) => [o.ruleId, o]));
 
-  const codeOutcomes: CodeOutcome[] = cart.enteredCodes.map((code) => {
+  const codeOutcomes: CodeOutcome[] = cart.enteredCodes.map((code, index) => {
+    if (index >= cart.consideredCodes) return { code, ruleId: null, state: "over_limit" };
     const rule = codes.ownerOfCode.get(code);
     if (!rule) return { code, ruleId: null, state: "unknown" };
     if (codes.enteredByRule.get(rule.id)?.[0] !== code) return { code, ruleId: rule.id, state: "same_rule" };
