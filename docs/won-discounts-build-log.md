@@ -7,26 +7,20 @@ Spec: [`won-discounts-mvp-plan.md`](won-discounts-mvp-plan.md). Produktová rozh
 
 ## Aktuální stav
 
-- **Fáze:** MVP 2 (Ochrana marže) ✅ **uzavřené a pushnuté** (checkpoint níž). **Další krok: MVP 3
-  (Množstevní slevy + PDP blok + základ storefrontu)** — plán `docs/plans/2026-09-30-won-discounts-mvp3.md`
-  (vč. dluhu: Free přepínače kombinování v adminu). SDD workspace založit skriptem `sdd-workspace`.
-  **Pozor na rozpočet funkce:** nejdražší zkonstruované košíky mají jen ~1,7 % rezervy — úrovně (MVP 3)
-  přidají práci per řádek → v T2 znovu spustit adversariální hledání (generátory ve scratchpadu
-  `rereview-engine-r*`, README funkce „Instruction budget“); úspora ~4 %: země trhu v payloadu jako jeden
-  řetězec (změna formátu payloadu).
-- **Trh Slovensko (EUR):** doprava přidaná (Ondřej 2026-09-30), produkty v SK dostupné, košík v EUR. **Cena
-  simple-a v SK je €0,95** (ráno 8,95) a **v CZ 10 Kč** (ráno 219 Kč): oba ceníky (česko CZK, Slovensko EUR)
-  mají u `won-e2e-*` pevné ceny 10/12/15/18/20/22 (čísla z USD) → mění ceny E2E produktů (simple-a v CZ pod
-  nákupní cenou 131 Kč). Doporučení Ondřejovi: pevné ceny `won-e2e-*` z obou ceníků smazat (automatický
-  převod), kromě `won-e2e-spare` = 199 CZK v česku (fakt ze zadání). Před MVP 3 E2E ověřit. SK scénář E2E
-  marže je do té doby přeskočený s důvodem. Ověřovací nástroj: `shopify store execute` (Ondřejův CLI login, jen čtení).
-- `shopify app dev` běží s `WON_DEV_PLAN=pro` → před MVP 3 E2E restart bez něj (dev store je Free). Offline
-  session appky na dev storu existuje (webhooky fungují).
-- **Ondřej 2026-09-30 — způsob práce pro MVP 3+:** implementovat víc věcí paralelně, pak auditovat a opravit
-  v dávkách (ne sériová kola po malých kouscích); orchestrátor prompt platí beze změny. Adversariální hledání
-  limitů funkce jednou s předem daným stop-pravidlem. Zelenou na MVP 3 dá Ondřej po compactu.
+- **Fáze:** MVP 3 (Množstevní slevy + PDP blok + základ storefrontu) **běží** — zelená od Ondřeje 2026-09-30.
+  Plán `docs/plans/2026-09-30-won-discounts-mvp3.md` (kontrakty K1–K9 commit `46a09e2`), SDD ledger
+  `.superpowers/sdd/2026-09-30-won-discounts-mvp3/progress.md` (po kompakci číst ho první). Vlna A paralelně:
+  T1a core ‖ T4 storefront ‖ T5 admin ‖ T6 docs ‖ T7a overlay šablon; pak T1b ‖ T3 sync, T2 Rust, T7 E2E, T8.
+- **Rozhodnutí controlleru (K1):** na produkt platí právě jedna sada úrovní — sada vybraná pro produkt, jinak pro
+  kolekci (první v pořadí), jinak globální; Free sady s rozsahem zneškodní (bez úrovní), nikdy nespadnou do globální.
+- **Dev store 2026-09-30 (změna Ondřejem): základní měna obchodu je CZK** (dřív USD). `won-e2e-*` ceny
+  10/12/15/18/20/22 Kč, nákupní ceny 6/5/8 Kč (simple-a 6 Kč → marže 40 %); ceník česko má pevnou jen
+  `won-e2e-spare` = 199 Kč; ceník Slovensko **nemá pevné ceny** (převod kurzem: simple-a 0,42 €). Kurz CZK→CZK = 1.
+  Ověřeno `shopify store execute` (jen čtení). E2E očekávání z MVP 1–2 přepočítat na nové ceny, kde jsou natvrdo.
+- `shopify app dev` běží **bez** `WON_DEV_PLAN` (Free) od 2026-09-30.
+- **Způsob práce (Ondřej 2026-09-30):** paralelní implementace, audit a opravy v dávkách; orchestrátor prompt platí.
 - **Ondřej 2026-09-29: funkce zůstává v Rustu** (JS nestačí na limit instrukcí; TS engine = reference).
-- **Poslední push:** viz checkpoint MVP 2.
+- **Poslední push:** `8bf6e15` (MVP 2 uzavřené); lokální commity MVP 3 viz ledger.
 - **Pro Ondřeje (mimo rozsah, neřeším):** v gitu je sledovaný `apps/won-toasts/prisma/prisma/dev.sqlite`
   → doporučuju `git rm --cached` + gitignore; CI job s Rustem pro `npm run test:unit -w won-discounts`.
 
