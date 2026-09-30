@@ -1,0 +1,101 @@
+{
+  "checkedAt": "2026-09-30T10:58:04.416Z",
+  "store": "b2b-b2c-store-development.myshopify.com",
+  "products": [
+    {
+      "handle": "won-e2e-simple-a",
+      "id": "gid://shopify/Product/9692429058289",
+      "variants": [
+        {
+          "id": "gid://shopify/ProductVariant/48468678902001",
+          "title": "Default Title",
+          "price": "10.00",
+          "unitCost": "6.0 USD",
+          "wonVariantMetafield": "{\"cost\":6,\"cur\":\"USD\"}"
+        }
+      ]
+    },
+    {
+      "handle": "won-e2e-simple-b",
+      "id": "gid://shopify/Product/9692429091057",
+      "variants": [
+        {
+          "id": "gid://shopify/ProductVariant/48468678934769",
+          "title": "Default Title",
+          "price": "12.00",
+          "unitCost": null,
+          "wonVariantMetafield": null
+        }
+      ]
+    },
+    {
+      "handle": "won-e2e-two-variants",
+      "id": "gid://shopify/Product/9692429123825",
+      "variants": [
+        {
+          "id": "gid://shopify/ProductVariant/48468678967537",
+          "title": "Small",
+          "price": "15.00",
+          "unitCost": "5.0 USD",
+          "wonVariantMetafield": "{\"cost\":5,\"cur\":\"USD\"}"
+        },
+        {
+          "id": "gid://shopify/ProductVariant/48468679000305",
+          "title": "Large",
+          "price": "18.00",
+          "unitCost": null,
+          "wonVariantMetafield": null
+        }
+      ]
+    },
+    {
+      "handle": "won-e2e-multiaxis",
+      "id": "gid://shopify/Product/9692429156593",
+      "variants": [
+        {
+          "id": "gid://shopify/ProductVariant/48468679033073",
+          "title": "S / Red",
+          "price": "20.00",
+          "unitCost": "8.0 USD",
+          "wonVariantMetafield": "{\"cost\":8,\"cur\":\"USD\"}"
+        },
+        {
+          "id": "gid://shopify/ProductVariant/48468679065841",
+          "title": "S / Blue",
+          "price": "20.00",
+          "unitCost": "8.0 USD",
+          "wonVariantMetafield": "{\"cost\":8,\"cur\":\"USD\"}"
+        },
+        {
+          "id": "gid://shopify/ProductVariant/48468679098609",
+          "title": "M / Red",
+          "price": "22.00",
+          "unitCost": "8.0 USD",
+          "wonVariantMetafield": "{\"cost\":8,\"cur\":\"USD\"}"
+        },
+        {
+          "id": "gid://shopify/ProductVariant/48468679131377",
+          "title": "M / Blue",
+          "price": "22.00",
+          "unitCost": "8.0 USD",
+          "wonVariantMetafield": "{\"cost\":8,\"cur\":\"USD\"}"
+        }
+      ]
+    },
+    {
+      "handle": "won-e2e-spare",
+      "id": "gid://shopify/Product/9692429189361",
+      "variants": [
+        {
+          "id": "gid://shopify/ProductVariant/48468679164145",
+          "title": "Default Title",
+          "price": "9.00",
+          "unitCost": null,
+          "wonVariantMetafield": null
+        }
+      ]
+    }
+  ],
+  "withMetafield": 6,
+  "withCost": 6
+}

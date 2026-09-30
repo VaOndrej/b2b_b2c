@@ -1,0 +1,10 @@
+# store: collection won-e2e-margin does not exist; won-e2e-simple-b is in []
+{
+  "checkedAt": "2026-09-30T10:50:53.984Z",
+  "collection": null,
+  "member": {
+    "id": "gid://shopify/Product/9692429091057",
+    "handle": "won-e2e-simple-b",
+    "collections": []
+  }
+}

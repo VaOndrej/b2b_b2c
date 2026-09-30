@@ -1,0 +1,10 @@
+# store: collection won-e2e-margin = gid://shopify/Collection/492000346353 "Won E2E — Margin (Pro)" (manual), products [won-e2e-simple-b]; won-e2e-simple-b is in [won-e2e-margin]
+
+--- would send WonE2eMarginCollectionDelete ---
+{
+  "input": {
+    "id": "gid://shopify/Collection/492000346353"
+  }
+}
+
+(dry-run: nothing written; pass --live)

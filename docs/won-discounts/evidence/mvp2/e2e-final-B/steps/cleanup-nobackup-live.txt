@@ -1,0 +1,26 @@
+# stored config of b2b-b2c-store-development.myshopify.com: 3 rule(s) (the E2E seed is in it)
+  - e2e-margin-auto-50 "E2E marže auto 50 %" automatic enabled
+  - e2e-margin-code-20 "E2E marže kód 20 %" code enabled
+  - e2e-margin-code-60 "E2E marže kód 60 %" code enabled
+  margin protection ON (min margin 25 %, max discount 30 %, 1 collection setting(s))
+
+# cleanup: no backup in /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/won-e2e-final-B-nobackup; removing only the E2E rules from the stored config
+  margin settings = the margin-pro seed's (override of gid://shopify/Collection/492000346353) → reset to the defaults (off, no override)
+  after the cleanup: 0 rule(s), margin protection off
+[won-sync] sync b2b-b2c-store-development.myshopify.com: ok (10 steps) 
+
+# save: ok (version cmuo03tmq0000sngkucps7zwl, 389 B)
+# sync: ok (run cmuo053zs0002sngkz62hvxki)
+✔ shop.read — gid://shopify/Shop/78971076849, shop time 2026-09-30T07:07:26 (America/New_York), currency USD
+✔ plan — plan pro: nothing to gate
+✔ node.delete:code:e2e-margin-code-20 — deleted "E2E marže kód 20 %" (its rule was deleted)
+✔ node.delete:code:e2e-margin-code-60 — deleted "E2E marže kód 60 %" (its rule was deleted)
+✔ products.scope — 1 targeted product(s) (1 collection(s), 0 variant target(s)); 0 up to date
+✔ products.set — 1 product(s) updated
+✔ products.clear — 2 product(s) no longer targeted, cleared
+✔ shop_config.write — 389 B written
+✔ shop_config.verify — read back and verified (389 B)
+✔ products.prune — 1/1 product(s) finished after the flip (margin collections they no longer need)
+
+Evidence: /private/tmp/claude-501/-Users-ondrej-Development-WonCommerce-Apps/f40f0268-3ab4-4a1a-acdc-a03c11a66304/scratchpad/won-e2e-final-B-nobackup/seed-mvp1-cleanup-2026-09-30T11-08-26-875Z.json
+next: clear the cost metafields — node apps/won-discounts/scripts/e2e/margin-costs.mjs --clear, then --clear --live

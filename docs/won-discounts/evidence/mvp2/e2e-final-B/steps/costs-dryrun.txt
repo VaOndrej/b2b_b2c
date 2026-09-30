@@ -1,0 +1,20 @@
+# stored config of b2b-b2c-store-development.myshopify.com: margin protection ON (plan pro)
+
+$ npx tsx apps/won-discounts/scripts/sync/live-costs.ts
+# Won Discounts cost mirror full pass — DRY-RUN (reads b2b-b2c-store-development.myshopify.com, writes nothing; pass --live to execute)
+--- would send WonSyncMetafieldsSet (5) ---
+  gid://shopify/ProductVariant/48468678967537 = {"cost":5,"cur":"USD"}
+  gid://shopify/ProductVariant/48468679033073 = {"cost":8,"cur":"USD"}
+  gid://shopify/ProductVariant/48468679065841 = {"cost":8,"cur":"USD"}
+  gid://shopify/ProductVariant/48468679098609 = {"cost":8,"cur":"USD"}
+  gid://shopify/ProductVariant/48468679131377 = {"cost":8,"cur":"USD"}
+
+# result: done — 51 variant(s) read, 5 metafield(s) to write, 0 to delete, 51 row(s) mirrored, 6 with a cost
+  gid://shopify/ProductVariant/48468678902001  Won E2E — Simple A  price 10.00  cost 6.0 USD
+  gid://shopify/ProductVariant/48468678967537  Won E2E — Two Variants (Small)  price 15.00  cost 5.0 USD
+  gid://shopify/ProductVariant/48468679033073  Won E2E — Multi Axis (S / Red)  price 20.00  cost 8.0 USD
+  gid://shopify/ProductVariant/48468679065841  Won E2E — Multi Axis (S / Blue)  price 20.00  cost 8.0 USD
+  gid://shopify/ProductVariant/48468679098609  Won E2E — Multi Axis (M / Red)  price 22.00  cost 8.0 USD
+  gid://shopify/ProductVariant/48468679131377  Won E2E — Multi Axis (M / Blue)  price 22.00  cost 8.0 USD
+
+(dry-run: nothing written; pass --live)
