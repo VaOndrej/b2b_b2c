@@ -33,14 +33,20 @@
 //   - a rule collection: out of the product refs of the rules that target it
 //     — those rules do not apply to it at checkout, each says so in a failed
 //     step `products.too_large:<ruleId>` (fail closed: less discount);
-//   - a margin collection: its products get no NEW marginRef (they cannot be
-//     read), and the shop payload the sync writes FOLDS its values into the
+//   - a margin collection: its products get no marginRef for it (they cannot
+//     be read), and the shop payload the sync writes FOLDS its values into the
 //     global values and into every other collection's own values — strictest
 //     wins (max min-margin, min max-discount), like core gateConfigForPlan does
-//     for Free — so no product can get a looser floor than that collection's;
-//     a product that already carries its ref keeps it (never loosened before
-//     the flip). Failed step `margin.too_large` per collection, with its id,
-//     title and count as `params` for the admin (sync-copy.ts).
+//     for Free — so no product can get a looser floor than that collection's.
+//     The product refs are computed from that SAME folded view (audit fix
+//     round 4): decisive under the payload that ships. A ref a product carries
+//     for it is not kept by hand any more (round 4): while the LIVE config
+//     still lists the collection, the flip's bridge keeps it (its membership
+//     is unknown: status quo, or read one by one — see bridgeMarginRefs); once
+//     the live config folds it too, checkout ignores the ref. So a product
+//     carries at most 4 refs (2 new + 2 live). Failed step `margin.too_large`
+//     per collection, with its id, title and count as `params` for the admin
+//     (sync-copy.ts).
 // EVERYTHING ELSE goes on: one huge collection never holds the other rules'
 // changes. A paging backstop still stops a read that runs past the limit anyway.
 //
@@ -70,7 +76,10 @@
 // `staleRisk` = some product may not carry what the new config relies on: a
 // clear failed, a failed SET would have REMOVED a rule ref (its new set of
 // rule refs is not a superset of what Shopify has — audit P2-1) or CHANGED
-// its marginRefs (MVP 2 audit P2-3, see above), or the plan could not finish.
+// its marginRefs (MVP 2 audit P2-3, see above), or the plan could not finish,
+// or a product crossing the flip may be in a collection the live config lists
+// but this pass did not read and that membership could not be read one by one
+// either (audit fix round 4, bridgeCrossing: it keeps its value).
 // The orchestrator then HOLDS the new shop config (M1) and the run is retried.
 // A failed SET that only adds rule refs (or only drops marginRefs no setting
 // names any more) does not hold anything.
@@ -84,7 +93,7 @@
 // invalidates every hash of the shop (payloadHash = null), so this run
 // re-verifies and rewrites them all.
 
-import { marginCollectionIds, type FunctionMarginPayload } from "@won/core/discounts/margin";
+import { marginCollectionIds, resolveMargin, type FunctionMarginPayload } from "@won/core/discounts/margin";
 import { decisiveMarginRefs, parseRuleRef, productMetafieldValue, variantKey } from "@won/core/discounts/targeting";
 
 import type { PrismaClient } from "../../generated/prisma/client";
@@ -211,12 +220,13 @@ export interface ProductSyncArgs {
   /** The collection size check already made for this sync (step 0 builds the payload from it); absent = made here. */
   limits?: CollectionLimits;
   /**
-   * The shop config flips after the BEFORE lane (a full sync whose payload
-   * differs from the live one): the margin settings of the config LIVE until
-   * the flip. A product whose marginRefs change carries the BRIDGE
-   * (bridgeMarginRefs) across the flip and is pruned to its new refs in the
-   * AFTER lane. Absent (a products-only refresh, an unchanged payload): the
-   * new refs are written directly.
+   * The shop config flips after the BEFORE lane and its MARGIN part changes
+   * (as checkout reads it — audit fix round 4; a rule-only change needs no
+   * bridge): the margin settings of the config LIVE until the flip. A product
+   * whose marginRefs change carries the BRIDGE (bridgeMarginRefs,
+   * crossingRefs) across the flip and is pruned to its new refs in the AFTER
+   * lane. Absent (a products-only refresh, an unchanged margin): the new refs
+   * are written directly — they are decisive under the same settings.
    */
   bridgeFrom?: FunctionMarginPayload;
   /**
@@ -265,6 +275,11 @@ export interface ProductPlan {
   prunes: FinalWrite[];
   /** The numeric ids the margin collections of this pass ship under (onlyAddsRefs: a dropped ref to anything else holds nothing). */
   liveMarginRefs: string[];
+  /**
+   * The plan itself holds the new config (audit fix round 4): some product's membership in a collection the live
+   * config lists could not be read, and its bridge would have been looser than what it carries — it keeps its value.
+   */
+  hold?: HoldReason;
 }
 
 /** Why a BEFORE lane holds the new shop config (the admin words each: sync-copy.ts). */
@@ -300,7 +315,13 @@ export interface MarginTooLarge {
 
 /** What the collection size check decided for one sync (see the header). */
 export interface CollectionLimits {
-  /** The config whose product refs this pass computes: collections that do not fit are left out. */
+  /**
+   * The config whose product refs this pass computes: collections that do not
+   * fit are left out, and its margin is the FOLDED one the payload ships (the
+   * decisive refs are chosen under the settings checkout runs — audit fix
+   * round 4: an unfolded view picks other refs on ties, and every sync would
+   * then bridge and prune for nothing).
+   */
   config: ConfigView;
   /**
    * The config the SHOP PAYLOAD is built from (sync.server.ts step 0): the
@@ -452,8 +473,9 @@ export async function collectionLimits(
     });
   }
   const dropped = new Set(droppedMargin);
-  if (dropped.size > 0) out.modules.margin.perCollection = out.modules.margin.perCollection.filter((o) => !dropped.has(o.collectionId));
-  return { config: out, payloadConfig: dropped.size > 0 ? foldMarginCollections(config, dropped) : config, steps, marginTooLarge, alsoRead };
+  if (dropped.size === 0) return { config: out, payloadConfig: config, steps, marginTooLarge, alsoRead };
+  // The refs and the payload share one margin view: the too-large collections folded (and left out).
+  return { config: foldMarginCollections(out, dropped), payloadConfig: foldMarginCollections(config, dropped), steps, marginTooLarge, alsoRead };
 }
 
 async function targetedProducts(args: ProductSyncArgs, scopes: Scopes) {
@@ -657,11 +679,8 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
   for (const id of limited.alsoRead) scopes.collectionIds.add(id);
   const rows = await db.productTargetIndex.findMany({ where: { shop }, select: { productId: true, payloadHash: true, value: true } });
   const indexed = new Map(rows.map((row) => [row.productId, row.payloadHash]));
-  // A margin collection too large to read: products that already carry its ref keep it (see the header).
-  const keepRefs = new Set(limited.marginTooLarge.map((m) => variantKey(m.collectionId)));
   // What the payload's `col` names after this pass (the collections that fit): a dropped ref to anything else is ignored at checkout.
   const liveMarginRefs = marginCollectionIds(config.modules.margin).map(variantKey);
-  const storedValue = new Map(rows.map((row) => [row.productId, row.value]));
   // Rows whose value is recorded (the impact overview reads it); an up-to-date row without one gets it below.
   const valued = new Set(rows.filter((row) => row.value !== null).map((row) => row.productId));
   const unrecorded: { productId: string; value: string }[] = [];
@@ -701,14 +720,7 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
   const toClear: string[] = [];
   const oversized: string[] = [];
   for (const productId of candidates) {
-    let entry = entries.get(productId);
-    if (keepRefs.size > 0) {
-      const kept = marginRefsOf(storedValue.get(productId)).filter((ref) => keepRefs.has(ref));
-      if (kept.length > 0) {
-        const base: SyncProductEntry = entry ?? { ruleIds: [], variantRuleIds: {} };
-        entry = { ...base, marginRefs: [...new Set([...(base.marginRefs ?? []), ...kept])].sort() };
-      }
-    }
+    const entry = entries.get(productId);
     const reduced = entry?.oversized;
     if (reduced) {
       const parts = [
@@ -775,43 +787,24 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
     // Every one of them may lose a ref, or lack a stricter collection the new config relies on: nothing may flip.
     return failedPlan(steps, toClear.length > 0 || wantedIndexed.length > 0 || marginNewcomers.length > 0);
   }
-  // Membership for the bridge: the collections this pass read the product in, plus every ref it carries for a
-  // collection this pass did not read (membership unknown: the status quo is kept for it).
-  const readKeys = new Set([...scopes.collectionIds].map(variantKey));
-  const liveMembers = (productId: string, current: string | null): string[] => [
-    ...[...(productCollections.get(productId) ?? [])].map(variantKey),
-    ...marginRefsOf(current).filter((ref) => !readKeys.has(ref)),
-  ];
-  const prunes: FinalWrite[] = [];
+  // Across the flip (args.bridgeFrom), a product whose value changes carries a marginRef bridge (bridgeMarginRefs):
+  // its final value (null = a clear) and what Shopify has now, decided below.
   const live = args.bridgeFrom;
-  /** The BEFORE-lane write of a product across the flip: the bridge when its marginRefs change (see bridgeMarginRefs). */
-  const bridged = (write: Write, current: string | null): IndexedWrite | null => {
-    if (!live) return { ...write, current };
-    const refs = bridgeMarginRefs(marginRefsOf(write.value), live, liveMembers(write.productId, current));
-    if (sameSet(refs, marginRefsOf(write.value))) return { ...write, current };
-    prunes.push({ productId: write.productId, value: write.value, hash: write.hash });
-    const value = withMarginRefs(write.value, refs);
-    if (sameJson(current, value)) return null; // it already carries the bridge: only the prune after the flip
-    return { productId: write.productId, value, hash: hashText(canonicalJson(JSON.parse(value))), current };
-  };
+  const crossing: Crossing[] = [];
   for (const write of marginNewcomers) {
     const node = values.get(write.productId);
     if (!node) continue; // deleted meanwhile: nothing to write, nothing indexed
     if (sameJson(node.metafield?.value, write.value)) recorded.push(write);
-    else {
-      const w = bridged(write, node.metafield?.value ?? null);
-      if (w) sets.push(w);
-    }
+    else if (live) crossing.push({ productId: write.productId, final: write, current: node.metafield?.value ?? null });
+    else sets.push({ ...write, current: node.metafield?.value ?? null });
   }
   for (const productId of wantedIndexed) {
     const node = values.get(productId);
     const want = wanted.get(productId)!;
     if (!node) gone.push(productId);
     else if (sameJson(node.metafield?.value, want.value)) recorded.push({ productId, hash: want.hash, value: want.value });
-    else {
-      const w = bridged({ productId, ...want }, node.metafield?.value ?? null);
-      if (w) sets.push(w);
-    }
+    else if (live) crossing.push({ productId, final: { productId, ...want }, current: node.metafield?.value ?? null });
+    else sets.push({ productId, ...want, current: node.metafield?.value ?? null });
   }
   for (const productId of toClear) {
     const node = values.get(productId);
@@ -820,21 +813,152 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
       gone.push(productId); // deleted, or already absent in Shopify: just untrack
       continue;
     }
-    if (!live) continue;
-    // A clear across the flip keeps the live config's decisive refs for the product (they go after the flip).
-    const kept = bridgeMarginRefs([], live, liveMembers(productId, node.metafield.value));
-    if (kept.length === 0) continue;
-    clearing.delete(productId);
-    prunes.push({ productId, value: null, hash: null });
-    const value = JSON.stringify(productMetafieldValue({ ruleIds: [], variantRuleIds: {}, marginRefs: kept }));
-    if (!sameJson(node.metafield.value, value)) sets.push({ productId, value, hash: hashText(canonicalJson(JSON.parse(value))), current: node.metafield.value });
+    // A clear across the flip keeps the live config's decisive refs for the product until after it.
+    if (live) crossing.push({ productId, final: null, current: node.metafield.value });
+  }
+  const prunes: FinalWrite[] = [];
+  let hold: HoldReason | undefined;
+  if (live && crossing.length > 0) {
+    const bridge = await bridgeCrossing(args, live, crossing, scopes, productCollections, steps);
+    if (bridge.held.size > 0) hold = "margin_refs";
+    for (const item of crossing) {
+      const refs = bridge.refs.get(item.productId);
+      if (refs === undefined) {
+        clearing.delete(item.productId); // held: it keeps its current value, the new config waits (hold)
+        continue;
+      }
+      if (item.final === null) {
+        if (refs.length === 0) continue; // nothing to keep: a plain clear
+        clearing.delete(item.productId);
+        prunes.push({ productId: item.productId, value: null, hash: null });
+        const value = JSON.stringify(productMetafieldValue({ ruleIds: [], variantRuleIds: {}, marginRefs: refs }));
+        if (!sameJson(item.current, value)) sets.push({ productId: item.productId, value, hash: hashText(canonicalJson(JSON.parse(value))), current: item.current });
+        continue;
+      }
+      if (sameSet(refs, marginRefsOf(item.final.value))) {
+        sets.push({ ...item.final, current: item.current });
+        continue;
+      }
+      prunes.push({ productId: item.productId, value: item.final.value, hash: item.final.hash });
+      const value = withMarginRefs(item.final.value, refs);
+      if (sameJson(item.current, value)) continue; // it already carries the bridge: only the prune after the flip
+      sets.push({ productId: item.productId, value, hash: hashText(canonicalJson(JSON.parse(value))), current: item.current });
+    }
   }
   if (gone.length) await db.productTargetIndex.deleteMany({ where: { shop, productId: { in: gone } } });
   for (const { productId, hash, value } of recorded) await upsertRow(db, shop, productId, hash, value);
-  return { steps, staleRisk: false, complete: true, sets, clears: [...clearing], additions, prunes, liveMarginRefs };
+  return { steps, staleRisk: false, complete: true, sets, clears: [...clearing], additions, prunes, liveMarginRefs, ...(hold ? { hold } : {}) };
 }
 
-// --- The marginRef bridge across the flip (audit fix rounds 2 + 3) ---------------------------------
+// --- The marginRef bridge across the flip (audit fix rounds 2, 3 + 4) ------------------------------
+
+/** A product whose value changes across the flip: its final value (null = a clear) and what Shopify has now. */
+interface Crossing {
+  productId: string;
+  final: Write | null;
+  current: string | null;
+}
+
+/**
+ * The bridge of every crossing product (crossingRefs). The live config may list
+ * collections this pass did not read — a live-only one past the leftover
+ * budget, or one the new config folds (too large): a product's membership in
+ * them is unknown, so a bridge that would be looser than what the product
+ * carries now (either field, under the live config) is not trusted. Its
+ * membership in those collections is read one by one (productsInCollection,
+ * only for such products); when that read fails, the product keeps its current
+ * value and the new config is held (`held`, reason margin_refs — retried like
+ * every hold). Never a bridge looser than both the status quo and the
+ * requirement (audit fix round 4). `refs` has no entry for a held product.
+ */
+async function bridgeCrossing(
+  args: ProductSyncArgs,
+  live: FunctionMarginPayload,
+  crossing: readonly Crossing[],
+  scopes: Scopes,
+  productCollections: ReadonlyMap<string, ReadonlySet<string>>,
+  steps: SyncStep[],
+): Promise<{ refs: Map<string, string[]>; held: Set<string> }> {
+  // "Read" = paged in full by this pass: the new config's collections that fit, the rules' and the live-only
+  // ones that fit (alsoRead). A folded (too-large) collection is never among them.
+  const read = new Set([...scopes.collectionIds].map(variantKey));
+  const members = (productId: string) => [...(productCollections.get(productId) ?? [])].map(variantKey);
+  const unread = live.enabled && live.col ? Object.keys(live.col).filter((key) => !read.has(key)) : [];
+  const refs = new Map<string, string[]>();
+  const unsure: Crossing[] = [];
+  for (const item of crossing) {
+    const next = item.final ? marginRefsOf(item.final.value) : [];
+    const first = crossingRefs({ next, live, members: members(item.productId), read, carried: marginRefsOf(item.current) });
+    if (first.needsMembership) unsure.push(item);
+    else refs.set(item.productId, first.refs);
+  }
+  const held = new Set<string>();
+  if (unsure.length === 0) return { refs, held };
+  const known = new Map<string, string[]>(unsure.map((item) => [item.productId, []]));
+  try {
+    for (const key of unread) {
+      for (const batch of chunks(unsure.map((item) => item.productId), NODES_BATCH)) {
+        checkCancelled(args);
+        const data: { nodes: ({ id?: string; inCollection?: boolean } | null)[] } = await args.transport.call("productsInCollection", {
+          ids: batch,
+          collection: `gid://shopify/Collection/${key}`,
+        });
+        batch.forEach((productId, i) => {
+          if (data.nodes[i]?.inCollection === true) known.get(productId)!.push(key);
+        });
+      }
+    }
+  } catch (error) {
+    if (error instanceof Response || error instanceof SyncCancelled) throw error;
+    for (const item of unsure) held.add(item.productId);
+    steps.push({
+      step: "products.membership",
+      ok: false,
+      detail:
+        `could not read whether ${unsure.length} product(s) are in ${unread.length} collection(s) the live config lists but this sync did not read ` +
+        `(${errorText(error)}): they keep their current value and the new config is held; the next sync retries`,
+    });
+    return { refs, held };
+  }
+  const all = new Set([...read, ...unread]);
+  for (const item of unsure) {
+    const next = item.final ? marginRefsOf(item.final.value) : [];
+    refs.set(item.productId, crossingRefs({ next, live, members: [...members(item.productId), ...known.get(item.productId)!], read: all, carried: marginRefsOf(item.current) }).refs);
+  }
+  steps.push({
+    step: "products.membership",
+    ok: true,
+    detail: `${unsure.length} product(s) checked one by one in ${unread.length} collection(s) the live config lists but this sync did not read`,
+  });
+  return { refs, held };
+}
+
+/**
+ * One product's refs across the flip (audit fix round 4): the bridge over what
+ * this pass knows — `members` = the keys it is in among `read` (the collections
+ * whose membership is known), plus every ref it carries (`carried`) for a
+ * collection outside `read` (membership unknown: the status quo is kept for
+ * it). `needsMembership`: the live config lists a collection outside `read`
+ * AND the bridge resolves looser than `carried` under the live config (either
+ * field) — the unknown membership could be what makes it stricter, so the
+ * bridge is not trusted until that membership is known (bridgeCrossing).
+ */
+export function crossingRefs(args: {
+  next: readonly string[];
+  live: FunctionMarginPayload;
+  members: readonly string[];
+  read: ReadonlySet<string>;
+  carried: readonly string[];
+}): { refs: string[]; needsMembership: boolean } {
+  const { live, read, carried } = args;
+  const refs = bridgeMarginRefs(args.next, live, [...args.members, ...carried.filter((ref) => !read.has(ref))]);
+  const unread = live.enabled && live.col ? Object.keys(live.col).some((key) => !read.has(key)) : false;
+  if (!unread) return { refs, needsMembership: false };
+  const now = resolveMargin(live, carried);
+  const bridged = resolveMargin(live, refs);
+  const looser = !!now && !!bridged && (bridged.minMarginPercent < now.minMarginPercent || bridged.maxDiscountPercent > now.maxDiscountPercent);
+  return { refs, needsMembership: looser };
+}
 
 /**
  * The marginRefs a product carries across the shop-config flip: its NEW refs
@@ -851,9 +975,12 @@ export async function planProducts(args: ProductSyncArgs): Promise<ProductPlan> 
  *   - under the NEW config every other ref names a collection it is in, or
  *     one the new config does not list (ignored), and it holds the new
  *     decisive refs → it resolves exactly to the new result.
- * At most 4 refs (2 + 2) and no growth across repeated holds: the live refs
- * are recomputed from the live settings, never accumulated. The AFTER lane
- * prunes to the new refs (unchanged under the new config).
+ * At most 4 refs (2 + 2: both parts are core decisive sets, and no ref is
+ * added by hand since audit fix round 4) and no growth across repeated holds:
+ * the live refs are recomputed from the live settings, never accumulated. The
+ * AFTER lane prunes to the new refs (unchanged under the new config). A
+ * membership this pass does not know (a live-listed collection it did not
+ * read) is settled by crossingRefs / bridgeCrossing.
  */
 export function bridgeMarginRefs(next: readonly string[], live: FunctionMarginPayload, liveMembers: readonly string[]): string[] {
   return [...new Set([...next, ...decisiveMarginRefs(live, liveMembers)])].sort();
@@ -883,7 +1010,15 @@ interface WriteOutcome<W extends Write> {
   breaker?: boolean;
 }
 
-/** Batches refused completely in a row before refused batches stop being split per product (audit fix round 3). */
+/**
+ * Batches refused completely in a row before refused batches stop being split
+ * per product (audit fix round 3). Accepted limit (round 4 ruling): the
+ * breaker cannot tell a shop-wide refusal from 3 × 25 products in a row that
+ * Shopify each refuses for its own reason — either way it trips. In the BEFORE
+ * lane a tripped breaker holds the new config (products_refused), so a refusal
+ * that persists holds every sync until Shopify accepts the writes again; the
+ * admin says so (sync.problem.configHeldRefused, productsRefusedBreaker).
+ */
 export const REFUSAL_BREAKER_BATCHES = 3;
 
 /**
@@ -982,6 +1117,8 @@ export async function applyProductChanges(args: ProductSyncArgs, plan: ProductPl
     if (holdReason !== "rule_refs") holdReason = reason; // a rule ref that should go is the more serious one
   };
 
+  // The plan could not settle some product's live membership: it keeps its value, the new config waits.
+  if (plan.hold) hold(plan.hold);
   const live = new Set(plan.liveMarginRefs);
   const outcome: WriteOutcome<IndexedWrite> = { written: [], refused: [], failed: [] };
   for (const batch of chunks(plan.sets, METAFIELDS_SET_BATCH)) {

@@ -255,6 +255,7 @@ export const en: Record<keyof typeof cs, string> = {
   "sync.problem.codesRunning": "Shopify is still importing the codes of “{rule}”. The next sync checks them.",
   "sync.problem.products": "Product targeting did not reach Shopify ({detail}).",
   "sync.problem.productsRefused": "Shopify refused the discount targeting of {n} product(s). The other products were written; the next sync tries again.",
+  "sync.problem.productsRefusedBreaker": "Shopify is refusing the discount targeting writes for products right now: {n} product(s) were not written. The next sync tries again.",
   "sync.problem.productsPrune": "Some products could not drop margin collections they no longer need after the settings went live. It does not change any discount (the same floor applies); the next sync finishes it.",
   "sync.problem.nodes": "The discounts did not reach Shopify ({detail}).",
   "sync.problem.other": "Some changes did not reach Shopify ({detail}).",

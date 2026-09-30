@@ -8,7 +8,8 @@
 // says and what checkout does never differ. The collections come from the run
 // that APPLIED the live shop config (runs.ts appliedRun — audit fix round 3):
 // what checkout runs, never a newer products-only refresh that did not write
-// the payload. A refresh whose limits differ from the live fold escalates to
+// the payload, nor a campaign switch's phase 1 (it keeps the live margin part:
+// audit fix round 4). A refresh whose limits differ from the live fold escalates to
 // a full sync (sync.server.ts), so the two meet again.
 
 import type { WonDiscountsConfig } from "@won/core/discounts/config";

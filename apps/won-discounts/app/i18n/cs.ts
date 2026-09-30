@@ -260,6 +260,7 @@ export const cs = {
   "sync.problem.codesRunning": "Kódy slevy „{rule}“ Shopify ještě nahrává. Další synchronizace je zkontroluje.",
   "sync.problem.products": "Cílení na produkty se do Shopify nepropsalo ({detail}).",
   "sync.problem.productsRefused": "Shopify odmítl zapsat cílení slev u produktů: {n}. Ostatní produkty se propsaly, další synchronizace to zkusí znovu.",
+  "sync.problem.productsRefusedBreaker": "Shopify teď odmítá zápisy cílení slev u produktů: nepropsalo se jich {n}. Další synchronizace to zkusí znovu.",
   "sync.problem.productsPrune": "U některých produktů se po propsání nastavení nepodařilo odebrat kolekce s nastavením marže, které už nepotřebují. Na slevu to vliv nemá (platí stejná hranice), další synchronizace to dokončí.",
   "sync.problem.nodes": "Slevy se do Shopify nepropsaly ({detail}).",
   "sync.problem.other": "Část změn se do Shopify nepropsala ({detail}).",

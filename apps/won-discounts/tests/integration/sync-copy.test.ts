@@ -100,6 +100,28 @@ test("audit fix rounds 2 + 3: a rule collection over the limit is named „by ti
   assert.doesNotMatch(prune, /Throttled|Cílení na produkty se do Shopify nepropsalo/);
 });
 
+test("audit fix round 4: a tripped refusal breaker never says the other products were written; an older run's too-large step ({collections, untitled}) still names its collections; an unread membership words the margin hold", () => {
+  const breaker = { step: "products.set", ok: false, detail: "Shopify refused 80 product(s): …", params: { refused: 80, breaker: 1 } };
+  assert.equal(say(breaker as never), "Shopify teď odmítá zápisy cílení slev u produktů: nepropsalo se jich 80. Další synchronizace to zkusí znovu.");
+  assert.equal(say(breaker as never, "en"), "Shopify is refusing the discount targeting writes for products right now: 80 product(s) were not written. The next sync tries again.");
+  for (const locale of ["cs", "en"] as const) assert.doesNotMatch(say(breaker as never, locale), /Ostatní produkty se propsaly|other products were written/);
+  // Without the breaker the sentence stays as it was (only some products were refused, one by one).
+  assert.match(say({ step: "products.add", ok: false, detail: "x", params: { refused: 2 } } as never), /Ostatní produkty se propsaly/);
+
+  // Runs recorded before audit fix round 3 carry {collections: "A, B", untitled: n}.
+  const old = (params: Record<string, string | number>) => say({ step: "products.too_large:vip", ok: false, detail: "x", params } as never);
+  assert.match(old({ collections: "Zimní", untitled: 0 }), /neuplatní na kolekci „Zimní“:/);
+  assert.match(old({ collections: "Zimní, Letní", untitled: 0 }), /na kolekce „Zimní“ a další \(1\):/);
+  assert.match(old({ collections: "Zimní", untitled: 2 }), /na kolekce „Zimní“ a další \(2\):/);
+  assert.match(old({ collections: "", untitled: 2 }), /na část svých kolekcí \(kolekce bez názvu\):/);
+
+  assert.match(say({ step: "shop_config.phase1.build", ok: false, detail: "the no-campaign config is 9100 B" } as never), /^Přepnutí kampaně se zatím nedokončilo/);
+
+  const unread = { step: "products.membership", ok: false, detail: "could not read whether 3 product(s) are in 1 collection(s): Throttled" };
+  assert.equal(say(unread as never), say({ step: "shop_config.write", ok: false, detail: "held", params: { held: "margin_refs" } } as never));
+  assert.equal(syncProblems([unread, { step: "shop_config.write", ok: false, detail: "held", params: { held: "margin_refs" } }] as never, names).length, 1, "one sentence");
+});
+
 test("only failed steps become problems (deduplicated); warnings are the sync's `warning` steps and the save's notes", () => {
   const steps = [
     { step: "shop.read", ok: true, detail: "ok" },

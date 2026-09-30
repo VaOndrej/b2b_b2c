@@ -34,6 +34,23 @@ function ruleLabel(ruleId: string, names: ReadonlyMap<string, string>): string {
   return name || ruleId;
 }
 
+/**
+ * A rule's too-large collections as a step records them: `{collection: first title, count}` (audit fix
+ * round 3), or — runs recorded before it — `{collections: "A, B" (titles joined), untitled: n}`.
+ */
+function tooLargeCollections(params: SyncStep["params"]): { collection: string; count: number } {
+  const joined = params?.collections;
+  const untitled = params?.untitled;
+  if (typeof joined === "string" || typeof untitled === "number") {
+    const titles = typeof joined === "string" && joined.trim() !== "" ? joined.split(", ") : [];
+    return { collection: titles[0] ?? "", count: Math.max(1, titles.length + (typeof untitled === "number" ? untitled : 0)) };
+  }
+  return {
+    collection: typeof params?.collection === "string" ? params.collection : "",
+    count: typeof params?.count === "number" ? params.count : 1,
+  };
+}
+
 /** One failed step → one sentence. */
 export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>): UiText {
   const detail = shortDetail(step.detail);
@@ -51,8 +68,7 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
   if (step.step.startsWith("products.too_large:")) {
     // Titles from the size read (products.ts collectionLimits), never GIDs; else "kolekce bez názvu".
     const rule = ruleLabel(step.step.slice("products.too_large:".length), names);
-    const collection = typeof step.params?.collection === "string" ? step.params.collection : "";
-    const count = typeof step.params?.count === "number" ? step.params.count : 1;
+    const { collection, count } = tooLargeCollections(step.params);
     if (!collection) return { key: "sync.problem.collectionTooLargeUntitled", params: { rule, limit: MAX_COLLECTION_PRODUCTS } };
     return count > 1
       ? { key: "sync.problem.collectionTooLargeMany", params: { rule, collection, n: count - 1, limit: MAX_COLLECTION_PRODUCTS } }
@@ -81,6 +97,7 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
     case "shop_config.build":
       return { key: "sync.problem.tooLarge" };
     case "sync.stopped":
+    case "shop_config.phase1.build":
     case "shop_config.phase1.write":
     case "shop_config.phase1.verify":
     case "shop_config.phase1.rollback":
@@ -99,6 +116,10 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
       return /no valid previous config|could not restore/i.test(step.detail)
         ? { key: "sync.problem.configLost", params: { detail } }
         : { key: "sync.problem.config", params: { detail } };
+    case "products.membership":
+      // The live config's membership of some products could not be read (products.ts, audit fix round 4): the
+      // config is held for their margin collections — the same sentence as the held step (deduplicated).
+      return { key: "sync.problem.configHeldMargin" };
     case "products.prune":
       // Bridges left after the flip: never a looser floor (the same one applies), retried by the next sync.
       return { key: "sync.problem.productsPrune" };
@@ -107,8 +128,11 @@ export function stepProblem(step: SyncStep, names: ReadonlyMap<string, string>):
     case "products.clear":
     case "products.add":
     case "products.index":
-      // Products Shopify refused one by one (products.ts sendProductWrites): counted, never listed by id.
-      if (typeof step.params?.refused === "number" && step.params.refused > 0) return { key: "sync.problem.productsRefused", params: { n: step.params.refused } };
+      // Products Shopify refused one by one (products.ts sendProductWrites): counted, never listed by id. After the
+      // breaker tripped (refused batches no longer split) no "the other products were written" (audit fix round 4).
+      if (typeof step.params?.refused === "number" && step.params.refused > 0) {
+        return { key: step.params.breaker ? "sync.problem.productsRefusedBreaker" : "sync.problem.productsRefused", params: { n: step.params.refused } };
+      }
       return { key: "sync.problem.products", params: { detail } };
     case "nodes":
       return { key: "sync.problem.nodes", params: { detail } };

@@ -20,7 +20,12 @@
 //      window, or the campaign ended/was killed): write a NO-CAMPAIGN shop
 //      config first (`forceNoCampaign`), read back + verified. If P1 fails, the
 //      run STOPS there (M2): nothing else was written yet, the running campaign
-//      stays intact on every node;
+//      stays intact on every node. Its MARGIN part is the live one, unchanged
+//      (audit fix round 4, phaseOnePayload): the products still carry the refs
+//      the live settings chose, so the new margin goes out only with the final
+//      write, after the BEFORE lane — a held final write never leaves it live.
+//      P1 is not "applied" (runs.ts): the plan is recorded with the final write
+//      only;
 //   1. discount nodes (node-sync.ts): 1 automatic + 1 per code rule — create /
 //      update / activate / DEACTIVATE / delete, redeem codes; new nodes get
 //      their function_vars in the create;
@@ -77,6 +82,7 @@
 //     syncing the same shop at once are not coordinated [unverified: MVP 1
 //     runs one instance]; adopt-before-create keeps it from duplicating nodes.
 
+import { FUNCTION_CONFIG_BUDGET_BYTES } from "@won/core/discounts/function-config";
 import { readMarginPayload, type FunctionMarginPayload } from "@won/core/discounts/margin";
 import { gateConfigForPlan, type ShopPlan, type StrippedCapability } from "@won/core/discounts/plan-gate";
 
@@ -88,6 +94,7 @@ import {
   applyProductChanges,
   applyProductPrunes,
   collectionLimits,
+  foldMarginCollections,
   planProducts,
   SyncCancelled,
   syncProducts,
@@ -101,7 +108,7 @@ import { errorText, setMetafields, Transport } from "./transport";
 import type { ConfigView, PendingWork, SyncDeps, SyncResult, SyncStep } from "./types";
 import { foldedIn } from "./margin-fold";
 import { appliedRun, parseSteps, shopConfigApplied } from "./runs";
-import { sameJson } from "./util";
+import { canonicalJson, sameJson } from "./util";
 
 /** Shop-local `YYYY-MM-DDTHH:MM:SS` (DateTimeWithoutTimezone, what the engine and C4 use). */
 export function shopLocalDateTime(date: Date, timeZone: string): string {
@@ -555,10 +562,20 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
   const oldVersion = storedJson === null ? null : campaignVersionOf(storedJson);
   const switching = newVersion !== oldVersion;
   if (switching) {
-    const noCampaign = deps.buildShopFunctionConfig(payloadConfig, { now: nowLocal, shopTimezone, shopCurrency, forceNoCampaign: true });
+    const noCampaign = phaseOnePayload(deps, payloadConfig, storedJson, { now: nowLocal, shopTimezone, shopCurrency });
+    if (!noCampaign.fits) {
+      record({
+        step: "shop_config.phase1.build",
+        ok: false,
+        detail: `the no-campaign config is ${noCampaign.bytes} B, over the 9000 B budget — nothing was written, the running campaign continues`,
+      });
+      pending.add("campaign_switch_held");
+      return null;
+    }
     const written = await writeShopConfig(deps, transport, shopState.id, storedJson, noCampaign, "shop_config.phase1", record);
     storedJson = written.stored;
-    if (written.ok) await bookkeeping(deps, shop, () => recordAppliedPlan(deps.db, shop, plan));
+    // No recordAppliedPlan here (audit fix round 4): phase 1 is not "applied" (runs.ts shopConfigApplied) — its
+    // margin is still the one the last applying run wrote, so the fold views and the plan agree on that run.
     if (!written.ok) {
       record({
         step: "sync.stopped",
@@ -591,6 +608,7 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
   }
 
   // 3. Product metafields, BEFORE lane (products that already carry Won refs, and clears).
+  const bridgeFrom = storedJson !== null ? marginChange(storedJson, payload.json) : null;
   const productArgs: ProductSyncArgs = {
     transport,
     db: deps.db,
@@ -600,9 +618,10 @@ async function syncSteps({ deps, transport, shop, config: stored, now, record, p
     // No shop config in Shopify: the first sync after an install (or a reinstall) — check the index.
     verifyIndex: shopState.functionConfig === null,
     limits,
-    // The config flips after the BEFORE lane: marginRef changes carry a bridge across it, built with the
-    // margin settings of the config LIVE until the flip (audit fix rounds 2 + 3).
-    ...(storedJson !== null && !sameJson(storedJson, payload.json) ? { bridgeFrom: liveMarginOf(storedJson) } : {}),
+    // The config flips after the BEFORE lane: when its MARGIN part changes, marginRef changes carry a bridge
+    // across it, built with the margin settings of the config LIVE until the flip (audit fix rounds 2–4). After
+    // a phase 1 that is still the live margin (phaseOnePayload).
+    ...(bridgeFrom ? { bridgeFrom } : {}),
   };
   let staleRisk = false;
   let holdReason: HoldReason = "products_unread";
@@ -661,6 +680,67 @@ const HOLD_DETAIL: Record<HoldReason, string> = {
   products_refused:
     "held: Shopify refused every product write in several batches in a row, so the new config is not applied yet (the previous one stays); the next sync retries",
 };
+
+/**
+ * The margin settings of the live config when the new payload's margin part
+ * differs from them, as checkout reads both (audit fix round 4); null when
+ * they are the same — the product refs are then decisive under the same
+ * settings on both sides of the flip, no bridge is needed.
+ */
+function marginChange(liveJson: string, nextJson: string): FunctionMarginPayload | null {
+  const live = liveMarginOf(liveJson);
+  return canonicalJson(live) === canonicalJson(liveMarginOf(nextJson)) ? null : live;
+}
+
+/**
+ * The campaign switch's phase 1 (audit fix round 4): the NO-CAMPAIGN shop
+ * config whose margin part is the LIVE one, unchanged — the products still
+ * carry the refs the live settings chose, and the new margin must not reach
+ * checkout before the BEFORE lane has written the bridges (nor stay live when
+ * the final write is held). Without a live config to take it from (a first
+ * sync, an unreadable one) — or when the live margin does not fit this
+ * payload's budget — every margin collection is folded into the global values
+ * (strictest wins): no product, whatever refs it carries, gets a looser floor
+ * than any setting it may be in. Never looser than the new settings, so the
+ * AFTER lane's assumptions hold too.
+ */
+function phaseOnePayload(
+  deps: SyncDeps,
+  payloadConfig: ConfigView,
+  storedJson: string | null,
+  options: { now: string; shopTimezone: string; shopCurrency: string | undefined },
+): { json: string; bytes: number; fits: boolean } {
+  const noCampaign = { ...options, forceNoCampaign: true };
+  const liveMargin = storedJson !== null ? liveMarginPart(storedJson) : undefined;
+  if (liveMargin !== undefined) {
+    const built = deps.buildShopFunctionConfig(payloadConfig, noCampaign);
+    const patched = withMarginPart(built, liveMargin);
+    if (patched.fits) return patched;
+  }
+  const all = new Set(payloadConfig.modules.margin.perCollection.map((o) => o.collectionId));
+  return deps.buildShopFunctionConfig(all.size > 0 ? foldMarginCollections(payloadConfig, all) : payloadConfig, noCampaign);
+}
+
+/** The raw `modules.margin` of a live shop config JSON (off when it has none); undefined when it is not a config at all. */
+function liveMarginPart(json: string): unknown {
+  try {
+    const modules = (JSON.parse(json) as { modules?: unknown } | null)?.modules;
+    if (typeof modules !== "object" || modules === null || Array.isArray(modules)) return undefined;
+    return (modules as { margin?: unknown }).margin ?? { enabled: false };
+  } catch {
+    return undefined;
+  }
+}
+
+/** A built shop config with its margin part replaced (as it is: the engine reads it exactly like the live one). */
+function withMarginPart(built: { json: string; bytes: number; fits: boolean }, margin: unknown): { json: string; bytes: number; fits: boolean } {
+  const payload = JSON.parse(built.json) as { modules?: Record<string, unknown> };
+  if (typeof payload.modules !== "object" || payload.modules === null) return built;
+  payload.modules.margin = margin;
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json).length;
+  return { json, bytes, fits: bytes <= FUNCTION_CONFIG_BUDGET_BYTES };
+}
 
 /** The margin settings a live shop config JSON carries, as the engine reads them (off when absent or unreadable). */
 function liveMarginOf(json: string): FunctionMarginPayload {

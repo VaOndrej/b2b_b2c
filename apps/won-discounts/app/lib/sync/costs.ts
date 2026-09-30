@@ -96,31 +96,33 @@ const COST_MAX = 1e15;
  * Shopify's decimal cost as the metafield number (audit fix round 3, engine
  * report): at most COST_SIGNIFICANT_DIGITS significant digits, a longer
  * amount ROUNDED UP in the last kept digit (a higher cost = the stricter
- * floor), within [COST_MIN, COST_MAX]. A number of ≤ 15 significant digits
- * prints back as itself and parses the same in Rust and in JavaScript. NaN
- * for anything that is not a decimal number.
+ * floor), within [COST_MIN, COST_MAX] — a positive amount that underflows
+ * is COST_MIN, never 0. A number of ≤ 15 significant digits prints back as
+ * itself and parses the same in Rust and in JavaScript. An exponent form
+ * ("1.5e2") follows the same rules (audit fix round 4). A negative amount is
+ * returned as it is (≤ 0: no cost); NaN for anything that is not a decimal
+ * number (hex, "Infinity", "", …).
  */
 export function metafieldCost(amount: string): number {
   const text = String(amount).trim();
-  const m = /^\+?(\d*)(?:\.(\d*))?$/.exec(text);
-  if (!m || (m[1] === "" && !m[2])) {
-    const value = Number(text); // an exponent form, or junk (NaN)
-    return Number.isFinite(value) ? Math.min(COST_MAX, value) : Number.NaN;
-  }
-  const whole = m[1] ?? "";
-  const digits = whole + (m[2] ?? "");
+  const m = /^([+-]?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/.exec(text);
+  if (!m || (m[2] === "" && !m[3])) return Number.NaN;
+  if (m[1] === "-") return Number(text); // ≤ 0: the caller drops it (no cost)
+  const whole = m[2] ?? "";
+  const digits = whole + (m[3] ?? "");
   const lead = digits.length - digits.replace(/^0+/, "").length;
   const significant = digits.slice(lead).replace(/0+$/, "");
   if (significant === "") return 0;
   let value: number;
+  // The same decimal in any notation parses to the same (correctly rounded) double.
   if (significant.length <= COST_SIGNIFICANT_DIGITS) value = Number(text);
   else {
     // Keep 15 digits, one more unit in the 15th when anything non-zero follows (it always does here).
     const kept = BigInt(digits.slice(lead, lead + COST_SIGNIFICANT_DIGITS)) + 1n;
-    const exponent = whole.length - lead - COST_SIGNIFICANT_DIGITS;
+    const exponent = whole.length + Number(m[4] ?? 0) - lead - COST_SIGNIFICANT_DIGITS;
     value = Number(`${kept}e${exponent}`);
   }
-  if (value <= 0) return value;
+  // A positive amount (Infinity past 1e308 included) → within the range.
   return Math.min(COST_MAX, Math.max(COST_MIN, value));
 }
 

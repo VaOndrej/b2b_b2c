@@ -588,6 +588,14 @@ export class FakeShopify implements AdminClient {
             };
           }),
         };
+      case "WonSyncProductsInCollection":
+        return {
+          nodes: (v.ids as string[]).map((id) => {
+            const product = this.products.get(id);
+            if (!product) return null;
+            return { __typename: "Product", id, inCollection: (this.collections.get(v.collection as string) ?? []).includes(id) };
+          }),
+        };
       case "WonSyncVariantProducts":
         return {
           nodes: (v.ids as string[]).map((id) => {

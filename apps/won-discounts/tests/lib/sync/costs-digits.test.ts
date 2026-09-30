@@ -103,3 +103,34 @@ test("an amount of ANY length is cut to 15 significant digits, rounded UP (the s
   const tiny = writtenCost("0.000000000000000000000000123");
   assert.ok(digitsOf(tiny).exponent >= -22 && JSON.parse(tiny) >= 1.23e-25, tiny);
 });
+
+test("an amount in exponent form goes through the SAME rules: 15 significant digits rounded up, clamped into the range; anything that is not a decimal number is no cost (audit fix round 4)", () => {
+  const next = rng(20261001);
+  const int = (n: number) => Math.floor(next() * n);
+  assert.equal(writtenCost("1.5e2"), "150");
+  assert.equal(writtenCost("1.23456789012345678e5"), "123456.789012346", "cut to 15 digits, rounded up");
+  assert.equal(writtenCost("12345678901234567890E-10"), "1234567890.12346");
+  assert.equal(writtenCost("5e-30"), "1e-20", "clamped at the minimum like a long decimal");
+  assert.equal(writtenCost("0.0000000000000000000000000000000000000001"), "1e-20", "an underflow is still a (tiny) cost, clamped");
+  assert.equal(writtenCost("1e400"), "1000000000000000", "clamped at the maximum");
+  for (const junk of ["0x10", "0b1", "1e", "e5", "1e5.5", "--1", "1.2.3", "Infinity", "", ".", "-5e2"]) {
+    assert.equal(desiredCostValue({ amount: junk, currencyCode: "CZK" }), null, junk);
+  }
+  for (let n = 0; n < 20_000; n += 1) {
+    const significant = 1 + int(35);
+    let digits = String(1 + int(9));
+    for (let i = 1; i < significant; i += 1) digits += String(int(10));
+    const point = int(digits.length + 1);
+    const mantissa = point === digits.length ? digits : `${digits.slice(0, point) || "0"}.${digits.slice(point)}`;
+    const amount = `${mantissa}${int(2) ? "e" : "E"}${int(2) ? "-" : int(2) ? "+" : ""}${int(40)}`;
+    const text = writtenCost(amount);
+    const { significant: kept, exponent } = digitsOf(text);
+    assert.ok(kept <= 15, `${amount} → ${text}: ${kept} significant digits`);
+    assert.ok(exponent >= -22 && exponent <= 22, `${amount} → ${text}: exponent ${exponent}`);
+    const written = JSON.parse(text) as number;
+    const value = Number(amount);
+    if (value <= 1e15) assert.ok(written >= value, `${amount} → ${text}: never a lower cost`);
+    if (value >= 1e-20 && value <= 1e15) assert.ok((written - value) / value <= 1e-14, `${amount} → ${text}: within one unit of the 15th digit`);
+    assert.equal(JSON.stringify(written), text, "prints back as written");
+  }
+});

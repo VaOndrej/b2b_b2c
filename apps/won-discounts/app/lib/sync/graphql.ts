@@ -411,6 +411,18 @@ export const GQL = {
   }
 }`,
 
+  // Membership read one by one (audit fix round 4): is each product in a collection this pass could not
+  // read (the live config lists it; it is too large, or past the budget)? products.ts planProducts.
+  productsInCollection: `query WonSyncProductsInCollection($ids: [ID!]!, $collection: ID!) {
+  nodes(ids: $ids) {
+    __typename
+    ... on Product {
+      id
+      inCollection(id: $collection)
+    }
+  }
+}`,
+
   variantProducts: `query WonSyncVariantProducts($ids: [ID!]!) {
   nodes(ids: $ids) {
     __typename

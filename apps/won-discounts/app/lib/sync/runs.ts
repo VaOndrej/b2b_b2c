@@ -2,7 +2,14 @@
 //   - did a run leave the shop function config APPLIED (written — or already
 //     equal — and verified)? Only such a run proves what checkout runs; a
 //     products-only refresh, a background product lane or a held / failed
-//     write does not;
+//     write does not — nor a campaign switch's phase 1 whose final write was
+//     held (audit fix round 4): phase 1 carries the live MARGIN part unchanged
+//     (sync.server.ts phaseOnePayload), so the margin — and the collections it
+//     folds — is still the one the last applying run wrote; the plan is
+//     recorded with the final write only (recordAppliedPlan), so the fold
+//     views and appliedPlanOf read the same run. (A first sync's phase 1 — no
+//     live margin to keep — folds every collection: checkout is then stricter
+//     than the views say until the final write, never looser.);
 //   - which ConfigVersion the newest applying run synced, and whether the
 //     STORED config still equals it for everything that runs (audit P2-2: a
 //     process that died between the save and its SyncRun leaves a newer
@@ -23,7 +30,8 @@ import { canonicalJson } from "./util";
 
 /**
  * Did this run leave the shop function config APPLIED (written — or already
- * equal — and verified)? A held, failed or rolled-back write does not count.
+ * equal — and verified)? A held, failed or rolled-back write does not count,
+ * nor a campaign switch's phase 1 alone (`shop_config.phase1.*`, see the header).
  */
 export function shopConfigApplied(steps: readonly SyncStep[]): boolean {
   const written = steps.some((step) => step.step === "shop_config.write" && step.ok);
