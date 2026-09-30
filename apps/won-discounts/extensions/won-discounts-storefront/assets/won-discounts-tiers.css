@@ -1,0 +1,9 @@
+/* Won Discounts — quantity tiers block (MVP 3, contract K8). Skeleton created by
+   the controller so the admin preview can import this file; T4 owns it. Colors
+   and fonts inherit from the theme (inherit / currentColor); the accent comes
+   from the block setting via --won-tiers-accent. */
+.won-tiers {
+  --won-tiers-accent: currentColor;
+  color: inherit;
+  font: inherit;
+}
