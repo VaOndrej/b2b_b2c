@@ -85,6 +85,34 @@ export async function marginImpactIdle(shop: string): Promise<void> {
   }
 }
 
+/**
+ * Refreshes of a shop that have reached `scheduleMarginImpact` (joined or
+ * created a job) but whose *own* `refreshMarginImpact` call is still
+ * pending — tracked separately from `refreshing`, which only drains once the
+ * job itself finishes. Used by `marginImpactPrepared` below.
+ */
+const scheduled = new Map<string, Set<Promise<void>>>();
+
+/**
+ * Resolves once every refresh of `shop` currently being prepared here (config
+ * + plan + currency) has reached `scheduleMarginImpact` — i.e. has joined or
+ * created the (possibly coalesced) job — even though that job, and the
+ * `refreshMarginImpact` calls that triggered it, may still be running or
+ * parked on the clock. Test hook: lets a test fire a burst of triggers and
+ * know they have all registered before releasing a fake clock, instead of
+ * racing a real interval against real DB calls (see `setMarginImpactClock`).
+ * `marginImpactIdle`/`refreshing` cannot serve this: they only drain once the
+ * job has fully finished, which is exactly what a test needs to wait to
+ * happen *after* it releases the clock.
+ */
+export async function marginImpactPrepared(shop: string): Promise<void> {
+  for (;;) {
+    const pending = [...(scheduled.get(shop) ?? [])];
+    if (pending.length === 0) return;
+    await Promise.all(pending);
+  }
+}
+
 // --- The state key (bounded queries) ------------------------------------------------------------------
 
 async function impactKey(db: PrismaClient, shop: string, config: WonDiscountsConfig, currency: string): Promise<string> {
@@ -188,11 +216,29 @@ export function setMarginImpactMinInterval(ms: number): void {
   minIntervalMs = ms;
 }
 
-const wait = (ms: number) =>
+const realWait = (ms: number) =>
   new Promise<void>((resolve) => {
     const timer = setTimeout(resolve, ms);
     (timer as { unref?: () => void }).unref?.();
   });
+
+/** The clock the coalescing wait runs on: real by default, swappable in tests (below). */
+export interface MarginImpactClock {
+  now(): number;
+  wait(ms: number): Promise<void>;
+}
+const realClock: MarginImpactClock = { now: () => Date.now(), wait: realWait };
+let clock: MarginImpactClock = realClock;
+
+/**
+ * Test hook: replace the clock the per-shop minimum interval is measured and
+ * waited on (real by default). Lets a test drive the coalescing race
+ * deterministically instead of racing a real setTimeout against real DB
+ * calls — the cause of the flakiness under load this hook fixes.
+ */
+export function setMarginImpactClock(next: MarginImpactClock | null): void {
+  clock = next ?? realClock;
+}
 
 /**
  * Compute the shop's impact in the background (never awaited by a request).
@@ -211,15 +257,15 @@ export function scheduleMarginImpact(args: ImpactArgs): Promise<void> {
     let current: ImpactArgs | null = args;
     try {
       while (current) {
-        const delay = (lastComputedAt.get(args.shop) ?? Number.NEGATIVE_INFINITY) + minIntervalMs - Date.now();
-        if (delay > 0) await wait(delay);
+        const delay = (lastComputedAt.get(args.shop) ?? Number.NEGATIVE_INFINITY) + minIntervalMs - clock.now();
+        if (delay > 0) await clock.wait(delay);
         if (job.next) {
           current = job.next; // the newest request that came in while waiting
           job.next = null;
         }
         try {
           if (await computeOnce(current)) {
-            lastComputedAt.set(args.shop, Date.now());
+            lastComputedAt.set(args.shop, clock.now());
             if (lastComputedAt.size > 1_000) lastComputedAt.delete(lastComputedAt.keys().next().value as string);
           }
         } catch (error) {
@@ -295,6 +341,17 @@ export function refreshMarginImpact(shop: string, deps: { db: PrismaClient; clie
 }
 
 async function prepareAndSchedule(shop: string, deps: { db: PrismaClient; client?: AdminClient | null; plan?: (shop: string) => Promise<ShopPlan> }): Promise<void> {
+  let markScheduled!: () => void;
+  const reachedSchedule = new Promise<void>((resolve) => {
+    markScheduled = resolve;
+  });
+  const set = scheduled.get(shop) ?? new Set<Promise<void>>();
+  set.add(reachedSchedule);
+  scheduled.set(shop, set);
+  void reachedSchedule.finally(() => {
+    set.delete(reachedSchedule);
+    if (set.size === 0 && scheduled.get(shop) === set) scheduled.delete(shop);
+  });
   try {
     const loaded = await loadConfig(deps.db, shop);
     if (!loaded.exists || loaded.unreadable || loaded.readOnly) return;
@@ -303,9 +360,13 @@ async function prepareAndSchedule(shop: string, deps: { db: PrismaClient; client
     const config = await impactConfigOf(deps.db, shop, gateConfigForPlan(loaded.config, plan).config);
     const currency = await backgroundCurrency(deps.db, shop, deps.client ?? null);
     if (!currency) return;
-    await scheduleMarginImpact({ db: deps.db, shop, config, currency });
+    const job = scheduleMarginImpact({ db: deps.db, shop, config, currency });
+    markScheduled(); // joined or created the (possibly coalesced) job — tests may now be waiting on marginImpactPrepared
+    await job;
   } catch (error) {
     console.error(`[won-margin] impact refresh of ${shop}: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    markScheduled(); // a bail-out above never reached scheduleMarginImpact — resolve anyway so a test's wait cannot hang
   }
 }
 

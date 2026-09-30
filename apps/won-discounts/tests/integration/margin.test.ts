@@ -17,6 +17,7 @@ import {
   saveMarginSettings,
 } from "../../app/lib/integration/margin.server.ts";
 import { setMarginImpactMinInterval } from "../../app/lib/integration/margin-impact.server.ts";
+import type { MarginImpactClock } from "../../app/lib/integration/margin-impact.server.ts";
 import { overviewData, tryCartAction } from "../../app/lib/integration/pages.server.ts";
 import { clearMarketCountryCache, estimateShopToCartRate } from "../../app/lib/integration/try-cart.server.ts";
 import { costIdle } from "../../app/lib/sync/cost-lane.server.ts";
@@ -988,8 +989,47 @@ test("Pro preview with protection OFF and a folded collection: the loader and th
   assert.equal(marginCatalogueReads(), reads, "no load recomputed: both sides key the same config");
 });
 
+/**
+ * A clock for `setMarginImpactClock` whose `wait` never resolves on its own —
+ * only when `releaseWaits` is called — so a test can drive the coalescing
+ * race deterministically: fire a burst of triggers, wait for them all to
+ * register (`marginImpactPrepared`), assert nothing computed yet, then
+ * release. `now()` starts at the real clock so it composes with a
+ * `lastComputedAt` recorded earlier under the real clock (see the test
+ * below), without ever depending on real elapsed time for correctness.
+ */
+function fakeMarginClock(): { clock: MarginImpactClock; requestedDelays: number[]; releaseWaits(): void } {
+  let t = Date.now();
+  const pendingResolvers: (() => void)[] = [];
+  const requestedDelays: number[] = [];
+  return {
+    requestedDelays,
+    clock: {
+      now: () => t,
+      wait: (ms: number) => {
+        requestedDelays.push(ms);
+        return new Promise<void>((resolve) => {
+          pendingResolvers.push(() => {
+            t += ms;
+            resolve();
+          });
+        });
+      },
+    },
+    releaseWaits() {
+      const resolvers = pendingResolvers.splice(0);
+      for (const resolve of resolvers) resolve();
+    },
+  };
+}
+
 test("background recompute (audit fix round 2): Pro shops only, and at most once per minimum interval per shop", async () => {
-  const { refreshMarginImpact, setMarginImpactMinInterval: setInterval } = await import("../../app/lib/integration/margin-impact.server.ts");
+  const {
+    refreshMarginImpact,
+    setMarginImpactMinInterval: setInterval,
+    setMarginImpactClock,
+    marginImpactPrepared,
+  } = await import("../../app/lib/integration/margin-impact.server.ts");
   const { startCostJob } = await import("../../app/lib/sync/cost-lane.server.ts");
   // Free, protection on: a webhook batch recomputes nothing (the editor note computes on demand).
   const free = storeWithCatalogue();
@@ -1009,19 +1049,26 @@ test("background recompute (audit fix round 2): Pro shops only, and at most once
   await saveMarginSettings(proCtx, settings(), { configVersion: null });
   await settle();
   setInterval(300);
+  const fake = fakeMarginClock();
+  setMarginImpactClock(fake.clock);
   try {
     const first = marginCatalogueReads();
-    const started = Date.now();
     for (const cost of ["7.00", "8.00", "9.00"]) {
       pro.sync.setCost("gid://shopify/ProductVariant/101", cost);
       await startCostJob(shop, { client: pro, db: db.prisma, plan: async () => "pro" }, { kind: "items", inventoryItemIds: ["gid://shopify/InventoryItem/101"] });
     }
     void refreshMarginImpact(shop, { db: db.prisma, client: pro, plan: async () => "pro" });
-    await settle();
+    // All four triggers have registered with the coalesced job — deterministic,
+    // no real timer involved yet — before we let the interval's wait resolve.
+    await marginImpactPrepared(shop);
+    assert.equal(marginCatalogueReads(), first, "parked on the interval, nothing computed yet");
+    assert.ok(fake.requestedDelays.length >= 1 && fake.requestedDelays[0] >= 250, "waited close to the full interval since the last computation");
+    fake.releaseWaits();
+    await marginImpactIdle(shop);
     assert.equal(marginCatalogueReads(), first + 1, "coalesced into one computation");
-    assert.ok(Date.now() - started >= 250, "not before the interval since the last one");
     assert.equal((await loadMarginScreen(proCtx)).impact?.status, "ready", "and it is the newest state's");
   } finally {
+    setMarginImpactClock(null);
     setInterval(0);
   }
 });
