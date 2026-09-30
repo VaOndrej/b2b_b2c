@@ -119,7 +119,14 @@ export interface NormalizedLine {
   /** As given (validated by margin.ts costMinorUnits); null = none. */
   unitCost: number | null;
   unitCostCurrency: string | null;
+  /** The metafield's `marginRefs` that are strings. */
   marginRefs: readonly string[];
+  /**
+   * How many entries the metafield's `marginRefs` array has, junk included (0
+   * when not an array): more than margin.ts MAX_MARGIN_REFS → the payload's
+   * strictest setting applies (resolveProductMargin).
+   */
+  marginRefCount: number;
 }
 
 export interface NormalizedCart {
@@ -212,6 +219,7 @@ export function normalizeCart(input: CartPlanInput): NormalizedCart {
       unitCost: typeof raw.unitCost === "number" ? raw.unitCost : null,
       unitCostCurrency: typeof raw.unitCostCurrency === "string" ? raw.unitCostCurrency : null,
       marginRefs: strings(raw.marginRefs),
+      marginRefCount: Array.isArray(raw.marginRefs) ? raw.marginRefs.length : 0,
     });
   }
 

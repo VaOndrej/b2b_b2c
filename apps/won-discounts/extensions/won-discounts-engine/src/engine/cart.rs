@@ -31,8 +31,12 @@ pub struct LineInput<'a> {
     /// The currency of `unit_cost` (the variant metafield's `cur`).
     pub unit_cost_currency: Option<&'a str>,
     /// Numeric ids of the product's decisive margin collections (product metafield
-    /// `marginRefs`); read only while the payload has collection settings.
+    /// `marginRefs`); read only while the payload has collection settings, and
+    /// only when there are at most MAX_MARGIN_REFS of them.
     pub margin_refs: &'a [MarginRef],
+    /// How many entries the metafield's `marginRefs` has, junk included (0 when
+    /// not read): above MAX_MARGIN_REFS the payload's strictest setting applies.
+    pub margin_ref_count: usize,
 }
 
 /// The node's campaign variables (C4/C7): `id` + `varsVersion` from its
@@ -75,6 +79,7 @@ pub struct NormalizedLine<'a> {
     pub unit_cost: Option<f64>,
     pub unit_cost_currency: Option<&'a str>,
     pub margin_refs: &'a [MarginRef],
+    pub margin_ref_count: usize,
 }
 
 impl NormalizedLine<'_> {
@@ -129,6 +134,7 @@ pub fn normalize_cart(input: CartInput<'_>) -> NormalizedCart<'_> {
                 unit_cost: line.unit_cost,
                 unit_cost_currency: line.unit_cost_currency,
                 margin_refs: line.margin_refs,
+                margin_ref_count: line.margin_ref_count,
             }
         })
         .collect();

@@ -64,10 +64,11 @@ const INSTRUCTION_BUDGET = (INSTRUCTION_LIMIT / 10) * 7;
  * and order-search worst cases, measured with the ids the checkout sends — app
  * rule ids, Shopify's cart line ids) keep ≥ 10 % headroom: 9.9 M up to 200
  * lines. This gates the realistic worst cases, not every shape: with the
- * searches bounded (the Pro stack cap, the order search's 16 exact lines) no
- * shape the audits found reaches the limit with the data the app writes (max
- * 93.7 %, 12 rule refs on every line), and legacy data with 16–30 marginRefs a
- * product reaches 103–105 % (README "Instruction budget", MVP 2 audit round 4).
+ * searches bounded (the Pro stack cap, the order search's 16 exact lines) and
+ * at most 4 marginRefs read a product (more → the store's strictest setting),
+ * no input the audits found reaches the limit (max 93.7 %, 12 rule refs on every
+ * line; legacy data with 16–30 marginRefs a product at most 88.7 %; README
+ * "Instruction budget", MVP 2 audit round 4b).
  */
 const WORST_CASE_BUDGET = (INSTRUCTION_LIMIT / 100) * 90;
 /** The shared config's budget (C7), bytes of its JSON. */

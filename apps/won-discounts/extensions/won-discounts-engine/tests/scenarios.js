@@ -652,6 +652,26 @@ function allScenarios() {
     expected: out(products(pc("Letní sleva", [1], perItem("100.00")), pc("Letní sleva", [3], perItem("222.22")))),
   },
   {
+    name: "lines-margin-refs-over-limit",
+    description:
+      "A product whose metafield lists more than 4 marginRefs (legacy data, or hand-made; the sync writes at most 4) is not resolved ref by ref: it takes the store's strictest margin setting, every collection folded into the global values — never looser than any collection it could be in. Global minimum margin 10 % and maximum discount 50 %; collection 1 minimum 20 %, collection 2 maximum 30 %, collection 3 minimum 5 % and maximum 80 % (looser). 90 % off 1 000 Kč: line 1 (collection 3) and line 4 (collection 3 listed 4 times) may give 800 Kč; line 2 (collection 3 listed 5 times) only the strictest 30 % → 300 Kč; line 3 (cost 400 Kč, 5 entries, junk included) the strictest 20 % margin → floor 500 Kč → 500 Kč.",
+    target: "lines",
+    rules: [pct("ninety", 90, { name: "Sleva 90 %" })],
+    margin: marginOn({ minMarginPercent: 10, maxDiscountPercent: 50 }, [
+      { collectionId: "gid://shopify/Collection/1", minMarginPercent: 20 },
+      { collectionId: "gid://shopify/Collection/2", maxDiscountPercent: 30 },
+      { collectionId: "gid://shopify/Collection/3", minMarginPercent: 5, maxDiscountPercent: 80 },
+    ]),
+    role: AUTO,
+    lines: [
+      { n: 1, price: "1000.0", won: { ruleIds: ["ninety"], marginRefs: ["3"] } },
+      { n: 2, price: "1000.0", won: { ruleIds: ["ninety"], marginRefs: ["3", "3", "3", "3", "3"] } },
+      { n: 3, price: "1000.0", won: { ruleIds: ["ninety"], marginRefs: ["3", "x", 7, null, "3"] }, variantMeta: costOf(400) },
+      { n: 4, price: "1000.0", won: { ruleIds: ["ninety"], marginRefs: ["3", "3", "3", "3"] } },
+    ],
+    expected: out(products(pc("Sleva 90 %", [1, 4], perItem("800.00")), pc("Sleva 90 %", [2], perItem("300.00")), pc("Sleva 90 %", [3], perItem("500.00")))),
+  },
+  {
     name: "lines-margin-foreign-currency-rate",
     description:
       "Cart in EUR, shop in CZK: the cost (500 Kč) is converted with presentmentCurrencyRate (0.04 → 20 €), + 10 % minimum margin → floor 22,23 €, so 60 % of 40 € is cut to 17,77 €. Line 2 has no cost price: the 30 % ceiling leaves 12 € of its 60 %.",

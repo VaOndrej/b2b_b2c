@@ -6,7 +6,7 @@
 // float expressions in the same order.
 
 import type { NormalizedCart } from "./cart.ts";
-import { costMinorUnits, type FunctionMarginPayload, marginFloorUnit, type MarginSettings, resolveMargin } from "./margin.ts";
+import { costMinorUnits, type FunctionMarginPayload, MAX_MARGIN_REFS, marginFloorUnit, type MarginSettings, resolveMargin, strictestMargin } from "./margin.ts";
 import type { EmittedValue, PlanOrder, PlanStack } from "./plan.ts";
 import { type Candidate, label, orderAmount, ownerOf, type Rule, type StackContext, type WorkLine } from "./plan-internal.ts";
 
@@ -14,11 +14,20 @@ import { type Candidate, label, orderAmount, ownerOf, type Rule, type StackConte
 
 export type MarginOn = Extract<FunctionMarginPayload, { enabled: true }>;
 
-/** The floor of every discountable line (margin.ts): its settings, its cost in the cart currency, its lowest item price. */
+/**
+ * The floor of every discountable line (margin.ts): its settings, its cost in
+ * the cart currency, its lowest item price. A line whose product lists more
+ * than MAX_MARGIN_REFS marginRefs takes the payload's strictest setting,
+ * computed once (margin.ts resolveProductMargin).
+ */
 export function computeFloors(work: WorkLine[], margin: MarginOn, cart: NormalizedCart): void {
+  let strictest: MarginSettings | null = null;
   for (const w of work) {
     if (w.excluded !== null) continue;
-    const settings = resolveMargin(margin, w.line.marginRefs) as MarginSettings;
+    const settings =
+      w.line.marginRefCount > MAX_MARGIN_REFS
+        ? (strictest ??= strictestMargin(margin) as MarginSettings)
+        : (resolveMargin(margin, w.line.marginRefs) as MarginSettings);
     const costMinor = costMinorUnits(
       w.line.unitCost ?? undefined,
       w.line.unitCostCurrency ?? undefined,

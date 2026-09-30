@@ -22,6 +22,10 @@
 // Collections (Pro): a product in collections with their own setting takes the
 // strictest across them (max m, min p); a field a collection leaves empty is the
 // global value. Free: plan-gate.ts has already folded collections into global.
+// A product whose metafield lists more than MAX_MARGIN_REFS (4) refs is not
+// resolved ref by ref: it takes the payload's strictest setting (every
+// collection folded into the global values), never looser than any of its
+// collections (resolveProductMargin).
 
 import { variantKey } from "./cart.ts";
 import type { MarginModule, ReadonlyDeep, WonDiscountsConfig } from "./config.ts";
@@ -203,6 +207,51 @@ export function resolveMargin(payload: FunctionMarginPayload, marginRefs: readon
   return { minMarginPercent, maxDiscountPercent, source: matched ? "collection" : "global" };
 }
 
+/**
+ * The most `marginRefs` a product is resolved by, one by one ([spec], MVP 2
+ * audit round 4b). The sync writes at most 4 (≤ 2 decisive, ≤ 4 in its
+ * transition bridge, targeting.ts). A product metafield that lists MORE —
+ * legacy data from before the decisive refs, or hand-made — takes the payload's
+ * strictest setting instead (strictestMargin): never looser than any
+ * collection it could be in, so it fails closed, and a checkout run never
+ * reads more than 4 refs a line (16–30 refs a product took a 200-line run to
+ * 103–105 % of Shopify's instruction limit: no Won discount at all).
+ */
+export const MAX_MARGIN_REFS = 4;
+
+/**
+ * Every collection folded into the global values, as Free's plan-gate.ts does:
+ * the highest minimum margin and the lowest maximum discount over the global
+ * values and every `col` entry (an empty field being the global value). Null
+ * when protection is off. `source` is "collection" when a collection is
+ * stricter than the global values in either one.
+ */
+export function strictestMargin(payload: FunctionMarginPayload): MarginSettings | null {
+  if (!payload.enabled) return null;
+  const globalMin = payload.min ?? 0;
+  const globalMax = payload.max;
+  let minMarginPercent = globalMin;
+  let maxDiscountPercent = globalMax;
+  const col = payload.col ?? {};
+  for (const key of Object.keys(col)) {
+    const [m, p] = col[key];
+    minMarginPercent = Math.max(minMarginPercent, m ?? globalMin);
+    maxDiscountPercent = Math.min(maxDiscountPercent, p ?? globalMax);
+  }
+  const source: MarginSource = minMarginPercent !== globalMin || maxDiscountPercent !== globalMax ? "collection" : "global";
+  return { minMarginPercent, maxDiscountPercent, source };
+}
+
+/**
+ * The settings of a product by its metafield's `marginRefs`: `count` = how many
+ * entries the metafield's array has (junk included; normalizeCart
+ * `marginRefCount`). More than MAX_MARGIN_REFS → strictestMargin, else
+ * resolveMargin over the (string) refs.
+ */
+export function resolveProductMargin(payload: FunctionMarginPayload, marginRefs: readonly string[], count = marginRefs.length): MarginSettings | null {
+  return count > MAX_MARGIN_REFS ? strictestMargin(payload) : resolveMargin(payload, marginRefs);
+}
+
 /** Minor units per major unit of a currency: exactly 1, 100 or 1000 (money.ts exponents 0, 2, 3). */
 function minorScale(currency: string): number {
   const exponent = currencyExponent(currency);
@@ -323,7 +372,7 @@ export function marginImpact(
   const payload = buildMarginPayload({ ...config.modules.margin, enabled: true }, currency);
   let withoutCost = 0;
   const measured = variants.map((v) => {
-    const settings = resolveMargin(payload, v.marginRefs) as MarginSettings;
+    const settings = resolveProductMargin(payload, v.marginRefs) as MarginSettings;
     const costMinor = finite(v.cost) && v.cost > 0 ? v.cost : null;
     if (costMinor === null) withoutCost += 1;
     const price = finite(v.price) ? Math.max(0, Math.floor(v.price)) : 0;

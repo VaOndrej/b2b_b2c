@@ -10,7 +10,7 @@ use shopify_function::run_function_with_input;
 use super::cart::{CampaignInput, CartInput, LineInput};
 use super::config::Config;
 use super::emit::{emit_for_node, NodeEmission, NodeRole};
-use super::margin::{ceil_tol, cost_minor_units, margin_floor_unit, resolve_margin, MarginBasis, MarginRef, MARGIN_TOLERANCE};
+use super::margin::{ceil_tol, cost_minor_units, margin_floor_unit, resolve_margin, strictest_margin, MarginBasis, MarginRef, MARGIN_TOLERANCE, MAX_MARGIN_REFS};
 use super::order_search::{order_set_limit, search_order_sets, OrderSet, OrderSetLine, EXACT_LINES, NEAR_FACTOR, SAFE_BELOW};
 use super::plan::{plan_cart, CartPlan, EmittedValue, Excluded, PlanFailure, RuleState, ShippingValue};
 use crate::json::ShopConfig;
@@ -86,6 +86,7 @@ fn cart<'a>(lines: &'a [Line], codes: &[&'a str]) -> CartInput<'a> {
                 unit_cost: l.cost,
                 unit_cost_currency: l.cur,
                 margin_refs: &l.margin_refs,
+                margin_ref_count: l.margin_refs.len(),
             })
             .collect(),
         entered_codes: codes.to_vec(),
@@ -787,6 +788,43 @@ fn margin_off_plans_exactly_like_mvp1() {
         assert_eq!((order.stack.amount, order.base, order.excluded_line_ids.len()), (33_000, 110_000, 0));
         assert_eq!(order.stack.value, EmittedValue::Percent(30.0));
     }
+}
+
+#[test]
+fn a_product_listing_more_than_4_margin_refs_takes_the_strictest_setting_of_the_payload() {
+    assert_eq!(MAX_MARGIN_REFS, 4);
+    // Global: minimum margin 10 %, at most 50 % off without a cost. Collection 1: minimum 20 %;
+    // 2: at most 30 %; 3: minimum 5 % and at most 80 % (looser than the global values).
+    let margin = r#"{"enabled": true, "min": 10, "max": 50, "cur": "CZK", "col": {"1": [20, null], "2": [null, 30], "3": [5, 80]}}"#;
+    let c = margin_rules(&pct("a", 90.0, ""), margin, "");
+    let strictest = strictest_margin(c.margin.as_ref().unwrap());
+    assert_eq!((strictest.min_margin_percent, strictest.max_discount_percent, strictest.collection), (20.0, 30.0, true));
+    let with_refs = |l: Line, refs: &[&str]| Line { margin_refs: refs.iter().map(|&r| MarginRef::from(r)).collect(), ..l };
+    let lines = [
+        // 1 000 Kč, 90 % off, no cost: the ceiling p decides.
+        with_refs(line("one", 1, 100_000, &["a"]), &["3"]),
+        with_refs(line("four", 1, 100_000, &["a"]), &["3", "3", "3", "3"]),
+        with_refs(line("five", 1, 100_000, &["a"]), &["3", "3", "3", "3", "3"]),
+        with_refs(line("pair", 1, 100_000, &["a"]), &["1", "2"]),
+        line("none", 1, 100_000, &["a"]),
+        // A cost of 400 Kč: the minimum margin decides.
+        with_refs(cost_line("cost5", 1, 100_000, 400.0, &["a"]), &["3", "3", "3", "3", "3"]),
+        with_refs(cost_line("cost1", 1, 100_000, 400.0, &["a"]), &["3"]),
+    ];
+    let plan = plan_cart(cart(&lines, &[]), Some(&c));
+    let amounts: Vec<i64> = ["one", "four", "five", "pair", "none", "cost5", "cost1"].iter().map(|&id| product_of(&plan, id).unwrap().2).collect();
+    // p 80 → 800 Kč; 4 refs are still read (80); 5 refs → the strictest p 30 → 300 Kč (never
+    // looser than any collection); {1, 2} → p 30; none → the global 50; with the cost, 5 refs →
+    // m 20 → floor 500 Kč, one ref → m 5 → floor 421,06 Kč.
+    assert_eq!(amounts, vec![80_000, 80_000, 30_000, 30_000, 50_000, 50_000, 57_894]);
+    // Without collection settings a product's refs change nothing, however many.
+    let global = margin_rules(&pct("a", 90.0, ""), r#"{"enabled": true, "min": 10, "max": 50, "cur": "CZK"}"#, "");
+    let many = [with_refs(line("six", 1, 100_000, &["a"]), &["1", "2", "3", "4", "5", "6"])];
+    assert_eq!(product_of(&plan_cart(cart(&many, &[]), Some(&global)), "six").unwrap().2, 50_000);
+    // Every collection looser than the global values: the strictest is the global setting.
+    let loose = margin_rules(&pct("a", 90.0, ""), r#"{"enabled": true, "min": 10, "max": 50, "col": {"3": [5, 80]}}"#, "");
+    let s = strictest_margin(loose.margin.as_ref().unwrap());
+    assert_eq!((s.min_margin_percent, s.max_discount_percent, s.collection), (10.0, 50.0, false));
 }
 
 #[test]

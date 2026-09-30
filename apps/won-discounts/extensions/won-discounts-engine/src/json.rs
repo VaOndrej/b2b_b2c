@@ -13,7 +13,7 @@ use shopify_function::wasm_api::{read::Error, Deserialize, InternedStringId, Val
 use crate::engine::config::Config;
 use crate::engine::table::Table;
 use crate::engine::js;
-use crate::engine::margin::MarginRef;
+use crate::engine::margin::{MarginRef, MAX_MARGIN_REFS};
 
 // --- Object keys, interned once per run ----------------------------------------------------
 //
@@ -417,11 +417,22 @@ impl WonProduct {
         self.rule_ids.take().unwrap_or_default()
     }
 
+    /// How many entries `marginRefs` has, junk included (normalizeCart
+    /// `marginRefCount`): its length, read without reading any entry.
+    pub fn margin_ref_count(&self) -> usize {
+        self.margin_refs.as_ref().map_or(0, |(_, len)| *len)
+    }
+
     /// `strings(won.marginRefs)` (normalizeCart): the numeric ids of the product's
     /// decisive margin collections (margin protection, MVP 2), each read into a
-    /// number (MarginRef) — its text is not kept.
+    /// number (MarginRef) — its text is not kept. None is read when there are
+    /// more than MAX_MARGIN_REFS: the product then takes the payload's strictest
+    /// setting, whatever they say.
     pub fn margin_refs(&self) -> Vec<MarginRef> {
         let Some((refs, len)) = self.margin_refs else { return Vec::new() };
+        if len > MAX_MARGIN_REFS {
+            return Vec::new();
+        }
         let mut out = Vec::with_capacity(len);
         for i in 0..len {
             if let Some(text) = refs.get_at_index(i).as_string() {
@@ -754,6 +765,11 @@ mod tests {
         assert_eq!(margin_refs(r#"{"marginRefs": ["7"]}"#), refs(&["7"]));
         assert_eq!(margin_refs(r#"{"marginRefs": "1"}"#), refs(&[]));
         assert_eq!(margin_refs(r#"{"ruleIds": ["a"]}"#), refs(&[]));
+        // (entries, refs read): more than 4 entries, junk included → none read (the payload's strictest setting applies).
+        let counted = |json: &str| run_function_with_input(|w: WonProduct| Ok((w.margin_ref_count(), w.margin_refs().len())), json).unwrap();
+        assert_eq!(counted(r#"{"marginRefs": ["1", "2", "3", 4]}"#), (4, 3));
+        assert_eq!(counted(r#"{"marginRefs": ["1", "2", "3", "4", null]}"#), (5, 0));
+        assert_eq!(counted(r#"{"marginRefs": "12345"}"#), (0, 0));
         let rate = |json: &str| run_function_with_input(|d: DecimalNumber| Ok(d.0), json).unwrap();
         assert_eq!(rate(r#""0.04""#), Some(0.04));
         assert_eq!(rate(r#"" 25.1 ""#), Some(25.1));

@@ -11,6 +11,9 @@
 //                   (finite, > 0).
 // Collections (Pro): the strictest across the product's `marginRefs` that the
 // payload's `col` lists (max m, min p); an empty field is the global value.
+// A product listing more than MAX_MARGIN_REFS (4) refs is not resolved ref by
+// ref: it takes the payload's strictest setting (`strictest_margin`, every
+// collection folded into the global values), and its refs are never read.
 // A `col` key and a ref match when their texts are equal (`hasOwn(col, ref)`).
 // Every key and ref the sync writes is a collection's numeric id, so both are
 // read into a u64 when their text is a canonical decimal number (MarginRef),
@@ -30,6 +33,11 @@ use crate::json::{entries, number, prop, string, Key};
 pub const MARGIN_TOLERANCE: f64 = 1e-6;
 /// CONFIG_LIMITS.minMarginPercent: the highest minimum margin.
 pub const MAX_MIN_MARGIN_PERCENT: f64 = 95.0;
+/// margin.ts MAX_MARGIN_REFS: a product listing more `marginRefs` takes the
+/// payload's strictest setting (never looser than any of its collections), and
+/// a run never reads more than 4 refs a line (audit round 4b: 16–30 refs a
+/// product took a 200-line run to 103–105 % of Shopify's instruction limit).
+pub const MAX_MARGIN_REFS: usize = 4;
 /// The ceiling without a cost when a hand-made value is not a number (margin.ts).
 const DEFAULT_MAX_DISCOUNT_PERCENT: f64 = 50.0;
 
@@ -181,6 +189,18 @@ impl CollectionSettings {
         }
     }
 
+    /// `strictestMargin`'s fold over every entry: the highest minimum margin and
+    /// the lowest maximum discount, from (`min`, `max`), an empty field being
+    /// the global value. Max and min of numbers: the hash order cannot matter.
+    fn strictest(&self, global_min: f64, global_max: f64) -> (f64, f64) {
+        let (mut m, mut p) = (global_min, global_max);
+        for v in self.ids.iter().map(|(_, v)| v).chain(self.texts.iter().map(|(_, v)| v)) {
+            m = m.max(v.0.unwrap_or(global_min));
+            p = p.min(v.1.unwrap_or(global_max));
+        }
+        (m, p)
+    }
+
     /// Every entry as (key text, m, p), sorted by the key text.
     pub fn entries(&self) -> Vec<(String, Option<f64>, Option<f64>)> {
         let mut out: Vec<_> = self.ids.iter().map(|(n, v)| (n.to_string(), v.0, v.1)).collect();
@@ -263,6 +283,16 @@ pub fn resolve_margin(payload: &MarginPayload, margin_refs: &[MarginRef]) -> Mar
         }
     }
     out
+}
+
+/// `strictestMargin`: every collection folded into the global values (max m,
+/// min p over the global values and every `col` entry) — what a product with
+/// more than MAX_MARGIN_REFS refs gets. `collection` when a collection is
+/// stricter than the global values in either one.
+pub fn strictest_margin(payload: &MarginPayload) -> MarginSettings {
+    let (global_min, global_max) = (payload.min.unwrap_or(0.0), payload.max);
+    let (m, p) = payload.col.strictest(global_min, global_max);
+    MarginSettings { min_margin_percent: m, max_discount_percent: p, collection: m != global_min || p != global_max }
 }
 
 /// Minor units per major unit of a currency: exactly 1, 100 or 1000.

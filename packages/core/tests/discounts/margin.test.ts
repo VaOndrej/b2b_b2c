@@ -148,8 +148,10 @@ test("sanitizer: a 0 % margin percent is stored as 0, never -0 (the stricter-sid
     // The payload and its decisive refs carry the same +0 (a tie at 0 stays a tie).
     const payload = buildMarginPayload(margin);
     assert.ok(payload.enabled && Object.is(payload.min, 0) && Object.is(payload.col?.["1"]?.[0], 0) && Object.is(payload.col?.["1"]?.[1], 0));
-    assert.ok(Object.is(resolveMargin(payload, ["1"]).minMarginPercent, 0));
-    assert.ok(Object.is(resolveMargin(payload, ["1"]).maxDiscountPercent, 0));
+    const resolved = resolveMargin(payload, ["1"]);
+    assert.ok(resolved !== null);
+    assert.ok(Object.is(resolved.minMarginPercent, 0));
+    assert.ok(Object.is(resolved.maxDiscountPercent, 0));
   }
 });
 

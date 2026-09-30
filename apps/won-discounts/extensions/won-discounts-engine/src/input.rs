@@ -128,6 +128,7 @@ struct ReadLine {
     unit_cost: Option<f64>,
     unit_cost_currency: Option<String>,
     margin_refs: Vec<MarginRef>,
+    margin_ref_count: usize,
 }
 
 /// Everything a run reads from its input (`adaptInput`), owned: the plan borrows from it.
@@ -193,6 +194,7 @@ impl RunInput {
                 unit_cost: None,
                 unit_cost_currency: None,
                 margin_refs: Vec::new(),
+                margin_ref_count: 0,
             };
             let merchandise = prop(&line, Key::Merchandise);
             let won = sole(&prop(&merchandise, Key::Product), Key::WonProduct).and_then(|metafield| sole(&metafield, Key::JsonValue));
@@ -203,6 +205,7 @@ impl RunInput {
                 read.variant_rule_ids = won.variant_refs(&variant_id);
                 read.outlet = won.is_outlet(&variant_id, &mut outlet_lists);
                 if margin_refs_on {
+                    read.margin_ref_count = won.margin_ref_count();
                     read.margin_refs = won.margin_refs();
                 }
                 read.rule_ids = won.take_rule_ids();
@@ -271,6 +274,7 @@ impl RunInput {
                     unit_cost: l.unit_cost,
                     unit_cost_currency: l.unit_cost_currency.as_deref(),
                     margin_refs: &l.margin_refs,
+                    margin_ref_count: l.margin_ref_count,
                 })
                 .collect(),
             entered_codes: self.entered_codes.iter().map(String::as_str).collect(),

@@ -13,7 +13,7 @@ import { normalizeCart } from "@won/core/discounts/cart";
 import { codeHash } from "@won/core/discounts/code-hash";
 import { emitForNode } from "@won/core/discounts/emit";
 import { mapToFunctionOutput, roundingTiePossible } from "@won/core/discounts/function-output";
-import { ceilTol, costMinorUnits, MARGIN_TOLERANCE, marginFloorUnit, readMarginPayload, resolveMargin } from "@won/core/discounts/margin";
+import { ceilTol, costMinorUnits, MARGIN_TOLERANCE, MAX_MARGIN_REFS, marginFloorUnit, readMarginPayload, resolveMargin, strictestMargin } from "@won/core/discounts/margin";
 import { planCart } from "@won/core/discounts/plan";
 import { ORDER_SEARCH_EXACT_LINES, ORDER_SEARCH_NEAR, orderSetLimit, searchOrderSets } from "@won/core/discounts/plan-margin";
 import { describe, expect, test } from "vitest";
@@ -699,6 +699,29 @@ const TWINS = {
     expect(same.byBefore).toEqual({ members: [0], amount: 100, base: 1000, wanted: 100 });
   },
 
+  a_product_listing_more_than_4_margin_refs_takes_the_strictest_setting_of_the_payload() {
+    expect(MAX_MARGIN_REFS).toBe(4);
+    const margin = { enabled: true, min: 10, max: 50, cur: "CZK", col: { 1: [20, null], 2: [null, 30], 3: [5, 80] } };
+    const strictest = strictestMargin(readMarginPayload(margin));
+    expect([strictest.minMarginPercent, strictest.maxDiscountPercent, strictest.source]).toEqual([20, 30, "collection"]);
+    const withRefs = (l, refs) => ({ ...l, marginRefs: refs });
+    const lines = [
+      withRefs(line("one", 1, 100_000, ["a"]), ["3"]),
+      withRefs(line("four", 1, 100_000, ["a"]), ["3", "3", "3", "3"]),
+      withRefs(line("five", 1, 100_000, ["a"]), ["3", "3", "3", "3", "3"]),
+      withRefs(line("pair", 1, 100_000, ["a"]), ["1", "2"]),
+      line("none", 1, 100_000, ["a"]),
+      withRefs(costLine("cost5", 1, 100_000, 400, ["a"]), ["3", "3", "3", "3", "3"]),
+      withRefs(costLine("cost1", 1, 100_000, 400, ["a"]), ["3"]),
+    ];
+    const plan = planCart(cart(lines), mcfg([pct("a", 90)], margin));
+    expect(["one", "four", "five", "pair", "none", "cost5", "cost1"].map((id) => productOf(plan, id)[2])).toEqual([80_000, 80_000, 30_000, 30_000, 50_000, 50_000, 57_894]);
+    const global = planCart(cart([withRefs(line("six", 1, 100_000, ["a"]), ["1", "2", "3", "4", "5", "6"])]), mcfg([pct("a", 90)], { enabled: true, min: 10, max: 50, cur: "CZK" }));
+    expect(productOf(global, "six")[2]).toBe(50_000);
+    const loose = strictestMargin(readMarginPayload({ enabled: true, min: 10, max: 50, col: { 3: [5, 80] } }));
+    expect([loose.minMarginPercent, loose.maxDiscountPercent, loose.source]).toEqual([10, 50, "global"]);
+  },
+
   the_order_search_takes_a_bound_never_above_the_exact_minimum_over_16_lines_tied_for_it() {
     expect(ORDER_SEARCH_EXACT_LINES).toBe(16);
     expect(1 + ORDER_SEARCH_NEAR).toBe(1 + 2 ** -48);
@@ -817,7 +840,7 @@ const TWINS = {
       };
       const normalized = normalizeCart(adaptInput(input).cart);
       const l = normalized.lines[0];
-      return { cost: [l.unitCost, l.unitCostCurrency], marginRefs: l.marginRefs, rate: normalized.shopToCartRate };
+      return { cost: [l.unitCost, l.unitCostCurrency], marginRefs: l.marginRefs, marginRefCount: l.marginRefCount, rate: normalized.shopToCartRate };
     };
     expect(read({ cost: 12.5, cur: "CZK" }).cost).toEqual([12.5, "CZK"]);
     expect(read({ cost: "5", cur: 7 }).cost).toEqual([null, null]);
@@ -829,6 +852,14 @@ const TWINS = {
     expect(read(null, { marginRefs: ["7"] }).marginRefs).toEqual(["7"]);
     expect(read(null, { marginRefs: "1" }).marginRefs).toEqual([]);
     expect(read(null, { ruleIds: ["a"] }).marginRefs).toEqual([]);
+    // (entries, refs used): more than MAX_MARGIN_REFS entries, junk included → none used.
+    const counted = (product) => {
+      const r = read(null, product);
+      return [r.marginRefCount, r.marginRefCount > MAX_MARGIN_REFS ? 0 : r.marginRefs.length];
+    };
+    expect(counted({ marginRefs: ["1", "2", "3", 4] })).toEqual([4, 3]);
+    expect(counted({ marginRefs: ["1", "2", "3", "4", null] })).toEqual([5, 0]);
+    expect(counted({ marginRefs: "12345" })).toEqual([0, 0]);
     expect(read(null, undefined, "0.04").rate).toBe(0.04);
     expect(read(null, undefined, " 25.1 ").rate).toBe(25.1);
     expect(read(null, undefined, 7).rate).toBe(7);

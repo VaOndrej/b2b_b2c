@@ -25,7 +25,7 @@ use super::describe::{describe_short, DescribedValue};
 use super::table::{bytes_eq, Table, Text};
 use super::hash::code_hash;
 use super::js;
-use super::margin::{resolve_margin, CostContext, FloorRule, MarginPayload, MarginRef};
+use super::margin::{resolve_margin, strictest_margin, CostContext, FloorRule, MarginPayload, MarginRef, MAX_MARGIN_REFS};
 use super::money::mul_sat;
 use super::order_search::{order_set_limit, search_order_sets, OrderSetLine, EXACT_LINES, SAFE_BELOW};
 
@@ -980,7 +980,9 @@ fn floor_total(floor_unit: i64, quantity: i64) -> i64 {
 }
 
 /// `computeFloors`: the floor of every discountable line — its settings (the
-/// strictest of its collections), its cost in the cart currency, its lowest item price.
+/// strictest of its collections; with more than MAX_MARGIN_REFS refs the
+/// payload's strictest setting, computed once), its cost in the cart currency,
+/// its lowest item price.
 fn compute_floors(work: &mut [WorkLine], margin: &MarginPayload, cart: &NormalizedCart) {
     // The cart's currency facts, once (costMinorUnits reads them per line).
     let costs = CostContext::new(cart.shop_to_cart_rate, &cart.currency, margin.cur.as_deref());
@@ -990,11 +992,18 @@ fn compute_floors(work: &mut [WorkLine], margin: &MarginPayload, cart: &Normaliz
     // Lines of one product (and products with the same decisive collections)
     // share their refs: each distinct list is resolved once per run.
     let mut by_refs: Table<&[MarginRef], FloorRule> = Table::default();
+    // A product listing more than MAX_MARGIN_REFS refs: the payload's strictest setting, once.
+    let mut strictest: Option<FloorRule> = None;
     for (w, line) in work.iter_mut().zip(&cart.lines) {
         if w.excluded.is_some() {
             continue;
         }
-        let rule = if margin.col.is_empty() || line.margin_refs.is_empty() {
+        let rule = if line.margin_ref_count > MAX_MARGIN_REFS {
+            *strictest.get_or_insert_with(|| {
+                let settings = strictest_margin(margin);
+                FloorRule::new(settings.min_margin_percent, settings.max_discount_percent)
+            })
+        } else if margin.col.is_empty() || line.margin_refs.is_empty() {
             global
         } else {
             *by_refs.get_or_insert_with(line.margin_refs, || {

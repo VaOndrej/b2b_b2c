@@ -44,7 +44,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 
 import { normalizeCart } from "@won/core/discounts/cart";
 import { roundingTiePossible } from "@won/core/discounts/function-output";
-import { costMinorUnits, marginFloorUnit, readMarginPayload, resolveMargin } from "@won/core/discounts/margin";
+import { costMinorUnits, MAX_MARGIN_REFS, marginFloorUnit, readMarginPayload, resolveProductMargin } from "@won/core/discounts/margin";
 import { orderSetLimit, searchOrderSets } from "@won/core/discounts/plan-margin";
 
 import {
@@ -375,6 +375,9 @@ function generator(seed, onlySearch = false) {
       }
       if (chance(0.15)) won.outlet = chance(0.4) ? true : some([1, 2, 3, 4], 0.5).map((k2) => vid(p * 100 + k2));
       if (chance(0.4)) won.marginRefs = junk(0.3) ? pick(["11", [11, "22"], null]) : some([...MARGIN_COLLECTIONS, "99"], 0.4);
+      // Every even product with 3+ refs lists 2 more (legacy data, more than MAX_MARGIN_REFS: the
+      // payload's strictest setting), without a draw of its own (the cases after it stay as they were).
+      if (Array.isArray(won.marginRefs) && won.marginRefs.length >= 3 && p % 2 === 0) won.marginRefs = [...won.marginRefs, "55", "66"];
       return { p, won: { jsonValue: won } };
     });
   }
@@ -895,7 +898,7 @@ function orderSearchBranches(adapted, plan, hits) {
   plan.lines.forEach((pl, i) => {
     if (pl.excluded !== null) return;
     const nl = cart.lines[i];
-    const settings = resolveMargin(payload, nl.marginRefs);
+    const settings = resolveProductMargin(payload, nl.marginRefs, nl.marginRefCount);
     const costMinor = costMinorUnits(nl.unitCost ?? undefined, nl.unitCostCurrency ?? undefined, cart.shopToCartRate ?? undefined, cart.currency, payload.cur);
     const { floorUnit } = marginFloorUnit({ unitPrice: nl.unitPrice, costMinor, ...settings });
     const after = exclusive ? pl.subtotal : pl.subtotal - (pl.product?.amount ?? 0);
@@ -1058,6 +1061,9 @@ function branchesOf(exportName, input, output, tie) {
   if (cappedLines.some((l) => l.marginCapped.basis === "cost")) hits.add("margin: cost floor");
   if (cappedLines.some((l) => l.marginCapped.basis === "max_percent")) hits.add("margin: maximum-discount floor");
   if (cappedLines.some((l) => l.marginCapped.source === "collection")) hits.add("margin: collection setting applied");
+  if (marginOn && cappedLines.some((l) => (normalizeCart(adapted.cart).lines.find((nl) => nl.id === l.lineId)?.marginRefCount ?? 0) > MAX_MARGIN_REFS)) {
+    hits.add("margin: more than 4 marginRefs, the payload's strictest setting");
+  }
   if (cappedLines.some((l) => l.marginCapped.basis === "cost") && adapted.cart.currency !== "CZK") hits.add("margin: cost converted into another cart currency");
   const usableRate = typeof adapted.cart.shopToCartRate === "number" && adapted.cart.shopToCartRate > 0;
   if (marginOn && cappedLines.length > 0 && adapted.cart.currency !== "CZK" && !usableRate) hits.add("margin: no usable rate (cost unknown)");
@@ -1238,6 +1244,7 @@ describe("Wasm (function-runner)", () => {
       "margin: cost floor",
       "margin: maximum-discount floor",
       "margin: collection setting applied",
+      "margin: more than 4 marginRefs, the payload's strictest setting",
       "margin: cost converted into another cart currency",
       "margin: no usable rate (cost unknown)",
       "margin: cost floor at exponent 0 / 3",
