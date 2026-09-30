@@ -90,16 +90,16 @@ test("saveConfig persists the sanitized config and a ConfigVersion snapshot", as
 
 test("SEC-2: shop A never sees shop B's config", async () => {
   await saveConfig(db.prisma, "shop-a.myshopify.com", {
-    storefront: { appearancePreset: "shop-a-preset" },
+    locales: { cs: { marker: "shop-a-preset" } },
   });
   await saveConfig(db.prisma, "shop-b.myshopify.com", {
-    storefront: { appearancePreset: "shop-b-preset" },
+    locales: { cs: { marker: "shop-b-preset" } },
   });
 
   const a = await loadConfig(db.prisma, "shop-a.myshopify.com");
   const b = await loadConfig(db.prisma, "shop-b.myshopify.com");
-  assert.equal(a.config.storefront.appearancePreset, "shop-a-preset");
-  assert.equal(b.config.storefront.appearancePreset, "shop-b-preset");
+  assert.equal(a.config.locales.cs.marker, "shop-a-preset");
+  assert.equal(b.config.locales.cs.marker, "shop-b-preset");
 });
 
 test("audit P2-1 / C3: a config whose function payload is over budget is refused, nothing is written", async () => {
@@ -331,7 +331,7 @@ test("concurrent first saves for a new shop all succeed (race-safe create)", asy
     for (let round = 0; round < 5; round++) {
       const shop = `concurrent-first-${round}.myshopify.com`;
       const results = await Promise.all(
-        clients.map((client, i) => saveConfig(client, shop, { storefront: { appearancePreset: `instance-${i}` } })),
+        clients.map((client, i) => saveConfig(client, shop, { locales: { cs: { marker: `instance-${i}` } } })),
       );
       assert.deepEqual(
         results.map((r) => r.ok),
@@ -340,7 +340,7 @@ test("concurrent first saves for a new shop all succeed (race-safe create)", asy
       );
       assert.equal(await db.prisma.shopConfig.count({ where: { shop } }), 1);
       assert.equal(await db.prisma.configVersion.count({ where: { shop } }), clients.length, "every save is in the history");
-      const stored = (await loadConfig(db.prisma, shop)).config.storefront.appearancePreset;
+      const stored = (await loadConfig(db.prisma, shop)).config.locales.cs.marker;
       assert.match(stored, /^instance-\d$/);
     }
   } finally {
@@ -389,13 +389,13 @@ function staleFirstRead(real: typeof db.prisma): typeof db.prisma {
 
 test("a first save that loses the create race to another instance retries as an update (P2002)", async () => {
   const shop = "lost-create-race.myshopify.com";
-  const other = await saveConfig(db.prisma, shop, { storefront: { appearancePreset: "other-instance" } });
+  const other = await saveConfig(db.prisma, shop, { locales: { cs: { marker: "other-instance" } } });
   assert.equal(other.ok, true);
 
-  const result = await saveConfig(staleFirstRead(db.prisma), shop, { storefront: { appearancePreset: "this-instance" } });
+  const result = await saveConfig(staleFirstRead(db.prisma), shop, { locales: { cs: { marker: "this-instance" } } });
   assert.equal(result.ok, true, JSON.stringify(result));
   assert.equal(await db.prisma.shopConfig.count({ where: { shop } }), 1);
-  assert.equal((await loadConfig(db.prisma, shop)).config.storefront.appearancePreset, "this-instance");
+  assert.equal((await loadConfig(db.prisma, shop)).config.locales.cs.marker, "this-instance");
   assert.equal(await db.prisma.configVersion.count({ where: { shop } }), 2);
 });
 

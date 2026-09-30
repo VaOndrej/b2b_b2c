@@ -42,7 +42,7 @@ codes, add them to an existing code discount.
 |---|---|
 | Minimum margin | 0–95 % |
 | Ceiling for products without a cost price | 0–100 % |
-| Collections with their own margin setting (Pro) | 100 |
+| Collections with their own margin setting (Pro) | 50 |
 
 ## Settings size
 
