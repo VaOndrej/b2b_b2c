@@ -74,6 +74,7 @@ test("priority: optional integer 0-1000, clamped with an issue, never coerced fr
 test("the split keeps the public surface of @won/core/discounts/config", () => {
   const values = Object.keys(publicConfig).sort();
   assert.deepEqual(values, [
+    "APPEARANCE_PRESETS",
     "COMBINATION_CATEGORIES",
     "CONFIG_LIMITS",
     "DEFAULT_CONFIG",

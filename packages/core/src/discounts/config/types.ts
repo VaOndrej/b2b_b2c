@@ -3,6 +3,7 @@
 
 import type { CurrencyCode, MoneyByCurrency } from "../money.ts";
 import type {
+  AppearancePreset,
   DiscountMethod,
   LocaleCode,
   MinimumScope,
@@ -175,7 +176,8 @@ export interface Campaign {
 }
 
 export interface StorefrontSettings {
-  appearancePreset: string;
+  /** K7: one of APPEARANCE_PRESETS (the sanitizer turns anything else into "default"). */
+  appearancePreset: AppearancePreset;
   cardPricesEnabled: boolean; // BETA: quantity prices on cards/search
 }
 

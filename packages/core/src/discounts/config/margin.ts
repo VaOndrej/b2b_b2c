@@ -5,10 +5,11 @@ import type { ConfigIssue, MarginCollectionOverride, MarginModule } from "./type
 
 // Margin percents (MVP 2) keep ONE decimal, rounded to the stricter side: a
 // minimum margin up, a maximum discount down — never a larger discount than the
-// merchant set. Together with CONFIG_LIMITS.marginOverrides (100) this bounds
+// merchant set. Together with CONFIG_LIMITS.marginOverrides (50) this bounds
 // the compact margin in the function payload: no collection entry is longer than
 // `"1234567890123":[94.9,99.9]`, so the worst case fits the 9 000 B budget next
-// to the largest codes content (tests/discounts/margin-sync.test.ts). A count
+// to the largest codes content and a realistic Pro tier setup
+// (tests/discounts/margin-sync.test.ts). A count
 // limit alone could not guarantee that: an unrounded float such as
 // 33.333333333333336 is 18 bytes on its own.
 

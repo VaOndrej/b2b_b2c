@@ -1,16 +1,33 @@
 // Storefront settings, locale texts and onboarding: never read by the function.
 
 import { DEFAULT_CONFIG } from "./defaults.ts";
-import { ONBOARDING_GOALS, type OnboardingGoal } from "./enums.ts";
+import { APPEARANCE_PRESETS, type AppearancePreset, ONBOARDING_GOALS, type OnboardingGoal } from "./enums.ts";
 import { CONFIG_LIMITS } from "./limits.ts";
-import { isRecord, listParams, listPreview, preview, pushIssue, sanitizeBool, sanitizeString } from "./sanitize-helpers.ts";
+import { isRecord, listParams, listPreview, preview, pushIssue, sanitizeBool } from "./sanitize-helpers.ts";
 import type { ConfigIssue, LocaleDictionary, OnboardingState, StorefrontSettings } from "./types.ts";
 
-export function sanitizeStorefront(v: unknown): StorefrontSettings {
+/**
+ * K7: one of APPEARANCE_PRESETS. Left out → the default, silently; anything
+ * else → the default with `unknown_appearance_preset` {value, fallback}.
+ */
+function sanitizeAppearancePreset(v: unknown, fallback: AppearancePreset, issues: ConfigIssue[]): AppearancePreset {
+  if (v === undefined) return fallback;
+  if (typeof v === "string" && (APPEARANCE_PRESETS as readonly string[]).includes(v)) return v as AppearancePreset;
+  pushIssue(
+    issues,
+    "storefront.appearancePreset",
+    "unknown_appearance_preset",
+    `Appearance ${preview(v, 60)} is not one of ${APPEARANCE_PRESETS.join(", ")}; "${fallback}" was used.`,
+    { value: preview(v, 60), fallback },
+  );
+  return fallback;
+}
+
+export function sanitizeStorefront(v: unknown, issues: ConfigIssue[]): StorefrontSettings {
   const def = DEFAULT_CONFIG.storefront;
   const rec = isRecord(v) ? v : {};
   return {
-    appearancePreset: sanitizeString(rec.appearancePreset, def.appearancePreset, 60),
+    appearancePreset: sanitizeAppearancePreset(rec.appearancePreset, def.appearancePreset, issues),
     cardPricesEnabled: sanitizeBool(rec.cardPricesEnabled, def.cardPricesEnabled),
   };
 }

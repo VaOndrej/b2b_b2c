@@ -50,7 +50,7 @@ export function sanitizeConfig(input: unknown): { config: WonDiscountsConfig; is
       issues,
       collectOverrideTargets(rules, sets, rewards.gifts, { rules: ruleAliases, sets: setAliases, gifts: giftAliases }),
     ),
-    storefront: sanitizeStorefront(rec.storefront),
+    storefront: sanitizeStorefront(rec.storefront, issues),
     locales: sanitizeLocales(rec.locales, issues),
     onboarding: sanitizeOnboarding(rec.onboarding, issues),
   };

@@ -37,10 +37,13 @@ export const CONFIG_LIMITS = Object.freeze({
   referenceLength: 100,
   /**
    * Margin overrides per collection. With margin percents kept to one decimal
-   * (config/margin.ts) the compact margin of 100 collections (13-digit ids) fits
-   * the function config budget next to the largest codes content.
+   * (config/margin.ts) the compact margin of 50 collections (13-digit ids) fits
+   * the function config budget next to the largest codes content AND a
+   * realistic Pro set of quantity tiers (10 sets × 5 breaks, amounts in 2
+   * currencies, MVP 3; tests/discounts/margin-sync.test.ts). It was 100 in MVP
+   * 2: 500 codes + 100 collections alone took 8 890 of the 9 000 B.
    */
-  marginOverrides: 100,
+  marginOverrides: 50,
   /**
    * Highest minimum margin, percent (MVP 2). The floor is cost / (1 − m/100):
    * at 100 % no price would do, and near it the floor explodes, so 95 % (the

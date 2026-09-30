@@ -52,7 +52,12 @@
 //   - margin protection (MVP 2) in its compact form (margin.ts
 //     FunctionMarginPayload): `{enabled: false}` while it is off, else
 //     `min`/`max`, the shop currency `cur` and per-collection `[m, p]` tuples
-//     keyed by numeric collection id (100 collections ≈ 2.5–3 kB).
+//     keyed by numeric collection id (50 collections ≈ 1.4 kB);
+//   - quantity tiers (MVP 3) in their compact form (tiers.ts
+//     FunctionTiersPayload, the exact shape and reading rules are in its
+//     header): only the sets a line can reach, each as `[id, count,
+//     currencies, breaks]`, never a scope id list (a product's set is its
+//     metafield `tierRef`, else `global`).
 // The sync must build a Free shop's payload from plan-gate.ts
 // gateConfigForPlan(config, plan), never from the stored config: only then does
 // none of its Pro data (targeting, combinesWith, campaigns) ship.
@@ -68,7 +73,6 @@ import {
   type EngineSettings,
   type GiftTier,
   type ReadonlyDeep,
-  type TierSet,
   type WonDiscountsConfig,
 } from "./config.ts";
 import { fnv1a } from "./config/sanitize-helpers.ts";
@@ -77,9 +81,10 @@ import { FUNCTION_CONFIG_BUDGET_BYTES, liveCampaigns, NO_CAMPAIGN_DATETIME, sele
 import { buildMarginPayload, type FunctionMarginPayload, type MarginCollectionTuple } from "./margin.ts";
 import type { MoneyByCurrency } from "./money.ts";
 import { isFunctionConfigPayload } from "./plan.ts";
+import { buildTiersPayload, type FunctionTierBreak, type FunctionTierSet, type FunctionTiersPayload } from "./tiers.ts";
 
 export { isFunctionConfigPayload };
-export type { FunctionMarginPayload, MarginCollectionTuple };
+export type { FunctionMarginPayload, FunctionTierBreak, FunctionTierSet, FunctionTiersPayload, MarginCollectionTuple };
 
 /** Shopify's hard limit for a metafield read by a function (C3/C7: 10 000 B passes, 10 001 B is `null`). */
 export const FUNCTION_METAFIELD_LIMIT_BYTES = 10_000;
@@ -137,7 +142,8 @@ export interface FunctionConfigPayload {
      * 19 B once the longest code has 10 characters or more.
      */
     codes: { rules: FunctionRule[]; maxCodeLength?: number };
-    tiers: { sets: TierSet[] };
+    /** Compact (tiers.ts FunctionTiersPayload): the reachable sets, no scope lists. */
+    tiers: FunctionTiersPayload;
     rewards: { freeShipping?: { threshold: MoneyByCurrency }; gifts: GiftTier[]; countOtherDiscounts: boolean };
     margin: FunctionMarginPayload;
   };
@@ -451,7 +457,7 @@ function build(config: ConfigInput, selected: CampaignInput | null, shopTimezone
     marketCountries: shipMarketCountries(config, selected),
     modules: {
       codes: shipCodes(codes.rules, shopTimezone),
-      tiers: { sets: copy<TierSet[]>(tiers.sets) },
+      tiers: buildTiersPayload(tiers),
       rewards: {
         ...(rewards.freeShipping ? { freeShipping: copy<{ threshold: MoneyByCurrency }>(rewards.freeShipping) } : {}),
         gifts: copy<GiftTier[]>(rewards.gifts),

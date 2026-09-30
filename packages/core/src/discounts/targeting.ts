@@ -34,6 +34,14 @@
 // possibly a larger discount than its collection allows. Dropping rule refs
 // only ever means less discount (fail closed).
 //
+// Quantity tiers (MVP 3, contracts K1/K3): `tierRef` = the id of the scoped
+// tier set that applies to the product (the first set listing the product,
+// else the first listing one of its collections, config order — tiers.ts
+// scopedTierSetResolver); absent = the global set applies. Like `marginRefs`
+// it is NEVER dropped over the budget: without it the product would get the
+// global set, possibly more than its own set gives. A set with no breaks (a
+// Pro set on Free, plan-gate.ts) still claims its products: they get no tier.
+//
 // A reference is one string (rule and campaign ids are `[A-Za-z0-9_-]`, so "@"
 // is a safe separator):
 //   "ruleId"             always
@@ -43,6 +51,7 @@
 import { variantKey } from "./cart.ts";
 import type { ReadonlyDeep, WonDiscountsConfig } from "./config.ts";
 import { buildMarginPayload, type FunctionMarginPayload, marginCollectionIds } from "./margin.ts";
+import { scopedTierSetResolver } from "./tiers.ts";
 
 export { variantKey };
 
@@ -85,6 +94,7 @@ export interface ProductMetafieldValue {
    * product — the first set listing the product, else the first listing one of
    * its collections. Absent = the global set applies. The engine gives a line
    * whose `tierRef` names a set the payload does not have no tier at all.
+   * Never dropped over the budget (see the header).
    */
   tierRef?: string;
 }
@@ -96,7 +106,7 @@ export interface ProductRuleEntry extends ProductMetafieldValue {
    * `collapsedRefs` now apply product-wide (they covered every current variant;
    * a variant added later inherits them until the product is re-indexed); refs in
    * `droppedRefs` no longer apply to this product at all. The sync must surface
-   * both to the merchant. `marginRefs` are never dropped.
+   * both to the merchant. `marginRefs` and `tierRef` are never dropped.
    */
   oversized?: { bytes: number; collapsedRefs: string[]; droppedRefs: string[] };
 }
@@ -107,22 +117,34 @@ export function productMetafieldValue(entry: ProductMetafieldValue): ProductMeta
     ruleIds: entry.ruleIds,
     variantRuleIds: entry.variantRuleIds,
     ...(entry.marginRefs && entry.marginRefs.length > 0 ? { marginRefs: entry.marginRefs } : {}),
+    ...(entry.tierRef ? { tierRef: entry.tierRef } : {}),
   };
 }
 
 const utf8Bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
 
+/** What never leaves a product's value over the budget (see the header). */
+interface KeptRefs {
+  marginRefs: readonly string[];
+  tierRef: string | undefined;
+}
+
 function toValue(
   whole: ReadonlySet<string>,
   perVariant: ReadonlyMap<string, ReadonlySet<string>>,
-  marginRefs: readonly string[],
+  kept: KeptRefs,
 ): ProductMetafieldValue {
   const variantRuleIds: Record<string, string[]> = {};
   for (const key of [...perVariant.keys()].sort()) {
     const refs = [...perVariant.get(key)!].filter((ref) => !whole.has(ref)).sort();
     if (refs.length > 0) variantRuleIds[key] = refs;
   }
-  return { ruleIds: [...whole].sort(), variantRuleIds, ...(marginRefs.length > 0 ? { marginRefs: [...marginRefs] } : {}) };
+  return {
+    ruleIds: [...whole].sort(),
+    variantRuleIds,
+    ...(kept.marginRefs.length > 0 ? { marginRefs: [...kept.marginRefs] } : {}),
+    ...(kept.tierRef !== undefined ? { tierRef: kept.tierRef } : {}),
+  };
 }
 
 /** Variant count per variant-level ref, largest first (ties: ref asc). */
@@ -135,15 +157,15 @@ function variantRefCounts(perVariant: ReadonlyMap<string, ReadonlySet<string>>, 
 /**
  * Fit one product under the budget (see the header): collapse equivalents, drop
  * the largest variant-level refs, then product-wide refs (longest first, ties
- * ref asc); `marginRefs` always stay.
+ * ref asc); `marginRefs` and `tierRef` always stay.
  */
 function fitProduct(
   whole: Set<string>,
   perVariant: Map<string, Set<string>>,
   variantCount: number,
-  marginRefs: readonly string[],
+  kept: KeptRefs,
 ): ProductRuleEntry {
-  let value = toValue(whole, perVariant, marginRefs);
+  let value = toValue(whole, perVariant, kept);
   const bytes = utf8Bytes(value);
   if (bytes <= PRODUCT_METAFIELD_BUDGET_BYTES) return value;
 
@@ -153,13 +175,13 @@ function fitProduct(
     whole.add(ref);
     collapsedRefs.push(ref);
   }
-  value = toValue(whole, perVariant, marginRefs);
+  value = toValue(whole, perVariant, kept);
   const droppedRefs: string[] = [];
   for (const [ref] of variantRefCounts(perVariant, whole)) {
     if (utf8Bytes(value) <= PRODUCT_METAFIELD_BUDGET_BYTES) break;
     for (const refs of perVariant.values()) refs.delete(ref);
     droppedRefs.push(ref);
-    value = toValue(whole, perVariant, marginRefs);
+    value = toValue(whole, perVariant, kept);
   }
   if (utf8Bytes(value) > PRODUCT_METAFIELD_BUDGET_BYTES) {
     const productWide = [...whole].sort((a, b) => b.length - a.length || (a < b ? -1 : a > b ? 1 : 0));
@@ -168,7 +190,7 @@ function fitProduct(
       whole.delete(ref);
       for (const refs of perVariant.values()) refs.delete(ref);
       droppedRefs.push(ref);
-      value = toValue(whole, perVariant, marginRefs);
+      value = toValue(whole, perVariant, kept);
     }
   }
   return { ...value, oversized: { bytes, collapsedRefs: collapsedRefs.sort(), droppedRefs: droppedRefs.sort() } };
@@ -226,8 +248,8 @@ export function decisiveMarginRefs(payload: ReadonlyDeep<FunctionMarginPayload>,
 }
 
 /**
- * productId → { ruleIds, variantRuleIds, marginRefs? } for every product given
- * (empty entries included, so the sync can clear a stale metafield).
+ * productId → { ruleIds, variantRuleIds, marginRefs?, tierRef? } for every
+ * product given (empty entries included, so the sync can clear a stale metafield).
  *  - Every rule is indexed, enabled or not: enabling a rule then needs no product
  *    metafield rewrite (the engine checks `enabled`, schedule, codes…).
  *  - A variant target is listed per variant (keyed by numeric id) and not
@@ -258,6 +280,7 @@ export function productRuleIndex(
   }
   const marginCollections = new Set(marginCollectionIds(config.modules.margin));
   const marginPayload = buildMarginPayload(config.modules.margin);
+  const tierRefOf = scopedTierSetResolver(config.modules.tiers.sets);
 
   const index = new Map<string, ProductRuleEntry>();
   for (const product of products) {
@@ -280,7 +303,8 @@ export function productRuleIndex(
       marginCollections.size === 0
         ? []
         : decisiveMarginRefs(marginPayload, product.collectionIds.filter((id) => marginCollections.has(id)).map(variantKey));
-    index.set(product.productId, fitProduct(whole, perVariant, new Set(product.variantIds).size, marginRefs));
+    const tierRef = tierRefOf(product);
+    index.set(product.productId, fitProduct(whole, perVariant, new Set(product.variantIds).size, { marginRefs, tierRef }));
   }
   return index;
 }

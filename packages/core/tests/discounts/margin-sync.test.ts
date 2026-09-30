@@ -1,7 +1,8 @@
 // What the sync ships for margin protection: `marginRefs` in the product
 // metafield (targeting.ts, never dropped over the budget), the compact margin in
-// the shop config (function-payload.ts, within the 9 000 B budget with 100
-// collections), and the admin's impact overview (margin.ts marginImpact).
+// the shop config (function-payload.ts, within the 9 000 B budget with the most
+// collections the config keeps, next to 500 codes and a realistic Pro tier
+// setup), and the admin's impact overview (margin.ts marginImpact).
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -51,13 +52,13 @@ test("the engine reads marginRefs per line exactly as the metafield carries them
   assert.equal(plan.lines[0].product?.amount, 100_00); // collection 300: at most 10 % without a cost
 });
 
-/** 100 margin collections whose strictest minimum is the 38th and strictest maximum the 72nd (decisive refs). */
-const MARGIN_100 = Array.from({ length: CONFIG_LIMITS.marginOverrides }, (_, i) => ({
+/** The most margin collections the config keeps; the strictest minimum is the 18th, the strictest maximum the 36th (decisive refs). */
+const MARGIN_MOST = Array.from({ length: CONFIG_LIMITS.marginOverrides }, (_, i) => ({
   collectionId: C(900_000_000_000 + i),
-  minMarginPercent: i === 37 ? 40 : 25,
-  maxDiscountPercent: i === 71 ? 10 : 30,
+  minMarginPercent: i === 17 ? 40 : 25,
+  maxDiscountPercent: i === 35 ? 10 : 30,
 }));
-const MARGIN_100_DECISIVE = ["900000000037", "900000000071"];
+const MARGIN_MOST_DECISIVE = ["900000000017", "900000000035"];
 
 test("over the product budget: rule refs are dropped first — marginRefs never (fail closed: less discount)", () => {
   const variants = Array.from({ length: 400 }, (_, i) => V(44_000_000_000_000 + i));
@@ -66,12 +67,12 @@ test("over the product budget: rule refs are dropped first — marginRefs never 
       pct("a", 10, { target: { kind: "products", productIds: [], variantIds: variants.slice(0, 250) } }),
       pct("b", 10, { target: { kind: "products", productIds: [], variantIds: variants.slice(150, 400) } }),
     ],
-    { modules: { margin: { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: MARGIN_100 } } },
+    { modules: { margin: { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: MARGIN_MOST } } },
   );
-  const entry = productRuleIndex(config, [{ productId: P(9), variantIds: variants, collectionIds: MARGIN_100.map((o) => o.collectionId) }]).get(P(9))!;
+  const entry = productRuleIndex(config, [{ productId: P(9), variantIds: variants, collectionIds: MARGIN_MOST.map((o) => o.collectionId) }]).get(P(9))!;
   const value = productMetafieldValue(entry);
   assert.ok(bytesOf(value) <= PRODUCT_METAFIELD_BUDGET_BYTES, String(bytesOf(value)));
-  assert.deepEqual(value.marginRefs, MARGIN_100_DECISIVE, "the decisive margin collections survive");
+  assert.deepEqual(value.marginRefs, MARGIN_MOST_DECISIVE, "the decisive margin collections survive");
   assert.ok((entry.oversized?.droppedRefs.length ?? 0) > 0);
 });
 
@@ -79,13 +80,13 @@ test("over the product budget with only product-wide refs left: those are droppe
   const ids = Array.from({ length: 170 }, (_, i) => `rule-${String(i).padStart(3, "0")}-${"x".repeat(i % 2 === 0 ? 50 : 40)}`);
   const config = configOf(
     ids.map((id) => pct(id, 10, { target: { kind: "collections", ids: [C(1)] } })),
-    { modules: { margin: { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: MARGIN_100 } } },
+    { modules: { margin: { enabled: true, global: { maxDiscountPercent: 50 }, perCollection: MARGIN_MOST } } },
   );
-  const entry = productRuleIndex(config, [{ productId: P(9), variantIds: [V(1)], collectionIds: [C(1), ...MARGIN_100.map((o) => o.collectionId)] }]).get(P(9))!;
+  const entry = productRuleIndex(config, [{ productId: P(9), variantIds: [V(1)], collectionIds: [C(1), ...MARGIN_MOST.map((o) => o.collectionId)] }]).get(P(9))!;
   const value = productMetafieldValue(entry);
   assert.ok(entry.oversized!.bytes > PRODUCT_METAFIELD_BUDGET_BYTES);
   assert.ok(bytesOf(value) <= PRODUCT_METAFIELD_BUDGET_BYTES, String(bytesOf(value)));
-  assert.deepEqual(value.marginRefs, MARGIN_100_DECISIVE);
+  assert.deepEqual(value.marginRefs, MARGIN_MOST_DECISIVE);
   const dropped = entry.oversized!.droppedRefs;
   assert.ok(dropped.length > 0);
   // The longer (50-char tail) refs go first.
@@ -111,11 +112,28 @@ test("shop config: margin ships compact (tuples keyed by numeric collection id) 
   assert.deepEqual(off.modules.margin, { enabled: false });
 });
 
-test("shop config budget: 500 codes AND the worst-case margin (100 collections, 13-digit ids, two-decimal min and max) fit 9 000 B", () => {
-  // The limits guarantee it: at most CONFIG_LIMITS.marginOverrides collections, and margin percents
-  // keep one decimal (the sanitizer rounds 33.33 → 33.4 and 66.67 → 66.6), so no entry is longer than
+/**
+ * A realistic Pro quantity-tier setup (MVP 3): 10 sets (one global, 9 on 20
+ * collections and a product each; admin-style 22-character ids), 5 breaks
+ * each, every break an amount per item in CZK and EUR (the largest form: a
+ * percent break is shorter).
+ */
+const PRO_TIERS = Array.from({ length: 10 }, (_, i) => ({
+  id: `t_${(0xabcdef0123 + i * 7919).toString(16).padStart(20, "0")}`,
+  scope: i === 0 ? "global" : { collectionIds: Array.from({ length: 20 }, (_, k) => C(400_000_000_000 + i * 100 + k)), productIds: [P(8_000_000_000_000 + i)] },
+  countAcross: (["line", "product", "cart"] as const)[i % 3],
+  breaks: [2, 3, 5, 10, 20].map((minQty, k) => ({
+    minQty,
+    amountOff: { CZK: [25_00, 50_00, 100_00, 250_00, 500_00][k], EUR: [1_00, 2_00, 4_00, 10_00, 20_00][k] },
+  })),
+}));
+
+test("shop config budget: 500 codes, the worst-case margin (the most collections, 13-digit ids, two-decimal min and max) AND realistic Pro tiers fit 9 000 B", () => {
+  // The limits guarantee the margin part: at most CONFIG_LIMITS.marginOverrides collections (50 since
+  // MVP 3: at 100, 500 codes and the margin alone took 8 890 B), and margin percents keep one decimal
+  // (the sanitizer rounds 33.33 → 33.4 and 66.67 → 66.6), so no entry is longer than
   // "1234567890123":[94.9,99.9] whatever the merchant typed.
-  assert.equal(CONFIG_LIMITS.marginOverrides, 100);
+  assert.equal(CONFIG_LIMITS.marginOverrides, 50);
   const codes = Array.from({ length: 500 }, (_, i) => `INFLUENCER-${String(i).padStart(4, "0")}-PODZIM2026`);
   const perCollection = Array.from({ length: CONFIG_LIMITS.marginOverrides }, (_, i) => ({
     collectionId: C(9_000_000_000_000 + i),
@@ -123,11 +141,16 @@ test("shop config budget: 500 codes AND the worst-case margin (100 collections, 
     maxDiscountPercent: 66.67,
   }));
   const config = configOf([orderPct("r", 10, code(codes))], {
-    modules: { margin: { enabled: true, global: { minMarginPercent: 12.34, maxDiscountPercent: 45.67 }, perCollection } },
+    modules: {
+      tiers: { sets: PRO_TIERS },
+      margin: { enabled: true, global: { minMarginPercent: 12.34, maxDiscountPercent: 45.67 }, perCollection },
+    },
   });
+  assert.deepEqual(sanitizeConfig(config).issues, []);
   const encoded = buildShopFunctionConfig(config, { now: FIXTURE_NOW, shopTimezone: FIXTURE_TZ, shopCurrency: "CZK" });
+  assert.equal(encoded.payload.modules.tiers.sets.length, 10);
   const col = (encoded.payload.modules.margin as { col: Record<string, unknown> }).col;
-  assert.equal(Object.keys(col).length, 100);
+  assert.equal(Object.keys(col).length, 50);
   assert.deepEqual(col["9000000000000"], [33.4, 66.6]);
   assert.equal(encoded.fits, true, `${encoded.bytes} B`);
   // Even with 3-decimal junk the stored values stay one decimal.

@@ -344,6 +344,67 @@ export function describeRule(
   return [parts.value, parts.method, ...parts.minimum, parts.notOffered].filter((p): p is string => !!p).join(" · ");
 }
 
+// --- Quantity tiers (MVP 3) -------------------------------------------------------------------
+
+/** The fields of a tier break a description needs (config TierBreak). */
+export interface DescribableTierBreak {
+  minQty: number;
+  percent?: number;
+  amountOff?: MoneyByCurrency;
+}
+
+export interface DescribeTierOptions {
+  locale: UiLocale;
+  /** One currency (the engine: the cart's): an amount break without it reads "not offered in …". */
+  currency?: string;
+  /**
+   * Admin view, when no `currency` is given: amounts in each listed market
+   * currency ("50 Kč / 2 €"), the listed ones without an amount named. Neither
+   * given: every currency the amount has.
+   */
+  currencies?: readonly string[];
+}
+
+/** "od 3 ks −10 %" (lower case: describeTierSet joins them; describeTierBreak capitalizes). */
+function tierBreakPhrase(b: DescribableTierBreak, opts: DescribeTierOptions): string {
+  const { locale } = opts;
+  const cs = locale === "cs";
+  const from = cs ? `od ${b.minQty} ks` : `from ${b.minQty} ${enPlural(b.minQty, "item", "items")}`;
+  // A percent wins over an amount (config/tiers.ts keeps the percent).
+  if (typeof b.percent === "number") return `${from} −${formatPercent(b.percent, locale)}`;
+  const amount = b.amountOff ?? {};
+  const listed = opts.currency !== undefined ? [opts.currency] : (opts.currencies ?? Object.keys(amount));
+  const shown = shownCurrencies(amount, listed);
+  const missing = listed.filter((c) => !shown.includes(c));
+  const notOffered =
+    missing.length === 0 ? "" : cs ? ` (v ${joinWords(missing, locale)} se nenabízí)` : ` (not offered in ${joinWords(missing, locale)})`;
+  if (shown.length === 0) return missing.length > 0 ? `${from}${notOffered}` : `${from} ${cs ? "(bez hodnoty)" : "(no value)"}`;
+  const amounts = formatAmounts(amount, shown, locale);
+  return `${from} −${amounts} ${cs ? "za kus" : "per item"}${notOffered}`;
+}
+
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/**
+ * One quantity break in words: "Od 3 ks −10 %" · "From 3 items −10%" ·
+ * "Od 2 ks −50 Kč za kus" · "From 5 items (not offered in EUR)" (MKT-1).
+ */
+export function describeTierBreak(b: DescribableTierBreak, opts: DescribeTierOptions): string {
+  return capitalize(tierBreakPhrase(b, opts));
+}
+
+/**
+ * A tier set's breaks in one line, ascending (admin headers §17a, explain):
+ * "Od 3 ks −10 %, od 5 ks −15 %" / "From 3 items −10%, from 5 items −15%";
+ * an amount per item in the given currency (or the listed ones, admin view);
+ * no break: "Bez množstevních slev" / "No quantity tiers".
+ */
+export function describeTierSet(set: { readonly breaks: readonly DescribableTierBreak[] }, opts: DescribeTierOptions): string {
+  if (set.breaks.length === 0) return opts.locale === "cs" ? "Bez množstevních slev" : "No quantity tiers";
+  const phrases = [...set.breaks].sort((a, b) => a.minQty - b.minQty).map((b) => tierBreakPhrase(b, opts));
+  return capitalize(phrases.join(", "));
+}
+
 // --- Schedules (shop-local days, the engine's day gate) -----------------------------------
 
 /** A rule schedule as shop-local calendar days (function-payload `shopLocalDates`). */

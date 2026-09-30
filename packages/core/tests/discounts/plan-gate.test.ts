@@ -106,8 +106,12 @@ test("Free: every Pro capability is out of the gated config; the stored config i
   assert.equal(rule("off").combinesWith, undefined);
   // Campaigns are Pro.
   assert.deepEqual(free.campaigns, []);
-  // Exactly one global tier set, counting per product (never across the cart).
-  assert.deepEqual(free.modules.tiers.sets, [{ id: "global", scope: "global", countAcross: "product", breaks: [{ minQty: 3, percent: 10 }] }]);
+  // Exactly one global tier set, counting per product (never across the cart); a scoped set stays
+  // INERT (contract K1: its products get no tier rather than the global one); a further global set goes.
+  assert.deepEqual(free.modules.tiers.sets, [
+    { id: "scoped", scope: { collectionIds: ["gid://shopify/Collection/1"] }, countAcross: "line", breaks: [] },
+    { id: "global", scope: "global", countAcross: "product", breaks: [{ minQty: 3, percent: 10 }] },
+  ]);
   // One gift threshold, one gift.
   assert.deepEqual(free.modules.rewards.gifts, [{ id: "g1", threshold: { CZK: 1000_00 }, choices: ["gid://shopify/ProductVariant/1"] }]);
   // Per-collection margin folds into the global floor, the strictest value wins (never a larger discount).
@@ -210,9 +214,18 @@ test("explainGate: Czech plurals for 1, 2 and 5 (tier sets, gift thresholds, gif
   assert.equal(cs("gift_choices", 1), "Ve Free se nabízí jen první dárek z výběru, další dárek ne (výběr dárků je funkce Pro).");
   assert.equal(cs("gift_choices", 2), "Ve Free se nabízí jen první dárek z výběru, další 2 dárky ne (výběr dárků je funkce Pro).");
   assert.equal(cs("gift_choices", 5), "Ve Free se nabízí jen první dárek z výběru, dalších 5 dárků ne (výběr dárků je funkce Pro).");
-  assert.equal(cs("tier_set_scope", 1), "1 sada množstevních slev pro vybrané produkty nebo kolekce ve Free neplatí, je to funkce Pro.");
-  assert.equal(cs("tier_set_scope", 2), "2 sady množstevních slev pro vybrané produkty nebo kolekce ve Free neplatí, je to funkce Pro.");
-  assert.equal(cs("tier_set_scope", 5), "5 sad množstevních slev pro vybrané produkty nebo kolekce ve Free neplatí, je to funkce Pro.");
+  assert.equal(
+    cs("tier_set_scope", 1),
+    "1 sada množstevních slev pro vybrané produkty nebo kolekce ve Free neplatí, je to funkce Pro. Produkty v ní ve Free nedostanou žádnou množstevní slevu.",
+  );
+  assert.equal(
+    cs("tier_set_scope", 2),
+    "2 sady množstevních slev pro vybrané produkty nebo kolekce ve Free neplatí, je to funkce Pro. Produkty v nich ve Free nedostanou žádnou množstevní slevu.",
+  );
+  assert.equal(
+    cs("tier_set_scope", 5),
+    "5 sad množstevních slev pro vybrané produkty nebo kolekce ve Free neplatí, je to funkce Pro. Produkty v nich ve Free nedostanou žádnou množstevní slevu.",
+  );
   const en = (capability: StrippedCapability["capability"], count: number) =>
     explainGate([{ capability, reason: "removed", count }], "en")[0].text;
   assert.equal(en("gift_ladder", 2), "On Free only the first gift threshold applies; the other 2 are not offered (a threshold ladder is a Pro feature).");

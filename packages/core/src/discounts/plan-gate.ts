@@ -25,19 +25,25 @@
 //     targeting would widen the rule to every market / every customer;
 //   - combinesWith: removed (the rule competes like any other: better one wins);
 //   - campaigns: removed (the base rules apply);
-//   - tier sets: the first global set stays, scoped and further sets go;
-//     counting across the cart becomes per product (fewer items per count).
-//     Not provable yet: no engine reads tiers before MVP 3 (see below);
+//   - tier sets (MVP 3, contract K1): the first global set stays, counting
+//     across the cart becomes per product (fewer items per count); a further
+//     global set goes (under K1 no product reaches it anyway); every SCOPED
+//     set stays but INERT (`breaks: []`, never cart counting), see below;
 //   - gift ladder: the first threshold stays, with its first gift only;
 //   - margin per collection: folded into the global floor, the STRICTEST value
 //     wins (a larger discount than the Pro setup allowed is never possible).
 //
-// MVP 3 (Množstevní slevy) obligation: the spec defines no precedence between
-// a scoped tier set and the global one yet. If MVP 3 lets the most specific set
-// win, stripping a STRICTER scoped set here would hand its products the global
-// set — a larger discount. MVP 3 must then keep those products out of the
-// global set on Free (or fall back to the stricter of the two), and test that
-// stripping never widens a product's tiers.
+// Tier sets and K1 (MVP 3): exactly one set applies to a product — the first
+// set listing it, else the first listing one of its collections, else the
+// first global set (tiers.ts). A scoped set may be LESS generous than the
+// global one, so removing it on Free would hand its products the global set —
+// a larger discount. It is kept inert instead: its products keep their
+// `tierRef` to it (targeting.ts) and get no tier at all. What a Free shop runs
+// for a product is therefore its own Pro set (counted no wider) or nothing
+// (tests/discounts/tiers-gate.test.ts, property test). Caveat: with breaks
+// whose value FALLS as the quantity grows (3 ks −20 %, 5 ks −10 %), counting
+// per product instead of across the cart can reach a lower break with a
+// larger value; the admin should keep break values ascending.
 //
 // Downgrade (A6: running sales and campaigns finish, new ones cannot start).
 // Nothing is running at a downgrade in MVP 1 (no campaign or outlet UI yet), so
@@ -153,10 +159,13 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
   }
   out.campaigns = [];
 
-  // Quantity tiers: exactly one global set, counted per product at most.
+  // Quantity tiers (K1): one global set, counted per product at most; scoped
+  // sets INERT (no breaks), so their products never fall back to the global set.
   const sets = out.modules.tiers.sets;
   const kept = sets.find((set) => set.scope === "global");
-  const scoped = sets.filter((set) => set.scope !== "global").map((set) => set.id);
+  const scopedSets = sets.filter((set) => set.scope !== "global");
+  // A scoped set without a break was not in force: made inert all the same, not reported.
+  const scoped = scopedSets.filter((set) => set.breaks.length > 0).map((set) => set.id);
   const extra = sets.filter((set) => set.scope === "global" && set !== kept).map((set) => set.id);
   if (scoped.length > 0) stripped.push({ capability: "tier_set_scope", reason: "removed", count: scoped.length, removedIds: scoped });
   if (extra.length > 0) stripped.push({ capability: "tier_sets_extra", reason: "removed", count: extra.length, removedIds: extra });
@@ -164,7 +173,11 @@ export function gateConfigForPlan(config: ReadonlyDeep<WonDiscountsConfig>, plan
     kept.countAcross = "product";
     stripped.push({ capability: "tier_count_across_cart", reason: "reduced", entityId: kept.id });
   }
-  out.modules.tiers.sets = kept ? [kept] : [];
+  for (const set of scopedSets) {
+    set.breaks = [];
+    if (set.countAcross === "cart") set.countAcross = "product";
+  }
+  out.modules.tiers.sets = sets.filter((set) => set === kept || set.scope !== "global");
 
   // Rewards: one gift threshold, one gift.
   const gifts = out.modules.rewards.gifts;
@@ -277,9 +290,10 @@ function sentence(s: StrippedCapability, locale: UiLocale): string {
         : `Campaign ${name} does not run on Free; campaigns are a Pro feature. Your regular discount settings apply.`;
     }
     case "tier_set_scope":
+      // K1: their products do not fall back to the store-wide set either.
       return cs
-        ? `${csCount(n, ["sada", "sady", "sad"])} množstevních slev pro vybrané produkty nebo kolekce ve Free neplatí, je to funkce Pro.`
-        : `${n} quantity tier ${n === 1 ? "set" : "sets"} for selected products or collections ${n === 1 ? "does" : "do"} not apply on Free; that is a Pro feature.`;
+        ? `${csCount(n, ["sada", "sady", "sad"])} množstevních slev pro vybrané produkty nebo kolekce ve Free neplatí, je to funkce Pro. Produkty v ${n === 1 ? "ní" : "nich"} ve Free nedostanou žádnou množstevní slevu.`
+        : `${n} quantity tier ${n === 1 ? "set" : "sets"} for selected products or collections ${n === 1 ? "does" : "do"} not apply on Free; that is a Pro feature. ${n === 1 ? "Its products get" : "Products in them get"} no quantity tier on Free.`;
     case "tier_sets_extra":
       return cs
         ? `Ve Free platí jen jedna sada množstevních slev pro celý obchod, ${csOthers(n, ["sada", "sady", "sad"])} se neuplatní.`
