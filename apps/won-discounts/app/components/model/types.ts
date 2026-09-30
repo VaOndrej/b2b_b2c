@@ -468,3 +468,139 @@ export interface CartPlanView {
    */
   margin?: { rateEstimated: boolean; linesWithoutCost: number; linesCostNotConverted: number };
 }
+
+// --- MVP 3: Množstevní slevy, Vzhled, Nastavení kombinování ----------------------------
+// Contract K9 (docs/plans/2026-09-30-won-discounts-mvp3.md). Loaders: app/lib/integration/
+// {tiers,appearance,settings}.server.ts; screens: TiersScreen, AppearanceScreen, SettingsScreen.
+
+/** One quantity break as the form edits it. */
+export interface TierBreakView {
+  minQty: number;
+  kind: "percent" | "amount";
+  /** kind "percent": 0–100. */
+  percent: number | null;
+  /** kind "amount": per item, per currency, minor units. A missing currency = the break is not offered there (MKT-1). */
+  amount: Record<string, number>;
+}
+
+/** Where a set applies. Titles come from Shopify ("" = unknown: the screen says "bez názvu", never an id). */
+export type TierScopeView =
+  | { kind: "global" }
+  | {
+      kind: "selection";
+      products: { id: string; title: string }[];
+      collections: { id: string; title: string }[];
+    };
+
+export interface TierSetView {
+  id: string;
+  scope: TierScopeView;
+  countAcross: "line" | "product" | "cart";
+  /** Ascending minQty. */
+  breaks: TierBreakView[];
+}
+
+/** Is the quantity table on the live theme's product page (read_themes, templates/product*.json)? */
+export type TiersBlockView =
+  | { state: "on"; themeName: string }
+  /** `addUrl`: theme-editor deep link with addAppBlockId (null when the shop / API key is unknown). */
+  | { state: "off"; addUrl: string | null }
+  | { state: "unknown"; addUrl: string | null }
+  | { state: "no_scope" };
+
+/** The storefront config metafield (K5) as the last sync left it. */
+export type StorefrontSyncView =
+  | { state: "synced"; at: string }
+  | { state: "pending" }
+  | { state: "failed"; at: string; problems: UiText[] }
+  | { state: "missing" };
+
+/**
+ * The live theme's look for a faithful preview (C5 fallback: settings_data via
+ * read_themes). Colors are CSS colors; null = the theme does not say (the preview
+ * falls back to neutral values and says so).
+ */
+export interface ThemeTokensView {
+  themeName: string | null;
+  fontBody: string | null;
+  fontHeading: string | null;
+  colorText: string | null;
+  colorBackground: string | null;
+  colorAccent: string | null;
+  /** Corner radius of buttons/inputs in px. */
+  radius: number | null;
+}
+
+/** A real product for the preview and "Zobrazit na mém webu". */
+export interface PreviewProductView {
+  productId: string;
+  title: string;
+  /** Minor units of `currency`. */
+  unitPrice: number;
+  currency: string;
+  /** Storefront URL of the product (null when the shop domain is unknown). */
+  url: string | null;
+}
+
+export interface TiersPreviewView {
+  tokens: ThemeTokensView | null;
+  preset: AppearancePresetView;
+  product: PreviewProductView | null;
+}
+
+/** Mirrors core APPEARANCE_PRESETS (K7). */
+export type AppearancePresetView = "default" | "highlight" | "chips" | "tiles";
+
+export interface TiersScreenData {
+  plan: "free" | "pro";
+  shopCurrency: string;
+  /** F12 expected-version token for the save. */
+  configVersion: string | null;
+  /** Currencies of the enabled markets (amount inputs per currency). */
+  currencies: CurrencyView[];
+  /** Config order; the global set first when there is one. Pro sets are listed on Free too (gateNotes say they do not apply). */
+  sets: TierSetView[];
+  gateNotes: GateNoteView[];
+  /** Margin protection is on: the screen says tiers may come out lower on some products. */
+  marginOn: boolean;
+  /** Active product rules that compete with tiers on the same lines (A1: the better one wins). */
+  competingRules: number;
+  block: TiersBlockView;
+  storefront: StorefrontSyncView;
+  preview: TiersPreviewView;
+}
+
+/** Přehled card. */
+export interface TiersOverviewView {
+  sets: number;
+  /** The global set's breaks, for one sentence ("Od 3 ks −10 %, od 5 ks −15 %"); null = no global set. */
+  global: TierSetView | null;
+  block: TiersBlockView;
+}
+
+export interface AppearanceScreenData {
+  plan: "free" | "pro";
+  configVersion: string | null;
+  preset: AppearancePresetView;
+  tokens: ThemeTokensView | null;
+  /** The set the preview shows (the global one, else the first); null = none yet (the preview uses an example). */
+  sample: TierSetView | null;
+  product: PreviewProductView | null;
+  block: TiersBlockView;
+  embed: EmbedView;
+}
+
+/** Free per-category combination switches (A1, engine.combination). */
+export interface CombinationView {
+  outletWithAnything: boolean;
+  productWithOrder: boolean;
+  productWithShipping: boolean;
+  orderWithShipping: boolean;
+}
+
+export interface SettingsScreenData {
+  plan: "free" | "pro";
+  configVersion: string | null;
+  currencies: CurrencyView[];
+  combination: CombinationView;
+}

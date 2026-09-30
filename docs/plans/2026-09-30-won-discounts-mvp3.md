@@ -64,6 +64,97 @@ App Bridge deep link `addAppBlockId`, `@won/testing` runner s overlayem šablony
 | Docs | `apps/won-discounts/docs/**`, `scripts/gen-docs.ts`, docs drift test | T6 |
 | E2E | `apps/won-discounts/tests/e2e/**`, `scripts/e2e/**`, `e2e/*`, `packages/testing` (overlay šablony) | T7 |
 
+Upřesnění vlastnictví (controller 2026-09-30, kvůli paralelnímu běhu): **T3** = `app/lib/sync/**` (+ `app/lib/jobs/**`,
+`app/lib/integration/costs.server.ts` jen pro `pdp`) — zápisy do Shopify. **T5** = UI **i** serverová integrace
+nových obrazovek: `app/lib/integration/{tiers,settings,appearance,themes}.server.ts` (nové), `app/lib/ui-actions.server.ts`,
+`app/lib/dev-harness.server.ts`, `app/components/**`, `app/routes/app.*`, `app/i18n/**`, `tests/ui/**`,
+`tests/integration/{tiers,settings,appearance}*.test.ts`. Uložení jde přes stávající `config-write.server.ts` +
+`save-and-sync.server.ts` (beze změny rozhraní; sync si nové zápisy přidá sám). **T4** navíc
+`tests/contracts/theme-extension.contract.test.ts` a nový `tests/contracts/storefront-tiers.contract.test.ts`.
+
+## Kontrakty (controller, zafixované před paralelním rozjezdem)
+
+**K1 — Která sada platí pro produkt (rozhodnutí controlleru).** Na produkt platí **právě jedna** sada úrovní:
+1. první sada (v pořadí configu), jejíž `scope.productIds` obsahuje produkt; jinak
+2. první sada, jejíž `scope.collectionIds` obsahuje některou kolekci produktu; jinak
+3. první globální sada (`scope: "global"`); jinak žádná.
+
+Sync ji předpočítá do produktového metafieldu jako `tierRef` (jen případy 1–2; chybí = globální sada). `tierRef`
+na sadu, která v payloadu není → produkt **nemá žádnou úroveň** (fail closed, zákazník dostane méně, nikdy víc).
+Free (`gateConfigForPlan`): sady s rozsahem se nemažou, ale **zneškodní** (`breaks: []`, `reason: "removed"`),
+takže jejich produkty nespadnou do globální sady (ořez Pro nikdy nerozšíří slevu — závazek z `plan-gate.ts`).
+Proč jedna sada: PDP ukazuje jednu tabulku, funkce vyhodnotí jednu sadu na řádek (rozpočet instrukcí), merchant
+může produkt/kolekci dát nižší úrovně než globální. Mezi úrovní a pravidlem platí A1 (výhodnější vyhrává).
+
+**K2 — Úroveň v enginu.** Počet: `line` = množství řádku; `product` = součet řádků stejného `productId`;
+`cart` = součet všech řádků, jejichž platná sada je tatáž. Do počtu jdou jen řádky, které úroveň dostat můžou
+(ne výprodej, ne dárek). Úroveň = nejvyšší `minQty` ≤ počet. Hodnota na kus: `percent` nebo `amountOff[měna košíku]`
+(minor units; chybí měna → sada se v tom trhu nenabízí, stav `currency_missing`; částka max. cena kusu). Kandidát
+s id `tier:<setId>`, `module: "tiers"`, `method: "automatic"`, `priority` 0; soutěží s produktovými pravidly
+(výhodnější vyhrává, remíza `priority desc, id asc`), nikdy se nesčítá (Pro `combinesWith` se úrovní netýká).
+Marže ořízne úroveň jako každou produktovou slevu. Emituje automatický uzel.
+
+**K3 — Produktový metafield** `$app:won_discounts/product` (`ProductMetafieldValue`) dostane
+`tierRef?: string` (id sady; jen když platí sada s rozsahem). Čte ho funkce (T2) i Liquid (T4):
+`product.metafields["$app:won_discounts"].product.value.tierRef`.
+
+**K4 — Variantní metafield** `$app:won_discounts/pdp` (typ `json`) = `{"max": <0–100, 1 desetinné místo, zaokrouhleno
+dolů>}`: nejvyšší sleva v %, kterou ochrana marže u varianty dovolí při její ceně v měně obchodu. Jen varianty
+se známou nákupní cenou při zapnuté marži; jinak metafield neexistuje. Funkce ho nečte. Nákupní cena se nikdy
+nepíše do stránky.
+
+**K5 — Storefront config** = app-data metafield (vlastník `AppInstallation`, namespace `won_discounts`, klíč
+`storefront_config`, typ `json`; app-data **nepoužívá** `$app`), Liquid: `app.metafields.won_discounts.storefront_config.value`.
+Staví ho `buildStorefrontConfig` z **gated** configu (BILL-1). Tvar v1 (typy v `@won/core/discounts/storefront-config`):
+
+```ts
+interface StorefrontConfigV1 {
+  v: 1;
+  cv: string;                       // verze ShopConfig, ze které vznikl (ladění, E2E)
+  tiers: {
+    global: string | null;          // id globální sady (K1 bod 3) nebo null
+    sets: Record<string, { count: "line" | "product" | "cart"; breaks: StorefrontTierBreak[] }>;
+  };
+  margin: { on: false } | { on: true; max: number; col?: Record<string, number> };
+  // max = strop % pro varianty bez nákupní ceny (globální); col = číselné id kolekce → platný strop % té kolekce
+  // (produkt podle svých `marginRefs`, víc refů → nejnižší). Varianta s `pdp.max` bere `pdp.max`.
+  appearance: { preset: AppearancePreset };
+  texts: Partial<Record<"cs" | "sk" | "en", Record<string, string>>>; // jen texty změněné merchantem; fallback = locales extensionu
+}
+type StorefrontTierBreak = { min: number; pct: number } | { min: number; off: Record<string, number> };
+// off = částka na kus v jednotkách Liquid money (hlavní jednotka × 100) per ISO měna — builder převádí z minor units podle exponentu.
+```
+
+**K6 — PDP počet a cena.** Počet na PDP = zvolené množství + kusy už v košíku, které se do téže úrovně počítají
+(`line`: stejná varianta, `product`: stejný produkt, `cart`: řádky se stejnou platnou sadou; čte se z Liquid `cart`
+při renderu, JS košík nenačítá). Sleva na kus = `min(pct, max)` % z ceny, resp. `min(off, cena × max / 100)`, kde
+`max` = `pdp.max`, jinak strop z `margin` (K5), jinak 100.
+
+**K7 — Vzhledy.** `APPEARANCE_PRESETS = ["default", "highlight", "chips", "tiles"]` (`config.storefront.appearancePreset`;
+`default` = tabulka, `highlight` = zvýrazněná aktivní úroveň, `chips` = kompaktní štítky v řádku, `tiles` = dlaždice).
+Neznámá hodnota → `default` + issue.
+
+**K8 — DOM bloku** (stejný pro Liquid, JS i náhled v adminu; CSS jen v `assets/won-discounts-tiers.css`, třídy
+`won-tiers*`, barvy a písmo se dědí z tématu přes `inherit`/`currentColor`, akcent z nastavení bloku `accent`):
+
+```html
+<div class="won-tiers won-tiers--{preset}" data-won-discounts-tiers data-state="ready|empty"
+     data-set-id="…" data-count-mode="line|product|cart" data-preset="{preset}">
+  <p class="won-tiers__heading">…</p>
+  <ol class="won-tiers__list" role="list">
+    <li class="won-tiers__row" data-won-discounts-tier-row data-min="3" data-active="true|false">
+      <span class="won-tiers__qty">Od 3 ks</span><span class="won-tiers__save">−10 %</span><span class="won-tiers__unit">…/ks</span>
+    </li>
+  </ol>
+  <p class="won-tiers__live" data-won-discounts-live-price data-unit-cents="…" aria-live="polite">…</p>
+  <p class="won-tiers__next" data-won-discounts-tier-next hidden>…</p>
+  <script type="application/json" data-won-discounts-tiers-data>{…}</script>
+</div>
+```
+JS po každé změně vyšle `document` event `won-discounts:tiers:update` (`detail: {variantId, quantity, count, min, unitCents}`).
+
+**K9 — View modely adminu** jsou v `app/components/model/types.ts` (sekce „MVP 3“, commit controlleru před rozjezdem).
+
 ---
 
 ### Task 1: Engine — úrovně v `planCart` (core, jediný zapisovatel)
@@ -75,6 +166,11 @@ App Bridge deep link `addAppBlockId`, `@won/testing` runner s overlayem šablony
 `buildStorefrontConfig(config, plan, { locales })` → JSON pro app-data metafield (sady, vzhled,
 texty; bez citlivých dat), payload úrovní v shop configu (kompaktně), `tierRefs` v
 `productRuleIndex` (rozpočet produktového metafieldu jako refy pravidel).
+Kontrakty K1–K7 platí doslova. `pdpMaxDiscountPercent({ unitPrice /* minor, shop currency */, unitCost, costCurrency,
+shopCurrency, margin /* gated MarginModule */, collectionIds })` → `number | null` (null = marže vypnutá / bez nákupní
+ceny); `buildStorefrontConfig(gatedConfig, { configVersion, exponentOf })` → `StorefrontConfigV1`; sanitizer: úroveň má
+právě jednu hodnotu (`percent` i `amountOff` → zůstane `percent` + issue; žádná → úroveň zahozena + issue), `minQty`
+rostoucí a unikátní (duplicitní zahozené + issue), `appearancePreset` z `APPEARANCE_PRESETS`.
 **Pravidla (testy červené první):** výběr úrovně a hranice minQty (2/3/4 ks), tři režimy počítání
 (varianty stejného produktu, košík jen v rozsahu sady), měna bez hodnoty, amountOff > cena kusu,
 úroveň vs. pravidlo (výhodnější vyhrává, remíza stabilně), výprodej/dárek bez úrovně, marže ořízne
@@ -158,7 +254,11 @@ oprava všech nálezů + self-audit + roadmap (MVP 3 hotovo, badge Beta) + build
 
 ## Pořadí a paralelizace
 
-1. **T1** (core) ‖ **T6** (docs concepts — nezávislé) ‖ příprava overlaye v `packages/testing` (T7a).
-2. Po T1: **T2** ‖ **T3** ‖ **T4** ‖ **T5** (disjunktní soubory; kontrakt view modelů a storefront
-   configu zafixuje controller před spuštěním, jako v MVP 2).
-3. Po T2–T4: **T7** živé E2E. 4. **T8**.
+T1 má dvě fáze jednoho agenta: **T1a** (kontraktní povrch: sanitizer úrovní a vzhledů, `gateConfigForPlan` K1,
+`tierRef` v `productRuleIndex`, kompaktní úrovně v payloadu, `buildStorefrontConfig`, `pdpMaxDiscountPercent`,
+`describeTierSet`) → commit → **T1b** (úrovně v `planCart`, explain, emise, výkon).
+
+1. Kontrakty K1–K9 (controller) → vlna A: **T1a** ‖ **T4** ‖ **T5** ‖ **T6** ‖ **T7a** (overlay v `packages/testing`).
+2. Po T1a: **T1b** ‖ **T3**. Po T1b: **T2**.
+3. Task review běží souběžně s další prací; po T2–T5: **T7** živé E2E. 4. **T8** (audit hlavní + drift najednou,
+   opravy v 2–3 paralelních balících, re-review jednou dávkou).

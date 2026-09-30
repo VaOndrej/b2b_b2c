@@ -49,6 +49,15 @@ export type MinimumScope = (typeof MINIMUM_SCOPES)[number];
 export const TIER_COUNT_ACROSS_MODES = ["line", "product", "cart"] as const;
 export type TierCountAcross = (typeof TIER_COUNT_ACROSS_MODES)[number];
 
+/**
+ * Předpřipravené vzhledy bloků (Free, MVP 3 kontrakt K7): `default` = tabulka,
+ * `highlight` = zvýrazněná aktivní úroveň, `chips` = kompaktní štítky v řádku,
+ * `tiles` = dlaždice. `config.storefront.appearancePreset`; neznámá hodnota se
+ * sanitizuje na `default` (s issue).
+ */
+export const APPEARANCE_PRESETS = ["default", "highlight", "chips", "tiles"] as const;
+export type AppearancePreset = (typeof APPEARANCE_PRESETS)[number];
+
 export const OUTLET_DISPLAY_MODES = [
   "silent",
   "strike",

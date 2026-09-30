@@ -12,6 +12,7 @@
 // one sanitizer per module, and the top-level sanitize/migrate/read).
 
 export {
+  APPEARANCE_PRESETS,
   COMBINATION_CATEGORIES,
   DISCOUNT_METHODS,
   DISCOUNT_TARGET_KINDS,
@@ -26,6 +27,7 @@ export {
   TIER_COUNT_ACROSS_MODES,
 } from "./config/enums.ts";
 export type {
+  AppearancePreset,
   CombinationCategory,
   DiscountMethod,
   DiscountTargetKind,

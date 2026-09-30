@@ -80,6 +80,13 @@ export interface ProductMetafieldValue {
    * margin protection is off).
    */
   marginRefs?: string[];
+  /**
+   * MVP 3 (contract K1/K3): the id of the Pro tier set that applies to this
+   * product — the first set listing the product, else the first listing one of
+   * its collections. Absent = the global set applies. The engine gives a line
+   * whose `tierRef` names a set the payload does not have no tier at all.
+   */
+  tierRef?: string;
 }
 
 export interface ProductRuleEntry extends ProductMetafieldValue {
