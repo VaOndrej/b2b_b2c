@@ -88,7 +88,7 @@ může produkt/kolekci dát nižší úrovně než globální. Mezi úrovní a p
 
 **K2 — Úroveň v enginu.** Počet: `line` = množství řádku; `product` = součet řádků stejného `productId`;
 `cart` = součet všech řádků, jejichž platná sada je tatáž. Do počtu jdou jen řádky, které úroveň dostat můžou
-(ne výprodej, ne dárek). Úroveň = nejvyšší `minQty` ≤ počet. Hodnota na kus: `percent` nebo `amountOff[měna košíku]`
+(ne výprodej, ne dárek). Úroveň = nejvyšší `minQty` ≤ počet. Sada je jednoho druhu (všechny úrovně `percent`, nebo všechny `amountOff`) a hodnoty s počtem kusů neklesají (% i částka v každé měně) — jinak by Free omezení počítání (košík → produkt) mohlo slevu zvětšit. Hodnota na kus: `percent` nebo `amountOff[měna košíku]`
 (minor units; úroveň bez částky v měně košíku se v tom trhu nenabízí, celá sada jen když ji nemá žádná úroveň → stav `currency_missing`; částka max. cena kusu). Kandidát
 s id `tier:<setId>`, `module: "tiers"`, `method: "automatic"`, `priority` 0; soutěží s produktovými pravidly
 (výhodnější vyhrává, remíza `priority desc, id asc`), nikdy se nesčítá (Pro `combinesWith` se úrovní netýká).
