@@ -38,8 +38,9 @@ that one for you by the rules above.
 
 ## Changing the defaults
 
-- **Free:** the defaults above apply. A setting to switch them per category is planned
-  for a later version.
+- **Free:** Settings lets you switch each category above between adding up and
+  competing, store-wide. See
+  [../tasks/switch-combination-categories.md](../tasks/switch-combination-categories.md).
 - **Pro:** a discount can be set to stack with chosen other discounts. See
   [pro-combinations](pro-combinations).
 

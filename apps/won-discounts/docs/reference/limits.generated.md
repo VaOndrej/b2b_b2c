@@ -54,3 +54,17 @@ codes, add them to an existing code discount.
 A save that would go over either limit is refused with an explanation; nothing
 is saved. Fewer discounts, fewer codes or fewer collections with their own
 margin setting make room.
+
+## Quantity tiers
+
+| What | Limit |
+|---|---|
+| Quantity tier sets (Pro; Free has one global set) | 50 |
+| Quantity breaks in one tier set | 10 |
+| Ways to count quantity | 3 (`line`, `product`, `cart`; `cart` is Pro) |
+
+## Block appearances
+
+4 presets for the quantity-tiers product-page block:
+`default`, `highlight`, `chips`, `tiles`. An unrecognised value falls back to
+`default`.

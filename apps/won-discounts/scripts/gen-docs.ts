@@ -20,6 +20,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  APPEARANCE_PRESETS,
   COMBINATION_CATEGORIES,
   CONFIG_LIMITS,
   createDefaultConfig,
@@ -29,6 +30,7 @@ import {
   DISCOUNT_VALUE_KINDS,
   MINIMUM_SCOPES,
   SCHEMA_VERSION,
+  TIER_COUNT_ACROSS_MODES,
   type CombinationCategory,
   type DiscountRule,
   type WonDiscountsConfig,
@@ -312,7 +314,21 @@ codes, add them to an existing code discount.
 
 A save that would go over either limit is refused with an explanation; nothing
 is saved. Fewer discounts, fewer codes or fewer collections with their own
-margin setting make room.`,
+margin setting make room.
+
+## Quantity tiers
+
+| What | Limit |
+|---|---|
+| Quantity tier sets (Pro; Free has one global set) | ${num(CONFIG_LIMITS.tierSets)} |
+| Quantity breaks in one tier set | ${num(CONFIG_LIMITS.breaksPerTierSet)} |
+| Ways to count quantity | ${TIER_COUNT_ACROSS_MODES.length} (\`${TIER_COUNT_ACROSS_MODES.join("`, `")}\`; \`cart\` is Pro) |
+
+## Block appearances
+
+${APPEARANCE_PRESETS.length} presets for the quantity-tiers product-page block:
+\`${APPEARANCE_PRESETS.join("`, `")}\`. An unrecognised value falls back to
+\`${APPEARANCE_PRESETS[0]}\`.`,
   );
 }
 

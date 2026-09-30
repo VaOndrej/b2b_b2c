@@ -5,18 +5,19 @@ každém MVP**, obsah je rozvrstvený podle _stability_, volatilní věci se **g
 z kódu** a drift hlídá test. Kanonický princip: [`docs/nova-aplikace.md` §9](../../../docs/nova-aplikace.md).
 Vzor: [`apps/won-toasts/docs/`](../../won-toasts/docs/).
 
-Stav: pokrývá **MVP 0–2** (Slevy a kódy, engine a kombinování, přesun nativních slev
-s undo, Vyzkoušet košík, Ochrana marže). Moduly MVP 3+ (množstevní slevy, odměny,
-výprodej, kampaně, vzhled) tu záměrně nejsou; dokumenty k nim přibydou po ustálení
-MVP, do té doby je zmiňují jen jako „not built yet“.
+Stav: pokrývá **MVP 0–3** (Slevy a kódy, engine a kombinování + přepínání kategorií
+v Nastavení, přesun nativních slev s undo, Vyzkoušet košík, Ochrana marže, Množstevní
+slevy + vzhledy bloku). Moduly MVP 4+ (odměny, výprodej, kampaně, vlastní vzhled) tu
+záměrně nejsou; dokumenty k nim přibydou po ustálení MVP, do té doby je zmiňují jen
+jako „not built yet“.
 
 ## Vrstvy
 
 | Složka | Co tam je | Kdo to píše |
 |---|---|---|
-| [`concepts/`](concepts/) | Jak engine plánuje slevy, kombinování (A1 + Pro per sleva), kódy vs. automatické, sync se Shopify, slevy mimo Won a přesun, ochrana marže, nákupní ceny, marže per kolekce (Pro), trhy a měny, Free vs Pro. | Ručně |
-| [`tasks/`](tasks/) | Automatická sleva, kód, přesun nativních slev, undo přesunu, zapnutí ochrany marže, Vyzkoušet košík. | Ručně |
-| [`support/`](support/) | Sleva v pokladně jiná, kód se neuplatnil, sleva snížená marží, produkty bez nákupní ceny, sleva mimo Won, sleva se v měně nenabízí. | Ručně |
+| [`concepts/`](concepts/) | Jak engine plánuje slevy, kombinování (A1 + Pro per sleva + přepínání po kategoriích), kódy vs. automatické, sync se Shopify, slevy mimo Won a přesun, ochrana marže, nákupní ceny, marže per kolekce (Pro), trhy a měny, Free vs Pro, množstevní slevy. | Ručně |
+| [`tasks/`](tasks/) | Automatická sleva, kód, přesun nativních slev, undo přesunu, zapnutí ochrany marže, Vyzkoušet košík, nastavení množstevních slev, přidání tabulky na produkt, výběr vzhledu bloku, přepínání kombinování v Nastavení. | Ručně |
+| [`support/`](support/) | Sleva v pokladně jiná, kód se neuplatnil, sleva snížená marží, produkty bez nákupní ceny, sleva mimo Won, sleva se v měně nenabízí, tabulka se na produktu nezobrazuje, sleva v košíku jiná než na produktu, úroveň snížená marží, produkt nedostal globální úrovně. | Ručně |
 | [`reference/`](reference/) | Free vs Pro, limity, výchozí kombinování, nastavení marže, volby slevy + recepty, stavy slev. | **Generováno** (`*.generated.md`), needitovat |
 
 Jazyk: angličtina (jako won-toasts). Klíčové pojmy adminu jsou v `keywords` i česky
@@ -29,7 +30,7 @@ Stejný jako won-toasts: `title`, `slug` (== název souboru), `layer`, `feature`
 `keywords`, `summary`. `title` a `summary` bez „: “ (validní YAML).
 
 `feature` v téhle appce: `core` · `engine` · `discounts` · `native-discounts` ·
-`margin` · `markets` · `plans` · `try-cart` · `sync`.
+`margin` · `markets` · `plans` · `try-cart` · `sync` · `tiers`.
 
 `min_plan: pro` mají jen Pro featury (kombinace per sleva, marže per kolekce).
 
