@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -62,10 +62,13 @@ test("embed serves the app-data config as an inline JSON script tag", async () =
     block,
     /<script[^>]+type="application\/json"[^>]+id="won-discounts-config"/,
   );
-  // Reads the app-owned $app:won_discounts namespace metafield defensively —
-  // falls back to an empty object when the metafield is absent.
-  assert.match(block, /app\.metafields\[['"]\$app:won_discounts['"]\]/);
-  assert.match(block, /storefront_config/);
+  // Reads the K5 app-data metafield (owner AppInstallation) defensively — falls
+  // back to an empty object when it is absent. App-data metafields use a PLAIN
+  // namespace (shopify.dev "About metafields": the AppInstallation owner gives
+  // the isolation, `$app` is not used); `app.metafields['$app:won_discounts']`
+  // (MVP 0) never matched the metafield the sync writes (MVP 3 contract K5).
+  assert.match(block, /app\.metafields\.won_discounts\.storefront_config\.value/);
+  assert.doesNotMatch(block, /app\.metafields\[['"]\$app/);
   assert.match(block, /\|\s*json/);
   assert.match(block, /==\s*blank/);
   assert.match(block, /'\{\}'|"\{\}"/);
@@ -134,6 +137,31 @@ test("locale files stay valid JSON with identical key sets across en/cs/sk", asy
       `${locale} keys differ from ${first}: ${JSON.stringify(keys)} vs ${JSON.stringify(firstKeys)}`,
     );
   }
+});
+
+test("MVP 3: the extension ships the embed and the quantity_tiers app block; every schema asset exists", async () => {
+  const blocks = (await readdir(path.join(extensionRoot, "blocks"))).filter((f) => f.endsWith(".liquid")).sort();
+  // The handle `quantity_tiers` is the file name: the admin deep link (addAppBlockId) and the
+  // theme template's block type `shopify://apps/won-discounts/blocks/quantity_tiers/<uuid>` use it.
+  assert.deepEqual(blocks, ["quantity_tiers.liquid", "won_discounts_embed.liquid"]);
+  for (const file of blocks) {
+    const liquid = await readExtension(`blocks/${file}`);
+    const schema = JSON.parse(liquid.match(/\{%\s*schema\s*%\}([\s\S]*?)\{%\s*endschema\s*%\}/)?.[1] ?? "{}");
+    for (const key of ["javascript", "stylesheet"] as const) {
+      if (!schema[key]) continue;
+      await assert.doesNotReject(readExtension(`assets/${schema[key]}`), `${file}: ${key} ${schema[key]} is missing`);
+    }
+  }
+});
+
+test("MVP 3: the embed and the tiers block read the same K5 config path", async () => {
+  const [embed, tiers] = await Promise.all([
+    readExtension("blocks/won_discounts_embed.liquid"),
+    readExtension("blocks/quantity_tiers.liquid"),
+  ]);
+  const k5 = /app\.metafields\.won_discounts\.storefront_config\.value/;
+  assert.match(embed, k5);
+  assert.match(tiers, k5);
 });
 
 // --- Audit P3-11: the JS, not the Liquid, flips the marker to "ready" ---------------------------

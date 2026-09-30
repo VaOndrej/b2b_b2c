@@ -1,9 +1,156 @@
-/* Won Discounts — quantity tiers block (MVP 3, contract K8). Skeleton created by
-   the controller so the admin preview can import this file; T4 owns it. Colors
-   and fonts inherit from the theme (inherit / currentColor); the accent comes
-   from the block setting via --won-tiers-accent. */
+/*
+ * Won Discounts — quantity tiers block (MVP 3, contracts K7 + K8).
+ * One file for the storefront block and the admin preview (imported with ?raw).
+ * Colors and fonts come from the theme (inherit / currentColor); there is no
+ * color literal on purpose. The accent is the block setting, set inline as
+ * --won-tiers-accent (default: the text color). Tokens a host may set:
+ *   --won-tiers-accent     highlight color
+ *   --won-tiers-radius     corners (default: the theme's input radius)
+ *   --won-tiers-max-width  width of the block
+ * Presets (class won-tiers--{preset}): default = table, highlight = table with
+ * the reached tier highlighted, chips = compact labels in a row, tiles = tiles.
+ */
 .won-tiers {
   --won-tiers-accent: currentColor;
+  --won-tiers-radius: var(--style-border-radius-inputs, var(--inputs-radius, 0.5rem));
+  --won-tiers-line: color-mix(in srgb, currentColor 18%, transparent);
+  --won-tiers-tint: color-mix(in srgb, var(--won-tiers-accent) 10%, transparent);
+  display: block;
+  max-width: var(--won-tiers-max-width, 40rem);
+  margin: 0;
   color: inherit;
   font: inherit;
+}
+
+/* Rows and the root set their own display, so [hidden] must win explicitly. */
+.won-tiers[hidden],
+.won-tiers[data-state="empty"],
+.won-tiers [hidden] {
+  display: none !important;
+}
+
+.won-tiers__heading {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.won-tiers__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.won-tiers__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--won-tiers-line);
+}
+
+.won-tiers__qty {
+  min-width: 0;
+}
+
+.won-tiers__save {
+  font-weight: 600;
+  color: var(--won-tiers-accent);
+  white-space: nowrap;
+}
+
+.won-tiers__unit {
+  text-align: end;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.won-tiers__row[data-active="true"] {
+  font-weight: 600;
+}
+
+.won-tiers__live {
+  margin: 0.75rem 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.won-tiers__next {
+  margin: 0.25rem 0 0;
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+/* default: a plain table, closed by a line on top. */
+.won-tiers--default .won-tiers__row:first-child {
+  border-top: 1px solid var(--won-tiers-line);
+}
+
+/* highlight: the table, the reached tier tinted and outlined in the accent. */
+.won-tiers--highlight .won-tiers__row {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid transparent;
+  border-bottom-color: var(--won-tiers-line);
+  border-radius: var(--won-tiers-radius);
+}
+
+.won-tiers--highlight .won-tiers__row[data-active="true"] {
+  border-color: var(--won-tiers-accent);
+  background: var(--won-tiers-tint);
+}
+
+/* chips: compact labels in a row; the live price below says the unit price. */
+.won-tiers--chips .won-tiers__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.won-tiers--chips .won-tiers__row {
+  display: inline-flex;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--won-tiers-line);
+  border-radius: var(--won-tiers-radius);
+}
+
+.won-tiers--chips .won-tiers__unit {
+  display: none;
+}
+
+.won-tiers--chips .won-tiers__row[data-active="true"] {
+  border-color: var(--won-tiers-accent);
+  background: var(--won-tiers-tint);
+}
+
+/* tiles: one tile per tier. */
+.won-tiers--tiles .won-tiers__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.won-tiers--tiles .won-tiers__row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  border: 1px solid var(--won-tiers-line);
+  border-radius: var(--won-tiers-radius);
+}
+
+.won-tiers--tiles .won-tiers__save {
+  font-size: 1.25em;
+}
+
+.won-tiers--tiles .won-tiers__unit {
+  text-align: center;
+  font-size: 0.9em;
+}
+
+.won-tiers--tiles .won-tiers__row[data-active="true"] {
+  border-color: var(--won-tiers-accent);
+  background: var(--won-tiers-tint);
 }

@@ -1,1 +1,12 @@
-{}
+{
+  "tiers": {
+    "heading": "Množstevní sleva",
+    "row_qty": "Od {min}\u00a0ks",
+    "save_pct": "−{pct}\u00a0%",
+    "save_off": "−{amount}",
+    "unit": "{price}/ks",
+    "live": "{qty}\u00a0ks za {total} ({price}/ks)",
+    "live_cart": "{qty}\u00a0ks za {total} ({price}/ks). Počítáme i {cart}\u00a0ks v košíku.",
+    "next": "Ještě {count}\u00a0ks a zaplatíte {price}/ks."
+  }
+}

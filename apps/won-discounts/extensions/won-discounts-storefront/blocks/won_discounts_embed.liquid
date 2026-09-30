@@ -8,10 +8,14 @@
 
   The marker is rendered as "loading"; only won-discounts.js sets "ready"
   after it initialised window.WonDiscounts, so "ready" proves the JS ran.
+
+  The config is the MVP 3 contract K5 app-data metafield (owner
+  AppInstallation, namespace won_discounts, key storefront_config). App-data
+  metafields use a plain namespace, never $app.
 {% endcomment %}
 
 {% liquid
-  assign won_discounts_config_raw = app.metafields['$app:won_discounts'].storefront_config.value
+  assign won_discounts_config_raw = app.metafields.won_discounts.storefront_config.value
   if won_discounts_config_raw == blank
     assign won_discounts_config = '{}'
   else
